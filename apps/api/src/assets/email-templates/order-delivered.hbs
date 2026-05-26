@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Order Was Delivered</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; background: #faf9f7; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .header { background: #3d2b1f; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #f5e6d3; margin: 0; font-size: 24px; letter-spacing: 1px; }
+    .header p { color: #c8a882; margin: 8px 0 0; font-size: 14px; }
+    .body { padding: 40px; color: #3d2b1f; line-height: 1.7; }
+    .body h2 { font-size: 20px; margin-top: 0; }
+    .cta { display: inline-block; margin: 24px 0; background: #3d2b1f; color: #f5e6d3 !important; padding: 14px 32px; border-radius: 4px; text-decoration: none; font-size: 15px; }
+    .product-list { list-style: none; padding: 0; margin: 16px 0; }
+    .product-list li { padding: 8px 0; border-bottom: 1px solid #f5e6d3; font-size: 14px; }
+    .footer { background: #f5e6d3; padding: 20px 40px; text-align: center; font-size: 12px; color: #7a5c45; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>🍁 Maple Loom Handmade</h1>
+      <p>Your Order Has Arrived! ✨</p>
+    </div>
+    <div class="body">
+      <h2>Your order is here, {{firstName}}!</h2>
+      <p>Order <strong>{{orderNumber}}</strong> has been delivered. We hope you love your new handcrafted piece!</p>
+
+      {{#if items}}
+      <p>Items in your order:</p>
+      <ul class="product-list">
+        {{#each items}}
+        <li>{{productName}}</li>
+        {{/each}}
+      </ul>
+      {{/if}}
+
+      <p>If everything looks perfect, please take a moment to leave a review — your feedback helps other shoppers and means the world to our makers.</p>
+      <a class="cta" href="{{reviewUrl}}">Leave a Review</a>
+
+      <p>If you have any concerns about your order, please reach out to us and we'll make it right.</p>
+      <p>Warmly,<br /><strong>The Maple Loom Team</strong></p>
+    </div>
+    <div class="footer">
+      &copy; {{year}} Maple Loom Handmade. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>

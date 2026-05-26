@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #E85D3F;
+  --color-primary-dark: #C44A2E;
+  --color-secondary: #2D2D2D;
+  --color-background: #FAFAF8;
+  --color-surface: #FFFFFF;
+  --color-border: #E8E4DF;
+  --color-success: #2E7D52;
+  --color-warning: #D97706;
+  --color-error: #DC2626;
+  --color-text-primary: #2D2D2D;
+  --color-text-muted: #6B6B6B;
+  --color-badge-new: #7C3AED;
+  --color-badge-sale: #E85D3F;
+  --color-badge-hot: #DC2626;
+  --shadow-floating: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.10);
+  --radius-button: 8px;
+  --radius-card: 12px;
+  --radius-modal: 16px;
+  --radius-pill: 999px;
+}
+
+@layer base {
+  body {
+    background-color: #FAFAF8;
+    color: #2D2D2D;
+  }
+}

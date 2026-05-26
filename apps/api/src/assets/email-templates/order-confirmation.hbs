@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order Confirmed</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; background: #faf9f7; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .header { background: #3d2b1f; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #f5e6d3; margin: 0; font-size: 24px; letter-spacing: 1px; }
+    .header p { color: #c8a882; margin: 8px 0 0; font-size: 14px; }
+    .body { padding: 40px; color: #3d2b1f; line-height: 1.7; }
+    .body h2 { font-size: 20px; margin-top: 0; }
+    table.items { width: 100%; border-collapse: collapse; margin: 24px 0; }
+    table.items th { text-align: left; padding: 8px 0; border-bottom: 2px solid #f5e6d3; font-size: 13px; color: #7a5c45; }
+    table.items td { padding: 10px 0; border-bottom: 1px solid #f5e6d3; font-size: 14px; }
+    .totals { margin-top: 8px; }
+    .totals tr td { padding: 4px 0; font-size: 14px; }
+    .totals tr.grand-total td { font-weight: bold; font-size: 16px; border-top: 2px solid #3d2b1f; padding-top: 10px; }
+    .address-box { background: #faf9f7; border-radius: 6px; padding: 16px 20px; margin: 20px 0; font-size: 14px; }
+    .cta { display: inline-block; margin: 24px 0; background: #3d2b1f; color: #f5e6d3 !important; padding: 14px 32px; border-radius: 4px; text-decoration: none; font-size: 15px; }
+    .footer { background: #f5e6d3; padding: 20px 40px; text-align: center; font-size: 12px; color: #7a5c45; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>🍁 Maple Loom Handmade</h1>
+      <p>Order Confirmed</p>
+    </div>
+    <div class="body">
+      <h2>Thank you, {{firstName}}!</h2>
+      <p>Your order <strong>{{orderNumber}}</strong> has been confirmed. We'll begin crafting it right away!</p>
+
+      <table class="items">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th style="text-align:center">Qty</th>
+            <th style="text-align:right">Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each items}}
+          <tr>
+            <td>{{productName}}</td>
+            <td style="text-align:center">{{quantity}}</td>
+            <td style="text-align:right">${{unitPrice}}</td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+
+      <table class="totals">
+        <tr><td>Subtotal</td><td style="text-align:right">${{subtotal}}</td></tr>
+        {{#if discountAmount}}<tr><td>Discount</td><td style="text-align:right">–${{discountAmount}}</td></tr>{{/if}}
+        <tr><td>Shipping ({{shippingMethod}})</td><td style="text-align:right">${{shippingCost}}</td></tr>
+        <tr class="grand-total"><td>Total</td><td style="text-align:right">${{total}}</td></tr>
+      </table>
+
+      <div class="address-box">
+        <strong>Shipping to:</strong><br />
+        {{shippingName}}<br />
+        {{shippingAddress}}, {{shippingCity}}, {{shippingCountry}}
+      </div>
+
+      <a class="cta" href="{{orderUrl}}">View Your Order</a>
+
+      <p>Processing usually takes 2–5 business days before shipping. We'll send you a tracking number as soon as your order ships.</p>
+      <p>Warmly,<br /><strong>The Maple Loom Team</strong></p>
+    </div>
+    <div class="footer">
+      &copy; {{year}} Maple Loom Handmade. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>

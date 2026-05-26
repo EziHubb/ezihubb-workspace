@@ -1,0 +1,10 @@
+FROM node:20-alpine AS base
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+RUN npm install -g pnpm
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY codebase/prisma ./codebase/prisma
+RUN pnpm exec prisma generate --schema=codebase/prisma/schema.prisma
+
+CMD ["pnpm", "exec", "prisma", "migrate", "deploy", "--schema=codebase/prisma/schema.prisma"]

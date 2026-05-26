@@ -1,0 +1,103 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { PromotionsService } from './promotions.service';
+import { CreatePromotionDto, UpdatePromotionDto } from './dto/create-promotion.dto';
+import { ValidateCouponDto } from './dto/validate-coupon.dto';
+import {
+  CouponValidationResultDto,
+  PromotionResponseDto,
+  PromotionStatsDto,
+} from './dto/promotion-response.dto';
+import { PaginatedResult } from '../../common/dto/paginated-response.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtPayload } from '../auth/strategies/jwt.strategy';
+import { Role } from '@mlh/constants';
+
+@ApiTags('promotions')
+@Controller('promotions')
+export class PromotionsController {
+  constructor(private readonly promotionsService: PromotionsService) {}
+
+  // ── Public ───────────────────────────────────────────────────────────────────
+
+  @Post('validate')
+  @UseGuards(OptionalAuthGuard)
+  @ApiOperation({ summary: 'Validate a coupon code (does not consume it)' })
+  async validateCoupon(
+    @Body() dto: ValidateCouponDto,
+    @CurrentUser() user?: JwtPayload,
+  ): Promise<CouponValidationResultDto> {
+    return this.promotionsService.validateCoupon(dto, user?.sub);
+  }
+
+  // ── Admin ────────────────────────────────────────────────────────────────────
+
+  @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Create a promotion/coupon' })
+  async create(@Body() dto: CreatePromotionDto): Promise<PromotionResponseDto> {
+    return this.promotionsService.create(dto);
+  }
+
+  @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'List all promotions (admin)' })
+  async findAll(@Query() query: PaginationDto): Promise<PaginatedResult<PromotionResponseDto>> {
+    return this.promotionsService.findAll(query);
+  }
+
+  @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get a promotion by ID' })
+  async findOne(@Param('id') id: string): Promise<PromotionResponseDto> {
+    return this.promotionsService.findOne(id);
+  }
+
+  @Put(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update a promotion' })
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdatePromotionDto,
+  ): Promise<PromotionResponseDto> {
+    return this.promotionsService.update(id, dto);
+  }
+
+  @Patch(':id/deactivate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Deactivate a promotion' })
+  async deactivate(@Param('id') id: string): Promise<PromotionResponseDto> {
+    return this.promotionsService.deactivate(id);
+  }
+
+  @Get(':id/stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get usage statistics for a promotion' })
+  async getStats(@Param('id') id: string): Promise<PromotionStatsDto> {
+    return this.promotionsService.getStats(id);
+  }
+}

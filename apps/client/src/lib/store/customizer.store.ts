@@ -1,0 +1,419 @@
+import { create } from 'zustand';
+import { API_ROUTES } from '@mlh/constants';
+import type {
+  ArtStyle,
+  CustomizationPayload,
+  CustomizationTemplate,
+  FieldValue,
+} from '../customizer/types';
+import { MAX_HISTORY } from '../customizer/types';
+
+// fabric.Canvas stored as unknown — typed at usage sites to avoid SSR-breaking imports
+type FabricCanvasInstance = unknown;
+
+type FieldValues = Record<string, FieldValue>;
+
+interface CustomizerStore {
+  // Config
+  template:  CustomizationTemplate | null;
+  productId: string | null;
+  variantId: string | null;
+
+  // Field state
+  fieldValues: FieldValues;
+
+  // UI state
+  activeFieldId:       string | null;
+  isPreviewOpen:       boolean;
+  previewImageUrl:     string | null;
+  isGeneratingPreview: boolean;
+  previewError:        string | null;
+
+  // Fabric.js canvas ref (set by Canvas component)
+  fabricCanvas: FabricCanvasInstance;
+
+  // Undo / Redo
+  history:      FieldValues[];
+  historyIndex: number;
+
+  // ── Actions ─────────────────────────────────────────────────────────────────
+  initTemplate:    (template: CustomizationTemplate, productId: string, variantId: string | null) => void;
+  setFieldValue:   (fieldId: string, value: Partial<FieldValue>) => void;
+  setActiveField:  (fieldId: string | null) => void;
+  setVariant:      (variantId: string) => void;
+  setFabricCanvas: (canvas: FabricCanvasInstance) => void;
+
+  uploadImage:      (fieldId: string, file: File) => Promise<void>;
+  removeBackground: (fieldId: string) => Promise<void>;
+  applyArtStyle:    (fieldId: string, style: ArtStyle) => Promise<void>;
+  revertToOriginal: (fieldId: string) => void;
+
+  generatePreview: () => Promise<void>;
+  closePreview:    () => void;
+
+  undo:    () => void;
+  redo:    () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+
+  autoFill: (savedData: FieldValues) => void;
+  reset:    () => void;
+
+  // Computed
+  isValid:                () => boolean;
+  toCustomizationPayload: () => CustomizationPayload;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function snapshot(fv: FieldValues): FieldValues {
+  return JSON.parse(JSON.stringify(fv)) as FieldValues;
+}
+
+function pushHistory(
+  history: FieldValues[],
+  idx: number,
+  fv: FieldValues,
+): { history: FieldValues[]; historyIndex: number } {
+  const next = [...history.slice(0, idx + 1), snapshot(fv)].slice(-MAX_HISTORY);
+  return { history: next, historyIndex: next.length - 1 };
+}
+
+function apiBase(): string {
+  return (
+    (typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_API_URL']) ||
+    'http://localhost:3000'
+  );
+}
+
+async function pollJob(
+  jobId: string,
+  intervalMs = 2000,
+  timeoutMs = 65_000,
+): Promise<{ processedKey: string; processedUrl: string }> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      clearInterval(interval);
+      reject(new Error('Job timed out'));
+    }, timeoutMs);
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${apiBase()}${API_ROUTES.CUSTOMIZATION.JOB_STATUS(jobId)}`, {
+          credentials: 'include',
+        });
+        const body = await res.json();
+        const job = body?.data ?? body;
+        if (job.status === 'done' && job.processedKey && job.processedUrl) {
+          clearTimeout(timer);
+          clearInterval(interval);
+          resolve({ processedKey: job.processedKey, processedUrl: job.processedUrl });
+        } else if (job.status === 'failed') {
+          clearTimeout(timer);
+          clearInterval(interval);
+          reject(new Error('Job failed'));
+        }
+      } catch (err) {
+        clearTimeout(timer);
+        clearInterval(interval);
+        reject(err);
+      }
+    }, intervalMs);
+  });
+}
+
+// ── Store ─────────────────────────────────────────────────────────────────────
+
+export const useCustomizerStore = create<CustomizerStore>((set, get) => ({
+  template:            null,
+  productId:           null,
+  variantId:           null,
+  fieldValues:         {},
+  activeFieldId:       null,
+  isPreviewOpen:       false,
+  previewImageUrl:     null,
+  isGeneratingPreview: false,
+  previewError:        null,
+  fabricCanvas:        null,
+  history:             [{}],
+  historyIndex:        0,
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+
+  initTemplate: (template, productId, variantId) => {
+    const defaults: FieldValues = {};
+    template.fields.forEach((f) => {
+      if (f.type === 'text' || f.type === 'date') {
+        defaults[f.id] = { text: f.defaultValue ?? '' };
+      } else if (f.type === 'select') {
+        defaults[f.id] = { selectValue: f.defaultValue ?? '' };
+      } else {
+        defaults[f.id] = {};
+      }
+    });
+    set({ template, productId, variantId, fieldValues: defaults, history: [defaults], historyIndex: 0 });
+  },
+
+  // ── Field mutations ───────────────────────────────────────────────────────
+
+  setFieldValue: (fieldId, value) => {
+    set((s) => {
+      const fv = { ...s.fieldValues, [fieldId]: { ...s.fieldValues[fieldId], ...value } };
+      return { fieldValues: fv, ...pushHistory(s.history, s.historyIndex, fv) };
+    });
+  },
+
+  setActiveField: (fieldId) => set({ activeFieldId: fieldId }),
+
+  setVariant: (variantId) => set({ variantId }),
+
+  setFabricCanvas: (canvas) => set({ fabricCanvas: canvas }),
+
+  // ── Upload image ──────────────────────────────────────────────────────────
+
+  uploadImage: async (fieldId, file) => {
+    set((s) => ({
+      fieldValues: { ...s.fieldValues, [fieldId]: { ...s.fieldValues[fieldId], isUploading: true, uploadProgress: 0, error: undefined } },
+    }));
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const uploadWithProgress = (): Promise<{ tempKey: string; tempUrl: string; width: number; height: number }> =>
+      new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            set((s) => ({
+              fieldValues: { ...s.fieldValues, [fieldId]: { ...s.fieldValues[fieldId], uploadProgress: Math.round((e.loaded / e.total) * 100) } },
+            }));
+          }
+        });
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const body = JSON.parse(xhr.responseText);
+              resolve(body?.data ?? body);
+            } catch {
+              reject(new Error('Invalid response'));
+            }
+          } else {
+            reject(new Error(`Upload failed (${xhr.status})`));
+          }
+        });
+        xhr.addEventListener('error', () => reject(new Error('Network error')));
+        xhr.open('POST', `${apiBase()}${API_ROUTES.CUSTOMIZATION.UPLOAD}`);
+        xhr.withCredentials = true;
+        xhr.send(formData);
+      });
+
+    try {
+      const result = await uploadWithProgress();
+      set((s) => {
+        const fv = { ...s.fieldValues, [fieldId]: { ...s.fieldValues[fieldId], isUploading: false, uploadProgress: 100, imageKey: result.tempKey, imageUrl: result.tempUrl } };
+        return { fieldValues: fv, ...pushHistory(s.history, s.historyIndex, fv) };
+      });
+    } catch (err) {
+      set((s) => ({
+        fieldValues: { ...s.fieldValues, [fieldId]: { ...s.fieldValues[fieldId], isUploading: false, error: err instanceof Error ? err.message : 'Upload failed' } },
+      }));
+    }
+  },
+
+  // ── Remove background ─────────────────────────────────────────────────────
+
+  removeBackground: async (fieldId) => {
+    const { fieldValues } = get();
+    const imageKey = fieldValues[fieldId]?.imageKey;
+    if (!imageKey) return;
+
+    set((s) => ({
+      fieldValues: { ...s.fieldValues, [fieldId]: { ...s.fieldValues[fieldId], isUploading: true, error: undefined } },
+    }));
+
+    try {
+      const res = await fetch(`${apiBase()}${API_ROUTES.CUSTOMIZATION.REMOVE_BG}`, {
+        method:      'POST',
+        headers:     { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body:        JSON.stringify({ imageKey }),
+      });
+      const body = await res.json();
+      const { jobId } = body?.data ?? body;
+
+      const { processedKey, processedUrl } = await pollJob(jobId);
+
+      set((s) => {
+        const fv = { ...s.fieldValues, [fieldId]: { ...s.fieldValues[fieldId], isUploading: false, processedImageKey: processedKey, processedImageUrl: processedUrl, bgRemoved: true } };
+        return { fieldValues: fv, ...pushHistory(s.history, s.historyIndex, fv) };
+      });
+    } catch (err) {
+      set((s) => ({
+        fieldValues: { ...s.fieldValues, [fieldId]: { ...s.fieldValues[fieldId], isUploading: false, error: err instanceof Error ? err.message : 'Background removal failed' } },
+      }));
+    }
+  },
+
+  // ── Apply art style ───────────────────────────────────────────────────────
+
+  applyArtStyle: async (fieldId, style) => {
+    const { fieldValues } = get();
+    const imageKey = fieldValues[fieldId]?.imageKey;
+    if (!imageKey) return;
+
+    set((s) => ({
+      fieldValues: { ...s.fieldValues, [fieldId]: { ...s.fieldValues[fieldId], isUploading: true, error: undefined } },
+    }));
+
+    try {
+      const res = await fetch(`${apiBase()}${API_ROUTES.CUSTOMIZATION.APPLY_ART_STYLE}`, {
+        method:      'POST',
+        headers:     { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body:        JSON.stringify({ imageKey, style }),
+      });
+      const body = await res.json();
+      const { jobId } = body?.data ?? body;
+
+      const { processedKey, processedUrl } = await pollJob(jobId);
+
+      set((s) => {
+        const fv = { ...s.fieldValues, [fieldId]: { ...s.fieldValues[fieldId], isUploading: false, processedImageKey: processedKey, processedImageUrl: processedUrl, artStyle: style } };
+        return { fieldValues: fv, ...pushHistory(s.history, s.historyIndex, fv) };
+      });
+    } catch (err) {
+      set((s) => ({
+        fieldValues: { ...s.fieldValues, [fieldId]: { ...s.fieldValues[fieldId], isUploading: false, error: err instanceof Error ? err.message : 'Art style failed' } },
+      }));
+    }
+  },
+
+  // ── Revert ────────────────────────────────────────────────────────────────
+
+  revertToOriginal: (fieldId) => {
+    set((s) => {
+      const fv = {
+        ...s.fieldValues,
+        [fieldId]: {
+          ...s.fieldValues[fieldId],
+          processedImageKey: undefined,
+          processedImageUrl: undefined,
+          bgRemoved: false,
+          artStyle:  undefined,
+        },
+      };
+      return { fieldValues: fv, ...pushHistory(s.history, s.historyIndex, fv) };
+    });
+  },
+
+  // ── Preview ───────────────────────────────────────────────────────────────
+
+  generatePreview: async () => {
+    const { template, fieldValues } = get();
+    if (!template) return;
+
+    set({ isGeneratingPreview: true, previewError: null, isPreviewOpen: true });
+
+    try {
+      const fields: Record<string, unknown> = {};
+      template.fields.forEach((field) => {
+        const val = fieldValues[field.id];
+        if (!val) return;
+        if (field.type === 'text' || field.type === 'date') {
+          fields[field.id] = val.text ?? '';
+        } else if (field.type === 'image') {
+          fields[field.id] = { imageKey: val.imageKey, processedImageKey: val.processedImageKey, bgRemoved: val.bgRemoved, artStyle: val.artStyle };
+        } else if (field.type === 'select') {
+          fields[field.id] = val.selectValue ?? '';
+        }
+      });
+
+      const res = await fetch(`${apiBase()}${API_ROUTES.CUSTOMIZATION.PREVIEW}`, {
+        method:      'POST',
+        headers:     { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body:        JSON.stringify({ templateId: template.id, fields }),
+      });
+      const body = await res.json();
+      const { previewUrl } = body?.data ?? body;
+
+      set({ isGeneratingPreview: false, previewImageUrl: previewUrl });
+    } catch (err) {
+      set({ isGeneratingPreview: false, previewError: err instanceof Error ? err.message : 'Preview failed' });
+    }
+  },
+
+  closePreview: () => set({ isPreviewOpen: false }),
+
+  // ── Undo / Redo ───────────────────────────────────────────────────────────
+
+  undo: () => {
+    set((s) => {
+      if (s.historyIndex <= 0) return s;
+      const idx = s.historyIndex - 1;
+      return { historyIndex: idx, fieldValues: s.history[idx] };
+    });
+  },
+
+  redo: () => {
+    set((s) => {
+      if (s.historyIndex >= s.history.length - 1) return s;
+      const idx = s.historyIndex + 1;
+      return { historyIndex: idx, fieldValues: s.history[idx] };
+    });
+  },
+
+  canUndo: () => get().historyIndex > 0,
+  canRedo: () => get().historyIndex < get().history.length - 1,
+
+  // ── Auto-fill / Reset ─────────────────────────────────────────────────────
+
+  autoFill: (savedData) => {
+    set((s) => {
+      const fv = { ...s.fieldValues, ...savedData };
+      return { fieldValues: fv, ...pushHistory(s.history, s.historyIndex, fv) };
+    });
+  },
+
+  reset: () => {
+    const { template, productId, variantId, initTemplate } = get();
+    if (template && productId !== null) initTemplate(template, productId, variantId);
+  },
+
+  // ── Computed ──────────────────────────────────────────────────────────────
+
+  isValid: () => {
+    const { template, fieldValues } = get();
+    if (!template) return false;
+    return template.fields
+      .filter((f) => f.required)
+      .every((f) => {
+        const val = fieldValues[f.id];
+        if (!val) return false;
+        if (f.type === 'text' || f.type === 'date') return Boolean(val.text?.trim());
+        if (f.type === 'image') return Boolean(val.imageKey);
+        if (f.type === 'select') return Boolean(val.selectValue);
+        return true;
+      });
+  },
+
+  toCustomizationPayload: (): CustomizationPayload => {
+    const { template, fieldValues, previewImageUrl, variantId } = get();
+    if (!template) throw new Error('No template');
+
+    const fields: CustomizationPayload['fields'] = {};
+    template.fields.forEach((field) => {
+      const val = fieldValues[field.id];
+      if (!val) return;
+      if (field.type === 'text' || field.type === 'date') {
+        fields[field.id] = { type: field.type, value: val.text ?? '' };
+      } else if (field.type === 'image') {
+        fields[field.id] = { type: 'image', value: val.imageKey ?? '', processedValue: val.processedImageKey, artStyle: val.artStyle, bgRemoved: val.bgRemoved };
+      } else if (field.type === 'select') {
+        fields[field.id] = { type: 'select', value: val.selectValue ?? '' };
+      }
+    });
+
+    return { templateId: template.id, fields, previewUrl: previewImageUrl, variantId };
+  },
+}));

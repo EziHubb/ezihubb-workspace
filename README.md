@@ -1,107 +1,240 @@
-# New Nx Repository
+# MapleLoomHandmade — Handcrafted Goods Platform
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+A full-stack e-commerce platform for personalized handmade goods. Customers browse products, customize them in a live canvas editor (Fabric.js), and check out via Stripe or PayPal. Artisans and admins manage inventory, orders, and promotions through a separate admin panel.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+---
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/js?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
-
-## Try the full Nx platform
-🚀 If you haven't connected to Nx Cloud yet, [complete your setup here](https://cloud.nx.app/setup/connect-workspace/guide). Get faster builds with remote caching, distributed task execution, and self-healing CI. [See how your workspace can benefit](#nx-cloud).
-
-## Generate a library
-
-```sh
-npx nx g @nx/js:lib packages/pkg1 --publishable --importPath=@my-org/pkg1
-```
-
-## Run tasks
-
-To build the library use:
-
-```sh
-npx nx build pkg1
-```
-
-To run any task with Nx use:
-
-```sh
-npx nx <target> <project-name>
-```
-
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
-
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Versioning and releasing
-
-To version and release the library use
+## Architecture
 
 ```
-npx nx release
+┌─────────────────────────────────────────────────────────────────────┐
+│  Browser                                                            │
+│  ┌─────────────────────┐  ┌──────────────────────────────────────┐  │
+│  │  Storefront         │  │  Admin Panel                        │  │
+│  │  Next.js 16 (App)   │  │  Next.js 16 (App)                   │  │
+│  │  port 3000          │  │  port 3001                          │  │
+│  └────────┬────────────┘  └─────────────┬────────────────────────┘  │
+└───────────┼─────────────────────────────┼───────────────────────────┘
+            │  REST + cookies             │  REST + JWT
+            ▼                             ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  NestJS API  (port 3002)                                            │
+│  Auth · Users · Products · Cart · Orders · Payments                │
+│  Shipping · Reviews · Promotions · Notifications · Customization    │
+│  Search · Admin                                                     │
+├───────────────────────┬─────────────────────────────────────────────┤
+│  PostgreSQL (Prisma)  │  Redis (cache + queues)                    │
+├───────────────────────┴─────────────────────────────────────────────┤
+│  Cloudflare R2 (S3-compatible object storage + CDN)                │
+│  SendGrid (transactional email)                                     │
+│  Stripe (payments)  ·  PayPal (stub, ready)                        │
+│  Sentry (error monitoring)  ·  Axiom (log aggregation)             │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-Pass `--dry-run` to see what would happen without actually releasing the library.
+---
 
-[Learn more about Nx release &raquo;](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## Prerequisites
 
-## Keep TypeScript project references up to date
+| Tool | Version |
+|------|---------|
+| Node.js | 20.x |
+| pnpm | 11.0.9 |
+| Docker & Docker Compose | Latest |
 
-Nx automatically updates TypeScript [project references](https://www.typescriptlang.org/docs/handbook/project-references.html) in `tsconfig.json` files to ensure they remain accurate based on your project dependencies (`import` or `require` statements). This sync is automatically done when running tasks such as `build` or `typecheck`, which require updated references to function correctly.
+---
 
-To manually trigger the process to sync the project graph dependencies information to the TypeScript project references, run the following command:
+## Quick Start
 
-```sh
-npx nx sync
+```bash
+# 1. Clone and enter the repo
+git clone https://github.com/your-org/maple-loom-handmade.git
+cd maple-loom-handmade-workspace
+
+# 2. First-time setup (installs deps, starts infra, migrates DB, seeds data)
+make setup
+
+# 3. Start all apps in dev mode
+make dev
 ```
 
-You can enforce that the TypeScript project references are always in the correct state when running in CI by adding a step to your CI job configuration that runs the following command:
+The setup command copies `.env.example` → `.env` — fill in blank values before running in production.
 
-```sh
-npx nx sync:check
+---
+
+## App URLs
+
+| App | URL | Description |
+|-----|-----|-------------|
+| Storefront | http://localhost:3000 | Customer-facing shop |
+| Admin Panel | http://localhost:3001 | Staff / admin dashboard |
+| API | http://localhost:3002 | NestJS REST API |
+| API Docs | http://localhost:3002/api | Swagger UI |
+| MailHog | http://localhost:8025 | Local email testing |
+| MinIO Console | http://localhost:9001 | Local S3 storage UI |
+
+---
+
+## Key Commands
+
+### Development
+
+```bash
+make dev              # Start all apps (client + admin + api)
+make dev-api          # Start API only
+make dev-client       # Start storefront only
+make dev-admin        # Start admin only
 ```
 
-[Learn more about nx sync](https://nx.dev/reference/nx-commands#sync)
+### Testing
 
-## Nx Cloud
-
-Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
-
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-### Set up CI (non-Github Actions CI)
-
-**Note:** This is only required if your CI provider is not GitHub Actions.
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
+```bash
+make test             # All unit tests
+make test-api         # API unit tests only
+make test-client      # Client unit tests only
+make test-api-e2e     # API E2E tests (needs DB + Redis running)
+make test-e2e         # Playwright browser tests
+make test-e2e-ui      # Playwright in UI mode
 ```
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+### Database
 
-## Install Nx Console
+```bash
+make db-migrate       # Create and run a new migration (dev)
+make db-seed          # Seed default categories, shipping zones, admin user
+make db-reset         # Drop all and re-migrate + seed
+make db-studio        # Open Prisma Studio in browser
+```
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+### Build & Code Quality
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+```bash
+make build            # Build all apps for production
+make lint             # ESLint all projects
+make type-check       # TypeScript strict type-check
+```
 
-## Useful links
+### Nx-specific
 
-Learn more:
+```bash
+pnpm nx graph                          # Visualize project graph
+pnpm nx affected -t test               # Test only changed projects
+pnpm nx run-many -t build --parallel=3 # Build all in parallel
+```
 
-- [Learn more about this workspace setup](https://nx.dev/nx-api/js?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+---
 
-And join the Nx community:
+## Project Structure
 
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+```
+maple-loom-handmade-workspace/
+├── apps/
+│   ├── api/              # NestJS REST API
+│   │   └── src/
+│   │       ├── modules/  # Feature modules (auth, products, cart, orders…)
+│   │       ├── common/   # Filters, guards, decorators, pipes
+│   │       ├── prisma/   # PrismaService + PrismaModule
+│   │       ├── queue/    # BullMQ job definitions
+│   │       ├── health/   # GET /health endpoint
+│   │       └── config/   # App/db/jwt/redis/storage configs
+│   ├── client/           # Next.js storefront (App Router, i18n en/vi)
+│   │   └── src/
+│   │       ├── app/      # [locale] routes
+│   │       ├── components/ # UI, layout, customizer, cart
+│   │       ├── lib/      # Zustand store, types, helpers
+│   │       └── messages/ # next-intl translations (en.json, vi.json)
+│   └── admin/            # Next.js admin panel
+├── libs/
+│   ├── ui/               # @mlh/ui — shared React components
+│   ├── types/            # @mlh/types — shared TypeScript interfaces
+│   ├── constants/        # @mlh/constants — enums, magic numbers
+│   └── api-client/       # @mlh/api-client — fetch client + React Query hooks
+├── prisma/               # Prisma schema + migrations + seed
+├── e2e/                  # Playwright end-to-end tests
+├── docker/               # Dockerfiles (api, client, admin, migrate, nginx)
+├── scripts/              # smoke-test.sh and other utilities
+├── .github/workflows/    # CI + deploy GitHub Actions
+├── docker-compose.yml    # Local development infrastructure
+├── Makefile              # Developer shortcuts
+└── .env.example          # All environment variable defaults
+```
+
+---
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in all blank values. App-specific examples:
+
+| App | Example file |
+|-----|-------------|
+| API | [apps/api/.env.example](apps/api/.env.example) |
+| Storefront | [apps/client/.env.local.example](apps/client/.env.local.example) |
+| Admin | [apps/admin/.env.local.example](apps/admin/.env.local.example) |
+| Test suite | [.env.test](.env.test) |
+
+Key secrets required for production:
+
+```bash
+JWT_ACCESS_SECRET      # 64-char random: openssl rand -hex 32
+JWT_REFRESH_SECRET     # 64-char random: openssl rand -hex 32
+STRIPE_SECRET_KEY      # sk_live_...
+STRIPE_WEBHOOK_SECRET  # whsec_... (from Stripe dashboard)
+SENDGRID_API_KEY       # SG....
+AWS_ACCESS_KEY_ID      # Cloudflare R2 access key
+AWS_SECRET_ACCESS_KEY  # Cloudflare R2 secret key
+SENTRY_DSN             # https://...@sentry.io/...
+```
+
+---
+
+## Deployment
+
+### API → Railway
+
+1. Create a Railway project, link this GitHub repo, select `docker/Dockerfile.api`.
+2. Set all `apps/api/.env.example` variables as Railway environment variables.
+3. Migrations run automatically via the `deploy.yml` GitHub Actions workflow.
+
+### Storefront & Admin → Vercel
+
+1. Import `apps/client` and `apps/admin` as separate Vercel projects.
+2. Build command: `pnpm nx build client --configuration=production`
+3. Set all `NEXT_PUBLIC_*` env vars in the Vercel dashboard.
+4. Vercel configs are at [apps/client/vercel.json](apps/client/vercel.json) and [apps/admin/vercel.json](apps/admin/vercel.json).
+
+### CI/CD Pipeline (GitHub Actions)
+
+| Trigger | Workflow | Steps |
+|---------|----------|-------|
+| PR to main/develop | `ci.yml` | lint → type-check → unit tests → build → audit |
+| Push to main | `deploy.yml` | build Docker → push GHCR → migrate DB → deploy API + client + admin |
+
+---
+
+## Smoke Test
+
+```bash
+# Test local setup
+./scripts/smoke-test.sh
+
+# Test a deployed environment
+./scripts/smoke-test.sh https://api.mapleloomhandmade.com https://mapleloomhandmade.com
+```
+
+---
+
+## Contributing
+
+1. Branch from `develop`: `git checkout -b feature/my-feature`
+2. Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat(cart): add coupon validation`
+3. Run `make lint && make test` before opening a PR
+4. PR targets `develop` → reviewed → merged → auto-deployed to staging
+5. Release: `develop` → `main` → auto-deployed to production
+
+**Branch strategy:**
+```
+main       ← production (protected, requires review)
+develop    ← staging (auto-deploy)
+feature/*  ← feature branches → PR to develop
+hotfix/*   ← urgent fixes → PR to main + back-merge to develop
+```

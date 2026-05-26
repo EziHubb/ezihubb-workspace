@@ -1,0 +1,74 @@
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
+import { OrdersService } from './orders.service';
+import { CheckoutDto, CancelOrderDto } from './dto/checkout.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtPayload } from '../auth/strategies/jwt.strategy';
+
+@ApiTags('Orders')
+@Controller('orders')
+export class OrdersController {
+  constructor(private readonly ordersService: OrdersService) {}
+
+  @Post()
+  @UseGuards(OptionalAuthGuard)
+  @ApiOperation({ summary: 'Checkout — create an order from cart' })
+  async checkout(
+    @Body() dto: CheckoutDto,
+    @CurrentUser() user: JwtPayload | undefined,
+    @Req() req: Request,
+  ) {
+    const sessionId = req.cookies?.['cart_session'] as string | undefined;
+    return this.ordersService.checkout(dto, user?.sub, sessionId);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List my orders' })
+  async getMyOrders(@CurrentUser() user: JwtPayload, @Query() pagination: PaginationDto) {
+    return this.ordersService.findMyOrders(user.sub, pagination);
+  }
+
+  @Get('me/:orderNumber')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get my order detail' })
+  async getMyOrder(@CurrentUser() user: JwtPayload, @Param('orderNumber') orderNumber: string) {
+    return this.ordersService.findMyOrderByNumber(user.sub, orderNumber);
+  }
+
+  @Get(':orderNumber')
+  @ApiOperation({ summary: 'Get guest order detail by order number + email' })
+  @ApiQuery({ name: 'email', required: true })
+  async getGuestOrder(@Param('orderNumber') orderNumber: string, @Query('email') email: string) {
+    return this.ordersService.findGuestOrder(orderNumber, email);
+  }
+
+  @Post(':orderNumber/cancel')
+  @UseGuards(OptionalAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Cancel order within 2h of confirmation' })
+  async cancelOrder(
+    @Param('orderNumber') orderNumber: string,
+    @CurrentUser() user: JwtPayload | undefined,
+    @Body() dto: CancelOrderDto,
+  ) {
+    return this.ordersService.cancelOrder(orderNumber, user?.sub, dto.reason, dto.guestEmail);
+  }
+}

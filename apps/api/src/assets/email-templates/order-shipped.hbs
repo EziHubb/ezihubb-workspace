@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Order Has Shipped</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; background: #faf9f7; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .header { background: #3d2b1f; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #f5e6d3; margin: 0; font-size: 24px; letter-spacing: 1px; }
+    .header p { color: #c8a882; margin: 8px 0 0; font-size: 14px; }
+    .body { padding: 40px; color: #3d2b1f; line-height: 1.7; }
+    .body h2 { font-size: 20px; margin-top: 0; }
+    .tracking-box { background: #faf9f7; border-left: 4px solid #3d2b1f; padding: 16px 20px; margin: 24px 0; font-size: 14px; }
+    .tracking-box strong { display: block; font-size: 13px; color: #7a5c45; margin-bottom: 4px; }
+    .tracking-box .number { font-size: 20px; font-weight: bold; letter-spacing: 1px; }
+    .cta { display: inline-block; margin: 24px 0; background: #3d2b1f; color: #f5e6d3 !important; padding: 14px 32px; border-radius: 4px; text-decoration: none; font-size: 15px; }
+    .footer { background: #f5e6d3; padding: 20px 40px; text-align: center; font-size: 12px; color: #7a5c45; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>🍁 Maple Loom Handmade</h1>
+      <p>Your Order Has Shipped! 📦</p>
+    </div>
+    <div class="body">
+      <h2>Great news, {{firstName}}!</h2>
+      <p>Your order <strong>{{orderNumber}}</strong> is on its way. Here are your tracking details:</p>
+
+      <div class="tracking-box">
+        <strong>Carrier</strong>{{carrier}}
+        <strong style="margin-top:12px">Tracking Number</strong>
+        <span class="number">{{trackingNumber}}</span>
+      </div>
+
+      {{#if trackingUrl}}
+      <a class="cta" href="{{trackingUrl}}">Track Your Package</a>
+      {{/if}}
+
+      <p>Delivery is usually within the estimated window provided at checkout. Keep an eye on your tracking for updates.</p>
+      <p>Warmly,<br /><strong>The Maple Loom Team</strong></p>
+    </div>
+    <div class="footer">
+      &copy; {{year}} Maple Loom Handmade. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>
