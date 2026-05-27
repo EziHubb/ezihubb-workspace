@@ -2,6 +2,7 @@ import {
   CanActivate,
   ExecutionContext,
   Injectable,
+  InternalServerErrorException,
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -14,10 +15,12 @@ export class StripeWebhookGuard implements CanActivate {
   private readonly logger = new Logger(StripeWebhookGuard.name);
   private readonly stripe: Stripe;
   private readonly webhookSecret: string;
+  private readonly isProd: boolean;
 
   constructor(private readonly config: ConfigService) {
     const secretKey = config.get<string>('STRIPE_SECRET_KEY') ?? '';
     this.webhookSecret = config.get<string>('STRIPE_WEBHOOK_SECRET') ?? '';
+    this.isProd = config.get<string>('NODE_ENV') === 'production';
     this.stripe = new Stripe(secretKey, { apiVersion: '2023-10-16' });
   }
 
@@ -33,7 +36,13 @@ export class StripeWebhookGuard implements CanActivate {
     }
 
     if (!this.webhookSecret) {
-      this.logger.warn('STRIPE_WEBHOOK_SECRET not set — skipping signature verification');
+      if (this.isProd) {
+        throw new InternalServerErrorException({
+          code: 'ERR_MISCONFIGURED',
+          message: 'STRIPE_WEBHOOK_SECRET is not configured.',
+        });
+      }
+      this.logger.warn('STRIPE_WEBHOOK_SECRET not set — skipping signature verification (non-production only)');
       return true;
     }
 

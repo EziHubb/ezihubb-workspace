@@ -91,6 +91,7 @@ export class OrdersService {
 
     // Validate coupon and calculate discount
     let discount = 0;
+    let freeShipping = false;
     let couponCode: string | undefined = cart.couponCode ?? undefined;
     if (dto.couponCode) couponCode = dto.couponCode;
 
@@ -117,13 +118,14 @@ export class OrdersService {
 
       if (promo.type === 'PERCENTAGE') discount = Math.round(subtotal * Number(promo.value)) / 100;
       else if (promo.type === 'FIXED_AMOUNT') discount = Math.min(subtotal, Number(promo.value));
+      else if (promo.type === 'FREE_SHIPPING') freeShipping = true;
     }
 
     const subtotalAfterDiscount = Math.max(0, subtotal - discount);
 
-    // Calculate shipping
+    // Calculate shipping (waived if FREE_SHIPPING coupon applied)
     const shippingCalc = await this.shippingService.calculateShipping(dto.shippingMethodId, subtotalAfterDiscount);
-    const shippingCost = shippingCalc.cost;
+    const shippingCost = freeShipping ? 0 : shippingCalc.cost;
     const shippingMethodName = shippingCalc.name;
 
     const total = Math.round((subtotalAfterDiscount + shippingCost) * 100) / 100;

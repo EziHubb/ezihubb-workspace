@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Heart } from 'lucide-react';
 import { RatingStars } from '@mlh/ui';
+import { API_ROUTES } from '@mlh/constants';
 
 type BadgeType = 'new' | 'sale' | 'hot' | 'bestseller';
 
@@ -22,6 +23,8 @@ interface ProductCardProps {
   labelPersonalize?: string;
   labelLowStock?: string;
   className?: string;
+  productId?: string;
+  initialWishlisted?: boolean;
 }
 
 const badgeClasses: Record<BadgeType, string> = {
@@ -45,10 +48,31 @@ export function ProductCard({
   labelPersonalize = 'Personalize Now',
   labelLowStock = 'Low stock',
   className = '',
+  productId,
+  initialWishlisted = false,
 }: ProductCardProps) {
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(initialWishlisted);
+  const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const productHref = `/${locale}/products/${slug}`;
+
+  const handleWishlistToggle = async () => {
+    if (!productId || isTogglingWishlist) return;
+    setIsTogglingWishlist(true);
+    try {
+      const apiBase = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
+      const method = isWishlisted ? 'DELETE' : 'POST';
+      const res = await fetch(`${apiBase}${API_ROUTES.USERS.WISHLIST_ITEM(productId)}`, {
+        method,
+        credentials: 'include',
+      });
+      if (res.ok) setIsWishlisted((prev) => !prev);
+    } catch {
+      // Network errors silently ignored — wishlist is non-critical
+    } finally {
+      setIsTogglingWishlist(false);
+    }
+  };
 
   return (
     <div
@@ -63,8 +87,9 @@ export function ProductCard({
       )}
 
       <button
-        onClick={() => setIsWishlisted(!isWishlisted)}
-        className="absolute top-2 right-2 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white transition-colors"
+        onClick={handleWishlistToggle}
+        disabled={isTogglingWishlist}
+        className="absolute top-2 right-2 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white transition-colors disabled:opacity-60"
         aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
       >
         <Heart className={`w-5 h-5 transition-colors ${isWishlisted ? 'fill-error text-error' : 'text-muted-foreground'}`} />
