@@ -75,10 +75,10 @@ export class PaymentsService {
     const currency = 'usd';
 
     // If gift card covers 100%, no Stripe charge needed
-    if (stripeAmount < 0.5) {
+    if (stripeAmount < 0.5 && giftCardCode) {
       // Stripe minimum is $0.50; treat as fully covered by gift card
       // Create a gift-card-only payment record and confirm order
-      await this.fulfilWithGiftCard(orderId, giftCardCode!, giftCardApplied, Number(order.total));
+      await this.fulfilWithGiftCard(orderId, giftCardCode, giftCardApplied, Number(order.total));
       return { clientSecret: '', amount: 0, currency };
     }
 
@@ -370,18 +370,6 @@ export class PaymentsService {
     return { appliedAmount, remainingOrderTotal: orderTotal - appliedAmount, fullyPaid: false };
   }
 
-  // ─── PayPal (stubs) ───────────────────────────────────────────────────────
-
-  async createPaypalOrder(orderId: string): Promise<{ paypalOrderId: string }> {
-    this.logger.warn('PayPal integration not yet implemented');
-    throw new BadRequestException({ code: 'ERR_NOT_IMPLEMENTED', message: 'PayPal payment not yet available' });
-  }
-
-  async capturePaypalOrder(paypalOrderId: string): Promise<void> {
-    this.logger.warn('PayPal integration not yet implemented');
-    throw new BadRequestException({ code: 'ERR_NOT_IMPLEMENTED', message: 'PayPal payment not yet available' });
-  }
-
   // ─── Admin ────────────────────────────────────────────────────────────────
 
   async listPayments(page = 1, limit = 20): Promise<PaymentResponseDto[]> {
@@ -441,12 +429,11 @@ export class PaymentsService {
       throw new BadRequestException({ code: 'ERR_GIFT_CARD_INSUFFICIENT', message: 'Gift card has insufficient balance' });
     }
 
-    const card = await tx.giftCard.findUnique({ where: { code }, select: { id: true } });
-    if (card) {
-      await tx.giftCardUsage.create({
-        data: { giftCardId: card.id, orderId, amount },
-      });
-    }
+    // Card must exist since the deduction above succeeded
+    const card = await tx.giftCard.findUniqueOrThrow({ where: { code }, select: { id: true } });
+    await tx.giftCardUsage.create({
+      data: { giftCardId: card.id, orderId, amount },
+    });
   }
 
   private async getUserEmail(userId: string | null): Promise<string | null> {

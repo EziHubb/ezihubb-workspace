@@ -28,20 +28,6 @@ export class PaymentsController {
     return this.paymentsService.createPaymentIntent(dto);
   }
 
-  @Post('paypal/create-order')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Create a PayPal order (stub)' })
-  async createPaypalOrder(@Body() body: { orderId: string }) {
-    return this.paymentsService.createPaypalOrder(body.orderId);
-  }
-
-  @Post('paypal/capture/:paypalOrderId')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Capture a PayPal payment (stub)' })
-  async capturePaypalOrder(@Param('paypalOrderId') paypalOrderId: string) {
-    return this.paymentsService.capturePaypalOrder(paypalOrderId);
-  }
-
   @Get('gift-cards/:code/validate')
   @ApiOperation({ summary: 'Validate a gift card and check balance' })
   async validateGiftCard(@Param('code') code: string) {

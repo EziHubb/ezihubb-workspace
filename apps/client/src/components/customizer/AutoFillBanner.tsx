@@ -20,11 +20,15 @@ export function AutoFillBanner({ isLoggedIn }: AutoFillBannerProps) {
   useEffect(() => {
     if (!isLoggedIn || !productId) return;
 
+    const controller = new AbortController();
     const apiBase =
       (typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_API_URL']) ||
       'http://localhost:3000';
 
-    fetch(`${apiBase}${API_ROUTES.CUSTOMIZATION.LAST(productId)}`, { credentials: 'include' })
+    fetch(`${apiBase}${API_ROUTES.CUSTOMIZATION.LAST(productId)}`, {
+      credentials: 'include',
+      signal: controller.signal,
+    })
       .then((r) => (r.ok ? r.json() : null))
       .then((body) => {
         const draft = body?.data ?? body;
@@ -32,7 +36,13 @@ export function AutoFillBanner({ isLoggedIn }: AutoFillBannerProps) {
           setSavedData(draft.data.fields as Record<string, FieldValue>);
         }
       })
-      .catch(() => null);
+      .catch((err: Error) => {
+        if (err.name !== 'AbortError') {
+          // Non-critical — silently ignore network errors
+        }
+      });
+
+    return () => controller.abort();
   }, [isLoggedIn, productId]);
 
   if (!savedData || dismissed || applied) return null;

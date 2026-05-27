@@ -93,36 +93,42 @@ export class CartService {
     const unitPrice = variant ? Number(variant.price) : Number(product.basePrice);
     const customKey = dto.customizationData ? JSON.stringify(dto.customizationData) : null;
 
-    const existingItems = await this.prisma.cartItem.findMany({
-      where: { cartId, productId: dto.productId, variantId: dto.variantId ?? null },
-    });
-
-    const duplicate = existingItems.find(
-      (item) => (item.customizationData ? JSON.stringify(item.customizationData) : null) === customKey,
-    );
-
-    if (duplicate) {
-      await this.prisma.cartItem.update({
-        where: { id: duplicate.id },
-        data: { quantity: Math.min(duplicate.quantity + qty, 99) },
+    await this.prisma.$transaction(async (tx) => {
+      const existingItems = await tx.cartItem.findMany({
+        where: { cartId, productId: dto.productId, variantId: dto.variantId ?? null },
       });
-    } else {
-      const currentCount = await this.prisma.cartItem.count({ where: { cartId } });
-      if (currentCount >= MAX_ITEMS) {
-        throw new BadRequestException({ code: 'ERR_CART_FULL', message: `Cart cannot exceed ${MAX_ITEMS} items` });
+
+      const duplicate = existingItems.find(
+        (item) => (item.customizationData ? JSON.stringify(item.customizationData) : null) === customKey,
+      );
+
+      if (duplicate) {
+        const newQty = duplicate.quantity + qty;
+        if (newQty > 99) {
+          throw new BadRequestException({ code: 'ERR_QTY_EXCEEDED', message: 'Maximum quantity per item is 99' });
+        }
+        await tx.cartItem.update({
+          where: { id: duplicate.id },
+          data: { quantity: newQty },
+        });
+      } else {
+        const currentCount = await tx.cartItem.count({ where: { cartId } });
+        if (currentCount >= MAX_ITEMS) {
+          throw new BadRequestException({ code: 'ERR_CART_FULL', message: `Cart cannot exceed ${MAX_ITEMS} items` });
+        }
+        await tx.cartItem.create({
+          data: {
+            cartId,
+            productId: dto.productId,
+            variantId: dto.variantId,
+            quantity: qty,
+            unitPrice,
+            customizationData: dto.customizationData as Prisma.InputJsonValue | undefined,
+            previewUrl: dto.previewUrl,
+          },
+        });
       }
-      await this.prisma.cartItem.create({
-        data: {
-          cartId,
-          productId: dto.productId,
-          variantId: dto.variantId,
-          quantity: qty,
-          unitPrice,
-          customizationData: dto.customizationData as Prisma.InputJsonValue | undefined,
-          previewUrl: dto.previewUrl,
-        },
-      });
-    }
+    });
 
     const cart = await this.prisma.cart.findUniqueOrThrow({ where: { id: cartId }, include: CART_INCLUDE });
     return this.mapToDto(cart);

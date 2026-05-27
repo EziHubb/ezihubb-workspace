@@ -67,7 +67,7 @@ interface CustomizerStore {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function snapshot(fv: FieldValues): FieldValues {
-  return JSON.parse(JSON.stringify(fv)) as FieldValues;
+  return structuredClone(fv);
 }
 
 function pushHistory(
@@ -91,32 +91,42 @@ async function pollJob(
   intervalMs = 2000,
   timeoutMs = 65_000,
 ): Promise<{ processedKey: string; processedUrl: string }> {
+  const controller = new AbortController();
+  let settled = false;
+  let intervalId: ReturnType<typeof setInterval> | null = null;
+
   return new Promise((resolve, reject) => {
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      controller.abort();
+      clearTimeout(timer);
+      if (intervalId) clearInterval(intervalId);
+      fn();
+    };
+
     const timer = setTimeout(() => {
-      clearInterval(interval);
-      reject(new Error('Job timed out'));
+      settle(() => reject(new Error('Job timed out')));
     }, timeoutMs);
 
-    const interval = setInterval(async () => {
+    intervalId = setInterval(async () => {
+      if (settled) return;
       try {
         const res = await fetch(`${apiBase()}${API_ROUTES.CUSTOMIZATION.JOB_STATUS(jobId)}`, {
           credentials: 'include',
+          signal: controller.signal,
         });
+        if (!res.ok) throw new Error(`Poll request failed: ${res.status}`);
         const body = await res.json();
         const job = body?.data ?? body;
         if (job.status === 'done' && job.processedKey && job.processedUrl) {
-          clearTimeout(timer);
-          clearInterval(interval);
-          resolve({ processedKey: job.processedKey, processedUrl: job.processedUrl });
+          settle(() => resolve({ processedKey: job.processedKey, processedUrl: job.processedUrl }));
         } else if (job.status === 'failed') {
-          clearTimeout(timer);
-          clearInterval(interval);
-          reject(new Error('Job failed'));
+          settle(() => reject(new Error('Job failed')));
         }
       } catch (err) {
-        clearTimeout(timer);
-        clearInterval(interval);
-        reject(err);
+        if ((err as Error).name === 'AbortError') return;
+        settle(() => reject(err));
       }
     }, intervalMs);
   });
@@ -238,6 +248,7 @@ export const useCustomizerStore = create<CustomizerStore>((set, get) => ({
         credentials: 'include',
         body:        JSON.stringify({ imageKey }),
       });
+      if (!res.ok) throw new Error(`Background removal request failed: ${res.status}`);
       const body = await res.json();
       const { jobId } = body?.data ?? body;
 
@@ -272,6 +283,7 @@ export const useCustomizerStore = create<CustomizerStore>((set, get) => ({
         credentials: 'include',
         body:        JSON.stringify({ imageKey, style }),
       });
+      if (!res.ok) throw new Error(`Art style request failed: ${res.status}`);
       const body = await res.json();
       const { jobId } = body?.data ?? body;
 
@@ -334,6 +346,7 @@ export const useCustomizerStore = create<CustomizerStore>((set, get) => ({
         credentials: 'include',
         body:        JSON.stringify({ templateId: template.id, fields }),
       });
+      if (!res.ok) throw new Error(`Preview request failed: ${res.status}`);
       const body = await res.json();
       const { previewUrl } = body?.data ?? body;
 

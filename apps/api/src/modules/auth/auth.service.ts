@@ -8,11 +8,14 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { Response } from 'express';
 import { randomBytes, createHash } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
+import { JOBS, QUEUES, SendEmailJobData, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
@@ -32,6 +35,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly redis: RedisService,
+    @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
   ) {}
 
   // ─── Registration ──────────────────────────────────────────────────────────
@@ -204,8 +208,18 @@ export class AuthService {
       data: { userId: user.id, token, expiresAt },
     });
 
-    // TODO: enqueue email with template='password-reset', token
-    this.logger.log(`Password reset token created for ${email}`);
+    const frontendUrl = this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:3000';
+    await this.emailQueue.add(
+      JOBS.SEND_EMAIL,
+      {
+        to: email,
+        template: 'password-reset',
+        subject: 'Reset your MapleLoom password',
+        data: { firstName: user.firstName, resetUrl: `${frontendUrl}/reset-password?token=${token}` },
+      } satisfies SendEmailJobData,
+      DEFAULT_JOB_OPTIONS,
+    );
+    this.logger.log(`Password reset email queued for ${email}`);
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
@@ -360,7 +374,17 @@ export class AuthService {
       data: { userId, token, expiresAt },
     });
 
-    // TODO: enqueue SEND_EMAIL job with template='email-verification', token, email, firstName
+    const frontendUrl = this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:3000';
+    await this.emailQueue.add(
+      JOBS.SEND_EMAIL,
+      {
+        to: email,
+        template: 'email-verification',
+        subject: 'Verify your MapleLoom email',
+        data: { firstName, verifyUrl: `${frontendUrl}/verify-email?token=${token}` },
+      } satisfies SendEmailJobData,
+      DEFAULT_JOB_OPTIONS,
+    );
     this.logger.log(`Verification email queued for ${email}`);
   }
 }

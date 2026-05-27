@@ -5,9 +5,7 @@ import Image from 'next/image';
 import { useCustomizerStore } from '../../lib/store/customizer.store';
 
 interface PreviewModalProps {
-  productId:  string;
-  variantId?: string | null;
-  basePrice:  number;
+  basePrice:   number;
   onAddToCart: () => void;
 }
 

@@ -1,10 +1,14 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import type { Canvas as FabricCanvasType } from 'fabric';
+import type { Canvas as FabricCanvasType, FabricObject } from 'fabric';
 import { useCustomizerStore } from '../../lib/store/customizer.store';
 import { CANVAS_LOGICAL_SIZE } from '../../lib/customizer/types';
 import type { TextField, DateField, ImageField, TemplateAngle } from '../../lib/customizer/types';
+
+interface FabricCanvasWithKeyHandler extends FabricCanvasType {
+  __keyHandler?: (e: KeyboardEvent) => void;
+}
 
 interface CanvasProps {
   readOnly?: boolean;
@@ -61,8 +65,8 @@ export function Canvas({ readOnly = false }: CanvasProps) {
           }
           if ((e.metaKey || e.ctrlKey) && e.key === 'y') { e.preventDefault(); if (canRedo()) redo(); }
           if (e.key === 'Delete' || e.key === 'Backspace') {
-            const active = canvas.getActiveObject();
-            if (active && (active as any).selectable) canvas.remove(active);
+            const active = canvas.getActiveObject() as FabricObject | null;
+            if (active && active.selectable) canvas.remove(active);
           }
           const arrowDelta = e.shiftKey ? 10 : 1;
           const active = canvas.getActiveObject();
@@ -76,7 +80,7 @@ export function Canvas({ readOnly = false }: CanvasProps) {
           }
         };
         window.addEventListener('keydown', handleKey);
-        (canvas as any).__keyHandler = handleKey;
+        (canvas as FabricCanvasWithKeyHandler).__keyHandler = handleKey;
       }
 
       // Initial angle
@@ -90,7 +94,7 @@ export function Canvas({ readOnly = false }: CanvasProps) {
     return () => {
       cancelled = true;
       if (fabricRef.current) {
-        const kh = (fabricRef.current as any).__keyHandler;
+        const kh = (fabricRef.current as FabricCanvasWithKeyHandler).__keyHandler;
         if (kh) window.removeEventListener('keydown', kh);
         fabricRef.current.dispose();
         fabricRef.current = null;

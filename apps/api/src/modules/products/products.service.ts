@@ -121,7 +121,7 @@ export class ProductsService {
         await this.redis.set(lockKey, 1, 3600);
         await this.prisma.product
           .update({ where: { id: product.id }, data: { viewCount: { increment: 1 } } })
-          .catch(() => {/* non-critical */});
+          .catch((e: Error) => this.logger.warn(`Failed to increment view count for "${slug}": ${e.message}`));
       }
     }
 
@@ -162,7 +162,7 @@ export class ProductsService {
       take: 8,
     });
 
-    return Promise.all(related.map((p) => this.toListItem(p)));
+    return this.toListItems(related);
   }
 
   async findTrending(): Promise<ProductListItemDto[]> {
@@ -177,7 +177,7 @@ export class ProductsService {
       take: 12,
     });
 
-    return Promise.all(products.map((p) => this.toListItem(p)));
+    return this.toListItems(products);
   }
 
   // ─── Admin — CRUD ──────────────────────────────────────────────────────────
@@ -355,13 +355,18 @@ export class ProductsService {
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Image not found' });
 
     const key = this.storage.extractKey(image.url);
-    await this.storage.deleteFile(key).catch((e) => this.logger.warn(`S3 delete failed: ${(e as Error).message}`));
-    await this.prisma.productImage.delete({ where: { id: imageId } });
 
-    if (image.isPrimary) {
-      const next = await this.prisma.productImage.findFirst({ where: { productId }, orderBy: { sortOrder: 'asc' } });
-      if (next) await this.prisma.productImage.update({ where: { id: next.id }, data: { isPrimary: true } });
-    }
+    // Delete from DB first (atomically update primary pointer if needed), then S3.
+    // This ensures DB is always consistent even if S3 deletion fails.
+    await this.prisma.$transaction(async (tx) => {
+      await tx.productImage.delete({ where: { id: imageId } });
+      if (image.isPrimary) {
+        const next = await tx.productImage.findFirst({ where: { productId }, orderBy: { sortOrder: 'asc' } });
+        if (next) await tx.productImage.update({ where: { id: next.id }, data: { isPrimary: true } });
+      }
+    });
+
+    await this.storage.deleteFile(key).catch((e: Error) => this.logger.warn(`S3 delete failed for key "${key}": ${e.message}`));
   }
 
   async reorderImages(productId: string, orderedIds: string[]): Promise<void> {
@@ -480,7 +485,7 @@ export class ProductsService {
     };
   }
 
-  private toListItem = async (p: {
+  private async toListItems(products: Array<{
     id: string; name: string; slug: string; sku: string;
     basePrice: unknown; compareAtPrice: unknown;
     images: { url: string }[];
@@ -488,25 +493,45 @@ export class ProductsService {
     isPersonalizable: boolean; isFeatured: boolean;
     viewCount: number; soldCount: number;
     _count: { reviews: number }; createdAt: Date;
-  }): Promise<ProductListItemDto> => ({
-    id: p.id,
-    name: p.name,
-    slug: p.slug,
-    sku: p.sku,
-    basePrice: Number(p.basePrice),
-    compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
-    primaryImageUrl: p.images[0]?.url ?? null,
-    categoryId: p.categoryId,
-    categoryName: p.category.name,
-    isPersonalizable: p.isPersonalizable,
-    isFeatured: p.isFeatured,
-    viewCount: p.viewCount,
-    soldCount: p.soldCount,
-    averageRating: await this.getAverageRating(p.id),
-    reviewCount: p._count.reviews,
-    inDemandCount: (await this.redis.get<number>(IN_DEMAND_KEY(p.id))) ?? 0,
-    createdAt: p.createdAt,
-  });
+  }>): Promise<ProductListItemDto[]> {
+    if (products.length === 0) return [];
+
+    const ids = products.map((p) => p.id);
+    const [ratingRows, inDemandEntries] = await Promise.all([
+      this.prisma.review.groupBy({
+        by: ['productId'],
+        where: { productId: { in: ids }, status: 'APPROVED' },
+        _avg: { rating: true },
+        _count: { rating: true },
+      }),
+      Promise.all(ids.map((id) => this.redis.get<number>(IN_DEMAND_KEY(id)))),
+    ]);
+
+    const ratingMap = new Map(
+      ratingRows.map((r) => [r.productId, r._count.rating ? Math.round((r._avg.rating ?? 0) * 10) / 10 : null]),
+    );
+    const inDemandMap = new Map(ids.map((id, i) => [id, inDemandEntries[i] ?? 0]));
+
+    return products.map((p) => ({
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      sku: p.sku,
+      basePrice: Number(p.basePrice),
+      compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
+      primaryImageUrl: p.images[0]?.url ?? null,
+      categoryId: p.categoryId,
+      categoryName: p.category.name,
+      isPersonalizable: p.isPersonalizable,
+      isFeatured: p.isFeatured,
+      viewCount: p.viewCount,
+      soldCount: p.soldCount,
+      averageRating: ratingMap.get(p.id) ?? null,
+      reviewCount: p._count.reviews,
+      inDemandCount: inDemandMap.get(p.id) ?? 0,
+      createdAt: p.createdAt,
+    }));
+  }
 
   private mapToProductResponse(
     product: {
