@@ -1,15 +1,28 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { Prisma, PrismaClient } from '@prisma/client';
+import { Pool } from 'pg';
 
 // Models that support soft delete via deletedAt
 const SOFT_DELETE_MODELS = new Set(['User', 'Product']);
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(PrismaService.name);
 
   constructor() {
+    const pool = new Pool({ connectionString: process.env['DATABASE_URL'] });
+    const adapter = new PrismaPg(pool);
     super({
+      adapter,
       log:
         process.env.NODE_ENV === 'development'
           ? [
@@ -32,7 +45,16 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
           if (!params.args['data']) params.args['data'] = {};
           params.args['data']['deletedAt'] = new Date();
         } else if (
-          ['findFirst', 'findFirstOrThrow', 'findMany', 'findUnique', 'findUniqueOrThrow', 'count', 'aggregate', 'groupBy'].includes(params.action)
+          [
+            'findFirst',
+            'findFirstOrThrow',
+            'findMany',
+            'findUnique',
+            'findUniqueOrThrow',
+            'count',
+            'aggregate',
+            'groupBy',
+          ].includes(params.action)
         ) {
           if (!params.args) params.args = {};
           if (!params.args['where']) params.args['where'] = {};
@@ -45,12 +67,13 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   async onModuleInit() {
     if (process.env.NODE_ENV === 'development') {
-      (this as unknown as { $on: (event: string, cb: (e: Prisma.QueryEvent) => void) => void }).$on(
-        'query',
-        (e: Prisma.QueryEvent) => {
-          this.logger.debug(`[${e.duration}ms] ${e.query}`);
-        },
-      );
+      (
+        this as unknown as {
+          $on: (event: string, cb: (e: Prisma.QueryEvent) => void) => void;
+        }
+      ).$on('query', (e: Prisma.QueryEvent) => {
+        this.logger.debug(`[${e.duration}ms] ${e.query}`);
+      });
     }
     await this.$connect();
   }
