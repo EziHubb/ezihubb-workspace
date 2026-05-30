@@ -1,0 +1,12 @@
+[phases.setup]
+nixPkgs = ["nodejs_22"]
+cmds = ["npm install -g corepack@latest && corepack enable pnpm"]
+
+[phases.install]
+cmds = ["pnpm install --frozen-lockfile"]
+
+[phases.build]
+cmds = ["node railway-build.mjs"]
+
+[start]
+cmd = "node railway-start.mjs"
