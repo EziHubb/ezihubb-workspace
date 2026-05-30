@@ -29,59 +29,41 @@ function tryMigrate() {
   }
 }
 
+function startNextApp(appName, port) {
+  // Nx monorepo standalone path: dist/apps/<name>/.next/standalone/apps/<name>/server.js
+  const serverJs = `dist/apps/${appName}/.next/standalone/apps/${appName}/server.js`;
+
+  if (!existsSync(serverJs)) {
+    console.error(`[railway-start] server.js not found at ${serverJs}`);
+    process.exit(1);
+  }
+
+  // Copy static assets into standalone directory (required by Next.js standalone)
+  const staticSrc = `dist/apps/${appName}/.next/static`;
+  const staticDest = `dist/apps/${appName}/.next/standalone/apps/${appName}/.next/static`;
+  if (existsSync(staticSrc) && !existsSync(staticDest)) {
+    run(`cp -r ${staticSrc} ${staticDest}`);
+  }
+
+  const publicSrc = `dist/apps/${appName}/public`;
+  const publicDest = `dist/apps/${appName}/.next/standalone/apps/${appName}/public`;
+  if (existsSync(publicSrc) && !existsSync(publicDest)) {
+    run(`cp -r ${publicSrc} ${publicDest}`);
+  }
+
+  process.env['PORT'] = String(port);
+  process.env['HOSTNAME'] = '0.0.0.0';
+  console.log(`[railway-start] Starting ${appName} on port ${port} via ${serverJs}`);
+  run(`node ${serverJs}`);
+}
+
 if (service.includes('api') || (!service.includes('client') && !service.includes('admin') && !service.includes('web'))) {
   tryMigrate();
   run('node dist/apps/api/main.js');
 
 } else if (service.includes('admin')) {
-  // Debug: find where server.js actually is
-  console.log('[railway-start] Searching for server.js...');
-  run('find . -name "server.js" -not -path "*/node_modules/*" 2>/dev/null | head -20 || true');
-  run('ls dist/apps/admin/ 2>/dev/null || echo "dist/apps/admin/ not found"');
-  run('ls dist/apps/admin/.next/ 2>/dev/null || echo "dist/apps/admin/.next/ not found"');
-  run('ls apps/admin/.next/ 2>/dev/null || echo "apps/admin/.next/ not found"');
-
-  const port = process.env['PORT'] || '3001';
-  const candidates = [
-    'dist/apps/admin/.next/standalone/server.js',
-    'dist/apps/admin/server.js',
-    'apps/admin/.next/standalone/server.js',
-    'apps/admin/.next/standalone/apps/admin/server.js',
-  ];
-  const serverJs = candidates.find(existsSync);
-  if (serverJs) {
-    process.env['PORT'] = port;
-    process.env['HOSTNAME'] = '0.0.0.0';
-    run(`node ${serverJs}`);
-  } else {
-    // Fallback: rebuild and start
-    console.warn('[railway-start] standalone not found, running next build + start');
-    run('pnpm nx build admin --configuration=production');
-    run('pnpm exec next start dist/apps/admin');
-  }
+  startNextApp('admin', process.env['PORT'] || 3001);
 
 } else if (service.includes('client') || service.includes('web') || service.includes('storefront')) {
-  console.log('[railway-start] Searching for server.js...');
-  run('find . -name "server.js" -not -path "*/node_modules/*" 2>/dev/null | head -20 || true');
-  run('ls dist/apps/client/ 2>/dev/null || echo "dist/apps/client/ not found"');
-  run('ls dist/apps/client/.next/ 2>/dev/null || echo "dist/apps/client/.next/ not found"');
-  run('ls apps/client/.next/ 2>/dev/null || echo "apps/client/.next/ not found"');
-
-  const port = process.env['PORT'] || '3000';
-  const candidates = [
-    'dist/apps/client/.next/standalone/server.js',
-    'dist/apps/client/server.js',
-    'apps/client/.next/standalone/server.js',
-    'apps/client/.next/standalone/apps/client/server.js',
-  ];
-  const serverJs = candidates.find(existsSync);
-  if (serverJs) {
-    process.env['PORT'] = port;
-    process.env['HOSTNAME'] = '0.0.0.0';
-    run(`node ${serverJs}`);
-  } else {
-    console.warn('[railway-start] standalone not found, running next build + start');
-    run('pnpm nx build client --configuration=production');
-    run('pnpm exec next start dist/apps/client');
-  }
+  startNextApp('client', process.env['PORT'] || 3000);
 }
