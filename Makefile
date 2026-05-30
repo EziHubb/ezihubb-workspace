@@ -47,22 +47,22 @@ logs: ## Tail logs from all containers
 
 # ── Database ──────────────────────────────────────────────────────────────────
 db-migrate: ## Run pending migrations
-	pnpm exec prisma migrate dev --schema=codebase/prisma/schema.prisma
+	pnpm exec prisma migrate dev --schema=prisma/schema.prisma
 
 db-migrate-deploy: ## Apply migrations (production-safe, no interactive prompts)
-	pnpm exec prisma migrate deploy --schema=codebase/prisma/schema.prisma
+	pnpm exec prisma migrate deploy --schema=prisma/schema.prisma
 
 db-seed: ## Seed database with default data
-	pnpm exec ts-node codebase/prisma/seed.ts
+	pnpm exec ts-node prisma/seed.ts
 
 db-reset: ## Drop all tables and re-run migrations + seed
-	pnpm exec prisma migrate reset --force --schema=codebase/prisma/schema.prisma
+	pnpm exec prisma migrate reset --force --schema=prisma/schema.prisma
 
 db-studio: ## Open Prisma Studio
-	pnpm exec prisma studio --schema=codebase/prisma/schema.prisma
+	pnpm exec prisma studio --schema=prisma/schema.prisma
 
 db-generate: ## Re-generate Prisma client after schema changes
-	pnpm exec prisma generate --schema=codebase/prisma/schema.prisma
+	pnpm exec prisma generate --schema=prisma/schema.prisma
 
 # ── Testing ───────────────────────────────────────────────────────────────────
 test: ## Run all unit tests

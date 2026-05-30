@@ -4,7 +4,7 @@ WORKDIR /app
 RUN npm install -g pnpm
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
-COPY codebase/prisma ./codebase/prisma
-RUN pnpm exec prisma generate --schema=codebase/prisma/schema.prisma
+COPY prisma ./prisma
+RUN pnpm exec prisma generate --schema=prisma/schema.prisma
 
-CMD ["pnpm", "exec", "prisma", "migrate", "deploy", "--schema=codebase/prisma/schema.prisma"]
+CMD ["pnpm", "exec", "prisma", "migrate", "deploy", "--schema=prisma/schema.prisma"]
