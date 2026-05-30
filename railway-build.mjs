@@ -14,10 +14,12 @@ if (service.includes('api')) {
   run('pnpm nx build api --configuration=production');
 
 } else if (service.includes('admin')) {
+  run('pnpm exec nx reset');
   run('pnpm nx build admin --configuration=production');
   run('node scripts/postbuild.mjs');
 
 } else if (service.includes('client') || service.includes('web') || service.includes('storefront')) {
+  run('pnpm exec nx reset');
   run('pnpm nx build client --configuration=production');
   run('node scripts/postbuild.mjs');
 
