@@ -34,28 +34,21 @@ if (service.includes('api') || (!service.includes('client') && !service.includes
   run('node dist/apps/api/main.js');
 
 } else if (service.includes('admin')) {
-  // Try standalone server first, then fallback to next start from app dir
-  const standalone = 'apps/admin/.next/standalone/server.js';
-  const standaloneNested = 'apps/admin/.next/standalone/apps/admin/server.js';
-  if (existsSync(standalone)) {
-    run(`node ${standalone}`);
-  } else if (existsSync(standaloneNested)) {
-    run(`node ${standaloneNested}`);
+  // Nx outputs Next.js build to dist/apps/admin
+  // next start <dir> looks for .next inside that directory
+  const distStandalone = 'dist/apps/admin/.next/standalone/server.js';
+  if (existsSync(distStandalone)) {
+    run(`node ${distStandalone}`);
   } else {
-    // Run next start from the app directory so it finds .next/
-    run('pnpm exec next start', { cwd: 'apps/admin' });
+    run('pnpm exec next start dist/apps/admin');
   }
 
 } else if (service.includes('client') || service.includes('web') || service.includes('storefront')) {
-  // Try standalone server first, then fallback to next start from app dir
-  const standalone = 'apps/client/.next/standalone/server.js';
-  const standaloneNested = 'apps/client/.next/standalone/apps/client/server.js';
-  if (existsSync(standalone)) {
-    run(`node ${standalone}`);
-  } else if (existsSync(standaloneNested)) {
-    run(`node ${standaloneNested}`);
+  // Nx outputs Next.js build to dist/apps/client
+  const distStandalone = 'dist/apps/client/.next/standalone/server.js';
+  if (existsSync(distStandalone)) {
+    run(`node ${distStandalone}`);
   } else {
-    // Run next start from the app directory so it finds .next/
-    run('pnpm exec next start', { cwd: 'apps/client' });
+    run('pnpm exec next start dist/apps/client');
   }
 }
