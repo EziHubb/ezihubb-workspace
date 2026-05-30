@@ -15,9 +15,11 @@ if (service.includes('api')) {
 
 } else if (service.includes('admin')) {
   run('pnpm nx build admin --configuration=production');
+  run('node scripts/postbuild.mjs');
 
 } else if (service.includes('client') || service.includes('web') || service.includes('storefront')) {
   run('pnpm nx build client --configuration=production');
+  run('node scripts/postbuild.mjs');
 
 } else {
   // fallback: default build API
