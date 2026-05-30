@@ -18,7 +18,6 @@ const withNextIntl = createNextIntlPlugin(intlConfigPath);
  **/
 const nextConfig = {
   nx: {},
-  output: 'standalone',
   transpilePackages: ['@mlh/constants', '@mlh/types', '@mlh/ui', '@mlh/api-client'],
   images: {
     remotePatterns: [

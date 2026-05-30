@@ -1,20 +1,12 @@
-/**
- * Railway start script.
- *
- * Static asset copying is handled by `scripts/postbuild.mjs` during the build
- * phase (runs as part of `pnpm build`), so there is nothing to copy here.
- */
-
 import { execSync } from 'child_process';
-import { existsSync } from 'fs';
 
 const service = process.env.RAILWAY_SERVICE_NAME ?? '';
 
 console.log(`[railway-start] Starting service: "${service}"`);
 
-function run(cmd, opts = {}) {
+function run(cmd) {
   console.log(`> ${cmd}`);
-  execSync(cmd, { stdio: 'inherit', ...opts });
+  execSync(cmd, { stdio: 'inherit' });
 }
 
 function tryMigrate() {
@@ -25,48 +17,24 @@ function tryMigrate() {
   }
   try {
     run('pnpm exec prisma migrate deploy --schema=prisma/schema.prisma');
-    console.log('[railway-start] Migrations applied successfully');
+    console.log('[railway-start] Migrations applied');
   } catch {
-    console.warn('[railway-start] migrate deploy failed, trying db push...');
     try {
       run('pnpm exec prisma db push --schema=prisma/schema.prisma --accept-data-loss');
     } catch {
-      console.error('[railway-start] DB setup failed — starting API anyway');
+      console.error('[railway-start] DB setup failed — starting anyway');
     }
   }
 }
 
-function startNextApp(appName, port) {
-  const serverJs = `dist/apps/${appName}/.next/standalone/apps/${appName}/server.js`;
-
-  if (!existsSync(serverJs)) {
-    console.error(`[railway-start] server.js not found: ${serverJs}`);
-    console.error('[railway-start] Did the build run? Expected: pnpm build');
-    process.exit(1);
-  }
-
-  process.env['PORT']     = String(port);
-  process.env['HOSTNAME'] = '0.0.0.0';
-  console.log(`[railway-start] Starting ${appName} on port ${port}`);
-  run(`node ${serverJs}`);
-}
-
-// ── Dispatch ──────────────────────────────────────────────────────────────────
-
-if (
-  service.includes('api') ||
-  (!service.includes('client') && !service.includes('admin') && !service.includes('web'))
-) {
+if (service.includes('api') || (!service.includes('client') && !service.includes('admin') && !service.includes('web'))) {
   tryMigrate();
   run('node dist/apps/api/main.js');
 
 } else if (service.includes('admin')) {
-  startNextApp('admin', process.env['PORT'] || 3001);
+  // next start <dir> finds .next inside dist/apps/admin
+  run('pnpm exec next start dist/apps/admin --port ' + (process.env['PORT'] || '3001'));
 
-} else if (
-  service.includes('client') ||
-  service.includes('web') ||
-  service.includes('storefront')
-) {
-  startNextApp('client', process.env['PORT'] || 3000);
+} else if (service.includes('client') || service.includes('web') || service.includes('storefront')) {
+  run('pnpm exec next start dist/apps/client --port ' + (process.env['PORT'] || '3000'));
 }

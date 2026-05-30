@@ -14,18 +14,13 @@ if (service.includes('api')) {
   run('pnpm nx build api --configuration=production');
 
 } else if (service.includes('admin')) {
-  run('pnpm exec nx reset');
   run('pnpm nx build admin --configuration=production');
-  run('node scripts/postbuild.mjs');
 
 } else if (service.includes('client') || service.includes('web') || service.includes('storefront')) {
-  run('pnpm exec nx reset');
   run('pnpm nx build client --configuration=production');
-  run('node scripts/postbuild.mjs');
 
 } else {
-  // fallback: default build API
-  console.warn(`[railway-build] Unknown service name "${service}", defaulting to API build`);
+  console.warn(`[railway-build] Unknown service "${service}", defaulting to API`);
   run('pnpm exec prisma generate --schema=prisma/schema.prisma');
   run('pnpm nx build api --configuration=production');
 }
