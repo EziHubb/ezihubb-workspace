@@ -3,8 +3,9 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { composePlugins, withNx } = require('@nx/next');
 const createNextIntlPlugin = require('next-intl/plugin');
+const path = require('path');
 
-const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+const withNextIntl = createNextIntlPlugin(path.join(__dirname, 'src/i18n/request.ts'));
 
 /**
  * @type {import('@nx/next/plugins/with-nx').WithNxOptions}
