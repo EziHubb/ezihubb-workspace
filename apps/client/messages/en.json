@@ -1,7 +1,7 @@
 {
   "site": {
-    "name": "Macorner",
-    "defaultTitle": "Macorner — Personalized Handmade Gifts",
+    "name": "Maple Loom Handmade",
+    "defaultTitle": "Maple Loom Handmade — Personalized Handmade Gifts",
     "defaultDescription": "Discover unique personalized gifts handcrafted with love. Custom mugs, canvas prints, and more for every occasion."
   },
   "nav": {
@@ -18,7 +18,7 @@
     "toggleMenu": "Toggle menu"
   },
   "footer": {
-    "aboutTitle": "About Macorner",
+    "aboutTitle": "About Maple Loom Handmade",
     "ourStory": "Our Story",
     "howItWorks": "How It Works",
     "reviews": "Reviews",
@@ -37,7 +37,7 @@
     "followDesc": "Join our community for inspiration, exclusive offers, and more.",
     "privacyPolicy": "Privacy Policy",
     "termsOfService": "Terms of Service",
-    "copyright": "© {year} Macorner. All rights reserved."
+    "copyright": "© {year} Maple Loom Handmade. All rights reserved."
   },
   "home": {
     "heroTitle": "Gifts That Tell Their Story",
@@ -91,6 +91,8 @@
     "trustQuality": "Handcrafted Quality",
     "newsletterSuccess": "Thank you for subscribing!",
     "categories": {
+      "title": "Shop by Occasion",
+      "subtitle": "Find the perfect personalized gift for every moment",
       "birthday": "Birthday",
       "wedding": "Wedding",
       "anniversary": "Anniversary",
@@ -107,6 +109,66 @@
         "hot": "Hot",
         "bestseller": "Bestseller"
       }
+    },
+    "hero": {
+      "headline": "Gifts That Tell Their Story",
+      "subheadline": "Personalized handmade gifts crafted with love — from custom mugs to photo canvas prints.",
+      "ctaPrimary": "Shop Personalized Gifts",
+      "ctaSecondary": "View Collections",
+      "trust1": "50,000+ Happy Customers",
+      "trust2": "Handcrafted with Love",
+      "trust3": "Free Shipping Over $50"
+    },
+    "collections": {
+      "title": "Shop Our Collections",
+      "subtitle": "Curated collections for every occasion and style",
+      "productCount": "{count} products"
+    },
+    "howItWorks": {
+      "title": "How It Works",
+      "subtitle": "Four simple steps to your perfect personalized gift",
+      "step1": {
+        "title": "Choose Your Gift",
+        "description": "Browse our curated collection of personalized items across mugs, prints, and more."
+      },
+      "step2": {
+        "title": "Add Your Personal Touch",
+        "description": "Upload photos, add names, and customize every detail to make it uniquely yours."
+      },
+      "step3": {
+        "title": "Preview Your Creation",
+        "description": "See exactly how your personalized gift looks before placing your order."
+      },
+      "step4": {
+        "title": "We Craft & Deliver",
+        "description": "Our artisans handcraft your order and ship it directly to your door."
+      }
+    },
+    "trending": {
+      "title": "Bestsellers",
+      "subtitle": "Our most-loved personalized creations",
+      "viewAll": "View All",
+      "empty": "No products available right now."
+    },
+    "socialProof": {
+      "orders": "2M+",
+      "ordersLabel": "Orders Delivered",
+      "rating": "4.8★",
+      "ratingLabel": "Average Rating",
+      "customers": "50K+",
+      "customersLabel": "Happy Customers"
+    },
+    "reviews": {
+      "title": "What Our Customers Say",
+      "subtitle": "Real stories from people who made someone's day special"
+    },
+    "newsletter": {
+      "title": "Stay Inspired",
+      "subtitle": "Get personalization ideas, exclusive offers, and new product launches in your inbox.",
+      "placeholder": "Enter your email address",
+      "cta": "Subscribe",
+      "disclaimer": "We respect your privacy. Unsubscribe at any time.",
+      "success": "Thanks! Check your inbox."
     }
   },
   "common": {

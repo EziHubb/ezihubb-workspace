@@ -42,12 +42,14 @@ function startNextApp(appName, port) {
   const staticSrc = `dist/apps/${appName}/.next/static`;
   const staticDest = `dist/apps/${appName}/.next/standalone/apps/${appName}/.next/static`;
   if (existsSync(staticSrc) && !existsSync(staticDest)) {
+    run(`mkdir -p dist/apps/${appName}/.next/standalone/apps/${appName}/.next`);
     run(`cp -r ${staticSrc} ${staticDest}`);
   }
 
   const publicSrc = `dist/apps/${appName}/public`;
   const publicDest = `dist/apps/${appName}/.next/standalone/apps/${appName}/public`;
   if (existsSync(publicSrc) && !existsSync(publicDest)) {
+    run(`mkdir -p dist/apps/${appName}/.next/standalone/apps/${appName}`);
     run(`cp -r ${publicSrc} ${publicDest}`);
   }
 

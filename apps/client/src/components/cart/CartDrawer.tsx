@@ -1,102 +1,17 @@
 'use client';
 
-import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { API_ROUTES } from '@mlh/constants';
-
-interface CartItem {
-  id:              string;
-  productId:       string;
-  productName:     string;
-  productSlug:     string;
-  productImageUrl: string | null;
-  variantId:       string | null;
-  variantName:     string | null;
-  quantity:        number;
-  unitPrice:       number;
-  currentPrice:    number;
-  priceChanged:    boolean;
-  customizationData: Record<string, unknown> | null;
-  previewUrl:      string | null;
-}
-
-interface CartTotals {
-  subtotal:  number;
-  discount:  number;
-  shipping:  number;
-  total:     number;
-  itemCount: number;
-}
-
-interface CartData {
-  id:             string;
-  items:          CartItem[];
-  couponCode:     string | null;
-  discountAmount: number | null;
-  totals:         CartTotals;
-}
+import { useCart, useMutateCart } from '@mlh/api-client';
 
 interface CartDrawerProps {
-  isOpen:   boolean;
-  onClose:  () => void;
-}
-
-const CART_QUERY_KEY = ['cart'];
-
-function apiBase() {
-  return process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
-}
-
-async function fetchCart(): Promise<CartData> {
-  const res = await fetch(`${apiBase()}${API_ROUTES.CART.GET}`, { credentials: 'include' });
-  if (!res.ok) throw new Error('Failed to fetch cart');
-  const body = await res.json();
-  return body?.data ?? body;
-}
-
-async function updateCartItem(itemId: string, quantity: number): Promise<CartData> {
-  const res = await fetch(`${apiBase()}${API_ROUTES.CART.UPDATE_ITEM(itemId)}`, {
-    method:      'PATCH',
-    headers:     { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body:        JSON.stringify({ quantity }),
-  });
-  if (!res.ok) throw new Error('Failed to update item');
-  const body = await res.json();
-  return body?.data ?? body;
-}
-
-async function removeCartItem(itemId: string): Promise<CartData> {
-  const res = await fetch(`${apiBase()}${API_ROUTES.CART.REMOVE_ITEM(itemId)}`, {
-    method:      'DELETE',
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error('Failed to remove item');
-  const body = await res.json();
-  return body?.data ?? body;
+  isOpen:  boolean;
+  onClose: () => void;
 }
 
 export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
-  const queryClient = useQueryClient();
-
-  const { data: cart, isLoading } = useQuery<CartData>({
-    queryKey: CART_QUERY_KEY,
-    queryFn:  fetchCart,
-    enabled:  isOpen,
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ itemId, quantity }: { itemId: string; quantity: number }) =>
-      updateCartItem(itemId, quantity),
-    onSuccess: (updated) => queryClient.setQueryData(CART_QUERY_KEY, updated),
-  });
-
-  const removeMutation = useMutation({
-    mutationFn: (itemId: string) => removeCartItem(itemId),
-    onSuccess: (updated) => queryClient.setQueryData(CART_QUERY_KEY, updated),
-  });
+  const { data: cart, isLoading } = useCart();
+  const { updateItem, removeItem } = useMutateCart();
 
   if (!isOpen) return null;
 
@@ -124,7 +39,8 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             Your Cart
             {cart && cart.totals.itemCount > 0 && (
               <span className="ml-2 text-sm font-normal text-muted">
-                ({cart.totals.itemCount} {cart.totals.itemCount === 1 ? 'item' : 'items'})
+                ({cart.totals.itemCount}{' '}
+                {cart.totals.itemCount === 1 ? 'item' : 'items'})
               </span>
             )}
           </h2>
@@ -157,11 +73,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
               <p className="text-sm font-medium text-secondary">Your cart is empty</p>
-              <Link
-                href="/products"
-                onClick={onClose}
-                className="text-sm text-primary hover:underline"
-              >
+              <Link href="/products" onClick={onClose} className="text-sm text-primary hover:underline">
                 Browse products →
               </Link>
             </div>
@@ -171,7 +83,6 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             <ul className="divide-y divide-border" data-testid="cart-items">
               {cart.items.map((item) => (
                 <li key={item.id} className="flex gap-3 py-4" data-testid={`cart-item-${item.id}`}>
-                  {/* Thumbnail */}
                   <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-sm bg-background">
                     {(item.previewUrl ?? item.productImageUrl) ? (
                       <Image
@@ -186,7 +97,6 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                     )}
                   </div>
 
-                  {/* Details */}
                   <div className="flex flex-1 flex-col gap-1 min-w-0">
                     <Link
                       href={`/products/${item.productSlug}`}
@@ -203,12 +113,11 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                     )}
 
                     <div className="flex items-center justify-between mt-auto">
-                      {/* Quantity controls */}
                       <div className="flex items-center gap-1" aria-label={`Quantity for ${item.productName}`}>
                         <button
                           aria-label="Decrease quantity"
-                          disabled={item.quantity <= 1 || updateMutation.isPending}
-                          onClick={() => updateMutation.mutate({ itemId: item.id, quantity: item.quantity - 1 })}
+                          disabled={item.quantity <= 1 || updateItem.isPending}
+                          onClick={() => updateItem.mutate({ itemId: item.id, quantity: item.quantity - 1 })}
                           className="w-9 h-9 flex items-center justify-center rounded-sm border border-border text-muted hover:text-secondary disabled:opacity-40"
                         >
                           −
@@ -218,8 +127,8 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                         </span>
                         <button
                           aria-label="Increase quantity"
-                          disabled={updateMutation.isPending}
-                          onClick={() => updateMutation.mutate({ itemId: item.id, quantity: item.quantity + 1 })}
+                          disabled={updateItem.isPending}
+                          onClick={() => updateItem.mutate({ itemId: item.id, quantity: item.quantity + 1 })}
                           className="w-9 h-9 flex items-center justify-center rounded-sm border border-border text-muted hover:text-secondary disabled:opacity-40"
                         >
                           +
@@ -232,8 +141,8 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                         </span>
                         <button
                           aria-label={`Remove ${item.productName}`}
-                          disabled={removeMutation.isPending}
-                          onClick={() => removeMutation.mutate(item.id)}
+                          disabled={removeItem.isPending}
+                          onClick={() => removeItem.mutate(item.id)}
                           className="text-muted hover:text-error transition-colors disabled:opacity-40"
                           data-testid={`remove-item-${item.id}`}
                         >

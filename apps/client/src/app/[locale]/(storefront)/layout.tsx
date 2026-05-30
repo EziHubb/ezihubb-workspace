@@ -1,5 +1,6 @@
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
+import { MobileBottomNav } from '../../../components/layout/MobileBottomNav';
 
 export default function StorefrontLayout({
   children,
@@ -12,10 +13,11 @@ export default function StorefrontLayout({
       <main className="pt-16 md:pt-20 min-h-screen">
         {children}
       </main>
-      {/* Extra padding on mobile so footer clears the fixed bottom nav (h-16) */}
+      {/* Extra bottom padding on mobile so content clears the fixed MobileBottomNav */}
       <div className="pb-16 md:pb-0">
         <Footer />
       </div>
+      <MobileBottomNav />
     </>
   );
 }

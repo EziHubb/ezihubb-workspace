@@ -487,51 +487,152 @@ components/common/
 
 ---
 
-## 5. Zustand Stores
+## 5. State Management Architecture
+
+### Zustand — UI State Only
+
+Zustand quản lý **ephemeral UI state** không cần server sync:
 
 ```typescript
 // stores/
-├── cart.store.ts         — CartStore (xem P04)
-├── customizer.store.ts   — CustomizerStore (xem spec 18)
-├── filter.store.ts       — FilterStore (xem P02)
+├── cart.store.ts         — CartUIStore: { isDrawerOpen, openDrawer, closeDrawer }
+├── customizer.store.ts   — CustomizerStore (spec 18) — canvas fields, preview, history
 └── auth.store.ts         — { user, isLoading, setUser, logout }
+```
+
+> ⚠️ **Rule:** Zustand stores KHÔNG được gọi `fetch()` trực tiếp.
+> Tất cả server data đi qua React Query (`@mlh/api-client` hooks).
+
+### React Query — Server State
+
+Mọi client component lấy server data qua hooks từ `@mlh/api-client`:
+
+```typescript
+// Đúng ✅
+const { data: cart, isLoading } = useCart();
+const { updateItem } = useMutateCart();
+
+// Sai ❌ — không gọi fetch() trực tiếp trong component
+const [cart, setCart] = useState(null);
+useEffect(() => { fetch('/api/v1/cart').then(...) }, []);
 ```
 
 ---
 
-## 6. React Query Keys
+## 6. React Query Conventions
+
+### QueryClient Configuration
 
 ```typescript
-export const queryKeys = {
-  // Products
-  products: (filters) => ['products', filters],
-  product: (slug: string) => ['product', slug],
-  relatedProducts: (slug: string) => ['products', 'related', slug],
-  trendingProducts: () => ['products', 'trending'],
+// apps/client/src/components/providers/ReactQueryProvider.tsx
+new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime:            60_000,    // 1 min — giảm refetch thừa
+      gcTime:               5 * 60_000, // 5 min — cache tối thiểu
+      retry:                shouldRetry, // không retry 401/403/404
+      retryDelay:           exponentialBackoff, // 1s → 2s → 4s → max 10s
+      refetchOnWindowFocus: false,      // tránh refetch khi switch tab
+      throwOnError:         false,      // xử lý lỗi tại component
+    },
+    mutations: { retry: 0 },
+  },
+})
+```
 
-  // Cart
-  cart: () => ['cart'],
+### Centralized Query Keys
 
-  // Orders
-  myOrders: (filters) => ['orders', 'mine', filters],
-  order: (orderNumber: string) => ['order', orderNumber],
+Tất cả query keys nằm trong `libs/shared/api-client/src/queryKeys.ts`:
 
-  // Reviews
-  reviews: (productSlug, filters) => ['reviews', productSlug, filters],
-  reviewSummary: (productSlug: string) => ['reviews', productSlug, 'summary'],
+```typescript
+import { queryKeys } from '@mlh/api-client';
 
-  // Categories
-  categories: () => ['categories'],
-  collections: () => ['collections'],
+// Dùng factory để type-safe + dễ invalidate
+queryKeys.cart()                        // ['cart']
+queryKeys.products({ page: 1 })        // ['products', { page: 1 }]
+queryKeys.product('my-slug')           // ['products', 'detail', 'my-slug']
+queryKeys.reviews('slug', { page: 1 }) // ['reviews', 'slug', { page: 1 }]
+queryKeys.order('MLH-2024-00001')      // ['orders', 'detail', 'MLH-...']
 
-  // Shipping
-  shippingMethods: (country: string) => ['shipping', country],
+// Invalidate toàn domain (e.g. sau khi tạo sản phẩm mới)
+qc.invalidateQueries({ queryKey: PRODUCTS_KEY })  // invalidates all product queries
+qc.invalidateQueries({ queryKey: CART_KEY })       // invalidates cart
+```
 
-  // Admin
-  adminOrders: (filters) => ['admin', 'orders', filters],
-  adminProducts: (filters) => ['admin', 'products', filters],
-  adminDashboard: () => ['admin', 'dashboard'],
-}
+### Available Hooks (`@mlh/api-client`)
+
+| Hook | Type | Description |
+|------|------|-------------|
+| `useProducts(query)` | Query | Paginated product list |
+| `useProduct(slug)` | Query | Single product detail |
+| `useRelatedProducts(slug)` | Query | Related products |
+| `usePrefetchProduct()` | Util | Prefetch on card hover |
+| `useCart()` | Query | Current cart (staleTime: 30s) |
+| `useMutateCart()` | Mutation | addItem, updateItem (optimistic), removeItem (optimistic), applyCoupon, removeCoupon, clearCart |
+| `useOrders(query)` | Query | Paginated order list |
+| `useOrder(orderNumber)` | Query | Single order detail |
+| `useCheckout()` | Mutation | createOrder, createPaymentIntent, validateCoupon, applyGiftCard |
+| `useWishlist()` | Query | User wishlist |
+| `useMutateWishlist()` | Mutation | addToWishlist, removeFromWishlist |
+| `useSearch(query)` | Query | Product search (disabled when q empty) |
+| `useSearchSuggestions(q)` | Query | Typeahead (enabled when q.length ≥ 2) |
+| `useReviews(slug, query)` | Query | Paginated reviews |
+| `useReviewSummary(slug)` | Query | Rating summary (staleTime: 5 min) |
+| `useCategories(query)` | Query | Category list |
+| `useCategory(slug)` | Query | Single category + children |
+| `useCollections(query)` | Query | Collection list |
+| `useCollection(slug)` | Query | Single collection |
+| `useNewsletterSubscribe()` | Mutation | Newsletter signup |
+| `useProfile()` | Query | Current user profile |
+| `useMutateProfile()` | Mutation | updateProfile, changePassword |
+| `useAddresses()` | Query | User address book |
+| `useMutateAddresses()` | Mutation | addAddress, updateAddress, deleteAddress |
+
+### Optimistic Updates Pattern
+
+`updateItem` và `removeItem` dùng **optimistic updates** với rollback:
+
+```typescript
+// Pattern trong useMutateCart:
+onMutate: async (vars) => {
+  await qc.cancelQueries({ queryKey: CART_KEY });   // hủy inflight requests
+  const snapshot = qc.getQueryData(CART_KEY);        // snapshot để rollback
+  qc.setQueryData(CART_KEY, optimisticState);        // apply ngay lập tức
+  return { snapshot };
+},
+onError: (_err, _vars, ctx) => {
+  qc.setQueryData(CART_KEY, ctx?.snapshot);          // rollback khi lỗi
+},
+onSettled: () => {
+  qc.invalidateQueries({ queryKey: CART_KEY });      // sync với server
+},
+```
+
+### Server Components vs Client Components
+
+| Context | Pattern | Lý do |
+|---------|---------|-------|
+| Server Component (page.tsx) | `fetch()` trực tiếp + `next: { revalidate }` | RSC không có React Context |
+| Client Component | React Query hooks từ `@mlh/api-client` | Cache, deduplication, optimistic UI |
+| Zustand store | KHÔNG fetch | UI state only |
+
+### Error Handling
+
+```typescript
+// Query error — hiển thị inline
+const { data, isError, refetch } = useProducts();
+if (isError) return <ErrorState onRetry={refetch} />;
+
+// Mutation error — hiển thị inline hoặc toast
+const { addItem } = useMutateCart();
+addItem.mutate(input, {
+  onError: (err) => showToast(err.message, 'error'),
+});
+
+// isPending — disable button + show spinner
+<button disabled={addItem.isPending}>
+  {addItem.isPending ? 'Adding…' : 'Add to Cart'}
+</button>
 ```
 
 ---

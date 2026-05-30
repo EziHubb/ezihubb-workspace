@@ -1,0 +1,100 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { useLocale } from 'next-intl';
+import { Menu } from 'lucide-react';
+import { ToastProvider } from '@mlh/ui';
+import { useProfile } from '@mlh/api-client';
+import { AccountSidebar } from '../../../components/account/AccountSidebar';
+
+export default function AccountLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const locale   = useLocale();
+  const router   = useRouter();
+  const pathname = usePathname();
+
+  const { data: profile, isLoading, isError } = useProfile();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // ── Auth guard ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isLoading && (isError || !profile)) {
+      const redirect = encodeURIComponent(pathname);
+      router.replace(`/${locale}/login?redirect=${redirect}`);
+    }
+  }, [profile, isLoading, isError, router, locale, pathname]);
+
+  // ── Loading / unauthenticated ──────────────────────────────────────────────
+  if (isLoading || !profile) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <ToastProvider>
+      <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-8 md:py-12">
+
+        {/* ── Mobile header bar ──────────────────────────────────────────── */}
+        <div className="md:hidden flex items-center gap-3 mb-6">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open account menu"
+            className="p-2 border border-border rounded-button text-secondary hover:border-primary transition-colors"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <div>
+            <p className="font-semibold text-secondary text-sm">
+              {profile.firstName} {profile.lastName}
+            </p>
+            <p className="text-xs text-muted">{profile.email}</p>
+          </div>
+        </div>
+
+        {/* ── Main 2-col layout ──────────────────────────────────────────── */}
+        <div className="flex gap-8 items-start">
+          {/* Desktop sidebar */}
+          <div className="hidden md:block w-[260px] shrink-0">
+            <AccountSidebar profile={profile} />
+          </div>
+
+          {/* Page content */}
+          <main className="flex-1 min-w-0">{children}</main>
+        </div>
+
+        {/* ── Mobile bottom sheet nav ────────────────────────────────────── */}
+        {mobileMenuOpen && (
+          <div className="md:hidden fixed inset-0 z-50 flex items-end">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={() => setMobileMenuOpen(false)}
+              aria-hidden="true"
+            />
+
+            {/* Sheet */}
+            <div className="relative w-full bg-surface rounded-t-2xl z-10 pb-safe animate-slide-up">
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 bg-border rounded-full" />
+              </div>
+              <div className="px-2 pb-6">
+                <AccountSidebar
+                  profile={profile}
+                  onNavigate={() => setMobileMenuOpen(false)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </ToastProvider>
+  );
+}

@@ -1,0 +1,77 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useLocale } from 'next-intl';
+import { Home, Search, ShoppingBag, User } from 'lucide-react';
+import { useCart } from '@mlh/api-client';
+import { useCartStore } from '../../lib/store/cart.store';
+
+/**
+ * Fixed bottom navigation bar — mobile only (hidden on md+).
+ * Hidden on checkout and full-screen customizer pages.
+ */
+export function MobileBottomNav() {
+  const locale   = useLocale();
+  const pathname = usePathname();
+  const { data: cartData } = useCart();
+  const openDrawer = useCartStore((s) => s.openDrawer);
+  const cartCount  = cartData?.totals.itemCount ?? 0;
+
+  // Hide on checkout and customizer pages
+  const hiddenPaths = [`/${locale}/checkout`, `/customize`];
+  if (hiddenPaths.some((p) => pathname.includes(p))) return null;
+
+  const isActive = (href: string) =>
+    pathname === `/${locale}${href}` ||
+    pathname.startsWith(`/${locale}${href}/`);
+
+  const tabCls = (active: boolean) =>
+    [
+      'flex flex-col items-center justify-center gap-0.5 flex-1 py-2 text-[10px] font-medium transition-colors',
+      active ? 'text-primary' : 'text-muted hover:text-secondary',
+    ].join(' ');
+
+  return (
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+      <div className="flex items-stretch h-16 max-w-sm mx-auto">
+
+        {/* Home */}
+        <Link href={`/${locale}`} aria-label="Home" className={tabCls(pathname === `/${locale}`)}>
+          <Home className="w-5 h-5" />
+          <span>Home</span>
+        </Link>
+
+        {/* Search */}
+        <Link href={`/${locale}/search`} aria-label="Search" className={tabCls(isActive('/search'))}>
+          <Search className="w-5 h-5" />
+          <span>Search</span>
+        </Link>
+
+        {/* Cart */}
+        <button
+          type="button"
+          onClick={openDrawer}
+          aria-label={`Cart${cartCount > 0 ? ` (${cartCount})` : ''}`}
+          className={tabCls(isActive('/cart'))}
+        >
+          <div className="relative">
+            <ShoppingBag className="w-5 h-5" />
+            {cartCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 bg-primary text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center tabular-nums">
+                {cartCount > 99 ? '99+' : cartCount}
+              </span>
+            )}
+          </div>
+          <span>Cart</span>
+        </button>
+
+        {/* Account */}
+        <Link href={`/${locale}/account`} aria-label="Account" className={tabCls(isActive('/account'))}>
+          <User className="w-5 h-5" />
+          <span>Account</span>
+        </Link>
+      </div>
+    </div>
+  );
+}

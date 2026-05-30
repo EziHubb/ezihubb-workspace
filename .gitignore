@@ -1,5 +1,11 @@
 # See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
+# Environment files — never commit these
+.env
+.env.local
+**/.env
+**/.env.local
+
 # compiled output
 dist
 tmp

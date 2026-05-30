@@ -1,45 +1,83 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../client';
 import { API_ROUTES } from '@mlh/constants';
-import type { OrderDto, CheckoutIntentDto, CouponValidationResultDto } from '@mlh/types';
-import { CART_QUERY_KEY } from './useCart';
+import type { OrderDto, CheckoutIntentDto } from '@mlh/types';
+import { queryKeys } from '../queryKeys';
 
-export interface CreateOrderInput {
-  shippingAddressId:  string;
-  shippingMethodId:   string;
-  couponCode?:        string;
-  giftCardCode?:      string;
-  notes?:             string;
+// ── Input / response types ────────────────────────────────────────────────────
+
+export interface ShippingAddressInput {
+  firstName:     string;
+  lastName:      string;
+  phone:         string;
+  addressLine1:  string;
+  addressLine2?: string;
+  city:          string;
+  state?:        string;
+  postalCode:    string;
+  country:       string;
 }
 
-export interface ValidateCouponInput {
-  code:       string;
-  orderTotal: number;
+/** Create a new order with an inline shipping address (supports guests). */
+export interface SubmitCheckoutInput {
+  email?:          string;   // guest only
+  shippingAddress: ShippingAddressInput;
+  shippingMethodId: string;
+  couponCode?:     string;
+  giftCardCode?:   string;
+  notes?:          string;
 }
+
+export interface SubmitCheckoutResponse {
+  orderId:     string;
+  orderNumber: string;
+  total:       number;
+  status:      string;
+}
+
+export interface ValidateGiftCardResponse {
+  isValid:     boolean;
+  balance:     number;
+  maxApplied:  number;
+  code:        string;
+  expiresAt?:  string;
+  errorMessage?: string;
+}
+
+// ── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useCheckout() {
   const qc = useQueryClient();
 
-  const createOrder = useMutation({
-    mutationFn: (input: CreateOrderInput) =>
-      api.post<OrderDto>(API_ROUTES.ORDERS.CREATE, input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: CART_QUERY_KEY }),
+  /** Create order with inline address — clears cart cache on success. */
+  const submitOrder = useMutation({
+    mutationFn: (input: SubmitCheckoutInput) =>
+      api.post<SubmitCheckoutResponse>(API_ROUTES.ORDERS.CREATE, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.cart() }),
   });
 
+  /** Create a Stripe PaymentIntent for an existing order. */
   const createPaymentIntent = useMutation({
-    mutationFn: (orderId: string) =>
-      api.post<CheckoutIntentDto>(API_ROUTES.PAYMENTS.INTENT, { orderId }),
+    mutationFn: ({
+      orderId,
+      giftCardCode,
+    }: {
+      orderId: string;
+      giftCardCode?: string;
+    }) =>
+      api.post<CheckoutIntentDto>(API_ROUTES.PAYMENTS.INTENT, {
+        orderId,
+        giftCardCode,
+      }),
   });
 
-  const validateCoupon = useMutation({
-    mutationFn: (input: ValidateCouponInput) =>
-      api.post<CouponValidationResultDto>(API_ROUTES.PROMOTIONS.VALIDATE, input),
-  });
-
-  const applyGiftCard = useMutation({
+  /** Validate a gift card code before applying. */
+  const validateGiftCard = useMutation({
     mutationFn: (code: string) =>
-      api.post<{ balance: number; applied: number }>(API_ROUTES.PAYMENTS.GIFT_CARD_APPLY, { code }),
+      api.get<ValidateGiftCardResponse>(
+        `${API_ROUTES.PAYMENTS.GIFT_CARD_BALANCE}?code=${encodeURIComponent(code)}`,
+      ),
   });
 
-  return { createOrder, createPaymentIntent, validateCoupon, applyGiftCard };
+  return { submitOrder, createPaymentIntent, validateGiftCard };
 }

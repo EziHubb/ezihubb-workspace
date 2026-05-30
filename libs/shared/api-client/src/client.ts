@@ -4,11 +4,38 @@ export interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>;
 }
 
-let baseUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
+let baseUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
 
 export function setBaseUrl(url: string): void {
   baseUrl = url;
 }
+
+// ── Token provider (registered by auth store) ─────────────────────────────────
+
+type TokenGetter  = () => string | null;
+type TokenUpdater = (token: string | null) => void;
+
+let _tokenGetter:  TokenGetter  = () => null;     // returns in-memory access token
+let _tokenUpdater: TokenUpdater = () => undefined; // called when token is refreshed
+
+/**
+ * Register an in-memory token provider from the auth store.
+ * Must be called during app initialisation so API calls use the correct token.
+ */
+export function setTokenGetter(getter: TokenGetter): void {
+  _tokenGetter = getter;
+}
+
+/**
+ * Register a callback that is invoked whenever the API client silently
+ * refreshes the access token (on 401). The auth store uses this to keep
+ * its in-memory copy in sync.
+ */
+export function setTokenUpdater(updater: TokenUpdater): void {
+  _tokenUpdater = updater;
+}
+
+// ── Internal helpers ──────────────────────────────────────────────────────────
 
 function buildUrl(path: string, params?: RequestOptions['params']): string {
   const url = new URL(path, baseUrl);
@@ -24,27 +51,36 @@ function buildUrl(path: string, params?: RequestOptions['params']): string {
 
 function getAuthHeader(): Record<string, string> {
   if (typeof window === 'undefined') return {};
-  const token = localStorage.getItem('access_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
+
+  // 1. In-memory token from auth store (preferred)
+  const memToken = _tokenGetter();
+  if (memToken) return { Authorization: `Bearer ${memToken}` };
+
+  return {};
 }
 
 async function refreshTokens(): Promise<string | null> {
   try {
     const res = await fetch(buildUrl('/auth/refresh'), {
       method:      'POST',
-      credentials: 'include',
+      credentials: 'include', // sends httpOnly refresh cookie
     });
-    if (!res.ok) return null;
-    const json = await res.json();
+    if (!res.ok) {
+      _tokenUpdater(null); // clear stale token
+      return null;
+    }
+    const json  = await res.json();
     const token: string | null = json?.data?.accessToken ?? null;
-    if (token && typeof window !== 'undefined') {
-      localStorage.setItem('access_token', token);
+    if (token) {
+      _tokenUpdater(token); // update auth store in-memory token
     }
     return token;
   } catch {
     return null;
   }
 }
+
+// ── Core fetch ────────────────────────────────────────────────────────────────
 
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { params, headers: extraHeaders, ...rest } = options;
@@ -103,7 +139,8 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   return body as T;
 }
 
-// Convenience wrappers
+// ── Convenience wrappers ──────────────────────────────────────────────────────
+
 export const api = {
   get:    <T>(path: string, opts?: RequestOptions) =>
     apiFetch<T>(path, { method: 'GET', ...opts }),
