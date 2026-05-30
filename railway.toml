@@ -1,6 +1,9 @@
 [build]
 builder = "NIXPACKS"
+# Explicit build: install deps + build Next.js apps in production mode (creates .next/standalone/)
+buildCommand = "pnpm install --frozen-lockfile && pnpm nx run-many -t build --projects=client,admin --configuration=production"
 
 [deploy]
+startCommand = "node railway-start.mjs"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
