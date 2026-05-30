@@ -12,8 +12,8 @@ CMD ["pnpm", "nx", "serve", "api"]
 
 FROM base AS builder
 COPY . .
-RUN pnpm nx build api --configuration=production
 RUN pnpm exec prisma generate --schema=prisma/schema.prisma
+RUN pnpm nx build api --configuration=production
 
 FROM node:22-alpine AS production
 WORKDIR /app
