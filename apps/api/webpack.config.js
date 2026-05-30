@@ -12,7 +12,7 @@ module.exports = {
   plugins: [
     new NxAppWebpackPlugin({
       target: 'node',
-      compiler: 'tsc',
+      compiler: 'swc',   // SWC transpiles without type-checking — much faster
       main: './src/main.ts',
       tsConfig: './tsconfig.app.json',
       assets: ['./src/assets'],
@@ -20,8 +20,6 @@ module.exports = {
       outputHashing: 'none',
       generatePackageJson: true,
       sourceMap: true,
-      // Skip type checking — types are checked separately via pnpm nx type-check
-      typeCheck: false,
     }),
   ],
 };

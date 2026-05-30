@@ -18,10 +18,10 @@ export class AddressResponseDto {
   static fromPrisma(address: Address): AddressResponseDto {
     const dto = new AddressResponseDto();
     dto.id = address.id;
-    dto.label = address.label;
+    dto.label = null;
     dto.fullName = address.fullName;
-    dto.line1 = address.line1;
-    dto.line2 = address.line2;
+    dto.line1 = address.addressLine1;
+    dto.line2 = address.addressLine2 ?? null;
     dto.city = address.city;
     dto.state = address.state;
     dto.postalCode = address.postalCode;

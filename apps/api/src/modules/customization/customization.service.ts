@@ -116,7 +116,7 @@ export class CustomizationService {
         outputKey,
         draftId,
       } satisfies RemoveBackgroundJobData,
-      { ...DEFAULT_JOB_OPTIONS, timeout: 60_000 },
+      DEFAULT_JOB_OPTIONS,
     );
 
     return { jobId: job.id as string };
@@ -168,7 +168,7 @@ export class CustomizationService {
         canvasData: dto.canvasData,
         outputKey,
       } satisfies GeneratePreviewJobData,
-      { ...DEFAULT_JOB_OPTIONS, timeout: 30_000 },
+      DEFAULT_JOB_OPTIONS,
     );
 
     return { jobId: job.id as string };
@@ -189,7 +189,7 @@ export class CustomizationService {
     const job = await this.imageQueue.add(
       JOBS.APPLY_ART_STYLE,
       { uploadKey: tempKey, outputKey, draftId, style },
-      { ...DEFAULT_JOB_OPTIONS, timeout: 120_000 },
+      DEFAULT_JOB_OPTIONS,
     );
 
     return { jobId: job.id as string };
@@ -225,7 +225,7 @@ export class CustomizationService {
         where: { id: existing.id },
         data: {
           variantId: dto.variantId ?? null,
-          data: dto.data,
+          data: dto.data as any,
           uploadedImages: dto.uploadedImages ?? [],
           previewUrl: dto.previewUrl ?? existing.previewUrl,
           expiresAt,
@@ -240,7 +240,7 @@ export class CustomizationService {
         productId: dto.productId,
         templateId: dto.templateId,
         variantId: dto.variantId ?? null,
-        data: dto.data,
+        data: dto.data as any,
         uploadedImages: dto.uploadedImages ?? [],
         previewUrl: dto.previewUrl ?? null,
         expiresAt,

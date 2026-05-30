@@ -53,7 +53,6 @@ export class UsersService {
       data: {
         ...(dto.firstName !== undefined && { firstName: dto.firstName }),
         ...(dto.lastName !== undefined && { lastName: dto.lastName }),
-        ...(dto.phone !== undefined && { phone: dto.phone }),
       },
     });
     return UserResponseDto.fromPrisma(user);
@@ -145,15 +144,14 @@ export class UsersService {
       return tx.address.create({
         data: {
           userId,
-          label: dto.label,
           fullName: dto.fullName,
-          line1: dto.line1,
-          line2: dto.line2,
+          addressLine1: dto.line1,
+          addressLine2: dto.line2 ?? null,
           city: dto.city,
           state: dto.state,
           postalCode: dto.postalCode,
           country: dto.country,
-          phone: dto.phone,
+          phone: dto.phone ?? '',
           isDefault: shouldBeDefault,
         },
       });
@@ -172,10 +170,9 @@ export class UsersService {
       return tx.address.update({
         where: { id: addressId },
         data: {
-          ...(dto.label !== undefined && { label: dto.label }),
           ...(dto.fullName !== undefined && { fullName: dto.fullName }),
-          ...(dto.line1 !== undefined && { line1: dto.line1 }),
-          ...(dto.line2 !== undefined && { line2: dto.line2 }),
+          ...(dto.line1 !== undefined && { addressLine1: dto.line1 }),
+          ...(dto.line2 !== undefined && { addressLine2: dto.line2 }),
           ...(dto.city !== undefined && { city: dto.city }),
           ...(dto.state !== undefined && { state: dto.state }),
           ...(dto.postalCode !== undefined && { postalCode: dto.postalCode }),

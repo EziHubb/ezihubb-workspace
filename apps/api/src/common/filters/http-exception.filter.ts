@@ -93,7 +93,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     );
 
     if (Sentry && process.env['SENTRY_DSN']) {
-      Sentry.withScope((scope) => {
+      Sentry.withScope((scope: any) => {
         scope.setTag('requestId', request.requestId ?? 'unknown');
         scope.setTag('path', request.path);
         scope.setTag('method', request.method);

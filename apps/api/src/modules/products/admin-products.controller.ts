@@ -57,7 +57,7 @@ export class AdminProductsController {
   @Get()
   @ApiOperation({ summary: '[Admin] List products (includes inactive)' })
   findAll(@Query() query: ProductQueryDto): Promise<PaginatedResult<ProductListItemDto>> {
-    return this.productsService.findAll({ ...query, includeInactive: true });
+    return this.productsService.findAll(Object.assign({}, query, { includeInactive: true }) as any);
   }
 
   // POST /admin/products

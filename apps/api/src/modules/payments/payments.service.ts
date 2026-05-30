@@ -40,7 +40,7 @@ const REFUND_WINDOW_DAYS = 60;
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
-  private readonly stripe: Stripe;
+  private readonly stripe: any;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -171,7 +171,7 @@ export class PaymentsService {
 
   // ─── Stripe Webhook ────────────────────────────────────────────────────────
 
-  async handleStripeWebhook(event: Stripe.Event): Promise<void> {
+  async handleStripeWebhook(event: any): Promise<void> {
     // Idempotency: process each event exactly once
     const idempotencyKey = `stripe:webhook:${event.id}`;
     const client = this.redis.getClient();
@@ -213,7 +213,7 @@ export class PaymentsService {
   }
 
   private async onPaymentIntentSucceeded(
-    intent: Stripe.PaymentIntent,
+    intent: any,
   ): Promise<void> {
     const payment = await this.prisma.payment.findFirst({
       where: { stripePaymentIntentId: intent.id },
@@ -306,7 +306,7 @@ export class PaymentsService {
   }
 
   private async onPaymentIntentFailed(
-    intent: Stripe.PaymentIntent,
+    intent: any,
   ): Promise<void> {
     const payment = await this.prisma.payment.findFirst({
       where: { stripePaymentIntentId: intent.id },
@@ -323,7 +323,7 @@ export class PaymentsService {
     );
   }
 
-  private async onChargeRefunded(charge: Stripe.Charge): Promise<void> {
+  private async onChargeRefunded(charge: any): Promise<void> {
     if (!charge.payment_intent) return;
     const payment = await this.prisma.payment.findFirst({
       where: { stripePaymentIntentId: charge.payment_intent as string },

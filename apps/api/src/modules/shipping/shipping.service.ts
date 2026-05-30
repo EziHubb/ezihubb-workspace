@@ -37,7 +37,7 @@ export class ShippingService {
       zone.methods.map((m) => ({
         methodId: m.id,
         name: m.name,
-        carrier: m.carrier ?? undefined,
+        carrier: m.carrier ?? null,
         price: Number(m.price),
         minDays: m.minDays,
         maxDays: m.maxDays,
@@ -93,7 +93,7 @@ export class ShippingService {
         return {
           methodId: m.id,
           name: m.name,
-          carrier: m.carrier ?? undefined,
+          carrier: m.carrier ?? null,
           price: isFree ? 0 : Number(m.price),
           minDays: m.minDays,
           maxDays: m.maxDays,

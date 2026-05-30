@@ -157,16 +157,14 @@ export class UsersController {
     const limit = pagination.limit ?? 10;
     const drafts = await this.prisma.customizationDraft.findMany({
       where: { userId: user.sub },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
       take: limit,
       select: {
         id: true,
         productId: true,
         templateId: true,
-        fieldValues: true,
-        previewImageUrl: true,
-        updatedAt: true,
+        previewUrl: true,
         createdAt: true,
       },
     });

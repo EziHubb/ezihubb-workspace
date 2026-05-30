@@ -205,7 +205,7 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + 60 * 60 * 1_000); // 1 hour
 
     await this.prisma.passwordReset.create({
-      data: { userId: user.id, token, expiresAt },
+      data: { userId: user.id, email: user.email, token, expiresAt },
     });
 
     const frontendUrl = this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:3000';

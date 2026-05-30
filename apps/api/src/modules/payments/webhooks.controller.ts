@@ -21,7 +21,7 @@ export class WebhooksController {
   @UseGuards(StripeWebhookGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Stripe webhook endpoint — requires raw body and Stripe-Signature header' })
-  async stripeWebhook(@Req() req: Request & { stripeEvent?: Stripe.Event }) {
+  async stripeWebhook(@Req() req: Request & { stripeEvent?: any }) {
     // stripeEvent is attached by StripeWebhookGuard after signature verification
     if (req.stripeEvent) {
       await this.paymentsService.handleStripeWebhook(req.stripeEvent);

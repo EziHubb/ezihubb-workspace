@@ -13,7 +13,7 @@ import Stripe from 'stripe';
 @Injectable()
 export class StripeWebhookGuard implements CanActivate {
   private readonly logger = new Logger(StripeWebhookGuard.name);
-  private readonly stripe: Stripe;
+  private readonly stripe: any;
   private readonly webhookSecret: string;
   private readonly isProd: boolean;
 
@@ -25,7 +25,7 @@ export class StripeWebhookGuard implements CanActivate {
   }
 
   canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest<Request & { stripeEvent?: Stripe.Event }>();
+    const req = context.switchToHttp().getRequest<Request & { stripeEvent?: any }>();
     const signature = req.headers['stripe-signature'];
 
     if (!signature) {

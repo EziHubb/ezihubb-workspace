@@ -17,12 +17,11 @@ export class UserResponseDto {
     const dto = new UserResponseDto();
     dto.id = user.id;
     dto.email = user.email;
-    dto.firstName = user.firstName;
-    dto.lastName = user.lastName;
+    dto.firstName = user.firstName ?? '';
+    dto.lastName = user.lastName ?? '';
     dto.role = user.role;
     dto.avatarUrl = user.avatarUrl;
     dto.isEmailVerified = user.isEmailVerified;
-    dto.phone = user.phone;
     dto.createdAt = user.createdAt;
     dto.updatedAt = user.updatedAt;
     return dto;
