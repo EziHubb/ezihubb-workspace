@@ -1,7 +1,8 @@
 [build]
 builder = "NIXPACKS"
-# Explicit build: install deps + build Next.js apps in production mode (creates .next/standalone/)
-buildCommand = "pnpm install --frozen-lockfile && pnpm nx run-many -t build --projects=client,admin --configuration=production"
+# Nixpacks detects pnpm and runs `pnpm install` then `pnpm build`.
+# `pnpm build` = `nx run-many -t build && node scripts/postbuild.mjs`
+# postbuild.mjs copies .next/static + public/ + messages/ into standalone/.
 
 [deploy]
 startCommand = "node railway-start.mjs"

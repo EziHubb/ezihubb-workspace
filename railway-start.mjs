@@ -1,5 +1,12 @@
-import { execSync }                   from 'child_process';
-import { existsSync, mkdirSync, cpSync } from 'fs';
+/**
+ * Railway start script.
+ *
+ * Static asset copying is handled by `scripts/postbuild.mjs` during the build
+ * phase (runs as part of `pnpm build`), so there is nothing to copy here.
+ */
+
+import { execSync } from 'child_process';
+import { existsSync } from 'fs';
 
 const service = process.env.RAILWAY_SERVICE_NAME ?? '';
 
@@ -29,65 +36,22 @@ function tryMigrate() {
   }
 }
 
-/**
- * Copy a directory tree using Node.js fs APIs.
- * More reliable than shell cp/mkdir in Railway containers where
- * execSync can fail silently on restricted filesystems.
- */
-function copyDir(src, dest) {
-  if (!existsSync(src)) {
-    console.log(`[railway-start] skip copy (src not found): ${src}`);
-    return;
-  }
-  if (existsSync(dest)) {
-    console.log(`[railway-start] skip copy (dest exists): ${dest}`);
-    return;
-  }
-  try {
-    mkdirSync(dest, { recursive: true });
-    cpSync(src, dest, { recursive: true });
-    console.log(`[railway-start] copied: ${src} → ${dest}`);
-  } catch (err) {
-    // Non-fatal: server can still start without static files being co-located
-    console.warn(`[railway-start] copy failed (non-fatal): ${err.message}`);
-  }
-}
-
 function startNextApp(appName, port) {
-  // Nx monorepo standalone path:
-  //   dist/apps/<name>/.next/standalone/apps/<name>/server.js
   const serverJs = `dist/apps/${appName}/.next/standalone/apps/${appName}/server.js`;
 
   if (!existsSync(serverJs)) {
-    console.error(`[railway-start] server.js not found at ${serverJs}`);
-    console.error('[railway-start] Run: pnpm nx build ' + appName + ' --configuration=production');
+    console.error(`[railway-start] server.js not found: ${serverJs}`);
+    console.error('[railway-start] Did the build run? Expected: pnpm build');
     process.exit(1);
   }
 
-  // Next.js standalone requires static assets and public/ copied next to server.js.
-  // Using Node.js fs.cpSync instead of shell cp/mkdir for Railway container reliability.
-  copyDir(
-    `dist/apps/${appName}/.next/static`,
-    `dist/apps/${appName}/.next/standalone/apps/${appName}/.next/static`,
-  );
-  copyDir(
-    `dist/apps/${appName}/public`,
-    `dist/apps/${appName}/.next/standalone/apps/${appName}/public`,
-  );
-
-  // Copy next-intl messages so the standalone server can resolve translations
-  copyDir(
-    `apps/${appName}/messages`,
-    `dist/apps/${appName}/.next/standalone/apps/${appName}/messages`,
-  );
-
   process.env['PORT']     = String(port);
   process.env['HOSTNAME'] = '0.0.0.0';
-  console.log(`[railway-start] Starting ${appName} on port ${port} via ${serverJs}`);
+  console.log(`[railway-start] Starting ${appName} on port ${port}`);
   run(`node ${serverJs}`);
 }
 
-// ── Service dispatch ──────────────────────────────────────────────────────────
+// ── Dispatch ──────────────────────────────────────────────────────────────────
 
 if (
   service.includes('api') ||
