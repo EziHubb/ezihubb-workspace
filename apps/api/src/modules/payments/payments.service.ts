@@ -32,7 +32,7 @@ export class PaymentsService {
     @InjectQueue(QUEUES.ORDER_PROCESSING) private readonly orderQueue: Queue,
   ) {
     const secretKey = config.get<string>('STRIPE_SECRET_KEY') ?? '';
-    this.stripe = new Stripe(secretKey, { apiVersion: '2023-10-16' });
+    this.stripe = new Stripe(secretKey, { apiVersion: '2026-04-22.dahlia' as const });
   }
 
   // ─── Payment Intent ───────────────────────────────────────────────────────

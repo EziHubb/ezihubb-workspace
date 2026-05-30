@@ -10,7 +10,8 @@ import { ThrottlerException } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 
 // Conditionally import Sentry so the API works without it configured
-let Sentry: typeof import('@sentry/node') | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Sentry: any = null;
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   Sentry = require('@sentry/node');

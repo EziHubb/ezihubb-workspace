@@ -80,6 +80,7 @@ model User {
 
   refreshTokens       RefreshToken[]
   emailVerifications  EmailVerification[]
+  passwordResets      PasswordReset[]
   addresses           Address[]
   wishlistItems       WishlistItem[]
   cart                Cart?
@@ -92,23 +93,25 @@ model User {
 }
 
 model RefreshToken {
-  id        String   @id @default(cuid())
-  token     String   @unique
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
-  createdAt DateTime @default(now())
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
 }
 
 model EmailVerification {
-  id        String   @id @default(cuid())
-  token     String   @unique
+  id        String    @id @default(cuid())
+  token     String    @unique
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
-  createdAt DateTime @default(now())
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
 }
@@ -117,11 +120,14 @@ model PasswordReset {
   id        String    @id @default(cuid())
   token     String    @unique
   email     String
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
 
   @@index([email])
+  @@index([userId])
 }
 
 // ─── User Profile ────────────────────────────────────────────────────────────

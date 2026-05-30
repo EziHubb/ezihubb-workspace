@@ -58,7 +58,7 @@ export class AuthService {
     });
 
     // Queue verification email (fire-and-forget)
-    await this.enqueueVerificationEmail(user.id, user.email, user.firstName).catch((err) =>
+    await this.enqueueVerificationEmail(user.id, user.email, user.firstName ?? '').catch((err) =>
       this.logger.error(`Failed to enqueue verification email: ${err.message}`),
     );
 
@@ -70,8 +70,8 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        firstName: user.firstName ?? '',
+        lastName: user.lastName ?? '',
         role: user.role,
         avatarUrl: user.avatarUrl,
         isEmailVerified: user.isEmailVerified,
@@ -118,8 +118,8 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        firstName: user.firstName ?? '',
+        lastName: user.lastName ?? '',
         role: user.role,
         avatarUrl: user.avatarUrl,
         isEmailVerified: user.isEmailVerified,
@@ -191,7 +191,7 @@ export class AuthService {
     if (user.isEmailVerified) {
       throw new BadRequestException({ code: 'ERR_ALREADY_VERIFIED', message: 'Email is already verified' });
     }
-    await this.enqueueVerificationEmail(user.id, user.email, user.firstName);
+    await this.enqueueVerificationEmail(user.id, user.email, user.firstName ?? '');
   }
 
   // ─── Password reset ────────────────────────────────────────────────────────
@@ -304,8 +304,8 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        firstName: user.firstName ?? '',
+        lastName: user.lastName ?? '',
         role: user.role,
         avatarUrl: user.avatarUrl,
         isEmailVerified: user.isEmailVerified,
@@ -324,7 +324,8 @@ export class AuthService {
       { sub: userId, email, role },
       {
         secret: this.config.get<string>('jwt.accessSecret'),
-        expiresIn: this.config.get<string>('jwt.accessExpiresIn') ?? '15m',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        expiresIn: (this.config.get<string>('jwt.accessExpiresIn') ?? '15m') as any,
       },
     );
 

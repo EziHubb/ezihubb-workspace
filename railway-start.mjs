@@ -10,7 +10,16 @@ function run(cmd) {
   execSync(cmd, { stdio: 'inherit' });
 }
 
-if (service.includes('api')) {
+if (service.includes('api') || (!service.includes('client') && !service.includes('admin') && !service.includes('web'))) {
+  // Run DB migrations before starting API
+  console.log('[railway-start] Running database migrations...');
+  try {
+    run('pnpm exec prisma migrate deploy --schema=prisma/schema.prisma');
+  } catch {
+    // If no migrations exist yet, push schema directly
+    console.warn('[railway-start] No migrations found, using prisma db push...');
+    run('pnpm exec prisma db push --schema=prisma/schema.prisma --accept-data-loss');
+  }
   run('node dist/apps/api/main.js');
 
 } else if (service.includes('admin')) {
@@ -18,7 +27,6 @@ if (service.includes('api')) {
   if (existsSync(standalone)) {
     run(`node ${standalone}`);
   } else {
-    // fallback if standalone path differs
     run('pnpm nx start admin');
   }
 
@@ -29,8 +37,4 @@ if (service.includes('api')) {
   } else {
     run('pnpm nx start client');
   }
-
-} else {
-  console.warn(`[railway-start] Unknown service "${service}", defaulting to API`);
-  run('node dist/apps/api/main.js');
 }
