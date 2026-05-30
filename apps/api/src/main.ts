@@ -2,7 +2,8 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
-import * as cookieParser from 'cookie-parser';
+const cookieParser = require('cookie-parser');
+
 import { AppModule } from './app/app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -22,7 +23,9 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // ── CORS ───────────────────────────────────────────────────────────────────
-  const corsOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000,http://localhost:3001')
+  const corsOrigins = (
+    process.env.CORS_ORIGINS ?? 'http://localhost:3000,http://localhost:3001'
+  )
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean);
@@ -31,7 +34,12 @@ async function bootstrap() {
     origin: corsOrigins,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
-    exposedHeaders: ['X-Request-ID', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After'],
+    exposedHeaders: [
+      'X-Request-ID',
+      'X-RateLimit-Limit',
+      'X-RateLimit-Remaining',
+      'Retry-After',
+    ],
     credentials: true,
     maxAge: 86400,
   });
@@ -63,7 +71,9 @@ async function bootstrap() {
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()
       .setTitle('MapleLoomHandmade API')
-      .setDescription('REST API for MapleLoomHandmade — personalized gifts e-commerce')
+      .setDescription(
+        'REST API for MapleLoomHandmade — personalized gifts e-commerce',
+      )
       .setVersion('1.0')
       .addBearerAuth(
         { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
@@ -100,7 +110,10 @@ async function bootstrap() {
   await app.listen(port);
 
   Logger.log(`API running on http://localhost:${port}/api/v1`, 'Bootstrap');
-  Logger.log(`Environment: ${process.env.NODE_ENV ?? 'development'}`, 'Bootstrap');
+  Logger.log(
+    `Environment: ${process.env.NODE_ENV ?? 'development'}`,
+    'Bootstrap',
+  );
 }
 
 bootstrap();

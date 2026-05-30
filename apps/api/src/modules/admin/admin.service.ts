@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { PaginatedResult, paginatedResponse } from '../../common/dto/paginated-response.dto';
+import {
+  PaginatedResult,
+  paginatedResponse,
+} from '../../common/dto/paginated-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import {
   DashboardKPIsDto,
@@ -36,7 +39,9 @@ export class AdminService {
       }),
       this.prisma.order.count(),
       this.prisma.user.count({ where: { role: 'CUSTOMER', deletedAt: null } }),
-      this.prisma.order.count({ where: { status: OrderStatus.PENDING_PAYMENT } }),
+      this.prisma.order.count({
+        where: { status: OrderStatus.PENDING_PAYMENT },
+      }),
       this.prisma.order.count({ where: { status: OrderStatus.IN_PRODUCTION } }),
       this.prisma.review.count({ where: { status: ReviewStatus.PENDING } }),
       this.prisma.payment.aggregate({
@@ -45,7 +50,11 @@ export class AdminService {
       }),
       this.prisma.order.count({ where: { createdAt: { gte: startOfMonth } } }),
       this.prisma.user.count({
-        where: { role: 'CUSTOMER', deletedAt: null, createdAt: { gte: startOfMonth } },
+        where: {
+          role: 'CUSTOMER',
+          deletedAt: null,
+          createdAt: { gte: startOfMonth },
+        },
       }),
     ]);
 
@@ -162,7 +171,14 @@ export class AdminService {
       this.prisma.review.findMany({
         where: { status: ReviewStatus.PENDING },
         include: {
-          user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              avatarUrl: true,
+            },
+          },
           product: { select: { name: true, slug: true } },
         },
         orderBy: { createdAt: 'asc' },

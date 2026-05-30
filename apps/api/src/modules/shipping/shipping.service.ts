@@ -23,7 +23,9 @@ export class ShippingService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Returns all active shipping methods available for a given country. */
-  async getMethodsByCountry(countryCode: string): Promise<ShippingEstimateDto[]> {
+  async getMethodsByCountry(
+    countryCode: string,
+  ): Promise<ShippingEstimateDto[]> {
     const zones = await this.prisma.shippingZone.findMany({
       where: { countries: { has: countryCode } },
       include: { methods: { where: { isActive: true } } },
@@ -115,7 +117,11 @@ export class ShippingService {
       where: { id },
       include: { methods: { orderBy: { price: 'asc' } } },
     });
-    if (!zone) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Shipping zone not found' });
+    if (!zone)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Shipping zone not found',
+      });
     return zone;
   }
 
@@ -126,11 +132,17 @@ export class ShippingService {
     });
   }
 
-  async updateZone(id: string, dto: UpdateShippingZoneDto): Promise<ZoneWithMethods> {
+  async updateZone(
+    id: string,
+    dto: UpdateShippingZoneDto,
+  ): Promise<ZoneWithMethods> {
     await this.getZoneById(id);
     return this.prisma.shippingZone.update({
       where: { id },
-      data: { ...(dto.name && { name: dto.name }), ...(dto.countries && { countries: dto.countries }) },
+      data: {
+        ...(dto.name && { name: dto.name }),
+        ...(dto.countries && { countries: dto.countries }),
+      },
       include: { methods: true },
     });
   }
@@ -150,7 +162,10 @@ export class ShippingService {
     });
   }
 
-  async createMethod(zoneId: string, dto: CreateShippingMethodDto): Promise<ShippingMethod> {
+  async createMethod(
+    zoneId: string,
+    dto: CreateShippingMethodDto,
+  ): Promise<ShippingMethod> {
     await this.getZoneById(zoneId);
     return this.prisma.shippingMethod.create({
       data: {
@@ -166,9 +181,18 @@ export class ShippingService {
     });
   }
 
-  async updateMethod(id: string, dto: UpdateShippingMethodDto): Promise<ShippingMethod> {
-    const existing = await this.prisma.shippingMethod.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Shipping method not found' });
+  async updateMethod(
+    id: string,
+    dto: UpdateShippingMethodDto,
+  ): Promise<ShippingMethod> {
+    const existing = await this.prisma.shippingMethod.findUnique({
+      where: { id },
+    });
+    if (!existing)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Shipping method not found',
+      });
 
     return this.prisma.shippingMethod.update({
       where: { id },
@@ -176,7 +200,9 @@ export class ShippingService {
         ...(dto.name !== undefined && { name: dto.name }),
         ...(dto.carrier !== undefined && { carrier: dto.carrier }),
         ...(dto.price !== undefined && { price: dto.price }),
-        ...(dto.freeShippingOver !== undefined && { freeShippingOver: dto.freeShippingOver }),
+        ...(dto.freeShippingOver !== undefined && {
+          freeShippingOver: dto.freeShippingOver,
+        }),
         ...(dto.minDays !== undefined && { minDays: dto.minDays }),
         ...(dto.maxDays !== undefined && { maxDays: dto.maxDays }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
@@ -185,18 +211,28 @@ export class ShippingService {
   }
 
   async deleteMethod(id: string): Promise<void> {
-    const existing = await this.prisma.shippingMethod.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Shipping method not found' });
+    const existing = await this.prisma.shippingMethod.findUnique({
+      where: { id },
+    });
+    if (!existing)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Shipping method not found',
+      });
     await this.prisma.shippingMethod.delete({ where: { id } });
   }
 
   /** Returns the carrier-specific tracking URL for a given tracking number. */
   buildTrackingUrl(carrier: string, trackingNumber: string): string {
     const c = carrier.toUpperCase();
-    if (c === 'USPS') return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${trackingNumber}`;
-    if (c === 'FEDEX') return `https://www.fedex.com/fedextrack/?trknbr=${trackingNumber}`;
-    if (c === 'UPS') return `https://www.ups.com/track?tracknum=${trackingNumber}`;
-    if (c === 'DHL') return `https://www.dhl.com/en/express/tracking.html?AWB=${trackingNumber}`;
+    if (c === 'USPS')
+      return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${trackingNumber}`;
+    if (c === 'FEDEX')
+      return `https://www.fedex.com/fedextrack/?trknbr=${trackingNumber}`;
+    if (c === 'UPS')
+      return `https://www.ups.com/track?tracknum=${trackingNumber}`;
+    if (c === 'DHL')
+      return `https://www.dhl.com/en/express/tracking.html?AWB=${trackingNumber}`;
     return `https://google.com/search?q=${encodeURIComponent(carrier)}+tracking+${trackingNumber}`;
   }
 }

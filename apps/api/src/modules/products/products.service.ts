@@ -7,18 +7,35 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { RedisService, CacheKeys, CacheTtl } from '../../common/services/redis.service';
+import {
+  RedisService,
+  CacheKeys,
+  CacheTtl,
+} from '../../common/services/redis.service';
 import { StorageService } from '../../common/services/storage.service';
 import { ProductQueryDto, ProductSortBy } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductListItemDto } from './dto/product-list-item.dto';
-import { ProductResponseDto, VariantResponseDto, ProductImageResponseDto, ProductTagResponseDto } from './dto/product-response.dto';
-import { PaginatedResult, paginatedResponse } from '../../common/dto/paginated-response.dto';
+import {
+  ProductResponseDto,
+  VariantResponseDto,
+  ProductImageResponseDto,
+  ProductTagResponseDto,
+} from './dto/product-response.dto';
+import {
+  PaginatedResult,
+  paginatedResponse,
+} from '../../common/dto/paginated-response.dto';
 
 const IN_DEMAND_KEY = (productId: string) => `product:demand:${productId}`;
-const VIEW_LOCK_KEY = (slug: string, lockId: string) => `product:view:lock:${slug}:${lockId}`;
-const ALLOWED_IMAGE_MIMETYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const VIEW_LOCK_KEY = (slug: string, lockId: string) =>
+  `product:view:lock:${slug}:${lockId}`;
+const ALLOWED_IMAGE_MIMETYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
 const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
 @Injectable()
@@ -33,7 +50,9 @@ export class ProductsService {
 
   // ─── Public — list ─────────────────────────────────────────────────────────
 
-  async findAll(query: ProductQueryDto): Promise<PaginatedResult<ProductListItemDto>> {
+  async findAll(
+    query: ProductQueryDto,
+  ): Promise<PaginatedResult<ProductListItemDto>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 24;
 
@@ -48,7 +67,11 @@ export class ProductsService {
         take: limit,
         include: {
           category: { select: { id: true, name: true, slug: true } },
-          images: { where: { isPrimary: true }, select: { url: true }, take: 1 },
+          images: {
+            where: { isPrimary: true },
+            select: { url: true },
+            take: 1,
+          },
           _count: { select: { reviews: { where: { status: 'APPROVED' } } } },
         },
       }),
@@ -64,53 +87,71 @@ export class ProductsService {
         _avg: { rating: true },
         _count: { rating: true },
       }),
-      Promise.all(productIds.map((id) => this.redis.get<number>(IN_DEMAND_KEY(id)))),
+      Promise.all(
+        productIds.map((id) => this.redis.get<number>(IN_DEMAND_KEY(id))),
+      ),
     ]);
 
     const ratingMap = new Map(
-      ratingRows.map((r) => [r.productId, r._count.rating ? Math.round((r._avg.rating ?? 0) * 10) / 10 : null]),
+      ratingRows.map((r) => [
+        r.productId,
+        r._count.rating ? Math.round((r._avg.rating ?? 0) * 10) / 10 : null,
+      ]),
     );
-    const inDemandMap = new Map(productIds.map((id, i) => [id, inDemandEntries[i] ?? 0]));
+    const inDemandMap = new Map(
+      productIds.map((id, i) => [id, inDemandEntries[i] ?? 0]),
+    );
 
-    const data = products.map((p) => ({
-      id: p.id,
-      name: p.name,
-      slug: p.slug,
-      sku: p.sku,
-      basePrice: Number(p.basePrice),
-      compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
-      primaryImageUrl: p.images[0]?.url ?? null,
-      categoryId: p.categoryId,
-      categoryName: p.category.name,
-      isPersonalizable: p.isPersonalizable,
-      isFeatured: p.isFeatured,
-      viewCount: p.viewCount,
-      soldCount: p.soldCount,
-      averageRating: ratingMap.get(p.id) ?? null,
-      reviewCount: p._count.reviews,
-      inDemandCount: inDemandMap.get(p.id) ?? 0,
-      createdAt: p.createdAt,
-    } satisfies ProductListItemDto));
+    const data = products.map(
+      (p) =>
+        ({
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          sku: p.sku,
+          basePrice: Number(p.basePrice),
+          compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
+          primaryImageUrl: p.images[0]?.url ?? null,
+          categoryId: p.categoryId,
+          categoryName: p.category.name,
+          isPersonalizable: p.isPersonalizable,
+          isFeatured: p.isFeatured,
+          viewCount: p.viewCount,
+          soldCount: p.soldCount,
+          averageRating: ratingMap.get(p.id) ?? null,
+          reviewCount: p._count.reviews,
+          inDemandCount: inDemandMap.get(p.id) ?? 0,
+          createdAt: p.createdAt,
+        }) satisfies ProductListItemDto,
+    );
 
     return paginatedResponse<ProductListItemDto>(data, page, limit, total);
   }
 
   // ─── Public — detail ───────────────────────────────────────────────────────
 
-  async findBySlug(slug: string, viewLockId?: string): Promise<ProductResponseDto> {
+  async findBySlug(
+    slug: string,
+    viewLockId?: string,
+  ): Promise<ProductResponseDto> {
     const product = await this.prisma.product.findFirst({
       where: { slug, isActive: true },
       include: {
         category: { select: { id: true, name: true, slug: true } },
         variants: { orderBy: { sortOrder: 'asc' } },
         images: { orderBy: { sortOrder: 'asc' } },
-        tags: { include: { tag: { select: { id: true, name: true, slug: true } } } },
+        tags: {
+          include: { tag: { select: { id: true, name: true, slug: true } } },
+        },
         _count: { select: { reviews: { where: { status: 'APPROVED' } } } },
       },
     });
 
     if (!product) {
-      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Product not found',
+      });
     }
 
     // Debounced view count — one increment per session/IP per hour
@@ -120,12 +161,20 @@ export class ProductsService {
       if (!seen) {
         await this.redis.set(lockKey, 1, 3600);
         await this.prisma.product
-          .update({ where: { id: product.id }, data: { viewCount: { increment: 1 } } })
-          .catch((e: Error) => this.logger.warn(`Failed to increment view count for "${slug}": ${e.message}`));
+          .update({
+            where: { id: product.id },
+            data: { viewCount: { increment: 1 } },
+          })
+          .catch((e: Error) =>
+            this.logger.warn(
+              `Failed to increment view count for "${slug}": ${e.message}`,
+            ),
+          );
       }
     }
 
-    const inDemandCount = (await this.redis.get<number>(IN_DEMAND_KEY(product.id))) ?? 0;
+    const inDemandCount =
+      (await this.redis.get<number>(IN_DEMAND_KEY(product.id))) ?? 0;
     const averageRating = await this.getAverageRating(product.id);
 
     return this.mapToProductResponse(
@@ -150,7 +199,9 @@ export class ProductsService {
         id: { not: productId },
         OR: [
           { categoryId: product.categoryId },
-          ...(tagIds.length ? [{ tags: { some: { tagId: { in: tagIds } } } }] : []),
+          ...(tagIds.length
+            ? [{ tags: { some: { tagId: { in: tagIds } } } }]
+            : []),
         ],
       },
       include: {
@@ -183,17 +234,37 @@ export class ProductsService {
   // ─── Admin — CRUD ──────────────────────────────────────────────────────────
 
   async create(dto: CreateProductDto): Promise<ProductResponseDto> {
-    if (dto.compareAtPrice !== undefined && dto.compareAtPrice <= dto.basePrice) {
-      throw new BadRequestException({ code: 'ERR_VALIDATION', message: 'compareAtPrice must be greater than basePrice' });
+    if (
+      dto.compareAtPrice !== undefined &&
+      dto.compareAtPrice <= dto.basePrice
+    ) {
+      throw new BadRequestException({
+        code: 'ERR_VALIDATION',
+        message: 'compareAtPrice must be greater than basePrice',
+      });
     }
 
-    const skuExists = await this.prisma.product.findUnique({ where: { sku: dto.sku } });
-    if (skuExists) throw new ConflictException({ code: 'ERR_SKU_TAKEN', message: 'SKU is already in use' });
+    const skuExists = await this.prisma.product.findUnique({
+      where: { sku: dto.sku },
+    });
+    if (skuExists)
+      throw new ConflictException({
+        code: 'ERR_SKU_TAKEN',
+        message: 'SKU is already in use',
+      });
 
-    const category = await this.prisma.category.findUnique({ where: { id: dto.categoryId } });
-    if (!category) throw new BadRequestException({ code: 'ERR_NOT_FOUND', message: 'Category not found' });
+    const category = await this.prisma.category.findUnique({
+      where: { id: dto.categoryId },
+    });
+    if (!category)
+      throw new BadRequestException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Category not found',
+      });
 
-    const slug = await this.resolveUniqueProductSlug(dto.slug ?? `${dto.name}-${dto.sku}`);
+    const slug = await this.resolveUniqueProductSlug(
+      dto.slug ?? `${dto.name}-${dto.sku}`,
+    );
 
     const product = await this.prisma.product.create({
       data: {
@@ -209,50 +280,104 @@ export class ProductsService {
         isFeatured: dto.isFeatured ?? false,
         processingDays: dto.processingDays ?? 3,
         categoryId: dto.categoryId,
-        customizationConfig: (dto.customizationConfig as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+        customizationConfig:
+          (dto.customizationConfig as Prisma.InputJsonValue) ?? Prisma.JsonNull,
         variants: dto.variants?.length
-          ? { create: dto.variants.map((v, i) => ({ name: v.name, options: v.options as Prisma.InputJsonValue, price: v.price, sku: v.sku, isDefault: v.isDefault ?? i === 0, sortOrder: v.sortOrder ?? i })) }
+          ? {
+              create: dto.variants.map((v, i) => ({
+                name: v.name,
+                options: v.options as Prisma.InputJsonValue,
+                price: v.price,
+                sku: v.sku,
+                isDefault: v.isDefault ?? i === 0,
+                sortOrder: v.sortOrder ?? i,
+              })),
+            }
           : undefined,
         tags: dto.tagIds?.length
           ? { create: dto.tagIds.map((tagId) => ({ tagId })) }
           : undefined,
         collections: dto.collectionIds?.length
-          ? { create: dto.collectionIds.map((collectionId, i) => ({ collectionId, sortOrder: i })) }
+          ? {
+              create: dto.collectionIds.map((collectionId, i) => ({
+                collectionId,
+                sortOrder: i,
+              })),
+            }
           : undefined,
       },
       include: this.fullProductInclude(),
     });
 
     await this.redis.invalidatePattern('products:list:*');
-    return this.mapToProductResponse(product as Parameters<typeof this.mapToProductResponse>[0], 0, null);
+    return this.mapToProductResponse(
+      product as Parameters<typeof this.mapToProductResponse>[0],
+      0,
+      null,
+    );
   }
 
   async update(id: string, dto: UpdateProductDto): Promise<ProductResponseDto> {
     await this.requireProduct(id);
 
-    if (dto.compareAtPrice !== undefined && dto.basePrice !== undefined && dto.compareAtPrice <= dto.basePrice) {
-      throw new BadRequestException({ code: 'ERR_VALIDATION', message: 'compareAtPrice must be greater than basePrice' });
+    if (
+      dto.compareAtPrice !== undefined &&
+      dto.basePrice !== undefined &&
+      dto.compareAtPrice <= dto.basePrice
+    ) {
+      throw new BadRequestException({
+        code: 'ERR_VALIDATION',
+        message: 'compareAtPrice must be greater than basePrice',
+      });
     }
 
     const data: Prisma.ProductUpdateInput = {};
-    const fields: (keyof UpdateProductDto)[] = ['name', 'description', 'shortDescription', 'basePrice', 'compareAtPrice', 'isPersonalizable', 'isActive', 'isFeatured', 'processingDays'];
+    const fields: (keyof UpdateProductDto)[] = [
+      'name',
+      'description',
+      'shortDescription',
+      'basePrice',
+      'compareAtPrice',
+      'isPersonalizable',
+      'isActive',
+      'isFeatured',
+      'processingDays',
+    ];
     for (const f of fields) {
       if (dto[f] !== undefined) (data as Record<string, unknown>)[f] = dto[f];
     }
-    if (dto.categoryId !== undefined) data.category = { connect: { id: dto.categoryId } };
-    if (dto.customizationConfig !== undefined) data.customizationConfig = dto.customizationConfig as Prisma.InputJsonValue;
+    if (dto.categoryId !== undefined)
+      data.category = { connect: { id: dto.categoryId } };
+    if (dto.customizationConfig !== undefined)
+      data.customizationConfig =
+        dto.customizationConfig as Prisma.InputJsonValue;
 
     if (dto.slug !== undefined) {
-      const conflict = await this.prisma.product.findFirst({ where: { slug: dto.slug, NOT: { id } } });
-      if (conflict) throw new ConflictException({ code: 'ERR_SLUG_TAKEN', message: 'Slug is already in use' });
+      const conflict = await this.prisma.product.findFirst({
+        where: { slug: dto.slug, NOT: { id } },
+      });
+      if (conflict)
+        throw new ConflictException({
+          code: 'ERR_SLUG_TAKEN',
+          message: 'Slug is already in use',
+        });
       data.slug = dto.slug;
     }
 
     if (dto.tagIds !== undefined) {
-      data.tags = { deleteMany: {}, create: dto.tagIds.map((tagId) => ({ tagId })) };
+      data.tags = {
+        deleteMany: {},
+        create: dto.tagIds.map((tagId) => ({ tagId })),
+      };
     }
     if (dto.collectionIds !== undefined) {
-      data.collections = { deleteMany: {}, create: dto.collectionIds.map((collectionId, i) => ({ collectionId, sortOrder: i })) };
+      data.collections = {
+        deleteMany: {},
+        create: dto.collectionIds.map((collectionId, i) => ({
+          collectionId,
+          sortOrder: i,
+        })),
+      };
     }
 
     const product = await this.prisma.product.update({
@@ -264,13 +389,22 @@ export class ProductsService {
     await this.redis.invalidatePattern('products:list:*');
     await this.redis.del(CacheKeys.product(product.slug));
 
-    const inDemandCount = (await this.redis.get<number>(IN_DEMAND_KEY(id))) ?? 0;
-    return this.mapToProductResponse(product as Parameters<typeof this.mapToProductResponse>[0], inDemandCount, await this.getAverageRating(id));
+    const inDemandCount =
+      (await this.redis.get<number>(IN_DEMAND_KEY(id))) ?? 0;
+    return this.mapToProductResponse(
+      product as Parameters<typeof this.mapToProductResponse>[0],
+      inDemandCount,
+      await this.getAverageRating(id),
+    );
   }
 
   async delete(id: string): Promise<void> {
     await this.requireProduct(id);
-    const p = await this.prisma.product.update({ where: { id }, data: { isActive: false }, select: { slug: true } });
+    const p = await this.prisma.product.update({
+      where: { id },
+      data: { isActive: false },
+      select: { slug: true },
+    });
     await this.redis.invalidatePattern('products:list:*');
     await this.redis.del(CacheKeys.product(p.slug));
   }
@@ -280,7 +414,11 @@ export class ProductsService {
       where: { id },
       include: { variants: true, tags: true },
     });
-    if (!source) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+    if (!source)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Product not found',
+      });
 
     const newSku = `${source.sku}-COPY-${Date.now().toString(36).toUpperCase()}`;
     const newName = `${source.name} (Copy)`;
@@ -301,58 +439,106 @@ export class ProductsService {
         processingDays: source.processingDays,
         categoryId: source.categoryId,
         customizationConfig: source.customizationConfig ?? Prisma.JsonNull,
-        variants: { create: source.variants.map((v) => ({ name: v.name, options: v.options as Prisma.InputJsonValue, price: v.price, sku: v.sku ? `${v.sku}-COPY` : undefined, isDefault: v.isDefault, sortOrder: v.sortOrder })) },
+        variants: {
+          create: source.variants.map((v) => ({
+            name: v.name,
+            options: v.options as Prisma.InputJsonValue,
+            price: v.price,
+            sku: v.sku ? `${v.sku}-COPY` : undefined,
+            isDefault: v.isDefault,
+            sortOrder: v.sortOrder,
+          })),
+        },
         tags: { create: source.tags.map((t) => ({ tagId: t.tagId })) },
       },
       include: this.fullProductInclude(),
     });
 
-    return this.mapToProductResponse(product as Parameters<typeof this.mapToProductResponse>[0], 0, null);
+    return this.mapToProductResponse(
+      product as Parameters<typeof this.mapToProductResponse>[0],
+      0,
+      null,
+    );
   }
 
   // ─── Admin — Images ────────────────────────────────────────────────────────
 
-  async uploadImages(productId: string, files: Express.Multer.File[]): Promise<ProductImageResponseDto[]> {
+  async uploadImages(
+    productId: string,
+    files: Express.Multer.File[],
+  ): Promise<ProductImageResponseDto[]> {
     await this.requireProduct(productId);
 
     for (const file of files) {
       if (!ALLOWED_IMAGE_MIMETYPES.has(file.mimetype))
-        throw new BadRequestException({ code: 'ERR_INVALID_FILE_TYPE', message: `${file.originalname}: only JPEG, PNG, WebP allowed` });
+        throw new BadRequestException({
+          code: 'ERR_INVALID_FILE_TYPE',
+          message: `${file.originalname}: only JPEG, PNG, WebP allowed`,
+        });
       if (file.size > IMAGE_MAX_BYTES)
-        throw new BadRequestException({ code: 'ERR_FILE_TOO_LARGE', message: `${file.originalname}: max 10 MB per image` });
+        throw new BadRequestException({
+          code: 'ERR_FILE_TOO_LARGE',
+          message: `${file.originalname}: max 10 MB per image`,
+        });
     }
 
-    const existingCount = await this.prisma.productImage.count({ where: { productId } });
-    const hasPrimary = await this.prisma.productImage.count({ where: { productId, isPrimary: true } });
+    const existingCount = await this.prisma.productImage.count({
+      where: { productId },
+    });
+    const hasPrimary = await this.prisma.productImage.count({
+      where: { productId, isPrimary: true },
+    });
     let primarySet = hasPrimary > 0;
 
     const created: ProductImageResponseDto[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const key = this.storage.generateKey(`products/${productId}/images`, file.originalname);
+      const key = this.storage.generateKey(
+        `products/${productId}/images`,
+        file.originalname,
+      );
       await this.storage.uploadFile(file.buffer, key, file.mimetype);
       const url = this.storage.getPublicUrl(key);
       const isFirst = !primarySet && i === 0;
 
       const image = await this.prisma.productImage.create({
-        data: { productId, url, isPrimary: isFirst, sortOrder: existingCount + i },
+        data: {
+          productId,
+          url,
+          isPrimary: isFirst,
+          sortOrder: existingCount + i,
+        },
       });
       if (isFirst) primarySet = true;
 
-      created.push({ id: image.id, url: image.url, altText: image.altText, isPrimary: image.isPrimary, sortOrder: image.sortOrder });
+      created.push({
+        id: image.id,
+        url: image.url,
+        altText: image.altText,
+        isPrimary: image.isPrimary,
+        sortOrder: image.sortOrder,
+      });
     }
 
-    const { slug } = (await this.prisma.product.findUnique({ where: { id: productId }, select: { slug: true } }))!;
+    const { slug } = (await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { slug: true },
+    }))!;
     await this.redis.del(CacheKeys.product(slug));
 
     return created;
   }
 
   async deleteImage(productId: string, imageId: string): Promise<void> {
-    const image = await this.prisma.productImage.findUnique({ where: { id: imageId } });
+    const image = await this.prisma.productImage.findUnique({
+      where: { id: imageId },
+    });
     if (!image || image.productId !== productId)
-      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Image not found' });
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Image not found',
+      });
 
     const key = this.storage.extractKey(image.url);
 
@@ -361,18 +547,34 @@ export class ProductsService {
     await this.prisma.$transaction(async (tx) => {
       await tx.productImage.delete({ where: { id: imageId } });
       if (image.isPrimary) {
-        const next = await tx.productImage.findFirst({ where: { productId }, orderBy: { sortOrder: 'asc' } });
-        if (next) await tx.productImage.update({ where: { id: next.id }, data: { isPrimary: true } });
+        const next = await tx.productImage.findFirst({
+          where: { productId },
+          orderBy: { sortOrder: 'asc' },
+        });
+        if (next)
+          await tx.productImage.update({
+            where: { id: next.id },
+            data: { isPrimary: true },
+          });
       }
     });
 
-    await this.storage.deleteFile(key).catch((e: Error) => this.logger.warn(`S3 delete failed for key "${key}": ${e.message}`));
+    await this.storage
+      .deleteFile(key)
+      .catch((e: Error) =>
+        this.logger.warn(`S3 delete failed for key "${key}": ${e.message}`),
+      );
   }
 
   async reorderImages(productId: string, orderedIds: string[]): Promise<void> {
     await this.requireProduct(productId);
     await this.prisma.$transaction(
-      orderedIds.map((imgId, idx) => this.prisma.productImage.update({ where: { id: imgId }, data: { sortOrder: idx } })),
+      orderedIds.map((imgId, idx) =>
+        this.prisma.productImage.update({
+          where: { id: imgId },
+          data: { sortOrder: idx },
+        }),
+      ),
     );
   }
 
@@ -383,7 +585,9 @@ export class ProductsService {
     const now = new Date();
     const midnight = new Date(now);
     midnight.setHours(24, 0, 0, 0);
-    const secondsUntilMidnight = Math.floor((midnight.getTime() - now.getTime()) / 1000);
+    const secondsUntilMidnight = Math.floor(
+      (midnight.getTime() - now.getTime()) / 1000,
+    );
     const ttl = secondsUntilMidnight + 86400; // keep for 24h past midnight as buffer
 
     const existing = await this.redis.get<number>(key);
@@ -396,21 +600,31 @@ export class ProductsService {
 
   // ─── Private helpers ───────────────────────────────────────────────────────
 
-  private async buildWhereClause(query: ProductQueryDto): Promise<Prisma.ProductWhereInput> {
+  private async buildWhereClause(
+    query: ProductQueryDto,
+  ): Promise<Prisma.ProductWhereInput> {
     const where: Prisma.ProductWhereInput = {};
 
-    where.isActive = query.includeInactive ? (query.isActive ?? undefined) : true;
+    where.isActive = query.includeInactive
+      ? (query.isActive ?? undefined)
+      : true;
     if (query.isFeatured !== undefined) where.isFeatured = query.isFeatured;
 
     if (query.categoryId) {
       where.categoryId = query.categoryId;
     } else if (query.category) {
-      const cat = await this.prisma.category.findUnique({ where: { slug: query.category }, select: { id: true } });
+      const cat = await this.prisma.category.findUnique({
+        where: { slug: query.category },
+        select: { id: true },
+      });
       if (cat) where.categoryId = cat.id;
     }
 
     if (query.collection) {
-      const col = await this.prisma.collection.findUnique({ where: { slug: query.collection }, select: { id: true } });
+      const col = await this.prisma.collection.findUnique({
+        where: { slug: query.collection },
+        select: { id: true },
+      });
       if (col) where.collections = { some: { collectionId: col.id } };
     }
 
@@ -428,14 +642,24 @@ export class ProductsService {
     return where;
   }
 
-  private buildOrderBy(sort?: ProductSortBy): Prisma.ProductOrderByWithRelationInput | Prisma.ProductOrderByWithRelationInput[] {
+  private buildOrderBy(
+    sort?: ProductSortBy,
+  ):
+    | Prisma.ProductOrderByWithRelationInput
+    | Prisma.ProductOrderByWithRelationInput[] {
     switch (sort) {
-      case ProductSortBy.PRICE_ASC: return { basePrice: 'asc' };
-      case ProductSortBy.PRICE_DESC: return { basePrice: 'desc' };
-      case ProductSortBy.BESTSELLER: return { soldCount: 'desc' };
-      case ProductSortBy.FEATURED: return [{ isFeatured: 'desc' }, { createdAt: 'desc' }];
-      case ProductSortBy.RATING: return { soldCount: 'desc' }; // DB approximation; exact rating sort needs raw SQL
-      default: return { createdAt: 'desc' };
+      case ProductSortBy.PRICE_ASC:
+        return { basePrice: 'asc' };
+      case ProductSortBy.PRICE_DESC:
+        return { basePrice: 'desc' };
+      case ProductSortBy.BESTSELLER:
+        return { soldCount: 'desc' };
+      case ProductSortBy.FEATURED:
+        return [{ isFeatured: 'desc' }, { createdAt: 'desc' }];
+      case ProductSortBy.RATING:
+        return { soldCount: 'desc' }; // DB approximation; exact rating sort needs raw SQL
+      default:
+        return { createdAt: 'desc' };
     }
   }
 
@@ -450,15 +674,29 @@ export class ProductsService {
   }
 
   private async requireProduct(id: string): Promise<void> {
-    const p = await this.prisma.product.findUnique({ where: { id }, select: { id: true } });
-    if (!p) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+    const p = await this.prisma.product.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!p)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Product not found',
+      });
   }
 
-  private async resolveUniqueProductSlug(source: string, excludeId?: string): Promise<string> {
+  private async resolveUniqueProductSlug(
+    source: string,
+    excludeId?: string,
+  ): Promise<string> {
     const base = this.slugify(source).substring(0, 200);
     let slug = base;
     let counter = 2;
-    while (await this.prisma.product.findFirst({ where: { slug, NOT: excludeId ? { id: excludeId } : undefined } })) {
+    while (
+      await this.prisma.product.findFirst({
+        where: { slug, NOT: excludeId ? { id: excludeId } : undefined },
+      })
+    ) {
       slug = `${base}-${counter++}`;
     }
     return slug;
@@ -480,20 +718,34 @@ export class ProductsService {
       category: { select: { id: true, name: true, slug: true } },
       variants: { orderBy: { sortOrder: 'asc' as const } },
       images: { orderBy: { sortOrder: 'asc' as const } },
-      tags: { include: { tag: { select: { id: true, name: true, slug: true } } } },
-      _count: { select: { reviews: { where: { status: 'APPROVED' as const } } } },
+      tags: {
+        include: { tag: { select: { id: true, name: true, slug: true } } },
+      },
+      _count: {
+        select: { reviews: { where: { status: 'APPROVED' as const } } },
+      },
     };
   }
 
-  private async toListItems(products: Array<{
-    id: string; name: string; slug: string; sku: string;
-    basePrice: unknown; compareAtPrice: unknown;
-    images: { url: string }[];
-    categoryId: string; category: { id: string; name: string; slug: string };
-    isPersonalizable: boolean; isFeatured: boolean;
-    viewCount: number; soldCount: number;
-    _count: { reviews: number }; createdAt: Date;
-  }>): Promise<ProductListItemDto[]> {
+  private async toListItems(
+    products: Array<{
+      id: string;
+      name: string;
+      slug: string;
+      sku: string;
+      basePrice: unknown;
+      compareAtPrice: unknown;
+      images: { url: string }[];
+      categoryId: string;
+      category: { id: string; name: string; slug: string };
+      isPersonalizable: boolean;
+      isFeatured: boolean;
+      viewCount: number;
+      soldCount: number;
+      _count: { reviews: number };
+      createdAt: Date;
+    }>,
+  ): Promise<ProductListItemDto[]> {
     if (products.length === 0) return [];
 
     const ids = products.map((p) => p.id);
@@ -508,9 +760,14 @@ export class ProductsService {
     ]);
 
     const ratingMap = new Map(
-      ratingRows.map((r) => [r.productId, r._count.rating ? Math.round((r._avg.rating ?? 0) * 10) / 10 : null]),
+      ratingRows.map((r) => [
+        r.productId,
+        r._count.rating ? Math.round((r._avg.rating ?? 0) * 10) / 10 : null,
+      ]),
     );
-    const inDemandMap = new Map(ids.map((id, i) => [id, inDemandEntries[i] ?? 0]));
+    const inDemandMap = new Map(
+      ids.map((id, i) => [id, inDemandEntries[i] ?? 0]),
+    );
 
     return products.map((p) => ({
       id: p.id,
@@ -535,14 +792,40 @@ export class ProductsService {
 
   private mapToProductResponse(
     product: {
-      id: string; name: string; slug: string; sku: string; description: string;
-      shortDescription: string | null; basePrice: unknown; compareAtPrice: unknown;
-      isPersonalizable: boolean; isActive: boolean; isFeatured: boolean;
-      viewCount: number; soldCount: number; processingDays: number;
-      customizationConfig: unknown; createdAt: Date; updatedAt: Date;
+      id: string;
+      name: string;
+      slug: string;
+      sku: string;
+      description: string;
+      shortDescription: string | null;
+      basePrice: unknown;
+      compareAtPrice: unknown;
+      isPersonalizable: boolean;
+      isActive: boolean;
+      isFeatured: boolean;
+      viewCount: number;
+      soldCount: number;
+      processingDays: number;
+      customizationConfig: unknown;
+      createdAt: Date;
+      updatedAt: Date;
       category: { id: string; name: string; slug: string };
-      variants: { id: string; name: string; options: unknown; price: unknown; sku: string | null; isDefault: boolean; sortOrder: number }[];
-      images: { id: string; url: string; altText: string | null; isPrimary: boolean; sortOrder: number }[];
+      variants: {
+        id: string;
+        name: string;
+        options: unknown;
+        price: unknown;
+        sku: string | null;
+        isDefault: boolean;
+        sortOrder: number;
+      }[];
+      images: {
+        id: string;
+        url: string;
+        altText: string | null;
+        isPrimary: boolean;
+        sortOrder: number;
+      }[];
       tags: { tag: { id: string; name: string; slug: string } }[];
       _count: { reviews: number };
     },
@@ -557,7 +840,9 @@ export class ProductsService {
       description: product.description,
       shortDescription: product.shortDescription,
       basePrice: Number(product.basePrice),
-      compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null,
+      compareAtPrice: product.compareAtPrice
+        ? Number(product.compareAtPrice)
+        : null,
       isPersonalizable: product.isPersonalizable,
       isActive: product.isActive,
       isFeatured: product.isFeatured,
@@ -565,10 +850,31 @@ export class ProductsService {
       soldCount: product.soldCount,
       processingDays: product.processingDays,
       category: product.category,
-      variants: product.variants.map((v) => ({ id: v.id, name: v.name, options: v.options as Record<string, string>, price: Number(v.price), sku: v.sku, isDefault: v.isDefault, sortOrder: v.sortOrder })),
-      images: product.images.map((img) => ({ id: img.id, url: img.url, altText: img.altText, isPrimary: img.isPrimary, sortOrder: img.sortOrder })),
-      tags: product.tags.map((pt) => ({ id: pt.tag.id, name: pt.tag.name, slug: pt.tag.slug })),
-      customizationConfig: product.customizationConfig as Record<string, unknown> | null,
+      variants: product.variants.map((v) => ({
+        id: v.id,
+        name: v.name,
+        options: v.options as Record<string, string>,
+        price: Number(v.price),
+        sku: v.sku,
+        isDefault: v.isDefault,
+        sortOrder: v.sortOrder,
+      })),
+      images: product.images.map((img) => ({
+        id: img.id,
+        url: img.url,
+        altText: img.altText,
+        isPrimary: img.isPrimary,
+        sortOrder: img.sortOrder,
+      })),
+      tags: product.tags.map((pt) => ({
+        id: pt.tag.id,
+        name: pt.tag.name,
+        slug: pt.tag.slug,
+      })),
+      customizationConfig: product.customizationConfig as Record<
+        string,
+        unknown
+      > | null,
       averageRating,
       reviewCount: product._count.reviews,
       inDemandCount,

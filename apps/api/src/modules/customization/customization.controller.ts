@@ -32,26 +32,40 @@ export class CustomizationController {
   @Post('upload')
   @UseInterceptors(FileInterceptor('image'))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Upload an image for customization (max 10 MB, JPEG/PNG/WebP/HEIC)' })
+  @ApiOperation({
+    summary:
+      'Upload an image for customization (max 10 MB, JPEG/PNG/WebP/HEIC)',
+  })
   async uploadImage(
     @UploadedFile() file: Express.Multer.File,
   ): Promise<UploadedImageDto> {
     if (!file) {
-      throw new BadRequestException({ code: 'ERR_VALIDATION', message: 'No image file provided' });
+      throw new BadRequestException({
+        code: 'ERR_VALIDATION',
+        message: 'No image file provided',
+      });
     }
     return this.customizationService.uploadImage(file);
   }
 
   @Post('remove-background')
-  @ApiOperation({ summary: 'Queue background removal for an uploaded image (async, ~60s)' })
+  @ApiOperation({
+    summary: 'Queue background removal for an uploaded image (async, ~60s)',
+  })
   async removeBackground(
     @Body('tempKey') tempKey: string,
     @Body('draftId') draftId: string,
   ): Promise<{ jobId: string }> {
     if (!tempKey) {
-      throw new BadRequestException({ code: 'ERR_VALIDATION', message: 'tempKey is required' });
+      throw new BadRequestException({
+        code: 'ERR_VALIDATION',
+        message: 'tempKey is required',
+      });
     }
-    return this.customizationService.removeBackground(tempKey, draftId ?? 'temp');
+    return this.customizationService.removeBackground(
+      tempKey,
+      draftId ?? 'temp',
+    );
   }
 
   @Get('jobs/:jobId')
@@ -63,7 +77,9 @@ export class CustomizationController {
   }
 
   @Post('preview')
-  @ApiOperation({ summary: 'Queue preview generation for a customization draft' })
+  @ApiOperation({
+    summary: 'Queue preview generation for a customization draft',
+  })
   async generatePreview(
     @Body() dto: GeneratePreviewDto,
   ): Promise<{ jobId: string }> {
@@ -71,32 +87,51 @@ export class CustomizationController {
   }
 
   @Post('art-style')
-  @ApiOperation({ summary: 'Queue an art style transformation for an uploaded image' })
+  @ApiOperation({
+    summary: 'Queue an art style transformation for an uploaded image',
+  })
   async applyArtStyle(
     @Body('tempKey') tempKey: string,
     @Body('style') style: string,
     @Body('draftId') draftId: string,
   ): Promise<{ jobId: string }> {
     if (!tempKey || !style) {
-      throw new BadRequestException({ code: 'ERR_VALIDATION', message: 'tempKey and style are required' });
+      throw new BadRequestException({
+        code: 'ERR_VALIDATION',
+        message: 'tempKey and style are required',
+      });
     }
-    return this.customizationService.applyArtStyle(tempKey, style, draftId ?? 'temp');
+    return this.customizationService.applyArtStyle(
+      tempKey,
+      style,
+      draftId ?? 'temp',
+    );
   }
 
   @Post('draft')
-  @ApiOperation({ summary: 'Save or update a customization draft (upsert by user/session + product + template)' })
+  @ApiOperation({
+    summary:
+      'Save or update a customization draft (upsert by user/session + product + template)',
+  })
   async saveDraft(
     @Body() dto: SaveDraftDto,
     @CurrentUser() user: JwtPayload | undefined,
     @Req() req: Request,
   ): Promise<CustomizationDraft> {
     const userId = user?.sub ?? null;
-    const sessionId = (req.cookies as Record<string, string>)['cart_session'] ?? null;
-    return this.customizationService.saveCustomizationDraft(userId, sessionId, dto);
+    const sessionId =
+      (req.cookies as Record<string, string>)['cart_session'] ?? null;
+    return this.customizationService.saveCustomizationDraft(
+      userId,
+      sessionId,
+      dto,
+    );
   }
 
   @Get('draft')
-  @ApiOperation({ summary: 'Retrieve the latest customization draft for a product' })
+  @ApiOperation({
+    summary: 'Retrieve the latest customization draft for a product',
+  })
   @ApiQuery({ name: 'productId', required: true })
   async getLastDraft(
     @Query('productId') productId: string,
@@ -104,16 +139,26 @@ export class CustomizationController {
     @Req() req: Request,
   ): Promise<CustomizationDraft | null> {
     if (!productId) {
-      throw new BadRequestException({ code: 'ERR_VALIDATION', message: 'productId is required' });
+      throw new BadRequestException({
+        code: 'ERR_VALIDATION',
+        message: 'productId is required',
+      });
     }
     const userId = user?.sub ?? null;
-    const sessionId = (req.cookies as Record<string, string>)['cart_session'] ?? null;
-    return this.customizationService.getLastCustomization(userId, sessionId, productId);
+    const sessionId =
+      (req.cookies as Record<string, string>)['cart_session'] ?? null;
+    return this.customizationService.getLastCustomization(
+      userId,
+      sessionId,
+      productId,
+    );
   }
 
   @Get('draft/:draftId')
   @ApiOperation({ summary: 'Get a customization draft by ID' })
-  async getDraftById(@Param('draftId') draftId: string): Promise<CustomizationDraft> {
+  async getDraftById(
+    @Param('draftId') draftId: string,
+  ): Promise<CustomizationDraft> {
     return this.customizationService.getDraftById(draftId);
   }
 }

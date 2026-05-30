@@ -6,19 +6,19 @@ import { PromotionsService } from './promotions.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const buildPromotion = (overrides: Record<string, unknown> = {}) => ({
-  id:             'promo-001',
-  code:           'SAVE10',
-  type:           DiscountType.PERCENTAGE,
-  value:          10 as unknown as any,
+  id: 'promo-001',
+  code: 'SAVE10',
+  type: DiscountType.PERCENTAGE,
+  value: 10 as unknown as any,
   minOrderAmount: null,
-  maxUses:        null,
+  maxUses: null,
   maxUsesPerUser: 1,
-  currentUses:    0,
-  isActive:       true,
-  startsAt:       null,
-  expiresAt:      null,
-  description:    '10% off everything',
-  createdAt:      new Date(),
+  currentUses: 0,
+  isActive: true,
+  startsAt: null,
+  expiresAt: null,
+  description: '10% off everything',
+  createdAt: new Date(),
   ...overrides,
 });
 
@@ -35,7 +35,7 @@ describe('PromotionsService', () => {
     }).compile();
 
     service = module.get(PromotionsService);
-    prisma  = module.get(PrismaService);
+    prisma = module.get(PrismaService);
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -47,7 +47,10 @@ describe('PromotionsService', () => {
       prisma.promotion.findUnique.mockResolvedValue(buildPromotion() as any);
       prisma.promotionUsage.count.mockResolvedValue(0);
 
-      const result = await service.validateCoupon({ code: 'SAVE10', orderTotal: 100 }, 'user-001');
+      const result = await service.validateCoupon(
+        { code: 'SAVE10', orderTotal: 100 },
+        'user-001',
+      );
 
       expect(result.valid).toBe(true);
       expect(result.discountAmount).toBe(10); // 10% of 100
@@ -59,28 +62,38 @@ describe('PromotionsService', () => {
       await expect(
         service.validateCoupon({ code: 'FAKE', orderTotal: 100 }),
       ).rejects.toThrow(
-        expect.objectContaining({ response: expect.objectContaining({ code: 'ERR_COUPON_INVALID' }) }),
+        expect.objectContaining({
+          response: expect.objectContaining({ code: 'ERR_COUPON_INVALID' }),
+        }),
       );
     });
 
     it('throws ERR_COUPON_INVALID when coupon exists but is inactive', async () => {
-      prisma.promotion.findUnique.mockResolvedValue(buildPromotion({ isActive: false }) as any);
+      prisma.promotion.findUnique.mockResolvedValue(
+        buildPromotion({ isActive: false }) as any,
+      );
 
       await expect(
         service.validateCoupon({ code: 'SAVE10', orderTotal: 100 }),
       ).rejects.toThrow(
-        expect.objectContaining({ response: expect.objectContaining({ code: 'ERR_COUPON_INVALID' }) }),
+        expect.objectContaining({
+          response: expect.objectContaining({ code: 'ERR_COUPON_INVALID' }),
+        }),
       );
     });
 
     it('throws ERR_COUPON_EXPIRED when the coupon expiry date has passed', async () => {
-      const expiredPromo = buildPromotion({ expiresAt: new Date(Date.now() - 86_400_000) });
+      const expiredPromo = buildPromotion({
+        expiresAt: new Date(Date.now() - 86_400_000),
+      });
       prisma.promotion.findUnique.mockResolvedValue(expiredPromo as any);
 
       await expect(
         service.validateCoupon({ code: 'SAVE10', orderTotal: 100 }),
       ).rejects.toThrow(
-        expect.objectContaining({ response: expect.objectContaining({ code: 'ERR_COUPON_EXPIRED' }) }),
+        expect.objectContaining({
+          response: expect.objectContaining({ code: 'ERR_COUPON_EXPIRED' }),
+        }),
       );
     });
 
@@ -91,46 +104,68 @@ describe('PromotionsService', () => {
       await expect(
         service.validateCoupon({ code: 'SAVE10', orderTotal: 100 }),
       ).rejects.toThrow(
-        expect.objectContaining({ response: expect.objectContaining({ code: 'ERR_COUPON_EXHAUSTED' }) }),
+        expect.objectContaining({
+          response: expect.objectContaining({ code: 'ERR_COUPON_EXHAUSTED' }),
+        }),
       );
     });
 
     it('throws ERR_COUPON_MIN_ORDER when order total is below the minimum required', async () => {
-      const minOrderPromo = buildPromotion({ minOrderAmount: 50 as unknown as any });
+      const minOrderPromo = buildPromotion({
+        minOrderAmount: 50 as unknown as any,
+      });
       prisma.promotion.findUnique.mockResolvedValue(minOrderPromo as any);
 
       await expect(
         service.validateCoupon({ code: 'SAVE10', orderTotal: 30 }),
       ).rejects.toThrow(
-        expect.objectContaining({ response: expect.objectContaining({ code: 'ERR_COUPON_MIN_ORDER' }) }),
+        expect.objectContaining({
+          response: expect.objectContaining({ code: 'ERR_COUPON_MIN_ORDER' }),
+        }),
       );
     });
 
     it('throws ERR_COUPON_USER_LIMIT when user has already used the coupon maxUsesPerUser times', async () => {
-      prisma.promotion.findUnique.mockResolvedValue(buildPromotion({ maxUsesPerUser: 1 }) as any);
+      prisma.promotion.findUnique.mockResolvedValue(
+        buildPromotion({ maxUsesPerUser: 1 }) as any,
+      );
       prisma.promotionUsage.count.mockResolvedValue(1);
 
       await expect(
         service.validateCoupon({ code: 'SAVE10', orderTotal: 100 }, 'user-001'),
       ).rejects.toThrow(
-        expect.objectContaining({ response: expect.objectContaining({ code: 'ERR_COUPON_USER_LIMIT' }) }),
+        expect.objectContaining({
+          response: expect.objectContaining({ code: 'ERR_COUPON_USER_LIMIT' }),
+        }),
       );
     });
 
     it('calculates fixed discount correctly for FIXED_AMOUNT type', async () => {
-      const fixedPromo = buildPromotion({ type: DiscountType.FIXED_AMOUNT, value: 15 as unknown as any });
+      const fixedPromo = buildPromotion({
+        type: DiscountType.FIXED_AMOUNT,
+        value: 15 as unknown as any,
+      });
       prisma.promotion.findUnique.mockResolvedValue(fixedPromo as any);
 
-      const result = await service.validateCoupon({ code: 'SAVE15', orderTotal: 100 });
+      const result = await service.validateCoupon({
+        code: 'SAVE15',
+        orderTotal: 100,
+      });
 
       expect(result.discountAmount).toBe(15);
     });
 
     it('caps fixed discount at the order total (does not produce negative totals)', async () => {
-      const fixedPromo = buildPromotion({ type: DiscountType.FIXED_AMOUNT, value: 200 as unknown as any });
+      const fixedPromo = buildPromotion({
+        type: DiscountType.FIXED_AMOUNT,
+        value: 200 as unknown as any,
+      });
       prisma.promotion.findUnique.mockResolvedValue(fixedPromo as any);
 
-      const result = await service.validateCoupon({ code: 'BIGDISCOUNT', orderTotal: 50 });
+      const result = await service.validateCoupon({
+        code: 'BIGDISCOUNT',
+        orderTotal: 50,
+      });
 
       expect(result.discountAmount).toBe(50); // capped at order total
     });
@@ -142,7 +177,9 @@ describe('PromotionsService', () => {
     it('executes atomic UPDATE and resolves when 1 row is affected', async () => {
       const mockTx = { $executeRaw: jest.fn().mockResolvedValue(1) } as any;
 
-      await expect(service.useCoupon('SAVE10', mockTx)).resolves.toBeUndefined();
+      await expect(
+        service.useCoupon('SAVE10', mockTx),
+      ).resolves.toBeUndefined();
       expect(mockTx.$executeRaw).toHaveBeenCalled();
     });
 
@@ -150,7 +187,9 @@ describe('PromotionsService', () => {
       const mockTx = { $executeRaw: jest.fn().mockResolvedValue(0) } as any;
 
       await expect(service.useCoupon('SAVE10', mockTx)).rejects.toThrow(
-        expect.objectContaining({ response: expect.objectContaining({ code: 'ERR_COUPON_RACE' }) }),
+        expect.objectContaining({
+          response: expect.objectContaining({ code: 'ERR_COUPON_RACE' }),
+        }),
       );
     });
 
@@ -159,8 +198,12 @@ describe('PromotionsService', () => {
       const mockTx1 = { $executeRaw: jest.fn().mockResolvedValue(1) } as any;
       const mockTx2 = { $executeRaw: jest.fn().mockResolvedValue(0) } as any;
 
-      await expect(service.useCoupon('LIMITED1', mockTx1)).resolves.toBeUndefined();
-      await expect(service.useCoupon('LIMITED1', mockTx2)).rejects.toThrow(BadRequestException);
+      await expect(
+        service.useCoupon('LIMITED1', mockTx1),
+      ).resolves.toBeUndefined();
+      await expect(service.useCoupon('LIMITED1', mockTx2)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 

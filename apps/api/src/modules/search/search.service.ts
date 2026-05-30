@@ -1,11 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { RedisService, CacheKeys, CacheTtl } from '../../common/services/redis.service';
+import {
+  RedisService,
+  CacheKeys,
+  CacheTtl,
+} from '../../common/services/redis.service';
 import { SearchQueryDto } from './dto/search-query.dto';
 import { ProductSortBy } from '../products/dto/product-query.dto';
 import { ProductListItemDto } from '../products/dto/product-list-item.dto';
-import { PaginatedResult, paginatedResponse } from '../../common/dto/paginated-response.dto';
+import {
+  PaginatedResult,
+  paginatedResponse,
+} from '../../common/dto/paginated-response.dto';
 
 const TRENDING_KEY = 'search:trending';
 const TRENDING_WINDOW_DAYS = 7;
@@ -22,7 +29,9 @@ export class SearchService {
 
   // ─── Full-text search ──────────────────────────────────────────────────────
 
-  async search(query: SearchQueryDto): Promise<PaginatedResult<ProductListItemDto>> {
+  async search(
+    query: SearchQueryDto,
+  ): Promise<PaginatedResult<ProductListItemDto>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 24;
 
@@ -152,8 +161,13 @@ export class SearchService {
       }
     }
 
-    const orderSql = this.buildRawOrderBy(sort, 'ts_rank(p.search_vector, query)');
-    const whereStr = whereParts.length ? whereParts.join(' AND ') + ' AND ' : '';
+    const orderSql = this.buildRawOrderBy(
+      sort,
+      'ts_rank(p.search_vector, query)',
+    );
+    const whereStr = whereParts.length
+      ? whereParts.join(' AND ') + ' AND '
+      : '';
 
     const searchSql = Prisma.sql`
       SELECT p.id
@@ -186,7 +200,9 @@ export class SearchService {
       total = parseInt(countRows[0]?.total ?? '0', 10);
     } catch {
       // search_vector column not yet created — fall back to Prisma ILIKE
-      this.logger.warn('search_vector not available, falling back to ILIKE search');
+      this.logger.warn(
+        'search_vector not available, falling back to ILIKE search',
+      );
       const ilikeFallback: Prisma.ProductWhereInput = {
         ...baseWhere,
         OR: [
@@ -228,16 +244,24 @@ export class SearchService {
 
   // ─── Private helpers ───────────────────────────────────────────────────────
 
-  private async buildWhereClause(query: SearchQueryDto): Promise<Prisma.ProductWhereInput> {
+  private async buildWhereClause(
+    query: SearchQueryDto,
+  ): Promise<Prisma.ProductWhereInput> {
     const where: Prisma.ProductWhereInput = { isActive: true };
 
     if (query.category) {
-      const cat = await this.prisma.category.findUnique({ where: { slug: query.category }, select: { id: true } });
+      const cat = await this.prisma.category.findUnique({
+        where: { slug: query.category },
+        select: { id: true },
+      });
       if (cat) where.categoryId = cat.id;
     }
 
     if (query.collection) {
-      const col = await this.prisma.collection.findUnique({ where: { slug: query.collection }, select: { id: true } });
+      const col = await this.prisma.collection.findUnique({
+        where: { slug: query.collection },
+        select: { id: true },
+      });
       if (col) where.collections = { some: { collectionId: col.id } };
     }
 
@@ -255,23 +279,38 @@ export class SearchService {
     return where;
   }
 
-  private buildOrderBy(sort?: ProductSortBy): Prisma.ProductOrderByWithRelationInput {
+  private buildOrderBy(
+    sort?: ProductSortBy,
+  ): Prisma.ProductOrderByWithRelationInput {
     switch (sort) {
-      case ProductSortBy.PRICE_ASC: return { basePrice: 'asc' };
-      case ProductSortBy.PRICE_DESC: return { basePrice: 'desc' };
-      case ProductSortBy.BESTSELLER: return { soldCount: 'desc' };
-      case ProductSortBy.FEATURED: return { isFeatured: 'desc' };
-      default: return { createdAt: 'desc' };
+      case ProductSortBy.PRICE_ASC:
+        return { basePrice: 'asc' };
+      case ProductSortBy.PRICE_DESC:
+        return { basePrice: 'desc' };
+      case ProductSortBy.BESTSELLER:
+        return { soldCount: 'desc' };
+      case ProductSortBy.FEATURED:
+        return { isFeatured: 'desc' };
+      default:
+        return { createdAt: 'desc' };
     }
   }
 
-  private buildRawOrderBy(sort?: ProductSortBy, relevanceExpr = 'ts_rank(p.search_vector, query)'): string {
+  private buildRawOrderBy(
+    sort?: ProductSortBy,
+    relevanceExpr = 'ts_rank(p.search_vector, query)',
+  ): string {
     switch (sort) {
-      case ProductSortBy.PRICE_ASC: return 'p."basePrice" ASC';
-      case ProductSortBy.PRICE_DESC: return 'p."basePrice" DESC';
-      case ProductSortBy.BESTSELLER: return 'p."soldCount" DESC';
-      case ProductSortBy.FEATURED: return 'p."isFeatured" DESC, p."createdAt" DESC';
-      default: return `${relevanceExpr} DESC, p."createdAt" DESC`;
+      case ProductSortBy.PRICE_ASC:
+        return 'p."basePrice" ASC';
+      case ProductSortBy.PRICE_DESC:
+        return 'p."basePrice" DESC';
+      case ProductSortBy.BESTSELLER:
+        return 'p."soldCount" DESC';
+      case ProductSortBy.FEATURED:
+        return 'p."isFeatured" DESC, p."createdAt" DESC';
+      default:
+        return `${relevanceExpr} DESC, p."createdAt" DESC`;
     }
   }
 
@@ -279,19 +318,29 @@ export class SearchService {
     return {
       category: { select: { id: true, name: true, slug: true } },
       images: { where: { isPrimary: true }, select: { url: true }, take: 1 },
-      _count: { select: { reviews: { where: { status: 'APPROVED' as const } } } },
+      _count: {
+        select: { reviews: { where: { status: 'APPROVED' as const } } },
+      },
     };
   }
 
   private async toListItems(
     products: {
-      id: string; name: string; slug: string; sku: string;
-      basePrice: unknown; compareAtPrice: unknown;
+      id: string;
+      name: string;
+      slug: string;
+      sku: string;
+      basePrice: unknown;
+      compareAtPrice: unknown;
       images: { url: string }[];
-      categoryId: string; category: { id: string; name: string; slug: string };
-      isPersonalizable: boolean; isFeatured: boolean;
-      viewCount: number; soldCount: number;
-      _count: { reviews: number }; createdAt: Date;
+      categoryId: string;
+      category: { id: string; name: string; slug: string };
+      isPersonalizable: boolean;
+      isFeatured: boolean;
+      viewCount: number;
+      soldCount: number;
+      _count: { reviews: number };
+      createdAt: Date;
     }[],
   ): Promise<ProductListItemDto[]> {
     return Promise.all(

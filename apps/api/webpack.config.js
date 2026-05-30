@@ -20,6 +20,8 @@ module.exports = {
       outputHashing: 'none',
       generatePackageJson: true,
       sourceMap: true,
+      // Skip type checking — types are checked separately via pnpm nx type-check
+      typeCheck: false,
     }),
   ],
 };

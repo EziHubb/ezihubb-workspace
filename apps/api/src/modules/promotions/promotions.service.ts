@@ -7,9 +7,15 @@ import {
 import { Prisma } from '@prisma/client';
 import { DiscountType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { PaginatedResult, paginatedResponse } from '../../common/dto/paginated-response.dto';
+import {
+  PaginatedResult,
+  paginatedResponse,
+} from '../../common/dto/paginated-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
-import { CreatePromotionDto, UpdatePromotionDto } from './dto/create-promotion.dto';
+import {
+  CreatePromotionDto,
+  UpdatePromotionDto,
+} from './dto/create-promotion.dto';
 import { ValidateCouponDto } from './dto/validate-coupon.dto';
 import {
   CouponValidationResultDto,
@@ -36,18 +42,33 @@ export class PromotionsService {
     });
 
     if (!promotion || !promotion.isActive) {
-      throw new BadRequestException({ code: 'ERR_COUPON_INVALID', message: 'Coupon code is invalid or inactive' });
+      throw new BadRequestException({
+        code: 'ERR_COUPON_INVALID',
+        message: 'Coupon code is invalid or inactive',
+      });
     }
 
     const now = new Date();
     if (promotion.startsAt && now < promotion.startsAt) {
-      throw new BadRequestException({ code: 'ERR_COUPON_NOT_YET_ACTIVE', message: 'This coupon is not yet active' });
+      throw new BadRequestException({
+        code: 'ERR_COUPON_NOT_YET_ACTIVE',
+        message: 'This coupon is not yet active',
+      });
     }
     if (promotion.expiresAt && now > promotion.expiresAt) {
-      throw new BadRequestException({ code: 'ERR_COUPON_EXPIRED', message: 'This coupon has expired' });
+      throw new BadRequestException({
+        code: 'ERR_COUPON_EXPIRED',
+        message: 'This coupon has expired',
+      });
     }
-    if (promotion.maxUses !== null && promotion.currentUses >= promotion.maxUses) {
-      throw new BadRequestException({ code: 'ERR_COUPON_EXHAUSTED', message: 'This coupon has reached its usage limit' });
+    if (
+      promotion.maxUses !== null &&
+      promotion.currentUses >= promotion.maxUses
+    ) {
+      throw new BadRequestException({
+        code: 'ERR_COUPON_EXHAUSTED',
+        message: 'This coupon has reached its usage limit',
+      });
     }
     if (
       promotion.minOrderAmount !== null &&
@@ -65,7 +86,10 @@ export class PromotionsService {
         where: { promotionId: promotion.id, userId },
       });
       if (userUses >= promotion.maxUsesPerUser) {
-        throw new BadRequestException({ code: 'ERR_COUPON_USER_LIMIT', message: 'You have already used this coupon' });
+        throw new BadRequestException({
+          code: 'ERR_COUPON_USER_LIMIT',
+          message: 'You have already used this coupon',
+        });
       }
     }
 
@@ -90,10 +114,7 @@ export class PromotionsService {
    * Returns affected rows; 0 means the coupon was exhausted (race condition).
    * Throws BadRequestException if 0 rows affected.
    */
-  async useCoupon(
-    code: string,
-    tx: Prisma.TransactionClient,
-  ): Promise<void> {
+  async useCoupon(code: string, tx: Prisma.TransactionClient): Promise<void> {
     const affected = await tx.$executeRaw`
       UPDATE "Promotion"
       SET "currentUses" = "currentUses" + 1
@@ -102,7 +123,10 @@ export class PromotionsService {
         AND ("maxUses" IS NULL OR "currentUses" < "maxUses")
     `;
     if (affected === 0) {
-      throw new BadRequestException({ code: 'ERR_COUPON_RACE', message: 'Coupon is no longer available' });
+      throw new BadRequestException({
+        code: 'ERR_COUPON_RACE',
+        message: 'Coupon is no longer available',
+      });
     }
   }
 
@@ -110,9 +134,14 @@ export class PromotionsService {
 
   async create(dto: CreatePromotionDto): Promise<PromotionResponseDto> {
     const code = dto.code.toUpperCase();
-    const existing = await this.prisma.promotion.findUnique({ where: { code } });
+    const existing = await this.prisma.promotion.findUnique({
+      where: { code },
+    });
     if (existing) {
-      throw new ConflictException({ code: 'ERR_COUPON_CODE_TAKEN', message: 'Coupon code already exists' });
+      throw new ConflictException({
+        code: 'ERR_COUPON_CODE_TAKEN',
+        message: 'Coupon code already exists',
+      });
     }
 
     const promotion = await this.prisma.promotion.create({
@@ -132,7 +161,9 @@ export class PromotionsService {
     return this.mapToDto(promotion);
   }
 
-  async findAll(query: PaginationDto): Promise<PaginatedResult<PromotionResponseDto>> {
+  async findAll(
+    query: PaginationDto,
+  ): Promise<PaginatedResult<PromotionResponseDto>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 24;
 
@@ -150,11 +181,18 @@ export class PromotionsService {
 
   async findOne(id: string): Promise<PromotionResponseDto> {
     const promotion = await this.prisma.promotion.findUnique({ where: { id } });
-    if (!promotion) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Promotion not found' });
+    if (!promotion)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Promotion not found',
+      });
     return this.mapToDto(promotion);
   }
 
-  async update(id: string, dto: UpdatePromotionDto): Promise<PromotionResponseDto> {
+  async update(
+    id: string,
+    dto: UpdatePromotionDto,
+  ): Promise<PromotionResponseDto> {
     await this.findOne(id);
 
     if (dto.code) {
@@ -163,7 +201,10 @@ export class PromotionsService {
         where: { code, id: { not: id } },
       });
       if (conflict) {
-        throw new ConflictException({ code: 'ERR_COUPON_CODE_TAKEN', message: 'Coupon code already exists' });
+        throw new ConflictException({
+          code: 'ERR_COUPON_CODE_TAKEN',
+          message: 'Coupon code already exists',
+        });
       }
       dto.code = code;
     }
@@ -174,9 +215,13 @@ export class PromotionsService {
         ...(dto.code !== undefined && { code: dto.code }),
         ...(dto.type !== undefined && { type: dto.type }),
         ...(dto.value !== undefined && { value: dto.value }),
-        ...(dto.minOrderAmount !== undefined && { minOrderAmount: dto.minOrderAmount }),
+        ...(dto.minOrderAmount !== undefined && {
+          minOrderAmount: dto.minOrderAmount,
+        }),
         ...(dto.maxUses !== undefined && { maxUses: dto.maxUses }),
-        ...(dto.maxUsesPerUser !== undefined && { maxUsesPerUser: dto.maxUsesPerUser }),
+        ...(dto.maxUsesPerUser !== undefined && {
+          maxUsesPerUser: dto.maxUsesPerUser,
+        }),
         ...(dto.startsAt !== undefined && { startsAt: dto.startsAt }),
         ...(dto.expiresAt !== undefined && { expiresAt: dto.expiresAt }),
         ...(dto.description !== undefined && { description: dto.description }),
@@ -208,7 +253,11 @@ export class PromotionsService {
         },
       },
     });
-    if (!promotion) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Promotion not found' });
+    if (!promotion)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Promotion not found',
+      });
 
     const totalRevenueSaved = promotion.usages.reduce(
       (sum, u) => sum + Number(u.order.discountAmount),
@@ -232,16 +281,25 @@ export class PromotionsService {
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
   calcDiscount(type: DiscountType, value: number, subtotal: number): number {
-    if (type === DiscountType.PERCENTAGE) return Math.round(subtotal * value) / 100;
+    if (type === DiscountType.PERCENTAGE)
+      return Math.round(subtotal * value) / 100;
     if (type === DiscountType.FIXED_AMOUNT) return Math.min(subtotal, value);
     return 0; // FREE_SHIPPING handled at checkout
   }
 
   private mapToDto(promotion: {
-    id: string; code: string; type: DiscountType; value: Prisma.Decimal;
-    minOrderAmount: Prisma.Decimal | null; maxUses: number | null;
-    maxUsesPerUser: number; currentUses: number; isActive: boolean;
-    startsAt: Date | null; expiresAt: Date | null; description: string | null;
+    id: string;
+    code: string;
+    type: DiscountType;
+    value: Prisma.Decimal;
+    minOrderAmount: Prisma.Decimal | null;
+    maxUses: number | null;
+    maxUsesPerUser: number;
+    currentUses: number;
+    isActive: boolean;
+    startsAt: Date | null;
+    expiresAt: Date | null;
+    description: string | null;
     createdAt: Date;
   }): PromotionResponseDto {
     return {
@@ -249,7 +307,10 @@ export class PromotionsService {
       code: promotion.code,
       type: promotion.type,
       value: Number(promotion.value),
-      minOrderAmount: promotion.minOrderAmount !== null ? Number(promotion.minOrderAmount) : null,
+      minOrderAmount:
+        promotion.minOrderAmount !== null
+          ? Number(promotion.minOrderAmount)
+          : null,
       maxUses: promotion.maxUses,
       maxUsesPerUser: promotion.maxUsesPerUser,
       currentUses: promotion.currentUses,

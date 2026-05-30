@@ -1,7 +1,8 @@
 import { Logger } from '@nestjs/common';
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import * as sharp from 'sharp';
+const sharp = require('sharp');
+
 import { ConfigService } from '@nestjs/config';
 import { StorageService } from '../common/services/storage.service';
 import {
@@ -38,7 +39,9 @@ export class ImageProcessor extends WorkerHost {
     }
   }
 
-  private async handleRemoveBackground(job: Job<RemoveBackgroundJobData>): Promise<void> {
+  private async handleRemoveBackground(
+    job: Job<RemoveBackgroundJobData>,
+  ): Promise<void> {
     const { uploadKey, outputKey } = job.data;
     this.logger.log(`Remove background: ${uploadKey} → ${outputKey}`);
 
@@ -46,7 +49,9 @@ export class ImageProcessor extends WorkerHost {
     const bgRemovalKey = this.config.get<string>('BG_REMOVAL_API_KEY');
 
     if (!bgRemovalUrl || !bgRemovalKey) {
-      this.logger.warn('BG_REMOVAL_API_URL / BG_REMOVAL_API_KEY not configured — skipping');
+      this.logger.warn(
+        'BG_REMOVAL_API_URL / BG_REMOVAL_API_KEY not configured — skipping',
+      );
       return;
     }
 
@@ -57,13 +62,20 @@ export class ImageProcessor extends WorkerHost {
     this.logger.log(`Background removed: ${outputKey}`);
   }
 
-  private async handleGeneratePreview(job: Job<GeneratePreviewJobData>): Promise<void> {
+  private async handleGeneratePreview(
+    job: Job<GeneratePreviewJobData>,
+  ): Promise<void> {
     const { draftId, outputKey } = job.data;
     this.logger.log(`Generate preview: draftId=${draftId} → ${outputKey}`);
 
     // Placeholder: composite canvas data onto a blank image using Sharp
     const placeholder = await sharp({
-      create: { width: 800, height: 800, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } },
+      create: {
+        width: 800,
+        height: 800,
+        channels: 4,
+        background: { r: 255, g: 255, b: 255, alpha: 1 },
+      },
     })
       .png()
       .toBuffer();

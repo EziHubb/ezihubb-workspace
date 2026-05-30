@@ -9,8 +9,15 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services/storage.service';
-import { RedisService, CacheKeys, CacheTtl } from '../../common/services/redis.service';
-import { PaginatedResult, paginatedResponse } from '../../common/dto/paginated-response.dto';
+import {
+  RedisService,
+  CacheKeys,
+  CacheTtl,
+} from '../../common/services/redis.service';
+import {
+  PaginatedResult,
+  paginatedResponse,
+} from '../../common/dto/paginated-response.dto';
 import { CreateReviewDto } from './dto/create-review.dto';
 import {
   ReviewResponseDto,
@@ -48,7 +55,11 @@ export class ReviewsService {
       where: { slug: productSlug },
       select: { id: true },
     });
-    if (!product) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+    if (!product)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Product not found',
+      });
 
     const page = query.page ?? 1;
     const limit = query.limit ?? 24;
@@ -77,7 +88,11 @@ export class ReviewsService {
       where: { slug },
       select: { id: true },
     });
-    if (!product) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+    if (!product)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Product not found',
+      });
     return this.getReviewSummary(product.id);
   }
 
@@ -92,17 +107,22 @@ export class ReviewsService {
     });
 
     const totalReviews = reviews.length;
-    const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<1 | 2 | 3 | 4 | 5, number>;
+    const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<
+      1 | 2 | 3 | 4 | 5,
+      number
+    >;
 
     let sum = 0;
     for (const r of reviews) {
       sum += r.rating;
-      (distribution as Record<number, number>)[r.rating] = ((distribution as Record<number, number>)[r.rating] ?? 0) + 1;
+      (distribution as Record<number, number>)[r.rating] =
+        ((distribution as Record<number, number>)[r.rating] ?? 0) + 1;
     }
 
     const summary: ReviewSummaryDto = {
       productId,
-      averageRating: totalReviews > 0 ? Math.round((sum / totalReviews) * 10) / 10 : 0,
+      averageRating:
+        totalReviews > 0 ? Math.round((sum / totalReviews) * 10) / 10 : 0,
       totalReviews,
       distribution,
     };
@@ -120,7 +140,11 @@ export class ReviewsService {
       where: { slug: productSlug },
       select: { id: true },
     });
-    if (!product) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+    if (!product)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Product not found',
+      });
 
     // Buyer guard: user must have a DELIVERED or COMPLETED order containing this product
     const qualifyingOrder = await this.prisma.order.findFirst({
@@ -136,16 +160,26 @@ export class ReviewsService {
     if (!qualifyingOrder) {
       throw new ForbiddenException({
         code: 'ERR_REVIEW_NOT_ELIGIBLE',
-        message: 'You can only review products from delivered or completed orders',
+        message:
+          'You can only review products from delivered or completed orders',
       });
     }
 
     // Duplicate check: one review per user + product + order
     const existing = await this.prisma.review.findUnique({
-      where: { userId_productId_orderId: { userId, productId: product.id, orderId: dto.orderId } },
+      where: {
+        userId_productId_orderId: {
+          userId,
+          productId: product.id,
+          orderId: dto.orderId,
+        },
+      },
     });
     if (existing) {
-      throw new BadRequestException({ code: 'ERR_REVIEW_DUPLICATE', message: 'You have already reviewed this product for this order' });
+      throw new BadRequestException({
+        code: 'ERR_REVIEW_DUPLICATE',
+        message: 'You have already reviewed this product for this order',
+      });
     }
 
     const review = await this.prisma.review.create({
@@ -170,11 +204,21 @@ export class ReviewsService {
     reviewId: string,
     dto: Partial<CreateReviewDto>,
   ): Promise<ReviewResponseDto> {
-    const review = await this.prisma.review.findUnique({ where: { id: reviewId } });
-    if (!review) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Review not found' });
-    if (review.userId !== userId) throw new ForbiddenException({ code: 'ERR_FORBIDDEN' });
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+    });
+    if (!review)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Review not found',
+      });
+    if (review.userId !== userId)
+      throw new ForbiddenException({ code: 'ERR_FORBIDDEN' });
     if (review.status !== ReviewStatus.PENDING) {
-      throw new BadRequestException({ code: 'ERR_REVIEW_LOCKED', message: 'Only pending reviews can be edited' });
+      throw new BadRequestException({
+        code: 'ERR_REVIEW_LOCKED',
+        message: 'Only pending reviews can be edited',
+      });
     }
 
     const updated = await this.prisma.review.update({
@@ -191,9 +235,16 @@ export class ReviewsService {
   }
 
   async deleteReview(userId: string, reviewId: string): Promise<void> {
-    const review = await this.prisma.review.findUnique({ where: { id: reviewId } });
-    if (!review) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Review not found' });
-    if (review.userId !== userId) throw new ForbiddenException({ code: 'ERR_FORBIDDEN' });
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+    });
+    if (!review)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Review not found',
+      });
+    if (review.userId !== userId)
+      throw new ForbiddenException({ code: 'ERR_FORBIDDEN' });
 
     await this.prisma.review.delete({ where: { id: reviewId } });
     await this.redis.del(CacheKeys.reviewsSummary(review.productId));
@@ -204,9 +255,16 @@ export class ReviewsService {
     reviewId: string,
     files: Express.Multer.File[],
   ): Promise<ReviewResponseDto> {
-    const review = await this.prisma.review.findUnique({ where: { id: reviewId } });
-    if (!review) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Review not found' });
-    if (review.userId !== userId) throw new ForbiddenException({ code: 'ERR_FORBIDDEN' });
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+    });
+    if (!review)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Review not found',
+      });
+    if (review.userId !== userId)
+      throw new ForbiddenException({ code: 'ERR_FORBIDDEN' });
 
     const currentCount = review.imageUrls.length;
     if (currentCount + files.length > 5) {
@@ -218,7 +276,10 @@ export class ReviewsService {
 
     const uploadedUrls = await Promise.all(
       files.map((file) => {
-        const key = this.storage.generateKey(`reviews/${reviewId}`, file.originalname);
+        const key = this.storage.generateKey(
+          `reviews/${reviewId}`,
+          file.originalname,
+        );
         return this.storage.uploadFile(file.buffer, key, file.mimetype);
       }),
     );
@@ -279,7 +340,10 @@ export class ReviewsService {
     return this.mapToDto(updated);
   }
 
-  async replyToReview(reviewId: string, reply: string): Promise<ReviewResponseDto> {
+  async replyToReview(
+    reviewId: string,
+    reply: string,
+  ): Promise<ReviewResponseDto> {
     await this.findReviewOrThrow(reviewId);
     const updated = await this.prisma.review.update({
       where: { id: reviewId },
@@ -331,7 +395,8 @@ export class ReviewsService {
             firstName: order.user.firstName ?? 'Valued Customer',
             orderNumber: order.orderNumber,
             orderId: order.id,
-            productName: order.items[0]?.product?.name ?? 'your recent purchase',
+            productName:
+              order.items[0]?.product?.name ?? 'your recent purchase',
             productSlug: order.items[0]?.product?.slug ?? '',
           },
         },
@@ -347,12 +412,23 @@ export class ReviewsService {
 
   private async findReviewOrThrow(id: string) {
     const review = await this.prisma.review.findUnique({ where: { id } });
-    if (!review) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Review not found' });
+    if (!review)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Review not found',
+      });
     return review;
   }
 
   private mapToDto = (
-    review: Review & { user: { id: string; firstName: string | null; lastName: string | null; avatarUrl: string | null } },
+    review: Review & {
+      user: {
+        id: string;
+        firstName: string | null;
+        lastName: string | null;
+        avatarUrl: string | null;
+      };
+    },
   ): ReviewResponseDto => ({
     id: review.id,
     rating: review.rating,

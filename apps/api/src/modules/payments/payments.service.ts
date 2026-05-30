@@ -7,14 +7,32 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { OrderStatus, Payment, PaymentMethod, PaymentStatus, Prisma } from '@prisma/client';
+import {
+  OrderStatus,
+  Payment,
+  PaymentMethod,
+  PaymentStatus,
+  Prisma,
+} from '@prisma/client';
 import Stripe from 'stripe';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
-import { JOBS, QUEUES, SendEmailJobData, OrderConfirmedJobData, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
-import { CreatePaymentIntentDto, PaymentIntentResponseDto } from './dto/create-payment-intent.dto';
+import {
+  JOBS,
+  QUEUES,
+  SendEmailJobData,
+  OrderConfirmedJobData,
+  DEFAULT_JOB_OPTIONS,
+} from '../../queue/queue.constants';
+import {
+  CreatePaymentIntentDto,
+  PaymentIntentResponseDto,
+} from './dto/create-payment-intent.dto';
 import { CreateRefundDto } from './dto/create-refund.dto';
-import { PaymentResponseDto, GiftCardResponseDto } from './dto/payment-response.dto';
+import {
+  PaymentResponseDto,
+  GiftCardResponseDto,
+} from './dto/payment-response.dto';
 
 const WEBHOOK_IDEMPOTENCY_TTL = 24 * 60 * 60; // 24 hours in seconds
 const REFUND_WINDOW_DAYS = 60;
@@ -32,12 +50,16 @@ export class PaymentsService {
     @InjectQueue(QUEUES.ORDER_PROCESSING) private readonly orderQueue: Queue,
   ) {
     const secretKey = config.get<string>('STRIPE_SECRET_KEY') ?? '';
-    this.stripe = new Stripe(secretKey, { apiVersion: '2026-04-22.dahlia' as const });
+    this.stripe = new Stripe(secretKey, {
+      apiVersion: '2026-04-22.dahlia' as const,
+    });
   }
 
   // ─── Payment Intent ───────────────────────────────────────────────────────
 
-  async createPaymentIntent(dto: CreatePaymentIntentDto): Promise<PaymentIntentResponseDto> {
+  async createPaymentIntent(
+    dto: CreatePaymentIntentDto,
+  ): Promise<PaymentIntentResponseDto> {
     return this.createPaymentIntentForOrder(dto.orderId, dto.giftCardCode);
   }
 
@@ -45,11 +67,20 @@ export class PaymentsService {
     orderId: string,
     giftCardCode?: string,
   ): Promise<PaymentIntentResponseDto> {
-    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
-    if (!order) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Order not found' });
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
+    if (!order)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Order not found',
+      });
 
     if (order.status !== OrderStatus.PENDING_PAYMENT) {
-      throw new BadRequestException({ code: 'ERR_ORDER_INVALID_STATE', message: 'Order is not awaiting payment' });
+      throw new BadRequestException({
+        code: 'ERR_ORDER_INVALID_STATE',
+        message: 'Order is not awaiting payment',
+      });
     }
 
     let stripeAmount = Number(order.total);
@@ -60,12 +91,22 @@ export class PaymentsService {
         where: { code: giftCardCode, isActive: true },
       });
 
-      if (!giftCard) throw new BadRequestException({ code: 'ERR_GIFT_CARD_INVALID', message: 'Invalid or inactive gift card' });
+      if (!giftCard)
+        throw new BadRequestException({
+          code: 'ERR_GIFT_CARD_INVALID',
+          message: 'Invalid or inactive gift card',
+        });
       if (giftCard.expiresAt && giftCard.expiresAt < new Date()) {
-        throw new BadRequestException({ code: 'ERR_GIFT_CARD_EXPIRED', message: 'Gift card has expired' });
+        throw new BadRequestException({
+          code: 'ERR_GIFT_CARD_EXPIRED',
+          message: 'Gift card has expired',
+        });
       }
       if (Number(giftCard.balance) <= 0) {
-        throw new BadRequestException({ code: 'ERR_GIFT_CARD_NO_BALANCE', message: 'Gift card has no remaining balance' });
+        throw new BadRequestException({
+          code: 'ERR_GIFT_CARD_NO_BALANCE',
+          message: 'Gift card has no remaining balance',
+        });
       }
 
       giftCardApplied = Math.min(Number(giftCard.balance), stripeAmount);
@@ -78,7 +119,12 @@ export class PaymentsService {
     if (stripeAmount < 0.5 && giftCardCode) {
       // Stripe minimum is $0.50; treat as fully covered by gift card
       // Create a gift-card-only payment record and confirm order
-      await this.fulfilWithGiftCard(orderId, giftCardCode, giftCardApplied, Number(order.total));
+      await this.fulfilWithGiftCard(
+        orderId,
+        giftCardCode,
+        giftCardApplied,
+        Number(order.total),
+      );
       return { clientSecret: '', amount: 0, currency };
     }
 
@@ -93,7 +139,9 @@ export class PaymentsService {
     });
 
     // Upsert payment record
-    const method: PaymentMethod = giftCardCode ? PaymentMethod.MIXED : PaymentMethod.STRIPE;
+    const method: PaymentMethod = giftCardCode
+      ? PaymentMethod.MIXED
+      : PaymentMethod.STRIPE;
     await this.prisma.payment.upsert({
       where: { orderId },
       create: {
@@ -114,7 +162,11 @@ export class PaymentsService {
       },
     });
 
-    return { clientSecret: intent.client_secret!, amount: stripeAmount, currency };
+    return {
+      clientSecret: intent.client_secret!,
+      amount: stripeAmount,
+      currency,
+    };
   }
 
   // ─── Stripe Webhook ────────────────────────────────────────────────────────
@@ -123,7 +175,13 @@ export class PaymentsService {
     // Idempotency: process each event exactly once
     const idempotencyKey = `stripe:webhook:${event.id}`;
     const client = this.redis.getClient();
-    const acquired = await client.set(idempotencyKey, '1', 'EX', WEBHOOK_IDEMPOTENCY_TTL, 'NX');
+    const acquired = await client.set(
+      idempotencyKey,
+      '1',
+      'EX',
+      WEBHOOK_IDEMPOTENCY_TTL,
+      'NX',
+    );
     if (!acquired) {
       this.logger.log(`Skipping duplicate webhook event ${event.id}`);
       return;
@@ -132,10 +190,14 @@ export class PaymentsService {
     try {
       switch (event.type) {
         case 'payment_intent.succeeded':
-          await this.onPaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent);
+          await this.onPaymentIntentSucceeded(
+            event.data.object as Stripe.PaymentIntent,
+          );
           break;
         case 'payment_intent.payment_failed':
-          await this.onPaymentIntentFailed(event.data.object as Stripe.PaymentIntent);
+          await this.onPaymentIntentFailed(
+            event.data.object as Stripe.PaymentIntent,
+          );
           break;
         case 'charge.refunded':
           await this.onChargeRefunded(event.data.object as Stripe.Charge);
@@ -150,7 +212,9 @@ export class PaymentsService {
     }
   }
 
-  private async onPaymentIntentSucceeded(intent: Stripe.PaymentIntent): Promise<void> {
+  private async onPaymentIntentSucceeded(
+    intent: Stripe.PaymentIntent,
+  ): Promise<void> {
     const payment = await this.prisma.payment.findFirst({
       where: { stripePaymentIntentId: intent.id },
       include: { order: true },
@@ -169,12 +233,21 @@ export class PaymentsService {
       // Confirm payment
       await tx.payment.update({
         where: { id: payment.id },
-        data: { status: PaymentStatus.PAID, paidAt: now, stripeChargeId: intent.latest_charge as string | null },
+        data: {
+          status: PaymentStatus.PAID,
+          paidAt: now,
+          stripeChargeId: intent.latest_charge as string | null,
+        },
       });
 
       // Apply gift card if used
       if (payment.giftCardCode && payment.giftCardAmount) {
-        await this.deductGiftCard(tx, payment.giftCardCode, Number(payment.giftCardAmount), payment.orderId);
+        await this.deductGiftCard(
+          tx,
+          payment.giftCardCode,
+          Number(payment.giftCardAmount),
+          payment.orderId,
+        );
       }
 
       // Confirm order
@@ -185,7 +258,11 @@ export class PaymentsService {
 
       // Record status history
       await tx.orderStatusHistory.create({
-        data: { orderId: payment.orderId, status: OrderStatus.CONFIRMED, note: 'Payment confirmed' },
+        data: {
+          orderId: payment.orderId,
+          status: OrderStatus.CONFIRMED,
+          note: 'Payment confirmed',
+        },
       });
 
       // Clear cart
@@ -194,12 +271,16 @@ export class PaymentsService {
           where: { userId: payment.order.userId },
           data: { couponCode: null, discountAmount: null },
         });
-        await tx.cartItem.deleteMany({ where: { cart: { userId: payment.order.userId } } });
+        await tx.cartItem.deleteMany({
+          where: { cart: { userId: payment.order.userId } },
+        });
       }
     });
 
     // Queue notifications outside transaction
-    const customerEmail = payment.order.guestEmail ?? await this.getUserEmail(payment.order.userId);
+    const customerEmail =
+      payment.order.guestEmail ??
+      (await this.getUserEmail(payment.order.userId));
     if (customerEmail) {
       await this.emailQueue.add(
         JOBS.SEND_EMAIL,
@@ -215,13 +296,21 @@ export class PaymentsService {
 
     await this.orderQueue.add(
       JOBS.ORDER_CONFIRMED,
-      { orderId: payment.orderId, orderNumber: payment.order.orderNumber, customerEmail: customerEmail ?? '' } satisfies OrderConfirmedJobData,
+      {
+        orderId: payment.orderId,
+        orderNumber: payment.order.orderNumber,
+        customerEmail: customerEmail ?? '',
+      } satisfies OrderConfirmedJobData,
       DEFAULT_JOB_OPTIONS,
     );
   }
 
-  private async onPaymentIntentFailed(intent: Stripe.PaymentIntent): Promise<void> {
-    const payment = await this.prisma.payment.findFirst({ where: { stripePaymentIntentId: intent.id } });
+  private async onPaymentIntentFailed(
+    intent: Stripe.PaymentIntent,
+  ): Promise<void> {
+    const payment = await this.prisma.payment.findFirst({
+      where: { stripePaymentIntentId: intent.id },
+    });
     if (!payment) return;
 
     await this.prisma.payment.update({
@@ -229,7 +318,9 @@ export class PaymentsService {
       data: { status: PaymentStatus.FAILED },
     });
 
-    this.logger.warn(`Payment failed for order ${payment.orderId}, intent ${intent.id}: ${intent.last_payment_error?.message ?? 'unknown'}`);
+    this.logger.warn(
+      `Payment failed for order ${payment.orderId}, intent ${intent.id}: ${intent.last_payment_error?.message ?? 'unknown'}`,
+    );
   }
 
   private async onChargeRefunded(charge: Stripe.Charge): Promise<void> {
@@ -246,7 +337,9 @@ export class PaymentsService {
       where: { id: payment.id },
       data: {
         refundedAmount: totalRefunded,
-        status: isFullRefund ? PaymentStatus.REFUNDED : PaymentStatus.PARTIALLY_REFUNDED,
+        status: isFullRefund
+          ? PaymentStatus.REFUNDED
+          : PaymentStatus.PARTIALLY_REFUNDED,
         refundedAt: new Date(),
       },
     });
@@ -254,29 +347,53 @@ export class PaymentsService {
 
   // ─── Refunds ──────────────────────────────────────────────────────────────
 
-  async createRefund(paymentId: string, dto: CreateRefundDto): Promise<PaymentResponseDto> {
+  async createRefund(
+    paymentId: string,
+    dto: CreateRefundDto,
+  ): Promise<PaymentResponseDto> {
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
-      include: { order: { select: { id: true, createdAt: true, orderNumber: true } } },
+      include: {
+        order: { select: { id: true, createdAt: true, orderNumber: true } },
+      },
     });
 
-    if (!payment) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Payment not found' });
+    if (!payment)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Payment not found',
+      });
 
     // 60-day refund window
-    const refundCutoff = new Date(payment.order.createdAt.getTime() + REFUND_WINDOW_DAYS * 24 * 60 * 60 * 1_000);
+    const refundCutoff = new Date(
+      payment.order.createdAt.getTime() +
+        REFUND_WINDOW_DAYS * 24 * 60 * 60 * 1_000,
+    );
     if (new Date() > refundCutoff) {
-      throw new BadRequestException({ code: 'ERR_REFUND_WINDOW_EXPIRED', message: 'Refund window of 60 days has passed' });
+      throw new BadRequestException({
+        code: 'ERR_REFUND_WINDOW_EXPIRED',
+        message: 'Refund window of 60 days has passed',
+      });
     }
 
-    if (payment.status !== PaymentStatus.PAID && payment.status !== PaymentStatus.PARTIALLY_REFUNDED) {
-      throw new BadRequestException({ code: 'ERR_REFUND_INVALID_STATE', message: 'Payment is not in a refundable state' });
+    if (
+      payment.status !== PaymentStatus.PAID &&
+      payment.status !== PaymentStatus.PARTIALLY_REFUNDED
+    ) {
+      throw new BadRequestException({
+        code: 'ERR_REFUND_INVALID_STATE',
+        message: 'Payment is not in a refundable state',
+      });
     }
 
     const alreadyRefunded = Number(payment.refundedAmount);
     const maxRefundable = Number(payment.amount) - alreadyRefunded;
 
     if (maxRefundable <= 0) {
-      throw new BadRequestException({ code: 'ERR_REFUND_ALREADY_FULL', message: 'Payment has already been fully refunded' });
+      throw new BadRequestException({
+        code: 'ERR_REFUND_ALREADY_FULL',
+        message: 'Payment has already been fully refunded',
+      });
     }
 
     const refundAmount = dto.amount ?? maxRefundable;
@@ -289,7 +406,10 @@ export class PaymentsService {
     }
 
     if (!payment.stripePaymentIntentId) {
-      throw new BadRequestException({ code: 'ERR_REFUND_NOT_STRIPE', message: 'Cannot refund non-Stripe payment via this endpoint' });
+      throw new BadRequestException({
+        code: 'ERR_REFUND_NOT_STRIPE',
+        message: 'Cannot refund non-Stripe payment via this endpoint',
+      });
     }
 
     const refund = await this.stripe.refunds.create({
@@ -305,7 +425,9 @@ export class PaymentsService {
       where: { id: paymentId },
       data: {
         refundedAmount: newRefundedTotal,
-        status: isFullRefund ? PaymentStatus.REFUNDED : PaymentStatus.PARTIALLY_REFUNDED,
+        status: isFullRefund
+          ? PaymentStatus.REFUNDED
+          : PaymentStatus.PARTIALLY_REFUNDED,
         refundedAt: new Date(),
         refundReason: dto.reason ?? null,
       },
@@ -317,11 +439,17 @@ export class PaymentsService {
         data: { status: OrderStatus.REFUNDED },
       });
       await this.prisma.orderStatusHistory.create({
-        data: { orderId: payment.orderId, status: OrderStatus.REFUNDED, note: `Refunded $${refundAmount.toFixed(2)} — ${dto.reason ?? 'admin initiated'}` },
+        data: {
+          orderId: payment.orderId,
+          status: OrderStatus.REFUNDED,
+          note: `Refunded $${refundAmount.toFixed(2)} — ${dto.reason ?? 'admin initiated'}`,
+        },
       });
     }
 
-    this.logger.log(`Refund ${refund.id} created for payment ${paymentId}, amount $${refundAmount}`);
+    this.logger.log(
+      `Refund ${refund.id} created for payment ${paymentId}, amount $${refundAmount}`,
+    );
 
     return this.mapPaymentToDto(updated);
   }
@@ -329,8 +457,14 @@ export class PaymentsService {
   // ─── Gift Cards ───────────────────────────────────────────────────────────
 
   async validateGiftCard(code: string): Promise<GiftCardResponseDto> {
-    const card = await this.prisma.giftCard.findFirst({ where: { code, isActive: true } });
-    if (!card) throw new NotFoundException({ code: 'ERR_GIFT_CARD_INVALID', message: 'Gift card not found or inactive' });
+    const card = await this.prisma.giftCard.findFirst({
+      where: { code, isActive: true },
+    });
+    if (!card)
+      throw new NotFoundException({
+        code: 'ERR_GIFT_CARD_INVALID',
+        message: 'Gift card not found or inactive',
+      });
     return {
       code: card.code,
       balance: Number(card.balance),
@@ -343,15 +477,34 @@ export class PaymentsService {
   async applyGiftCard(
     code: string,
     orderId: string,
-  ): Promise<{ appliedAmount: number; remainingOrderTotal: number; fullyPaid: boolean }> {
-    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
-    if (!order) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Order not found' });
+  ): Promise<{
+    appliedAmount: number;
+    remainingOrderTotal: number;
+    fullyPaid: boolean;
+  }> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
+    if (!order)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Order not found',
+      });
     if (order.status !== OrderStatus.PENDING_PAYMENT) {
-      throw new BadRequestException({ code: 'ERR_ORDER_INVALID_STATE', message: 'Order is not awaiting payment' });
+      throw new BadRequestException({
+        code: 'ERR_ORDER_INVALID_STATE',
+        message: 'Order is not awaiting payment',
+      });
     }
 
-    const card = await this.prisma.giftCard.findFirst({ where: { code, isActive: true } });
-    if (!card) throw new NotFoundException({ code: 'ERR_GIFT_CARD_INVALID', message: 'Gift card not found or inactive' });
+    const card = await this.prisma.giftCard.findFirst({
+      where: { code, isActive: true },
+    });
+    if (!card)
+      throw new NotFoundException({
+        code: 'ERR_GIFT_CARD_INVALID',
+        message: 'Gift card not found or inactive',
+      });
 
     const orderTotal = Number(order.total);
     const cardBalance = Number(card.balance);
@@ -360,14 +513,22 @@ export class PaymentsService {
     if (cardBalance >= orderTotal) {
       // Gift card covers the full order
       await this.fulfilWithGiftCard(orderId, code, orderTotal, orderTotal);
-      return { appliedAmount: orderTotal, remainingOrderTotal: 0, fullyPaid: true };
+      return {
+        appliedAmount: orderTotal,
+        remainingOrderTotal: 0,
+        fullyPaid: true,
+      };
     }
 
     // Partial payment — deduct available balance; caller still needs a PaymentIntent
     await this.prisma.$transaction(async (tx) => {
       await this.deductGiftCard(tx, code, appliedAmount, orderId);
     });
-    return { appliedAmount, remainingOrderTotal: orderTotal - appliedAmount, fullyPaid: false };
+    return {
+      appliedAmount,
+      remainingOrderTotal: orderTotal - appliedAmount,
+      fullyPaid: false,
+    };
   }
 
   // ─── Admin ────────────────────────────────────────────────────────────────
@@ -408,7 +569,11 @@ export class PaymentsService {
         data: { status: OrderStatus.CONFIRMED, confirmedAt: new Date() },
       });
       await tx.orderStatusHistory.create({
-        data: { orderId, status: OrderStatus.CONFIRMED, note: 'Paid in full with gift card' },
+        data: {
+          orderId,
+          status: OrderStatus.CONFIRMED,
+          note: 'Paid in full with gift card',
+        },
       });
     });
   }
@@ -426,11 +591,17 @@ export class PaymentsService {
     });
 
     if (result.count === 0) {
-      throw new BadRequestException({ code: 'ERR_GIFT_CARD_INSUFFICIENT', message: 'Gift card has insufficient balance' });
+      throw new BadRequestException({
+        code: 'ERR_GIFT_CARD_INSUFFICIENT',
+        message: 'Gift card has insufficient balance',
+      });
     }
 
     // Card must exist since the deduction above succeeded
-    const card = await tx.giftCard.findUniqueOrThrow({ where: { code }, select: { id: true } });
+    const card = await tx.giftCard.findUniqueOrThrow({
+      where: { code },
+      select: { id: true },
+    });
     await tx.giftCardUsage.create({
       data: { giftCardId: card.id, orderId, amount },
     });
@@ -438,7 +609,10 @@ export class PaymentsService {
 
   private async getUserEmail(userId: string | null): Promise<string | null> {
     if (!userId) return null;
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
     return user?.email ?? null;
   }
 
@@ -454,7 +628,9 @@ export class PaymentsService {
       stripeChargeId: payment.stripeChargeId,
       paypalOrderId: payment.paypalOrderId,
       giftCardCode: payment.giftCardCode,
-      giftCardAmount: payment.giftCardAmount ? Number(payment.giftCardAmount) : null,
+      giftCardAmount: payment.giftCardAmount
+        ? Number(payment.giftCardAmount)
+        : null,
       refundedAmount: Number(payment.refundedAmount),
       refundedAt: payment.refundedAt,
       refundReason: payment.refundReason,

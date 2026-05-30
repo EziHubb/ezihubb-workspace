@@ -6,7 +6,8 @@ import {
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import * as sharp from 'sharp';
+const sharp = require('sharp');
+
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services/storage.service';
 import {
@@ -62,9 +63,15 @@ export class CustomizationService {
     let metadata = await sharp(buffer).metadata();
 
     // Resize if either dimension exceeds MAX_DIMENSION
-    if ((metadata.width ?? 0) > MAX_DIMENSION || (metadata.height ?? 0) > MAX_DIMENSION) {
+    if (
+      (metadata.width ?? 0) > MAX_DIMENSION ||
+      (metadata.height ?? 0) > MAX_DIMENSION
+    ) {
       buffer = await sharp(buffer)
-        .resize(MAX_DIMENSION, MAX_DIMENSION, { fit: 'inside', withoutEnlargement: true })
+        .resize(MAX_DIMENSION, MAX_DIMENSION, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
         .webp({ quality: 85 })
         .toBuffer();
       metadata = await sharp(buffer).metadata();
@@ -74,7 +81,10 @@ export class CustomizationService {
       metadata = await sharp(buffer).metadata();
     }
 
-    const key = this.storage.generateKey('uploads/temp/customization', file.originalname.replace(/\.[^.]+$/, '.webp'));
+    const key = this.storage.generateKey(
+      'uploads/temp/customization',
+      file.originalname.replace(/\.[^.]+$/, '.webp'),
+    );
     await this.storage.uploadFile(buffer, key, 'image/webp');
     const url = this.storage.getPublicUrl(key);
 
@@ -94,7 +104,10 @@ export class CustomizationService {
     tempKey: string,
     draftId: string,
   ): Promise<{ jobId: string }> {
-    const outputKey = tempKey.replace('uploads/temp/', 'uploads/processed/bg-removed-');
+    const outputKey = tempKey.replace(
+      'uploads/temp/',
+      'uploads/processed/bg-removed-',
+    );
 
     const job = await this.imageQueue.add(
       JOBS.REMOVE_BACKGROUND,
@@ -116,7 +129,10 @@ export class CustomizationService {
   ): Promise<{ status: string; result?: string; error?: string }> {
     const job = await this.imageQueue.getJob(jobId);
     if (!job) {
-      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Job not found' });
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Job not found',
+      });
     }
 
     const state = await job.getState();
@@ -137,7 +153,10 @@ export class CustomizationService {
       select: { id: true },
     });
     if (!draft) {
-      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Draft not found' });
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Draft not found',
+      });
     }
 
     const outputKey = `previews/customization/${dto.draftId}/${Date.now()}.png`;
@@ -162,7 +181,10 @@ export class CustomizationService {
     style: string,
     draftId: string,
   ): Promise<{ jobId: string }> {
-    const outputKey = tempKey.replace('uploads/temp/', `uploads/processed/styled-${style}-`);
+    const outputKey = tempKey.replace(
+      'uploads/temp/',
+      `uploads/processed/styled-${style}-`,
+    );
 
     const job = await this.imageQueue.add(
       JOBS.APPLY_ART_STYLE,
@@ -181,7 +203,10 @@ export class CustomizationService {
     dto: SaveDraftDto,
   ): Promise<CustomizationDraft> {
     if (!userId && !sessionId) {
-      throw new BadRequestException({ code: 'ERR_MISSING_IDENTITY', message: 'User or session required' });
+      throw new BadRequestException({
+        code: 'ERR_MISSING_IDENTITY',
+        message: 'User or session required',
+      });
     }
 
     const expiresAt = new Date(Date.now() + DRAFT_TTL_HOURS * 60 * 60 * 1_000);
@@ -245,7 +270,10 @@ export class CustomizationService {
       where: { id: draftId },
     });
     if (!draft) {
-      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Draft not found' });
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Draft not found',
+      });
     }
     return draft;
   }

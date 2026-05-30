@@ -49,7 +49,9 @@ export class AdminShippingController {
 
   @Post('zones')
   @ApiOperation({ summary: 'Create a shipping zone' })
-  async createZone(@Body() dto: CreateShippingZoneDto): Promise<ZoneWithMethods> {
+  async createZone(
+    @Body() dto: CreateShippingZoneDto,
+  ): Promise<ZoneWithMethods> {
     return this.shippingService.createZone(dto);
   }
 
@@ -73,7 +75,9 @@ export class AdminShippingController {
 
   @Get('zones/:zoneId/methods')
   @ApiOperation({ summary: 'List methods for a shipping zone' })
-  async getMethodsByZone(@Param('zoneId') zoneId: string): Promise<ShippingMethod[]> {
+  async getMethodsByZone(
+    @Param('zoneId') zoneId: string,
+  ): Promise<ShippingMethod[]> {
     return this.shippingService.getMethodsByZone(zoneId);
   }
 

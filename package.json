@@ -5,6 +5,7 @@
   "private": true,
   "packageManager": "pnpm@11.0.9",
   "scripts": {
+    "prepare": "prisma generate --schema=prisma/schema.prisma",
     "dev": "pnpm nx run-many -t serve -p client admin api --parallel=3",
     "build": "pnpm nx run-many -t build",
     "lint": "pnpm nx affected -t lint",

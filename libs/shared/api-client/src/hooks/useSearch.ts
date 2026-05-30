@@ -17,7 +17,7 @@ export function useSearch(query: SearchQuery) {
     queryKey: ['search', query],
     queryFn:  () =>
       api.get<PaginatedResponse<ProductListItemDto>>(API_ROUTES.SEARCH.QUERY, {
-        params: query as Record<string, string | number | boolean | undefined | null>,
+        params: query as unknown as Record<string, string | number | boolean | undefined | null>,
       }),
     enabled:  Boolean(query.q?.trim()),
     staleTime: 30_000,

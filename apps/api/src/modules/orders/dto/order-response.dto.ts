@@ -70,6 +70,8 @@ export class OrderResponseDto {
   @ApiProperty() updatedAt: Date;
 
   @ApiProperty({ type: [OrderItemDto] }) items: OrderItemDto[];
-  @ApiPropertyOptional({ type: () => OrderPaymentDto }) payment: OrderPaymentDto | null;
-  @ApiProperty({ type: [OrderStatusHistoryDto] }) statusHistory: OrderStatusHistoryDto[];
+  @ApiPropertyOptional({ type: () => OrderPaymentDto })
+  payment: OrderPaymentDto | null;
+  @ApiProperty({ type: [OrderStatusHistoryDto] })
+  statusHistory: OrderStatusHistoryDto[];
 }

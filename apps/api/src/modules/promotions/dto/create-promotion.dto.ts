@@ -24,12 +24,18 @@ export class CreatePromotionDto {
   @IsEnum(DiscountType)
   type!: DiscountType;
 
-  @ApiProperty({ example: 20, description: 'Percentage (0–100) or fixed amount in cents/dollars' })
+  @ApiProperty({
+    example: 20,
+    description: 'Percentage (0–100) or fixed amount in cents/dollars',
+  })
   @IsNumber()
   @Min(0)
   value!: number;
 
-  @ApiPropertyOptional({ example: 50, description: 'Minimum order total required' })
+  @ApiPropertyOptional({
+    example: 50,
+    description: 'Minimum order total required',
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)

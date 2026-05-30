@@ -11,9 +11,20 @@ import { PaymentsService } from '../payments/payments.service';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
-import { OrderResponseDto, OrderItemDto, OrderPaymentDto, OrderStatusHistoryDto } from './dto/order-response.dto';
-import { OrderListItemDto, AdminOrderQueryDto } from './dto/order-list-item.dto';
-import { PaginatedResult, paginatedResponse } from '../../common/dto/paginated-response.dto';
+import {
+  OrderResponseDto,
+  OrderItemDto,
+  OrderPaymentDto,
+  OrderStatusHistoryDto,
+} from './dto/order-response.dto';
+import {
+  OrderListItemDto,
+  AdminOrderQueryDto,
+} from './dto/order-list-item.dto';
+import {
+  PaginatedResult,
+  paginatedResponse,
+} from '../../common/dto/paginated-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
 const CART_INCLUDE_FOR_CHECKOUT = {
@@ -57,20 +68,38 @@ export class OrdersService {
 
   // ─── Checkout ─────────────────────────────────────────────────────────────
 
-  async checkout(dto: CheckoutDto, userId?: string, sessionId?: string): Promise<CheckoutResponseDto> {
+  async checkout(
+    dto: CheckoutDto,
+    userId?: string,
+    sessionId?: string,
+  ): Promise<CheckoutResponseDto> {
     if (!userId && !dto.guestEmail) {
-      throw new BadRequestException({ code: 'ERR_VALIDATION', message: 'guestEmail is required for guest checkout' });
+      throw new BadRequestException({
+        code: 'ERR_VALIDATION',
+        message: 'guestEmail is required for guest checkout',
+      });
     }
 
     // Fetch cart
     if (!userId && !sessionId) {
-      throw new BadRequestException({ code: 'ERR_CART_NOT_FOUND', message: 'No cart session found' });
+      throw new BadRequestException({
+        code: 'ERR_CART_NOT_FOUND',
+        message: 'No cart session found',
+      });
     }
-    const cartWhere: Prisma.CartWhereInput = userId ? { userId } : { sessionId };
-    const cart = await this.prisma.cart.findFirst({ where: cartWhere, include: CART_INCLUDE_FOR_CHECKOUT });
+    const cartWhere: Prisma.CartWhereInput = userId
+      ? { userId }
+      : { sessionId };
+    const cart = await this.prisma.cart.findFirst({
+      where: cartWhere,
+      include: CART_INCLUDE_FOR_CHECKOUT,
+    });
 
     if (!cart || cart.items.length === 0) {
-      throw new BadRequestException({ code: 'ERR_CART_EMPTY', message: 'Cart is empty' });
+      throw new BadRequestException({
+        code: 'ERR_CART_EMPTY',
+        message: 'Cart is empty',
+      });
     }
 
     // Re-validate all items
@@ -85,7 +114,9 @@ export class OrdersService {
 
     // Recalculate subtotal from current prices (server-side, never trust client)
     const subtotal = cart.items.reduce((sum, item) => {
-      const price = item.variant ? Number(item.variant.price) : Number(item.product.basePrice);
+      const price = item.variant
+        ? Number(item.variant.price)
+        : Number(item.product.basePrice);
       return sum + price * item.quantity;
     }, 0);
 
@@ -107,28 +138,46 @@ export class OrdersService {
       });
 
       if (!promo) {
-        throw new BadRequestException({ code: 'ERR_COUPON_INVALID', message: 'Coupon is invalid or expired' });
+        throw new BadRequestException({
+          code: 'ERR_COUPON_INVALID',
+          message: 'Coupon is invalid or expired',
+        });
       }
       if (promo.maxUses !== null && promo.currentUses >= promo.maxUses) {
-        throw new BadRequestException({ code: 'ERR_COUPON_EXHAUSTED', message: 'Coupon usage limit reached' });
+        throw new BadRequestException({
+          code: 'ERR_COUPON_EXHAUSTED',
+          message: 'Coupon usage limit reached',
+        });
       }
-      if (promo.minOrderAmount !== null && subtotal < Number(promo.minOrderAmount)) {
-        throw new BadRequestException({ code: 'ERR_COUPON_MIN_ORDER', message: 'Order does not meet coupon minimum' });
+      if (
+        promo.minOrderAmount !== null &&
+        subtotal < Number(promo.minOrderAmount)
+      ) {
+        throw new BadRequestException({
+          code: 'ERR_COUPON_MIN_ORDER',
+          message: 'Order does not meet coupon minimum',
+        });
       }
 
-      if (promo.type === 'PERCENTAGE') discount = Math.round(subtotal * Number(promo.value)) / 100;
-      else if (promo.type === 'FIXED_AMOUNT') discount = Math.min(subtotal, Number(promo.value));
+      if (promo.type === 'PERCENTAGE')
+        discount = Math.round(subtotal * Number(promo.value)) / 100;
+      else if (promo.type === 'FIXED_AMOUNT')
+        discount = Math.min(subtotal, Number(promo.value));
       else if (promo.type === 'FREE_SHIPPING') freeShipping = true;
     }
 
     const subtotalAfterDiscount = Math.max(0, subtotal - discount);
 
     // Calculate shipping (waived if FREE_SHIPPING coupon applied)
-    const shippingCalc = await this.shippingService.calculateShipping(dto.shippingMethodId, subtotalAfterDiscount);
+    const shippingCalc = await this.shippingService.calculateShipping(
+      dto.shippingMethodId,
+      subtotalAfterDiscount,
+    );
     const shippingCost = freeShipping ? 0 : shippingCalc.cost;
     const shippingMethodName = shippingCalc.name;
 
-    const total = Math.round((subtotalAfterDiscount + shippingCost) * 100) / 100;
+    const total =
+      Math.round((subtotalAfterDiscount + shippingCost) * 100) / 100;
 
     const { shippingAddress: addr } = dto;
 
@@ -144,7 +193,9 @@ export class OrdersService {
           status: OrderStatus.PENDING_PAYMENT,
           shippingName: addr.fullName,
           shippingPhone: addr.phone,
-          shippingAddress: [addr.addressLine1, addr.addressLine2].filter(Boolean).join(', '),
+          shippingAddress: [addr.addressLine1, addr.addressLine2]
+            .filter(Boolean)
+            .join(', '),
           shippingCity: addr.city,
           shippingState: addr.state ?? null,
           shippingZip: addr.postalCode,
@@ -168,8 +219,12 @@ export class OrdersService {
           productName: item.product.name,
           variantName: item.variant?.name ?? null,
           quantity: item.quantity,
-          unitPrice: item.variant ? Number(item.variant.price) : Number(item.product.basePrice),
-          customizationData: item.customizationData as Prisma.InputJsonValue | undefined,
+          unitPrice: item.variant
+            ? Number(item.variant.price)
+            : Number(item.product.basePrice),
+          customizationData: item.customizationData as
+            | Prisma.InputJsonValue
+            | undefined,
           previewUrl: item.previewUrl,
         })),
       });
@@ -189,15 +244,23 @@ export class OrdersService {
             AND ("maxUses" IS NULL OR "currentUses" < "maxUses")
         `;
         if (affected === 0) {
-          throw new BadRequestException({ code: 'ERR_COUPON_RACE', message: 'Coupon is no longer available' });
+          throw new BadRequestException({
+            code: 'ERR_COUPON_RACE',
+            message: 'Coupon is no longer available',
+          });
         }
       }
 
       // Record promotion usage
       if (couponCode && userId) {
-        const promo = await tx.promotion.findUnique({ where: { code: couponCode }, select: { id: true } });
+        const promo = await tx.promotion.findUnique({
+          where: { code: couponCode },
+          select: { id: true },
+        });
         if (promo) {
-          await tx.promotionUsage.create({ data: { promotionId: promo.id, userId, orderId: newOrder.id } });
+          await tx.promotionUsage.create({
+            data: { promotionId: promo.id, userId, orderId: newOrder.id },
+          });
         }
       }
 
@@ -205,7 +268,11 @@ export class OrdersService {
     });
 
     // OUTSIDE transaction: create Stripe PaymentIntent
-    const paymentResponse = await this.paymentsService.createPaymentIntentForOrder(order.id, dto.giftCardCode);
+    const paymentResponse =
+      await this.paymentsService.createPaymentIntentForOrder(
+        order.id,
+        dto.giftCardCode,
+      );
 
     return {
       orderId: order.id,
@@ -217,7 +284,10 @@ export class OrdersService {
 
   // ─── Customer Queries ─────────────────────────────────────────────────────
 
-  async findMyOrders(userId: string, pagination: PaginationDto): Promise<PaginatedResult<OrderListItemDto>> {
+  async findMyOrders(
+    userId: string,
+    pagination: PaginationDto,
+  ): Promise<PaginatedResult<OrderListItemDto>> {
     const page = pagination.page ?? 1;
     const limit = pagination.limit ?? 10;
     const skip = (page - 1) * limit;
@@ -226,8 +296,16 @@ export class OrdersService {
       this.prisma.order.findMany({
         where: { userId },
         select: {
-          id: true, orderNumber: true, status: true, total: true, createdAt: true,
-          items: { select: { quantity: true, previewUrl: true }, take: 1, orderBy: { previewUrl: 'desc' } },
+          id: true,
+          orderNumber: true,
+          status: true,
+          total: true,
+          createdAt: true,
+          items: {
+            select: { quantity: true, previewUrl: true },
+            take: 1,
+            orderBy: { previewUrl: 'desc' },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -249,41 +327,76 @@ export class OrdersService {
     return paginatedResponse(data, page, limit, total);
   }
 
-  async findMyOrderByNumber(userId: string, orderNumber: string): Promise<OrderResponseDto> {
+  async findMyOrderByNumber(
+    userId: string,
+    orderNumber: string,
+  ): Promise<OrderResponseDto> {
     const order = await this.prisma.order.findFirst({
       where: { orderNumber, userId },
       include: ORDER_INCLUDE,
     });
-    if (!order) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Order not found' });
+    if (!order)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Order not found',
+      });
     return this.mapToDto(order);
   }
 
-  async findGuestOrder(orderNumber: string, email: string): Promise<OrderResponseDto> {
+  async findGuestOrder(
+    orderNumber: string,
+    email: string,
+  ): Promise<OrderResponseDto> {
     const order = await this.prisma.order.findFirst({
       where: { orderNumber, guestEmail: email.toLowerCase() },
       include: ORDER_INCLUDE,
     });
-    if (!order) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Order not found' });
+    if (!order)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Order not found',
+      });
     return this.mapToDto(order);
   }
 
   // ─── Cancel ───────────────────────────────────────────────────────────────
 
-  async cancelOrder(orderNumber: string, userId?: string, reason?: string, guestEmail?: string): Promise<OrderResponseDto> {
+  async cancelOrder(
+    orderNumber: string,
+    userId?: string,
+    reason?: string,
+    guestEmail?: string,
+  ): Promise<OrderResponseDto> {
     const where: Prisma.OrderWhereInput = { orderNumber };
     if (userId) where.userId = userId;
     else if (guestEmail) where.guestEmail = guestEmail.toLowerCase();
-    else throw new BadRequestException({ code: 'ERR_UNAUTHORIZED', message: 'Authentication required to cancel order' });
+    else
+      throw new BadRequestException({
+        code: 'ERR_UNAUTHORIZED',
+        message: 'Authentication required to cancel order',
+      });
 
-    const order = await this.prisma.order.findFirst({ where, include: ORDER_INCLUDE });
-    if (!order) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Order not found' });
+    const order = await this.prisma.order.findFirst({
+      where,
+      include: ORDER_INCLUDE,
+    });
+    if (!order)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Order not found',
+      });
 
     if (order.status === OrderStatus.CANCELLED) {
-      throw new BadRequestException({ code: 'ERR_ORDER_ALREADY_CANCELLED', message: 'Order is already cancelled' });
+      throw new BadRequestException({
+        code: 'ERR_ORDER_ALREADY_CANCELLED',
+        message: 'Order is already cancelled',
+      });
     }
 
     if (order.status === OrderStatus.CONFIRMED) {
-      const cancelDeadline = new Date((order.confirmedAt?.getTime() ?? 0) + CANCEL_WINDOW_MS);
+      const cancelDeadline = new Date(
+        (order.confirmedAt?.getTime() ?? 0) + CANCEL_WINDOW_MS,
+      );
       if (new Date() > cancelDeadline) {
         throw new BadRequestException({
           code: 'ERR_ORDER_CANCEL_WINDOW_EXPIRED',
@@ -301,11 +414,19 @@ export class OrdersService {
     const updated = await this.prisma.$transaction(async (tx) => {
       const o = await tx.order.update({
         where: { id: order.id },
-        data: { status: OrderStatus.CANCELLED, cancelReason: reason ?? null, cancelledAt: now },
+        data: {
+          status: OrderStatus.CANCELLED,
+          cancelReason: reason ?? null,
+          cancelledAt: now,
+        },
         include: ORDER_INCLUDE,
       });
       await tx.orderStatusHistory.create({
-        data: { orderId: order.id, status: OrderStatus.CANCELLED, note: reason ?? 'Cancelled by customer' },
+        data: {
+          orderId: order.id,
+          status: OrderStatus.CANCELLED,
+          note: reason ?? 'Cancelled by customer',
+        },
       });
       return o;
     });
@@ -315,7 +436,9 @@ export class OrdersService {
 
   // ─── Admin ────────────────────────────────────────────────────────────────
 
-  async findAll(query: AdminOrderQueryDto): Promise<PaginatedResult<OrderListItemDto>> {
+  async findAll(
+    query: AdminOrderQueryDto,
+  ): Promise<PaginatedResult<OrderListItemDto>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const skip = (page - 1) * limit;
@@ -332,16 +455,26 @@ export class OrdersService {
     }
     if (startDate || endDate) {
       where.createdAt = {};
-      if (startDate) (where.createdAt as Prisma.DateTimeFilter).gte = new Date(startDate);
-      if (endDate) (where.createdAt as Prisma.DateTimeFilter).lte = new Date(endDate);
+      if (startDate)
+        (where.createdAt as Prisma.DateTimeFilter).gte = new Date(startDate);
+      if (endDate)
+        (where.createdAt as Prisma.DateTimeFilter).lte = new Date(endDate);
     }
 
     const [orders, total] = await Promise.all([
       this.prisma.order.findMany({
         where,
         select: {
-          id: true, orderNumber: true, status: true, total: true, createdAt: true,
-          items: { select: { quantity: true, previewUrl: true }, take: 1, orderBy: { previewUrl: 'desc' } },
+          id: true,
+          orderNumber: true,
+          status: true,
+          total: true,
+          createdAt: true,
+          items: {
+            select: { quantity: true, previewUrl: true },
+            take: 1,
+            orderBy: { previewUrl: 'desc' },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -364,27 +497,51 @@ export class OrdersService {
   }
 
   async findById(id: string): Promise<OrderResponseDto> {
-    const order = await this.prisma.order.findUnique({ where: { id }, include: ORDER_INCLUDE });
-    if (!order) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Order not found' });
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: ORDER_INCLUDE,
+    });
+    if (!order)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Order not found',
+      });
     return this.mapToDto(order);
   }
 
-  async updateStatus(id: string, dto: UpdateOrderStatusDto, adminId: string): Promise<OrderResponseDto> {
+  async updateStatus(
+    id: string,
+    dto: UpdateOrderStatusDto,
+    adminId: string,
+  ): Promise<OrderResponseDto> {
     const order = await this.prisma.order.findUnique({ where: { id } });
-    if (!order) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Order not found' });
+    if (!order)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Order not found',
+      });
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const o = await tx.order.update({
         where: { id },
         data: {
           status: dto.status,
-          ...(dto.status === OrderStatus.SHIPPED ? { shippedAt: new Date() } : {}),
-          ...(dto.status === OrderStatus.DELIVERED ? { deliveredAt: new Date() } : {}),
+          ...(dto.status === OrderStatus.SHIPPED
+            ? { shippedAt: new Date() }
+            : {}),
+          ...(dto.status === OrderStatus.DELIVERED
+            ? { deliveredAt: new Date() }
+            : {}),
         },
         include: ORDER_INCLUDE,
       });
       await tx.orderStatusHistory.create({
-        data: { orderId: id, status: dto.status, note: dto.note ?? null, createdBy: adminId },
+        data: {
+          orderId: id,
+          status: dto.status,
+          note: dto.note ?? null,
+          createdBy: adminId,
+        },
       });
       return o;
     });
@@ -392,15 +549,28 @@ export class OrdersService {
     return this.mapToDto(updated);
   }
 
-  async addTracking(id: string, dto: AddTrackingDto): Promise<OrderResponseDto> {
+  async addTracking(
+    id: string,
+    dto: AddTrackingDto,
+  ): Promise<OrderResponseDto> {
     const order = await this.prisma.order.findUnique({ where: { id } });
-    if (!order) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Order not found' });
+    if (!order)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Order not found',
+      });
 
-    const trackingUrl = dto.trackingUrl ?? this.shippingService.buildTrackingUrl(dto.carrier, dto.trackingNumber);
+    const trackingUrl =
+      dto.trackingUrl ??
+      this.shippingService.buildTrackingUrl(dto.carrier, dto.trackingNumber);
 
     const updated = await this.prisma.order.update({
       where: { id },
-      data: { carrier: dto.carrier, trackingNumber: dto.trackingNumber, trackingUrl },
+      data: {
+        carrier: dto.carrier,
+        trackingNumber: dto.trackingNumber,
+        trackingUrl,
+      },
       include: ORDER_INCLUDE,
     });
 
@@ -419,15 +589,25 @@ export class OrdersService {
     }
     if (startDate || endDate) {
       where.createdAt = {};
-      if (startDate) (where.createdAt as Prisma.DateTimeFilter).gte = new Date(startDate);
-      if (endDate) (where.createdAt as Prisma.DateTimeFilter).lte = new Date(endDate);
+      if (startDate)
+        (where.createdAt as Prisma.DateTimeFilter).gte = new Date(startDate);
+      if (endDate)
+        (where.createdAt as Prisma.DateTimeFilter).lte = new Date(endDate);
     }
 
     const orders = await this.prisma.order.findMany({
       where,
       select: {
-        orderNumber: true, status: true, guestEmail: true, total: true, shippingCost: true,
-        discountAmount: true, couponCode: true, trackingNumber: true, carrier: true, createdAt: true,
+        orderNumber: true,
+        status: true,
+        guestEmail: true,
+        total: true,
+        shippingCost: true,
+        discountAmount: true,
+        couponCode: true,
+        trackingNumber: true,
+        carrier: true,
+        createdAt: true,
         user: { select: { email: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -435,8 +615,17 @@ export class OrdersService {
     });
 
     const header = [
-      'Order Number', 'Status', 'Email', 'Subtotal', 'Discount', 'Shipping', 'Total',
-      'Coupon', 'Carrier', 'Tracking Number', 'Created At',
+      'Order Number',
+      'Status',
+      'Email',
+      'Subtotal',
+      'Discount',
+      'Shipping',
+      'Total',
+      'Coupon',
+      'Carrier',
+      'Tracking Number',
+      'Created At',
     ].join(',');
 
     const rows = orders.map((o) =>
@@ -444,7 +633,11 @@ export class OrdersService {
         o.orderNumber,
         o.status,
         o.guestEmail ?? o.user?.email ?? '',
-        (Number(o.total) - Number(o.shippingCost) + Number(o.discountAmount)).toFixed(2),
+        (
+          Number(o.total) -
+          Number(o.shippingCost) +
+          Number(o.discountAmount)
+        ).toFixed(2),
         Number(o.discountAmount).toFixed(2),
         Number(o.shippingCost).toFixed(2),
         Number(o.total).toFixed(2),
@@ -462,8 +655,12 @@ export class OrdersService {
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
-  private async generateOrderNumber(tx: Prisma.TransactionClient): Promise<string> {
-    const [{ nextval }] = await tx.$queryRaw<[{ nextval: bigint }]>`SELECT NEXTVAL('order_number_seq')`;
+  private async generateOrderNumber(
+    tx: Prisma.TransactionClient,
+  ): Promise<string> {
+    const [{ nextval }] = await tx.$queryRaw<
+      [{ nextval: bigint }]
+    >`SELECT NEXTVAL('order_number_seq')`;
     const year = new Date().getFullYear();
     return `MLH-${year}-${Number(nextval).toString().padStart(5, '0')}`;
   }
@@ -492,19 +689,23 @@ export class OrdersService {
           currency: order.payment.currency,
           stripePaymentIntentId: order.payment.stripePaymentIntentId,
           giftCardCode: order.payment.giftCardCode,
-          giftCardAmount: order.payment.giftCardAmount ? Number(order.payment.giftCardAmount) : null,
+          giftCardAmount: order.payment.giftCardAmount
+            ? Number(order.payment.giftCardAmount)
+            : null,
           refundedAmount: Number(order.payment.refundedAmount),
           paidAt: order.payment.paidAt,
         }
       : null;
 
-    const statusHistory: OrderStatusHistoryDto[] = order.statusHistory.map((h) => ({
-      id: h.id,
-      status: h.status,
-      note: h.note,
-      createdBy: h.createdBy,
-      createdAt: h.createdAt,
-    }));
+    const statusHistory: OrderStatusHistoryDto[] = order.statusHistory.map(
+      (h) => ({
+        id: h.id,
+        status: h.status,
+        note: h.note,
+        createdBy: h.createdBy,
+        createdAt: h.createdAt,
+      }),
+    );
 
     return {
       id: order.id,
