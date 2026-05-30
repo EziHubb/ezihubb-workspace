@@ -191,16 +191,16 @@ export class PaymentsService {
       switch (event.type) {
         case 'payment_intent.succeeded':
           await this.onPaymentIntentSucceeded(
-            event.data.object as Stripe.PaymentIntent,
+            event.data.object as any,
           );
           break;
         case 'payment_intent.payment_failed':
           await this.onPaymentIntentFailed(
-            event.data.object as Stripe.PaymentIntent,
+            event.data.object as any,
           );
           break;
         case 'charge.refunded':
-          await this.onChargeRefunded(event.data.object as Stripe.Charge);
+          await this.onChargeRefunded(event.data.object as any);
           break;
         default:
           this.logger.debug(`Unhandled Stripe event type: ${event.type}`);
