@@ -3,7 +3,7 @@ nixPkgs = ["nodejs_22"]
 cmds = ["npm install -g corepack@latest && corepack enable pnpm"]
 
 [phases.install]
-cmds = ["pnpm install --frozen-lockfile"]
+cmds = ["pnpm install --no-frozen-lockfile"]
 
 [phases.build]
 cmds = ["node railway-build.mjs"]
