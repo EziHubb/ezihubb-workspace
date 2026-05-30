@@ -34,12 +34,19 @@ if (service.includes('api') || (!service.includes('client') && !service.includes
   run('node dist/apps/api/main.js');
 
 } else if (service.includes('admin')) {
-  // With output: standalone, must use node server.js directly
+  // Debug: find where server.js actually is
+  console.log('[railway-start] Searching for server.js...');
+  run('find . -name "server.js" -not -path "*/node_modules/*" 2>/dev/null | head -20 || true');
+  run('ls dist/apps/admin/ 2>/dev/null || echo "dist/apps/admin/ not found"');
+  run('ls dist/apps/admin/.next/ 2>/dev/null || echo "dist/apps/admin/.next/ not found"');
+  run('ls apps/admin/.next/ 2>/dev/null || echo "apps/admin/.next/ not found"');
+
   const port = process.env['PORT'] || '3001';
   const candidates = [
     'dist/apps/admin/.next/standalone/server.js',
     'dist/apps/admin/server.js',
     'apps/admin/.next/standalone/server.js',
+    'apps/admin/.next/standalone/apps/admin/server.js',
   ];
   const serverJs = candidates.find(existsSync);
   if (serverJs) {
@@ -47,17 +54,25 @@ if (service.includes('api') || (!service.includes('client') && !service.includes
     process.env['HOSTNAME'] = '0.0.0.0';
     run(`node ${serverJs}`);
   } else {
-    console.error('[railway-start] standalone server.js not found, searched:', candidates);
-    process.exit(1);
+    // Fallback: rebuild and start
+    console.warn('[railway-start] standalone not found, running next build + start');
+    run('pnpm nx build admin --configuration=production');
+    run('pnpm exec next start dist/apps/admin');
   }
 
 } else if (service.includes('client') || service.includes('web') || service.includes('storefront')) {
-  // With output: standalone, must use node server.js directly
+  console.log('[railway-start] Searching for server.js...');
+  run('find . -name "server.js" -not -path "*/node_modules/*" 2>/dev/null | head -20 || true');
+  run('ls dist/apps/client/ 2>/dev/null || echo "dist/apps/client/ not found"');
+  run('ls dist/apps/client/.next/ 2>/dev/null || echo "dist/apps/client/.next/ not found"');
+  run('ls apps/client/.next/ 2>/dev/null || echo "apps/client/.next/ not found"');
+
   const port = process.env['PORT'] || '3000';
   const candidates = [
     'dist/apps/client/.next/standalone/server.js',
     'dist/apps/client/server.js',
     'apps/client/.next/standalone/server.js',
+    'apps/client/.next/standalone/apps/client/server.js',
   ];
   const serverJs = candidates.find(existsSync);
   if (serverJs) {
@@ -65,7 +80,8 @@ if (service.includes('api') || (!service.includes('client') && !service.includes
     process.env['HOSTNAME'] = '0.0.0.0';
     run(`node ${serverJs}`);
   } else {
-    console.error('[railway-start] standalone server.js not found, searched:', candidates);
-    process.exit(1);
+    console.warn('[railway-start] standalone not found, running next build + start');
+    run('pnpm nx build client --configuration=production');
+    run('pnpm exec next start dist/apps/client');
   }
 }
