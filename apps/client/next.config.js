@@ -5,7 +5,13 @@ const { composePlugins, withNx } = require('@nx/next');
 const createNextIntlPlugin = require('next-intl/plugin');
 const path = require('path');
 
-const withNextIntl = createNextIntlPlugin(path.join(__dirname, 'src/i18n/request.ts'));
+// Compute a CWD-relative path so it works whether Nx runs from repo root or apps/client
+const intlConfigPath = './' + path.relative(
+  process.cwd(),
+  path.join(__dirname, 'src/i18n/request.ts')
+).replace(/\\/g, '/');
+
+const withNextIntl = createNextIntlPlugin(intlConfigPath);
 
 /**
  * @type {import('@nx/next/plugins/with-nx').WithNxOptions}
