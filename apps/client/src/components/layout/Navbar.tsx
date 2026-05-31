@@ -207,7 +207,7 @@ export function Navbar() {
                   <span className="text-white font-bold text-xl font-display">M</span>
                 </div>
                 <span className="font-display font-bold text-lg md:text-xl text-secondary hidden sm:block">
-                  Maple Loom Handmade
+                  Maple Handmade
                 </span>
               </Link>
             </div>

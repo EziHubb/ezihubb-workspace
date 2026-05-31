@@ -1,0 +1,6 @@
+{
+  "notFound": "Page not found",
+  "serverError": "Something went wrong",
+  "networkError": "Connection error",
+  "unauthorized": "Please sign in to continue"
+}

@@ -105,22 +105,6 @@ export function ReactQueryProvider({ children }: { children: React.ReactNode }) 
       </ToastProvider>
       {/* Auth initializer — silently refreshes session token on app boot */}
       <AuthInitializer />
-      {/* DevTools — tree-shaken out of production builds */}
-      {process.env['NODE_ENV'] === 'development' && <ReactQueryDevtools />}
     </QueryClientProvider>
   );
-}
-
-// ── Lazy-loaded DevTools (zero production bundle impact) ──────────────────────
-
-function ReactQueryDevtools() {
-  if (typeof window === 'undefined') return null;
-
-  // Dynamic require so this module is never included in the prod bundle.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { ReactQueryDevtools: DevTools } = require('@tanstack/react-query-devtools') as {
-    ReactQueryDevtools: React.ComponentType<{ initialIsOpen?: boolean }>;
-  };
-
-  return <DevTools initialIsOpen={false} />;
 }

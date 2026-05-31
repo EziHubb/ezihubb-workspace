@@ -50,11 +50,11 @@ export async function generateMetadata({
   if (!collection) return { title: 'Collection Not Found' };
 
   return {
-    title:       `${collection.name} | Maple Loom Handmade`,
+    title:       `${collection.name} | Maple Handmade`,
     description: collection.description ??
       `Explore our ${collection.name} collection of personalized handmade gifts.`,
     openGraph: {
-      title:  `${collection.name} | Maple Loom Handmade`,
+      title:  `${collection.name} | Maple Handmade`,
       images: collection.imageUrl ? [collection.imageUrl] : [],
     },
   };

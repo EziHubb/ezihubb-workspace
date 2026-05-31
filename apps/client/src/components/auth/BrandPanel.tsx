@@ -27,7 +27,7 @@ export function BrandPanel() {
             <span className="font-display font-bold text-2xl text-primary">M</span>
           </div>
           <span className="font-display font-bold text-2xl text-white">
-            Maple Loom Handmade
+            Maple Handmade
           </span>
         </div>
 
@@ -103,7 +103,7 @@ export function BrandStrip() {
       </div>
       <div className="min-w-0">
         <p className="font-display font-bold text-white text-base leading-none">
-          Maple Loom Handmade
+          Maple Handmade
         </p>
         <p className="text-white/70 text-xs mt-0.5 truncate">
           Gifts that tell their story

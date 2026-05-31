@@ -9,6 +9,8 @@ import { ProductInfo } from '../../../../../components/product/ProductInfo';
 import { ProductPageInteractive } from '../../../../../components/product/ProductPageInteractive';
 import { ProductTabs } from '../../../../../components/product/ProductTabs';
 import { RelatedProducts } from '../../../../../components/product/RelatedProducts';
+import { ProductStructuredData } from '../../../../../components/seo/ProductStructuredData';
+import { BreadcrumbStructuredData } from '../../../../../components/seo/BreadcrumbStructuredData';
 
 export const revalidate = 30;
 
@@ -92,16 +94,21 @@ export async function generateMetadata({
   const description =
     product.shortDescription ??
     product.description?.slice(0, 160) ??
-    `Shop ${product.name} at Maple Loom Handmade`;
+    `Shop ${product.name} at Maple Handmade`;
+
+  const primaryImage = product.images?.[0];
 
   return {
-    title:       `${product.name} | Maple Loom Handmade`,
+    title:       product.name,
     description,
+    robots:      { index: true, follow: true },
     openGraph: {
       title:       product.name,
       description,
       type:        'website',
-      images:      product.images?.[0] ? [{ url: product.images[0].url, alt: product.name }] : [],
+      images:      primaryImage
+        ? [{ url: primaryImage.url, width: 800, height: 800, alt: product.name }]
+        : [{ url: '/og-default.jpg', width: 1200, height: 630 }],
     },
     other: {
       'product:price:amount':   String(product.basePrice),
@@ -133,38 +140,22 @@ export default async function ProductDetailPage({
       ? (product.customizationTemplate ?? DEMO_TEMPLATE)
       : null;
 
-  // JSON-LD structured data
-  const jsonLd = {
-    '@context':  'https://schema.org/',
-    '@type':     'Product',
-    name:        product.name,
-    description: product.description,
-    image:       product.images?.map((i) => i.url) ?? [],
-    sku:         product.sku,
-    offers: {
-      '@type':        'Offer',
-      priceCurrency:  'USD',
-      price:          product.basePrice,
-      availability:   'https://schema.org/InStock',
-      url:            `https://mapleloomhandmade.com/${locale}/products/${slug}`,
-    },
-    ...(reviewSummary && {
-      aggregateRating: {
-        '@type':       'AggregateRating',
-        ratingValue:   reviewSummary.averageRating.toFixed(1),
-        reviewCount:   reviewSummary.totalReviews,
-        bestRating:    5,
-        worstRating:   1,
-      },
-    }),
-  };
+  const BASE = 'https://maplehandmade.com';
 
   return (
     <>
-      {/* JSON-LD */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      {/* Structured data */}
+      <ProductStructuredData
+        product={product}
+        reviewSummary={reviewSummary}
+        locale={locale}
+      />
+      <BreadcrumbStructuredData
+        items={[
+          { name: 'Home',     url: BASE },
+          { name: 'Products', url: `${BASE}/products` },
+          { name: product.name, url: `${BASE}/products/${slug}` },
+        ]}
       />
 
       <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">

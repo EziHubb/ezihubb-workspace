@@ -15,6 +15,7 @@ export interface OrderItemDto {
   orderId:       string;
   productId:     string;
   variantId?:    string;
+  variantName?:  string;
   quantity:      number;
   unitPrice:     number;
   totalPrice:    number;
@@ -60,6 +61,8 @@ export interface OrderDto {
   };
   trackingNumber?: string;
   trackingUrl?:    string;
+  carrier?:        string;
+  confirmedAt?:    string;
   notes?:          string;
   statusHistory?:  OrderStatusHistoryDto[];
   createdAt:       string;

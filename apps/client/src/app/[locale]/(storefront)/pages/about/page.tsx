@@ -7,7 +7,7 @@ export const dynamic = 'force-static';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title:       'About Us | Maple Loom Handmade',
+    title:       'About Us | Maple Handmade',
     description: 'Learn about our mission to create meaningful, personalized handmade gifts crafted with love for every occasion.',
   };
 }
@@ -120,7 +120,7 @@ export default function AboutPage() {
           </div>
           <div className="space-y-4 text-secondary text-base leading-relaxed">
             <p>
-              Maple Loom Handmade was born from a simple belief: the most meaningful gifts
+              Maple Handmade was born from a simple belief: the most meaningful gifts
               are the ones made uniquely for someone. We started in 2019 as a small
               workshop with two people and a single embroidery machine.
             </p>

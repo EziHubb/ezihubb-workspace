@@ -5,7 +5,7 @@ import { ContactForm } from '../../../../../components/pages/ContactForm';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title:       'Contact Us | Maple Loom Handmade',
+    title:       'Contact Us | Maple Handmade',
     description: 'Get in touch with our support team. Available 7 days a week with replies within 2 hours.',
   };
 }
@@ -21,8 +21,8 @@ const CONTACT_CARDS = [
   {
     icon:  Mail,
     title: 'Email Support',
-    body:  'support@mapleloomhandmade.com',
-    action: { label: 'Send Email', href: 'mailto:support@mapleloomhandmade.com', external: true },
+    body:  'support@maplehandmade.com',
+    action: { label: 'Send Email', href: 'mailto:support@maplehandmade.com', external: true },
     accent: 'text-success bg-success/8',
   },
   {

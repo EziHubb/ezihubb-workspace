@@ -1,0 +1,6 @@
+{
+  "notFound": "Không tìm thấy trang",
+  "serverError": "Đã có lỗi xảy ra",
+  "networkError": "Lỗi kết nối",
+  "unauthorized": "Vui lòng đăng nhập để tiếp tục"
+}

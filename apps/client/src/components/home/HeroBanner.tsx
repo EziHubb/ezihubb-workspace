@@ -89,7 +89,7 @@ export function HeroBanner({
                   priority
                 />
               </div>
-              {/* Top-right image */}
+              {/* Top-right image — priority: in viewport on initial load */}
               <div className="relative rounded-2xl overflow-hidden shadow-floating">
                 <Image
                   src="https://images.unsplash.com/photo-1743299663330-60c30cf0c7dc?w=300&q=80"
@@ -97,9 +97,10 @@ export function HeroBanner({
                   fill
                   sizes="(max-width: 768px) 45vw, 18vw"
                   className="object-cover"
+                  priority
                 />
               </div>
-              {/* Bottom-right image */}
+              {/* Bottom-right image — priority: in viewport on initial load */}
               <div className="relative rounded-2xl overflow-hidden shadow-floating">
                 <Image
                   src="https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=300&q=80"
@@ -107,6 +108,7 @@ export function HeroBanner({
                   fill
                   sizes="(max-width: 768px) 45vw, 18vw"
                   className="object-cover"
+                  priority
                 />
               </div>
 

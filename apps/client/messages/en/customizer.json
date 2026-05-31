@@ -1,0 +1,63 @@
+{
+  "step1": {
+    "title": "Add Names & Message",
+    "desc": "Personalize with names, dates, or a heartfelt message."
+  },
+  "step2": {
+    "title": "Upload a Photo",
+    "desc": "Add a personal photo to make this gift truly one-of-a-kind.",
+    "uploadZone": {
+      "title": "Tap to upload",
+      "subtitle": "or take a photo",
+      "hint": "JPG · PNG · HEIC up to 10MB"
+    },
+    "uploading": "Uploading... {progress}%",
+    "ready": "Ready",
+    "removeBg": {
+      "button": "Remove Background",
+      "processing": "✨ Removing background...",
+      "processingHint": "Usually 5–10 seconds",
+      "cancel": "Cancel",
+      "done": "Background removed ✓",
+      "undo": "Undo"
+    },
+    "replace": "Replace",
+    "skip": "Skip this step →",
+    "noPhoto": "No photo?"
+  },
+  "step3": {
+    "title": "Choose Your Style",
+    "desc": "Select an art style for your photo to give it a unique look.",
+    "generatePreview": "👁 Generate Preview",
+    "generateHint": "See exactly how it'll look (~20 sec)",
+    "generating": "Generating your preview…",
+    "generatingHint": "Please keep this screen open",
+    "lookingGood": "Looking good! ✨",
+    "regenerate": "Regenerate"
+  },
+  "topBar": {
+    "preview": "Preview",
+    "stepLabel": "{name}"
+  },
+  "addToCart": {
+    "button": "Add to Cart 🛍",
+    "adding": "Adding…",
+    "success": "Added to cart! 🛍",
+    "missingFields": "Please fill in: {fields}",
+    "viewCart": "View Cart"
+  },
+  "unsavedChanges": {
+    "title": "Leave without saving?",
+    "confirm": "Your customization will be lost if you leave now.",
+    "stay": "Stay",
+    "leave": "Leave"
+  },
+  "steps": {
+    "step1": "Add Names & Text",
+    "step2": "Upload a Photo",
+    "step3": "Choose Your Style"
+  },
+  "progress": "Step {current} of {total}",
+  "continue": "Continue →",
+  "back": "← Back"
+}

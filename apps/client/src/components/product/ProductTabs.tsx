@@ -18,7 +18,7 @@ const SHIPPING_INFO = `
 **International Shipping** available to 50+ countries.
 
 **Returns & Exchanges:**
-We accept returns within 30 days of delivery for unused, unmodified items. Personalized items are non-returnable unless defective. Contact support@mapleloomhandmade.com to start a return.
+We accept returns within 30 days of delivery for unused, unmodified items. Personalized items are non-returnable unless defective. Contact support@maplehandmade.com to start a return.
 `;
 
 export function ProductTabs({ product, reviewSummary, locale: _locale }: ProductTabsProps) {

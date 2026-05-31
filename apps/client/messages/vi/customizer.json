@@ -1,0 +1,63 @@
+{
+  "step1": {
+    "title": "Thêm Tên & Lời Nhắn",
+    "desc": "Cá nhân hóa với tên, ngày hoặc một lời nhắn từ trái tim."
+  },
+  "step2": {
+    "title": "Tải Lên Ảnh",
+    "desc": "Thêm ảnh cá nhân để món quà thực sự là của riêng bạn.",
+    "uploadZone": {
+      "title": "Nhấn để tải lên",
+      "subtitle": "hoặc chụp ảnh",
+      "hint": "JPG · PNG · HEIC tối đa 10MB"
+    },
+    "uploading": "Đang tải lên... {progress}%",
+    "ready": "Sẵn sàng",
+    "removeBg": {
+      "button": "Xóa nền",
+      "processing": "✨ Đang xóa nền...",
+      "processingHint": "Thường mất 5–10 giây",
+      "cancel": "Hủy",
+      "done": "Đã xóa nền ✓",
+      "undo": "Hoàn tác"
+    },
+    "replace": "Thay ảnh",
+    "skip": "Bỏ qua bước này →",
+    "noPhoto": "Không có ảnh?"
+  },
+  "step3": {
+    "title": "Chọn Phong Cách",
+    "desc": "Chọn phong cách nghệ thuật để tạo điểm nhấn riêng cho ảnh.",
+    "generatePreview": "👁 Xem trước kết quả",
+    "generateHint": "Xem chính xác sản phẩm trông như thế nào (~20 giây)",
+    "generating": "Đang tạo bản xem trước...",
+    "generatingHint": "Vui lòng giữ màn hình này mở",
+    "lookingGood": "Trông tuyệt vời! ✨",
+    "regenerate": "Tạo lại"
+  },
+  "topBar": {
+    "preview": "Xem trước",
+    "stepLabel": "{name}"
+  },
+  "addToCart": {
+    "button": "Thêm vào giỏ 🛍",
+    "adding": "Đang thêm...",
+    "success": "Đã thêm vào giỏ! 🛍",
+    "missingFields": "Vui lòng điền: {fields}",
+    "viewCart": "Xem giỏ hàng"
+  },
+  "unsavedChanges": {
+    "title": "Rời trang mà không lưu?",
+    "confirm": "Thiết kế của bạn sẽ bị mất nếu rời trang.",
+    "stay": "Ở lại",
+    "leave": "Rời trang"
+  },
+  "steps": {
+    "step1": "Thêm Tên & Chữ",
+    "step2": "Tải Lên Ảnh",
+    "step3": "Chọn Phong Cách"
+  },
+  "progress": "Bước {current} / {total}",
+  "continue": "Tiếp tục →",
+  "back": "← Quay lại"
+}

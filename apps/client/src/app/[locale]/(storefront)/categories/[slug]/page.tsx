@@ -48,11 +48,11 @@ export async function generateMetadata({
   if (!category) return { title: 'Category Not Found' };
 
   return {
-    title:       `${category.name} Gifts | Maple Loom Handmade`,
+    title:       `${category.name} Gifts | Maple Handmade`,
     description: category.description ??
       `Shop personalized ${category.name} gifts handcrafted with love.`,
     openGraph: {
-      title:  `${category.name} Gifts | Maple Loom Handmade`,
+      title:  `${category.name} Gifts | Maple Handmade`,
       images: category.imageUrl ? [category.imageUrl] : [],
     },
   };

@@ -227,7 +227,7 @@ export default function LoginPage() {
 
       {/* Register link */}
       <p className="text-center text-sm text-muted mt-6">
-        New to Maple Loom Handmade?{' '}
+        New to Maple Handmade?{' '}
         <Link
           href={`/${locale}/register`}
           className="text-primary font-medium hover:underline"

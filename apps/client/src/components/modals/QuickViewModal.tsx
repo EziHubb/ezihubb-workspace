@@ -1,0 +1,186 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useLocale } from 'next-intl';
+import { Star, ExternalLink } from 'lucide-react';
+import { Modal, ModalHeader, ModalBody, Button, Skeleton } from '@mlh/ui';
+import { ProductGallery } from '../product/ProductGallery';
+import { VariantPicker } from '../product/VariantPicker';
+import type { ProductDto, VariantDto } from '@mlh/types';
+
+// ── API ───────────────────────────────────────────────────────────────────────
+
+const API = () =>
+  (typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_API_URL']) ||
+  'http://localhost:3002';
+
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+
+function QuickViewSkeleton() {
+  return (
+    <div className="flex flex-col md:flex-row gap-5 animate-pulse">
+      <div className="w-full md:w-[45%]">
+        <Skeleton variant="rect" className="aspect-square w-full rounded-card" />
+      </div>
+      <div className="flex-1 space-y-4">
+        <Skeleton variant="text" className="h-5 w-4/5" />
+        <Skeleton variant="text" className="h-4 w-24" />
+        <Skeleton variant="text" className="h-7 w-28" />
+        <div className="space-y-2 pt-2">
+          <Skeleton variant="text" className="h-3 w-full" />
+          <Skeleton variant="text" className="h-3 w-5/6" />
+          <Skeleton variant="text" className="h-3 w-3/4" />
+        </div>
+        <div className="flex flex-wrap gap-2 pt-2">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} variant="rect" className="h-9 w-16 rounded-button" />
+          ))}
+        </div>
+        <Skeleton variant="rect" className="h-11 w-full rounded-button" />
+      </div>
+    </div>
+  );
+}
+
+// ── Props ─────────────────────────────────────────────────────────────────────
+
+export interface QuickViewModalProps {
+  isOpen:       boolean;
+  productSlug:  string;
+  onClose:      () => void;
+  onAddToCart?: (productId: string, variantId?: string) => void;
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+export function QuickViewModal({
+  isOpen,
+  productSlug,
+  onClose,
+  onAddToCart,
+}: QuickViewModalProps) {
+  const locale = useLocale();
+
+  const [product,          setProduct]          = useState<ProductDto | null>(null);
+  const [loading,          setLoading]          = useState(true);
+  const [selectedVariant,  setSelectedVariant]  = useState<VariantDto | null>(null);
+  const [error,            setError]            = useState('');
+
+  useEffect(() => {
+    if (!isOpen || !productSlug) return;
+
+    setLoading(true);
+    setProduct(null);
+    setError('');
+
+    fetch(`${API()}/api/v1/products/${productSlug}`, {
+      credentials: 'include',
+      headers:     { Accept: 'application/json' },
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Not found'))))
+      .then((body) => setProduct(body?.data ?? body))
+      .catch((err: Error) => setError(err.message ?? 'Product not found'))
+      .finally(() => setLoading(false));
+  }, [isOpen, productSlug]);
+
+  const price = selectedVariant?.price ?? product?.basePrice ?? 0;
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} size="lg">
+      <ModalHeader onClose={onClose}>
+        {!loading && product ? product.name : 'Product Details'}
+      </ModalHeader>
+
+      <ModalBody>
+        {loading && <QuickViewSkeleton />}
+
+        {!loading && error && (
+          <div className="py-8 text-center">
+            <p className="text-sm text-muted">{error}</p>
+          </div>
+        )}
+
+        {!loading && product && (
+          <div className="flex flex-col md:flex-row gap-6">
+            {/* Left: Gallery (simplified — up to 2 images) */}
+            <div className="w-full md:w-[45%] shrink-0">
+              <ProductGallery
+                images={(product.images ?? []).slice(0, 2)}
+                productName={product.name}
+                soldCount={product.soldCount}
+              />
+            </div>
+
+            {/* Right: Product info */}
+            <div className="flex-1 space-y-4 min-w-0">
+              {/* Name */}
+              <h2 className="font-display text-xl font-bold text-secondary leading-snug">
+                {product.name}
+              </h2>
+
+              {/* Rating */}
+              {product.rating !== undefined && product.reviewCount !== undefined && (
+                <div className="flex items-center gap-1.5">
+                  <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                  <span className="text-sm font-semibold text-secondary">
+                    {product.rating.toFixed(1)}
+                  </span>
+                  <span className="text-xs text-muted">
+                    ({product.reviewCount} review{product.reviewCount !== 1 ? 's' : ''})
+                  </span>
+                </div>
+              )}
+
+              {/* Price */}
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-primary">
+                  ${price.toFixed(2)}
+                </span>
+                {product.compareAtPrice && product.compareAtPrice > price && (
+                  <span className="text-sm text-muted line-through">
+                    ${product.compareAtPrice.toFixed(2)}
+                  </span>
+                )}
+              </div>
+
+              {/* Short description */}
+              {product.shortDescription && (
+                <p className="text-sm text-muted leading-relaxed line-clamp-3">
+                  {product.shortDescription}
+                </p>
+              )}
+
+              {/* Variant picker */}
+              {product.variants && product.variants.length > 0 && (
+                <VariantPicker
+                  variants={product.variants}
+                  onVariantChange={setSelectedVariant}
+                />
+              )}
+
+              {/* Actions */}
+              <div className="space-y-2 pt-2">
+                <Link
+                  href={`/${locale}/products/${productSlug}/customize`}
+                  className="flex items-center justify-center w-full h-11 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors"
+                  onClick={onClose}
+                >
+                  Personalize &amp; Add to Cart
+                </Link>
+                <Link
+                  href={`/${locale}/products/${productSlug}`}
+                  className="flex items-center justify-center gap-1.5 w-full h-10 border border-border rounded-button text-sm font-medium text-secondary hover:border-primary hover:text-primary transition-colors"
+                  onClick={onClose}
+                >
+                  View Full Details
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+      </ModalBody>
+    </Modal>
+  );
+}

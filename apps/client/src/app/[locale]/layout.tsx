@@ -5,6 +5,8 @@ import { getMessages, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '../../i18n/routing';
 import { ReactQueryProvider } from '../../components/providers/ReactQueryProvider';
+import { ToastContainer } from '../../components/ui/ToastContainer';
+import { WebVitals } from '../../components/providers/WebVitals';
 import '../global.css';
 
 const inter = Inter({
@@ -27,11 +29,29 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'site' });
   return {
+    metadataBase: new URL('https://maplehandmade.com'),
     title: {
       template: `%s | ${t('name')}`,
-      default: t('defaultTitle'),
+      default:  t('defaultTitle'),
     },
     description: t('defaultDescription'),
+    keywords: [
+      'personalized gifts', 'custom gifts', 'photo gifts',
+      'handmade gifts', 'custom mugs', 'canvas prints', 'maple loom',
+    ],
+    openGraph: {
+      siteName: t('name'),
+      locale:   locale === 'vi' ? 'vi_VN' : 'en_US',
+      type:     'website',
+      images:   [{ url: '/og-default.jpg', width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+    },
+    robots: {
+      index:  true,
+      follow: true,
+    },
   };
 }
 
@@ -56,6 +76,10 @@ export default async function LocaleLayout({
         <ReactQueryProvider>
           <NextIntlClientProvider messages={messages}>
             {children}
+            {/* Module-level toast store — call toast.success/error anywhere, including outside React */}
+            <ToastContainer />
+            {/* Core Web Vitals reporting — logs in dev, sends to analytics in prod */}
+            <WebVitals />
           </NextIntlClientProvider>
         </ReactQueryProvider>
       </body>
