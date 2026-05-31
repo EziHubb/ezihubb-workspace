@@ -43,12 +43,19 @@ function Section({
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
+interface AttributeFilterOption {
+  key:    string;
+  values: string[];
+}
+
 interface FilterSidebarProps {
-  filters:    ListingFilters;
-  categories: CategoryDto[];
-  tags:       TagDto[];
-  onChange:   (updates: Partial<ListingFilters>) => void;
-  onClearAll: () => void;
+  filters:           ListingFilters;
+  categories:        CategoryDto[];
+  tags:              TagDto[];
+  onChange:          (updates: Partial<ListingFilters>) => void;
+  onClearAll:        () => void;
+  /** Category-specific filterable attributes (e.g. Material, Size) */
+  attributeFilters?: AttributeFilterOption[];
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -59,6 +66,7 @@ export function FilterSidebar({
   tags,
   onChange,
   onClearAll,
+  attributeFilters,
 }: FilterSidebarProps) {
   // Local price state avoids a router.push on every slider tick
   const [localMin, setLocalMin] = useState(filters.minPrice ?? 0);
@@ -252,6 +260,46 @@ export function FilterSidebar({
           </div>
         </Section>
       )}
+
+      {/* ── Attribute Filters (category-specific) ──────────────────────── */}
+      {attributeFilters && attributeFilters.length > 0 && attributeFilters.map((attr) => {
+        const selectedVal = filters.attributes?.[attr.key];
+        return (
+          <Section key={attr.key} title={attr.key} defaultOpen={false}>
+            <ul className="space-y-2">
+              {attr.values.map((val) => {
+                const checked = selectedVal === val;
+                return (
+                  <li key={val}>
+                    <label className="flex items-center gap-2.5 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          const next = { ...(filters.attributes ?? {}) };
+                          if (e.target.checked) {
+                            next[attr.key] = val;
+                          } else {
+                            delete next[attr.key];
+                          }
+                          onChange({
+                            attributes: Object.keys(next).length > 0 ? next : undefined,
+                            page: 1,
+                          });
+                        }}
+                        className="w-4 h-4 rounded accent-primary"
+                      />
+                      <span className="text-sm text-secondary group-hover:text-primary transition-colors">
+                        {val}
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          </Section>
+        );
+      })}
     </aside>
   );
 }

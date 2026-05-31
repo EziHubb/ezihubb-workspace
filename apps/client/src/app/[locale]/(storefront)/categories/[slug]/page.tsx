@@ -18,14 +18,16 @@ type SearchParamValue = string | string[] | undefined;
 // ── Static params: pre-render all known category slugs ──────────────────────
 
 export async function generateStaticParams() {
-  const base = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
+  const base    = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
+  const locales = ['en', 'vi'] as const;
   try {
     const res = await fetch(`${base}/api/v1/catalog/categories`, {
       next: { revalidate: 3600 },
     });
     if (!res.ok) return [];
     const body = (await res.json()) as { data: CategoryDto[] };
-    return (body.data ?? []).map((c) => ({ slug: c.slug }));
+    const slugs = (body.data ?? []).map((c) => c.slug);
+    return locales.flatMap((locale) => slugs.map((slug) => ({ locale, slug })));
   } catch {
     return [];
   }
@@ -75,7 +77,7 @@ export default async function CategoryPage({
   const [category, productsResult, tags] = await Promise.all([
     fetchOne<CategoryDto>(`${base}/api/v1/catalog/categories/${slug}`),
     fetchPaged<ProductListItemDto>(
-      buildProductsApiUrl(base, filters, { categorySlug: slug }),
+      buildProductsApiUrl(base, filters, { category: slug }),
     ),
     fetchList<TagDto>(`${base}/api/v1/catalog/tags`),
   ]);

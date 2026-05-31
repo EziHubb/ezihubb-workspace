@@ -81,7 +81,8 @@
   "collections": {
     "title": "Shop Our Collections",
     "subtitle": "Curated collections for every occasion and style",
-    "productCount": "{count} products"
+    "productCount": "{count} products",
+    "viewAllOccasions": "View All Occasions"
   },
   "howItWorks": {
     "title": "How It Works",

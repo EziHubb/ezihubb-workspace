@@ -9,5 +9,10 @@
   "cart": "Giỏ hàng",
   "account": "Tài khoản",
   "home": "Trang chủ",
-  "toggleMenu": "Mở/đóng menu"
+  "toggleMenu": "Mở/đóng menu",
+  "allProducts": "Tất cả sản phẩm",
+  "viewAll": "Xem tất cả {category}",
+  "megaMenu": {
+    "ariaLabel": "Danh mục sản phẩm"
+  }
 }

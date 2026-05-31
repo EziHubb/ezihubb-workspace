@@ -3,13 +3,15 @@ import type { PaginatedResponse } from '@mlh/types';
 // ── Filter state (lives in URL, not Zustand) ────────────────────────────────
 
 export interface ListingFilters {
-  sort:      string;
-  minPrice?: number;
-  maxPrice?: number;
-  rating?:   number;
-  tags:      string[];
-  category?: string;
-  page:      number;
+  sort:       string;
+  minPrice?:  number;
+  maxPrice?:  number;
+  rating?:    number;
+  tags:       string[];
+  category?:  string;
+  page:       number;
+  /** Attribute filters: key=value pairs from ?attr[Material]=Bamboo */
+  attributes?: Record<string, string>;
 }
 
 export const DEFAULT_FILTERS: ListingFilters = {
@@ -45,6 +47,12 @@ export function buildFilterUrl(pathname: string, filters: ListingFilters): strin
   if (filters.rating   !== undefined)  params.set('rating',   String(filters.rating));
   filters.tags.forEach(tag => params.append('tags', tag));
 
+  if (filters.attributes) {
+    for (const [k, v] of Object.entries(filters.attributes)) {
+      if (v) params.set(`attr[${k}]`, v);
+    }
+  }
+
   const qs = params.toString();
   return qs ? `${pathname}?${qs}` : pathname;
 }
@@ -66,14 +74,24 @@ export function parseSearchParams(
     return Array.isArray(v) ? v : [v];
   };
 
+  // Parse attr[Key]=Value params (bracket notation)
+  const attributes: Record<string, string> = {};
+  for (const [k, v] of Object.entries(sp)) {
+    const m = k.match(/^attr\[([^\]]+)\]$/);
+    if (m && typeof v === 'string' && v) {
+      attributes[m[1]] = v;
+    }
+  }
+
   return {
-    sort:     get('sort')     ?? 'bestseller',
-    minPrice: get('minPrice') ? Number(get('minPrice')) : undefined,
-    maxPrice: get('maxPrice') ? Number(get('maxPrice')) : undefined,
-    rating:   get('rating')   ? Number(get('rating'))   : undefined,
-    tags:     getAll('tags'),
-    category: get('category'),
-    page:     Number(get('page') ?? '1'),
+    sort:       get('sort')     ?? 'bestseller',
+    minPrice:   get('minPrice') ? Number(get('minPrice')) : undefined,
+    maxPrice:   get('maxPrice') ? Number(get('maxPrice')) : undefined,
+    rating:     get('rating')   ? Number(get('rating'))   : undefined,
+    tags:       getAll('tags'),
+    category:   get('category'),
+    page:       Number(get('page') ?? '1'),
+    attributes: Object.keys(attributes).length > 0 ? attributes : undefined,
   };
 }
 

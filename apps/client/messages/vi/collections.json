@@ -1,0 +1,20 @@
+{
+  "hero": {
+    "eyebrow": "Bộ Sưu Tập",
+    "productCount": "{count} sản phẩm"
+  },
+  "urgency": "Bộ sưu tập này kết thúc vào {date} — đặt hàng ngay!",
+  "related": "Bộ Sưu Tập Khác",
+  "breadcrumb": {
+    "collections": "Bộ Sưu Tập"
+  },
+  "notFound": {
+    "title": "Không tìm thấy bộ sưu tập",
+    "description": "Bộ sưu tập này có thể đã kết thúc hoặc không tồn tại."
+  },
+  "all": {
+    "title": "Tất Cả Bộ Sưu Tập",
+    "subtitle": "Khám phá các bộ sưu tập quà tặng theo chủ đề và dịp lễ đặc biệt.",
+    "empty": "Hiện chưa có bộ sưu tập nào."
+  }
+}

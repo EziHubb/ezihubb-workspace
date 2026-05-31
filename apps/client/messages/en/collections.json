@@ -1,0 +1,20 @@
+{
+  "hero": {
+    "eyebrow": "Collection",
+    "productCount": "{count, plural, one {# product} other {# products}}"
+  },
+  "urgency": "This collection ends {date} — shop before it's gone!",
+  "related": "More Collections",
+  "breadcrumb": {
+    "collections": "Collections"
+  },
+  "notFound": {
+    "title": "Collection not found",
+    "description": "This collection may have ended or doesn't exist."
+  },
+  "all": {
+    "title": "All Collections",
+    "subtitle": "Discover curated gift collections for every occasion and season.",
+    "empty": "No collections available right now."
+  }
+}

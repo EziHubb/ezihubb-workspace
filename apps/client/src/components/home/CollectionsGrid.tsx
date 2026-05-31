@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import type { CollectionDto } from '@mlh/types';
+import { ArrowRight } from 'lucide-react';
 
 interface CollectionsGridProps {
   collections: CollectionDto[];
@@ -23,7 +24,7 @@ export async function CollectionsGrid({ collections, locale }: CollectionsGridPr
       </div>
 
       {/* 3×2 grid on desktop, 2×3 on mobile */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mb-8">
         {collections.map((collection) => (
           <Link
             key={collection.id}
@@ -60,6 +61,16 @@ export async function CollectionsGrid({ collections, locale }: CollectionsGridPr
             </div>
           </Link>
         ))}
+      </div>
+      {/* View All Occasions link */}
+      <div className="text-center">
+        <Link
+          href={`/${locale}/occasions`}
+          className="inline-flex items-center gap-1.5 text-primary hover:text-primary-dark font-medium text-sm transition-colors"
+        >
+          {t('collections.viewAllOccasions')}
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
       </div>
     </section>
   );

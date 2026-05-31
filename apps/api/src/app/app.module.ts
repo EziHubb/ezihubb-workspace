@@ -29,6 +29,7 @@ import { CustomizationModule } from '../modules/customization/customization.modu
 import { SearchModule } from '../modules/search/search.module';
 import { AdminModule } from '../modules/admin/admin.module';
 import { HealthModule } from '../health/health.module';
+import { MongoDBModule } from '../modules/database/mongodb.module';
 
 @Module({
   imports: [
@@ -66,6 +67,8 @@ import { HealthModule } from '../health/health.module';
         GOOGLE_CLIENT_SECRET: Joi.string().optional(),
         GOOGLE_CALLBACK_URL: Joi.string().optional(),
         FRONTEND_URL: Joi.string().default('http://localhost:3000'),
+        // MongoDB — optional (falls back to localhost in development)
+        MONGODB_URI: Joi.string().default('mongodb://localhost:27017'),
       }),
       validationOptions: { abortEarly: false },
     }),
@@ -99,6 +102,7 @@ import { HealthModule } from '../health/health.module';
 
     // ── Infrastructure ────────────────────────────────────────────────────────
     PrismaModule,
+    MongoDBModule,
     CommonModule,
     QueueModule,
 

@@ -81,7 +81,8 @@
   "collections": {
     "title": "Khám Phá Bộ Sưu Tập",
     "subtitle": "Bộ sưu tập được tuyển chọn cho từng dịp và phong cách",
-    "productCount": "{count} sản phẩm"
+    "productCount": "{count} sản phẩm",
+    "viewAllOccasions": "Xem Tất Cả Dịp Lễ"
   },
   "howItWorks": {
     "title": "Cách Thức Hoạt Động",

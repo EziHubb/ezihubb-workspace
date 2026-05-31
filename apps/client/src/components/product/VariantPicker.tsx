@@ -2,142 +2,158 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useCustomizerStore } from '../../lib/store/customizer.store';
-import type { VariantDto } from '@mlh/types';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface FlexVariant {
+  sku:             string;
+  options:         Record<string, string>;
+  price:           number;
+  compareAtPrice?: number;
+  isDefault?:      boolean;
+  /** undefined = available by default; false = explicitly unavailable */
+  isAvailable?:    boolean;
+}
+
+export interface VariantOption {
+  name:   string;
+  values: string[];
+}
+
+export type SelectedVariant = FlexVariant;
 
 interface VariantPickerProps {
-  variants:          VariantDto[];
-  onVariantChange?:  (variant: VariantDto | null) => void;
+  variantOptions:   VariantOption[];
+  variants:         FlexVariant[];
+  onVariantChange?: (variant: SelectedVariant | null) => void;
 }
 
-type OptionKey = 'size' | 'color' | 'material';
-const OPTION_LABELS: Record<OptionKey, string> = {
-  size:     'Size',
-  color:    'Color',
-  material: 'Material',
-};
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-function getDistinctValues(variants: VariantDto[], key: OptionKey): string[] {
-  return [
-    ...new Set(
-      variants
-        .filter((v) => v.isActive && v[key])
-        .map((v) => v[key] as string),
-    ),
-  ];
+function findVariant(
+  variants:    FlexVariant[],
+  selected:    Record<string, string>,
+  dimNames:    string[],
+): FlexVariant | null {
+  if (dimNames.length === 0) return null;
+  if (!dimNames.every((n) => selected[n])) return null;
+  return variants.find((v) => dimNames.every((n) => v.options[n] === selected[n])) ?? null;
 }
 
-function findMatchingVariant(
-  variants:  VariantDto[],
-  selected:  Partial<Record<OptionKey, string>>,
-  optionKeys: OptionKey[],
-): VariantDto | null {
-  return (
-    variants.find((v) => {
-      return optionKeys.every((key) => {
-        const sel = selected[key];
-        if (!sel) return true;
-        return v[key] === sel;
-      });
-    }) ?? null
-  );
+/** Is at least one variant with this dimension value available? */
+function isValueAvailable(
+  variants:    FlexVariant[],
+  selected:    Record<string, string>,
+  dimName:     string,
+  dimValue:    string,
+  allDimNames: string[],
+): boolean {
+  const hypo = { ...selected, [dimName]: dimValue };
+  return variants.some((v) => {
+    if (v.options[dimName] !== dimValue) return false;
+    for (const n of allDimNames) {
+      if (n === dimName) continue;
+      if (hypo[n] && v.options[n] !== hypo[n]) return false;
+    }
+    return v.isAvailable !== false;
+  });
 }
 
-export function VariantPicker({ variants, onVariantChange }: VariantPickerProps) {
+// ── Component ─────────────────────────────────────────────────────────────────
+
+export function VariantPicker({ variantOptions, variants, onVariantChange }: VariantPickerProps) {
   const setVariantInStore = useCustomizerStore((s) => s.setVariant);
+  const dimNames          = variantOptions.map((o) => o.name);
 
-  // Determine which option types exist in this product's variants
-  const optionKeys = (['size', 'color', 'material'] as OptionKey[]).filter(
-    (k) => variants.some((v) => v[k]),
+  // Auto-select the default variant on mount
+  const defaultVariant = variants.find((v) => v.isDefault) ?? variants[0] ?? null;
+  const [selected, setSelected] = useState<Record<string, string>>(defaultVariant?.options ?? {});
+
+  const getVariant = useCallback(
+    () => findVariant(variants, selected, dimNames),
+    [variants, selected, dimNames],
   );
 
-  const [selected, setSelected] = useState<Partial<Record<OptionKey, string>>>({});
-
-  const selectedVariant = useCallback(
-    () => findMatchingVariant(variants, selected, optionKeys),
-    [variants, selected, optionKeys],
-  );
-
-  // Sync selected variant to customizer store and parent callback
   useEffect(() => {
-    const variant = selectedVariant();
-    setVariantInStore(variant?.id ?? '');
-    onVariantChange?.(variant);
+    const v = getVariant();
+    setVariantInStore(v?.sku ?? '');
+    onVariantChange?.(v ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
 
-  if (optionKeys.length === 0 || variants.length === 0) return null;
+  if (variantOptions.length === 0 || variants.length === 0) return null;
 
-  const currentVariant = selectedVariant();
+  const activeVariant = getVariant();
+  const isOutOfStock  = activeVariant?.isAvailable === false;
 
   return (
     <div className="space-y-4">
-      {optionKeys.map((key) => {
-        const values = getDistinctValues(variants, key);
-        if (values.length === 0) return null;
+      {variantOptions.map((opt) => (
+        <div key={opt.name}>
+          <p className="text-sm font-semibold text-secondary mb-2">
+            {opt.name}
+            {selected[opt.name] && (
+              <span className="font-normal text-muted ml-2">— {selected[opt.name]}</span>
+            )}
+          </p>
 
-        return (
-          <div key={key}>
-            <p className="text-sm font-semibold text-secondary mb-2">
-              {OPTION_LABELS[key]}
-              {selected[key] && (
-                <span className="font-normal text-muted ml-2">— {selected[key]}</span>
-              )}
-            </p>
+          <div className="flex flex-wrap gap-2" role="group" aria-label={`Select ${opt.name}`}>
+            {opt.values.map((val) => {
+              const isActive = selected[opt.name] === val;
+              const isAvail  = isValueAvailable(variants, selected, opt.name, val, dimNames);
 
-            <div className="flex flex-wrap gap-2" role="group" aria-label={`Select ${OPTION_LABELS[key]}`}>
-              {values.map((val) => {
-                const active = selected[key] === val;
-                // Check if this option value is available given other selections
-                const hypothetical = { ...selected, [key]: val };
-                const isAvailable  = findMatchingVariant(variants, hypothetical, optionKeys)?.stock !== 0;
-
-                return (
-                  <button
-                    key={val}
-                    type="button"
-                    aria-pressed={active}
-                    aria-disabled={!isAvailable}
-                    disabled={!isAvailable}
-                    onClick={() =>
-                      setSelected((prev) => ({
-                        ...prev,
-                        [key]: active ? undefined : val,
-                      }))
-                    }
-                    className={[
-                      'px-4 py-2 rounded-button border text-sm font-medium transition-all',
-                      active
-                        ? 'bg-primary text-white border-primary shadow-sm'
-                        : isAvailable
-                        ? 'border-border text-secondary hover:border-primary hover:text-primary'
-                        : 'border-border text-muted opacity-40 cursor-not-allowed line-through',
-                    ].join(' ')}
-                  >
-                    {val}
-                  </button>
-                );
-              })}
-            </div>
+              return (
+                <button
+                  key={val}
+                  type="button"
+                  aria-pressed={isActive}
+                  title={!isAvail ? 'Not available in this combination' : undefined}
+                  onClick={() =>
+                    setSelected((prev) => ({ ...prev, [opt.name]: isActive ? '' : val }))
+                  }
+                  className={[
+                    'relative px-4 py-2 rounded-button border text-sm font-medium transition-all select-none',
+                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                    isActive
+                      ? 'bg-primary text-white border-primary shadow-sm'
+                      : isAvail
+                      ? 'border-border text-secondary hover:border-primary hover:text-primary cursor-pointer'
+                      : 'border-border text-muted/50 cursor-default',
+                  ].join(' ')}
+                >
+                  {/* Diagonal strike for unavailable */}
+                  {!isAvail && !isActive && (
+                    <span className="absolute inset-0 rounded-button overflow-hidden pointer-events-none" aria-hidden="true">
+                      <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+                        <line x1="0" y1="0" x2="100%" y2="100%" stroke="currentColor" strokeWidth="1" className="text-border" />
+                      </svg>
+                    </span>
+                  )}
+                  <span className={!isAvail && !isActive ? 'opacity-50 line-through' : ''}>{val}</span>
+                </button>
+              );
+            })}
           </div>
-        );
-      })}
+        </div>
+      ))}
 
-      {/* Show selected variant's stock warning */}
-      {currentVariant && currentVariant.stock <= 3 && currentVariant.stock > 0 && (
-        <p className="text-xs text-warning font-medium">
-          ⚠️ Only {currentVariant.stock} left in stock
-        </p>
-      )}
-      {currentVariant && currentVariant.stock === 0 && (
-        <p className="text-xs text-error font-medium">Out of stock</p>
-      )}
-
-      {/* Variant price update */}
-      {currentVariant?.price !== undefined &&
-        currentVariant.price !== 0 && (
-        <p className="text-sm font-semibold text-primary">
-          This variant: ${currentVariant.price.toFixed(2)}
-        </p>
+      {/* Feedback */}
+      {activeVariant && (
+        <div>
+          {isOutOfStock ? (
+            <p className="text-sm font-medium text-error">✗ Out of stock in this combination</p>
+          ) : (activeVariant.compareAtPrice ?? 0) > activeVariant.price ? (
+            <p className="flex items-baseline gap-2 text-sm">
+              <span className="font-bold text-primary">${activeVariant.price.toFixed(2)}</span>
+              <span className="line-through text-muted text-xs">${activeVariant.compareAtPrice!.toFixed(2)}</span>
+              <span className="text-xs font-semibold text-success">
+                Save ${(activeVariant.compareAtPrice! - activeVariant.price).toFixed(2)}
+              </span>
+            </p>
+          ) : activeVariant.price > 0 ? (
+            <p className="text-sm font-semibold text-primary">${activeVariant.price.toFixed(2)}</p>
+          ) : null}
+        </div>
       )}
     </div>
   );

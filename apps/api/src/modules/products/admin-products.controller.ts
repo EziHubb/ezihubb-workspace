@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Patch,
   Delete,
   Body,
@@ -37,6 +38,13 @@ import { Role } from '@mlh/constants';
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
 import { IsArray, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import {
+  CreateProductDetailDto,
+  VariantDto,
+  AttributeDto,
+  CustomizationTemplateDto,
+  SetAttributesDto,
+} from './dto/create-product-detail.dto';
 
 class ReorderImagesDto {
   @ApiProperty({ type: [String] })
@@ -132,5 +140,69 @@ export class AdminProductsController {
     @Body() dto: ReorderImagesDto,
   ): Promise<void> {
     return this.productsService.reorderImages(id, dto.orderedIds);
+  }
+
+  // ─── MongoDB detail endpoints ────────────────────────────────────────────────
+
+  // GET /admin/products/:id/detail
+  @Get(':id/detail')
+  @ApiOperation({ summary: '[Admin] Get full MongoDB product detail (variants, attributes, customization)' })
+  getProductDetail(@Param('id', ParseCuidPipe) id: string) {
+    return this.productsService.getProductDetail(id);
+  }
+
+  // PUT /admin/products/:id/detail
+  @Put(':id/detail')
+  @ApiOperation({ summary: '[Admin] Upsert full MongoDB product detail' })
+  @ApiResponse({ status: 200 })
+  upsertProductDetail(
+    @Param('id', ParseCuidPipe) id: string,
+    @Body() dto: CreateProductDetailDto,
+  ) {
+    // Force productId to match URL param
+    dto.productId = id;
+    return this.productsService.upsertProductDetail(id, dto);
+  }
+
+  // POST /admin/products/:id/variants
+  @Post(':id/variants')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: '[Admin] Add a variant to the MongoDB detail' })
+  addVariant(
+    @Param('id', ParseCuidPipe) id: string,
+    @Body() variant: VariantDto,
+  ) {
+    return this.productsService.addVariant(id, variant);
+  }
+
+  // DELETE /admin/products/:id/variants/:sku
+  @Delete(':id/variants/:sku')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '[Admin] Remove a variant by SKU' })
+  removeVariant(
+    @Param('id', ParseCuidPipe) id: string,
+    @Param('sku') sku: string,
+  ) {
+    return this.productsService.removeVariant(id, sku);
+  }
+
+  // POST /admin/products/:id/attributes
+  @Post(':id/attributes')
+  @ApiOperation({ summary: '[Admin] Replace all product attributes' })
+  setAttributes(
+    @Param('id', ParseCuidPipe) id: string,
+    @Body() dto: SetAttributesDto,
+  ) {
+    return this.productsService.setAttributes(id, dto.attributes);
+  }
+
+  // POST /admin/products/:id/customization
+  @Post(':id/customization')
+  @ApiOperation({ summary: '[Admin] Set/update the customization template' })
+  setCustomization(
+    @Param('id', ParseCuidPipe) id: string,
+    @Body() customization: CustomizationTemplateDto,
+  ) {
+    return this.productsService.setCustomization(id, customization);
   }
 }

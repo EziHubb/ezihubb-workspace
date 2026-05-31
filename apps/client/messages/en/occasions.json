@@ -1,0 +1,18 @@
+{
+  "pageTitle": "Shop By Occasion",
+  "pageSubtitle": "Find a personalized gift for every special moment.",
+  "hero": {
+    "eyebrow": "FIND THE PERFECT GIFT"
+  },
+  "card": {
+    "productCount": "{count, plural, one {# personalized gift} other {# personalized gifts}}",
+    "shopNow": "Shop Now"
+  },
+  "cta": {
+    "title": "Can't find your occasion?",
+    "desc": "Browse all our personalized gifts or contact us for custom orders.",
+    "browse": "Browse All Gifts",
+    "contact": "Contact Us"
+  },
+  "empty": "No occasions available right now."
+}

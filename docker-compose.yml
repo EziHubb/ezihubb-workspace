@@ -55,6 +55,23 @@ services:
       timeout: 20s
       retries: 3
 
+  # ── MongoDB ─────────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7-jammy
+    container_name: mapleloomhandmade_mongodb
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: mapleloomhandmade
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ── MailHog (local email testing) ──────────────────────────────────────────
   mailhog:
     image: mailhog/mailhog:latest
@@ -90,6 +107,7 @@ services:
       SMTP_HOST: mailhog
       SMTP_PORT: 1025
       CORS_ORIGINS: 'http://localhost:3000,http://localhost:3001'
+      MONGODB_URI: mongodb://mongodb:27017
       JWT_ACCESS_SECRET: change_me_in_production_access_secret_64chars
       JWT_REFRESH_SECRET: change_me_in_production_refresh_secret_64chars
     ports:
@@ -137,3 +155,4 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
+  mongodb_data:

@@ -7,7 +7,8 @@ import { Star, ExternalLink } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, Button, Skeleton } from '@mlh/ui';
 import { ProductGallery } from '../product/ProductGallery';
 import { VariantPicker } from '../product/VariantPicker';
-import type { ProductDto, VariantDto } from '@mlh/types';
+import type { FlexVariant, VariantOption } from '../product/VariantPicker';
+import type { ProductDto } from '@mlh/types';
 
 // ── API ───────────────────────────────────────────────────────────────────────
 
@@ -64,7 +65,7 @@ export function QuickViewModal({
 
   const [product,          setProduct]          = useState<ProductDto | null>(null);
   const [loading,          setLoading]          = useState(true);
-  const [selectedVariant,  setSelectedVariant]  = useState<VariantDto | null>(null);
+  const [selectedVariant,  setSelectedVariant]  = useState<FlexVariant | null>(null);
   const [error,            setError]            = useState('');
 
   useEffect(() => {
@@ -152,12 +153,28 @@ export function QuickViewModal({
               )}
 
               {/* Variant picker */}
-              {product.variants && product.variants.length > 0 && (
-                <VariantPicker
-                  variants={product.variants}
-                  onVariantChange={setSelectedVariant}
-                />
-              )}
+              {product.variants && product.variants.length > 0 && (() => {
+                // Map legacy PG variants to FlexVariant shape
+                const flexVariants: FlexVariant[] = product.variants!.map((v) => ({
+                  sku:         v.sku ?? v.id,
+                  options:     (v.attributes as Record<string, string> | undefined) ??
+                               (['size', 'color', 'material'] as const)
+                                 .filter((k) => v[k])
+                                 .reduce((acc, k) => ({ ...acc, [k.charAt(0).toUpperCase() + k.slice(1)]: v[k] as string }), {} as Record<string, string>),
+                  price:       typeof v.price === 'number' ? v.price : 0,
+                  isAvailable: v.isActive,
+                }));
+                const optMap = new Map<string, Set<string>>();
+                flexVariants.forEach((fv) => Object.entries(fv.options).forEach(([k, val]) => { if (!optMap.has(k)) optMap.set(k, new Set()); optMap.get(k)!.add(val); }));
+                const variantOptions: VariantOption[] = Array.from(optMap.entries()).map(([name, values]) => ({ name, values: Array.from(values) }));
+                return variantOptions.length > 0 ? (
+                  <VariantPicker
+                    variantOptions={variantOptions}
+                    variants={flexVariants}
+                    onVariantChange={setSelectedVariant}
+                  />
+                ) : null;
+              })()}
 
               {/* Actions */}
               <div className="space-y-2 pt-2">

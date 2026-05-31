@@ -1,0 +1,18 @@
+{
+  "pageTitle": "Mua Theo Dịp",
+  "pageSubtitle": "Tìm quà tặng cá nhân hóa cho mọi khoảnh khắc đặc biệt.",
+  "hero": {
+    "eyebrow": "TÌM MÓN QUÀ HOÀN HẢO"
+  },
+  "card": {
+    "productCount": "{count} sản phẩm",
+    "shopNow": "Mua Ngay"
+  },
+  "cta": {
+    "title": "Không tìm thấy dịp của bạn?",
+    "desc": "Duyệt tất cả sản phẩm hoặc liên hệ chúng tôi để đặt hàng theo yêu cầu.",
+    "browse": "Xem Tất Cả",
+    "contact": "Liên Hệ"
+  },
+  "empty": "Hiện chưa có dịp lễ nào."
+}

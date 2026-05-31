@@ -9,5 +9,10 @@
   "cart": "Cart",
   "account": "Account",
   "home": "Home",
-  "toggleMenu": "Toggle menu"
+  "toggleMenu": "Toggle menu",
+  "allProducts": "All Products",
+  "viewAll": "View all {category}",
+  "megaMenu": {
+    "ariaLabel": "Product categories"
+  }
 }

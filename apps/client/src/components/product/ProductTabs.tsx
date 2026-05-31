@@ -3,14 +3,16 @@
 import { useState } from 'react';
 import type { ProductDto, ReviewSummaryDto } from '@mlh/types';
 import { ReviewSection } from './ReviewSection';
+import { ProductAttributeList } from './ProductAttributeList';
+import type { ProductAttribute } from './ProductAttributeList';
 
 interface ProductTabsProps {
-  product:       ProductDto;
+  product:       ProductDto & { attributes?: ProductAttribute[]; sizeGuide?: string; shippingNote?: string };
   reviewSummary: ReviewSummaryDto | null;
   locale:        string;
 }
 
-type TabId = 'description' | 'size-guide' | 'shipping' | 'reviews';
+type TabId = 'description' | 'specifications' | 'size-guide' | 'shipping' | 'reviews';
 
 const SHIPPING_INFO = `
 **Free Standard Shipping** on orders over $50 (5–7 business days).
@@ -24,13 +26,15 @@ We accept returns within 30 days of delivery for unused, unmodified items. Perso
 export function ProductTabs({ product, reviewSummary, locale: _locale }: ProductTabsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('description');
 
-  const reviewCount = reviewSummary?.totalReviews ?? 0;
+  const reviewCount  = reviewSummary?.totalReviews ?? 0;
+  const hasAttrs     = (product.attributes?.length ?? 0) > 0;
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: 'description', label: 'Description' },
-    { id: 'size-guide',  label: 'Size Guide' },
-    { id: 'shipping',    label: 'Shipping & Returns' },
-    { id: 'reviews',     label: `Reviews${reviewCount > 0 ? ` (${reviewCount})` : ''}` },
+    { id: 'description',    label: 'Description'      },
+    ...(hasAttrs ? [{ id: 'specifications' as TabId, label: 'Specifications' }] : []),
+    { id: 'size-guide',     label: 'Size Guide'       },
+    { id: 'shipping',       label: 'Shipping & Returns'},
+    { id: 'reviews',        label: `Reviews${reviewCount > 0 ? ` (${reviewCount})` : ''}` },
   ];
 
   return (
@@ -80,6 +84,18 @@ export function ProductTabs({ product, reviewSummary, locale: _locale }: Product
             <p className="text-muted italic">No description available.</p>
           )}
         </div>
+
+        {/* Specifications */}
+        {hasAttrs && (
+          <div
+            id="panel-specifications"
+            role="tabpanel"
+            hidden={activeTab !== 'specifications'}
+            className="max-w-lg"
+          >
+            <ProductAttributeList attributes={product.attributes!} />
+          </div>
+        )}
 
         {/* Size Guide */}
         <div

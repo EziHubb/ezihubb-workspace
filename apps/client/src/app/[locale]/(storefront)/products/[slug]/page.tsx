@@ -9,15 +9,24 @@ import { ProductInfo } from '../../../../../components/product/ProductInfo';
 import { ProductPageInteractive } from '../../../../../components/product/ProductPageInteractive';
 import { ProductTabs } from '../../../../../components/product/ProductTabs';
 import { RelatedProducts } from '../../../../../components/product/RelatedProducts';
+import { ProductBreadcrumb } from '../../../../../components/product/ProductBreadcrumb';
+import type { BreadcrumbItem } from '../../../../../components/product/ProductBreadcrumb';
 import { ProductStructuredData } from '../../../../../components/seo/ProductStructuredData';
 import { BreadcrumbStructuredData } from '../../../../../components/seo/BreadcrumbStructuredData';
 
 export const revalidate = 30;
 
-// ── Extended product type including customization template ────────────────────
+// ── Extended product type including MongoDB fields ────────────────────────────
 export interface ProductDetailDto extends ProductDto {
   customizationTemplate?: CustomizationTemplate;
   soldCount24h?:          number;
+  // MongoDB fields merged by products.service.ts
+  variantOptions?:  { name: string; values: string[] }[];
+  mongoVariants?:   unknown[];
+  attributes?:      { key: string; value: string; unit?: string; filterable?: boolean }[];
+  richDescription?: string;
+  sizeGuide?:       string;
+  shippingNote?:    string;
 }
 
 // ── Server-side fetchers ──────────────────────────────────────────────────────
@@ -45,6 +54,41 @@ async function getRelatedProducts(slug: string): Promise<ProductListItemDto[]> {
     if (!res.ok) return [];
     const body = await res.json();
     return (body.data ?? []) as ProductListItemDto[];
+  } catch {
+    return [];
+  }
+}
+
+/** Build breadcrumb chain: walk the category tree to find the path to a given slug. */
+async function getCategoryBreadcrumb(
+  categorySlug: string,
+  locale:       string,
+): Promise<BreadcrumbItem[]> {
+  try {
+    const res = await fetch(`${API()}/api/v1/catalog/categories`, {
+      next: { revalidate: 600 },
+    });
+    if (!res.ok) return [];
+    const body = await res.json();
+    const tree  = (body.data ?? []) as Array<{ name: string; slug: string; children?: Array<{ name: string; slug: string; children?: Array<{ name: string; slug: string }> }> }>;
+
+    function findPath(
+      nodes: typeof tree,
+      target: string,
+      path:   BreadcrumbItem[],
+    ): BreadcrumbItem[] | null {
+      for (const node of nodes) {
+        const current: BreadcrumbItem = { name: node.name, href: `/${locale}/categories/${node.slug}` };
+        if (node.slug === target) return [...path, current];
+        if (node.children?.length) {
+          const found = findPath(node.children as typeof tree, target, [...path, current]);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    return findPath(tree, categorySlug, []) ?? [];
   } catch {
     return [];
   }
@@ -134,6 +178,17 @@ export default async function ProductDetailPage({
 
   if (!product) notFound();
 
+  // Build 3-level breadcrumb: Home > L1 > L2 > L3 > Product
+  const categoryChain = product.category?.slug
+    ? await getCategoryBreadcrumb(product.category.slug, locale)
+    : [];
+
+  const breadcrumbItems: BreadcrumbItem[] = [
+    { name: 'Home', href: `/${locale}` },
+    ...categoryChain,
+    { name: product.name, href: `/${locale}/products/${slug}` },
+  ];
+
   // Fall back to DEMO_TEMPLATE in development / when API hasn't returned one
   const template: CustomizationTemplate | null =
     product.isPersonalizable
@@ -151,16 +206,18 @@ export default async function ProductDetailPage({
         locale={locale}
       />
       <BreadcrumbStructuredData
-        items={[
-          { name: 'Home',     url: BASE },
-          { name: 'Products', url: `${BASE}/products` },
-          { name: product.name, url: `${BASE}/products/${slug}` },
-        ]}
+        items={breadcrumbItems.map((b) => ({
+          name: b.name,
+          url:  b.href.startsWith('http') ? b.href : `${BASE}${b.href}`,
+        }))}
       />
 
-      <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
+      <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-6 md:py-10">
+        {/* ── Breadcrumb ── */}
+        <ProductBreadcrumb items={breadcrumbItems} />
+
         {/* ── 2-col layout: 55% gallery / 45% info+customizer ── */}
-        <div className="grid grid-cols-1 md:grid-cols-[55fr_45fr] gap-8 lg:gap-14 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-[55fr_45fr] gap-8 lg:gap-14 items-start mt-2">
 
           {/* Left: Image Gallery */}
           <ProductGallery

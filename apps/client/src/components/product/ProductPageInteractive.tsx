@@ -10,7 +10,7 @@ import { CartDrawer } from '../cart/CartDrawer';
 import { useCartStore } from '../../lib/store/cart.store';
 import type { ProductDetailDto } from '../../app/[locale]/(storefront)/products/[slug]/page';
 import type { CustomizationTemplate } from '../../lib/customizer/types';
-import type { VariantDto } from '@mlh/types';
+import type { FlexVariant, SelectedVariant, VariantOption } from './VariantPicker';
 
 interface ProductPageInteractiveProps {
   product:  ProductDetailDto;
@@ -23,7 +23,7 @@ export function ProductPageInteractive({
   template,
   locale,
 }: ProductPageInteractiveProps) {
-  const [selectedVariant, setSelectedVariant] = useState<VariantDto | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<SelectedVariant | null>(null);
   const [cartOpen,        setCartOpen]        = useState(false);
   const [isLoggedIn,      setIsLoggedIn]      = useState(false);
 
@@ -43,7 +43,7 @@ export function ProductPageInteractive({
     addItem.mutate(
       {
         productId: product.id,
-        variantId: selectedVariant?.id ?? null,
+        variantId: (selectedVariant as unknown as { id?: string })?.id ?? selectedVariant?.sku ?? null,
         quantity:  1,
       },
       {
@@ -55,12 +55,43 @@ export function ProductPageInteractive({
     );
   };
 
-  const isOutOfStock = selectedVariant?.stock === 0;
+  const isOutOfStock = selectedVariant?.isAvailable === false;
+
+  // Prefer MongoDB flexible variants; fall back to mapping legacy PG variants
+  const flexVariants: FlexVariant[] = (product as unknown as { mongoVariants?: FlexVariant[] }).mongoVariants?.length
+    ? (product as unknown as { mongoVariants: FlexVariant[] }).mongoVariants
+    : (product.variants ?? []).map((v) => ({
+        sku:         v.sku ?? v.id,
+        options:     (v.attributes as Record<string, string> | undefined) ??
+                     Object.fromEntries(
+                       (['size', 'color', 'material'] as const)
+                         .filter((k) => v[k])
+                         .map((k) => [k.charAt(0).toUpperCase() + k.slice(1), v[k] as string])
+                     ),
+        price:       typeof v.price === 'number' ? v.price : 0,
+        isDefault:   (v as unknown as { isDefault?: boolean }).isDefault,
+        isAvailable: v.isActive,
+      }));
+
+  const variantOptions: VariantOption[] = (product as unknown as { variantOptions?: VariantOption[] }).variantOptions?.length
+    ? (product as unknown as { variantOptions: VariantOption[] }).variantOptions
+    : (() => {
+        // Derive dimensions from legacy PG variant data
+        const map = new Map<string, Set<string>>();
+        for (const v of flexVariants) {
+          for (const [k, val] of Object.entries(v.options)) {
+            if (!map.has(k)) map.set(k, new Set());
+            map.get(k)!.add(val);
+          }
+        }
+        return Array.from(map.entries()).map(([name, values]) => ({ name, values: Array.from(values) }));
+      })();
 
   return (
     <>
       <VariantPicker
-        variants={product.variants ?? []}
+        variantOptions={variantOptions}
+        variants={flexVariants}
         onVariantChange={setSelectedVariant}
       />
 
@@ -73,7 +104,7 @@ export function ProductPageInteractive({
             productName={product.name}
             basePrice={effectivePrice}
             locale={locale}
-            variantId={selectedVariant?.id ?? null}
+            variantId={(selectedVariant as unknown as { id?: string })?.id ?? null}
             isLoggedIn={isLoggedIn}
             onCartSuccess={() => openDrawer()}
           />

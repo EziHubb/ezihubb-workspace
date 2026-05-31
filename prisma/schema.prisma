@@ -170,17 +170,39 @@ model Category {
   slug        String     @unique
   description String?
   imageUrl    String?
+  // 1 = nav tab (L1), 2 = group (L2), 3 = product category (L3)
+  level       Int        @default(1)
   parentId    String?
   parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id])
   children    Category[] @relation("CategoryTree")
   sortOrder   Int        @default(0)
   isVisible   Boolean    @default(true)
   createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
-  products Product[]
+  products          Product[]
+  productCategories ProductCategory[]
 
   @@index([parentId])
   @@index([slug])
+  @@index([level, isVisible])
+}
+
+// ── Multi-category membership ─────────────────────────────────────────────────
+// Allows a product to appear in multiple L3 categories without changing the
+// primary categoryId FK (used for breadcrumbs and URL structure).
+
+model ProductCategory {
+  productId  String
+  categoryId String
+  isPrimary  Boolean  @default(false)
+
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+  @@index([productId])
+  @@index([categoryId])
 }
 
 model Collection {
@@ -265,6 +287,7 @@ model Product {
   orderItems          OrderItem[]
   customizationDrafts CustomizationDraft[]
   reviews             Review[]
+  productCategories   ProductCategory[]
 
   @@index([categoryId])
   @@index([isActive, isFeatured])

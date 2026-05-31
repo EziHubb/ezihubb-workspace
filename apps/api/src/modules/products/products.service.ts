@@ -5,6 +5,8 @@ import {
   ConflictException,
   Logger,
 } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -13,6 +15,13 @@ import {
   CacheTtl,
 } from '../../common/services/redis.service';
 import { StorageService } from '../../common/services/storage.service';
+import { ProductDetail } from '../catalog/schemas/product-detail.schema';
+import type {
+  CreateProductDetailDto,
+  AttributeDto,
+  VariantDto,
+  CustomizationTemplateDto,
+} from './dto/create-product-detail.dto';
 import { ProductQueryDto, ProductSortBy } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -46,6 +55,8 @@ export class ProductsService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly storage: StorageService,
+    @InjectModel(ProductDetail.name)
+    private readonly productDetailModel: Model<ProductDetail>,
   ) {}
 
   // ─── Public — list ─────────────────────────────────────────────────────────
@@ -173,15 +184,36 @@ export class ProductsService {
       }
     }
 
-    const inDemandCount =
-      (await this.redis.get<number>(IN_DEMAND_KEY(product.id))) ?? 0;
-    const averageRating = await this.getAverageRating(product.id);
+    const [inDemandCount, averageRating, mongoDetail] = await Promise.all([
+      this.redis.get<number>(IN_DEMAND_KEY(product.id)).then((v) => v ?? 0),
+      this.getAverageRating(product.id),
+      // Fetch flexible product detail from MongoDB (non-blocking; fallback to PG data if unavailable)
+      this.productDetailModel
+        .findOne({ productId: product.id })
+        .lean<ProductDetail>()
+        .catch(() => null),
+    ]);
 
-    return this.mapToProductResponse(
+    const base = this.mapToProductResponse(
       product as Parameters<typeof this.mapToProductResponse>[0],
       inDemandCount,
       averageRating,
     );
+
+    // Merge MongoDB fields on top of the PG response
+    return {
+      ...base,
+      ...(mongoDetail && {
+        richDescription:  mongoDetail.richDescription  ?? undefined,
+        sizeGuide:        mongoDetail.sizeGuide         ?? undefined,
+        shippingNote:     mongoDetail.shippingNote      ?? undefined,
+        attributes:       mongoDetail.attributes        ?? [],
+        variantOptions:   mongoDetail.variantOptions    ?? [],
+        mongoVariants:    mongoDetail.variants          ?? [],
+        customization:    mongoDetail.customization     ?? null,
+        printSpecs:       mongoDetail.printSpecs        ?? null,
+      }),
+    };
   }
 
   async findRelated(productId: string): Promise<ProductListItemDto[]> {
@@ -310,6 +342,26 @@ export class ProductsService {
     });
 
     await this.redis.invalidatePattern('products:list:*');
+
+    // Write flexible detail to MongoDB (non-blocking — PG product is the source of truth)
+    this.productDetailModel
+      .findOneAndUpdate(
+        { productId: product.id },
+        {
+          $setOnInsert: { productId: product.id },
+          $set: {
+            richDescription: (dto as unknown as Record<string, unknown>)['richDescription'] as string | undefined,
+            attributes:      (dto as unknown as Record<string, unknown>)['attributes']      ?? [],
+            customization:   (dto as unknown as Record<string, unknown>)['customization']   ?? null,
+            variantOptions:  [],  // rebuilt from variants on next product detail fetch
+          },
+        },
+        { upsert: true, new: true },
+      )
+      .catch((err: Error) =>
+        this.logger.warn(`MongoDB product detail write failed for ${product.id}: ${err.message}`),
+      );
+
     return this.mapToProductResponse(
       product as Parameters<typeof this.mapToProductResponse>[0],
       0,
@@ -576,6 +628,94 @@ export class ProductsService {
         }),
       ),
     );
+  }
+
+  // ─── MongoDB product detail CRUD ──────────────────────────────────────────
+
+  async getProductDetail(productId: string): Promise<ProductDetail | null> {
+    await this.requireProduct(productId);
+    return this.productDetailModel
+      .findOne({ productId })
+      .lean<ProductDetail>()
+      .exec();
+  }
+
+  async upsertProductDetail(
+    productId: string,
+    dto: CreateProductDetailDto,
+  ): Promise<ProductDetail> {
+    await this.requireProduct(productId);
+    const doc = await this.productDetailModel.findOneAndUpdate(
+      { productId },
+      {
+        $set: {
+          ...(dto.richDescription   !== undefined && { richDescription:  dto.richDescription }),
+          ...(dto.sizeGuide         !== undefined && { sizeGuide:        dto.sizeGuide }),
+          ...(dto.shippingNote      !== undefined && { shippingNote:     dto.shippingNote }),
+          ...(dto.attributes        !== undefined && { attributes:       dto.attributes }),
+          ...(dto.variantOptions    !== undefined && { variantOptions:   dto.variantOptions }),
+          ...(dto.variants          !== undefined && { variants:         dto.variants }),
+          ...(dto.customization     !== undefined && { customization:    dto.customization }),
+        },
+        $setOnInsert: { productId },
+      },
+      { upsert: true, new: true },
+    );
+    return doc!;
+  }
+
+  async addVariant(
+    productId: string,
+    variant: VariantDto,
+  ): Promise<ProductDetail> {
+    await this.requireProduct(productId);
+    const existing = await this.productDetailModel.findOne({ productId });
+    if (existing?.variants?.some((v: { sku: string }) => v.sku === variant.sku)) {
+      throw new ConflictException({ code: 'ERR_VARIANT_SKU_TAKEN', message: `Variant SKU '${variant.sku}' already exists` });
+    }
+    const doc = await this.productDetailModel.findOneAndUpdate(
+      { productId },
+      { $push: { variants: variant }, $setOnInsert: { productId } },
+      { upsert: true, new: true },
+    );
+    return doc!;
+  }
+
+  async removeVariant(productId: string, sku: string): Promise<ProductDetail> {
+    await this.requireProduct(productId);
+    const doc = await this.productDetailModel.findOneAndUpdate(
+      { productId },
+      { $pull: { variants: { sku } } },
+      { new: true },
+    );
+    if (!doc) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product detail not found' });
+    return doc;
+  }
+
+  async setAttributes(
+    productId: string,
+    attributes: AttributeDto[],
+  ): Promise<ProductDetail> {
+    await this.requireProduct(productId);
+    const doc = await this.productDetailModel.findOneAndUpdate(
+      { productId },
+      { $set: { attributes }, $setOnInsert: { productId } },
+      { upsert: true, new: true },
+    );
+    return doc!;
+  }
+
+  async setCustomization(
+    productId: string,
+    customization: CustomizationTemplateDto,
+  ): Promise<ProductDetail> {
+    await this.requireProduct(productId);
+    const doc = await this.productDetailModel.findOneAndUpdate(
+      { productId },
+      { $set: { customization }, $setOnInsert: { productId } },
+      { upsert: true, new: true },
+    );
+    return doc!;
   }
 
   // ─── In-demand counter (called by order processor) ─────────────────────────

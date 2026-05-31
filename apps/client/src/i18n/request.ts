@@ -12,6 +12,8 @@ const NAMESPACES = [
   'orderTracking',
   'common',
   'errors',
+  'collections',
+  'occasions',
 ] as const;
 
 export default getRequestConfig(async ({ requestLocale }) => {

@@ -5,8 +5,12 @@ import {
   ConflictException,
   Logger,
 } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService, CacheKeys, CacheTtl } from '../../common/services/redis.service';
+import { CategoryMenu } from './schemas/category-menu.schema';
+import { ProductDetail } from './schemas/product-detail.schema';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { CategoryResponseDto, CategoryChildDto } from './dto/category-response.dto';
@@ -19,6 +23,9 @@ import { PaginatedResult, paginatedResponse } from '../../common/dto/paginated-r
 // re-exported for use in CollectionResponseDto.products
 export type { CollectionResponseDto };
 
+const MEGA_MENU_CACHE_KEY = 'catalog:mega_menu';
+const MEGA_MENU_TTL = 600; // 10 minutes
+
 @Injectable()
 export class CatalogService {
   private readonly logger = new Logger(CatalogService.name);
@@ -26,7 +33,27 @@ export class CatalogService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    @InjectModel(CategoryMenu.name)
+    private readonly categoryMenuModel: Model<CategoryMenu>,
+    @InjectModel(ProductDetail.name)
+    private readonly productDetailModel: Model<ProductDetail>,
   ) {}
+
+  // ─── Mega menu (MongoDB → Redis cache) ───────────────────────────────────
+
+  async getMegaMenu(): Promise<CategoryMenu[]> {
+    const cached = await this.redis.get<CategoryMenu[]>(MEGA_MENU_CACHE_KEY);
+    if (cached) return cached;
+
+    const menus = await this.categoryMenuModel
+      .find({ isVisible: true })
+      .sort({ sortOrder: 1 })
+      .lean<CategoryMenu[]>()
+      .exec();
+
+    await this.redis.set(MEGA_MENU_CACHE_KEY, menus, MEGA_MENU_TTL);
+    return menus;
+  }
 
   // ─── Categories ────────────────────────────────────────────────────────────
 
@@ -120,9 +147,19 @@ export class CatalogService {
     if (dto.parentId) {
       const parent = await this.prisma.category.findUnique({ where: { id: dto.parentId } });
       if (!parent) throw new BadRequestException({ code: 'ERR_NOT_FOUND', message: 'Parent category not found' });
-      if (parent.parentId) {
-        throw new BadRequestException({ code: 'ERR_CATEGORY_DEPTH', message: 'Categories support max 2 levels (parent → child)' });
+      // level guard — only enforced after migration adds the level column
+      const parentLevel = (parent as Record<string, unknown>)['level'] as number | undefined;
+      if (parentLevel !== undefined && parentLevel >= 3) {
+        throw new BadRequestException({ code: 'ERR_CATEGORY_DEPTH', message: 'Categories support max 3 levels (nav tab → group → item)' });
       }
+    }
+
+    // Compute level from parent (graceful — field may not exist before migration)
+    let level = 1;
+    if (dto.parentId) {
+      const parent = await this.prisma.category.findUnique({ where: { id: dto.parentId } });
+      const parentLevel = (parent as Record<string, unknown> | null)?.['level'] as number | undefined;
+      level = (parentLevel ?? 1) + 1;
     }
 
     const category = await this.prisma.category.create({
@@ -132,6 +169,7 @@ export class CatalogService {
         description: dto.description,
         imageUrl: dto.imageUrl,
         parentId: dto.parentId,
+        ...(level !== undefined && { level }),
         sortOrder: dto.sortOrder ?? 0,
         isVisible: dto.isVisible ?? true,
       },
@@ -141,7 +179,10 @@ export class CatalogService {
       },
     });
 
-    await this.redis.del(CacheKeys.categoriesTree());
+    await Promise.all([
+      this.redis.del(CacheKeys.categoriesTree()),
+      this.invalidateMenuCache(),
+    ]);
 
     return {
       id: category.id,
@@ -188,7 +229,10 @@ export class CatalogService {
       },
     });
 
-    await this.redis.del(CacheKeys.categoriesTree());
+    await Promise.all([
+      this.redis.del(CacheKeys.categoriesTree()),
+      this.invalidateMenuCache(),
+    ]);
 
     return {
       id: category.id,
@@ -227,7 +271,10 @@ export class CatalogService {
     }
 
     await this.prisma.category.delete({ where: { id } });
-    await this.redis.del(CacheKeys.categoriesTree());
+    await Promise.all([
+      this.redis.del(CacheKeys.categoriesTree()),
+      this.invalidateMenuCache(),
+    ]);
   }
 
   // ─── Collections ───────────────────────────────────────────────────────────
@@ -441,7 +488,67 @@ export class CatalogService {
     return result;
   }
 
+  // ─── Filterable attributes (for dynamic FilterSidebar) ────────────────────
+
+  /**
+   * Returns all unique filterable attributes for products in a category.
+   * Powers the FilterSidebar's category-specific attribute filters.
+   * Example response for "Cutting Boards":
+   *   { attributes: [{ key: "Material", values: ["Bamboo", "Walnut"] }, ...] }
+   */
+  async getFilterableAttributes(
+    categorySlug: string,
+  ): Promise<{ attributes: { key: string; values: string[] }[] }> {
+    const category = await this.prisma.category.findUnique({
+      where:  { slug: categorySlug },
+      select: { id: true },
+    });
+    if (!category) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Category not found' });
+    }
+
+    // Always include products from direct children (handles both L2 groups and L3 leaves)
+    const children = await this.prisma.category.findMany({
+      where:  { parentId: category.id },
+      select: { id: true },
+    });
+    const categoryIds: string[] = [category.id, ...children.map((c) => c.id)];
+
+    const products = await this.prisma.product.findMany({
+      where:  { categoryId: { in: categoryIds }, isActive: true },
+      select: { id: true },
+    });
+    const productIds = products.map((p) => p.id);
+    if (productIds.length === 0) return { attributes: [] };
+
+    const result = await this.productDetailModel.aggregate([
+      { $match: { productId: { $in: productIds } } },
+      { $unwind: '$attributes' },
+      { $match: { 'attributes.filterable': true } },
+      {
+        $group: {
+          _id:    '$attributes.key',
+          values: { $addToSet: '$attributes.value' },
+        },
+      },
+      { $sort: { _id: 1 } },
+      {
+        $project: {
+          _id:    0,
+          key:    '$_id',
+          values: { $sortArray: { input: '$values', sortBy: 1 } },
+        },
+      },
+    ]);
+
+    return { attributes: result as { key: string; values: string[] }[] };
+  }
+
   // ─── Private helpers ───────────────────────────────────────────────────────
+
+  async invalidateMenuCache(): Promise<void> {
+    await this.redis.del(MEGA_MENU_CACHE_KEY);
+  }
 
   private async requireCategory(id: string): Promise<void> {
     const category = await this.prisma.category.findUnique({ where: { id } });
