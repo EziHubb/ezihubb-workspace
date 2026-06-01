@@ -11,6 +11,7 @@ import {
 import { clientFetch } from '../../../../lib/api';
 import { fetchArr, fmtFixed, fmtAmount } from '../../../../lib/fmt';
 import type { ProductEditFormValues, AdminProductDto, ReturnPolicy } from '../types';
+import { EstimatedEarningsRow } from '../EstimatedEarningsRow';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -171,9 +172,9 @@ function ProfilePickerModal<T extends { id: string }>({
   );
 }
 
-// ─── EstimatedEarningsRow (Image 10) ─────────────────────────────────────────
+// ─── EstimatedEarningsRow (replaced by ../EstimatedEarningsRow.tsx) ──────────
 
-function EstimatedEarningsRow({
+function _EstimatedEarningsRow_REMOVED({
   basePrice, compareAtPrice,
 }: {
   basePrice:      number;
