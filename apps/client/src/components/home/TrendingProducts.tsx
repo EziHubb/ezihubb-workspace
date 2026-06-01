@@ -52,7 +52,7 @@ export async function TrendingProducts({ products, locale, viewAllLabel }: Trend
                     id={product.id}
                     slug={product.slug}
                     name={product.name}
-                    imageUrl={product.images?.[0]?.url ?? '/placeholder-product.jpg'}
+                    imageUrl={product.images?.[0]?.url ?? 'https://placehold.co/400x500.png?text=No+Image'}
                     basePrice={product.basePrice}
                     compareAtPrice={product.compareAtPrice}
                     rating={product.rating?.avg}
