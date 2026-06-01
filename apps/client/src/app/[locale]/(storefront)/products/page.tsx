@@ -1,13 +1,10 @@
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
+import { apiClient } from '@mlh/api-client';
 import type { ProductListItemDto, CategoryDto, TagDto } from '@mlh/types';
+import type { PaginatedResponse } from '@mlh/types';
 import { ProductListingLayout } from '../../../../components/listing/ProductListingLayout';
-import {
-  parseSearchParams,
-  buildProductsApiUrl,
-  fetchPaged,
-  fetchList,
-} from '../../../../components/listing/types';
+import { parseSearchParams } from '../../../../components/listing/types';
 
 export const revalidate = 30;
 
@@ -36,12 +33,41 @@ export default async function ProductsPage({
   const { locale } = await params;
   const sp         = await searchParams;
   const filters    = parseSearchParams(sp);
-  const base       = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
 
-  const [productsResult, categories, tags] = await Promise.all([
-    fetchPaged<ProductListItemDto>(buildProductsApiUrl(base, filters)),
-    fetchList<CategoryDto>(`${base}/api/v1/catalog/categories?parentId=null`),
-    fetchList<TagDto>(`${base}/api/v1/catalog/tags`),
+  // Primary fetch — products with all active filters
+  const emptyPage: PaginatedResponse<ProductListItemDto> = {
+    success:    true,
+    data:       [],
+    pagination: { page: 1, limit: 24, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+    meta:       { timestamp: '', requestId: '' },
+  };
+
+  const productsRes = await apiClient
+    .get<PaginatedResponse<ProductListItemDto>>('/products', {
+      params: {
+        page:       filters.page,
+        limit:      24,
+        sort:       filters.sort,
+        minPrice:   filters.minPrice,
+        maxPrice:   filters.maxPrice,
+        minRating:  filters.rating,
+        tags:       filters.tags.length > 0 ? filters.tags.join(',') : undefined,
+        categorySlug: filters.category,
+        isActive:   true,
+      },
+      next: { revalidate: 30 },
+    })
+    .catch(() => emptyPage);
+
+  // Secondary fetches — sidebar data, non-critical
+  const [categoriesRes, tagsRes] = await Promise.allSettled([
+    apiClient.get<CategoryDto[]>('/categories', {
+      params: { level: 2, isVisible: true },
+      next: { revalidate: 600 },
+    }),
+    apiClient.get<TagDto[]>('/tags', {
+      next: { revalidate: 600 },
+    }),
   ]);
 
   return (
@@ -49,12 +75,12 @@ export default async function ProductsPage({
       locale={locale}
       title="All Personalized Gifts"
       subtitle="Discover handcrafted personalized gifts for every occasion"
-      products={productsResult.data}
-      totalCount={productsResult.total}
-      totalPages={productsResult.totalPages}
+      products={productsRes.data}
+      totalCount={productsRes.pagination.total}
+      totalPages={productsRes.pagination.totalPages}
       currentFilters={filters}
-      categories={categories}
-      tags={tags}
+      categories={categoriesRes.status === 'fulfilled' ? (categoriesRes.value ?? []) : []}
+      tags={tagsRes.status === 'fulfilled' ? (tagsRes.value ?? []) : []}
     />
   );
 }

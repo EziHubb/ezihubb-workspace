@@ -1,17 +1,13 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import type { CollectionDto, ProductListItemDto, TagDto } from '@mlh/types';
+import { apiClient } from '@mlh/api-client';
+import type { CollectionDto, ProductListItemDto } from '@mlh/types';
+import type { PaginatedResponse } from '@mlh/types';
 import { ProductListingLayout } from '../../../../../components/listing/ProductListingLayout';
 import { CollectionHero } from '../../../../../components/collections/CollectionHero';
 import { RelatedCollections } from '../../../../../components/collections/RelatedCollections';
-import {
-  parseSearchParams,
-  buildProductsApiUrl,
-  fetchPaged,
-  fetchOne,
-  fetchList,
-} from '../../../../../components/listing/types';
+import { parseSearchParams } from '../../../../../components/listing/types';
 
 export const revalidate = 60;
 
@@ -20,15 +16,13 @@ type SearchParamValue = string | string[] | undefined;
 // ── Static params ─────────────────────────────────────────────────────────────
 
 export async function generateStaticParams() {
-  const base    = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
   const locales = ['en', 'vi'] as const;
   try {
-    const res = await fetch(`${base}/api/v1/catalog/collections?isActive=true`, {
+    const res = await apiClient.get<PaginatedResponse<CollectionDto>>('/collections', {
+      params: { isActive: true, limit: 100 },
       next: { revalidate: 3600 },
     });
-    if (!res.ok) return [];
-    const body = (await res.json()) as { data: { slug: string }[] };
-    const slugs = (body.data ?? []).map((c) => c.slug);
+    const slugs = res.data.map((c) => c.slug);
     return locales.flatMap((locale) => slugs.map((slug) => ({ locale, slug })));
   } catch {
     return [];
@@ -43,11 +37,12 @@ export async function generateMetadata({
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const base     = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
 
-  const collection = await fetchOne<CollectionDto & { endDate?: string; bannerUrl?: string }>(
-    `${base}/api/v1/catalog/collections/${slug}`,
-  );
+  const collection = await apiClient
+    .get<CollectionDto>(`/collections/${slug}`, {
+      next: { revalidate: 300 },
+    })
+    .catch(() => null);
 
   if (!collection) return { title: 'Collection Not Found' };
 
@@ -74,49 +69,67 @@ export default async function CollectionPage({
   const { locale, slug } = await params;
   const sp               = await searchParams;
   const filters          = parseSearchParams(sp);
-  const base             = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
 
-  // CollectionDto extended with API fields not yet in types
-  type CollectionWithDates = CollectionDto & { endDate?: string; startDate?: string; bannerUrl?: string };
+  const emptyPage: PaginatedResponse<ProductListItemDto> = {
+    success:    true,
+    data:       [],
+    pagination: { page: 1, limit: 24, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+    meta:       { timestamp: '', requestId: '' },
+  };
 
-  const [collection, productsResult, allCollections, tags] = await Promise.all([
-    fetchOne<CollectionWithDates>(`${base}/api/v1/catalog/collections/${slug}`),
-    fetchPaged<ProductListItemDto>(
-      buildProductsApiUrl(base, filters, { collection: slug }),
-    ),
-    fetchList<CollectionDto>(`${base}/api/v1/catalog/collections?isActive=true`),
-    fetchList<TagDto>(`${base}/api/v1/catalog/tags`),
+  const [collectionRes, productsRes] = await Promise.allSettled([
+    apiClient.get<CollectionDto>(`/collections/${slug}`, {
+      next: { revalidate: 300 },
+    }),
+    apiClient.get<PaginatedResponse<ProductListItemDto>>('/products', {
+      params: {
+        collectionSlug: slug,
+        page:           filters.page,
+        limit:          24,
+        sort:           filters.sort,
+        isActive:       true,
+      },
+      next: { revalidate: 60 },
+    }),
   ]);
 
-  if (!collection) notFound();
+  if (collectionRes.status === 'rejected' || !collectionRes.value) notFound();
+  const collection = collectionRes.value;
 
-  // Urgency: show if endDate exists and is within 7 days
+  const products   = productsRes.status === 'fulfilled' ? productsRes.value.data : [];
+  const pagination = productsRes.status === 'fulfilled'
+    ? productsRes.value.pagination
+    : emptyPage.pagination;
+
+  // Related collections — non-critical, falls back to null
+  const relatedRes = await apiClient
+    .get<PaginatedResponse<CollectionDto>>('/collections', {
+      params: { isActive: true, limit: 4, exclude: slug },
+      next: { revalidate: 600 },
+    })
+    .catch(() => null);
+
+  // Urgency: show if endDate is within 7 days
   let urgencyDays: number | null = null;
+  let urgencyDate: string | null = null;
   if (collection.endDate) {
-    const msLeft = new Date(collection.endDate).getTime() - Date.now();
+    const msLeft   = new Date(collection.endDate).getTime() - Date.now();
     const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
     if (daysLeft > 0 && daysLeft <= 7) {
       urgencyDays = daysLeft;
+      urgencyDate = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-US', {
+        month: 'long', day: 'numeric',
+      }).format(new Date(collection.endDate));
     }
   }
 
-  // Urgency date formatted for display
-  const urgencyDate = collection.endDate
-    ? new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-US', {
-        month: 'long',
-        day:   'numeric',
-      }).format(new Date(collection.endDate))
-    : null;
-
   return (
     <>
-      {/* Full-bleed hero */}
       <CollectionHero
-        collection={collection as CollectionDto & { bannerUrl?: string }}
-        productCount={productsResult.total}
+        collection={collection}
+        productCount={pagination.total}
       />
 
-      {/* Urgency strip — only when endDate is within 7 days */}
       {urgencyDays !== null && urgencyDate && (
         <div className="bg-amber-50 border-b border-amber-200 py-2.5 text-center">
           <p className="text-sm font-medium text-amber-800">
@@ -125,7 +138,6 @@ export default async function CollectionPage({
         </div>
       )}
 
-      {/* Breadcrumb */}
       <nav
         aria-label="Breadcrumb"
         className="max-w-[1440px] mx-auto px-4 md:px-8 pt-4 pb-0"
@@ -149,25 +161,25 @@ export default async function CollectionPage({
         </ol>
       </nav>
 
-      {/* Product listing with filters */}
       <ProductListingLayout
         locale={locale}
         title={collection.name}
         subtitle={collection.description}
-        products={productsResult.data}
-        totalCount={productsResult.total}
-        totalPages={productsResult.totalPages}
+        products={products}
+        totalCount={pagination.total}
+        totalPages={pagination.totalPages}
         currentFilters={filters}
         categories={[]}
-        tags={tags}
+        tags={[]}
       />
 
-      {/* Related collections */}
-      <RelatedCollections
-        collections={allCollections}
-        currentSlug={slug}
-        locale={locale}
-      />
+      {relatedRes && relatedRes.data.length > 0 && (
+        <RelatedCollections
+          collections={relatedRes.data.filter((c) => c.slug !== slug)}
+          currentSlug={slug}
+          locale={locale}
+        />
+      )}
     </>
   );
 }

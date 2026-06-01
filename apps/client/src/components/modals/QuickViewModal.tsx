@@ -121,14 +121,14 @@ export function QuickViewModal({
               </h2>
 
               {/* Rating */}
-              {product.rating !== undefined && product.reviewCount !== undefined && (
+              {product.rating !== undefined && (
                 <div className="flex items-center gap-1.5">
                   <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
                   <span className="text-sm font-semibold text-secondary">
-                    {product.rating.toFixed(1)}
+                    {product.rating.avg.toFixed(1)}
                   </span>
                   <span className="text-xs text-muted">
-                    ({product.reviewCount} review{product.reviewCount !== 1 ? 's' : ''})
+                    ({product.rating.count} review{product.rating.count !== 1 ? 's' : ''})
                   </span>
                 </div>
               )}

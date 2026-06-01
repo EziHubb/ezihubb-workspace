@@ -119,13 +119,13 @@ export default async function NotFound() {
                 slug={product.slug}
                 name={product.name}
                 imageUrl={
-                  product.primaryImage ??
+                  product.images[0]?.url ??
                   'https://placehold.co/400x500?text=No+Image'
                 }
                 basePrice={product.basePrice}
                 compareAtPrice={product.compareAtPrice}
-                rating={product.rating}
-                reviewCount={product.reviewCount}
+                rating={product.rating?.avg}
+                reviewCount={product.rating?.count}
                 badge={product.badge}
                 isPersonalizable={product.isPersonalizable}
               />

@@ -8,27 +8,21 @@
 import { useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { useSearch, useCategories } from '@mlh/api-client';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient, queryKeys } from '@mlh/api-client';
+import type { PaginatedResponse, ProductListItemDto } from '@mlh/types';
 import { SearchInput }   from '../../../../components/search/SearchInput';
 import { SearchResults } from '../../../../components/search/SearchResults';
 import { NoResults }     from '../../../../components/search/NoResults';
 import { parseSearchParams } from '../../../../components/listing/types';
-import type { ListingFilters } from '../../../../components/listing/types';
 
 // ── Analytics: POST /search/log after results load ────────────────────────────
 
-const API_BASE = () =>
-  (typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_API_URL']) ||
-  'http://localhost:3002';
-
 function logSearch(query: string, resultCount: number) {
   if (!query.trim()) return;
-  fetch(`${API_BASE()}/api/v1/search/log`, {
-    method:      'POST',
-    headers:     { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body:        JSON.stringify({ query, resultCount }),
-  }).catch(() => {/* analytics is non-critical */});
+  apiClient
+    .post('/search/log', { query, resultCount })
+    .catch(() => {/* analytics is non-critical */});
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -50,29 +44,33 @@ export default function SearchPage() {
   const filters  = parseSearchParams(rawParams);
   const query    = searchParams.get('q') ?? '';
   const trimmedQ = query.trim();
+  const page     = filters.page;
 
-  // Use search hook — disabled when query is empty
-  const {
-    data:      searchData,
-    isLoading: isSearching,
-    isFetched,
-  } = useSearch({
-    q:        trimmedQ,
-    page:     filters.page,
-    limit:    24,
-    sort:     filters.sort,
-    minPrice: filters.minPrice,
-    maxPrice: filters.maxPrice,
-  } as Parameters<typeof useSearch>[0]);
+  const { data, isLoading, isFetched } = useQuery({
+    queryKey: queryKeys.search({ q: trimmedQ, page }),
+    queryFn:  () =>
+      apiClient
+        .get<PaginatedResponse<ProductListItemDto>>('/search', {
+          params: {
+            q:       trimmedQ,
+            page,
+            limit:   24,
+            sort:    filters.sort,
+            minPrice: filters.minPrice,
+            maxPrice: filters.maxPrice,
+          },
+        })
+        .then((r) => r),
+    enabled:         trimmedQ.length > 0,
+    staleTime:       60_000,
+    placeholderData: (prev) => prev,  // keep old results while paginating
+  });
 
-  const { data: categoriesData } = useCategories({ parentId: null });
-  const categories = categoriesData ?? [];
+  const products   = data?.data                  ?? [];
+  const totalCount = data?.pagination?.total      ?? 0;
+  const totalPages = data?.pagination?.totalPages ?? 0;
 
-  const products   = searchData?.data ?? [];
-  const totalCount = searchData?.pagination?.total      ?? 0;
-  const totalPages = searchData?.pagination?.totalPages ?? 0;
-
-  // ── Log search analytics after results load ────────────────────────────────
+  // Log search analytics after results load
   const loggedRef = useRef('');
   useEffect(() => {
     if (isFetched && trimmedQ && loggedRef.current !== trimmedQ) {
@@ -81,11 +79,9 @@ export default function SearchPage() {
     }
   }, [isFetched, trimmedQ, totalCount]);
 
-  // ── Handle SearchInput submit ──────────────────────────────────────────────
   const handleSearch = (q: string) => {
     const url = new URL(window.location.href);
     url.searchParams.set('q', q);
-    // Reset page on new search
     url.searchParams.delete('page');
     router.push(url.pathname + url.search);
   };
@@ -105,7 +101,7 @@ export default function SearchPage() {
         />
       </div>
 
-      {/* ── No query: show trending ── */}
+      {/* No query: show trending / empty state */}
       {!trimmedQ && (
         <div className="space-y-6">
           <h1 className="font-display text-2xl font-bold text-secondary text-center">
@@ -115,33 +111,33 @@ export default function SearchPage() {
         </div>
       )}
 
-      {/* ── Has query: show results or no-results ── */}
+      {/* Has query */}
       {trimmedQ && (
         <>
-          {/* Loading: show spinner only on initial load (no data yet) */}
-          {isSearching && !searchData && (
+          {/* Initial loading spinner (no data yet) */}
+          {isLoading && !data && (
             <div className="flex items-center justify-center py-20">
               <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           )}
 
           {/* Results */}
-          {(searchData || isSearching) && products.length > 0 && (
+          {(data || isLoading) && products.length > 0 && (
             <SearchResults
               query={trimmedQ}
               products={products}
               totalCount={totalCount}
               totalPages={totalPages}
-              isLoading={isSearching}
+              isLoading={isLoading}
               currentFilters={filters}
-              categories={categories}
+              categories={[]}
               tags={[]}
               locale={locale}
             />
           )}
 
-          {/* No results (only after fetch completes with 0 results) */}
-          {isFetched && !isSearching && products.length === 0 && (
+          {/* No results — only after fetch completes with 0 results */}
+          {isFetched && !isLoading && products.length === 0 && (
             <NoResults query={trimmedQ} onSearch={handleSearch} />
           )}
         </>

@@ -142,7 +142,7 @@ function SearchProductCard({
                 <svg
                   key={i}
                   className={`w-3 h-3 ${
-                    i < Math.round(product.rating!) ? 'text-warning' : 'text-border'
+                    i < Math.round(product.rating!.avg) ? 'text-warning' : 'text-border'
                   }`}
                   fill="currentColor"
                   viewBox="0 0 20 20"

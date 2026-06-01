@@ -84,8 +84,8 @@ export function ProductGrid({ products, locale, isLoading = false }: ProductGrid
           }
           basePrice={product.basePrice}
           compareAtPrice={product.compareAtPrice}
-          rating={product.rating}
-          reviewCount={product.reviewCount}
+          rating={product.rating?.avg}
+          reviewCount={product.rating?.count}
           badge={product.badge}
           isPersonalizable={product.isPersonalizable}
           onWishlistToggle={handleWishlistToggle}

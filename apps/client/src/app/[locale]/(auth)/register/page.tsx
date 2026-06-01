@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { Eye, EyeOff } from 'lucide-react';
 import { API_ROUTES } from '@mlh/constants';
 import { useToast, ToastProvider } from '@mlh/ui';
+import { useAuthStore } from '../../../../lib/store/auth.store';
 
 // ── Password strength ─────────────────────────────────────────────────────────
 
@@ -102,43 +103,38 @@ function RegisterForm() {
   const {
     register,
     handleSubmit,
+    setError,
     watch,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   const agreeTerms = watch('agreeTerms');
 
-  const apiBase = () =>
-    process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
+  const apiBase = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
 
   const onSubmit = async (data: FormValues) => {
     setIsPending(true);
     setApiError('');
 
     try {
-      const res = await fetch(`${apiBase()}/api/v1${API_ROUTES.AUTH.REGISTER}`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          firstName: data.firstName,
-          lastName:  data.lastName,
-          email:     data.email,
-          password:  data.password,
-        }),
+      await useAuthStore.getState().register({
+        email:     data.email,
+        password:  data.password,
+        firstName: data.firstName,
+        lastName:  data.lastName,
       });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { message?: string };
-        setApiError(body.message ?? 'Registration failed. Please try again.');
-        return;
+      toast.success('Account created! Check your email to verify. 📧');
+      router.replace(`/${locale}/login?registered=1`);
+    } catch (err: unknown) {
+      const apiErr = err as { code?: string };
+      if (apiErr.code === 'ERR_EMAIL_ALREADY_EXISTS') {
+        setError('email', { message: 'An account with this email already exists.' });
+      } else {
+        setApiError(
+          err instanceof Error ? err.message : 'Registration failed. Please try again.',
+        );
       }
-
-      toast.success('Check your email to verify your account 📧');
-      setTimeout(() => router.replace(`/${locale}/login`), 1_500);
-    } catch (err) {
-      setApiError(
-        err instanceof Error ? err.message : 'Something went wrong.',
-      );
     } finally {
       setIsPending(false);
     }
@@ -162,7 +158,7 @@ function RegisterForm() {
 
       {/* Google OAuth */}
       <a
-        href={`${apiBase()}/api/v1${API_ROUTES.AUTH.GOOGLE}`}
+        href={`${apiBase}/api/v1${API_ROUTES.AUTH.GOOGLE}`}
         className="flex items-center justify-center gap-3 w-full py-2.5 border border-border rounded-button text-sm font-medium text-secondary hover:bg-muted/5 hover:border-primary/40 transition-colors"
       >
         <GoogleIcon />

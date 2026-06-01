@@ -61,9 +61,9 @@ export function ProductInfo({ product, reviewSummary }: ProductInfoProps) {
   return (
     <div className="space-y-3.5">
       {/* Category label */}
-      {product.category && (
+      {(product.primaryCategory ?? product.category) && (
         <p className="text-xs font-semibold text-primary uppercase tracking-widest">
-          {product.category.name}
+          {product.primaryCategory?.name ?? product.category?.name}
         </p>
       )}
 
@@ -89,6 +89,13 @@ export function ProductInfo({ product, reviewSummary }: ProductInfoProps) {
           </span>
         )}
       </div>
+
+      {/* In-demand badge — show only when recent 24h sales data is available */}
+      {product.soldCount24h !== undefined && product.soldCount24h >= 10 && (
+        <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-warning bg-warning/8 border border-warning/20 rounded-pill px-3 py-1">
+          🔥 {product.soldCount24h} people bought this in the last 24 hours
+        </div>
+      )}
 
       {/* Price */}
       <PriceDisplay

@@ -8,10 +8,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
-import { queryKeys, api } from '@mlh/api-client';
 import { API_ROUTES } from '@mlh/constants';
-import type { UserDto } from '@mlh/types';
 import { useAuthStore } from '../../../../lib/store/auth.store';
 
 // ── Zod schema ────────────────────────────────────────────────────────────────
@@ -43,73 +40,46 @@ export default function LoginPage() {
   const locale       = useLocale();
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const qc           = useQueryClient();
-  const authStore    = useAuthStore();
 
-  const [showPw,    setShowPw]    = useState(false);
-  const [shake,     setShake]     = useState(false);
-  const [apiError,  setApiError]  = useState('');
-  const [isPending, setIsPending] = useState(false);
+  const [showPw,       setShowPw]       = useState(false);
+  const [shake,        setShake]        = useState(false);
+  const [globalError,  setGlobalError]  = useState('');
+  const [isPending,    setIsPending]    = useState(false);
 
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
-  const apiBase = () =>
-    process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
+  const apiBase = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
 
   const onSubmit = async (data: FormValues) => {
     setIsPending(true);
-    setApiError('');
+    setGlobalError('');
 
     try {
-      const res = await fetch(`${apiBase()}/api/v1${API_ROUTES.AUTH.LOGIN}`, {
-        method:      'POST',
-        headers:     { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body:        JSON.stringify({
-          email:      data.email,
-          password:   data.password,
-          rememberMe: data.rememberMe,
-        }),
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { message?: string };
-        const msg  = body.message ?? 'Invalid email or password';
-        setApiError(msg);
-        // Shake animation
-        setShake(true);
-        setTimeout(() => setShake(false), 600);
-        return;
-      }
-
-      const body  = await res.json();
-      const token = body?.data?.accessToken ?? body?.accessToken as string;
-      const user  = body?.data?.user        ?? body?.user        as UserDto;
-
-      // Store token in memory + update user state
-      authStore.setUser(user, token);
-      qc.setQueryData(queryKeys.profile(), user);
-
-      // Merge guest cart into the new session
-      try {
-        await api.post(API_ROUTES.CART.MERGE);
-        qc.invalidateQueries({ queryKey: queryKeys.cart() });
-      } catch {
-        // Non-critical — cart merge failure shouldn't block sign-in
-      }
+      await useAuthStore.getState().login(data.email, data.password, data.rememberMe);
 
       const redirect = searchParams.get('redirect') ?? `/${locale}/account`;
       router.replace(redirect);
-    } catch (err) {
-      setApiError(
-        err instanceof Error ? err.message : 'Something went wrong. Please try again.',
-      );
-      setShake(true);
-      setTimeout(() => setShake(false), 600);
+    } catch (err: unknown) {
+      const apiErr = err as { code?: string };
+
+      if (apiErr.code === 'ERR_CREDENTIALS_INVALID') {
+        setError('email', { message: 'Invalid email or password.' });
+        setShake(true);
+        setTimeout(() => setShake(false), 500);
+      } else if (apiErr.code === 'ERR_ACCOUNT_LOCKED') {
+        setGlobalError('Account locked after too many failed attempts. Try again in 15 minutes.');
+      } else if (apiErr.code === 'ERR_EMAIL_NOT_VERIFIED') {
+        setGlobalError('Please verify your email address before signing in.');
+      } else {
+        setGlobalError(
+          err instanceof Error ? err.message : 'Something went wrong. Please try again.',
+        );
+      }
     } finally {
       setIsPending(false);
     }
@@ -123,11 +93,7 @@ export default function LoginPage() {
     ].join(' ');
 
   return (
-    <div
-      className={shake ? '[animation:shake_0.5s_ease-in-out]' : ''}
-      style={shake ? { animation: 'shake 0.5s ease-in-out' } : undefined}
-    >
-      {/* Heading */}
+    <div className={shake ? '[animation:shake_0.5s_ease-in-out]' : ''}>
       <h1 className="font-display text-2xl md:text-3xl font-bold text-secondary mb-1">
         Welcome back
       </h1>
@@ -135,7 +101,7 @@ export default function LoginPage() {
 
       {/* Google OAuth */}
       <a
-        href={`${apiBase()}/api/v1${API_ROUTES.AUTH.GOOGLE}`}
+        href={`${apiBase}/api/v1${API_ROUTES.AUTH.GOOGLE}`}
         className="flex items-center justify-center gap-3 w-full py-2.5 border border-border rounded-button text-sm font-medium text-secondary hover:bg-muted/5 hover:border-primary/40 transition-colors"
       >
         <GoogleIcon />
@@ -151,10 +117,10 @@ export default function LoginPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-        {/* API error */}
-        {apiError && (
+        {/* Global API error */}
+        {globalError && (
           <p className="text-xs text-error bg-error/5 border border-error/20 rounded-sm px-3 py-2" role="alert">
-            {apiError}
+            {globalError}
           </p>
         )}
 

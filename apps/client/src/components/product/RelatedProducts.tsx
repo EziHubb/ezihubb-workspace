@@ -37,12 +37,12 @@ export function RelatedProducts({ products, locale }: RelatedProductsProps) {
               productId={product.id}
               slug={product.slug}
               locale={locale}
-              image={product.primaryImage ?? 'https://placehold.co/400x500?text=No+Image'}
+              image={product.images[0]?.url ?? 'https://placehold.co/400x500?text=No+Image'}
               name={product.name}
               price={product.basePrice}
               originalPrice={product.compareAtPrice}
-              rating={product.rating}
-              reviewCount={product.reviewCount}
+              rating={product.rating?.avg}
+              reviewCount={product.rating?.count}
               badge={product.badge}
             />
           </div>

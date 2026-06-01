@@ -9,9 +9,13 @@ interface CollectionsGridProps {
   locale: string;
 }
 
-export async function CollectionsGrid({ collections, locale }: CollectionsGridProps) {
-  if (collections.length === 0) return null;
+// Deterministic gradient based on collection name — shown when no image is available
+function collectionGradient(name: string): string {
+  const hue = name.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % 360;
+  return `hsl(${hue}, 55%, 70%)`;
+}
 
+export async function CollectionsGrid({ collections, locale }: CollectionsGridProps) {
   const t = await getTranslations({ locale, namespace: 'home' });
 
   return (
@@ -25,44 +29,65 @@ export async function CollectionsGrid({ collections, locale }: CollectionsGridPr
 
       {/* 3×2 grid on desktop, 2×3 on mobile */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mb-8">
-        {collections.map((collection) => (
-          <Link
-            key={collection.id}
-            href={`/${locale}/collections/${collection.slug}`}
-            className="group relative overflow-hidden rounded-card aspect-[4/3] bg-muted block"
-          >
-            {collection.imageUrl ? (
-              <Image
-                src={collection.imageUrl}
-                alt={collection.name}
-                fill
-                sizes="(max-width: 768px) 50vw, 33vw"
-                className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+        {collections.length === 0
+          ? // Skeleton placeholder — 6 gray cards while loading / API failed
+            Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="rounded-card aspect-[4/3] bg-border/40 animate-pulse"
+                aria-hidden="true"
               />
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5" />
-            )}
+            ))
+          : collections.map((collection) => {
+              // Prefer bannerUrl (new spec), fall back to imageUrl (legacy)
+              const imgSrc = collection.bannerUrl ?? collection.imageUrl;
+              const productCount =
+                collection._count?.products ?? collection.productCount;
 
-            {/* Gradient overlay — darkens on hover */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent group-hover:from-black/80 transition-colors duration-300" />
+              return (
+                <Link
+                  key={collection.id}
+                  href={`/${locale}/collections/${collection.slug}`}
+                  className="group relative overflow-hidden rounded-card aspect-[4/3] block"
+                  style={
+                    !imgSrc
+                      ? { background: `linear-gradient(135deg, ${collectionGradient(collection.name)}, ${collectionGradient(collection.name + '2')})` }
+                      : undefined
+                  }
+                >
+                  {imgSrc ? (
+                    <Image
+                      src={imgSrc}
+                      alt={collection.name}
+                      fill
+                      sizes="(max-width: 768px) 50vw, 33vw"
+                      className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-black/10" />
+                  )}
 
-            {/* Collection name */}
-            <div className="absolute inset-0 flex items-end p-4 md:p-5">
-              <div>
-                <h3 className="font-display text-white font-bold text-lg md:text-xl leading-tight">
-                  {collection.name}
-                </h3>
-                {collection.productCount !== undefined && collection.productCount > 0 && (
-                  <p className="text-white/70 text-sm mt-0.5">
-                    {t('collections.productCount', { count: collection.productCount })}
-                  </p>
-                )}
-              </div>
-            </div>
-          </Link>
-        ))}
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent group-hover:from-black/80 transition-colors duration-300" />
+
+                  {/* Collection name */}
+                  <div className="absolute inset-0 flex items-end p-4 md:p-5">
+                    <div>
+                      <h3 className="font-display text-white font-bold text-lg md:text-xl leading-tight">
+                        {collection.name}
+                      </h3>
+                      {productCount !== undefined && productCount > 0 && (
+                        <p className="text-white/70 text-sm mt-0.5">
+                          {t('collections.productCount', { count: productCount })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
       </div>
-      {/* View All Occasions link */}
+
       <div className="text-center">
         <Link
           href={`/${locale}/occasions`}

@@ -1,15 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import type { ProductDto, ReviewSummaryDto } from '@mlh/types';
+import type { ProductDto, ReviewSummaryDto, ReviewDto } from '@mlh/types';
 import { ReviewSection } from './ReviewSection';
 import { ProductAttributeList } from './ProductAttributeList';
 import type { ProductAttribute } from './ProductAttributeList';
 
 interface ProductTabsProps {
-  product:       ProductDto & { attributes?: ProductAttribute[]; sizeGuide?: string; shippingNote?: string };
-  reviewSummary: ReviewSummaryDto | null;
-  locale:        string;
+  product:         ProductDto & { attributes?: ProductAttribute[]; sizeGuide?: string; shippingNote?: string };
+  reviewSummary:   ReviewSummaryDto | null;
+  initialReviews?: ReviewDto[];
+  locale:          string;
 }
 
 type TabId = 'description' | 'specifications' | 'size-guide' | 'shipping' | 'reviews';
@@ -23,7 +24,7 @@ const SHIPPING_INFO = `
 We accept returns within 30 days of delivery for unused, unmodified items. Personalized items are non-returnable unless defective. Contact support@maplehandmade.com to start a return.
 `;
 
-export function ProductTabs({ product, reviewSummary, locale: _locale }: ProductTabsProps) {
+export function ProductTabs({ product, reviewSummary, initialReviews, locale: _locale }: ProductTabsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('description');
 
   const reviewCount  = reviewSummary?.totalReviews ?? 0;
@@ -207,6 +208,7 @@ export function ProductTabs({ product, reviewSummary, locale: _locale }: Product
           <ReviewSection
             productSlug={product.slug}
             reviewSummary={reviewSummary}
+            initialReviews={initialReviews}
           />
         </div>
       </div>

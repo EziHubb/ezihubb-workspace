@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import type { ProductListItemDto, ReviewSummaryDto } from '@mlh/types';
+import { apiClient } from '@mlh/api-client';
+import type { ProductListItemDto, ReviewSummaryDto, ReviewDto } from '@mlh/types';
 import type { ProductDto } from '@mlh/types';
-import type { CustomizationTemplate } from '../../../../../lib/customizer/types';
+import type { PaginatedResponse } from '@mlh/types';
 import { DEMO_TEMPLATE } from '../../../../../lib/customizer/types';
+import type { CustomizationTemplate } from '../../../../../lib/customizer/types';
 import { ProductGallery } from '../../../../../components/product/ProductGallery';
 import { ProductInfo } from '../../../../../components/product/ProductInfo';
 import { ProductPageInteractive } from '../../../../../components/product/ProductPageInteractive';
@@ -16,114 +18,31 @@ import { BreadcrumbStructuredData } from '../../../../../components/seo/Breadcru
 
 export const revalidate = 30;
 
-// ── Extended product type including MongoDB fields ────────────────────────────
+// ── Extended product type ─────────────────────────────────────────────────────
+// ProductDto now includes variantOptions, attributes, customization, soldCount24h
+// directly. Only add fields the API merges that aren't in ProductDto.
 export interface ProductDetailDto extends ProductDto {
-  customizationTemplate?: CustomizationTemplate;
-  soldCount24h?:          number;
-  // MongoDB fields merged by products.service.ts
-  variantOptions?:  { name: string; values: string[] }[];
-  mongoVariants?:   unknown[];
-  attributes?:      { key: string; value: string; unit?: string; filterable?: boolean }[];
   richDescription?: string;
-  sizeGuide?:       string;
-  shippingNote?:    string;
+  shippingNote?: string;
 }
 
-// ── Server-side fetchers ──────────────────────────────────────────────────────
-
-const API = () => process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
-
-async function getProduct(slug: string): Promise<ProductDetailDto | null> {
-  try {
-    const res = await fetch(`${API()}/api/v1/products/${slug}`, {
-      next: { revalidate: 30 },
-    });
-    if (!res.ok) return null;
-    const body = await res.json();
-    return (body.data ?? body) as ProductDetailDto;
-  } catch {
-    return null;
-  }
-}
-
-async function getRelatedProducts(slug: string): Promise<ProductListItemDto[]> {
-  try {
-    const res = await fetch(`${API()}/api/v1/products/${slug}/related`, {
-      next: { revalidate: 30 },
-    });
-    if (!res.ok) return [];
-    const body = await res.json();
-    return (body.data ?? []) as ProductListItemDto[];
-  } catch {
-    return [];
-  }
-}
-
-/** Build breadcrumb chain: walk the category tree to find the path to a given slug. */
-async function getCategoryBreadcrumb(
-  categorySlug: string,
-  locale:       string,
-): Promise<BreadcrumbItem[]> {
-  try {
-    const res = await fetch(`${API()}/api/v1/catalog/categories`, {
-      next: { revalidate: 600 },
-    });
-    if (!res.ok) return [];
-    const body = await res.json();
-    const tree  = (body.data ?? []) as Array<{ name: string; slug: string; children?: Array<{ name: string; slug: string; children?: Array<{ name: string; slug: string }> }> }>;
-
-    function findPath(
-      nodes: typeof tree,
-      target: string,
-      path:   BreadcrumbItem[],
-    ): BreadcrumbItem[] | null {
-      for (const node of nodes) {
-        const current: BreadcrumbItem = { name: node.name, href: `/${locale}/categories/${node.slug}` };
-        if (node.slug === target) return [...path, current];
-        if (node.children?.length) {
-          const found = findPath(node.children as typeof tree, target, [...path, current]);
-          if (found) return found;
-        }
-      }
-      return null;
-    }
-
-    return findPath(tree, categorySlug, []) ?? [];
-  } catch {
-    return [];
-  }
-}
-
-async function getReviewSummary(slug: string): Promise<ReviewSummaryDto | null> {
-  try {
-    const res = await fetch(`${API()}/api/v1/products/${slug}/reviews/summary`, {
-      next: { revalidate: 30 },
-    });
-    if (!res.ok) return null;
-    const body = await res.json();
-    return (body.data ?? null) as ReviewSummaryDto | null;
-  } catch {
-    return null;
-  }
-}
-
-// ── Static params: pre-render all known slugs ─────────────────────────────────
+// ── Static params: pre-render the 200 most-active product slugs ───────────────
 
 export async function generateStaticParams() {
-  try {
-    const res = await fetch(`${API()}/api/v1/products?limit=200`, {
+  const locales = ['en', 'vi'] as const;
+  const res = await apiClient
+    .get<PaginatedResponse<{ slug: string }>>('/products', {
+      params: { fields: 'slug', limit: 200, isActive: true },
       next: { revalidate: 3600 },
-    });
-    if (!res.ok) return [];
-    const body = await res.json();
-    const products = (body.data ?? []) as ProductDto[];
-    return products.map((p) => ({ slug: p.slug }));
-  } catch {
-    return [];
-  }
+    })
+    .catch(() => ({ data: [] as { slug: string }[] }));
+
+  return locales.flatMap((locale) =>
+    res.data.map((p) => ({ locale, slug: p.slug })),
+  );
 }
 
-// ── Metadata + JSON-LD ────────────────────────────────────────────────────────
+// ── Metadata ──────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({
   params,
@@ -131,15 +50,18 @@ export async function generateMetadata({
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const product  = await getProduct(slug);
+
+  const product = await apiClient
+    .get<ProductDetailDto>(`/products/${slug}`, {
+      next: { revalidate: 30 },
+    })
+    .catch(() => null);
 
   if (!product) return { title: 'Product Not Found' };
-
   const description =
     product.shortDescription ??
     product.description?.slice(0, 160) ??
     `Shop ${product.name} at Maple Handmade`;
-
   const primaryImage = product.images?.[0];
 
   return {
@@ -170,36 +92,55 @@ export default async function ProductDetailPage({
 }) {
   const { locale, slug } = await params;
 
-  const [product, relatedProducts, reviewSummary] = await Promise.all([
-    getProduct(slug),
-    getRelatedProducts(slug),
-    getReviewSummary(slug),
-  ]);
+  // All parallel fetches — product is critical (404 if rejected)
+  const [productRes, reviewSummaryRes, relatedRes, initialReviewsRes] =
+    await Promise.allSettled([
+      apiClient.get<ProductDetailDto>(`/products/${slug}`, {
+        next: { revalidate: 30 },
+      }),
+      apiClient.get<ReviewSummaryDto>(`/products/${slug}/reviews/summary`, {
+        next: { revalidate: 60 },
+      }),
+      apiClient.get<PaginatedResponse<ProductListItemDto>>(`/products/${slug}/related`, {
+        next: { revalidate: 300 },
+      }),
+      apiClient.get<PaginatedResponse<ReviewDto>>(`/products/${slug}/reviews`, {
+        params: { page: 1, limit: 5, status: 'APPROVED' },
+        next: { revalidate: 60 },
+      }),
+    ]);
 
-  if (!product) notFound();
+  if (productRes.status === 'rejected') notFound();
+  const product = productRes.value;
 
-  // Build 3-level breadcrumb: Home > L1 > L2 > L3 > Product
-  const categoryChain = product.category?.slug
-    ? await getCategoryBreadcrumb(product.category.slug, locale)
-    : [];
+  const reviewSummary = reviewSummaryRes.status === 'fulfilled'
+    ? reviewSummaryRes.value : null;
 
+  const relatedProducts = relatedRes.status === 'fulfilled'
+    ? relatedRes.value.data : [];
+
+  const initialReviews = initialReviewsRes.status === 'fulfilled'
+    ? initialReviewsRes.value.data : undefined;
+
+  // Use product.customization (MongoDB) as gate — null means not personalizable
+  const template: CustomizationTemplate | null =
+    product.isPersonalizable && product.customization
+      ? DEMO_TEMPLATE
+      : null;
+
+  // Breadcrumb: Home > primaryCategory > product
   const breadcrumbItems: BreadcrumbItem[] = [
     { name: 'Home', href: `/${locale}` },
-    ...categoryChain,
+    ...(product.primaryCategory
+      ? [{ name: product.primaryCategory.name, href: `/${locale}/categories/${product.primaryCategory.slug}` }]
+      : []),
     { name: product.name, href: `/${locale}/products/${slug}` },
   ];
-
-  // Fall back to DEMO_TEMPLATE in development / when API hasn't returned one
-  const template: CustomizationTemplate | null =
-    product.isPersonalizable
-      ? (product.customizationTemplate ?? DEMO_TEMPLATE)
-      : null;
 
   const BASE = 'https://maplehandmade.com';
 
   return (
     <>
-      {/* Structured data */}
       <ProductStructuredData
         product={product}
         reviewSummary={reviewSummary}
@@ -213,27 +154,20 @@ export default async function ProductDetailPage({
       />
 
       <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-6 md:py-10">
-        {/* ── Breadcrumb ── */}
         <ProductBreadcrumb items={breadcrumbItems} />
 
-        {/* ── 2-col layout: 55% gallery / 45% info+customizer ── */}
         <div className="grid grid-cols-1 md:grid-cols-[55fr_45fr] gap-8 lg:gap-14 items-start mt-2">
-
-          {/* Left: Image Gallery */}
           <ProductGallery
             images={product.images ?? []}
             productName={product.name}
-            soldCount={product.soldCount24h ?? product.soldCount}
+            soldCount={product.soldCount24h}
           />
 
-          {/* Right: Info + Interactive section */}
           <div className="space-y-5 md:sticky md:top-24">
             <ProductInfo
               product={product}
               reviewSummary={reviewSummary}
             />
-
-            {/* Variant picker + customizer + cart — all client-side */}
             <ProductPageInteractive
               product={product}
               template={template}
@@ -242,16 +176,15 @@ export default async function ProductDetailPage({
           </div>
         </div>
 
-        {/* ── Product tabs (Description / Size Guide / Shipping / Reviews) ── */}
         <div className="mt-14 md:mt-20">
           <ProductTabs
             product={product}
             reviewSummary={reviewSummary}
+            initialReviews={initialReviews}
             locale={locale}
           />
         </div>
 
-        {/* ── Related products ── */}
         {relatedProducts.length > 0 && (
           <div className="mt-14 md:mt-20">
             <RelatedProducts products={relatedProducts} locale={locale} />

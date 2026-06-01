@@ -5,9 +5,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useLocale } from 'next-intl';
 import { Package, ExternalLink, ShoppingBag } from 'lucide-react';
-import { useOrders } from '@mlh/api-client';
+import { queryKeys } from '@mlh/api-client';
 import { OrderStatusBadge, Pagination, Skeleton } from '@mlh/ui';
-import type { OrderDto, OrderStatus } from '@mlh/types';
+import type { OrderDto, OrderStatus, PaginatedResponse } from '@mlh/types';
+import { useAuthQuery } from '../../../../../lib/hooks/useAuthQuery';
 
 // ── Filter tabs ───────────────────────────────────────────────────────────────
 
@@ -136,15 +137,15 @@ export default function OrdersPage() {
   const [activeStatus, setActiveStatus] = useState('');
   const [page,         setPage]         = useState(1);
 
-  const { data, isLoading } = useOrders({
-    page,
-    limit:  10,
-    status: activeStatus || undefined,
-  });
+  const { data: pagedData, isLoading } = useAuthQuery<PaginatedResponse<OrderDto>>(
+    queryKeys.orders({ status: activeStatus || undefined, page }),
+    '/users/me/orders',
+    { status: activeStatus || undefined, limit: 10, page },
+  );
 
-  const orders     = data?.data       ?? [];
-  const totalPages = data?.pagination?.totalPages ?? 1;
-  const total      = data?.pagination?.total      ?? 0;
+  const orders     = pagedData?.data                  ?? [];
+  const totalPages = pagedData?.pagination?.totalPages ?? 1;
+  const total      = pagedData?.pagination?.total      ?? 0;
 
   const handleTabChange = (value: string) => {
     setActiveStatus(value);
@@ -223,7 +224,7 @@ export default function OrdersPage() {
             {total !== 1 ? 's' : ''}
           </p>
           <div className="space-y-4">
-            {orders.map((order) => (
+            {orders.map((order: OrderDto) => (
               <OrderCard key={order.id} order={order} locale={locale} />
             ))}
           </div>

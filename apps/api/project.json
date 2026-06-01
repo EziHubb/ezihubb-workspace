@@ -42,7 +42,7 @@
         "development": {
           "buildTarget": "api:build:development",
           "inspect": true,
-          "port": 3002
+          "port": 9229
         },
         "production": {
           "buildTarget": "api:build:production"

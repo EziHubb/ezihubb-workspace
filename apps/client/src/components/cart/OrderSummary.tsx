@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { Tag, X, ChevronRight, ShieldCheck, Truck, RotateCcw } from 'lucide-react';
-import { useMutateCart } from '@mlh/api-client';
+import { useCartStore } from '../../lib/store/cart.store';
 import type { CartDto } from '@mlh/types';
 
 interface OrderSummaryProps {
@@ -12,25 +12,47 @@ interface OrderSummaryProps {
 }
 
 export function OrderSummary({ cart }: OrderSummaryProps) {
-  const locale  = useLocale();
-  const router  = useRouter();
-  const { applyCoupon, removeCoupon } = useMutateCart();
+  const locale = useLocale();
+  const router = useRouter();
+  const { applyCoupon, removeCoupon } = useCartStore();
 
-  const [couponInput, setCouponInput] = useState('');
-  const [couponError, setCouponError] = useState('');
+  const [couponInput,   setCouponInput]   = useState('');
+  const [couponError,   setCouponError]   = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [removeLoading, setRemoveLoading] = useState(false);
 
   const handleApply = async () => {
     const code = couponInput.trim().toUpperCase();
     if (!code) return;
     setCouponError('');
-
-    applyCoupon.mutate(code, {
-      onSuccess: () => setCouponInput(''),
-      onError: (err) =>
+    setCouponLoading(true);
+    try {
+      await applyCoupon(code);
+      setCouponInput('');
+    } catch (err: unknown) {
+      const apiErr = err as { code?: string; details?: Record<string, unknown> };
+      if (apiErr.code === 'ERR_COUPON_NOT_FOUND' || apiErr.code === 'ERR_COUPON_EXPIRED') {
+        setCouponError('Invalid or expired coupon code.');
+      } else if (apiErr.code === 'ERR_COUPON_MAX_USES_PER_USER') {
+        setCouponError('You have already used this coupon.');
+      } else if (apiErr.code === 'ERR_COUPON_MIN_ORDER') {
+        const minAmount = (apiErr.details?.['minAmount'] as number | undefined)?.toFixed(2);
         setCouponError(
-          err instanceof Error ? err.message : 'Invalid or expired coupon code',
-        ),
-    });
+          minAmount
+            ? `Minimum order of $${minAmount} required.`
+            : 'Order does not meet the minimum amount for this coupon.',
+        );
+      } else {
+        setCouponError(err instanceof Error ? err.message : 'Could not apply coupon. Please try again.');
+      }
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = async () => {
+    setRemoveLoading(true);
+    try { await removeCoupon(); } finally { setRemoveLoading(false); }
   };
 
   const { totals } = cart;
@@ -93,8 +115,8 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
             </div>
             <button
               type="button"
-              onClick={() => removeCoupon.mutate()}
-              disabled={removeCoupon.isPending}
+              onClick={handleRemoveCoupon}
+              disabled={removeLoading}
               aria-label="Remove coupon"
               className="p-0.5 text-success/60 hover:text-error transition-colors disabled:opacity-50"
             >
@@ -121,10 +143,10 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
               <button
                 type="button"
                 onClick={handleApply}
-                disabled={!couponInput.trim() || applyCoupon.isPending}
+                disabled={!couponInput.trim() || couponLoading}
                 className="px-4 py-2 text-sm font-semibold border border-primary text-primary rounded-button hover:bg-primary/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
               >
-                {applyCoupon.isPending ? '…' : 'Apply'}
+                {couponLoading ? '…' : 'Apply'}
               </button>
             </div>
             {couponError && (

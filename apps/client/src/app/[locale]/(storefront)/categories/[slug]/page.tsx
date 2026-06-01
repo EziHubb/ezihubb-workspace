@@ -1,15 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import type { CategoryDto, ProductListItemDto, TagDto } from '@mlh/types';
+import { apiClient } from '@mlh/api-client';
+import type { CategoryDto, ProductListItemDto } from '@mlh/types';
+import type { PaginatedResponse } from '@mlh/types';
 import { ProductListingLayout } from '../../../../../components/listing/ProductListingLayout';
-import {
-  parseSearchParams,
-  buildProductsApiUrl,
-  fetchPaged,
-  fetchOne,
-  fetchList,
-} from '../../../../../components/listing/types';
+import { parseSearchParams } from '../../../../../components/listing/types';
 
 export const revalidate = 30;
 
@@ -18,15 +14,12 @@ type SearchParamValue = string | string[] | undefined;
 // ── Static params: pre-render all known category slugs ──────────────────────
 
 export async function generateStaticParams() {
-  const base    = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
   const locales = ['en', 'vi'] as const;
   try {
-    const res = await fetch(`${base}/api/v1/catalog/categories`, {
+    const cats = await apiClient.get<CategoryDto[]>('/categories', {
       next: { revalidate: 3600 },
     });
-    if (!res.ok) return [];
-    const body = (await res.json()) as { data: CategoryDto[] };
-    const slugs = (body.data ?? []).map((c) => c.slug);
+    const slugs = cats.map((c) => c.slug);
     return locales.flatMap((locale) => slugs.map((slug) => ({ locale, slug })));
   } catch {
     return [];
@@ -41,14 +34,14 @@ export async function generateMetadata({
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const base     = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
 
-  const category = await fetchOne<CategoryDto>(
-    `${base}/api/v1/catalog/categories/${slug}`,
-  );
+  const category = await apiClient
+    .get<CategoryDto>(`/categories/${slug}`, {
+      next: { revalidate: 300 },
+    })
+    .catch(() => null);
 
   if (!category) return { title: 'Category Not Found' };
-
   return {
     title:       `${category.name} Gifts | Maple Handmade`,
     description: category.description ??
@@ -72,17 +65,41 @@ export default async function CategoryPage({
   const { locale, slug } = await params;
   const sp               = await searchParams;
   const filters          = parseSearchParams(sp);
-  const base             = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
 
-  const [category, productsResult, tags] = await Promise.all([
-    fetchOne<CategoryDto>(`${base}/api/v1/catalog/categories/${slug}`),
-    fetchPaged<ProductListItemDto>(
-      buildProductsApiUrl(base, filters, { category: slug }),
-    ),
-    fetchList<TagDto>(`${base}/api/v1/catalog/tags`),
+  const emptyPage: PaginatedResponse<ProductListItemDto> = {
+    success:    true,
+    data:       [],
+    pagination: { page: 1, limit: 24, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+    meta:       { timestamp: '', requestId: '' },
+  };
+
+  // Fetch category info + products in parallel
+  const [categoryRes, productsRes] = await Promise.allSettled([
+    apiClient.get<CategoryDto>(`/categories/${slug}`, {
+      next: { revalidate: 300 },
+    }),
+    apiClient.get<PaginatedResponse<ProductListItemDto>>('/products', {
+      params: {
+        categorySlug: slug,
+        page:         filters.page,
+        limit:        24,
+        sort:         filters.sort,
+        minPrice:     filters.minPrice,
+        maxPrice:     filters.maxPrice,
+        isActive:     true,
+      },
+      next: { revalidate: 30 },
+    }),
   ]);
 
-  if (!category) notFound();
+  // 404 if category not found or API errored
+  if (categoryRes.status === 'rejected' || !categoryRes.value) notFound();
+  const category = categoryRes.value;
+
+  const products   = productsRes.status === 'fulfilled' ? productsRes.value.data : [];
+  const pagination = productsRes.status === 'fulfilled'
+    ? productsRes.value.pagination
+    : emptyPage.pagination;
 
   const subcategories = category.children ?? [];
 
@@ -95,7 +112,6 @@ export default async function CategoryPage({
           className="max-w-[1440px] mx-auto px-4 md:px-8 pt-6 pb-0"
         >
           <div className="flex gap-2 flex-wrap">
-            {/* "All" resets to parent category page */}
             <Link
               href={`/${locale}/categories/${slug}`}
               className="px-4 py-2 text-sm font-medium rounded-pill bg-primary text-white border border-primary"
@@ -120,12 +136,12 @@ export default async function CategoryPage({
         locale={locale}
         title={`${category.name} Gifts`}
         subtitle={category.description}
-        products={productsResult.data}
-        totalCount={productsResult.total}
-        totalPages={productsResult.totalPages}
+        products={products}
+        totalCount={pagination.total}
+        totalPages={pagination.totalPages}
         currentFilters={filters}
-        categories={[]}   // Category is fixed by slug; no sidebar category filter
-        tags={tags}
+        categories={[]}
+        tags={[]}
       />
     </>
   );

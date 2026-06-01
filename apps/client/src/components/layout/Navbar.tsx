@@ -9,7 +9,7 @@ import {
   Search, Heart, ShoppingBag, Menu,
   ChevronDown, Package, Settings, LogOut,
 } from 'lucide-react';
-import { useCart, useWishlist, queryKeys } from '@mlh/api-client';
+import { useWishlist, queryKeys } from '@mlh/api-client';
 import { useCartStore } from '../../lib/store/cart.store';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { useQueryClient } from '@tanstack/react-query';
@@ -146,11 +146,11 @@ export function Navbar({ menuData }: NavbarProps = {}) {
   const [isScrolled, setIsScrolled]   = useState(false);
   const [mobileOpen, setMobileOpen]   = useState(false);
 
-  const { data: cartData }      = useCart();
   const { data: wishlistItems } = useWishlist();
-  const cartCount               = cartData?.totals.itemCount ?? 0;
-  const wishlistCount           = wishlistItems?.length ?? 0;
-  const openDrawer              = useCartStore((s) => s.openDrawer);
+  const cart        = useCartStore((s) => s.cart);
+  const openDrawer  = useCartStore((s) => s.openDrawer);
+  const cartCount   = cart?.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
+  const wishlistCount = wishlistItems?.length ?? 0;
 
   // Scroll shadow
   useEffect(() => {

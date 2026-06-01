@@ -1,45 +1,54 @@
-// ── Cart totals breakdown ─────────────────────────────────────────────────────
+import type { ProductImageDto } from './product.types';
+
+export interface CartItemDto {
+  id: string;
+  productId: string;
+  product: {
+    name: string;
+    slug: string;
+    images: ProductImageDto[];
+  };
+  variantId?: string;
+  variant?: { options: Record<string, string>; sku: string };
+  quantity: number;
+  unitPrice: number;
+  /** Current live price — used for price-change detection */
+  currentPrice: number;
+  customizationData?: Record<string, unknown>;
+  previewUrl?: string;
+  // backward compat — existing components use flat fields
+  /** @deprecated use product.name */
+  productName: string;
+  /** @deprecated use product.slug */
+  productSlug: string;
+  /** @deprecated use product.images[0].url */
+  productImageUrl: string | null;
+  /** @deprecated use variant.options */
+  variantName: string | null;
+  /** @deprecated compare unitPrice vs currentPrice */
+  priceChanged: boolean;
+  totalPrice: number;
+  cartId?: string;
+}
 
 export interface CartTotals {
-  subtotal:  number;
-  discount:  number;
-  shipping:  number;
-  total:     number;
+  subtotal: number;
+  discount: number;
+  shipping: number;
+  total: number;
   itemCount: number;
 }
 
-// ── Cart item (richer than the bare DB row — includes denormalised product/variant) ──
-
-export interface CartItemDto {
-  id:              string;
-  cartId:          string;
-  productId:       string;
-  productName:     string;
-  productSlug:     string;
-  productImageUrl: string | null;
-  variantId:       string | null;
-  variantName:     string | null;
-  quantity:        number;
-  /** Price at the time the item was added to the cart */
-  unitPrice:       number;
-  /** Current live price of the product */
-  currentPrice:    number;
-  totalPrice:      number;
-  /** true when unitPrice !== currentPrice (i.e. price changed since item was added) */
-  priceChanged:    boolean;
-  customizationData?: Record<string, unknown>;
-  previewUrl?:     string | null;
-}
-
-// ── Cart ──────────────────────────────────────────────────────────────────────
-
 export interface CartDto {
-  id:             string;
-  userId?:        string;
-  sessionId?:     string;
-  items:          CartItemDto[];
-  couponCode:     string | null;
-  discountAmount: number | null;
-  totals:         CartTotals;
-  updatedAt:      string;
+  id: string;
+  items: CartItemDto[];
+  couponCode?: string;
+  discountAmount: number;
+  subtotal: number;
+  itemCount: number;
+  /** backward compat — existing components access cart.totals.{itemCount,subtotal,total} */
+  totals: CartTotals;
+  userId?: string;
+  sessionId?: string;
+  updatedAt?: string;
 }

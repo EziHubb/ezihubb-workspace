@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import Image from 'next/image';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useCart } from '@mlh/api-client';
+import { apiClient } from '@mlh/api-client';
+import { useCartStore } from '../../../../lib/store/cart.store';
 import type { ShippingAddressInput } from '@mlh/api-client';
 import type { ShippingOptionDto, CartDto } from '@mlh/types';
 import { StepIndicator } from '../../../../components/checkout/StepIndicator';
@@ -138,7 +139,13 @@ export default function CheckoutPage() {
   const locale    = useLocale();
   const router    = useRouter();
 
-  const { data: cart, isLoading } = useCart();
+  const cart      = useCartStore((s) => s.cart);
+  const fetchCart = useCartStore((s) => s.fetchCart);
+  const clearCart = useCartStore((s) => s.clearCart);
+  const isLoading = useCartStore((s) => s.isLoading) && !cart;
+
+  // Ensure cart is loaded
+  useEffect(() => { fetchCart(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check auth — guests are allowed but we detect login state
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -152,6 +159,14 @@ export default function CheckoutPage() {
   const [shippingAddress,  setShippingAddress]  = useState<ShippingAddressInput | null>(null);
   const [guestEmail,       setGuestEmail]       = useState('');
   const [shippingMethod,   setShippingMethod]   = useState<ShippingOptionDto | null>(null);
+
+  // ── Order creation state (set when proceeding to Stripe) ──────────────────
+  const [clientSecret,    setClientSecret]    = useState('');
+  const [orderId,         setOrderId]         = useState('');
+  const [orderNumber,     setOrderNumber]     = useState('');
+  const [orderTotal,      setOrderTotal]      = useState(0);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [orderError,      setOrderError]      = useState('');
 
   // ── Cart empty guard ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -181,15 +196,54 @@ export default function CheckoutPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const completeStep2 = (method: ShippingOptionDto) => {
+  /** Called from DeliveryForm when user selects a method and clicks Continue.
+   *  Creates the order + payment intent before showing Stripe Elements. */
+  const handleProceedToPayment = async (method: ShippingOptionDto) => {
+    if (!shippingAddress || !cart) return;
     setShippingMethod(method);
     setCompletedSteps((prev) => [...new Set([...prev, 2])]);
-    setStep(3);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setIsCreatingOrder(true);
+    setOrderError('');
+
+    try {
+      const res = await apiClient.post<{
+        orderId:      string;
+        orderNumber:  string;
+        clientSecret: string;
+        amount:       number;
+      }>('/orders', {
+        cartId: cart.id,
+        shippingAddress: {
+          fullName:     `${shippingAddress.firstName} ${shippingAddress.lastName}`.trim(),
+          phone:         shippingAddress.phone,
+          addressLine1:  shippingAddress.addressLine1,
+          addressLine2:  shippingAddress.addressLine2,
+          city:          shippingAddress.city,
+          state:         shippingAddress.state,
+          postalCode:    shippingAddress.postalCode,
+          country:       shippingAddress.country,
+        },
+        shippingMethodId: method.methodId,
+        couponCode:       cart.couponCode ?? undefined,
+        guestEmail:       !isLoggedIn ? guestEmail : undefined,
+      });
+
+      setOrderId(res.orderId);
+      setOrderNumber(res.orderNumber);
+      setClientSecret(res.clientSecret);
+      setOrderTotal(res.amount);
+      setStep(3);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      setOrderError(err instanceof Error ? err.message : 'Failed to create order. Please try again.');
+    } finally {
+      setIsCreatingOrder(false);
+    }
   };
 
-  const handlePaymentSuccess = (orderNumber: string) => {
-    router.push(`/${locale}/checkout/success?order=${orderNumber}`);
+  const handlePaymentSuccess = (num: string) => {
+    clearCart();
+    router.push(`/${locale}/checkout/success?order=${num}`);
   };
 
   const shippingCost = shippingMethod?.isFree ? 0 : (shippingMethod?.price ?? 0);
@@ -254,27 +308,31 @@ export default function CheckoutPage() {
                 <h2 id="step2-heading" className="text-base font-semibold text-secondary mb-5">
                   Delivery Method
                 </h2>
+                {orderError && (
+                  <p className="mb-4 text-sm text-error p-3 bg-error/5 border border-error/20 rounded-sm" role="alert">
+                    {orderError}
+                  </p>
+                )}
                 <DeliveryForm
                   countryCode={shippingAddress.country}
                   orderTotal={cart.totals.subtotal}
-                  onComplete={completeStep2}
+                  onComplete={handleProceedToPayment}
                   onBack={() => setStep(1)}
+                  isCreatingOrder={isCreatingOrder}
                 />
               </section>
             )}
 
-            {/* Step 3: Payment */}
-            {step === 3 && shippingAddress && shippingMethod && (
+            {/* Step 3: Payment (Stripe Elements — clientSecret set after order creation) */}
+            {step === 3 && shippingAddress && shippingMethod && clientSecret && (
               <section aria-labelledby="step3-heading">
                 <h2 id="step3-heading" className="text-base font-semibold text-secondary mb-5">
                   Payment
                 </h2>
                 <PaymentForm
-                  shippingAddress={shippingAddress}
-                  shippingMethod={shippingMethod}
-                  guestEmail={guestEmail}
-                  couponCode={cart.couponCode ?? undefined}
-                  cart={cart}
+                  clientSecret={clientSecret}
+                  orderNumber={orderNumber}
+                  totalAmount={orderTotal}
                   locale={locale}
                   onSuccess={handlePaymentSuccess}
                   onBack={() => setStep(2)}

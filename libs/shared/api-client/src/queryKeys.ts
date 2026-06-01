@@ -61,6 +61,15 @@ export const queryKeys = {
 
   // Shipping
   shippingMethods:(country: string) => [...SHIPPING_KEY, country]         as const,
+
+  // New keys (aligned with query-keys.ts)
+  megaMenu:       ()                   => ['mega-menu']                   as const,
+  user:           ()                   => ['user']                        as const,
+  autocomplete:   (q: string)          => ['autocomplete', q]             as const,
+  trending:       ()                   => ['trending']                    as const,
+  filterableAttrs:(slug: string)       => ['filterable-attrs', slug]      as const,
+  shippingOptions:(country: string, total: number) =>
+                    ['shipping', country, total]                          as const,
 } as const;
 
 // ── Backward-compat re-exports (used by existing hooks) ──────────────────────

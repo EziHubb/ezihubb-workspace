@@ -6,8 +6,9 @@ import { useReviews } from '@mlh/api-client';
 import type { ReviewDto, ReviewSummaryDto } from '@mlh/types';
 
 interface ReviewSectionProps {
-  productSlug:   string;
-  reviewSummary: ReviewSummaryDto | null;
+  productSlug:     string;
+  reviewSummary:   ReviewSummaryDto | null;
+  initialReviews?: ReviewDto[];
 }
 
 function StarBar({ label, count, total }: { label: string; count: number; total: number }) {
@@ -96,18 +97,23 @@ function ReviewCard({ review }: { review: ReviewDto }) {
   );
 }
 
-export function ReviewSection({ productSlug, reviewSummary }: ReviewSectionProps) {
+export function ReviewSection({ productSlug, reviewSummary, initialReviews }: ReviewSectionProps) {
   const [page,       setPage]       = useState(1);
   const [starFilter, setStarFilter] = useState<number | undefined>(undefined);
 
-  const { data, isLoading, isError } = useReviews(productSlug, {
-    page,
-    limit: 10,
-    rating: starFilter,
-  });
+  // On page 1 with no star filter, use server-rendered data to avoid a loading flash.
+  // React Query takes over (refetches in background) once the component mounts.
+  const isUsingInitial = page === 1 && !starFilter && !!initialReviews;
 
-  const reviews    = data?.data     ?? [];
-  const totalPages = data?.pagination?.totalPages ?? 1;
+  const { data, isLoading, isError } = useReviews(
+    productSlug,
+    { page, limit: 5, rating: starFilter, status: 'APPROVED' },
+    { enabled: Boolean(productSlug) && !isUsingInitial },
+  );
+
+  const reviews    = isUsingInitial ? initialReviews! : (data?.data ?? []);
+  const totalPages = data?.pagination?.totalPages
+    ?? (isUsingInitial ? Math.ceil((reviewSummary?.totalReviews ?? 0) / 5) : 1);
 
   return (
     <div className="space-y-6">

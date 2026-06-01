@@ -1,60 +1,70 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { setTokenGetter, setTokenUpdater, api } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@mlh/api-client';
 import type { UserDto } from '@mlh/types';
 
 // ── In-memory access token ────────────────────────────────────────────────────
-//
-// Intentionally NOT stored in Zustand state (which would persist it).
-// Lives only in JS heap — cleared automatically on page refresh.
+// The module-level var keeps the old api client's token getter working.
+// The state field (accessToken) is excluded from persist — lost on reload.
 // The httpOnly refresh-token cookie allows silent re-authentication.
 
 let _accessToken: string | null = null;
 
-// ── Register token provider with shared API client ───────────────────────────
-//
-// This runs immediately when the module is first imported, wiring the
-// in-memory token into every apiFetch() call throughout the app.
-
+// Wire in-memory token into every apiFetch() call (the old `api` client).
 if (typeof window !== 'undefined') {
   setTokenGetter(() => _accessToken);
   setTokenUpdater((token) => { _accessToken = token ?? null; });
 }
 
+// ── Lazy cart store accessor (avoids circular import) ─────────────────────────
+
+function getCartStore() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require('./cart.store') as {
+      useCartStore: { getState: () => { mergeGuestCart: () => Promise<void>; clearCart: () => void } };
+    };
+    return mod.useCartStore.getState();
+  } catch {
+    return null;
+  }
+}
+
+// ── DTOs ──────────────────────────────────────────────────────────────────────
+
+export interface RegisterDto {
+  email:     string;
+  password:  string;
+  firstName: string;
+  lastName:  string;
+}
+
 // ── Store interface ───────────────────────────────────────────────────────────
 
 interface AuthStore {
-  /** Persisted to localStorage — safe to expose (no sensitive fields). */
-  user:      UserDto | null;
-  isLoading: boolean;
+  user:        UserDto | null;
+  accessToken: string | null;  // in-memory only — NOT persisted
+  isLoading:   boolean;
 
-  // ── Actions ─────────────────────────────────────────────────────────────────
-
-  /** Called after a successful login / OAuth callback. */
-  setUser: (user: UserDto, accessToken: string) => void;
-
-  /** Clear auth state without hitting the API (used after API-logout completes). */
-  clearAuth: () => void;
-
-  /** Sign out: revoke the refresh token on the server, then clear local state. */
-  logout: () => Promise<void>;
-
-  /**
-   * Silently refresh the access token using the httpOnly refresh cookie.
-   * Called automatically by client.ts on 401; also called on app boot.
-   * Returns the new token or null if refresh fails.
-   */
-  refreshToken: () => Promise<string | null>;
-
-  /**
-   * Fetch the current user's profile and populate the store.
-   * Triggers a silent refresh first if no token is in memory.
-   */
+  login:            (email: string, password: string, rememberMe?: boolean) => Promise<void>;
+  register:         (dto: RegisterDto) => Promise<void>;
+  logout:           () => Promise<void>;
   fetchCurrentUser: () => Promise<void>;
+  refreshToken:     () => Promise<boolean>;
+  setTokens:        (accessToken: string, user: UserDto) => void;
 
-  /** Synchronous getter for the in-memory access token. */
-  getToken: () => string | null;
+  // ── Legacy aliases (kept for backward compat with existing consumers) ──────
+  /** @deprecated use setTokens */
+  setUser:   (user: UserDto, accessToken: string) => void;
+  clearAuth: () => void;
+  getToken:  () => string | null;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function syncToken(token: string | null) {
+  _accessToken = token;
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
@@ -62,86 +72,107 @@ interface AuthStore {
 export const useAuthStore = create<AuthStore>()(
   persist(
     (set, get) => ({
-      user:      null,
-      isLoading: false,
+      user:        null,
+      accessToken: null,
+      isLoading:   false,
 
-      setUser: (user, accessToken) => {
-        _accessToken = accessToken;
-        set({ user });
+      // ── login ──────────────────────────────────────────────────────────────
+
+      login: async (email, password, rememberMe = false) => {
+        const res = await apiClient.post<{
+          accessToken: string;
+          user: UserDto;
+        }>('/auth/login', { email, password, rememberMe });
+
+        const { accessToken, user } = res;
+        syncToken(accessToken);
+        set({ user, accessToken });
+
+        // Merge guest cart into the authenticated cart (non-critical)
+        try {
+          await getCartStore()?.mergeGuestCart();
+        } catch { /* non-fatal */ }
       },
 
-      clearAuth: () => {
-        _accessToken = null;
-        set({ user: null });
+      // ── register ───────────────────────────────────────────────────────────
+
+      register: async (dto) => {
+        await apiClient.post('/auth/register', dto);
+        // No auto-login — user must verify email first
       },
+
+      // ── logout ─────────────────────────────────────────────────────────────
 
       logout: async () => {
-        // Best-effort server-side token revocation
+        const token = get().accessToken;
         try {
-          const base = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
-          await fetch(`${base}/api/v1${API_ROUTES.AUTH.LOGOUT}`, {
-            method:      'POST',
-            credentials: 'include',
+          await apiClient.post('/auth/logout', {}, {
+            token: token ?? undefined,
           });
-        } catch {
-          // Proceed even if the request fails (e.g. offline)
-        }
-        _accessToken = null;
-        set({ user: null });
+        } catch { /* best-effort */ }
+        syncToken(null);
+        set({ user: null, accessToken: null });
+        getCartStore()?.clearCart();
       },
+
+      // ── fetchCurrentUser ───────────────────────────────────────────────────
+
+      fetchCurrentUser: async () => {
+        const token = get().accessToken ?? _accessToken;
+        if (!token) return;
+        set({ isLoading: true });
+        try {
+          const user = await apiClient.get<UserDto>('/users/me', { token });
+          set({ user, isLoading: false });
+        } catch {
+          syncToken(null);
+          set({ user: null, accessToken: null, isLoading: false });
+        }
+      },
+
+      // ── refreshToken ───────────────────────────────────────────────────────
 
       refreshToken: async () => {
         try {
-          const base = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
-          const res  = await fetch(`${base}/api/v1${API_ROUTES.AUTH.REFRESH}`, {
-            method:      'POST',
-            credentials: 'include', // sends httpOnly refresh-token cookie
-          });
-
-          if (!res.ok) {
-            _accessToken = null;
-            set({ user: null });
-            return null;
-          }
-
-          const body = await res.json();
-          const token: string | null = body?.data?.accessToken ?? null;
-
-          if (token) {
-            _accessToken = token;
-            const user = body?.data?.user as UserDto | undefined;
-            if (user) set({ user });
-          }
-
-          return token;
+          const res = await apiClient.post<{
+            accessToken: string;
+            user: UserDto;
+          }>('/auth/refresh');
+          syncToken(res.accessToken);
+          set({ accessToken: res.accessToken, user: res.user });
+          return true;
         } catch {
-          return null;
+          syncToken(null);
+          set({ user: null, accessToken: null });
+          return false;
         }
       },
 
-      fetchCurrentUser: async () => {
-        // Ensure we have a valid token first
-        if (!_accessToken) {
-          const token = await get().refreshToken();
-          if (!token) return; // Not authenticated
-        }
+      // ── setTokens (Google OAuth callback + direct token injection) ─────────
 
-        set({ isLoading: true });
-        try {
-          const user = await api.get<UserDto>(API_ROUTES.USERS.ME);
-          set({ user, isLoading: false });
-        } catch {
-          set({ isLoading: false });
-        }
+      setTokens: (accessToken, user) => {
+        syncToken(accessToken);
+        set({ accessToken, user });
+      },
+
+      // ── Legacy aliases ─────────────────────────────────────────────────────
+
+      setUser: (user, accessToken) => {
+        syncToken(accessToken);
+        set({ user, accessToken });
+      },
+
+      clearAuth: () => {
+        syncToken(null);
+        set({ user: null, accessToken: null });
       },
 
       getToken: () => _accessToken,
     }),
 
     {
-      name:       'mlh-auth',
-      // Only persist the user object — never the access token.
-      // The access token is always re-acquired from the refresh cookie.
+      name: 'mlh-auth',
+      // Never persist the access token — re-acquired from the httpOnly refresh cookie.
       partialize: (state) => ({ user: state.user }),
     },
   ),

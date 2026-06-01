@@ -356,7 +356,7 @@ export class ProductsService {
             variantOptions:  [],  // rebuilt from variants on next product detail fetch
           },
         },
-        { upsert: true, new: true },
+        { upsert: true, returnDocument: 'after' },
       )
       .catch((err: Error) =>
         this.logger.warn(`MongoDB product detail write failed for ${product.id}: ${err.message}`),
@@ -659,7 +659,7 @@ export class ProductsService {
         },
         $setOnInsert: { productId },
       },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: 'after' },
     );
     return doc!;
   }
@@ -676,7 +676,7 @@ export class ProductsService {
     const doc = await this.productDetailModel.findOneAndUpdate(
       { productId },
       { $push: { variants: variant }, $setOnInsert: { productId } },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: 'after' },
     );
     return doc!;
   }
@@ -686,7 +686,7 @@ export class ProductsService {
     const doc = await this.productDetailModel.findOneAndUpdate(
       { productId },
       { $pull: { variants: { sku } } },
-      { new: true },
+      { returnDocument: 'after' },
     );
     if (!doc) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product detail not found' });
     return doc;
@@ -700,7 +700,7 @@ export class ProductsService {
     const doc = await this.productDetailModel.findOneAndUpdate(
       { productId },
       { $set: { attributes }, $setOnInsert: { productId } },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: 'after' },
     );
     return doc!;
   }
@@ -713,7 +713,7 @@ export class ProductsService {
     const doc = await this.productDetailModel.findOneAndUpdate(
       { productId },
       { $set: { customization }, $setOnInsert: { productId } },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: 'after' },
     );
     return doc!;
   }

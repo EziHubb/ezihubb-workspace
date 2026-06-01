@@ -5,10 +5,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Edit2, Trash2, Star, MapPin } from 'lucide-react';
-import { useAddresses, useMutateAddresses } from '@mlh/api-client';
+import { queryKeys } from '@mlh/api-client';
+import { apiClient } from '@mlh/api-client';
 import { useToast } from '@mlh/ui';
 import type { AddressDto } from '@mlh/types';
-import type { AddressInput } from '@mlh/api-client';
+import { useAuthQuery, useAuthMutation } from '../../../../../lib/hooks/useAuthQuery';
 
 const MAX_ADDRESSES = 10;
 
@@ -291,11 +292,57 @@ function AddressCard({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+// ── Address mutation input (mirrors AddressInput from useCheckout hook) ───────
+
+interface AddressPayload {
+  label?:      string;
+  firstName:   string;
+  lastName:    string;
+  phone?:      string;
+  addressLine1: string;
+  addressLine2?: string;
+  city:        string;
+  state?:      string;
+  postalCode:  string;
+  country:     string;
+  isDefault?:  boolean;
+}
+
 export default function AddressesPage() {
   const toast = useToast();
-  const { data: addresses = [], isLoading } = useAddresses();
-  const { addAddress, updateAddress, deleteAddress, setDefaultAddress } =
-    useMutateAddresses();
+
+  const { data: addresses = [], isLoading } = useAuthQuery<AddressDto[]>(
+    queryKeys.addresses(),
+    '/users/me/addresses',
+  );
+
+  const addAddress = useAuthMutation(
+    (dto: AddressPayload, token: string) =>
+      apiClient.post<AddressDto>('/users/me/addresses', dto, { token }),
+    { invalidateKeys: [queryKeys.addresses()] },
+  );
+
+  const updateAddress = useAuthMutation(
+    ({ id, ...dto }: AddressPayload & { id: string }, token: string) =>
+      apiClient.patch<AddressDto>(`/users/me/addresses/${id}`, dto, { token }),
+    { invalidateKeys: [queryKeys.addresses()] },
+  );
+
+  const deleteAddress = useAuthMutation(
+    (id: string, token: string) =>
+      apiClient.delete<void>(`/users/me/addresses/${id}`, { token }),
+    { invalidateKeys: [queryKeys.addresses()] },
+  );
+
+  const setDefaultAddress = useAuthMutation(
+    (id: string, token: string) =>
+      apiClient.patch<AddressDto>(
+        `/users/me/addresses/${id}`,
+        { isDefault: true },
+        { token },
+      ),
+    { invalidateKeys: [queryKeys.addresses()] },
+  );
 
   const [modalOpen,    setModalOpen]    = useState(false);
   const [editingAddr,  setEditingAddr]  = useState<AddressDto | null>(null);
@@ -309,30 +356,30 @@ export default function AddressesPage() {
   const closeModal = () => { setEditingAddr(null); setModalOpen(false); };
 
   const handleSave = (data: FormValues) => {
-    const input: AddressInput = {
-      label:      data.label,
-      firstName:  data.firstName,
-      lastName:   data.lastName,
-      phone:      data.phone,
-      line1:      data.line1,
-      line2:      data.line2,
-      city:       data.city,
-      state:      data.state,
-      postalCode: data.postalCode,
-      country:    data.country,
-      isDefault:  data.isDefault,
+    const payload: AddressPayload = {
+      label:        data.label,
+      firstName:    data.firstName,
+      lastName:     data.lastName,
+      phone:        data.phone,
+      addressLine1: data.line1,
+      addressLine2: data.line2,
+      city:         data.city,
+      state:        data.state,
+      postalCode:   data.postalCode,
+      country:      data.country,
+      isDefault:    data.isDefault,
     };
 
     if (editingAddr) {
       updateAddress.mutate(
-        { id: editingAddr.id, ...input },
+        { id: editingAddr.id, ...payload },
         {
           onSuccess: () => { toast.success('Address updated'); closeModal(); },
           onError:   () => toast.error('Failed to update address'),
         },
       );
     } else {
-      addAddress.mutate(input, {
+      addAddress.mutate(payload, {
         onSuccess: () => { toast.success('Address added'); closeModal(); },
         onError:   () => toast.error('Failed to add address'),
       });
@@ -408,7 +455,7 @@ export default function AddressesPage() {
 
       {!isLoading && addresses.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {addresses.map((addr) => (
+          {addresses.map((addr: AddressDto) => (
             <AddressCard
               key={addr.id}
               addr={addr}

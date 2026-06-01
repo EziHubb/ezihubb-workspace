@@ -1,6 +1,7 @@
 'use client';
 
 import { QueryClient, QueryClientProvider, MutationCache, QueryCache } from '@tanstack/react-query';
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
 
 function shouldRetry(failureCount: number, err: unknown): boolean {
@@ -46,21 +47,21 @@ function makeQueryClient() {
   });
 }
 
+const ReactQueryDevtools =
+  process.env['NODE_ENV'] === 'development'
+    ? dynamic(() =>
+        import('@tanstack/react-query-devtools').then((m) => ({
+          default: m.ReactQueryDevtools,
+        }))
+      )
+    : () => null;
+
 export function ReactQueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(makeQueryClient);
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      {process.env['NODE_ENV'] === 'development' && <AdminDevTools />}
+      <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
-}
-
-function AdminDevTools() {
-  if (typeof window === 'undefined') return null;
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { ReactQueryDevtools: DevTools } = require('@tanstack/react-query-devtools') as {
-    ReactQueryDevtools: React.ComponentType<{ initialIsOpen?: boolean }>;
-  };
-  return <DevTools initialIsOpen={false} />;
 }

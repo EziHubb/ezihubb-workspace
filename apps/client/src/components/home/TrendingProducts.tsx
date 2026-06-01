@@ -1,13 +1,19 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
-import { ProductCard } from '@mlh/ui';
+import { ProductCard, ProductCardSkeleton } from '@mlh/ui';
 import type { ProductListItemDto } from '@mlh/types';
 
 interface TrendingProductsProps {
   products: ProductListItemDto[];
   locale: string;
   viewAllLabel: string;
+}
+
+function deriveBadge(product: ProductListItemDto) {
+  if (product.soldCount > 100) return 'bestseller' as const;
+  if (!product.soldCount)       return 'new'        as const;
+  return product.badge;
 }
 
 export async function TrendingProducts({ products, locale, viewAllLabel }: TrendingProductsProps) {
@@ -32,41 +38,43 @@ export async function TrendingProducts({ products, locale, viewAllLabel }: Trend
           </Link>
         </div>
 
-        {products.length === 0 ? (
-          <p className="text-center text-muted py-12">{t('trending.empty')}</p>
-        ) : (
-          <>
-            {/* Mobile: horizontal snap scroll. Desktop: 4-col grid */}
-            <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 md:pb-0 md:grid md:grid-cols-4 md:overflow-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              {products.map((product) => (
+        {/* Mobile: horizontal snap scroll. Desktop: 4-col grid */}
+        <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 md:pb-0 md:grid md:grid-cols-4 md:overflow-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          {products.length === 0
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="snap-start shrink-0 w-[200px] sm:w-[220px] md:w-auto">
+                  <ProductCardSkeleton />
+                </div>
+              ))
+            : products.map((product) => (
                 <div key={product.id} className="snap-start shrink-0 w-[200px] sm:w-[220px] md:w-auto">
                   <ProductCard
                     id={product.id}
                     slug={product.slug}
                     name={product.name}
-                    imageUrl={product.primaryImage ?? 'https://placehold.co/400x500?text=No+Image'}
+                    imageUrl={product.images[0]?.url ?? '/placeholder-product.jpg'}
                     basePrice={product.basePrice}
                     compareAtPrice={product.compareAtPrice}
-                    rating={product.rating}
-                    reviewCount={product.reviewCount}
-                    badge={product.badge}
+                    rating={product.rating?.avg}
+                    reviewCount={product.rating?.count}
+                    badge={deriveBadge(product)}
                     isPersonalizable={product.isPersonalizable}
                   />
                 </div>
               ))}
-            </div>
+        </div>
 
-            {/* Mobile View All button */}
-            <div className="mt-6 text-center md:hidden">
-              <Link
-                href={`/${locale}/products`}
-                className="inline-flex items-center gap-2 text-primary font-semibold border border-primary px-6 py-3 rounded-button hover:bg-primary hover:text-white transition-colors text-sm"
-              >
-                {viewAllLabel}
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-          </>
+        {/* Mobile View All button — only shown when products exist */}
+        {products.length > 0 && (
+          <div className="mt-6 text-center md:hidden">
+            <Link
+              href={`/${locale}/products`}
+              className="inline-flex items-center gap-2 text-primary font-semibold border border-primary px-6 py-3 rounded-button hover:bg-primary hover:text-white transition-colors text-sm"
+            >
+              {viewAllLabel}
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
         )}
       </div>
     </section>

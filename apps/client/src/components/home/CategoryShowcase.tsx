@@ -20,17 +20,24 @@ const FALLBACK_CATEGORIES = [
   { id: 'thank-you',   slug: 'thank-you',   name: 'Thank You',     emoji: '🌸' },
 ] as const;
 
-// Emoji fallback per slug for API-provided categories without images
+// Emoji fallback for API categories without images
 const SLUG_EMOJI: Record<string, string> = {
+  gifts: '🎁', 'home-living': '🏠', 'drink-barware': '🍺',
+  apparel: '👕', accessories: '👜', interests: '⭐',
   birthday: '🎂', wedding: '💍', anniversary: '❤️', baby: '🍼',
   housewarming: '🏠', graduation: '🎓', christmas: '🎄', 'thank-you': '🌸',
   'mothers-day': '🌺', 'fathers-day': '👔', 'valentines-day': '💝', halloween: '🎃',
 };
 
+// L1 nav-tab categories: link to /categories/[slug] which shows the full catalog section
+// (The category page will list L2 groups and L3 items under it)
+function categoryHref(locale: string, slug: string): string {
+  return `/${locale}/categories/${slug}`;
+}
+
 export async function CategoryShowcase({ categories, locale }: CategoryShowcaseProps) {
   const t = await getTranslations({ locale, namespace: 'home' });
 
-  // Use API data if available, otherwise show static fallback
   const items: { id: string; slug: string; name: string; imageUrl?: string; emoji?: string }[] =
     categories.length > 0
       ? categories.slice(0, 8).map((c) => ({
@@ -57,7 +64,7 @@ export async function CategoryShowcase({ categories, locale }: CategoryShowcaseP
           {items.map((cat) => (
             <Link
               key={cat.id}
-              href={`/${locale}/categories/${cat.slug}`}
+              href={categoryHref(locale, cat.slug)}
               className="snap-start shrink-0 flex flex-col items-center gap-2.5 group min-w-[72px] md:min-w-0"
             >
               <div className="relative w-16 h-16 md:w-[72px] md:h-[72px] rounded-full overflow-hidden bg-primary/5 ring-2 ring-transparent group-hover:ring-primary transition-all duration-200 shadow-sm flex-shrink-0">

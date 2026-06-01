@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Truck, Clock } from 'lucide-react';
-import { useShippingOptions } from '@mlh/api-client';
+import { apiClient } from '@mlh/api-client';
 import type { ShippingOptionDto } from '@mlh/types';
 import { Skeleton } from '@mlh/ui';
 
 interface DeliveryFormProps {
-  countryCode:  string;
-  orderTotal:   number;
-  onComplete:   (method: ShippingOptionDto) => void;
-  onBack:       () => void;
+  countryCode:      string;
+  orderTotal:       number;
+  onComplete:       (method: ShippingOptionDto) => void;
+  onBack:           () => void;
+  /** True while page.tsx is creating the order after method selection */
+  isCreatingOrder?: boolean;
 }
 
 function formatDelivery(opt: ShippingOptionDto): string {
@@ -28,13 +30,40 @@ export function DeliveryForm({
   orderTotal,
   onComplete,
   onBack,
+  isCreatingOrder = false,
 }: DeliveryFormProps) {
-  const [selected, setSelected] = useState<string>('');
+  const [selected,  setSelected]  = useState<string>('');
+  const [options,   setOptions]   = useState<ShippingOptionDto[] | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isError,   setIsError]   = useState(false);
 
-  const { data: options, isLoading, isError, refetch } = useShippingOptions(
-    countryCode,
-    orderTotal,
-  );
+  // Fetch shipping options whenever country or order total changes
+  useEffect(() => {
+    if (!countryCode) return;
+
+    let cancelled = false;
+    setIsLoading(true);
+    setIsError(false);
+    setOptions(null);
+    setSelected('');
+
+    apiClient
+      .post<ShippingOptionDto[]>('/shipping/calculate', {
+        countryCode,
+        orderTotal,
+      })
+      .then((opts) => {
+        if (!cancelled) setOptions(opts);
+      })
+      .catch(() => {
+        if (!cancelled) setIsError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [countryCode, orderTotal]);
 
   const handleContinue = () => {
     const method = options?.find((o) => o.methodId === selected);
@@ -63,13 +92,13 @@ export function DeliveryForm({
   }
 
   // ── Error ──────────────────────────────────────────────────────────────────
-  if (isError || !options) {
+  if (isError || options === null) {
     return (
       <div className="py-8 text-center space-y-3">
         <p className="text-sm text-error">Failed to load shipping options.</p>
         <button
           type="button"
-          onClick={() => refetch()}
+          onClick={() => { setIsError(false); setOptions(null); }}
           className="text-sm text-primary hover:underline"
         >
           Try again
@@ -146,7 +175,6 @@ export function DeliveryForm({
                       </p>
                     </div>
 
-                    {/* Price */}
                     <div className="shrink-0">
                       {opt.isFree ? (
                         <span className="text-sm font-bold text-success">FREE</span>
@@ -178,17 +206,18 @@ export function DeliveryForm({
         <button
           type="button"
           onClick={onBack}
-          className="px-6 py-3 border border-border text-secondary text-sm font-medium rounded-button hover:border-primary hover:text-primary transition-colors"
+          disabled={isCreatingOrder}
+          className="px-6 py-3 border border-border text-secondary text-sm font-medium rounded-button hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
         >
           ← Back
         </button>
         <button
           type="button"
           onClick={handleContinue}
-          disabled={!selected}
+          disabled={!selected || isCreatingOrder}
           className="flex-1 py-3 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wide"
         >
-          Continue to Payment →
+          {isCreatingOrder ? 'Creating order…' : 'Continue to Payment →'}
         </button>
       </div>
 
@@ -197,7 +226,8 @@ export function DeliveryForm({
         <button
           type="button"
           onClick={onBack}
-          className="w-12 h-12 border border-border rounded-button flex items-center justify-center text-secondary"
+          disabled={isCreatingOrder}
+          className="w-12 h-12 border border-border rounded-button flex items-center justify-center text-secondary disabled:opacity-50"
           aria-label="Back"
         >
           ←
@@ -205,10 +235,10 @@ export function DeliveryForm({
         <button
           type="button"
           onClick={handleContinue}
-          disabled={!selected}
+          disabled={!selected || isCreatingOrder}
           className="flex-1 py-3 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors disabled:opacity-50 uppercase tracking-wide"
         >
-          Continue to Payment →
+          {isCreatingOrder ? 'Creating…' : 'Continue to Payment →'}
         </button>
       </div>
     </div>

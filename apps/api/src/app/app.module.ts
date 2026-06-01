@@ -82,31 +82,39 @@ import { MongoDBModule } from '../modules/database/mongodb.module';
       inject: [ConfigService],
     }),
 
-    // ── BullMQ (Redis job queues) ─────────────────────────────────────────────
-    BullModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (config: ConfigService) => {
-        const redisUrl = config.get<string>('redis.url') ?? 'redis://localhost:6379';
-        const url = new URL(redisUrl);
-        return {
-          connection: {
-            host: url.hostname,
-            port: parseInt(url.port || '6379', 10),
-            ...(url.password ? { password: decodeURIComponent(url.password) } : {}),
-            ...(url.protocol === 'rediss:' ? { tls: {} } : {}),
+    // ── BullMQ / DevBullModule ─────────────────────────────────────────────────
+    // When Redis is unavailable (DISABLE_QUEUE=true), DevBullModule provides no-op
+    // queue stubs so the HTTP API starts without blocking on Redis connections.
+    ...(process.env['DISABLE_QUEUE'] !== 'true'
+      ? [BullModule.forRootAsync({
+          imports: [ConfigModule],
+          useFactory: (config: ConfigService) => {
+            const u = new URL(config.get<string>('redis.url') ?? 'redis://localhost:6379');
+            return { connection: { host: u.hostname, port: parseInt(u.port || '6379', 10), ...(u.password ? { password: decodeURIComponent(u.password) } : {}), ...(u.protocol === 'rediss:' ? { tls: {} } : {}) } };
           },
-        };
-      },
-      inject: [ConfigService],
-    }),
+          inject: [ConfigService],
+        })]
+      : []),
 
-    // ── Infrastructure ────────────────────────────────────────────────────────
+    // ── Infrastructure ──────────────────────────────────────────
     PrismaModule,
     MongoDBModule,
     CommonModule,
     QueueModule,
 
-    // ── Feature modules ───────────────────────────────────────────────────────
+        // ── Infrastructure ──────────────────────────────────────────
+    PrismaModule,
+    MongoDBModule,
+    CommonModule,
+    QueueModule,
+
+        // ── Infrastructure ──────────────────────────────────────────
+    PrismaModule,
+    MongoDBModule,
+    CommonModule,
+    QueueModule,
+
+        // ── Feature modules ───────────────────────────────────────────────────────
     AuthModule,
     UsersModule,
     CatalogModule,

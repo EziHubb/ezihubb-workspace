@@ -1,44 +1,31 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { ShoppingBag, ArrowRight, RefreshCw } from 'lucide-react';
-import { useCart, useMutateCart } from '@mlh/api-client';
+import { useCartStore } from '../../../../lib/store/cart.store';
 import { CartItemRow } from '../../../../components/cart/CartItemRow';
 import { OrderSummary } from '../../../../components/cart/OrderSummary';
 
 export default function CartPage() {
-  const locale       = useLocale();
-  const { data: cart, isLoading, isError, refetch } = useCart();
-  const { updateItem, removeItem } = useMutateCart();
+  const locale = useLocale();
+  const { cart, fetchCart, isLoading, updateItem, removeItem } = useCartStore();
+
+  useEffect(() => {
+    fetchCart();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Loading ────────────────────────────────────────────────────────────────
 
-  if (isLoading) {
+  if (isLoading && !cart) {
     return (
       <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-16 flex items-center justify-center min-h-[50vh]">
         <div
           className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin"
           aria-label="Loading cart"
         />
-      </div>
-    );
-  }
-
-  // ── Error ──────────────────────────────────────────────────────────────────
-
-  if (isError) {
-    return (
-      <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-16 flex flex-col items-center justify-center min-h-[50vh] text-center gap-4">
-        <p className="text-secondary font-semibold">Failed to load cart.</p>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="inline-flex items-center gap-2 text-sm text-primary border border-primary px-4 py-2 rounded-button hover:bg-primary/5 transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Try again
-        </button>
       </div>
     );
   }
@@ -65,13 +52,26 @@ export default function CartPage() {
           Start Shopping
           <ArrowRight className="w-4 h-4" />
         </Link>
+        {/* Retry button if we have no cart at all after loading */}
+        {!isLoading && (
+          <button
+            type="button"
+            onClick={() => fetchCart()}
+            className="mt-4 inline-flex items-center gap-2 text-sm text-muted hover:text-primary transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Refresh
+          </button>
+        )}
       </div>
     );
   }
 
   // ── Price mismatch banner ──────────────────────────────────────────────────
 
-  const priceChangedItems = cart.items.filter((i) => i.priceChanged);
+  const priceMismatches = cart.items.filter(
+    (item) => item.currentPrice !== item.unitPrice,
+  );
 
   return (
     <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
@@ -83,7 +83,7 @@ export default function CartPage() {
         </span>
       </h1>
 
-      {priceChangedItems.length > 0 && (
+      {priceMismatches.length > 0 && (
         <div
           role="alert"
           className="mb-6 p-4 bg-warning/8 border border-warning/25 rounded-card"
@@ -92,7 +92,7 @@ export default function CartPage() {
             ⚠️ Prices have been updated
           </p>
           <ul className="space-y-1">
-            {priceChangedItems.map((item) => (
+            {priceMismatches.map((item) => (
               <li key={item.id} className="text-sm text-secondary">
                 <span className="font-medium">{item.productName}</span>: price
                 changed from{' '}
@@ -100,8 +100,10 @@ export default function CartPage() {
                   ${item.unitPrice.toFixed(2)}
                 </span>{' '}
                 to{' '}
-                <span className="font-semibold">${item.currentPrice.toFixed(2)}</span>.
-                Cart updated.
+                <span className="font-semibold">
+                  ${item.currentPrice.toFixed(2)}
+                </span>
+                . Cart updated.
               </li>
             ))}
           </ul>
@@ -117,10 +119,8 @@ export default function CartPage() {
                 key={item.id}
                 item={item}
                 locale={locale}
-                onUpdate={(itemId, qty) =>
-                  updateItem.mutate({ itemId, quantity: qty })
-                }
-                onRemove={(itemId) => removeItem.mutate(itemId)}
+                onUpdate={(itemId, qty) => updateItem(itemId, qty)}
+                onRemove={(itemId) => removeItem(itemId)}
               />
             ))}
           </ul>

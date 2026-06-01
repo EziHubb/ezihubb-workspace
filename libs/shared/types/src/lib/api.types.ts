@@ -1,33 +1,40 @@
 export interface ApiResponse<T> {
   success: boolean;
-  data:    T;
-  message?: string;
-}
-
-export interface PaginationMeta {
-  page:       number;
-  limit:      number;
-  total:      number;
-  totalPages: number;
-  hasNext:    boolean;
-  hasPrev:    boolean;
+  data: T;
+  meta: { timestamp: string; requestId: string };
 }
 
 export interface PaginatedResponse<T> {
   success: boolean;
-  data:    T[];
-  pagination: PaginationMeta;
-  meta?: {
-    timestamp:  string;
-    requestId?: string;
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
   };
+  meta: { timestamp: string; requestId: string };
+}
+
+/** @deprecated Inline in PaginatedResponse — kept for backward compat */
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
 }
 
 export interface ApiError {
-  success:    false;
-  statusCode: number;
-  message:    string;
-  errors?:    Record<string, string[]>;
+  success: false;
+  error: {
+    code: string;
+    message: string;
+    details?: { field: string; message: string }[];
+  };
 }
 
 export class ApiRequestError extends Error {

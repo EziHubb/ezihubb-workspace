@@ -5,7 +5,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { X, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useLocale } from 'next-intl';
-import { useCart } from '@mlh/api-client';
 import { useCartStore } from '../../lib/store/cart.store';
 
 /**
@@ -13,20 +12,21 @@ import { useCartStore } from '../../lib/store/cart.store';
  * Desktop: slides in from the right.
  * Mobile: slides up as a bottom sheet.
  *
- * Data: React Query (useCart).
- * Open/close: Zustand cart UI store.
+ * Data: Zustand cart store.
+ * Open/close: same store.
  */
 export function CartDrawer() {
   const locale      = useLocale();
   const isOpen      = useCartStore((s) => s.isDrawerOpen);
   const closeDrawer = useCartStore((s) => s.closeDrawer);
+  const cart        = useCartStore((s) => s.cart);
+  const fetchCart   = useCartStore((s) => s.fetchCart);
 
-  // Fetch / refresh cart whenever the drawer opens
-  const { data: cart, refetch } = useCart();
-
+  // Refresh cart whenever the drawer opens
   useEffect(() => {
-    if (isOpen) refetch();
-  }, [isOpen, refetch]);
+    if (isOpen) fetchCart();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Escape key
   useEffect(() => {

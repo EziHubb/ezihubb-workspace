@@ -6,8 +6,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Camera, Eye, EyeOff } from 'lucide-react';
-import { useProfile, useMutateProfile } from '@mlh/api-client';
+import { queryKeys, useMutateProfile, apiClient } from '@mlh/api-client';
 import { useToast } from '@mlh/ui';
+import type { UserDto } from '@mlh/types';
+import { useAuthQuery, useAuthMutation } from '../../../../../lib/hooks/useAuthQuery';
+import { useAuthStore } from '../../../../../lib/store/auth.store';
 
 // ── Password strength ─────────────────────────────────────────────────────────
 
@@ -79,8 +82,29 @@ const inp = (err?: string, disabled?: boolean) =>
 
 export default function ProfilePage() {
   const toast = useToast();
-  const { data: profile, isLoading } = useProfile();
-  const { updateProfile, changePassword, uploadAvatar } = useMutateProfile();
+
+  // useAuthQuery: token-aware fetch that re-runs when the user logs in
+  const { data: profile, isLoading } = useAuthQuery<UserDto>(
+    queryKeys.profile(),
+    '/users/me',
+  );
+
+  // useAuthMutation for profile update — syncs auth store on success
+  const updateProfileMutation = useAuthMutation(
+    (dto: ProfileForm, token: string) =>
+      apiClient.patch<UserDto>('/users/me', dto, { token }),
+    {
+      invalidateKeys: [queryKeys.profile()],
+      onSuccess: (user: UserDto) => {
+        const accessToken = useAuthStore.getState().accessToken;
+        if (accessToken) useAuthStore.getState().setTokens(accessToken, user);
+        toast.success('Profile updated');
+      },
+    },
+  );
+
+  // Keep existing hook for avatar upload (FormData) and password change (complex logout)
+  const { changePassword, uploadAvatar } = useMutateProfile();
 
   // ── Avatar state ───────────────────────────────────────────────────────────
   const [previewUrl,  setPreviewUrl]  = useState<string | null>(null);
@@ -162,10 +186,9 @@ export default function ProfilePage() {
   };
 
   const onProfileSave = (data: ProfileForm) => {
-    updateProfile.mutate(data, {
-      onSuccess: () => toast.success('Profile updated'),
-      onError:   (err) =>
-        toast.error(err instanceof Error ? err.message : 'Failed to update profile'),
+    updateProfileMutation.mutate(data, {
+      onError: (err: Error) =>
+        toast.error(err.message || 'Failed to update profile'),
     });
   };
 
@@ -309,7 +332,7 @@ export default function ProfilePage() {
           <div>
             <label className="text-xs font-medium text-muted mb-1 flex items-center gap-2">
               Email
-              {profile.emailVerified && (
+              {(profile.isEmailVerified ?? profile.emailVerified) && (
                 <span className="text-[10px] font-semibold text-success bg-success/10 border border-success/20 rounded-pill px-1.5 py-0.5">
                   ✓ Verified
                 </span>
@@ -333,10 +356,10 @@ export default function ProfilePage() {
 
           <button
             type="submit"
-            disabled={!pDirty || updateProfile.isPending}
+            disabled={!pDirty || updateProfileMutation.isPending}
             className="px-6 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors disabled:opacity-50"
           >
-            {updateProfile.isPending ? 'Saving…' : 'Save Changes'}
+            {updateProfileMutation.isPending ? 'Saving…' : 'Save Changes'}
           </button>
         </form>
       </section>

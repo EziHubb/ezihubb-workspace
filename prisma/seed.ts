@@ -5,20 +5,53 @@
  *   1. Super admin user
  *   2. 3-level category tree (L1 nav tabs → L2 groups → L3 leaf items)
  *   3. Collections (occasion-based)
- *   4. Sample products
+ *   4. Sample products (20 total)
  *   5. Collection ↔ product links
- *   6. MongoDB mega-menu documents (derived from PG tree)
+ *   6a. MongoDB mega-menu documents (derived from PG tree)
+ *   6b. MongoDB ProductDetail documents
  *   7. Promotions
  *   8. Shipping zones
  */
 
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
 import mongoose, { Schema, model, Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 
-const prisma = new PrismaClient();
+// Prisma 7 `prisma db seed` does NOT inject `.env` into the seed child process.
+// Load it ourselves — use import.meta.url so the path is always correct regardless of CWD.
+if (!process.env['DATABASE_URL']) {
+  try {
+    // seed.ts lives in prisma/, so .env is one level up
+    const seedDir  = dirname(fileURLToPath((import.meta as { url: string }).url));
+    const envPath  = resolve(seedDir, '..', '.env');
+    const lines    = readFileSync(envPath, 'utf8').split(/\r?\n/);
+    for (const line of lines) {
+      const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/);
+      if (!m) continue;
+      const v = m[2].trim().replace(/^["']|["']$/g, '');
+      if (v) process.env[m[1]] = v;
+    }
+  } catch (e) {
+    console.warn('  ⚠  Could not load .env:', (e as Error).message);
+  }
+}
 
-// ── MongoDB CategoryMenu schema (inline for the seed — avoids NestJS context) ──
+// Schema has no `url` in datasource — Prisma 7 requires the adapter when no url is configured.
+// SSL is needed for Railway/cloud PostgreSQL; omit only when URL explicitly sets sslmode=disable.
+const dbUrl = process.env['DATABASE_URL'] ?? '';
+if (!dbUrl) throw new Error('DATABASE_URL is not set. Create a .env file at the workspace root.');
+const pool = new Pool({
+  connectionString: dbUrl,
+  ssl: dbUrl.includes('sslmode=disable') ? false : { rejectUnauthorized: false },
+});
+const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
+
+// ── MongoDB CategoryMenu schema ────────────────────────────────────────────────
 
 interface IMenuItem {
   name: string;
@@ -46,40 +79,96 @@ interface ICategoryMenu {
 }
 
 const menuItemSchema = new Schema<IMenuItem>(
-  { name: String, categoryId: String, slug: String, sortOrder: { type: Number, default: 0 } },
+  {
+    name: String,
+    categoryId: String,
+    slug: String,
+    sortOrder: { type: Number, default: 0 },
+  },
   { _id: false },
 );
 
 const menuGroupSchema = new Schema<IMenuGroup>(
   {
-    title:      String,
+    title: String,
     categoryId: String,
-    slug:       String,
-    items:      [menuItemSchema],
-    sortOrder:  { type: Number, default: 0 },
+    slug: String,
+    items: [menuItemSchema],
+    sortOrder: { type: Number, default: 0 },
   },
   { _id: false },
 );
 
 const categoryMenuSchema = new Schema<ICategoryMenu>(
   {
-    navLabel:   { type: String, required: true, unique: true },
-    navSlug:    { type: String, required: true, unique: true },
+    navLabel: { type: String, required: true, unique: true },
+    navSlug: { type: String, required: true, unique: true },
     categoryId: { type: String, required: true },
-    sortOrder:  { type: Number, default: 0 },
-    isVisible:  { type: Boolean, default: true },
-    iconUrl:    String,
-    groups:     [menuGroupSchema],
+    sortOrder: { type: Number, default: 0 },
+    isVisible: { type: Boolean, default: true },
+    iconUrl: String,
+    groups: [menuGroupSchema],
   },
   { collection: 'category_menus', timestamps: true },
 );
 
-// Avoid model re-registration on hot-reload
 let CategoryMenuModel: Model<ICategoryMenu>;
 try {
   CategoryMenuModel = mongoose.model<ICategoryMenu>('CategoryMenu');
 } catch {
   CategoryMenuModel = model<ICategoryMenu>('CategoryMenu', categoryMenuSchema);
+}
+
+// ── MongoDB ProductDetail schema ───────────────────────────────────────────────
+
+interface IProductDetail {
+  productId: string;
+  attributes: {
+    key: string;
+    value: string;
+    filterable: boolean;
+    unit?: string;
+  }[];
+  variantOptions: { name: string; values: string[] }[];
+  richDescription?: string;
+  printSpecs?: {
+    minDPI: number;
+    maxFileSize: number;
+    acceptedFormats: string[];
+  };
+}
+
+const productDetailSchema = new Schema<IProductDetail>(
+  {
+    productId: { type: String, required: true, unique: true, index: true },
+    attributes: [
+      {
+        key: String,
+        value: String,
+        filterable: Boolean,
+        unit: String,
+        _id: false,
+      },
+    ],
+    variantOptions: [{ name: String, values: [String], _id: false }],
+    richDescription: String,
+    printSpecs: {
+      minDPI: Number,
+      maxFileSize: Number,
+      acceptedFormats: [String],
+    },
+  },
+  { collection: 'product_details', timestamps: true },
+);
+
+let ProductDetailModel: Model<IProductDetail>;
+try {
+  ProductDetailModel = mongoose.model<IProductDetail>('ProductDetail');
+} catch {
+  ProductDetailModel = model<IProductDetail>(
+    'ProductDetail',
+    productDetailSchema,
+  );
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -93,30 +182,55 @@ function slug(str: string): string {
     .replace(/-+/g, '-');
 }
 
-type UpsertArgs = { name: string; s?: string; level: number; parentId?: string; sortOrder?: number; description?: string };
+type UpsertArgs = {
+  name: string;
+  s?: string;
+  level: number;
+  parentId?: string;
+  sortOrder?: number;
+  description?: string;
+};
 async function upsertCategory(args: UpsertArgs) {
   const { name, s, level, parentId, sortOrder = 0, description } = args;
   const sl = s ?? slug(name);
   return prisma.category.upsert({
     where: { slug: sl },
     update: { level, ...(parentId ? { parentId } : {}), sortOrder },
-    create: { name, slug: sl, level, parentId: parentId ?? null, sortOrder, description },
+    create: {
+      name,
+      slug: sl,
+      level,
+      parentId: parentId ?? null,
+      sortOrder,
+      description,
+    },
   });
+}
+
+async function seedL3Items(parentId: string, names: string[]) {
+  for (let i = 0; i < names.length; i++) {
+    await upsertCategory({
+      name: names[i],
+      level: 3,
+      parentId,
+      sortOrder: i + 1,
+    });
+  }
 }
 
 // ── STEP 1 — Admin user ───────────────────────────────────────────────────────
 
 async function seedAdmin() {
-  const hash  = await bcrypt.hash('Admin@123456', 12);
+  const hash = await bcrypt.hash('Admin@123456', 12);
   const admin = await prisma.user.upsert({
-    where:  { email: 'admin@mapleloomhandmade.com' },
+    where: { email: 'admin@mapleloomhandmade.com' },
     update: {},
     create: {
-      email:           'admin@mapleloomhandmade.com',
-      passwordHash:    hash,
-      firstName:       'Super',
-      lastName:        'Admin',
-      role:            'SUPER_ADMIN',
+      email: 'admin@mapleloomhandmade.com',
+      passwordHash: hash,
+      firstName: 'Super',
+      lastName: 'Admin',
+      role: 'SUPER_ADMIN',
       isEmailVerified: true,
     },
   });
@@ -130,60 +244,217 @@ async function seedCategories() {
 
   // ── L1 Nav tabs ────────────────────────────────────────────────────────────
   const L1 = {
-    gifts:         await upsertCategory({ name: 'Gifts',          level: 1, sortOrder: 1 }),
-    homeLiving:    await upsertCategory({ name: 'Home & Living',  s: 'home-living',   level: 1, sortOrder: 2 }),
-    drinkBarware:  await upsertCategory({ name: 'Drink & Barware', s: 'drink-barware', level: 1, sortOrder: 3 }),
-    apparel:       await upsertCategory({ name: 'Apparel',        level: 1, sortOrder: 4 }),
-    accessories:   await upsertCategory({ name: 'Accessories',    level: 1, sortOrder: 5 }),
-    interests:     await upsertCategory({ name: 'Interests',      level: 1, sortOrder: 6 }),
+    gifts: await upsertCategory({ name: 'Gifts', level: 1, sortOrder: 1 }),
+    homeLiving: await upsertCategory({
+      name: 'Home & Living',
+      s: 'home-living',
+      level: 1,
+      sortOrder: 2,
+    }),
+    drinkBarware: await upsertCategory({
+      name: 'Drink & Barware',
+      s: 'drink-barware',
+      level: 1,
+      sortOrder: 3,
+    }),
+    apparel: await upsertCategory({ name: 'Apparel', level: 1, sortOrder: 4 }),
+    accessories: await upsertCategory({
+      name: 'Accessories',
+      level: 1,
+      sortOrder: 5,
+    }),
+    interests: await upsertCategory({
+      name: 'Interests',
+      level: 1,
+      sortOrder: 6,
+    }),
   };
 
-  for (const [k, v] of Object.entries(L1)) console.log(`  ✅ L1 ${v.name}`);
+  for (const v of Object.values(L1)) console.log(`  ✅ L1 ${v.name}`);
 
   // ── L2 Groups ──────────────────────────────────────────────────────────────
 
-  // ── Home & Living groups ───────────────────────────
   const homeLivingGroups = {
-    bedBath:          await upsertCategory({ name: 'Bed & Bath',           s: 'bed-bath',           level: 2, parentId: L1.homeLiving.id, sortOrder: 1 }),
-    christmasOrnaments: await upsertCategory({ name: 'Christmas Ornaments', s: 'christmas-ornaments', level: 2, parentId: L1.homeLiving.id, sortOrder: 2 }),
-    floorRugs:        await upsertCategory({ name: 'Floor & Rugs',         s: 'floor-rugs',         level: 2, parentId: L1.homeLiving.id, sortOrder: 3 }),
-    framesDisplays:   await upsertCategory({ name: 'Frames and Displays',  s: 'frames-displays',    level: 2, parentId: L1.homeLiving.id, sortOrder: 4 }),
-    hangingDecoration: await upsertCategory({ name: 'Hanging Decoration',  s: 'hanging-decoration', level: 2, parentId: L1.homeLiving.id, sortOrder: 5 }),
-    jewelryStorage:   await upsertCategory({ name: 'Jewelry Storage',      s: 'jewelry-storage',    level: 2, parentId: L1.homeLiving.id, sortOrder: 6 }),
-    kitchenDining:    await upsertCategory({ name: 'Kitchen & Dining',     s: 'kitchen-dining',     level: 2, parentId: L1.homeLiving.id, sortOrder: 7 }),
-    lighting:         await upsertCategory({ name: 'Lighting',             s: 'lighting',           level: 2, parentId: L1.homeLiving.id, sortOrder: 8 }),
-    outdoorGardening: await upsertCategory({ name: 'Outdoor & Gardening',  s: 'outdoor-gardening',  level: 2, parentId: L1.homeLiving.id, sortOrder: 9 }),
-    wallDecor:        await upsertCategory({ name: 'Wall Decor',           s: 'wall-decor',         level: 2, parentId: L1.homeLiving.id, sortOrder: 10 }),
+    bedBath: await upsertCategory({
+      name: 'Bed & Bath',
+      s: 'bed-bath',
+      level: 2,
+      parentId: L1.homeLiving.id,
+      sortOrder: 1,
+    }),
+    christmasOrnaments: await upsertCategory({
+      name: 'Christmas Ornaments',
+      s: 'christmas-ornaments',
+      level: 2,
+      parentId: L1.homeLiving.id,
+      sortOrder: 2,
+    }),
+    floorRugs: await upsertCategory({
+      name: 'Floor & Rugs',
+      s: 'floor-rugs',
+      level: 2,
+      parentId: L1.homeLiving.id,
+      sortOrder: 3,
+    }),
+    framesDisplays: await upsertCategory({
+      name: 'Frames and Displays',
+      s: 'frames-displays',
+      level: 2,
+      parentId: L1.homeLiving.id,
+      sortOrder: 4,
+    }),
+    hangingDecoration: await upsertCategory({
+      name: 'Hanging Decoration',
+      s: 'hanging-decoration',
+      level: 2,
+      parentId: L1.homeLiving.id,
+      sortOrder: 5,
+    }),
+    jewelryStorage: await upsertCategory({
+      name: 'Jewelry Storage',
+      s: 'jewelry-storage',
+      level: 2,
+      parentId: L1.homeLiving.id,
+      sortOrder: 6,
+    }),
+    kitchenDining: await upsertCategory({
+      name: 'Kitchen & Dining',
+      s: 'kitchen-dining',
+      level: 2,
+      parentId: L1.homeLiving.id,
+      sortOrder: 7,
+    }),
+    lighting: await upsertCategory({
+      name: 'Lighting',
+      s: 'lighting',
+      level: 2,
+      parentId: L1.homeLiving.id,
+      sortOrder: 8,
+    }),
+    outdoorGardening: await upsertCategory({
+      name: 'Outdoor & Gardening',
+      s: 'outdoor-gardening',
+      level: 2,
+      parentId: L1.homeLiving.id,
+      sortOrder: 9,
+    }),
+    wallDecor: await upsertCategory({
+      name: 'Wall Decor',
+      s: 'wall-decor',
+      level: 2,
+      parentId: L1.homeLiving.id,
+      sortOrder: 10,
+    }),
   };
 
-  // ── Drink & Barware groups ─────────────────────────
   const drinkGroups = {
-    mugs:       await upsertCategory({ name: 'Mugs',           s: 'mugs',         level: 2, parentId: L1.drinkBarware.id, sortOrder: 1 }),
-    tumblers:   await upsertCategory({ name: 'Tumblers',       s: 'tumblers',     level: 2, parentId: L1.drinkBarware.id, sortOrder: 2 }),
-    glasses:    await upsertCategory({ name: 'Glasses',        s: 'glasses',      level: 2, parentId: L1.drinkBarware.id, sortOrder: 3 }),
-    coastersBar: await upsertCategory({ name: 'Coasters & Bar', s: 'coasters-bar', level: 2, parentId: L1.drinkBarware.id, sortOrder: 4 }),
+    mugs: await upsertCategory({
+      name: 'Mugs',
+      s: 'mugs',
+      level: 2,
+      parentId: L1.drinkBarware.id,
+      sortOrder: 1,
+    }),
+    tumblers: await upsertCategory({
+      name: 'Tumblers',
+      s: 'tumblers',
+      level: 2,
+      parentId: L1.drinkBarware.id,
+      sortOrder: 2,
+    }),
+    glasses: await upsertCategory({
+      name: 'Glasses',
+      s: 'glasses',
+      level: 2,
+      parentId: L1.drinkBarware.id,
+      sortOrder: 3,
+    }),
+    coastersBar: await upsertCategory({
+      name: 'Coasters & Bar',
+      s: 'coasters-bar',
+      level: 2,
+      parentId: L1.drinkBarware.id,
+      sortOrder: 4,
+    }),
   };
 
-  // ── Apparel groups ─────────────────────────────────
   const apparelGroups = {
-    tshirtsTops: await upsertCategory({ name: 'T-Shirts & Tops', s: 't-shirts-tops', level: 2, parentId: L1.apparel.id, sortOrder: 1 }),
-    outerwear:   await upsertCategory({ name: 'Outerwear',       s: 'outerwear',     level: 2, parentId: L1.apparel.id, sortOrder: 2 }),
-    kidsBaby:    await upsertCategory({ name: 'Kids & Baby',     s: 'kids-baby',     level: 2, parentId: L1.apparel.id, sortOrder: 3 }),
+    tshirtsTops: await upsertCategory({
+      name: 'T-Shirts & Tops',
+      s: 't-shirts-tops',
+      level: 2,
+      parentId: L1.apparel.id,
+      sortOrder: 1,
+    }),
+    outerwear: await upsertCategory({
+      name: 'Outerwear',
+      s: 'outerwear',
+      level: 2,
+      parentId: L1.apparel.id,
+      sortOrder: 2,
+    }),
+    kidsBaby: await upsertCategory({
+      name: 'Kids & Baby',
+      s: 'kids-baby',
+      level: 2,
+      parentId: L1.apparel.id,
+      sortOrder: 3,
+    }),
   };
 
-  // ── Accessories groups ─────────────────────────────
   const accessoriesGroups = {
-    bagsTotes:      await upsertCategory({ name: 'Bags & Totes',     s: 'bags-totes',     level: 2, parentId: L1.accessories.id, sortOrder: 1 }),
-    jewelry:        await upsertCategory({ name: 'Jewelry',          s: 'jewelry',        level: 2, parentId: L1.accessories.id, sortOrder: 2 }),
-    techAccessories: await upsertCategory({ name: 'Tech Accessories', s: 'tech-accessories', level: 2, parentId: L1.accessories.id, sortOrder: 3 }),
+    bagsTotes: await upsertCategory({
+      name: 'Bags & Totes',
+      s: 'bags-totes',
+      level: 2,
+      parentId: L1.accessories.id,
+      sortOrder: 1,
+    }),
+    jewelry: await upsertCategory({
+      name: 'Jewelry',
+      s: 'jewelry',
+      level: 2,
+      parentId: L1.accessories.id,
+      sortOrder: 2,
+    }),
+    techAccessories: await upsertCategory({
+      name: 'Tech Accessories',
+      s: 'tech-accessories',
+      level: 2,
+      parentId: L1.accessories.id,
+      sortOrder: 3,
+    }),
   };
 
-  // ── Gifts groups ───────────────────────────────────
   const giftsGroups = {
-    forHer:  await upsertCategory({ name: 'For Her',  s: 'for-her',  level: 2, parentId: L1.gifts.id, sortOrder: 1 }),
-    forHim:  await upsertCategory({ name: 'For Him',  s: 'for-him',  level: 2, parentId: L1.gifts.id, sortOrder: 2 }),
-    forKids: await upsertCategory({ name: 'For Kids', s: 'for-kids', level: 2, parentId: L1.gifts.id, sortOrder: 3 }),
-    forPets: await upsertCategory({ name: 'For Pets', s: 'for-pets', level: 2, parentId: L1.gifts.id, sortOrder: 4 }),
+    forHer: await upsertCategory({
+      name: 'For Her',
+      s: 'for-her',
+      level: 2,
+      parentId: L1.gifts.id,
+      sortOrder: 1,
+    }),
+    forHim: await upsertCategory({
+      name: 'For Him',
+      s: 'for-him',
+      level: 2,
+      parentId: L1.gifts.id,
+      sortOrder: 2,
+    }),
+    forKids: await upsertCategory({
+      name: 'For Kids',
+      s: 'for-kids',
+      level: 2,
+      parentId: L1.gifts.id,
+      sortOrder: 3,
+    }),
+    forPets: await upsertCategory({
+      name: 'For Pets',
+      s: 'for-pets',
+      level: 2,
+      parentId: L1.gifts.id,
+      sortOrder: 4,
+    }),
   };
 
   console.log('  ✅ L2 groups created');
@@ -192,77 +463,277 @@ async function seedCategories() {
 
   // Bed & Bath
   await seedL3Items(homeLivingGroups.bedBath.id, [
-    'Blankets','Laundry Storage Basket','Pillows','Quilt Sets','Wearable Blanket Hoodies',
+    'Blankets',
+    'Laundry Storage Basket',
+    'Pillows',
+    'Quilt Sets',
+    'Wearable Blanket Hoodies',
   ]);
-  // Christmas Ornaments — note: existing 'ornaments' slug maps to this group
-  await upsertCategory({ name: 'Acrylic Ornaments',    s: 'acrylic-ornaments',    level: 3, parentId: homeLivingGroups.christmasOrnaments.id, sortOrder: 1 });
-  await upsertCategory({ name: 'Aluminum Ornaments',   s: 'aluminum-ornaments',   level: 3, parentId: homeLivingGroups.christmasOrnaments.id, sortOrder: 2 });
-  await upsertCategory({ name: 'Ceramic Ornaments',    s: 'ceramic-ornaments',    level: 3, parentId: homeLivingGroups.christmasOrnaments.id, sortOrder: 3 });
-  await upsertCategory({ name: 'Glass Ornaments',      s: 'glass-ornaments',      level: 3, parentId: homeLivingGroups.christmasOrnaments.id, sortOrder: 4 });
-  await upsertCategory({ name: 'Suncatcher Ornaments', s: 'suncatcher-ornaments', level: 3, parentId: homeLivingGroups.christmasOrnaments.id, sortOrder: 5 });
-  await upsertCategory({ name: 'Wooden Ornaments',     s: 'wooden-ornaments',     level: 3, parentId: homeLivingGroups.christmasOrnaments.id, sortOrder: 6 });
+  // FIX 4: Throw Pillows — required by catSlug 'throw-pillows'
+  await upsertCategory({
+    name: 'Throw Pillows',
+    s: 'throw-pillows',
+    level: 3,
+    parentId: homeLivingGroups.bedBath.id,
+    sortOrder: 6,
+  });
+
+  // Christmas Ornaments
+  await upsertCategory({
+    name: 'Acrylic Ornaments',
+    s: 'acrylic-ornaments',
+    level: 3,
+    parentId: homeLivingGroups.christmasOrnaments.id,
+    sortOrder: 1,
+  });
+  await upsertCategory({
+    name: 'Aluminum Ornaments',
+    s: 'aluminum-ornaments',
+    level: 3,
+    parentId: homeLivingGroups.christmasOrnaments.id,
+    sortOrder: 2,
+  });
+  await upsertCategory({
+    name: 'Ceramic Ornaments',
+    s: 'ceramic-ornaments',
+    level: 3,
+    parentId: homeLivingGroups.christmasOrnaments.id,
+    sortOrder: 3,
+  });
+  await upsertCategory({
+    name: 'Glass Ornaments',
+    s: 'glass-ornaments',
+    level: 3,
+    parentId: homeLivingGroups.christmasOrnaments.id,
+    sortOrder: 4,
+  });
+  await upsertCategory({
+    name: 'Suncatcher Ornaments',
+    s: 'suncatcher-ornaments',
+    level: 3,
+    parentId: homeLivingGroups.christmasOrnaments.id,
+    sortOrder: 5,
+  });
+  await upsertCategory({
+    name: 'Wooden Ornaments',
+    s: 'wooden-ornaments',
+    level: 3,
+    parentId: homeLivingGroups.christmasOrnaments.id,
+    sortOrder: 6,
+  });
+  // 'ornaments' legacy slug — Photo Ornaments L3
+  await upsertCategory({
+    name: 'Photo Ornaments',
+    s: 'ornaments',
+    level: 3,
+    parentId: homeLivingGroups.christmasOrnaments.id,
+    sortOrder: 7,
+  });
+
   // Floor & Rugs
-  await seedL3Items(homeLivingGroups.floorRugs.id,     ['Christmas Tree Skirts','Doormats','Runner Rugs']);
-  // Frames and Displays
-  await seedL3Items(homeLivingGroups.framesDisplays.id,
-    ['Acrylic Plaques','Acrylic Desk Clocks','Ceramic Flower Vases','Ceramic Plates','Family Puzzles']);
+  await seedL3Items(homeLivingGroups.floorRugs.id, [
+    'Christmas Tree Skirts',
+    'Doormats',
+    'Runner Rugs',
+  ]);
+
+  // Frames and Displays — includes 'acrylic-plaques'
+  await seedL3Items(homeLivingGroups.framesDisplays.id, [
+    'Acrylic Plaques',
+    'Acrylic Desk Clocks',
+    'Ceramic Flower Vases',
+    'Ceramic Plates',
+    'Family Puzzles',
+  ]);
+
   // Hanging Decoration
-  await seedL3Items(homeLivingGroups.hangingDecoration.id,
-    ['Magnets','Suncatchers','Wine Bottle Wind Chimes','Wood Signs']);
+  await seedL3Items(homeLivingGroups.hangingDecoration.id, [
+    'Magnets',
+    'Suncatchers',
+    'Wine Bottle Wind Chimes',
+    'Wood Signs',
+  ]);
+
   // Jewelry Storage
-  await seedL3Items(homeLivingGroups.jewelryStorage.id,
-    ['Jewelry Dishes','Jewelry Boxes','Leather Valet Trays','Makeup Boxes With LED Mirror']);
-  // Kitchen & Dining
-  await seedL3Items(homeLivingGroups.kitchenDining.id,
-    ['Cookie Jars','Cutting Boards','Oven Mitts And Pot Holders','Platters','Tea & Biscuit Boards']);
+  await seedL3Items(homeLivingGroups.jewelryStorage.id, [
+    'Jewelry Dishes',
+    'Jewelry Boxes',
+    'Leather Valet Trays',
+    'Makeup Boxes With LED Mirror',
+  ]);
+
+  // Kitchen & Dining — includes 'cutting-boards'
+  await seedL3Items(homeLivingGroups.kitchenDining.id, [
+    'Cookie Jars',
+    'Cutting Boards',
+    'Oven Mitts And Pot Holders',
+    'Platters',
+    'Tea And Biscuit Boards',
+  ]);
+
   // Lighting
-  await seedL3Items(homeLivingGroups.lighting.id,
-    ['Bottle Lamps','Fabric Lamps','LED Candles','LED Night Light','Mason Jar Lights','Vintage Lantern Night Lights']);
+  await seedL3Items(homeLivingGroups.lighting.id, [
+    'Bottle Lamps',
+    'Fabric Lamps',
+    'LED Candles',
+    'LED Night Light',
+    'Mason Jar Lights',
+    'Vintage Lantern Night Lights',
+  ]);
+
   // Outdoor & Gardening
-  await seedL3Items(homeLivingGroups.outdoorGardening.id,
-    ['Ceramic Plant Pots','Door Corner Wood Signs','Garden Stakes','Indoor Watering Cans','Metal Signs','Solar Lights','Wind Chimes']);
-  // Wall Decor — 'canvas' legacy slug maps here
-  await upsertCategory({ name: 'Posters / Canvas',          s: 'canvas',           level: 3, parentId: homeLivingGroups.wallDecor.id, sortOrder: 1 });
-  await upsertCategory({ name: 'Key Holders',               s: 'key-holders',      level: 3, parentId: homeLivingGroups.wallDecor.id, sortOrder: 2 });
-  await upsertCategory({ name: 'Wood And Acrylic Wall Art', s: 'wood-acrylic-art', level: 3, parentId: homeLivingGroups.wallDecor.id, sortOrder: 3 });
+  await seedL3Items(homeLivingGroups.outdoorGardening.id, [
+    'Ceramic Plant Pots',
+    'Door Corner Wood Signs',
+    'Garden Stakes',
+    'Indoor Watering Cans',
+    'Metal Signs',
+    'Solar Lights',
+    'Wind Chimes',
+  ]);
 
-  // Mugs — legacy 'mugs' slug is now L2 group; L3 items below
-  await seedL3Items(drinkGroups.mugs.id,       ['Coffee Mugs','Photo Mugs','Travel Mugs','Enamel Mugs']);
-  await seedL3Items(drinkGroups.tumblers.id,   ['Stainless Steel Tumblers','Glass Tumblers','Sports Bottles']);
-  await seedL3Items(drinkGroups.glasses.id,    ['Wine Glasses','Beer Glasses','Champagne Flutes','Shot Glasses']);
-  await seedL3Items(drinkGroups.coastersBar.id,['Coaster Sets','Bottle Openers','Wine Racks','Beer Steins']);
+  // Wall Decor — 'canvas' and 'wood-acrylic-art' live here
+  await upsertCategory({
+    name: 'Posters / Canvas',
+    s: 'canvas',
+    level: 3,
+    parentId: homeLivingGroups.wallDecor.id,
+    sortOrder: 1,
+  });
+  await upsertCategory({
+    name: 'Key Holders',
+    s: 'key-holders',
+    level: 3,
+    parentId: homeLivingGroups.wallDecor.id,
+    sortOrder: 2,
+  });
+  await upsertCategory({
+    name: 'Wood And Acrylic Wall Art',
+    s: 'wood-acrylic-art',
+    level: 3,
+    parentId: homeLivingGroups.wallDecor.id,
+    sortOrder: 3,
+  });
 
-  // Apparel L3
-  await seedL3Items(apparelGroups.tshirtsTops.id,['Classic Tees','V-Neck Tees','Long Sleeve Shirts','Tank Tops']);
-  await upsertCategory({ name: 'Hoodies',       s: 'hoodies',      level: 3, parentId: apparelGroups.outerwear.id, sortOrder: 1 });
-  await upsertCategory({ name: 'Zip-Up Hoodies',s: 'zip-hoodies',  level: 3, parentId: apparelGroups.outerwear.id, sortOrder: 2 });
-  await upsertCategory({ name: 'Sweatshirts',   s: 'sweatshirts',  level: 3, parentId: apparelGroups.outerwear.id, sortOrder: 3 });
-  await upsertCategory({ name: 'Bomber Jackets',s: 'bomber-jackets',level: 3, parentId: apparelGroups.outerwear.id, sortOrder: 4 });
-  await seedL3Items(apparelGroups.kidsBaby.id,   ['Onesies','Kids T-Shirts','Baby Bibs','Baby Blankets']);
+  // Drink L3 — 'coffee-mugs', 'stainless-steel-tumblers', 'wine-glasses'
+  await seedL3Items(drinkGroups.mugs.id, [
+    'Coffee Mugs',
+    'Photo Mugs',
+    'Travel Mugs',
+    'Enamel Mugs',
+  ]);
+  await seedL3Items(drinkGroups.tumblers.id, [
+    'Stainless Steel Tumblers',
+    'Glass Tumblers',
+    'Sports Bottles',
+  ]);
+  await seedL3Items(drinkGroups.glasses.id, [
+    'Wine Glasses',
+    'Beer Glasses',
+    'Champagne Flutes',
+    'Shot Glasses',
+  ]);
+  await seedL3Items(drinkGroups.coastersBar.id, [
+    'Coaster Sets',
+    'Bottle Openers',
+    'Wine Racks',
+    'Beer Steins',
+  ]);
 
-  // Accessories L3
-  await seedL3Items(accessoriesGroups.bagsTotes.id,     ['Tote Bags','Backpacks','Drawstring Bags','Fanny Packs']);
-  await seedL3Items(accessoriesGroups.jewelry.id,       ['Necklaces','Bracelets','Keychains','Rings']);
-  await seedL3Items(accessoriesGroups.techAccessories.id,['Phone Cases','Mouse Pads','Laptop Sleeves','AirPod Cases']);
+  // Apparel L3 — 'classic-tees', 'hoodies', 'onesies'
+  await seedL3Items(apparelGroups.tshirtsTops.id, [
+    'Classic Tees',
+    'V-Neck Tees',
+    'Long Sleeve Shirts',
+    'Tank Tops',
+  ]);
+  await upsertCategory({
+    name: 'Hoodies',
+    s: 'hoodies',
+    level: 3,
+    parentId: apparelGroups.outerwear.id,
+    sortOrder: 1,
+  });
+  await upsertCategory({
+    name: 'Zip-Up Hoodies',
+    s: 'zip-hoodies',
+    level: 3,
+    parentId: apparelGroups.outerwear.id,
+    sortOrder: 2,
+  });
+  await upsertCategory({
+    name: 'Sweatshirts',
+    s: 'sweatshirts',
+    level: 3,
+    parentId: apparelGroups.outerwear.id,
+    sortOrder: 3,
+  });
+  await upsertCategory({
+    name: 'Bomber Jackets',
+    s: 'bomber-jackets',
+    level: 3,
+    parentId: apparelGroups.outerwear.id,
+    sortOrder: 4,
+  });
+  await seedL3Items(apparelGroups.kidsBaby.id, [
+    'Onesies',
+    'Kids T-Shirts',
+    'Baby Bibs',
+    'Baby Blankets',
+  ]);
+
+  // Accessories L3 — 'tote-bags', 'keychains', 'phone-cases'
+  await seedL3Items(accessoriesGroups.bagsTotes.id, [
+    'Tote Bags',
+    'Backpacks',
+    'Drawstring Bags',
+    'Fanny Packs',
+  ]);
+  await seedL3Items(accessoriesGroups.jewelry.id, [
+    'Necklaces',
+    'Bracelets',
+    'Keychains',
+    'Rings',
+  ]);
+  await seedL3Items(accessoriesGroups.techAccessories.id, [
+    'Phone Cases',
+    'Mouse Pads',
+    'Laptop Sleeves',
+    'AirPod Cases',
+  ]);
 
   // Gifts L3
-  await seedL3Items(giftsGroups.forHer.id,  ['Jewelry & Accessories','Home Decor','Beauty & Wellness']);
-  await seedL3Items(giftsGroups.forHim.id,  ['Drinkware','Tech Accessories','Outdoor']);
-  await seedL3Items(giftsGroups.forKids.id, ['Toys & Games','Clothing','Room Decor']);
-  await seedL3Items(giftsGroups.forPets.id, ['Pet Portraits','Pet Tags','Pet Clothing']);
-
-  // Update legacy 'ornaments' to be L3 under Christmas Ornaments group
-  await upsertCategory({ name: 'Photo Ornaments', s: 'ornaments', level: 3, parentId: homeLivingGroups.christmasOrnaments.id, sortOrder: 7 });
+  await seedL3Items(giftsGroups.forHer.id, [
+    'Jewelry And Accessories',
+    'Home Decor',
+    'Beauty And Wellness',
+  ]);
+  await seedL3Items(giftsGroups.forHim.id, [
+    'Drinkware',
+    'Tech Accessories',
+    'Outdoor',
+  ]);
+  await seedL3Items(giftsGroups.forKids.id, [
+    'Toys And Games',
+    'Clothing',
+    'Room Decor',
+  ]);
+  await seedL3Items(giftsGroups.forPets.id, [
+    'Pet Portraits',
+    'Pet Tags',
+    'Pet Clothing',
+  ]);
 
   console.log('  ✅ L3 leaf items created');
 
-  return { L1, homeLivingGroups, drinkGroups, apparelGroups, accessoriesGroups, giftsGroups };
-}
-
-async function seedL3Items(parentId: string, names: string[]) {
-  for (let i = 0; i < names.length; i++) {
-    await upsertCategory({ name: names[i], level: 3, parentId, sortOrder: i + 1 });
-  }
+  return {
+    L1,
+    homeLivingGroups,
+    drinkGroups,
+    apparelGroups,
+    accessoriesGroups,
+    giftsGroups,
+  };
 }
 
 // ── STEP 3 — Occasion-based collections ──────────────────────────────────────
@@ -270,22 +741,57 @@ async function seedL3Items(parentId: string, names: string[]) {
 async function seedCollections() {
   console.log('\n🎁 Seeding collections...');
   const defs = [
-    { name: "Valentine's Day",  slug: 'valentines-day',  occasion: 'valentine',   sortOrder: 1 },
-    { name: 'Birthday',         slug: 'birthday',        occasion: 'birthday',    sortOrder: 2 },
-    { name: 'Anniversary',      slug: 'anniversary',     occasion: 'anniversary', sortOrder: 3 },
-    { name: "Mother's Day",     slug: 'mothers-day',     occasion: 'mothers',     sortOrder: 4 },
-    { name: "Father's Day",     slug: 'fathers-day',     occasion: 'fathers',     sortOrder: 5 },
-    { name: 'Graduation',       slug: 'graduation',      occasion: 'graduation',  sortOrder: 6 },
-    { name: 'Christmas',        slug: 'christmas',       occasion: 'christmas',   sortOrder: 7 },
-    { name: 'Wedding',          slug: 'wedding',         occasion: 'wedding',     sortOrder: 8 },
-    { name: 'New Baby',         slug: 'new-baby',        occasion: 'baby',        sortOrder: 9 },
-    { name: 'Retirement',       slug: 'retirement',      occasion: 'retirement',  sortOrder: 10 },
+    {
+      name: "Valentine's Day",
+      slug: 'valentines-day',
+      occasion: 'valentine',
+      sortOrder: 1,
+    },
+    { name: 'Birthday', slug: 'birthday', occasion: 'birthday', sortOrder: 2 },
+    {
+      name: 'Anniversary',
+      slug: 'anniversary',
+      occasion: 'anniversary',
+      sortOrder: 3,
+    },
+    {
+      name: "Mother's Day",
+      slug: 'mothers-day',
+      occasion: 'mothers',
+      sortOrder: 4,
+    },
+    {
+      name: "Father's Day",
+      slug: 'fathers-day',
+      occasion: 'fathers',
+      sortOrder: 5,
+    },
+    {
+      name: 'Graduation',
+      slug: 'graduation',
+      occasion: 'graduation',
+      sortOrder: 6,
+    },
+    {
+      name: 'Christmas',
+      slug: 'christmas',
+      occasion: 'christmas',
+      sortOrder: 7,
+    },
+    { name: 'Wedding', slug: 'wedding', occasion: 'wedding', sortOrder: 8 },
+    { name: 'New Baby', slug: 'new-baby', occasion: 'baby', sortOrder: 9 },
+    {
+      name: 'Retirement',
+      slug: 'retirement',
+      occasion: 'retirement',
+      sortOrder: 10,
+    },
   ];
 
   const ids: Record<string, string> = {};
   for (const def of defs) {
     const col = await prisma.collection.upsert({
-      where:  { slug: def.slug },
+      where: { slug: def.slug },
       update: { occasion: def.occasion },
       create: { ...def, isActive: true },
     });
@@ -295,144 +801,677 @@ async function seedCollections() {
   return ids;
 }
 
-// ── STEP 4 — Sample products ──────────────────────────────────────────────────
+// ── STEP 4 — Sample products (20 total) ──────────────────────────────────────
 
 async function seedProducts() {
   console.log('\n📦 Seeding products...');
 
-  // Resolve category IDs by slug (legacy slugs still work as L2/L3 nodes)
+  // FIX 3: use proper L3 slugs instead of legacy L1/L2 slugs
+  const slugsNeeded = [
+    'coffee-mugs', // L3 under Mugs
+    'canvas', // L3 under Wall Decor (Posters / Canvas)
+    'stainless-steel-tumblers', // L3 under Tumblers
+    'throw-pillows', // L3 under Bed & Bath (FIX 4)
+    'tote-bags', // L3 under Bags & Totes
+    'ornaments', // L3 Photo Ornaments under Christmas Ornaments
+    'hoodies', // L3 under Outerwear
+    'wood-acrylic-art', // L3 under Wall Decor
+    'cutting-boards', // L3 under Kitchen & Dining
+    'phone-cases', // L3 under Tech Accessories
+    'wine-glasses', // L3 under Glasses
+    'classic-tees', // L3 under T-Shirts & Tops
+    'keychains', // L3 under Jewelry
+    'onesies', // L3 under Kids & Baby
+    'acrylic-plaques', // L3 under Frames and Displays
+  ];
+
   const categoryIds: Record<string, string | null> = {};
-  const slugsNeeded = ['mugs', 'canvas', 'apparel', 'ornaments', 'accessories'];
   for (const s of slugsNeeded) {
     const cat = await prisma.category.findUnique({ where: { slug: s } });
     categoryIds[s] = cat?.id ?? null;
   }
 
-  // Use first available category as fallback
-  const fallback = Object.values(categoryIds).find(Boolean) ?? '';
-
-  type VarDef  = { name: string; options: object; price: number; isDefault: boolean };
+  type VarDef = {
+    name: string;
+    options: object;
+    price: number;
+    isDefault: boolean;
+  };
   type ProdDef = {
-    name: string; slug: string; sku: string; description: string; shortDescription?: string;
-    basePrice: number; compareAtPrice?: number; catSlug: string;
-    isFeatured?: boolean; imageUrl: string; variants: VarDef[];
+    name: string;
+    slug: string;
+    sku: string;
+    description: string;
+    shortDescription?: string;
+    basePrice: number;
+    compareAtPrice?: number;
+    catSlug: string;
+    isFeatured?: boolean;
+    imageUrl: string;
+    variants: VarDef[];
   };
 
   const products: ProdDef[] = [
+    // ── 1 ─────────────────────────────────────────────────────────────────────
     {
-      name: 'Custom Name & Photo Coffee Mug', slug: 'custom-name-photo-mug', sku: 'MUG-001',
-      description: 'Personalize this beautiful ceramic mug with your name and favorite photo. Dishwasher safe, microwave safe.',
+      name: 'Custom Name & Photo Coffee Mug',
+      slug: 'custom-name-photo-mug',
+      sku: 'MUG-001',
+      description:
+        'Personalize this beautiful ceramic mug with your name and favorite photo. Dishwasher safe, microwave safe.',
       shortDescription: 'Custom ceramic mug with photo and name',
-      basePrice: 27.99, compareAtPrice: 35.99, catSlug: 'mugs', isFeatured: true,
-      imageUrl: 'https://images.unsplash.com/photo-1661399086686-20ce9ecd398b?w=800&q=80',
+      basePrice: 27.99,
+      compareAtPrice: 35.99,
+      catSlug: 'coffee-mugs',
+      isFeatured: true,
+      imageUrl:
+        'https://images.unsplash.com/photo-1661399086686-20ce9ecd398b?w=800&q=80',
       variants: [
-        { name: '11oz White', options: { Size: '11oz', Color: 'White' }, price: 27.99, isDefault: true },
-        { name: '15oz White', options: { Size: '15oz', Color: 'White' }, price: 32.99, isDefault: false },
-        { name: '11oz Black', options: { Size: '11oz', Color: 'Black' }, price: 29.99, isDefault: false },
+        {
+          name: '11oz White',
+          options: { Size: '11oz', Color: 'White' },
+          price: 27.99,
+          isDefault: true,
+        },
+        {
+          name: '15oz White',
+          options: { Size: '15oz', Color: 'White' },
+          price: 32.99,
+          isDefault: false,
+        },
+        {
+          name: '11oz Black',
+          options: { Size: '11oz', Color: 'Black' },
+          price: 29.99,
+          isDefault: false,
+        },
       ],
     },
+    // ── 2 ─────────────────────────────────────────────────────────────────────
     {
-      name: 'Personalized Family Canvas Print', slug: 'personalized-canvas-print', sku: 'CAN-001',
-      description: 'Create a stunning gallery-wrapped canvas print featuring your family photo. Ready to hang, premium quality.',
+      name: 'Personalized Family Canvas Print',
+      slug: 'personalized-canvas-print',
+      sku: 'CAN-001',
+      description:
+        'Create a stunning gallery-wrapped canvas print featuring your family photo. Ready to hang, premium quality.',
       shortDescription: 'Custom family photo canvas print',
-      basePrice: 49.99, catSlug: 'canvas', isFeatured: true,
-      imageUrl: 'https://images.unsplash.com/photo-1743299663330-60c30cf0c7dc?w=800&q=80',
+      basePrice: 49.99,
+      catSlug: 'canvas',
+      isFeatured: true,
+      imageUrl:
+        'https://images.unsplash.com/photo-1743299663330-60c30cf0c7dc?w=800&q=80',
       variants: [
-        { name: '12×16"', options: { Size: '12x16' }, price: 49.99, isDefault: true },
-        { name: '16×20"', options: { Size: '16x20' }, price: 69.99, isDefault: false },
-        { name: '20×24"', options: { Size: '20x24' }, price: 89.99, isDefault: false },
+        {
+          name: '12×16"',
+          options: { Size: '12x16' },
+          price: 49.99,
+          isDefault: true,
+        },
+        {
+          name: '16×20"',
+          options: { Size: '16x20' },
+          price: 69.99,
+          isDefault: false,
+        },
+        {
+          name: '20×24"',
+          options: { Size: '20x24' },
+          price: 89.99,
+          isDefault: false,
+        },
       ],
     },
+    // ── 3 ─────────────────────────────────────────────────────────────────────
     {
-      name: 'Monogram Insulated Tumbler', slug: 'monogram-tumbler', sku: 'TUM-001',
-      description: 'Stainless steel insulated tumbler with laser-engraved monogram. Keeps drinks cold 24h, hot 12h.',
+      name: 'Monogram Insulated Tumbler',
+      slug: 'monogram-tumbler',
+      sku: 'TUM-001',
+      description:
+        'Stainless steel insulated tumbler with laser-engraved monogram. Keeps drinks cold 24h, hot 12h.',
       shortDescription: 'Insulated tumbler with monogram',
-      basePrice: 29.99, catSlug: 'mugs', isFeatured: true,
-      imageUrl: 'https://images.unsplash.com/photo-1640978217349-1b7cb1f893c3?w=800&q=80',
+      basePrice: 29.99,
+      catSlug: 'stainless-steel-tumblers',
+      isFeatured: true,
+      imageUrl:
+        'https://images.unsplash.com/photo-1640978217349-1b7cb1f893c3?w=800&q=80',
       variants: [
-        { name: '20oz', options: { Size: '20oz' }, price: 29.99, isDefault: true },
-        { name: '30oz', options: { Size: '30oz' }, price: 34.99, isDefault: false },
+        {
+          name: '20oz',
+          options: { Size: '20oz' },
+          price: 29.99,
+          isDefault: true,
+        },
+        {
+          name: '30oz',
+          options: { Size: '30oz' },
+          price: 34.99,
+          isDefault: false,
+        },
       ],
     },
+    // ── 4 ─────────────────────────────────────────────────────────────────────
     {
-      name: 'Custom Photo Throw Pillow', slug: 'custom-photo-pillow', sku: 'PIL-001',
-      description: 'Super soft throw pillow featuring your favorite photo. Premium sublimation printing, includes insert.',
+      name: 'Custom Photo Throw Pillow',
+      slug: 'custom-photo-pillow',
+      sku: 'PIL-001',
+      description:
+        'Super soft throw pillow featuring your favorite photo. Premium sublimation printing, includes insert.',
       shortDescription: 'Custom photo throw pillow',
-      basePrice: 34.99, compareAtPrice: 44.99, catSlug: 'accessories', isFeatured: true,
-      imageUrl: 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=800&q=80',
+      basePrice: 34.99,
+      compareAtPrice: 44.99,
+      catSlug: 'throw-pillows',
+      isFeatured: true,
+      imageUrl:
+        'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=800&q=80',
       variants: [
-        { name: '16×16"', options: { Size: '16x16' }, price: 34.99, isDefault: true },
-        { name: '18×18"', options: { Size: '18x18' }, price: 39.99, isDefault: false },
-        { name: '20×20"', options: { Size: '20x20' }, price: 44.99, isDefault: false },
+        {
+          name: '16×16"',
+          options: { Size: '16x16' },
+          price: 34.99,
+          isDefault: true,
+        },
+        {
+          name: '18×18"',
+          options: { Size: '18x18' },
+          price: 39.99,
+          isDefault: false,
+        },
+        {
+          name: '20×20"',
+          options: { Size: '20x20' },
+          price: 44.99,
+          isDefault: false,
+        },
       ],
     },
+    // ── 5 ─────────────────────────────────────────────────────────────────────
     {
-      name: 'Personalized Tote Bag', slug: 'personalized-tote-bag', sku: 'TOT-001',
-      description: 'Eco-friendly 12oz canvas tote bag with custom name, quote, or design. Reinforced handles.',
+      name: 'Personalized Tote Bag',
+      slug: 'personalized-tote-bag',
+      sku: 'TOT-001',
+      description:
+        'Eco-friendly 12oz canvas tote bag with custom name, quote, or design. Reinforced handles.',
       shortDescription: 'Custom canvas tote bag',
-      basePrice: 22.99, catSlug: 'accessories',
-      imageUrl: 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&q=80',
+      basePrice: 22.99,
+      catSlug: 'tote-bags',
+      imageUrl:
+        'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&q=80',
       variants: [
-        { name: 'Natural', options: { Color: 'Natural' }, price: 22.99, isDefault: true },
-        { name: 'Black',   options: { Color: 'Black'   }, price: 22.99, isDefault: false },
+        {
+          name: 'Natural',
+          options: { Color: 'Natural' },
+          price: 22.99,
+          isDefault: true,
+        },
+        {
+          name: 'Black',
+          options: { Color: 'Black' },
+          price: 22.99,
+          isDefault: false,
+        },
       ],
     },
+    // ── 6 ─────────────────────────────────────────────────────────────────────
     {
-      name: 'Custom Photo Ornament', slug: 'custom-photo-ornament', sku: 'ORN-001',
-      description: 'Beautiful ceramic ornament with your photo and personalized text. Perfect holiday keepsake.',
+      name: 'Custom Photo Ornament',
+      slug: 'custom-photo-ornament',
+      sku: 'ORN-001',
+      description:
+        'Beautiful ceramic ornament with your photo and personalized text. Perfect holiday keepsake.',
       shortDescription: 'Personalized photo ornament',
-      basePrice: 18.99, catSlug: 'ornaments',
-      imageUrl: 'https://images.unsplash.com/photo-1512389098783-66b81f86e199?w=800&q=80',
+      basePrice: 18.99,
+      catSlug: 'ornaments',
+      imageUrl:
+        'https://images.unsplash.com/photo-1512389098783-66b81f86e199?w=800&q=80',
       variants: [
-        { name: 'Round', options: { Shape: 'Round' }, price: 18.99, isDefault: true },
-        { name: 'Heart', options: { Shape: 'Heart' }, price: 18.99, isDefault: false },
-        { name: 'Star',  options: { Shape: 'Star'  }, price: 18.99, isDefault: false },
+        {
+          name: 'Round',
+          options: { Shape: 'Round' },
+          price: 18.99,
+          isDefault: true,
+        },
+        {
+          name: 'Heart',
+          options: { Shape: 'Heart' },
+          price: 18.99,
+          isDefault: false,
+        },
+        {
+          name: 'Star',
+          options: { Shape: 'Star' },
+          price: 18.99,
+          isDefault: false,
+        },
       ],
     },
+    // ── 7 ─────────────────────────────────────────────────────────────────────
     {
-      name: 'Custom Name Hoodie', slug: 'custom-name-hoodie', sku: 'HOD-001',
-      description: 'Cozy pullover hoodie with your custom name or text. 80/20 cotton-poly blend, true to size.',
+      name: 'Custom Name Hoodie',
+      slug: 'custom-name-hoodie',
+      sku: 'HOD-001',
+      description:
+        'Cozy pullover hoodie with your custom name or text. 80/20 cotton-poly blend, true to size.',
       shortDescription: 'Personalized pullover hoodie',
-      basePrice: 44.99, catSlug: 'apparel',
-      imageUrl: 'https://images.unsplash.com/photo-1556821840-3a63f15732ce?w=800&q=80',
+      basePrice: 44.99,
+      catSlug: 'hoodies',
+      imageUrl:
+        'https://images.unsplash.com/photo-1556821840-3a63f15732ce?w=800&q=80',
       variants: [
-        { name: 'S/Black',  options: { Size: 'S',  Color: 'Black' }, price: 44.99, isDefault: false },
-        { name: 'M/Black',  options: { Size: 'M',  Color: 'Black' }, price: 44.99, isDefault: true  },
-        { name: 'L/Black',  options: { Size: 'L',  Color: 'Black' }, price: 44.99, isDefault: false },
-        { name: 'XL/Black', options: { Size: 'XL', Color: 'Black' }, price: 44.99, isDefault: false },
+        {
+          name: 'S/Black',
+          options: { Size: 'S', Color: 'Black' },
+          price: 44.99,
+          isDefault: false,
+        },
+        {
+          name: 'M/Black',
+          options: { Size: 'M', Color: 'Black' },
+          price: 44.99,
+          isDefault: true,
+        },
+        {
+          name: 'L/Black',
+          options: { Size: 'L', Color: 'Black' },
+          price: 44.99,
+          isDefault: false,
+        },
+        {
+          name: 'XL/Black',
+          options: { Size: 'XL', Color: 'Black' },
+          price: 44.99,
+          isDefault: false,
+        },
       ],
     },
+    // ── 8 ─────────────────────────────────────────────────────────────────────
     {
-      name: 'Family Name Sign', slug: 'family-name-sign', sku: 'SIG-001',
-      description: 'Elegant solid wood sign engraved with your family name and established date. Ready to hang.',
+      name: 'Family Name Sign',
+      slug: 'family-name-sign',
+      sku: 'SIG-001',
+      description:
+        'Elegant solid wood sign engraved with your family name and established date. Ready to hang.',
       shortDescription: 'Personalized family name sign',
-      basePrice: 39.99, catSlug: 'accessories',
-      imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
+      basePrice: 39.99,
+      catSlug: 'wood-acrylic-art',
+      imageUrl:
+        'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
       variants: [
-        { name: '12" Natural', options: { Size: '12in', Color: 'Natural' }, price: 39.99, isDefault: true  },
-        { name: '18" Natural', options: { Size: '18in', Color: 'Natural' }, price: 54.99, isDefault: false },
+        {
+          name: '12" Natural',
+          options: { Size: '12in', Color: 'Natural' },
+          price: 39.99,
+          isDefault: true,
+        },
+        {
+          name: '18" Natural',
+          options: { Size: '18in', Color: 'Natural' },
+          price: 54.99,
+          isDefault: false,
+        },
       ],
     },
+    // ── 9 ─────────────────────────────────────────────────────────────────────
     {
-      name: 'Pet Portrait Canvas', slug: 'pet-portrait-canvas', sku: 'PET-001',
-      description: 'Turn your pet photo into a stunning watercolor-style canvas print. Gallery wrapped, ready to hang.',
+      name: 'Pet Portrait Canvas',
+      slug: 'pet-portrait-canvas',
+      sku: 'PET-001',
+      description:
+        'Turn your pet photo into a stunning watercolor-style canvas print. Gallery wrapped, ready to hang.',
       shortDescription: 'Custom pet portrait canvas',
-      basePrice: 54.99, catSlug: 'canvas',
-      imageUrl: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800&q=80',
+      basePrice: 54.99,
+      catSlug: 'canvas',
+      imageUrl:
+        'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800&q=80',
       variants: [
-        { name: '8×10" Watercolor',  options: { Size: '8x10',  Style: 'Watercolor' }, price: 54.99, isDefault: true  },
-        { name: '12×16" Watercolor', options: { Size: '12x16', Style: 'Watercolor' }, price: 74.99, isDefault: false },
+        {
+          name: '8×10" Watercolor',
+          options: { Size: '8x10', Style: 'Watercolor' },
+          price: 54.99,
+          isDefault: true,
+        },
+        {
+          name: '12×16" Watercolor',
+          options: { Size: '12x16', Style: 'Watercolor' },
+          price: 74.99,
+          isDefault: false,
+        },
       ],
     },
+    // ── 10 ────────────────────────────────────────────────────────────────────
     {
-      name: 'Custom Birth Stats Print', slug: 'custom-birth-stats-print', sku: 'BRT-001',
-      description: "Commemorative print with your baby's birth stats — name, date, weight, and height.",
+      name: 'Custom Birth Stats Print',
+      slug: 'custom-birth-stats-print',
+      sku: 'BRT-001',
+      description:
+        "Commemorative print with your baby's birth stats — name, date, weight, and height.",
       shortDescription: 'Personalized baby birth stats print',
-      basePrice: 32.99, catSlug: 'canvas',
-      imageUrl: 'https://images.unsplash.com/photo-1555252333-9f8e92e65df9?w=800&q=80',
+      basePrice: 32.99,
+      catSlug: 'canvas',
+      imageUrl:
+        'https://images.unsplash.com/photo-1555252333-9f8e92e65df9?w=800&q=80',
       variants: [
-        { name: '8×10"',  options: { Size: '8x10'  }, price: 32.99, isDefault: true  },
-        { name: '11×14"', options: { Size: '11x14' }, price: 42.99, isDefault: false },
+        {
+          name: '8×10"',
+          options: { Size: '8x10' },
+          price: 32.99,
+          isDefault: true,
+        },
+        {
+          name: '11×14"',
+          options: { Size: '11x14' },
+          price: 42.99,
+          isDefault: false,
+        },
+      ],
+    },
+    // ── 11 ────────────────────────────────────────────────────────────────────
+    {
+      name: 'Personalized Cutting Board',
+      slug: 'personalized-cutting-board',
+      sku: 'CUT-001',
+      description:
+        'Bamboo cutting board laser-engraved with your family name and established year. Food safe finish, juice groove.',
+      shortDescription: 'Custom engraved bamboo cutting board',
+      basePrice: 44.99,
+      compareAtPrice: 54.99,
+      catSlug: 'cutting-boards',
+      imageUrl:
+        'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80',
+      variants: [
+        {
+          name: 'Small 8×6',
+          options: { Size: 'Small (8×6")' },
+          price: 44.99,
+          isDefault: true,
+        },
+        {
+          name: 'Large 12×8',
+          options: { Size: 'Large (12×8")' },
+          price: 64.99,
+          isDefault: false,
+        },
+      ],
+    },
+    // ── 12 ────────────────────────────────────────────────────────────────────
+    {
+      name: 'Custom Photo Phone Case',
+      slug: 'custom-photo-phone-case',
+      sku: 'PHN-001',
+      description:
+        'Slim hard shell phone case printed with your photo. Available for iPhone 14/15 and Samsung Galaxy.',
+      shortDescription: 'Custom photo phone case',
+      basePrice: 19.99,
+      catSlug: 'phone-cases',
+      imageUrl:
+        'https://images.unsplash.com/photo-1586953208270-7a3b38c26e33?w=800&q=80',
+      variants: [
+        {
+          name: 'iPhone 15',
+          options: { Model: 'iPhone 15' },
+          price: 19.99,
+          isDefault: true,
+        },
+        {
+          name: 'iPhone 15 Pro',
+          options: { Model: 'iPhone 15 Pro' },
+          price: 19.99,
+          isDefault: false,
+        },
+        {
+          name: 'iPhone 14',
+          options: { Model: 'iPhone 14' },
+          price: 19.99,
+          isDefault: false,
+        },
+        {
+          name: 'Samsung S24',
+          options: { Model: 'Samsung S24' },
+          price: 19.99,
+          isDefault: false,
+        },
+      ],
+    },
+    // ── 13 ────────────────────────────────────────────────────────────────────
+    {
+      name: 'Custom Anniversary Map Print',
+      slug: 'anniversary-map-print',
+      sku: 'MAP-001',
+      description:
+        'A beautiful star map or city map from the night of your special date. Gallery-wrap canvas, ready to hang.',
+      shortDescription: 'Personalized anniversary map canvas',
+      basePrice: 59.99,
+      compareAtPrice: 74.99,
+      catSlug: 'canvas',
+      isFeatured: true,
+      imageUrl:
+        'https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800&q=80',
+      variants: [
+        {
+          name: '12×16" Canvas',
+          options: { Size: '12×16"', Type: 'Canvas' },
+          price: 59.99,
+          isDefault: true,
+        },
+        {
+          name: '12×16" Framed',
+          options: { Size: '12×16"', Type: 'Framed' },
+          price: 79.99,
+          isDefault: false,
+        },
+      ],
+    },
+    // ── 14 ────────────────────────────────────────────────────────────────────
+    {
+      name: 'Couples Mug Set',
+      slug: 'couples-mug-set',
+      sku: 'MUG-002',
+      description:
+        'Set of two matching ceramic mugs personalized with your names and a special date. Dishwasher and microwave safe.',
+      shortDescription: 'Matching couples mug set',
+      basePrice: 49.99,
+      compareAtPrice: 59.99,
+      catSlug: 'coffee-mugs',
+      imageUrl:
+        'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=800&q=80',
+      variants: [
+        {
+          name: '2×11oz',
+          options: { Size: '2 × 11oz' },
+          price: 49.99,
+          isDefault: true,
+        },
+        {
+          name: '2×15oz',
+          options: { Size: '2 × 15oz' },
+          price: 59.99,
+          isDefault: false,
+        },
+      ],
+    },
+    // ── 15 ────────────────────────────────────────────────────────────────────
+    {
+      name: 'Personalized Wine Glass',
+      slug: 'personalized-wine-glass',
+      sku: 'WIN-001',
+      description:
+        'Elegant stemmed wine glass with custom name or message laser-etched. Perfect wedding or housewarming gift.',
+      shortDescription: 'Custom engraved wine glass',
+      basePrice: 24.99,
+      catSlug: 'wine-glasses',
+      imageUrl:
+        'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=800&q=80',
+      variants: [
+        {
+          name: '15oz Clear',
+          options: { Size: '15oz', Color: 'Clear' },
+          price: 24.99,
+          isDefault: true,
+        },
+        {
+          name: '15oz Stemless',
+          options: { Size: '15oz', Style: 'Stemless' },
+          price: 22.99,
+          isDefault: false,
+        },
+      ],
+    },
+    // ── 16 ────────────────────────────────────────────────────────────────────
+    {
+      name: 'Custom Family Reunion T-Shirt',
+      slug: 'custom-family-reunion-tshirt',
+      sku: 'TEE-001',
+      description:
+        'Soft 100% cotton t-shirt with custom family name and year on the back. Great for family events.',
+      shortDescription: 'Custom family reunion tee',
+      basePrice: 24.99,
+      catSlug: 'classic-tees',
+      imageUrl:
+        'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&q=80',
+      variants: [
+        {
+          name: 'S/White',
+          options: { Size: 'S', Color: 'White' },
+          price: 24.99,
+          isDefault: false,
+        },
+        {
+          name: 'M/White',
+          options: { Size: 'M', Color: 'White' },
+          price: 24.99,
+          isDefault: true,
+        },
+        {
+          name: 'L/White',
+          options: { Size: 'L', Color: 'White' },
+          price: 24.99,
+          isDefault: false,
+        },
+        {
+          name: 'XL/White',
+          options: { Size: 'XL', Color: 'White' },
+          price: 24.99,
+          isDefault: false,
+        },
+      ],
+    },
+    // ── 17 ────────────────────────────────────────────────────────────────────
+    {
+      name: 'Custom Name Keychain',
+      slug: 'custom-name-keychain',
+      sku: 'KEY-001',
+      description:
+        'Durable stainless steel keychain laser-engraved with your name, initials, or short message.',
+      shortDescription: 'Custom engraved keychain',
+      basePrice: 14.99,
+      catSlug: 'keychains',
+      imageUrl:
+        'https://images.unsplash.com/photo-1533234427049-9e9bb093186d?w=800&q=80',
+      variants: [
+        {
+          name: 'Silver',
+          options: { Color: 'Silver' },
+          price: 14.99,
+          isDefault: true,
+        },
+        {
+          name: 'Gold',
+          options: { Color: 'Gold' },
+          price: 16.99,
+          isDefault: false,
+        },
+        {
+          name: 'Rose Gold',
+          options: { Color: 'Rose Gold' },
+          price: 16.99,
+          isDefault: false,
+        },
+      ],
+    },
+    // ── 18 ────────────────────────────────────────────────────────────────────
+    {
+      name: 'Custom Baby Onesie',
+      slug: 'custom-baby-onesie',
+      sku: 'ONS-001',
+      description:
+        'Soft 100% cotton onesie with your custom text or name. Gentle on sensitive baby skin.',
+      shortDescription: 'Personalized baby onesie',
+      basePrice: 19.99,
+      catSlug: 'onesies',
+      imageUrl:
+        'https://images.unsplash.com/photo-1522771930-78848d9293e8?w=800&q=80',
+      variants: [
+        {
+          name: '0-3M White',
+          options: { Size: '0-3M', Color: 'White' },
+          price: 19.99,
+          isDefault: true,
+        },
+        {
+          name: '3-6M White',
+          options: { Size: '3-6M', Color: 'White' },
+          price: 19.99,
+          isDefault: false,
+        },
+        {
+          name: '6-12M White',
+          options: { Size: '6-12M', Color: 'White' },
+          price: 19.99,
+          isDefault: false,
+        },
+      ],
+    },
+    // ── 19 ────────────────────────────────────────────────────────────────────
+    {
+      name: 'Custom Pet Portrait Pillow',
+      slug: 'custom-pet-portrait-pillow',
+      sku: 'PEP-001',
+      description:
+        'Turn your pet photo into a stunning throw pillow. Vibrant sublimation print, soft polyester cover.',
+      shortDescription: 'Custom pet portrait pillow',
+      basePrice: 37.99,
+      catSlug: 'throw-pillows',
+      imageUrl:
+        'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800&q=80',
+      variants: [
+        {
+          name: '16×16"',
+          options: { Size: '16×16"' },
+          price: 37.99,
+          isDefault: true,
+        },
+        {
+          name: '18×18"',
+          options: { Size: '18×18"' },
+          price: 42.99,
+          isDefault: false,
+        },
+      ],
+    },
+    // ── 20 ────────────────────────────────────────────────────────────────────
+    {
+      name: 'Personalized Graduation Frame',
+      slug: 'personalized-graduation-frame',
+      sku: 'FRM-001',
+      description:
+        'Elegant acrylic desk frame for your graduation photo, personalized with name, degree, and year.',
+      shortDescription: 'Custom graduation photo frame',
+      basePrice: 34.99,
+      catSlug: 'acrylic-plaques',
+      imageUrl:
+        'https://images.unsplash.com/photo-1627556704290-2b1f5853ff78?w=800&q=80',
+      variants: [
+        {
+          name: '5×7" Acrylic',
+          options: { Size: '5×7"', Material: 'Acrylic' },
+          price: 34.99,
+          isDefault: true,
+        },
+        {
+          name: '8×10" Acrylic',
+          options: { Size: '8×10"', Material: 'Acrylic' },
+          price: 44.99,
+          isDefault: false,
+        },
       ],
     },
   ];
@@ -441,13 +1480,25 @@ async function seedProducts() {
 
   for (const def of products) {
     const { variants, imageUrl, catSlug, isFeatured = false, ...fields } = def;
-    const categoryId = categoryIds[catSlug] ?? fallback;
+
+    // IMPROVE 1: throw in dev so missing slugs are caught immediately
+    const categoryId = categoryIds[catSlug] ?? null;
     if (!categoryId) {
-      console.warn(`  ⚠  Skipping ${def.name} — category '${catSlug}' not found`);
-      continue;
+      if (process.env['NODE_ENV'] === 'production') {
+        console.warn(
+          `  ⚠  Skipping ${def.name} — category '${catSlug}' not found`,
+        );
+        continue;
+      }
+      throw new Error(
+        `Seed error: category slug '${catSlug}' not found for product '${def.name}'. ` +
+          `Did you add it to slugsNeeded and seedCategories()?`,
+      );
     }
 
-    const existing = await prisma.product.findUnique({ where: { slug: def.slug } });
+    const existing = await prisma.product.findUnique({
+      where: { slug: def.slug },
+    });
     if (existing) {
       productIds[def.slug] = existing.id;
       console.log(`  ⏭  Product (exists): ${def.name}`);
@@ -460,10 +1511,12 @@ async function seedProducts() {
         categoryId,
         isFeatured,
         isPersonalizable: true,
-        isActive:         true,
-        processingDays:   3,
+        isActive: true,
+        processingDays: 3,
         variants: { create: variants.map((v, i) => ({ ...v, sortOrder: i })) },
-        images:   { create: [{ url: imageUrl, isPrimary: true, sortOrder: 0 }] },
+        images: { create: [{ url: imageUrl, isPrimary: true, sortOrder: 0 }] },
+        // FIX 1: also create the ProductCategory join record (isPrimary) for multi-category support
+        productCategories: { create: [{ categoryId, isPrimary: true }] },
       },
     });
     productIds[def.slug] = product.id;
@@ -477,15 +1530,68 @@ async function seedProducts() {
 
 async function seedCollectionLinks(
   collectionIds: Record<string, string>,
-  productIds:    Record<string, string>,
+  productIds: Record<string, string>,
 ) {
+  // ADD 3: extended with new products
   const links: Record<string, string[]> = {
-    'valentines-day':  ['custom-name-photo-mug', 'custom-photo-pillow', 'personalized-canvas-print'],
-    'birthday':        ['custom-name-photo-mug', 'monogram-tumbler', 'custom-birth-stats-print'],
-    'anniversary':     ['personalized-canvas-print', 'family-name-sign', 'pet-portrait-canvas'],
-    'mothers-day':     ['custom-photo-pillow', 'personalized-canvas-print', 'personalized-tote-bag'],
-    'graduation':      ['custom-name-hoodie', 'monogram-tumbler', 'personalized-tote-bag'],
-    'christmas':       ['custom-photo-ornament', 'family-name-sign', 'custom-name-photo-mug'],
+    'valentines-day': [
+      'custom-name-photo-mug',
+      'custom-photo-pillow',
+      'personalized-canvas-print',
+      'couples-mug-set',
+      'personalized-wine-glass',
+    ],
+    birthday: [
+      'custom-name-photo-mug',
+      'monogram-tumbler',
+      'custom-birth-stats-print',
+      'custom-name-keychain',
+      'custom-photo-phone-case',
+    ],
+    anniversary: [
+      'personalized-canvas-print',
+      'family-name-sign',
+      'pet-portrait-canvas',
+      'anniversary-map-print',
+      'couples-mug-set',
+    ],
+    'mothers-day': [
+      'custom-photo-pillow',
+      'personalized-canvas-print',
+      'personalized-tote-bag',
+      'custom-pet-portrait-pillow',
+      'personalized-cutting-board',
+    ],
+    graduation: [
+      'custom-name-hoodie',
+      'monogram-tumbler',
+      'personalized-tote-bag',
+      'personalized-graduation-frame',
+      'custom-family-reunion-tshirt',
+    ],
+    christmas: [
+      'custom-photo-ornament',
+      'family-name-sign',
+      'custom-name-photo-mug',
+      'custom-baby-onesie',
+      'personalized-cutting-board',
+    ],
+    'new-baby': ['custom-baby-onesie', 'custom-birth-stats-print'],
+    wedding: [
+      'anniversary-map-print',
+      'personalized-wine-glass',
+      'personalized-cutting-board',
+    ],
+    retirement: [
+      'personalized-graduation-frame',
+      'custom-name-hoodie',
+      'monogram-tumbler',
+    ],
+    'fathers-day': [
+      'personalized-cutting-board',
+      'custom-name-hoodie',
+      'monogram-tumbler',
+    ],
   };
 
   for (const [colSlug, pSlugs] of Object.entries(links)) {
@@ -495,7 +1601,7 @@ async function seedCollectionLinks(
       const productId = productIds[pSlugs[i]];
       if (!productId) continue;
       await prisma.collectionProduct.upsert({
-        where:  { collectionId_productId: { collectionId, productId } },
+        where: { collectionId_productId: { collectionId, productId } },
         update: {},
         create: { collectionId, productId, sortOrder: i },
       });
@@ -504,35 +1610,52 @@ async function seedCollectionLinks(
   console.log('  ✅ Collection ↔ product links');
 }
 
-// ── STEP 6 — MongoDB mega-menu documents ──────────────────────────────────────
+// ── MongoDB connection helper (IMPROVE 2) ─────────────────────────────────────
+
+async function connectMongo(retries = 3, delayMs = 2000): Promise<boolean> {
+  const uri = process.env['MONGODB_URI'] ?? 'mongodb://localhost:27017';
+  console.log(
+    `\n🍃 Connecting to MongoDB at ${uri.replace(/\/\/.*@/, '//<credentials>@')}...`,
+  );
+  for (let i = 0; i < retries; i++) {
+    try {
+      await mongoose.connect(uri, {
+        dbName: 'mapleloomhandmade',
+        serverSelectionTimeoutMS: 3000,
+      });
+      console.log('  ✅ MongoDB connected');
+      return true;
+    } catch (err) {
+      console.warn(
+        `  ⚠  MongoDB attempt ${i + 1}/${retries} failed: ${(err as Error).message}`,
+      );
+      if (i < retries - 1) await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  return false;
+}
+
+// ── STEP 6a — MongoDB mega-menu documents ─────────────────────────────────────
+// Connection is managed by main() — do not connect/disconnect here.
 
 async function seedMongoMenus() {
-  const uri = process.env['MONGODB_URI'] ?? 'mongodb://localhost:27017';
-  console.log(`\n🍃 Connecting to MongoDB at ${uri.replace(/\/\/.*@/, '//<credentials>@')}...`);
+  // FIX 5: include Interests with isVisible: false
+  const navSlugs: { navSlug: string; sortOrder: number; isVisible: boolean }[] =
+    [
+      { navSlug: 'gifts', sortOrder: 1, isVisible: true },
+      { navSlug: 'home-living', sortOrder: 2, isVisible: true },
+      { navSlug: 'drink-barware', sortOrder: 3, isVisible: true },
+      { navSlug: 'apparel', sortOrder: 4, isVisible: true },
+      { navSlug: 'accessories', sortOrder: 5, isVisible: true },
+      { navSlug: 'interests', sortOrder: 7, isVisible: false },
+    ];
 
-  try {
-    await mongoose.connect(uri, { dbName: 'mapleloomhandmade' });
-    console.log('  ✅ MongoDB connected');
-  } catch (err) {
-    console.warn(`  ⚠  MongoDB unavailable — skipping mega-menu seed (${(err as Error).message})`);
-    return;
-  }
-
-  // Build mega-menu docs by querying the freshly-seeded PG category tree
-  const navSlugs = [
-    { navSlug: 'home-living', sortOrder: 2 },
-    { navSlug: 'drink-barware', sortOrder: 3 },
-    { navSlug: 'apparel', sortOrder: 4 },
-    { navSlug: 'accessories', sortOrder: 5 },
-    { navSlug: 'gifts', sortOrder: 1 },
-  ];
-
-  for (const { navSlug, sortOrder } of navSlugs) {
+  for (const { navSlug, sortOrder, isVisible } of navSlugs) {
     const l1 = await prisma.category.findUnique({
-      where:   { slug: navSlug },
+      where: { slug: navSlug },
       include: {
         children: {
-          where:   { level: 2 },
+          where: { level: 2 },
           orderBy: { sortOrder: 'asc' },
           include: {
             children: { where: { level: 3 }, orderBy: { sortOrder: 'asc' } },
@@ -549,46 +1672,179 @@ async function seedMongoMenus() {
     await CategoryMenuModel.findOneAndUpdate(
       { navSlug },
       {
-        navLabel:   l1.name,
+        navLabel: l1.name,
         navSlug,
         categoryId: l1.id,
         sortOrder,
-        isVisible:  true,
+        isVisible,
         groups: l1.children.map((g, gi) => ({
-          title:      g.name,
+          title: g.name,
           categoryId: g.id,
-          slug:       g.slug,
-          sortOrder:  gi,
-          items:      g.children.map((item, ii) => ({
-            name:       item.name,
+          slug: g.slug,
+          sortOrder: gi,
+          items: g.children.map((item, ii) => ({
+            name: item.name,
             categoryId: item.id,
-            slug:       item.slug,
-            sortOrder:  ii,
+            slug: item.slug,
+            sortOrder: ii,
           })),
         })),
       },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: 'after' },
     );
 
     console.log(`  ✅ Mega-menu: ${l1.name} (${l1.children.length} groups)`);
   }
+}
 
-  await mongoose.disconnect();
-  console.log('  ✅ MongoDB disconnected');
+// ── STEP 6b — MongoDB ProductDetail documents (ADD 4) ─────────────────────────
+// Connection is managed by main() — do not connect/disconnect here.
+
+async function seedMongoProductDetails(productIds: Record<string, string>) {
+  const detailMap: Record<string, Omit<IProductDetail, 'productId'>> = {
+    'custom-name-photo-mug': {
+      attributes: [
+        { key: 'Material', value: 'Ceramic', filterable: true },
+        { key: 'Capacity', value: '11oz / 15oz', filterable: false },
+        { key: 'Dishwasher Safe', value: 'Yes', filterable: true },
+        { key: 'Microwave Safe', value: 'Yes', filterable: false },
+      ],
+      variantOptions: [
+        { name: 'Size', values: ['11oz', '15oz'] },
+        { name: 'Color', values: ['White', 'Black'] },
+      ],
+      printSpecs: {
+        minDPI: 150,
+        maxFileSize: 10,
+        acceptedFormats: ['jpg', 'png', 'webp', 'heic'],
+      },
+    },
+    'personalized-canvas-print': {
+      attributes: [
+        { key: 'Print Method', value: 'Giclée UV print', filterable: false },
+        { key: 'Frame', value: 'Gallery wrap', filterable: true },
+        { key: 'Material', value: 'Poly-cotton canvas', filterable: false },
+      ],
+      variantOptions: [{ name: 'Size', values: ['12x16', '16x20', '20x24'] }],
+      printSpecs: {
+        minDPI: 200,
+        maxFileSize: 20,
+        acceptedFormats: ['jpg', 'png'],
+      },
+    },
+    'monogram-tumbler': {
+      attributes: [
+        { key: 'Material', value: 'Stainless Steel 18/8', filterable: true },
+        { key: 'Insulation', value: 'Double-wall vacuum', filterable: false },
+        { key: 'Cold', value: '24 hours', filterable: false },
+        { key: 'Hot', value: '12 hours', filterable: false },
+        { key: 'BPA Free', value: 'Yes', filterable: true },
+      ],
+      variantOptions: [{ name: 'Size', values: ['20oz', '30oz'] }],
+      printSpecs: {
+        minDPI: 150,
+        maxFileSize: 10,
+        acceptedFormats: ['jpg', 'png', 'webp'],
+      },
+    },
+    'personalized-cutting-board': {
+      attributes: [
+        { key: 'Material', value: 'Bamboo', filterable: true },
+        { key: 'Food Safe', value: 'Yes', filterable: true },
+        { key: 'Juice Groove', value: 'Yes', filterable: false },
+        { key: 'Engrave Method', value: 'Laser', filterable: false },
+      ],
+      variantOptions: [
+        { name: 'Size', values: ['Small (8×6")', 'Large (12×8")'] },
+      ],
+      printSpecs: {
+        minDPI: 300,
+        maxFileSize: 5,
+        acceptedFormats: ['jpg', 'png', 'svg'],
+      },
+    },
+    'custom-photo-phone-case': {
+      attributes: [
+        { key: 'Material', value: 'Hard polycarbonate', filterable: false },
+        { key: 'Print', value: 'UV sublimation', filterable: false },
+        { key: 'Protection', value: 'Slim shell', filterable: true },
+      ],
+      variantOptions: [
+        {
+          name: 'Model',
+          values: ['iPhone 15', 'iPhone 15 Pro', 'iPhone 14', 'Samsung S24'],
+        },
+      ],
+      printSpecs: {
+        minDPI: 150,
+        maxFileSize: 10,
+        acceptedFormats: ['jpg', 'png', 'webp', 'heic'],
+      },
+    },
+    'custom-name-hoodie': {
+      attributes: [
+        {
+          key: 'Material',
+          value: '80% Cotton 20% Polyester',
+          filterable: true,
+        },
+        { key: 'Fit', value: 'Unisex regular', filterable: false },
+        { key: 'Care', value: 'Machine wash cold', filterable: false },
+        { key: 'Print', value: 'DTG (Direct-to-Garment)', filterable: false },
+      ],
+      variantOptions: [
+        { name: 'Size', values: ['S', 'M', 'L', 'XL'] },
+        { name: 'Color', values: ['Black'] },
+      ],
+      printSpecs: {
+        minDPI: 150,
+        maxFileSize: 10,
+        acceptedFormats: ['jpg', 'png', 'webp'],
+      },
+    },
+  };
+
+  let created = 0;
+  for (const [productSlug, detail] of Object.entries(detailMap)) {
+    const productId = productIds[productSlug];
+    if (!productId) continue;
+    await ProductDetailModel.findOneAndUpdate(
+      { productId },
+      { productId, ...detail },
+      { upsert: true, returnDocument: 'after' },
+    );
+    created++;
+  }
+  console.log(`  ✅ MongoDB ProductDetail: ${created} documents upserted`);
 }
 
 // ── STEP 7 — Promotions ───────────────────────────────────────────────────────
 
 async function seedPromotions() {
   await prisma.promotion.upsert({
-    where:  { code: 'WELCOME10' },
+    where: { code: 'WELCOME10' },
     update: {},
-    create: { code: 'WELCOME10', type: 'PERCENTAGE', value: 10, maxUsesPerUser: 1, isActive: true, description: '10% off your first order' },
+    create: {
+      code: 'WELCOME10',
+      type: 'PERCENTAGE',
+      value: 10,
+      maxUsesPerUser: 1,
+      isActive: true,
+      description: '10% off your first order',
+    },
   });
   await prisma.promotion.upsert({
-    where:  { code: 'FREESHIP50' },
+    where: { code: 'FREESHIP50' },
     update: {},
-    create: { code: 'FREESHIP50', type: 'FREE_SHIPPING', value: 0, minOrderAmount: 50, maxUsesPerUser: 3, isActive: true, description: 'Free shipping on orders over $50' },
+    create: {
+      code: 'FREESHIP50',
+      type: 'FREE_SHIPPING',
+      value: 0,
+      minOrderAmount: 50,
+      maxUsesPerUser: 3,
+      isActive: true,
+      description: 'Free shipping on orders over $50',
+    },
   });
   console.log('✅ Promotions seeded');
 }
@@ -596,34 +1852,105 @@ async function seedPromotions() {
 // ── STEP 8 — Shipping zones ───────────────────────────────────────────────────
 
 async function seedShippingZones() {
-  const usZone = await prisma.shippingZone.findFirst({ where: { name: 'United States' } });
+  const usZone = await prisma.shippingZone.findFirst({
+    where: { name: 'United States' },
+  });
   if (!usZone) {
     await prisma.shippingZone.create({
       data: {
-        name: 'United States', countries: ['US'],
-        methods: { create: [
-          { name: 'Standard (5-10 days)',  carrier: 'USPS',  price: 4.99,  freeShippingOver: 50, minDays: 5, maxDays: 10 },
-          { name: 'Express (2-3 days)',    carrier: 'FedEx', price: 14.99, minDays: 2, maxDays: 3 },
-          { name: 'Overnight',             carrier: 'UPS',   price: 29.99, minDays: 1, maxDays: 1 },
-        ]},
+        name: 'United States',
+        countries: ['US'],
+        methods: {
+          create: [
+            {
+              name: 'Standard (5-10 days)',
+              carrier: 'USPS',
+              price: 4.99,
+              freeShippingOver: 50,
+              minDays: 5,
+              maxDays: 10,
+            },
+            {
+              name: 'Express (2-3 days)',
+              carrier: 'FedEx',
+              price: 14.99,
+              minDays: 2,
+              maxDays: 3,
+            },
+            {
+              name: 'Overnight',
+              carrier: 'UPS',
+              price: 29.99,
+              minDays: 1,
+              maxDays: 1,
+            },
+          ],
+        },
       },
     });
     console.log('✅ Shipping zone: United States');
   }
 
-  const intlZone = await prisma.shippingZone.findFirst({ where: { name: 'International' } });
+  const intlZone = await prisma.shippingZone.findFirst({
+    where: { name: 'International' },
+  });
   if (!intlZone) {
     await prisma.shippingZone.create({
       data: {
-        name: 'International', countries: ['CA','GB','AU','DE','FR','JP','SG','NZ'],
-        methods: { create: [
-          { name: 'Standard International (14-21 days)', carrier: 'USPS',  price: 19.99, minDays: 14, maxDays: 21 },
-          { name: 'Express International (7-10 days)',   carrier: 'FedEx', price: 39.99, minDays: 7,  maxDays: 10 },
-        ]},
+        name: 'International',
+        countries: ['CA', 'GB', 'AU', 'DE', 'FR', 'JP', 'SG', 'NZ'],
+        methods: {
+          create: [
+            {
+              name: 'Standard International (14-21 days)',
+              carrier: 'USPS',
+              price: 19.99,
+              minDays: 14,
+              maxDays: 21,
+            },
+            {
+              name: 'Express International (7-10 days)',
+              carrier: 'FedEx',
+              price: 39.99,
+              minDays: 7,
+              maxDays: 10,
+            },
+          ],
+        },
       },
     });
     console.log('✅ Shipping zone: International');
   }
+}
+
+// ── Seed summary (IMPROVE 3) ──────────────────────────────────────────────────
+
+async function printSeedSummary() {
+  const [users, categories, collections, products, promotions, zones] =
+    await Promise.all([
+      prisma.user.count(),
+      prisma.category.count(),
+      prisma.collection.count(),
+      prisma.product.count(),
+      prisma.promotion.count(),
+      prisma.shippingZone.count(),
+    ]);
+
+  let mongoDetails: number | string = 'N/A (MongoDB not connected)';
+  if (mongoose.connection.readyState === 1 && mongoose.connection.db) {
+    mongoDetails = await mongoose.connection.db
+      .collection('product_details')
+      .countDocuments();
+  }
+
+  console.log('\n📊 Seed Summary:');
+  console.log(`  Users:          ${users}`);
+  console.log(`  Categories:     ${categories} (L1/L2/L3 combined)`);
+  console.log(`  Collections:    ${collections}`);
+  console.log(`  Products:       ${products}`);
+  console.log(`  Promotions:     ${promotions}`);
+  console.log(`  Shipping zones: ${zones}`);
+  console.log(`  Mongo details:  ${mongoDetails}`);
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -634,15 +1961,35 @@ async function main() {
   await seedAdmin();
   await seedCategories();
   const collectionIds = await seedCollections();
-  const productIds    = await seedProducts();
+  const productIds = await seedProducts();
   await seedCollectionLinks(collectionIds, productIds);
-  await seedMongoMenus();
   await seedPromotions();
   await seedShippingZones();
+
+  // MongoDB steps — connect once, run both, disconnect once (IMPROVE 2)
+  const mongoConnected = await connectMongo();
+  if (mongoConnected) {
+    await seedMongoMenus();
+    await seedMongoProductDetails(productIds);
+    await printSeedSummary(); // call while still connected so Mongo count is accurate
+    await mongoose.disconnect();
+    console.log('  ✅ MongoDB disconnected');
+  } else {
+    console.warn(
+      '  ⚠  Skipped all MongoDB steps (connection failed after retries)',
+    );
+    await printSeedSummary();
+  }
 
   console.log('\n🎉 Seeding complete!');
 }
 
 main()
-  .catch((e) => { console.error(e); process.exit(1); })
-  .finally(async () => { await prisma.$disconnect(); });
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+    await pool.end();
+  });

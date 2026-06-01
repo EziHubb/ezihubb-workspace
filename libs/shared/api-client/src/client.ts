@@ -157,3 +157,78 @@ export const api = {
   delete: <T>(path: string, opts?: RequestOptions) =>
     apiFetch<T>(path, { method: 'DELETE', ...opts }),
 };
+
+// ── apiClient — automatically unwraps { success, data, meta } envelope ─────────
+// Returns T where T is the type of the `data` field.
+// For paginated list endpoints, pass T = PaginatedResponse<X>; access .data for items.
+// For single-item endpoints, pass T = YourDto; use result directly.
+// Contrast with `api` (above) which also unwraps but uses the older apiFetch path.
+
+type ApiClientOptions = Omit<RequestInit, 'body'> & {
+  body?: unknown;
+  params?: Record<string, string | number | boolean | undefined>;
+  token?: string;
+  /** Next.js ISR / full-route cache control — passed through to fetch() */
+  next?: { revalidate?: number | false; tags?: string[] };
+};
+
+async function apiRequest<T>(path: string, options: ApiClientOptions = {}): Promise<T> {
+  const { body, params, token, ...init } = options;
+
+  const url = new URL(`${baseUrl}/api/v1${path}`);
+  if (params) {
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        url.searchParams.set(k, String(v));
+      }
+    });
+  }
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : getAuthHeader()),
+    ...(init.headers as Record<string, string>),
+  };
+
+  const res = await fetch(url.toString(), {
+    credentials: 'include',
+    ...init,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+
+  const json = await res.json();
+
+  if (!res.ok || !json.success) {
+    const err = new Error(json.error?.message ?? 'Request failed') as Error & {
+      code?: string;
+      details?: { field: string; message: string }[];
+      status?: number;
+    };
+    err.code    = json.error?.code;
+    err.details = json.error?.details;
+    err.status  = res.status;
+    throw err;
+  }
+
+  // Unwrap standard API envelope { success: true, data: X, meta: {...} }
+  // so callers receive X directly rather than the full envelope.
+  if (json !== null && typeof json === 'object' && 'data' in json && 'meta' in json) {
+    return (json as { data: T }).data;
+  }
+
+  return json as T;
+}
+
+export const apiClient = {
+  get:    <T>(path: string, options?: ApiClientOptions) =>
+            apiRequest<T>(path, { method: 'GET', ...options }),
+  post:   <T>(path: string, body?: unknown, options?: ApiClientOptions) =>
+            apiRequest<T>(path, { method: 'POST', body, ...options }),
+  patch:  <T>(path: string, body?: unknown, options?: ApiClientOptions) =>
+            apiRequest<T>(path, { method: 'PATCH', body, ...options }),
+  put:    <T>(path: string, body?: unknown, options?: ApiClientOptions) =>
+            apiRequest<T>(path, { method: 'PUT', body, ...options }),
+  delete: <T>(path: string, options?: ApiClientOptions) =>
+            apiRequest<T>(path, { method: 'DELETE', ...options }),
+};

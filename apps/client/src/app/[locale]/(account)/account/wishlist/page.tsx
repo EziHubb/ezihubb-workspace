@@ -4,9 +4,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { Heart, ShoppingCart, HeartOff } from 'lucide-react';
-import { useWishlist, useMutateWishlist, useMutateCart } from '@mlh/api-client';
+import { queryKeys, useMutateCart } from '@mlh/api-client';
 import { useToast } from '@mlh/ui';
 import type { WishlistItemDto } from '@mlh/types';
+import { useAuthQuery, useAuthMutation } from '../../../../../lib/hooks/useAuthQuery';
+import { apiClient } from '@mlh/api-client';
 
 // ── Wishlist product card ─────────────────────────────────────────────────────
 
@@ -87,21 +89,29 @@ export default function WishlistPage() {
   const locale       = useLocale();
   const toast = useToast();
 
-  const { data: items = [], isLoading } = useWishlist();
-  const { removeFromWishlist }          = useMutateWishlist();
-  const { addItem }                     = useMutateCart();
+  const { data: items = [], isLoading } = useAuthQuery<WishlistItemDto[]>(
+    queryKeys.wishlist(),
+    '/users/me/wishlist',
+  );
 
-  // Track which IDs are pending (for button disabled state)
+  const removeMutation = useAuthMutation(
+    (productId: string, token: string) =>
+      apiClient.delete<void>(`/users/me/wishlist/${productId}`, { token }),
+    {
+      invalidateKeys: [queryKeys.wishlist()],
+      onSuccess:      () => toast.info('Removed from wishlist'),
+    },
+  );
+
+  const { addItem } = useMutateCart();
+
   const removingId =
-    removeFromWishlist.isPending ? (removeFromWishlist.variables as string) : null;
-  const addingId =
+    removeMutation.isPending ? (removeMutation.variables as string) : null;
+  const addingId   =
     addItem.isPending ? (addItem.variables as { productId: string }).productId : null;
 
   const handleRemove = (productId: string) => {
-    removeFromWishlist.mutate(productId, {
-      onSuccess: () => toast.info('Removed from wishlist'),
-      onError:   () => toast.error('Failed to remove item'),
-    });
+    removeMutation.mutate(productId);
   };
 
   const handleAddToCart = (productId: string) => {
@@ -161,7 +171,7 @@ export default function WishlistPage() {
             saved item{items.length !== 1 ? 's' : ''}
           </p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
-            {items.map((item) => (
+            {items.map((item: WishlistItemDto) => (
               <WishlistCard
                 key={item.id}
                 item={item}

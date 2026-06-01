@@ -5,9 +5,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Copy, Check, Package, Home } from 'lucide-react';
-import { api, queryKeys } from '@mlh/api-client';
+import { apiClient, queryKeys } from '@mlh/api-client';
 import { useCartStore } from '../../../../../lib/store/cart.store';
 import type { OrderDto } from '@mlh/types';
 
@@ -90,12 +90,13 @@ export default function CheckoutSuccessPage() {
   const searchParams = useSearchParams();
   const orderNumber  = searchParams.get('order') ?? '';
   const closeDrawer  = useCartStore((s) => s.closeDrawer);
-  const qc           = useQueryClient();
+  const clearCart    = useCartStore((s) => s.clearCart);
 
-  // Close cart drawer if open
+  // Close cart drawer and clear cart data immediately on landing
   useEffect(() => {
     closeDrawer();
-  }, [closeDrawer]);
+    useCartStore.getState().clearCart();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Poll order until status is no longer PENDING_PAYMENT.
@@ -103,25 +104,17 @@ export default function CheckoutSuccessPage() {
    */
   const { data: order, isLoading, isError } = useQuery({
     queryKey: queryKeys.order(orderNumber),
-    queryFn:  () => api.get<OrderDto>(`/orders/${orderNumber}`),
+    queryFn: () => apiClient.get<OrderDto>(`/orders/${orderNumber}`),
     enabled:  Boolean(orderNumber),
-    // Poll every 2 s while still PENDING_PAYMENT
+    // Poll every 2 s while still PENDING_PAYMENT (Stripe webhook may take a moment)
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       if (status === 'PENDING_PAYMENT' || !status) return 2_000;
-      return false;
+      return false; // stop polling once confirmed
     },
-    // Stop polling after 2 minutes
     gcTime:    2 * 60_000,
     staleTime: 0,
   });
-
-  // Clear cart from React Query cache once order is confirmed
-  useEffect(() => {
-    if (order && order.status !== 'PENDING_PAYMENT') {
-      qc.setQueryData(queryKeys.cart(), null);
-    }
-  }, [order?.status, qc]);
 
   // ── Fallback when no order number ──────────────────────────────────────────
 

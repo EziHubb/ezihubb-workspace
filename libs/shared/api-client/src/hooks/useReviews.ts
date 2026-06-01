@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import type { UseQueryOptions } from '@tanstack/react-query';
 import { api } from '../client';
 import { API_ROUTES } from '@mlh/constants';
 import type { ReviewDto, ReviewSummaryDto, PaginatedResponse } from '@mlh/types';
@@ -11,6 +12,7 @@ export interface ReviewsQuery {
   limit?:  number;
   /** Filter by exact star rating */
   rating?: number;
+  status?: string;
 }
 
 // ── Hooks ─────────────────────────────────────────────────────────────────────
@@ -18,8 +20,13 @@ export interface ReviewsQuery {
 /**
  * Paginated, filterable review list for a product.
  * Enabled once `productSlug` is a non-empty string.
+ * Pass `options.enabled = false` to suppress the fetch (e.g. when showing server-rendered initial data).
  */
-export function useReviews(productSlug: string, query: ReviewsQuery = {}) {
+export function useReviews(
+  productSlug: string,
+  query: ReviewsQuery = {},
+  options?: Partial<UseQueryOptions<PaginatedResponse<ReviewDto>>>,
+) {
   return useQuery({
     queryKey: queryKeys.reviews(productSlug, query),
     queryFn:  () =>
@@ -29,6 +36,7 @@ export function useReviews(productSlug: string, query: ReviewsQuery = {}) {
       ),
     enabled:   Boolean(productSlug),
     staleTime: 60_000,
+    ...options,
   });
 }
 

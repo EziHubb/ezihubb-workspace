@@ -43,7 +43,7 @@ export function ProductPageInteractive({
     addItem.mutate(
       {
         productId: product.id,
-        variantId: (selectedVariant as unknown as { id?: string })?.id ?? selectedVariant?.sku ?? null,
+        variantId: selectedVariant?.sku ?? null,
         quantity:  1,
       },
       {
@@ -57,35 +57,18 @@ export function ProductPageInteractive({
 
   const isOutOfStock = selectedVariant?.isAvailable === false;
 
-  // Prefer MongoDB flexible variants; fall back to mapping legacy PG variants
-  const flexVariants: FlexVariant[] = (product as unknown as { mongoVariants?: FlexVariant[] }).mongoVariants?.length
-    ? (product as unknown as { mongoVariants: FlexVariant[] }).mongoVariants
-    : (product.variants ?? []).map((v) => ({
-        sku:         v.sku ?? v.id,
-        options:     (v.attributes as Record<string, string> | undefined) ??
-                     Object.fromEntries(
-                       (['size', 'color', 'material'] as const)
-                         .filter((k) => v[k])
-                         .map((k) => [k.charAt(0).toUpperCase() + k.slice(1), v[k] as string])
-                     ),
-        price:       typeof v.price === 'number' ? v.price : 0,
-        isDefault:   (v as unknown as { isDefault?: boolean }).isDefault,
-        isAvailable: v.isActive,
-      }));
+  // Map ProductVariantDto (typed) to FlexVariant used by VariantPicker
+  const flexVariants: FlexVariant[] = (product.variants ?? []).map((v) => ({
+    sku:           v.sku,
+    options:       v.options,
+    price:         typeof v.price === 'number' ? v.price : 0,
+    compareAtPrice: v.compareAtPrice,
+    isDefault:     v.isDefault,
+    isAvailable:   v.isAvailable,
+  }));
 
-  const variantOptions: VariantOption[] = (product as unknown as { variantOptions?: VariantOption[] }).variantOptions?.length
-    ? (product as unknown as { variantOptions: VariantOption[] }).variantOptions
-    : (() => {
-        // Derive dimensions from legacy PG variant data
-        const map = new Map<string, Set<string>>();
-        for (const v of flexVariants) {
-          for (const [k, val] of Object.entries(v.options)) {
-            if (!map.has(k)) map.set(k, new Set());
-            map.get(k)!.add(val);
-          }
-        }
-        return Array.from(map.entries()).map(([name, values]) => ({ name, values: Array.from(values) }));
-      })();
+  // variantOptions comes from MongoDB (merged by the API into ProductDto)
+  const variantOptions: VariantOption[] = product.variantOptions ?? [];
 
   return (
     <>
@@ -104,7 +87,7 @@ export function ProductPageInteractive({
             productName={product.name}
             basePrice={effectivePrice}
             locale={locale}
-            variantId={(selectedVariant as unknown as { id?: string })?.id ?? null}
+            variantId={selectedVariant?.sku ?? null}
             isLoggedIn={isLoggedIn}
             onCartSuccess={() => openDrawer()}
           />

@@ -9,11 +9,14 @@ import {
 } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
+import { useQuery } from '@tanstack/react-query';
 import { Search, X, TrendingUp } from 'lucide-react';
+import { apiClient, queryKeys } from '@mlh/api-client';
+import { useDebounce } from '../../lib/hooks/useDebounce';
 
-// ── Popular search chips (shown when input is empty) ──────────────────────────
+// ── Fallback popular searches (shown when trending API isn't available) ────────
 
-const POPULAR_SEARCHES = [
+const FALLBACK_SEARCHES = [
   'custom mug',
   'photo canvas',
   'personalized gift',
@@ -28,20 +31,13 @@ function escapeRegExp(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-const API_BASE = () =>
-  (typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_API_URL']) ||
-  'http://localhost:3002';
-
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface SearchInputProps {
-  /** Initial query value */
   defaultValue?: string;
-  /** 'page' = large bar on search page. 'navbar' = compact inline. */
   variant?:      'page' | 'navbar';
   placeholder?:  string;
   className?:    string;
-  /** Called when user confirms a search (Enter / suggestion click). */
   onSearch?:     (query: string) => void;
   autoFocus?:    boolean;
 }
@@ -62,51 +58,45 @@ export function SearchInput({
   const pathname = usePathname();
   const locale   = useLocale();
 
-  const [value,       setValue]       = useState(defaultValue);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [isFocused,   setIsFocused]   = useState(false);
-  const [isLoading,   setIsLoading]   = useState(false);
-  const [activeIdx,   setActiveIdx]   = useState(-1);
+  const [value,     setValue]     = useState(defaultValue);
+  const [isFocused, setIsFocused] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
 
-  const inputRef    = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const abortRef    = useRef<AbortController | null>(null);
+  const inputRef   = useRef<HTMLInputElement>(null);
+  const routeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Sync defaultValue when it changes externally (page navigation) ─────────
+  // Debounce for autocomplete — avoids a query on every keystroke
+  const debouncedValue = useDebounce(value, 300);
+
+  // Sync defaultValue on external navigation
   useEffect(() => {
     setValue(defaultValue);
   }, [defaultValue]);
 
-  // ── Fetch autocomplete suggestions with AbortController ───────────────────
-  const fetchSuggestions = useCallback((q: string) => {
-    // Cancel previous inflight request
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
+  // ── Autocomplete via React Query ──────────────────────────────────────────
+  const { data: suggestions = [] } = useQuery({
+    queryKey: queryKeys.autocomplete(debouncedValue),
+    queryFn:  () =>
+      apiClient
+        .get<string[]>('/search/autocomplete', {
+          params: { q: debouncedValue },
+        }),
+    enabled:   debouncedValue.length >= 2,
+    staleTime: 60_000,
+  });
 
-    if (q.trim().length < 2) {
-      setSuggestions([]);
-      setIsLoading(false);
-      return;
-    }
+  // ── Trending keywords (shown in empty dropdown state) ─────────────────────
+  const { data: trendingTerms = [] } = useQuery({
+    queryKey: queryKeys.trending(),
+    queryFn:  () =>
+      apiClient
+        .get<string[]>('/search/trending'),
+    staleTime: 5 * 60_000,
+  });
 
-    setIsLoading(true);
+  const popularTerms = trendingTerms.length > 0 ? trendingTerms : FALLBACK_SEARCHES;
 
-    fetch(
-      `${API_BASE()}/api/v1/search/suggestions?q=${encodeURIComponent(q)}`,
-      { credentials: 'include', signal: controller.signal },
-    )
-      .then((r) => (r.ok ? r.json() : { data: [] }))
-      .then((body) => {
-        setSuggestions((body.data ?? body ?? []).slice(0, 8));
-        setIsLoading(false);
-      })
-      .catch((err: Error) => {
-        if (err.name !== 'AbortError') setIsLoading(false);
-      });
-  }, []);
-
-  // ── Navigate to search page with current value ────────────────────────────
+  // ── Navigation ─────────────────────────────────────────────────────────────
   const navigate = useCallback(
     (q: string) => {
       const trimmed = q.trim();
@@ -117,29 +107,27 @@ export function SearchInput({
     [locale, router, onSearch],
   );
 
-  // ── Handle input change — debounce both suggestion fetch + navigation ──────
+  // ── Handle input change ────────────────────────────────────────────────────
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const q = e.target.value;
     setValue(q);
     setActiveIdx(-1);
 
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      fetchSuggestions(q);
-      // Update URL only if we're already on the search page
+    // Update URL live if already on search page (no delay needed — debounce handles it)
+    if (routeTimer.current) clearTimeout(routeTimer.current);
+    routeTimer.current = setTimeout(() => {
       if (pathname.includes('/search')) {
         const url = new URL(window.location.href);
         if (q.trim()) url.searchParams.set('q', q.trim());
         else          url.searchParams.delete('q');
         router.replace(url.pathname + url.search);
       }
-    }, 300);
+    }, 350);
   };
 
   // ── Keyboard navigation ────────────────────────────────────────────────────
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    const items = suggestions.length > 0 ? suggestions : [];
-    const max   = items.length - 1;
+    const max = suggestions.length - 1;
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -149,14 +137,12 @@ export function SearchInput({
       setActiveIdx((i) => (i <= 0 ? max : i - 1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      const selected = activeIdx >= 0 ? items[activeIdx] : value;
+      const selected = activeIdx >= 0 ? suggestions[activeIdx] : value;
       setValue(selected ?? value);
-      setSuggestions([]);
       setActiveIdx(-1);
       navigate(selected ?? value);
       inputRef.current?.blur();
     } else if (e.key === 'Escape') {
-      setSuggestions([]);
       setActiveIdx(-1);
       inputRef.current?.blur();
     }
@@ -164,24 +150,20 @@ export function SearchInput({
 
   const selectSuggestion = (s: string) => {
     setValue(s);
-    setSuggestions([]);
     setActiveIdx(-1);
     navigate(s);
   };
 
   const clearInput = () => {
     setValue('');
-    setSuggestions([]);
     setActiveIdx(-1);
-    abortRef.current?.abort();
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (routeTimer.current) clearTimeout(routeTimer.current);
     inputRef.current?.focus();
     if (pathname.includes('/search')) router.replace(`/${locale}/search`);
   };
 
   const showDropdown =
-    isFocused &&
-    (suggestions.length > 0 || (value.trim().length === 0 && !isLoading));
+    isFocused && (suggestions.length > 0 || value.trim().length === 0);
 
   // ── Styles by variant ──────────────────────────────────────────────────────
   const isPage    = variant === 'page';
@@ -210,10 +192,7 @@ export function SearchInput({
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          onFocus={() => {
-            setIsFocused(true);
-            if (value.length >= 2) fetchSuggestions(value);
-          }}
+          onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 150)}
           placeholder={placeholder}
           autoFocus={autoFocus}
@@ -226,15 +205,12 @@ export function SearchInput({
           ].join(' ')}
         />
 
-        {/* Clear button */}
         {value && (
           <button
             type="button"
             onClick={clearInput}
             aria-label="Clear search"
-            className={[
-              'absolute right-0 top-0 h-full px-2.5 flex items-center text-muted hover:text-secondary transition-colors',
-            ].join(' ')}
+            className="absolute right-0 top-0 h-full px-2.5 flex items-center text-muted hover:text-secondary transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -250,7 +226,7 @@ export function SearchInput({
           className="absolute top-full left-0 right-0 z-50 mt-1 bg-surface border border-border rounded-card shadow-floating overflow-hidden"
         >
           {suggestions.length > 0 ? (
-            // ── Autocomplete suggestions ─────────────────────────────────────
+            // Autocomplete suggestions from API
             <ul>
               {suggestions.map((s, i) => {
                 const re    = new RegExp(`(${escapeRegExp(value)})`, 'gi');
@@ -265,16 +241,16 @@ export function SearchInput({
                       onClick={() => selectSuggestion(s)}
                       className={[
                         'w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition-colors',
-                        i === activeIdx ? 'bg-primary/8 text-primary' : 'hover:bg-muted/5 text-secondary',
+                        i === activeIdx
+                          ? 'bg-primary/8 text-primary'
+                          : 'hover:bg-muted/5 text-secondary',
                       ].join(' ')}
                     >
                       <Search className="w-3.5 h-3.5 text-muted shrink-0" />
                       <span>
                         {parts.map((part, j) =>
                           re.test(part) ? (
-                            <strong key={j} className="font-semibold">
-                              {part}
-                            </strong>
+                            <strong key={j} className="font-semibold">{part}</strong>
                           ) : (
                             <span key={j}>{part}</span>
                           ),
@@ -286,14 +262,14 @@ export function SearchInput({
               })}
             </ul>
           ) : (
-            // ── Popular searches (empty state) ─────────────────────────────
+            // Trending / popular searches (empty state)
             <div className="p-4">
               <p className="flex items-center gap-1.5 text-xs font-semibold text-muted uppercase tracking-wide mb-3">
                 <TrendingUp className="w-3.5 h-3.5" />
-                Popular searches
+                Trending searches
               </p>
               <div className="flex flex-wrap gap-2">
-                {POPULAR_SEARCHES.map((term) => (
+                {popularTerms.slice(0, 8).map((term) => (
                   <button
                     key={term}
                     type="button"

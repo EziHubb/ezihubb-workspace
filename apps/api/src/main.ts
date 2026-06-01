@@ -2,6 +2,7 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import * as https from 'https';
 const cookieParser = require('cookie-parser');
 
 import { AppModule } from './app/app.module';
@@ -10,7 +11,65 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { RequestIdInterceptor } from './common/interceptors/request-id.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 
+// ── MongoDB SRV resolution via DNS-over-HTTPS ─────────────────────────────────
+// UDP port 53 (regular DNS) may be blocked; DoH uses HTTPS (port 443) instead.
+// Resolves the Atlas SRV record and rewrites MONGODB_URI to a direct connection
+// string so Mongoose never needs to do SRV DNS resolution itself.
+
+function dohFetch(url: string): Promise<Record<string, unknown>> {
+  return new Promise((resolve, reject) => {
+    https.get(url, { headers: { accept: 'application/dns-json' } }, (res) => {
+      let data = '';
+      res.on('data', (c: Buffer) => (data += c.toString()));
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
+      });
+    }).on('error', reject);
+  });
+}
+
+async function resolveMongoSrvUri(originalUri: string): Promise<string> {
+  if (!originalUri.startsWith('mongodb+srv://')) return originalUri;
+  try {
+    const url  = new URL(originalUri.replace('mongodb+srv://', 'https://'));
+    const host = url.hostname;
+
+    const [srvResp, txtResp] = await Promise.all([
+      dohFetch(`https://dns.google/resolve?name=_mongodb._tcp.${host}&type=SRV`),
+      dohFetch(`https://dns.google/resolve?name=${host}&type=TXT`),
+    ]);
+
+    const srvAnswers = ((srvResp['Answer'] ?? []) as { type: number; data: string }[])
+      .filter((r) => r.type === 33);
+    if (!srvAnswers.length) return originalUri;
+
+    const hosts = srvAnswers.map((r) => {
+      const parts = r.data.trim().split(/\s+/);
+      return `${parts[3].replace(/\.$/, '')}:${parts[2]}`;
+    }).join(',');
+
+    const txtAnswers = ((txtResp['Answer'] ?? []) as { type: number; data: string }[])
+      .filter((r) => r.type === 16);
+    const txtOptions = txtAnswers.map((r) => r.data.replace(/^"|"$/g, '').replace(/"\s*"/g, '')).join('&')
+      || 'authSource=admin';
+
+    const creds   = `${url.username}:${encodeURIComponent(decodeURIComponent(url.password))}`;
+    const extraQs = url.search ? url.search.slice(1) : '';
+    const qs      = [txtOptions, 'tls=true', extraQs].filter(Boolean).join('&');
+    const direct  = `mongodb://${creds}@${hosts}/?${qs}`;
+    Logger.log(`MongoDB SRV resolved via DoH → ${hosts.split(',')[0]}`, 'Bootstrap');
+    return direct;
+  } catch (e) {
+    Logger.warn(`MongoDB DoH SRV resolution failed: ${(e as Error).message} — using original URI`, 'Bootstrap');
+    return originalUri;
+  }
+}
+
 async function bootstrap() {
+  // Pre-resolve MongoDB SRV before NestJS initialises (avoids OS DNS failure)
+  const rawMongoUri = process.env['MONGODB_URI'] ?? 'mongodb://localhost:27017';
+  process.env['MONGODB_URI'] = await resolveMongoSrvUri(rawMongoUri);
+
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
     rawBody: true, // needed for Stripe webhook signature verification
@@ -115,3 +174,18 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+// Prevent Redis connection-closed errors from crashing the process.
+// BullMQ/ioredis emits this when Redis is unavailable; HTTP server stays up.
+process.on('uncaughtException', (error: Error) => {
+  if (
+    error.message === 'Connection is closed.' ||
+    error.message.includes('ECONNREFUSED') ||
+    error.message.includes('querySrv')
+  ) {
+    Logger.warn(`[Queue/DB] Non-fatal connection error: ${error.message}`, 'Bootstrap');
+    return;
+  }
+  Logger.error('Uncaught exception — exiting', error.stack, 'Bootstrap');
+  process.exit(1);
+});
