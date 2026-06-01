@@ -21,6 +21,8 @@ const playfair = Playfair_Display({
   display: 'swap',
 });
 
+export const dynamic = 'force-dynamic';
+
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }

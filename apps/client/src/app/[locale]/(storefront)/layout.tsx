@@ -4,9 +4,10 @@ import { Footer } from '../../../components/layout/Footer';
 import { MobileBottomNav } from '../../../components/layout/MobileBottomNav';
 import type { MegaMenuTab } from '../../../types/mega-menu';
 
-// ── Server-side mega menu fetch ────────────────────────────────────────────────
-// Cached for 10 minutes — matches the Redis TTL on the API side.
-// Falls back gracefully to empty nav links if the API is unavailable.
+// All storefront routes render dynamically at request time.
+// The mega-menu fetch below is still DATA-cached for 10 minutes via next.revalidate —
+// only the route-level full-route cache is disabled.
+export const dynamic = 'force-dynamic';
 
 export default async function StorefrontLayout({
   children,
