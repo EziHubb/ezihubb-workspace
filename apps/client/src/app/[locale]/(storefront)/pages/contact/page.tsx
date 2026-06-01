@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { MessageCircle, Mail, Package, Clock } from 'lucide-react';
 import { ContactForm } from '../../../../../components/pages/ContactForm';
 
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title:       'Contact Us | Maple Handmade',

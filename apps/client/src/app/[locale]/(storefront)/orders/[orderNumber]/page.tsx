@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { OrderDetailClient } from '../../../../../components/orders/OrderDetailClient';
 
+export const dynamic = 'force-dynamic';
+
 // ── Metadata ──────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({
