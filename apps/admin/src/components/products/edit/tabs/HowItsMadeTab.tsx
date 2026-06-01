@@ -8,6 +8,7 @@ import {
   ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { clientFetch } from '../../../../lib/api';
+import { fetchArr } from '../../../../lib/fmt';
 import type {
   ProductEditFormValues, WhoMadeIt, HowItWasMade, GpsrInfo,
 } from '../types';
@@ -396,10 +397,8 @@ function ProductionPartnersSection({
   const { data: allPartners = [] } = useQuery<ProductionPartner[]>({
     queryKey: ['production-partners'],
     queryFn:  async () => {
-      const res  = await clientFetch('/admin/production-partners');
-      if (!res.ok) return [];
-      const body = await res.json();
-      return (body.data ?? body) as ProductionPartner[];
+      const res = await clientFetch('/admin/production-partners');
+      return fetchArr<ProductionPartner>(res);
     },
     staleTime: 5 * 60_000,
   });

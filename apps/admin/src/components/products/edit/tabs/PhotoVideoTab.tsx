@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import type { ProductEditFormValues, AdminProductDto, ProductImage } from '../types';
+import { safeArr } from '../../../../lib/fmt';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -54,7 +55,7 @@ async function uploadImages(
   });
   if (!res.ok) throw new Error('Upload failed');
   const body = await res.json();
-  return ((body.data ?? body) as ProductImage[]).map((img) => img.id);
+  return safeArr<ProductImage>(body.data ?? body).map((img) => img.id);
 }
 
 // ─── Modals ───────────────────────────────────────────────────────────────────

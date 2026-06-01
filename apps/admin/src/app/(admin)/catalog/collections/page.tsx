@@ -9,6 +9,7 @@ import {
 import Image from 'next/image';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { clientFetch } from '../../../../lib/api';
+import { fetchArr } from '../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -78,9 +79,8 @@ function ProductSearchRow({ onAdd }: { onAdd: (p: ProductSnippet) => void }) {
     if (query.length < 2) { setResults([]); return; }
     setLoading(true);
     try {
-      const res  = await clientFetch(`/admin/products?q=${encodeURIComponent(query)}&limit=10`);
-      const body = await res.json();
-      setResults((body.data ?? body).slice(0, 10));
+      const res = await clientFetch(`/admin/products?q=${encodeURIComponent(query)}&limit=10`);
+      setResults((await fetchArr<ProductSnippet>(res)).slice(0, 10));
     } catch { setResults([]); } finally { setLoading(false); }
   };
 

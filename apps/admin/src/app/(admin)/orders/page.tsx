@@ -12,6 +12,7 @@ import { OrderDrawer } from '../../../components/orders/OrderDrawer';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import type { OrderDetail } from '../../../components/orders/OrderDrawer';
 import { clientFetch } from '../../../lib/api';
+import { fmtAmount, unwrapArr } from '../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -126,8 +127,8 @@ export default function OrdersPage() {
     setSelected((body.data ?? body) as OrderDetail);
   };
 
-  const orders = data?.data ?? [];
-  const pagination = data?.pagination;
+  const orders = unwrapArr<OrderRow>(data?.data ?? data);
+  const pagination = (data as { pagination?: unknown } | null)?.pagination as { page: number; limit: number; total: number } | undefined;
 
   // Active filter chips
   const chips: { label: string; clear: () => void }[] = [];
@@ -184,7 +185,7 @@ export default function OrdersPage() {
       header:      'Total',
       cell:        ({ row }) => (
         <span className="text-sm font-semibold text-secondary tabular-nums">
-          ${Number(row.original.total).toFixed(2)}
+          {fmtAmount(row.original.total)}
         </span>
       ),
     },

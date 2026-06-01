@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { clientFetch } from '../../../../lib/api';
+import { fetchArr, safeArr } from '../../../../lib/fmt';
 import type { ProductEditFormValues, AdminProductDto, ProductImage } from '../types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -697,10 +698,8 @@ function VariationsSummaryTable({
   const { data: groups = [], isLoading } = useQuery<VariationGroup[]>({
     queryKey: ['variation-groups', product.id],
     queryFn:  async () => {
-      const res  = await clientFetch(`/admin/products/${product.id}/variations`);
-      if (!res.ok) return [];
-      const body = await res.json();
-      return (body.data ?? body) as VariationGroup[];
+      const res = await clientFetch(`/admin/products/${product.id}/variations`);
+      return fetchArr<VariationGroup>(res);
     },
     staleTime: 30_000,
   });
@@ -809,10 +808,8 @@ function VariationsModal({
   const { data: groups = [] } = useQuery<VariationGroup[]>({
     queryKey: ['variation-groups', product.id],
     queryFn:  async () => {
-      const res  = await clientFetch(`/admin/products/${product.id}/variations`);
-      if (!res.ok) return [];
-      const body = await res.json();
-      return (body.data ?? body) as VariationGroup[];
+      const res = await clientFetch(`/admin/products/${product.id}/variations`);
+      return fetchArr<VariationGroup>(res);
     },
     staleTime: 30_000,
   });

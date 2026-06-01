@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { format, differenceInMonths } from 'date-fns';
 import { ArrowLeft, Mail, MapPin, Phone, Calendar } from 'lucide-react';
 import { serverFetch } from '../../../../lib/api';
+import { fmtAmount, fmtCurrency } from '../../../../lib/fmt';
 import { OrderStatusBadge } from '../../../../components/orders/OrderStatusBadge';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import {
@@ -159,14 +160,14 @@ export default async function CustomerDetailPage({
           <div className="text-center mb-3">
             <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">Lifetime Value</p>
             <p className="text-3xl font-bold text-primary tabular-nums">
-              ${customer.totalSpent.toFixed(2)}
+              {fmtAmount(customer.totalSpent)}
             </p>
           </div>
 
           <div className="grid grid-cols-3 text-center gap-2 mt-3">
             {[
               { label: 'Orders',    value: customer.ordersCount },
-              { label: 'Avg Order', value: `$${customer.avgOrderValue.toFixed(0)}` },
+              { label: 'Avg Order', value: fmtCurrency(customer.avgOrderValue, 0) },
               { label: 'Returns',   value: customer.returnsCount },
             ].map((s) => (
               <div key={s.label} className="bg-background rounded-button p-2">
@@ -204,7 +205,7 @@ export default async function CustomerDetailPage({
                     </p>
                   </div>
                   <span className="text-sm font-bold text-secondary tabular-nums shrink-0">
-                    ${order.total.toFixed(2)}
+                    {fmtAmount(order.total)}
                   </span>
                 </li>
               ))}

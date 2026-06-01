@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { DataTable } from '../../../components/data/DataTable';
 import { clientFetch } from '../../../lib/api';
+import { fmtAmount } from '../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -112,7 +113,7 @@ export default function ProductsPage() {
       enableSorting: true,
       cell:        ({ getValue }: { getValue: () => unknown }) => (
         <span className="text-sm font-semibold text-secondary tabular-nums">
-          ${(getValue() as number).toFixed(2)}
+          {fmtAmount(getValue() as number | undefined)}
         </span>
       ),
     },

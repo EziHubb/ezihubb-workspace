@@ -9,6 +9,7 @@ import {
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { clientFetch } from '../../lib/api';
+import { fmtAmount, fmtFixed, fetchArr } from '../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -153,18 +154,16 @@ export function PaymentDetailDrawer({ payment, onClose, onRefund }: PaymentDetai
   // Fetch previous refunds
   const { data: refunds = [] } = useQuery<Refund[]>({
     queryKey: ['payment-refunds', payment.id],
-    queryFn:  async () => {
-      const res  = await clientFetch(`/payments/${payment.id}/refunds`);
-      const body = await res.json();
-      return (body.data ?? body) as Refund[];
-    },
+    queryFn:  async () => fetchArr<Refund>(
+      await clientFetch(`/payments/${payment.id}/refunds`),
+    ),
     enabled: canRefund,
   });
 
   const handleRefund = async () => {
     const amt = parseFloat(refundAmount);
     if (isNaN(amt) || amt <= 0)     { setRefundError('Enter a valid amount'); return; }
-    if (amt > maxRefund)             { setRefundError(`Max refundable: $${maxRefund.toFixed(2)}`); return; }
+    if (amt > maxRefund)             { setRefundError(`Max refundable: ${fmtAmount(maxRefund)}`); return; }
 
     setSubmitting(true);
     setRefundError(null);
@@ -238,14 +237,14 @@ export function PaymentDetailDrawer({ payment, onClose, onRefund }: PaymentDetai
             </InfoRow>
             <InfoRow label="Amount">
               <span className="text-lg font-bold text-secondary tabular-nums">
-                ${payment.amount.toFixed(2)}
+                {fmtAmount(payment.amount)}
                 <span className="text-xs font-normal text-muted ml-1">{payment.currency}</span>
               </span>
             </InfoRow>
             {payment.refundedAmount > 0 && (
               <InfoRow label="Refunded">
                 <span className="text-sm font-semibold text-orange-600 tabular-nums">
-                  −${payment.refundedAmount.toFixed(2)}
+                  −{fmtAmount(payment.refundedAmount)}
                 </span>
               </InfoRow>
             )}
@@ -305,13 +304,13 @@ export function PaymentDetailDrawer({ payment, onClose, onRefund }: PaymentDetai
               </InfoRow>
               <InfoRow label="Amount Applied">
                 <span className="text-sm font-bold text-pink-600 tabular-nums">
-                  ${(payment.giftCardAmount ?? 0).toFixed(2)}
+                  {fmtAmount(payment.giftCardAmount)}
                 </span>
               </InfoRow>
               {(payment.method === 'MIXED') && (
                 <InfoRow label="Stripe Charge">
                   <span className="text-sm font-medium text-secondary tabular-nums">
-                    ${(payment.amount - (payment.giftCardAmount ?? 0)).toFixed(2)}
+                    {fmtAmount((payment.amount ?? 0) - (payment.giftCardAmount ?? 0))}
                   </span>
                 </InfoRow>
               )}
@@ -337,14 +336,14 @@ export function PaymentDetailDrawer({ payment, onClose, onRefund }: PaymentDetai
                         value={refundAmount}
                         onChange={(e) => setRefundAmount(e.target.value)}
                         className="w-full pl-7 pr-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted"
-                        placeholder={`Max $${maxRefund.toFixed(2)}`}
+                        placeholder={`Max ${fmtAmount(maxRefund)}`}
                       />
                     </div>
                     <div className="flex items-center justify-between mt-1">
                       <p className="text-xs text-muted">Max: ${maxRefund.toFixed(2)}</p>
                       <button
                         type="button"
-                        onClick={() => setRefundAmount(maxRefund.toFixed(2))}
+                        onClick={() => setRefundAmount(fmtFixed(maxRefund, 2))}
                         className="text-xs text-primary hover:underline"
                       >
                         Full refund

@@ -9,6 +9,7 @@ import {
   Globe, Package, Truck, RotateCcw,
 } from 'lucide-react';
 import { clientFetch } from '../../../../lib/api';
+import { fetchArr, fmtFixed, fmtAmount } from '../../../../lib/fmt';
 import type { ProductEditFormValues, AdminProductDto, ReturnPolicy } from '../types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -188,12 +189,12 @@ function EstimatedEarningsRow({
   if (price <= 0) return null;
 
   const earningsLabel = earningsHigh
-    ? `$${earnings.toFixed(2)} to $${earningsHigh.toFixed(2)}`
-    : `$${earnings.toFixed(2)}`;
+    ? `${fmtAmount(earnings)} to ${fmtAmount(earningsHigh)}`
+    : fmtAmount(earnings);
 
   const FEE_ROWS = [
-    { label: 'Transaction fee',      value: -(price * PLATFORM_FEE_PCT),           pct: `${(PLATFORM_FEE_PCT * 100).toFixed(1)}%` },
-    { label: 'Payment processing',   value: -(price * PAYMENT_FEE_PCT + PAYMENT_FEE_FIXED), pct: `${(PAYMENT_FEE_PCT * 100).toFixed(1)}% + $${PAYMENT_FEE_FIXED.toFixed(2)}` },
+    { label: 'Transaction fee',    value: -(price * PLATFORM_FEE_PCT),                  pct: `${fmtFixed(PLATFORM_FEE_PCT * 100, 1)}%` },
+    { label: 'Payment processing', value: -(price * PAYMENT_FEE_PCT + PAYMENT_FEE_FIXED), pct: `${fmtFixed(PAYMENT_FEE_PCT * 100, 1)}% + ${fmtAmount(PAYMENT_FEE_FIXED)}` },
   ];
 
   return (
@@ -308,9 +309,8 @@ function ProcessingProfileCard({
   const { data: profiles = [] } = useQuery<ProcessingProfile[]>({
     queryKey: ['processing-profiles'],
     queryFn:  async () => {
-      const res  = await clientFetch('/admin/shipping/processing-profiles');
-      const body = await res.json();
-      return (body.data ?? body) as ProcessingProfile[];
+      const res = await clientFetch('/admin/shipping/processing-profiles');
+      return fetchArr<ProcessingProfile>(res);
     },
     staleTime: 10 * 60_000,
   });
@@ -438,9 +438,8 @@ function ShippingProfileCard({
   const { data: profiles = [] } = useQuery<ShippingProfile[]>({
     queryKey: ['shipping-profiles'],
     queryFn:  async () => {
-      const res  = await clientFetch('/admin/shipping/profiles');
-      const body = await res.json();
-      return (body.data ?? body) as ShippingProfile[];
+      const res = await clientFetch('/admin/shipping/profiles');
+      return fetchArr<ShippingProfile>(res);
     },
     staleTime: 10 * 60_000,
   });

@@ -19,6 +19,7 @@ import {
 } from '../../../components/shipping/ShippingMethodModal';
 import { clientFetch } from '../../../lib/api';
 import { Toggle as PrimitiveToggle } from '../../../components/products/edit/primitives';
+import { fmtAmount, fetchArr } from '../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -197,7 +198,7 @@ function ZoneCard({
                   </span>
 
                   <span className={`text-sm font-semibold shrink-0 tabular-nums ${Number(method.price) === 0 ? 'text-green-600' : 'text-secondary'}`}>
-                    {Number(method.price) === 0 ? 'Free' : `$${Number(method.price).toFixed(2)}`}
+                    {(method.price ?? 0) == 0 ? 'Free' : fmtAmount(method.price)}
                   </span>
 
                   {!method.isActive && (
@@ -256,9 +257,8 @@ export default function ShippingPage() {
   const zonesQuery = useQuery<ShippingZone[]>({
     queryKey: ['admin-shipping-zones'],
     queryFn:  async () => {
-      const res  = await clientFetch('/admin/shipping/zones');
-      const body = await res.json();
-      return (body.data ?? body) as ShippingZone[];
+      const res = await clientFetch('/admin/shipping/zones');
+      return fetchArr<ShippingZone>(res);
     },
   });
 

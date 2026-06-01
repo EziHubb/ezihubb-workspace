@@ -12,6 +12,7 @@ import {
 import { OrderStatusBadge, ALL_STATUSES } from '../../../../components/orders/OrderStatusBadge';
 import { CustomizationPreviewModal } from '../../../../components/orders/CustomizationPreviewModal';
 import { clientFetch } from '../../../../lib/api';
+import { fmtAmount } from '../../../../lib/fmt';
 import type { OrderDetail, OrderItem } from '../../../../components/orders/OrderDrawer';
 
 // ── Timeline (same as drawer) ─────────────────────────────────────────────────
@@ -116,8 +117,8 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
                   )}
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-semibold text-secondary">${(item.unitPrice * item.quantity).toFixed(2)}</p>
-                  <p className="text-xs text-muted">{item.quantity} × ${item.unitPrice.toFixed(2)}</p>
+                  <p className="text-sm font-semibold text-secondary">{fmtAmount((item.unitPrice ?? 0) * (item.quantity ?? 0))}</p>
+                  <p className="text-xs text-muted">{item.quantity ?? 0} × {fmtAmount(item.unitPrice)}</p>
                 </div>
               </li>
             ))}

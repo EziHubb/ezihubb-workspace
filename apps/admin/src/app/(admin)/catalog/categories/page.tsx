@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { clientFetch } from '../../../../lib/api';
+import { fetchArr } from '../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -392,9 +393,8 @@ export default function CategoriesPage() {
   const { data: tree = [], isLoading } = useQuery<Category[]>({
     queryKey: ['admin-categories'],
     queryFn:  async () => {
-      const res  = await clientFetch('/catalog/categories');
-      const body = await res.json();
-      return (body.data ?? body) as Category[];
+      const res = await clientFetch('/catalog/categories');
+      return fetchArr<Category>(res);
     },
   });
 

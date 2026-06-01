@@ -7,6 +7,7 @@ import {
 import { X, Users, DollarSign, TrendingUp, Award } from 'lucide-react';
 import { format } from 'date-fns';
 import { clientFetch } from '../../lib/api';
+import { fmtNum, fmtAmount, fmtFixed, safeArr } from '../../lib/fmt';
 import type { Promotion } from './PromotionModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -140,17 +141,17 @@ export function PromotionStatsDrawer({ promotion, onClose }: PromotionStatsDrawe
               <div className="grid grid-cols-4 gap-3">
                 <StatMini
                   label="Total Used"
-                  value={stats.totalUsed.toLocaleString()}
+                  value={fmtNum(stats.totalUsed)}
                   icon={Users}
                 />
                 <StatMini
                   label="Discount Given"
-                  value={`$${stats.totalDiscount.toFixed(0)}`}
+                  value={fmtAmount(stats.totalDiscount)}
                   icon={DollarSign}
                 />
                 <StatMini
                   label="Avg Order Size"
-                  value={`$${stats.avgOrderSize.toFixed(0)}`}
+                  value={fmtAmount(stats.avgOrderSize)}
                   icon={TrendingUp}
                 />
                 <StatMini
@@ -171,10 +172,10 @@ export function PromotionStatsDrawer({ promotion, onClose }: PromotionStatsDrawe
                 <h5 className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">
                   Daily Usage — Last 30 Days
                 </h5>
-                {stats.dailyUsage.length > 0 ? (
+                {safeArr(stats.dailyUsage).length > 0 ? (
                   <div className="h-44">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={stats.dailyUsage} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                      <BarChart data={safeArr(stats.dailyUsage)} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
                         <XAxis
                           dataKey="date"
@@ -205,7 +206,7 @@ export function PromotionStatsDrawer({ promotion, onClose }: PromotionStatsDrawe
                 <h5 className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">
                   Recent Usages
                 </h5>
-                {stats.recentUsages.length === 0 ? (
+                {safeArr(stats.recentUsages).length === 0 ? (
                   <p className="text-sm text-muted text-center py-6">No usages recorded yet.</p>
                 ) : (
                   <div className="border border-border rounded-card overflow-hidden">
@@ -220,7 +221,7 @@ export function PromotionStatsDrawer({ promotion, onClose }: PromotionStatsDrawe
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {stats.recentUsages.map((u) => (
+                        {safeArr<UsageRow>(stats.recentUsages).map((u) => (
                           <tr key={u.id} className="hover:bg-muted/3 transition-colors">
                             <td className="px-3 py-2.5">
                               <p className="text-xs font-medium text-secondary truncate max-w-[100px]">
@@ -236,7 +237,7 @@ export function PromotionStatsDrawer({ promotion, onClose }: PromotionStatsDrawe
                               </span>
                             </td>
                             <td className="px-3 py-2.5 text-xs font-semibold text-secondary tabular-nums">
-                              −${u.discountAmount.toFixed(2)}
+                              −{fmtAmount(u.discountAmount)}
                             </td>
                             <td className="px-3 py-2.5 text-[11px] text-muted whitespace-nowrap">
                               {format(new Date(u.usedAt), 'MMM d, yy')}

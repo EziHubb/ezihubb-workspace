@@ -13,6 +13,7 @@ import { DataTable } from '../../../components/data/DataTable';
 import { PromotionModal, type Promotion, type PromotionFormData } from '../../../components/promotions/PromotionModal';
 import { PromotionStatsDrawer } from '../../../components/promotions/PromotionStatsDrawer';
 import { clientFetch } from '../../../lib/api';
+import { fmtAmount, fmtFixed, fmtNum } from '../../../lib/fmt';
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
@@ -252,7 +253,7 @@ export default function PromotionsPage() {
         const { type, value } = row.original;
         if (type === 'FREE_SHIPPING') return <span className="text-sm text-teal-600 font-semibold">Free</span>;
         if (type === 'PERCENTAGE')    return <span className="text-sm font-semibold text-secondary">{value}%</span>;
-        return <span className="text-sm font-semibold text-secondary">${Number(value).toFixed(2)}</span>;
+        return <span className="text-sm font-semibold text-secondary">{fmtAmount(Number(value) || 0)}</span>;
       },
     },
     {
@@ -261,7 +262,7 @@ export default function PromotionsPage() {
       size:   100,
       cell:   ({ row }: { row: { original: Promotion } }) =>
         row.original.minOrderAmount
-          ? <span className="text-sm text-muted">${Number(row.original.minOrderAmount).toFixed(0)}</span>
+          ? <span className="text-sm text-muted">{fmtAmount(Number(row.original.minOrderAmount) || 0)}</span>
           : <span className="text-muted text-xs">—</span>,
     },
     {
@@ -367,13 +368,13 @@ export default function PromotionsPage() {
         />
         <MiniStat
           label="Revenue Discounted"
-          value={stats ? `$${(stats.revenueDiscounted ?? 0).toFixed(0)}` : '—'}
+          value={stats ? fmtAmount(stats.revenueDiscounted) : '—'}
           icon={TrendingDown}
           color="amber"
         />
         <MiniStat
           label="Avg Discount Value"
-          value={stats ? `$${(stats.avgDiscountValue ?? 0).toFixed(2)}` : '—'}
+          value={stats ? fmtAmount(stats.avgDiscountValue) : '—'}
           icon={Zap}
           color="green"
         />

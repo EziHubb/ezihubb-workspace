@@ -17,6 +17,7 @@ import {
   type PaymentMethod,
 } from '../../../components/payments/PaymentDetailDrawer';
 import { clientFetch } from '../../../lib/api';
+import { fmtCurrency, fmtAmount, fmtPercent } from '../../../lib/fmt';
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
@@ -294,7 +295,7 @@ export default function PaymentsPage() {
       <div className="grid grid-cols-4 gap-4 mb-6">
         <MiniStat
           label="Revenue This Month"
-          value={stats ? `$${stats.revenueThisMonth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+          value={stats ? fmtCurrency(stats.revenueThisMonth, 2) : '—'}
           icon={DollarSign}
           color="coral"
         />
@@ -306,13 +307,13 @@ export default function PaymentsPage() {
         />
         <MiniStat
           label="Refunds This Month"
-          value={stats ? `$${stats.refundsThisMonth.toFixed(2)}` : '—'}
+          value={stats ? fmtAmount(stats.refundsThisMonth) : '—'}
           icon={RotateCcw}
           color="red"
         />
         <MiniStat
           label="Success Rate"
-          value={stats ? `${stats.successRate.toFixed(1)}%` : '—'}
+          value={stats ? fmtPercent(stats.successRate) : '—'}
           icon={TrendingUp}
           color="green"
           sub={stats ? `${stats.successRate >= 98 ? 'Excellent' : stats.successRate >= 95 ? 'Good' : 'Needs attention'}` : undefined}
