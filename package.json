@@ -21,8 +21,8 @@
     "db:generate": "prisma generate --schema=prisma/schema.prisma",
     "db:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
     "db:seed": "prisma db seed --schema=prisma/schema.prisma",
-    "db:seed:mongo": "ts-node prisma/seed-mongo.ts",
     "db:reset": "prisma migrate reset --force --schema=prisma/schema.prisma",
+    "db:fresh": "pnpm db:reset && pnpm db:seed",
     "db:studio": "prisma studio --schema=prisma/schema.prisma",
     "migrate:products": "ts-node scripts/migrate-products-to-mongo.ts"
   },
