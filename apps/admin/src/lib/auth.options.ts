@@ -3,11 +3,29 @@ import Credentials from 'next-auth/providers/credentials';
 
 // ── NEXTAUTH_URL auto-detection ───────────────────────────────────────────────
 // NextAuth v4 REQUIRES NEXTAUTH_URL in production to build callback/redirect URLs.
-// Railway exposes RAILWAY_PUBLIC_DOMAIN automatically; we use it as fallback so
-// the admin works even when NEXTAUTH_URL is not explicitly set in Railway vars.
+// Preferred: set NEXTAUTH_URL explicitly in Railway admin service Variables.
+// Fallbacks try several Railway-injected vars in order.
 
-if (!process.env['NEXTAUTH_URL'] && process.env['RAILWAY_PUBLIC_DOMAIN']) {
-  process.env['NEXTAUTH_URL'] = `https://${process.env['RAILWAY_PUBLIC_DOMAIN']}`;
+if (!process.env['NEXTAUTH_URL']) {
+  const detected =
+    // Railway injects this per-service (most reliable automatic fallback)
+    (process.env['RAILWAY_PUBLIC_DOMAIN']
+      ? `https://${process.env['RAILWAY_PUBLIC_DOMAIN']}`
+      : null) ??
+    // Older Railway var name
+    (process.env['RAILWAY_STATIC_URL']
+      ? `https://${process.env['RAILWAY_STATIC_URL']}`
+      : null);
+
+  if (detected) {
+    process.env['NEXTAUTH_URL'] = detected;
+  } else if (process.env['NODE_ENV'] === 'production') {
+    // Log clearly so Railway build logs show why auth is broken
+    console.error(
+      '[Admin auth] NEXTAUTH_URL is not set and could not be auto-detected. ' +
+      'Set NEXTAUTH_URL=https://<your-admin-domain> in Railway Variables.',
+    );
+  }
 }
 
 // ── API base URL ──────────────────────────────────────────────────────────────
