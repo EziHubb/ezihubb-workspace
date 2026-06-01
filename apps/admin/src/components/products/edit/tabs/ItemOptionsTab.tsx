@@ -13,6 +13,7 @@ import type { ProductEditFormValues, AdminProductDto, ProductImage } from '../ty
 import { VariantImagePicker } from '../VariantImagePicker';
 import { ManageVariationsModal } from '../ManageVariationsModal';
 import { CustomOptionsEditor } from '../CustomOptionsEditor';
+import { AttributeSearchSelect } from '../AttributeSearchSelect';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -220,9 +221,9 @@ function AttributeTagInput({
   );
 }
 
-// ─── AttributeSearchSelect ────────────────────────────────────────────────────
+// ─── AttributeSearchSelect (legacy — replaced by ../AttributeSearchSelect.tsx) ─
 
-function AttributeSearchSelect({
+function _AttributeSearchSelect_REMOVED({
   label, name, maxSelections, tooltip, description, dataKey,
 }: {
   label:         string;
@@ -1039,7 +1040,7 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
               label="Materials"
               name="materials"
               maxSelections={5}
-              dataKey="materials"
+              searchEndpoint="/admin/attributes/material"
               description="Select up to 5"
             />
 
@@ -1048,7 +1049,7 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
               label="Primary color"
               name="primaryColors"
               maxSelections={1}
-              dataKey="colors"
+              searchEndpoint="/admin/attributes/color"
             />
 
             {/* Secondary colour */}
@@ -1056,7 +1057,7 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
               label="Secondary color"
               name="secondaryColors"
               maxSelections={1}
-              dataKey="colors"
+              searchEndpoint="/admin/attributes/color"
             />
 
             {/* Sustainability */}
@@ -1064,7 +1065,7 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
               label="Sustainability"
               name="sustainability"
               maxSelections={3}
-              dataKey="sustainability"
+              searchEndpoint="/admin/attributes/sustainability"
               tooltip="Let buyers know if your item is made using eco-conscious materials or methods."
               description="Select up to 3"
             />
@@ -1075,25 +1076,25 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
                 label="Style"
                 name="styles"
                 maxSelections={2}
-                dataKey="styles"
+                searchEndpoint="/admin/attributes/style"
               />
               <AttributeSearchSelect
                 label="Occasion"
                 name="occasions"
                 maxSelections={5}
-                dataKey="occasions"
+                searchEndpoint="/admin/attributes/occasion"
               />
               <AttributeSearchSelect
                 label="Holiday"
                 name="holidayTags"
                 maxSelections={3}
-                dataKey="holidays"
+                searchEndpoint="/admin/attributes/holiday"
               />
               <AttributeSearchSelect
                 label="Recipient"
                 name="recipientTags"
                 maxSelections={4}
-                dataKey="recipients"
+                searchEndpoint="/admin/attributes/recipient"
                 description="Select up to 4"
               />
             </ShowMoreAttributes>
