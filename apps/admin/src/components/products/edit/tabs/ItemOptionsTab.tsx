@@ -14,6 +14,7 @@ import { VariantImagePicker } from '../VariantImagePicker';
 import { ManageVariationsModal } from '../ManageVariationsModal';
 import { CustomOptionsEditor } from '../CustomOptionsEditor';
 import { AttributeSearchSelect } from '../AttributeSearchSelect';
+import { ShowMoreAttributes } from '../ShowMoreAttributes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -330,24 +331,10 @@ function _AttributeSearchSelect_REMOVED({
   );
 }
 
-// ─── ShowMoreAttributes ───────────────────────────────────────────────────────
-
-function ShowMoreAttributes({ children }: { children: React.ReactNode }) {
-  const [expanded, setExpanded] = useState(false);
-  return (
-    <div>
-      {expanded && <div className="space-y-6 mt-6">{children}</div>}
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="mt-5 flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline transition-colors"
-      >
-        {expanded
-          ? <><ChevronUp className="w-4 h-4" />Show less</>
-          : <><ChevronDown className="w-4 h-4" />Show more attributes</>}
-      </button>
-    </div>
-  );
+// ─── ShowMoreAttributes (now imported from ../ShowMoreAttributes.tsx) ──────────
+// Keeping a no-op stub so nothing breaks if there are stray references.
+function _ShowMoreAttributes_REMOVED({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
 }
 
 // ─── Custom options editor (legacy — replaced by ../CustomOptionsEditor.tsx) ──
