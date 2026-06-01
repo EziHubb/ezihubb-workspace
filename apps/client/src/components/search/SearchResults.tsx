@@ -91,7 +91,7 @@ function SearchProductCard({
         <Image
           src={
             product.primaryImage ??
-            'https://placehold.co/400x500/FFF5F0/E85D3F?text=No+Image'
+            'https://placehold.co/400x500/FFF5F0/E85D3F.png?text=No+Image'
           }
           alt={product.name}
           fill

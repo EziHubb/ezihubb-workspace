@@ -80,7 +80,7 @@ export function ProductGrid({ products, locale, isLoading = false }: ProductGrid
           slug={product.slug}
           name={product.name}
           imageUrl={
-            product.primaryImage ?? 'https://placehold.co/400x500?text=No+Image'
+            product.primaryImage ?? 'https://placehold.co/400x500.png?text=No+Image'
           }
           basePrice={product.basePrice}
           compareAtPrice={product.compareAtPrice}

@@ -132,7 +132,7 @@ export function NoResults({ query, onSearch }: NoResultsProps) {
                   name={product.name}
                   imageUrl={
                     product.images?.[0]?.url ??
-                    'https://placehold.co/400x500?text=No+Image'
+                    'https://placehold.co/400x500.png?text=No+Image'
                   }
                   basePrice={product.basePrice}
                   compareAtPrice={product.compareAtPrice}

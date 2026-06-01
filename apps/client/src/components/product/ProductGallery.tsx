@@ -11,7 +11,7 @@ interface ProductGalleryProps {
   soldCount?:  number;
 }
 
-const PLACEHOLDER = 'https://placehold.co/600x600/FFF5F0/E85D3F?text=No+Image';
+const PLACEHOLDER = 'https://placehold.co/600x600/FFF5F0/E85D3F.png?text=No+Image';
 
 export function ProductGallery({ images, productName, soldCount }: ProductGalleryProps) {
   const displayed =

@@ -174,13 +174,13 @@ export const DEMO_TEMPLATE: CustomizationTemplate = {
   layers: [
     {
       type:         'base',
-      url:          'https://placehold.co/800x800/FFF0EC/E85D3F?text=Mug+Preview',
+      url:          'https://placehold.co/800x800/FFF0EC/E85D3F.png?text=Mug+Preview',
       lockMovement: true,
       selectable:   false,
     },
     {
       type:         'overlay',
-      url:          'https://placehold.co/800x800/00000000/00000000?text=',
+      url:          'https://placehold.co/800x800/ffffff/ffffff.png?text=',
       lockMovement: true,
       selectable:   false,
     },
@@ -263,16 +263,16 @@ export const DEMO_TEMPLATE: CustomizationTemplate = {
       required:     false,
       defaultValue: '',
       options: [
-        { value: 'watercolor', label: 'Watercolor', previewUrl: 'https://placehold.co/200x200/dbeafe/1e40af?text=Watercolor' },
-        { value: 'cartoon',    label: 'Cartoon',    previewUrl: 'https://placehold.co/200x200/fef9c3/854d0e?text=Cartoon'    },
-        { value: 'van_gogh',   label: 'Van Gogh',   previewUrl: 'https://placehold.co/200x200/ede9fe/5b21b6?text=Van+Gogh'  },
-        { value: 'realistic',  label: 'Realistic',  previewUrl: 'https://placehold.co/200x200/dcfce7/166534?text=Realistic'  },
+        { value: 'watercolor', label: 'Watercolor', previewUrl: 'https://placehold.co/200x200/dbeafe/1e40af.png?text=Watercolor' },
+        { value: 'cartoon',    label: 'Cartoon',    previewUrl: 'https://placehold.co/200x200/fef9c3/854d0e.png?text=Cartoon'    },
+        { value: 'van_gogh',   label: 'Van Gogh',   previewUrl: 'https://placehold.co/200x200/ede9fe/5b21b6.png?text=Van+Gogh'  },
+        { value: 'realistic',  label: 'Realistic',  previewUrl: 'https://placehold.co/200x200/dcfce7/166534.png?text=Realistic'  },
       ],
     },
   ],
   angles: [
-    { id: 'front', label: 'Front', baseUrl: 'https://placehold.co/800x800/FFF0EC/E85D3F?text=Front+View' },
-    { id: 'side',  label: 'Side',  baseUrl: 'https://placehold.co/800x800/FFF0EC/C44A2E?text=Side+View'  },
-    { id: 'back',  label: 'Back',  baseUrl: 'https://placehold.co/800x800/FFF0EC/2D2D2D?text=Back+View'  },
+    { id: 'front', label: 'Front', baseUrl: 'https://placehold.co/800x800/FFF0EC/E85D3F.png?text=Front+View' },
+    { id: 'side',  label: 'Side',  baseUrl: 'https://placehold.co/800x800/FFF0EC/C44A2E.png?text=Side+View'  },
+    { id: 'back',  label: 'Back',  baseUrl: 'https://placehold.co/800x800/FFF0EC/2D2D2D.png?text=Back+View'  },
   ],
 };

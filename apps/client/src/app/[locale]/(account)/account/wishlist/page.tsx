@@ -34,7 +34,7 @@ function WishlistCard({
       {/* Image */}
       <Link href={`/${locale}/products/${p.slug}`} className="block relative aspect-[4/5] overflow-hidden bg-background">
         <Image
-          src={p.imageUrl ?? 'https://placehold.co/400x500?text=No+Image'}
+          src={p.imageUrl ?? 'https://placehold.co/400x500.png?text=No+Image'}
           alt={p.name}
           fill
           sizes="(max-width: 640px) 50vw, 25vw"
