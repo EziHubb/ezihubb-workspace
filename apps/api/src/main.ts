@@ -82,28 +82,10 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // ── CORS ───────────────────────────────────────────────────────────────────
-  // Build allowed origin list from CORS_ORIGINS + FRONTEND_URL + APP_URL so
-  // Railway deployments work without manual CORS config. FRONTEND_URL and APP_URL
-  // are set automatically by Railway's reference variables.
-  // If none of these are set the fallback is `origin: true` (reflect) which is
-  // safe for dev/staging while still supporting credentials.
-  const extraOrigins = [
-    process.env['FRONTEND_URL'],
-    process.env['APP_URL'],
-  ].filter((u): u is string => !!u && !u.includes('localhost'));
-
-  const rawCorsOrigins = process.env['CORS_ORIGINS'];
-  const listedOrigins: string[] = rawCorsOrigins
-    ? rawCorsOrigins.split(',').map((o) => o.trim()).filter(Boolean)
-    : [];
-
-  const allOrigins = Array.from(new Set([...listedOrigins, ...extraOrigins]));
-
-  // If we still have no explicit origins, reflect (works in dev/staging).
-  const corsOrigin: boolean | string[] = allOrigins.length > 0 ? allOrigins : true;
-
+  // origin: true reflects the request Origin header back — allows every origin
+  // while remaining compatible with credentials: true (unlike origin: '*').
   app.enableCors({
-    origin: corsOrigin,
+    origin: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Session-ID'],
     exposedHeaders: [
@@ -116,12 +98,7 @@ async function bootstrap() {
     maxAge: 86400,
   });
 
-  Logger.log(
-    allOrigins.length > 0
-      ? `CORS origins: ${allOrigins.join(', ')}`
-      : 'CORS origin: reflect (set CORS_ORIGINS or FRONTEND_URL for explicit allow-list)',
-    'Bootstrap',
-  );
+  Logger.log('CORS origin: reflect all (origin: true)', 'Bootstrap');
 
   // ── Global prefix ──────────────────────────────────────────────────────────
   app.setGlobalPrefix('api/v1');
