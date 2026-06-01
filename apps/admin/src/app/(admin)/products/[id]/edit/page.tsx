@@ -1,31 +1,26 @@
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
 import { serverFetch } from '../../../../../lib/api';
-import { AdminPageHeader } from '../../../../../components/layout/AdminPageHeader';
-import { ProductFormClient } from '../../../../../components/products/ProductFormClient';
+import { ProductEditShell } from '../../../../../components/products/edit/ProductEditShell';
+import type { AdminProductDto, AdminProductDetailDto } from '../../../../../components/products/edit/types';
 
-interface Props { params: { id: string } }
+interface Props { params: Promise<{ id: string }> }
 
 export default async function EditProductPage({ params }: Props) {
-  const res  = await serverFetch(`/admin/products/${params.id}`);
-  if (!res.ok) notFound();
+  const { id } = await params;
 
-  const body    = await res.json();
-  const product = body.data ?? body;
+  const [productRes, detailRes] = await Promise.all([
+    serverFetch(`/admin/products/${id}`),
+    serverFetch(`/admin/products/${id}/detail`),
+  ]);
 
-  return (
-    <>
-      <div className="flex items-center gap-2 mb-2 text-sm text-muted">
-        <Link href="/products" className="hover:text-secondary transition-colors flex items-center gap-1.5">
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Products
-        </Link>
-        <span>/</span>
-        <span className="text-secondary font-medium">{product.name}</span>
-      </div>
-      <AdminPageHeader title={product.name} subtitle={`SKU: ${product.sku ?? 'N/A'} · /products/${product.slug}`} />
-      <ProductFormClient product={product} />
-    </>
-  );
+  if (!productRes.ok) notFound();
+
+  const productBody = await productRes.json();
+  const product = (productBody.data ?? productBody) as AdminProductDto;
+
+  // detail is optional — product may not have a MongoDB document yet
+  const detailBody = detailRes.ok ? await detailRes.json() : null;
+  const detail     = ((detailBody?.data ?? detailBody) ?? null) as AdminProductDetailDto | null;
+
+  return <ProductEditShell product={product} detail={detail} />;
 }

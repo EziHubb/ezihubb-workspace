@@ -155,15 +155,22 @@ export default function ProductsPage() {
     },
     {
       id:   'actions',
-      size: 120,
+      size: 150,
       header: '',
       cell: ({ row }: { row: { original: Product } }) => (
-        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
           <Link
             href={`/products/${row.original.id}/edit`}
             className="text-xs font-medium text-muted hover:text-primary px-2 py-1.5 rounded hover:bg-primary/5 transition-colors"
           >
             Edit
+          </Link>
+          <Link
+            href={`/products/copy/${row.original.id}`}
+            className="text-xs font-medium text-muted hover:text-primary px-2 py-1.5 rounded hover:bg-primary/5 transition-colors"
+            title="Copy this product into a new listing"
+          >
+            Copy
           </Link>
           <button
             type="button"

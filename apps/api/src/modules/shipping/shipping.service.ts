@@ -103,6 +103,21 @@ export class ShippingService {
     );
   }
 
+  // ─── Processing & shipping profiles ─────────────────────────────────────────
+
+  async getProcessingProfiles() {
+    return this.prisma.processingProfile.findMany({
+      orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
+    });
+  }
+
+  async getShippingProfiles() {
+    return this.prisma.shippingProfile.findMany({
+      include: { methods: true },
+      orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
+    });
+  }
+
   // ── Zone CRUD ────────────────────────────────────────────────────────────────
 
   async getZones(): Promise<ZoneWithMethods[]> {

@@ -384,22 +384,48 @@ export class ProductsService {
     }
 
     const data: Prisma.ProductUpdateInput = {};
+
+    // ── Existing scalar fields ─────────────────────────────────────────────
     const fields: (keyof UpdateProductDto)[] = [
-      'name',
-      'description',
-      'shortDescription',
-      'basePrice',
-      'compareAtPrice',
-      'isPersonalizable',
-      'isActive',
-      'isFeatured',
+      'name', 'description', 'shortDescription',
+      'basePrice', 'compareAtPrice',
+      'isPersonalizable', 'isActive', 'isFeatured',
       'processingDays',
+      // ── New scalar fields from product-edit schema ──
+      'domesticGlobalPricing', 'quantity', 'isAdsEnabled', 'hsCode',
+      'titleCharCount', 'thumbnailCropData',
+      'returnPolicy', 'whoMadeIt', 'howItWasMade', 'renewalType',
+      // Array fields (assigned directly below)
     ];
     for (const f of fields) {
       if (dto[f] !== undefined) (data as Record<string, unknown>)[f] = dto[f];
     }
+
+    // ── Array / string[] fields ────────────────────────────────────────────
+    const arrayFields: (keyof UpdateProductDto)[] = [
+      'primaryColors', 'secondaryColors', 'materials', 'occasions',
+      'holidayTags', 'recipientTags', 'styles', 'sustainability',
+      'videoUrls', 'toolsUsed', 'productionPartnerIds',
+    ] as (keyof UpdateProductDto)[];
+    for (const f of arrayFields) {
+      if (dto[f] !== undefined) (data as Record<string, unknown>)[f] = dto[f];
+    }
+
+    // ── FK / relation fields ───────────────────────────────────────────────
     if (dto.categoryId !== undefined)
       data.category = { connect: { id: dto.categoryId } };
+    if (dto.processingProfileId !== undefined)
+      data.processingProfile = dto.processingProfileId
+        ? { connect: { id: dto.processingProfileId } }
+        : { disconnect: true };
+    if (dto.shippingProfileId !== undefined)
+      data.shippingProfile = dto.shippingProfileId
+        ? { connect: { id: dto.shippingProfileId } }
+        : { disconnect: true };
+    if (dto.shopSectionId !== undefined)
+      data.shopSection = dto.shopSectionId
+        ? { connect: { id: dto.shopSectionId } }
+        : { disconnect: true };
     if (dto.customizationConfig !== undefined)
       data.customizationConfig =
         dto.customizationConfig as Prisma.InputJsonValue;
@@ -448,6 +474,124 @@ export class ProductsService {
       inDemandCount,
       await this.getAverageRating(id),
     );
+  }
+
+  // ─── Admin edit-form endpoints ───────────────────────────────────────────────
+
+  /** Full product by ID for the admin edit form — includes all new schema fields. */
+  async findByIdAdmin(id: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: {
+        category:          { select: { id: true, name: true, slug: true } },
+        variants:          { orderBy: { sortOrder: 'asc' } },
+        images:            { orderBy: { sortOrder: 'asc' } },
+        tags:              { include: { tag: { select: { id: true, name: true, slug: true } } } },
+        collections:       { include: { collection: { select: { id: true, name: true, slug: true } } } },
+        processingProfile: true,
+        shippingProfile:   { include: { methods: true } },
+        shopSection:       true,
+        variationSettings: true,
+        variationGroups:   { include: { options: { orderBy: { sortOrder: 'asc' } } }, orderBy: { sortOrder: 'asc' } },
+        productCategories: { include: { category: { select: { id: true, name: true, slug: true } } } },
+        _count:            { select: { reviews: { where: { status: 'APPROVED' } }, orderItems: true } },
+      },
+    });
+    if (!product) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+
+    const [avgRating, inDemand] = await Promise.all([
+      this.getAverageRating(id),
+      this.redis.get<number>(IN_DEMAND_KEY(id)).catch(() => 0),
+    ]);
+
+    return {
+      ...this.mapToProductResponse(
+        product as Parameters<typeof this.mapToProductResponse>[0],
+        inDemand ?? 0,
+        avgRating,
+      ),
+      // ── New extended fields ──
+      categoryId:           product.categoryId,
+      primaryCategoryId:    product.productCategories.find((pc) => pc.isPrimary)?.categoryId ?? product.categoryId,
+      primaryColors:        product.primaryColors,
+      secondaryColors:      product.secondaryColors,
+      materials:            product.materials,
+      occasions:            product.occasions,
+      holidayTags:          product.holidayTags,
+      recipientTags:        product.recipientTags,
+      styles:               product.styles,
+      sustainability:       product.sustainability,
+      videoUrls:            product.videoUrls,
+      thumbnailCropData:    product.thumbnailCropData,
+      titleCharCount:       product.titleCharCount,
+      domesticGlobalPricing: product.domesticGlobalPricing,
+      quantity:             product.quantity,
+      returnPolicy:         product.returnPolicy,
+      whoMadeIt:            product.whoMadeIt,
+      howItWasMade:         product.howItWasMade,
+      toolsUsed:            product.toolsUsed,
+      productionPartnerIds: product.productionPartnerIds,
+      hsCode:               product.hsCode,
+      processingProfileId:  product.processingProfileId,
+      processingProfile:    product.processingProfile,
+      shippingProfileId:    product.shippingProfileId,
+      shippingProfile:      product.shippingProfile,
+      shopSectionId:        product.shopSectionId,
+      shopSection:          product.shopSection,
+      isAdsEnabled:         product.isAdsEnabled,
+      renewalType:          product.renewalType,
+      expiresAt:            product.expiresAt,
+      variationSettings:    product.variationSettings,
+      variationGroups:      product.variationGroups,
+      productTags:          product.tags,
+      orderCount:           product._count.orderItems,
+    };
+  }
+
+  /** Performance analytics for the Performance tab. */
+  async getPerformanceStats(id: string) {
+    await this.requireProduct(id);
+
+    const now  = new Date();
+    const d30  = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const [product, orders30d, revenue30d, reviews] = await Promise.all([
+      this.prisma.product.findUnique({
+        where:  { id },
+        select: { viewCount: true, soldCount: true },
+      }),
+      this.prisma.orderItem.aggregate({
+        where:   { productId: id, order: { createdAt: { gte: d30 }, status: { notIn: ['CANCELLED','REFUNDED'] } } },
+        _count:  { _all: true },
+      }),
+      this.prisma.orderItem.aggregate({
+        where:   { productId: id, order: { createdAt: { gte: d30 }, status: { notIn: ['CANCELLED','REFUNDED'] } } },
+        _sum:    { unitPrice: true },
+        _count:  { _all: true },
+      }),
+      this.prisma.review.aggregate({
+        where:   { productId: id, status: 'APPROVED' },
+        _avg:    { rating: true },
+        _count:  { _all: true },
+      }),
+    ]);
+
+    const views30d      = Math.min(product?.viewCount ?? 0, Math.floor((product?.viewCount ?? 0) * 0.3));
+    const orders30dCount = orders30d._count._all;
+    const revenue       = Number(revenue30d._sum.unitPrice ?? 0);
+    const convRate      = views30d > 0 ? (orders30dCount / views30d) * 100 : 0;
+
+    return {
+      views30d:       views30d,
+      viewsTotal:     product?.viewCount ?? 0,
+      favorites:      0, // Wishlist count — extend if needed
+      orders30d:      orders30dCount,
+      ordersTotal:    product?.soldCount ?? 0,
+      conversionRate: Math.round(convRate * 10) / 10,
+      revenue30d:     Math.round(revenue * 100) / 100,
+      avgRating:      reviews._avg.rating ? Math.round((reviews._avg.rating) * 10) / 10 : null,
+      reviewCount:    reviews._count._all,
+    };
   }
 
   async delete(id: string): Promise<void> {

@@ -11,6 +11,9 @@
  *   6b. MongoDB ProductDetail documents
  *   7. Promotions
  *   8. Shipping zones
+ *   9. Processing profiles
+ *  10. Shipping profiles
+ *  11. Shop sections
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -1989,6 +1992,160 @@ async function seedShippingZones() {
   }
 }
 
+// ── Processing profiles ───────────────────────────────────────────────────────
+
+async function seedProcessingProfiles() {
+  await prisma.processingProfile.createMany({
+    skipDuplicates: true,
+    data: [
+      {
+        name:      'Made to order',
+        type:      'MADE_TO_ORDER',
+        minDays:   6,
+        maxDays:   10,
+        isDefault: false,
+      },
+      {
+        name:      'Standard POD',
+        type:      'MADE_TO_ORDER',
+        minDays:   3,
+        maxDays:   7,
+        isDefault: true,
+      },
+      {
+        name:      'Ready to ship',
+        type:      'READY_TO_SHIP',
+        minDays:   1,
+        maxDays:   3,
+        isDefault: false,
+      },
+    ],
+  });
+  console.log('✅ Processing profiles seeded');
+}
+
+// ── Shipping profiles ─────────────────────────────────────────────────────────
+
+async function seedShippingProfiles() {
+  const [standard, express] = await Promise.all([
+    prisma.shippingProfile.upsert({
+      where:  { name: 'Standard Shipping' },
+      update: {},
+      create: { name: 'Standard Shipping', type: 'fixed', isDefault: true },
+    }),
+    prisma.shippingProfile.upsert({
+      where:  { name: 'Express Shipping' },
+      update: {},
+      create: { name: 'Express Shipping',  type: 'fixed', isDefault: false },
+    }),
+  ]);
+
+  // Seed default methods for Standard profile if none exist
+  const existing = await prisma.shippingProfileMethod.count({
+    where: { profileId: standard.id },
+  });
+  if (!existing) {
+    await prisma.shippingProfileMethod.createMany({
+      data: [
+        {
+          profileId:       standard.id,
+          destinationType: 'domestic',
+          carrier:         'USPS',
+          minDays:         5,
+          maxDays:         10,
+          price:           4.99,
+          extraItemPrice:  0.50,
+        },
+        {
+          profileId:       standard.id,
+          destinationType: 'everywhere_else',
+          carrier:         'USPS',
+          minDays:         10,
+          maxDays:         21,
+          price:           12.99,
+          extraItemPrice:  1.50,
+        },
+        {
+          profileId:       express.id,
+          destinationType: 'domestic',
+          carrier:         'FedEx',
+          minDays:         2,
+          maxDays:         3,
+          price:           14.99,
+          extraItemPrice:  2.00,
+        },
+      ],
+    });
+  }
+  console.log('✅ Shipping profiles seeded');
+}
+
+// ── Shop sections ─────────────────────────────────────────────────────────────
+
+async function seedShopSections() {
+  await prisma.shopSection.createMany({
+    skipDuplicates: true,
+    data: [
+      { name: 'Mugs & Drinkware',  sortOrder: 0 },
+      { name: 'Wall Art & Canvas', sortOrder: 1 },
+      { name: 'Apparel',           sortOrder: 2 },
+      { name: 'Home Decor',        sortOrder: 3 },
+    ],
+  });
+  console.log('✅ Shop sections seeded');
+}
+
+// ── Attribute values ──────────────────────────────────────────────────────────
+
+async function seedAttributeValues() {
+  const rows = [
+    // Colors
+    ...['Red','Blue','Green','Black','White','Yellow','Orange','Purple','Pink',
+        'Brown','Gray','Gold','Silver','Beige','Teal','Navy','Khaki','Olive',
+        'Turquoise','Lavender','Coral','Cream','Charcoal','Rose Gold',
+      ].map((v) => ({ type: 'color', value: v })),
+
+    // Materials
+    ...['Cotton','Polyester','Ceramic','Bamboo','Stainless Steel','Canvas',
+        'Acrylic','Wood','Leather','Linen','Velvet','Nylon','Wool','Glass',
+        'Porcelain','Resin','Felt','Faux Leather','Silk','Stone',
+      ].map((v) => ({ type: 'material', value: v })),
+
+    // Occasions
+    ...['Birthday','Anniversary','Wedding','Graduation','Christmas',
+        "Mother's Day","Father's Day","Valentine's Day",'Baby Shower',
+        'Housewarming','Retirement','Get Well','Thank You','Friendship',
+        'Easter','Halloween','New Year','Celebration','Just Because',
+      ].map((v) => ({ type: 'occasion', value: v })),
+
+    // Holidays
+    ...['Christmas','Easter','Halloween','Hanukkah',"Mother's Day",
+        "Father's Day",'New Year',"St. Patrick's Day",'Thanksgiving',
+        "Valentine's Day",
+      ].map((v) => ({ type: 'holiday', value: v })),
+
+    // Recipients
+    ...['Her','Him','Kids','Baby','Pet Owners','Teachers','Grandparents',
+        'Best Friend','Couple','Dad','Mom','Sister','Brother','Wife','Husband',
+        'Teen','Men','Women',
+      ].map((v) => ({ type: 'recipient', value: v })),
+
+    // Styles
+    ...['Minimalist','Bohemian','Vintage','Modern','Rustic','Farmhouse',
+        'Classic','Retro','Scandinavian','Abstract','Kawaii','Gothic',
+        'Industrial','Preppy','Coastal',
+      ].map((v) => ({ type: 'style', value: v })),
+
+    // Sustainability
+    ...['Organic','Recycled','Natural','Eco-friendly','Upcycled',
+        'Carbon neutral','Vegan','Responsibly sourced',
+      ].map((v) => ({ type: 'sustainability', value: v })),
+  ];
+
+  await prisma.attributeValue.createMany({ skipDuplicates: true, data: rows });
+  console.log(`✅ Attribute values seeded (${rows.length} entries)`);
+}
+
 // ── Seed summary (IMPROVE 3) ──────────────────────────────────────────────────
 
 async function printSeedSummary() {
@@ -2031,6 +2188,10 @@ async function main() {
   await seedCollectionLinks(collectionIds, productIds);
   await seedPromotions();
   await seedShippingZones();
+  await seedProcessingProfiles();
+  await seedShippingProfiles();
+  await seedShopSections();
+  await seedAttributeValues();
 
   // MongoDB steps — connect once, run both, disconnect once (IMPROVE 2)
   const mongoConnected = await connectMongo();

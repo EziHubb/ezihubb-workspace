@@ -33,6 +33,22 @@ import { ShippingMethod } from '@prisma/client';
 export class AdminShippingController {
   constructor(private readonly shippingService: ShippingService) {}
 
+  // ── Processing profiles ───────────────────────────────────────────────────────
+
+  @Get('processing-profiles')
+  @ApiOperation({ summary: 'List all processing profiles' })
+  async getProcessingProfiles() {
+    return this.shippingService.getProcessingProfiles();
+  }
+
+  // ── Shipping profiles (product-level) ────────────────────────────────────────
+
+  @Get('profiles')
+  @ApiOperation({ summary: 'List all shipping profiles with their methods' })
+  async getShippingProfiles() {
+    return this.shippingService.getShippingProfiles();
+  }
+
   // ── Zones ────────────────────────────────────────────────────────────────────
 
   @Get('zones')

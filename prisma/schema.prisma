@@ -61,6 +61,39 @@ enum ReviewStatus {
   HIDDEN
 }
 
+// ── Product creation metadata (Image 13-14: "How It's Made" tab) ──────────────
+
+enum WhoMadeIt {
+  I_DID
+  SHOP_MEMBER
+  ANOTHER_COMPANY
+}
+
+enum HowItWasMade {
+  MADE_TO_ORDER
+  HANDMADE
+  ASSEMBLED
+  ALTERED
+  CURATED_SET
+  NATURAL_MATERIAL
+}
+
+enum RenewalType {
+  AUTOMATIC
+  MANUAL
+}
+
+enum ProcessingProfileType {
+  MADE_TO_ORDER
+  READY_TO_SHIP
+}
+
+enum ReturnPolicy {
+  NO_RETURNS
+  RETURNS_ACCEPTED
+  EXCHANGES_ONLY
+}
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 model User {
@@ -189,8 +222,6 @@ model Category {
 }
 
 // ── Multi-category membership ─────────────────────────────────────────────────
-// Allows a product to appear in multiple L3 categories without changing the
-// primary categoryId FK (used for breadcrumbs and URL structure).
 
 model ProductCategory {
   productId  String
@@ -206,17 +237,17 @@ model ProductCategory {
 }
 
 model Collection {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   name        String
-  slug        String   @unique
+  slug        String    @unique
   description String?
   bannerUrl   String?
   occasion    String?
-  isActive    Boolean  @default(true)
-  sortOrder   Int      @default(0)
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
   startDate   DateTime?
   endDate     DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   products CollectionProduct[]
 
@@ -237,9 +268,9 @@ model CollectionProduct {
 }
 
 model Tag {
-  id       String     @id @default(cuid())
-  name     String     @unique
-  slug     String     @unique
+  id   String @id @default(cuid())
+  name String @unique
+  slug String @unique
 
   products ProductTag[]
 }
@@ -278,6 +309,49 @@ model Product {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
+  // ── TAB: Item Details ───────────────────────────────────────────────────────
+  titleCharCount    Int?                   // cached char count for 140-char limit validation
+
+  // ── TAB: Item Attributes (structured, searchable like Etsy) ────────────────
+  primaryColors     String[]               // multi-select colour tags
+  secondaryColors   String[]
+  materials         String[]               // up to 5 materials
+  occasions         String[]               // up to 13 occasions
+  holidayTags       String[]
+  recipientTags     String[]               // up to 4 recipients
+  styles            String[]
+  sustainability    String[]               // up to 3 sustainability attributes
+
+  // ── TAB: Pricing & Inventory ────────────────────────────────────────────────
+  domesticGlobalPricing Boolean            @default(false)
+  quantity          Int?                   // null = unlimited (POD)
+  returnPolicy      ReturnPolicy           @default(NO_RETURNS)
+
+  // ── TAB: Processing & Shipping Profiles ─────────────────────────────────────
+  processingProfileId String?
+  processingProfile   ProcessingProfile?   @relation(fields: [processingProfileId], references: [id])
+  shippingProfileId   String?
+  shippingProfile     ShippingProfile?     @relation(fields: [shippingProfileId], references: [id])
+
+  // ── TAB: How It's Made ──────────────────────────────────────────────────────
+  whoMadeIt           WhoMadeIt?
+  howItWasMade        HowItWasMade?
+  toolsUsed           String[]             // "handheld" | "computerized" | "3d-printing" | "none"
+  productionPartnerIds String[]            // cuid references to ProductionPartner records
+  hsCode              String?              // Harmonised System tariff code for customs
+
+  // ── TAB: Settings ───────────────────────────────────────────────────────────
+  shopSectionId       String?
+  shopSection         ShopSection?         @relation(fields: [shopSectionId], references: [id])
+  isAdsEnabled        Boolean              @default(false)
+  renewalType         RenewalType          @default(AUTOMATIC)
+  expiresAt           DateTime?            // only relevant when renewalType = MANUAL
+
+  // ── TAB: Photo & Video ──────────────────────────────────────────────────────
+  videoUrls           String[]             // up to 2 hosted video URLs
+  thumbnailCropData   Json?                // { x, y, width, height } for thumbnail crop
+
+  // ── Relations ───────────────────────────────────────────────────────────────
   variants            ProductVariant[]
   images              ProductImage[]
   collections         CollectionProduct[]
@@ -288,11 +362,16 @@ model Product {
   customizationDrafts CustomizationDraft[]
   reviews             Review[]
   productCategories   ProductCategory[]
+  variationGroups     VariationGroup[]
+  variationSettings   VariationSettings?
 
   @@index([categoryId])
   @@index([isActive, isFeatured])
   @@index([isActive, soldCount])
   @@index([slug])
+  @@index([processingProfileId])
+  @@index([shippingProfileId])
+  @@index([shopSectionId])
 }
 
 model ProductVariant {
@@ -323,6 +402,119 @@ model ProductImage {
   sortOrder Int     @default(0)
 
   @@index([productId])
+}
+
+// ─── Variation System (ETY-01) ────────────────────────────────────────────────
+// Represents the admin-configurable variation structure for a product.
+// VariationGroup = a dimension (e.g. "Color", "Size")
+// VariationOption = a value within that dimension (e.g. "Red", "Small")
+// VariationSettings = product-level toggle + metadata
+
+model VariationGroup {
+  id          String            @id @default(cuid())
+  productId   String
+  product     Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name        String            // "Color", "Size", "Material"
+  displayType String            @default("dropdown") // "dropdown" | "color_swatch" | "button" | "image"
+  sortOrder   Int               @default(0)
+
+  options     VariationOption[]
+
+  @@index([productId])
+}
+
+model VariationOption {
+  id          String         @id @default(cuid())
+  groupId     String
+  group       VariationGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name        String         // "Red", "Small"
+  value       String         // slug / code, e.g. "red", "s"
+  colorHex    String?        // for color_swatch display type
+  imageUrl    String?        // for image display type
+  priceDelta  Decimal?       @db.Decimal(10, 2) // price adjustment from base
+  sortOrder   Int            @default(0)
+  isAvailable Boolean        @default(true)
+
+  @@index([groupId])
+}
+
+model VariationSettings {
+  id               String   @id @default(cuid())
+  productId        String   @unique
+  product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  enableVariations Boolean  @default(false)
+  variesBy         String[] // names of active VariationGroup dimensions
+  skuPrefix        String?  // e.g. "MLH-MUG" → variants become "MLH-MUG-RED-M"
+}
+
+// ─── Processing Profiles ──────────────────────────────────────────────────────
+// Admin-defined production windows that can be assigned to products.
+
+model ProcessingProfile {
+  id        String                @id @default(cuid())
+  name      String                // "Made to order", "Ready to ship"
+  type      ProcessingProfileType @default(MADE_TO_ORDER)
+  minDays   Int                   @default(3)
+  maxDays   Int                   @default(7)
+  isDefault Boolean               @default(false)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  products  Product[]
+}
+
+// ─── Shipping Profiles ────────────────────────────────────────────────────────
+// Product-level shipping templates (distinct from ShippingZone which is
+// the customer-facing rate calculation engine).
+
+model ShippingProfile {
+  id             String                  @id @default(cuid())
+  name           String                  @unique // "Standard Shipping", "Embroidered Hat"
+  type           String                  @default("fixed") // "fixed" | "calculated" | "free"
+  activeListings Int                     @default(0)       // denormalised count
+  isDefault      Boolean                 @default(false)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  methods        ShippingProfileMethod[]
+  products       Product[]
+}
+
+model ShippingProfileMethod {
+  id              String          @id @default(cuid())
+  profileId       String
+  profile         ShippingProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  destinationType String          // "domestic" | "everywhere_else" | ISO country code
+  carrier         String?
+  minDays         Int
+  maxDays         Int
+  price           Decimal         @db.Decimal(10, 2)
+  extraItemPrice  Decimal?        @db.Decimal(10, 2) // additional item surcharge
+
+  @@index([profileId])
+}
+
+// ─── Shop Sections ────────────────────────────────────────────────────────────
+// Organise listings into labelled sections visible on the shop front.
+
+model ShopSection {
+  id        String    @id @default(cuid())
+  name      String    @unique // "Embroidered Hats", "Canvas Prints"
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  products  Product[]
+}
+
+// ─── Production Partners ──────────────────────────────────────────────────────
+// Third-party manufacturers or fulfilment partners disclosed on listings.
+
+model ProductionPartner {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  location    String?  // "Country" or "City, Country"
+  createdAt   DateTime @default(now())
 }
 
 // ─── Personalization ─────────────────────────────────────────────────────────
@@ -543,7 +735,7 @@ model PromotionUsage {
   @@index([orderId])
 }
 
-// ─── Shipping ─────────────────────────────────────────────────────────────────
+// ─── Shipping (customer-facing zones & rate engine) ───────────────────────────
 
 model ShippingZone {
   id        String   @id @default(cuid())
@@ -607,6 +799,18 @@ model Notification {
 
   @@index([userId, isRead])
   @@index([userId, createdAt])
+}
+
+// ─── Attribute dictionary ─────────────────────────────────────────────────────
+// Searchable attribute values per type.  Admin-seeded + extensible at runtime.
+
+model AttributeValue {
+  id    String @id @default(cuid())
+  type  String // "color" | "material" | "occasion" | "holiday" | "recipient" | "style" | "sustainability"
+  value String
+
+  @@unique([type, value])
+  @@index([type])
 }
 
 // ─── Audit Log ───────────────────────────────────────────────────────────────

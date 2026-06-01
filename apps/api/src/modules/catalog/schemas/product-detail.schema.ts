@@ -106,6 +106,27 @@ export class ProductDetail extends Document {
     acceptedFormats: string[];
     printArea?: { w: number; h: number; unit: string };
   };
+
+  /**
+   * Per-image accessibility alt texts keyed by ProductImage.id (PostgreSQL).
+   * Allows admin to store rich, context-aware alt text separately from the
+   * PostgreSQL ProductImage.altText field which is limited to short strings.
+   */
+  @Prop({ type: Object, default: {} })
+  imageAltTexts: Record<string, string>;
+
+  /**
+   * EU General Product Safety Regulation (GPSR) manufacturer / responsible
+   * person information.  Required for products sold to EU customers from 2024.
+   */
+  @Prop({ type: Object, default: null })
+  gpsrInfo?: {
+    manufacturerName?:    string;
+    manufacturerAddress?: string;
+    manufacturerEmail?:   string;
+    safetyWarnings?:      string[];
+    countryOfOrigin?:     string;
+  };
 }
 
 export const ProductDetailSchema = SchemaFactory.createForClass(ProductDetail);

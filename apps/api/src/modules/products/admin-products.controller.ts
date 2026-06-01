@@ -68,6 +68,20 @@ export class AdminProductsController {
     return this.productsService.findAll(Object.assign({}, query, { includeInactive: true }) as any);
   }
 
+  // GET /admin/products/:id  — full product for the edit form
+  @Get(':id')
+  @ApiOperation({ summary: '[Admin] Get full product by ID for the edit form' })
+  findById(@Param('id', ParseCuidPipe) id: string) {
+    return this.productsService.findByIdAdmin(id);
+  }
+
+  // GET /admin/products/:id/performance  — analytics for the Performance tab
+  @Get(':id/performance')
+  @ApiOperation({ summary: '[Admin] Get performance stats for a product (Performance tab)' })
+  getPerformance(@Param('id', ParseCuidPipe) id: string) {
+    return this.productsService.getPerformanceStats(id);
+  }
+
   // POST /admin/products
   @Post()
   @HttpCode(HttpStatus.CREATED)
