@@ -154,7 +154,7 @@ export function PaymentDetailDrawer({ payment, onClose, onRefund }: PaymentDetai
   const { data: refunds = [] } = useQuery<Refund[]>({
     queryKey: ['payment-refunds', payment.id],
     queryFn:  async () => {
-      const res  = await clientFetch(`/admin/payments/${payment.id}/refunds`);
+      const res  = await clientFetch(`/payments/${payment.id}/refunds`);
       const body = await res.json();
       return (body.data ?? body) as Refund[];
     },
@@ -169,7 +169,7 @@ export function PaymentDetailDrawer({ payment, onClose, onRefund }: PaymentDetai
     setSubmitting(true);
     setRefundError(null);
     try {
-      const res  = await clientFetch(`/admin/payments/${payment.id}/refund`, {
+      const res  = await clientFetch(`/payments/${payment.id}/refund`, {
         method: 'POST',
         body:   JSON.stringify({ amount: amt, reason: refundReason || undefined }),
       });

@@ -144,7 +144,7 @@ export default function PromotionsPage() {
   const statsQuery = useQuery<PromotionStats>({
     queryKey: ['promo-page-stats'],
     queryFn:  async () => {
-      const res  = await clientFetch('/admin/promotions/page-stats');
+      const res  = await clientFetch('/promotions/page-stats');
       const body = await res.json();
       return (body.data ?? body) as PromotionStats;
     },
@@ -161,7 +161,7 @@ export default function PromotionsPage() {
       if (search)  p.set('q',      search);
       if (typeF)   p.set('type',   typeF);
       if (statusF) p.set('status', statusF);
-      const res  = await clientFetch(`/admin/promotions?${p}`);
+      const res  = await clientFetch(`/promotions?${p}`);
       const body = await res.json();
       return body as { data: Promotion[]; total: number };
     },
@@ -178,7 +178,7 @@ export default function PromotionsPage() {
   };
 
   const handleToggleActive = async (p: Promotion, active: boolean) => {
-    await clientFetch(`/admin/promotions/${p.id}`, {
+    await clientFetch(`/promotions/${p.id}`, {
       method: 'PATCH',
       body:   JSON.stringify({ isActive: active }),
     });
@@ -187,13 +187,13 @@ export default function PromotionsPage() {
 
   const handleDelete = async (p: Promotion) => {
     if (!confirm(`Delete coupon "${p.code}"? This cannot be undone.`)) return;
-    await clientFetch(`/admin/promotions/${p.id}`, { method: 'DELETE' });
+    await clientFetch(`/promotions/${p.id}`, { method: 'DELETE' });
     invalidate();
   };
 
   const handleDuplicate = async (p: Promotion) => {
     const code = `${p.code.replace(/-COPY\d*$/, '')}-COPY${Date.now().toString().slice(-4)}`;
-    await clientFetch('/admin/promotions', {
+    await clientFetch('/promotions', {
       method: 'POST',
       body:   JSON.stringify({ ...p, id: undefined, code, currentUses: 0, isActive: false }),
     });
@@ -202,12 +202,12 @@ export default function PromotionsPage() {
 
   const handleSave = async (data: PromotionFormData, id?: string) => {
     if (id) {
-      await clientFetch(`/admin/promotions/${id}`, {
+      await clientFetch(`/promotions/${id}`, {
         method: 'PATCH',
         body:   JSON.stringify(data),
       });
     } else {
-      await clientFetch('/admin/promotions', {
+      await clientFetch('/promotions', {
         method: 'POST',
         body:   JSON.stringify(data),
       });

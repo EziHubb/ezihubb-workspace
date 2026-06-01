@@ -140,7 +140,7 @@ export default function PaymentsPage() {
   const statsQuery = useQuery<PaymentStats>({
     queryKey: ['payment-stats'],
     queryFn:  async () => {
-      const res  = await clientFetch('/admin/payments/stats');
+      const res  = await clientFetch('/payments/stats');
       const body = await res.json();
       return (body.data ?? body) as PaymentStats;
     },
@@ -160,7 +160,7 @@ export default function PaymentsPage() {
       if (method)     p.set('method',  method);
       if (status)     p.set('status',  status);
       if (dateRange)  p.set('days',    dateRange);
-      const res  = await clientFetch(`/admin/payments?${p}`);
+      const res  = await clientFetch(`/payments?${p}`);
       const body = await res.json();
       return body as { data: PaymentRecord[]; total: number };
     },

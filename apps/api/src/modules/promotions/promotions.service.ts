@@ -231,6 +231,78 @@ export class PromotionsService {
     return this.mapToDto(promotion);
   }
 
+  async patch(
+    id: string,
+    dto: UpdatePromotionDto & { isActive?: boolean },
+  ): Promise<PromotionResponseDto> {
+    await this.findOne(id);
+
+    if (dto.code) {
+      const code = dto.code.toUpperCase();
+      const conflict = await this.prisma.promotion.findFirst({
+        where: { code, id: { not: id } },
+      });
+      if (conflict) {
+        throw new ConflictException({
+          code: 'ERR_COUPON_CODE_TAKEN',
+          message: 'Coupon code already exists',
+        });
+      }
+      dto.code = code;
+    }
+
+    const promotion = await this.prisma.promotion.update({
+      where: { id },
+      data: {
+        ...(dto.code !== undefined && { code: dto.code }),
+        ...(dto.type !== undefined && { type: dto.type }),
+        ...(dto.value !== undefined && { value: dto.value }),
+        ...(dto.minOrderAmount !== undefined && { minOrderAmount: dto.minOrderAmount }),
+        ...(dto.maxUses !== undefined && { maxUses: dto.maxUses }),
+        ...(dto.maxUsesPerUser !== undefined && { maxUsesPerUser: dto.maxUsesPerUser }),
+        ...(dto.startsAt !== undefined && { startsAt: dto.startsAt }),
+        ...(dto.expiresAt !== undefined && { expiresAt: dto.expiresAt }),
+        ...(dto.description !== undefined && { description: dto.description }),
+        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+      },
+    });
+
+    return this.mapToDto(promotion);
+  }
+
+  async remove(id: string): Promise<void> {
+    await this.findOne(id);
+    await this.prisma.promotion.delete({ where: { id } });
+  }
+
+  async getPageStats(): Promise<{
+    activeCoupons: number;
+    usedToday: number;
+    revenueDiscounted: number;
+    avgDiscountValue: number;
+  }> {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [activeCoupons, usedToday, usages] = await Promise.all([
+      this.prisma.promotion.count({ where: { isActive: true } }),
+      this.prisma.promotionUsage.count({ where: { usedAt: { gte: todayStart } } }),
+      this.prisma.promotionUsage.findMany({
+        include: { order: { select: { discountAmount: true } } },
+        orderBy: { usedAt: 'desc' },
+        take: 5000,
+      }),
+    ]);
+
+    const revenueDiscounted = usages.reduce(
+      (sum, u) => sum + Number(u.order.discountAmount),
+      0,
+    );
+    const avgDiscountValue = usages.length > 0 ? revenueDiscounted / usages.length : 0;
+
+    return { activeCoupons, usedToday, revenueDiscounted, avgDiscountValue };
+  }
+
   async deactivate(id: string): Promise<PromotionResponseDto> {
     await this.findOne(id);
     const promotion = await this.prisma.promotion.update({

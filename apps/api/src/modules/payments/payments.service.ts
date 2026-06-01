@@ -542,6 +542,58 @@ export class PaymentsService {
     return payments.map(this.mapPaymentToDto);
   }
 
+  async getStats(): Promise<{
+    totalRevenue: number;
+    pendingPayouts: number;
+    refundedAmount: number;
+    successRate: number;
+  }> {
+    const [paid, pending, refunded, total] = await Promise.all([
+      this.prisma.payment.aggregate({
+        _sum: { amount: true },
+        where: { status: PaymentStatus.PAID },
+      }),
+      this.prisma.payment.aggregate({
+        _sum: { amount: true },
+        where: { status: PaymentStatus.PENDING },
+      }),
+      this.prisma.payment.aggregate({
+        _sum: { refundedAmount: true },
+        where: { status: { in: [PaymentStatus.REFUNDED, PaymentStatus.PARTIALLY_REFUNDED] } },
+      }),
+      this.prisma.payment.count(),
+    ]);
+
+    const paidCount = await this.prisma.payment.count({ where: { status: PaymentStatus.PAID } });
+
+    return {
+      totalRevenue:    Number(paid._sum.amount ?? 0),
+      pendingPayouts:  Number(pending._sum.amount ?? 0),
+      refundedAmount:  Number(refunded._sum.refundedAmount ?? 0),
+      successRate:     total > 0 ? Math.round((paidCount / total) * 100) : 0,
+    };
+  }
+
+  async getRefunds(paymentId: string): Promise<{
+    paymentId: string;
+    refundedAmount: number;
+    refundedAt: Date | null;
+    status: string;
+  }> {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+    });
+    if (!payment) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Payment not found' });
+    }
+    return {
+      paymentId:      payment.id,
+      refundedAmount: Number(payment.refundedAmount ?? 0),
+      refundedAt:     payment.refundedAt ?? null,
+      status:         payment.status,
+    };
+  }
+
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
   private async fulfilWithGiftCard(

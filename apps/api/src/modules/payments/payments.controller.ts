@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -46,13 +47,37 @@ export class PaymentsController {
 
   // ─── Admin ─────────────────────────────────────────────────────────────────
 
+  @Get('stats')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Aggregate payment stats for dashboard (admin)' })
+  async getStats() {
+    return this.paymentsService.getStats();
+  }
+
   @Get()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'List all payments (admin)' })
-  async listPayments() {
-    return this.paymentsService.listPayments();
+  async listPayments(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.paymentsService.listPayments(
+      page ? Number(page) : 1,
+      limit ? Number(limit) : 20,
+    );
+  }
+
+  @Get(':id/refunds')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get refund details for a payment (admin)' })
+  async getRefunds(@Param('id') id: string) {
+    return this.paymentsService.getRefunds(id);
   }
 
   @Post(':id/refund')

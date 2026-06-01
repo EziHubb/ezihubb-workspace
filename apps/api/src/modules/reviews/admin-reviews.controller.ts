@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Post,
   Query,
@@ -31,12 +34,25 @@ class ReplyDto {
 export class AdminReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
+  @Get('counts')
+  @ApiOperation({ summary: 'Count reviews grouped by status (for tab badges)' })
+  async getCounts(): Promise<Record<string, number>> {
+    return this.reviewsService.getAdminCounts();
+  }
+
   @Get()
   @ApiOperation({ summary: 'List all reviews with optional status filter' })
   async findAll(
     @Query() query: AdminReviewQueryDto,
   ): Promise<PaginatedResult<ReviewResponseDto>> {
     return this.reviewsService.findAllAdmin(query);
+  }
+
+  @Delete(':reviewId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: '[Admin] Permanently delete a review' })
+  async remove(@Param('reviewId') reviewId: string): Promise<void> {
+    return this.reviewsService.adminDeleteReview(reviewId);
   }
 
   @Post(':reviewId/approve')

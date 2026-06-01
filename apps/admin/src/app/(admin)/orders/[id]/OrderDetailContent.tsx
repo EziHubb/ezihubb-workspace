@@ -215,7 +215,7 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
 
         {/* Actions */}
         <div className="flex gap-3">
-          <button type="button" onClick={() => { if (confirm('Issue refund?')) clientFetch(`/admin/payments/${order.id}/refund`, { method:'POST', body: JSON.stringify({reason:'Admin'}) }).then(refresh); }}
+          <button type="button" onClick={() => { if (confirm('Issue refund?')) clientFetch(`/payments/${order.id}/refund`, { method:'POST', body: JSON.stringify({reason:'Admin'}) }).then(refresh); }}
             className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 px-3 py-2 rounded-button">
             <DollarSign className="w-3.5 h-3.5" />Issue Refund
           </button>

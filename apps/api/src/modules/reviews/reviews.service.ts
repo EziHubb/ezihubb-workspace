@@ -318,6 +318,26 @@ export class ReviewsService {
     return paginatedResponse(reviews.map(this.mapToDto), page, limit, total);
   }
 
+  async getAdminCounts(): Promise<Record<string, number>> {
+    const statuses = ['PENDING', 'APPROVED', 'HIDDEN'];
+    const counts = await Promise.all(
+      statuses.map((status) => this.prisma.review.count({ where: { status: status as ReviewStatus } })),
+    );
+    const total = counts.reduce((sum, n) => sum + n, 0);
+    return {
+      PENDING:  counts[0],
+      APPROVED: counts[1],
+      HIDDEN:   counts[2],
+      ALL:      total,
+    };
+  }
+
+  async adminDeleteReview(reviewId: string): Promise<void> {
+    const review = await this.findReviewOrThrow(reviewId);
+    await this.prisma.review.delete({ where: { id: reviewId } });
+    await this.redis.del(CacheKeys.reviewsSummary(review.productId));
+  }
+
   async approveReview(reviewId: string): Promise<ReviewResponseDto> {
     const review = await this.findReviewOrThrow(reviewId);
     const updated = await this.prisma.review.update({

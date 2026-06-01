@@ -225,7 +225,8 @@ function CategoryPickerModal({
     queryFn:  async () => {
       const res  = await clientFetch('/admin/categories?limit=500');
       const body = await res.json();
-      return (body.data ?? body) as Category[];
+      const raw  = body.data ?? body;
+      return (Array.isArray(raw) ? raw : []) as Category[];
     },
     staleTime: 10 * 60_000,
   });
@@ -533,7 +534,8 @@ export function ItemDetailsTab() {
     queryFn:  async () => {
       const res  = await clientFetch('/admin/categories?limit=500');
       const body = await res.json();
-      return (body.data ?? body) as Category[];
+      const raw  = body.data ?? body;
+      return (Array.isArray(raw) ? raw : []) as Category[];
     },
     staleTime: 10 * 60_000,
   });

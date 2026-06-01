@@ -12,6 +12,12 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['recharts', '@tanstack/react-table'],
   },
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: '**' },
+      { protocol: 'http',  hostname: '**' },
+    ],
+  },
 };
 
 const plugins = [

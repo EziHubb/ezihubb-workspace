@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -31,7 +32,24 @@ import { Role } from '@mlh/constants';
 export class AdminCatalogController {
   constructor(private readonly catalogService: CatalogService) {}
 
+  // ─── Mega menu sync ─────────────────────────────────────────────────────────
+
+  // POST /admin/catalog/sync-mega-menu
+  @Post('catalog/sync-mega-menu')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '[Admin] Rebuild MongoDB mega-menu from Prisma categories' })
+  syncMegaMenu(): Promise<{ synced: number }> {
+    return this.catalogService.syncMegaMenu();
+  }
+
   // ─── Categories ─────────────────────────────────────────────────────────────
+
+  // GET /admin/categories
+  @Get('categories')
+  @ApiOperation({ summary: '[Admin] List all categories (flat, including hidden)' })
+  getAdminCategories(@Query('limit') limit?: string): Promise<CategoryResponseDto[]> {
+    return this.catalogService.getAdminCategories(limit ? Math.min(Number(limit), 2000) : 500);
+  }
 
   // POST /admin/categories
   @Post('categories')

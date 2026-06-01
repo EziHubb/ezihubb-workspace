@@ -581,6 +581,78 @@ export class CatalogService {
     return slug;
   }
 
+  // ─── Admin helpers ─────────────────────────────────────────────────────────
+
+  async getAdminCategories(limit = 500): Promise<CategoryResponseDto[]> {
+    const categories = await this.prisma.category.findMany({
+      take: limit,
+      include: { _count: { select: { products: true } } },
+      orderBy: [{ sortOrder: 'asc' }],
+    });
+
+    return categories.map((cat) => ({
+      id: cat.id,
+      name: cat.name,
+      slug: cat.slug,
+      description: cat.description,
+      imageUrl: cat.imageUrl,
+      sortOrder: cat.sortOrder,
+      isVisible: cat.isVisible,
+      parentId: cat.parentId,
+      level: (cat as Record<string, unknown>)['level'] as number | undefined,
+      productCount: cat._count.products,
+      createdAt: cat.createdAt,
+      children: [],
+    })) as CategoryResponseDto[];
+  }
+
+  async syncMegaMenu(): Promise<{ synced: number }> {
+    const categories = await this.prisma.category.findMany({
+      where: { isVisible: true },
+      orderBy: [{ sortOrder: 'asc' }],
+    });
+
+    const byLevel = (lvl: number) =>
+      categories.filter((c) => (c as Record<string, unknown>)['level'] === lvl);
+
+    const l1 = byLevel(1);
+    const l2 = byLevel(2);
+    const l3 = byLevel(3);
+
+    await this.categoryMenuModel.deleteMany({});
+
+    const menus = l1.map((nav) => ({
+      navLabel: nav.name,
+      navSlug: nav.slug,
+      categoryId: nav.id,
+      sortOrder: nav.sortOrder,
+      isVisible: nav.isVisible,
+      groups: l2
+        .filter((g) => g.parentId === nav.id)
+        .map((group) => ({
+          title: group.name,
+          categoryId: group.id,
+          slug: group.slug,
+          sortOrder: group.sortOrder,
+          items: l3
+            .filter((item) => item.parentId === group.id)
+            .map((item) => ({
+              name: item.name,
+              categoryId: item.id,
+              slug: item.slug,
+              sortOrder: item.sortOrder,
+            })),
+        })),
+    }));
+
+    if (menus.length > 0) {
+      await this.categoryMenuModel.insertMany(menus);
+    }
+    await this.redis.del(MEGA_MENU_CACHE_KEY);
+
+    return { synced: menus.length };
+  }
+
   private slugify(text: string): string {
     return text
       .toLowerCase()

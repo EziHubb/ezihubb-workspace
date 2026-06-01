@@ -483,7 +483,7 @@ export function OrderDrawer({ order, onClose, onUpdate }: OrderDrawerProps) {
             type="button"
             onClick={async () => {
               if (!confirm('Issue a refund for this order?')) return;
-              await clientFetch(`/admin/payments/${order.id}/refund`, {
+              await clientFetch(`/payments/${order.id}/refund`, {
                 method: 'POST',
                 body:   JSON.stringify({ reason: 'Admin initiated' }),
               });

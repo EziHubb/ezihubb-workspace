@@ -58,6 +58,14 @@ export class PromotionsController {
     return this.promotionsService.create(dto);
   }
 
+  @Get('page-stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get aggregate stats for the promotions dashboard page' })
+  async getPageStats() {
+    return this.promotionsService.getPageStats();
+  }
+
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
@@ -83,6 +91,26 @@ export class PromotionsController {
     @Body() dto: UpdatePromotionDto,
   ): Promise<PromotionResponseDto> {
     return this.promotionsService.update(id, dto);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Partially update a promotion (including isActive toggle)' })
+  async patch(
+    @Param('id') id: string,
+    @Body() dto: UpdatePromotionDto & { isActive?: boolean },
+  ): Promise<PromotionResponseDto> {
+    return this.promotionsService.patch(id, dto);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a promotion' })
+  async remove(@Param('id') id: string): Promise<void> {
+    return this.promotionsService.remove(id);
   }
 
   @Patch(':id/deactivate')

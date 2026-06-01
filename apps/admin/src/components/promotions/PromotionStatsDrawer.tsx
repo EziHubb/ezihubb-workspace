@@ -94,7 +94,7 @@ export function PromotionStatsDrawer({ promotion, onClose }: PromotionStatsDrawe
   const { data: stats, isLoading } = useQuery<PromotionStats>({
     queryKey: ['promo-stats', promotion.id],
     queryFn:  async () => {
-      const res  = await clientFetch(`/admin/promotions/${promotion.id}/stats`);
+      const res  = await clientFetch(`/promotions/${promotion.id}/stats`);
       const body = await res.json();
       return (body.data ?? body) as PromotionStats;
     },
