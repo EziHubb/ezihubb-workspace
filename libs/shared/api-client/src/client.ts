@@ -42,7 +42,9 @@ export function setTokenUpdater(updater: TokenUpdater): void {
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 function buildUrl(path: string, params?: RequestOptions['params']): string {
-  const url = new URL(path, baseUrl);
+  // Prepend /api/v1 so the old `api` client matches the server's global prefix.
+  const prefixed = path.startsWith('/api/') ? path : `/api/v1${path}`;
+  const url = new URL(prefixed, baseUrl);
   if (params) {
     for (const [k, v] of Object.entries(params)) {
       if (v !== undefined && v !== null) {

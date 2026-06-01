@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages, getTranslations } from 'next-intl/server';
+import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '../../i18n/routing';
 import { ReactQueryProvider } from '../../components/providers/ReactQueryProvider';
@@ -21,12 +21,17 @@ const playfair = Playfair_Display({
   display: 'swap',
 });
 
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }));
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: 'site' });
   return {
     metadataBase: new URL('https://maplehandmade.com'),
@@ -67,6 +72,10 @@ export default async function LocaleLayout({
   if (!routing.locales.includes(locale as 'en' | 'vi')) {
     notFound();
   }
+
+  // Required by next-intl v4 for static rendering support.
+  // Sets locale in async context so child server components don't need headers().
+  setRequestLocale(locale);
 
   const messages = await getMessages({ locale });
 

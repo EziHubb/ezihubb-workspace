@@ -21,11 +21,14 @@ const nextConfig = {
   transpilePackages: ['@mlh/constants', '@mlh/types', '@mlh/ui', '@mlh/api-client'],
   images: {
     formats: ['image/avif', 'image/webp'],
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'placehold.co' },
       { protocol: 'https', hostname: 'cdn.maplehandmade.com' },
       { protocol: 'https', hostname: 's3.amazonaws.com' },
+      { protocol: 'http', hostname: 'localhost' },
     ],
   },
   experimental: {
