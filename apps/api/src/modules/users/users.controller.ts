@@ -28,7 +28,9 @@ import { UpdateAddressDto } from './dto/update-address.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { AddressResponseDto } from './dto/address-response.dto';
 import { WishlistItemResponseDto } from './dto/wishlist-item-response.dto';
+import { UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
@@ -38,6 +40,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 @ApiTags('Users')
 @ApiBearerAuth('access-token')
+@UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
   constructor(
