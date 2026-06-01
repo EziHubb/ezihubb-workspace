@@ -12,6 +12,7 @@ import { fetchArr, safeArr } from '../../../../lib/fmt';
 import type { ProductEditFormValues, AdminProductDto, ProductImage } from '../types';
 import { VariantImagePicker } from '../VariantImagePicker';
 import { ManageVariationsModal } from '../ManageVariationsModal';
+import { CustomOptionsEditor } from '../CustomOptionsEditor';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -348,9 +349,10 @@ function ShowMoreAttributes({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─── Custom options editor ────────────────────────────────────────────────────
+// ─── Custom options editor (legacy — replaced by ../CustomOptionsEditor.tsx) ──
+// These functions are kept to avoid cascading type errors from removed usages.
 
-const MAX_CUSTOM_OPTS = 5;
+const MAX_CUSTOM_OPTS = 5; // kept for any remaining references
 
 const OPTION_TYPES: { value: CustomOptionField['type']; label: string; icon: string }[] = [
   { value: 'text',     label: 'Short text',     icon: 'T'  },
@@ -496,7 +498,7 @@ function CustomOptionRow({
   );
 }
 
-function CustomOptionsEditor({ productId }: { productId: string }) {
+function _CustomOptionsEditor_REMOVED({ productId }: { productId: string }) {
   const { watch, setValue } = useFormContext<ProductEditFormValues>();
   const rawOpts  = (watch('customOptions') ?? []) as CustomOptionField[];
   const opts     = rawOpts.filter(Boolean);
