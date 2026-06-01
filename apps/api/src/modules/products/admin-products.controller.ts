@@ -75,11 +75,14 @@ export class AdminProductsController {
     return this.productsService.findByIdAdmin(id);
   }
 
-  // GET /admin/products/:id/performance  — analytics for the Performance tab
+  // GET /admin/products/:id/performance?range=7d|30d|90d|1y|all
   @Get(':id/performance')
   @ApiOperation({ summary: '[Admin] Get performance stats for a product (Performance tab)' })
-  getPerformance(@Param('id', ParseCuidPipe) id: string) {
-    return this.productsService.getPerformanceStats(id);
+  getPerformance(
+    @Param('id', ParseCuidPipe) id: string,
+    @Query('range') range?: string,
+  ) {
+    return this.productsService.getPerformanceStats(id, range ?? '30d');
   }
 
   // POST /admin/products
