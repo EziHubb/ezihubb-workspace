@@ -4,8 +4,6 @@ import { apiClient } from '@mlh/api-client';
 import type { ProductListItemDto, ReviewSummaryDto, ReviewDto } from '@mlh/types';
 import type { ProductDto } from '@mlh/types';
 import type { PaginatedResponse } from '@mlh/types';
-import { DEMO_TEMPLATE } from '../../../../../lib/customizer/types';
-import type { CustomizationTemplate } from '../../../../../lib/customizer/types';
 import { ProductGallery } from '../../../../../components/product/ProductGallery';
 import { ProductInfo } from '../../../../../components/product/ProductInfo';
 import { ProductPageInteractive } from '../../../../../components/product/ProductPageInteractive';
@@ -122,12 +120,6 @@ export default async function ProductDetailPage({
   const initialReviews = initialReviewsRes.status === 'fulfilled'
     ? initialReviewsRes.value.data : undefined;
 
-  // Use product.customization (MongoDB) as gate — null means not personalizable
-  const template: CustomizationTemplate | null =
-    product.isPersonalizable && product.customization
-      ? DEMO_TEMPLATE
-      : null;
-
   // Breadcrumb: Home > primaryCategory > product
   const breadcrumbItems: BreadcrumbItem[] = [
     { name: 'Home', href: `/${locale}` },
@@ -170,7 +162,6 @@ export default async function ProductDetailPage({
             />
             <ProductPageInteractive
               product={product}
-              template={template}
               locale={locale}
             />
           </div>

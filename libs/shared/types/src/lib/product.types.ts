@@ -38,6 +38,8 @@ export interface ProductAttributeDto {
 export interface CustomizationConfigDto {
   templateId: string;
   version: number;
+  /** Number of items in a bundle set (1 = single item, 2+ = bundle like Couples Mug Set) */
+  bundleCount?: number;
   fields: {
     id: string;
     type: 'text' | 'textarea' | 'image' | 'select' | 'color';

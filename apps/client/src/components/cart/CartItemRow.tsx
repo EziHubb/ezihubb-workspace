@@ -13,11 +13,11 @@ interface CartItemRowProps {
   onRemove: (itemId: string) => void;
 }
 
-function getCustSummary(data: Record<string, unknown> | null | undefined): string | null {
+type CustData = Record<string, unknown>;
+
+function getCustSummary(data: CustData | null | undefined): string | null {
   if (!data) return null;
-  const fields = (
-    data as { fields?: Record<string, { type: string; value: string }> }
-  ).fields;
+  const fields = (data as { fields?: Record<string, { type: string; value: string }> }).fields;
   if (!fields) return null;
 
   const parts: string[] = [];
@@ -37,6 +37,24 @@ function getCustSummary(data: Record<string, unknown> | null | undefined): strin
   return parts.slice(0, 3).join(' · ') || null;
 }
 
+/** Bundle: extract per-item name summaries → "Item 1: John · Item 2: Sarah" */
+function getBundleSummary(data: CustData | null | undefined): string[] | null {
+  if (!data) return null;
+  const d = data as {
+    bundleCount?: number;
+    items?: { fields: Record<string, { type: string; value: string }> }[];
+  };
+  if (!d.bundleCount || d.bundleCount <= 1 || !d.items) return null;
+
+  return d.items.map((item, i) => {
+    const nameEntry = Object.entries(item.fields ?? {}).find(([key]) =>
+      key.toLowerCase().includes('name'),
+    );
+    const name = nameEntry?.[1]?.value?.trim() ?? `(empty)`;
+    return `Item ${i + 1}: ${name}`;
+  });
+}
+
 export function CartItemRow({ item, locale, onUpdate, onRemove }: CartItemRowProps) {
   const [localQty, setLocalQty] = useState(item.quantity);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -52,9 +70,10 @@ export function CartItemRow({ item, locale, onUpdate, onRemove }: CartItemRowPro
     }, 450);
   };
 
-  const thumbUrl    = item.previewUrl ?? item.productImageUrl;
-  const lineTotal   = item.currentPrice * localQty;
-  const custSummary = getCustSummary(item.customizationData);
+  const thumbUrl      = item.previewUrl ?? item.productImageUrl;
+  const lineTotal     = item.currentPrice * localQty;
+  const bundleSummary = getBundleSummary(item.customizationData);
+  const custSummary   = bundleSummary ? null : getCustSummary(item.customizationData);
 
   return (
     <li className="flex gap-4 py-5 border-b border-border last:border-0">
@@ -95,8 +114,17 @@ export function CartItemRow({ item, locale, onUpdate, onRemove }: CartItemRowPro
         {item.variantName && (
           <p className="text-xs text-muted">{item.variantName}</p>
         )}
+        {/* Single-item customization summary */}
         {custSummary && (
           <p className="text-xs text-muted italic line-clamp-2">{custSummary}</p>
+        )}
+        {/* Bundle customization summary — one line per item */}
+        {bundleSummary && (
+          <div className="space-y-0.5">
+            {bundleSummary.map((line, i) => (
+              <p key={i} className="text-xs text-muted italic">{line}</p>
+            ))}
+          </div>
         )}
         {item.priceChanged && (
           <p className="text-xs text-warning font-medium">

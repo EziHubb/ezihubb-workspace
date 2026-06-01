@@ -59,5 +59,12 @@
   },
   "progress": "Step {current} of {total}",
   "continue": "Continue →",
-  "back": "← Back"
+  "back": "← Back",
+  "bundle": {
+    "tabLabel": "{item} for...",
+    "itemTab": "Item {n}",
+    "complete": "Complete",
+    "incomplete": "Required fields missing",
+    "priceNote": "Price for the complete set"
+  }
 }

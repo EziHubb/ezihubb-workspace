@@ -4,7 +4,11 @@ export interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>;
 }
 
-let baseUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
+// Strip trailing /api/v1 so the env var works correctly regardless of whether
+// it was set to "https://api.example.com" or "https://api.example.com/api/v1".
+// The path prefix is added explicitly in each client function below.
+let baseUrl = (process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002')
+  .replace(/\/api\/v1\/?$/, '');
 
 export function setBaseUrl(url: string): void {
   baseUrl = url;

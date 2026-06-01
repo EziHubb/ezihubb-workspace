@@ -22,6 +22,14 @@ interface CustomizerStore {
   // Field state
   fieldValues: FieldValues;
 
+  // ── Bundle support ─────────────────────────────────────────────────────────
+  /** Total items in bundle (1 = single, 2+ = bundle like Couples Mug Set) */
+  bundleCount:     number;
+  /** Index of the item currently being edited (0-based) */
+  activeItemIndex: number;
+  /** Per-item field values: itemFields[0] = first item, itemFields[1] = second, etc. */
+  itemFields:      Record<number, Record<string, FieldValue>>;
+
   // UI state
   activeFieldId:       string | null;
   isPreviewOpen:       boolean;
@@ -38,6 +46,11 @@ interface CustomizerStore {
 
   // ── Actions ─────────────────────────────────────────────────────────────────
   initTemplate:    (template: CustomizationTemplate, productId: string, variantId: string | null) => void;
+
+  // Bundle actions
+  setActiveItem:   (index: number) => void;
+  setItemField:    (itemIndex: number, fieldId: string, value: FieldValue) => void;
+  getItemData:     (itemIndex: number) => Record<string, FieldValue>;
   setFieldValue:   (fieldId: string, value: Partial<FieldValue>) => void;
   setActiveField:  (fieldId: string | null) => void;
   setVariant:      (variantId: string) => void;
@@ -139,6 +152,9 @@ export const useCustomizerStore = create<CustomizerStore>((set, get) => ({
   productId:           null,
   variantId:           null,
   fieldValues:         {},
+  bundleCount:         1,
+  activeItemIndex:     0,
+  itemFields:          {},
   activeFieldId:       null,
   isPreviewOpen:       false,
   previewImageUrl:     null,
@@ -163,6 +179,24 @@ export const useCustomizerStore = create<CustomizerStore>((set, get) => ({
     });
     set({ template, productId, variantId, fieldValues: defaults, history: [defaults], historyIndex: 0 });
   },
+
+  // ── Bundle actions ────────────────────────────────────────────────────────
+
+  setActiveItem: (index) => set({ activeItemIndex: index }),
+
+  setItemField: (itemIndex, fieldId, value) => {
+    set((s) => ({
+      itemFields: {
+        ...s.itemFields,
+        [itemIndex]: {
+          ...(s.itemFields[itemIndex] ?? {}),
+          [fieldId]: { ...(s.itemFields[itemIndex]?.[fieldId] ?? {}), ...value },
+        },
+      },
+    }));
+  },
+
+  getItemData: (itemIndex) => get().itemFields[itemIndex] ?? {},
 
   // ── Field mutations ───────────────────────────────────────────────────────
 

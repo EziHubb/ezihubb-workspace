@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { API_ROUTES } from '@mlh/constants';
 import { CustomizerProvider } from './CustomizerProvider';
+import { BundleCustomizerPanel } from './BundleCustomizerPanel';
 import { Canvas } from './Canvas';
 import { AutoFillBanner } from './AutoFillBanner';
 import { TextFieldInput } from './TextFieldInput';

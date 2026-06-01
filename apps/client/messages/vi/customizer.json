@@ -59,5 +59,12 @@
   },
   "progress": "Bước {current} / {total}",
   "continue": "Tiếp tục →",
-  "back": "← Quay lại"
+  "back": "← Quay lại",
+  "bundle": {
+    "tabLabel": "{item} cho...",
+    "itemTab": "Món {n}",
+    "complete": "Hoàn thành",
+    "incomplete": "Còn trường bắt buộc",
+    "priceNote": "Giá cho cả bộ"
+  }
 }

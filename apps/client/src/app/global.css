@@ -37,3 +37,30 @@
   15%, 45%, 75% { transform: translateX(-6px); }
   30%, 60%, 90% { transform: translateX(6px); }
 }
+
+/* ── Size Guide table styles ──────────────────────────────────────────────── */
+.size-guide-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.size-guide-content th {
+  background-color: #F9FAFB;
+  font-weight: 500;
+  text-align: left;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.size-guide-content td {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #E8E4DF;
+  color: var(--color-text-primary);
+}
+.size-guide-content tr:last-child td {
+  border-bottom: none;
+}
+.size-guide-content p {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin-top: 0.75rem;
+}

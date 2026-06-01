@@ -82,15 +82,19 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // ── CORS ───────────────────────────────────────────────────────────────────
-  const corsOrigins = (process.env.CORS_ORIGINS ?? '*')
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
+  // `origin: '*'` is invalid when `credentials: true` (browser rejects the
+  // preflight). Use `origin: true` (reflect request Origin) as the fallback so
+  // the API is accessible from any origin in dev/staging while still supporting
+  // cookies. In production set CORS_ORIGINS to a comma-separated allow-list.
+  const rawCorsOrigins = process.env['CORS_ORIGINS'];
+  const corsOrigin: boolean | string | string[] = rawCorsOrigins
+    ? rawCorsOrigins.split(',').map((o) => o.trim()).filter(Boolean)
+    : true; // true = reflect request Origin (works with credentials)
 
   app.enableCors({
-    origin: corsOrigins,
+    origin: corsOrigin,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Session-ID'],
     exposedHeaders: [
       'X-Request-ID',
       'X-RateLimit-Limit',
@@ -100,6 +104,13 @@ async function bootstrap() {
     credentials: true,
     maxAge: 86400,
   });
+
+  Logger.log(
+    rawCorsOrigins
+      ? `CORS origins: ${rawCorsOrigins}`
+      : 'CORS origin: reflect (set CORS_ORIGINS for production allow-list)',
+    'Bootstrap',
+  );
 
   // ── Global prefix ──────────────────────────────────────────────────────────
   app.setGlobalPrefix('api/v1');

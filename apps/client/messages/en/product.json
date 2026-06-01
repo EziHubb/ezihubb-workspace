@@ -1,0 +1,57 @@
+{
+  "actions": {
+    "addToCart": "Add to Cart",
+    "personalize": "Personalize Now",
+    "addToWishlist": "Add to Wishlist",
+    "removeFromWishlist": "Remove from Wishlist",
+    "quantity": "Quantity"
+  },
+  "personalization": {
+    "comingSoon": "Personalization Coming Soon",
+    "notifyMe": "Notify me when ready",
+    "notified": "We'll email you when it's ready!"
+  },
+  "tabs": {
+    "description": "Description",
+    "specifications": "Specifications",
+    "sizeGuide": "Size Guide",
+    "shipping": "Shipping & Returns",
+    "reviews": "Reviews"
+  },
+  "specs": {
+    "title": "Product Details",
+    "material": "Material",
+    "dimensions": "Dimensions",
+    "care": "Care Instructions"
+  },
+  "highlights": {
+    "title": "Key features"
+  },
+  "shipping": {
+    "production": "Production time",
+    "businessDays": "{n} business days",
+    "cancellation": "Cancel within 2 hours of ordering",
+    "returns": "Personalized items cannot be returned unless defective"
+  },
+  "variants": {
+    "sizeGuide": "Size Guide",
+    "unavailable": "Unavailable",
+    "colorLabel": "Color: {color}",
+    "shapeLabel": "Shape: {shape}",
+    "modelLabel": "Model: {model}",
+    "outOfStock": "Out of stock in this combination",
+    "selectOption": "Select {name}"
+  },
+  "sizeGuide": {
+    "title": "Size Guide",
+    "apparel": {
+      "note": "Measurements in inches. Size up for a relaxed fit."
+    },
+    "canvas": {
+      "note": "All canvas prints come gallery-wrapped, ready to hang."
+    },
+    "drinkware": {
+      "note": "All ceramic mugs are dishwasher and microwave safe."
+    }
+  }
+}

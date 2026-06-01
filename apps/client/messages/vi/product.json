@@ -1,0 +1,57 @@
+{
+  "actions": {
+    "addToCart": "Thêm vào giỏ hàng",
+    "personalize": "Cá nhân hóa ngay",
+    "addToWishlist": "Thêm vào yêu thích",
+    "removeFromWishlist": "Xóa khỏi yêu thích",
+    "quantity": "Số lượng"
+  },
+  "personalization": {
+    "comingSoon": "Tính năng cá nhân hóa sắp ra mắt",
+    "notifyMe": "Thông báo cho tôi khi sẵn sàng",
+    "notified": "Chúng tôi sẽ email bạn khi sẵn sàng!"
+  },
+  "tabs": {
+    "description": "Mô tả",
+    "specifications": "Thông số kỹ thuật",
+    "sizeGuide": "Bảng size",
+    "shipping": "Vận chuyển & Đổi trả",
+    "reviews": "Đánh giá"
+  },
+  "specs": {
+    "title": "Chi tiết sản phẩm",
+    "material": "Chất liệu",
+    "dimensions": "Kích thước",
+    "care": "Hướng dẫn bảo quản"
+  },
+  "highlights": {
+    "title": "Điểm nổi bật"
+  },
+  "shipping": {
+    "production": "Thời gian sản xuất",
+    "businessDays": "{n} ngày làm việc",
+    "cancellation": "Hủy trong vòng 2 giờ sau khi đặt hàng",
+    "returns": "Sản phẩm cá nhân hóa không được đổi trả trừ khi bị lỗi"
+  },
+  "variants": {
+    "sizeGuide": "Bảng kích thước",
+    "unavailable": "Không có sẵn",
+    "colorLabel": "Màu: {color}",
+    "shapeLabel": "Hình dạng: {shape}",
+    "modelLabel": "Model: {model}",
+    "outOfStock": "Hết hàng trong tổ hợp này",
+    "selectOption": "Chọn {name}"
+  },
+  "sizeGuide": {
+    "title": "Bảng kích thước",
+    "apparel": {
+      "note": "Kích thước tính bằng inch. Chọn size lớn hơn để mặc thoải mái hơn."
+    },
+    "canvas": {
+      "note": "Tất cả tranh canvas đều đóng khung sẵn, có thể treo ngay."
+    },
+    "drinkware": {
+      "note": "Tất cả cốc gốm đều an toàn trong máy rửa bát và lò vi sóng."
+    }
+  }
+}

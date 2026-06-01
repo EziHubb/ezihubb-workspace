@@ -1,13 +1,31 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { ProductDto, ReviewSummaryDto, ReviewDto } from '@mlh/types';
 import { ReviewSection } from './ReviewSection';
-import { ProductAttributeList } from './ProductAttributeList';
-import type { ProductAttribute } from './ProductAttributeList';
+import { ProductSpecifications } from './ProductSpecifications';
+import { ShippingReturnsContent } from './ShippingReturnsContent';
+
+// ── Product type detection (mirrors SmartVariantPicker logic) ─────────────────
+
+type ProductType = 'apparel' | 'canvas' | 'drinkware' | 'other';
+
+function getProductType(slug: string): ProductType {
+  if (['classic-tees','hoodies','sweatshirts','onesies','kids-t-shirts',
+       'v-neck-tees','long-sleeve-shirts','tank-tops','zip-hoodies','bomber-jackets'].includes(slug))
+    return 'apparel';
+  if (['canvas','posters-canvas','wood-acrylic-art'].includes(slug)) return 'canvas';
+  if (['coffee-mugs','photo-mugs','travel-mugs','enamel-mugs','tumblers',
+       'stainless-steel-tumblers','glass-tumblers','sports-bottles',
+       'wine-glasses','beer-glasses'].includes(slug)) return 'drinkware';
+  return 'other';
+}
+
+// ── Props ─────────────────────────────────────────────────────────────────────
 
 interface ProductTabsProps {
-  product:         ProductDto & { attributes?: ProductAttribute[]; sizeGuide?: string; shippingNote?: string };
+  product:         ProductDto & { sizeGuide?: string; shippingNote?: string };
   reviewSummary:   ReviewSummaryDto | null;
   initialReviews?: ReviewDto[];
   locale:          string;
@@ -15,27 +33,21 @@ interface ProductTabsProps {
 
 type TabId = 'description' | 'specifications' | 'size-guide' | 'shipping' | 'reviews';
 
-const SHIPPING_INFO = `
-**Free Standard Shipping** on orders over $50 (5–7 business days).
-**Express Shipping** available at checkout (2–3 business days).
-**International Shipping** available to 50+ countries.
+// ── Component ─────────────────────────────────────────────────────────────────
 
-**Returns & Exchanges:**
-We accept returns within 30 days of delivery for unused, unmodified items. Personalized items are non-returnable unless defective. Contact support@maplehandmade.com to start a return.
-`;
-
-export function ProductTabs({ product, reviewSummary, initialReviews, locale: _locale }: ProductTabsProps) {
+export function ProductTabs({ product, reviewSummary, initialReviews }: ProductTabsProps) {
+  const t = useTranslations('product');
   const [activeTab, setActiveTab] = useState<TabId>('description');
 
   const reviewCount  = reviewSummary?.totalReviews ?? 0;
   const hasAttrs     = (product.attributes?.length ?? 0) > 0;
+  const productType  = getProductType(product.primaryCategory.slug);
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: 'description',    label: 'Description'      },
-    ...(hasAttrs ? [{ id: 'specifications' as TabId, label: 'Specifications' }] : []),
-    { id: 'size-guide',     label: 'Size Guide'       },
-    { id: 'shipping',       label: 'Shipping & Returns'},
-    { id: 'reviews',        label: `Reviews${reviewCount > 0 ? ` (${reviewCount})` : ''}` },
+    { id: 'description',    label: t('tabs.description') },
+    ...(hasAttrs ? [{ id: 'specifications' as TabId, label: t('tabs.specifications') }] : []),
+    { id: 'shipping',  label: t('tabs.shipping') },
+    { id: 'reviews',   label: `${t('tabs.reviews')} (${reviewCount})` },
   ];
 
   return (
@@ -72,12 +84,12 @@ export function ProductTabs({ product, reviewSummary, initialReviews, locale: _l
         <div
           id="panel-description"
           role="tabpanel"
-          aria-labelledby="tab-description"
           hidden={activeTab !== 'description'}
           className="prose prose-sm max-w-none text-secondary leading-relaxed"
         >
           {product.description ? (
             <div
+              // eslint-disable-next-line react/no-danger
               dangerouslySetInnerHTML={{ __html: product.description }}
               className="space-y-3 text-sm leading-relaxed"
             />
@@ -94,109 +106,23 @@ export function ProductTabs({ product, reviewSummary, initialReviews, locale: _l
             hidden={activeTab !== 'specifications'}
             className="max-w-lg"
           >
-            <ProductAttributeList attributes={product.attributes!} />
+            <h3 className="text-sm font-semibold text-secondary mb-4">
+              {t('specs.title')}
+            </h3>
+            <ProductSpecifications attributes={product.attributes!} />
           </div>
         )}
-
-        {/* Size Guide */}
-        <div
-          id="panel-size-guide"
-          role="tabpanel"
-          hidden={activeTab !== 'size-guide'}
-          className="text-sm text-secondary space-y-4"
-        >
-          <p className="text-muted">
-            Measurements are approximate and may vary slightly between items.
-          </p>
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left py-2 pr-4 font-semibold text-secondary">Size</th>
-                <th className="text-left py-2 pr-4 font-semibold text-secondary">Dimensions</th>
-                <th className="text-left py-2 font-semibold text-secondary">Capacity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { size: 'Small (10oz)',  dims: '3.5" × 3.5"', cap: '10 oz' },
-                { size: 'Standard (15oz)', dims: '4.5" × 4"',  cap: '15 oz' },
-                { size: 'Large (20oz)',  dims: '5.5" × 4"',  cap: '20 oz' },
-              ].map((row) => (
-                <tr key={row.size} className="border-b border-border last:border-0">
-                  <td className="py-2.5 pr-4 text-secondary">{row.size}</td>
-                  <td className="py-2.5 pr-4 text-muted">{row.dims}</td>
-                  <td className="py-2.5 text-muted">{row.cap}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
 
         {/* Shipping & Returns */}
         <div
           id="panel-shipping"
           role="tabpanel"
           hidden={activeTab !== 'shipping'}
-          className="space-y-4 text-sm text-secondary"
         >
-          <div className="grid sm:grid-cols-2 gap-4">
-            {[
-              {
-                icon:  '🚚',
-                title: 'Shipping',
-                items: [
-                  'Free standard shipping over $50',
-                  'Standard: 5–7 business days',
-                  'Express: 2–3 business days',
-                  'International shipping available',
-                ],
-              },
-              {
-                icon:  '🔄',
-                title: 'Returns',
-                items: [
-                  '30-day return window',
-                  'Free returns for defective items',
-                  'Personalized items non-returnable',
-                  'Contact support to start return',
-                ],
-              },
-              {
-                icon:  '⏱️',
-                title: 'Processing',
-                items: [
-                  'Production: 3–5 business days',
-                  'Rush production available',
-                  'Order updates via email',
-                  'Track via order number',
-                ],
-              },
-              {
-                icon:  '🎁',
-                title: 'Gift Options',
-                items: [
-                  'Gift wrapping available',
-                  'Add a personal message',
-                  'Ship directly to recipient',
-                  'Gift receipts available',
-                ],
-              },
-            ].map((card) => (
-              <div key={card.title} className="bg-surface border border-border rounded-card p-4">
-                <p className="font-semibold text-secondary mb-2">
-                  {card.icon} {card.title}
-                </p>
-                <ul className="space-y-1 text-xs text-muted">
-                  {card.items.map((item) => (
-                    <li key={item} className="flex items-start gap-1.5">
-                      <span className="text-success mt-0.5">✓</span>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          <ShippingReturnsContent
+            processingDays={product.processingDays ?? 3}
+            productType={productType}
+          />
         </div>
 
         {/* Reviews */}

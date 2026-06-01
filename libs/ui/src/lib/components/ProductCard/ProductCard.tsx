@@ -90,20 +90,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </button>
         )}
 
-        {/* Personalize Now — slides up on hover */}
-        {isPersonalizable && (
-          <div
-            className={[
-              'absolute bottom-0 left-0 right-0 bg-primary/95 px-4 py-3',
-              'transition-transform duration-300',
-              hovered ? 'translate-y-0' : 'translate-y-full',
-            ].join(' ')}
-          >
-            <span className="block text-center text-white text-sm font-medium">
-              Personalize Now
-            </span>
-          </div>
-        )}
+        {/* CTA hover banner — text depends on personalizability */}
+        <div
+          className={[
+            'absolute bottom-0 left-0 right-0 bg-primary/95 px-4 py-3',
+            'transition-transform duration-300',
+            hovered ? 'translate-y-0' : 'translate-y-full',
+          ].join(' ')}
+        >
+          <span className="block text-center text-white text-sm font-medium">
+            {isPersonalizable ? 'Personalize Now' : 'Add to Cart'}
+          </span>
+        </div>
       </Link>
 
       {/* ── Info ───────────────────────────────────────────────────────────── */}

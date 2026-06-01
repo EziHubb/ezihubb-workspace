@@ -136,6 +136,8 @@ interface IProductDetail {
     maxFileSize: number;
     acceptedFormats: string[];
   };
+  /** Bundle/single-item customization config — stored in MongoDB for flexible schema */
+  customization?: object;
 }
 
 const productDetailSchema = new Schema<IProductDetail>(
@@ -157,6 +159,7 @@ const productDetailSchema = new Schema<IProductDetail>(
       maxFileSize: Number,
       acceptedFormats: [String],
     },
+    customization: { type: Object, default: undefined },
   },
   { collection: 'product_details', timestamps: true },
 );
@@ -847,6 +850,12 @@ async function seedProducts() {
     compareAtPrice?: number;
     catSlug: string;
     isFeatured?: boolean;
+    /**
+     * true  = product can be personalized (shows CustomizerPanel or ComingSoon)
+     * false = direct add-to-cart product (no digital customizer, e.g. laser-engraved items)
+     * Defaults to true when omitted.
+     */
+    isPersonalizable?: boolean;
     imageUrl: string;
     variants: VarDef[];
   };
@@ -1175,6 +1184,7 @@ async function seedProducts() {
       basePrice: 44.99,
       compareAtPrice: 54.99,
       catSlug: 'cutting-boards',
+      isPersonalizable: false,  // direct add-to-cart — vendor laser-engraves after order
       imageUrl:
         'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80',
       variants: [
@@ -1298,6 +1308,7 @@ async function seedProducts() {
       shortDescription: 'Custom engraved wine glass',
       basePrice: 24.99,
       catSlug: 'wine-glasses',
+      isPersonalizable: false,  // direct add-to-cart — vendor laser-etches after order
       imageUrl:
         'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=800&q=80',
       variants: [
@@ -1364,6 +1375,7 @@ async function seedProducts() {
       shortDescription: 'Custom engraved keychain',
       basePrice: 14.99,
       catSlug: 'keychains',
+      isPersonalizable: false,  // direct add-to-cart — vendor laser-engraves after order
       imageUrl:
         'https://images.unsplash.com/photo-1533234427049-9e9bb093186d?w=800&q=80',
       variants: [
@@ -1479,7 +1491,7 @@ async function seedProducts() {
   const productIds: Record<string, string> = {};
 
   for (const def of products) {
-    const { variants, imageUrl, catSlug, isFeatured = false, ...fields } = def;
+    const { variants, imageUrl, catSlug, isFeatured = false, isPersonalizable, ...fields } = def;
 
     // IMPROVE 1: throw in dev so missing slugs are caught immediately
     const categoryId = categoryIds[catSlug] ?? null;
@@ -1510,7 +1522,7 @@ async function seedProducts() {
         ...fields,
         categoryId,
         isFeatured,
-        isPersonalizable: true,
+        isPersonalizable: def.isPersonalizable !== false, // default true
         isActive: true,
         processingDays: 3,
         variants: { create: variants.map((v, i) => ({ ...v, sortOrder: i })) },
@@ -1800,6 +1812,60 @@ async function seedMongoProductDetails(productIds: Record<string, string>) {
         minDPI: 150,
         maxFileSize: 10,
         acceptedFormats: ['jpg', 'png', 'webp'],
+      },
+    },
+
+    // ── Bundle product: Couples Mug Set ────────────────────────────────────
+    'couples-mug-set': {
+      attributes: [
+        { key: 'Set includes', value: '2 matching ceramic mugs', filterable: false },
+        { key: 'Material',     value: 'Ceramic',                 filterable: true  },
+        { key: 'Dishwasher Safe', value: 'Yes',                  filterable: true  },
+        { key: 'Microwave Safe',  value: 'Yes',                  filterable: false },
+      ],
+      variantOptions: [
+        { name: 'Size', values: ['2 × 11oz', '2 × 15oz'] },
+      ],
+      customization: {
+        templateId:  'tmpl_couples_mug',
+        version:     1,
+        bundleCount: 2,
+        fields: [
+          {
+            id:        'item_1_name',
+            type:      'text',
+            label:     'Name on Mug 1',
+            required:  true,
+            maxLength: 20,
+            position:  { x: 120, y: 80 },
+          },
+          {
+            id:        'item_1_message',
+            type:      'text',
+            label:     'Message on Mug 1',
+            required:  false,
+            maxLength: 30,
+          },
+          {
+            id:        'item_2_name',
+            type:      'text',
+            label:     'Name on Mug 2',
+            required:  true,
+            maxLength: 20,
+            position:  { x: 120, y: 80 },
+          },
+          {
+            id:        'item_2_message',
+            type:      'text',
+            label:     'Message on Mug 2',
+            required:  false,
+            maxLength: 30,
+          },
+        ],
+        previewLayers: [
+          { type: 'base',    url: '/templates/mug-base.png',    zIndex: 0 },
+          { type: 'overlay', url: '/templates/mug-overlay.png', zIndex: 2 },
+        ],
       },
     },
   };
