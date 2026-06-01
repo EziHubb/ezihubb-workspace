@@ -41,7 +41,7 @@ export function ProductTabs({ product, reviewSummary, initialReviews }: ProductT
 
   const reviewCount  = reviewSummary?.totalReviews ?? 0;
   const hasAttrs     = (product.attributes?.length ?? 0) > 0;
-  const productType  = getProductType(product.primaryCategory.slug);
+  const productType  = getProductType(product.primaryCategory?.slug ?? '');
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'description',    label: t('tabs.description') },

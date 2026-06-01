@@ -82,14 +82,25 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // ── CORS ───────────────────────────────────────────────────────────────────
-  // `origin: '*'` is invalid when `credentials: true` (browser rejects the
-  // preflight). Use `origin: true` (reflect request Origin) as the fallback so
-  // the API is accessible from any origin in dev/staging while still supporting
-  // cookies. In production set CORS_ORIGINS to a comma-separated allow-list.
+  // Build allowed origin list from CORS_ORIGINS + FRONTEND_URL + APP_URL so
+  // Railway deployments work without manual CORS config. FRONTEND_URL and APP_URL
+  // are set automatically by Railway's reference variables.
+  // If none of these are set the fallback is `origin: true` (reflect) which is
+  // safe for dev/staging while still supporting credentials.
+  const extraOrigins = [
+    process.env['FRONTEND_URL'],
+    process.env['APP_URL'],
+  ].filter((u): u is string => !!u && !u.includes('localhost'));
+
   const rawCorsOrigins = process.env['CORS_ORIGINS'];
-  const corsOrigin: boolean | string | string[] = rawCorsOrigins
+  const listedOrigins: string[] = rawCorsOrigins
     ? rawCorsOrigins.split(',').map((o) => o.trim()).filter(Boolean)
-    : true; // true = reflect request Origin (works with credentials)
+    : [];
+
+  const allOrigins = Array.from(new Set([...listedOrigins, ...extraOrigins]));
+
+  // If we still have no explicit origins, reflect (works in dev/staging).
+  const corsOrigin: boolean | string[] = allOrigins.length > 0 ? allOrigins : true;
 
   app.enableCors({
     origin: corsOrigin,
@@ -106,9 +117,9 @@ async function bootstrap() {
   });
 
   Logger.log(
-    rawCorsOrigins
-      ? `CORS origins: ${rawCorsOrigins}`
-      : 'CORS origin: reflect (set CORS_ORIGINS for production allow-list)',
+    allOrigins.length > 0
+      ? `CORS origins: ${allOrigins.join(', ')}`
+      : 'CORS origin: reflect (set CORS_ORIGINS or FRONTEND_URL for explicit allow-list)',
     'Bootstrap',
   );
 
