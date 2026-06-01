@@ -430,7 +430,10 @@ model VariationOption {
   name        String         // "Red", "Small"
   value       String         // slug / code, e.g. "red", "s"
   colorHex    String?        // for color_swatch display type
-  imageUrl    String?        // for image display type
+  imageUrl    String?        // for image display type (custom external URL)
+  // Which product photo represents this variant option.
+  // Intentionally no FK → ProductImage so image deletion doesn't cascade.
+  imageId     String?        // references ProductImage.id (soft reference)
   priceDelta  Decimal?       @db.Decimal(10, 2) // price adjustment from base
   sortOrder   Int            @default(0)
   isAvailable Boolean        @default(true)

@@ -6,22 +6,23 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   X, Plus, ChevronDown, ChevronUp, HelpCircle,
   GripVertical, Trash2, Pencil, Check, Settings,
-  ToggleLeft, ToggleRight, ImagePlus,
 } from 'lucide-react';
-import Image from 'next/image';
 import { clientFetch } from '../../../../lib/api';
 import { fetchArr, safeArr } from '../../../../lib/fmt';
 import type { ProductEditFormValues, AdminProductDto, ProductImage } from '../types';
+import { VariantImagePicker } from '../VariantImagePicker';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface VariationOption {
+export interface VariationOption {
   id:           string;
   groupId:      string;
   name:         string;
   value:        string;
   colorHex?:    string;
   imageUrl?:    string;
+  /** Which product photo (ProductImage.id) represents this variant */
+  imageId?:     string | null;
   priceDelta?:  number | null;
   sortOrder:    number;
   isAvailable:  boolean;
@@ -589,78 +590,58 @@ function CustomOptionsEditor({ productId }: { productId: string }) {
 
 function VariationOptionRow({
   option,
+  group,
   priceVaries,
   productImages,
+  productId,
   onToggle,
   onPriceChange,
-  onImageChange,
 }: {
   option:        VariationOption;
+  group:         VariationGroup;
   priceVaries:   boolean;
   productImages: ProductImage[];
+  productId:     string;
   onToggle:      (available: boolean) => void;
   onPriceChange: (price: number) => void;
-  onImageChange: (imageId: string | null) => void;
 }) {
-  const [showImagePicker, setShowImagePicker] = useState(false);
-  const currentImg = productImages.find((img) => img.url === option.imageUrl);
+  // Show photo column for color swatches, image cards, or any group with images
+  const showPhoto =
+    group.displayType === 'color_swatch' ||
+    group.displayType === 'image'         ||
+    productImages.length > 0;             // always show if product has photos
 
   return (
     <tr className={`border-b border-border last:border-0 group transition-opacity ${!option.isAvailable ? 'opacity-40' : ''}`}>
-      {/* Thumbnail */}
-      <td className="py-2.5 pr-3 w-12">
-        <button
-          type="button"
-          onClick={() => setShowImagePicker((s) => !s)}
-          className="relative w-10 h-10 rounded-lg overflow-hidden border-2 border-dashed border-border hover:border-primary/40 flex items-center justify-center bg-background transition-colors"
-          title="Assign photo"
-        >
-          {option.imageUrl ? (
-            <Image src={option.imageUrl} alt={option.name} fill className="object-cover" sizes="40px" />
-          ) : (
-            <ImagePlus className="w-4 h-4 text-muted/40" />
-          )}
-        </button>
-
-        {/* Image picker popover */}
-        {showImagePicker && (
-          <div className="absolute z-30 mt-1 bg-surface border border-border rounded-card shadow-lg p-2 flex flex-wrap gap-1.5 w-44">
-            <button type="button" onClick={() => { onImageChange(null); setShowImagePicker(false); }}
-              className="w-9 h-9 rounded border border-dashed border-border flex items-center justify-center text-muted hover:border-primary/40 text-[10px]">
-              None
-            </button>
-            {productImages.map((img) => (
-              <button key={img.id} type="button"
-                onClick={() => { onImageChange(img.id); setShowImagePicker(false); }}
-                className="relative w-9 h-9 rounded overflow-hidden border border-border hover:border-primary transition-colors">
-                <Image src={img.url} alt="" fill className="object-cover" sizes="36px" />
-                {img.url === option.imageUrl && (
-                  <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-primary" />
-                  </div>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </td>
-
-      {/* Value */}
-      <td className="py-2.5 text-sm text-secondary font-medium">
-        {option.name || option.value}
-        {option.colorHex && (
-          <span
-            className="inline-block w-4 h-4 rounded-full ml-2 border border-border align-middle"
-            style={{ backgroundColor: option.colorHex }}
+      {/* Photo thumbnail — opens VariantImagePicker modal */}
+      {showPhoto && (
+        <td className="py-2.5 pr-3 w-12">
+          <VariantImagePicker
+            option={option}
+            productId={productId}
+            productImages={productImages}
           />
-        )}
+        </td>
+      )}
+
+      {/* Value + optional color swatch */}
+      <td className="py-2.5 text-sm text-secondary font-medium">
+        <div className="flex items-center gap-2">
+          {option.name || option.value}
+          {option.colorHex && (
+            <span
+              className="w-3.5 h-3.5 rounded-full border border-border shrink-0"
+              style={{ backgroundColor: option.colorHex }}
+            />
+          )}
+        </div>
       </td>
 
-      {/* Price */}
+      {/* Price delta (only when group has price variation) */}
       {priceVaries && (
         <td className="py-2.5 pr-3 w-28">
           <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted text-sm">+$</span>
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted text-sm pointer-events-none">+$</span>
             <input
               type="number"
               step="0.01"
@@ -774,14 +755,12 @@ function VariationsSummaryTable({
                     <VariationOptionRow
                       key={opt.id}
                       option={opt}
+                      group={group}
                       priceVaries={priceVaries}
                       productImages={product.images ?? []}
+                      productId={product.id}
                       onToggle={(available) => updateOption(group.id, opt.id, { isAvailable: available })}
                       onPriceChange={(price) => updateOption(group.id, opt.id, { priceDelta: price })}
-                      onImageChange={(imageId) => {
-                        const img = (product.images ?? []).find((i) => i.id === imageId);
-                        updateOption(group.id, opt.id, { imageUrl: img?.url ?? null as unknown as string });
-                      }}
                     />
                   ))}
                 </tbody>
