@@ -1,159 +1,183 @@
-# Module 04 — Product Management
+﻿# Module 04 — Product Catalog
 
-## 1. Tổng quan
+## 1. Endpoints
 
-Quản lý toàn bộ thông tin sản phẩm: thông tin cơ bản, variants (size/màu), giá, hình ảnh, customization template config, trạng thái tồn kho (POD không cần track stock vật lý nhưng cần track template availability).
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/products` | Danh sách sản phẩm (phân trang, filter) | No |
+| GET | `/api/v1/products/{slug}` | Chi tiết sản phẩm | No |
+| GET | `/api/v1/products/featured` | Sản phẩm nổi bật | No |
+| GET | `/api/v1/products/new-arrivals` | Hàng mới về | No |
+| GET | `/api/v1/products/{id}/related` | Sản phẩm liên quan | No |
 
----
+## 2. Data Architecture
 
-## 2. User Stories
+Sản phẩm dùng **dual-database**:
+- **PostgreSQL** (Prisma): dữ liệu giao dịch (tên, giá, SKU, danh mục, variants, ratings)
+- **MongoDB** (Mongoose): chi tiết phong phú (attributes, customization config, preview layers, shipping info)
 
-### 2.1 Storefront — Xem sản phẩm
-- **US-PROD-001:** Là khách, tôi muốn xem danh sách sản phẩm với ảnh, tên, giá.
-- **US-PROD-002:** Là khách, tôi muốn xem trang chi tiết sản phẩm với mô tả đầy đủ, ảnh gallery, variants.
-- **US-PROD-003:** Là khách, tôi muốn thấy badge "In demand – X người mua trong 24h" để cảm nhận độ phổ biến.
-- **US-PROD-004:** Là khách, tôi muốn xem sản phẩm liên quan / gợi ý ở cuối trang.
-- **US-PROD-005:** Là khách, tôi muốn xem giá gốc và giá sale nếu sản phẩm đang khuyến mãi.
-- **US-PROD-006:** Là khách, tôi muốn chọn variant (size, màu) trước khi customize.
-
-### 2.2 Admin — Quản lý sản phẩm
-- **US-PROD-007:** Là admin, tôi muốn tạo sản phẩm mới với đầy đủ thông tin.
-- **US-PROD-008:** Là admin, tôi muốn upload nhiều ảnh sản phẩm, chọn ảnh chính.
-- **US-PROD-009:** Là admin, tôi muốn tạo các variants (ví dụ: size S/M/L, màu đen/trắng) với giá riêng.
-- **US-PROD-010:** Là admin, tôi muốn gắn sản phẩm vào category, collection, tags.
-- **US-PROD-011:** Là admin, tôi muốn ẩn/hiện sản phẩm mà không cần xóa.
-- **US-PROD-012:** Là admin, tôi muốn xem thống kê: số lượt xem, số lần mua của từng sản phẩm.
-- **US-PROD-013:** Là admin, tôi muốn duplicate sản phẩm để tạo biến thể nhanh.
-
----
-
-## 3. API Endpoints
-
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|--------|------|
-| GET | `/products` | Danh sách sản phẩm (paginated, filterable) | No |
-| GET | `/products/:slug` | Chi tiết sản phẩm | No |
-| GET | `/products/:slug/related` | Sản phẩm liên quan | No |
-| GET | `/products/trending` | Top sản phẩm trending | No |
-| POST | `/admin/products` | Tạo sản phẩm | Admin |
-| PATCH | `/admin/products/:id` | Sửa sản phẩm | Admin |
-| DELETE | `/admin/products/:id` | Xóa sản phẩm | Admin |
-| POST | `/admin/products/:id/duplicate` | Duplicate sản phẩm | Admin |
-| POST | `/admin/products/:id/images` | Upload ảnh sản phẩm | Admin |
-| DELETE | `/admin/products/:id/images/:imgId` | Xóa ảnh | Admin |
-| GET | `/admin/products` | Danh sách (admin view, full data) | Admin |
-
----
-
-## 4. Data Models
+## 3. Prisma Models
 
 ```prisma
 model Product {
-  id                  String    @id @default(cuid())
-  name                String
-  slug                String    @unique
-  sku                 String    @unique
-  description         String
-  shortDescription    String?
-  basePrice           Decimal   @db.Decimal(10, 2)
-  compareAtPrice      Decimal?  @db.Decimal(10, 2)  -- giá gốc khi sale
-  isPersonalizable    Boolean   @default(true)
-  isActive            Boolean   @default(true)
-  isFeatured          Boolean   @default(false)
-  viewCount           Int       @default(0)
-  soldCount           Int       @default(0)
-  processingDays      Int       @default(3)          -- ngày sản xuất POD
-  categoryId          String
-  category            Category  @relation(fields: [categoryId], references: [id])
-  
-  variants            ProductVariant[]
-  images              ProductImage[]
-  customizationConfig Json?                          -- config cho personalizer
-  collections         CollectionProduct[]
-  tags                ProductTag[]
-  reviews             Review[]
-  wishlistItems       WishlistItem[]
-  orderItems          OrderItem[]
-  
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  
-  @@index([categoryId])
-  @@index([isActive, isFeatured])
+  id               String       @id @default(cuid())
+  name             String
+  slug             String       @unique
+  description      String?
+  basePrice        Decimal
+  isActive         Boolean      @default(true)
+  isPersonalizable Boolean      @default(true)
+  categoryId       String
+  category         Category     @relation(...)
+  variants         ProductVariant[]
+  variantOptions   VariantOption[]
+  collections      CollectionProduct[]
+  reviews          Review[]
+  wishlisted       WishlistItem[]
+  processingDays   Int          @default(3)
 }
 
 model ProductVariant {
-  id         String   @id @default(cuid())
-  productId  String
-  product    Product  @relation(fields: [productId], references: [id])
-  name       String   -- "Size M - Black"
-  options    Json     -- { size: "M", color: "Black" }
-  price      Decimal  @db.Decimal(10, 2)
-  sku        String?
-  isDefault  Boolean  @default(false)
-  sortOrder  Int      @default(0)
-  orderItems OrderItem[]
+  id          String      @id @default(cuid())
+  productId   String
+  sku         String      @unique
+  price       Decimal
+  stockQty    Int         @default(0)
+  isActive    Boolean     @default(true)
+  options     VariantOptionValue[]  // e.g. Color=Red, Size=M
 }
 
-model ProductImage {
-  id        String  @id @default(cuid())
+model VariantOption {
+  id        String              @id @default(cuid())
   productId String
-  product   Product @relation(fields: [productId], references: [id])
-  url       String
-  altText   String?
-  isPrimary Boolean @default(false)
-  sortOrder Int     @default(0)
+  name      String              // "Color", "Size", "Material"
+  values    VariantOptionValue[]
 }
 ```
 
----
+## 4. MongoDB Schema
 
-## 5. Cấu trúc `customizationConfig` (JSON)
+Collection: `product_details`
+```typescript
+interface IProductDetail {
+  productId: string;
+  attributes?: { name: string; value: string }[];
+  customization?: CustomizationConfig;
+  previewLayers?: PreviewLayer[];
+  sizeGuide?: { type: string; html: string };
+  shippingInfo?: { processingDays: number; carrier: string };
+}
 
-```json
-{
-  "templateId": "tmpl_mug_001",
-  "fields": [
-    {
-      "id": "name_text",
-      "type": "text",
-      "label": "Your Name",
-      "maxLength": 30,
-      "required": true,
-      "position": { "x": 120, "y": 80 }
-    },
-    {
-      "id": "photo_upload",
-      "type": "image",
-      "label": "Upload Photo",
-      "required": false,
-      "allowBgRemoval": true,
-      "position": { "x": 50, "y": 50 },
-      "size": { "w": 200, "h": 200 }
-    },
-    {
-      "id": "style_select",
-      "type": "select",
-      "label": "Art Style",
-      "options": ["Watercolor", "Van Gogh", "Cartoon", "Realistic"],
-      "required": true
-    }
-  ],
-  "previewLayers": [
-    { "type": "base", "url": "/templates/mug-base.png" },
-    { "type": "overlay", "url": "/templates/mug-overlay.png" }
-  ]
+interface CustomizationConfig {
+  templateId: string;
+  version: number;
+  bundleCount?: number;  // > 1 → BundleCustomizerPanel
+  fields: {
+    id: string;
+    label: string;
+    type: 'text' | 'textarea' | 'image' | 'color';
+    required: boolean;
+    maxLength?: number;
+    placeholder?: string;
+  }[];
+  previewLayers: PreviewLayer[];
 }
 ```
 
----
+## 5. Shared Types
 
-## 6. Business Rules
+```typescript
+// libs/shared/types/src/lib/product.types.ts
 
-- Slug tự động tạo từ tên sản phẩm + SKU suffix (unique guarantee).
-- Sản phẩm phải có **ít nhất 1 ảnh** mới được publish.
-- `compareAtPrice` phải **lớn hơn** `basePrice` (dùng để hiển thị % giảm giá).
-- `viewCount` tăng mỗi khi trang chi tiết được load (debounce theo session).
-- `soldCount` tăng khi đơn hàng chuyển sang trạng thái `CONFIRMED`.
-- Badge "In demand" hiện nếu sản phẩm có **≥ 10 đơn trong 24h**.
-- "Related products" lấy theo: cùng category + cùng tags, giới hạn 8 sản phẩm.
+interface ProductVariantDto {
+  id?: string;
+  sku: string;
+  options: Record<string, string>;  // { "Color": "Red", "Size": "M" }
+  price: number;
+  isAvailable: boolean;
+  isDefault?: boolean;
+  // compat fields:
+  size?: string; color?: string; material?: string;
+  isActive?: boolean;
+  attributes?: Record<string, string>;
+}
+
+interface ProductListItemDto {
+  id: string;
+  name: string;
+  slug: string;
+  basePrice: number;
+  isActive: boolean;
+  isPersonalizable: boolean;
+  primaryCategory: { id: string; name: string; slug: string };
+  images: { url: string; altText?: string; isPrimary: boolean }[];
+  rating?: { avg: number; count: number };
+  soldCount24h?: number;
+  badge?: string;
+  processingDays?: number;
+}
+
+interface ProductDto extends ProductListItemDto {
+  description?: string;
+  variants: ProductVariantDto[];
+  variantOptions?: { name: string; values: string[] }[];
+  attributes?: { name: string; value: string }[];
+  customization?: CustomizationConfigDto;
+  sizeGuide?: { type: string; html: string };
+}
+```
+
+## 6. Query Parameters (GET /products)
+
+| Param | Type | Mô tả |
+|---|---|---|
+| page | number | Trang (default: 1) |
+| limit | number | Items/trang (default: 24, max: 96) |
+| category | string | Category slug |
+| collection | string | Collection slug |
+| minPrice | number | Giá tối thiểu |
+| maxPrice | number | Giá tối đa |
+| sort | string | `price_asc`, `price_desc`, `newest`, `popular` |
+| isPersonalizable | boolean | Filter personalizable |
+| search | string | Full-text search |
+
+## 7. Product Page Flow (Client)
+
+File: `apps/client/src/app/[locale]/(main)/products/[slug]/page.tsx`
+
+```
+Server Component (page.tsx)
+  ├── apiClient.get<ProductDto>(`/products/${slug}`) — SSR with revalidate: 60
+  ├── Renders ProductImages, ProductInfo (static)
+  └── <ProductPageInteractive product={product} locale={locale} />
+        ├── <SmartVariantPicker ... onVariantChange={setSelectedVariant} />
+        └── <ProductActions product={product} selectedVariant={selectedVariant} />
+              ├── Flow A: CustomizerPanel / BundleCustomizerPanel (isPersonalizable + customization)
+              ├── Flow B: PersonalizationComingSoon (isPersonalizable, no customization)
+              └── Flow C: DirectAddToCartPanel (!isPersonalizable)
+```
+
+## 8. SmartVariantPicker Widget Detection
+
+File: `apps/client/src/components/product/SmartVariantPicker.tsx`
+
+```typescript
+const OPTION_WIDGET_MAP: Record<string, WidgetType> = {
+  Color: 'color-swatch', Colour: 'color-swatch',
+  Shape: 'shape-picker',
+  Model: 'device-model', Device: 'device-model',
+  Size: 'size-picker', Capacity: 'size-picker',
+};
+// fallback: 'pill' for unknown option names
+```
+
+## 9. Seed Data (Dev)
+
+Products seeded via `prisma/seed.ts`:
+- Custom Name Necklace (Flow A — personalizable with customization)
+- Custom Pet Portrait Canvas (Flow A — personalizable with customization)
+- Couples Mug Set (Flow A — bundle, bundleCount: 2)
+- Personalized Wine Glass (Flow C — isPersonalizable: false)
+- Custom Cutting Board (Flow C — isPersonalizable: false)
+- Personalized Keychain (Flow C — isPersonalizable: false)
+- Family Name Sign (Flow B — isPersonalizable: true, no customization in seed)

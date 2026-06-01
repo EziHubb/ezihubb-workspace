@@ -7,7 +7,7 @@ import type { PaginatedResponse } from '@mlh/types';
 import { ProductListingLayout } from '../../../../../components/listing/ProductListingLayout';
 import { parseSearchParams } from '../../../../../components/listing/types';
 
-export const revalidate = 30;
+export const dynamic = 'force-dynamic';
 
 type SearchParamValue = string | string[] | undefined;
 

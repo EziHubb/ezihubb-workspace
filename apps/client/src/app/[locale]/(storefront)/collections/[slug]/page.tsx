@@ -9,7 +9,7 @@ import { CollectionHero } from '../../../../../components/collections/Collection
 import { RelatedCollections } from '../../../../../components/collections/RelatedCollections';
 import { parseSearchParams } from '../../../../../components/listing/types';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 type SearchParamValue = string | string[] | undefined;
 
@@ -22,7 +22,8 @@ export async function generateStaticParams() {
       params: { isActive: true, limit: 100 },
       next: { revalidate: 3600 },
     });
-    const slugs = res.data.map((c) => c.slug);
+    const items = Array.isArray(res) ? res : (res?.data ?? []);
+    const slugs = items.map((c: CollectionDto) => c.slug);
     return locales.flatMap((locale) => slugs.map((slug) => ({ locale, slug })));
   } catch {
     return [];

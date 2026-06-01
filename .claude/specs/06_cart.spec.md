@@ -1,81 +1,159 @@
-# Module 06 — Shopping Cart
+﻿# Module 06 — Cart
 
-## 1. Tổng quan
+## 1. Endpoints
 
-Quản lý giỏ hàng hỗ trợ cả **guest (session-based)** và **logged-in user (server-side)**. Giỏ hàng của guest được merge vào tài khoản khi đăng nhập.
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/cart` | Lấy giỏ hàng | Optional |
+| POST | `/api/v1/cart/items` | Thêm sản phẩm | Optional |
+| PATCH | `/api/v1/cart/items/{itemId}` | Cập nhật số lượng | Optional |
+| DELETE | `/api/v1/cart/items/{itemId}` | Xoá sản phẩm | Optional |
+| DELETE | `/api/v1/cart` | Xoá toàn bộ giỏ hàng | Optional |
+| POST | `/api/v1/cart/merge` | Merge guest cart vào user cart | Bearer |
 
----
+## 2. Guest Cart vs Authenticated Cart
 
-## 2. User Stories
+### Guest Cart
+- `sessionId` (UUID v4) lưu trong localStorage (key: `mlh-cart`)
+- Mỗi request gửi header: `X-Session-ID: <sessionId>`
+- Cart lưu trong Redis với key: `cart:session:<sessionId>`
+- TTL: 7 ngày (tự động gia hạn mỗi lần access)
 
-- **US-CART-001:** Là khách, tôi muốn thêm sản phẩm (với customization) vào giỏ hàng.
-- **US-CART-002:** Là khách, tôi muốn xem giỏ hàng với ảnh preview customization, tên sản phẩm, giá, số lượng.
-- **US-CART-003:** Là khách, tôi muốn thay đổi số lượng hoặc xóa sản phẩm trong giỏ.
-- **US-CART-004:** Là khách, tôi muốn giỏ hàng còn nguyên khi tôi đóng tab và quay lại sau.
-- **US-CART-005:** Là người dùng đăng nhập, giỏ hàng guest của tôi tự động merge vào tài khoản.
-- **US-CART-006:** Là khách, tôi muốn thấy tổng tiền (subtotal), phí ship ước tính, và tổng cộng.
-- **US-CART-007:** Là khách, tôi muốn nhập mã coupon và thấy số tiền được giảm ngay trong giỏ hàng.
-- **US-CART-008:** Là khách, nếu sản phẩm không còn available, tôi được thông báo để xóa trước khi checkout.
+### Authenticated Cart
+- Dùng `Authorization: Bearer <token>` header
+- Cart lưu trong PostgreSQL (Prisma) + Redis cache
+- Sau login: `POST /api/v1/cart/merge` tự động được gọi bởi auth store
 
----
+### Merge Flow
+1. User login → auth store gọi `cartStore.mergeGuestCart()`
+2. Cart store POST `/api/v1/cart/merge` với `X-Session-ID` header
+3. API merge items (quantity cộng dồn nếu trùng SKU)
+4. Cart store xoá sessionId khỏi localStorage
 
-## 3. API Endpoints
+## 3. Shared Types
 
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|--------|------|
-| GET | `/cart` | Lấy giỏ hàng hiện tại | No (session/token) |
-| POST | `/cart/items` | Thêm item vào giỏ | No |
-| PATCH | `/cart/items/:itemId` | Cập nhật số lượng | No |
-| DELETE | `/cart/items/:itemId` | Xóa item | No |
-| DELETE | `/cart` | Xóa toàn bộ giỏ hàng | No |
-| POST | `/cart/merge` | Merge guest cart vào user | Yes |
-| POST | `/cart/apply-coupon` | Áp dụng coupon | No |
-| DELETE | `/cart/coupon` | Bỏ coupon | No |
-| POST | `/cart/estimate-shipping` | Ước tính phí ship | No |
+```typescript
+// libs/shared/types/src/lib/cart.types.ts
 
----
-
-## 4. Data Models
-
-```prisma
-model Cart {
-  id          String     @id @default(cuid())
-  userId      String?    @unique
-  user        User?      @relation(fields: [userId], references: [id])
-  sessionId   String?    @unique   -- cho guest
-  couponCode  String?
-  discountAmount Decimal? @db.Decimal(10, 2)
-  items       CartItem[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  expiresAt   DateTime?  -- guest cart expire sau 30 ngày
+interface CartItemDto {
+  id: string;
+  productId: string;
+  variantId?: string;
+  quantity: number;
+  price: number;
+  product: {
+    name: string;
+    slug: string;
+    images: { url: string }[];
+  };
+  variant?: {
+    options: Record<string, string>;
+    sku: string;
+  };
+  customization?: {
+    templateId: string;
+    fields?: Record<string, string>;
+    bundleCount?: number;
+    items?: { fields: Record<string, string> }[];
+  };
+  priceChanged?: boolean;
+  totalPrice: number;
+  // compat flat fields (required):
+  productName: string;
+  productSlug: string;
+  productImageUrl?: string;
+  variantName?: string;
 }
 
-model CartItem {
-  id                String   @id @default(cuid())
-  cartId            String
-  cart              Cart     @relation(fields: [cartId], references: [id])
-  productId         String
-  product           Product  @relation(fields: [productId], references: [id])
-  variantId         String?
-  variant           ProductVariant? @relation(fields: [variantId], references: [id])
-  quantity          Int      @default(1)
-  unitPrice         Decimal  @db.Decimal(10, 2)  -- snapshot giá lúc thêm
-  customizationData Json?    -- toàn bộ customization
-  previewUrl        String?  -- ảnh preview để hiển thị trong cart
-  createdAt         DateTime @default(now())
+interface CartTotals {
+  subtotal: number;
+  shipping: number;
+  tax: number;
+  discount: number;
+  total: number;
+}
+
+interface CartDto {
+  id?: string;
+  items: CartItemDto[];
+  subtotal: number;
+  itemCount: number;
+  totals: CartTotals;
 }
 ```
 
----
+## 4. Client Cart Store (Zustand)
 
-## 5. Business Rules
+File: `apps/client/src/lib/store/cart.store.ts`
 
-- Guest cart lưu trên server (theo `sessionId` cookie), TTL **30 ngày**.
-- User cart không expire.
-- Khi merge: item guest **không trùng** → thêm vào; item **trùng sản phẩm + variant + customization** → cộng quantity.
-- Mỗi cart tối đa **50 items**.
-- `unitPrice` snapshot tại thời điểm thêm vào giỏ — giá thực tế tính lại lúc checkout.
-- Nếu giá sản phẩm thay đổi trước khi checkout → hiển thị cảnh báo, cập nhật giá mới.
-- Coupon validate khi apply và validate lại khi checkout.
-- Cart item có customization: coi là **unique dù cùng product** nếu customization data khác nhau.
+**Persisted state** (key: `mlh-cart`):
+```typescript
+{ sessionId: string }  // only sessionId persisted
+```
+
+**In-memory state:**
+```typescript
+{
+  cart: CartDto | null;
+  isLoading: boolean;
+}
+```
+
+**Actions:**
+- `fetchCart()` — GET /cart
+- `addItem(dto: AddToCartDto)` — POST /cart/items + optimistic update
+- `updateItem(itemId, qty)` — PATCH /cart/items/{id}
+- `removeItem(itemId)` — DELETE /cart/items/{id}
+- `clearCart()` — DELETE /cart + clear local state
+- `mergeGuestCart()` — POST /cart/merge (gọi sau login)
+- `sessionHeader()` — returns `{'X-Session-ID': sessionId}` khi guest
+
+**normalizeCart():** Đảm bảo compat fields tồn tại:
+```typescript
+function normalizeCart(cart: CartDto): CartDto {
+  return {
+    ...cart,
+    totals: cart.totals ?? { subtotal: 0, shipping: 0, tax: 0, discount: 0, total: cart.subtotal },
+    items: cart.items.map(item => ({
+      ...item,
+      productName: item.productName ?? item.product?.name ?? '',
+      productSlug: item.productSlug ?? item.product?.slug ?? '',
+      productImageUrl: item.productImageUrl ?? item.product?.images?.[0]?.url,
+    })),
+  };
+}
+```
+
+## 5. Prisma Models
+
+```prisma
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String?    @unique
+  sessionId String?    @unique
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id            String   @id @default(cuid())
+  cartId        String
+  productId     String
+  variantId     String?
+  quantity      Int
+  price         Decimal
+  customization Json?
+  cart          Cart     @relation(...)
+  product       Product  @relation(...)
+}
+```
+
+## 6. Business Rules
+
+- Không có max items limit (giới hạn mềm: 50 items)
+- Khi variant đổi giá → `priceChanged: true` trong CartItemDto
+- Quantity min: 1, max: 99 per line item
+- Guest cart expire: 7 ngày không hoạt động
+- Merge: quantity cộng dồn nếu cùng (productId + variantId + customization hash)
+- Customization khác nhau → line items riêng biệt

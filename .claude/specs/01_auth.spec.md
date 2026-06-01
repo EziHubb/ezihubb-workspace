@@ -1,52 +1,46 @@
-# Module 01 — Authentication & Authorization
+﻿# Module 01 — Authentication
 
 ## 1. Tổng quan
 
-Module xử lý toàn bộ vòng đời xác thực người dùng: đăng ký, đăng nhập, OAuth, quản lý phiên, phân quyền.
+Hệ thống xác thực dùng JWT (access + refresh tokens). Access token lưu trong memory (Zustand store, không persist), refresh token lưu trong httpOnly cookie. Hỗ trợ email/password và Google OAuth2.
 
-**Stack:** NestJS + Passport.js + JWT (Access + Refresh Token) + bcrypt
+## 2. Endpoints
 
----
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| POST | `/api/v1/auth/register` | Đăng ký tài khoản | No |
+| POST | `/api/v1/auth/login` | Đăng nhập | No |
+| POST | `/api/v1/auth/logout` | Đăng xuất, revoke refresh token | Bearer |
+| POST | `/api/v1/auth/refresh` | Xoay vòng refresh token | Cookie |
+| POST | `/api/v1/auth/verify-email` | Xác thực email | No |
+| POST | `/api/v1/auth/resend-verification` | Gửi lại email xác thực | No |
+| POST | `/api/v1/auth/forgot-password` | Yêu cầu đặt lại mật khẩu | No |
+| POST | `/api/v1/auth/reset-password` | Đặt lại mật khẩu với token | No |
+| POST | `/api/v1/auth/change-password` | Đổi mật khẩu (đã đăng nhập) | Bearer |
+| GET | `/api/v1/auth/google` | Khởi tạo Google OAuth2 | No |
+| GET | `/api/v1/auth/google/callback` | Callback Google OAuth2 | No |
 
-## 2. User Stories
+## 3. Response Format
 
-### 2.1 Đăng ký
-- **US-AUTH-001:** Là khách, tôi muốn đăng ký tài khoản bằng email/password để lưu lịch sử đơn hàng.
-- **US-AUTH-002:** Là khách, tôi muốn đăng ký / đăng nhập bằng Google để không cần nhớ mật khẩu.
-- **US-AUTH-003:** Là khách, sau khi đăng ký tôi nhận email xác thực để kích hoạt tài khoản.
+### Login / Refresh thành công:
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "eyJ...",
+    "user": { "id": "...", "email": "...", "firstName": "...", "role": "CUSTOMER" }
+  },
+  "meta": { "timestamp": "...", "requestId": "..." }
+}
+```
+Refresh token được set trong httpOnly cookie (không trả về body).
 
-### 2.2 Đăng nhập
-- **US-AUTH-004:** Là người dùng, tôi muốn đăng nhập bằng email/password.
-- **US-AUTH-005:** Là người dùng, tôi muốn chọn "Ghi nhớ đăng nhập" để không phải đăng nhập lại.
-- **US-AUTH-006:** Là người dùng, tôi muốn đặt lại mật khẩu qua email khi quên.
+### Google OAuth callback:
+Redirect đến frontend: `/[locale]/auth/google/callback?token=<accessToken>&user=<URLencodedJSON>&redirect=<path>`
+Client page parse và gọi `useAuthStore.getState().setTokens(token, user)`.
 
-### 2.3 Bảo mật
-- **US-AUTH-007:** Là người dùng, tôi muốn đổi mật khẩu khi đã đăng nhập.
-- **US-AUTH-008:** Là người dùng, tôi muốn đăng xuất khỏi tất cả thiết bị cùng lúc.
-- **US-AUTH-009:** Hệ thống tự động logout khi access token hết hạn và refresh token không hợp lệ.
+## 4. Prisma Models
 
----
-
-## 3. API Endpoints
-
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|--------|------|
-| POST | `/auth/register` | Đăng ký tài khoản mới | No |
-| POST | `/auth/login` | Đăng nhập email/password | No |
-| POST | `/auth/logout` | Đăng xuất, revoke token | Yes |
-| POST | `/auth/refresh` | Làm mới access token | No (refresh token) |
-| GET | `/auth/verify-email?token=` | Xác thực email | No |
-| POST | `/auth/forgot-password` | Gửi email reset password | No |
-| POST | `/auth/reset-password` | Đặt lại mật khẩu | No |
-| GET | `/auth/google` | Redirect sang Google OAuth | No |
-| GET | `/auth/google/callback` | Callback từ Google | No |
-| POST | `/auth/change-password` | Đổi mật khẩu | Yes |
-
----
-
-## 4. Data Models
-
-### User (Prisma)
 ```prisma
 model User {
   id              String    @id @default(cuid())
@@ -59,69 +53,75 @@ model User {
   isEmailVerified Boolean   @default(false)
   provider        Provider  @default(EMAIL)
   providerId      String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  refreshTokens   RefreshToken[]
-  addresses       Address[]
-  orders          Order[]
-  reviews         Review[]
-  wishlistItems   WishlistItem[]
+  deletedAt       DateTime?
 }
-
-enum Role { CUSTOMER ADMIN SUPER_ADMIN }
-enum Provider { EMAIL GOOGLE FACEBOOK }
 
 model RefreshToken {
-  id        String   @id @default(cuid())
-  token     String   @unique
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
   expiresAt DateTime
-  createdAt DateTime @default(now())
+  revokedAt DateTime?
 }
 ```
 
----
+## 5. JWT Configuration
 
-## 5. Business Rules
+| Token | Secret Env | Expiry Env | Default |
+|---|---|---|---|
+| Access | JWT_ACCESS_SECRET | JWT_ACCESS_EXPIRES_IN | 15m |
+| Refresh | JWT_REFRESH_SECRET | JWT_REFRESH_EXPIRES_IN | 30d |
+| Remember Me | — | JWT_REMEMBER_ME_EXPIRES_IN | 90d |
 
-- Access token TTL: **15 phút**
-- Refresh token TTL: **30 ngày** (7 ngày nếu không chọn "ghi nhớ")
-- Email verification token TTL: **24 giờ**
-- Reset password token TTL: **1 giờ**
-- Tối đa **5 lần đăng nhập sai** → lock tài khoản 15 phút
-- Mật khẩu tối thiểu: **8 ký tự, có chữ hoa, số, ký tự đặc biệt**
-- Giỏ hàng guest được **merge** vào tài khoản khi đăng nhập
+## 6. Client-Side Auth Store (Zustand)
 
----
+File: `apps/client/src/lib/store/auth.store.ts`
 
-## 6. Luồng xử lý chính
+**State:**
+- `user: UserDto | null` — persisted to localStorage (key: `mlh-auth`)
+- `accessToken: string | null` — NOT persisted, cleared on reload
+- `isLoading: boolean`
 
-### Đăng ký → Xác thực Email
-```
-Client → POST /auth/register
-  → Validate input
-  → Hash password (bcrypt, rounds=12)
-  → Tạo User (isEmailVerified=false)
-  → Tạo emailVerificationToken
-  → Gửi email xác thực (queue)
-  → Trả về: { message: "Check your email" }
+**Actions:**
+- `login(email, password, rememberMe?)` — POST /auth/login, set tokens, merge guest cart
+- `register(dto)` — POST /auth/register
+- `logout()` — POST /auth/logout, clear tokens + cart
+- `fetchCurrentUser()` — GET /users/me
+- `refreshToken()` — POST /auth/refresh
+- `setTokens(accessToken, user)` — used by OAuth callback
 
-Client → GET /auth/verify-email?token=xxx
-  → Verify token (không hết hạn)
-  → Update User.isEmailVerified = true
-  → Xóa token
-  → Redirect về trang login
+**Token provider registration (module import time):**
+```typescript
+setTokenGetter(() => _accessToken);
+setTokenUpdater((token) => { _accessToken = token ?? null; });
 ```
 
-### Đăng nhập
-```
-Client → POST /auth/login
-  → Tìm user theo email
-  → So sánh password hash
-  → Tạo accessToken (JWT, 15m)
-  → Tạo refreshToken (lưu DB)
-  → Set refreshToken vào httpOnly cookie
-  → Trả về: { accessToken, user }
-```
+## 7. Error Codes
+
+| Code | HTTP | Mô tả |
+|---|---|---|
+| ERR_CREDENTIALS_INVALID | 401 | Sai email/password |
+| ERR_ACCOUNT_LOCKED | 423 | Đăng nhập sai quá nhiều lần |
+| ERR_EMAIL_NOT_VERIFIED | 403 | Email chưa xác thực |
+| ERR_EMAIL_ALREADY_EXISTS | 409 | Email đã được dùng |
+| ERR_TOKEN_EXPIRED | 401 | Access token hết hạn |
+| ERR_TOKEN_INVALID | 401 | Token không hợp lệ |
+| ERR_REFRESH_TOKEN_INVALID | 401 | Refresh token không hợp lệ |
+
+## 8. Google OAuth Flow
+
+1. User click "Continue with Google" → `GET /api/v1/auth/google`
+2. Redirect đến Google consent screen
+3. Google callback → `GET /api/v1/auth/google/callback`
+4. API tạo/cập nhật user, generate tokens
+5. Redirect về client: `/[locale]/auth/google/callback?token=...&user=...&redirect=...`
+6. Client page (`apps/client/src/app/[locale]/(auth)/auth/google/callback/page.tsx`) xử lý
+
+## 9. Business Rules
+
+- Access token KHÔNG lưu trong localStorage/sessionStorage (bảo mật XSS)
+- Refresh token chỉ trong httpOnly Secure SameSite=Lax cookie
+- Sau 5 lần sai mật khẩu → lock 15 phút
+- Email xác thực bắt buộc trước khi login (trừ OAuth)
+- Soft delete: user có `deletedAt` không thể login
+- apiClient auto-refresh: 401 → POST /auth/refresh → retry original request

@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import { getLocale } from 'next-intl/server';
 import type { ProductListItemDto } from '@mlh/types';
 import { ProductCard } from '@mlh/ui';
+import { BackButton } from './BackButton';
 
 // ── Fetch trending products server-side ───────────────────────────────────────
 
@@ -32,11 +32,8 @@ function Illustration() {
       aria-hidden="true"
       className="mx-auto text-muted/20"
     >
-      {/* Main circle */}
       <circle cx="52" cy="52" r="40" stroke="currentColor" strokeWidth="6" />
-      {/* Handle */}
       <line x1="82" y1="82" x2="108" y2="108" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />
-      {/* X inside */}
       <line x1="38" y1="38" x2="66" y2="66" stroke="#E85D3F" strokeWidth="5" strokeLinecap="round" />
       <line x1="66" y1="38" x2="38" y2="66" stroke="#E85D3F" strokeWidth="5" strokeLinecap="round" />
     </svg>
@@ -46,13 +43,11 @@ function Illustration() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function NotFound() {
-  const locale   = await getLocale();
   const trending = await getTrending();
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-16 md:py-24">
       <div className="text-center mb-12">
-        {/* 404 coral display text */}
         <p className="font-display text-8xl md:text-9xl font-bold text-primary/20 leading-none mb-4">
           404
         </p>
@@ -69,15 +64,9 @@ export default async function NotFound() {
 
         {/* CTA buttons */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10">
-          <button
-            type="button"
-            onClick={() => history.back()}
-            className="inline-flex items-center justify-center gap-2 border border-border text-secondary font-semibold px-6 py-3 rounded-button hover:border-primary hover:text-primary transition-colors text-sm"
-          >
-            ← Go Back
-          </button>
+          <BackButton />
           <Link
-            href={`/${locale}`}
+            href="/"
             className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white font-bold px-6 py-3 rounded-button transition-colors text-sm uppercase tracking-wide"
           >
             Go to Homepage
@@ -86,7 +75,7 @@ export default async function NotFound() {
 
         {/* Search */}
         <div className="max-w-sm mx-auto">
-          <form action={`/${locale}/search`} method="GET">
+          <form action="/search" method="GET">
             <div className="flex gap-2">
               <input
                 name="q"
@@ -119,7 +108,7 @@ export default async function NotFound() {
                 slug={product.slug}
                 name={product.name}
                 imageUrl={
-                  product.images[0]?.url ??
+                  product.images?.[0]?.url ??
                   'https://placehold.co/400x500?text=No+Image'
                 }
                 basePrice={product.basePrice}

@@ -1,60 +1,73 @@
-# Module 02 — User Profile & Account
+﻿# Module 02 — User Profile & Addresses
 
-## 1. Tổng quan
+## 1. Endpoints
 
-Quản lý hồ sơ cá nhân, danh sách địa chỉ giao hàng, wishlist và lịch sử hoạt động của khách hàng.
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/users/me` | Lấy profile hiện tại | Bearer |
+| PATCH | `/api/v1/users/me` | Cập nhật profile | Bearer |
+| POST | `/api/v1/users/me/avatar` | Upload avatar (multipart) | Bearer |
+| GET | `/api/v1/users/me/addresses` | Danh sách địa chỉ | Bearer |
+| POST | `/api/v1/users/me/addresses` | Tạo địa chỉ | Bearer |
+| PATCH | `/api/v1/users/me/addresses/{id}` | Cập nhật địa chỉ | Bearer |
+| DELETE | `/api/v1/users/me/addresses/{id}` | Xoá địa chỉ | Bearer |
+| PATCH | `/api/v1/users/me/addresses/{id}/default` | Đặt làm địa chỉ mặc định | Bearer |
+| GET | `/api/v1/users/me/wishlist` | Lấy wishlist | Bearer |
+| POST | `/api/v1/users/me/wishlist/{productId}` | Thêm vào wishlist | Bearer |
+| DELETE | `/api/v1/users/me/wishlist/{productId}` | Xoá khỏi wishlist | Bearer |
+| GET | `/api/v1/users/me/orders` | Đơn hàng của tôi | Bearer |
 
----
+## 2. DTOs
 
-## 2. User Stories
+### UserDto
+```typescript
+interface UserDto {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string;
+  phone?: string;
+  role: 'CUSTOMER' | 'ADMIN' | 'SUPER_ADMIN';
+  isEmailVerified: boolean;
+}
+```
 
-### 2.1 Hồ sơ cá nhân
-- **US-USER-001:** Là người dùng, tôi muốn xem và cập nhật thông tin cá nhân (tên, avatar, email).
-- **US-USER-002:** Là người dùng, tôi muốn upload ảnh đại diện.
-- **US-USER-003:** Là người dùng, tôi muốn xem toàn bộ lịch sử đơn hàng của mình.
+### AddressDto
+```typescript
+interface AddressDto {
+  id: string;
+  fullName: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state?: string;
+  postalCode: string;
+  country: string;  // default: "US"
+  isDefault: boolean;
+}
+```
 
-### 2.2 Địa chỉ giao hàng
-- **US-USER-004:** Là người dùng, tôi muốn thêm nhiều địa chỉ giao hàng.
-- **US-USER-005:** Là người dùng, tôi muốn chọn một địa chỉ làm mặc định.
-- **US-USER-006:** Là người dùng, tôi muốn sửa / xóa địa chỉ đã lưu.
+### WishlistItemDto
+```typescript
+interface WishlistItemDto {
+  id: string;
+  productId: string;
+  addedAt: string;
+  product: {
+    id: string; name: string; slug: string;
+    basePrice: number; imageUrl?: string; isActive: boolean;
+  };
+}
+```
 
-### 2.3 Wishlist
-- **US-USER-007:** Là người dùng, tôi muốn lưu sản phẩm yêu thích vào wishlist.
-- **US-USER-008:** Là người dùng, tôi muốn xem và quản lý wishlist của mình.
-- **US-USER-009:** Là người dùng, tôi muốn thêm sản phẩm từ wishlist thẳng vào giỏ hàng.
-
-### 2.4 Tự động điền customization
-- **US-USER-010:** Là người dùng, hệ thống nhớ lần customization cuối để tôi có thể auto-fill khi mua lại sản phẩm tương tự.
-
----
-
-## 3. API Endpoints
-
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|--------|------|
-| GET | `/users/me` | Lấy thông tin người dùng hiện tại | Yes |
-| PATCH | `/users/me` | Cập nhật thông tin cá nhân | Yes |
-| POST | `/users/me/avatar` | Upload avatar | Yes |
-| GET | `/users/me/addresses` | Danh sách địa chỉ | Yes |
-| POST | `/users/me/addresses` | Thêm địa chỉ | Yes |
-| PATCH | `/users/me/addresses/:id` | Sửa địa chỉ | Yes |
-| DELETE | `/users/me/addresses/:id` | Xóa địa chỉ | Yes |
-| PATCH | `/users/me/addresses/:id/default` | Đặt làm mặc định | Yes |
-| GET | `/users/me/wishlist` | Xem wishlist | Yes |
-| POST | `/users/me/wishlist` | Thêm vào wishlist | Yes |
-| DELETE | `/users/me/wishlist/:productId` | Xóa khỏi wishlist | Yes |
-| GET | `/users/me/orders` | Lịch sử đơn hàng | Yes |
-| GET | `/users/me/customization-history` | Lịch sử customization | Yes |
-
----
-
-## 4. Data Models
+## 3. Prisma Models
 
 ```prisma
 model Address {
-  id           String   @id @default(cuid())
+  id           String  @id @default(cuid())
   userId       String
-  user         User     @relation(fields: [userId], references: [id])
   fullName     String
   phone        String
   addressLine1 String
@@ -62,29 +75,42 @@ model Address {
   city         String
   state        String?
   postalCode   String
-  country      String   @default("US")
-  isDefault    Boolean  @default(false)
-  createdAt    DateTime @default(now())
+  country      String  @default("US")
+  isDefault    Boolean @default(false)
+  user         User    @relation(fields: [userId], references: [id])
 }
 
 model WishlistItem {
   id        String   @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
   productId String
-  product   Product  @relation(fields: [productId], references: [id])
   createdAt DateTime @default(now())
-
   @@unique([userId, productId])
 }
 ```
 
----
+## 4. Avatar Upload
+
+- Max size: 5MB
+- Formats: JPG, PNG, WebP
+- Upload qua multipart/form-data
+- Lưu trữ trên Cloudflare R2 (dev: MinIO)
+- CDN URL từ `CDN_URL` env var
+- Sau upload: cập nhật `User.avatarUrl`
 
 ## 5. Business Rules
 
-- Mỗi user có tối đa **10 địa chỉ** lưu.
-- Chỉ có **1 địa chỉ mặc định**; khi đặt mới thì tự động bỏ default của cái cũ.
-- Avatar tối đa **5MB**, định dạng: `jpg`, `png`, `webp`.
-- Wishlist không giới hạn số lượng sản phẩm.
-- Customization history lưu **20 bản gần nhất** theo từng product template.
+- Tối đa 10 địa chỉ mỗi user
+- Xoá địa chỉ mặc định → địa chỉ đầu tiên còn lại thành mặc định
+- Wishlist chỉ lưu productId (không lưu variant)
+- Guest cố truy cập wishlist → 401, frontend redirect login
+
+## 6. Account Pages (client)
+
+- `/[locale]/(account)/account` — Dashboard overview
+- `/[locale]/(account)/account/profile` — Profile + avatar + đổi mật khẩu
+- `/[locale]/(account)/account/addresses` — Address book
+- `/[locale]/(account)/account/orders` — Lịch sử đơn hàng
+- `/[locale]/(account)/account/wishlist` — Danh sách yêu thích
+
+Route group `(account)` dùng layout riêng với sidebar navigation.
