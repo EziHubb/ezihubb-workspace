@@ -4,7 +4,7 @@ import type { CollectionDto } from '@mlh/types';
 import { OccasionCard } from '../../../../components/occasions/OccasionCard';
 import { fetchList } from '../../../../components/listing/types';
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export async function generateStaticParams() {
   return [{ locale: 'en' }, { locale: 'vi' }];

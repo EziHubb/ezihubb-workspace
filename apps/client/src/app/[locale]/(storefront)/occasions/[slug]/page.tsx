@@ -6,7 +6,7 @@ export { default, generateMetadata } from '../../collections/[slug]/page';
 import type { CollectionDto } from '@mlh/types';
 import { fetchList } from '../../../../../components/listing/types';
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export async function generateStaticParams() {
   const base    = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';

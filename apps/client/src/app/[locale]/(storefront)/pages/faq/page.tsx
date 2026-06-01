@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { FaqClient } from '../../../../../components/pages/FaqClient';
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {

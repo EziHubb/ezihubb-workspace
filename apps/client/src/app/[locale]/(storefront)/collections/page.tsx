@@ -4,7 +4,7 @@ import Link from 'next/link';
 import type { CollectionDto } from '@mlh/types';
 import { fetchList } from '../../../../components/listing/types';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export async function generateStaticParams() {
   return [{ locale: 'en' }, { locale: 'vi' }];

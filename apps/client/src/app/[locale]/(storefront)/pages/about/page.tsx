@@ -3,7 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Heart, Leaf, Shield, Users } from 'lucide-react';
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {

@@ -14,7 +14,7 @@ import type { BreadcrumbItem } from '../../../../../components/product/ProductBr
 import { ProductStructuredData } from '../../../../../components/seo/ProductStructuredData';
 import { BreadcrumbStructuredData } from '../../../../../components/seo/BreadcrumbStructuredData';
 
-export const revalidate = 30;
+export const dynamic = 'force-dynamic';
 
 // ── Extended product type ─────────────────────────────────────────────────────
 // ProductDto now includes variantOptions, attributes, customization, soldCount24h
