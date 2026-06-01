@@ -11,6 +11,7 @@ import { clientFetch } from '../../../../lib/api';
 import { fetchArr, safeArr } from '../../../../lib/fmt';
 import type { ProductEditFormValues, AdminProductDto, ProductImage } from '../types';
 import { VariantImagePicker } from '../VariantImagePicker';
+import { ManageVariationsModal } from '../ManageVariationsModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,19 +29,20 @@ export interface VariationOption {
   isAvailable:  boolean;
 }
 
-interface VariationGroup {
+export interface VariationSettings {
+  enableVariations:    boolean;
+  /** Encoded flags: 'price:<groupId>' | 'processing' | 'quantity' | 'sku' */
+  variesBy:            string[];
+  skuPrefix?:          string;
+}
+
+export interface VariationGroup {
   id:          string;
   productId:   string;
   name:        string;
-  displayType: string;
+  displayType: string; // 'dropdown' | 'color_swatch' | 'button' | 'image'
   sortOrder:   number;
   options:     VariationOption[];
-}
-
-interface VariationSettings {
-  enableVariations: boolean;
-  variesBy:         string[];
-  skuPrefix?:       string;
 }
 
 interface CustomOptionField {
@@ -773,9 +775,7 @@ function VariationsSummaryTable({
   );
 }
 
-// ─── Variations manager modal ─────────────────────────────────────────────────
-
-function VariationsModal({
+function _VariationsModal_REMOVED({
   product,
   onClose,
 }: {
@@ -978,6 +978,8 @@ function VariationsModal({
   );
 }
 
+// (VariationsModal is now ManageVariationsModal in ../ManageVariationsModal.tsx)
+
 // ─── Main tab ─────────────────────────────────────────────────────────────────
 
 interface ItemOptionsTabProps { product: AdminProductDto }
@@ -1097,13 +1099,15 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
         </TabSection>
       </div>
 
-      {/* Variations modal */}
-      {variationsModalOpen && (
-        <VariationsModal
-          product={product}
-          onClose={() => setVariationsModalOpen(false)}
-        />
-      )}
+      {/* Variations modal — ManageVariationsModal */}
+      <ManageVariationsModal
+        productId={product.id}
+        isOpen={variationsModalOpen}
+        onClose={() => setVariationsModalOpen(false)}
+        onSaved={() => {
+          // VariationsSummaryTable will refetch via queryKey invalidation inside the modal
+        }}
+      />
     </div>
   );
 }
