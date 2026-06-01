@@ -238,7 +238,12 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
 
   return (
     <FormProvider {...form}>
-      <div className="flex flex-col" style={{ minHeight: 'calc(100vh - 64px)' }}>
+      {/*
+        Negative margins break out of the admin layout's p-6 lg:p-8 padding
+        so the sticky header/footer can span the full width of the content pane.
+        minHeight accounts for the topbar (64px) only — padding is negated.
+      */}
+      <div className="-m-6 lg:-m-8 flex flex-col" style={{ minHeight: 'calc(100vh - 64px)' }}>
 
         {/* ── Page header ───────────────────────────────────────────────────── */}
         <div className="px-6 pt-5 pb-0 border-b border-border bg-surface sticky top-0 z-20">
