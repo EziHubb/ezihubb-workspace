@@ -223,7 +223,7 @@ function CategoryPickerModal({
   const { data: allCats = [], isLoading } = useQuery<Category[]>({
     queryKey: ['admin-categories-all'],
     queryFn:  async () => {
-      const res  = await clientFetch('/admin/categories?limit=500');
+      const res  = await clientFetch('/catalog/categories?limit=500');
       const body = await res.json();
       const raw  = body.data ?? body;
       return (Array.isArray(raw) ? raw : []) as Category[];
@@ -532,7 +532,7 @@ export function ItemDetailsTab() {
   const { data: allCats = [] } = useQuery<Category[]>({
     queryKey: ['admin-categories-all'],
     queryFn:  async () => {
-      const res  = await clientFetch('/admin/categories?limit=500');
+      const res  = await clientFetch('/catalog/categories?limit=500');
       const body = await res.json();
       const raw  = body.data ?? body;
       return (Array.isArray(raw) ? raw : []) as Category[];

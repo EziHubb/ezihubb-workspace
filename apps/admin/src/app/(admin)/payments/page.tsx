@@ -213,11 +213,11 @@ export default function PaymentsPage() {
       cell:        ({ row }: { row: { original: PaymentRecord } }) => (
         <div>
           <span className="text-sm font-bold text-secondary tabular-nums">
-            ${row.original.amount.toFixed(2)}
+            ${(row.original.amount ?? 0).toFixed(2)}
           </span>
-          {row.original.refundedAmount > 0 && (
+          {(row.original.refundedAmount ?? 0) > 0 && (
             <p className="text-xs text-orange-600 tabular-nums">
-              −${row.original.refundedAmount.toFixed(2)} refunded
+              −${(row.original.refundedAmount ?? 0).toFixed(2)} refunded
             </p>
           )}
         </div>

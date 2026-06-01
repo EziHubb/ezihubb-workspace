@@ -303,7 +303,7 @@ export default function CustomersPage() {
         />
         <MiniStat
           label="Returning Rate"
-          value={stats ? `${stats.returningRate.toFixed(0)}%` : '—'}
+          value={stats ? `${(stats.returningRate ?? 0).toFixed(0)}%` : '—'}
           icon={RefreshCw}
           color="green"
         />

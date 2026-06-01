@@ -11,6 +11,7 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { clientFetch } from '../../../lib/api';
+import { Toggle as PrimitiveToggle } from '../../../components/products/edit/primitives';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Shared primitives
@@ -46,13 +47,9 @@ function Toggle({
 }) {
   return (
     <label className="flex items-start gap-3 cursor-pointer py-1">
-      <button
-        type="button"
-        onClick={() => onChange(!checked)}
-        className={`mt-0.5 relative w-10 h-5 rounded-full transition-colors shrink-0 ${checked ? 'bg-primary' : 'bg-border'}`}
-      >
-        <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`} />
-      </button>
+      <div className="mt-0.5 shrink-0">
+        <PrimitiveToggle checked={checked} onChange={onChange} ariaLabel={label} />
+      </div>
       <div>
         <p className="text-sm font-medium text-secondary">{label}</p>
         {sub && <p className="text-xs text-muted mt-0.5">{sub}</p>}
@@ -512,8 +509,10 @@ function EmailTab() {
     queryKey: ['email-templates-list'],
     queryFn:  async () => {
       const res  = await clientFetch('/admin/email-templates');
+      if (!res.ok) return [];
       const body = await res.json();
-      return body.data ?? body;
+      const result = body.data ?? body;
+      return Array.isArray(result) ? result : [];
     },
     staleTime: 300_000,
   });
@@ -817,8 +816,10 @@ function TeamTab() {
     queryKey: ['admin-team'],
     queryFn:  async () => {
       const res  = await clientFetch('/admin/team');
+      if (!res.ok) return [];
       const body = await res.json();
-      return (body.data ?? body) as AdminMember[];
+      const result = body.data ?? body;
+      return Array.isArray(result) ? result as AdminMember[] : [];
     },
     staleTime: 120_000,
   });

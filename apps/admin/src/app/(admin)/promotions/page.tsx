@@ -367,13 +367,13 @@ export default function PromotionsPage() {
         />
         <MiniStat
           label="Revenue Discounted"
-          value={stats ? `$${stats.revenueDiscounted.toFixed(0)}` : '—'}
+          value={stats ? `$${(stats.revenueDiscounted ?? 0).toFixed(0)}` : '—'}
           icon={TrendingDown}
           color="amber"
         />
         <MiniStat
           label="Avg Discount Value"
-          value={stats ? `$${stats.avgDiscountValue.toFixed(2)}` : '—'}
+          value={stats ? `$${(stats.avgDiscountValue ?? 0).toFixed(2)}` : '—'}
           icon={Zap}
           color="green"
         />

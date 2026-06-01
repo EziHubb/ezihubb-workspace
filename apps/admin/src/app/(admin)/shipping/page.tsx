@@ -18,6 +18,7 @@ import {
   type ShippingMethodFormData,
 } from '../../../components/shipping/ShippingMethodModal';
 import { clientFetch } from '../../../lib/api';
+import { Toggle as PrimitiveToggle } from '../../../components/products/edit/primitives';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -90,13 +91,7 @@ function Toggle({
 }) {
   return (
     <label className="flex items-center gap-3 cursor-pointer">
-      <button
-        type="button"
-        onClick={() => onChange(!checked)}
-        className={`relative w-10 h-5 rounded-full transition-colors ${checked ? 'bg-primary' : 'bg-border'}`}
-      >
-        <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`} />
-      </button>
+      <PrimitiveToggle checked={checked} onChange={onChange} ariaLabel={label} />
       <span className="text-sm text-secondary">{label}</span>
     </label>
   );
@@ -185,9 +180,9 @@ function ZoneCard({
           </div>
 
           {/* Methods */}
-          {zone.methods.length > 0 && (
+          {(zone.methods ?? []).length > 0 && (
             <div className="divide-y divide-border">
-              {zone.methods.map((method) => (
+              {(zone.methods ?? []).map((method) => (
                 <div key={method.id} className="flex items-center gap-3 px-4 h-12">
                   <Truck className="w-4 h-4 text-muted shrink-0" />
 
@@ -230,7 +225,7 @@ function ZoneCard({
             </div>
           )}
 
-          {zone.methods.length === 0 && (
+          {(zone.methods ?? []).length === 0 && (
             <p className="text-xs text-muted text-center py-4">No shipping methods yet.</p>
           )}
 
