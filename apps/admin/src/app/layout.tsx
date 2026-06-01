@@ -1,9 +1,10 @@
 import './global.css';
 import { ReactQueryProvider } from '../components/providers/ReactQueryProvider';
+import { SessionProvider } from '../components/providers/SessionProvider';
 
 export const metadata = {
-  title:       'Maple Loom Handmade — Admin',
-  description: 'Admin dashboard',
+  title:       'Maple Handmade — Admin',
+  description: 'Admin dashboard for Maple Handmade',
 };
 
 export default function RootLayout({
@@ -13,8 +14,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
-        <ReactQueryProvider>{children}</ReactQueryProvider>
+      <body className="bg-background text-secondary antialiased font-sans">
+        <SessionProvider>
+          <ReactQueryProvider>
+            {children}
+          </ReactQueryProvider>
+        </SessionProvider>
       </body>
     </html>
   );

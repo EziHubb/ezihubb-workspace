@@ -9,6 +9,9 @@ const { composePlugins, withNx } = require('@nx/next');
 const nextConfig = {
   nx: {},
   transpilePackages: ['@mlh/constants', '@mlh/types', '@mlh/ui', '@mlh/api-client'],
+  experimental: {
+    optimizePackageImports: ['recharts', '@tanstack/react-table'],
+  },
 };
 
 const plugins = [

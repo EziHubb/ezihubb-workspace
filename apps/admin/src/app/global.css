@@ -1,3 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Sidebar active state helper — Tailwind can't express rgba directly in a class */
+.bg-sidebar-active {
+  background-color: rgba(232, 93, 63, 0.12);
+}
+
+.bg-primary\/3 {
+  background-color: rgba(232, 93, 63, 0.03);
+}
