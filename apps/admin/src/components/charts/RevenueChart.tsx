@@ -99,7 +99,7 @@ export function RevenueChart({ initialData, initialTotal }: RevenueChartProps) {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-primary font-bold text-sm">
-            ${total.toLocaleString('en-US', { minimumFractionDigits: 0 })} total
+            ${(total ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0 })} total
           </span>
           {/* Range selector */}
           <div className="flex bg-background rounded-button p-0.5 gap-0.5">

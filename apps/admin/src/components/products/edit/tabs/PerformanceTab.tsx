@@ -100,11 +100,11 @@ export function PerformanceTab({ product }: PerformanceTabProps) {
 
       {/* KPI grid */}
       <div className="grid grid-cols-3 gap-4">
-        <StatCard label="Views (30 days)"   value={s.views30d}                  sub={`${s.viewsTotal.toLocaleString()} total`} icon={Eye}             color="blue"  />
-        <StatCard label="Favorites"          value={s.favorites}                 icon={Heart}           color="coral" />
-        <StatCard label="Orders (30 days)"   value={s.orders30d}                 sub={`${s.ordersTotal.toLocaleString()} total`} icon={ShoppingBag}    color="green" />
-        <StatCard label="Conversion rate"    value={`${s.conversionRate.toFixed(1)}%`} icon={MousePointerClick}  color="amber" />
-        <StatCard label="Revenue (30 days)"  value={`$${s.revenue30d.toFixed(2)}`} icon={TrendingUp}     color="green" />
+        <StatCard label="Views (30 days)"   value={s.views30d ?? 0}                  sub={`${(s.viewsTotal ?? 0).toLocaleString()} total`} icon={Eye}             color="blue"  />
+        <StatCard label="Favorites"          value={s.favorites ?? 0}                 icon={Heart}           color="coral" />
+        <StatCard label="Orders (30 days)"   value={s.orders30d ?? 0}                 sub={`${(s.ordersTotal ?? 0).toLocaleString()} total`} icon={ShoppingBag}    color="green" />
+        <StatCard label="Conversion rate"    value={`${(s.conversionRate ?? 0).toFixed(1)}%`} icon={MousePointerClick}  color="amber" />
+        <StatCard label="Revenue (30 days)"  value={`$${(s.revenue30d ?? 0).toFixed(2)}`} icon={TrendingUp}     color="green" />
         <StatCard label="Avg. rating"        value={s.avgRating ? `${s.avgRating.toFixed(1)} ★` : '—'} sub={s.reviewCount ? `${s.reviewCount} review${s.reviewCount !== 1 ? 's' : ''}` : 'No reviews'} icon={Star} color="amber" />
       </div>
 

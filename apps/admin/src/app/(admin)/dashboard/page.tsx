@@ -70,8 +70,8 @@ export default async function DashboardPage() {
     ? revenueRaw
     : (revenueRaw.data ?? []);
   const revenueTotal = Array.isArray(revenueRaw)
-    ? revenueData.reduce((s, d) => s + d.revenue, 0)
-    : (revenueRaw.total ?? revenueData.reduce((s, d) => s + d.revenue, 0));
+    ? revenueData.reduce((s, d) => s + (d.revenue ?? 0), 0)
+    : (revenueRaw.total ?? revenueData.reduce((s, d) => s + (d.revenue ?? 0), 0));
 
   // Normalise reviews
   const reviews     = Array.isArray(pendingRaw) ? pendingRaw : (pendingRaw.data ?? []);

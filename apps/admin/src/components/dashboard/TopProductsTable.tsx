@@ -97,9 +97,9 @@ export function TopProductsTable({ products }: TopProductsTableProps) {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-muted text-xs whitespace-nowrap">{p.categoryName}</td>
-                  <td className="px-4 py-3 text-secondary tabular-nums">{p.unitsSold.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-secondary tabular-nums">{(p.unitsSold ?? 0).toLocaleString()}</td>
                   <td className="px-4 py-3 font-semibold text-secondary tabular-nums">
-                    ${p.revenue.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                    ${(p.revenue ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0 })}
                   </td>
                   <td className="px-4 py-3">
                     {p.rating != null ? (
