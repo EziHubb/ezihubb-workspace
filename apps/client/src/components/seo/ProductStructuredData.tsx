@@ -38,9 +38,7 @@ export function ProductStructuredData({
       priceCurrency:  'USD',
       availability:   'https://schema.org/InStock',
       url:            `${BASE_URL}/${locale}/products/${product.slug}`,
-      priceValidUntil: new Date(
-        new Date().setFullYear(new Date().getFullYear() + 1),
-      ).toISOString().slice(0, 10),
+      priceValidUntil: `${new Date().getFullYear() + 1}-12-31`,
     },
   };
 

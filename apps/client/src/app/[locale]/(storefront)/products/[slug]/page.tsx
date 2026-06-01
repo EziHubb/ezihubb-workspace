@@ -108,7 +108,7 @@ export default async function ProductDetailPage({
       }),
     ]);
 
-  if (productRes.status === 'rejected') notFound();
+  if (productRes.status === 'rejected' || !productRes.value) notFound();
   const product = productRes.value;
 
   const reviewSummary = reviewSummaryRes.status === 'fulfilled'

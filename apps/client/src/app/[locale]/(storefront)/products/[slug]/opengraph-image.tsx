@@ -37,9 +37,10 @@ const MUTED  = '#6B6B6B';
 export default async function OGImage({
   params,
 }: {
-  params: { slug: string; locale: string };
+  params: Promise<{ slug: string; locale: string }>;
 }) {
-  const product = await getProduct(params.slug);
+  const { slug } = await params;
+  const product = await getProduct(slug);
 
   // ── Fallback: brand card with no product ─────────────────────────────────
 
