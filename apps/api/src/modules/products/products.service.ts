@@ -817,6 +817,54 @@ export class ProductsService {
     return created;
   }
 
+  /**
+   * Attach already-uploaded R2/S3 URLs as ProductImage records.
+   * Used when the admin uploads via presigned URL (no server-side multipart).
+   */
+  async attachImageUrls(
+    productId: string,
+    urls: string[],
+  ): Promise<ProductImageResponseDto[]> {
+    await this.requireProduct(productId);
+
+    const existingCount = await this.prisma.productImage.count({ where: { productId } });
+    const hasPrimary    = await this.prisma.productImage.count({ where: { productId, isPrimary: true } });
+    let primarySet = hasPrimary > 0;
+
+    const created: ProductImageResponseDto[] = [];
+
+    for (let i = 0; i < urls.length; i++) {
+      const url   = urls[i];
+      const isFirst = !primarySet && i === 0;
+
+      const image = await this.prisma.productImage.create({
+        data: {
+          productId,
+          url,
+          isPrimary:  isFirst,
+          sortOrder:  existingCount + i,
+        },
+      });
+      if (isFirst) primarySet = true;
+
+      created.push({
+        id:        image.id,
+        url:       image.url,
+        altText:   image.altText,
+        isPrimary: image.isPrimary,
+        sortOrder: image.sortOrder,
+      });
+    }
+
+    const { slug } = (await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { slug: true },
+    }))!;
+    await this.redis.del(CacheKeys.product(slug));
+
+    return created;
+  }
+
   async deleteImage(productId: string, imageId: string): Promise<void> {
     const image = await this.prisma.productImage.findUnique({
       where: { id: imageId },

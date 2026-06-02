@@ -115,4 +115,24 @@ export class StorageService {
     }
     return url;
   }
+
+  /**
+   * Generate a presigned PUT URL for direct browser upload.
+   * Returns the presigned URL (for the PUT) and the final public CDN URL.
+   */
+  async getPresignedUploadUrl(
+    prefix: string,
+    filename: string,
+    contentType: string,
+    expiresIn = 300,
+  ): Promise<{ presignedUrl: string; publicUrl: string; key: string }> {
+    const key = this.generateKey(prefix, filename);
+    const command = new PutObjectCommand({
+      Bucket:      this.bucket,
+      Key:         key,
+      ContentType: contentType,
+    });
+    const presignedUrl = await getSignedUrl(this.s3, command, { expiresIn });
+    return { presignedUrl, publicUrl: this.getPublicUrl(key), key };
+  }
 }

@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ExternalLink, Copy, MoreHorizontal, Archive, Trash2, Check, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import { clientFetch } from '../../../lib/api';
+import { clientFetch, API_BASE } from '../../../lib/api';
+import { getSession } from 'next-auth/react';
 import {
   buildDefaultValues,
   buildCopyDefaultValues,
@@ -199,6 +200,21 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
       method: 'PUT',
       body:   JSON.stringify({ ...extractMongoFields(data), productId: newId }),
     }).catch(() => {});
+
+    // Attach any pending presigned images
+    const pendingUrls = data.pendingImageUrls ?? [];
+    if (pendingUrls.length > 0) {
+      const session = await getSession();
+      const token = (session?.user as Record<string, unknown>)?.['accessToken'] as string | undefined;
+      await fetch(`${API_BASE}/admin/products/${newId}/images/from-urls`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ urls: pendingUrls }),
+      }).catch(() => {}); // best-effort, don't fail create if attach fails
+    }
 
     router.push(`/products/${newId}/edit`);
   };

@@ -40,28 +40,28 @@ export function CategoryPickerModal({
 
   const { data: l1Categories = [], isLoading } = useQuery<Category[]>({
     queryKey: ['categories-l1'],
-    queryFn:  () => clientFetch('/api/v1/categories?level=1&isVisible=true').then(fetchArr<Category>),
+    queryFn:  () => clientFetch('/categories?level=1&isVisible=true').then(fetchArr<Category>),
     enabled:  isOpen,
     staleTime: 10 * 60_000,
   });
 
   const { data: l2Categories = [] } = useQuery<Category[]>({
     queryKey: ['categories-l2', selectedL1],
-    queryFn:  () => clientFetch(`/api/v1/categories?level=2&parentId=${selectedL1}`).then(fetchArr<Category>),
+    queryFn:  () => clientFetch(`/categories?level=2&parentId=${selectedL1}`).then(fetchArr<Category>),
     enabled:  !!selectedL1,
     staleTime: 10 * 60_000,
   });
 
   const { data: l3Categories = [] } = useQuery<Category[]>({
     queryKey: ['categories-l3', selectedL2],
-    queryFn:  () => clientFetch(`/api/v1/categories?level=3&parentId=${selectedL2}`).then(fetchArr<Category>),
+    queryFn:  () => clientFetch(`/categories?level=3&parentId=${selectedL2}`).then(fetchArr<Category>),
     enabled:  !!selectedL2,
     staleTime: 10 * 60_000,
   });
 
   const { data: searchResults = [] } = useQuery<Category[]>({
     queryKey: ['categories-search', searchQuery],
-    queryFn:  () => clientFetch(`/api/v1/categories?level=3&q=${encodeURIComponent(searchQuery)}`).then(fetchArr<Category>),
+    queryFn:  () => clientFetch(`/categories?level=3&q=${encodeURIComponent(searchQuery)}`).then(fetchArr<Category>),
     enabled:  searchQuery.length >= 2,
   });
 
@@ -252,7 +252,7 @@ export function CategoryPickerCard({ value: categoryId, onChange }: CardProps) {
 
   const { data: category } = useQuery<Category>({
     queryKey: ['category', categoryId],
-    queryFn:  () => clientFetch(`/api/v1/categories/${categoryId}`)
+    queryFn:  () => clientFetch(`/categories/${categoryId}`)
       .then(r => r.json()).then(r => r.data),
     enabled:  !!categoryId,
   });

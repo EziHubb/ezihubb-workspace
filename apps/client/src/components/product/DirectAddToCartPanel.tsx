@@ -44,8 +44,11 @@ export function DirectAddToCartPanel({
   const qtyRef = useRef(quantity);
   useEffect(() => { qtyRef.current = quantity; }, [quantity]);
 
-  // Disable Add to Cart when product has variants but none selected
-  const hasVariants   = (product.variants?.length ?? 0) > 0;
+  // Disable Add to Cart when a variant picker is rendered but nothing selected.
+  // Mirror SmartVariantPicker's guard: it renders only when BOTH variantOptions
+  // and variants are non-empty. If either is absent the picker never mounts and
+  // selectedVariant stays null, so we must not gate the button on it.
+  const hasVariants   = (product.variantOptions?.length ?? 0) > 0 && (product.variants?.length ?? 0) > 0;
   const needsVariant  = hasVariants && !selectedVariant;
   const isOutOfStock  = selectedVariant?.isAvailable === false;
   const effectivePrice =

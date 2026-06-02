@@ -29,33 +29,65 @@ import {
 import { getSession } from 'next-auth/react';
 import type { ProductEditFormValues, AdminProductDto, ProductImage } from '../types';
 import { ThumbnailCropModal } from '../ThumbnailCropModal';
-import { safeArr } from '../../../../lib/fmt';
+import { API_BASE } from '../../../../lib/api';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const MAX_PHOTOS = 20;
 const MAX_VIDEOS = 2;
-const BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002/api/v1';
 
-// ── Upload helper (multipart/form-data — can't use clientFetch) ───────────────
+// ── Upload helpers (presigned URL flow) ───────────────────────────────────────
 
-async function uploadImages(
-  productId: string,
-  files: FileList,
-): Promise<string[]> {
-  const session    = await getSession();
-  const token      = (session?.user as Record<string, unknown>)?.['accessToken'] as string | undefined;
-  const formData   = new FormData();
-  Array.from(files).forEach((f) => formData.append('images', f));
-
-  const res  = await fetch(`${BASE}/admin/products/${productId}/images`, {
-    method:  'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body:    formData,
+async function presignAndUpload(
+  files: File[],
+  token: string | undefined,
+): Promise<{ url: string }[]> {
+  // Step 1: get presigned URLs from the API
+  const presignRes = await fetch(`${API_BASE}/admin/assets/presign`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      files: files.map((f) => ({ name: f.name, mimeType: f.type })),
+    }),
   });
-  if (!res.ok) throw new Error('Upload failed');
+  if (!presignRes.ok) throw new Error('Failed to get upload URLs');
+  const { data: presignItems } = await presignRes.json() as {
+    data: { presignedUrl: string; publicUrl: string; key: string }[]
+  };
+
+  // Step 2: PUT each file directly to R2
+  await Promise.all(
+    files.map((file, i) =>
+      fetch(presignItems[i].presignedUrl, {
+        method:  'PUT',
+        headers: { 'Content-Type': file.type },
+        body:    file,
+      }).then((r) => { if (!r.ok) throw new Error(`Upload failed: ${file.name}`); }),
+    ),
+  );
+
+  return presignItems.map((p) => ({ url: p.publicUrl }));
+}
+
+async function attachImageUrls(
+  productId: string,
+  urls: string[],
+  token: string | undefined,
+): Promise<{ id: string; url: string; isPrimary: boolean; sortOrder: number; altText?: string }[]> {
+  const res = await fetch(`${API_BASE}/admin/products/${productId}/images/from-urls`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ urls }),
+  });
+  if (!res.ok) throw new Error('Failed to attach images');
   const body = await res.json();
-  return safeArr<ProductImage>(body.data ?? body).map((img) => img.id);
+  return body.data ?? body;
 }
 
 // ─── Modals ───────────────────────────────────────────────────────────────────
@@ -314,7 +346,7 @@ function AddPhotosSlot({
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={uploading}
-        className="aspect-square rounded-xl border-2 border-dashed border-border bg-background/80 flex flex-col items-center justify-center gap-2 text-muted hover:border-primary/50 hover:text-primary hover:bg-primary/3 disabled:opacity-50 transition-all group"
+        className="aspect-square rounded-xl border-2 border-dashed border-border bg-background/80 flex flex-col items-center justify-center gap-2 text-muted hover:border-primary/50 hover:text-primary hover:bg-primary/3 disabled:opacity-40 disabled:cursor-not-allowed transition-all group"
       >
         {uploading ? (
           <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -346,21 +378,25 @@ function AddPhotosSlot({
 // ─── Draggable photo grid ─────────────────────────────────────────────────────
 
 interface DraggablePhotoGridProps {
-  productId:         string;
-  imageIds:          string[];
-  videoUrls:         string[];
-  imageMap:          Record<string, ProductImage>;
-  imageAltTexts:     Record<string, string>;
-  onReorder:         (ids: string[]) => void;
-  onRemove:          (id: string) => void;
-  onEditAlt:         (id: string, current: string) => void;
-  onImagesAdded:     (ids: string[]) => void;
-  onVideosChange:    (urls: string[]) => void;
+  productId:          string;
+  imageIds:           string[];
+  pendingUrls:        string[];
+  videoUrls:          string[];
+  imageMap:           Record<string, ProductImage>;
+  imageAltTexts:      Record<string, string>;
+  onReorder:          (ids: string[]) => void;
+  onRemove:           (id: string) => void;
+  onEditAlt:          (id: string, current: string) => void;
+  onImagesAdded:      (images: { id: string; url: string }[]) => void;
+  onPendingUrlsAdded: (urls: string[]) => void;
+  onPendingUrlRemoved:(url: string) => void;
+  onVideosChange:     (urls: string[]) => void;
 }
 
 function DraggablePhotoGrid({
   productId,
   imageIds,
+  pendingUrls,
   videoUrls,
   imageMap,
   imageAltTexts,
@@ -368,6 +404,8 @@ function DraggablePhotoGrid({
   onRemove,
   onEditAlt,
   onImagesAdded,
+  onPendingUrlsAdded,
+  onPendingUrlRemoved,
   onVideosChange,
 }: DraggablePhotoGridProps) {
   const [uploading, setUploading] = useState(false);
@@ -390,16 +428,26 @@ function DraggablePhotoGrid({
   };
 
   const handleFilesSelected = async (files: FileList) => {
-    const allowed = Math.min(files.length, MAX_PHOTOS - imageIds.length);
+    const allowed = Math.min(files.length, MAX_PHOTOS - imageIds.length - pendingUrls.length);
     if (allowed <= 0) return;
     const subset = Array.from(files).slice(0, allowed);
-    const dt     = new DataTransfer();
-    subset.forEach((f) => dt.items.add(f));
+
     setUploading(true);
     setUploadError(null);
     try {
-      const newIds = await uploadImages(productId, dt.files);
-      onImagesAdded(newIds);
+      const session  = await getSession();
+      const token    = (session?.user as Record<string, unknown>)?.['accessToken'] as string | undefined;
+      const uploaded = await presignAndUpload(subset, token);
+      const urls     = uploaded.map((u) => u.url);
+
+      if (productId) {
+        // Edit mode: attach immediately → get real image IDs
+        const images = await attachImageUrls(productId, urls, token);
+        onImagesAdded(images.map((img) => ({ id: img.id, url: img.url })));
+      } else {
+        // Create mode: store as pending URLs (attach after product creation)
+        onPendingUrlsAdded(urls);
+      }
     } catch {
       setUploadError('Upload failed. Please try again.');
     } finally {
@@ -407,7 +455,7 @@ function DraggablePhotoGrid({
     }
   };
 
-  const remaining = MAX_PHOTOS - imageIds.length;
+  const remaining = MAX_PHOTOS - imageIds.length - pendingUrls.length;
 
   return (
     <div className="space-y-3">
@@ -450,6 +498,25 @@ function DraggablePhotoGrid({
                 />
               );
             })}
+
+            {/* Pending images (presign-uploaded, not yet in DB) */}
+            {pendingUrls.map((url) => (
+              <div key={`pending:${url}`}
+                className="group relative rounded-xl overflow-hidden border-2 border-dashed border-primary/40 bg-background aspect-square">
+                <Image src={url} alt="Pending upload" fill className="object-cover" sizes="160px" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                <button
+                  type="button"
+                  onClick={() => onPendingUrlRemoved(url)}
+                  className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+                <span className="absolute bottom-2 left-2 text-[9px] bg-amber-500 text-white px-1.5 py-0.5 rounded font-semibold">
+                  Saving…
+                </span>
+              </div>
+            ))}
 
             {/* Last slot: Add photos */}
             <AddPhotosSlot
@@ -563,6 +630,7 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
   const videoUrls       = watch('videoUrls')         ?? [];
   const thumbnailCrop   = watch('thumbnailCropData') as Crop | null;
   const imageAltTexts   = watch('imageAltTexts')     ?? {};
+  const pendingImageUrls = watch('pendingImageUrls') ?? [];
 
   const [altEditTarget,  setAltEditTarget]  = useState<{ id: string; current: string } | null>(null);
   const [showCropModal,  setShowCropModal]  = useState(false);
@@ -574,12 +642,23 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
 
   const primaryImage = imageIds[0] ? imageMap[imageIds[0]] : null;
 
-  const handleReorder    = (ids: string[]) => setValue('imageIds',          ids,  { shouldDirty: true });
-  const handleRemove     = (id: string)    => setValue('imageIds',          imageIds.filter((i) => i !== id), { shouldDirty: true });
-  const handleImagesAdded= (ids: string[]) => setValue('imageIds',          [...imageIds, ...ids], { shouldDirty: true });
-  const handleVideos     = (urls: string[])=> setValue('videoUrls',         urls, { shouldDirty: true });
-  const handleAltSave    = (id: string, text: string) => setValue('imageAltTexts', { ...imageAltTexts, [id]: text }, { shouldDirty: true });
-  const handleCropApply  = (crop: Crop)    => setValue('thumbnailCropData', crop as unknown as Record<string, number>, { shouldDirty: true });
+  const handleReorder = (ids: string[]) => setValue('imageIds', ids, { shouldDirty: true });
+  const handleRemove  = (id: string)   => setValue('imageIds', imageIds.filter((i) => i !== id), { shouldDirty: true });
+  const handleVideos  = (urls: string[])=> setValue('videoUrls', urls, { shouldDirty: true });
+  const handleAltSave = (id: string, text: string) => setValue('imageAltTexts', { ...imageAltTexts, [id]: text }, { shouldDirty: true });
+  const handleCropApply = (crop: Crop) => setValue('thumbnailCropData', crop as unknown as Record<string, number>, { shouldDirty: true });
+
+  const handleImagesAdded = (images: { id: string; url: string }[]) => {
+    setValue('imageIds', [...imageIds, ...images.map((img) => img.id)], { shouldDirty: true });
+  };
+
+  const handlePendingUrlsAdded = (urls: string[]) => {
+    setValue('pendingImageUrls', [...pendingImageUrls, ...urls], { shouldDirty: true });
+  };
+
+  const handlePendingUrlRemoved = (url: string) => {
+    setValue('pendingImageUrls', pendingImageUrls.filter((u) => u !== url), { shouldDirty: true });
+  };
 
   return (
     <div className="max-w-[920px] mx-auto px-6 py-8 space-y-8">
@@ -603,6 +682,7 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
       <DraggablePhotoGrid
         productId={product.id}
         imageIds={imageIds}
+        pendingUrls={pendingImageUrls}
         videoUrls={videoUrls}
         imageMap={imageMap}
         imageAltTexts={imageAltTexts}
@@ -610,6 +690,8 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
         onRemove={handleRemove}
         onEditAlt={(id, cur) => setAltEditTarget({ id, current: cur })}
         onImagesAdded={handleImagesAdded}
+        onPendingUrlsAdded={handlePendingUrlsAdded}
+        onPendingUrlRemoved={handlePendingUrlRemoved}
         onVideosChange={handleVideos}
       />
 

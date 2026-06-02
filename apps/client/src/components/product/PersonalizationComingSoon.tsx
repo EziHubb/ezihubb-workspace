@@ -30,7 +30,7 @@ export function PersonalizationComingSoon({
   const [notifyState,  setNotifyState]  = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [isAdding,     setIsAdding]     = useState(false);
 
-  const hasVariants  = (product.variants?.length ?? 0) > 0;
+  const hasVariants  = (product.variantOptions?.length ?? 0) > 0 && (product.variants?.length ?? 0) > 0;
   const needsVariant = hasVariants && !selectedVariant;
 
   const handleAddAsIs = async () => {

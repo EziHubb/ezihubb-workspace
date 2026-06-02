@@ -30,6 +30,7 @@ import { SearchModule } from '../modules/search/search.module';
 import { AdminModule } from '../modules/admin/admin.module';
 import { HealthModule } from '../health/health.module';
 import { MongoDBModule } from '../modules/database/mongodb.module';
+import { AssetsModule } from '../modules/assets/assets.module';
 
 @Module({
   imports: [
@@ -102,19 +103,7 @@ import { MongoDBModule } from '../modules/database/mongodb.module';
     CommonModule,
     QueueModule,
 
-        // ── Infrastructure ──────────────────────────────────────────
-    PrismaModule,
-    MongoDBModule,
-    CommonModule,
-    QueueModule,
-
-        // ── Infrastructure ──────────────────────────────────────────
-    PrismaModule,
-    MongoDBModule,
-    CommonModule,
-    QueueModule,
-
-        // ── Feature modules ───────────────────────────────────────────────────────
+    // ── Feature modules ───────────────────────────────────────────────────────
     AuthModule,
     UsersModule,
     CatalogModule,
@@ -129,6 +118,7 @@ import { MongoDBModule } from '../modules/database/mongodb.module';
     CustomizationModule,
     SearchModule,
     AdminModule,
+    AssetsModule,
     HealthModule,
   ],
   controllers: [AppController],

@@ -20,13 +20,14 @@ import { CreateCollectionDto } from './dto/create-collection.dto';
 import { UpdateCollectionDto } from './dto/update-collection.dto';
 import { CollectionResponseDto } from './dto/collection-response.dto';
 import { ParseCuidPipe } from '../../common/pipes/parse-cuid.pipe';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@mlh/constants';
 
 @ApiTags('Admin — Catalog')
 @ApiBearerAuth('access-token')
-@UseGuards(RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN, Role.SUPER_ADMIN)
 @Controller('admin')
 export class AdminCatalogController {

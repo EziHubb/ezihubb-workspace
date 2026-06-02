@@ -7,6 +7,7 @@ const EMPTY_DEFAULTS: ProductEditFormValues = {
   videoUrls:            [],
   thumbnailCropData:    null,
   imageAltTexts:        {},
+  pendingImageUrls:     [],
   name:                 '',
   description:          '',
   primaryCategoryId:    '',
@@ -55,6 +56,7 @@ export function buildDefaultValues(
     videoUrls:         product.videoUrls         ?? [],
     thumbnailCropData: product.thumbnailCropData ?? null,
     imageAltTexts:     detail?.imageAltTexts     ?? {},
+    pendingImageUrls:  [],
 
     // Item Details
     name:              product.name,
@@ -104,7 +106,7 @@ export function buildDefaultValues(
 /** Fields that go to PATCH /admin/products/:id (PostgreSQL) */
 export function extractPrismaFields(data: ProductEditFormValues): Partial<ProductEditFormValues> {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { description, customOptions, gpsrInfo, imageAltTexts, imageIds, ...prismaData } = data;
+  const { description, customOptions, gpsrInfo, imageAltTexts, imageIds, pendingImageUrls, ...prismaData } = data;
   return prismaData;
 }
 

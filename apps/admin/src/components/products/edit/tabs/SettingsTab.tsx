@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ExternalLink } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
 import { clientFetch } from '../../../../lib/api';
+import { fetchArr } from '../../../../lib/fmt';
 import type { ProductEditFormValues, RenewalType } from '../types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -170,11 +171,7 @@ export function SettingsTab() {
 
   const { data: sections = [] } = useQuery<ShopSection[]>({
     queryKey: ['shop-sections'],
-    queryFn:  async () => {
-      const res  = await clientFetch('/admin/shop-sections');
-      const body = await res.json();
-      return (body.data ?? body) as ShopSection[];
-    },
+    queryFn:  () => clientFetch('/admin/shop-sections').then(r => fetchArr<ShopSection>(r)),
     staleTime: 10 * 60_000,
   });
 

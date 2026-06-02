@@ -14,7 +14,14 @@ function buildBase(): string {
   return raw.replace(/\/api\/v1\/?$/, '').replace(/\/$/, '') + '/api/v1';
 }
 
-const BASE = buildBase();
+export const API_BASE = buildBase();
+const BASE = API_BASE;
+
+// Strip a leading /api/v1 so callers never need to include it —
+// BASE already ends with /api/v1, so including it again would double it.
+function p(path: string): string {
+  return path.replace(/^\/api\/v1(?=\/|$)/, '');
+}
 
 // ── Server-side fetch (Server Components, Route Handlers) ─────────────────────
 // MUST pass authOptions to getServerSession() so NextAuth can read the JWT config.
@@ -23,7 +30,7 @@ export async function serverFetch(path: string, init?: RequestInit): Promise<Res
   const session = await getServerSession(authOptions);
   const token   = (session?.user as Record<string, unknown> | undefined)?.['accessToken'] as string | undefined;
 
-  return fetch(`${BASE}${path}`, {
+  return fetch(`${BASE}${p(path)}`, {
     ...init,
     cache: 'no-store',
     headers: {
@@ -40,7 +47,7 @@ export async function clientFetch(path: string, init?: RequestInit): Promise<Res
   const session = await getSession();
   const token   = (session?.user as Record<string, unknown> | undefined)?.['accessToken'] as string | undefined;
 
-  return fetch(`${BASE}${path}`, {
+  return fetch(`${BASE}${p(path)}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',

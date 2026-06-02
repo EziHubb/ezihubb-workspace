@@ -23,6 +23,7 @@ export interface ProductEditFormValues {
   videoUrls:         string[];
   thumbnailCropData: Record<string, number> | null;
   imageAltTexts:     Record<string, string>;
+  pendingImageUrls:  string[];   // URLs uploaded via presign in create mode (not yet in DB)
 
   // Item Details tab
   name:              string;

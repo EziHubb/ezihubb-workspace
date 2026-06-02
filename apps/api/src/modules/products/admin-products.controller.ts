@@ -32,11 +32,12 @@ import { ProductResponseDto } from './dto/product-response.dto';
 import { ProductImageResponseDto } from './dto/product-response.dto';
 import { ProductListItemDto } from './dto/product-list-item.dto';
 import { ParseCuidPipe } from '../../common/pipes/parse-cuid.pipe';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@mlh/constants';
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
-import { IsArray, IsString } from 'class-validator';
+import { IsArray, IsString, ArrayMaxSize } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import {
   CreateProductDetailDto,
@@ -53,9 +54,17 @@ class ReorderImagesDto {
   orderedIds: string[];
 }
 
+class AttachImagesDto {
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(20)
+  urls: string[];
+}
+
 @ApiTags('Admin — Products')
 @ApiBearerAuth('access-token')
-@UseGuards(RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN, Role.SUPER_ADMIN)
 @Controller('admin/products')
 export class AdminProductsController {
@@ -135,6 +144,18 @@ export class AdminProductsController {
     @UploadedFiles() files: Express.Multer.File[],
   ): Promise<ProductImageResponseDto[]> {
     return this.productsService.uploadImages(id, files);
+  }
+
+  // POST /admin/products/:id/images/from-urls
+  @Post(':id/images/from-urls')
+  @ApiOperation({ summary: '[Admin] Attach already-uploaded image URLs to a product' })
+  @ApiResponse({ status: 201, type: [ProductImageResponseDto] })
+  @HttpCode(HttpStatus.CREATED)
+  attachImages(
+    @Param('id', ParseCuidPipe) id: string,
+    @Body() dto: AttachImagesDto,
+  ): Promise<ProductImageResponseDto[]> {
+    return this.productsService.attachImageUrls(id, dto.urls);
   }
 
   // DELETE /admin/products/:id/images/:imgId
