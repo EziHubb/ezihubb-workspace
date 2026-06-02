@@ -47,6 +47,6 @@ export class AssetsController {
         this.storage.getPresignedUploadUrl('products/images', f.name, f.mimeType),
       ),
     );
-    return { data: items };
+    return items;
   }
 }
