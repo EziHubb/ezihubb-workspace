@@ -320,10 +320,15 @@ export class AuthService {
     email: string,
     role: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
+    const secret = this.config.get<string>('jwt.accessSecret');
+    if (!secret) {
+      throw new Error('JWT_ACCESS_SECRET environment variable is not set');
+    }
+
     const accessToken = this.jwtService.sign(
       { sub: userId, email, role },
       {
-        secret: this.config.get<string>('jwt.accessSecret'),
+        secret,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expiresIn: (this.config.get<string>('jwt.accessExpiresIn') ?? '15m') as any,
       },
