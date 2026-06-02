@@ -17,7 +17,7 @@ export interface ProductsQuery {
   maxPrice?:        number;
   minRating?:       number;
   tags?:            string[];
-  sort?:            'price_asc' | 'price_desc' | 'newest' | 'bestseller' | 'rating';
+  sort?:            'price_asc' | 'price_desc' | 'newest' | 'bestseller' | 'rating' | 'featured';
   isPersonalizable?: boolean;
 }
 
