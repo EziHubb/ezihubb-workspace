@@ -20,7 +20,6 @@ import {
   CreateShippingMethodDto,
   UpdateShippingMethodDto,
 } from './dto/create-shipping-method.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@mlh/constants';
@@ -28,7 +27,7 @@ import { ShippingMethod } from '@prisma/client';
 
 @ApiTags('admin / shipping')
 @Controller('admin/shipping')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(RolesGuard)
 @Roles(Role.ADMIN, Role.SUPER_ADMIN)
 export class AdminShippingController {
   constructor(private readonly shippingService: ShippingService) {}

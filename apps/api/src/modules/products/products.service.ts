@@ -297,7 +297,6 @@ export class ProductsService {
         description: '',
         basePrice:   0,
         categoryId:  placeholder.id,
-        status:      'DRAFT' as const,
         isActive:    false,
       },
     });
@@ -436,7 +435,6 @@ export class ProductsService {
       'domesticGlobalPricing', 'quantity', 'isAdsEnabled', 'hsCode',
       'titleCharCount', 'thumbnailCropData',
       'returnPolicy', 'whoMadeIt', 'howItWasMade', 'renewalType',
-      'status',
       // Array fields (assigned directly below)
     ];
     for (const f of fields) {
@@ -451,11 +449,6 @@ export class ProductsService {
     ] as (keyof UpdateProductDto)[];
     for (const f of arrayFields) {
       if (dto[f] !== undefined) (data as Record<string, unknown>)[f] = dto[f];
-    }
-
-    // ── Sync isActive from status (backward compat) ───────────────────────
-    if (dto.status !== undefined) {
-      data.isActive = dto.status === 'ACTIVE';
     }
 
     // ── FK / relation fields ───────────────────────────────────────────────
@@ -730,6 +723,221 @@ export class ProductsService {
       // Traffic
       trafficSources,
     };
+  }
+
+  // ─── Variation Groups ───────────────────────────────────────────────────────
+
+  async getVariationGroups(productId: string) {
+    await this.requireProduct(productId);
+    return this.prisma.variationGroup.findMany({
+      where:   { productId },
+      include: { options: { orderBy: { sortOrder: 'asc' } } },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  async getVariationGroup(productId: string, groupId: string) {
+    return this.prisma.variationGroup.findFirst({
+      where:   { id: groupId, productId },
+      include: { options: { orderBy: { sortOrder: 'asc' } } },
+    });
+  }
+
+  async createVariationGroup(
+    productId: string,
+    dto: { name: string; displayType?: string; options?: { name: string; value: string; colorHex?: string; isAvailable?: boolean; sortOrder?: number }[] },
+  ) {
+    await this.requireProduct(productId);
+    const count = await this.prisma.variationGroup.count({ where: { productId } });
+    return this.prisma.variationGroup.create({
+      data: {
+        productId,
+        name:        dto.name,
+        displayType: dto.displayType ?? 'dropdown',
+        sortOrder:   count,
+        options: dto.options?.length
+          ? { create: dto.options.map((o, i) => ({ ...o, sortOrder: o.sortOrder ?? i })) }
+          : undefined,
+      },
+      include: { options: true },
+    });
+  }
+
+  async deleteVariationGroup(productId: string, groupId: string) {
+    await this.prisma.variationGroup.deleteMany({ where: { id: groupId, productId } });
+  }
+
+  async bulkSaveVariations(productId: string, groups: { id: string; name: string; displayType: string; sortOrder: number; options: Prisma.JsonObject[] }[]) {
+    await this.requireProduct(productId);
+    // Delete all groups then recreate — simplest approach for bulk replace
+    await this.prisma.variationGroup.deleteMany({ where: { productId } });
+    for (const g of groups) {
+      if (!g.name) continue;
+      await this.prisma.variationGroup.create({
+        data: {
+          id:          g.id.startsWith('new-') ? undefined : g.id,
+          productId,
+          name:        g.name,
+          displayType: g.displayType ?? 'dropdown',
+          sortOrder:   g.sortOrder,
+          options: {
+            create: ((g.options ?? []) as { name?: string; value?: string; colorHex?: string; sortOrder?: number; isAvailable?: boolean }[])
+              .filter((o) => o.name || o.value)
+              .map((o, i) => ({
+                name:        o.name ?? o.value ?? '',
+                value:       o.value ?? (o.name ?? '').toLowerCase().replace(/\s+/g, '-'),
+                colorHex:    o.colorHex,
+                sortOrder:   o.sortOrder ?? i,
+                isAvailable: o.isAvailable !== false,
+              })),
+          },
+        },
+      });
+    }
+  }
+
+  // ─── Variation Options ───────────────────────────────────────────────────────
+
+  async addVariationOptionToGroup(
+    productId: string,
+    groupId:   string,
+    dto: { name: string; value?: string; colorHex?: string; imageUrl?: string; imageId?: string; isAvailable?: boolean },
+  ) {
+    const group = await this.prisma.variationGroup.findFirst({ where: { id: groupId, productId } });
+    if (!group) throw new Error('Group not found');
+    const count = await this.prisma.variationOption.count({ where: { groupId } });
+    return this.prisma.variationOption.create({
+      data: {
+        groupId,
+        name:        dto.name,
+        value:       dto.value ?? dto.name.toLowerCase().replace(/\s+/g, '-'),
+        colorHex:    dto.colorHex,
+        imageUrl:    dto.imageUrl,
+        imageId:     dto.imageId,
+        sortOrder:   count,
+        isAvailable: dto.isAvailable !== false,
+      },
+    });
+  }
+
+  async updateVariationOption(
+    productId: string,
+    groupId:   string,
+    optionId:  string,
+    dto: Partial<{ name: string; value: string; colorHex: string | null; imageUrl: string | null; imageId: string | null; priceDelta: number | null; isAvailable: boolean }>,
+  ) {
+    const group = await this.prisma.variationGroup.findFirst({ where: { id: groupId, productId } });
+    if (!group) throw new Error('Group not found');
+    return this.prisma.variationOption.update({
+      where: { id: optionId },
+      data:  dto,
+    });
+  }
+
+  async deleteVariationOption(productId: string, groupId: string, optionId: string) {
+    const group = await this.prisma.variationGroup.findFirst({ where: { id: groupId, productId } });
+    if (!group) throw new Error('Group not found');
+    await this.prisma.variationOption.delete({ where: { id: optionId } });
+  }
+
+  // ─── Variation Settings ──────────────────────────────────────────────────────
+
+  async getVariationSettings(productId: string) {
+    let settings = await this.prisma.variationSettings.findUnique({ where: { productId } });
+    if (!settings) {
+      // Return default without creating
+      return { productId, enableVariations: false, variesBy: [], skuPrefix: null };
+    }
+    return settings;
+  }
+
+  async upsertVariationSettings(productId: string, dto: { enableVariations?: boolean; variesBy?: string[]; skuPrefix?: string }) {
+    await this.requireProduct(productId);
+    return this.prisma.variationSettings.upsert({
+      where:  { productId },
+      create: { productId, enableVariations: dto.enableVariations ?? true, variesBy: dto.variesBy ?? [], skuPrefix: dto.skuPrefix },
+      update: { ...dto },
+    });
+  }
+
+  // ─── Flat variants (for price matrix) ────────────────────────────────────────
+
+  async getVariants(productId: string) {
+    return this.prisma.productVariant.findMany({
+      where:   { productId },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  async updateVariantById(productId: string, variantId: string, dto: { price?: number; compareAtPrice?: number | null; sku?: string | null }) {
+    return this.prisma.productVariant.update({
+      where: { id: variantId },
+      data:  dto,
+    });
+  }
+
+  // ─── Custom Options (stored in MongoDB ProductDetail) ────────────────────────
+
+  private async getOrCreateDetail(productId: string) {
+    let detail = await this.productDetailModel.findOne({ productId });
+    if (!detail) {
+      detail = await this.productDetailModel.create({ productId });
+    }
+    return detail;
+  }
+
+  async getCustomOptions(productId: string) {
+    const detail = await this.productDetailModel.findOne({ productId });
+    const raw    = (detail?.toObject?.() ?? detail ?? {}) as Record<string, unknown>;
+    const opts   = raw['customOptions'];
+    return Array.isArray(opts) ? opts : [];
+  }
+
+  async createCustomOption(
+    productId: string,
+    dto: { type: string; label: string; required?: boolean; instructionText?: string; placeholder?: string; maxLength?: number; isMultiline?: boolean; choices?: string[]; allowMultiSelect?: boolean; acceptedFileTypes?: string[]; maxFileSizeMB?: number },
+  ) {
+    const detail = await this.getOrCreateDetail(productId);
+    const raw    = (detail as unknown as Record<string, unknown>);
+    const opts   = Array.isArray(raw['customOptions']) ? (raw['customOptions'] as object[]) : [];
+    const count  = opts.length;
+    if (count >= 5) throw new Error('Maximum 5 custom options per product');
+    const newOpt = { id: Date.now().toString(36), sortOrder: count, ...dto, required: dto.required ?? false };
+    await this.productDetailModel.updateOne(
+      { productId },
+      { $set: { customOptions: [...opts, newOpt] } },
+      { upsert: true },
+    );
+    return newOpt;
+  }
+
+  async updateCustomOption(productId: string, optionId: string, dto: Record<string, unknown>) {
+    const detail = await this.getOrCreateDetail(productId);
+    const raw    = (detail as unknown as Record<string, unknown>);
+    const opts   = (Array.isArray(raw['customOptions']) ? raw['customOptions'] : []) as Record<string, unknown>[];
+    const idx    = opts.findIndex((o) => o['id'] === optionId);
+    if (idx === -1) throw new Error('Option not found');
+    opts[idx] = { ...opts[idx], ...dto, id: optionId };
+    await this.productDetailModel.updateOne({ productId }, { $set: { customOptions: opts } });
+    return opts[idx];
+  }
+
+  async deleteCustomOption(productId: string, optionId: string) {
+    const detail = await this.getOrCreateDetail(productId);
+    const raw    = (detail as unknown as Record<string, unknown>);
+    const opts   = (Array.isArray(raw['customOptions']) ? raw['customOptions'] : []) as Record<string, unknown>[];
+    const filtered = opts.filter((o) => o['id'] !== optionId);
+    await this.productDetailModel.updateOne({ productId }, { $set: { customOptions: filtered } });
+  }
+
+  async reorderCustomOptions(productId: string, orderedIds: string[]) {
+    const detail = await this.getOrCreateDetail(productId);
+    const raw    = (detail as unknown as Record<string, unknown>);
+    const opts   = (Array.isArray(raw['customOptions']) ? raw['customOptions'] : []) as Record<string, unknown>[];
+    const reordered = orderedIds
+      .map((id, i) => { const o = opts.find((x) => x['id'] === id); return o ? { ...o, sortOrder: i } : null; })
+      .filter(Boolean) as Record<string, unknown>[];
+    await this.productDetailModel.updateOne({ productId }, { $set: { customOptions: reordered } });
   }
 
   async delete(id: string): Promise<void> {

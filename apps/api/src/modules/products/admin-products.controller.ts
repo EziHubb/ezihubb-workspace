@@ -37,8 +37,12 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@mlh/constants';
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
-import { IsArray, IsString, ArrayMaxSize } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsArray, IsString, ArrayMaxSize, IsOptional, IsBoolean,
+  IsNumber, IsEnum, MaxLength, ValidateNested,
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   CreateProductDetailDto,
   VariantDto,
@@ -60,6 +64,70 @@ class AttachImagesDto {
   @IsString({ each: true })
   @ArrayMaxSize(20)
   urls: string[];
+}
+
+// ── Variation DTOs ────────────────────────────────────────────────────────────
+
+class VariationOptionCreateDto {
+  @IsString() @MaxLength(100) name: string;
+  @IsOptional() @IsString() @MaxLength(100) value?: string;
+  @IsOptional() @IsString() @MaxLength(20) colorHex?: string;
+  @IsOptional() @IsString() imageUrl?: string;
+  @IsOptional() @IsString() imageId?: string;
+  @IsOptional() @IsBoolean() isAvailable?: boolean;
+}
+
+class VariationGroupCreateDto {
+  @IsString() @MaxLength(100) name: string;
+  @IsOptional() @IsString() displayType?: string;
+  @IsOptional() @ValidateNested({ each: true }) @Type(() => VariationOptionCreateDto)
+  options?: VariationOptionCreateDto[];
+}
+
+class BulkSaveVariationsDto {
+  @IsArray() groups: object[];
+}
+
+class VariationSettingsDto {
+  @IsOptional() @IsBoolean() enableVariations?: boolean;
+  @IsOptional() @IsArray() @IsString({ each: true }) variesBy?: string[];
+  @IsOptional() @IsString() skuPrefix?: string;
+}
+
+class VariationOptionPatchDto {
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsString() value?: string;
+  @IsOptional() @IsString() colorHex?: string;
+  @IsOptional() @IsString() imageUrl?: string;
+  @IsOptional() @IsString() imageId?: string;
+  @IsOptional() @IsNumber() priceDelta?: number;
+  @IsOptional() @IsBoolean() isAvailable?: boolean;
+}
+
+class VariantPatchDto {
+  @IsOptional() @IsNumber() price?: number;
+  @IsOptional() @IsNumber() compareAtPrice?: number;
+  @IsOptional() @IsString() sku?: string;
+}
+
+class ReorderIdsDto {
+  @IsArray() @IsString({ each: true }) orderedIds: string[];
+}
+
+// ── Custom Option DTOs ────────────────────────────────────────────────────────
+
+class CustomOptionCreateDto {
+  @IsString() type: string;
+  @IsString() @MaxLength(200) label: string;
+  @IsOptional() @IsBoolean() required?: boolean;
+  @IsOptional() @IsString() instructionText?: string;
+  @IsOptional() @IsString() placeholder?: string;
+  @IsOptional() @IsNumber() maxLength?: number;
+  @IsOptional() @IsBoolean() isMultiline?: boolean;
+  @IsOptional() @IsArray() @IsString({ each: true }) choices?: string[];
+  @IsOptional() @IsBoolean() allowMultiSelect?: boolean;
+  @IsOptional() @IsArray() @IsString({ each: true }) acceptedFileTypes?: string[];
+  @IsOptional() @IsNumber() maxFileSizeMB?: number;
 }
 
 @ApiTags('Admin — Products')
@@ -251,5 +319,167 @@ export class AdminProductsController {
     @Body() customization: CustomizationTemplateDto,
   ) {
     return this.productsService.setCustomization(id, customization);
+  }
+
+  // ─── Variation Groups ─────────────────────────────────────────────────────
+
+  @Get(':id/variations')
+  @ApiOperation({ summary: '[Admin] List variation groups with options' })
+  getVariationGroups(@Param('id', ParseCuidPipe) id: string) {
+    return this.productsService.getVariationGroups(id);
+  }
+
+  @Put(':id/variations')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: '[Admin] Bulk-replace all variation groups' })
+  bulkSaveVariations(@Param('id', ParseCuidPipe) id: string, @Body() dto: BulkSaveVariationsDto) {
+    return this.productsService.bulkSaveVariations(id, dto.groups as Parameters<typeof this.productsService.bulkSaveVariations>[1]);
+  }
+
+  @Get(':id/variations/:groupId')
+  @ApiOperation({ summary: '[Admin] Get single variation group' })
+  getVariationGroup(
+    @Param('id', ParseCuidPipe) id: string,
+    @Param('groupId') groupId: string,
+  ) {
+    return this.productsService.getVariationGroup(id, groupId);
+  }
+
+  @Post(':id/variations/groups')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: '[Admin] Create a new variation group' })
+  createVariationGroup(
+    @Param('id', ParseCuidPipe) id: string,
+    @Body() dto: VariationGroupCreateDto,
+  ) {
+    return this.productsService.createVariationGroup(id, dto as Parameters<typeof this.productsService.createVariationGroup>[1]);
+  }
+
+  @Delete(':id/variations/groups/:groupId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: '[Admin] Delete variation group (cascades options)' })
+  deleteVariationGroup(
+    @Param('id', ParseCuidPipe) id: string,
+    @Param('groupId') groupId: string,
+  ) {
+    return this.productsService.deleteVariationGroup(id, groupId);
+  }
+
+  // ─── Variation Options ────────────────────────────────────────────────────
+
+  @Post(':id/variations/:groupId/options')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: '[Admin] Add option to a variation group' })
+  addVariationOption(
+    @Param('id', ParseCuidPipe) id: string,
+    @Param('groupId') groupId: string,
+    @Body() dto: VariationOptionCreateDto,
+  ) {
+    return this.productsService.addVariationOptionToGroup(id, groupId, dto);
+  }
+
+  @Patch(':id/variations/:groupId/options/:optionId')
+  @ApiOperation({ summary: '[Admin] Update a variation option' })
+  updateVariationOption(
+    @Param('id', ParseCuidPipe) id: string,
+    @Param('groupId') groupId: string,
+    @Param('optionId') optionId: string,
+    @Body() dto: VariationOptionPatchDto,
+  ) {
+    return this.productsService.updateVariationOption(id, groupId, optionId, dto);
+  }
+
+  @Delete(':id/variations/:groupId/options/:optionId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: '[Admin] Delete a variation option' })
+  deleteVariationOption(
+    @Param('id', ParseCuidPipe) id: string,
+    @Param('groupId') groupId: string,
+    @Param('optionId') optionId: string,
+  ) {
+    return this.productsService.deleteVariationOption(id, groupId, optionId);
+  }
+
+  // ─── Variation Settings ───────────────────────────────────────────────────
+
+  @Get(':id/variation-settings')
+  @ApiOperation({ summary: '[Admin] Get variation settings for a product' })
+  getVariationSettings(@Param('id', ParseCuidPipe) id: string) {
+    return this.productsService.getVariationSettings(id);
+  }
+
+  @Patch(':id/variation-settings')
+  @ApiOperation({ summary: '[Admin] Update variation settings' })
+  updateVariationSettings(
+    @Param('id', ParseCuidPipe) id: string,
+    @Body() dto: VariationSettingsDto,
+  ) {
+    return this.productsService.upsertVariationSettings(id, dto);
+  }
+
+  // ─── Flat Variants (for price matrix) ────────────────────────────────────
+
+  @Get(':id/variations/variants')
+  @ApiOperation({ summary: '[Admin] List flat ProductVariant rows (for price matrix)' })
+  getVariants(@Param('id', ParseCuidPipe) id: string) {
+    return this.productsService.getVariants(id);
+  }
+
+  @Patch(':id/variations/variants/:variantId')
+  @ApiOperation({ summary: '[Admin] Update a variant (price / compareAt / sku)' })
+  updateVariant(
+    @Param('id', ParseCuidPipe) id: string,
+    @Param('variantId') variantId: string,
+    @Body() dto: VariantPatchDto,
+  ) {
+    return this.productsService.updateVariantById(id, variantId, dto);
+  }
+
+  // ─── Custom Options ───────────────────────────────────────────────────────
+
+  @Get(':id/custom-options')
+  @ApiOperation({ summary: '[Admin] List custom order options (from MongoDB)' })
+  getCustomOptions(@Param('id', ParseCuidPipe) id: string) {
+    return this.productsService.getCustomOptions(id);
+  }
+
+  @Post(':id/custom-options')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: '[Admin] Add a custom option field' })
+  createCustomOption(
+    @Param('id', ParseCuidPipe) id: string,
+    @Body() dto: CustomOptionCreateDto,
+  ) {
+    return this.productsService.createCustomOption(id, dto);
+  }
+
+  @Patch(':id/custom-options/:optionId')
+  @ApiOperation({ summary: '[Admin] Update a custom option field' })
+  updateCustomOption(
+    @Param('id', ParseCuidPipe) id: string,
+    @Param('optionId') optionId: string,
+    @Body() dto: CustomOptionCreateDto,
+  ) {
+    return this.productsService.updateCustomOption(id, optionId, dto as unknown as Record<string, unknown>);
+  }
+
+  @Delete(':id/custom-options/:optionId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: '[Admin] Delete a custom option field' })
+  deleteCustomOption(
+    @Param('id', ParseCuidPipe) id: string,
+    @Param('optionId') optionId: string,
+  ) {
+    return this.productsService.deleteCustomOption(id, optionId);
+  }
+
+  @Put(':id/custom-options/reorder')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: '[Admin] Reorder custom option fields' })
+  reorderCustomOptions(
+    @Param('id', ParseCuidPipe) id: string,
+    @Body() dto: ReorderIdsDto,
+  ) {
+    return this.productsService.reorderCustomOptions(id, dto.orderedIds);
   }
 }
