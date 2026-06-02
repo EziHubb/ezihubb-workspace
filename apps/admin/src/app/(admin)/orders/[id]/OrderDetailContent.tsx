@@ -6,10 +6,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import {
-  Check, Package, Truck, MapPin, User,
+  Check, Package, MapPin, User,
   ExternalLink, Save, Mail, DollarSign,
 } from 'lucide-react';
-import { OrderStatusBadge, ALL_STATUSES } from '../../../../components/orders/OrderStatusBadge';
+import { ALL_STATUSES } from '../../../../components/orders/OrderStatusBadge';
 import { CustomizationPreviewModal } from '../../../../components/orders/CustomizationPreviewModal';
 import { clientFetch } from '../../../../lib/api';
 import { fmtAmount } from '../../../../lib/fmt';
@@ -48,7 +48,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail }) {
   const router = useRouter();
-  const [order,      setOrder]      = useState<OrderDetail>(initialOrder);
+  const [order]      = useState<OrderDetail>(initialOrder);
   const [previewItem,setPreview]    = useState<OrderItem | null>(null);
   const [newStatus,  setNewStatus]  = useState(order.status);
   const [note,       setNote]       = useState('');

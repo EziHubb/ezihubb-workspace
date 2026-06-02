@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Plus, Search, Filter, X, Save, Trash2, GripVertical,
+  Plus, Search, X, Save, Trash2, GripVertical,
   ChevronLeft, ChevronRight, Eye, EyeOff, Package,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -362,7 +362,7 @@ function CollectionSlideOver({
 
             {form.products.length > 0 ? (
               <ul className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                {form.products.map((p, idx) => (
+                {form.products.map((p) => (
                   <li
                     key={p.id}
                     className="flex items-center gap-2.5 px-3 py-2 rounded-button bg-background border border-border group"

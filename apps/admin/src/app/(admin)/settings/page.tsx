@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Save, Eye, EyeOff, Send, Plus, Trash2, Pencil,
+  Save, Eye, EyeOff, Send, Plus, Pencil,
   X, Code, AlertTriangle, RefreshCw, Download, Shield,
   ChevronRight,
 } from 'lucide-react';
@@ -747,11 +747,6 @@ interface AdminMember {
   role:        'ADMIN' | 'SUPER_ADMIN';
   lastLoginAt?: string;
 }
-
-const ROLE_LABELS: Record<string, string> = {
-  ADMIN:       'Admin',
-  SUPER_ADMIN: 'Super Admin',
-};
 
 function InviteModal({ onClose, onInvite }: { onClose: () => void; onInvite: (email: string, role: string) => Promise<void> }) {
   const [email,   setEmail]   = useState('');

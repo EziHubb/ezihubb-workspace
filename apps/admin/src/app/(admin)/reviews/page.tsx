@@ -7,7 +7,6 @@ import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import {
   ReviewModerationCard,
   type Review,
-  type ReviewStatus,
 } from '../../../components/reviews/ReviewModerationCard';
 import { ReviewReplyModal } from '../../../components/reviews/ReviewReplyModal';
 import { clientFetch } from '../../../lib/api';

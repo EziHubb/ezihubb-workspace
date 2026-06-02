@@ -5,7 +5,6 @@ import { useFormContext } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { X, ChevronDown, HelpCircle, Plus } from 'lucide-react';
 import { clientFetch } from '../../../lib/api';
-import { fetchArr } from '../../../lib/fmt';
 import type { ProductEditFormValues } from './types';
 
 // ─── useDebounce ──────────────────────────────────────────────────────────────

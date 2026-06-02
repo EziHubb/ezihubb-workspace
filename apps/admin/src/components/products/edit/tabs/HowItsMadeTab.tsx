@@ -1,17 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, X, Check, ExternalLink, Shield, Package2,
-  ChevronDown, ChevronUp,
+  ChevronUp,
 } from 'lucide-react';
 import { clientFetch } from '../../../../lib/api';
 import { fetchArr } from '../../../../lib/fmt';
 import type {
-  ProductEditFormValues, WhoMadeIt, HowItWasMade, GpsrInfo,
+  ProductEditFormValues, WhoMadeIt, HowItWasMade,
 } from '../types';
+import { RadioGroupWithDesc }    from '../RadioGroupWithDesc';
+import { CheckboxGroupWithDesc } from '../CheckboxGroupWithDesc';
+import { GPSRModal }             from '../GPSRModal';
 
 // ─── Layout primitives ────────────────────────────────────────────────────────
 
@@ -55,261 +58,6 @@ function FormField({ label, required, children }: {
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </p>
       {children}
-    </div>
-  );
-}
-
-// ─── RadioGroup — simple (Who made it?) ───────────────────────────────────────
-
-function RadioGroup<T extends string>({
-  value, onChange, options,
-}: {
-  value:    T;
-  onChange: (v: T) => void;
-  options:  { value: T; label: string }[];
-}) {
-  return (
-    <div className="space-y-3">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          className="flex items-center gap-3 w-full text-left group"
-        >
-          <div className={[
-            'w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors',
-            value === opt.value ? 'border-primary' : 'border-muted group-hover:border-primary/50',
-          ].join(' ')}>
-            {value === opt.value && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-          </div>
-          <span className={`text-sm transition-colors ${value === opt.value ? 'font-semibold text-secondary' : 'text-secondary'}`}>
-            {opt.label}
-          </span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ─── RadioGroupWithDesc — rich (What is it?) ──────────────────────────────────
-
-function RadioGroupWithDesc<T extends string>({
-  value, onChange, options,
-}: {
-  value:    T;
-  onChange: (v: T) => void;
-  options:  { value: T; label: string; desc?: string; examples?: string }[];
-}) {
-  return (
-    <div className="space-y-2">
-      {options.map((opt) => {
-        const selected = value === opt.value;
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => onChange(opt.value)}
-            className={[
-              'w-full flex items-start gap-3 px-4 py-4 rounded-lg border-2 text-left transition-all',
-              selected ? 'border-primary bg-primary/3' : 'border-border hover:border-primary/40',
-            ].join(' ')}
-          >
-            {/* Radio dot */}
-            <div className={[
-              'w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors',
-              selected ? 'border-primary' : 'border-muted',
-            ].join(' ')}>
-              {selected && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              <p className={`text-sm font-semibold leading-snug ${selected ? 'text-primary' : 'text-secondary'}`}>
-                {opt.label}
-              </p>
-              {opt.desc && (
-                <p className="text-sm text-secondary mt-1 leading-relaxed">{opt.desc}</p>
-              )}
-              {opt.examples && (
-                <p className="text-xs text-muted italic mt-1.5">{opt.examples}</p>
-              )}
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── CheckboxGroup — with descriptions ───────────────────────────────────────
-
-function CheckboxGroup({
-  values, onChange, options,
-}: {
-  values:   string[];
-  onChange: (updated: string[]) => void;
-  options:  { value: string; label: string; desc?: string; examples?: string }[];
-}) {
-  const toggle = (v: string) => {
-    if (values.includes(v)) {
-      onChange(values.filter((x) => x !== v));
-    } else {
-      // "none" is exclusive
-      if (v === 'none') {
-        onChange(['none']);
-      } else {
-        onChange([...values.filter((x) => x !== 'none'), v]);
-      }
-    }
-  };
-
-  return (
-    <div className="space-y-2">
-      {options.map((opt) => {
-        const checked = values.includes(opt.value);
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => toggle(opt.value)}
-            className={[
-              'w-full flex items-start gap-3 px-4 py-4 rounded-lg border-2 text-left transition-all',
-              checked ? 'border-primary bg-primary/3' : 'border-border hover:border-primary/40',
-            ].join(' ')}
-          >
-            {/* Checkbox */}
-            <div className={[
-              'w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors',
-              checked ? 'border-primary bg-primary' : 'border-muted',
-            ].join(' ')}>
-              {checked && <Check className="w-3 h-3 text-white" />}
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              <p className={`text-sm font-semibold leading-snug ${checked ? 'text-primary' : 'text-secondary'}`}>
-                {opt.label}
-              </p>
-              {opt.desc && (
-                <p className="text-sm text-secondary mt-1 leading-relaxed">{opt.desc}</p>
-              )}
-              {opt.examples && (
-                <p className="text-xs text-muted italic mt-1.5">{opt.examples}</p>
-              )}
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── GPSR modal ───────────────────────────────────────────────────────────────
-
-function GpsrModal({
-  initial, onSave, onClose,
-}: {
-  initial:  GpsrInfo | null;
-  onSave:   (info: GpsrInfo) => void;
-  onClose:  () => void;
-}) {
-  const [form, setForm] = useState<GpsrInfo>({
-    manufacturerName:    initial?.manufacturerName    ?? '',
-    manufacturerAddress: initial?.manufacturerAddress ?? '',
-    manufacturerEmail:   initial?.manufacturerEmail   ?? '',
-    countryOfOrigin:     initial?.countryOfOrigin     ?? '',
-    safetyWarnings:      initial?.safetyWarnings      ?? [],
-  });
-
-  const [warningsText, setWarningsText] = useState(
-    (initial?.safetyWarnings ?? []).join('\n'),
-  );
-
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onClose]);
-
-  const handleSave = () => {
-    onSave({
-      ...form,
-      safetyWarnings: warningsText
-        .split('\n')
-        .map((s) => s.trim())
-        .filter(Boolean),
-    });
-    onClose();
-  };
-
-  const inputCls = 'w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted';
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
-          <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-primary" />
-            <h4 className="font-semibold text-secondary">GPSR manufacturer information</h4>
-          </div>
-          <button type="button" onClick={onClose} className="p-1.5 rounded hover:bg-muted/10 text-muted">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
-          <p className="text-xs text-muted leading-relaxed">
-            Required for products sold to EEA states or Northern Ireland under the General Product Safety Regulation (GPSR) from December 2024.
-          </p>
-
-          {[
-            { key: 'manufacturerName'    as const, label: 'Manufacturer name',    placeholder: 'e.g. MapleLoom Ltd' },
-            { key: 'manufacturerAddress' as const, label: 'Manufacturer address', placeholder: '123 Maple St, Portland, OR 97201, US' },
-            { key: 'manufacturerEmail'   as const, label: 'Manufacturer email',   placeholder: 'contact@manufacturer.com' },
-            { key: 'countryOfOrigin'     as const, label: 'Country of origin',    placeholder: 'e.g. United States' },
-          ].map(({ key, label, placeholder }) => (
-            <div key={key}>
-              <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">{label}</label>
-              <input
-                value={(form[key] as string) ?? ''}
-                onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                placeholder={placeholder}
-                className={inputCls}
-              />
-            </div>
-          ))}
-
-          <div>
-            <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
-              Safety warnings <span className="font-normal">(one per line, optional)</span>
-            </label>
-            <textarea
-              value={warningsText}
-              onChange={(e) => setWarningsText(e.target.value)}
-              rows={3}
-              placeholder={'e.g. Keep out of reach of children under 3 years.\nNot suitable for children under 3 years.'}
-              className={`${inputCls} resize-y`}
-            />
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center gap-3 px-5 py-4 border-t border-border shrink-0">
-          <button type="button" onClick={handleSave}
-            className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-lg transition-colors">
-            <Check className="w-4 h-4" />
-            Save
-          </button>
-          <button type="button" onClick={onClose}
-            className="px-4 py-2.5 text-sm font-medium text-muted border border-border rounded-lg hover:border-primary/40 transition-colors">
-            Cancel
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -623,15 +371,12 @@ const TOOL_OPTIONS: { value: string; label: string; desc?: string; examples?: st
 
 // ─── Main tab ─────────────────────────────────────────────────────────────────
 
-export function HowItsMadeTab() {
+export function HowItsMadeTab({ productId }: { productId?: string }) {
   const { watch, setValue } = useFormContext<ProductEditFormValues>();
 
-  const whoMadeIt  = watch('whoMadeIt')            ?? 'I_DID';
-  const howMade    = watch('howItWasMade')          ?? 'MADE_TO_ORDER';
-  const toolsUsed  = watch('toolsUsed')             ?? [];
-  const hsCode     = watch('hsCode')                ?? '';
+  const hsCode     = watch('hsCode')               ?? '';
   const gpsrInfo   = watch('gpsrInfo');
-  const partnerIds = watch('productionPartnerIds')  ?? [];
+  const partnerIds = watch('productionPartnerIds') ?? [];
 
   const [showGpsrModal, setShowGpsrModal] = useState(false);
 
@@ -698,30 +443,18 @@ export function HowItsMadeTab() {
           <div className="space-y-8">
             {/* Who made it? */}
             <FormField label="Who made it?" required>
-              <RadioGroup<WhoMadeIt>
-                value={whoMadeIt as WhoMadeIt}
-                onChange={(v) => setValue('whoMadeIt', v, { shouldDirty: true })}
-                options={WHO_MADE_OPTIONS}
-              />
+              <RadioGroupWithDesc name="whoMadeIt" options={WHO_MADE_OPTIONS} />
             </FormField>
 
             {/* What is it? */}
             <FormField label="What is it?" required>
-              <RadioGroupWithDesc<HowItWasMade>
-                value={howMade as HowItWasMade}
-                onChange={(v) => setValue('howItWasMade', v, { shouldDirty: true })}
-                options={HOW_MADE_OPTIONS}
-              />
+              <RadioGroupWithDesc name="howItWasMade" options={HOW_MADE_OPTIONS} />
             </FormField>
 
             {/* What tools? */}
             <FormField label="What tools are used to make this item?">
               <p className="text-sm text-muted mb-3">Select all that apply.</p>
-              <CheckboxGroup
-                values={toolsUsed}
-                onChange={(v) => setValue('toolsUsed', v, { shouldDirty: true })}
-                options={TOOL_OPTIONS}
-              />
+              <CheckboxGroupWithDesc name="toolsUsed" options={TOOL_OPTIONS} />
             </FormField>
 
             {/* Production partners */}
@@ -733,11 +466,11 @@ export function HowItsMadeTab() {
         </TabSection>
       </div>
 
-      {/* GPSR modal */}
-      {showGpsrModal && (
-        <GpsrModal
-          initial={gpsrInfo}
-          onSave={(info) => setValue('gpsrInfo', info, { shouldDirty: true })}
+      {/* GPSR modal — API-saving (edit mode only; create mode has no productId yet) */}
+      {productId && (
+        <GPSRModal
+          productId={productId}
+          isOpen={showGpsrModal}
           onClose={() => setShowGpsrModal(false)}
         />
       )}

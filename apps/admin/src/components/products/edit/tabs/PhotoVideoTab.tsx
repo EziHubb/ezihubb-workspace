@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useId } from 'react';
+import { useState, useRef } from 'react';
 import { useFormContext } from 'react-hook-form';
 import Image from 'next/image';
 import {
@@ -20,8 +20,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import ReactCrop, { type Crop } from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
+import { type Crop } from 'react-image-crop';
 import {
   GripVertical, Trash2, Pencil, X,
   HelpCircle, Film, ImagePlus, Crop as CropIcon,
@@ -29,6 +28,7 @@ import {
 } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import type { ProductEditFormValues, AdminProductDto, ProductImage } from '../types';
+import { ThumbnailCropModal } from '../ThumbnailCropModal';
 import { safeArr } from '../../../../lib/fmt';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -121,152 +121,6 @@ const PREVIEW_SIZES: { label: string; ratio: number; w: number; h: number }[] = 
   { label: 'Portrait', ratio: 3 / 4,  w: 60, h: 80  },
   { label: 'Wide',     ratio: 4 / 3,  w: 80, h: 60  },
 ];
-
-function ThumbnailCropModal({
-  primaryImageUrl,
-  initialCrop,
-  onApply,
-  onClose,
-}: {
-  primaryImageUrl: string;
-  initialCrop:     Crop | null;
-  onApply:         (crop: Crop) => void;
-  onClose:         () => void;
-}) {
-  const [crop, setCrop] = useState<Crop>(
-    initialCrop ?? { unit: '%', x: 10, y: 10, width: 80, height: 80 },
-  );
-  const [activeRatio, setActiveRatio] = useState<number | null>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
-
-  const applyRatio = (ratio: number) => {
-    setActiveRatio(ratio);
-    // Centre a crop of the given aspect ratio
-    const size = ratio >= 1 ? 70 : 80;
-    setCrop({
-      unit:   '%',
-      x:      (100 - size) / 2,
-      y:      (100 - size / ratio) / 2,
-      width:  size,
-      height: size / ratio,
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-[680px] max-h-[90vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
-          <h4 className="font-semibold text-secondary flex items-center gap-2">
-            <CropIcon className="w-4 h-4 text-primary" />
-            Adjust thumbnails
-          </h4>
-          <button type="button" onClick={onClose} className="p-1.5 rounded hover:bg-muted/10 text-muted">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
-          <p className="text-sm text-muted">
-            Drag to select the crop area. Thumbnails appear across search results and shop pages.
-          </p>
-
-          {/* Ratio presets */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-muted uppercase tracking-wide mr-1">Preset:</span>
-            {PREVIEW_SIZES.map((s) => (
-              <button
-                key={s.label}
-                type="button"
-                onClick={() => applyRatio(s.ratio)}
-                className={[
-                  'px-3 py-1.5 text-xs font-semibold rounded-button border transition-colors',
-                  activeRatio === s.ratio
-                    ? 'bg-primary/10 border-primary text-primary'
-                    : 'border-border text-muted hover:border-primary/40',
-                ].join(' ')}
-              >
-                {s.label} ({s.label === 'Square' ? '1:1' : s.label === 'Portrait' ? '3:4' : '4:3'})
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => { setActiveRatio(null); setCrop({ unit: '%', x: 10, y: 10, width: 80, height: 80 }); }}
-              className="px-3 py-1.5 text-xs font-semibold rounded-button border border-border text-muted hover:border-primary/40 transition-colors"
-            >
-              Free
-            </button>
-          </div>
-
-          {/* Crop interface */}
-          <div className="flex gap-5 items-start">
-            <div className="flex-1 min-w-0 bg-background rounded-button overflow-hidden border border-border">
-              <ReactCrop
-                crop={crop}
-                onChange={(_, pct) => setCrop(pct)}
-                aspect={activeRatio ?? undefined}
-                className="max-h-[320px] w-full"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  ref={imgRef}
-                  src={primaryImageUrl}
-                  alt="Crop preview"
-                  className="max-h-[320px] w-full object-contain"
-                />
-              </ReactCrop>
-            </div>
-
-            {/* Preview panels */}
-            <div className="shrink-0 space-y-3">
-              <p className="text-xs font-semibold text-muted uppercase tracking-wide">Preview</p>
-              {PREVIEW_SIZES.map((s) => (
-                <div key={s.label} className="flex flex-col items-center gap-1">
-                  <div
-                    className="rounded overflow-hidden border border-border bg-background relative"
-                    style={{ width: s.w, height: s.h }}
-                  >
-                    {/* CSS crop simulation */}
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        backgroundImage:    `url(${primaryImageUrl})`,
-                        backgroundSize:     `${100 / (crop.width / 100)}%`,
-                        backgroundPosition: `${crop.x === 0 ? 0 : -(crop.x / crop.width) * 100}% ${crop.y === 0 ? 0 : -(crop.y / crop.height) * 100}%`,
-                        backgroundRepeat:   'no-repeat',
-                      }}
-                    />
-                  </div>
-                  <span className="text-[10px] text-muted">{s.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center gap-3 px-5 py-4 border-t border-border shrink-0">
-          <button
-            type="button"
-            onClick={() => { onApply(crop); onClose(); }}
-            className="flex items-center gap-1.5 px-5 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors"
-          >
-            <Check className="w-4 h-4" />
-            Apply
-          </button>
-          <button type="button" onClick={onClose}
-            className="px-4 py-2.5 text-sm font-medium text-muted border border-border rounded-button hover:border-primary/40 transition-colors">
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Sortable image slot ──────────────────────────────────────────────────────
 
@@ -802,14 +656,13 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
         />
       )}
 
-      {showCropModal && primaryImage && (
-        <ThumbnailCropModal
-          primaryImageUrl={primaryImage.url}
-          initialCrop={thumbnailCrop}
-          onApply={handleCropApply}
-          onClose={() => setShowCropModal(false)}
-        />
-      )}
+      <ThumbnailCropModal
+        isOpen={showCropModal && !!primaryImage}
+        primaryImageUrl={primaryImage?.url ?? ''}
+        currentCrop={thumbnailCrop}
+        onSave={handleCropApply}
+        onClose={() => setShowCropModal(false)}
+      />
     </div>
   );
 }

@@ -45,7 +45,7 @@ const CREATE_TABS = ALL_TABS.filter((t) => t.id !== 'performance');
 
 // ── MoreMenu ─────────────────────────────────────────────────────────────────
 
-function MoreMenu({ productId, slug }: { productId: string; slug: string }) {
+function MoreMenu({ productId }: { productId: string; slug: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
@@ -246,7 +246,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
       <div className="-m-6 lg:-m-8 flex flex-col" style={{ minHeight: 'calc(100vh - 64px)' }}>
 
         {/* ── Page header ───────────────────────────────────────────────────── */}
-        <div className="px-6 pt-5 pb-0 border-b border-border bg-surface sticky top-0 z-20">
+        <div className="px-6 pt-5 pb-0 border-b border-border bg-surface sticky -top-6 lg:-top-8 z-20">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-xs text-muted mb-3">
             <Link href="/products" className="flex items-center gap-1 hover:text-secondary transition-colors">
@@ -358,12 +358,12 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
               onSwitchTab={setActiveTab}
             />
           )}
-          {activeTab === 'how-its-made'     && <HowItsMadeTab />}
+          {activeTab === 'how-its-made'     && <HowItsMadeTab productId={product?.id} />}
           {activeTab === 'settings'         && <SettingsTab   />}
         </div>
 
         {/* ── Sticky footer ─────────────────────────────────────────────────── */}
-        <div className="sticky bottom-0 bg-surface border-t border-border px-6 py-3 flex items-center justify-between z-20">
+        <div className="sticky -bottom-6 lg:-bottom-8 bg-surface border-t border-border px-6 py-3 flex items-center justify-between z-20">
           {/* Status / error message */}
           <div className="flex items-center gap-2">
             {saveError ? (

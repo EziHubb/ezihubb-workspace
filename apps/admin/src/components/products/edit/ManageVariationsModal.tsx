@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -9,9 +9,8 @@ import {
 } from 'lucide-react';
 import { clientFetch } from '../../../lib/api';
 import { fetchArr } from '../../../lib/fmt';
-import { fmtAmount } from '../../../lib/fmt';
 import { InlinePriceInput } from './primitives';
-import type { VariationOption, VariationGroup, VariationSettings } from './tabs/ItemOptionsTab';
+import type { VariationGroup, VariationSettings } from './types';
 
 // ─── Settings helpers ─────────────────────────────────────────────────────────
 // Settings are encoded in `variesBy: string[]` to avoid a new migration.
@@ -615,7 +614,6 @@ function EditVariationGroupSheet({
   onClose:   () => void;
 }) {
   const qc = useQueryClient();
-  const [saving, setSaving] = useState(false);
 
   // Load the single group
   const { data: group } = useQuery<VariationGroup>({
@@ -630,22 +628,17 @@ function EditVariationGroupSheet({
   });
 
   const addOption = async (opt: { value: string; colorHex?: string }) => {
-    setSaving(true);
-    try {
-      await clientFetch(`/admin/products/${productId}/variations/${groupId}/options`, {
-        method: 'POST',
-        body:   JSON.stringify({
-          name:        opt.value,
-          value:       opt.value.toLowerCase().replace(/\s+/g, '-'),
-          colorHex:    opt.colorHex,
-          isAvailable: true,
-        }),
-      });
-      qc.invalidateQueries({ queryKey: ['variation-group-single', groupId] });
-      qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
-    } finally {
-      setSaving(false);
-    }
+    await clientFetch(`/admin/products/${productId}/variations/${groupId}/options`, {
+      method: 'POST',
+      body:   JSON.stringify({
+        name:        opt.value,
+        value:       opt.value.toLowerCase().replace(/\s+/g, '-'),
+        colorHex:    opt.colorHex,
+        isAvailable: true,
+      }),
+    });
+    qc.invalidateQueries({ queryKey: ['variation-group-single', groupId] });
+    qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
   };
 
   const removeOption = async (optionId: string) => {
@@ -748,7 +741,6 @@ export function ManageVariationsModal({
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [addingGroup,    setAddingGroup]    = useState(false);
   const [savedMsg,       setSavedMsg]       = useState(false);
-  const [settingsSaving, setSettingsSaving] = useState(false);
 
   const { data: groups = [], isLoading: groupsLoading } = useQuery<VariationGroup[]>({
     queryKey: ['variation-groups', productId],
@@ -783,16 +775,11 @@ export function ManageVariationsModal({
   };
 
   const saveSettings = async (variesBy: string[]) => {
-    setSettingsSaving(true);
-    try {
-      await clientFetch(`/admin/products/${productId}/variation-settings`, {
-        method: 'PATCH',
-        body:   JSON.stringify({ variesBy, enableVariations: true }),
-      });
-      qc.invalidateQueries({ queryKey: ['variation-settings', productId] });
-    } finally {
-      setSettingsSaving(false);
-    }
+    await clientFetch(`/admin/products/${productId}/variation-settings`, {
+      method: 'PATCH',
+      body:   JSON.stringify({ variesBy, enableVariations: true }),
+    });
+    qc.invalidateQueries({ queryKey: ['variation-settings', productId] });
   };
 
   const handleApply = () => {

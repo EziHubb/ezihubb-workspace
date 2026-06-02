@@ -61,7 +61,6 @@ function FeeRow({
 
 export function EstimatedEarningsRow({
   basePrice,
-  compareAtPrice,
   hasVariations,
   minVariantPrice,
   maxVariantPrice,

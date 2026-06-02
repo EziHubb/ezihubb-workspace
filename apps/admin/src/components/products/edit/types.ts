@@ -66,6 +66,38 @@ export interface ProductEditFormValues {
   renewalType:   RenewalType;
 }
 
+// ── Variation types (shared with ManageVariationsModal, VariantImagePicker) ───
+
+export interface VariationOption {
+  id:          string;
+  groupId:     string;
+  name:        string;
+  value:       string;
+  colorHex?:   string;
+  imageUrl?:   string;
+  /** Which product photo (ProductImage.id) represents this variant */
+  imageId?:    string | null;
+  priceDelta?: number | null;
+  sortOrder:   number;
+  isAvailable: boolean;
+}
+
+export interface VariationSettings {
+  enableVariations: boolean;
+  /** Encoded flags: 'price:<groupId>' | 'processing' | 'quantity' | 'sku' */
+  variesBy:         string[];
+  skuPrefix?:       string;
+}
+
+export interface VariationGroup {
+  id:          string;
+  productId:   string;
+  name:        string;
+  displayType: string; // 'dropdown' | 'color_swatch' | 'button' | 'image'
+  sortOrder:   number;
+  options:     VariationOption[];
+}
+
 // ── API shapes (what we receive from the server) ──────────────────────────────
 
 export interface ProductImage {

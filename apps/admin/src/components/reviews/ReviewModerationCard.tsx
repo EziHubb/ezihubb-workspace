@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { format } from 'date-fns';
-import { Check, EyeOff, MessageSquare, Trash2, Star, Package, BadgeCheck } from 'lucide-react';
+import { Check, EyeOff, MessageSquare, Trash2, Package, BadgeCheck } from 'lucide-react';
 
 // ── Types (exported for page to share) ───────────────────────────────────────
 

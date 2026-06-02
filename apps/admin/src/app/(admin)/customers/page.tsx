@@ -8,7 +8,7 @@ import {
   Eye, X, MapPin, TrendingUp,
 } from 'lucide-react';
 import Link from 'next/link';
-import { format, subMonths, subDays } from 'date-fns';
+import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { DataTable } from '../../../components/data/DataTable';
 import { clientFetch } from '../../../lib/api';

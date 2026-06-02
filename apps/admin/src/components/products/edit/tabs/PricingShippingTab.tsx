@@ -4,25 +4,17 @@ import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import {
-  ChevronDown, ChevronUp, ChevronRight, Check,
-  X, ArrowRight, ExternalLink, AlertCircle, Lightbulb,
-  Globe, Package, Truck, RotateCcw,
+  ChevronRight, X, ExternalLink, Lightbulb, Truck,
 } from 'lucide-react';
 import { clientFetch } from '../../../../lib/api';
-import { fetchArr, fmtFixed, fmtAmount } from '../../../../lib/fmt';
+import { fetchArr } from '../../../../lib/fmt';
 import type { ProductEditFormValues, AdminProductDto, ReturnPolicy } from '../types';
-import { EstimatedEarningsRow } from '../EstimatedEarningsRow';
+import { EstimatedEarningsRow }    from '../EstimatedEarningsRow';
+import { ProcessingProfileCard }   from '../ProcessingProfileCard';
+import { ShippingCostPreview }     from '../ShippingCostPreview';
+import { ReturnPolicyCard }        from '../ReturnPolicyCard';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface ProcessingProfile {
-  id:       string;
-  name:     string;
-  type:     'MADE_TO_ORDER' | 'READY_TO_SHIP';
-  minDays:  number;
-  maxDays:  number;
-  isDefault: boolean;
-}
 
 interface ShippingProfileMethod {
   id:              string;
@@ -45,17 +37,6 @@ interface ShippingProfile {
 interface VariationSettings {
   enableVariations: boolean;
   variesBy:         string[];
-}
-
-// ─── Fee constants ────────────────────────────────────────────────────────────
-
-const PLATFORM_FEE_PCT   = 0.065;  // 6.5%
-const PAYMENT_FEE_PCT    = 0.03;   // 3%
-const PAYMENT_FEE_FIXED  = 0.25;   // $0.25
-
-function calcEarnings(price: number): number {
-  if (!price || price <= 0) return 0;
-  return price * (1 - PLATFORM_FEE_PCT - PAYMENT_FEE_PCT) - PAYMENT_FEE_FIXED;
 }
 
 // ─── Shared layout ────────────────────────────────────────────────────────────
@@ -172,72 +153,10 @@ function ProfilePickerModal<T extends { id: string }>({
   );
 }
 
-// ─── EstimatedEarningsRow (replaced by ../EstimatedEarningsRow.tsx) ──────────
-
-function _EstimatedEarningsRow_REMOVED({
-  basePrice, compareAtPrice,
-}: {
-  basePrice:      number;
-  compareAtPrice: number | null;
-}) {
-  const [open, setOpen] = useState(false);
-
-  const price   = Number(basePrice)      || 0;
-  const compare = Number(compareAtPrice) || 0;
-  const earnings = calcEarnings(price);
-  const earningsHigh = compare > price ? calcEarnings(compare) : null;
-
-  if (price <= 0) return null;
-
-  const earningsLabel = earningsHigh
-    ? `${fmtAmount(earnings)} to ${fmtAmount(earningsHigh)}`
-    : fmtAmount(earnings);
-
-  const FEE_ROWS = [
-    { label: 'Transaction fee',    value: -(price * PLATFORM_FEE_PCT),                  pct: `${fmtFixed(PLATFORM_FEE_PCT * 100, 1)}%` },
-    { label: 'Payment processing', value: -(price * PAYMENT_FEE_PCT + PAYMENT_FEE_FIXED), pct: `${fmtFixed(PAYMENT_FEE_PCT * 100, 1)}% + ${fmtAmount(PAYMENT_FEE_FIXED)}` },
-  ];
-
-  return (
-    <div className="mt-3 border border-border rounded-lg overflow-hidden">
-      <button type="button" onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-4 py-3 bg-blue-50 hover:bg-blue-100 transition-colors text-left">
-        <Lightbulb className="w-4 h-4 text-blue-600 shrink-0" />
-        <span className="text-sm font-medium text-blue-800 flex-1">
-          Estimated earnings: <span className="font-bold">{earningsLabel}</span>
-        </span>
-        {open ? <ChevronUp className="w-4 h-4 text-blue-600" /> : <ChevronDown className="w-4 h-4 text-blue-600" />}
-      </button>
-
-      {open && (
-        <div className="px-4 py-3 bg-blue-50/50 border-t border-blue-200 space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-secondary">Listing price</span>
-            <span className="font-medium tabular-nums">${price.toFixed(2)}</span>
-          </div>
-          {FEE_ROWS.map((r) => (
-            <div key={r.label} className="flex justify-between text-sm">
-              <span className="text-muted">{r.label} <span className="text-muted/60 text-xs">({r.pct})</span></span>
-              <span className="text-red-600 tabular-nums">{r.value.toFixed(2)}</span>
-            </div>
-          ))}
-          <div className="flex justify-between text-sm pt-2 border-t border-blue-200">
-            <span className="font-semibold text-secondary">Estimated earnings</span>
-            <span className="font-bold text-green-700 tabular-nums">${earnings.toFixed(2)}</span>
-          </div>
-          <p className="text-[11px] text-muted/60">
-            Estimate only. Does not include shipping, taxes, or currency conversion fees.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── PriceInput (dual: base + compare-at) ────────────────────────────────────
 
 function PriceInput() {
-  const { register, formState: { errors } } = useFormContext<ProductEditFormValues>();
+  const { register } = useFormContext<ProductEditFormValues>();
 
   return (
     <div className="flex items-start gap-4">
@@ -257,19 +176,10 @@ function PriceInput() {
               min:         { value: 0.01, message: 'Must be > $0' },
               valueAsNumber: true,
             })}
-            className={[
-              'pl-7 pr-3 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 w-32 tabular-nums',
-              errors.basePrice ? 'border-red-400 focus:ring-red-200' : 'border-border focus:ring-primary/20',
-            ].join(' ')}
+            className="pl-7 pr-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 w-32 tabular-nums"
             placeholder="0.00"
           />
         </div>
-        {errors.basePrice && (
-          <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" />
-            {errors.basePrice.message as string}
-          </p>
-        )}
       </div>
 
       {/* Compare-at */}
@@ -293,135 +203,6 @@ function PriceInput() {
         </div>
         <p className="text-xs text-muted/60 mt-1">Shows as strikethrough</p>
       </div>
-    </div>
-  );
-}
-
-// ─── ProcessingProfileCard (Image 11) ────────────────────────────────────────
-
-function ProcessingProfileCard({
-  profileId, onChange,
-}: {
-  profileId: string | null;
-  onChange:  (id: string | null) => void;
-}) {
-  const [showModal, setShowModal] = useState(false);
-
-  const { data: profiles = [] } = useQuery<ProcessingProfile[]>({
-    queryKey: ['processing-profiles'],
-    queryFn:  async () => {
-      const res = await clientFetch('/admin/shipping/processing-profiles');
-      return fetchArr<ProcessingProfile>(res);
-    },
-    staleTime: 10 * 60_000,
-  });
-
-  const selected = profiles.find((p) => p.id === profileId)
-    ?? profiles.find((p) => p.isDefault)
-    ?? profiles[0];
-
-  return (
-    <>
-      <div className={[
-        'flex items-center gap-4 px-4 py-3.5 rounded-lg border-2 transition-colors',
-        selected ? 'border-border bg-background' : 'border-dashed border-border bg-background',
-      ].join(' ')}>
-        <div className="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
-          <Package className="w-4 h-4 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          {selected ? (
-            <>
-              <p className="text-sm font-semibold text-secondary">
-                {selected.name}
-              </p>
-              <p className="text-xs text-muted mt-0.5">
-                {selected.minDays}–{selected.maxDays} business days
-                · {selected.type === 'READY_TO_SHIP' ? 'Ready to ship' : 'Made to order'}
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-muted">No processing profile selected</p>
-          )}
-        </div>
-        <button type="button" onClick={() => setShowModal(true)}
-          className="shrink-0 text-sm font-semibold text-primary hover:underline">
-          Change profile
-        </button>
-      </div>
-
-      {showModal && (
-        <ProfilePickerModal
-          title="Select processing profile"
-          items={profiles}
-          selectedId={profileId}
-          renderItem={(p) => (
-            <>
-              <p className="text-sm font-semibold text-secondary">{p.name}</p>
-              <p className="text-xs text-muted mt-0.5">
-                {p.minDays}–{p.maxDays} days · {p.type === 'READY_TO_SHIP' ? 'Ready to ship' : 'Made to order'}
-                {p.isDefault && <span className="ml-2 text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Default</span>}
-              </p>
-            </>
-          )}
-          onSelect={onChange}
-          onClose={() => setShowModal(false)}
-        />
-      )}
-    </>
-  );
-}
-
-// ─── ShippingCostPreview (Image 12) ──────────────────────────────────────────
-
-function ShippingCostPreview({ profile }: { profile: ShippingProfile | undefined }) {
-  const [open, setOpen] = useState(false);
-
-  if (!profile?.methods?.length) return null;
-
-  const domestic = profile.methods.find((m) => m.destinationType === 'domestic');
-  const intl     = profile.methods.find((m) => m.destinationType === 'everywhere_else');
-
-  return (
-    <div className="mt-2 border border-border rounded-lg overflow-hidden">
-      <button type="button" onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-4 py-2.5 bg-background hover:bg-muted/5 transition-colors text-left">
-        <Lightbulb className="w-3.5 h-3.5 text-primary shrink-0" />
-        <span className="text-sm text-secondary flex-1">Preview shipping cost</span>
-        {open ? <ChevronUp className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-muted" />}
-      </button>
-
-      {open && (
-        <div className="px-4 py-3 border-t border-border space-y-2 bg-background/50">
-          {domestic && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-secondary flex items-center gap-2">
-                <span className="text-base">🇺🇸</span> United States
-                <span className="text-xs text-muted">{domestic.minDays}–{domestic.maxDays} days</span>
-              </span>
-              <span className="font-semibold tabular-nums">${Number(domestic.price).toFixed(2)}</span>
-            </div>
-          )}
-          {intl && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-secondary flex items-center gap-2">
-                <Globe className="w-4 h-4 text-muted" /> Everywhere else
-                <span className="text-xs text-muted">{intl.minDays}–{intl.maxDays} days</span>
-              </span>
-              <span className="font-semibold tabular-nums">${Number(intl.price).toFixed(2)}</span>
-            </div>
-          )}
-          {profile.methods.filter((m) => m.destinationType !== 'domestic' && m.destinationType !== 'everywhere_else').map((m) => (
-            <div key={m.id} className="flex items-center justify-between text-sm">
-              <span className="text-secondary flex items-center gap-2">
-                <span className="text-xs font-mono uppercase text-muted">{m.destinationType}</span>
-                {m.carrier && <span className="text-xs text-muted">({m.carrier})</span>}
-              </span>
-              <span className="font-semibold tabular-nums">${Number(m.price).toFixed(2)}</span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -498,7 +279,7 @@ function ShippingProfileCard({
       </div>
 
       {/* Shipping cost preview */}
-      <ShippingCostPreview profile={selected} />
+      <ShippingCostPreview profileId={selected?.id ?? null} />
 
       {showModal && (
         <ProfilePickerModal
@@ -530,96 +311,6 @@ function ShippingProfileCard({
         />
       )}
     </>
-  );
-}
-
-// ─── ReturnPolicyCard (Image 12) ─────────────────────────────────────────────
-
-const RETURN_POLICIES: { value: ReturnPolicy; label: string; description: string; icon: React.ElementType }[] = [
-  {
-    value:       'NO_RETURNS',
-    label:       'No returns or exchanges',
-    description: 'Buyers cannot return or exchange items.',
-    icon:        X,
-  },
-  {
-    value:       'RETURNS_ACCEPTED',
-    label:       'Returns accepted',
-    description: 'Buyers can return items within 30 days of delivery.',
-    icon:        RotateCcw,
-  },
-  {
-    value:       'EXCHANGES_ONLY',
-    label:       'Exchanges only',
-    description: 'Buyers can exchange items but not get a refund.',
-    icon:        ArrowRight,
-  },
-];
-
-function ReturnPolicyCard({
-  policy, onChange,
-}: {
-  policy:   ReturnPolicy;
-  onChange: (p: ReturnPolicy) => void;
-}) {
-  const current = RETURN_POLICIES.find((p) => p.value === policy) ?? RETURN_POLICIES[0];
-  const [expanded, setExpanded] = useState(false);
-  const Icon = current.icon;
-
-  return (
-    <div className="space-y-2">
-      {/* Current policy display */}
-      <div className="flex items-start gap-4 px-4 py-3.5 rounded-lg border-2 border-border bg-background">
-        <div className="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
-          <Icon className="w-4 h-4 text-primary" />
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-secondary">{current.label}</p>
-          <p className="text-xs text-muted mt-0.5">{current.description}</p>
-        </div>
-        <button type="button" onClick={() => setExpanded((v) => !v)}
-          className="shrink-0 text-sm font-semibold text-primary hover:underline">
-          Change policy
-        </button>
-      </div>
-
-      {/* Inline policy selector */}
-      {expanded && (
-        <div className="space-y-2 pl-2">
-          {RETURN_POLICIES.map((p) => {
-            const BtnIcon = p.icon;
-            return (
-              <button
-                key={p.value}
-                type="button"
-                onClick={() => { onChange(p.value); setExpanded(false); }}
-                className={[
-                  'w-full flex items-center gap-3 px-4 py-3 rounded-lg border-2 text-left transition-all',
-                  policy === p.value
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:border-primary/40',
-                ].join(' ')}
-              >
-                <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${policy === p.value ? 'border-primary' : 'border-muted'}`}>
-                  {policy === p.value && <div className="w-2 h-2 rounded-full bg-primary" />}
-                </div>
-                <div className="flex-1">
-                  <p className={`text-sm font-medium ${policy === p.value ? 'text-primary' : 'text-secondary'}`}>
-                    {p.label}
-                  </p>
-                  <p className="text-xs text-muted mt-0.5">{p.description}</p>
-                </div>
-                {policy === p.value && <Check className="w-4 h-4 text-primary shrink-0" />}
-              </button>
-            );
-          })}
-          <button type="button" onClick={() => setExpanded(false)}
-            className="text-sm text-muted hover:text-secondary transition-colors px-4">
-            Cancel
-          </button>
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -673,7 +364,7 @@ interface PricingShippingTabProps {
 }
 
 export function PricingShippingTab({ product, onSwitchTab }: PricingShippingTabProps) {
-  const { register, watch, setValue, formState: { errors } } = useFormContext<ProductEditFormValues>();
+  const { register, watch, setValue } = useFormContext<ProductEditFormValues>();
 
   const basePrice    = watch('basePrice');
   const compareAt    = watch('compareAtPrice');

@@ -2,24 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useFormContext } from 'react-hook-form';
-import { useQuery } from '@tanstack/react-query';
 import {
-  X, ChevronRight, Check, Smile, Lightbulb, Tag,
-  AlertCircle, Search,
+  Smile, Lightbulb,
+  AlertCircle,
 } from 'lucide-react';
-import { clientFetch } from '../../../../lib/api';
 import type { ProductEditFormValues } from '../types';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Category {
-  id:        string;
-  name:      string;
-  slug:      string;
-  level:     number;
-  parentId?: string | null;
-  isVisible?: boolean;
-}
+import { CategoryPickerCard } from '../CategoryPickerModal';
 
 // ─── Emoji picker data ────────────────────────────────────────────────────────
 
@@ -203,294 +191,6 @@ function TitleTips({ wordCount }: { wordCount: number }) {
   );
 }
 
-// ─── Category picker modal ────────────────────────────────────────────────────
-
-function CategoryPickerModal({
-  currentId,
-  onSelect,
-  onClose,
-}: {
-  currentId: string;
-  onSelect:  (id: string) => void;
-  onClose:   () => void;
-}) {
-  const [searchQ,     setSearchQ]     = useState('');
-  const [selectedL1,  setSelectedL1]  = useState<string | null>(null);
-  const [selectedL2,  setSelectedL2]  = useState<string | null>(null);
-  const [highlighted, setHighlighted] = useState<string>(currentId);
-
-  // Fetch ALL categories in one call and build tree client-side
-  const { data: allCats = [], isLoading } = useQuery<Category[]>({
-    queryKey: ['admin-categories-all'],
-    queryFn:  async () => {
-      const res  = await clientFetch('/catalog/categories?limit=500');
-      const body = await res.json();
-      const raw  = body.data ?? body;
-      return (Array.isArray(raw) ? raw : []) as Category[];
-    },
-    staleTime: 10 * 60_000,
-  });
-
-  const l1s = allCats.filter((c) => c.level === 1 && c.isVisible !== false);
-  const l2s = selectedL1 ? allCats.filter((c) => c.level === 2 && c.parentId === selectedL1) : [];
-  const l3s = selectedL2 ? allCats.filter((c) => c.level === 3 && c.parentId === selectedL2) : [];
-
-  // Search results: all L3 categories matching the query
-  const searchResults = searchQ.length > 1
-    ? allCats.filter(
-        (c) => c.level === 3 &&
-          c.name.toLowerCase().includes(searchQ.toLowerCase()),
-      ).slice(0, 20)
-    : [];
-
-  // Auto-expand to current category on open
-  useEffect(() => {
-    if (!currentId || !allCats.length) return;
-    const l3  = allCats.find((c) => c.id === currentId);
-    if (!l3) return;
-    const l2  = allCats.find((c) => c.id === l3.parentId);
-    if (l2) {
-      setSelectedL2(l2.id);
-      const l1 = allCats.find((c) => c.id === l2.parentId);
-      if (l1) setSelectedL1(l1.id);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentId, allCats.length]);
-
-  // Close on Escape
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onClose]);
-
-  const handleL3Click = (id: string) => {
-    setHighlighted(id);
-    onSelect(id);
-    onClose();
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-[680px] flex flex-col max-h-[80vh]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
-          <h3 className="font-semibold text-secondary">Select a category</h3>
-          <button type="button" onClick={onClose} className="p-1.5 rounded hover:bg-muted/10 text-muted transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="px-5 py-3 border-b border-border shrink-0">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-            <input
-              value={searchQ}
-              onChange={(e) => setSearchQ(e.target.value)}
-              placeholder="Search categories…"
-              autoFocus
-              className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-hidden">
-          {searchQ.length > 1 ? (
-            /* Search results */
-            <div className="overflow-y-auto h-full px-5 py-3">
-              {isLoading ? (
-                <p className="text-sm text-muted text-center py-6">Loading…</p>
-              ) : searchResults.length === 0 ? (
-                <p className="text-sm text-muted text-center py-6">No categories found for "{searchQ}"</p>
-              ) : (
-                <ul className="space-y-0.5">
-                  {searchResults.map((c) => (
-                    <li key={c.id}>
-                      <button
-                        type="button"
-                        onClick={() => handleL3Click(c.id)}
-                        className={[
-                          'w-full flex items-center justify-between px-3 py-2 text-sm rounded-button transition-colors text-left',
-                          highlighted === c.id
-                            ? 'bg-primary/10 text-primary font-medium'
-                            : 'hover:bg-muted/5 text-secondary',
-                        ].join(' ')}
-                      >
-                        <span>{c.name}</span>
-                        {highlighted === c.id && <Check className="w-4 h-4 shrink-0" />}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ) : (
-            /* 3-column breadcrumb tree */
-            <div className="flex divide-x divide-border h-full overflow-hidden">
-              {/* L1 */}
-              <div className="w-1/3 overflow-y-auto py-2">
-                {isLoading
-                  ? <div className="px-4 py-3 text-sm text-muted">Loading…</div>
-                  : l1s.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => { setSelectedL1(c.id); setSelectedL2(null); }}
-                        className={[
-                          'w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors',
-                          selectedL1 === c.id
-                            ? 'bg-primary/10 text-primary font-semibold'
-                            : 'text-secondary hover:bg-muted/5',
-                        ].join(' ')}
-                      >
-                        <span className="truncate">{c.name}</span>
-                        {selectedL1 === c.id && <ChevronRight className="w-3.5 h-3.5 shrink-0" />}
-                      </button>
-                    ))}
-              </div>
-
-              {/* L2 */}
-              <div className="w-1/3 overflow-y-auto py-2 bg-muted/3">
-                {!selectedL1 ? (
-                  <p className="px-4 py-3 text-xs text-muted italic">Select a top-level category</p>
-                ) : l2s.length === 0 ? (
-                  <p className="px-4 py-3 text-xs text-muted italic">No sub-categories</p>
-                ) : l2s.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setSelectedL2(c.id)}
-                      className={[
-                        'w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors',
-                        selectedL2 === c.id
-                          ? 'bg-primary/10 text-primary font-semibold'
-                          : 'text-secondary hover:bg-muted/5',
-                      ].join(' ')}
-                    >
-                      <span className="truncate">{c.name}</span>
-                      {selectedL2 === c.id && <ChevronRight className="w-3.5 h-3.5 shrink-0" />}
-                    </button>
-                  ))
-                }
-              </div>
-
-              {/* L3 — selectable */}
-              <div className="w-1/3 overflow-y-auto py-2">
-                {!selectedL2 ? (
-                  <p className="px-4 py-3 text-xs text-muted italic">Select a sub-category</p>
-                ) : l3s.length === 0 ? (
-                  <p className="px-4 py-3 text-xs text-muted italic">No leaf categories</p>
-                ) : l3s.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => handleL3Click(c.id)}
-                      className={[
-                        'w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left rounded-r-none transition-colors',
-                        highlighted === c.id
-                          ? 'bg-primary text-white font-semibold'
-                          : currentId === c.id
-                            ? 'bg-primary/10 text-primary font-medium'
-                            : 'text-secondary hover:bg-muted/5',
-                      ].join(' ')}
-                    >
-                      {highlighted === c.id
-                        ? <Check className="w-3.5 h-3.5 shrink-0" />
-                        : <span className="w-3.5 h-3.5 shrink-0" />
-                      }
-                      <span className="truncate">{c.name}</span>
-                    </button>
-                  ))
-                }
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Category picker card ─────────────────────────────────────────────────────
-
-function CategoryPickerCard({
-  value,
-  onChange,
-  allCats,
-  error,
-}: {
-  value:   string;
-  onChange:(id: string) => void;
-  allCats: Category[];
-  error?:  string;
-}) {
-  const [showModal, setShowModal] = useState(false);
-
-  const selected = allCats.find((c) => c.id === value);
-  const parent   = selected?.parentId ? allCats.find((c) => c.id === selected.parentId) : null;
-  const grandPar = parent?.parentId    ? allCats.find((c) => c.id === parent.parentId)    : null;
-
-  // Build breadcrumb: L1 > L2 > L3
-  const breadcrumb = [grandPar?.name, parent?.name, selected?.name]
-    .filter(Boolean)
-    .join(' › ');
-
-  return (
-    <>
-      <div
-        className={[
-          'flex items-center gap-4 px-4 py-3.5 rounded-lg border-2 transition-colors',
-          error ? 'border-red-300 bg-red-50' : selected ? 'border-border bg-background' : 'border-dashed border-border bg-background',
-        ].join(' ')}
-      >
-        <div className="flex-1 min-w-0">
-          {selected ? (
-            <>
-              <div className="flex items-center gap-2">
-                <Tag className="w-3.5 h-3.5 text-primary shrink-0" />
-                <p className="text-sm font-semibold text-secondary truncate">{selected.name}</p>
-              </div>
-              {breadcrumb && (
-                <p className="text-xs text-muted mt-0.5 truncate">{breadcrumb}</p>
-              )}
-              <p className="text-xs text-muted/60 mt-0.5">Physical item</p>
-            </>
-          ) : (
-            <div className="flex items-center gap-2 text-muted">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <p className="text-sm">No category selected</p>
-            </div>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowModal(true)}
-          className="shrink-0 text-sm font-semibold text-primary hover:underline focus:outline-none"
-        >
-          {selected ? 'Change' : 'Select'}
-        </button>
-      </div>
-
-      {error && (
-        <p className="mt-1 text-xs text-red-600">{error}</p>
-      )}
-
-      {showModal && (
-        <CategoryPickerModal
-          currentId={value}
-          onSelect={onChange}
-          onClose={() => setShowModal(false)}
-        />
-      )}
-    </>
-  );
-}
-
 // ─── Form field wrapper ───────────────────────────────────────────────────────
 
 function FormField({
@@ -528,18 +228,6 @@ export function ItemDetailsTab() {
 
   const wordCount = title.trim() ? title.trim().split(/\s+/).length : 0;
 
-  // Single shared query — CategoryPickerCard also uses it for breadcrumb
-  const { data: allCats = [] } = useQuery<Category[]>({
-    queryKey: ['admin-categories-all'],
-    queryFn:  async () => {
-      const res  = await clientFetch('/catalog/categories?limit=500');
-      const body = await res.json();
-      const raw  = body.data ?? body;
-      return (Array.isArray(raw) ? raw : []) as Category[];
-    },
-    staleTime: 10 * 60_000,
-  });
-
   return (
     <div className="max-w-[760px] mx-auto px-6 py-8">
       <div className="bg-surface rounded-card border border-border shadow-card overflow-hidden">
@@ -561,9 +249,10 @@ export function ItemDetailsTab() {
             <CategoryPickerCard
               value={categoryId}
               onChange={(id) => setValue('primaryCategoryId', id, { shouldDirty: true })}
-              allCats={allCats}
-              error={errors.primaryCategoryId?.message as string | undefined}
             />
+            {errors.primaryCategoryId && (
+              <p className="mt-1 text-xs text-red-600">{errors.primaryCategoryId.message as string}</p>
+            )}
             {/* Hidden register for validation */}
             <input
               type="hidden"

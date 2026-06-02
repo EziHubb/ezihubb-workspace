@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Download, X } from 'lucide-react';
 import { format, subDays, startOfMonth } from 'date-fns';
@@ -76,9 +75,6 @@ async function exportCSV(params: URLSearchParams) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function OrdersPage() {
-  const router       = useRouter();
-  const searchParams = useSearchParams();
-
   // Filter state
   const [page,       setPage]       = useState(1);
   const [statusFilter, setStatus]   = useState<string>('');
@@ -87,7 +83,7 @@ export default function OrdersPage() {
   const [debouncedSearch, setDebounced] = useState('');
   const [selectedOrder, setSelected]   = useState<OrderDetail | null>(null);
   const [exporting,      setExporting] = useState(false);
-  const [selectedRows,   setSelectedRows] = useState<OrderRow[]>([]);
+  const [selectedRows] = useState<OrderRow[]>([]);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 

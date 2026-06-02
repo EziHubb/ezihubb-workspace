@@ -7,7 +7,7 @@ import {
 import { X, Users, DollarSign, TrendingUp, Award } from 'lucide-react';
 import { format } from 'date-fns';
 import { clientFetch } from '../../lib/api';
-import { fmtNum, fmtAmount, fmtFixed, safeArr } from '../../lib/fmt';
+import { fmtNum, fmtAmount, safeArr } from '../../lib/fmt';
 import type { Promotion } from './PromotionModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

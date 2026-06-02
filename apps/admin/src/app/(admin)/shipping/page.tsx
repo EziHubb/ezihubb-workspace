@@ -41,10 +41,6 @@ interface ShippingSettings {
 
 // ── Country helpers ───────────────────────────────────────────────────────────
 
-function countryName(code: string): string {
-  return COUNTRIES.find((c) => c.code === code)?.name ?? code;
-}
-
 function countryFlag(code: string): string {
   return COUNTRIES.find((c) => c.code === code)?.flag ?? '🌍';
 }

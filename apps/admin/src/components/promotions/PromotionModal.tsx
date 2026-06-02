@@ -50,7 +50,7 @@ function generateCode(): string {
 // ── Discount type radio card ─────────────────────────────────────────────────
 
 function TypeCard({
-  value, label, icon: Icon, selected, onClick,
+  label, icon: Icon, selected, onClick,
 }: {
   value:    DiscountType;
   label:    string;

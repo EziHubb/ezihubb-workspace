@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ColumnDef } from '@tanstack/react-table';
 import {
   Plus, Search, X, Tag, TrendingDown, Activity, Zap,
@@ -13,7 +13,7 @@ import { DataTable } from '../../../components/data/DataTable';
 import { PromotionModal, type Promotion, type PromotionFormData } from '../../../components/promotions/PromotionModal';
 import { PromotionStatsDrawer } from '../../../components/promotions/PromotionStatsDrawer';
 import { clientFetch } from '../../../lib/api';
-import { fmtAmount, fmtFixed, fmtNum } from '../../../lib/fmt';
+import { fmtAmount } from '../../../lib/fmt';
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 

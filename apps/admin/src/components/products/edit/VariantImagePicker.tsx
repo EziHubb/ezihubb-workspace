@@ -6,7 +6,7 @@ import { Check, ImageOff, X, ImagePlus } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { clientFetch } from '../../../lib/api';
 import type { ProductImage } from './types';
-import type { VariationOption } from './tabs/ItemOptionsTab';
+import type { VariationOption } from './types';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -20,7 +20,6 @@ interface VariantImagePickerProps {
 
 function VariantImagePickerModal({
   option,
-  productId,
   productImages,
   onSelect,
   onClose,

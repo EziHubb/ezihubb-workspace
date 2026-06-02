@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ChevronRight, ChevronDown, Plus, Save, Trash2,
   LayoutGrid, RefreshCw, GripVertical, Eye, EyeOff,
@@ -400,7 +400,6 @@ export default function CategoriesPage() {
 
   const [selected,   setSelected]   = useState<Category | null>(null);
   const [parentPath, setParentPath] = useState('');
-  const [creatingFor, setCreatingFor] = useState<{ parentId: string; level: number } | null>(null);
 
   // Build parent path string for breadcrumb display
   const buildPath = useCallback((catId: string, nodes: Category[], path: string[] = []): string[] | null => {
@@ -416,7 +415,6 @@ export default function CategoriesPage() {
 
   const handleSelect = (cat: Category) => {
     setSelected(cat);
-    setCreatingFor(null);
     if (cat.parentId) {
       const path = buildPath(cat.parentId, tree);
       setParentPath(path ? path.join(' / ') : '');
