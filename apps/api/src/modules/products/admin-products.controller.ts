@@ -94,6 +94,15 @@ export class AdminProductsController {
     return this.productsService.getPerformanceStats(id, range ?? '30d');
   }
 
+  // POST /admin/products/draft
+  @Post('draft')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: '[Admin] Auto-create a draft product to obtain a productId before form submission' })
+  @ApiResponse({ status: 201, type: ProductResponseDto })
+  createDraft(): Promise<ProductResponseDto> {
+    return this.productsService.createDraft();
+  }
+
   // POST /admin/products
   @Post()
   @HttpCode(HttpStatus.CREATED)

@@ -192,6 +192,34 @@ function VariantDropdown({
   );
 }
 
+// ── QuantityDropdown ──────────────────────────────────────────────────────────
+
+function QuantityDropdown({
+  value,
+  onChange,
+}: {
+  value:    number;
+  onChange: (n: number) => void;
+}) {
+  return (
+    <div>
+      <label className="text-sm font-medium block mb-1.5">Quantity</label>
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-full appearance-none border border-border rounded-lg px-3 py-2.5 text-sm bg-white pr-8 cursor-pointer text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20"
+        >
+          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
+      </div>
+    </div>
+  );
+}
+
 // ── PersonalizationCollapsible ────────────────────────────────────────────────
 
 function PersonalizationCollapsible({
@@ -312,6 +340,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
   const [selectedOptions,       setSelectedOptions]       = useState<Record<string, string>>({});
   const [isPersonalizationOpen, setIsPersonalizationOpen] = useState(false);
   const [isAdding,              setIsAdding]              = useState(false);
+  const [quantity,              setQuantity]              = useState(1);
 
   const addItem    = useCartStore((s) => s.addItem);
   const openDrawer = useCartStore((s) => s.openDrawer);
@@ -350,7 +379,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       await addItem({
         productId:         product.id,
         variantId:         selectedVariant?.sku ?? null,
-        quantity:          1,
+        quantity,
         customizationData: null,
       });
       openDrawer();
@@ -428,6 +457,9 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
           onToggle={() => setIsPersonalizationOpen((o) => !o)}
         />
       )}
+
+      {/* ── QUANTITY ── */}
+      <QuantityDropdown value={quantity} onChange={setQuantity} />
 
       {/* ── ADD TO CART ── */}
       <button

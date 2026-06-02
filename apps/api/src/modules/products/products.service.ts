@@ -265,6 +265,47 @@ export class ProductsService {
 
   // ─── Admin — CRUD ──────────────────────────────────────────────────────────
 
+  // ─── Admin — create draft ──────────────────────────────────────────────────
+
+  async createDraft(): Promise<ProductResponseDto> {
+    // Find any visible category as a placeholder (will be overwritten on publish)
+    const placeholder = await this.prisma.category.findFirst({
+      where:   { isVisible: true },
+      orderBy: [{ level: 'asc' }, { sortOrder: 'asc' }],
+      select:  { id: true },
+    });
+    if (!placeholder) throw new BadRequestException({
+      code:    'ERR_NO_CATEGORIES',
+      message: 'No categories found — create at least one category before adding products.',
+    });
+
+    // Generate a unique draft SKU (will be replaced on publish)
+    let sku: string;
+    let skuConflict = true;
+    do {
+      sku = `DRAFT-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+      skuConflict = !!(await this.prisma.product.findUnique({ where: { sku } }));
+    } while (skuConflict);
+
+    const slug = await this.resolveUniqueProductSlug(`draft-${sku.toLowerCase()}`);
+
+    const product = await this.prisma.product.create({
+      data: {
+        name:        '',
+        slug,
+        sku,
+        description: '',
+        basePrice:   0,
+        categoryId:  placeholder.id,
+        status:      'DRAFT' as const,
+        isActive:    false,
+      },
+    });
+
+    // Re-use findByIdAdmin for a consistent full response shape
+    return this.findByIdAdmin(product.id);
+  }
+
   async create(dto: CreateProductDto): Promise<ProductResponseDto> {
     if (
       dto.compareAtPrice !== undefined &&
@@ -395,6 +436,7 @@ export class ProductsService {
       'domesticGlobalPricing', 'quantity', 'isAdsEnabled', 'hsCode',
       'titleCharCount', 'thumbnailCropData',
       'returnPolicy', 'whoMadeIt', 'howItWasMade', 'renewalType',
+      'status',
       // Array fields (assigned directly below)
     ];
     for (const f of fields) {
@@ -409,6 +451,11 @@ export class ProductsService {
     ] as (keyof UpdateProductDto)[];
     for (const f of arrayFields) {
       if (dto[f] !== undefined) (data as Record<string, unknown>)[f] = dto[f];
+    }
+
+    // ── Sync isActive from status (backward compat) ───────────────────────
+    if (dto.status !== undefined) {
+      data.isActive = dto.status === 'ACTIVE';
     }
 
     // ── FK / relation fields ───────────────────────────────────────────────

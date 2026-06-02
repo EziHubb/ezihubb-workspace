@@ -3,6 +3,7 @@ import { IsOptional, IsString, IsBoolean, IsInt, IsArray,
          IsEnum, IsNumber, Min, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { ProductStatus } from '@prisma/client';
 import { CreateProductDto } from './create-product.dto';
 
 // ── Base: all CreateProductDto fields optional (minus variants) ───────────────
@@ -113,4 +114,8 @@ export class UpdateProductDto extends BaseUpdateProductDto {
   @ApiPropertyOptional()
   @IsOptional() @IsString()
   shopSectionId?: string | null;
+
+  @ApiPropertyOptional({ enum: ProductStatus, description: 'DRAFT | ACTIVE | INACTIVE | ARCHIVED' })
+  @IsOptional() @IsEnum(ProductStatus)
+  status?: ProductStatus;
 }

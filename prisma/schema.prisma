@@ -94,6 +94,13 @@ enum ReturnPolicy {
   EXCHANGES_ONLY
 }
 
+enum ProductStatus {
+  DRAFT     // Being created — not yet published
+  ACTIVE    // Live and visible to buyers
+  INACTIVE  // Hidden from buyers, can be re-activated
+  ARCHIVED  // Soft-archived (replaces deletedAt pattern)
+}
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 model User {
@@ -297,8 +304,9 @@ model Product {
   basePrice           Decimal  @db.Decimal(10, 2)
   compareAtPrice      Decimal? @db.Decimal(10, 2)
   isPersonalizable    Boolean  @default(true)
-  isActive            Boolean  @default(true)
-  isFeatured          Boolean  @default(false)
+  isActive            Boolean       @default(true)
+  status              ProductStatus @default(ACTIVE)
+  isFeatured          Boolean       @default(false)
   viewCount           Int      @default(0)
   soldCount           Int      @default(0)
   processingDays      Int      @default(3)

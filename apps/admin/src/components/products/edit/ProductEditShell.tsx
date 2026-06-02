@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -126,6 +126,62 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
   const [saved,     setSaved]     = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // ── Draft lifecycle (create mode only) ───────────────────────────────────────
+
+  const draftIdRef   = useRef<string | null>(null);   // stable ref for cleanup
+  const publishedRef = useRef(false);                  // prevent cleanup after publish
+  const [draftId,       setDraftId]       = useState<string | null>(null);
+  const [draftLoading,  setDraftLoading]  = useState(mode === 'create');
+  const [draftInitErr,  setDraftInitErr]  = useState<string | null>(null);
+
+  useEffect(() => {
+    if (mode !== 'create') return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res  = await clientFetch('/admin/products/draft', { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to create draft');
+        const body = await res.json() as { data?: { id: string }; id?: string };
+        const id   = body.data?.id ?? (body as unknown as { id: string }).id;
+        if (!cancelled) {
+          draftIdRef.current = id;
+          setDraftId(id);
+        }
+      } catch {
+        if (!cancelled) setDraftInitErr('Could not initialize the form. Please refresh the page.');
+      } finally {
+        if (!cancelled) setDraftLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Block browser close/refresh while a draft exists
+  useEffect(() => {
+    if (mode !== 'create' || !draftId) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [mode, draftId]);
+
+  // Silently delete the draft when component unmounts (e.g. SPA navigation away)
+  // Only if the product was NOT published
+  useEffect(() => {
+    return () => {
+      if (publishedRef.current || !draftIdRef.current) return;
+      // Best-effort cleanup — fire-and-forget
+      clientFetch(`/admin/products/${draftIdRef.current}`, { method: 'DELETE' }).catch(() => {});
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Leave confirmation dialog state
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+
   // Build initial form values — copy pre-fills from source, otherwise empty or edit data
   const form = useForm<ProductEditFormValues>({
     defaultValues: isCopy
@@ -159,7 +215,8 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
   // ── Save — create mode ───────────────────────────────────────────────────────
 
   const handleCreate = async (data: ProductEditFormValues) => {
-    // Require name + category before creating
+    if (!draftId) throw new Error('Draft not ready — please wait or refresh.');
+
     if (!data.name?.trim()) {
       form.setError('name', { message: 'Title is required' });
       setActiveTab('item-details');
@@ -170,53 +227,50 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
       throw new Error('Category is required');
     }
 
-    // POST the PG product — auto-generate SKU if the user left it blank
     const sku = data.sku?.trim() || generateSku();
 
-    const createRes = await clientFetch('/admin/products', {
-      method: 'POST',
+    const patchRes = await clientFetch(`/admin/products/${draftId}`, {
+      method: 'PATCH',
       body:   JSON.stringify({
+        ...extractPrismaFields(data),
         name:        data.name.trim(),
         sku,
         description: data.description || '',
         basePrice:   data.basePrice   || 0,
         categoryId:  data.primaryCategoryId,
-        // Copies start as inactive so the admin reviews before publishing
-        ...(isCopy ? { isActive: false } : {}),
-        ...extractPrismaFields(data),
+        status:      isCopy ? 'INACTIVE' : 'ACTIVE',
+        isActive:    isCopy ? false : true,
       }),
     });
 
-    if (!createRes.ok) {
-      const err = await createRes.json().catch(() => ({}));
+    if (!patchRes.ok) {
+      const err = await patchRes.json().catch(() => ({}));
       throw new Error((err as { error?: { message?: string } })?.error?.message ?? 'Failed to create listing');
     }
 
-    const createBody = await createRes.json();
-    const newId: string = (createBody as { data?: { id: string } }).data?.id ?? (createBody as { id: string }).id;
-
-    // PUT the MongoDB detail (best-effort — do not fail create if this fails)
-    await clientFetch(`/admin/products/${newId}/detail`, {
+    // MongoDB detail (best-effort)
+    await clientFetch(`/admin/products/${draftId}/detail`, {
       method: 'PUT',
-      body:   JSON.stringify({ ...extractMongoFields(data), productId: newId }),
+      body:   JSON.stringify({ ...extractMongoFields(data), productId: draftId }),
     }).catch(() => {});
 
-    // Attach any pending presigned images
+    // Attach any presigned images that arrived before publish
     const pendingUrls = data.pendingImageUrls ?? [];
     if (pendingUrls.length > 0) {
       const session = await getSession();
-      const token = (session?.user as Record<string, unknown>)?.['accessToken'] as string | undefined;
-      await fetch(`${API_BASE}/admin/products/${newId}/images/from-urls`, {
+      const token   = (session?.user as Record<string, unknown>)?.['accessToken'] as string | undefined;
+      await fetch(`${API_BASE}/admin/products/${draftId}/images/from-urls`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ urls: pendingUrls }),
-      }).catch(() => {}); // best-effort, don't fail create if attach fails
+      }).catch(() => {});
     }
 
-    router.push(`/products/${newId}/edit`);
+    publishedRef.current = true;             // prevent cleanup on unmount
+    router.push(`/products/${draftId}/edit`);
   };
 
   // ── Unified save handler ──────────────────────────────────────────────────────
@@ -235,9 +289,13 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
   };
 
   const handleDiscard = () => {
-    form.reset(buildDefaultValues(product, detail));
-    setIsDirty(false);
-    setSaveError(null);
+    if (mode === 'create' && draftId) {
+      setShowLeaveDialog(true);
+    } else {
+      form.reset(buildDefaultValues(product, detail));
+      setIsDirty(false);
+      setSaveError(null);
+    }
   };
 
   const handleDuplicate = async () => {
@@ -250,7 +308,45 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
 
   const productName = form.watch('name') || product?.name || '';
 
+  // Build a synthetic "product-like" object for create mode so tabs get a real ID
+  const tabProduct = product ?? (draftId ? {
+    id:     draftId,
+    images: [],
+    slug:   '',
+    name:   '',
+    sku:    '',
+    isActive:    false,
+    status:      'DRAFT' as const,
+    isFeatured:  false,
+    isPersonalizable: false,
+    viewCount: 0,
+    soldCount: 0,
+    categoryId: '',
+    description: '',
+    basePrice:  0,
+    createdAt:  new Date().toISOString(),
+  } as unknown as AdminProductDto : null);
+
   // ── Render ────────────────────────────────────────────────────────────────────
+
+  if (mode === 'create' && draftLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[300px]">
+        <div className="flex flex-col items-center gap-3 text-muted">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm">Initializing…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === 'create' && draftInitErr) {
+    return (
+      <div className="flex items-center justify-center min-h-[300px]">
+        <p className="text-sm text-red-600">{draftInitErr}</p>
+      </div>
+    );
+  }
 
   return (
     <FormProvider {...form}>
@@ -265,10 +361,21 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
         <div className="px-6 pt-5 pb-0 border-b border-border bg-surface sticky -top-6 lg:-top-8 z-20">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-xs text-muted mb-3">
-            <Link href="/products" className="flex items-center gap-1 hover:text-secondary transition-colors">
-              <ArrowLeft className="w-3.5 h-3.5" />
-              Listings
-            </Link>
+            {mode === 'create' && draftId ? (
+              <button
+                type="button"
+                onClick={() => setShowLeaveDialog(true)}
+                className="flex items-center gap-1 hover:text-secondary transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Listings
+              </button>
+            ) : (
+              <Link href="/products" className="flex items-center gap-1 hover:text-secondary transition-colors">
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Listings
+              </Link>
+            )}
             <span>/</span>
             <span className="text-secondary truncate max-w-[280px]">
               {mode === 'edit' ? productName : isCopy ? `Copy of ${copyFrom!.name}` : 'New listing'}
@@ -306,9 +413,19 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
               <div className="flex items-center gap-3 mt-1.5">
                 {mode === 'edit' && product && (
                   <>
-                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${product.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${product.isActive ? 'bg-green-500' : 'bg-gray-400'}`} />
-                      {product.isActive ? 'Active' : 'Draft'}
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      product.status === 'ACTIVE'   ? 'bg-green-100 text-green-700'  :
+                      product.status === 'INACTIVE' ? 'bg-gray-100 text-gray-600'   :
+                      product.status === 'ARCHIVED' ? 'bg-orange-100 text-orange-700' :
+                                                      'bg-blue-100 text-blue-700'
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        product.status === 'ACTIVE'   ? 'bg-green-500'  :
+                        product.status === 'INACTIVE' ? 'bg-gray-400'   :
+                        product.status === 'ARCHIVED' ? 'bg-orange-500' :
+                                                        'bg-blue-400'
+                      }`} />
+                      {product.status ?? (product.isActive ? 'Active' : 'Inactive')}
                     </span>
                     <span className="text-xs text-muted">
                       Listed {format(new Date(product.publishedAt ?? product.createdAt), 'MMM d, yyyy')}
@@ -359,22 +476,22 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
           {activeTab === 'performance'      && product && <PerformanceTab    product={product} />}
           {activeTab === 'photo-video'      && (
             <PhotoVideoTab
-              product={product ?? { id: '', images: [], slug: '' } as unknown as AdminProductDto}
+              product={tabProduct ?? { id: '', images: [], slug: '' } as unknown as AdminProductDto}
             />
           )}
           {activeTab === 'item-details'     && <ItemDetailsTab    />}
           {activeTab === 'item-options'     && (
             <ItemOptionsTab
-              product={product ?? { id: '', images: [] } as unknown as AdminProductDto}
+              product={tabProduct ?? { id: '', images: [] } as unknown as AdminProductDto}
             />
           )}
           {activeTab === 'pricing-shipping' && (
             <PricingShippingTab
-              product={product ?? { id: '' } as unknown as AdminProductDto}
+              product={tabProduct ?? { id: '' } as unknown as AdminProductDto}
               onSwitchTab={setActiveTab}
             />
           )}
-          {activeTab === 'how-its-made'     && <HowItsMadeTab productId={product?.id} />}
+          {activeTab === 'how-its-made'     && <HowItsMadeTab productId={tabProduct?.id ?? product?.id} />}
           {activeTab === 'settings'         && <SettingsTab   />}
         </div>
 
@@ -438,6 +555,41 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
             </button>
           </div>
         </div>
+
+        {/* Leave confirmation dialog (create mode) */}
+        {showLeaveDialog && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-sm p-6 space-y-4">
+              <h3 className="font-semibold text-secondary">Discard this listing?</h3>
+              <p className="text-sm text-muted">
+                All uploaded photos and variations will be permanently deleted. This cannot be undone.
+              </p>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (draftId) {
+                      await clientFetch(`/admin/products/${draftId}`, { method: 'DELETE' }).catch(() => {});
+                    }
+                    publishedRef.current = true; // prevent double-delete on unmount
+                    setShowLeaveDialog(false);
+                    router.push('/products');
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-button transition-colors"
+                >
+                  Discard listing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLeaveDialog(false)}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-muted border border-border rounded-button hover:border-primary/40 transition-colors"
+                >
+                  Keep editing
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </FormProvider>
   );

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { X, ShoppingBag, ArrowRight } from 'lucide-react';
+import { X, ShoppingBag, ArrowRight, Trash2 } from 'lucide-react';
 import { useLocale } from 'next-intl';
 import { useCartStore } from '../../lib/store/cart.store';
 
@@ -21,6 +21,25 @@ export function CartDrawer() {
   const closeDrawer = useCartStore((s) => s.closeDrawer);
   const cart        = useCartStore((s) => s.cart);
   const fetchCart   = useCartStore((s) => s.fetchCart);
+  const updateItem  = useCartStore((s) => s.updateItem);
+  const removeItem  = useCartStore((s) => s.removeItem);
+
+  // Track which item is being mutated to show disabled state
+  const [mutatingId, setMutatingId] = useState<string | null>(null);
+
+  const handleQtyChange = async (itemId: string, newQty: number) => {
+    if (mutatingId) return;
+    setMutatingId(itemId);
+    try {
+      if (newQty < 1) {
+        await removeItem(itemId);
+      } else {
+        await updateItem(itemId, newQty);
+      }
+    } finally {
+      setMutatingId(null);
+    }
+  };
 
   // Refresh cart whenever the drawer opens
   useEffect(() => {
@@ -150,10 +169,34 @@ export function CartDrawer() {
                           ⚠️ Price updated
                         </p>
                       )}
-                      <div className="flex items-center justify-between mt-1.5">
-                        <span className="text-xs text-muted">
-                          Qty: {item.quantity}
-                        </span>
+                      <div className="flex items-center justify-between mt-2">
+                        {/* ── Quantity controls ── */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            aria-label={item.quantity <= 1 ? `Remove ${item.productName}` : 'Decrease quantity'}
+                            disabled={mutatingId === item.id}
+                            onClick={() => handleQtyChange(item.id, item.quantity - 1)}
+                            className="w-7 h-7 flex items-center justify-center rounded border border-border text-muted hover:text-error hover:border-error disabled:opacity-40 transition-colors"
+                          >
+                            {item.quantity <= 1
+                              ? <Trash2 className="w-3 h-3" />
+                              : <span className="text-base leading-none">−</span>
+                            }
+                          </button>
+                          <span className="w-6 text-center text-sm font-medium text-secondary tabular-nums">
+                            {item.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            aria-label="Increase quantity"
+                            disabled={mutatingId === item.id}
+                            onClick={() => handleQtyChange(item.id, item.quantity + 1)}
+                            className="w-7 h-7 flex items-center justify-center rounded border border-border text-muted hover:text-secondary hover:border-secondary disabled:opacity-40 transition-colors"
+                          >
+                            <span className="text-base leading-none">+</span>
+                          </button>
+                        </div>
                         <span className="text-sm font-semibold text-secondary tabular-nums">
                           ${(item.currentPrice * item.quantity).toFixed(2)}
                         </span>

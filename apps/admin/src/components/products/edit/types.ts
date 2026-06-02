@@ -124,6 +124,7 @@ export interface AdminProductDto {
   compareAtPrice?:      string | number | null;
   isPersonalizable:     boolean;
   isActive:             boolean;
+  status?:              'DRAFT' | 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
   isFeatured:           boolean;
   isAdsEnabled?:        boolean;
   viewCount:            number;
