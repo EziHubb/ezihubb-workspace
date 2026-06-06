@@ -257,6 +257,7 @@ function VariationsSummaryTable({
       const res = await clientFetch(`/admin/products/${product.id}/variations`);
       return fetchArr<VariationGroup>(res);
     },
+    enabled:  !!product.id,
     staleTime: 30_000,
   });
 
@@ -268,6 +269,7 @@ function VariationsSummaryTable({
       const body = await res.json();
       return (body.data ?? body) as VariationSettings;
     },
+    enabled:  !!product.id,
     staleTime: 30_000,
   });
 

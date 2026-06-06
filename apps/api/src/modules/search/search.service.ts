@@ -8,7 +8,7 @@ import {
   CacheKeys,
   CacheTtl,
 } from '../../common/services/redis.service';
-import { SearchQueryDto, ItemType } from './dto/search-query.dto';
+import { SearchQueryDto, SearchSortBy, ItemType } from './dto/search-query.dto';
 import { ProductSortBy } from '../products/dto/product-query.dto';
 import { ProductListItemDto } from '../products/dto/product-list-item.dto';
 import {
@@ -185,7 +185,7 @@ export class SearchService {
     baseWhere: Prisma.ProductWhereInput,
     page: number,
     limit: number,
-    sort?: ProductSortBy,
+    sort?: SearchSortBy,
   ): Promise<PaginatedResult<ProductListItemDto>> {
     const offset = (page - 1) * limit;
 
@@ -467,29 +467,29 @@ export class SearchService {
   }
 
   private buildOrderBy(
-    sort?: ProductSortBy,
+    sort?: SearchSortBy,
   ): Prisma.ProductOrderByWithRelationInput {
     switch (sort) {
-      case ProductSortBy.PRICE_ASC:  return { basePrice: 'asc' };
-      case ProductSortBy.PRICE_DESC: return { basePrice: 'desc' };
-      case ProductSortBy.BESTSELLER: return { soldCount: 'desc' };
-      case ProductSortBy.FEATURED:   return { isFeatured: 'desc' };
-      case ProductSortBy.RATING:     return { soldCount: 'desc' };
-      default:                       return { createdAt: 'desc' };
+      case SearchSortBy.PRICE_ASC:  return { basePrice: 'asc' };
+      case SearchSortBy.PRICE_DESC: return { basePrice: 'desc' };
+      case SearchSortBy.BESTSELLER: return { soldCount: 'desc' };
+      case SearchSortBy.FEATURED:   return { isFeatured: 'desc' };
+      case SearchSortBy.RATING:     return { soldCount: 'desc' };
+      default:                      return { createdAt: 'desc' };
     }
   }
 
   private buildRawOrderBy(
-    sort?: ProductSortBy,
+    sort?: SearchSortBy,
     relevanceExpr = 'ts_rank(p.search_vector, query)',
   ): string {
     switch (sort) {
-      case ProductSortBy.PRICE_ASC:  return 'p."basePrice" ASC';
-      case ProductSortBy.PRICE_DESC: return 'p."basePrice" DESC';
-      case ProductSortBy.BESTSELLER: return 'p."soldCount" DESC';
-      case ProductSortBy.FEATURED:   return 'p."isFeatured" DESC, p."createdAt" DESC';
-      case ProductSortBy.RATING:     return 'p."soldCount" DESC';
-      default:                       return `${relevanceExpr} DESC, p."createdAt" DESC`;
+      case SearchSortBy.PRICE_ASC:  return 'p."basePrice" ASC';
+      case SearchSortBy.PRICE_DESC: return 'p."basePrice" DESC';
+      case SearchSortBy.BESTSELLER: return 'p."soldCount" DESC';
+      case SearchSortBy.FEATURED:   return 'p."isFeatured" DESC, p."createdAt" DESC';
+      case SearchSortBy.RATING:     return 'p."soldCount" DESC';
+      default:                      return `${relevanceExpr} DESC, p."createdAt" DESC`;
     }
   }
 

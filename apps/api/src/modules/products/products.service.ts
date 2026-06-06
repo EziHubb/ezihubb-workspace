@@ -1204,6 +1204,8 @@ export class ProductsService {
           ...(dto.variantOptions    !== undefined && { variantOptions:   dto.variantOptions }),
           ...(dto.variants          !== undefined && { variants:         dto.variants }),
           ...(dto.customization     !== undefined && { customization:    dto.customization }),
+          ...(dto.imageAltTexts     !== undefined && { imageAltTexts:    dto.imageAltTexts }),
+          ...(dto.gpsrInfo          !== undefined && { gpsrInfo:         dto.gpsrInfo }),
         },
         $setOnInsert: { productId },
       },

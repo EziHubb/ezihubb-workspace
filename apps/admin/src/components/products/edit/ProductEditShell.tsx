@@ -472,27 +472,40 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
         </div>
 
         {/* ── Tab content ───────────────────────────────────────────────────── */}
+        {/*
+          All tab components stay mounted; inactive ones are hidden with CSS.
+          This preserves local state (e.g. localImages in PhotoVideoTab, open
+          modals, pending uploads) when the user switches tabs.
+        */}
         <div className="flex-1 overflow-y-auto bg-background">
-          {activeTab === 'performance'      && product && <PerformanceTab    product={product} />}
-          {activeTab === 'photo-video'      && (
+          <div className={activeTab !== 'performance' ? 'hidden' : ''}>
+            {product && <PerformanceTab product={product} />}
+          </div>
+          <div className={activeTab !== 'photo-video' ? 'hidden' : ''}>
             <PhotoVideoTab
               product={tabProduct ?? { id: '', images: [], slug: '' } as unknown as AdminProductDto}
             />
-          )}
-          {activeTab === 'item-details'     && <ItemDetailsTab    />}
-          {activeTab === 'item-options'     && (
+          </div>
+          <div className={activeTab !== 'item-details' ? 'hidden' : ''}>
+            <ItemDetailsTab />
+          </div>
+          <div className={activeTab !== 'item-options' ? 'hidden' : ''}>
             <ItemOptionsTab
               product={tabProduct ?? { id: '', images: [] } as unknown as AdminProductDto}
             />
-          )}
-          {activeTab === 'pricing-shipping' && (
+          </div>
+          <div className={activeTab !== 'pricing-shipping' ? 'hidden' : ''}>
             <PricingShippingTab
               product={tabProduct ?? { id: '' } as unknown as AdminProductDto}
               onSwitchTab={setActiveTab}
             />
-          )}
-          {activeTab === 'how-its-made'     && <HowItsMadeTab productId={tabProduct?.id ?? product?.id} />}
-          {activeTab === 'settings'         && <SettingsTab   />}
+          </div>
+          <div className={activeTab !== 'how-its-made' ? 'hidden' : ''}>
+            <HowItsMadeTab productId={tabProduct?.id ?? product?.id} />
+          </div>
+          <div className={activeTab !== 'settings' ? 'hidden' : ''}>
+            <SettingsTab />
+          </div>
         </div>
 
         {/* ── Sticky footer ─────────────────────────────────────────────────── */}

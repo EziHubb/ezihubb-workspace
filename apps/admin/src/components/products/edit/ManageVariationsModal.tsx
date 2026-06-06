@@ -421,11 +421,10 @@ function AddVariationGroupSheet({
         body:   JSON.stringify({
           name:        groupName.trim(),
           displayType,
-          options:     options.map((o, idx) => ({
+          options:     options.map((o) => ({
             name:        o.value,
             value:       o.value.toLowerCase().replace(/\s+/g, '-'),
             colorHex:    o.colorHex,
-            sortOrder:   idx,
             isAvailable: true,
           })),
         }),

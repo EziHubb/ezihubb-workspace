@@ -15,6 +15,16 @@ import { Transform, Type } from 'class-transformer';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 import { ProductSortBy } from '../../products/dto/product-query.dto';
 
+export enum SearchSortBy {
+  RELEVANCE  = 'relevance',
+  NEWEST     = ProductSortBy.NEWEST,
+  PRICE_ASC  = ProductSortBy.PRICE_ASC,
+  PRICE_DESC = ProductSortBy.PRICE_DESC,
+  BESTSELLER = ProductSortBy.BESTSELLER,
+  RATING     = ProductSortBy.RATING,
+  FEATURED   = ProductSortBy.FEATURED,
+}
+
 export enum ItemType {
   READY_TO_SHIP = 'ready_to_ship',
   TO_ORDER      = 'to_order',
@@ -118,8 +128,8 @@ export class SearchQueryDto extends PaginationDto {
   @IsOptional()
   attr?: Record<string, string>;
 
-  @ApiPropertyOptional({ enum: ProductSortBy })
+  @ApiPropertyOptional({ enum: SearchSortBy })
   @IsOptional()
-  @IsEnum(ProductSortBy)
-  sort?: ProductSortBy;
+  @IsEnum(SearchSortBy)
+  sort?: SearchSortBy;
 }

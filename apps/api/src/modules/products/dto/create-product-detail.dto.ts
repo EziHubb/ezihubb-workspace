@@ -9,6 +9,7 @@ import {
   IsPositive,
   ValidateNested,
   IsNotEmpty,
+  IsEmail,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -136,6 +137,34 @@ export class CustomizationTemplateDto {
   previewLayers: object[];
 }
 
+export class GpsrInfoDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  manufacturerName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  manufacturerAddress?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsEmail()
+  manufacturerEmail?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  safetyWarnings?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  countryOfOrigin?: string;
+}
+
 // ── Root DTO ──────────────────────────────────────────────────────────────────
 
 export class CreateProductDetailDto {
@@ -186,6 +215,17 @@ export class CreateProductDetailDto {
   @ValidateNested()
   @Type(() => CustomizationTemplateDto)
   customization?: CustomizationTemplateDto;
+
+  @ApiPropertyOptional({ type: 'object', additionalProperties: { type: 'string' } })
+  @IsOptional()
+  @IsObject()
+  imageAltTexts?: Record<string, string>;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => GpsrInfoDto)
+  gpsrInfo?: GpsrInfoDto | null;
 }
 
 // ── Attribute-only update ─────────────────────────────────────────────────────

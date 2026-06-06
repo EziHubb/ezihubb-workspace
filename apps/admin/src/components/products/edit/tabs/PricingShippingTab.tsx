@@ -331,6 +331,7 @@ function VariationPriceNotice({
       const body = await res.json();
       return (body.data ?? body) as VariationSettings;
     },
+    enabled:  !!productId,
     staleTime: 30_000,
   });
 

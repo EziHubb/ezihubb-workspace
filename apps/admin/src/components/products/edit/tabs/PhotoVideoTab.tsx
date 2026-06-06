@@ -29,7 +29,7 @@ import {
 import { getSession } from 'next-auth/react';
 import type { ProductEditFormValues, AdminProductDto, ProductImage } from '../types';
 import { ThumbnailCropModal } from '../ThumbnailCropModal';
-import { API_BASE } from '../../../../lib/api';
+import { clientFetch, API_BASE } from '../../../../lib/api';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -645,7 +645,16 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
 
   const primaryImage = imageIds[0] ? imageMap[imageIds[0]] : null;
 
-  const handleReorder = (ids: string[]) => setValue('imageIds', ids, { shouldDirty: true });
+  const handleReorder = (ids: string[]) => {
+    setValue('imageIds', ids, { shouldDirty: true });
+    // Persist the new order to the DB immediately (edit mode only — create mode has no real IDs yet)
+    if (product.id) {
+      clientFetch(`/admin/products/${product.id}/images/reorder`, {
+        method: 'PATCH',
+        body:   JSON.stringify({ orderedIds: ids }),
+      }).catch(() => {});
+    }
+  };
   const handleRemove  = (id: string)   => setValue('imageIds', imageIds.filter((i) => i !== id), { shouldDirty: true });
   const handleVideos  = (urls: string[])=> setValue('videoUrls', urls, { shouldDirty: true });
   const handleAltSave = (id: string, text: string) => setValue('imageAltTexts', { ...imageAltTexts, [id]: text }, { shouldDirty: true });

@@ -104,17 +104,16 @@ export function buildDefaultValues(
 // ── Split form data by destination ───────────────────────────────────────────
 
 /** Fields that go to PATCH /admin/products/:id (PostgreSQL) */
-export function extractPrismaFields(data: ProductEditFormValues): Partial<ProductEditFormValues> {
+export function extractPrismaFields(data: ProductEditFormValues) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { description, customOptions, gpsrInfo, imageAltTexts, imageIds, pendingImageUrls, ...prismaData } = data;
-  return prismaData;
+  const { description, customOptions, gpsrInfo, imageAltTexts, imageIds, pendingImageUrls, primaryCategoryId, ...prismaData } = data;
+  return { ...prismaData, categoryId: primaryCategoryId };
 }
 
 /** Fields that go to PUT /admin/products/:id/detail (MongoDB) */
 export function extractMongoFields(data: ProductEditFormValues) {
   return {
     richDescription: data.description,
-    customOptions:   data.customOptions,
     gpsrInfo:        data.gpsrInfo,
     imageAltTexts:   data.imageAltTexts,
   };
