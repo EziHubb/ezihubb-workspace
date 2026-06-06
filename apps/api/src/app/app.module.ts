@@ -31,6 +31,7 @@ import { AdminModule } from '../modules/admin/admin.module';
 import { HealthModule } from '../health/health.module';
 import { MongoDBModule } from '../modules/database/mongodb.module';
 import { AssetsModule } from '../modules/assets/assets.module';
+import { AnalyticsModule } from '../modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -119,6 +120,7 @@ import { AssetsModule } from '../modules/assets/assets.module';
     SearchModule,
     AdminModule,
     AssetsModule,
+    AnalyticsModule,
     HealthModule,
   ],
   controllers: [AppController],

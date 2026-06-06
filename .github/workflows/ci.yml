@@ -194,6 +194,26 @@ jobs:
       - name: Build (affected)
         run: pnpm nx affected -t build --base=$NX_BASE --head=$NX_HEAD --parallel=2
 
+      - name: Check bundle size
+        run: |
+          BUILD_OUTPUT=$(pnpm nx build client 2>&1)
+          echo "$BUILD_OUTPUT" | tail -30
+          SHARED_SIZE=$(echo "$BUILD_OUTPUT" | grep "First Load JS shared by all" | grep -oE '[0-9]+(\.[0-9]+)? kB' | head -1 | grep -oE '[0-9]+(\.[0-9]+)?')
+          if [ -z "$SHARED_SIZE" ]; then
+            echo "Warning: could not parse shared bundle size — skipping budget check"
+            exit 0
+          fi
+          echo "First Load JS shared bundle: ${SHARED_SIZE} kB"
+          python3 -c "
+          kb = float('$SHARED_SIZE')
+          limit = 150
+          if kb > limit:
+              print(f'ERROR: Shared bundle {kb} kB exceeds {limit} kB limit')
+              exit(1)
+          else:
+              print(f'OK: Shared bundle {kb} kB is within {limit} kB limit')
+          "
+
   # ── Security Audit ───────────────────────────────────────────────────────────
   security:
     name: Security Audit

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { apiClient } from '@mlh/api-client';
 import type { CollectionDto, ProductListItemDto } from '@mlh/types';
 import type { PaginatedResponse } from '@mlh/types';
+import { buildAlternates } from '../../../../../lib/seo';
 import { ProductListingLayout } from '../../../../../components/listing/ProductListingLayout';
 import { CollectionHero } from '../../../../../components/collections/CollectionHero';
 import { RelatedCollections } from '../../../../../components/collections/RelatedCollections';
@@ -37,7 +38,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const { locale, slug } = await params;
 
   const collection = await apiClient
     .get<CollectionDto>(`/collections/${slug}`, {
@@ -47,14 +48,19 @@ export async function generateMetadata({
 
   if (!collection) return { title: 'Collection Not Found' };
 
+  const title = `${collection.name} Gift Ideas | MapleLoomHandmade`;
+  const description = collection.description ??
+    `Explore our ${collection.name} collection of personalized handmade gifts. Custom-made to order.`;
   return {
-    title:       `${collection.name} | Maple Handmade`,
-    description: collection.description ??
-      `Explore our ${collection.name} collection of personalized handmade gifts.`,
+    title,
+    description,
     openGraph: {
-      title:  `${collection.name} | Maple Handmade`,
-      images: collection.bannerUrl ? [collection.bannerUrl] : [],
+      title,
+      description,
+      url:    `/collections/${slug}`,
+      images: collection.bannerUrl ? [{ url: collection.bannerUrl }] : [],
     },
+    alternates: buildAlternates(`/collections/${slug}`, locale),
   };
 }
 

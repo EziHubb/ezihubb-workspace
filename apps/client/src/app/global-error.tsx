@@ -1,7 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-
 export default function GlobalError({
   error,
   reset,
@@ -18,12 +16,16 @@ export default function GlobalError({
             {'Error ID: ' + error.digest}
           </p>
         )}
-        <button type="button" onClick={reset} style={{ padding: '0.5rem 1.5rem', cursor: 'pointer', marginRight: '0.5rem' }}>
+        <button
+          type="button"
+          onClick={reset}
+          style={{ padding: '0.5rem 1.5rem', cursor: 'pointer', marginRight: '0.5rem' }}
+        >
           Try again
         </button>
-        <Link href="/" style={{ color: '#E85D3F', fontSize: '0.875rem' }}>
+        <a href="/" style={{ color: '#E85D3F', fontSize: '0.875rem' }}>
           Return to Home
-        </Link>
+        </a>
       </body>
     </html>
   );

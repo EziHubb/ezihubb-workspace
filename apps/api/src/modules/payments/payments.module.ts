@@ -3,9 +3,10 @@ import { PaymentsController } from './payments.controller';
 import { WebhooksController } from './webhooks.controller';
 import { PaymentsService } from './payments.service';
 import { QueueModule } from '../../queue/queue.module';
+import { AnalyticsModule } from '../analytics/analytics.module';
 
 @Module({
-  imports: [QueueModule],
+  imports: [QueueModule, AnalyticsModule],
   controllers: [PaymentsController, WebhooksController],
   providers: [PaymentsService],
   exports: [PaymentsService],

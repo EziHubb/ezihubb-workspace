@@ -1,20 +1,42 @@
 import type { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
+  const base = 'https://mapleloomhandmade.com';
   return {
     rules: [
       {
         userAgent: '*',
-        allow:     '/',
-        disallow:  [
+        allow: '/',
+        disallow: [
           '/account/',
           '/checkout/',
-          '/admin/',
-          '/search',      // dynamic query results — no SEO value
+          '/cart',
           '/api/',
+          '/_next/',
+          '/admin/',
+          '/orders/track',
+          '/auth/',
+          '/login',
+          '/register',
+          '/forgot-password',
+          '/reset-password',
         ],
       },
+      // Block AI training crawlers from scraping content
+      {
+        userAgent: 'GPTBot',
+        disallow:  '/',
+      },
+      {
+        userAgent: 'ChatGPT-User',
+        disallow:  '/',
+      },
+      {
+        userAgent: 'CCBot',
+        disallow:  '/',
+      },
     ],
-    sitemap: 'https://maplehandmade.com/sitemap.xml',
+    sitemap: `${base}/sitemap.xml`,
+    host:    base,
   };
 }

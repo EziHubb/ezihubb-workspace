@@ -4,6 +4,7 @@ import { MessageCircle } from 'lucide-react';
 import { FAQ_DATA } from '../../../../../components/faq/faq-data';
 import { FAQAccordionList } from '../../../../../components/faq/FAQAccordionList';
 import { FAQSearchBar } from '../../../../../components/faq/FAQSearchBar';
+import { FAQStructuredData } from '../../../../../components/seo/FAQStructuredData';
 
 export const dynamic = 'force-static';
 
@@ -17,8 +18,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function FAQPage() {
+  const allFaqs = FAQ_DATA.flatMap((section) => section.questions);
   return (
     <div className="max-w-[900px] mx-auto px-4 py-16">
+      <FAQStructuredData faqs={allFaqs} />
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div className="text-center mb-12">

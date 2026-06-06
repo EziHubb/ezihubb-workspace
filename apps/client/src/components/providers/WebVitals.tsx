@@ -28,17 +28,14 @@ export function WebVitals() {
       );
     }
 
-    // Production: send to analytics
-    // Uncomment and adapt to your analytics provider:
-    //
-    // if (typeof window !== 'undefined' && window.gtag) {
-    //   window.gtag('event', metric.name, {
-    //     value:          Math.round(metric.name === 'CLS' ? metric.value * 1000 : metric.value),
-    //     event_category: metric.label === 'web-vital' ? 'Web Vitals' : 'Next.js custom metric',
-    //     event_label:    metric.id,
-    //     non_interaction: true,
-    //   });
-    // }
+    if (process.env.NODE_ENV === 'production' && typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', metric.name, {
+        value:           Math.round(metric.name === 'CLS' ? metric.value * 1000 : metric.value),
+        event_category:  metric.label === 'web-vital' ? 'Web Vitals' : 'Next.js custom metric',
+        event_label:     metric.id,
+        non_interaction: true,
+      });
+    }
   });
 
   return null;

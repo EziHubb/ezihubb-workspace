@@ -33,6 +33,7 @@ import {
   PaymentResponseDto,
   GiftCardResponseDto,
 } from './dto/payment-response.dto';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 const WEBHOOK_IDEMPOTENCY_TTL = 24 * 60 * 60; // 24 hours in seconds
 const REFUND_WINDOW_DAYS = 60;
@@ -46,6 +47,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly config: ConfigService,
+    private readonly analyticsService: AnalyticsService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
     @InjectQueue(QUEUES.ORDER_PROCESSING) private readonly orderQueue: Queue,
   ) {
@@ -303,6 +305,48 @@ export class PaymentsService {
       } satisfies OrderConfirmedJobData,
       DEFAULT_JOB_OPTIONS,
     );
+
+    // Fire-and-forget analytics — must not throw or block the webhook response
+    this.prisma.order
+      .findUnique({
+        where: { id: payment.orderId },
+        select: {
+          orderNumber: true,
+          total: true,
+          items: { select: { productId: true, productName: true, quantity: true, unitPrice: true } },
+        },
+      })
+      .then((o) => {
+        if (!o) return;
+        const orderData = {
+          id: payment.orderId,
+          orderNumber: o.orderNumber,
+          total: Number(o.total),
+          items: o.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+        };
+        return Promise.all([
+          this.analyticsService.trackOrderConfirmed(orderData),
+          this.analyticsService.sendToGA4(payment.orderId, [
+            {
+              name: 'purchase',
+              params: {
+                transaction_id: o.orderNumber,
+                value: Number(o.total),
+                currency: 'USD',
+                items: o.items.map((i) => ({
+                  item_id:   i.productId,
+                  item_name: i.productName,
+                  price:     Number(i.unitPrice),
+                  quantity:  i.quantity,
+                })),
+              },
+            },
+          ]),
+        ]);
+      })
+      .catch((err: Error) =>
+        this.logger.warn(`Analytics tracking failed for order ${payment.orderId}: ${err.message}`),
+      );
   }
 
   private async onPaymentIntentFailed(

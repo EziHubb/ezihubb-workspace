@@ -6,12 +6,14 @@ import {
   ProductDetail,
   ProductDetailSchema,
 } from '../catalog/schemas/product-detail.schema';
+import { AnalyticsModule } from '../analytics/analytics.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: ProductDetail.name, schema: ProductDetailSchema },
     ]),
+    AnalyticsModule,
   ],
   controllers: [SearchController],
   providers: [SearchService],

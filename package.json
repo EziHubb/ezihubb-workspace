@@ -5,6 +5,7 @@
   "private": true,
   "packageManager": "pnpm@11.0.9",
   "scripts": {
+    "postinstall": "node scripts/patch-next-build.cjs",
     "prepare": "prisma generate --schema=prisma/schema.prisma",
     "dev": "pnpm nx run-many -t serve -p client admin api --parallel=3",
     "build": "pnpm nx run-many -t build && node scripts/postbuild.mjs",
@@ -44,6 +45,7 @@
     "@nestjs/platform-express": "^11.0.0",
     "@nestjs/swagger": "^11.4.4",
     "@nestjs/throttler": "^6.5.0",
+    "@next/third-parties": "^16.2.7",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@stripe/react-stripe-js": "^6.4.0",
@@ -108,6 +110,7 @@
     "@eslint/js": "^9.8.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.0",
+    "@next/bundle-analyzer": "^16.2.7",
     "@next/eslint-plugin-next": "^16.1.6",
     "@nx/eslint": "22.7.2",
     "@nx/eslint-plugin": "22.7.2",

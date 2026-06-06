@@ -7,7 +7,7 @@ import { signOut, useSession } from 'next-auth/react';
 import {
   LayoutDashboard, ShoppingCart, ShoppingBag, FolderOpen,
   Tag, Layers, Users, BadgePercent, Star, Truck,
-  CreditCard, Settings, ChevronDown, ChevronRight, LogOut,
+  CreditCard, Settings, ChevronDown, ChevronRight, LogOut, Globe,
 } from 'lucide-react';
 
 // ── Nav item types ─────────────────────────────────────────────────────────────
@@ -23,7 +23,13 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard',        icon: LayoutDashboard },
   { label: 'Orders',    href: '/orders',            icon: ShoppingCart    },
-  { label: 'Products',  href: '/products',          icon: ShoppingBag     },
+  {
+    label: 'Products', href: '/products', icon: ShoppingBag,
+    children: [
+      { label: 'All Products', href: '/products',     icon: ShoppingBag },
+      { label: 'SEO Audit',    href: '/products/seo', icon: Globe       },
+    ],
+  },
   {
     label: 'Catalog', href: '/catalog', icon: FolderOpen,
     children: [

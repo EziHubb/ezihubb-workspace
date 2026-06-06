@@ -1,7 +1,7 @@
 import type { ProductDto } from '@mlh/types';
 import type { ReviewSummaryDto } from '@mlh/types';
 
-const BASE_URL = 'https://maplehandmade.com';
+const BASE_URL = 'https://mapleloomhandmade.com';
 
 export interface ProductStructuredDataProps {
   product:       ProductDto;

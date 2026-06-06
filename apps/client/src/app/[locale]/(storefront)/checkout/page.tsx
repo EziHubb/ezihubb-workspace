@@ -13,6 +13,7 @@ import { StepIndicator } from '../../../../components/checkout/StepIndicator';
 import { ShippingForm }   from '../../../../components/checkout/ShippingForm';
 import { DeliveryForm }   from '../../../../components/checkout/DeliveryForm';
 import { PaymentForm }    from '../../../../components/checkout/PaymentForm';
+import { analytics }      from '../../../../lib/analytics';
 
 // ── Sidebar: order summary ────────────────────────────────────────────────────
 
@@ -192,6 +193,11 @@ export default function CheckoutPage() {
     setShippingAddress(addr);
     setGuestEmail(email);
     setCompletedSteps((prev) => [...new Set([...prev, 1])]);
+    analytics.beginCheckout({
+      total:     cart.totals?.total ?? 0,
+      itemCount: cart.itemCount ?? 0,
+      coupon:    cart.couponCode ?? undefined,
+    });
     setStep(2);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -202,6 +208,10 @@ export default function CheckoutPage() {
     if (!shippingAddress || !cart) return;
     setShippingMethod(method);
     setCompletedSteps((prev) => [...new Set([...prev, 2])]);
+    analytics.addShippingInfo({
+      total:          cart.totals?.total ?? 0,
+      shippingMethod: method.name,
+    });
     setIsCreatingOrder(true);
     setOrderError('');
 
@@ -242,6 +252,7 @@ export default function CheckoutPage() {
   };
 
   const handlePaymentSuccess = (num: string) => {
+    analytics.addPaymentInfo({ total: orderTotal, paymentType: 'credit_card' });
     clearCart();
     router.push(`/${locale}/checkout/success?order=${num}`);
   };

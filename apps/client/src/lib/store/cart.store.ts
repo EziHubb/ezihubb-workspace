@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { apiClient } from '@mlh/api-client';
 import type { CartDto, CartItemDto, CartTotals } from '@mlh/types';
+import { analytics } from '../analytics';
 
 // ── Helper: read auth token without circular import ───────────────────────────
 
@@ -141,6 +142,17 @@ export const useCartStore = create<CartStore>()(
             headers: sessionHeader(get().sessionId),
           });
           set({ cart: normalizeCart(res) });
+          const addedItem = res.items.find((i) => i.productId === dto.productId);
+          if (addedItem) {
+            analytics.addToCart({
+              id:        dto.productId,
+              name:      addedItem.productName,
+              category:  '',
+              price:     Number(addedItem.currentPrice),
+              quantity:  dto.quantity,
+              variantId: dto.variantId ?? undefined,
+            });
+          }
         } catch (err) {
           set({ cart: prevCart });
           throw err;

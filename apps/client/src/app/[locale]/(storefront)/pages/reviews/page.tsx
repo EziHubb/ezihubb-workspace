@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { apiClient } from '@mlh/api-client';
 import type { ProductListItemDto, PaginatedResponse } from '@mlh/types';
+import { ReviewsPageStructuredData } from '../../../../../components/seo/ReviewsPageStructuredData';
 
 export const revalidate = 3600;
 
@@ -97,6 +98,12 @@ export default async function ReviewsPage() {
 
   return (
     <div className="max-w-[1100px] mx-auto px-4 py-16">
+      {summary && (
+        <ReviewsPageStructuredData
+          avgRating={summary.averageRating}
+          totalCount={summary.totalReviews}
+        />
+      )}
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div className="text-center mb-14">

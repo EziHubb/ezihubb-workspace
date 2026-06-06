@@ -16,6 +16,7 @@ import {
   paginatedResponse,
 } from '../../common/dto/paginated-response.dto';
 import { ProductDetail } from '../catalog/schemas/product-detail.schema';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 const TRENDING_KEY = 'search:trending';
 const TRENDING_WINDOW_DAYS = 7;
@@ -50,6 +51,7 @@ export class SearchService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly analyticsService: AnalyticsService,
     @InjectModel(ProductDetail.name)
     private readonly productDetailModel: Model<ProductDetail>,
   ) {}
@@ -87,6 +89,13 @@ export class SearchService {
 
     const facets = await this.computeFacets(where);
     const appliedFilters = this.extractAppliedFilters(query);
+
+    // Fire-and-forget analytics tracking for zero-result detection and trending
+    if (query.q) {
+      this.analyticsService
+        .trackSearch(query.q, paginatedResult.pagination.total)
+        .catch(() => undefined);
+    }
 
     return { ...paginatedResult, facets, appliedFilters, correctedQuery: null };
   }

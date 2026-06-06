@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { apiClient } from '@mlh/api-client';
+import { buildAlternates } from '../../../../../lib/seo';
 import type { ProductDto, ProductListItemDto, ReviewSummaryDto } from '@mlh/types';
 import type { PaginatedResponse } from '@mlh/types';
 import { ProductBreadcrumb } from '../../../../../components/product/ProductBreadcrumb';
@@ -64,7 +65,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const { locale, slug } = await params;
 
   const product = await apiClient
     .get<ProductDetailDto>(`/products/${slug}`, { next: { revalidate: 30 } })
@@ -75,7 +76,7 @@ export async function generateMetadata({
   const description =
     product.shortDescription ??
     product.description?.slice(0, 160) ??
-    `Shop ${product.name} at Maple Handmade`;
+    `Shop ${product.name} — personalized and custom-made at MapleLoomHandmade.`;
   const primaryImage = product.images?.[0];
 
   return {
@@ -83,13 +84,15 @@ export async function generateMetadata({
     description,
     robots: { index: true, follow: true },
     openGraph: {
-      title: product.name,
+      title:       product.name,
       description,
-      type: 'website',
+      type:        'website',
+      url:         `/products/${slug}`,
       images: primaryImage
         ? [{ url: primaryImage.url, width: 800, height: 800, alt: product.name }]
         : [{ url: '/og-default.jpg', width: 1200, height: 630 }],
     },
+    alternates: buildAlternates(`/products/${slug}`, locale),
     other: {
       'product:price:amount':   String(product.basePrice),
       'product:price:currency': 'USD',

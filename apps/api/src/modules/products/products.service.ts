@@ -16,6 +16,7 @@ import {
 } from '../../common/services/redis.service';
 import { StorageService } from '../../common/services/storage.service';
 import { ProductDetail } from '../catalog/schemas/product-detail.schema';
+import { AnalyticsService } from '../analytics/analytics.service';
 import type {
   CreateProductDetailDto,
   AttributeDto,
@@ -55,6 +56,7 @@ export class ProductsService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly storage: StorageService,
+    private readonly analyticsService: AnalyticsService,
     @InjectModel(ProductDetail.name)
     private readonly productDetailModel: Model<ProductDetail>,
   ) {}
@@ -144,6 +146,7 @@ export class ProductsService {
   async findBySlug(
     slug: string,
     viewLockId?: string,
+    userId?: string,
   ): Promise<ProductResponseDto> {
     const product = await this.prisma.product.findFirst({
       where: { slug, isActive: true },
@@ -182,6 +185,13 @@ export class ProductsService {
             ),
           );
       }
+    }
+
+    // Track recently viewed for authenticated users (fire-and-forget)
+    if (userId) {
+      this.analyticsService
+        .trackRecentlyViewed(userId, product.id)
+        .catch(() => undefined);
     }
 
     const [inDemandCount, averageRating, mongoDetail] = await Promise.all([

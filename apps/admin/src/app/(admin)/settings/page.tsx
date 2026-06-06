@@ -1036,17 +1036,126 @@ function DangerZoneTab() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Tab 6 — SEO & Analytics
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <FieldLabel>{label}</FieldLabel>
+      {children}
+    </div>
+  );
+}
+
+interface SeoSettings {
+  gaId?:                string;
+  googleVerification?:  string;
+  metaPixelId?:         string;
+}
+
+function SeoTab() {
+  const [s,      setS]      = useState<SeoSettings>({});
+  const [saving, setSaving] = useState(false);
+  const [done,   setDone]   = useState(false);
+
+  const { data } = useQuery<SeoSettings>({
+    queryKey: ['seo-settings'],
+    queryFn:  async () => {
+      const res  = await clientFetch('/admin/settings/seo');
+      if (!res.ok) return {};
+      const body = await res.json();
+      return (body.data ?? body) as SeoSettings;
+    },
+    staleTime: 300_000,
+  });
+
+  useEffect(() => {
+    if (data) setS(data);
+  }, [data]);
+
+  const set = (k: keyof SeoSettings, v: string) =>
+    setS((prev) => ({ ...prev, [k]: v }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await clientFetch('/admin/settings/seo', { method: 'PATCH', body: JSON.stringify(s) });
+      setDone(true);
+      setTimeout(() => setDone(false), 3000);
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="space-y-5">
+      <SectionCard title="Analytics">
+        <FormField label="Google Analytics ID">
+          <input
+            value={s.gaId ?? ''}
+            onChange={(e) => set('gaId', e.target.value)}
+            placeholder="G-XXXXXXXXXX"
+            className={`${inputCls} w-48 font-mono`}
+          />
+          <p className="text-xs text-muted mt-1">
+            Found in GA4 Admin → Data Streams
+          </p>
+        </FormField>
+
+        <FormField label="Meta Pixel ID">
+          <input
+            value={s.metaPixelId ?? ''}
+            onChange={(e) => set('metaPixelId', e.target.value)}
+            placeholder="XXXXXXXXXXXXXXXXXX"
+            className={`${inputCls} w-48 font-mono`}
+          />
+          <p className="text-xs text-muted mt-1">
+            Found in Meta Events Manager → Pixel settings
+          </p>
+        </FormField>
+      </SectionCard>
+
+      <SectionCard title="Search Console">
+        <FormField label="Google Search Console Verification">
+          <input
+            value={s.googleVerification ?? ''}
+            onChange={(e) => set('googleVerification', e.target.value)}
+            placeholder="xxxxxxxxxxxxxxxxxxxxx"
+            className={`${inputCls} w-96 font-mono`}
+          />
+          <p className="text-xs text-muted mt-1">
+            The content value of the{' '}
+            <code className="bg-muted/10 px-1 rounded text-[11px]">google-site-verification</code>
+            {' '}meta tag. Found in Search Console → Settings → Ownership verification.
+          </p>
+        </FormField>
+      </SectionCard>
+
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={saving}
+        className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-button transition-colors disabled:opacity-50 ${done ? 'bg-green-500 text-white' : 'bg-primary hover:bg-primary-dark text-white'}`}
+      >
+        <Save className="w-3.5 h-3.5" />
+        {saving ? 'Saving…' : done ? '✓ Saved' : 'Save SEO Settings'}
+      </button>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Tab navigation
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type TabKey = 'store' | 'email' | 'notifications' | 'team' | 'danger';
+type TabKey = 'store' | 'email' | 'notifications' | 'team' | 'seo' | 'danger';
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
-  { key: 'store',         label: 'Store',         icon: '🏪' },
-  { key: 'email',         label: 'Email',          icon: '✉️' },
-  { key: 'notifications', label: 'Notifications',  icon: '🔔' },
-  { key: 'team',          label: 'Team',           icon: '👥' },
-  { key: 'danger',        label: 'Danger Zone',    icon: '⚠️' },
+  { key: 'store',         label: 'Store',           icon: '🏪' },
+  { key: 'email',         label: 'Email',            icon: '✉️' },
+  { key: 'notifications', label: 'Notifications',    icon: '🔔' },
+  { key: 'team',          label: 'Team',             icon: '👥' },
+  { key: 'seo',           label: 'SEO & Analytics',  icon: '📈' },
+  { key: 'danger',        label: 'Danger Zone',      icon: '⚠️' },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1096,6 +1205,7 @@ export default function SettingsPage() {
         {activeTab === 'email'         && <EmailTab />}
         {activeTab === 'notifications' && <NotificationsTab />}
         {activeTab === 'team'          && <TeamTab />}
+        {activeTab === 'seo'           && <SeoTab />}
         {activeTab === 'danger'        && <DangerZoneTab />}
       </div>
     </>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { apiClient } from '@mlh/api-client';
+import { buildAlternates } from '../../../../lib/seo';
 import type { ProductListItemDto, CategoryDto, TagDto } from '@mlh/types';
 import type { PaginatedResponse } from '@mlh/types';
 import { ProductListingLayout } from '../../../../components/listing/ProductListingLayout';
@@ -17,9 +18,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'site' });
+  const title = `All Personalized Gifts | ${t('name')}`;
+  const description = t('defaultDescription');
   return {
-    title:       `All Personalized Gifts | ${t('name')}`,
-    description: t('defaultDescription'),
+    title,
+    description,
+    openGraph: { title, description, url: '/products' },
+    alternates: buildAlternates('/products', locale),
   };
 }
 

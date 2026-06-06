@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Star, CheckCircle2, Clock, ShoppingCart,
   Loader2, Plus, ChevronDown,
@@ -15,6 +15,7 @@ import {
 import { useCartStore } from '../../lib/store/cart.store';
 import { MobileStickyCartBar } from './MobileStickyCartBar';
 import { toast } from '../../lib/store/toast.store';
+import { analytics } from '../../lib/analytics';
 import type { ProductDto, ReviewSummaryDto } from '@mlh/types';
 
 // ── Date helpers (no date-fns) ────────────────────────────────────────────────
@@ -344,6 +345,17 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
 
   const addItem    = useCartStore((s) => s.addItem);
   const openDrawer = useCartStore((s) => s.openDrawer);
+
+  // Fire viewItem once on mount
+  useEffect(() => {
+    analytics.viewItem({
+      id:       product.id,
+      name:     product.name,
+      category: product.primaryCategory?.name ?? '',
+      price:    Number(product.basePrice),
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id]);
 
   // ── Variant resolution ────────────────────────────────────────────────────
 

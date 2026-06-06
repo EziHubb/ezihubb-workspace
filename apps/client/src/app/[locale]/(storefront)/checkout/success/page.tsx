@@ -10,6 +10,7 @@ import { Copy, Check, Package, Home } from 'lucide-react';
 import { apiClient, queryKeys } from '@mlh/api-client';
 import { useCartStore } from '../../../../../lib/store/cart.store';
 import type { OrderDto } from '@mlh/types';
+import { analytics } from '../../../../../lib/analytics';
 
 // ── Animated checkmark ────────────────────────────────────────────────────────
 
@@ -115,6 +116,29 @@ export default function CheckoutSuccessPage() {
     gcTime:    2 * 60_000,
     staleTime: 0,
   });
+
+  // Fire purchase event once order leaves PENDING_PAYMENT (fires exactly once)
+  const purchaseFiredRef = useRef(false);
+  useEffect(() => {
+    if (!order || order.status === 'PENDING_PAYMENT') return;
+    if (purchaseFiredRef.current) return;
+    purchaseFiredRef.current = true;
+    analytics.purchase({
+      orderNumber: order.orderNumber,
+      total:       order.total,
+      subtotal:    order.subtotal,
+      shipping:    order.shippingCost,
+      tax:         0,
+      coupon:      order.couponCode,
+      items: order.items.map((item) => ({
+        id:       item.productId,
+        name:     item.productName,
+        category: '',
+        price:    Number(item.unitPrice),
+        quantity: item.quantity,
+      })),
+    });
+  }, [order?.status, order?.orderNumber]);
 
   // ── Fallback when no order number ──────────────────────────────────────────
 

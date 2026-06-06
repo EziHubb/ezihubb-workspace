@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
+import { buildAlternates } from '../../../lib/seo';
 import { apiClient } from '@mlh/api-client';
 import type { CollectionDto, CategoryDto, ProductListItemDto, ReviewDto } from '@mlh/types';
 import type { PaginatedResponse } from '@mlh/types';
@@ -21,9 +22,17 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'site' });
+  const title = 'Personalized Gifts Made with Love | MapleLoomHandmade';
+  const description = 'Create meaningful personalized gifts with photos, names & messages. 50,000+ happy customers. Free shipping on $50+.';
   return {
-    title: t('defaultTitle'),
-    description: t('defaultDescription'),
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: locale === 'vi' ? '/vi' : '/',
+    },
+    alternates: buildAlternates('/', locale),
   };
 }
 

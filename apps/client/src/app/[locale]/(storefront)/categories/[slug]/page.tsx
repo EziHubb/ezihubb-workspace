@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { apiClient } from '@mlh/api-client';
 import type { CategoryDto, ProductListItemDto } from '@mlh/types';
 import type { PaginatedResponse } from '@mlh/types';
+import { buildAlternates } from '../../../../../lib/seo';
 import { ProductListingLayout } from '../../../../../components/listing/ProductListingLayout';
 import { parseSearchParams } from '../../../../../components/listing/types';
 
@@ -33,7 +34,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const { locale, slug } = await params;
 
   const category = await apiClient
     .get<CategoryDto>(`/categories/${slug}`, {
@@ -42,14 +43,19 @@ export async function generateMetadata({
     .catch(() => null);
 
   if (!category) return { title: 'Category Not Found' };
+  const title = `${category.name} Personalized Gifts | MapleLoomHandmade`;
+  const description = category.description ??
+    `Shop personalized ${category.name.toLowerCase()} gifts custom-made to order.`;
   return {
-    title:       `${category.name} Gifts | Maple Handmade`,
-    description: category.description ??
-      `Shop personalized ${category.name} gifts handcrafted with love.`,
+    title,
+    description,
     openGraph: {
-      title:  `${category.name} Gifts | Maple Handmade`,
-      images: category.imageUrl ? [category.imageUrl] : [],
+      title,
+      description,
+      url:    `/categories/${slug}`,
+      images: category.imageUrl ? [{ url: category.imageUrl }] : [],
     },
+    alternates: buildAlternates(`/categories/${slug}`, locale),
   };
 }
 
