@@ -57,6 +57,15 @@ export async function clientFetch(path: string, init?: RequestInit): Promise<Res
   });
 }
 
+// ── API error (carries HTTP status so callers can react to 401 etc.) ─────────
+
+export class ApiError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 // ── Typed helper ──────────────────────────────────────────────────────────────
 
 export async function apiFetch<T>(
@@ -67,7 +76,8 @@ export async function apiFetch<T>(
   const res  = await (server ? serverFetch(path, init) : clientFetch(path, init));
   const body = await res.json();
   if (!res.ok) {
-    throw new Error((body as { error?: { message?: string } })?.error?.message ?? `HTTP ${res.status}`);
+    const msg = (body as { error?: { message?: string } })?.error?.message ?? `HTTP ${res.status}`;
+    throw new ApiError(res.status, msg);
   }
   return ((body as { data?: T }).data ?? body) as T;
 }
