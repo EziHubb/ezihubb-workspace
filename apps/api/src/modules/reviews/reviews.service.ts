@@ -293,6 +293,65 @@ export class ReviewsService {
     return this.mapToDto(updated);
   }
 
+  // ── Global public ────────────────────────────────────────────────────────────
+
+  async getGlobalReviews(
+    query: ReviewQueryDto,
+  ): Promise<PaginatedResult<ReviewResponseDto & { product: { name: string; slug: string; primaryImage: string | null } }>> {
+    const page  = query.page  ?? 1;
+    const limit = query.limit ?? 12;
+    const where = { status: ReviewStatus.APPROVED };
+
+    const include = {
+      ...REVIEW_INCLUDE,
+      product: { select: { name: true, slug: true, images: { select: { url: true }, take: 1, orderBy: { sortOrder: 'asc' as const } } } },
+    };
+
+    const [rows, total] = await Promise.all([
+      this.prisma.review.findMany({
+        where,
+        include,
+        orderBy: { createdAt: 'desc' },
+        skip:    (page - 1) * limit,
+        take:    limit,
+      }),
+      this.prisma.review.count({ where }),
+    ]);
+
+    const items = rows.map((r) => ({
+      ...this.mapToDto(r),
+      product: {
+        name:         r.product.name,
+        slug:         r.product.slug,
+        primaryImage: r.product.images[0]?.url ?? null,
+      },
+    }));
+
+    return paginatedResponse(items, page, limit, total);
+  }
+
+  async getGlobalSummary(): Promise<Omit<ReviewSummaryDto, 'productId'>> {
+    const reviews = await this.prisma.review.findMany({
+      where:  { status: ReviewStatus.APPROVED },
+      select: { rating: true },
+    });
+
+    const totalReviews  = reviews.length;
+    const distribution  = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<1 | 2 | 3 | 4 | 5, number>;
+    let sum = 0;
+    for (const r of reviews) {
+      sum += r.rating;
+      (distribution as Record<number, number>)[r.rating] =
+        ((distribution as Record<number, number>)[r.rating] ?? 0) + 1;
+    }
+
+    return {
+      averageRating: totalReviews > 0 ? Math.round((sum / totalReviews) * 10) / 10 : 0,
+      totalReviews,
+      distribution,
+    };
+  }
+
   // ── Admin ────────────────────────────────────────────────────────────────────
 
   async findAllAdmin(

@@ -4,56 +4,65 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Check } from 'lucide-react';
+import { CheckCircle, Loader2, Send } from 'lucide-react';
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
+const SUBJECT_VALUES = ['general', 'order', 'personalization', 'returns', 'custom', 'other'] as const;
+
 const schema = z.object({
-  name:        z.string().min(2, 'Name must be at least 2 characters'),
+  name:        z.string().min(2,  'Name must be at least 2 characters').max(100),
   email:       z.string().email('Enter a valid email address'),
-  subject:     z.enum(['General', 'Order Issue', 'Personalization', 'Returns', 'Other']),
-  orderNumber: z.string().optional(),
-  message:     z.string().min(10, 'Please provide more detail (min 10 characters)').max(2000),
+  subject:     z.enum(SUBJECT_VALUES, { error: 'Please select a topic' }),
+  orderNumber: z.string().max(50).optional(),
+  message:     z.string().min(20, 'Please provide more detail (min 20 characters)').max(2000),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-const SUBJECTS = [
-  { value: 'General',         label: 'General Inquiry'   },
-  { value: 'Order Issue',     label: 'Order Issue'       },
-  { value: 'Personalization', label: 'Personalization Help' },
-  { value: 'Returns',         label: 'Returns & Exchanges' },
-  { value: 'Other',           label: 'Other'             },
-] as const;
+const SUBJECTS: { value: FormValues['subject']; label: string }[] = [
+  { value: 'general',         label: 'General question'            },
+  { value: 'order',           label: 'Order issue or question'     },
+  { value: 'personalization', label: 'Personalization help'        },
+  { value: 'returns',         label: 'Returns & exchanges'         },
+  { value: 'custom',          label: 'Custom / bulk order inquiry' },
+  { value: 'other',           label: 'Other'                       },
+];
+
+// ── Input style helper ────────────────────────────────────────────────────────
+
+const inp = (hasError?: boolean) =>
+  [
+    'w-full px-4 py-2.5 text-sm border rounded-xl bg-background text-secondary',
+    'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors',
+    hasError ? 'border-red-400' : 'border-border',
+  ].join(' ');
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function ContactForm() {
   const [submitted, setSubmitted] = useState(false);
-  const [isPending, setIsPending] = useState(false);
   const [apiError,  setApiError]  = useState('');
 
   const {
     register,
     handleSubmit,
     watch,
-    formState: { errors },
+    reset,
+    formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { subject: 'General' },
   });
 
-  const selectedSubject = watch('subject');
-  const showOrderField  = selectedSubject === 'Order Issue';
-
-  const apiBase = () =>
-    process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
+  const subject       = watch('subject');
+  const showOrderField = subject === 'order';
 
   const onSubmit = async (data: FormValues) => {
-    setIsPending(true);
     setApiError('');
     try {
-      const res = await fetch(`${apiBase()}/api/v1/notifications/contact`, {
+      const apiUrl = (process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002')
+        .replace(/\/api\/v1\/?$/, '');
+      const res = await fetch(`${apiUrl}/api/v1/notifications/contact`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(data),
@@ -63,36 +72,31 @@ export function ContactForm() {
         throw new Error(body.message ?? 'Failed to send message');
       }
       setSubmitted(true);
+      reset();
     } catch (err) {
       setApiError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
-    } finally {
-      setIsPending(false);
     }
   };
 
-  const inp = (err?: string) =>
-    [
-      'w-full px-3 py-2.5 text-sm border rounded-button bg-background text-secondary',
-      'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors',
-      err ? 'border-error' : 'border-border',
-    ].join(' ');
-
-  // ── Success ────────────────────────────────────────────────────────────────
+  // ── Success state ──────────────────────────────────────────────────────────
 
   if (submitted) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center gap-4">
-        <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center">
-          <Check className="w-8 h-8 text-success" />
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+          <CheckCircle className="w-8 h-8 text-green-600" />
         </div>
-        <div>
-          <h3 className="font-display text-xl font-bold text-secondary mb-2">
-            Message sent!
-          </h3>
-          <p className="text-muted text-sm max-w-xs">
-            We&apos;ll reply to your message within 2 hours during business hours.
-          </p>
-        </div>
+        <h3 className="text-xl font-bold text-secondary mb-2">Message sent!</h3>
+        <p className="text-muted mb-4 text-sm max-w-xs">
+          We&apos;ll reply to your email within 2 hours during business hours.
+        </p>
+        <button
+          type="button"
+          onClick={() => setSubmitted(false)}
+          className="text-primary text-sm hover:underline"
+        >
+          Send another message
+        </button>
       </div>
     );
   }
@@ -102,62 +106,64 @@ export function ContactForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
       {apiError && (
-        <p className="text-xs text-error bg-error/5 border border-error/20 rounded-sm px-3 py-2" role="alert">
+        <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5" role="alert">
           {apiError}
         </p>
       )}
 
-      {/* Name */}
-      <div>
-        <label className="text-xs font-medium text-muted mb-1 block">
-          Your Name <span className="text-error">*</span>
-        </label>
-        <input
-          {...register('name')}
-          autoComplete="name"
-          placeholder="Jane Doe"
-          className={inp(errors.name?.message)}
-        />
-        {errors.name && <p className="text-xs text-error mt-0.5">{errors.name.message}</p>}
-      </div>
-
-      {/* Email */}
-      <div>
-        <label className="text-xs font-medium text-muted mb-1 block">
-          Email Address <span className="text-error">*</span>
-        </label>
-        <input
-          {...register('email')}
-          type="email"
-          autoComplete="email"
-          placeholder="jane@example.com"
-          className={inp(errors.email?.message)}
-        />
-        {errors.email && <p className="text-xs text-error mt-0.5">{errors.email.message}</p>}
+      {/* Name + Email */}
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium text-secondary block mb-1.5">
+            Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            {...register('name')}
+            autoComplete="name"
+            placeholder="Your full name"
+            className={inp(!!errors.name)}
+          />
+          {errors.name && <p className="text-xs text-red-500 mt-0.5">{errors.name.message}</p>}
+        </div>
+        <div>
+          <label className="text-sm font-medium text-secondary block mb-1.5">
+            Email <span className="text-red-500">*</span>
+          </label>
+          <input
+            {...register('email')}
+            type="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            className={inp(!!errors.email)}
+          />
+          {errors.email && <p className="text-xs text-red-500 mt-0.5">{errors.email.message}</p>}
+        </div>
       </div>
 
       {/* Subject */}
       <div>
-        <label className="text-xs font-medium text-muted mb-1 block">
-          Subject <span className="text-error">*</span>
+        <label className="text-sm font-medium text-secondary block mb-1.5">
+          Subject <span className="text-red-500">*</span>
         </label>
-        <select {...register('subject')} className={inp(errors.subject?.message)}>
+        <select {...register('subject')} className={inp(!!errors.subject)}>
+          <option value="">Select a topic…</option>
           {SUBJECTS.map((s) => (
             <option key={s.value} value={s.value}>{s.label}</option>
           ))}
         </select>
+        {errors.subject && <p className="text-xs text-red-500 mt-0.5">{errors.subject.message}</p>}
       </div>
 
       {/* Order number — conditional */}
       {showOrderField && (
         <div>
-          <label className="text-xs font-medium text-muted mb-1 block">
+          <label className="text-sm font-medium text-secondary block mb-1.5">
             Order Number
           </label>
           <input
             {...register('orderNumber')}
-            placeholder="MLH-2024-00001"
-            className={inp(errors.orderNumber?.message)}
+            placeholder="e.g. MLH-2024-04521"
+            className={`${inp()} font-mono`}
           />
           <p className="text-xs text-muted mt-0.5">
             Find this in your confirmation email or Account → My Orders.
@@ -167,24 +173,34 @@ export function ContactForm() {
 
       {/* Message */}
       <div>
-        <label className="text-xs font-medium text-muted mb-1 block">
-          Message <span className="text-error">*</span>
+        <label className="text-sm font-medium text-secondary block mb-1.5">
+          Message <span className="text-red-500">*</span>
         </label>
         <textarea
           {...register('message')}
           rows={5}
-          placeholder="Describe your question or issue in detail…"
-          className={inp(errors.message?.message) + ' resize-none'}
+          placeholder="Tell us how we can help…"
+          className={`${inp(!!errors.message)} resize-none`}
         />
-        {errors.message && <p className="text-xs text-error mt-0.5">{errors.message.message}</p>}
+        {errors.message && <p className="text-xs text-red-500 mt-0.5">{errors.message.message}</p>}
       </div>
 
       <button
         type="submit"
-        disabled={isPending}
-        className="w-full py-3 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors disabled:opacity-50 uppercase tracking-wide"
+        disabled={isSubmitting}
+        className="w-full bg-primary hover:bg-primary-dark text-white rounded-full py-3 font-semibold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
       >
-        {isPending ? 'Sending…' : 'Send Message'}
+        {isSubmitting ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Sending…
+          </>
+        ) : (
+          <>
+            <Send className="w-4 h-4" />
+            Send Message
+          </>
+        )}
       </button>
     </form>
   );

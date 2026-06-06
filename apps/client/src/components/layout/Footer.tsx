@@ -1,133 +1,160 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
-function FacebookIcon({ className }: { className?: string }) {
+// ── Social icon SVGs ──────────────────────────────────────────────────────────
+
+function InstagramIcon() {
   return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" />
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4" aria-hidden="true">
+      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
     </svg>
   );
 }
 
-function InstagramIcon({ className }: { className?: string }) {
+function TikTokIcon() {
   return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045 1.505-.207 1.858-.344.466-.182.8-.398 1.15-.748.35-.35.566-.683.748-1.15.137-.353.3-.882.344-1.857.048-1.055.058-1.37.058-4.041v-.08c0-2.597-.01-2.917-.058-3.96-.045-.976-.207-1.505-.344-1.858a3.097 3.097 0 00-.748-1.15 3.098 3.098 0 00-1.15-.748c-.353-.137-.882-.3-1.857-.344-1.023-.047-1.351-.058-3.807-.058zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-3.205a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z" />
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4" aria-hidden="true">
+      <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.79 1.53V6.78a4.85 4.85 0 01-1.02-.09z" />
     </svg>
   );
 }
 
-function XIcon({ className }: { className?: string }) {
+function PinterestIcon() {
   return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4" aria-hidden="true">
+      <path d="M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 01.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.632-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z" />
     </svg>
   );
 }
 
-function YoutubeIcon({ className }: { className?: string }) {
+function FacebookIcon() {
   return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4" aria-hidden="true">
+      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
     </svg>
   );
 }
+
+// ── Brand logo (matches Navbar style) ────────────────────────────────────────
+
+function BrandLogo() {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
+        <span className="text-white font-bold text-xl font-display leading-none">M</span>
+      </div>
+      <span className="font-display font-bold text-lg text-white">Maple Handmade</span>
+    </div>
+  );
+}
+
+// ── Main Footer ───────────────────────────────────────────────────────────────
 
 export function Footer() {
-  const t = useTranslations('footer');
+  const t    = useTranslations('footer');
   const year = new Date().getFullYear();
 
-  const socialLinks = [
-    { Icon: FacebookIcon, label: 'Facebook' },
-    { Icon: InstagramIcon, label: 'Instagram' },
-    { Icon: XIcon, label: 'X (Twitter)' },
-    { Icon: YoutubeIcon, label: 'YouTube' },
+  const socials = [
+    { Icon: InstagramIcon, href: 'https://instagram.com/mapleloomhandmade', label: 'Instagram' },
+    { Icon: TikTokIcon,    href: 'https://tiktok.com/@mapleloom',           label: 'TikTok'    },
+    { Icon: PinterestIcon, href: 'https://pinterest.com/mapleloom',          label: 'Pinterest' },
+    { Icon: FacebookIcon,  href: 'https://facebook.com/mapleloom',           label: 'Facebook'  },
+  ];
+
+  const aboutLinks = [
+    { label: t('about.ourStory'),   href: '/pages/our-story'   },
+    { label: t('about.howItWorks'), href: '/pages/how-it-works'},
+    { label: t('about.reviews'),    href: '/pages/reviews'     },
+    { label: t('about.careers'),    href: '/pages/careers'     },
+  ];
+
+  const helpLinks = [
+    { label: t('help.contact'),  href: '/pages/contact'       },
+    { label: t('help.faq'),      href: '/pages/faq'           },
+    { label: t('help.shipping'), href: '/pages/shipping-info' },
+    { label: t('help.returns'),  href: '/pages/returns'       },
   ];
 
   return (
-    <footer className="bg-secondary text-white">
-      <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-12 md:py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          {/* About */}
-          <div>
-            <h4 className="font-semibold text-lg mb-4">{t('aboutTitle')}</h4>
-            <ul className="space-y-2">
-              {(['ourStory', 'howItWorks', 'reviews', 'careers'] as const).map(
-                (key) => (
-                  <li key={key}>
-                    <Link href="#" className="text-sm text-gray-300 hover:text-white transition-colors">
-                      {t(key)}
-                    </Link>
-                  </li>
-                ),
-              )}
-            </ul>
-          </div>
+    <footer className="bg-[#2D2D2D] text-white mt-auto">
+      <div className="max-w-[1280px] mx-auto px-6 py-12">
 
-          {/* Help */}
-          <div>
-            <h4 className="font-semibold text-lg mb-4">{t('helpTitle')}</h4>
-            <ul className="space-y-2">
-              {(['contactUs', 'faq', 'shippingInfo', 'returns'] as const).map(
-                (key) => (
-                  <li key={key}>
-                    <Link href="#" className="text-sm text-gray-300 hover:text-white transition-colors">
-                      {t(key)}
-                    </Link>
-                  </li>
-                ),
-              )}
-            </ul>
-          </div>
+        {/* ── Main grid ─────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
 
-          {/* Shop */}
-          <div>
-            <h4 className="font-semibold text-lg mb-4">{t('shopTitle')}</h4>
-            <ul className="space-y-2">
-              {(['allProducts', 'collections', 'occasions', 'giftCards'] as const).map(
-                (key) => (
-                  <li key={key}>
-                    <Link href="#" className="text-sm text-gray-300 hover:text-white transition-colors">
-                      {t(key)}
-                    </Link>
-                  </li>
-                ),
-              )}
-            </ul>
-          </div>
-
-          {/* Follow */}
-          <div>
-            <h4 className="font-semibold text-lg mb-4">{t('followTitle')}</h4>
-            <p className="text-sm text-gray-300 mb-4">{t('followDesc')}</p>
-            <div className="flex gap-3">
-              {socialLinks.map(({ Icon, label }) => (
+          {/* Brand column — spans 2 on lg */}
+          <div className="lg:col-span-2">
+            <div className="mb-4">
+              <BrandLogo />
+            </div>
+            <p className="text-[#9CA3AF] text-sm leading-relaxed max-w-xs">
+              {t('tagline')}
+            </p>
+            <div className="flex gap-3 mt-5">
+              {socials.map(({ Icon, href, label }) => (
                 <a
                   key={label}
-                  href="#"
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   aria-label={label}
-                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-primary flex items-center justify-center transition-colors"
+                  className="w-9 h-9 bg-[#3D3D4E] rounded-full flex items-center justify-center hover:bg-primary transition-colors"
                 >
-                  <Icon className="w-5 h-5" />
+                  <Icon />
                 </a>
               ))}
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="border-t border-white/10">
-        <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-400">
-            <p>{t('copyright', { year })}</p>
-            <div className="flex gap-6">
-              <Link href="#" className="hover:text-white transition-colors">
-                {t('privacyPolicy')}
-              </Link>
-              <Link href="#" className="hover:text-white transition-colors">
-                {t('termsOfService')}
-              </Link>
-            </div>
+          {/* About column */}
+          <div>
+            <h3 className="font-semibold mb-4 text-sm tracking-wide uppercase">
+              {t('about.title')}
+            </h3>
+            <ul className="space-y-3">
+              {aboutLinks.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-[#D1D5DB] text-sm hover:text-white transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Help column */}
+          <div>
+            <h3 className="font-semibold mb-4 text-sm tracking-wide uppercase">
+              {t('help.title')}
+            </h3>
+            <ul className="space-y-3">
+              {helpLinks.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-[#D1D5DB] text-sm hover:text-white transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* ── Bottom bar ────────────────────────────────────────────────── */}
+        <div className="mt-10 pt-6 border-t border-[#3D3D4E] flex flex-col sm:flex-row items-center justify-between gap-3 text-[#6B7280] text-xs">
+          <p>© {year} MapleLoomHandmade. All rights reserved.</p>
+          <div className="flex gap-4">
+            <Link href="/pages/privacy-policy" className="hover:text-white transition-colors">
+              {t('privacyPolicy')}
+            </Link>
+            <Link href="/pages/terms" className="hover:text-white transition-colors">
+              {t('termsOfService')}
+            </Link>
           </div>
         </div>
       </div>

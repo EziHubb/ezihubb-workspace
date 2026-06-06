@@ -1560,4 +1560,37 @@ export class ProductsService {
       updatedAt: product.updatedAt,
     };
   }
+
+  // ─── Recently viewed (Redis sorted set) ───────────────────────────────────
+
+  async trackViewed(productId: string, userId: string): Promise<void> {
+    const key = `user:${userId}:viewed`;
+    const client = this.redis.getClient();
+    await client.zadd(key, Date.now(), productId);
+    // Keep last 50 entries
+    await client.zremrangebyrank(key, 0, -51);
+    await client.expire(key, 30 * 24 * 3600);
+  }
+
+  async getRecentlyViewed(userId: string): Promise<ProductListItemDto[]> {
+    const key = `user:${userId}:viewed`;
+    const productIds = await this.redis.getClient().zrevrange(key, 0, 7);
+
+    if (!productIds.length) return [];
+
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds }, isActive: true },
+      include: {
+        category: { select: { id: true, name: true, slug: true } },
+        images: { where: { isPrimary: true }, select: { url: true }, take: 1 },
+        _count: { select: { reviews: { where: { status: 'APPROVED' } } } },
+      },
+    });
+
+    const ordered = productIds
+      .map((id) => products.find((p) => p.id === id))
+      .filter(Boolean) as typeof products;
+
+    return this.toListItems(ordered);
+  }
 }

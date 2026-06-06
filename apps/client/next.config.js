@@ -33,6 +33,7 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ['@mlh/ui', 'lucide-react'],
+    turbopackUseSystemTlsCerts: true,
   },
 };
 

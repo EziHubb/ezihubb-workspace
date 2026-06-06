@@ -1,0 +1,52 @@
+'use client';
+
+import Link from 'next/link';
+import { useLocale } from 'next-intl';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@mlh/api-client';
+import type { ProductListItemDto } from '@mlh/types';
+
+interface ShopCustomizableIdeasProps {
+  query?: string;
+}
+
+export function ShopCustomizableIdeas({ query }: ShopCustomizableIdeasProps) {
+  const locale = useLocale();
+
+  const { data: products = [] } = useQuery<ProductListItemDto[]>({
+    queryKey: ['search', 'customizable', query],
+    queryFn: async () => {
+      const result = await apiClient.get<ProductListItemDto[]>('/products', {
+        params: { isPersonalizable: 'true', sort: 'bestseller', limit: '6' },
+      });
+      return (result ?? []).slice(0, 6);
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  if (products.length === 0) return null;
+
+  return (
+    <section className="max-w-[1400px] mx-auto px-4 py-8 border-t border-border">
+      <h2 className="font-semibold text-secondary mb-4">Shop customizable ideas</h2>
+      <div className="flex gap-4 overflow-x-auto pb-2">
+        {products.map((product) => (
+          <Link
+            key={product.id}
+            href={`/${locale}/products/${product.slug}`}
+            className="flex-shrink-0 w-32 group"
+          >
+            <div className="aspect-square rounded-xl overflow-hidden bg-[#F5F1EB] mb-2">
+              <img
+                src={product.primaryImage ?? product.images?.[0]?.url ?? ''}
+                alt={product.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+            </div>
+            <p className="text-xs text-secondary line-clamp-2 leading-snug">{product.name}</p>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}

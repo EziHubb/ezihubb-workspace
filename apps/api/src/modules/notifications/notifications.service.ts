@@ -12,6 +12,7 @@ export const EmailTemplate = {
   ORDER_DELIVERED:     'order-delivered',
   REVIEW_REMINDER:     'review-reminder',
   REFUND_NOTIFICATION: 'refund-notification',
+  CONTACT_MESSAGE:     'contact-message',
 } as const;
 
 export type EmailTemplateName = (typeof EmailTemplate)[keyof typeof EmailTemplate];
@@ -133,6 +134,30 @@ export class NotificationsService {
       subject: 'How was your order? Leave a review!',
       template: EmailTemplate.REVIEW_REMINDER,
       data: { ...order },
+    });
+  }
+
+  async sendContactMessage(params: {
+    name:        string;
+    email:       string;
+    subject:     string;
+    message:     string;
+    orderNumber?: string;
+  }): Promise<void> {
+    const supportEmail = process.env['SUPPORT_EMAIL'] ?? 'support@mapleloomhandmade.com';
+    // Notify support inbox
+    await this.queueEmail({
+      to:       supportEmail,
+      subject:  `[Contact Form] ${params.subject} — ${params.name}`,
+      template: EmailTemplate.CONTACT_MESSAGE,
+      data:     { ...params },
+    });
+    // Confirm receipt to sender
+    return this.queueEmail({
+      to:       params.email,
+      subject:  'We received your message — MapleLoomHandmade',
+      template: EmailTemplate.CONTACT_MESSAGE,
+      data:     { ...params, isConfirmation: true },
     });
   }
 

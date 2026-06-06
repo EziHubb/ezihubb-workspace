@@ -48,28 +48,49 @@ function TabSection({
 
 // ─── AttributeTagInput ────────────────────────────────────────────────────────
 
+const TAG_MAX_LEN = 16;
+
 function AttributeTagInput({
   label, name, maxTags, placeholder, description,
 }: {
-  label:       string;
-  name:        keyof ProductEditFormValues;
-  maxTags:     number;
+  label:        string;
+  name:         keyof ProductEditFormValues;
+  maxTags:      number;
   placeholder?: string;
   description?: string;
 }) {
   const { setValue, watch } = useFormContext<ProductEditFormValues>();
   const values = (watch(name) ?? []) as string[];
-  const [input, setInput] = useState('');
+  const [input,     setInput]     = useState('');
+  const [errMsg,    setErrMsg]    = useState('');
 
-  const add = () => {
-    const t = input.trim().replace(/,+$/, '');
-    if (!t || values.includes(t) || values.length >= maxTags) return;
-    setValue(name, [...values, t] as unknown as ProductEditFormValues[typeof name], { shouldDirty: true });
+  const commitInput = (raw: string) => {
+    setErrMsg('');
+    // Split on commas, trim whitespace, filter empty
+    const candidates = raw.split(',').map((s) => s.trim()).filter(Boolean);
+    if (candidates.length === 0) return;
+
+    const tooLong  = candidates.filter((c) => c.length > TAG_MAX_LEN);
+    const valid    = candidates.filter((c) => c.length <= TAG_MAX_LEN && !values.includes(c));
+    const toAdd    = valid.slice(0, maxTags - values.length);
+
+    if (toAdd.length > 0) {
+      setValue(name, [...values, ...toAdd] as unknown as ProductEditFormValues[typeof name], { shouldDirty: true });
+    }
+    if (tooLong.length > 0) {
+      setErrMsg(`Tag${tooLong.length > 1 ? 's' : ''} too long (max ${TAG_MAX_LEN} chars): ${tooLong.join(', ')}`);
+    }
     setInput('');
   };
 
   const remove = (v: string) => {
+    setErrMsg('');
     setValue(name, (values.filter((x) => x !== v)) as unknown as ProductEditFormValues[typeof name], { shouldDirty: true });
+  };
+
+  const clearAll = () => {
+    setErrMsg('');
+    setValue(name, [] as unknown as ProductEditFormValues[typeof name], { shouldDirty: true });
   };
 
   return (
@@ -85,16 +106,22 @@ function AttributeTagInput({
         <div className="flex gap-2 mb-3">
           <input
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => { setInput(e.target.value); setErrMsg(''); }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); add(); }
+              if (e.key === 'Enter') { e.preventDefault(); commitInput(input); }
             }}
-            placeholder={placeholder ?? 'Add a tag…'}
-            className="flex-1 px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted"
+            onBlur={() => { if (input.includes(',')) commitInput(input); }}
+            placeholder={placeholder ?? `tag1, tag2, tag3… (max ${TAG_MAX_LEN} chars each)`}
+            className={[
+              'flex-1 px-3 py-2 text-sm border rounded-button bg-background focus:outline-none focus:ring-2 placeholder:text-muted',
+              errMsg
+                ? 'border-red-400 focus:ring-red-300/20'
+                : 'border-border focus:ring-primary/20',
+            ].join(' ')}
           />
           <button
             type="button"
-            onClick={add}
+            onClick={() => commitInput(input)}
             disabled={!input.trim()}
             className="px-4 py-2 text-sm font-semibold bg-primary hover:bg-primary-dark text-white rounded-button transition-colors disabled:opacity-40"
           >
@@ -103,8 +130,12 @@ function AttributeTagInput({
         </div>
       )}
 
-      {/* Chips */}
-      <div className="flex flex-wrap gap-2">
+      {errMsg && (
+        <p className="text-xs text-red-500 -mt-2 mb-2">{errMsg}</p>
+      )}
+
+      {/* Chips + count + Clear all */}
+      <div className="flex flex-wrap gap-2 items-center">
         {values.map((v) => (
           <span key={v} className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 bg-background border border-border rounded-full text-sm text-secondary">
             {v}
@@ -114,7 +145,16 @@ function AttributeTagInput({
           </span>
         ))}
         {values.length > 0 && (
-          <span className="text-xs text-muted self-center ml-1">{values.length}/{maxTags}</span>
+          <>
+            <span className="text-xs text-muted">{values.length}/{maxTags}</span>
+            <button
+              type="button"
+              onClick={clearAll}
+              className="text-xs text-muted hover:text-red-500 underline underline-offset-2 transition-colors"
+            >
+              Clear all
+            </button>
+          </>
         )}
       </div>
     </div>

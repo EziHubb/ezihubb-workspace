@@ -1,146 +1,236 @@
 'use client';
 
-/**
- * Search page — CSR, noindex.
- * URL pattern: /${locale}/search?q=custom+mug&sort=bestseller&page=2
- */
-
-import { useEffect, useRef } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient, queryKeys } from '@mlh/api-client';
-import type { PaginatedResponse, ProductListItemDto } from '@mlh/types';
-import { SearchInput }   from '../../../../components/search/SearchInput';
-import { SearchResults } from '../../../../components/search/SearchResults';
-import { NoResults }     from '../../../../components/search/NoResults';
-import { parseSearchParams } from '../../../../components/listing/types';
+import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
+import { apiClient } from '@mlh/api-client';
+import type { ProductListItemDto } from '@mlh/types';
 
-// ── Analytics: POST /search/log after results load ────────────────────────────
+import { SearchTopBar } from '../../../../components/search/SearchTopBar';
+import { SearchFilterSidebar } from '../../../../components/search/SearchFilterSidebar';
+import {
+  SearchProductGrid,
+  SearchGridSkeleton,
+  SearchPagination,
+} from '../../../../components/search/SearchProductGrid';
+import { SearchNoResults } from '../../../../components/search/SearchNoResults';
+import { RelatedSearches } from '../../../../components/search/RelatedSearches';
+import { ShopCustomizableIdeas } from '../../../../components/search/ShopCustomizableIdeas';
+import { RecentlyViewedPanel } from '../../../../components/search/RecentlyViewedPanel';
+import { MobileFilterSheet } from '../../../../components/search/MobileFilterSheet';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+import type { SearchFacets } from '../../../../components/search/SearchFilterSidebar';
+
+interface SearchResponse {
+  data: ProductListItemDto[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  facets: SearchFacets;
+  appliedFilters: Record<string, unknown>;
+  correctedQuery: string | null;
+}
+
+// Flat filter map — all values are strings in the URL. Bracket-notation attr
+// keys (attr[Material]) are stored literally as keys in this map.
+// The optional `attrs` map is a convenience for the sidebar but not part of
+// the URL serialisation — it's typed separately to avoid polluting string keys.
+interface ParsedFilters {
+  [key: string]: string | undefined;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function parseFilters(sp: URLSearchParams): ParsedFilters {
+  const filters: ParsedFilters = {};
+  sp.forEach((value, key) => {
+    // Don't overwrite; take the first value for repeated keys
+    if (filters[key] === undefined) {
+      filters[key] = value;
+    }
+  });
+  return filters;
+}
+
+function buildApiParams(filters: ParsedFilters): Record<string, string | undefined> {
+  const params: Record<string, string | undefined> = {};
+  for (const [key, value] of Object.entries(filters)) {
+    // The sidebar stores single color selection as `color`; the API param is `colors`
+    params[key === 'color' ? 'colors' : key] = value;
+  }
+  return params;
+}
+
+function buildSearchUrl(pathname: string, filters: ParsedFilters): string {
+  const sp = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined) {
+      sp.set(key, value);
+    }
+  }
+  const qs = sp.toString();
+  return qs ? `${pathname}?${qs}` : pathname;
+}
+
+// ── Analytics (fire-and-forget) ───────────────────────────────────────────────
 
 function logSearch(query: string, resultCount: number) {
   if (!query.trim()) return;
   apiClient
     .post('/search/log', { query, resultCount })
-    .catch(() => {/* analytics is non-critical */});
+    .catch(() => {/* non-critical */});
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SearchPage() {
-  const locale       = useLocale();
   const searchParams = useSearchParams();
-  const router       = useRouter();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
-  // Read q + filter params from URL
-  const rawParams: Record<string, string | string[]> = {};
-  searchParams.forEach((v, k) => {
-    const existing = rawParams[k];
-    rawParams[k] = existing
-      ? Array.isArray(existing) ? [...existing, v] : [existing, v]
-      : v;
-  });
-
-  const filters  = parseSearchParams(rawParams);
-  const query    = searchParams.get('q') ?? '';
+  const filters = parseFilters(searchParams);
+  const query = filters.q ?? '';
   const trimmedQ = query.trim();
-  const page     = filters.page;
 
-  const { data, isLoading, isFetched } = useQuery({
-    queryKey: queryKeys.search({ q: trimmedQ, page }),
-    queryFn:  () =>
-      apiClient
-        .get<PaginatedResponse<ProductListItemDto>>('/search', {
-          params: {
-            q:       trimmedQ,
-            page,
-            limit:   24,
-            sort:    filters.sort,
-            minPrice: filters.minPrice,
-            maxPrice: filters.maxPrice,
-          },
-        })
-        .then((r) => r),
-    enabled:         trimmedQ.length > 0,
-    staleTime:       60_000,
-    placeholderData: (prev) => prev,  // keep old results while paginating
+  // ── Data fetch ───────────────────────────────────────────────────────────────
+
+  const { data, isLoading, isFetching, isFetched } = useQuery({
+    queryKey: ['search', 'results', filters],
+    queryFn: () =>
+      apiClient.get<SearchResponse>('/search', {
+        params: buildApiParams(filters),
+      }),
+    enabled: trimmedQ.length > 0,
+    staleTime: 60_000,
+    placeholderData: (prev) => prev,
   });
 
-  const products   = data?.data                  ?? [];
-  const totalCount = data?.pagination?.total      ?? 0;
-  const totalPages = data?.pagination?.totalPages ?? 0;
+  // ── Analytics logging ─────────────────────────────────────────────────────
 
-  // Log search analytics after results load
   const loggedRef = useRef('');
   useEffect(() => {
+    const total = data?.pagination?.total ?? 0;
     if (isFetched && trimmedQ && loggedRef.current !== trimmedQ) {
       loggedRef.current = trimmedQ;
-      logSearch(trimmedQ, totalCount);
+      logSearch(trimmedQ, total);
     }
-  }, [isFetched, trimmedQ, totalCount]);
+  }, [isFetched, trimmedQ, data?.pagination?.total]);
 
-  const handleSearch = (q: string) => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('q', q);
-    url.searchParams.delete('page');
-    router.push(url.pathname + url.search);
-  };
+  // ── Filter mutations ──────────────────────────────────────────────────────
+
+  const updateFilter = useCallback(
+    (key: string, value: string | null) => {
+      const next: ParsedFilters = { ...filters };
+
+      if (value === null || value === undefined) {
+        delete next[key];
+      } else {
+        next[key] = value;
+      }
+
+      // Reset to page 1 on any filter change except explicit page changes
+      if (key !== 'page') {
+        delete next['page'];
+      }
+
+      startTransition(() => {
+        router.push(buildSearchUrl(pathname, next), { scroll: false });
+      });
+    },
+    [filters, pathname, router],
+  );
+
+  const clearFilter = useCallback(
+    (key: string) => updateFilter(key, null),
+    [updateFilter],
+  );
+
+  const clearAllFilters = useCallback(() => {
+    const next: ParsedFilters = {};
+    if (filters.q) next.q = filters.q;
+    startTransition(() => {
+      router.push(buildSearchUrl(pathname, next), { scroll: false });
+    });
+  }, [filters.q, pathname, router]);
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
+    <div className="min-h-screen bg-background">
+      {/* SEARCH TOP BAR */}
+      <SearchTopBar
+        query={trimmedQ || undefined}
+        totalCount={data?.pagination?.total ?? 0}
+        sort={filters.sort ?? 'bestseller'}
+        activeFilters={filters}
+        onSortChange={(sort) => updateFilter('sort', sort)}
+        onClearFilter={clearFilter}
+        onClearAll={clearAllFilters}
+        onOpenSidebar={() => setSidebarOpen(true)}
+        isLoading={isFetching}
+      />
 
-      {/* Large search bar at top of page */}
-      <div className="mb-8 max-w-2xl mx-auto">
-        <SearchInput
-          defaultValue={query}
-          variant="page"
-          placeholder="Search for gifts, mugs, canvas prints…"
-          onSearch={handleSearch}
-          autoFocus={!query}
-          className="w-full"
-        />
+      <div className="flex max-w-[1400px] mx-auto">
+        {/* LEFT SIDEBAR (desktop) — hidden on mobile */}
+        <aside className="hidden lg:block w-[220px] flex-shrink-0 pt-4 pr-4 sticky top-16 h-[calc(100vh-64px)] overflow-y-auto">
+          <SearchFilterSidebar
+            filters={filters}
+            facets={data?.facets}
+            onFilterChange={updateFilter}
+            onClearAll={clearAllFilters}
+          />
+        </aside>
+
+        {/* PRODUCT GRID */}
+        <main className="flex-1 min-w-0 px-4 pt-4 pb-16">
+          {isLoading ? (
+            <SearchGridSkeleton />
+          ) : (data?.data?.length ?? 0) === 0 ? (
+            <SearchNoResults query={trimmedQ || undefined} />
+          ) : (
+            <>
+              <SearchProductGrid
+                products={data?.data ?? []}
+                isPending={isPending}
+              />
+              <SearchPagination
+                pagination={data?.pagination}
+                onPageChange={(page) => updateFilter('page', String(page))}
+              />
+            </>
+          )}
+        </main>
       </div>
 
-      {/* No query: show trending / empty state */}
-      {!trimmedQ && (
-        <div className="space-y-6">
-          <h1 className="font-display text-2xl font-bold text-secondary text-center">
-            What are you looking for?
-          </h1>
-          <NoResults query="" onSearch={handleSearch} />
-        </div>
+      {/* BOTTOM SECTIONS */}
+      {(data?.data?.length ?? 0) > 0 && (
+        <>
+          <RelatedSearches query={trimmedQ || undefined} />
+          <ShopCustomizableIdeas query={trimmedQ || undefined} />
+        </>
       )}
 
-      {/* Has query */}
-      {trimmedQ && (
-        <>
-          {/* Initial loading spinner (no data yet) */}
-          {isLoading && !data && (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            </div>
-          )}
+      {/* RECENTLY VIEWED (sticky bottom-left) */}
+      <RecentlyViewedPanel />
 
-          {/* Results */}
-          {(data || isLoading) && products.length > 0 && (
-            <SearchResults
-              query={trimmedQ}
-              products={products}
-              totalCount={totalCount}
-              totalPages={totalPages}
-              isLoading={isLoading}
-              currentFilters={filters}
-              categories={[]}
-              tags={[]}
-              locale={locale}
-            />
-          )}
-
-          {/* No results — only after fetch completes with 0 results */}
-          {isFetched && !isLoading && products.length === 0 && (
-            <NoResults query={trimmedQ} onSearch={handleSearch} />
-          )}
-        </>
+      {/* MOBILE FILTER SHEET */}
+      {sidebarOpen && (
+        <MobileFilterSheet
+          filters={filters}
+          facets={data?.facets}
+          onFilterChange={updateFilter}
+          onClearAll={clearAllFilters}
+          onClose={() => setSidebarOpen(false)}
+        />
       )}
     </div>
   );

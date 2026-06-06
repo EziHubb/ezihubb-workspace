@@ -1,9 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import { SearchService } from './search.service';
+import { SearchService, SearchResultDto } from './search.service';
 import { SearchQueryDto } from './dto/search-query.dto';
-import { ProductListItemDto } from '../products/dto/product-list-item.dto';
-import { PaginatedResult } from '../../common/dto/paginated-response.dto';
 import { Public } from '../../common/decorators/public.decorator';
 
 @ApiTags('Search')
@@ -14,9 +12,9 @@ export class SearchController {
 
   // GET /search
   @Get()
-  @ApiOperation({ summary: 'Full-text product search with filters and sort' })
-  @ApiResponse({ status: 200, type: [ProductListItemDto] })
-  search(@Query() query: SearchQueryDto): Promise<PaginatedResult<ProductListItemDto>> {
+  @ApiOperation({ summary: 'Full-text product search with filters, facets, and sort' })
+  @ApiResponse({ status: 200, description: 'Paginated products + facets + appliedFilters' })
+  search(@Query() query: SearchQueryDto): Promise<SearchResultDto> {
     return this.searchService.search(query);
   }
 
@@ -35,5 +33,14 @@ export class SearchController {
   @ApiResponse({ status: 200, schema: { type: 'array', items: { type: 'string' } } })
   getTrending(): Promise<string[]> {
     return this.searchService.getTrending();
+  }
+
+  // GET /search/related?q=...
+  @Get('related')
+  @ApiOperation({ summary: 'Related search keyword suggestions based on trending data' })
+  @ApiQuery({ name: 'q', required: true, description: 'Search term to find related queries for' })
+  @ApiResponse({ status: 200, schema: { type: 'array', items: { type: 'string' } } })
+  getRelated(@Query('q') q = ''): Promise<string[]> {
+    return this.searchService.getRelated(q);
   }
 }
