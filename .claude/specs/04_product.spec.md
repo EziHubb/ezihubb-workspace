@@ -1,129 +1,285 @@
-﻿# Module 04 — Product Catalog
+# Module 04 — Product Catalog
 
-## 1. Endpoints
+## 1. Public Endpoints
 
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
 | GET | `/api/v1/products` | Danh sách sản phẩm (phân trang, filter) | No |
+| GET | `/api/v1/products/trending` | Top 12 trending sản phẩm (by soldCount) | No |
+| GET | `/api/v1/products/recently-viewed` | 8 sản phẩm xem gần đây | Bearer |
 | GET | `/api/v1/products/{slug}` | Chi tiết sản phẩm | No |
-| GET | `/api/v1/products/featured` | Sản phẩm nổi bật | No |
-| GET | `/api/v1/products/new-arrivals` | Hàng mới về | No |
-| GET | `/api/v1/products/{id}/related` | Sản phẩm liên quan | No |
+| GET | `/api/v1/products/{id}/related` | 8 sản phẩm liên quan | No |
+| POST | `/api/v1/products/{id}/viewed` | Ghi lại lượt xem | Optional |
 
-## 2. Data Architecture
+## 2. Admin Endpoints
+
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/admin/products` | Danh sách sản phẩm (includes inactive) | ADMIN |
+| GET | `/api/v1/admin/products/{id}` | Full product by ID for edit form | ADMIN |
+| GET | `/api/v1/admin/products/{id}/performance` | Stats (`?range=7d\|30d\|90d\|1y\|all`) | ADMIN |
+| POST | `/api/v1/admin/products/draft` | Auto-create draft product | ADMIN |
+| POST | `/api/v1/admin/products` | Create product with variants | ADMIN |
+| PATCH | `/api/v1/admin/products/{id}` | Update product | ADMIN |
+| DELETE | `/api/v1/admin/products/{id}` | Soft-delete product | ADMIN |
+| POST | `/api/v1/admin/products/{id}/duplicate` | Deep copy product | ADMIN |
+| POST | `/api/v1/admin/products/{id}/images` | Upload images (multipart, max 10) | ADMIN |
+| POST | `/api/v1/admin/products/{id}/images/from-urls` | Attach presigned image URLs | ADMIN |
+| DELETE | `/api/v1/admin/products/{id}/images/{imgId}` | Delete image | ADMIN |
+| PATCH | `/api/v1/admin/products/{id}/images/reorder` | Reorder images | ADMIN |
+| GET | `/api/v1/admin/products/{id}/detail` | Get MongoDB product detail | ADMIN |
+| PUT | `/api/v1/admin/products/{id}/detail` | Upsert MongoDB product detail | ADMIN |
+| POST | `/api/v1/admin/products/{id}/variants` | Add variant | ADMIN |
+| DELETE | `/api/v1/admin/products/{id}/variants/{sku}` | Remove variant by SKU | ADMIN |
+| POST | `/api/v1/admin/products/{id}/attributes` | Replace all attributes | ADMIN |
+| POST | `/api/v1/admin/products/{id}/customization` | Set customization template | ADMIN |
+| GET | `/api/v1/admin/products/{id}/variations` | List variation groups with options | ADMIN |
+| PUT | `/api/v1/admin/products/{id}/variations` | Bulk-replace variation groups | ADMIN |
+| POST | `/api/v1/admin/products/{id}/variations/groups` | Create variation group | ADMIN |
+| DELETE | `/api/v1/admin/products/{id}/variations/groups/{groupId}` | Delete variation group | ADMIN |
+| POST | `/api/v1/admin/products/{id}/variations/{groupId}/options` | Add option to group | ADMIN |
+| PATCH | `/api/v1/admin/products/{id}/variations/{groupId}/options/{optionId}` | Update option | ADMIN |
+| DELETE | `/api/v1/admin/products/{id}/variations/{groupId}/options/{optionId}` | Delete option | ADMIN |
+| GET | `/api/v1/admin/products/{id}/variation-settings` | Get variation settings | ADMIN |
+| PATCH | `/api/v1/admin/products/{id}/variation-settings` | Update variation settings | ADMIN |
+| GET | `/api/v1/admin/products/{id}/variations/variants` | Flat variants for price matrix | ADMIN |
+| PATCH | `/api/v1/admin/products/{id}/variations/variants/{variantId}` | Update variant | ADMIN |
+| GET | `/api/v1/admin/products/{id}/custom-options` | List custom order options | ADMIN |
+| POST | `/api/v1/admin/products/{id}/custom-options` | Add custom option field | ADMIN |
+| PATCH | `/api/v1/admin/products/{id}/custom-options/{optionId}` | Update custom option | ADMIN |
+| DELETE | `/api/v1/admin/products/{id}/custom-options/{optionId}` | Delete custom option | ADMIN |
+| PUT | `/api/v1/admin/products/{id}/custom-options/reorder` | Reorder custom options | ADMIN |
+
+## 3. Data Architecture
 
 Sản phẩm dùng **dual-database**:
-- **PostgreSQL** (Prisma): dữ liệu giao dịch (tên, giá, SKU, danh mục, variants, ratings)
-- **MongoDB** (Mongoose): chi tiết phong phú (attributes, customization config, preview layers, shipping info)
+- **PostgreSQL** (Prisma): dữ liệu giao dịch (tên, giá, SKU, danh mục, variants, hình ảnh, thống kê)
+- **MongoDB** (Mongoose): chi tiết phong phú (attributes, customization config, rich description, GPSR, imageAltTexts)
 
-## 3. Prisma Models
+## 4. Prisma Models
 
 ```prisma
+enum ProductStatus { DRAFT ACTIVE INACTIVE ARCHIVED }
+enum WhoMadeIt     { I_DID SHOP_MEMBER ANOTHER_COMPANY }
+enum HowItWasMade  { MADE_TO_ORDER HANDMADE ASSEMBLED ALTERED CURATED_SET NATURAL_MATERIAL }
+enum RenewalType   { AUTOMATIC MANUAL }
+enum ReturnPolicy  { NO_RETURNS RETURNS_ACCEPTED EXCHANGES_ONLY }
+
 model Product {
-  id               String       @id @default(cuid())
-  name             String
-  slug             String       @unique
-  description      String?
-  basePrice        Decimal
-  isActive         Boolean      @default(true)
-  isPersonalizable Boolean      @default(true)
-  categoryId       String
-  category         Category     @relation(...)
-  variants         ProductVariant[]
-  variantOptions   VariantOption[]
-  collections      CollectionProduct[]
-  reviews          Review[]
-  wishlisted       WishlistItem[]
-  processingDays   Int          @default(3)
+  id                    String          @id @default(cuid())
+  name                  String
+  slug                  String          @unique
+  sku                   String          @unique
+  description           String?
+  shortDescription      String?
+  basePrice             Decimal
+  compareAtPrice        Decimal?
+  isPersonalizable      Boolean         @default(true)
+  isActive              Boolean         @default(true)
+  status                ProductStatus   @default(DRAFT)
+  isFeatured            Boolean         @default(false)
+  viewCount             Int             @default(0)
+  soldCount             Int             @default(0)
+  processingDays        Int             @default(3)
+  titleCharCount        Int?
+  categoryId            String          // primary category (legacy flat FK)
+  // Item Attribute arrays
+  primaryColors         String[]
+  secondaryColors       String[]
+  materials             String[]
+  occasions             String[]
+  holidayTags           String[]
+  recipientTags         String[]
+  styles                String[]
+  sustainability        String[]
+  // Pricing
+  domesticGlobalPricing Boolean         @default(false)
+  quantity              Int?
+  returnPolicy          ReturnPolicy    @default(NO_RETURNS)
+  // How It's Made
+  whoMadeIt             WhoMadeIt       @default(I_DID)
+  howItWasMade          HowItWasMade    @default(MADE_TO_ORDER)
+  toolsUsed             String[]
+  productionPartnerIds  String[]
+  hsCode                String?
+  // Relationships
+  processingProfileId   String?
+  shippingProfileId     String?
+  shopSectionId         String?
+  // Settings
+  isAdsEnabled          Boolean         @default(false)
+  renewalType           RenewalType     @default(AUTOMATIC)
+  expiresAt             DateTime?
+  videoUrls             String[]
+  thumbnailCropData     Json?
+  customizationConfig   Json?
+  deletedAt             DateTime?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  url       String
+  altText   String?
+  isPrimary Boolean @default(false)
+  sortOrder Int     @default(0)
+}
+
+model ProductCategory {
+  productId  String
+  categoryId String
+  isPrimary  Boolean @default(false)
+  @@id([productId, categoryId])
 }
 
 model ProductVariant {
-  id          String      @id @default(cuid())
-  productId   String
-  sku         String      @unique
-  price       Decimal
-  stockQty    Int         @default(0)
-  isActive    Boolean     @default(true)
-  options     VariantOptionValue[]  // e.g. Color=Red, Size=M
+  id        String  @id @default(cuid())
+  productId String
+  name      String
+  options   Json    // Record<string, string>
+  price     Decimal
+  sku       String  @unique
+  isDefault Boolean @default(false)
+  sortOrder Int     @default(0)
 }
 
-model VariantOption {
-  id        String              @id @default(cuid())
-  productId String
-  name      String              // "Color", "Size", "Material"
-  values    VariantOptionValue[]
+model VariationGroup {
+  id          String            @id @default(cuid())
+  productId   String
+  name        String
+  displayType String            // "color" | "image" | "text"
+  sortOrder   Int               @default(0)
+  options     VariationOption[]
+}
+
+model VariationOption {
+  id          String  @id @default(cuid())
+  groupId     String
+  name        String
+  value       String
+  colorHex    String?
+  imageUrl    String?
+  imageId     String?
+  priceDelta  Decimal @default(0)
+  sortOrder   Int     @default(0)
+  isAvailable Boolean @default(true)
+}
+
+model VariationSettings {
+  id                String   @id @default(cuid())
+  productId         String   @unique
+  enableVariations  Boolean  @default(false)
+  variesBy          String[]
+  skuPrefix         String?
+}
+
+model ProcessingProfile {
+  id        String               @id @default(cuid())
+  name      String
+  type      ProcessingProfileType
+  minDays   Int
+  maxDays   Int
+  isDefault Boolean              @default(false)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+}
+
+model ShippingProfile {
+  id             String                @id @default(cuid())
+  name           String                @unique
+  type           String
+  activeListings Int                   @default(0)
+  isDefault      Boolean               @default(false)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  methods        ShippingProfileMethod[]
+}
+
+model ShippingProfileMethod {
+  id              String  @id @default(cuid())
+  profileId       String
+  destinationType String
+  carrier         String?
+  minDays         Int
+  maxDays         Int
+  price           Decimal
+  extraItemPrice  Decimal @default(0)
+}
+
+model ShopSection {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model ProductionPartner {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  location    String?
+  createdAt   DateTime @default(now())
 }
 ```
 
-## 4. MongoDB Schema
+## 5. MongoDB Schema
 
 Collection: `product_details`
 ```typescript
-interface IProductDetail {
-  productId: string;
-  attributes?: { name: string; value: string }[];
-  customization?: CustomizationConfig;
-  previewLayers?: PreviewLayer[];
-  sizeGuide?: { type: string; html: string };
-  shippingInfo?: { processingDays: number; carrier: string };
-}
-
-interface CustomizationConfig {
-  templateId: string;
-  version: number;
-  bundleCount?: number;  // > 1 → BundleCustomizerPanel
-  fields: {
-    id: string;
-    label: string;
-    type: 'text' | 'textarea' | 'image' | 'color';
-    required: boolean;
-    maxLength?: number;
-    placeholder?: string;
-  }[];
-  previewLayers: PreviewLayer[];
-}
-```
-
-## 5. Shared Types
-
-```typescript
-// libs/shared/types/src/lib/product.types.ts
-
-interface ProductVariantDto {
-  id?: string;
-  sku: string;
-  options: Record<string, string>;  // { "Color": "Red", "Size": "M" }
-  price: number;
-  isAvailable: boolean;
-  isDefault?: boolean;
-  // compat fields:
-  size?: string; color?: string; material?: string;
-  isActive?: boolean;
-  attributes?: Record<string, string>;
-}
-
-interface ProductListItemDto {
-  id: string;
-  name: string;
-  slug: string;
-  basePrice: number;
-  isActive: boolean;
-  isPersonalizable: boolean;
-  primaryCategory: { id: string; name: string; slug: string };
-  images: { url: string; altText?: string; isPrimary: boolean }[];
-  rating?: { avg: number; count: number };
-  soldCount24h?: number;
-  badge?: string;
-  processingDays?: number;
-}
-
-interface ProductDto extends ProductListItemDto {
-  description?: string;
-  variants: ProductVariantDto[];
+interface ProductDetail {
+  productId: string;        // FK to PostgreSQL Product.id (indexed unique)
+  richDescription?: string; // HTML rich description
+  sizeGuide?: string;
+  shippingNote?: string;
+  attributes?: { key: string; value: string; filterable?: boolean; unit?: string }[];
   variantOptions?: { name: string; values: string[] }[];
-  attributes?: { name: string; value: string }[];
-  customization?: CustomizationConfigDto;
-  sizeGuide?: { type: string; html: string };
+  variants?: {
+    sku: string;
+    options: Record<string, string>;
+    price: number;
+    compareAtPrice?: number;
+    isAvailable: boolean;
+    isDefault: boolean;
+    imageIndex?: number;
+  }[];
+  customization?: {
+    templateId: string;
+    version: number;
+    fields: {
+      id: string;
+      type: 'text' | 'textarea' | 'image' | 'select' | 'color';
+      label: string;
+      required: boolean;
+      maxLength?: number;
+      options?: string[];
+      position?: object;
+      size?: object;
+      allowBgRemoval?: boolean;
+    }[];
+    previewLayers: {
+      type: 'base' | 'overlay' | 'text' | 'image';
+      url: string;
+      zIndex: number;
+    }[];
+  };
+  metaTitle?: string;
+  metaDescription?: string;
+  printSpecs?: {
+    minDPI: number;
+    maxFileSize: number;  // MB
+    acceptedFormats: string[];
+    printArea?: object;
+  };
+  imageAltTexts?: Record<string, string>;  // imageId → altText
+  gpsrInfo?: {
+    manufacturerName?: string;
+    manufacturerAddress?: string;
+    manufacturerEmail?: string;
+    safetyWarnings?: string[];
+    countryOfOrigin?: string;
+  };
 }
 ```
 
@@ -133,28 +289,33 @@ interface ProductDto extends ProductListItemDto {
 |---|---|---|
 | page | number | Trang (default: 1) |
 | limit | number | Items/trang (default: 24, max: 96) |
+| categoryId | string | Category ID |
 | category | string | Category slug |
 | collection | string | Collection slug |
+| tags | string[] | Tag slugs |
 | minPrice | number | Giá tối thiểu |
 | maxPrice | number | Giá tối đa |
-| sort | string | `price_asc`, `price_desc`, `newest`, `popular` |
-| isPersonalizable | boolean | Filter personalizable |
-| search | string | Full-text search |
+| minRating | number | Rating tối thiểu |
+| isActive | boolean | Filter active/inactive |
+| isFeatured | boolean | Filter featured |
+| sort | string | `newest`, `price_asc`, `price_desc`, `bestseller`, `rating`, `featured` |
+| includeInactive | boolean | Admin only |
 
 ## 7. Product Page Flow (Client)
 
-File: `apps/client/src/app/[locale]/(main)/products/[slug]/page.tsx`
-
 ```
-Server Component (page.tsx)
-  ├── apiClient.get<ProductDto>(`/products/${slug}`) — SSR with revalidate: 60
-  ├── Renders ProductImages, ProductInfo (static)
+/[locale]/products/[slug]/page.tsx  (Server Component)
+  ├── Fetch ProductDto SSR (revalidate: 60s)
+  ├── ProductGallery, ProductInfo (static)
   └── <ProductPageInteractive product={product} locale={locale} />
-        ├── <SmartVariantPicker ... onVariantChange={setSelectedVariant} />
+        ├── <SmartVariantPicker onVariantChange={setSelectedVariant} />
         └── <ProductActions product={product} selectedVariant={selectedVariant} />
               ├── Flow A: CustomizerPanel / BundleCustomizerPanel (isPersonalizable + customization)
               ├── Flow B: PersonalizationComingSoon (isPersonalizable, no customization)
               └── Flow C: DirectAddToCartPanel (!isPersonalizable)
+
+/[locale]/products/[slug]/customize/page.tsx  (Full-screen customizer)
+  └── Full customizer UI (Fabric.js canvas)
 ```
 
 ## 8. SmartVariantPicker Widget Detection
@@ -171,13 +332,23 @@ const OPTION_WIDGET_MAP: Record<string, WidgetType> = {
 // fallback: 'pill' for unknown option names
 ```
 
-## 9. Seed Data (Dev)
+## 9. Admin Product Edit Shell
 
-Products seeded via `prisma/seed.ts`:
-- Custom Name Necklace (Flow A — personalizable with customization)
-- Custom Pet Portrait Canvas (Flow A — personalizable with customization)
-- Couples Mug Set (Flow A — bundle, bundleCount: 2)
-- Personalized Wine Glass (Flow C — isPersonalizable: false)
-- Custom Cutting Board (Flow C — isPersonalizable: false)
-- Personalized Keychain (Flow C — isPersonalizable: false)
-- Family Name Sign (Flow B — isPersonalizable: true, no customization in seed)
+File: `apps/admin/src/components/products/edit/ProductEditShell.tsx`
+
+7 tabs (CSS hidden strategy — all components stay mounted to preserve local state):
+- **Performance** — view/sold metrics (edit mode only)
+- **Photo & Video** — image upload, reorder, alt texts, video URLs, thumbnail crop
+- **Item Details** — name, category, rich description
+- **Item Options** — tags, colors, materials, occasions, styles, customization options
+- **Pricing & Shipping** — price, SKU, quantity, shipping/processing profiles, variations
+- **How It's Made** — whoMadeIt, tools, production partners, GPSR info
+- **Settings** — shop section, isFeatured, renewalType, isAdsEnabled
+
+**Form state:** React Hook Form `FormProvider` — all fields live in parent, preserved across tabs.
+
+**Save flow (edit mode):**
+1. `PATCH /admin/products/{id}` — PostgreSQL fields (via `extractPrismaFields`, remaps `primaryCategoryId` → `categoryId`)
+2. `PUT /admin/products/{id}/detail` — MongoDB fields: `richDescription`, `gpsrInfo`, `imageAltTexts`
+
+**Image reorder:** `PATCH /admin/products/{id}/images/reorder` called immediately on drag end (not on Save).

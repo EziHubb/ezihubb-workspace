@@ -2064,10 +2064,43 @@ async function seedAttributeValues() {
   console.log(`✅ Attribute values seeded (${rows.length} entries)`);
 }
 
+// ── Conversations ─────────────────────────────────────────────────────────────
+
+async function seedConversations() {
+  const user  = await prisma.user.findFirst({ where: { role: 'CUSTOMER' } });
+  const order = await prisma.order.findFirst();
+  if (!user || !order) {
+    console.log('  ⚠  Skipped conversations seed (no customer user or order found)');
+    return;
+  }
+
+  const conv = await prisma.conversation.create({
+    data: {
+      userId:       user.id,
+      orderId:      order.id,
+      subject:      'Question about my custom mug',
+      status:       'OPEN',
+      lastMessage:  'Hi, can I add an extra line of text to my order?',
+      lastMessageAt: new Date(),
+      unreadByAdmin: 1,
+      messages: {
+        create: [
+          {
+            senderType: 'CUSTOMER',
+            senderId:   user.id,
+            body:       "Hi! I just placed order #" + order.orderNumber + " and was wondering if it's possible to add a second line of text to the mug? Something like \"Best Dad 2024\" on the second line.",
+          },
+        ],
+      },
+    },
+  });
+  console.log(`  ✅ Seeded 1 conversation (id: ${conv.id})`);
+}
+
 // ── Seed summary (IMPROVE 3) ──────────────────────────────────────────────────
 
 async function printSeedSummary() {
-  const [users, categories, collections, products, promotions, zones] =
+  const [users, categories, collections, products, promotions, zones, conversations] =
     await Promise.all([
       prisma.user.count(),
       prisma.category.count(),
@@ -2075,6 +2108,7 @@ async function printSeedSummary() {
       prisma.product.count(),
       prisma.promotion.count(),
       prisma.shippingZone.count(),
+      prisma.conversation.count(),
     ]);
 
   let mongoDetails: number | string = 'N/A (MongoDB not connected)';
@@ -2090,7 +2124,8 @@ async function printSeedSummary() {
   console.log(`  Collections:    ${collections}`);
   console.log(`  Products:       ${products}`);
   console.log(`  Promotions:     ${promotions}`);
-  console.log(`  Shipping zones: ${zones}`);
+  console.log(`  Shipping zones:  ${zones}`);
+  console.log(`  Conversations:   ${conversations}`);
   console.log(`  Mongo details:  ${mongoDetails}`);
 }
 
@@ -2111,6 +2146,7 @@ async function main() {
   await seedPromotions();
   await seedShippingZones();
   await seedAttributeValues();
+  await seedConversations();
 
   // MongoDB steps — connect once, run both, disconnect once (IMPROVE 2)
   const mongoConnected = await connectMongo();

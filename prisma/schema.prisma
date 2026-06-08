@@ -128,6 +128,7 @@ model User {
   customizationDrafts CustomizationDraft[]
   reviews             Review[]
   notifications       Notification[]
+  conversations       Conversation[]
 
   @@index([email])
 }
@@ -623,6 +624,7 @@ model Order {
   payment         Payment?
   promotionUsages PromotionUsage[]
   giftCardUsages  GiftCardUsage[]
+  conversations   Conversation[]
 
   @@index([userId])
   @@index([status])
@@ -822,6 +824,76 @@ model AttributeValue {
 
   @@unique([type, value])
   @@index([type])
+}
+
+// ─── Messaging ───────────────────────────────────────────────────────────────
+
+enum ConversationStatus {
+  OPEN      // active, needs attention
+  PENDING   // waiting for customer reply
+  RESOLVED  // marked done by admin
+  SPAM      // marked as spam
+}
+
+enum SenderType {
+  CUSTOMER  // message from buyer
+  SHOP      // message from shop/admin
+  SYSTEM    // automated message (order update, etc.)
+}
+
+model Conversation {
+  id        String             @id @default(cuid())
+
+  // A conversation belongs to either a specific order, or is general inquiry
+  orderId   String?
+  order     Order?             @relation(fields: [orderId], references: [id])
+
+  // The customer side
+  userId    String?            // null if guest
+  user      User?              @relation(fields: [userId], references: [id])
+  guestEmail String?           // for guest conversations
+  guestName  String?
+
+  // Metadata
+  subject   String?            // optional subject line
+  status    ConversationStatus @default(OPEN)
+  lastMessage    String?       // preview of last message (denormalized)
+  lastMessageAt  DateTime?
+
+  // Unread counts (denormalized for badge display)
+  unreadByAdmin    Int @default(0)
+  unreadByCustomer Int @default(0)
+
+  messages  Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([orderId])
+  @@index([status])
+  @@index([lastMessageAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // Who sent it
+  senderType  SenderType
+  senderId    String?      // userId if customer, adminId if shop
+
+  body           String   @db.Text
+  attachmentUrls String[] // up to 3 image attachments
+
+  isRead  Boolean   @default(false)
+  readAt  DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId])
+  @@index([createdAt])
 }
 
 // ─── Audit Log ───────────────────────────────────────────────────────────────

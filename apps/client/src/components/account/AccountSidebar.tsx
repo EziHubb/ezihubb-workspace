@@ -10,29 +10,37 @@ import {
   MapPin,
   User,
   LogOut,
+  MessageCircle,
 } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@mlh/api-client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiClient, queryKeys } from '@mlh/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import type { UserDto } from '@mlh/types';
+import type { ConversationDto } from '@mlh/types';
+import { useAuthStore } from '../../lib/store/auth.store';
 
 interface AccountSidebarProps {
   profile:      UserDto;
   onNavigate?:  () => void;
 }
 
-const NAV_LINKS = [
-  { href: '/account/orders',    icon: Package, label: 'My Orders'        },
-  { href: '/account/wishlist',  icon: Heart,   label: 'Wishlist'          },
-  { href: '/account/addresses', icon: MapPin,  label: 'Address Book'      },
-  { href: '/account/profile',   icon: User,    label: 'Profile & Password' },
-] as const;
-
 export function AccountSidebar({ profile, onNavigate }: AccountSidebarProps) {
   const locale   = useLocale();
   const router   = useRouter();
   const pathname = usePathname();
   const qc       = useQueryClient();
+  const token    = useAuthStore((s) => s.accessToken);
+
+  const { data: conversations } = useQuery<ConversationDto[]>({
+    queryKey: ['conversations'],
+    queryFn: () =>
+      apiClient.get<ConversationDto[]>('/messages/conversations', { token: token ?? undefined }),
+    refetchInterval: 30_000,
+    enabled: !!token,
+    staleTime: 15_000,
+  });
+
+  const unreadCount = (conversations ?? []).reduce((sum, c) => sum + c.unreadByCustomer, 0);
 
   const handleSignOut = async () => {
     try {
@@ -45,7 +53,6 @@ export function AccountSidebar({ profile, onNavigate }: AccountSidebarProps) {
       // Sign out even if the request fails
     }
 
-    // Clear local auth state
     localStorage.removeItem('access_token');
     qc.setQueryData(queryKeys.profile(), null);
     qc.clear();
@@ -55,6 +62,14 @@ export function AccountSidebar({ profile, onNavigate }: AccountSidebarProps) {
 
   const initials =
     `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`.toUpperCase() || '?';
+
+  const NAV_LINKS = [
+    { href: '/account/orders',    icon: Package,         label: 'My Orders',          badge: undefined    },
+    { href: '/account/wishlist',  icon: Heart,           label: 'Wishlist',            badge: undefined    },
+    { href: '/account/messages',  icon: MessageCircle,   label: 'Messages',            badge: unreadCount > 0 ? unreadCount : undefined },
+    { href: '/account/addresses', icon: MapPin,          label: 'Address Book',        badge: undefined    },
+    { href: '/account/profile',   icon: User,            label: 'Profile & Password',  badge: undefined    },
+  ] as const;
 
   return (
     <nav aria-label="Account navigation" className="space-y-1">
@@ -84,7 +99,7 @@ export function AccountSidebar({ profile, onNavigate }: AccountSidebarProps) {
       </div>
 
       {/* ── Nav links ─────────────────────────────────────────────────────── */}
-      {NAV_LINKS.map(({ href, icon: Icon, label }) => {
+      {NAV_LINKS.map(({ href, icon: Icon, label, badge }) => {
         const fullHref = `/${locale}${href}`;
         const isActive = pathname === fullHref || pathname.startsWith(`${fullHref}/`);
 
@@ -104,7 +119,12 @@ export function AccountSidebar({ profile, onNavigate }: AccountSidebarProps) {
             <Icon
               className={`w-4 h-4 shrink-0 ${isActive ? 'text-primary' : 'text-muted'}`}
             />
-            {label}
+            <span className="flex-1">{label}</span>
+            {badge !== undefined && (
+              <span className="min-w-[18px] h-[18px] bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                {badge > 99 ? '99+' : badge}
+              </span>
+            )}
           </Link>
         );
       })}

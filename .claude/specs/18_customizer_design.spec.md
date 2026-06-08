@@ -1,8 +1,8 @@
-﻿# Module 18 — Customizer Design
+# Module 18 — Customizer Design
 
 ## 1. Tổng quan
 
-Hệ thống customizer 3 flow, được kích hoạt từ `ProductActions.tsx` dựa trên thuộc tính sản phẩm.
+Hệ thống customizer 3 flow, kích hoạt từ `ProductActions.tsx`. Canvas render bằng **Fabric.js**. Hỗ trợ AI background removal, art style transformation, undo/redo, và job-based async processing.
 
 ## 2. Flow Detection
 
@@ -19,35 +19,64 @@ function detectFlow(product: ProductDto): 'A' | 'B' | 'C' {
 
 File: `apps/client/src/components/customizer/CustomizerPanel.tsx`
 
-### Steps
-1. **Customize** — User điền các field (text, image, color)
-2. **Preview** — Hiển thị preview canvas với các layers
-3. **Review** — Confirm trước khi add to cart
+### Route
+- Inline trên product page (`ProductActions`)
+- Full-screen: `/[locale]/products/[slug]/customize`
+
+### Steps (via step components)
+1. `Step1BasicInfo` — product/variant selection
+2. `Step2PhotoUpload` — image upload field
+3. `Step3StylePicker` — style selection
 
 ### State Machine (customizerStore)
 ```typescript
 interface CustomizerState {
-  fields: Record<string, FieldValue>;
-  currentStep: 'customize' | 'preview' | 'review';
-  isLoading: boolean;
-  previewUrl?: string;
+  template: CustomizationTemplate | null;
+  productId: string | null;
+  variantId: string | null;
+  fieldValues: Record<string, FieldValue>;
+  bundleCount: number;
+  activeItemIndex: number;
+  itemFields: Record<number, Record<string, FieldValue>>;
+  activeFieldId: string | null;
+  isPreviewOpen: boolean;
+  previewImageUrl: string | null;
+  isGeneratingPreview: boolean;
+  previewError: string | null;
+  fabricCanvas: FabricCanvasInstance;   // Fabric.js ref
+  history: FieldValues[];               // max 50
+  historyIndex: number;
 }
 ```
 
-### Field Renderer (`FieldRenderer.tsx`)
+### Field Renderer (`TextFieldInput.tsx`, `ImageUploadField.tsx`, `StylePickerGrid.tsx`)
 | Field type | Component |
 |---|---|
-| `text` | `<Input>` với maxLength counter |
-| `textarea` | `<Textarea>` với maxLength counter |
-| `image` | `<ImageUpload>` → upload to R2 → store URL |
-| `color` | `<ColorPicker>` (hex input + color wheel) |
+| `text` | `TextFieldInput` con `<Input>` + maxLength counter |
+| `textarea` | `TextFieldInput` với `<Textarea>` |
+| `image` | `ImageUploadField` → upload to R2 → store URL |
+| `select` | `StylePickerGrid` |
+| `color` | Color picker |
 
-### Preview Canvas
-- React component renders layers in z-index order
-- `previewLayers` from `CustomizationConfig`:
-  - `type: 'image'` → render static product image
-  - `type: 'text'` → render text overlay từ `fieldRef` value
-  - `type: 'user-image'` → render uploaded user image
+### Canvas Layers
+
+Files: `Canvas.tsx`, `FabricCanvas.tsx`
+
+- Fabric.js renders `previewLayers` in z-index order
+- `type: 'base'` → static product image
+- `type: 'overlay'` → static overlay image
+- `type: 'text'` → text overlay từ `fieldRef` value
+- `type: 'image'` → uploaded user image
+
+### AutoFill
+File: `AutoFillBanner.tsx`
+- Banner hiển thị khi có `CustomizationDraft` đã lưu cho product
+- Click "Use previous" → `customizerStore.autoFill(savedData)`
+
+### Preview Modal
+File: `PreviewModal.tsx`
+- Mở khi `isPreviewOpen === true`
+- Hiển thị `previewImageUrl`
 
 ## 4. Flow A — BundleCustomizerPanel
 
@@ -60,35 +89,27 @@ File: `apps/client/src/components/customizer/BundleCustomizerPanel.tsx`
 ```
 [Item 1 for Alice] [Item 2 for Bob]
   └── Fields for item 1 (name, message, etc.)
-  └── Fields for item 2 (name, message, etc.)
 ```
 
 ### Field ID Convention
 Bundle fields use prefix `item_N_` (1-indexed):
 ```
-item_1_name     → item 0, field "name"
-item_1_message  → item 0, field "message"
-item_2_name     → item 1, field "name"
+item_1_name     → itemIndex=0, field="name"
+item_2_name     → itemIndex=1, field="name"
 ```
 
 `parseFieldId(id)` extracts `{ itemIndex: number, baseId: string }`.
 
-### Bundle State Extensions (customizerStore)
+### Bundle Store Actions
 ```typescript
-{
-  bundleCount: number;
-  activeItemIndex: number;
-  itemFields: Record<number, Record<string, FieldValue>>;
-  // actions:
-  setActiveItem(index: number): void;
-  setItemField(itemIndex: number, fieldId: string, value: FieldValue): void;
-  getItemData(itemIndex: number): Record<string, FieldValue>;
-}
+setActiveItem(index: number): void;
+setItemField(itemIndex: number, fieldId: string, value: FieldValue): void;
+getItemData(itemIndex: number): Record<string, FieldValue>;
 ```
 
 ### Completion Check
-Tab shows badge (✓/✗) based on `isItemComplete(index)`.
-"Add to Cart" disabled until all items complete (all required fields filled).
+Tab badge (✓/✗) based on `isItemComplete(index)`.
+"Add to Cart" disabled until all items complete.
 
 ### Cart Payload
 ```typescript
@@ -111,26 +132,19 @@ Tab shows badge (✓/✗) based on `isItemComplete(index)`.
 
 File: `apps/client/src/components/product/PersonalizationComingSoon.tsx`
 
-### UI
 - Badge: "Coming Soon"
-- Mô tả: "We're working on the personalization tool for this product"
-- Email notify form (pre-filled từ auth store user email)
-- Submit → `POST /api/v1/notifications/product-ready { productId, email }`
-- After submit: shows "We'll notify you" confirmation
+- Email notify form
+- Submit → `POST /api/v1/notifications/contact` or similar
 
 ## 6. Flow C — DirectAddToCartPanel
 
 File: `apps/client/src/components/product/DirectAddToCartPanel.tsx`
 
-### UI Elements
 - Quantity stepper (min: 1, max: 99)
 - **Add to Cart** button → `cartStore.addItem()`
-- **Add to Wishlist** heart icon (requires auth, redirects to login if guest)
-- Product attribute highlights (up to 4 key attributes)
-- Trust badges:
-  - Processing time (from `product.processingDays`)
-  - "Cancel within 2 hours" window
-  - Secure checkout icon
+- **Add to Wishlist** heart icon (requires auth)
+- Product attribute highlights
+- Trust badges: processingDays, "Cancel within 2 hours", secure checkout
 
 ## 7. SmartVariantPicker
 
@@ -147,16 +161,42 @@ const OPTION_WIDGET_MAP: Record<string, WidgetType> = {
 // Default for unknown option names: 'pill'
 ```
 
+Variant pickers: `ColorSwatchPicker`, `SizePicker`, `ShapePicker`, `DeviceModelPicker`
+
 ### Availability Cascade
-When user selects an option value, filter available variants and grey out incompatible values in other pickers.
+When user selects an option, filter available variants and grey out incompatible values.
 
-### Size Guide Integration
-- `SizeGuideModal` managed internally via `useModal()`
-- `SizePicker` shows "Size Guide" link only when `SIZE_GUIDE_TYPES` includes the product type
-- Product types: `apparel`, `canvas`, `drinkware`, `other`
-- `other` type: no size guide button
+## 8. AI Features (via Job Polling)
 
-## 8. SizeGuideModal
+### Background Removal
+1. `customizerStore.removeBackground(fieldId)` → `POST /customization/remove-background`
+2. Poll `GET /customization/jobs/{jobId}` every 2s (timeout: 65s)
+3. On complete: update `fieldValues[fieldId]` with result URL
+
+### Art Style Transformation
+1. `customizerStore.applyArtStyle(fieldId, style)` → `POST /customization/art-style`
+2. Same polling pattern
+3. On complete: update field value
+
+### Revert
+`customizerStore.revertToOriginal(fieldId)` — revert to uploaded image before AI processing
+
+## 9. Undo/Redo
+
+```typescript
+// History stack (max 50 entries)
+history: FieldValues[];
+historyIndex: number;
+
+undo(): void;         // historyIndex--
+redo(): void;         // historyIndex++
+canUndo(): boolean;
+canRedo(): boolean;
+```
+
+`setFieldValue()` automatically pushes to history.
+
+## 10. SizeGuideModal
 
 File: `apps/client/src/components/product/SizeGuideModal.tsx`
 
@@ -167,32 +207,12 @@ File: `apps/client/src/components/product/SizeGuideModal.tsx`
 | canvas | Size, Dimensions (cm), Best For |
 | drinkware | Size, Height (cm), Diameter (cm), Capacity (ml) |
 
-Custom guide: if `product.sizeGuide.html` is provided, render sanitized HTML (inline `stripDangerousHtml()` — no DOMPurify).
+Custom guide: if `product.sizeGuide` provided, render sanitized HTML.
+`SizePicker` shows "Size Guide" link only when `SIZE_GUIDE_TYPES` includes the product type.
 
-## 9. i18n Keys Used
+## 11. Mobile Customizer
 
-```
-product.variants.sizeGuide
-product.variants.unavailable
-product.variants.outOfStock
-product.variants.colorLabel
-product.variants.shapeLabel
-product.variants.modelLabel
-product.variants.selectOption
-product.sizeGuide.title
-product.sizeGuide.apparel.note
-product.sizeGuide.canvas.note
-product.sizeGuide.drinkware.note
-customizer.bundle.tabLabel
-customizer.bundle.itemTab
-customizer.bundle.complete
-customizer.bundle.incomplete
-customizer.bundle.priceNote
-product.personalization.comingSoon
-product.personalization.notifyMe
-product.personalization.notified
-product.actions.addToCart
-product.actions.addToWishlist
-product.actions.removeFromWishlist
-product.actions.quantity
-```
+File: `MobileCustomizerCanvas.tsx`
+- Mobile-optimized canvas layout
+- Bottom sheet field input
+- Touch-friendly controls

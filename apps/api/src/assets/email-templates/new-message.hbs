@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { font-family: 'Inter', Arial, sans-serif; background: #FAFAF8; margin: 0; padding: 40px 20px; }
+    .container { max-width: 560px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .header { background: #E85D3F; padding: 32px; text-align: center; }
+    .header h1 { color: white; margin: 0; font-size: 22px; font-weight: 600; }
+    .body { padding: 32px; }
+    .message-bubble { background: #F3F4F6; border-radius: 12px; padding: 16px; margin: 16px 0; }
+    .message-bubble p { margin: 0; font-size: 15px; line-height: 1.6; color: #2D2D2D; }
+    .cta-btn { display: block; background: #E85D3F; color: white; text-decoration: none; padding: 14px 28px; border-radius: 100px; text-align: center; font-weight: 600; font-size: 15px; margin: 24px 0; }
+    .footer { padding: 20px 32px; border-top: 1px solid #F3F4F6; text-align: center; color: #9CA3AF; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>New Message</h1>
+    </div>
+    <div class="body">
+      <p style="color:#2D2D2D; margin:0 0 8px;">
+        {{#if isForAdmin}}
+          You have a new message from <strong>{{senderName}}</strong>:
+        {{else}}
+          MapleLoomHandmade replied to your message:
+        {{/if}}
+      </p>
+
+      {{#if orderNumber}}
+        <p style="font-size:13px; color:#6B6B6B; margin:0 0 16px;">
+          Regarding order <strong>#{{orderNumber}}</strong>
+        </p>
+      {{/if}}
+
+      <div class="message-bubble">
+        <p>{{messagePreview}}</p>
+      </div>
+
+      <a href="{{replyUrl}}" class="cta-btn">
+        {{#if isForAdmin}}View &amp; Reply in Admin{{else}}View Conversation{{/if}}
+      </a>
+
+      <p style="font-size:13px; color:#6B6B6B; text-align:center;">
+        {{#if isForAdmin}}
+          Respond quickly to maintain your response time rating.
+        {{else}}
+          Questions? Contact us at support@mapleloomhandmade.com
+        {{/if}}
+      </p>
+    </div>
+    <div class="footer">
+      &copy; {{year}} MapleLoomHandmade. You&apos;re receiving this because you have an active conversation.
+    </div>
+  </div>
+</body>
+</html>

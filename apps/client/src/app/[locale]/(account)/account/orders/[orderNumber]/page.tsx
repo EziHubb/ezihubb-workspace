@@ -5,11 +5,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { ArrowLeft, Package, MapPin, ExternalLink, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, ExternalLink, AlertTriangle, MessageCircle } from 'lucide-react';
 import { useOrder, useCancelOrder } from '@mlh/api-client';
 import { OrderStatusBadge } from '@mlh/ui';
 import { useToast } from '@mlh/ui';
 import type { OrderDto, OrderStatus } from '@mlh/types';
+import { MessageShopModal } from '../../../../../../components/messages/MessageShopModal';
 
 // ── Status timeline config ────────────────────────────────────────────────────
 
@@ -242,6 +243,7 @@ export default function OrderDetailPage() {
 
   const { data: order, isLoading, isError } = useOrder(orderNumber ?? '');
   const cancelMutation = useCancelOrder();
+  const [isMessageOpen, setIsMessageOpen] = useState(false);
 
   const handleCancel = () => {
     cancelMutation.mutate(orderNumber!, {
@@ -296,11 +298,27 @@ export default function OrderDetailPage() {
             Placed {fmt.format(new Date(order.createdAt))}
           </p>
         </div>
-        <OrderStatusBadge
-          status={order.status as Parameters<typeof OrderStatusBadge>[0]['status']}
-          size="md"
-        />
+        <div className="flex items-center gap-2 flex-wrap">
+          <OrderStatusBadge
+            status={order.status as Parameters<typeof OrderStatusBadge>[0]['status']}
+            size="md"
+          />
+          <button
+            type="button"
+            onClick={() => setIsMessageOpen(true)}
+            className="flex items-center gap-2 border border-border rounded-full px-4 py-2 text-sm hover:border-primary hover:text-primary transition-colors"
+          >
+            <MessageCircle className="w-4 h-4" />
+            Contact Support
+          </button>
+        </div>
       </div>
+
+      <MessageShopModal
+        isOpen={isMessageOpen}
+        onClose={() => setIsMessageOpen(false)}
+        context={{ orderId: order.id, orderNumber: order.orderNumber }}
+      />
 
       {/* Status timeline */}
       <section className="bg-surface border border-border rounded-card p-5">

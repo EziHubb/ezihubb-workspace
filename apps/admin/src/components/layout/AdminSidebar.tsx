@@ -7,7 +7,7 @@ import { signOut, useSession } from 'next-auth/react';
 import {
   LayoutDashboard, ShoppingCart, ShoppingBag, FolderOpen,
   Tag, Layers, Users, BadgePercent, Star, Truck,
-  CreditCard, Settings, ChevronDown, ChevronRight, LogOut, Globe,
+  CreditCard, Settings, ChevronDown, ChevronRight, LogOut, Globe, MessageSquare,
 } from 'lucide-react';
 
 // ── Nav item types ─────────────────────────────────────────────────────────────
@@ -37,8 +37,9 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Collections', href: '/catalog/collections', icon: Layers },
     ],
   },
-  { label: 'Customers',   href: '/customers',   icon: Users        },
-  { label: 'Promotions',  href: '/promotions',  icon: BadgePercent },
+  { label: 'Customers',   href: '/customers',   icon: Users         },
+  { label: 'Messages',    href: '/messages',    icon: MessageSquare },
+  { label: 'Promotions',  href: '/promotions',  icon: BadgePercent  },
   { label: 'Reviews',     href: '/reviews',     icon: Star         },
   { label: 'Shipping',    href: '/shipping',    icon: Truck        },
   { label: 'Payments',    href: '/payments',    icon: CreditCard   },

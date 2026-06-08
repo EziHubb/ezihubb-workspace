@@ -1,4 +1,4 @@
-﻿# Module 16 — API Conventions
+# Module 16 — API Conventions
 
 ## 1. Base URL & Prefix
 
@@ -75,12 +75,14 @@ Order: `RequestIdInterceptor → LoggingInterceptor → TransformInterceptor →
 
 ```typescript
 new ValidationPipe({
-  whitelist: true,           // strip unknown properties
-  forbidNonWhitelisted: true,
+  whitelist: true,              // strip unknown properties
+  forbidNonWhitelisted: true,   // reject requests with unknown properties (400)
   transform: true,
   transformOptions: { enableImplicitConversion: true },
 })
 ```
+
+**Critical:** `forbidNonWhitelisted: true` means sending ANY property not declared in the DTO causes a 400 error. All admin save payloads must only include fields declared in the corresponding DTO.
 
 ## 5. Authentication
 
@@ -92,6 +94,7 @@ new ValidationPipe({
 ### Token Refresh
 - Client apiClient: on 401 → `POST /auth/refresh` → retry original request
 - httpOnly cookie contains refresh token (SameSite=Lax)
+- Admin app: ApiError class carries HTTP status → auto-logout on 401
 
 ## 6. Headers
 
@@ -113,9 +116,9 @@ new ValidationPipe({
 
 ## 7. Rate Limiting
 
-- Global: 300 requests / 60 seconds / IP (configurable via THROTTLE_TTL, THROTTLE_LIMIT)
+- Global: 300 requests / 60 seconds / IP (env: `THROTTLE_TTL=60000`, `THROTTLE_LIMIT=300`)
 - Auth endpoints: stricter (5 req/min for login, forgot-password)
-- ThrottlerModule from `@nestjs/throttler`
+- `@nestjs/throttler` ThrottlerModule
 
 ## 8. CORS Configuration
 
@@ -130,11 +133,13 @@ app.enableCors({
 });
 ```
 
-**Key:** `origin: '*'` is invalid with `credentials: true`. Use explicit list or `origin: true`.
+**Key:** `origin: '*'` is invalid with `credentials: true`. Use explicit list via `CORS_ORIGINS` env.
+
+Env: `CORS_ORIGINS="http://localhost:3000,http://localhost:3001"` (comma-separated)
 
 ## 9. Swagger Tags
 
-`Auth`, `Users`, `Products`, `Catalog`, `Cart`, `Orders`, `Payments`, `Shipping`, `Reviews`, `Promotions`, `Search`, `Admin`, `Webhooks`
+`Auth`, `Users`, `Products`, `Admin-Products`, `Catalog`, `Collections`, `Cart`, `Orders`, `Admin-Orders`, `Payments`, `Webhooks`, `Shipping`, `Reviews`, `Promotions`, `Search`, `Customization`, `Admin-Dashboard`, `Assets`, `Notifications`
 
 ## 10. Error Code Conventions
 
@@ -142,14 +147,14 @@ app.enableCors({
 - Format: `ERR_<NOUN>_<VERB>` or `ERR_<DESCRIPTION>`
 - Examples: `ERR_NOT_FOUND`, `ERR_CREDENTIALS_INVALID`, `ERR_EMAIL_ALREADY_EXISTS`, `ERR_TOKEN_EXPIRED`, `ERR_VALIDATION`
 
-## 11. apiClient (Frontend)
+## 11. apiClient (Client Frontend)
 
 File: `libs/shared/api-client/src/client.ts`
 
 ```typescript
 // Auto-unwraps { success, data, meta } envelope
-// baseUrl strips /api/v1 suffix from NEXT_PUBLIC_API_URL
-// then adds /api/v1 prefix in apiRequest()
+// baseUrl: strips /api/v1 suffix from NEXT_PUBLIC_API_URL, then adds it back
+// NEXT_PUBLIC_API_URL must NOT include /api/v1 suffix
 
 export const apiClient = {
   get:    <T>(path, options?) => apiRequest<T>(path, { method: 'GET', ...options }),
@@ -161,3 +166,34 @@ export const apiClient = {
 ```
 
 **Important:** `apiClient.get<ProductDto>('/products/my-slug')` returns `ProductDto` directly (not `ApiResponse<ProductDto>`).
+
+## 12. clientFetch (Admin App)
+
+File: `apps/admin/src/lib/api.ts`
+
+Admin app uses `clientFetch` (raw fetch wrapper using NextAuth session token) rather than `apiClient`:
+```typescript
+import { clientFetch, API_BASE } from '../lib/api';
+
+// Returns raw Response (not unwrapped)
+// Caller must check res.ok and res.json() manually
+const res = await clientFetch(`/admin/products/${id}`, {
+  method: 'PATCH',
+  body: JSON.stringify(payload),
+});
+```
+
+## 13. React Query Hooks (Shared)
+
+File: `libs/shared/api-client/src/hooks/`
+
+Available hooks:
+- `useProducts()`, `useProduct(slug)`, `useRelatedProducts(id)`
+- `useCategories()`, `useCategory(slug)`, `useCollections()`, `useCollection(slug)`
+- `useCart()`, `useMutateCart()`
+- `useOrders()`, `useOrder(orderNumber)`, `useCancelOrder()`
+- `useWishlist()`, `useMutateWishlist()`
+- `useSearch(q, filters)`, `useSearchSuggestions(q)`
+- `useReviews(slug)`, `useReviewSummary(slug)`
+- `useProfile()`, `useMutateProfile()`, `useAddresses()`, `useMutateAddresses()`
+- `useShippingOptions()`, `useNewsletterSubscribe()`

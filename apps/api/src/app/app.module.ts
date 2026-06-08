@@ -32,6 +32,7 @@ import { HealthModule } from '../health/health.module';
 import { MongoDBModule } from '../modules/database/mongodb.module';
 import { AssetsModule } from '../modules/assets/assets.module';
 import { AnalyticsModule } from '../modules/analytics/analytics.module';
+import { MessagesModule } from '../modules/messages/messages.module';
 
 @Module({
   imports: [
@@ -121,6 +122,7 @@ import { AnalyticsModule } from '../modules/analytics/analytics.module';
     AdminModule,
     AssetsModule,
     AnalyticsModule,
+    MessagesModule,
     HealthModule,
   ],
   controllers: [AppController],

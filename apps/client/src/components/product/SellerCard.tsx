@@ -1,5 +1,9 @@
+'use client';
+
+import { useState } from 'react';
 import { Star, Heart, MessageCircle, Package } from 'lucide-react';
 import type { ProductDto } from '@mlh/types';
+import { MessageShopModal } from '../messages/MessageShopModal';
 
 // ── Badge data ────────────────────────────────────────────────────────────────
 
@@ -30,6 +34,8 @@ interface SellerCardProps {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function SellerCard({ product }: SellerCardProps) {
+  const [isMessageOpen, setIsMessageOpen] = useState(false);
+
   return (
     <section className="mt-12 pt-8 border-t border-border">
 
@@ -70,6 +76,7 @@ export function SellerCard({ product }: SellerCardProps) {
           </button>
           <button
             type="button"
+            onClick={() => setIsMessageOpen(true)}
             className="flex items-center gap-1.5 border border-border rounded-full px-3 py-1.5 text-sm text-secondary hover:bg-[#F3F4F6] transition-colors"
           >
             <MessageCircle className="w-4 h-4" />
@@ -91,6 +98,11 @@ export function SellerCard({ product }: SellerCardProps) {
         ))}
       </div>
 
+      <MessageShopModal
+        isOpen={isMessageOpen}
+        onClose={() => setIsMessageOpen(false)}
+        context={{ productName: product.name }}
+      />
     </section>
   );
 }

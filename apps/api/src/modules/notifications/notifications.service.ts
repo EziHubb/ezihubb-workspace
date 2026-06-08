@@ -13,6 +13,7 @@ export const EmailTemplate = {
   REVIEW_REMINDER:     'review-reminder',
   REFUND_NOTIFICATION: 'refund-notification',
   CONTACT_MESSAGE:     'contact-message',
+  NEW_MESSAGE:         'new-message',
 } as const;
 
 export type EmailTemplateName = (typeof EmailTemplate)[keyof typeof EmailTemplate];
@@ -158,6 +159,49 @@ export class NotificationsService {
       subject:  'We received your message — MapleLoomHandmade',
       template: EmailTemplate.CONTACT_MESSAGE,
       data:     { ...params, isConfirmation: true },
+    });
+  }
+
+  async sendNewMessageNotification(params: {
+    senderType:   'CUSTOMER' | 'SHOP';
+    senderName:   string;
+    recipientEmail: string;
+    messagePreview: string;
+    orderNumber?:   string;
+    orderId?:       string;
+  }): Promise<void> {
+    const adminEmail  = process.env['ADMIN_EMAIL'] ?? 'admin@mapleloomhandmade.com';
+    const adminUrl    = process.env['ADMIN_URL']   ?? 'http://localhost:3001';
+    const frontendUrl = process.env['NEXT_PUBLIC_URL'] ?? 'http://localhost:3000';
+    const year = new Date().getFullYear();
+
+    if (params.senderType === 'CUSTOMER') {
+      return this.queueEmail({
+        to:       adminEmail,
+        subject:  `New message from ${params.senderName}`,
+        template: EmailTemplate.NEW_MESSAGE,
+        data: {
+          isForAdmin:     true,
+          senderName:     params.senderName,
+          orderNumber:    params.orderNumber,
+          messagePreview: params.messagePreview,
+          replyUrl:       `${adminUrl}/messages${params.orderId ? `?orderId=${params.orderId}` : ''}`,
+          year,
+        },
+      });
+    }
+
+    return this.queueEmail({
+      to:       params.recipientEmail,
+      subject:  'MapleLoomHandmade replied to your message',
+      template: EmailTemplate.NEW_MESSAGE,
+      data: {
+        isForAdmin:     false,
+        orderNumber:    params.orderNumber,
+        messagePreview: params.messagePreview,
+        replyUrl:       `${frontendUrl}/account/messages`,
+        year,
+      },
     });
   }
 

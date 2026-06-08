@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   X, Check, Package, Truck, MapPin, User,
-  ExternalLink, Save, Mail, DollarSign,
+  ExternalLink, Save, Mail, DollarSign, MessageSquare,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { OrderStatusBadge, ALL_STATUSES } from './OrderStatusBadge';
@@ -501,6 +501,14 @@ export function OrderDrawer({ order, onClose, onUpdate }: OrderDrawerProps) {
           >
             <Mail className="w-3.5 h-3.5" />
             Email Customer
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push(`/messages?orderId=${order.id}`)}
+            className="flex items-center gap-1.5 text-xs font-medium text-secondary border border-border hover:border-primary/40 px-3 py-2 rounded-button transition-colors"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            Message buyer
           </button>
         </div>
       </aside>

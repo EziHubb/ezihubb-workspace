@@ -1,65 +1,110 @@
-﻿# Module 07 — Orders
+# Module 07 — Orders
 
 ## 1. Endpoints
 
+### Public / Customer
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
-| GET | `/api/v1/orders` | Danh sách đơn hàng của user | Bearer |
-| GET | `/api/v1/orders/{id}` | Chi tiết đơn hàng | Bearer |
 | POST | `/api/v1/orders` | Tạo đơn hàng (checkout) | Bearer |
-| POST | `/api/v1/orders/{id}/cancel` | Huỷ đơn (trong 2h) | Bearer |
-| GET | `/api/v1/orders/track/{trackingNumber}` | Tra cứu vận chuyển | No |
-| GET | `/api/v1/admin/orders` | Admin: all orders | ADMIN |
-| PATCH | `/api/v1/admin/orders/{id}/status` | Admin: cập nhật status | ADMIN |
+| GET | `/api/v1/orders/me` | Đơn hàng của tôi (phân trang) | Bearer |
+| GET | `/api/v1/orders/me/{orderNumber}` | Chi tiết đơn hàng của tôi | Bearer |
+| GET | `/api/v1/orders/{orderNumber}` | Guest order tra cứu (`?email=` required) | No |
+| POST | `/api/v1/orders/{orderNumber}/cancel` | Huỷ đơn (trong 2h sau confirm) | Bearer |
+
+### Admin
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/admin/orders` | All orders (filterable) | ADMIN |
+| GET | `/api/v1/admin/orders/export` | Export orders as CSV | ADMIN |
+| GET | `/api/v1/admin/orders/{id}` | Chi tiết đơn hàng by ID | ADMIN |
+| PATCH | `/api/v1/admin/orders/{id}/status` | Cập nhật order status | ADMIN |
+| PATCH | `/api/v1/admin/orders/{id}/tracking` | Add tracking information | ADMIN |
 
 ## 2. Order Status Flow
 
 ```
 PENDING_PAYMENT
-  └── PAYMENT_CONFIRMED → PROCESSING → SHIPPED → DELIVERED
-                       ↘ CANCELLED (within 2h of PAYMENT_CONFIRMED)
-  └── PAYMENT_FAILED → CANCELLED
+  └── CONFIRMED → IN_PRODUCTION → SHIPPED → DELIVERED → COMPLETED
+               ↘ CANCELLED (within 2h of CONFIRMED)
+  └── (expired/failed)
+
+CONFIRMED → REFUND_REQUESTED → REFUNDED
+CONFIRMED → DISPUTED
 ```
+
+### Status enum
+`PENDING_PAYMENT | CONFIRMED | IN_PRODUCTION | SHIPPED | DELIVERED | COMPLETED | CANCELLED | REFUND_REQUESTED | REFUNDED | DISPUTED`
 
 ## 3. Prisma Models
 
 ```prisma
+enum OrderStatus {
+  PENDING_PAYMENT CONFIRMED IN_PRODUCTION SHIPPED DELIVERED
+  COMPLETED CANCELLED REFUND_REQUESTED REFUNDED DISPUTED
+}
+
 model Order {
   id              String        @id @default(cuid())
-  userId          String
+  orderNumber     String        @unique  // human-readable e.g. "MLH-20240601-0001"
+  userId          String?
+  guestEmail      String?
   status          OrderStatus   @default(PENDING_PAYMENT)
-  subtotal        Decimal
+  // Shipping snapshot (scalar fields, not FK — preserved if user updates address)
+  shippingName    String
+  shippingPhone   String
+  shippingAddress String
+  shippingCity    String
+  shippingState   String?
+  shippingZip     String
+  shippingCountry String
+  shippingMethod  String?
   shippingCost    Decimal       @default(0)
-  taxAmount       Decimal       @default(0)
+  // Totals
+  subtotal        Decimal
   discountAmount  Decimal       @default(0)
   total           Decimal
-  currency        String        @default("USD")
-  shippingAddress Json
-  billingAddress  Json?
+  couponCode      String?
+  // Tracking
   trackingNumber  String?
-  notes           String?
-  cancelledAt     DateTime?
+  trackingUrl     String?
+  carrier         String?
+  // Meta
+  note            String?
   cancelReason    String?
+  cancelledAt     DateTime?
+  confirmedAt     DateTime?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  // Relations
   items           OrderItem[]
-  payments        Payment[]
-  user            User          @relation(...)
+  statusHistory   OrderStatusHistory[]
+  payment         Payment?
+  promotionUsages PromotionUsage[]
+  giftCardUsages  GiftCardUsage[]
 }
 
 model OrderItem {
-  id            String   @id @default(cuid())
-  orderId       String
-  productId     String
-  variantId     String?
-  productName   String
-  variantName   String?
-  sku           String
-  quantity      Int
-  unitPrice     Decimal
-  totalPrice    Decimal
-  imageUrl      String?
-  customization Json?
+  id                String   @id @default(cuid())
+  orderId           String
+  productId         String
+  variantId         String?
+  productName       String
+  variantName       String?
+  quantity          Int
+  unitPrice         Decimal
+  customizationData Json?
+  previewUrl        String?
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  note      String?
+  createdBy String?     // userId of admin who changed
+  createdAt DateTime    @default(now())
 }
 ```
 
@@ -69,64 +114,81 @@ model OrderItem {
 ```typescript
 interface OrderDto {
   id: string;
-  status: 'PENDING_PAYMENT' | 'PAYMENT_CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'PAYMENT_FAILED';
+  orderNumber: string;
+  status: OrderStatus;
   subtotal: number;
   shippingCost: number;
-  taxAmount: number;
   discountAmount: number;
   total: number;
-  currency: string;
-  shippingAddress: AddressSnapshot;
-  items: OrderItemDto[];
+  shippingAddress: {
+    name: string; phone: string; address: string;
+    city: string; state?: string; zip: string; country: string;
+  };
+  shippingMethod?: string;
   trackingNumber?: string;
+  trackingUrl?: string;
+  carrier?: string;
+  items: OrderItemDto[];
+  couponCode?: string;
+  note?: string;
   createdAt: string;
+  confirmedAt?: string;
+  shippedAt?: string;
+  deliveredAt?: string;
   cancelledAt?: string;
+  cancelReason?: string;
 }
 
 interface OrderItemDto {
   id: string;
+  productId: string;
+  variantId?: string;
   productName: string;
   variantName?: string;
-  sku: string;
   quantity: number;
   unitPrice: number;
-  totalPrice: number;
-  imageUrl?: string;
-  customization?: object;
+  customizationData?: object;
+  previewUrl?: string;
 }
 ```
 
 ### CreateOrderDto
 ```typescript
 interface CreateOrderDto {
-  cartId?: string;
   shippingAddressId: string;
-  billingAddressId?: string;
-  promoCode?: string;
-  paymentMethod: 'stripe' | 'paypal';
-  notes?: string;
+  shippingMethod: string;
+  paymentMethod: 'stripe' | 'paypal' | 'gift_card' | 'mixed';
+  couponCode?: string;
+  giftCardCode?: string;
+  note?: string;
 }
 ```
 
 ## 5. Checkout Flow (Client)
 
-1. `/[locale]/(main)/checkout` — Checkout page
-2. Step 1: Address selection (useAddresses hook)
-3. Step 2: Shipping method selection
-4. Step 3: Payment (Stripe Elements / PayPal SDK)
-5. On payment success → `POST /api/v1/orders` với paymentMethod
-6. Redirect → `/[locale]/checkout/success?orderId=...`
+1. `/[locale]/checkout` — Multi-step checkout page
+2. Step 1: `DeliveryForm` — address selection / entry
+3. Step 2: `ShippingForm` — shipping method selection
+4. Step 3: `PaymentForm` — Stripe Elements / PayPal / Gift Card
+5. Payment success → `POST /api/v1/orders`
+6. Redirect → `/[locale]/checkout/success?orderNumber=...`
+
+Also: `/[locale]/orders/track` — guest order tracking page
+
+Files: `apps/client/src/components/checkout/`
 
 ## 6. Cancellation Window
 
-- 2 giờ sau khi PAYMENT_CONFIRMED
+- 2 giờ sau khi CONFIRMED
 - Sau 2 giờ: phải liên hệ support
-- Huỷ → hoàn tiền tự động qua Stripe/PayPal refund API
+- Huỷ → trigger refund flow qua Payment service
 - Email notification khi order cancelled
+- `CancelCountdown` component trong order detail page
 
 ## 7. Business Rules
 
 - Tạo order: validate cart items còn hàng + giá không đổi
-- Snapshot địa chỉ vào order (không link FK) để tránh mất data khi user update address
-- Inventory check khi confirm payment (reserve trong PROCESSING)
-- Order total = subtotal + shippingCost + taxAmount - discountAmount
+- Shipping address snapshot vào scalar fields (không FK) để tránh mất data khi user update address
+- `OrderStatusHistory` ghi lại mọi thay đổi status kèm note + admin userId
+- `orderNumber` là human-readable unique string (prefix: `MLH-`)
+- Guest orders: `guestEmail` required, tra cứu qua `/orders/:orderNumber?email=`

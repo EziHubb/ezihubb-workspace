@@ -1,4 +1,4 @@
-﻿# Module 01 — Authentication
+# Module 01 — Authentication
 
 ## 1. Tổng quan
 
@@ -54,7 +54,12 @@ model User {
   provider        Provider  @default(EMAIL)
   providerId      String?
   deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
+
+enum Role     { CUSTOMER ADMIN SUPER_ADMIN }
+enum Provider { EMAIL GOOGLE FACEBOOK }
 
 model RefreshToken {
   id        String    @id @default(cuid())
@@ -62,6 +67,26 @@ model RefreshToken {
   userId    String
   expiresAt DateTime
   revokedAt DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model EmailVerification {
+  id        String    @id @default(cuid())
+  token     String
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model PasswordReset {
+  id        String    @id @default(cuid())
+  token     String
+  email     String
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 }
 ```
 
@@ -89,6 +114,9 @@ File: `apps/client/src/lib/store/auth.store.ts`
 - `fetchCurrentUser()` — GET /users/me
 - `refreshToken()` — POST /auth/refresh
 - `setTokens(accessToken, user)` — used by OAuth callback
+- `setUser(user, accessToken)` — legacy alias
+- `clearAuth()` — clear state
+- `getToken()` — return in-memory token
 
 **Token provider registration (module import time):**
 ```typescript
@@ -125,3 +153,4 @@ setTokenUpdater((token) => { _accessToken = token ?? null; });
 - Email xác thực bắt buộc trước khi login (trừ OAuth)
 - Soft delete: user có `deletedAt` không thể login
 - apiClient auto-refresh: 401 → POST /auth/refresh → retry original request
+- Admin app: auto-logout khi nhận 401 (ApiError class carries HTTP status, checked in admin middleware)

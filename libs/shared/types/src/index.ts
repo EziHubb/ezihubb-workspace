@@ -8,3 +8,4 @@ export * from './lib/promotion.types';
 export * from './lib/review.types';
 export * from './lib/shipping.types';
 export * from './lib/user.types';
+export * from './lib/message.types';

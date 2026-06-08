@@ -1,4 +1,4 @@
-﻿# Module 06 — Cart
+# Module 06 — Cart
 
 ## 1. Endpoints
 
@@ -10,6 +10,9 @@
 | DELETE | `/api/v1/cart/items/{itemId}` | Xoá sản phẩm | Optional |
 | DELETE | `/api/v1/cart` | Xoá toàn bộ giỏ hàng | Optional |
 | POST | `/api/v1/cart/merge` | Merge guest cart vào user cart | Bearer |
+| POST | `/api/v1/cart/apply-coupon` | Apply coupon code | Optional |
+| DELETE | `/api/v1/cart/coupon` | Remove coupon | Optional |
+| POST | `/api/v1/cart/estimate-shipping` | Estimate shipping costs | Optional |
 
 ## 2. Guest Cart vs Authenticated Cart
 
@@ -27,7 +30,7 @@
 ### Merge Flow
 1. User login → auth store gọi `cartStore.mergeGuestCart()`
 2. Cart store POST `/api/v1/cart/merge` với `X-Session-ID` header
-3. API merge items (quantity cộng dồn nếu trùng SKU)
+3. API merge items (quantity cộng dồn nếu trùng productId + variantId + customizationData hash)
 4. Cart store xoá sessionId khỏi localStorage
 
 ## 3. Shared Types
@@ -40,7 +43,14 @@ interface CartItemDto {
   productId: string;
   variantId?: string;
   quantity: number;
-  price: number;
+  unitPrice: number;
+  customizationData?: {
+    templateId: string;
+    fields?: Record<string, string>;
+    bundleCount?: number;
+    items?: { fields: Record<string, string> }[];
+  };
+  previewUrl?: string;
   product: {
     name: string;
     slug: string;
@@ -50,15 +60,9 @@ interface CartItemDto {
     options: Record<string, string>;
     sku: string;
   };
-  customization?: {
-    templateId: string;
-    fields?: Record<string, string>;
-    bundleCount?: number;
-    items?: { fields: Record<string, string> }[];
-  };
   priceChanged?: boolean;
   totalPrice: number;
-  // compat flat fields (required):
+  // Compat flat fields (required):
   productName: string;
   productSlug: string;
   productImageUrl?: string;
@@ -78,6 +82,8 @@ interface CartDto {
   items: CartItemDto[];
   subtotal: number;
   itemCount: number;
+  couponCode?: string;
+  discountAmount?: number;
   totals: CartTotals;
 }
 ```
@@ -88,7 +94,7 @@ File: `apps/client/src/lib/store/cart.store.ts`
 
 **Persisted state** (key: `mlh-cart`):
 ```typescript
-{ sessionId: string }  // only sessionId persisted
+{ sessionId: string | null }  // only sessionId persisted
 ```
 
 **In-memory state:**
@@ -96,64 +102,61 @@ File: `apps/client/src/lib/store/cart.store.ts`
 {
   cart: CartDto | null;
   isLoading: boolean;
+  isDrawerOpen: boolean;
 }
 ```
 
 **Actions:**
+- `initSession()` — generate session UUID if needed
 - `fetchCart()` — GET /cart
-- `addItem(dto: AddToCartDto)` — POST /cart/items + optimistic update
-- `updateItem(itemId, qty)` — PATCH /cart/items/{id}
-- `removeItem(itemId)` — DELETE /cart/items/{id}
+- `addItem(dto: AddItemDto)` — POST /cart/items + optimistic update + analytics
+- `updateItem(itemId, qty)` — PATCH /cart/items/{id} (optimistic)
+- `removeItem(itemId)` — DELETE /cart/items/{id} (optimistic)
+- `applyCoupon(code)` — POST /cart/apply-coupon
+- `removeCoupon()` — DELETE /cart/coupon
 - `clearCart()` — DELETE /cart + clear local state
-- `mergeGuestCart()` — POST /cart/merge (gọi sau login)
-- `sessionHeader()` — returns `{'X-Session-ID': sessionId}` khi guest
+- `mergeGuestCart()` — POST /cart/merge (called after login)
+- `openDrawer()` / `closeDrawer()` — manage CartDrawer UI
 
-**normalizeCart():** Đảm bảo compat fields tồn tại:
-```typescript
-function normalizeCart(cart: CartDto): CartDto {
-  return {
-    ...cart,
-    totals: cart.totals ?? { subtotal: 0, shipping: 0, tax: 0, discount: 0, total: cart.subtotal },
-    items: cart.items.map(item => ({
-      ...item,
-      productName: item.productName ?? item.product?.name ?? '',
-      productSlug: item.productSlug ?? item.product?.slug ?? '',
-      productImageUrl: item.productImageUrl ?? item.product?.images?.[0]?.url,
-    })),
-  };
-}
-```
+**normalizeCart():** Ensures compat fields exist on all items.
 
 ## 5. Prisma Models
 
 ```prisma
 model Cart {
-  id        String     @id @default(cuid())
-  userId    String?    @unique
-  sessionId String?    @unique
-  items     CartItem[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id             String     @id @default(cuid())
+  userId         String?    @unique
+  sessionId      String?    @unique
+  couponCode     String?
+  discountAmount Decimal    @default(0)
+  items          CartItem[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  expiresAt      DateTime?
 }
 
 model CartItem {
-  id            String   @id @default(cuid())
-  cartId        String
-  productId     String
-  variantId     String?
-  quantity      Int
-  price         Decimal
-  customization Json?
-  cart          Cart     @relation(...)
-  product       Product  @relation(...)
+  id                String   @id @default(cuid())
+  cartId            String
+  productId         String
+  variantId         String?
+  quantity          Int
+  unitPrice         Decimal
+  customizationData Json?
+  previewUrl        String?
+  createdAt         DateTime @default(now())
+  cart              Cart     @relation(...)
+  product           Product  @relation(...)
 }
 ```
 
 ## 6. Business Rules
 
-- Không có max items limit (giới hạn mềm: 50 items)
-- Khi variant đổi giá → `priceChanged: true` trong CartItemDto
+- Giới hạn mềm: 50 items
+- `priceChanged: true` trong CartItemDto khi variant đổi giá
 - Quantity min: 1, max: 99 per line item
-- Guest cart expire: 7 ngày không hoạt động
-- Merge: quantity cộng dồn nếu cùng (productId + variantId + customization hash)
+- Guest cart expire: 7 ngày không hoạt động (`expiresAt`)
+- Merge: quantity cộng dồn nếu cùng (productId + variantId + customizationData hash)
 - Customization khác nhau → line items riêng biệt
+- Coupon validation: active + date range + usage limit + min order amount
+- Discount capped at order subtotal
