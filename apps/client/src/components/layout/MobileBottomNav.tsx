@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { Home, Search, ShoppingBag, User } from 'lucide-react';
-import { useCart } from '@mlh/api-client';
 import { useCartStore } from '../../lib/store/cart.store';
 
 /**
@@ -14,9 +13,9 @@ import { useCartStore } from '../../lib/store/cart.store';
 export function MobileBottomNav() {
   const locale   = useLocale();
   const pathname = usePathname();
-  const { data: cartData } = useCart();
+  const cart       = useCartStore((s) => s.cart);
   const openDrawer = useCartStore((s) => s.openDrawer);
-  const cartCount  = cartData?.totals.itemCount ?? 0;
+  const cartCount  = cart?.totals.itemCount ?? 0;
 
   // Hide on checkout and customizer pages
   const hiddenPaths = [`/${locale}/checkout`, `/customize`];

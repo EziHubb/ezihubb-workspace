@@ -1,10 +1,13 @@
 import { Test } from '@nestjs/testing';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { getModelToken } from '@nestjs/mongoose';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { ProductsService } from './products.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
 import { StorageService } from '../../common/services/storage.service';
+import { AnalyticsService } from '../analytics/analytics.service';
+import { ProductDetail } from '../catalog/schemas/product-detail.schema';
 import { ProductSortBy } from './dto/product-query.dto';
 
 const mockCategory = { id: 'cat-001', name: 'Mugs', slug: 'mugs' };
@@ -57,6 +60,17 @@ describe('ProductsService', () => {
             extractKey:   jest.fn().mockReturnValue('key'),
           },
         },
+        {
+          provide: AnalyticsService,
+          useValue: { trackEvent: jest.fn().mockResolvedValue(undefined) },
+        },
+        {
+          provide: getModelToken(ProductDetail.name),
+          useValue: {
+            findOne:          jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(null) }),
+            findOneAndUpdate: jest.fn().mockReturnValue({ catch: jest.fn() }),
+          },
+        },
       ],
     }).compile();
 
@@ -81,10 +95,12 @@ describe('ProductsService', () => {
   describe('findAll', () => {
     beforeEach(() => {
       prisma.$transaction.mockResolvedValue([[mockProduct], 1] as any);
+      (prisma.review.groupBy as jest.Mock).mockResolvedValue([]);
+      redis.get.mockResolvedValue(null);
     });
 
     it('returns paginated product list with default query', async () => {
-      const result = await service.findAll({});
+      const result = await service.findAll({} as any);
 
       expect(result.data).toHaveLength(1);
       expect(result.data[0].slug).toBe('custom-photo-mug');
@@ -94,7 +110,7 @@ describe('ProductsService', () => {
     it('applies category filter when category slug is provided', async () => {
       prisma.category.findUnique.mockResolvedValue(mockCategory as any);
 
-      await service.findAll({ category: 'mugs' });
+      await service.findAll({ category: 'mugs' } as any);
 
       const callArg = (prisma.$transaction as jest.Mock).mock.calls[0][0];
       // The transaction contains two operations; first one is product.findMany
@@ -102,20 +118,20 @@ describe('ProductsService', () => {
     });
 
     it('applies price range filter (minPrice + maxPrice)', async () => {
-      await service.findAll({ minPrice: 10, maxPrice: 50 });
+      await service.findAll({ minPrice: 10, maxPrice: 50 } as any);
 
       // Verify $transaction was called — the where clause is built internally
       expect(prisma.$transaction).toHaveBeenCalled();
     });
 
     it('orders by price ascending when sort=PRICE_ASC', async () => {
-      await service.findAll({ sort: ProductSortBy.PRICE_ASC });
+      await service.findAll({ sort: ProductSortBy.PRICE_ASC } as any);
 
       expect(prisma.$transaction).toHaveBeenCalled();
     });
 
     it('orders by price descending when sort=PRICE_DESC', async () => {
-      await service.findAll({ sort: ProductSortBy.PRICE_DESC });
+      await service.findAll({ sort: ProductSortBy.PRICE_DESC } as any);
 
       expect(prisma.$transaction).toHaveBeenCalled();
     });

@@ -6,6 +6,7 @@ import { useLocale } from 'next-intl';
 import { Menu } from 'lucide-react';
 import { ToastProvider } from '@mlh/ui';
 import { useProfile } from '@mlh/api-client';
+import { useAuthStore } from '../../../lib/store/auth.store';
 import { AccountSidebar } from '../../../components/account/AccountSidebar';
 
 export default function AccountLayoutClient({
@@ -17,7 +18,8 @@ export default function AccountLayoutClient({
   const router   = useRouter();
   const pathname = usePathname();
 
-  const { data: profile, isLoading, isError } = useProfile();
+  const storeUser = useAuthStore((s) => s.user);
+  const { data: profile, isLoading, isError } = useProfile(!!storeUser);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // ── Auth guard ─────────────────────────────────────────────────────────────

@@ -118,6 +118,14 @@ model User {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  cartEmailToken   String?   @unique
+  cartEmailOptOut  Boolean   @default(false)
+
+  totpSecret      String?
+  totpEnabled     Boolean   @default(false)
+  totpVerifiedAt  DateTime?
+  backupCodes     String[]
+
   refreshTokens       RefreshToken[]
   emailVerifications  EmailVerification[]
   passwordResets      PasswordReset[]
@@ -564,7 +572,8 @@ model Cart {
   updatedAt      DateTime  @updatedAt
   expiresAt      DateTime?
 
-  items CartItem[]
+  items                CartItem[]
+  abandonedEmailSentAt DateTime?
 }
 
 model CartItem {
@@ -610,6 +619,19 @@ model Order {
   trackingNumber  String?
   trackingUrl     String?
   carrier         String?
+  trackerId       String?
+  taxAmount       Decimal  @default(0) @db.Decimal(10, 2)
+  taxRate         Decimal  @default(0) @db.Decimal(5, 4)
+  taxJurisdiction String?
+  taxExempt       Boolean  @default(false)
+
+  // ── Gift options ──────────────────────────────────────────────────────────
+  isGift          Boolean   @default(false)
+  giftMessage     String?   @db.VarChar(500)
+  giftReceipt     Boolean   @default(false)
+  giftWrapping    Boolean   @default(false)
+  giftFrom        String?   @db.VarChar(100)
+
   note            String?
   cancelReason    String?
   cancelledAt     DateTime?

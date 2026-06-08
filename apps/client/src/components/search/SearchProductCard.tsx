@@ -8,6 +8,7 @@ import { useLocale } from 'next-intl';
 import type { ProductListItemDto } from '@mlh/types';
 import { useWishlist, useMutateWishlist } from '@mlh/api-client';
 import { useCartStore } from '../../lib/store/cart.store';
+import { useAuthStore } from '../../lib/store/auth.store';
 
 // ── Badge logic ───────────────────────────────────────────────────────────────
 
@@ -47,7 +48,8 @@ export function SearchProductCard({ product, priority = false }: Props) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   const { addItem, isLoading: cartLoading } = useCartStore();
-  const { data: wishlistData } = useWishlist();
+  const isLoggedIn = Boolean(useAuthStore((s) => s.user));
+  const { data: wishlistData } = useWishlist(isLoggedIn);
   const { addToWishlist, removeFromWishlist } = useMutateWishlist();
 
   const isInWishlist = wishlistData?.some((w) => w.productId === product.id) ?? false;

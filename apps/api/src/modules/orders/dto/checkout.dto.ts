@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, Length, MaxLength, ValidateNested } from 'class-validator';
+import { IsBoolean, IsEmail, IsOptional, IsString, Length, MaxLength, ValidateNested } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer';
 
@@ -80,6 +80,33 @@ export class CheckoutDto {
   @IsString()
   @MaxLength(500)
   note?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isGift?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  giftMessage?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  giftFrom?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  giftReceipt?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  giftWrapping?: boolean;
 }
 
 export class CancelOrderDto {
@@ -96,8 +123,9 @@ export class CancelOrderDto {
 }
 
 export class CheckoutResponseDto {
-  @ApiProperty() orderId: string;
-  @ApiProperty() orderNumber: string;
+  @ApiProperty() orderId:      string;
+  @ApiProperty() orderNumber:  string;
   @ApiProperty() clientSecret: string;
-  @ApiProperty() total: number;
+  @ApiProperty() total:        number;
+  @ApiProperty() taxAmount:    number;
 }

@@ -75,6 +75,9 @@ describe('CartService', () => {
       prisma.productVariant.findFirst.mockResolvedValue(null);
       prisma.cartItem.findMany.mockResolvedValue([]);
       prisma.cartItem.count.mockResolvedValue(0);
+      // $transaction with a callback must invoke that callback with prisma as the tx proxy
+      prisma.$transaction.mockImplementation(async (fn: any) => fn(prisma));
+      prisma.cart.update.mockResolvedValue({ id: 'cart-001' } as any);
     });
 
     it('creates a new cart item when the product is not already in the cart', async () => {
@@ -118,18 +121,19 @@ describe('CartService', () => {
       await expect(service.addItem('cart-001', addDto)).rejects.toThrow(NotFoundException);
     });
 
-    it('caps quantity at 99 when incrementing an existing item beyond the limit', async () => {
+    it('throws ERR_QTY_EXCEEDED when incrementing an existing item would exceed 99', async () => {
       const existingItem = buildCartItem({ quantity: 99 });
       prisma.cartItem.findMany.mockResolvedValue([existingItem as any]);
-      prisma.cartItem.update.mockResolvedValue(buildCartItem({ quantity: 99 }) as any);
-      const cart = buildCart([buildCartItem({ quantity: 99 })]);
-      prisma.cart.findUniqueOrThrow.mockResolvedValue(cart as any);
 
-      await service.addItem('cart-001', { ...addDto, quantity: 5 });
-
-      expect(prisma.cartItem.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { quantity: 99 } }),
+      await expect(
+        service.addItem('cart-001', { ...addDto, quantity: 5 }),
+      ).rejects.toThrow(
+        expect.objectContaining({
+          response: expect.objectContaining({ code: 'ERR_QTY_EXCEEDED' }),
+        }),
       );
+
+      expect(prisma.cartItem.update).not.toHaveBeenCalled();
     });
   });
 

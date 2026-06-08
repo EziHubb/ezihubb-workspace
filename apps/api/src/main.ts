@@ -75,17 +75,36 @@ async function bootstrap() {
     rawBody: true, // needed for Stripe webhook signature verification
   });
 
-  // ── Security ───────────────────────────────────────────────────────────────
-  app.use(helmet());
+  // ── Security headers ──────────────────────────────────────────────────────
+  app.use(helmet({
+    crossOriginEmbedderPolicy: false,     // Stripe Elements requires this off
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc:  ["'self'"],
+        scriptSrc:   ["'self'", 'https://js.stripe.com', 'https://www.paypal.com'],
+        frameSrc:    ["'self'", 'https://js.stripe.com', 'https://www.paypal.com'],
+        imgSrc:      ["'self'", 'data:', 'https://pub-dcb46924f84546899f1a823b152eab3a.r2.dev',
+                      'https://images.unsplash.com'],
+        connectSrc:  ["'self'", 'https://api.stripe.com'],
+      },
+    },
+  }));
 
   // ── Cookie parser (required for httpOnly refresh_token cookie) ────────────
   app.use(cookieParser());
 
   // ── CORS ───────────────────────────────────────────────────────────────────
-  // origin: true reflects the request Origin header back — allows every origin
-  // while remaining compatible with credentials: true (unlike origin: '*').
+  // CORS_ORIGINS="*" → reflect any origin (dev); comma-list → strict whitelist
+  const rawOrigins = process.env['CORS_ORIGINS'] ?? 'http://localhost:3000,http://localhost:3001';
+  const allowAll   = rawOrigins.trim() === '*';
+  const originList = allowAll ? [] : rawOrigins.split(',').map((o) => o.trim()).filter(Boolean);
   app.enableCors({
-    origin: true,
+    origin: allowAll
+      ? true
+      : (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
+          if (!origin || originList.includes(origin)) cb(null, true);
+          else cb(new Error(`CORS: origin ${origin} not allowed`));
+        },
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Session-ID'],
     exposedHeaders: [
@@ -98,7 +117,10 @@ async function bootstrap() {
     maxAge: 86400,
   });
 
-  Logger.log('CORS origin: reflect all (origin: true)', 'Bootstrap');
+  Logger.log(
+    allowAll ? 'CORS: all origins allowed' : `CORS: ${originList.join(', ')}`,
+    'Bootstrap',
+  );
 
   // ── Global prefix ──────────────────────────────────────────────────────────
   app.setGlobalPrefix('api/v1');

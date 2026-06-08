@@ -146,7 +146,8 @@ export function Navbar({ menuData }: NavbarProps = {}) {
   const [isScrolled, setIsScrolled]   = useState(false);
   const [mobileOpen, setMobileOpen]   = useState(false);
 
-  const { data: wishlistItems } = useWishlist();
+  const user        = useAuthStore((s) => s.user);
+  const { data: wishlistItems } = useWishlist(!!user);
   const cart        = useCartStore((s) => s.cart);
   const openDrawer  = useCartStore((s) => s.openDrawer);
   const cartCount   = cart?.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;

@@ -97,8 +97,8 @@ export function ShippingForm({
   isLoggedIn,
   onComplete,
 }: ShippingFormProps) {
-  const { data: addresses } = useAddresses();
-  const { data: profile }   = useProfile();
+  const { data: addresses } = useAddresses(isLoggedIn);
+  const { data: profile }   = useProfile(isLoggedIn);
 
   const {
     register,

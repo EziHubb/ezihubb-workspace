@@ -5,7 +5,10 @@ import { OrderStatus } from '@prisma/client';
 import { OrdersService } from './orders.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ShippingService } from '../shipping/shipping.service';
+import { TrackingService } from '../shipping/tracking.service';
 import { PaymentsService } from '../payments/payments.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { TaxService } from '../tax/tax.service';
 
 const mockShippingAddress = {
   fullName: 'Jane Doe',
@@ -119,6 +122,20 @@ describe('OrdersService', () => {
             createPaymentIntentForOrder: jest
               .fn()
               .mockResolvedValue({ clientSecret: 'pi_test_secret' }),
+          },
+        },
+        {
+          provide: TrackingService,
+          useValue: { registerTracker: jest.fn().mockResolvedValue(undefined) },
+        },
+        {
+          provide: NotificationsService,
+          useValue: { sendOrderShipped: jest.fn().mockResolvedValue(undefined) },
+        },
+        {
+          provide: TaxService,
+          useValue: {
+            calculateTax: jest.fn().mockResolvedValue({ taxAmount: 0, taxRate: 0, jurisdiction: 'N/A' }),
           },
         },
       ],

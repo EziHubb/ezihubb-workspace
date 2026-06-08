@@ -14,6 +14,7 @@ export const EmailTemplate = {
   REFUND_NOTIFICATION: 'refund-notification',
   CONTACT_MESSAGE:     'contact-message',
   NEW_MESSAGE:         'new-message',
+  ABANDONED_CART:      'abandoned-cart',
 } as const;
 
 export type EmailTemplateName = (typeof EmailTemplate)[keyof typeof EmailTemplate];
@@ -103,7 +104,7 @@ export class NotificationsService {
       to: order.email,
       subject: `Your order ${order.orderNumber} has shipped!`,
       template: EmailTemplate.ORDER_SHIPPED,
-      data: { ...order },
+      data: { ...order, year: new Date().getFullYear() },
     });
   }
 

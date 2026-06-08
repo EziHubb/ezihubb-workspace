@@ -180,6 +180,12 @@ export class CartService {
       }
     });
 
+    // Reset abandonment tracking so user gets a fresh reminder if they abandon again
+    await this.prisma.cart.update({
+      where: { id: cartId },
+      data:  { abandonedEmailSentAt: null },
+    });
+
     const cart = await this.prisma.cart.findUniqueOrThrow({
       where: { id: cartId },
       include: CART_INCLUDE,

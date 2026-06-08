@@ -350,6 +350,15 @@ export default function AdminMessagesPage() {
     return () => clearTimeout(debounceRef.current);
   }, [search]);
 
+  // Unfiltered query — always fetches everything for accurate badge/tab counts.
+  // queryKey starts with 'admin-conversations' so existing invalidateQueries calls cover it.
+  const { data: allData } = useQuery<AdminConvList>({
+    queryKey: ['admin-conversations', 'counts'],
+    queryFn:  () => apiFetch<AdminConvList>('/admin/messages/conversations?limit=100'),
+    refetchInterval: 30_000,
+    staleTime: 10_000,
+  });
+
   const { data, isLoading } = useQuery<AdminConvList>({
     queryKey: ['admin-conversations', statusFilter, debouncedSearch],
     queryFn:  () => {
@@ -361,8 +370,12 @@ export default function AdminMessagesPage() {
     refetchInterval: 30_000,
   });
 
-  const conversations = data?.items ?? [];
-  const unreadTotal   = conversations.filter((c) => c.unreadByAdmin > 0).length;
+  const conversations   = data?.items ?? [];
+  const allConversations = allData?.items ?? [];
+  const unreadTotal     = allConversations.filter((c) => c.unreadByAdmin > 0).length;
+  const openCount       = allConversations.filter((c) => c.status === 'OPEN').length;
+  const pendingCount    = allConversations.filter((c) => c.status === 'PENDING').length;
+  const resolvedCount   = allConversations.filter((c) => c.status === 'RESOLVED').length;
 
   // Auto-select from orderId query param
   useEffect(() => {
@@ -406,9 +419,9 @@ export default function AdminMessagesPage() {
           <div className="flex gap-1 overflow-x-auto pb-0.5">
             {[
               { value: '',         label: 'All'     },
-              { value: 'OPEN',     label: `Open${unreadTotal > 0 ? ` (${unreadTotal})` : ''}` },
-              { value: 'PENDING',  label: 'Pending' },
-              { value: 'RESOLVED', label: 'Resolved'},
+              { value: 'OPEN',     label: openCount    > 0 ? `Open (${openCount})`     : 'Open'     },
+              { value: 'PENDING',  label: pendingCount > 0 ? `Pending (${pendingCount})`: 'Pending'  },
+              { value: 'RESOLVED', label: resolvedCount > 0 ? `Resolved (${resolvedCount})` : 'Resolved' },
             ].map((tab) => (
               <button
                 key={tab.value}

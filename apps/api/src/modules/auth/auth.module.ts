@@ -6,6 +6,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { DevBullModule } from '../../queue/dev-bull.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { TotpService } from './totp.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
@@ -23,7 +24,7 @@ import { QUEUES } from '../../queue/queue.constants';
     UsersModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtRefreshStrategy, GoogleStrategy],
-  exports: [AuthService],
+  providers: [AuthService, TotpService, JwtStrategy, JwtRefreshStrategy, GoogleStrategy],
+  exports: [AuthService, TotpService],
 })
 export class AuthModule {}

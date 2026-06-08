@@ -9,26 +9,36 @@ import { apiClient } from '@mlh/api-client';
 import { useCartStore } from '../../../../lib/store/cart.store';
 import type { ShippingAddressInput } from '@mlh/api-client';
 import type { ShippingOptionDto, CartDto } from '@mlh/types';
-import { StepIndicator } from '../../../../components/checkout/StepIndicator';
-import { ShippingForm }   from '../../../../components/checkout/ShippingForm';
-import { DeliveryForm }   from '../../../../components/checkout/DeliveryForm';
-import { PaymentForm }    from '../../../../components/checkout/PaymentForm';
-import { analytics }      from '../../../../lib/analytics';
+import { StepIndicator }      from '../../../../components/checkout/StepIndicator';
+import { ShippingForm }        from '../../../../components/checkout/ShippingForm';
+import { DeliveryForm }        from '../../../../components/checkout/DeliveryForm';
+import { PaymentForm }         from '../../../../components/checkout/PaymentForm';
+import { GiftOptionsSection }  from '../../../../components/checkout/GiftOptionsSection';
+import type { GiftOptions }    from '../../../../components/checkout/GiftOptionsSection';
+import { analytics }           from '../../../../lib/analytics';
 
 // ── Sidebar: order summary ────────────────────────────────────────────────────
 
 function OrderSummarySidebar({
   cart,
   shippingCost,
+  taxAmount,
+  taxJurisdiction,
+  giftWrapping,
 }: {
-  cart:         CartDto;
-  shippingCost: number;
+  cart:             CartDto;
+  shippingCost:     number;
+  taxAmount?:       number;
+  taxJurisdiction?: string;
+  giftWrapping?:    boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  const discount  = cart.discountAmount ?? 0;
-  const subtotal  = cart.totals.subtotal;
-  const total     = subtotal + shippingCost - discount;
+  const discount         = cart.discountAmount ?? 0;
+  const subtotal         = cart.totals.subtotal;
+  const tax              = taxAmount ?? 0;
+  const giftWrappingCost = giftWrapping ? 4.99 : 0;
+  const total            = subtotal + shippingCost - discount + tax + giftWrappingCost;
 
   const content = (
     <div className="space-y-4">
@@ -91,6 +101,18 @@ function OrderSummarySidebar({
           <div className="flex justify-between text-success">
             <span>Discount ({cart.couponCode})</span>
             <span className="tabular-nums">−${discount.toFixed(2)}</span>
+          </div>
+        )}
+        {giftWrappingCost > 0 && (
+          <div className="flex justify-between text-muted">
+            <span>Gift wrapping</span>
+            <span className="tabular-nums">+$4.99</span>
+          </div>
+        )}
+        {tax > 0 && (
+          <div className="flex justify-between text-muted">
+            <span>Tax {taxJurisdiction ? `(${taxJurisdiction})` : ''}</span>
+            <span className="tabular-nums">${tax.toFixed(2)}</span>
           </div>
         )}
         <div className="flex justify-between font-bold text-secondary border-t border-border pt-2">
@@ -161,6 +183,15 @@ export default function CheckoutPage() {
   const [guestEmail,       setGuestEmail]       = useState('');
   const [shippingMethod,   setShippingMethod]   = useState<ShippingOptionDto | null>(null);
 
+  // ── Gift options ───────────────────────────────────────────────────────────
+  const [giftOptions, setGiftOptions] = useState<GiftOptions>({
+    isGift: false, giftMessage: '', giftReceipt: false, giftWrapping: false, giftFrom: '',
+  });
+
+  // ── Tax preview (fetched after step 1 when address is known) ─────────────
+  const [taxAmount,       setTaxAmount]       = useState(0);
+  const [taxJurisdiction, setTaxJurisdiction] = useState('');
+
   // ── Order creation state (set when proceeding to Stripe) ──────────────────
   const [clientSecret,    setClientSecret]    = useState('');
   const [orderId,         setOrderId]         = useState('');
@@ -198,6 +229,22 @@ export default function CheckoutPage() {
       itemCount: cart.itemCount ?? 0,
       coupon:    cart.couponCode ?? undefined,
     });
+    // Fetch tax estimate early (no shipping cost yet — will be refined on order creation)
+    if (addr.country === 'US' && addr.postalCode) {
+      apiClient
+        .post<{ taxAmount: number; taxRate: number; jurisdiction: string }>('/orders/tax-preview', {
+          postalCode:   addr.postalCode,
+          state:        addr.state,
+          country:      addr.country,
+          subtotal:     cart.totals.subtotal - (cart.discountAmount ?? 0),
+          shippingCost: 0,
+        })
+        .then((res) => {
+          setTaxAmount(res.taxAmount ?? 0);
+          setTaxJurisdiction(res.jurisdiction ?? '');
+        })
+        .catch(() => { /* non-blocking */ });
+    }
     setStep(2);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -220,7 +267,8 @@ export default function CheckoutPage() {
         orderId:      string;
         orderNumber:  string;
         clientSecret: string;
-        amount:       number;
+        total:        number;
+        taxAmount:    number;
       }>('/orders', {
         cartId: cart.id,
         shippingAddress: {
@@ -236,12 +284,18 @@ export default function CheckoutPage() {
         shippingMethodId: method.methodId,
         couponCode:       cart.couponCode ?? undefined,
         guestEmail:       !isLoggedIn ? guestEmail : undefined,
+        isGift:           giftOptions.isGift,
+        giftMessage:      giftOptions.isGift ? giftOptions.giftMessage || undefined : undefined,
+        giftFrom:         giftOptions.isGift ? giftOptions.giftFrom || undefined : undefined,
+        giftReceipt:      giftOptions.giftReceipt,
+        giftWrapping:     giftOptions.giftWrapping,
       });
 
       setOrderId(res.orderId);
       setOrderNumber(res.orderNumber);
       setClientSecret(res.clientSecret);
-      setOrderTotal(res.amount);
+      setOrderTotal(res.total);
+      if (res.taxAmount != null) setTaxAmount(res.taxAmount);
       setStep(3);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
@@ -262,7 +316,7 @@ export default function CheckoutPage() {
   return (
     <div className="bg-background min-h-screen">
       {/* Mobile order summary (above content) */}
-      <OrderSummarySidebar cart={cart} shippingCost={shippingCost} />
+      <OrderSummarySidebar cart={cart} shippingCost={shippingCost} taxAmount={taxAmount} taxJurisdiction={taxJurisdiction} giftWrapping={giftOptions.giftWrapping} />
 
       <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-8">
         <div className="grid grid-cols-1 md:grid-cols-[1fr_360px] gap-8 lg:gap-12 items-start">
@@ -324,6 +378,9 @@ export default function CheckoutPage() {
                     {orderError}
                   </p>
                 )}
+                <div className="mb-5">
+                  <GiftOptionsSection value={giftOptions} onChange={setGiftOptions} />
+                </div>
                 <DeliveryForm
                   countryCode={shippingAddress.country}
                   orderTotal={cart.totals.subtotal}
@@ -353,7 +410,7 @@ export default function CheckoutPage() {
           </div>
 
           {/* ── Right: order summary sidebar (desktop only) ──────────────────── */}
-          <OrderSummarySidebar cart={cart} shippingCost={shippingCost} />
+          <OrderSummarySidebar cart={cart} shippingCost={shippingCost} taxAmount={taxAmount} taxJurisdiction={taxJurisdiction} giftWrapping={giftOptions.giftWrapping} />
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@ export const QUEUES = {
   IMAGE_PROCESSING: 'image-processing',
   ORDER_PROCESSING: 'order-processing',
   SCHEDULED:        'scheduled',
+  ABANDONED_CART:   'abandoned-cart',
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
@@ -22,9 +23,12 @@ export const JOBS = {
   ORDER_AUTO_COMPLETE:  'order-auto-complete',
 
   // Scheduled (paired with cron triggers)
-  DAILY_REVIEW_REMINDERS:   'daily-review-reminders',
-  DAILY_ORDER_AUTO_COMPLETE:'daily-order-auto-complete',
-  WEEKLY_CLEANUP_CARTS:     'weekly-cleanup-carts',
+  DAILY_REVIEW_REMINDERS:    'daily-review-reminders',
+  DAILY_ORDER_AUTO_COMPLETE: 'daily-order-auto-complete',
+  WEEKLY_CLEANUP_CARTS:      'weekly-cleanup-carts',
+
+  // Abandoned cart
+  SCAN_ABANDONED_CARTS: 'scan-abandoned-carts',
 } as const;
 
 export type JobName = (typeof JOBS)[keyof typeof JOBS];

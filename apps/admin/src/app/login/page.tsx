@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn, getSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
 export default function AdminLoginPage() {
@@ -24,10 +24,20 @@ export default function AdminLoginPage() {
 
     setLoading(false);
 
-    if (result?.ok) {
-      router.push('/dashboard');
-    } else {
+    if (!result?.ok) {
       setError('Invalid credentials or insufficient permissions.');
+      return;
+    }
+
+    // Fetch session to check whether TOTP is required
+    const session = await getSession();
+    const user = session?.user as Record<string, unknown> | undefined;
+
+    if (user?.['requiresTOTP']) {
+      const partialToken = encodeURIComponent(String(user['partialToken'] ?? ''));
+      router.push(`/totp-verify?email=${encodeURIComponent(email)}&pt=${partialToken}`);
+    } else {
+      router.push('/dashboard');
     }
   };
 

@@ -7,10 +7,14 @@ import {
 import { OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ShippingService } from '../shipping/shipping.service';
+import { TrackingService } from '../shipping/tracking.service';
 import { PaymentsService } from '../payments/payments.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { TaxService } from '../tax/tax.service';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
+import { MarkShippedDto } from './dto/mark-shipped.dto';
 import {
   OrderResponseDto,
   OrderItemDto,
@@ -51,10 +55,11 @@ const ORDER_INCLUDE = {
   items: true,
   payment: true,
   statusHistory: { orderBy: { createdAt: 'asc' as const } },
-  user: { select: { email: true } },
+  user: { select: { email: true, firstName: true } },
 } satisfies Prisma.OrderInclude;
 
-const CANCEL_WINDOW_MS = 2 * 60 * 60 * 1_000; // 2 hours
+const CANCEL_WINDOW_MS   = 2 * 60 * 60 * 1_000; // 2 hours
+const GIFT_WRAPPING_PRICE = 4.99;
 
 @Injectable()
 export class OrdersService {
@@ -63,7 +68,10 @@ export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly shippingService: ShippingService,
+    private readonly trackingService: TrackingService,
     private readonly paymentsService: PaymentsService,
+    private readonly notificationsService: NotificationsService,
+    private readonly taxService: TaxService,
   ) {}
 
   // ─── Checkout ─────────────────────────────────────────────────────────────
@@ -176,10 +184,26 @@ export class OrdersService {
     const shippingCost = freeShipping ? 0 : shippingCalc.cost;
     const shippingMethodName = shippingCalc.name;
 
-    const total =
-      Math.round((subtotalAfterDiscount + shippingCost) * 100) / 100;
+    const giftWrappingCost = dto.giftWrapping ? GIFT_WRAPPING_PRICE : 0;
 
+    // ── Tax calculation (US only, never blocks checkout) ──────────────────────
     const { shippingAddress: addr } = dto;
+    const taxResult = await this.taxService.calculateTax({
+      toZip:     addr.postalCode,
+      toState:   addr.state ?? '',
+      toCountry: addr.country,
+      subtotal:  subtotalAfterDiscount + giftWrappingCost,
+      shipping:  shippingCost,
+      lineItems: cart.items.map((item) => ({
+        id:        item.productId,
+        quantity:  item.quantity,
+        unitPrice: item.variant
+          ? Number(item.variant.price)
+          : Number(item.product.basePrice),
+      })),
+    });
+    const total =
+      Math.round((subtotalAfterDiscount + shippingCost + taxResult.taxAmount + giftWrappingCost) * 100) / 100;
 
     // $transaction: create order + items + status history + atomic coupon increment
     const order = await this.prisma.$transaction(async (tx) => {
@@ -202,11 +226,19 @@ export class OrdersService {
           shippingCountry: addr.country,
           shippingMethod: shippingMethodName,
           shippingCost,
-          subtotal: Math.round(subtotal * 100) / 100,
+          subtotal:       Math.round(subtotal * 100) / 100,
           discountAmount: Math.round(discount * 100) / 100,
+          taxAmount:      taxResult.taxAmount,
+          taxRate:        taxResult.taxRate,
+          taxJurisdiction: taxResult.jurisdiction ?? null,
           total,
-          couponCode: couponCode ?? null,
-          note: dto.note ?? null,
+          couponCode:     couponCode ?? null,
+          isGift:         dto.isGift ?? false,
+          giftMessage:    dto.isGift ? (dto.giftMessage ?? null) : null,
+          giftFrom:       dto.isGift ? (dto.giftFrom ?? null) : null,
+          giftReceipt:    dto.isGift ? (dto.giftReceipt ?? false) : false,
+          giftWrapping:   dto.giftWrapping ?? false,
+          note:           dto.note ?? null,
         },
       });
 
@@ -275,10 +307,11 @@ export class OrdersService {
       );
 
     return {
-      orderId: order.id,
-      orderNumber: order.orderNumber,
+      orderId:      order.id,
+      orderNumber:  order.orderNumber,
       clientSecret: paymentResponse.clientSecret,
       total,
+      taxAmount:    taxResult.taxAmount,
     };
   }
 
@@ -577,6 +610,94 @@ export class OrdersService {
     return this.mapToDto(updated);
   }
 
+  async previewTax(dto: {
+    postalCode:   string;
+    state?:       string;
+    country:      string;
+    subtotal:     number;
+    shippingCost: number;
+  }) {
+    return this.taxService.calculateTax({
+      toZip:     dto.postalCode,
+      toState:   dto.state ?? '',
+      toCountry: dto.country,
+      subtotal:  dto.subtotal,
+      shipping:  dto.shippingCost,
+    });
+  }
+
+  async markShipped(
+    id: string,
+    dto: MarkShippedDto,
+    adminId: string,
+  ): Promise<OrderResponseDto> {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: ORDER_INCLUDE,
+    });
+    if (!order)
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Order not found' });
+
+    const unshippableStatuses: OrderStatus[] = [
+      OrderStatus.CANCELLED,
+      OrderStatus.REFUNDED,
+      OrderStatus.DELIVERED,
+      OrderStatus.COMPLETED,
+    ];
+    if (unshippableStatuses.includes(order.status)) {
+      throw new BadRequestException({
+        code: 'ERR_ORDER_CANNOT_SHIP',
+        message: `Order in status ${order.status} cannot be marked as shipped`,
+      });
+    }
+
+    const carrier = dto.carrier ?? this.trackingService.detectCarrier(dto.trackingNumber);
+    const trackingUrl =
+      dto.trackingUrl ?? this.trackingService.buildTrackingUrl(carrier, dto.trackingNumber);
+
+    // Register EasyPost tracker — non-blocking; null if unconfigured
+    const trackerId = await this.trackingService.registerTracker(dto.trackingNumber, carrier);
+
+    const now = new Date();
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const o = await tx.order.update({
+        where: { id },
+        data: {
+          status:         OrderStatus.SHIPPED,
+          carrier,
+          trackingNumber: dto.trackingNumber,
+          trackingUrl,
+          ...(trackerId && { trackerId }),
+          shippedAt:      now,
+        },
+        include: ORDER_INCLUDE,
+      });
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId:   id,
+          status:    OrderStatus.SHIPPED,
+          note:      dto.note ?? null,
+          createdBy: adminId,
+        },
+      });
+      return o;
+    });
+
+    const email = order.guestEmail ?? order.user?.email;
+    if (email) {
+      await this.notificationsService.sendOrderShipped({
+        email,
+        orderNumber:    order.orderNumber,
+        firstName:      order.user?.firstName ?? undefined,
+        trackingNumber: dto.trackingNumber,
+        carrier,
+        trackingUrl,
+      });
+    }
+
+    return this.mapToDto(updated);
+  }
+
   async exportOrdersCsv(query: AdminOrderQueryDto): Promise<string> {
     const { status, search, startDate, endDate } = query;
     const where: Prisma.OrderWhereInput = {};
@@ -727,9 +848,19 @@ export class OrdersService {
       total: Number(order.total),
       couponCode: order.couponCode,
       trackingNumber: order.trackingNumber,
-      trackingUrl: order.trackingUrl,
-      carrier: order.carrier,
-      note: order.note,
+      trackingUrl:    order.trackingUrl,
+      carrier:        order.carrier,
+      trackerId:      order.trackerId,
+      taxAmount:      Number(order.taxAmount),
+      taxRate:        Number(order.taxRate),
+      taxJurisdiction: order.taxJurisdiction,
+      taxExempt:      order.taxExempt,
+      isGift:         order.isGift,
+      giftMessage:    order.giftMessage,
+      giftFrom:       order.giftFrom,
+      giftReceipt:    order.giftReceipt,
+      giftWrapping:   order.giftWrapping,
+      note:           order.note,
       cancelReason: order.cancelReason,
       cancelledAt: order.cancelledAt,
       confirmedAt: order.confirmedAt,

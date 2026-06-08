@@ -74,8 +74,7 @@ export async function generateMetadata({
       googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
     },
     icons: {
-      icon:  [{ url: '/favicon.ico' }, { url: '/icon.png', type: 'image/png' }],
-      apple: '/apple-icon.png',
+      icon: '/favicon.ico',
     },
     verification: {
       google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,

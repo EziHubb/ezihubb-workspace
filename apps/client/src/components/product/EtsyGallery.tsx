@@ -35,9 +35,9 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
   const pathname = usePathname();
 
   // ── Wishlist ─────────────────────────────────────────────────────────────────
-  const { data: wishlistItems }               = useWishlist();
-  const { addToWishlist, removeFromWishlist } = useMutateWishlist();
   const isLoggedIn   = Boolean(useAuthStore((s) => s.user));
+  const { data: wishlistItems }               = useWishlist(isLoggedIn);
+  const { addToWishlist, removeFromWishlist } = useMutateWishlist();
   const isInWishlist = wishlistItems?.some((item) => item.productId === product.id) ?? false;
 
   const handleWishlist = () => {

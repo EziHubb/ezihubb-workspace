@@ -35,10 +35,10 @@ export function DirectAddToCartPanel({
   const [addError,  setAddError]            = useState('');
 
   // Wishlist
-  const { data: wishlistItems }             = useWishlist();
+  const isLoggedIn   = Boolean(useAuthStore((s) => s.user));
+  const { data: wishlistItems }             = useWishlist(isLoggedIn);
   const { addToWishlist, removeFromWishlist } = useMutateWishlist();
   const isWishlisted = wishlistItems?.some((i) => i.productId === product.id) ?? false;
-  const isLoggedIn   = Boolean(useAuthStore((s) => s.user));
 
   // Debounced quantity ref to avoid spamming
   const qtyRef = useRef(quantity);

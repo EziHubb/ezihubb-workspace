@@ -1,5 +1,6 @@
 import { Controller, Get, HttpCode, Param, Post, Query, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { ProductsService } from './products.service';
 import { ProductQueryDto } from './dto/product-query.dto';
@@ -18,6 +19,7 @@ export class ProductsController {
   // GET /products
   @Public()
   @Get()
+  @Throttle({ default: { ttl: 60_000, limit: 120 } })
   @ApiOperation({ summary: 'List products with filters, sorting, and pagination' })
   @ApiResponse({ status: 200, type: [ProductListItemDto] })
   findAll(@Query() query: ProductQueryDto): Promise<PaginatedResult<ProductListItemDto>> {

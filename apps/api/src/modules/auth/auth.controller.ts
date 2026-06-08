@@ -24,6 +24,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { TotpVerifyDto, TotpConfirmDto, TotpDisableDto, TotpSetupResponseDto, TotpRequiredResponseDto } from './dto/totp.dto';
 import { GoogleProfile } from './strategies/google.strategy';
 import { RefreshPayload } from './strategies/jwt-refresh.strategy';
 import { JwtPayload } from './strategies/jwt.strategy';
@@ -57,14 +58,67 @@ export class AuthController {
   @Public()
   @Post('login')
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
-  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email and password' })
   @ApiResponse({ status: 200, type: AuthResponseDto })
+  @ApiResponse({ status: 202, type: TotpRequiredResponseDto, description: 'TOTP required — use partialToken with POST /auth/totp/verify' })
   async login(
     @Body() dto: LoginDto,
+    @Res() res: Response,
+  ): Promise<void> {
+    // Use @Res() (not passthrough) so res.status() is not overridden by @HttpCode
+    const result = await this.authService.login(dto, res);
+    const status = 'requiresTOTP' in result && result.requiresTOTP
+      ? HttpStatus.ACCEPTED
+      : HttpStatus.OK;
+    res.status(status).json(result);
+  }
+
+  // POST /auth/totp/verify
+  @Public()
+  @Post('totp/verify')
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Complete admin login with TOTP code' })
+  @ApiResponse({ status: 200, type: AuthResponseDto })
+  async totpVerify(
+    @Body() dto: TotpVerifyDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponseDto> {
-    return this.authService.login(dto, res);
+    return this.authService.verifyTotp(dto.partialToken, dto.code, res);
+  }
+
+  // GET /auth/totp/setup
+  @Get('totp/setup')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Generate TOTP setup data (QR code + backup codes)' })
+  @ApiResponse({ status: 200, type: TotpSetupResponseDto })
+  async totpSetup(@CurrentUser() user: JwtPayload): Promise<TotpSetupResponseDto> {
+    return this.authService.setupTotp(user.sub);
+  }
+
+  // POST /auth/totp/confirm
+  @Post('totp/confirm')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Confirm TOTP setup by verifying a code' })
+  @ApiResponse({ status: 200, description: 'Returns backup codes' })
+  async totpConfirm(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: TotpConfirmDto,
+  ): Promise<{ backupCodes: string[] }> {
+    return this.authService.confirmTotp(user.sub, dto.secret, dto.code);
+  }
+
+  // POST /auth/totp/disable
+  @Post('totp/disable')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Disable TOTP 2FA' })
+  async totpDisable(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: TotpDisableDto,
+  ): Promise<void> {
+    return this.authService.disableTotp(user.sub, dto.code);
   }
 
   // POST /auth/logout
@@ -88,6 +142,7 @@ export class AuthController {
   @Public()
   @UseGuards(JwtRefreshGuard)
   @Post('refresh')
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
   @HttpCode(HttpStatus.OK)
   @ApiCookieAuth('refresh_token')
   @ApiOperation({ summary: 'Rotate refresh token and get new access token' })
@@ -119,7 +174,7 @@ export class AuthController {
   // POST /auth/forgot-password
   @Public()
   @Post('forgot-password')
-  @Throttle({ default: { ttl: 60_000, limit: 3 } })
+  @Throttle({ default: { ttl: 900_000, limit: 3 } })   // 3 per 15 min — prevent email spam
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Request a password reset email' })
   async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<void> {

@@ -7,12 +7,13 @@ import { queryKeys } from '../queryKeys';
 // ── Profile ───────────────────────────────────────────────────────────────────
 
 /** Currently authenticated user's profile. */
-export function useProfile() {
+export function useProfile(enabled = false) {
   return useQuery({
     queryKey: queryKeys.profile(),
     queryFn:  () => api.get<UserDto>(API_ROUTES.USERS.ME),
     staleTime: 5 * 60_000,
-    retry:    false,   // 401 = not logged in — don't retry
+    retry:    false,
+    enabled,
   });
 }
 
@@ -74,11 +75,13 @@ export function useMutateProfile() {
 
 // ── Addresses ─────────────────────────────────────────────────────────────────
 
-export function useAddresses() {
+export function useAddresses(enabled = false) {
   return useQuery({
     queryKey: queryKeys.addresses(),
     queryFn:  () => api.get<AddressDto[]>(API_ROUTES.USERS.ADDRESSES),
     staleTime: 5 * 60_000,
+    retry:    false,
+    enabled,
   });
 }
 

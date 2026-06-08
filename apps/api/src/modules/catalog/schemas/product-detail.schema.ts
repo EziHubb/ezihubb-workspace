@@ -5,35 +5,35 @@ import { Document } from 'mongoose';
 
 @Schema({ _id: false })
 class Attribute {
-  @Prop({ required: true }) key: string;
-  @Prop({ required: true }) value: string;
-  @Prop({ default: false }) filterable: boolean;
-  @Prop() unit?: string; // e.g. "oz", "inches", "cm"
+  @Prop({ required: true }) key!: string;
+  @Prop({ required: true }) value!: string;
+  @Prop({ default: false }) filterable!: boolean;
+  @Prop() unit?: string;
 }
 
 @Schema({ _id: false })
 class VariantOption {
-  @Prop({ required: true }) name: string;
-  @Prop({ type: [String], required: true }) values: string[];
+  @Prop({ required: true }) name!: string;
+  @Prop({ type: [String], required: true }) values!: string[];
 }
 
 @Schema({ _id: false })
 class Variant {
-  @Prop({ required: true }) sku: string;
-  @Prop({ type: Object, required: true }) options: Record<string, string>;
-  @Prop({ required: true }) price: number;
+  @Prop({ required: true }) sku!: string;
+  @Prop({ type: Object, required: true }) options!: Record<string, string>;
+  @Prop({ required: true }) price!: number;
   @Prop() compareAtPrice?: number;
-  @Prop({ default: true }) isAvailable: boolean;
-  @Prop({ default: false }) isDefault: boolean;
+  @Prop({ default: true }) isAvailable!: boolean;
+  @Prop({ default: false }) isDefault!: boolean;
   @Prop() imageIndex?: number;
 }
 
 @Schema({ _id: false })
 class CustomizerField {
-  @Prop({ required: true }) id: string;
-  @Prop({ required: true, enum: ['text', 'textarea', 'image', 'select', 'color'] }) type: string;
-  @Prop({ required: true }) label: string;
-  @Prop({ default: false }) required: boolean;
+  @Prop({ required: true }) id!: string;
+  @Prop({ required: true, enum: ['text', 'textarea', 'image', 'select', 'color'] }) type!: string;
+  @Prop({ required: true }) label!: string;
+  @Prop({ default: false }) required!: boolean;
   @Prop() maxLength?: number;
   @Prop({ type: [String] }) options?: string[];
   @Prop({ type: Object }) position?: { x: number; y: number };
@@ -43,17 +43,17 @@ class CustomizerField {
 
 @Schema({ _id: false })
 class PreviewLayer {
-  @Prop({ required: true, enum: ['base', 'overlay', 'text', 'image'] }) type: string;
-  @Prop({ required: true }) url: string;
-  @Prop({ required: true }) zIndex: number;
+  @Prop({ required: true, enum: ['base', 'overlay', 'text', 'image'] }) type!: string;
+  @Prop({ required: true }) url!: string;
+  @Prop({ required: true }) zIndex!: number;
 }
 
 @Schema({ _id: false })
 class CustomizationTemplate {
-  @Prop({ required: true }) templateId: string;
-  @Prop({ required: true }) version: number;
-  @Prop({ type: [CustomizerField], default: [] }) fields: CustomizerField[];
-  @Prop({ type: [PreviewLayer], default: [] }) previewLayers: PreviewLayer[];
+  @Prop({ required: true }) templateId!: string;
+  @Prop({ required: true }) version!: number;
+  @Prop({ type: [CustomizerField], default: [] }) fields!: CustomizerField[];
+  @Prop({ type: [PreviewLayer], default: [] }) previewLayers!: PreviewLayer[];
 }
 
 // ── Root document ─────────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ class CustomizationTemplate {
 export class ProductDetail extends Document {
   /** Foreign key → PostgreSQL Product.id */
   @Prop({ required: true, unique: true, index: true })
-  productId: string;
+  productId!: string;
 
   /** Rich description (HTML allowed) */
   @Prop() richDescription?: string;
@@ -80,15 +80,15 @@ export class ProductDetail extends Document {
    * Canvas examples:  Print Method, Frame Options, Material
    */
   @Prop({ type: [Attribute], default: [] })
-  attributes: Attribute[];
+  attributes!: Attribute[];
 
   /** Variant option dimensions (e.g. Size, Color) */
   @Prop({ type: [VariantOption], default: [] })
-  variantOptions: VariantOption[];
+  variantOptions!: VariantOption[];
 
   /** Concrete variant SKUs */
   @Prop({ type: [Variant], default: [] })
-  variants: Variant[];
+  variants!: Variant[];
 
   /** Customization template — null when product is not personalizable */
   @Prop({ type: CustomizationTemplate, default: null })
@@ -113,7 +113,7 @@ export class ProductDetail extends Document {
    * PostgreSQL ProductImage.altText field which is limited to short strings.
    */
   @Prop({ type: Object, default: {} })
-  imageAltTexts: Record<string, string>;
+  imageAltTexts!: Record<string, string>;
 
   /**
    * EU General Product Safety Regulation (GPSR) manufacturer / responsible

@@ -14,6 +14,7 @@ import { Response } from 'express';
 import { OrdersService } from './orders.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
+import { MarkShippedDto } from './dto/mark-shipped.dto';
 import { AdminOrderQueryDto } from './dto/order-list-item.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -65,5 +66,15 @@ export class AdminOrdersController {
   @ApiOperation({ summary: 'Add tracking information' })
   async addTracking(@Param('id') id: string, @Body() dto: AddTrackingDto) {
     return this.ordersService.addTracking(id, dto);
+  }
+
+  @Patch(':id/ship')
+  @ApiOperation({ summary: 'Mark order as shipped — sets SHIPPED status, saves tracking, registers EasyPost tracker, emails customer' })
+  async markShipped(
+    @Param('id') id: string,
+    @Body() dto: MarkShippedDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.ordersService.markShipped(id, dto, user.sub);
   }
 }

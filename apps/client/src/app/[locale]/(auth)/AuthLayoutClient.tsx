@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { useProfile } from '@mlh/api-client';
+import { useAuthStore } from '../../../lib/store/auth.store';
 import { BrandPanel, BrandStrip } from '../../../components/auth/BrandPanel';
 
 export default function AuthLayoutClient({
@@ -15,7 +16,8 @@ export default function AuthLayoutClient({
   const router       = useRouter();
   const searchParams = useSearchParams();
 
-  const { data: profile, isLoading } = useProfile();
+  const storeUser = useAuthStore((s) => s.user);
+  const { data: profile, isLoading } = useProfile(!!storeUser);
 
   // ── Redirect logged-in users away from auth pages ──────────────────────────
   useEffect(() => {

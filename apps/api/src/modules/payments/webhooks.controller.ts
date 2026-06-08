@@ -7,12 +7,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Request } from 'express';
-import Stripe from 'stripe';
 import { PaymentsService } from './payments.service';
 import { StripeWebhookGuard } from '../../common/guards/stripe-webhook.guard';
 
 @ApiTags('Webhooks')
+@SkipThrottle()  // Stripe/PayPal retry from fixed IPs — don't block their retries
 @Controller('webhooks')
 export class WebhooksController {
   constructor(private readonly paymentsService: PaymentsService) {}

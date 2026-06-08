@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   X, Check, Package, Truck, MapPin, User,
-  ExternalLink, Save, Mail, DollarSign, MessageSquare,
+  ExternalLink, Save, Mail, DollarSign, MessageSquare, Gift,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { OrderStatusBadge, ALL_STATUSES } from './OrderStatusBadge';
@@ -54,6 +54,11 @@ export interface OrderDetail {
   };
   items: OrderItem[];
   statusHistory?: { status: string; createdAt: string; note?: string }[];
+  isGift?:      boolean;
+  giftMessage?: string;
+  giftFrom?:    string;
+  giftReceipt?: boolean;
+  giftWrapping?: boolean;
 }
 
 // ── Status timeline ────────────────────────────────────────────────────────────
@@ -215,6 +220,34 @@ function OrderItems({ items }: { items: OrderItem[] }) {
           onClose={() => setPreviewItem(null)}
         />
       )}
+    </div>
+  );
+}
+
+// ── Gift info ─────────────────────────────────────────────────────────────────
+
+function GiftInfo({ order }: { order: OrderDetail }) {
+  if (!order.isGift) return null;
+  return (
+    <div className="mt-4">
+      <div className="flex items-start gap-2 text-xs bg-[#FFF0EC] rounded-lg px-3 py-2.5">
+        <Gift className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
+        <div className="min-w-0">
+          <span className="font-semibold text-primary">Gift order</span>
+          {order.giftFrom && (
+            <span className="text-muted ml-1.5">From: {order.giftFrom}</span>
+          )}
+          {order.giftMessage && (
+            <p className="text-secondary mt-0.5 italic break-words">
+              &ldquo;{order.giftMessage}&rdquo;
+            </p>
+          )}
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-muted">
+            {order.giftReceipt && <span>· Gift receipt (no prices)</span>}
+            {order.giftWrapping && <span>· Gift wrapping (+$4.99)</span>}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -453,6 +486,7 @@ export function OrderDrawer({ order, onClose, onUpdate }: OrderDrawerProps) {
         <div className="flex-1 overflow-y-auto px-5 py-5 pb-24">
           <StatusTimeline order={order} />
           <OrderItems items={order.items} />
+          <GiftInfo order={order} />
 
           {/* Customer info */}
           <div className="mt-6 pt-5 border-t border-border">

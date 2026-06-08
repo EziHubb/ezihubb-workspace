@@ -4,9 +4,17 @@ import { QUEUES } from './queue.constants';
 import { EmailProcessor } from './email.processor';
 import { ImageProcessor } from './image.processor';
 import { OrderProcessor } from './order.processor';
+import { AbandonedCartProcessor } from './abandoned-cart.processor';
+import { QueueSchedulerService } from './queue-scheduler.service';
 import { DevBullModule } from './dev-bull.module';
 
-const ALL_QUEUES = [QUEUES.EMAIL, QUEUES.IMAGE_PROCESSING, QUEUES.ORDER_PROCESSING, QUEUES.SCHEDULED];
+const ALL_QUEUES = [
+  QUEUES.EMAIL,
+  QUEUES.IMAGE_PROCESSING,
+  QUEUES.ORDER_PROCESSING,
+  QUEUES.SCHEDULED,
+  QUEUES.ABANDONED_CART,
+];
 const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
 
 @Module({
@@ -18,9 +26,12 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
           { name: QUEUES.IMAGE_PROCESSING },
           { name: QUEUES.ORDER_PROCESSING },
           { name: QUEUES.SCHEDULED },
+          { name: QUEUES.ABANDONED_CART },
         )]),
   ],
-  providers: disableQueue ? [] : [EmailProcessor, ImageProcessor, OrderProcessor],
+  providers: disableQueue
+    ? []
+    : [EmailProcessor, ImageProcessor, OrderProcessor, AbandonedCartProcessor, QueueSchedulerService],
   exports: disableQueue ? [DevBullModule] : [BullModule],
 })
 export class QueueModule {}

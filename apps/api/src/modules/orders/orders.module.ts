@@ -4,9 +4,11 @@ import { AdminOrdersController } from './admin-orders.controller';
 import { OrdersService } from './orders.service';
 import { ShippingModule } from '../shipping/shipping.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { TaxModule } from '../tax/tax.module';
 
 @Module({
-  imports: [ShippingModule, PaymentsModule],
+  imports: [ShippingModule, PaymentsModule, NotificationsModule, TaxModule],
   controllers: [OrdersController, AdminOrdersController],
   providers: [OrdersService],
   exports: [OrdersService],

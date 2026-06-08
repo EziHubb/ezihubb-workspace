@@ -83,9 +83,10 @@ export interface AddItemDto {
 
 interface CartStore {
   // ── Cart data ──────────────────────────────────────────────────────────────
-  cart:      CartDto | null;
-  sessionId: string | null;
-  isLoading: boolean;
+  cart:           CartDto | null;
+  sessionId:      string | null;
+  isLoading:      boolean;
+  _lastMutatedAt: number;
 
   // ── Drawer UI (kept for backward compat — Navbar/CartDrawer use these) ─────
   isDrawerOpen: boolean;
@@ -109,10 +110,11 @@ interface CartStore {
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
-      cart:         null,
-      sessionId:    null,
-      isLoading:    false,
-      isDrawerOpen: false,
+      cart:           null,
+      sessionId:      null,
+      isLoading:      false,
+      isDrawerOpen:   false,
+      _lastMutatedAt: 0,
 
       openDrawer:  () => set({ isDrawerOpen: true }),
       closeDrawer: () => set({ isDrawerOpen: false }),
@@ -124,6 +126,8 @@ export const useCartStore = create<CartStore>()(
       },
 
       fetchCart: async () => {
+        // Skip fetch if a mutation just ran — prevents GET from overwriting addItem's response
+        if (Date.now() - get()._lastMutatedAt < 2000) return;
         set({ isLoading: true });
         try {
           const res = await apiClient.get<CartDto>('/cart', {
@@ -141,7 +145,7 @@ export const useCartStore = create<CartStore>()(
           const res = await apiClient.post<CartDto>('/cart/items', dto, {
             headers: sessionHeader(get().sessionId),
           });
-          set({ cart: normalizeCart(res) });
+          set({ cart: normalizeCart(res), _lastMutatedAt: Date.now() });
           const addedItem = res.items.find((i) => i.productId === dto.productId);
           if (addedItem) {
             analytics.addToCart({
