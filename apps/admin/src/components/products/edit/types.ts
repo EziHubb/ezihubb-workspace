@@ -47,6 +47,8 @@ export interface ProductEditFormValues {
   compareAtPrice:        number | null;
   sku:                   string;
   quantity:              number | null;
+  trackInventory:        boolean;
+  lowStockThreshold:     number | null;
   domesticGlobalPricing: boolean;
   processingProfileId:   string | null;
   shippingProfileId:     string | null;
@@ -147,6 +149,8 @@ export interface AdminProductDto {
   styles?:              string[];
   sustainability?:      string[];
   quantity?:            number | null;
+  trackInventory?:      boolean;
+  lowStockThreshold?:   number | null;
   domesticGlobalPricing?: boolean;
   processingProfileId?: string | null;
   shippingProfileId?:   string | null;

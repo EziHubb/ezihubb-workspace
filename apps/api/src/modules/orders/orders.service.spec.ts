@@ -11,6 +11,8 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { TaxService } from '../tax/tax.service';
 import { AffiliateTrackingService } from '../affiliates/affiliate-tracking.service';
 import { CommissionService } from '../affiliates/commission.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
+import { PushService } from '../notifications/push.service';
 
 const mockShippingAddress = {
   fullName: 'Jane Doe',
@@ -153,6 +155,20 @@ describe('OrdersService', () => {
             createForOrder:      jest.fn().mockResolvedValue(undefined),
             scheduleAutoConfirm: jest.fn().mockResolvedValue(undefined),
             cancelCommission:    jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: LoyaltyService,
+          useValue: {
+            earnPoints:   jest.fn().mockResolvedValue(undefined),
+            cancelPoints: jest.fn().mockResolvedValue(undefined),
+            redeemPoints: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: PushService,
+          useValue: {
+            sendToUser: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],

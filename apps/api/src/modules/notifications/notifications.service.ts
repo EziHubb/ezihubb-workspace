@@ -15,6 +15,7 @@ export const EmailTemplate = {
   CONTACT_MESSAGE:     'contact-message',
   NEW_MESSAGE:         'new-message',
   ABANDONED_CART:      'abandoned-cart',
+  LOW_STOCK_ALERT:     'low-stock-alert',
 } as const;
 
 export type EmailTemplateName = (typeof EmailTemplate)[keyof typeof EmailTemplate];

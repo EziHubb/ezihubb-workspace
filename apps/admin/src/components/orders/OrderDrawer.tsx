@@ -11,6 +11,7 @@ import {
 import { format } from 'date-fns';
 import { OrderStatusBadge, ALL_STATUSES } from './OrderStatusBadge';
 import { CustomizationPreviewModal } from './CustomizationPreviewModal';
+import { BuyLabelModal, type LabelPurchaseResult } from './BuyLabelModal';
 import { clientFetch } from '../../lib/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -54,11 +55,13 @@ export interface OrderDetail {
   };
   items: OrderItem[];
   statusHistory?: { status: string; createdAt: string; note?: string }[];
-  isGift?:      boolean;
-  giftMessage?: string;
-  giftFrom?:    string;
-  giftReceipt?: boolean;
-  giftWrapping?: boolean;
+  isGift?:          boolean;
+  giftMessage?:     string;
+  giftFrom?:        string;
+  giftReceipt?:     boolean;
+  giftWrapping?:    boolean;
+  labelUrl?:        string;
+  labelPurchasedAt?: string;
 }
 
 // ── Status timeline ────────────────────────────────────────────────────────────
@@ -351,6 +354,21 @@ function ShippingInfo({ order, onUpdate }: { order: OrderDetail; onUpdate: () =>
           Track Package — {order.trackingCarrier} {order.trackingNumber}
         </a>
       )}
+
+      {order.labelUrl && (
+        <div className="mt-2 flex items-center gap-1.5 text-xs text-green-700">
+          <Check className="w-3 h-3" />
+          Label purchased
+          <a
+            href={order.labelUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline ml-1"
+          >
+            Print →
+          </a>
+        </div>
+      )}
     </div>
   );
 }
@@ -428,8 +446,23 @@ interface OrderDrawerProps {
 }
 
 export function OrderDrawer({ order, onClose, onUpdate }: OrderDrawerProps) {
-  const backdropRef = useRef<HTMLDivElement>(null);
-  const router      = useRouter();
+  const backdropRef   = useRef<HTMLDivElement>(null);
+  const router        = useRouter();
+  const [buyLabelOpen, setBuyLabelOpen] = useState(false);
+  const [localLabelUrl, setLocalLabelUrl] = useState<string | null>(null);
+
+  const labelUrl = localLabelUrl ?? order.labelUrl ?? null;
+
+  const handleLabelPurchased = (result: LabelPurchaseResult) => {
+    setLocalLabelUrl(result.labelUrl);
+    onUpdate();
+  };
+
+  // Parse shipping address for BuyLabelModal
+  const shippingAddr = (() => {
+    try { return JSON.parse(order.shippingAddress as string) as Record<string, string>; }
+    catch { return {} as Record<string, string>; }
+  })();
 
   // Escape key
   useEffect(() => {
@@ -512,7 +545,7 @@ export function OrderDrawer({ order, onClose, onUpdate }: OrderDrawerProps) {
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-border bg-background flex items-center gap-3 shrink-0">
+        <div className="px-5 py-3 border-t border-border bg-background flex items-center gap-3 shrink-0 flex-wrap">
           <button
             type="button"
             onClick={async () => {
@@ -544,8 +577,40 @@ export function OrderDrawer({ order, onClose, onUpdate }: OrderDrawerProps) {
             <MessageSquare className="w-3.5 h-3.5" />
             Message buyer
           </button>
+
+          {labelUrl ? (
+            <a
+              href={labelUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs font-medium text-green-700 border border-green-300 hover:bg-green-50 px-3 py-2 rounded-button transition-colors"
+            >
+              <Truck className="w-3.5 h-3.5" />
+              Print label
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setBuyLabelOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-medium text-primary border border-primary/30 hover:bg-primary/5 px-3 py-2 rounded-button transition-colors"
+            >
+              <Truck className="w-3.5 h-3.5" />
+              Buy label
+            </button>
+          )}
         </div>
       </aside>
+
+      <BuyLabelModal
+        orderId={order.id}
+        shippingName={shippingAddr['fullName'] ?? order.customer.firstName ?? ''}
+        shippingCity={shippingAddr['city'] ?? ''}
+        shippingState={shippingAddr['state']}
+        shippingCountry={shippingAddr['country'] ?? 'US'}
+        isOpen={buyLabelOpen}
+        onClose={() => setBuyLabelOpen(false)}
+        onLabelPurchased={handleLabelPurchased}
+      />
     </>
   );
 }

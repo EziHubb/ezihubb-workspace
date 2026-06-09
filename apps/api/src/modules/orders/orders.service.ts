@@ -13,6 +13,8 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { TaxService } from '../tax/tax.service';
 import { AffiliateTrackingService } from '../affiliates/affiliate-tracking.service';
 import { CommissionService } from '../affiliates/commission.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
+import { PushService } from '../notifications/push.service';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
@@ -76,6 +78,8 @@ export class OrdersService {
     private readonly taxService: TaxService,
     private readonly affiliateTrackingService: AffiliateTrackingService,
     private readonly commissionService: CommissionService,
+    private readonly loyaltyService: LoyaltyService,
+    private readonly pushService: PushService,
   ) {}
 
   // ─── Checkout ─────────────────────────────────────────────────────────────
@@ -196,6 +200,22 @@ export class OrdersService {
       }
     }
 
+    // ── Loyalty points redemption ────────────────────────────────────────────
+    let pointsDiscount  = 0;
+    let pointsToRedeem  = 0;
+
+    if (userId && dto.pointsToRedeem && dto.pointsToRedeem >= 100) {
+      // Pre-validate before computing total (total not yet known, use subtotal as proxy)
+      // Full validation runs inside the transaction against the real total
+      const validation = await this.loyaltyService.validateRedemption(
+        userId,
+        dto.pointsToRedeem,
+        subtotalAfterDiscount, // conservative — real total (with shipping) is higher
+      );
+      pointsToRedeem = dto.pointsToRedeem;
+      pointsDiscount = validation.pointsDiscount;
+    }
+
     // Calculate shipping (waived if FREE_SHIPPING coupon applied)
     const shippingCalc = await this.shippingService.calculateShipping(
       dto.shippingMethodId,
@@ -222,11 +242,11 @@ export class OrdersService {
           : Number(item.product.basePrice),
       })),
     });
-    // Affiliate discount stacks with coupon — applied AFTER coupon, BEFORE payment
+    // Affiliate discount + loyalty points discount — applied AFTER coupon, BEFORE payment
     const total = Math.max(
       0,
       Math.round(
-        (subtotalAfterDiscount + shippingCost + taxResult.taxAmount + giftWrappingCost - affiliateDiscountAmount) * 100,
+        (subtotalAfterDiscount + shippingCost + taxResult.taxAmount + giftWrappingCost - affiliateDiscountAmount - pointsDiscount) * 100,
       ) / 100,
     );
 
@@ -266,6 +286,8 @@ export class OrdersService {
           note:                    dto.note ?? null,
           affiliateId:             affiliateId,
           affiliateDiscountAmount: affiliateDiscountAmount > 0 ? affiliateDiscountAmount : undefined,
+          pointsRedeemed:          pointsToRedeem > 0 ? pointsToRedeem : undefined,
+          pointsDiscount:          pointsDiscount > 0 ? pointsDiscount : undefined,
         },
       });
 
@@ -321,6 +343,11 @@ export class OrdersService {
             data: { promotionId: promo.id, userId, orderId: newOrder.id },
           });
         }
+      }
+
+      // Deduct loyalty points inside transaction (atomic: if order fails, points are not deducted)
+      if (userId && pointsToRedeem > 0) {
+        await this.loyaltyService.redeemPoints(userId, newOrder.id, pointsToRedeem, tx);
       }
 
       return newOrder;
@@ -613,13 +640,23 @@ export class OrdersService {
       return o;
     });
 
-    // When order is delivered, start the lock-period countdown for commission auto-confirm
-    if (dto.status === OrderStatus.DELIVERED && order.affiliateId) {
-      this.commissionService
-        .scheduleAutoConfirm(id)
-        .catch((err: Error) =>
-          this.logger.error(`Failed to schedule auto-confirm for order ${id}: ${err.message}`),
-        );
+    if (dto.status === OrderStatus.DELIVERED) {
+      // Affiliate commission lock period
+      if (order.affiliateId) {
+        this.commissionService
+          .scheduleAutoConfirm(id)
+          .catch((err: Error) =>
+            this.logger.error(`Failed to schedule auto-confirm for order ${id}: ${err.message}`),
+          );
+      }
+      // Loyalty points lock period (14d after delivery → pending → balance)
+      if (order.userId) {
+        this.loyaltyService
+          .schedulePointsConfirm(id, order.userId)
+          .catch((err: Error) =>
+            this.logger.error(`Failed to schedule loyalty confirm for order ${id}: ${err.message}`),
+          );
+      }
     }
 
     return this.mapToDto(updated);
@@ -736,6 +773,15 @@ export class OrdersService {
         carrier,
         trackingUrl,
       });
+    }
+
+    // Push notification (fire-and-forget)
+    if (order.userId) {
+      this.pushService
+        .notifyOrderShipped(order.userId, order.orderNumber, carrier)
+        .catch((err: Error) =>
+          this.logger.warn(`Push notify failed for order ${id}: ${err.message}`),
+        );
     }
 
     return this.mapToDto(updated);

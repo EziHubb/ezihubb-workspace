@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -13,6 +14,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { OrdersService } from './orders.service';
 import { PdfService } from '../pdf/pdf.service';
+import { LabelService } from '../shipping/label.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
 import { MarkShippedDto } from './dto/mark-shipped.dto';
@@ -33,6 +35,7 @@ export class AdminOrdersController {
   constructor(
     private readonly ordersService: OrdersService,
     private readonly pdfService:    PdfService,
+    private readonly labelService:  LabelService,
   ) {}
 
   @Get()
@@ -105,5 +108,23 @@ export class AdminOrdersController {
     @CurrentUser() user: JwtPayload,
   ) {
     return this.ordersService.markShipped(id, dto, user.sub);
+  }
+
+  // ── Label purchase (EasyPost) ───────────────────────────────────────────────
+
+  @Get(':id/rates')
+  @ApiOperation({ summary: 'Get EasyPost shipping rates for an order (safe — no charge)' })
+  async getShippingRates(@Param('id') id: string) {
+    return this.labelService.getRates(id);
+  }
+
+  @Post(':id/buy-label')
+  @ApiOperation({ summary: 'Purchase EasyPost shipping label — irreversible, charges immediately' })
+  async buyLabel(
+    @Param('id') id: string,
+    @Body('rateId') rateId: string,
+  ) {
+    if (!rateId) throw new BadRequestException('rateId is required');
+    return this.labelService.purchaseLabel(id, rateId);
   }
 }

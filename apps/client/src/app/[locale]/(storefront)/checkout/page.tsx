@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import Image from 'next/image';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Star } from 'lucide-react';
 import { apiClient } from '@mlh/api-client';
 import { useCartStore } from '../../../../lib/store/cart.store';
 import type { ShippingAddressInput } from '@mlh/api-client';
@@ -18,6 +18,7 @@ import type { GiftOptions }         from '../../../../components/checkout/GiftOp
 import { AffiliateDiscountBanner }  from '../../../../components/checkout/AffiliateDiscountBanner';
 import { analytics }                from '../../../../lib/analytics';
 import { hotjarEvent }              from '../../../../lib/analytics/hotjar';
+import { useCurrency }              from '../../../../lib/currency/currency-context';
 
 function getCookie(name: string): string | undefined {
   if (typeof document === 'undefined') return undefined;
@@ -36,6 +37,7 @@ function OrderSummarySidebar({
   taxJurisdiction,
   giftWrapping,
   affiliateDiscountAmount,
+  pointsDiscountAmount,
 }: {
   cart:                     CartDto;
   shippingCost:             number;
@@ -43,15 +45,17 @@ function OrderSummarySidebar({
   taxJurisdiction?:         string;
   giftWrapping?:            boolean;
   affiliateDiscountAmount?: number;
+  pointsDiscountAmount?:    number;
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  const discount         = cart.discountAmount ?? 0;
-  const subtotal         = cart.totals.subtotal;
-  const tax              = taxAmount ?? 0;
-  const giftWrappingCost = giftWrapping ? 4.99 : 0;
+  const discount          = cart.discountAmount ?? 0;
+  const subtotal          = cart.totals.subtotal;
+  const tax               = taxAmount ?? 0;
+  const giftWrappingCost  = giftWrapping ? 4.99 : 0;
   const affiliateDiscount = affiliateDiscountAmount ?? 0;
-  const total            = subtotal + shippingCost - discount + tax + giftWrappingCost - affiliateDiscount;
+  const pointsDiscount    = pointsDiscountAmount ?? 0;
+  const total             = subtotal + shippingCost - discount + tax + giftWrappingCost - affiliateDiscount - pointsDiscount;
 
   const content = (
     <div className="space-y-4">
@@ -125,6 +129,15 @@ function OrderSummarySidebar({
             <span className="font-medium tabular-nums">−${affiliateDiscount.toFixed(2)}</span>
           </div>
         )}
+        {pointsDiscount > 0.01 && (
+          <div className="flex justify-between text-sm text-amber-700">
+            <span className="flex items-center gap-1">
+              <Star className="w-3 h-3" />
+              Loyalty points
+            </span>
+            <span className="font-medium tabular-nums">−${pointsDiscount.toFixed(2)}</span>
+          </div>
+        )}
         {giftWrappingCost > 0 && (
           <div className="flex justify-between text-muted">
             <span>Gift wrapping</span>
@@ -183,6 +196,7 @@ function OrderSummarySidebar({
 export default function CheckoutPage() {
   const locale    = useLocale();
   const router    = useRouter();
+  const { currency } = useCurrency();
 
   const cart      = useCartStore((s) => s.cart);
   const fetchCart = useCartStore((s) => s.fetchCart);
@@ -249,6 +263,19 @@ export default function CheckoutPage() {
       prev ? { ...prev, discountAmount: base * prev.discountRate } : null,
     );
   }, [cart?.totals?.subtotal, cart?.discountAmount, affiliateInfo?.code]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Loyalty points ─────────────────────────────────────────────────────────
+  const [loyaltyBalance,  setLoyaltyBalance]  = useState(0);
+  const [pointsToRedeem,  setPointsToRedeem]  = useState(0);
+  const pointsDiscount = Math.round(pointsToRedeem * 0.01 * 100) / 100;
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    apiClient
+      .get<{ pointsBalance: number }>('/loyalty/me', { token: localStorage.getItem('access_token') ?? undefined })
+      .then((d) => { setLoyaltyBalance(d.pointsBalance ?? 0); })
+      .catch(() => {});
+  }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Order creation state (set when proceeding to Stripe) ──────────────────
   const [clientSecret,    setClientSecret]    = useState('');
@@ -350,6 +377,7 @@ export default function CheckoutPage() {
         giftWrapping:     giftOptions.giftWrapping,
         // Cookie is also read server-side from req.cookies — this is a fallback
         affiliateCode:    affiliateInfo?.code,
+        pointsToRedeem:   pointsToRedeem > 0 ? pointsToRedeem : undefined,
       });
 
       setOrderId(res.orderId);
@@ -386,6 +414,7 @@ export default function CheckoutPage() {
         taxJurisdiction={taxJurisdiction}
         giftWrapping={giftOptions.giftWrapping}
         affiliateDiscountAmount={affiliateInfo?.discountAmount}
+        pointsDiscountAmount={pointsDiscount > 0 ? pointsDiscount : undefined}
       />
 
       <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-8">
@@ -396,6 +425,12 @@ export default function CheckoutPage() {
             <h1 className="font-display text-2xl font-bold text-secondary mb-6">
               Checkout
             </h1>
+
+            {currency !== 'USD' && (
+              <div role="note" className="mb-5 p-3.5 bg-amber-50 border border-amber-200 rounded-card text-sm text-amber-800">
+                Prices shown are approximate conversions for reference. Your card will be charged in <strong>USD</strong>.
+              </div>
+            )}
 
             <StepIndicator currentStep={step} completedSteps={completedSteps} />
 
@@ -451,6 +486,51 @@ export default function CheckoutPage() {
                 <div className="mb-5">
                   <GiftOptionsSection value={giftOptions} onChange={setGiftOptions} />
                 </div>
+
+                {/* Loyalty points redemption — logged-in users with a balance */}
+                {isLoggedIn && loyaltyBalance >= 100 && (
+                  <div className="mb-5 p-4 bg-amber-50 border border-amber-200 rounded-card">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Star className="w-4 h-4 text-amber-600" />
+                      <span className="text-sm font-semibold text-secondary">
+                        Use Loyalty Points ({loyaltyBalance.toLocaleString()} pts available)
+                      </span>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                      <div className="flex items-center gap-2 flex-1">
+                        <input
+                          type="range"
+                          min={0}
+                          max={Math.min(loyaltyBalance, Math.floor((cart.totals.subtotal * 0.5) / 0.01))}
+                          step={100}
+                          value={pointsToRedeem}
+                          onChange={(e) => setPointsToRedeem(Number(e.target.value))}
+                          className="flex-1 accent-amber-600"
+                        />
+                        <span className="text-sm font-bold text-secondary tabular-nums w-20 text-right">
+                          {pointsToRedeem.toLocaleString()} pts
+                        </span>
+                      </div>
+                      {pointsToRedeem > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-amber-700">
+                            −${pointsDiscount.toFixed(2)} off
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setPointsToRedeem(0)}
+                            className="text-xs text-muted hover:text-secondary underline"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted">100 pts = $1 off</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <DeliveryForm
                   countryCode={shippingAddress.country}
                   orderTotal={cart.totals.subtotal}
@@ -495,6 +575,7 @@ export default function CheckoutPage() {
               taxJurisdiction={taxJurisdiction}
               giftWrapping={giftOptions.giftWrapping}
               affiliateDiscountAmount={affiliateInfo?.discountAmount}
+              pointsDiscountAmount={pointsDiscount > 0 ? pointsDiscount : undefined}
             />
           </div>
         </div>

@@ -5,12 +5,14 @@ import {
   ConflictException,
   Logger,
 } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services/storage.service';
 import { RedisService } from '../../common/services/redis.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
+import { UpdateWishlistShareDto } from './dto/update-wishlist-share.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { AddressResponseDto } from './dto/address-response.dto';
 import { WishlistItemResponseDto } from './dto/wishlist-item-response.dto';
@@ -265,6 +267,109 @@ export class UsersService {
   async isInWishlist(userId: string, productId: string): Promise<{ inWishlist: boolean }> {
     const item = await this.prisma.wishlistItem.findFirst({ where: { userId, productId } });
     return { inWishlist: !!item };
+  }
+
+  // ─── Wishlist Sharing ──────────────────────────────────────────────────────
+
+  async getWishlistShareStatus(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where:  { id: userId },
+      select: { wishlistShareToken: true, wishlistIsPublic: true, wishlistName: true },
+    });
+    if (!user) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'User not found' });
+    return {
+      token:    user.wishlistShareToken,
+      isPublic: user.wishlistIsPublic,
+      name:     user.wishlistName,
+    };
+  }
+
+  async shareWishlist(userId: string) {
+    // Reuse existing token if already shared; generate new one otherwise
+    const existing = await this.prisma.user.findUnique({
+      where:  { id: userId },
+      select: { wishlistShareToken: true },
+    });
+    const token = existing?.wishlistShareToken ?? randomBytes(16).toString('hex');
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data:  { wishlistShareToken: token, wishlistIsPublic: true },
+      select: { wishlistShareToken: true, wishlistIsPublic: true, wishlistName: true },
+    });
+    return { token: user.wishlistShareToken!, isPublic: user.wishlistIsPublic, name: user.wishlistName };
+  }
+
+  async updateWishlistShare(userId: string, dto: UpdateWishlistShareDto) {
+    const current = await this.prisma.user.findUnique({
+      where:  { id: userId },
+      select: { wishlistShareToken: true },
+    });
+    if (!current?.wishlistShareToken) {
+      throw new BadRequestException({ code: 'ERR_WISHLIST_NOT_SHARED', message: 'Wishlist is not shared yet' });
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.name !== undefined && { wishlistName: dto.name ?? null }),
+        ...(dto.isPublic !== undefined && { wishlistIsPublic: dto.isPublic }),
+      },
+      select: { wishlistShareToken: true, wishlistIsPublic: true, wishlistName: true },
+    });
+    return { token: user.wishlistShareToken!, isPublic: user.wishlistIsPublic, name: user.wishlistName };
+  }
+
+  async revokeWishlistShare(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data:  { wishlistShareToken: null, wishlistIsPublic: false, wishlistName: null },
+    });
+  }
+
+  async getPublicWishlist(token: string): Promise<{ wishlistName: string | null; ownerName: string | null; items: WishlistItemResponseDto[] }> {
+    const user = await this.prisma.user.findUnique({
+      where:  { wishlistShareToken: token },
+      select: { id: true, wishlistIsPublic: true, wishlistName: true, firstName: true },
+    });
+
+    // 404 for non-public or missing — prevent token enumeration
+    if (!user || !user.wishlistIsPublic) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Wishlist not found' });
+    }
+
+    const items = await this.prisma.wishlistItem.findMany({
+      where:   { userId: user.id },
+      include: {
+        product: {
+          select: {
+            id:        true,
+            name:      true,
+            slug:      true,
+            basePrice: true,
+            isActive:  true,
+            images:    { where: { isPrimary: true }, select: { url: true }, take: 1 },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const activeItems = items.filter((item) => item.product.isActive);
+
+    return {
+      wishlistName: user.wishlistName,
+      ownerName:    user.firstName,
+      items: activeItems.map((item): WishlistItemResponseDto => ({
+        id:               item.id,
+        productId:        item.productId,
+        productName:      item.product.name,
+        productSlug:      item.product.slug,
+        productImageUrl:  item.product.images[0]?.url ?? null,
+        productBasePrice: Number(item.product.basePrice),
+        addedAt:          item.createdAt,
+      })),
+    };
   }
 
   // ─── Private helpers ───────────────────────────────────────────────────────

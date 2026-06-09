@@ -15,6 +15,7 @@ import { MetaPixel } from '../../components/analytics/MetaPixel';
 import { OrganizationStructuredData } from '../../components/seo/OrganizationStructuredData';
 import { WebsiteStructuredData } from '../../components/seo/WebsiteStructuredData';
 import { AffiliateTracker } from '../../components/providers/AffiliateTracker';
+import { CurrencyProvider } from '../../lib/currency/currency-context';
 import '../global.css';
 
 const inter = Inter({
@@ -135,6 +136,7 @@ export default async function LocaleLayout({
         <OrganizationStructuredData />
         <WebsiteStructuredData />
         <ReactQueryProvider>
+          <CurrencyProvider>
           <NextIntlClientProvider messages={messages}>
             {children}
             <AffiliateTracker />
@@ -145,6 +147,7 @@ export default async function LocaleLayout({
             <CookieConsentBanner />
             <Suspense fallback={null}><MetaPixel /></Suspense>
           </NextIntlClientProvider>
+          </CurrencyProvider>
         </ReactQueryProvider>
         {/* Direct GA4 tag — keep while GTM is being validated; remove once GTM is confirmed */}
         {isProd && gaId && <GoogleAnalytics gaId={gaId} />}

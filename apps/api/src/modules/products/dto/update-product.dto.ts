@@ -71,6 +71,14 @@ export class UpdateProductDto extends BaseUpdateProductDto {
 
   @ApiPropertyOptional()
   @IsOptional() @IsBoolean()
+  trackInventory?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsInt() @Min(0) @Type(() => Number)
+  lowStockThreshold?: number | null;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsBoolean()
   isAdsEnabled?: boolean;
 
   @ApiPropertyOptional()

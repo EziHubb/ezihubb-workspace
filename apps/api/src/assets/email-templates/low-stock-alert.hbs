@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory Alert</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; background: #faf9f7; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .header { background: #3d2b1f; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #f5e6d3; margin: 0; font-size: 24px; letter-spacing: 1px; }
+    .header p { color: #c8a882; margin: 8px 0 0; font-size: 14px; }
+    .body { padding: 40px; color: #3d2b1f; line-height: 1.7; }
+    .body h2 { font-size: 20px; margin-top: 0; }
+    .alert-block { text-align: center; border-radius: 8px; padding: 28px 20px; margin: 24px 0; }
+    .alert-block.out-of-stock { background: #fdecea; border: 2px solid #e53935; }
+    .alert-block.low-stock    { background: #fff8e1; border: 2px solid #f9a825; }
+    .alert-block .status { font-size: 22px; font-weight: bold; line-height: 1.2; }
+    .alert-block.out-of-stock .status { color: #b71c1c; }
+    .alert-block.low-stock    .status { color: #e65100; }
+    .alert-block .qty { font-size: 14px; margin-top: 6px; color: #5c4537; }
+    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0e8de; font-size: 14px; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row .label { color: #7a5c45; }
+    .detail-row .value { font-weight: bold; color: #3d2b1f; }
+    .cta { display: inline-block; margin: 24px 0; background: #3d2b1f; color: #f5e6d3 !important; padding: 14px 32px; border-radius: 4px; text-decoration: none; font-size: 15px; }
+    .footer { background: #f5e6d3; padding: 20px 40px; text-align: center; font-size: 12px; color: #7a5c45; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>Maple Loom Handmade</h1>
+      <p>Inventory Alert</p>
+    </div>
+    <div class="body">
+      <h2>Inventory Action Required</h2>
+      <p>The following product requires your attention:</p>
+
+      <div class="alert-block {{#if isOutOfStock}}out-of-stock{{else}}low-stock{{/if}}">
+        <div class="status">{{status}}: {{productName}}</div>
+        {{#unless isOutOfStock}}
+        <div class="qty">{{quantity}} unit{{#if (gt quantity 1)}}s{{/if}} remaining (threshold: {{threshold}})</div>
+        {{/unless}}
+        {{#if isOutOfStock}}
+        <div class="qty">This product is no longer available for purchase</div>
+        {{/if}}
+      </div>
+
+      <div style="background:#faf9f7; border-radius:6px; padding:16px 20px; margin-bottom:24px;">
+        <div class="detail-row">
+          <span class="label">Product</span>
+          <span class="value">{{productName}}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">SKU</span>
+          <span class="value">{{sku}}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Current quantity</span>
+          <span class="value">{{quantity}}</span>
+        </div>
+        {{#unless isOutOfStock}}
+        <div class="detail-row">
+          <span class="label">Alert threshold</span>
+          <span class="value">{{threshold}}</span>
+        </div>
+        {{/unless}}
+        <div class="detail-row">
+          <span class="label">Status</span>
+          <span class="value">{{status}}</span>
+        </div>
+      </div>
+
+      <p>Please restock or update this listing to keep your shop running smoothly.</p>
+
+      <a class="cta" href="{{adminProductUrl}}">Manage inventory →</a>
+
+      <p><strong>The Maple Loom Team</strong></p>
+    </div>
+    <div class="footer">
+      &copy; {{year}} Maple Loom Handmade. All rights reserved.<br />
+      You're receiving this because you're an admin of Maple Loom Handmade.
+    </div>
+  </div>
+</body>
+</html>

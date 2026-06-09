@@ -15,6 +15,7 @@ import {
 import { useCartStore } from '../../lib/store/cart.store';
 import { MobileStickyCartBar } from './MobileStickyCartBar';
 import { toast } from '../../lib/store/toast.store';
+import { useCurrency } from '../../lib/currency/currency-context';
 import { analytics } from '../../lib/analytics';
 import type { ProductDto, ReviewSummaryDto } from '@mlh/types';
 
@@ -68,15 +69,16 @@ function PriceBlock({
   compareAtPrice?: number;
   discountPercent: number | null;
 }) {
+  const { format } = useCurrency();
   return (
     <div>
       <div className="flex items-baseline gap-2 flex-wrap">
         <span className="text-2xl font-bold text-secondary">
-          ${price.toFixed(2)}
+          {format(price)}
         </span>
         {compareAtPrice && compareAtPrice > price && (
           <span className="text-base text-muted line-through">
-            ${compareAtPrice.toFixed(2)}
+            {format(compareAtPrice)}
           </span>
         )}
         {discountPercent !== null && discountPercent > 0 && (

@@ -36,6 +36,8 @@ import { AnalyticsModule } from '../modules/analytics/analytics.module';
 import { MessagesModule } from '../modules/messages/messages.module';
 import { TaxModule } from '../modules/tax/tax.module';
 import { AffiliatesModule } from '../modules/affiliates/affiliates.module';
+import { LoyaltyModule } from '../modules/loyalty/loyalty.module';
+import { CurrencyModule } from '../modules/currency/currency.module';
 import { UnsubscribeController } from '../modules/unsubscribe/unsubscribe.controller';
 
 @Module({
@@ -132,6 +134,8 @@ import { UnsubscribeController } from '../modules/unsubscribe/unsubscribe.contro
     MessagesModule,
     TaxModule,
     AffiliatesModule,
+    LoyaltyModule,
+    CurrencyModule,
     HealthModule,
   ],
   controllers: [AppController, UnsubscribeController],

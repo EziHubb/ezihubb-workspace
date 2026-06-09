@@ -11,6 +11,7 @@ import {
   UseInterceptors,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -25,12 +26,14 @@ import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
+import { UpdateWishlistShareDto } from './dto/update-wishlist-share.dto';
+import { RegisterFcmTokenDto, UnregisterFcmTokenDto, UpdatePushPreferencesDto } from './dto/fcm-token.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { AddressResponseDto } from './dto/address-response.dto';
 import { WishlistItemResponseDto } from './dto/wishlist-item-response.dto';
-import { UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Public } from '../../common/decorators/public.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
@@ -216,5 +219,114 @@ export class UsersController {
     @Param('productId', ParseCuidPipe) productId: string,
   ): Promise<{ inWishlist: boolean }> {
     return this.usersService.isInWishlist(user.sub, productId);
+  }
+
+  // ─── Wishlist Sharing ──────────────────────────────────────────────────────
+
+  // GET /users/me/wishlist/share
+  @Get('me/wishlist/share')
+  @ApiOperation({ summary: 'Get current wishlist sharing status' })
+  async getWishlistShareStatus(@CurrentUser() user: JwtPayload) {
+    return this.usersService.getWishlistShareStatus(user.sub);
+  }
+
+  // POST /users/me/wishlist/share
+  @Post('me/wishlist/share')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Enable wishlist sharing (generates share token)' })
+  async shareWishlist(@CurrentUser() user: JwtPayload) {
+    return this.usersService.shareWishlist(user.sub);
+  }
+
+  // PATCH /users/me/wishlist/share
+  @Patch('me/wishlist/share')
+  @ApiOperation({ summary: 'Update shared wishlist name or visibility' })
+  async updateWishlistShare(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdateWishlistShareDto,
+  ) {
+    return this.usersService.updateWishlistShare(user.sub, dto);
+  }
+
+  // DELETE /users/me/wishlist/share
+  @Delete('me/wishlist/share')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Revoke wishlist sharing link' })
+  async revokeWishlistShare(@CurrentUser() user: JwtPayload): Promise<void> {
+    return this.usersService.revokeWishlistShare(user.sub);
+  }
+
+  // ─── Push Notifications ────────────────────────────────────────────────────
+
+  // POST /users/me/fcm-token
+  @Post('me/fcm-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Register a device FCM token' })
+  async registerFcmToken(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: RegisterFcmTokenDto,
+  ): Promise<{ registered: boolean }> {
+    await this.prisma.fcmToken.upsert({
+      where:  { token: dto.token },
+      create: { userId: user.sub, token: dto.token, platform: dto.platform ?? 'web' },
+      update: { lastSeen: new Date(), userId: user.sub },
+    });
+
+    // Enforce max 5 tokens per user — remove oldest beyond the cap
+    const tokens = await this.prisma.fcmToken.findMany({
+      where:   { userId: user.sub },
+      orderBy: { lastSeen: 'desc' },
+      select:  { id: true },
+    });
+    if (tokens.length > 5) {
+      const staleIds = tokens.slice(5).map((t) => t.id);
+      await this.prisma.fcmToken.deleteMany({ where: { id: { in: staleIds } } });
+    }
+
+    return { registered: true };
+  }
+
+  // DELETE /users/me/fcm-token
+  @Delete('me/fcm-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Unregister a device FCM token (on logout)' })
+  async unregisterFcmToken(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UnregisterFcmTokenDto,
+  ): Promise<{ unregistered: boolean }> {
+    await this.prisma.fcmToken.deleteMany({
+      where: { token: dto.token, userId: user.sub },
+    });
+    return { unregistered: true };
+  }
+
+  // PATCH /users/me/push-preferences
+  @Patch('me/push-preferences')
+  @ApiOperation({ summary: 'Update push notification preference' })
+  async updatePushPreferences(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdatePushPreferencesDto,
+  ): Promise<{ updated: boolean }> {
+    await this.prisma.user.update({
+      where: { id: user.sub },
+      data:  { pushEnabled: dto.pushEnabled },
+    });
+    return { updated: true };
+  }
+}
+
+// ── Public wishlist by share token ────────────────────────────────────────────
+
+@ApiTags('Wishlist')
+@Controller('wishlist')
+export class WishlistPublicController {
+  constructor(private readonly usersService: UsersService) {}
+
+  // GET /wishlist/:token
+  @Get(':token')
+  @Public()
+  @ApiOperation({ summary: 'Get a publicly shared wishlist by token' })
+  async getPublicWishlist(@Param('token') token: string) {
+    return this.usersService.getPublicWishlist(token);
   }
 }

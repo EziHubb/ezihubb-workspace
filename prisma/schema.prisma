@@ -101,6 +101,14 @@ enum ProductStatus {
   ARCHIVED  // Soft-archived (replaces deletedAt pattern)
 }
 
+enum LoyaltyTxType {
+  EARN    // purchase → pointsPending
+  REDEEM  // used at checkout (from pointsBalance)
+  CANCEL  // cancelled on refund
+  EXPIRE  // future use
+  ADJUST  // admin manual adjustment
+}
+
 enum AffiliateStatus {
   PENDING     // applied, waiting admin review
   ACTIVE      // approved, can generate links
@@ -160,8 +168,28 @@ model User {
   notifications       Notification[]
   conversations       Conversation[]
   affiliateAccount    AffiliateAccount?
+  loyaltyAccount      LoyaltyAccount?
+
+  wishlistShareToken  String?  @unique
+  wishlistIsPublic    Boolean  @default(false)
+  wishlistName        String?  @db.VarChar(100)
+
+  pushEnabled         Boolean  @default(true)
+  fcmTokens           FcmToken[]
 
   @@index([email])
+}
+
+model FcmToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  platform  String   @default("web")
+  createdAt DateTime @default(now())
+  lastSeen  DateTime @default(now())
+
+  @@index([userId])
 }
 
 model RefreshToken {
@@ -365,6 +393,8 @@ model Product {
   // ── TAB: Pricing & Inventory ────────────────────────────────────────────────
   domesticGlobalPricing Boolean            @default(false)
   quantity          Int?                   // null = unlimited (POD)
+  trackInventory    Boolean                @default(false)
+  lowStockThreshold Int?
   returnPolicy      ReturnPolicy           @default(NO_RETURNS)
 
   // ── TAB: Processing & Shipping Profiles ─────────────────────────────────────
@@ -416,15 +446,16 @@ model Product {
 }
 
 model ProductVariant {
-  id        String   @id @default(cuid())
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  name      String
-  options   Json
-  price     Decimal  @db.Decimal(10, 2)
-  sku       String?  @unique
-  isDefault Boolean  @default(false)
-  sortOrder Int      @default(0)
+  id                String   @id @default(cuid())
+  productId         String
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name              String
+  options           Json
+  price             Decimal  @db.Decimal(10, 2)
+  sku               String?  @unique
+  isDefault         Boolean  @default(false)
+  sortOrder         Int      @default(0)
+  lowStockThreshold Int?
 
   cartItems           CartItem[]
   orderItems          OrderItem[]
@@ -677,6 +708,18 @@ model Order {
   affiliate               AffiliateAccount?    @relation(fields: [affiliateId], references: [id])
   affiliateDiscountAmount Decimal?             @db.Decimal(10, 2)
   commission              AffiliateCommission?
+
+  // Loyalty points
+  pointsEarned   Int?              // points awarded when this order completes
+  pointsRedeemed Int?              // points spent to discount this order
+  pointsDiscount Decimal?          @db.Decimal(10, 2)  // dollar value of redeemed points
+
+  // Label purchase (EasyPost)
+  easypostShipmentId String?
+  labelUrl           String?
+  labelPurchasedAt   DateTime?
+  labelCost          Decimal?  @db.Decimal(10, 2)
+  shippingRateId     String?
 
   @@index([userId])
   @@index([status])
@@ -1096,6 +1139,44 @@ model AffiliateCommission {
   @@index([affiliateId])
   @@index([status])
   @@index([createdAt])
+}
+
+// ─── Loyalty Program ─────────────────────────────────────────────────────────
+
+model LoyaltyAccount {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  pointsBalance  Int      @default(0)   // redeemable right now
+  pointsPending  Int      @default(0)   // earned but locked (14-day delivery lock)
+  pointsLifetime Int      @default(0)   // all-time earned (never decrements)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  transactions   LoyaltyTransaction[]
+
+  @@index([userId])
+}
+
+model LoyaltyTransaction {
+  id          String         @id @default(cuid())
+  accountId   String
+  account     LoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  orderId     String?        // nullable — adjust/expire have no order
+  type        LoyaltyTxType
+  points      Int            // positive = earn/restore; negative = redeem/cancel
+  description String?
+
+  // Set when an EARN transaction is moved from pending → balance (14-day confirm)
+  confirmedAt DateTime?
+
+  createdAt   DateTime       @default(now())
+
+  @@index([accountId])
+  @@index([orderId])
 }
 
 model AffiliatePayout {

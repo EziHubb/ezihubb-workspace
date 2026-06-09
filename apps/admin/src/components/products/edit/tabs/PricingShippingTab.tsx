@@ -367,13 +367,14 @@ interface PricingShippingTabProps {
 export function PricingShippingTab({ product, onSwitchTab }: PricingShippingTabProps) {
   const { register, watch, setValue } = useFormContext<ProductEditFormValues>();
 
-  const basePrice    = watch('basePrice');
-  const compareAt    = watch('compareAtPrice');
-  const profileId    = watch('processingProfileId') ?? null;
-  const shippingId   = watch('shippingProfileId')   ?? null;
-  const returnPolicy = watch('returnPolicy')         ?? 'NO_RETURNS';
-  const domGlobal    = watch('domesticGlobalPricing');
-  const sku          = watch('sku') ?? '';
+  const basePrice        = watch('basePrice');
+  const compareAt        = watch('compareAtPrice');
+  const profileId        = watch('processingProfileId') ?? null;
+  const shippingId       = watch('shippingProfileId')   ?? null;
+  const returnPolicy     = watch('returnPolicy')         ?? 'NO_RETURNS';
+  const domGlobal        = watch('domesticGlobalPricing');
+  const sku              = watch('sku') ?? '';
+  const trackInventory   = watch('trackInventory') ?? false;
 
   return (
     <div className="max-w-[760px] mx-auto">
@@ -430,6 +431,33 @@ export function PricingShippingTab({ product, onSwitchTab }: PricingShippingTabP
               />
               <p className="text-xs text-muted mt-1 tabular-nums">{sku.length}/32</p>
             </FormField>
+          </div>
+
+          {/* Inventory tracking */}
+          <div className="mt-6 pt-6 border-t border-border space-y-4">
+            <Toggle
+              checked={trackInventory}
+              onChange={(v) => setValue('trackInventory', v, { shouldDirty: true })}
+              label="Track inventory"
+              sub="Automatically decrement stock when orders are confirmed and send low-stock alerts."
+            />
+            {trackInventory && (
+              <FormField
+                label="Low-stock alert threshold"
+                hint="Send an admin email when quantity drops to or below this number. Leave empty to only alert when out of stock."
+              >
+                <input
+                  type="number"
+                  min={0}
+                  {...register('lowStockThreshold', {
+                    valueAsNumber: true,
+                    setValueAs: (v) => v === '' || isNaN(Number(v)) ? null : Number(v),
+                  })}
+                  className="w-32 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted tabular-nums"
+                  placeholder="e.g. 5"
+                />
+              </FormField>
+            )}
           </div>
         </TabSection>
 

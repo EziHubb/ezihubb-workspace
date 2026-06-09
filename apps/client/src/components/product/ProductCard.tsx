@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Heart } from 'lucide-react';
 import { RatingStars } from '@mlh/ui';
 import { API_ROUTES } from '@mlh/constants';
+import { useCurrency } from '../../lib/currency/currency-context';
 
 type BadgeType = 'new' | 'sale' | 'hot' | 'bestseller';
 
@@ -53,6 +54,7 @@ export function ProductCard({
 }: ProductCardProps) {
   const [isWishlisted,       setIsWishlisted]       = useState(initialWishlisted);
   const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
+  const { format } = useCurrency();
   const productHref = `/${locale}/products/${slug}`;
 
   const handleWishlistToggle = async () => {
@@ -121,11 +123,11 @@ export function ProductCard({
 
       <div className="flex items-center gap-2 mb-2">
         <span className="text-primary font-semibold text-lg">
-          ${price.toFixed(2)}
+          {format(price)}
         </span>
         {originalPrice && (
           <span className="text-muted line-through text-sm">
-            ${originalPrice.toFixed(2)}
+            {format(originalPrice)}
           </span>
         )}
       </div>

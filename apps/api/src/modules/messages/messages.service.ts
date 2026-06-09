@@ -7,6 +7,7 @@ import {
 import { ConversationStatus, SenderType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PushService } from '../notifications/push.service';
 import { AdminConversationQueryDto } from './dto/admin-conversation-query.dto';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { SendMessageDto } from './dto/send-message.dto';
@@ -25,8 +26,9 @@ export class MessagesService {
   private readonly logger = new Logger(MessagesService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly notifications: NotificationsService,
+    private readonly prisma:         PrismaService,
+    private readonly notifications:  NotificationsService,
+    private readonly pushService:    PushService,
   ) {}
 
   async createConversation(userId: string | null, dto: CreateConversationDto) {
@@ -124,6 +126,15 @@ export class MessagesService {
         orderNumber:    conversation.order?.orderNumber ?? undefined,
         orderId:        conversation.orderId ?? undefined,
       }).catch((err: unknown) => this.logger.warn(`Email notification failed: ${String(err)}`));
+    }
+
+    // Push notification to customer when shop replies (fire-and-forget)
+    if (!isCustomer && conversation.userId) {
+      this.pushService
+        .notifyNewMessage(conversation.userId, conversationId)
+        .catch((err: unknown) =>
+          this.logger.warn(`Push notify failed for conversation ${conversationId}: ${String(err)}`),
+        );
     }
 
     return message;

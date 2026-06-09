@@ -1,4 +1,4 @@
-import { IsBoolean, IsEmail, IsOptional, IsString, Length, MaxLength, ValidateNested } from 'class-validator';
+import { IsBoolean, IsEmail, IsInt, IsOptional, IsString, Length, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer';
 
@@ -107,6 +107,13 @@ export class CheckoutDto {
   @IsOptional()
   @IsBoolean()
   giftWrapping?: boolean;
+
+  @ApiPropertyOptional({ description: 'Loyalty points to redeem (logged-in users only)' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1_000_000)
+  pointsToRedeem?: number;
 }
 
 export class CancelOrderDto {

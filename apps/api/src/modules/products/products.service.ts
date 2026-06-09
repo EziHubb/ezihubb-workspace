@@ -442,7 +442,7 @@ export class ProductsService {
       'isPersonalizable', 'isActive', 'isFeatured',
       'processingDays',
       // ── New scalar fields from product-edit schema ──
-      'domesticGlobalPricing', 'quantity', 'isAdsEnabled', 'hsCode',
+      'domesticGlobalPricing', 'quantity', 'trackInventory', 'lowStockThreshold', 'isAdsEnabled', 'hsCode',
       'titleCharCount', 'thumbnailCropData',
       'returnPolicy', 'whoMadeIt', 'howItWasMade', 'renewalType',
       // Array fields (assigned directly below)
@@ -576,6 +576,8 @@ export class ProductsService {
       titleCharCount:       product.titleCharCount,
       domesticGlobalPricing: product.domesticGlobalPricing,
       quantity:             product.quantity,
+      trackInventory:       product.trackInventory,
+      lowStockThreshold:    product.lowStockThreshold,
       returnPolicy:         product.returnPolicy,
       whoMadeIt:            product.whoMadeIt,
       howItWasMade:         product.howItWasMade,

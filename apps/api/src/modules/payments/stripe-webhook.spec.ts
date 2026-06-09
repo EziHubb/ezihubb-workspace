@@ -9,6 +9,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { CommissionService } from '../affiliates/commission.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
+import { LowStockService } from '../products/low-stock.service';
 import { QUEUES } from '../../queue/queue.constants';
 
 // Stripe is initialised with the key from ConfigService — stub it out
@@ -90,6 +92,19 @@ describe('PaymentsService — Stripe webhook handler', () => {
           useValue: {
             createForOrder:   jest.fn().mockResolvedValue(undefined),
             cancelCommission: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: LoyaltyService,
+          useValue: {
+            earnPoints:   jest.fn().mockResolvedValue(undefined),
+            cancelPoints: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: LowStockService,
+          useValue: {
+            checkAfterOrder: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],

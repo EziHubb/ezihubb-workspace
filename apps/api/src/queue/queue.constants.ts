@@ -5,6 +5,8 @@ export const QUEUES = {
   SCHEDULED:            'scheduled',
   ABANDONED_CART:       'abandoned-cart',
   AFFILIATE_COMMISSION: 'affiliate-commission',
+  LOYALTY:              'loyalty',
+  LOW_STOCK:            'low-stock',
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
@@ -30,6 +32,9 @@ export const JOBS = {
 
   // Abandoned cart
   SCAN_ABANDONED_CARTS: 'scan-abandoned-carts',
+
+  // Low stock
+  DAILY_LOW_STOCK_SCAN: 'daily-low-stock-scan',
 } as const;
 
 export type JobName = (typeof JOBS)[keyof typeof JOBS];

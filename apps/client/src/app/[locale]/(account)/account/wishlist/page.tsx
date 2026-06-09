@@ -3,12 +3,21 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
-import { Heart, ShoppingCart, HeartOff } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Heart, ShoppingCart, HeartOff, Share2, Copy, Check, X, Globe } from 'lucide-react';
 import { queryKeys, useMutateCart } from '@mlh/api-client';
 import { useToast } from '@mlh/ui';
 import type { WishlistItemDto } from '@mlh/types';
 import { useAuthQuery, useAuthMutation } from '../../../../../lib/hooks/useAuthQuery';
 import { apiClient } from '@mlh/api-client';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface WishlistShareStatus {
+  token:    string | null;
+  isPublic: boolean;
+  name:     string | null;
+}
 
 // ── Wishlist product card ─────────────────────────────────────────────────────
 
@@ -83,11 +92,204 @@ function WishlistCard({
   );
 }
 
+// ── Sharing Panel ─────────────────────────────────────────────────────────────
+
+function SharingPanel() {
+  const toast = useToast();
+  const [copied, setCopied] = useState(false);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  const { data: shareStatus, refetch } = useAuthQuery<WishlistShareStatus>(
+    ['wishlist', 'share'],
+    '/users/me/wishlist/share',
+  );
+
+  const enableMutation = useAuthMutation(
+    (_: void, token: string) =>
+      apiClient.post<WishlistShareStatus>('/users/me/wishlist/share', {}, { token }),
+    { onSuccess: () => refetch() },
+  );
+
+  const updateMutation = useAuthMutation(
+    (dto: { name?: string | null; isPublic?: boolean }, token: string) =>
+      apiClient.patch<WishlistShareStatus>('/users/me/wishlist/share', dto, { token }),
+    { onSuccess: () => refetch() },
+  );
+
+  const revokeMutation = useAuthMutation(
+    (_: void, token: string) => apiClient.delete<void>('/users/me/wishlist/share', { token }),
+    {
+      onSuccess: () => {
+        refetch();
+        toast.info('Wishlist link revoked');
+      },
+    },
+  );
+
+  const shareToken = shareStatus?.token ?? null;
+  const shareUrl =
+    typeof window !== 'undefined' && shareToken
+      ? `${window.location.origin}/wishlist/${shareToken}`
+      : '';
+
+  const copyLink = () => {
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const handleEnable = () => enableMutation.mutate(undefined);
+  const handleRevoke = () => revokeMutation.mutate(undefined);
+
+  const handleNameBlur = () => {
+    const name = nameRef.current?.value.trim() ?? '';
+    updateMutation.mutate({ name: name || null });
+  };
+
+  const togglePublic = (checked: boolean) => {
+    updateMutation.mutate({ isPublic: checked });
+  };
+
+  return (
+    <div className="border border-border rounded-card p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Share2 className="w-4 h-4 text-primary" />
+          <h2 className="font-semibold text-secondary text-sm">Share Wishlist</h2>
+        </div>
+        {shareToken && (
+          <button
+            type="button"
+            onClick={handleRevoke}
+            disabled={revokeMutation.isPending}
+            className="text-xs text-muted hover:text-error transition-colors flex items-center gap-1"
+          >
+            <X className="w-3 h-3" />
+            Revoke link
+          </button>
+        )}
+      </div>
+
+      {!shareToken ? (
+        <div className="space-y-3">
+          <p className="text-xs text-muted">
+            Create a shareable link so friends and family can view your wishlist and buy you gifts.
+          </p>
+          <button
+            type="button"
+            onClick={handleEnable}
+            disabled={enableMutation.isPending}
+            className="flex items-center gap-2 bg-primary text-white text-xs font-semibold px-4 py-2 rounded-button hover:bg-primary-dark transition-colors disabled:opacity-50"
+          >
+            <Globe className="w-3.5 h-3.5" />
+            {enableMutation.isPending ? 'Creating…' : 'Create share link'}
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Name input */}
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">
+              Wishlist name <span className="text-muted font-normal">(optional)</span>
+            </label>
+            <input
+              ref={nameRef}
+              type="text"
+              maxLength={100}
+              defaultValue={shareStatus?.name ?? ''}
+              onBlur={handleNameBlur}
+              placeholder="e.g. My Birthday Wishlist"
+              className="w-full border border-border rounded-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+
+          {/* Visibility toggle */}
+          <label className="flex items-center gap-3 cursor-pointer">
+            <div className="relative">
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={shareStatus?.isPublic ?? false}
+                onChange={(e) => togglePublic(e.target.checked)}
+              />
+              <div
+                className={`w-10 h-5 rounded-full transition-colors ${
+                  shareStatus?.isPublic ? 'bg-primary' : 'bg-border'
+                }`}
+              />
+              <div
+                className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                  shareStatus?.isPublic ? 'translate-x-5' : ''
+                }`}
+              />
+            </div>
+            <span className="text-xs text-secondary">
+              {shareStatus?.isPublic
+                ? 'Visible to anyone with the link'
+                : 'Hidden (link inactive)'}
+            </span>
+          </label>
+
+          {/* Share URL */}
+          {shareStatus?.isPublic && shareUrl && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={shareUrl}
+                  className="flex-1 border border-border rounded-input px-3 py-2 text-xs text-muted bg-background/50 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={copyLink}
+                  className="flex items-center gap-1.5 border border-border px-3 py-2 rounded-button text-xs font-medium text-secondary hover:bg-background transition-colors"
+                >
+                  {copied ? (
+                    <Check className="w-3.5 h-3.5 text-success" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                  {copied ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+
+              {/* Social share */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted">Share on:</span>
+                <a
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold px-2.5 py-1 rounded border border-border text-secondary hover:bg-background transition-colors"
+                >
+                  Facebook
+                </a>
+                <a
+                  href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(
+                    'Check out my wishlist!',
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold px-2.5 py-1 rounded border border-border text-secondary hover:bg-background transition-colors"
+                >
+                  X
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function WishlistPage() {
-  const locale       = useLocale();
-  const toast = useToast();
+  const locale = useLocale();
+  const toast  = useToast();
 
   const { data: items = [], isLoading } = useAuthQuery<WishlistItemDto[]>(
     queryKeys.wishlist(),
@@ -107,7 +309,7 @@ export default function WishlistPage() {
 
   const removingId =
     removeMutation.isPending ? (removeMutation.variables as string) : null;
-  const addingId   =
+  const addingId =
     addItem.isPending ? (addItem.variables as { productId: string }).productId : null;
 
   const handleRemove = (productId: string) => {
@@ -128,6 +330,9 @@ export default function WishlistPage() {
   return (
     <div className="space-y-6">
       <h1 className="font-display text-2xl font-bold text-secondary">Wishlist</h1>
+
+      {/* Sharing panel */}
+      <SharingPanel />
 
       {/* Loading */}
       {isLoading && (
