@@ -13,6 +13,7 @@ import { CookieConsentBanner } from '../../components/analytics/CookieConsentBan
 import { MetaPixel } from '../../components/analytics/MetaPixel';
 import { OrganizationStructuredData } from '../../components/seo/OrganizationStructuredData';
 import { WebsiteStructuredData } from '../../components/seo/WebsiteStructuredData';
+import { AffiliateTracker } from '../../components/providers/AffiliateTracker';
 import '../global.css';
 
 const inter = Inter({
@@ -134,6 +135,7 @@ export default async function LocaleLayout({
         <ReactQueryProvider>
           <NextIntlClientProvider messages={messages}>
             {children}
+            <AffiliateTracker />
             {/* Module-level toast store — call toast.success/error anywhere, including outside React */}
             <ToastContainer />
             {/* Core Web Vitals reporting — logs in dev, sends to analytics in prod */}

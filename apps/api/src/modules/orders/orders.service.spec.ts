@@ -9,6 +9,8 @@ import { TrackingService } from '../shipping/tracking.service';
 import { PaymentsService } from '../payments/payments.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TaxService } from '../tax/tax.service';
+import { AffiliateTrackingService } from '../affiliates/affiliate-tracking.service';
+import { CommissionService } from '../affiliates/commission.service';
 
 const mockShippingAddress = {
   fullName: 'Jane Doe',
@@ -136,6 +138,21 @@ describe('OrdersService', () => {
           provide: TaxService,
           useValue: {
             calculateTax: jest.fn().mockResolvedValue({ taxAmount: 0, taxRate: 0, jurisdiction: 'N/A' }),
+          },
+        },
+        {
+          provide: AffiliateTrackingService,
+          useValue: {
+            resolveAffiliate:    jest.fn().mockResolvedValue(null),
+            markClickConverted:  jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: CommissionService,
+          useValue: {
+            createForOrder:      jest.fn().mockResolvedValue(undefined),
+            scheduleAutoConfirm: jest.fn().mockResolvedValue(undefined),
+            cancelCommission:    jest.fn().mockResolvedValue(undefined),
           },
         },
       ],

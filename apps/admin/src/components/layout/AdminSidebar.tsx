@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
+import { useQuery } from '@tanstack/react-query';
+import { clientFetch } from '../../lib/api';
 import {
   LayoutDashboard, ShoppingCart, ShoppingBag, FolderOpen,
   Tag, Layers, Users, BadgePercent, Star, Truck,
-  CreditCard, Settings, ChevronDown, ChevronRight, LogOut, Globe, MessageSquare,
+  CreditCard, Settings, ChevronDown, ChevronRight, LogOut, Globe, MessageSquare, Link2,
 } from 'lucide-react';
 
 // ── Nav item types ─────────────────────────────────────────────────────────────
@@ -43,6 +45,14 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Reviews',     href: '/reviews',     icon: Star         },
   { label: 'Shipping',    href: '/shipping',    icon: Truck        },
   { label: 'Payments',    href: '/payments',    icon: CreditCard   },
+  {
+    label: 'Affiliates', href: '/affiliates', icon: Link2,
+    children: [
+      { label: 'Applications', href: '/affiliates',        icon: Link2        },
+      { label: 'Payouts',      href: '/affiliates/payouts', icon: CreditCard   },
+      { label: 'Settings',     href: '/settings/affiliates', icon: Settings    },
+    ],
+  },
   { label: 'Settings',    href: '/settings',    icon: Settings     },
 ];
 
@@ -137,6 +147,23 @@ export function AdminSidebar() {
     .join('')
     .toUpperCase();
 
+  const { data: pendingData } = useQuery<{ count: number }>({
+    queryKey: ['sidebar-affiliate-pending'],
+    queryFn:  async () => {
+      const res  = await clientFetch('/admin/affiliates/pending-count');
+      const body = await res.json();
+      return (body.data ?? body) as { count: number };
+    },
+    staleTime:      60_000,
+    refetchInterval: 120_000,
+  });
+
+  const navItems = useMemo(() => NAV_ITEMS.map((item) =>
+    item.href === '/affiliates'
+      ? { ...item, badge: pendingData?.count ?? 0 }
+      : item,
+  ), [pendingData]);
+
   return (
     <aside
       className="hidden lg:flex flex-col w-[240px] shrink-0 h-screen overflow-y-auto"
@@ -157,7 +184,7 @@ export function AdminSidebar() {
 
       {/* Nav items */}
       <nav className="flex-1 px-2 space-y-0.5 mt-2">
-        {NAV_ITEMS.map((item) => (
+        {navItems.map((item) => (
           <NavRow key={item.href} item={item} />
         ))}
       </nav>

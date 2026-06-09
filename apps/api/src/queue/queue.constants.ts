@@ -1,9 +1,10 @@
 export const QUEUES = {
-  EMAIL:            'email',
-  IMAGE_PROCESSING: 'image-processing',
-  ORDER_PROCESSING: 'order-processing',
-  SCHEDULED:        'scheduled',
-  ABANDONED_CART:   'abandoned-cart',
+  EMAIL:                'email',
+  IMAGE_PROCESSING:     'image-processing',
+  ORDER_PROCESSING:     'order-processing',
+  SCHEDULED:            'scheduled',
+  ABANDONED_CART:       'abandoned-cart',
+  AFFILIATE_COMMISSION: 'affiliate-commission',
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];

@@ -9,13 +9,22 @@ import { apiClient } from '@mlh/api-client';
 import { useCartStore } from '../../../../lib/store/cart.store';
 import type { ShippingAddressInput } from '@mlh/api-client';
 import type { ShippingOptionDto, CartDto } from '@mlh/types';
-import { StepIndicator }      from '../../../../components/checkout/StepIndicator';
-import { ShippingForm }        from '../../../../components/checkout/ShippingForm';
-import { DeliveryForm }        from '../../../../components/checkout/DeliveryForm';
-import { PaymentForm }         from '../../../../components/checkout/PaymentForm';
-import { GiftOptionsSection }  from '../../../../components/checkout/GiftOptionsSection';
-import type { GiftOptions }    from '../../../../components/checkout/GiftOptionsSection';
-import { analytics }           from '../../../../lib/analytics';
+import { StepIndicator }           from '../../../../components/checkout/StepIndicator';
+import { ShippingForm }             from '../../../../components/checkout/ShippingForm';
+import { DeliveryForm }             from '../../../../components/checkout/DeliveryForm';
+import { PaymentForm }              from '../../../../components/checkout/PaymentForm';
+import { GiftOptionsSection }       from '../../../../components/checkout/GiftOptionsSection';
+import type { GiftOptions }         from '../../../../components/checkout/GiftOptionsSection';
+import { AffiliateDiscountBanner }  from '../../../../components/checkout/AffiliateDiscountBanner';
+import { analytics }                from '../../../../lib/analytics';
+
+function getCookie(name: string): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  return document.cookie
+    .split('; ')
+    .find((row) => row.startsWith(`${name}=`))
+    ?.split('=')[1];
+}
 
 // ── Sidebar: order summary ────────────────────────────────────────────────────
 
@@ -25,12 +34,14 @@ function OrderSummarySidebar({
   taxAmount,
   taxJurisdiction,
   giftWrapping,
+  affiliateDiscountAmount,
 }: {
-  cart:             CartDto;
-  shippingCost:     number;
-  taxAmount?:       number;
-  taxJurisdiction?: string;
-  giftWrapping?:    boolean;
+  cart:                     CartDto;
+  shippingCost:             number;
+  taxAmount?:               number;
+  taxJurisdiction?:         string;
+  giftWrapping?:            boolean;
+  affiliateDiscountAmount?: number;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -38,7 +49,8 @@ function OrderSummarySidebar({
   const subtotal         = cart.totals.subtotal;
   const tax              = taxAmount ?? 0;
   const giftWrappingCost = giftWrapping ? 4.99 : 0;
-  const total            = subtotal + shippingCost - discount + tax + giftWrappingCost;
+  const affiliateDiscount = affiliateDiscountAmount ?? 0;
+  const total            = subtotal + shippingCost - discount + tax + giftWrappingCost - affiliateDiscount;
 
   const content = (
     <div className="space-y-4">
@@ -101,6 +113,15 @@ function OrderSummarySidebar({
           <div className="flex justify-between text-success">
             <span>Discount ({cart.couponCode})</span>
             <span className="tabular-nums">−${discount.toFixed(2)}</span>
+          </div>
+        )}
+        {affiliateDiscount > 0.01 && (
+          <div className="flex justify-between text-sm text-green-700">
+            <span className="flex items-center gap-1">
+              <i className="ti ti-gift text-xs" />
+              Referral discount
+            </span>
+            <span className="font-medium tabular-nums">−${affiliateDiscount.toFixed(2)}</span>
           </div>
         )}
         {giftWrappingCost > 0 && (
@@ -191,6 +212,42 @@ export default function CheckoutPage() {
   // ── Tax preview (fetched after step 1 when address is known) ─────────────
   const [taxAmount,       setTaxAmount]       = useState(0);
   const [taxJurisdiction, setTaxJurisdiction] = useState('');
+
+  // ── Affiliate discount (resolved from cookie on mount) ─────────────────────
+  const [affiliateInfo, setAffiliateInfo] = useState<{
+    code:           string;
+    discountRate:   number;
+    affiliateName?: string;
+    discountAmount: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const refCode = getCookie('mlh_affiliate');
+    if (!refCode) return;
+    apiClient
+      .get<{ discountRate: number; affiliateName?: string } | null>('/affiliates/resolve', {
+        params: { code: refCode },
+      })
+      .then((data) => {
+        if (!data) return;
+        setAffiliateInfo({
+          code:          refCode,
+          discountRate:  data.discountRate,
+          affiliateName: data.affiliateName,
+          discountAmount: 0, // recomputed once cart subtotal is known
+        });
+      })
+      .catch(() => {}); // non-critical
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Recompute dollar amount whenever subtotal or coupon discount changes
+  useEffect(() => {
+    if (!affiliateInfo || !cart?.totals?.subtotal) return;
+    const base = Math.max(0, cart.totals.subtotal - (cart.discountAmount ?? 0));
+    setAffiliateInfo((prev) =>
+      prev ? { ...prev, discountAmount: base * prev.discountRate } : null,
+    );
+  }, [cart?.totals?.subtotal, cart?.discountAmount, affiliateInfo?.code]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Order creation state (set when proceeding to Stripe) ──────────────────
   const [clientSecret,    setClientSecret]    = useState('');
@@ -289,6 +346,8 @@ export default function CheckoutPage() {
         giftFrom:         giftOptions.isGift ? giftOptions.giftFrom || undefined : undefined,
         giftReceipt:      giftOptions.giftReceipt,
         giftWrapping:     giftOptions.giftWrapping,
+        // Cookie is also read server-side from req.cookies — this is a fallback
+        affiliateCode:    affiliateInfo?.code,
       });
 
       setOrderId(res.orderId);
@@ -316,7 +375,14 @@ export default function CheckoutPage() {
   return (
     <div className="bg-background min-h-screen">
       {/* Mobile order summary (above content) */}
-      <OrderSummarySidebar cart={cart} shippingCost={shippingCost} taxAmount={taxAmount} taxJurisdiction={taxJurisdiction} giftWrapping={giftOptions.giftWrapping} />
+      <OrderSummarySidebar
+        cart={cart}
+        shippingCost={shippingCost}
+        taxAmount={taxAmount}
+        taxJurisdiction={taxJurisdiction}
+        giftWrapping={giftOptions.giftWrapping}
+        affiliateDiscountAmount={affiliateInfo?.discountAmount}
+      />
 
       <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-8">
         <div className="grid grid-cols-1 md:grid-cols-[1fr_360px] gap-8 lg:gap-12 items-start">
@@ -410,7 +476,23 @@ export default function CheckoutPage() {
           </div>
 
           {/* ── Right: order summary sidebar (desktop only) ──────────────────── */}
-          <OrderSummarySidebar cart={cart} shippingCost={shippingCost} taxAmount={taxAmount} taxJurisdiction={taxJurisdiction} giftWrapping={giftOptions.giftWrapping} />
+          <div>
+            {affiliateInfo && affiliateInfo.discountAmount > 0.01 && (
+              <AffiliateDiscountBanner
+                discountRate={affiliateInfo.discountRate}
+                affiliateName={affiliateInfo.affiliateName}
+                discountAmount={affiliateInfo.discountAmount}
+              />
+            )}
+            <OrderSummarySidebar
+              cart={cart}
+              shippingCost={shippingCost}
+              taxAmount={taxAmount}
+              taxJurisdiction={taxJurisdiction}
+              giftWrapping={giftOptions.giftWrapping}
+              affiliateDiscountAmount={affiliateInfo?.discountAmount}
+            />
+          </div>
         </div>
       </div>
     </div>

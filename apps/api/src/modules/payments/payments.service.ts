@@ -34,6 +34,7 @@ import {
   GiftCardResponseDto,
 } from './dto/payment-response.dto';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { CommissionService } from '../affiliates/commission.service';
 
 const WEBHOOK_IDEMPOTENCY_TTL = 24 * 60 * 60; // 24 hours in seconds
 const REFUND_WINDOW_DAYS = 60;
@@ -48,6 +49,7 @@ export class PaymentsService {
     private readonly redis: RedisService,
     private readonly config: ConfigService,
     private readonly analyticsService: AnalyticsService,
+    private readonly commissionService: CommissionService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
     @InjectQueue(QUEUES.ORDER_PROCESSING) private readonly orderQueue: Queue,
   ) {
@@ -306,6 +308,13 @@ export class PaymentsService {
       DEFAULT_JOB_OPTIONS,
     );
 
+    // Fire-and-forget commission — must not throw or block the webhook response
+    this.commissionService
+      .createForOrder(payment.orderId)
+      .catch((err: Error) =>
+        this.logger.error(`Commission creation failed for order ${payment.orderId}: ${err.message}`),
+      );
+
     // Fire-and-forget analytics — must not throw or block the webhook response
     this.prisma.order
       .findUnique({
@@ -489,6 +498,13 @@ export class PaymentsService {
           note: `Refunded $${refundAmount.toFixed(2)} — ${dto.reason ?? 'admin initiated'}`,
         },
       });
+
+      // Cancel any affiliate commission — fire-and-forget
+      this.commissionService
+        .cancelCommission(payment.orderId, `Order refunded — ${dto.reason ?? 'admin initiated'}`)
+        .catch((err: Error) =>
+          this.logger.error(`Commission cancellation failed for order ${payment.orderId}: ${err.message}`),
+        );
     }
 
     this.logger.log(
@@ -672,6 +688,13 @@ export class PaymentsService {
         },
       });
     });
+
+    // Gift card confirmed order — create commission if affiliated
+    this.commissionService
+      .createForOrder(orderId)
+      .catch((err: Error) =>
+        this.logger.error(`Commission creation failed for gift-card order ${orderId}: ${err.message}`),
+      );
   }
 
   private async deductGiftCard(

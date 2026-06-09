@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>We received your affiliate application</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; background: #faf9f7; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .header { background: #3d2b1f; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #f5e6d3; margin: 0; font-size: 24px; letter-spacing: 1px; }
+    .header p { color: #c8a882; margin: 8px 0 0; font-size: 14px; }
+    .body { padding: 40px; color: #3d2b1f; line-height: 1.7; }
+    .body h2 { font-size: 20px; margin-top: 0; }
+    .steps { background: #faf9f7; border-radius: 6px; padding: 20px 24px; margin: 24px 0; }
+    .steps ol { margin: 0; padding-left: 20px; }
+    .steps li { padding: 4px 0; font-size: 14px; color: #5a3e30; }
+    .cta { display: inline-block; margin: 24px 0; background: #3d2b1f; color: #f5e6d3 !important; padding: 14px 32px; border-radius: 4px; text-decoration: none; font-size: 15px; }
+    .footer { background: #f5e6d3; padding: 20px 40px; text-align: center; font-size: 12px; color: #7a5c45; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>🍁 Maple Loom Handmade</h1>
+      <p>Affiliate Program</p>
+    </div>
+    <div class="body">
+      <h2>Application received, {{firstName}}!</h2>
+      <p>Thank you for applying to the Maple Loom Handmade affiliate program. We've received your application and our team will review it within <strong>24 hours</strong>.</p>
+
+      <div class="steps">
+        <p style="margin: 0 0 10px; font-size: 14px; font-weight: bold; color: #3d2b1f;">What happens next:</p>
+        <ol>
+          <li>Our team reviews your application</li>
+          <li>You receive an approval (or update) email</li>
+          <li>Log in to get your unique referral link and start earning</li>
+        </ol>
+      </div>
+
+      <p>In the meantime, you can check your application status at any time:</p>
+      <a class="cta" href="{{shopUrl}}/affiliate/dashboard">Check application status →</a>
+
+      <p>If you have any questions, just reply to this email.</p>
+      <p>Warmly,<br /><strong>The Maple Loom Team</strong></p>
+    </div>
+    <div class="footer">
+      &copy; {{year}} Maple Loom Handmade. All rights reserved.<br />
+      You're receiving this email because you applied to our affiliate program.
+    </div>
+  </div>
+</body>
+</html>

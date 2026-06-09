@@ -48,7 +48,8 @@ export class OrdersController {
     @Req() req: Request,
   ) {
     const sessionId = req.cookies?.['cart_session'] as string | undefined;
-    return this.ordersService.checkout(dto, user?.sub, sessionId);
+    const cookies   = req.cookies as Record<string, string>;
+    return this.ordersService.checkout(dto, user?.sub, sessionId, cookies);
   }
 
   @Get('me')

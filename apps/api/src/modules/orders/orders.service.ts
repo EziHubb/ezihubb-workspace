@@ -11,6 +11,8 @@ import { TrackingService } from '../shipping/tracking.service';
 import { PaymentsService } from '../payments/payments.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TaxService } from '../tax/tax.service';
+import { AffiliateTrackingService } from '../affiliates/affiliate-tracking.service';
+import { CommissionService } from '../affiliates/commission.service';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
@@ -72,6 +74,8 @@ export class OrdersService {
     private readonly paymentsService: PaymentsService,
     private readonly notificationsService: NotificationsService,
     private readonly taxService: TaxService,
+    private readonly affiliateTrackingService: AffiliateTrackingService,
+    private readonly commissionService: CommissionService,
   ) {}
 
   // ─── Checkout ─────────────────────────────────────────────────────────────
@@ -80,6 +84,7 @@ export class OrdersService {
     dto: CheckoutDto,
     userId?: string,
     sessionId?: string,
+    cookies?: Record<string, string>,
   ): Promise<CheckoutResponseDto> {
     if (!userId && !dto.guestEmail) {
       throw new BadRequestException({
@@ -176,6 +181,21 @@ export class OrdersService {
 
     const subtotalAfterDiscount = Math.max(0, subtotal - discount);
 
+    // ── Affiliate attribution ────────────────────────────────────────────────
+    let affiliateId: string | null = null;
+    let affiliateDiscountAmount    = 0;
+    const referralCode = cookies?.['mlh_affiliate'];
+    const visitorId    = cookies?.['mlh_visitor'];
+
+    if (referralCode) {
+      const resolved = await this.affiliateTrackingService.resolveAffiliate(referralCode);
+      if (resolved) {
+        affiliateId             = resolved.affiliateId;
+        // Discount applied to pre-coupon subtotal; stacks with coupon
+        affiliateDiscountAmount = Math.round(subtotal * resolved.discountRate * 100) / 100;
+      }
+    }
+
     // Calculate shipping (waived if FREE_SHIPPING coupon applied)
     const shippingCalc = await this.shippingService.calculateShipping(
       dto.shippingMethodId,
@@ -202,8 +222,13 @@ export class OrdersService {
           : Number(item.product.basePrice),
       })),
     });
-    const total =
-      Math.round((subtotalAfterDiscount + shippingCost + taxResult.taxAmount + giftWrappingCost) * 100) / 100;
+    // Affiliate discount stacks with coupon — applied AFTER coupon, BEFORE payment
+    const total = Math.max(
+      0,
+      Math.round(
+        (subtotalAfterDiscount + shippingCost + taxResult.taxAmount + giftWrappingCost - affiliateDiscountAmount) * 100,
+      ) / 100,
+    );
 
     // $transaction: create order + items + status history + atomic coupon increment
     const order = await this.prisma.$transaction(async (tx) => {
@@ -237,8 +262,10 @@ export class OrdersService {
           giftMessage:    dto.isGift ? (dto.giftMessage ?? null) : null,
           giftFrom:       dto.isGift ? (dto.giftFrom ?? null) : null,
           giftReceipt:    dto.isGift ? (dto.giftReceipt ?? false) : false,
-          giftWrapping:   dto.giftWrapping ?? false,
-          note:           dto.note ?? null,
+          giftWrapping:            dto.giftWrapping ?? false,
+          note:                    dto.note ?? null,
+          affiliateId:             affiliateId,
+          affiliateDiscountAmount: affiliateDiscountAmount > 0 ? affiliateDiscountAmount : undefined,
         },
       });
 
@@ -298,6 +325,13 @@ export class OrdersService {
 
       return newOrder;
     });
+
+    // Mark affiliate click as converted now that we have the orderId
+    if (affiliateId && visitorId) {
+      this.affiliateTrackingService
+        .markClickConverted(visitorId, affiliateId, order.id)
+        .catch(() => {}); // non-critical; never blocks checkout
+    }
 
     // OUTSIDE transaction: create Stripe PaymentIntent
     const paymentResponse =
@@ -578,6 +612,15 @@ export class OrdersService {
       });
       return o;
     });
+
+    // When order is delivered, start the lock-period countdown for commission auto-confirm
+    if (dto.status === OrderStatus.DELIVERED && order.affiliateId) {
+      this.commissionService
+        .scheduleAutoConfirm(id)
+        .catch((err: Error) =>
+          this.logger.error(`Failed to schedule auto-confirm for order ${id}: ${err.message}`),
+        );
+    }
 
     return this.mapToDto(updated);
   }
