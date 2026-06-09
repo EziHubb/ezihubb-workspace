@@ -101,6 +101,28 @@ enum ProductStatus {
   ARCHIVED  // Soft-archived (replaces deletedAt pattern)
 }
 
+enum AffiliateStatus {
+  PENDING     // applied, waiting admin review
+  ACTIVE      // approved, can generate links
+  SUSPENDED   // temporarily disabled by admin
+  REJECTED    // application denied
+}
+
+enum CommissionStatus {
+  PENDING     // order placed, commission created
+  CONFIRMED   // 14 days after DELIVERED, locked
+  APPROVED    // admin approved for payout
+  PAID        // admin marked as paid
+  CANCELLED   // order refunded, commission voided
+}
+
+enum PayoutStatus {
+  REQUESTED   // affiliate submitted payout request
+  PROCESSING  // admin acknowledged
+  PAID        // transfer done, admin marked paid
+  REJECTED    // admin rejected (under threshold, fraud, etc.)
+}
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 model User {
@@ -137,6 +159,7 @@ model User {
   reviews             Review[]
   notifications       Notification[]
   conversations       Conversation[]
+  affiliateAccount    AffiliateAccount?
 
   @@index([email])
 }
@@ -648,10 +671,17 @@ model Order {
   giftCardUsages  GiftCardUsage[]
   conversations   Conversation[]
 
+  // Affiliate attribution (null if not a referred order)
+  affiliateId             String?
+  affiliate               AffiliateAccount?    @relation(fields: [affiliateId], references: [id])
+  affiliateDiscountAmount Decimal?             @db.Decimal(10, 2)
+  commission              AffiliateCommission?
+
   @@index([userId])
   @@index([status])
   @@index([orderNumber])
   @@index([createdAt])
+  @@index([affiliateId])
 }
 
 model OrderItem {
@@ -935,4 +965,132 @@ model AuditLog {
   @@index([userId])
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+// ─── Affiliate Program ────────────────────────────────────────────────────────
+
+model AffiliateSettings {
+  id                String   @id @default("singleton") // enforces 1 row
+  defaultRate       Decimal  @default(0.10) @db.Decimal(5, 4) // 10%
+  buyerDiscountRate Decimal  @default(0.05) @db.Decimal(5, 4) // 5%
+  cookieDays        Int      @default(30)
+  minPayoutAmount   Decimal  @default(50.00) @db.Decimal(10, 2)
+  lockDays          Int      @default(14)   // days after DELIVERED → CONFIRMED
+  isEnabled         Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+}
+
+model AffiliateAccount {
+  id               String          @id @default(cuid())
+
+  // Identity — affiliate may or may not be a registered customer
+  email            String          @unique
+  firstName        String
+  lastName         String
+  website          String?         // their blog/social URL
+  promoDescription String?         // how they plan to promote
+
+  // Optional link to a User account (if affiliate is also a buyer)
+  userId           String?         @unique
+  user             User?           @relation(fields: [userId], references: [id])
+
+  // Referral identity
+  referralCode     String          @unique   // e.g. "SARAH2024"
+  referralUrl      String?                   // computed: base_url?ref=CODE
+
+  // Commission config
+  commissionRate   Decimal?        @db.Decimal(5, 4) // null = use global default
+  status           AffiliateStatus @default(PENDING)
+
+  // Financial summary (denormalized for dashboard speed)
+  balance          Decimal         @default(0) @db.Decimal(10, 2) // confirmed, unpaid
+  totalEarned      Decimal         @default(0) @db.Decimal(10, 2) // all-time paid+confirmed
+
+  // Admin notes
+  adminNotes       String?
+  rejectedReason   String?
+  approvedAt       DateTime?
+  approvedById     String?
+
+  clicks           AffiliateClick[]
+  commissions      AffiliateCommission[]
+  payouts          AffiliatePayout[]
+  orders           Order[]
+
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([referralCode])
+  @@index([status])
+  @@index([email])
+}
+
+model AffiliateClick {
+  id           String           @id @default(cuid())
+  affiliateId  String
+  affiliate    AffiliateAccount @relation(fields: [affiliateId], references: [id])
+
+  visitorId    String           // random UUID stored in cookie
+  ip           String?
+  userAgent    String?
+  landingPage  String           // full URL they landed on
+  referrer     String?          // where they came from
+
+  convertedAt  DateTime?        // set when visitor places an order
+  orderId      String?          // FK if converted
+
+  createdAt    DateTime         @default(now())
+
+  @@index([affiliateId])
+  @@index([visitorId])
+  @@index([createdAt])
+}
+
+model AffiliateCommission {
+  id           String              @id @default(cuid())
+  affiliateId  String
+  affiliate    AffiliateAccount    @relation(fields: [affiliateId], references: [id])
+
+  orderId      String              @unique  // one commission per order
+  order        Order               @relation(fields: [orderId], references: [id])
+
+  baseAmount   Decimal             @db.Decimal(10, 2) // order subtotal used
+  rate         Decimal             @db.Decimal(5, 4)  // rate at time of order
+  amount       Decimal             @db.Decimal(10, 2) // baseAmount × rate
+  status       CommissionStatus    @default(PENDING)
+
+  confirmedAt  DateTime?           // 14d after delivery
+  cancelledAt  DateTime?
+  cancelReason String?
+
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([affiliateId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model AffiliatePayout {
+  id            String           @id @default(cuid())
+  affiliateId   String
+  affiliate     AffiliateAccount @relation(fields: [affiliateId], references: [id])
+
+  amount        Decimal          @db.Decimal(10, 2)
+  status        PayoutStatus     @default(REQUESTED)
+
+  // Payment details (affiliate fills in)
+  paymentMethod String           // "paypal", "bank_transfer", "store_credit"
+  paymentDetail String           // PayPal email / bank account / etc.
+
+  // Admin
+  adminNotes    String?
+  processedAt   DateTime?
+  processedById String?
+
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([affiliateId])
+  @@index([status])
 }

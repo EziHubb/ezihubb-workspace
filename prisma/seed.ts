@@ -2064,6 +2064,41 @@ async function seedAttributeValues() {
   console.log(`✅ Attribute values seeded (${rows.length} entries)`);
 }
 
+// ── Affiliates ────────────────────────────────────────────────────────────────
+
+async function seedAffiliates() {
+  await prisma.affiliateSettings.upsert({
+    where:  { id: 'singleton' },
+    update: {},
+    create: {
+      id:               'singleton',
+      defaultRate:      0.10,
+      buyerDiscountRate: 0.05,
+      cookieDays:       30,
+      minPayoutAmount:  50.00,
+      lockDays:         14,
+      isEnabled:        true,
+    },
+  });
+
+  await prisma.affiliateAccount.upsert({
+    where:  { email: 'affiliate@test.com' },
+    update: {},
+    create: {
+      email:          'affiliate@test.com',
+      firstName:      'Sarah',
+      lastName:       'Demo',
+      referralCode:   'SARAH2024',
+      status:         'ACTIVE',
+      commissionRate: null,
+      balance:        0,
+      totalEarned:    0,
+    },
+  });
+
+  console.log('  ✅ Seeded AffiliateSettings + 1 test affiliate');
+}
+
 // ── Conversations ─────────────────────────────────────────────────────────────
 
 async function seedConversations() {
@@ -2100,7 +2135,7 @@ async function seedConversations() {
 // ── Seed summary (IMPROVE 3) ──────────────────────────────────────────────────
 
 async function printSeedSummary() {
-  const [users, categories, collections, products, promotions, zones, conversations] =
+  const [users, categories, collections, products, promotions, zones, conversations, affiliates] =
     await Promise.all([
       prisma.user.count(),
       prisma.category.count(),
@@ -2109,6 +2144,7 @@ async function printSeedSummary() {
       prisma.promotion.count(),
       prisma.shippingZone.count(),
       prisma.conversation.count(),
+      prisma.affiliateAccount.count(),
     ]);
 
   let mongoDetails: number | string = 'N/A (MongoDB not connected)';
@@ -2126,6 +2162,7 @@ async function printSeedSummary() {
   console.log(`  Promotions:     ${promotions}`);
   console.log(`  Shipping zones:  ${zones}`);
   console.log(`  Conversations:   ${conversations}`);
+  console.log(`  Affiliates:      ${affiliates}`);
   console.log(`  Mongo details:  ${mongoDetails}`);
 }
 
@@ -2146,6 +2183,7 @@ async function main() {
   await seedPromotions();
   await seedShippingZones();
   await seedAttributeValues();
+  await seedAffiliates();
   await seedConversations();
 
   // MongoDB steps — connect once, run both, disconnect once (IMPROVE 2)
