@@ -5,8 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { ArrowLeft, Package, MapPin, ExternalLink, AlertTriangle, MessageCircle } from 'lucide-react';
-import { useOrder, useCancelOrder } from '@mlh/api-client';
+import { ArrowLeft, Package, MapPin, ExternalLink, AlertTriangle, MessageCircle, Download } from 'lucide-react';
+import { useOrder, useCancelOrder, api } from '@mlh/api-client';
 import { OrderStatusBadge } from '@mlh/ui';
 import { useToast } from '@mlh/ui';
 import type { OrderDto, OrderStatus } from '@mlh/types';
@@ -303,6 +303,17 @@ export default function OrderDetailPage() {
             status={order.status as Parameters<typeof OrderStatusBadge>[0]['status']}
             size="md"
           />
+          <button
+            type="button"
+            onClick={async () => {
+              const { url } = await api.get<{ url: string }>(`/orders/${order.id}/invoice`);
+              window.open(url, '_blank');
+            }}
+            className="flex items-center gap-2 border border-border rounded-full px-4 py-2 text-sm hover:border-primary hover:text-primary transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Download Invoice
+          </button>
           <button
             type="button"
             onClick={() => setIsMessageOpen(true)}

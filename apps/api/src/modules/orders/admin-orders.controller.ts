@@ -12,6 +12,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { OrdersService } from './orders.service';
+import { PdfService } from '../pdf/pdf.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
 import { MarkShippedDto } from './dto/mark-shipped.dto';
@@ -29,13 +30,41 @@ import { Role } from '@mlh/constants';
 @Roles(Role.ADMIN, Role.SUPER_ADMIN)
 @Controller('admin/orders')
 export class AdminOrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly pdfService:    PdfService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List all orders (filterable)' })
   async findAll(@Query() query: AdminOrderQueryDto) {
     return this.ordersService.findAll(query);
   }
+
+  // ── PDF endpoints — two-segment routes BEFORE :id to avoid param conflicts ─
+
+  @Get(':id/invoice')
+  @ApiOperation({ summary: 'Generate (or return cached) full invoice PDF for an order' })
+  async getInvoice(@Param('id') id: string) {
+    const url = await this.pdfService.generateInvoice(id, false);
+    return { url };
+  }
+
+  @Get(':id/packing-slip')
+  @ApiOperation({ summary: 'Generate (or return cached) packing slip PDF for an order' })
+  async getPackingSlip(@Param('id') id: string) {
+    const url = await this.pdfService.generatePackingSlip(id);
+    return { url };
+  }
+
+  @Post('bulk-packing-slips')
+  @ApiOperation({ summary: 'Generate packing slips for multiple orders — returns array of URLs' })
+  async bulkPackingSlips(@Body('orderIds') orderIds: string[]) {
+    const urls = await Promise.all(orderIds.map((id) => this.pdfService.generatePackingSlip(id)));
+    return { urls };
+  }
+
+  // ── CSV export (literal route — must come before :id) ──────────────────────
 
   @Get('export')
   @ApiOperation({ summary: 'Export orders as CSV' })

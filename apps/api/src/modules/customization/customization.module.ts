@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { DevBullModule } from '../../queue/dev-bull.module';
 import { CustomizationController } from './customization.controller';
 import { CustomizationService } from './customization.service';
+import { ArtStyleService } from './art-style.service';
 import { QUEUES } from '../../queue/queue.constants';
 
 @Module({
@@ -10,7 +11,7 @@ import { QUEUES } from '../../queue/queue.constants';
       ? [BullModule.registerQueue({ name: QUEUES.IMAGE_PROCESSING })]
       : [DevBullModule.forQueues([QUEUES.IMAGE_PROCESSING])])],
   controllers: [CustomizationController],
-  providers: [CustomizationService],
-  exports: [CustomizationService],
+  providers: [CustomizationService, ArtStyleService],
+  exports: [CustomizationService, ArtStyleService],
 })
 export class CustomizationModule {}

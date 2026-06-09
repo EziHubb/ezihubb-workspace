@@ -7,9 +7,10 @@ import { PaymentsModule } from '../payments/payments.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { TaxModule } from '../tax/tax.module';
 import { AffiliatesModule } from '../affiliates/affiliates.module';
+import { PdfModule } from '../pdf/pdf.module';
 
 @Module({
-  imports: [ShippingModule, PaymentsModule, NotificationsModule, TaxModule, AffiliatesModule],
+  imports: [ShippingModule, PaymentsModule, NotificationsModule, TaxModule, AffiliatesModule, PdfModule],
   controllers: [OrdersController, AdminOrdersController],
   providers: [OrdersService],
   exports: [OrdersService],

@@ -15,9 +15,11 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { CustomizationService } from './customization.service';
+import { ArtStyleService } from './art-style.service';
 import { GeneratePreviewDto } from './dto/generate-preview.dto';
 import { SaveDraftDto } from './dto/save-draft.dto';
 import { UploadedImageDto } from './dto/upload-result.dto';
+import { ApplyArtStyleDto } from './dto/apply-art-style.dto';
 import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
@@ -27,7 +29,10 @@ import { CustomizationDraft } from '@prisma/client';
 @Controller('customization')
 @UseGuards(OptionalAuthGuard)
 export class CustomizationController {
-  constructor(private readonly customizationService: CustomizationService) {}
+  constructor(
+    private readonly customizationService: CustomizationService,
+    private readonly artStyleService: ArtStyleService,
+  ) {}
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('image'))
@@ -86,11 +91,21 @@ export class CustomizationController {
     return this.customizationService.generatePreview(dto);
   }
 
+  @Get('art-styles')
+  @ApiOperation({ summary: 'List available AI art styles' })
+  getArtStyles() {
+    return this.artStyleService.getAvailableStyles();
+  }
+
+  @Post('apply-art-style')
+  @ApiOperation({ summary: 'Queue an AI art style transformation (async, ~30s)' })
+  async applyArtStyle(@Body() dto: ApplyArtStyleDto): Promise<{ jobId: string; estimatedSeconds: number }> {
+    return this.artStyleService.startJob(dto.imageKey, dto.style);
+  }
+
   @Post('art-style')
-  @ApiOperation({
-    summary: 'Queue an art style transformation for an uploaded image',
-  })
-  async applyArtStyle(
+  @ApiOperation({ summary: 'Queue an art style transformation for an uploaded image (legacy)' })
+  async applyArtStyleLegacy(
     @Body('tempKey') tempKey: string,
     @Body('style') style: string,
     @Body('draftId') draftId: string,

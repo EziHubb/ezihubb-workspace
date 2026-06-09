@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import {
   Check, Package, MapPin, User,
-  ExternalLink, Save, Mail, DollarSign,
+  ExternalLink, Save, Mail, DollarSign, FileText, Printer,
 } from 'lucide-react';
 import { ALL_STATUSES } from '../../../../components/orders/OrderStatusBadge';
 import { CustomizationPreviewModal } from '../../../../components/orders/CustomizationPreviewModal';
@@ -213,6 +213,32 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
             </a>
           )}
         </Section>
+
+        {/* PDF downloads */}
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={async () => {
+              const res  = await clientFetch(`/admin/orders/${order.id}/invoice`);
+              const { url } = await res.json() as { url: string };
+              if (url) window.open(url, '_blank');
+            }}
+            className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-secondary border border-border hover:border-primary/40 px-3 py-2 rounded-button"
+          >
+            <FileText className="w-3.5 h-3.5" />Invoice
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              const res  = await clientFetch(`/admin/orders/${order.id}/packing-slip`);
+              const { url } = await res.json() as { url: string };
+              if (url) window.open(url, '_blank');
+            }}
+            className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-secondary border border-border hover:border-primary/40 px-3 py-2 rounded-button"
+          >
+            <Printer className="w-3.5 h-3.5" />Packing Slip
+          </button>
+        </div>
 
         {/* Actions */}
         <div className="flex gap-3">

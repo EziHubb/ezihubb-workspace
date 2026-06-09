@@ -81,11 +81,14 @@ async function bootstrap() {
     contentSecurityPolicy: {
       directives: {
         defaultSrc:  ["'self'"],
-        scriptSrc:   ["'self'", 'https://js.stripe.com', 'https://www.paypal.com'],
-        frameSrc:    ["'self'", 'https://js.stripe.com', 'https://www.paypal.com'],
+        scriptSrc:   ["'self'", 'https://js.stripe.com', 'https://www.paypal.com',
+                      'https://static.hotjar.com', 'https://script.hotjar.com'],
+        frameSrc:    ["'self'", 'https://js.stripe.com', 'https://www.paypal.com',
+                      'https://vars.hotjar.com'],
         imgSrc:      ["'self'", 'data:', 'https://pub-dcb46924f84546899f1a823b152eab3a.r2.dev',
-                      'https://images.unsplash.com'],
-        connectSrc:  ["'self'", 'https://api.stripe.com'],
+                      'https://images.unsplash.com', 'https://*.hotjar.com'],
+        connectSrc:  ["'self'", 'https://api.stripe.com',
+                      'https://vc.hotjar.io', 'https://events.hotjar.io'],
       },
     },
   }));

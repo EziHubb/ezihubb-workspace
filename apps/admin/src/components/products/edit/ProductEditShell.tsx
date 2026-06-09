@@ -25,6 +25,7 @@ import { ItemOptionsTab }     from './tabs/ItemOptionsTab';
 import { PricingShippingTab } from './tabs/PricingShippingTab';
 import { HowItsMadeTab }      from './tabs/HowItsMadeTab';
 import { SettingsTab }        from './tabs/SettingsTab';
+import { QaTab }              from './tabs/QaTab';
 
 // ── Tab config ────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ const ALL_TABS = [
   { id: 'pricing-shipping', label: 'Pricing & Shipping' },
   { id: 'how-its-made',     label: "How It's Made"      },
   { id: 'settings',         label: 'Settings'           },
+  { id: 'qa',               label: 'Q&A'                },
 ] as const;
 
 type TabId = (typeof ALL_TABS)[number]['id'];
@@ -505,6 +507,9 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
           </div>
           <div className={activeTab !== 'settings' ? 'hidden' : ''}>
             <SettingsTab />
+          </div>
+          <div className={activeTab !== 'qa' ? 'hidden' : ''}>
+            {(product?.id) && <QaTab productId={product.id} />}
           </div>
         </div>
 

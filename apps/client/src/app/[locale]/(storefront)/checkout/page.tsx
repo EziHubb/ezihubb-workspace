@@ -17,6 +17,7 @@ import { GiftOptionsSection }       from '../../../../components/checkout/GiftOp
 import type { GiftOptions }         from '../../../../components/checkout/GiftOptionsSection';
 import { AffiliateDiscountBanner }  from '../../../../components/checkout/AffiliateDiscountBanner';
 import { analytics }                from '../../../../lib/analytics';
+import { hotjarEvent }              from '../../../../lib/analytics/hotjar';
 
 function getCookie(name: string): string | undefined {
   if (typeof document === 'undefined') return undefined;
@@ -286,6 +287,7 @@ export default function CheckoutPage() {
       itemCount: cart.itemCount ?? 0,
       coupon:    cart.couponCode ?? undefined,
     });
+    hotjarEvent('checkout_step_shipping');
     // Fetch tax estimate early (no shipping cost yet — will be refined on order creation)
     if (addr.country === 'US' && addr.postalCode) {
       apiClient
@@ -355,6 +357,7 @@ export default function CheckoutPage() {
       setClientSecret(res.clientSecret);
       setOrderTotal(res.total);
       if (res.taxAmount != null) setTaxAmount(res.taxAmount);
+      hotjarEvent('checkout_step_payment');
       setStep(3);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
@@ -366,6 +369,7 @@ export default function CheckoutPage() {
 
   const handlePaymentSuccess = (num: string) => {
     analytics.addPaymentInfo({ total: orderTotal, paymentType: 'credit_card' });
+    hotjarEvent('checkout_complete');
     clearCart();
     router.push(`/${locale}/checkout/success?order=${num}`);
   };
@@ -457,9 +461,9 @@ export default function CheckoutPage() {
               </section>
             )}
 
-            {/* Step 3: Payment (Stripe Elements — clientSecret set after order creation) */}
+            {/* Step 3: Payment — data-hj-suppress prevents Hotjar from recording card fields */}
             {step === 3 && shippingAddress && shippingMethod && clientSecret && (
-              <section aria-labelledby="step3-heading">
+              <section aria-labelledby="step3-heading" data-hj-suppress>
                 <h2 id="step3-heading" className="text-base font-semibold text-secondary mb-5">
                   Payment
                 </h2>

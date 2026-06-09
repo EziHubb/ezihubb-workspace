@@ -10,6 +10,8 @@ const sharp = require('sharp');
 
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services/storage.service';
+import { RedisService } from '../../common/services/redis.service';
+import type { ArtStyleJobStatus } from './art-style.service';
 import {
   QUEUES,
   JOBS,
@@ -38,8 +40,9 @@ export class CustomizationService {
   private readonly logger = new Logger(CustomizationService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly storage: StorageService,
+    private readonly prisma:   PrismaService,
+    private readonly storage:  StorageService,
+    private readonly redis:    RedisService,
     @InjectQueue(QUEUES.IMAGE_PROCESSING) private readonly imageQueue: Queue,
   ) {}
 
@@ -124,23 +127,40 @@ export class CustomizationService {
 
   // ── Job status ────────────────────────────────────────────────────────────────
 
-  async getJobStatus(
-    jobId: string,
-  ): Promise<{ status: string; result?: string; error?: string }> {
-    const job = await this.imageQueue.getJob(jobId);
-    if (!job) {
-      throw new NotFoundException({
-        code: 'ERR_NOT_FOUND',
-        message: 'Job not found',
-      });
+  async getJobStatus(jobId: string): Promise<{
+    status: string;
+    processedKey?: string;
+    processedUrl?: string;
+    error?: string;
+  }> {
+    // Art-style jobs use Redis (custom jobId starting with 'artstyle_')
+    if (jobId.startsWith('artstyle_')) {
+      const data = await this.redis.get<ArtStyleJobStatus>(`job:artstyle:${jobId}`);
+      if (!data) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Job not found' });
+      return {
+        status:       data.status,
+        processedKey: data.processedKey,
+        processedUrl: data.processedUrl,
+        error:        data.error,
+      };
     }
 
-    const state = await job.getState();
+    // All other image-processing jobs use BullMQ state
+    const job = await this.imageQueue.getJob(jobId);
+    if (!job) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Job not found' });
+
+    const state       = await job.getState();
     const returnValue = job.returnvalue as string | undefined;
 
+    // Map BullMQ states to the shape the client expects
+    const clientStatus =
+      state === 'completed' ? 'done'
+      : state === 'failed'  ? 'failed'
+      : 'processing';
+
     return {
-      status: state,
-      ...(returnValue !== undefined && { result: returnValue }),
+      status:       clientStatus,
+      processedUrl: returnValue,
       ...(job.failedReason && { error: job.failedReason }),
     };
   }

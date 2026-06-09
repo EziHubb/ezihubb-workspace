@@ -401,6 +401,7 @@ model Product {
   orderItems          OrderItem[]
   customizationDrafts CustomizationDraft[]
   reviews             Review[]
+  questions           ProductQuestion[]
   productCategories   ProductCategory[]
   variationGroups     VariationGroup[]
   variationSettings   VariationSettings?
@@ -846,6 +847,32 @@ model Review {
   @@unique([userId, productId, orderId])
   @@index([productId, status])
   @@index([userId])
+}
+
+// ─── Product Q&A ─────────────────────────────────────────────────────────────
+
+model ProductQuestion {
+  id           String    @id @default(cuid())
+  productId    String
+  product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  question     String    @db.VarChar(500)
+  askedByName  String    @db.VarChar(100)
+  askedByEmail String?
+  isGuest      Boolean   @default(true)
+
+  answer       String?   @db.Text
+  answeredAt   DateTime?
+  isPublished  Boolean   @default(false)
+
+  isSpam       Boolean   @default(false)
+  upvotes      Int       @default(0)
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([productId, isPublished])
+  @@index([productId, createdAt])
 }
 
 // ─── Notification ─────────────────────────────────────────────────────────────

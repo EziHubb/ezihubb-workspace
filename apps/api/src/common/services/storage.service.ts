@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -62,6 +63,16 @@ export class StorageService {
         code: 'ERR_UPLOAD_FAILED',
         message: 'File upload failed. Please try again.',
       });
+    }
+  }
+
+  /** Check if a file exists by key — returns false on any error (including not found) */
+  async existsFile(key: string): Promise<boolean> {
+    try {
+      await this.s3.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
+      return true;
+    } catch {
+      return false;
     }
   }
 

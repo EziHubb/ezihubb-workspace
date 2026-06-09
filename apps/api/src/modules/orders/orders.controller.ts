@@ -13,6 +13,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { OrdersService } from './orders.service';
+import { PdfService } from '../pdf/pdf.service';
 import { CheckoutDto, CancelOrderDto } from './dto/checkout.dto';
 import { TaxPreviewDto } from '../tax/dto/tax-preview.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
@@ -24,7 +25,10 @@ import { JwtPayload } from '../auth/strategies/jwt.strategy';
 @ApiTags('Orders')
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly pdfService:    PdfService,
+  ) {}
 
   @Post('tax-preview')
   @HttpCode(HttpStatus.OK)
@@ -66,6 +70,20 @@ export class OrdersController {
   @ApiOperation({ summary: 'Get my order detail' })
   async getMyOrder(@CurrentUser() user: JwtPayload, @Param('orderNumber') orderNumber: string) {
     return this.ordersService.findMyOrderByNumber(user.sub, orderNumber);
+  }
+
+  // ── PDF ────────────────────────────────────────────────────────────────────
+  // Two-segment routes (:id/invoice) declared before one-segment (:orderNumber)
+  // to prevent NestJS from greedily matching the literal 'invoice' as an orderNumber.
+
+  @Get(':id/invoice')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Download invoice PDF for own order (auto-detects gift receipt to hide prices)' })
+  async getInvoice(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    // PdfService verifies ownership via userId and auto-detects giftReceipt flag
+    const url = await this.pdfService.generateInvoice(id, undefined, user.sub);
+    return { url };
   }
 
   @Get(':orderNumber')

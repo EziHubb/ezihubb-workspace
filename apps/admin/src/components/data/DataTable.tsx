@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -23,15 +23,16 @@ export interface DataTablePagination {
 }
 
 interface DataTableProps<T> {
-  data:         T[];
-  columns:      ColumnDef<T>[];
-  isLoading?:   boolean;
-  pagination?:  DataTablePagination;
-  onRowClick?:  (row: T) => void;
-  selectable?:  boolean;
-  bulkActions?: React.ReactNode;
-  emptyTitle?:  string;
-  emptyDesc?:   string;
+  data:               T[];
+  columns:            ColumnDef<T>[];
+  isLoading?:         boolean;
+  pagination?:        DataTablePagination;
+  onRowClick?:        (row: T) => void;
+  selectable?:        boolean;
+  bulkActions?:       React.ReactNode;
+  onSelectionChange?: (selectedRows: T[]) => void;
+  emptyTitle?:        string;
+  emptyDesc?:         string;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -39,13 +40,14 @@ interface DataTableProps<T> {
 export function DataTable<T>({
   data,
   columns,
-  isLoading    = false,
+  isLoading         = false,
   pagination,
   onRowClick,
-  selectable   = false,
+  selectable        = false,
   bulkActions,
-  emptyTitle   = 'No data',
-  emptyDesc    = 'Nothing to show here yet.',
+  onSelectionChange,
+  emptyTitle        = 'No data',
+  emptyDesc         = 'Nothing to show here yet.',
 }: DataTableProps<T>) {
   const [sorting,      setSorting]      = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -90,6 +92,20 @@ export function DataTable<T>({
     manualPagination:     true,
     enableRowSelection:   selectable,
   });
+
+  // Reset selection whenever the displayed page changes so stale index-keyed
+  // selections from a previous page never silently target different rows.
+  useEffect(() => {
+    setRowSelection({});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination?.page]);
+
+  useEffect(() => {
+    if (onSelectionChange) {
+      onSelectionChange(table.getSelectedRowModel().rows.map((r) => r.original));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowSelection]);
 
   const selectedCount  = Object.keys(rowSelection).length;
   const totalPages     = pagination ? Math.ceil(pagination.total / pagination.limit) : 1;

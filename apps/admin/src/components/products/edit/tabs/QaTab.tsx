@@ -1,0 +1,268 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { MessageCircle, Check, Trash2, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { clientFetch } from '../../../../lib/api';
+import { format } from 'date-fns';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface Question {
+  id:           string;
+  question:     string;
+  askedByName:  string;
+  askedByEmail: string | null;
+  answer:       string | null;
+  answeredAt:   string | null;
+  isPublished:  boolean;
+  isSpam:       boolean;
+  upvotes:      number;
+  createdAt:    string;
+}
+
+// ── Question row ──────────────────────────────────────────────────────────────
+
+interface QuestionRowProps {
+  q:          Question;
+  productId:  string;
+  onRefresh:  () => void;
+}
+
+function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
+  const [answer,    setAnswer]    = useState(q.answer ?? '');
+  const [publish,   setPublish]   = useState(q.isPublished);
+  const [expanded,  setExpanded]  = useState(!q.answer);
+  const [saving,    setSaving]    = useState(false);
+  const [deleting,  setDeleting]  = useState(false);
+  const [error,     setError]     = useState('');
+
+  const handleSave = async () => {
+    if (!answer.trim()) return;
+    setSaving(true);
+    setError('');
+    try {
+      const res  = await clientFetch(`/admin/products/${productId}/questions/${q.id}/answer`, {
+        method: 'POST',
+        body:   JSON.stringify({ answer: answer.trim(), publish }),
+      });
+      if (!res.ok) throw new Error('Save failed');
+      onRefresh();
+      setExpanded(false);
+    } catch {
+      setError('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTogglePublish = async () => {
+    try {
+      await clientFetch(`/admin/products/${productId}/questions/${q.id}`, {
+        method: 'PATCH',
+        body:   JSON.stringify({ isPublished: !q.isPublished }),
+      });
+      onRefresh();
+    } catch { /* ignore */ }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('Delete this question? This cannot be undone.')) return;
+    setDeleting(true);
+    try {
+      await clientFetch(`/admin/products/${productId}/questions/${q.id}`, { method: 'DELETE' });
+      onRefresh();
+    } catch { setDeleting(false); }
+  };
+
+  const handleSpam = async () => {
+    if (!confirm('Mark as spam? This will hide the question.')) return;
+    try {
+      await clientFetch(`/admin/products/${productId}/questions/${q.id}/spam`, { method: 'POST' });
+      onRefresh();
+    } catch { /* ignore */ }
+  };
+
+  const needsAnswer = !q.answer;
+
+  return (
+    <div className={`border rounded-xl overflow-hidden transition-colors ${needsAnswer ? 'border-amber-300 bg-amber-50' : 'border-border bg-surface'}`}>
+      {/* Header */}
+      <div className="flex items-start gap-3 px-4 py-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            {needsAnswer && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[11px] font-semibold">
+                <AlertTriangle className="w-3 h-3" />
+                Unanswered
+              </span>
+            )}
+            {q.isPublished && (
+              <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[11px] font-semibold">Published</span>
+            )}
+            {q.answer && !q.isPublished && (
+              <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-[11px] font-semibold">Draft answer</span>
+            )}
+          </div>
+          <p className="font-medium text-secondary text-sm mt-1 leading-snug">{q.question}</p>
+          <p className="text-xs text-muted mt-0.5">
+            {q.askedByName}
+            {q.askedByEmail && ` · ${q.askedByEmail}`}
+            {' · '}{format(new Date(q.createdAt), 'MMM d, yyyy')}
+            {q.upvotes > 0 && ` · ${q.upvotes} helpful`}
+          </p>
+          {q.answer && !expanded && (
+            <p className="text-sm text-secondary mt-2 line-clamp-2 italic">&ldquo;{q.answer}&rdquo;</p>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {q.answer && (
+            <button
+              type="button"
+              onClick={handleTogglePublish}
+              title={q.isPublished ? 'Unpublish' : 'Publish'}
+              className="p-1.5 rounded-lg text-muted hover:text-secondary hover:bg-muted/10 transition-colors"
+            >
+              <Check className={`w-4 h-4 ${q.isPublished ? 'text-green-600' : ''}`} />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setExpanded((s) => !s)}
+            className="p-1.5 rounded-lg text-muted hover:text-secondary hover:bg-muted/10 transition-colors"
+            title={expanded ? 'Collapse' : 'Expand'}
+          >
+            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          <button
+            type="button"
+            onClick={handleSpam}
+            className="p-1.5 rounded-lg text-muted hover:text-amber-600 hover:bg-amber-50 transition-colors"
+            title="Mark as spam"
+          >
+            <AlertTriangle className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="p-1.5 rounded-lg text-muted hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
+            title="Delete"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Answer form */}
+      {expanded && (
+        <div className="border-t border-border px-4 py-3 space-y-3 bg-background">
+          <label className="text-xs font-semibold text-secondary block">
+            {q.answer ? 'Edit answer' : 'Write an answer'}
+          </label>
+          <textarea
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            rows={4}
+            maxLength={5000}
+            placeholder="Write your answer here…"
+            className="w-full border border-border rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 text-sm text-secondary cursor-pointer">
+              <input
+                type="checkbox"
+                checked={publish}
+                onChange={(e) => setPublish(e.target.checked)}
+                className="w-4 h-4 accent-primary rounded"
+              />
+              Publish immediately
+            </label>
+            <div className="flex items-center gap-2">
+              {error && <p className="text-xs text-red-600">{error}</p>}
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving || !answer.trim()}
+                className="px-4 py-1.5 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : 'Save answer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Tab ───────────────────────────────────────────────────────────────────────
+
+interface QaTabProps { productId: string }
+
+export function QaTab({ productId }: QaTabProps) {
+  const [questions, setQuestions]   = useState<Question[]>([]);
+  const [filter,    setFilter]      = useState<'all' | 'unanswered'>('all');
+  const [loading,   setLoading]     = useState(true);
+
+  const fetchQuestions = async () => {
+    setLoading(true);
+    try {
+      const res  = await clientFetch(`/admin/products/${productId}/questions?filter=${filter}`);
+      const body = await res.json() as { data?: Question[] } | Question[];
+      const data = Array.isArray(body) ? body : ('data' in body && body.data ? body.data : []);
+      setQuestions(data);
+    } catch { /* ignore */ }
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchQuestions(); }, [productId, filter]);
+
+  const unanswered = questions.filter((q) => !q.answer).length;
+
+  return (
+    <div className="p-6 max-w-3xl space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-base font-bold text-secondary">Customer Q&amp;A</h3>
+          <p className="text-xs text-muted mt-0.5">Answer questions to reduce support messages and improve SEO.</p>
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+          <button
+            type="button"
+            onClick={() => setFilter('all')}
+            className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${filter === 'all' ? 'bg-primary text-white' : 'text-muted hover:text-secondary'}`}
+          >
+            All ({questions.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('unanswered')}
+            className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${filter === 'unanswered' ? 'bg-amber-500 text-white' : 'text-muted hover:text-secondary'}`}
+          >
+            Unanswered{unanswered > 0 ? ` (${unanswered})` : ''}
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-20 bg-muted/10 rounded-xl animate-pulse" />
+          ))}
+        </div>
+      ) : questions.length === 0 ? (
+        <div className="text-center py-12 text-muted">
+          <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-40" />
+          <p className="text-sm font-medium text-secondary">No questions yet</p>
+          <p className="text-xs mt-1">Customer questions will appear here once submitted.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {questions.map((q) => (
+            <QuestionRow key={q.id} q={q} productId={productId} onRefresh={fetchQuestions} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

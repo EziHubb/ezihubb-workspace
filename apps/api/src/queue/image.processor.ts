@@ -5,23 +5,33 @@ const sharp = require('sharp');
 import axios from 'axios';
 
 import { ConfigService } from '@nestjs/config';
+import Replicate from 'replicate';
 import { StorageService } from '../common/services/storage.service';
+import { RedisService } from '../common/services/redis.service';
+import { ART_STYLES } from '../modules/customization/art-styles.config';
+import type { ArtStyleJobStatus } from '../modules/customization/art-style.service';
 import {
   QUEUES,
   JOBS,
   RemoveBackgroundJobData,
   GeneratePreviewJobData,
+  ApplyArtStyleJobData,
 } from './queue.constants';
 
 @Processor(QUEUES.IMAGE_PROCESSING)
 export class ImageProcessor extends WorkerHost {
   private readonly logger = new Logger(ImageProcessor.name);
 
+  private readonly replicate: Replicate | null = null;
+
   constructor(
-    private readonly config: ConfigService,
-    private readonly storage: StorageService,
+    private readonly config:   ConfigService,
+    private readonly storage:  StorageService,
+    private readonly redis:    RedisService,
   ) {
     super();
+    const token = this.config.get<string>('REPLICATE_API_TOKEN');
+    if (token) this.replicate = new Replicate({ auth: token });
   }
 
   async process(job: Job): Promise<string | undefined> {
@@ -30,6 +40,9 @@ export class ImageProcessor extends WorkerHost {
         return this.handleRemoveBackground(job as Job<RemoveBackgroundJobData>);
       case JOBS.GENERATE_PREVIEW:
         return this.handleGeneratePreview(job as Job<GeneratePreviewJobData>);
+      case JOBS.APPLY_ART_STYLE:
+        await this.handleApplyArtStyle(job as Job<ApplyArtStyleJobData>);
+        return undefined;
       case JOBS.CLEANUP_TEMP_IMAGES:
         await this.handleCleanupTempImages();
         return undefined;
@@ -124,6 +137,48 @@ export class ImageProcessor extends WorkerHost {
     const resultUrl = await this.storage.uploadFile(placeholder, outputKey, 'image/png');
     this.logger.log(`Preview generated: ${outputKey}`);
     return resultUrl;
+  }
+
+  private async handleApplyArtStyle(job: Job<ApplyArtStyleJobData>): Promise<void> {
+    const { jobId, imageKey, styleId } = job.data;
+    this.logger.log(`Apply art style: jobId=${jobId} style=${styleId} key=${imageKey}`);
+
+    const setStatus = (val: ArtStyleJobStatus, ttl: number) =>
+      this.redis.set(`job:artstyle:${jobId}`, val, ttl);
+
+    const style = ART_STYLES.find((s) => s.id === styleId);
+    if (!style || !this.replicate) {
+      await setStatus({ status: 'failed', error: 'Style not found or Replicate not configured' }, 300);
+      return;
+    }
+
+    try {
+      const imageUrl = this.storage.getPublicUrl(imageKey);
+
+      const output = await this.replicate.run(
+        `${style.replicateModel}:${style.replicateVersion}` as `${string}/${string}:${string}`,
+        { input: { image: imageUrl, ...style.defaultInput } },
+      );
+
+      const resultUrl = Array.isArray(output)
+        ? (output[0] as unknown as string)
+        : (output as unknown as string);
+      if (!resultUrl || typeof resultUrl !== 'string') throw new Error('No output URL from Replicate');
+
+      // Re-upload to R2 — Replicate URLs expire after 1h
+      const resp   = await fetch(resultUrl);
+      const buffer = Buffer.from(await resp.arrayBuffer());
+      const r2Key  = `art-styles/${styleId}/${Date.now()}.webp`;
+      const permanentUrl = await this.storage.uploadFile(buffer, r2Key, 'image/webp');
+
+      await setStatus({ status: 'done', processedKey: r2Key, processedUrl: permanentUrl, styleId }, 600);
+      this.logger.log(`Art style done: jobId=${jobId} style=${styleId}`);
+
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Art style failed: jobId=${jobId} — ${msg}`);
+      await setStatus({ status: 'failed', error: 'Art style processing failed. Please try again.' }, 300);
+    }
   }
 
   private async handleCleanupTempImages(): Promise<void> {

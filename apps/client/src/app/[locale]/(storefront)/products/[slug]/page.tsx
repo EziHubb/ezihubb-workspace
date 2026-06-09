@@ -17,6 +17,8 @@ import { MoreFromShop } from '../../../../../components/product/MoreFromShop';
 import { YouMayAlsoLike } from '../../../../../components/product/YouMayAlsoLike';
 import { ExploreRelatedSearches } from '../../../../../components/product/ExploreRelatedSearches';
 import { ListedInfoFooter } from '../../../../../components/product/ListedInfoFooter';
+import { ProductQandA } from '../../../../../components/product/ProductQandA';
+import type { QAItem } from '../../../../../components/product/ProductQandA';
 
 export const revalidate = 30;
 
@@ -109,7 +111,7 @@ export default async function ProductDetailPage({
 }) {
   const { locale, slug } = await params;
 
-  const [productRes, reviewSummaryRes, relatedRes, moreFromShopRes] =
+  const [productRes, reviewSummaryRes, relatedRes, moreFromShopRes, qaRes] =
     await Promise.allSettled([
       apiClient.get<ProductDetailDto>(`/products/${slug}`, {
         next: { revalidate: 30 },
@@ -123,6 +125,9 @@ export default async function ProductDetailPage({
       apiClient.get<PaginatedResponse<ProductListItemDto>>('/products', {
         params: { sort: 'bestseller', limit: 4 },
         next: { revalidate: 300 },
+      }),
+      apiClient.get<QAItem[]>(`/products/${slug}/questions`, {
+        next: { revalidate: 60 },
       }),
     ]);
 
@@ -138,6 +143,21 @@ export default async function ProductDetailPage({
   const moreFromShop = moreFromShopRes.status === 'fulfilled'
     ? moreFromShopRes.value.data : [];
 
+  const initialQAs = qaRes.status === 'fulfilled' ? qaRes.value : [];
+
+  // FAQPage structured data — only published answered Q&As
+  const faqStructuredData = initialQAs.length > 0 ? {
+    '@context': 'https://schema.org',
+    '@type':    'FAQPage',
+    mainEntity: initialQAs
+      .filter((q) => q.answer)
+      .map((qa) => ({
+        '@type': 'Question',
+        name:    qa.question,
+        acceptedAnswer: { '@type': 'Answer', text: qa.answer },
+      })),
+  } : null;
+
   const breadcrumbs = buildBreadcrumbs(product, locale);
   const absoluteCrumbs = breadcrumbs.map((b) => ({
     name: b.name,
@@ -152,6 +172,12 @@ export default async function ProductDetailPage({
         locale={locale}
       />
       <BreadcrumbStructuredData items={absoluteCrumbs} />
+      {faqStructuredData && faqStructuredData.mainEntity.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }}
+        />
+      )}
 
       <div className="max-w-[1280px] mx-auto px-4 py-4">
 
@@ -176,6 +202,9 @@ export default async function ProductDetailPage({
           productSlug={slug}
           reviewSummary={reviewSummary}
         />
+
+        {/* ── Q&A ── */}
+        <ProductQandA productSlug={slug} initialQAs={initialQAs} />
 
         {/* ── SELLER CARD ── */}
         <SellerCard product={product} />

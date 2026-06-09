@@ -3,14 +3,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ColumnDef } from '@tanstack/react-table';
-import { Plus, Search, X, Eye, EyeOff, Package } from 'lucide-react';
+import { Plus, Search, X, Eye, EyeOff, Package, Upload } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { DataTable } from '../../../components/data/DataTable';
-import { clientFetch } from '../../../lib/api';
+import { BulkActionBar } from '../../../components/products/BulkActionBar';
+import { clientFetch, API_BASE } from '../../../lib/api';
 import { fmtAmount } from '../../../lib/fmt';
+import { getSession } from 'next-auth/react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -35,11 +37,15 @@ const PAGE_SIZE = 20;
 
 export default function ProductsPage() {
   const qc = useQueryClient();
-  const [page,       setPage]       = useState(1);
-  const [search,     setSearch]     = useState('');
-  const [debouncedQ, setDebouncedQ] = useState('');
-  const [status,     setStatus]     = useState('');
-  const [category,   setCategory]   = useState('');
+  const [page,            setPage]            = useState(1);
+  const [search,          setSearch]          = useState('');
+  const [debouncedQ,      setDebouncedQ]      = useState('');
+  const [status,          setStatus]          = useState('');
+  const [category,        setCategory]        = useState('');
+  const [selectedIds,     setSelectedIds]     = useState<string[]>([]);
+  const [isBulkLoading,   setIsBulkLoading]   = useState(false);
+  const [showSaleDialog,  setShowSaleDialog]  = useState(false);
+  const [salePercent,     setSalePercent]     = useState(20);
 
   useEffect(() => {
     const t = setTimeout(() => { setDebouncedQ(search); setPage(1); }, 300);
@@ -70,6 +76,45 @@ export default function ProductsPage() {
       body:   JSON.stringify({ isActive: !p.isActive }),
     });
     qc.invalidateQueries({ queryKey: ['admin-products'] });
+  };
+
+  const executeBulk = async (action: string, payload?: Record<string, unknown>) => {
+    setIsBulkLoading(true);
+    try {
+      const res  = await clientFetch('/admin/products/bulk', {
+        method: 'PATCH',
+        body:   JSON.stringify({ ids: selectedIds, action, payload }),
+      });
+      const body = await res.json() as { data?: { updated: number; action: string }; updated?: number; action?: string };
+      const result = 'data' in body && body.data ? body.data : body as { updated: number; action: string };
+      alert(`${result.updated} products ${result.action}`);
+      setSelectedIds([]);
+      qc.invalidateQueries({ queryKey: ['admin-products'] });
+    } catch {
+      alert('Bulk action failed. Please try again.');
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
+  const handleExport = async () => {
+    const session = await getSession();
+    const token   = (session?.user as Record<string, unknown> | undefined)?.['accessToken'] as string | undefined;
+    const res     = await fetch(`${API_BASE}/admin/products/export`, {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ ids: selectedIds }),
+    });
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `products-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const columns = useMemo<ColumnDef<Product>[]>(() => [
@@ -195,13 +240,22 @@ export default function ProductsPage() {
         title="Products"
         subtitle={`${total.toLocaleString()} products`}
         actions={
-          <Link
-            href="/products/new"
-            className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-semibold rounded-button transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Add Product
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/products/import"
+              className="flex items-center gap-1.5 px-4 py-2 border border-border hover:border-primary text-secondary hover:text-primary text-sm font-semibold rounded-button transition-colors"
+            >
+              <Upload className="w-4 h-4" />
+              Import CSV
+            </Link>
+            <Link
+              href="/products/new"
+              className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-semibold rounded-button transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Product
+            </Link>
+          </div>
         }
       />
 
@@ -256,10 +310,79 @@ export default function ProductsPage() {
         data={products}
         columns={columns}
         isLoading={isLoading}
+        selectable
         pagination={{ page, limit: PAGE_SIZE, total, onPageChange: setPage }}
+        onSelectionChange={(rows) => setSelectedIds(rows.map((r) => r.id))}
+        bulkActions={
+          selectedIds.length > 0 ? (
+            <BulkActionBar
+              count={selectedIds.length}
+              isLoading={isBulkLoading}
+              onPublish={() => executeBulk('publish')}
+              onUnpublish={() => executeBulk('unpublish')}
+              onArchive={() => {
+                if (confirm(`Archive ${selectedIds.length} product${selectedIds.length !== 1 ? 's' : ''}? They will be hidden from the store.`)) {
+                  executeBulk('archive');
+                }
+              }}
+              onSetSale={() => setShowSaleDialog(true)}
+              onExport={handleExport}
+            />
+          ) : undefined
+        }
         emptyTitle="No products found"
         emptyDesc="Create your first product to get started."
       />
+
+      {/* Set sale dialog */}
+      {showSaleDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowSaleDialog(false); }}
+        >
+          <div className="bg-background rounded-2xl shadow-2xl p-6 w-full max-w-sm space-y-4">
+            <h3 className="text-base font-bold text-secondary">Set sale price</h3>
+            <p className="text-sm text-muted">
+              Apply a discount to {selectedIds.length} selected product{selectedIds.length !== 1 ? 's' : ''}.
+              Current prices become the strikethrough &ldquo;was&rdquo; prices.
+            </p>
+            <div>
+              <label className="text-xs font-medium text-secondary block mb-1.5">Discount percentage</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={99}
+                  value={salePercent}
+                  onChange={(e) => setSalePercent(Number(e.target.value))}
+                  className="w-24 border border-border rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+                <span className="text-sm text-muted">% off</span>
+              </div>
+              <p className="text-xs text-muted mt-1">e.g. $27.99 at 20% off → $22.39</p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowSaleDialog(false)}
+                className="px-4 py-2 text-sm text-muted hover:text-secondary rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSaleDialog(false);
+                  executeBulk('set-sale', { discountPercent: salePercent });
+                }}
+                className="px-5 py-2 text-sm font-semibold bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors"
+              >
+                Apply to {selectedIds.length} product{selectedIds.length !== 1 ? 's' : ''}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

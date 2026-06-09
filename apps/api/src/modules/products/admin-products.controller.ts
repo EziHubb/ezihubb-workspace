@@ -8,12 +8,15 @@ import {
   Body,
   Param,
   Query,
+  Res,
   UploadedFiles,
   UseInterceptors,
   HttpCode,
   HttpStatus,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
@@ -25,6 +28,8 @@ import {
 } from '@nestjs/swagger';
 import { memoryStorage } from 'multer';
 import { ProductsService } from './products.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { ProductStatus } from '@prisma/client';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -39,7 +44,7 @@ import { Role } from '@mlh/constants';
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
 import {
   IsArray, IsString, ArrayMaxSize, IsOptional, IsBoolean,
-  IsNumber, IsEnum, MaxLength, ValidateNested,
+  IsNumber, IsEnum, MaxLength, ValidateNested, IsIn,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -130,13 +135,28 @@ class CustomOptionCreateDto {
   @IsOptional() @IsNumber() maxFileSizeMB?: number;
 }
 
+// ── Bulk action DTOs ──────────────────────────────────────────────────────────
+
+class BulkProductActionDto {
+  @IsArray() @IsString({ each: true }) @ArrayMaxSize(200) ids: string[];
+  @IsIn(['publish', 'unpublish', 'archive', 'set-sale']) action: string;
+  @IsOptional() payload?: Record<string, unknown>;
+}
+
+class BulkExportDto {
+  @IsOptional() @IsArray() @IsString({ each: true }) @ArrayMaxSize(2000) ids?: string[];
+}
+
 @ApiTags('Admin — Products')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN, Role.SUPER_ADMIN)
 @Controller('admin/products')
 export class AdminProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   // GET /admin/products
   @Get()
@@ -481,5 +501,114 @@ export class AdminProductsController {
     @Body() dto: ReorderIdsDto,
   ) {
     return this.productsService.reorderCustomOptions(id, dto.orderedIds);
+  }
+
+  // ── Bulk actions ──────────────────────────────────────────────────────────────
+
+  // PATCH /admin/products/bulk
+  @Patch('bulk')
+  @ApiOperation({ summary: '[Admin] Bulk update products (publish/unpublish/archive/set-sale)' })
+  async bulkUpdate(@Body() dto: BulkProductActionDto) {
+    if (!dto.ids || dto.ids.length === 0) throw new BadRequestException('No products selected');
+    if (dto.ids.length > 200) throw new BadRequestException('Max 200 products per bulk action');
+
+    switch (dto.action) {
+      case 'publish':
+        await this.prisma.product.updateMany({
+          where: { id: { in: dto.ids } },
+          data:  { status: ProductStatus.ACTIVE, isActive: true },
+        });
+        return { updated: dto.ids.length, action: 'published' };
+
+      case 'unpublish':
+        await this.prisma.product.updateMany({
+          where: { id: { in: dto.ids } },
+          data:  { status: ProductStatus.INACTIVE, isActive: false },
+        });
+        return { updated: dto.ids.length, action: 'unpublished' };
+
+      case 'archive':
+        await this.prisma.product.updateMany({
+          where: { id: { in: dto.ids } },
+          data:  { status: ProductStatus.ARCHIVED, isActive: false },
+        });
+        return { updated: dto.ids.length, action: 'archived' };
+
+      case 'set-sale': {
+        const pct = Number(dto.payload?.['discountPercent'] ?? 0);
+        if (pct <= 0 || pct >= 100) throw new BadRequestException('Discount must be 1–99%');
+        const products = await this.prisma.product.findMany({
+          where:  { id: { in: dto.ids } },
+          select: { id: true, basePrice: true },
+        });
+        await this.prisma.$transaction(
+          products.map((p) => {
+            const salePrice = Math.round(Number(p.basePrice) * (1 - pct / 100) * 100) / 100;
+            return this.prisma.product.update({
+              where: { id: p.id },
+              data:  { compareAtPrice: p.basePrice, basePrice: salePrice },
+            });
+          }),
+        );
+        return { updated: dto.ids.length, action: 'sale-applied', discountPercent: pct };
+      }
+
+      default:
+        throw new BadRequestException(`Unknown action: ${dto.action}`);
+    }
+  }
+
+  // POST /admin/products/export
+  @Post('export')
+  @ApiOperation({ summary: '[Admin] Export products to CSV' })
+  async exportCsv(@Body() dto: BulkExportDto, @Res() res: Response): Promise<void> {
+    const products = await this.prisma.product.findMany({
+      where:   dto.ids?.length ? { id: { in: dto.ids } } : {},
+      include: {
+        category: { select: { slug: true } },
+        tags:     { include: { tag: { select: { name: true } } } },
+        images:   { where: { isPrimary: true }, take: 1 },
+        variationGroups: { include: { options: true }, take: 2 },
+      },
+      orderBy: { createdAt: 'desc' },
+      take:    2000,
+    });
+
+    const header = [
+      'name','slug','description','shortDescription','basePrice','compareAtPrice',
+      'status','categorySlug','tags','collectionSlugs','isPersonalizable','isFeatured',
+      'processingDays','variationGroupName','variationGroupType','variationOptions','images',
+    ].join(',');
+
+    const rows = products.map((p) => {
+      const variation = p.variationGroups[0];
+      const variationOptions = variation?.options
+        .map((o) => `${o.name}:${Number(o.priceDelta ?? 0)}`)
+        .join('|') ?? '';
+      return [
+        p.name,
+        p.slug,
+        p.description?.replace(/"/g, '""') ?? '',
+        p.shortDescription?.replace(/"/g, '""') ?? '',
+        Number(p.basePrice),
+        p.compareAtPrice != null ? Number(p.compareAtPrice) : '',
+        p.status,
+        p.category?.slug ?? '',
+        p.tags.map((pt) => pt.tag.name).join(','),
+        '',
+        p.isPersonalizable,
+        p.isFeatured,
+        p.processingDays,
+        variation?.name ?? '',
+        variation?.displayType ?? '',
+        variationOptions,
+        p.images[0]?.url ?? '',
+      ].map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',');
+    });
+
+    const csv = [header, ...rows].join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="products-export-${Date.now()}.csv"`);
+    res.send(csv);
   }
 }

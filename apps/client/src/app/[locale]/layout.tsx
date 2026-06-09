@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Inter, Playfair_Display } from 'next/font/google';
+import Script from 'next/script';
 import { GoogleAnalytics, GoogleTagManager } from '@next/third-parties/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
@@ -112,6 +113,7 @@ export default async function LocaleLayout({
 
   const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
   const gaId  = process.env.NEXT_PUBLIC_GA_ID;
+  const hjId  = process.env.NEXT_PUBLIC_HOTJAR_ID;
   const isProd = process.env.NODE_ENV === 'production';
 
   return (
@@ -146,6 +148,26 @@ export default async function LocaleLayout({
         </ReactQueryProvider>
         {/* Direct GA4 tag — keep while GTM is being validated; remove once GTM is confirmed */}
         {isProd && gaId && <GoogleAnalytics gaId={gaId} />}
+        {/* Hotjar — afterInteractive so it never blocks LCP */}
+        {(() => {
+          const hjSiteId = parseInt(hjId ?? '', 10);
+          return isProd && !isNaN(hjSiteId) && hjSiteId > 0 ? (
+            <Script
+              id="hotjar"
+              strategy="afterInteractive"
+              dangerouslySetInnerHTML={{
+                __html: `(function(h,o,t,j,a,r){
+                  h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};
+                  h._hjSettings={hjid:${hjSiteId},hjsv:6};
+                  a=o.getElementsByTagName('head')[0];
+                  r=o.createElement('script');r.async=1;
+                  r.src=t+h._hjSettings.hjid+j+h._hjSettings.hjsv;
+                  a.appendChild(r);
+                })(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');`,
+              }}
+            />
+          ) : null;
+        })()}
       </body>
     </html>
   );

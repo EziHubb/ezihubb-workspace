@@ -63,6 +63,12 @@ export interface GeneratePreviewJobData {
   outputKey:  string;
 }
 
+export interface ApplyArtStyleJobData {
+  jobId:    string;  // custom `artstyle_*` ID used for Redis key
+  imageKey: string;  // R2 key of the source image
+  styleId:  string;  // one of ART_STYLE_IDS
+}
+
 export interface OrderConfirmedJobData {
   orderId:     string;
   orderNumber: string;

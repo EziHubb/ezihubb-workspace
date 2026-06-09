@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { Cloud, Check, RefreshCw, Wand2 } from 'lucide-react';
 import { useCustomizerStore } from '../../../lib/store/customizer.store';
 import type { ImageField } from '../../../lib/customizer/types';
+import { ArtStylePicker } from '../ArtStylePicker';
+import { hotjarEvent } from '../../../lib/analytics/hotjar';
 
 const ACCEPT  = 'image/*';
 const MAX_MB  = 10;
@@ -48,6 +50,11 @@ function ImageFieldUpload({ field }: FieldUploadProps) {
     setFileName(file.name);
     setFileSize(file.size);
     await uploadImage(field.id, file);
+    // uploadImage never rejects — check store state to confirm success before firing
+    const uploaded = useCustomizerStore.getState().fieldValues[field.id];
+    if (uploaded?.imageUrl && !uploaded?.error) {
+      hotjarEvent('customizer_photo_uploaded');
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -202,6 +209,9 @@ function ImageFieldUpload({ field }: FieldUploadProps) {
               Replace
             </button>
           </div>
+
+          {/* Art style picker — only shown after upload, non-blocking */}
+          <ArtStylePicker fieldId={field.id} field={field} />
         </div>
       )}
 
