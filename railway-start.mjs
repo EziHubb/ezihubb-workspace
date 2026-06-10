@@ -9,6 +9,9 @@ function run(cmd) {
   execSync(cmd, { stdio: 'inherit' });
 }
 
+const prisma = 'node node_modules/prisma/build/index.js';
+const next   = 'node node_modules/next/dist/bin/next';
+
 function tryMigrate() {
   const dbUrl = process.env['DATABASE_URL'];
   if (!dbUrl) {
@@ -16,11 +19,11 @@ function tryMigrate() {
     return;
   }
   try {
-    run('node node_modules/.bin/prisma migrate deploy --schema=prisma/schema.prisma');
+    run(`${prisma} migrate deploy --schema=prisma/schema.prisma`);
     console.log('[railway-start] Migrations applied');
   } catch {
     try {
-      run('node node_modules/.bin/prisma db push --schema=prisma/schema.prisma --accept-data-loss');
+      run(`${prisma} db push --schema=prisma/schema.prisma --accept-data-loss`);
     } catch {
       console.error('[railway-start] DB setup failed — starting anyway');
     }
@@ -32,8 +35,8 @@ if (service.includes('api') || (!service.includes('client') && !service.includes
   run('node dist/apps/api/main.js');
 
 } else if (service.includes('admin')) {
-  run('node node_modules/next/dist/bin/next start dist/apps/admin --port ' + (process.env['PORT'] || '3001'));
+  run(`${next} start dist/apps/admin --port ` + (process.env['PORT'] || '3001'));
 
 } else if (service.includes('client') || service.includes('web') || service.includes('storefront')) {
-  run('node node_modules/next/dist/bin/next start dist/apps/client --port ' + (process.env['PORT'] || '3000'));
+  run(`${next} start dist/apps/client --port ` + (process.env['PORT'] || '3000'));
 }
