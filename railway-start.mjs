@@ -16,11 +16,11 @@ function tryMigrate() {
     return;
   }
   try {
-    run('pnpm exec prisma migrate deploy --schema=prisma/schema.prisma');
+    run('node node_modules/.bin/prisma migrate deploy --schema=prisma/schema.prisma');
     console.log('[railway-start] Migrations applied');
   } catch {
     try {
-      run('pnpm exec prisma db push --schema=prisma/schema.prisma --accept-data-loss');
+      run('node node_modules/.bin/prisma db push --schema=prisma/schema.prisma --accept-data-loss');
     } catch {
       console.error('[railway-start] DB setup failed — starting anyway');
     }
@@ -32,9 +32,8 @@ if (service.includes('api') || (!service.includes('client') && !service.includes
   run('node dist/apps/api/main.js');
 
 } else if (service.includes('admin')) {
-  // next start <dir> finds .next inside dist/apps/admin
-  run('pnpm exec next start dist/apps/admin --port ' + (process.env['PORT'] || '3001'));
+  run('node node_modules/next/dist/bin/next start dist/apps/admin --port ' + (process.env['PORT'] || '3001'));
 
 } else if (service.includes('client') || service.includes('web') || service.includes('storefront')) {
-  run('pnpm exec next start dist/apps/client --port ' + (process.env['PORT'] || '3000'));
+  run('node node_modules/next/dist/bin/next start dist/apps/client --port ' + (process.env['PORT'] || '3000'));
 }
