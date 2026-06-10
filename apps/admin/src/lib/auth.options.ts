@@ -15,6 +15,8 @@ if (!process.env['NEXTAUTH_URL']) {
     // NEXT_PUBLIC_NEXTAUTH_URL is set by the user as a full URL (with https://) —
     // use it as-is; baked into bundle via railway.toml buildArgs.
     process.env['NEXT_PUBLIC_NEXTAUTH_URL'] ??
+    // ADMIN_URL — explicit user-set Railway Variable (recommended in production).
+    process.env['ADMIN_URL'] ??
     // Railway auto-injects RAILWAY_PUBLIC_DOMAIN (hostname only, no protocol).
     (process.env['RAILWAY_PUBLIC_DOMAIN']
       ? `https://${process.env['RAILWAY_PUBLIC_DOMAIN']}`
@@ -26,7 +28,7 @@ if (!process.env['NEXTAUTH_URL']) {
   if (detected) {
     process.env['NEXTAUTH_URL'] = detected;
   } else if (process.env['NODE_ENV'] === 'production') {
-    // Log clearly so Railway build logs show why auth is broken
+    // Log clearly so Railway logs show why auth is broken
     console.error(
       '[Admin auth] NEXTAUTH_URL is not set and could not be auto-detected. ' +
         'Set NEXTAUTH_URL=https://<your-admin-domain> in Railway Variables.',

@@ -548,6 +548,101 @@ export class PaymentsService {
     return this.mapPaymentToDto(updated);
   }
 
+  // ─── Gift Card Purchase ───────────────────────────────────────────────────
+
+  async purchaseGiftCard(
+    dto: {
+      amount: number;
+      recipientEmail: string;
+      recipientName?: string;
+      personalMessage?: string;
+      paymentMethodId: string;
+    },
+    buyerUserId?: string,
+  ): Promise<{ giftCardCode: string; amount: number; recipientEmail: string }> {
+    const paymentIntent = await this.stripe.paymentIntents.create({
+      amount: Math.round(dto.amount * 100),
+      currency: 'usd',
+      payment_method: dto.paymentMethodId,
+      confirm: true,
+      automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
+      description: `Gift card purchase — $${dto.amount} for ${dto.recipientEmail}`,
+      metadata: {
+        type: 'gift_card_purchase',
+        buyerUserId: buyerUserId ?? 'guest',
+      },
+    });
+
+    if (paymentIntent.status !== 'succeeded') {
+      throw new BadRequestException({
+        code: 'ERR_PAYMENT_FAILED',
+        message: 'Payment did not succeed. Please try again.',
+      });
+    }
+
+    const code = this.generateGiftCardCode();
+
+    const giftCard = await this.prisma.giftCard.create({
+      data: {
+        code,
+        initialValue: dto.amount,
+        balance: dto.amount,
+        isActive: true,
+        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        recipientEmail: dto.recipientEmail,
+        recipientName: dto.recipientName,
+        personalMessage: dto.personalMessage,
+        purchasedByUserId: buyerUserId,
+        stripePaymentIntentId: paymentIntent.id,
+      },
+    });
+
+    await this.emailQueue.add(
+      JOBS.SEND_EMAIL,
+      {
+        to: dto.recipientEmail,
+        template: 'gift-card-delivery',
+        subject: `You've received a $${dto.amount} MapleLoomHandmade Gift Card!`,
+        data: {
+          recipientName: dto.recipientName ?? 'Friend',
+          code: giftCard.code,
+          amount: dto.amount,
+          message: dto.personalMessage ?? null,
+          expiresAt: giftCard.expiresAt!.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          }),
+          shopUrl:
+            this.config.get<string>('NEXT_PUBLIC_URL') ??
+            'https://mapleloomhandmade.com',
+          year: new Date().getFullYear(),
+        },
+      } satisfies SendEmailJobData,
+      DEFAULT_JOB_OPTIONS,
+    );
+
+    this.logger.log(
+      `Gift card purchased: code=${giftCard.code} amount=${dto.amount} recipient=${dto.recipientEmail}`,
+    );
+
+    return {
+      giftCardCode: giftCard.code,
+      amount: dto.amount,
+      recipientEmail: dto.recipientEmail,
+    };
+  }
+
+  private generateGiftCardCode(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const segment = () =>
+      Array.from(
+        { length: 4 },
+        () => chars[Math.floor(Math.random() * chars.length)],
+      ).join('');
+    return `MLH-${segment()}-${segment()}-${segment()}`;
+  }
+
   // ─── Gift Cards ───────────────────────────────────────────────────────────
 
   async validateGiftCard(code: string): Promise<GiftCardResponseDto> {
@@ -804,5 +899,214 @@ export class PaymentsService {
       paidAt: payment.paidAt,
       createdAt: payment.createdAt,
     };
+  }
+
+  // ── PayPal webhook event handler ─────────────────────────────────────────────
+
+  async handlePaypalWebhookEvent(
+    eventType: string,
+    resource: Record<string, unknown>,
+    eventId: string,
+  ): Promise<void> {
+    // Idempotency — skip if already processed
+    if (eventId) {
+      const existing = await this.prisma.payment.findFirst({
+        where: { providerEventId: eventId },
+      });
+      if (existing) {
+        this.logger.debug(`PayPal event ${eventId} already processed — skipping`);
+        return;
+      }
+    }
+
+    switch (eventType) {
+
+      // ── Buyer approved order (before capture) ──────────────────────────────
+      case 'CHECKOUT.ORDER.APPROVED': {
+        const paypalOrderId = resource['id'] as string | undefined;
+        const purchaseUnits = resource['purchase_units'] as { custom_id?: string }[] | undefined;
+        const customId      = purchaseUnits?.[0]?.custom_id; // internal orderId
+
+        if (!paypalOrderId || !customId) break;
+
+        await this.prisma.payment.updateMany({
+          where:  { orderId: customId, method: PaymentMethod.PAYPAL },
+          data:   { paypalOrderId, ...(eventId ? { providerEventId: eventId } : {}) },
+        });
+        this.logger.log(`PayPal: order ${paypalOrderId} approved for order ${customId}`);
+        break;
+      }
+
+      // ── Payment captured successfully ───────────────────────────────────────
+      case 'PAYMENT.CAPTURE.COMPLETED': {
+        const captureId      = resource['id'] as string | undefined;
+        const suppData       = resource['supplementary_data'] as { related_ids?: { order_id?: string } } | undefined;
+        const paypalOrderId  = suppData?.related_ids?.order_id;
+
+        const payment = await this.prisma.payment.findFirst({
+          where: {
+            OR: [
+              ...(paypalOrderId ? [{ paypalOrderId }] : []),
+              ...(captureId     ? [{ paypalCaptureId: captureId }] : []),
+            ],
+          },
+          include: { order: { include: { user: true } } },
+        });
+
+        if (!payment) {
+          this.logger.warn(`PayPal CAPTURE.COMPLETED: no payment for captureId=${captureId}`);
+          break;
+        }
+
+        // Already captured + idempotency event saved — true duplicate
+        if (payment.status === PaymentStatus.PAID && payment.providerEventId) break;
+
+        const now = new Date();
+        await this.prisma.$transaction(async (tx) => {
+          await tx.payment.update({
+            where: { id: payment.id },
+            data: {
+              status:          PaymentStatus.PAID,
+              paypalCaptureId: captureId,
+              paidAt:          now,
+              ...(eventId ? { providerEventId: eventId } : {}),
+            },
+          });
+
+          if (payment.order.status !== OrderStatus.CONFIRMED) {
+            await tx.order.update({
+              where: { id: payment.orderId },
+              data:  { status: OrderStatus.CONFIRMED, confirmedAt: now },
+            });
+            await tx.orderStatusHistory.create({
+              data: { orderId: payment.orderId, status: OrderStatus.CONFIRMED, note: 'PayPal payment captured' },
+            });
+          }
+        });
+
+        // ── Fire-and-forget: email ──────────────────────────────────────────
+        const customer = payment.order.user;
+        const customerEmail = customer?.email ?? (payment.order as any).guestEmail as string | null;
+        if (customerEmail) {
+          await this.emailQueue.add(
+            JOBS.SEND_EMAIL,
+            {
+              to:       customerEmail,
+              template: 'order-confirmation',
+              subject:  `Order confirmed — #${payment.order.orderNumber}`,
+              data: {
+                firstName:   customer?.firstName ?? 'there',
+                orderNumber: payment.order.orderNumber,
+                total:       Number(payment.order.total).toFixed(2),
+                shopUrl:     process.env['NEXT_PUBLIC_URL'] ?? '',
+              },
+            } satisfies SendEmailJobData,
+            DEFAULT_JOB_OPTIONS,
+          );
+        }
+        await this.orderQueue.add(
+          JOBS.ORDER_CONFIRMED,
+          { orderId: payment.orderId, orderNumber: payment.order.orderNumber, customerEmail: customerEmail ?? '' } satisfies OrderConfirmedJobData,
+          DEFAULT_JOB_OPTIONS,
+        );
+
+        // ── Fire-and-forget: commission ─────────────────────────────────────
+        this.commissionService
+          .createForOrder(payment.orderId)
+          .catch((err: Error) =>
+            this.logger.error(`PayPal commission failed for order ${payment.orderId}: ${err.message}`),
+          );
+
+        // ── Fire-and-forget: loyalty points ─────────────────────────────────
+        if (payment.order.userId) {
+          const userId    = payment.order.userId;
+          const orderId   = payment.orderId;
+          const orderTotal = Number(payment.order.total);
+          this.prisma.order
+            .findUnique({ where: { id: orderId }, select: { pointsDiscount: true } })
+            .then((o) => {
+              const earnableTotal = Math.max(0, orderTotal - Number(o?.pointsDiscount ?? 0));
+              return this.loyaltyService.earnPoints(userId, orderId, earnableTotal);
+            })
+            .catch((err: Error) =>
+              this.logger.error(`PayPal loyalty earn failed for order ${orderId}: ${err.message}`),
+            );
+        }
+
+        this.logger.log(`PayPal CAPTURE.COMPLETED: order ${payment.orderId} CONFIRMED`);
+        break;
+      }
+
+      // ── Payment refunded ────────────────────────────────────────────────────
+      case 'PAYMENT.CAPTURE.REFUNDED': {
+        const refundAmount = parseFloat(
+          (resource['amount'] as { value?: string } | undefined)?.value ?? '0',
+        );
+        // captureId is in the "up" link
+        const links     = resource['links'] as { rel: string; href: string }[] | undefined;
+        const captureId = links?.find((l) => l.rel === 'up')?.href?.split('/').pop();
+
+        const payment = await this.prisma.payment.findFirst({
+          where: { paypalCaptureId: captureId },
+        });
+
+        if (!payment) {
+          this.logger.warn(`PayPal REFUNDED: no payment for captureId=${captureId}`);
+          break;
+        }
+
+        await this.prisma.$transaction([
+          this.prisma.payment.update({
+            where: { id: payment.id },
+            data: {
+              status:         PaymentStatus.REFUNDED,
+              refundedAmount: refundAmount,
+              refundedAt:     new Date(),
+              ...(eventId ? { providerEventId: eventId } : {}),
+            },
+          }),
+          this.prisma.order.update({
+            where: { id: payment.orderId },
+            data:  { status: OrderStatus.REFUNDED },
+          }),
+        ]);
+
+        this.commissionService
+          .cancelCommission(payment.orderId, 'Order refunded via PayPal')
+          .catch((err: Error) =>
+            this.logger.error(`PayPal commission cancel failed: ${err.message}`),
+          );
+
+        this.logger.log(`PayPal REFUNDED: order ${payment.orderId}`);
+        break;
+      }
+
+      // ── Payment denied / failed ─────────────────────────────────────────────
+      case 'PAYMENT.CAPTURE.DENIED': {
+        const suppData      = resource['supplementary_data'] as { related_ids?: { order_id?: string } } | undefined;
+        const paypalOrderId = suppData?.related_ids?.order_id;
+
+        const payment = await this.prisma.payment.findFirst({
+          where: { paypalOrderId },
+        });
+
+        if (!payment) break;
+
+        // Only update Payment — Order stays PENDING_PAYMENT so user can retry
+        await this.prisma.payment.update({
+          where: { id: payment.id },
+          data: {
+            status: PaymentStatus.FAILED,
+            ...(eventId ? { providerEventId: eventId } : {}),
+          },
+        });
+
+        this.logger.warn(`PayPal DENIED: payment ${payment.id} for order ${payment.orderId} → FAILED`);
+        break;
+      }
+
+      default:
+        this.logger.debug(`PayPal webhook: unhandled event type ${eventType}`);
+    }
   }
 }

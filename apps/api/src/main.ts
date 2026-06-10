@@ -97,10 +97,18 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // ── CORS ───────────────────────────────────────────────────────────────────
-  // CORS_ORIGINS="*" → reflect any origin (dev); comma-list → strict whitelist
+  // CORS_ORIGINS="*" → reflect any origin (dev); comma-list → strict whitelist.
+  // ADMIN_URL and FRONTEND_URL are always added automatically when set so
+  // callers don't need to duplicate them in CORS_ORIGINS.
   const rawOrigins = process.env['CORS_ORIGINS'] ?? 'http://localhost:3000,http://localhost:3001';
   const allowAll   = rawOrigins.trim() === '*';
-  const originList = allowAll ? [] : rawOrigins.split(',').map((o) => o.trim()).filter(Boolean);
+  const explicitOrigins = rawOrigins.split(',').map((o) => o.trim()).filter(Boolean);
+  const autoOrigins = [
+    process.env['ADMIN_URL'],
+    process.env['FRONTEND_URL'],
+    process.env['APP_URL'],
+  ].filter((u): u is string => Boolean(u) && u !== '*');
+  const originList = allowAll ? [] : [...new Set([...explicitOrigins, ...autoOrigins])];
   app.enableCors({
     origin: allowAll
       ? true

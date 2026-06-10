@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Package, ExternalLink, ShoppingBag } from 'lucide-react';
 import { queryKeys } from '@mlh/api-client';
 import { OrderStatusBadge, Pagination, Skeleton } from '@mlh/ui';
@@ -12,13 +12,13 @@ import { useAuthQuery } from '../../../../../lib/hooks/useAuthQuery';
 
 // ── Filter tabs ───────────────────────────────────────────────────────────────
 
-const STATUS_TABS: { label: string; value: string }[] = [
-  { label: 'All',           value: ''             },
-  { label: 'Pending',       value: 'CONFIRMED'    },
-  { label: 'In Production', value: 'IN_PRODUCTION' },
-  { label: 'Shipped',       value: 'SHIPPED'       },
-  { label: 'Delivered',     value: 'DELIVERED'     },
-  { label: 'Cancelled',     value: 'CANCELLED'     },
+const STATUS_TABS: { key: string; value: string }[] = [
+  { key: 'all',          value: ''              },
+  { key: 'pending',      value: 'CONFIRMED'     },
+  { key: 'inProduction', value: 'IN_PRODUCTION' },
+  { key: 'shipped',      value: 'SHIPPED'       },
+  { key: 'delivered',    value: 'DELIVERED'     },
+  { key: 'cancelled',    value: 'CANCELLED'     },
 ];
 
 // ── Date formatter ────────────────────────────────────────────────────────────
@@ -54,6 +54,7 @@ function OrderCardSkeleton() {
 // ── OrderCard ─────────────────────────────────────────────────────────────────
 
 function OrderCard({ order, locale }: { order: OrderDto; locale: string }) {
+  const t = useTranslations('account');
   const thumbnails = order.items.slice(0, 3);
   const extra      = order.items.length - 3;
 
@@ -112,7 +113,7 @@ function OrderCard({ order, locale }: { order: OrderDto; locale: string }) {
           href={`/${locale}/account/orders/${order.orderNumber}`}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-secondary border border-border rounded-button px-4 py-2 hover:border-primary hover:text-primary transition-colors"
         >
-          View Details
+          {t('orders.actions.viewDetails')}
         </Link>
         {order.trackingUrl && (
           <a
@@ -122,7 +123,7 @@ function OrderCard({ order, locale }: { order: OrderDto; locale: string }) {
             className="inline-flex items-center gap-1.5 text-sm font-medium text-primary border border-primary/30 rounded-button px-4 py-2 hover:bg-primary/5 transition-colors"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            Track Order
+            {t('orders.actions.trackOrder')}
           </a>
         )}
       </div>
@@ -134,6 +135,7 @@ function OrderCard({ order, locale }: { order: OrderDto; locale: string }) {
 
 export default function OrdersPage() {
   const locale = useLocale();
+  const t = useTranslations('account');
   const [activeStatus, setActiveStatus] = useState('');
   const [page,         setPage]         = useState(1);
 
@@ -159,12 +161,12 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="font-display text-2xl font-bold text-secondary">My Orders</h1>
+      <h1 className="font-display text-2xl font-bold text-secondary">{t('orders.title')}</h1>
 
       {/* Filter tabs */}
       <div
         role="tablist"
-        aria-label="Filter orders by status"
+        aria-label={t('orders.filterLabel')}
         className="flex gap-1 border-b border-border overflow-x-auto [&::-webkit-scrollbar]:hidden"
       >
         {STATUS_TABS.map((tab) => (
@@ -181,7 +183,7 @@ export default function OrdersPage() {
                 : 'border-transparent text-muted hover:text-secondary',
             ].join(' ')}
           >
-            {tab.label}
+            {t(`orders.tabs.${tab.key}` as Parameters<typeof t>[0])}
           </button>
         ))}
       </div>
@@ -200,18 +202,18 @@ export default function OrdersPage() {
         <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
           <ShoppingBag className="w-14 h-14 text-muted/30" aria-hidden />
           <div>
-            <p className="font-semibold text-secondary text-base">No orders yet</p>
+            <p className="font-semibold text-secondary text-base">{t('orders.empty.noOrders')}</p>
             <p className="text-sm text-muted mt-1">
               {activeStatus
-                ? 'No orders with this status.'
-                : "You haven't placed any orders."}
+                ? t('orders.empty.noOrdersFiltered')
+                : t('orders.empty.noOrdersPlaced')}
             </p>
           </div>
           <Link
             href={`/${locale}/products`}
             className="mt-2 bg-primary hover:bg-primary-dark text-white font-bold text-sm px-6 py-3 rounded-button transition-colors uppercase tracking-wide"
           >
-            Shop Now
+            {t('orders.empty.shopNow')}
           </Link>
         </div>
       )}
@@ -220,8 +222,7 @@ export default function OrdersPage() {
       {!isLoading && orders.length > 0 && (
         <>
           <p className="text-sm text-muted">
-            <span className="font-semibold text-secondary">{total}</span> order
-            {total !== 1 ? 's' : ''}
+            {t('orders.count', { total })}
           </p>
           <div className="space-y-4">
             {orders.map((order: OrderDto) => (

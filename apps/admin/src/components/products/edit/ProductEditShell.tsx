@@ -474,7 +474,10 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
             <HowItsMadeTab productId={tabProduct?.id ?? product?.id} />
           </div>
           <div className={activeTab !== 'settings' ? 'hidden' : ''}>
-            <SettingsTab />
+            <SettingsTab
+              productId={product?.id}
+              initialRelatedIds={product?.featuredRelatedIds}
+            />
           </div>
           <div className={activeTab !== 'qa' ? 'hidden' : ''}>
             {(product?.id) && <QaTab productId={product.id} />}

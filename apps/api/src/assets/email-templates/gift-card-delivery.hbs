@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Gift Card</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; background: #faf9f7; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .header { background: #3d2b1f; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #f5e6d3; margin: 0; font-size: 24px; letter-spacing: 1px; }
+    .header p { color: #c8a882; margin: 8px 0 0; font-size: 14px; }
+    .body { padding: 40px; color: #3d2b1f; line-height: 1.7; }
+    .body h2 { font-size: 20px; margin-top: 0; }
+    .amount { font-size: 40px; font-weight: bold; color: #3d2b1f; text-align: center; margin: 8px 0; }
+    .code-box { background: #faf9f7; border: 2px dashed #c8a882; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0; }
+    .code-box .label { font-size: 12px; color: #7a5c45; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .code-box .code { font-family: 'Courier New', Courier, monospace; font-size: 28px; font-weight: bold; letter-spacing: 4px; color: #3d2b1f; }
+    .message-box { background: #fdf8f3; border-left: 4px solid #c8a882; padding: 16px 20px; margin: 20px 0; font-style: italic; color: #5a3e2b; border-radius: 0 6px 6px 0; }
+    .how-to { background: #faf9f7; border-radius: 6px; padding: 16px 20px; margin: 20px 0; font-size: 14px; }
+    .how-to ol { margin: 8px 0 0; padding-left: 18px; }
+    .how-to li { margin-bottom: 6px; }
+    .cta { display: inline-block; margin: 24px 0; background: #3d2b1f; color: #f5e6d3 !important; padding: 14px 32px; border-radius: 4px; text-decoration: none; font-size: 15px; }
+    .expiry { font-size: 13px; color: #7a5c45; text-align: center; margin-top: -12px; }
+    .footer { background: #f5e6d3; padding: 20px 40px; text-align: center; font-size: 12px; color: #7a5c45; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>🍁 Maple Loom Handmade</h1>
+      <p>You've received a gift card!</p>
+    </div>
+    <div class="body">
+      <h2>Hi {{recipientName}},</h2>
+      <p>Someone special sent you a gift to spend at Maple Loom Handmade!</p>
+
+      <div class="amount">${{amount}} Gift Card</div>
+
+      {{#if message}}
+      <div class="message-box">
+        <p style="margin:0">"{{message}}"</p>
+      </div>
+      {{/if}}
+
+      <div class="code-box">
+        <div class="label">Your gift card code</div>
+        <div class="code">{{code}}</div>
+      </div>
+      <p class="expiry">Valid until {{expiresAt}}</p>
+
+      <div class="how-to">
+        <strong>How to redeem:</strong>
+        <ol>
+          <li>Add any item to your cart</li>
+          <li>Proceed to checkout</li>
+          <li>Enter your code in the <strong>"Gift card"</strong> field</li>
+          <li>Your balance will be applied automatically</li>
+        </ol>
+      </div>
+
+      <div style="text-align:center">
+        <a class="cta" href="{{shopUrl}}">Shop Now</a>
+      </div>
+
+      <p>Gift cards can be used across multiple orders until the balance runs out. Any unused balance stays on the card.</p>
+      <p>Warmly,<br /><strong>The Maple Loom Team</strong></p>
+    </div>
+    <div class="footer">
+      &copy; {{year}} Maple Loom Handmade. All rights reserved.<br />
+      Questions? Reply to this email or visit our help centre.
+    </div>
+  </div>
+</body>
+</html>

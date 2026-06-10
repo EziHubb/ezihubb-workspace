@@ -1,0 +1,140 @@
+{
+  "orders": {
+    "title": "Đơn hàng của tôi",
+    "filterLabel": "Lọc đơn hàng theo trạng thái",
+    "tabs": {
+      "all": "Tất cả",
+      "pending": "Chờ xử lý",
+      "inProduction": "Đang sản xuất",
+      "shipped": "Đã gửi",
+      "delivered": "Đã giao",
+      "cancelled": "Đã hủy"
+    },
+    "empty": {
+      "noOrders": "Chưa có đơn hàng nào",
+      "noOrdersFiltered": "Không có đơn hàng với trạng thái này.",
+      "noOrdersPlaced": "Bạn chưa đặt đơn hàng nào.",
+      "shopNow": "Mua ngay"
+    },
+    "count": "{total, plural, one {# đơn hàng} other {# đơn hàng}}",
+    "actions": {
+      "viewDetails": "Xem chi tiết",
+      "trackOrder": "Theo dõi đơn hàng"
+    }
+  },
+
+  "profile": {
+    "title": "Hồ sơ & Mật khẩu",
+    "sections": {
+      "profileInformation": "Thông tin hồ sơ",
+      "changePassword": "Đổi mật khẩu"
+    },
+    "avatar": {
+      "changePhoto": "Đổi ảnh",
+      "savePhoto": "Lưu ảnh",
+      "uploading": "Đang tải lên…",
+      "cancel": "Hủy",
+      "hint": "JPG, PNG, WebP · Tối đa 5 MB",
+      "changeAriaLabel": "Đổi ảnh đại diện",
+      "uploadAriaLabel": "Tải ảnh đại diện"
+    },
+    "fields": {
+      "firstName": "Tên",
+      "lastName": "Họ",
+      "email": "Email",
+      "emailVerified": "✓ Đã xác minh",
+      "emailReadonly": "Không thể thay đổi email. Liên hệ hỗ trợ nếu cần.",
+      "phone": "Số điện thoại"
+    },
+    "password": {
+      "currentPassword": "Mật khẩu hiện tại",
+      "newPassword": "Mật khẩu mới",
+      "confirmPassword": "Xác nhận mật khẩu mới",
+      "strength": {
+        "tooWeak": "Quá yếu",
+        "weak": "Yếu",
+        "fair": "Trung bình",
+        "strong": "Mạnh",
+        "veryStrong": "Rất mạnh"
+      }
+    },
+    "buttons": {
+      "saveChanges": "Lưu thay đổi",
+      "saving": "Đang lưu…",
+      "updatePassword": "Cập nhật mật khẩu",
+      "updating": "Đang cập nhật…"
+    }
+  },
+
+  "addresses": {
+    "title": "Sổ địa chỉ",
+    "addAddress": "Thêm địa chỉ",
+    "addNewAddress": "Thêm địa chỉ mới",
+    "limitReached": "Bạn đã đạt giới hạn tối đa {max} địa chỉ.",
+    "empty": {
+      "noAddresses": "Chưa có địa chỉ lưu sẵn",
+      "hint": "Thêm địa chỉ để thanh toán nhanh hơn."
+    },
+    "modal": {
+      "editTitle": "Chỉnh sửa địa chỉ",
+      "addTitle": "Thêm địa chỉ mới",
+      "close": "Đóng"
+    },
+    "fields": {
+      "label": "Nhãn (tùy chọn)",
+      "labelPlaceholder": "Nhà, Công ty…",
+      "firstName": "Tên",
+      "lastName": "Họ",
+      "phone": "Số điện thoại",
+      "address": "Địa chỉ",
+      "addressPlaceholder": "123 Đường Chính",
+      "apt": "Căn hộ, phòng (tùy chọn)",
+      "city": "Thành phố",
+      "state": "Tỉnh/Bang",
+      "zip": "Mã bưu chính",
+      "country": "Quốc gia",
+      "setDefault": "Đặt làm địa chỉ mặc định"
+    },
+    "badge": {
+      "default": "Mặc định"
+    },
+    "actions": {
+      "edit": "Chỉnh sửa",
+      "setDefault": "Đặt mặc định",
+      "delete": "Xóa",
+      "cancel": "Hủy",
+      "save": "Lưu địa chỉ",
+      "saving": "Đang lưu…"
+    }
+  },
+
+  "loyalty": {
+    "title": "Điểm tích lũy",
+    "subtitle": "Kiếm 10 điểm cho mỗi $1 chi tiêu. Đổi 100 điểm = giảm $1 cho đơn hàng tiếp theo.",
+    "stats": {
+      "availableBalance": "Số dư khả dụng",
+      "pending": "Đang chờ (khóa 14 ngày)",
+      "pendingUnlock": "Mở khóa sau 14 ngày giao hàng",
+      "lifetimeEarned": "Tổng điểm đã kiếm"
+    },
+    "howItWorks": {
+      "title": "Cách thức hoạt động",
+      "earn": "Kiếm {points} điểm cho mỗi $1 chi tiêu.",
+      "lock": "Điểm bị khóa 14 ngày sau khi đơn hàng được giao.",
+      "redeem": "Đổi điểm khi thanh toán — 100 điểm = giảm $1. Tối thiểu 100 điểm.",
+      "cap": "Điểm không thể bù quá 50% tổng đơn hàng.",
+      "cancel": "Điểm bị hủy nếu đơn hàng được hoàn tiền."
+    },
+    "history": {
+      "title": "Lịch sử giao dịch",
+      "empty": "Chưa có giao dịch nào. Đặt đơn hàng đầu tiên để kiếm điểm!",
+      "types": {
+        "EARN": "Điểm đã kiếm",
+        "REDEEM": "Điểm đã đổi",
+        "CANCEL": "Điểm bị hủy",
+        "EXPIRE": "Điểm hết hạn",
+        "ADJUST": "Điều chỉnh thủ công"
+      }
+    }
+  }
+}

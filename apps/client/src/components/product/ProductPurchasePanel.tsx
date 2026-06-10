@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Star, CheckCircle2, Clock, ShoppingCart,
   Loader2, Plus, ChevronDown,
@@ -200,13 +201,15 @@ function VariantDropdown({
 function QuantityDropdown({
   value,
   onChange,
+  label,
 }: {
   value:    number;
   onChange: (n: number) => void;
+  label:    string;
 }) {
   return (
     <div>
-      <label className="text-sm font-medium block mb-1.5">Quantity</label>
+      <label className="text-sm font-medium block mb-1.5">{label}</label>
       <div className="relative">
         <select
           value={value}
@@ -229,10 +232,12 @@ function PersonalizationCollapsible({
   fields,
   isOpen,
   onToggle,
+  label,
 }: {
   fields:   CustomField[];
   isOpen:   boolean;
   onToggle: () => void;
+  label:    string;
 }) {
   const [responses, setResponses] = useState<Record<string, string>>({});
   const set = (id: string, val: string) =>
@@ -246,7 +251,7 @@ function PersonalizationCollapsible({
         className="flex items-center gap-2 text-sm font-medium text-secondary hover:text-primary transition-colors"
       >
         <Plus className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-45' : ''}`} />
-        Add personalization
+        {label}
       </button>
 
       {isOpen && (
@@ -314,18 +319,15 @@ function PersonalizationCollapsible({
 
 // ── StarSellerBadge ───────────────────────────────────────────────────────────
 
-function StarSellerBadge() {
+function StarSellerBadge({ title, description }: { title: string; description: string }) {
   return (
     <div className="flex gap-3 p-3 border border-border rounded-xl bg-[#FAFAF8]">
       <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
         <Star className="w-5 h-5 text-primary fill-primary" />
       </div>
       <div>
-        <p className="text-sm font-semibold">Star Seller</p>
-        <p className="text-xs text-muted mt-0.5">
-          This seller consistently earned 5-star reviews, shipped on time,
-          and replied quickly to any messages they received.
-        </p>
+        <p className="text-sm font-semibold">{title}</p>
+        <p className="text-xs text-muted mt-0.5">{description}</p>
       </div>
     </div>
   );
@@ -340,6 +342,7 @@ interface Props {
 }
 
 export function ProductPurchasePanel({ product, reviewSummary }: Props) {
+  const t = useTranslations('product');
   const [selectedOptions,       setSelectedOptions]       = useState<Record<string, string>>({});
   const [isPersonalizationOpen, setIsPersonalizationOpen] = useState(false);
   const [isAdding,              setIsAdding]              = useState(false);
@@ -469,11 +472,12 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
           fields={customFields}
           isOpen={isPersonalizationOpen}
           onToggle={() => setIsPersonalizationOpen((o) => !o)}
+          label={t('actions.addPersonalization')}
         />
       )}
 
       {/* ── QUANTITY ── */}
-      <QuantityDropdown value={quantity} onChange={setQuantity} />
+      <QuantityDropdown value={quantity} onChange={setQuantity} label={t('actions.quantity')} />
 
       {/* ── ADD TO CART ── */}
       <button
@@ -491,20 +495,20 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
         {isAdding ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            Adding…
+            {t('actions.adding')}
           </>
         ) : !canAddToCart ? (
-          'Select options to continue'
+          t('actions.selectOptions')
         ) : (
           <>
             <ShoppingCart className="w-4 h-4" />
-            Add to cart
+            {t('actions.addToCart')}
           </>
         )}
       </button>
 
       {/* ── STAR SELLER BADGE ── */}
-      <StarSellerBadge />
+      <StarSellerBadge title={t('starSeller.title')} description={t('starSeller.description')} />
 
       {/* ── ACCORDIONS ── */}
       <div className="border border-border rounded-2xl overflow-hidden divide-y divide-border">

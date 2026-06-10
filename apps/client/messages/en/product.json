@@ -1,10 +1,17 @@
 {
   "actions": {
     "addToCart": "Add to Cart",
+    "adding": "Adding…",
+    "selectOptions": "Select options to continue",
     "personalize": "Personalize Now",
     "addToWishlist": "Add to Wishlist",
     "removeFromWishlist": "Remove from Wishlist",
+    "addPersonalization": "Add personalization",
     "quantity": "Quantity"
+  },
+  "starSeller": {
+    "title": "Star Seller",
+    "description": "This seller consistently earned 5-star reviews, shipped on time, and replied quickly to any messages they received."
   },
   "personalization": {
     "comingSoon": "Personalization Coming Soon",

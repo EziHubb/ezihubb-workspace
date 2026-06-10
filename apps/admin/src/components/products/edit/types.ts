@@ -162,6 +162,7 @@ export interface AdminProductDto {
   hsCode?:              string;
   shopSectionId?:       string | null;
   renewalType?:         RenewalType;
+  featuredRelatedIds?:  string[];
 }
 
 export interface AdminProductDetailDto {

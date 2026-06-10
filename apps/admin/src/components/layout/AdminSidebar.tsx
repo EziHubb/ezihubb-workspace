@@ -11,6 +11,7 @@ import {
   LayoutDashboard, ShoppingCart, ShoppingBag, FolderOpen,
   Tag, Layers, Users, BadgePercent, Star, Truck,
   CreditCard, Settings, ChevronDown, ChevronRight, LogOut, Globe, MessageSquare, Link2,
+  Bookmark, Factory, Shield,
 } from 'lucide-react';
 
 // ── Nav item types ─────────────────────────────────────────────────────────────
@@ -36,8 +37,11 @@ const NAV_ITEMS: NavItem[] = [
   {
     label: 'Catalog', href: '/catalog', icon: FolderOpen,
     children: [
-      { label: 'Categories',  href: '/catalog/categories',  icon: Tag    },
-      { label: 'Collections', href: '/catalog/collections', icon: Layers },
+      { label: 'Categories',   href: '/catalog/categories',           icon: Tag      },
+      { label: 'Collections',  href: '/catalog/collections',          icon: Layers   },
+      { label: 'Tags',         href: '/catalog/tags',                 icon: Tag      },
+      { label: 'Sections',     href: '/catalog/shop-sections',        icon: Bookmark },
+      { label: 'Partners',     href: '/catalog/production-partners',  icon: Factory  },
     ],
   },
   { label: 'Customers',   href: '/customers',   icon: Users         },
@@ -54,7 +58,13 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Settings',     href: '/settings/affiliates', icon: Settings    },
     ],
   },
-  { label: 'Settings',    href: '/settings',    icon: Settings     },
+  {
+    label: 'Settings', href: '/settings', icon: Settings,
+    children: [
+      { label: 'General',   href: '/settings',           icon: Settings },
+      { label: 'Audit Log', href: '/settings/audit-log', icon: Shield   },
+    ],
+  },
 ];
 
 // ── Nav row ────────────────────────────────────────────────────────────────────

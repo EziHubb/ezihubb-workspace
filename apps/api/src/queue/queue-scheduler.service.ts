@@ -9,9 +9,17 @@ export class QueueSchedulerService implements OnApplicationBootstrap {
 
   constructor(
     @InjectQueue(QUEUES.ABANDONED_CART) private readonly abandonedCartQueue: Queue,
+    @InjectQueue(QUEUES.IMAGE_PROCESSING) private readonly imageQueue: Queue,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
+    await Promise.all([
+      this.scheduleAbandonedCartScan(),
+      this.scheduleCleanupTempImages(),
+    ]);
+  }
+
+  private async scheduleAbandonedCartScan(): Promise<void> {
     try {
       const existing = await this.abandonedCartQueue.getRepeatableJobs();
       if (!existing.some((j) => j.name === JOBS.SCAN_ABANDONED_CARTS)) {
@@ -28,6 +36,27 @@ export class QueueSchedulerService implements OnApplicationBootstrap {
       }
     } catch (err) {
       this.logger.warn(`Failed to schedule abandoned-cart job: ${String(err)}`);
+    }
+  }
+
+  private async scheduleCleanupTempImages(): Promise<void> {
+    try {
+      const existing = await this.imageQueue.getRepeatableJobs();
+      if (!existing.some((j) => j.name === JOBS.CLEANUP_TEMP_IMAGES)) {
+        await this.imageQueue.add(
+          JOBS.CLEANUP_TEMP_IMAGES,
+          {},
+          {
+            repeat:           { pattern: '0 3 * * *' }, // 3am UTC daily
+            removeOnComplete: { count: 50 },
+            removeOnFail:     { count: 20 },
+            jobId:            'cleanup-temp-images-daily',
+          },
+        );
+        this.logger.log('Scheduled temp-image cleanup: daily at 3am UTC');
+      }
+    } catch (err) {
+      this.logger.warn(`Failed to schedule cleanup-temp-images job: ${String(err)}`);
     }
   }
 }

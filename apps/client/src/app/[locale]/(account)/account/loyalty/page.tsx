@@ -2,6 +2,7 @@
 
 import { Star, Clock, TrendingUp, Tag } from 'lucide-react';
 import { Skeleton } from '@mlh/ui';
+import { useTranslations } from 'next-intl';
 import { useAuthQuery } from '../../../../../lib/hooks/useAuthQuery';
 import { API_ROUTES } from '@mlh/constants';
 
@@ -32,12 +33,12 @@ function formatDate(d: string) {
   return fmt.format(new Date(d));
 }
 
-const TX_LABELS: Record<LoyaltyTransaction['type'], string> = {
-  EARN:   'Points earned',
-  REDEEM: 'Points redeemed',
-  CANCEL: 'Points cancelled',
-  EXPIRE: 'Points expired',
-  ADJUST: 'Manual adjustment',
+const TX_TYPE_KEYS: Record<LoyaltyTransaction['type'], string> = {
+  EARN:   'EARN',
+  REDEEM: 'REDEEM',
+  CANCEL: 'CANCEL',
+  EXPIRE: 'EXPIRE',
+  ADJUST: 'ADJUST',
 };
 
 const TX_COLOR: Record<LoyaltyTransaction['type'], string> = {
@@ -106,6 +107,7 @@ function LoyaltySkeleton() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function LoyaltyPage() {
+  const t = useTranslations('account');
   const { data, isLoading } = useAuthQuery<LoyaltyAccount>(
     ['loyalty', 'me'],
     API_ROUTES.LOYALTY.ME,
@@ -114,9 +116,9 @@ export default function LoyaltyPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold text-secondary">Loyalty Points</h1>
+        <h1 className="font-display text-2xl font-bold text-secondary">{t('loyalty.title')}</h1>
         <p className="text-sm text-muted mt-1">
-          Earn 10 points for every $1 spent. Redeem 100 points = $1 off your next order.
+          {t('loyalty.subtitle')}
         </p>
       </div>
 
@@ -128,20 +130,20 @@ export default function LoyaltyPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatCard
               icon={Star}
-              label="Available balance"
+              label={t('loyalty.stats.availableBalance')}
               value={`${data.pointsBalance.toLocaleString()} pts`}
               sub={`worth $${(data.pointsBalance * 0.01).toFixed(2)}`}
               color="text-primary"
             />
             <StatCard
               icon={Clock}
-              label="Pending (14-day lock)"
+              label={t('loyalty.stats.pending')}
               value={`${data.pointsPending.toLocaleString()} pts`}
-              sub="Unlocks 14 days after delivery"
+              sub={t('loyalty.stats.pendingUnlock')}
             />
             <StatCard
               icon={TrendingUp}
-              label="Lifetime earned"
+              label={t('loyalty.stats.lifetimeEarned')}
               value={`${data.pointsLifetime.toLocaleString()} pts`}
               sub={`worth $${(data.pointsLifetime * 0.01).toFixed(2)}`}
             />
@@ -149,23 +151,23 @@ export default function LoyaltyPage() {
 
           {/* How it works */}
           <div className="bg-[#FAFAF8] border border-border rounded-card p-5 text-sm text-secondary space-y-2">
-            <p className="font-semibold">How it works</p>
+            <p className="font-semibold">{t('loyalty.howItWorks.title')}</p>
             <ul className="space-y-1 text-muted list-disc list-inside">
-              <li>Earn <strong className="text-secondary">10 points</strong> for every $1 spent on an order.</li>
-              <li>Points are <strong className="text-secondary">locked for 14 days</strong> after your order is delivered.</li>
-              <li>Redeem at checkout — <strong className="text-secondary">100 points = $1 off</strong>. Minimum 100 points.</li>
-              <li>Points cannot cover more than 50% of your order total.</li>
-              <li>Points are cancelled if an order is refunded.</li>
+              <li>{t('loyalty.howItWorks.earn', { points: 10 })}</li>
+              <li>{t('loyalty.howItWorks.lock')}</li>
+              <li>{t('loyalty.howItWorks.redeem')}</li>
+              <li>{t('loyalty.howItWorks.cap')}</li>
+              <li>{t('loyalty.howItWorks.cancel')}</li>
             </ul>
           </div>
 
           {/* Transaction history */}
           <div>
-            <h2 className="text-base font-semibold text-secondary mb-3">Transaction History</h2>
+            <h2 className="text-base font-semibold text-secondary mb-3">{t('loyalty.history.title')}</h2>
             {data.transactions.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
                 <Tag className="w-10 h-10 text-muted/30" />
-                <p className="text-sm text-muted">No transactions yet. Place your first order to earn points!</p>
+                <p className="text-sm text-muted">{t('loyalty.history.empty')}</p>
               </div>
             ) : (
               <div className="border border-border rounded-card overflow-hidden">
@@ -176,7 +178,7 @@ export default function LoyaltyPage() {
                   >
                     <div className="space-y-0.5">
                       <p className="text-sm font-medium text-secondary">
-                        {tx.description ?? TX_LABELS[tx.type]}
+                        {tx.description ?? t(`loyalty.history.types.${TX_TYPE_KEYS[tx.type]}` as Parameters<typeof t>[0])}
                       </p>
                       <p className="text-xs text-muted">{formatDate(tx.createdAt)}</p>
                     </div>

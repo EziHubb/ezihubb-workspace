@@ -1,15 +1,5 @@
 'use client';
 
-/**
- * PaymentForm — Step 3 of checkout.
- *
- * Receives clientSecret (and orderNumber) already created by page.tsx.
- * Renders Stripe Elements declaratively using @stripe/react-stripe-js.
- *
- * On success Stripe redirects to return_url; if payment completes without
- * redirect (no 3DS) onSuccess is called directly.
- */
-
 import { useState } from 'react';
 import { Lock } from 'lucide-react';
 import {
@@ -19,11 +9,16 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
+import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
+import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Stripe promise (singleton per app session) ─────────────────────────────────
 const stripePromise = loadStripe(
   process.env['NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY'] ?? '',
 );
+
+const PAYPAL_CLIENT_ID = process.env['NEXT_PUBLIC_PAYPAL_CLIENT_ID'] ?? '';
 
 // ── Inner form (uses Stripe hooks — must be inside <Elements>) ─────────────────
 
@@ -58,7 +53,6 @@ function StripeInnerForm({
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: { return_url: returnUrl },
-      // Don't force redirect for card payments — let Stripe redirect only if needed
       redirect: 'if_required',
     });
 
@@ -66,18 +60,14 @@ function StripeInnerForm({
       setPaymentError(error.message ?? 'Payment failed. Please try again.');
       setIsProcessing(false);
     } else {
-      // No redirect needed (e.g. card without 3DS) — success
       onSuccess(orderNumber);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* Stripe PaymentElement */}
       <div>
-        <PaymentElement
-          options={{ layout: 'tabs' }}
-        />
+        <PaymentElement options={{ layout: 'tabs' }} />
       </div>
 
       {paymentError && (
@@ -136,10 +126,83 @@ function StripeInnerForm({
   );
 }
 
+// ── PayPal panel ──────────────────────────────────────────────────────────────
+
+function PaypalPanel({
+  orderId,
+  orderNumber,
+  onSuccess,
+  onBack,
+}: {
+  orderId:     string;
+  orderNumber: string;
+  onSuccess:   (orderNumber: string) => void;
+  onBack:      () => void;
+}) {
+  const [paypalError, setPaypalError] = useState('');
+
+  return (
+    <PayPalScriptProvider
+      options={{
+        clientId: PAYPAL_CLIENT_ID,
+        currency:  'USD',
+        intent:    'capture',
+      }}
+    >
+      <div className="space-y-3">
+        {paypalError && (
+          <p
+            className="text-sm text-error text-center p-3 bg-error/5 border border-error/20 rounded-sm"
+            role="alert"
+          >
+            {paypalError}
+          </p>
+        )}
+
+        <PayPalButtons
+          style={{ layout: 'vertical', color: 'gold', shape: 'rect', height: 45 }}
+          createOrder={async () => {
+            const res = await apiClient.post<{ paypalOrderId: string }>(
+              API_ROUTES.PAYMENTS.PAYPAL_CREATE_ORDER,
+              { orderId },
+            );
+            return res.paypalOrderId;
+          }}
+          onApprove={async (data) => {
+            await apiClient.post(API_ROUTES.PAYMENTS.PAYPAL_CAPTURE, {
+              paypalOrderId: data.orderID,
+            });
+            onSuccess(orderNumber);
+          }}
+          onError={() => {
+            setPaypalError(
+              'PayPal payment failed. Please try again or use a card.',
+            );
+          }}
+        />
+
+        <p className="flex items-center justify-center gap-1.5 text-xs text-muted">
+          <Lock className="w-3.5 h-3.5 text-success" />
+          Payments are encrypted and secure
+        </p>
+
+        <button
+          type="button"
+          onClick={onBack}
+          className="w-full px-6 py-3 border border-border text-secondary text-sm font-medium rounded-button hover:border-primary hover:text-primary transition-colors"
+        >
+          ← Back
+        </button>
+      </div>
+    </PayPalScriptProvider>
+  );
+}
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface PaymentFormProps {
   clientSecret: string;
+  orderId:      string;
   orderNumber:  string;
   totalAmount:  number;
   locale:       string;
@@ -151,34 +214,76 @@ interface PaymentFormProps {
 
 export function PaymentForm({
   clientSecret,
+  orderId,
   orderNumber,
   totalAmount,
   locale,
   onSuccess,
   onBack,
 }: PaymentFormProps) {
+  const [method, setMethod] = useState<'card' | 'paypal'>('card');
+
   return (
-    <Elements
-      stripe={stripePromise}
-      options={{
-        clientSecret,
-        appearance: {
-          theme:     'stripe',
-          variables: {
-            colorPrimary: '#E85D3F',
-            borderRadius: '8px',
-            fontFamily:   'var(--font-inter), Inter, system-ui, sans-serif',
-          },
-        },
-      }}
-    >
-      <StripeInnerForm
-        orderNumber={orderNumber}
-        totalAmount={totalAmount}
-        locale={locale}
-        onSuccess={onSuccess}
-        onBack={onBack}
-      />
-    </Elements>
+    <div className="space-y-5">
+      {/* Payment method tabs */}
+      <div className="flex rounded-lg border border-border overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setMethod('card')}
+          className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+            method === 'card'
+              ? 'bg-primary text-white'
+              : 'bg-surface text-muted hover:text-secondary'
+          }`}
+        >
+          Credit / Debit Card
+        </button>
+        {PAYPAL_CLIENT_ID && (
+          <button
+            type="button"
+            onClick={() => setMethod('paypal')}
+            className={`flex-1 py-2.5 text-sm font-medium transition-colors border-l border-border ${
+              method === 'paypal'
+                ? 'bg-[#003087] text-white'
+                : 'bg-surface text-muted hover:text-secondary'
+            }`}
+          >
+            PayPal
+          </button>
+        )}
+      </div>
+
+      {method === 'card' ? (
+        <Elements
+          stripe={stripePromise}
+          options={{
+            clientSecret,
+            appearance: {
+              theme:     'stripe',
+              variables: {
+                colorPrimary: '#E85D3F',
+                borderRadius: '8px',
+                fontFamily:   'var(--font-inter), Inter, system-ui, sans-serif',
+              },
+            },
+          }}
+        >
+          <StripeInnerForm
+            orderNumber={orderNumber}
+            totalAmount={totalAmount}
+            locale={locale}
+            onSuccess={onSuccess}
+            onBack={onBack}
+          />
+        </Elements>
+      ) : (
+        <PaypalPanel
+          orderId={orderId}
+          orderNumber={orderNumber}
+          onSuccess={onSuccess}
+          onBack={onBack}
+        />
+      )}
+    </div>
   );
 }

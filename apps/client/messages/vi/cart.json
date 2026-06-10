@@ -1,0 +1,62 @@
+{
+  "title": "Giỏ hàng",
+  "itemCount": "{count, plural, one {# sản phẩm} other {# sản phẩm}}",
+
+  "empty": {
+    "heading": "Giỏ hàng của bạn đang trống",
+    "description": "Bạn chưa thêm sản phẩm nào. Khám phá bộ sưu tập quà tặng cá nhân hóa của chúng tôi.",
+    "startShopping": "Bắt đầu mua sắm",
+    "refresh": "Tải lại"
+  },
+
+  "drawer": {
+    "title": "Giỏ hàng của bạn",
+    "close": "Đóng giỏ hàng",
+    "empty": "Giỏ hàng của bạn đang trống",
+    "browseProducts": "Xem sản phẩm →",
+    "subtotal": "Tạm tính",
+    "shippingNote": "Phí vận chuyển được tính khi thanh toán",
+    "checkout": "Thanh toán — ${amount}",
+    "discount": "Giảm giá ({couponCode})"
+  },
+
+  "item": {
+    "remove": "Xóa {name}",
+    "decreaseQty": "Giảm số lượng",
+    "increaseQty": "Tăng số lượng",
+    "priceUpdated": "Giá đã được cập nhật"
+  },
+
+  "summary": {
+    "title": "Tóm tắt đơn hàng",
+    "subtotal": "Tạm tính ({count, plural, one {# sản phẩm} other {# sản phẩm}})",
+    "shipping": "Phí vận chuyển",
+    "shippingCalculated": "Tính khi thanh toán",
+    "discount": "Giảm giá",
+    "estimatedTotal": "Tổng ước tính",
+    "couponPlaceholder": "Mã giảm giá",
+    "applyCoupon": "Áp dụng",
+    "removeCoupon": "Xóa mã giảm giá",
+    "proceedToCheckout": "Tiến hành thanh toán"
+  },
+
+  "trust": {
+    "secure": "Bảo mật",
+    "freeShipping": "Miễn phí trên $50",
+    "returns": "Đổi trả 30 ngày"
+  },
+
+  "priceChanged": {
+    "banner": "Giá đã được cập nhật",
+    "detail": "giá thay đổi từ {oldPrice} thành {newPrice}. Giỏ hàng đã được cập nhật."
+  },
+
+  "continueShopping": "← Tiếp tục mua sắm",
+
+  "errors": {
+    "couponInvalid": "Mã giảm giá không hợp lệ hoặc đã hết hạn.",
+    "couponAlreadyUsed": "Bạn đã sử dụng mã giảm giá này.",
+    "couponMinOrder": "Đơn hàng tối thiểu ${amount} để áp dụng mã này.",
+    "couponGeneric": "Không thể áp dụng mã giảm giá. Vui lòng thử lại."
+  }
+}

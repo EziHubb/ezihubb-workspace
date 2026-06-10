@@ -177,6 +177,10 @@ model User {
   pushEnabled         Boolean  @default(true)
   fcmTokens           FcmToken[]
 
+  adminNotes          String?  @db.Text
+  isActive            Boolean  @default(true)
+  lastLoginAt         DateTime?
+
   @@index([email])
 }
 
@@ -409,6 +413,7 @@ model Product {
   toolsUsed           String[]             // "handheld" | "computerized" | "3d-printing" | "none"
   productionPartnerIds String[]            // cuid references to ProductionPartner records
   hsCode              String?              // Harmonised System tariff code for customs
+  featuredRelatedIds  String[]            // up to 4 manually pinned related product IDs
 
   // ── TAB: Settings ───────────────────────────────────────────────────────────
   shopSectionId       String?
@@ -779,6 +784,7 @@ model Payment {
   refundedAt            DateTime?
   refundReason          String?
   paidAt                DateTime?
+  providerEventId       String?       @unique
   createdAt             DateTime      @default(now())
 }
 
@@ -790,6 +796,13 @@ model GiftCard {
   isActive     Boolean   @default(true)
   expiresAt    DateTime?
   createdAt    DateTime  @default(now())
+
+  // Purchase metadata (set when a customer buys a gift card via Stripe)
+  recipientEmail          String?
+  recipientName           String?
+  personalMessage         String?   @db.Text
+  purchasedByUserId       String?
+  stripePaymentIntentId   String?   @unique
 
   usages GiftCardUsage[]
 }
@@ -1201,4 +1214,21 @@ model AffiliatePayout {
 
   @@index([affiliateId])
   @@index([status])
+}
+
+// ─── Admin Settings ───────────────────────────────────────────────────────────
+
+model AppSettings {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model EmailTemplateOverride {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

@@ -4,6 +4,27 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CartDrawer } from './CartDrawer';
 
+jest.mock('next-intl', () => ({
+  useTranslations: () => (key: string, params?: Record<string, unknown>) => {
+    const map: Record<string, string> = {
+      'drawer.title':      'Your Cart',
+      'drawer.close':      'Close cart',
+      'drawer.empty':      'Your cart is empty',
+      'drawer.browseProducts': 'Browse products →',
+      'drawer.subtotal':   'Subtotal',
+      'drawer.shippingNote': 'Shipping calculated at checkout',
+      'drawer.discount':   `Discount (${params?.couponCode ?? ''})`,
+      'drawer.checkout':   `Checkout — $${params?.amount ?? ''}`,
+      'item.priceUpdated': 'Price updated',
+      'item.decreaseQty':  'Decrease quantity',
+      'item.increaseQty':  'Increase quantity',
+      'item.remove':       `Remove ${params?.name ?? ''}`,
+      'itemCount':         `${params?.count ?? 0} ${(params?.count as number) === 1 ? 'item' : 'items'}`,
+    };
+    return map[key] ?? key;
+  },
+}));
+
 // ── Mock fetch ─────────────────────────────────────────────────────────────────
 const mockCartData = {
   id:             'cart-001',
@@ -81,7 +102,7 @@ describe('CartDrawer', () => {
 
   it('shows cart drawer with aria-label when isOpen is true', async () => {
     render(<CartDrawer isOpen={true} onClose={onClose} />, { wrapper });
-    expect(screen.getByRole('dialog', { name: /shopping cart/i })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /your cart/i })).toBeInTheDocument();
   });
 
   it('shows cart items after data loads', async () => {

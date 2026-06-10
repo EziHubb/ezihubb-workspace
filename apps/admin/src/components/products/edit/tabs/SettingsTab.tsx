@@ -7,6 +7,7 @@ import { format, addMonths } from 'date-fns';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import type { ProductEditFormValues, RenewalType } from '../types';
+import { RelatedProductsPicker } from '../RelatedProductsPicker';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -160,7 +161,7 @@ function RenewalRadio({
 
 // ── Main tab ──────────────────────────────────────────────────────────────────
 
-export function SettingsTab() {
+export function SettingsTab({ productId, initialRelatedIds }: { productId?: string; initialRelatedIds?: string[] } = {}) {
   const { watch, setValue } = useFormContext<ProductEditFormValues>();
 
   const shopSectionId = watch('shopSectionId')  ?? '';
@@ -252,6 +253,22 @@ export function SettingsTab() {
                 expiresAt={expiresAt as string | null | undefined}
               />
             </FormField>
+
+            {/* ── Related products ─────────────────────────────────────── */}
+            {productId && (
+              <>
+                <div className="border-t border-border" />
+                <FormField
+                  label="Related products"
+                  description="Pin up to 4 products to show as recommendations on this listing's page. Overrides automatic related products."
+                >
+                  <RelatedProductsPicker
+                    productId={productId}
+                    initialIds={initialRelatedIds}
+                  />
+                </FormField>
+              </>
+            )}
 
           </div>
         </TabSection>

@@ -10,23 +10,76 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
 import { PaymentsService } from './payments.service';
+import { PaypalService } from './paypal.service';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { CreateRefundDto } from './dto/create-refund.dto';
+import { PurchaseGiftCardDto } from './dto/purchase-gift-card.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Role } from '@mlh/constants';
+import { JwtPayload } from '../auth/strategies/jwt.strategy';
+
+class PaypalCreateOrderDto {
+  @IsString() @IsNotEmpty()
+  orderId: string;
+
+  @IsString() @IsOptional() @IsUrl()
+  returnUrl?: string;
+
+  @IsString() @IsOptional() @IsUrl()
+  cancelUrl?: string;
+}
+
+class PaypalCaptureDto {
+  @IsString() @IsNotEmpty()
+  paypalOrderId: string;
+}
 
 @ApiTags('Payments')
 @Controller('payments')
 export class PaymentsController {
-  constructor(private readonly paymentsService: PaymentsService) {}
+  constructor(
+    private readonly paymentsService: PaymentsService,
+    private readonly paypalService:   PaypalService,
+  ) {}
 
   @Post('create-intent')
   @ApiOperation({ summary: 'Create a Stripe PaymentIntent for an order' })
   async createIntent(@Body() dto: CreatePaymentIntentDto) {
     return this.paymentsService.createPaymentIntent(dto);
+  }
+
+  // ─── PayPal ──────────────────────────────────────────────────────────────────
+
+  @Post('paypal/create-order')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a PayPal order for checkout — returns paypalOrderId for JS SDK' })
+  async paypalCreateOrder(@Body() dto: PaypalCreateOrderDto) {
+    return this.paypalService.createOrder(dto.orderId, dto.returnUrl, dto.cancelUrl);
+  }
+
+  @Post('paypal/capture')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Capture a PayPal order after the payer approves it' })
+  async paypalCapture(@Body() dto: PaypalCaptureDto) {
+    await this.paypalService.captureOrder(dto.paypalOrderId);
+    return { captured: true };
+  }
+
+  @Post('gift-cards/purchase')
+  @UseGuards(OptionalAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Purchase a gift card (Stripe payment → gift card code emailed to recipient)' })
+  async purchaseGiftCard(
+    @Body() dto: PurchaseGiftCardDto,
+    @CurrentUser() user?: JwtPayload,
+  ) {
+    return this.paymentsService.purchaseGiftCard(dto, user?.sub);
   }
 
   @Get('gift-cards/:code/validate')

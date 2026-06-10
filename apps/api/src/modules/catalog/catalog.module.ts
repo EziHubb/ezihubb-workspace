@@ -6,6 +6,7 @@ import { AdminCatalogController } from './admin-catalog.controller';
 import { AdminShopSectionsController } from './admin-shop-sections.controller';
 import { AdminAttributesController } from './admin-attributes.controller';
 import { AdminProductionPartnersController } from './admin-production-partners.controller';
+import { AdminTagsController } from './admin-tags.controller';
 import { CatalogService } from './catalog.service';
 import { ProductDetail, ProductDetailSchema } from './schemas/product-detail.schema';
 import { CategoryMenu, CategoryMenuSchema } from './schemas/category-menu.schema';
@@ -24,6 +25,7 @@ import { CategoryMenu, CategoryMenuSchema } from './schemas/category-menu.schema
     AdminShopSectionsController,
     AdminAttributesController,
     AdminProductionPartnersController,
+    AdminTagsController,
   ],
   providers:   [CatalogService],
   exports:     [CatalogService],

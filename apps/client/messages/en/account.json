@@ -1,0 +1,140 @@
+{
+  "orders": {
+    "title": "My Orders",
+    "filterLabel": "Filter orders by status",
+    "tabs": {
+      "all": "All",
+      "pending": "Pending",
+      "inProduction": "In Production",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    },
+    "empty": {
+      "noOrders": "No orders yet",
+      "noOrdersFiltered": "No orders with this status.",
+      "noOrdersPlaced": "You haven't placed any orders.",
+      "shopNow": "Shop Now"
+    },
+    "count": "{total, plural, one {# order} other {# orders}}",
+    "actions": {
+      "viewDetails": "View Details",
+      "trackOrder": "Track Order"
+    }
+  },
+
+  "profile": {
+    "title": "Profile & Password",
+    "sections": {
+      "profileInformation": "Profile Information",
+      "changePassword": "Change Password"
+    },
+    "avatar": {
+      "changePhoto": "Change photo",
+      "savePhoto": "Save Photo",
+      "uploading": "Uploading…",
+      "cancel": "Cancel",
+      "hint": "JPG, PNG, WebP · Max 5 MB",
+      "changeAriaLabel": "Change avatar",
+      "uploadAriaLabel": "Upload avatar"
+    },
+    "fields": {
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email",
+      "emailVerified": "✓ Verified",
+      "emailReadonly": "Email cannot be changed. Contact support if needed.",
+      "phone": "Phone"
+    },
+    "password": {
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm New Password",
+      "strength": {
+        "tooWeak": "Too weak",
+        "weak": "Weak",
+        "fair": "Fair",
+        "strong": "Strong",
+        "veryStrong": "Very strong"
+      }
+    },
+    "buttons": {
+      "saveChanges": "Save Changes",
+      "saving": "Saving…",
+      "updatePassword": "Update Password",
+      "updating": "Updating…"
+    }
+  },
+
+  "addresses": {
+    "title": "Address Book",
+    "addAddress": "Add Address",
+    "addNewAddress": "Add New Address",
+    "limitReached": "You've reached the maximum of {max} addresses.",
+    "empty": {
+      "noAddresses": "No saved addresses yet",
+      "hint": "Add an address for faster checkout."
+    },
+    "modal": {
+      "editTitle": "Edit Address",
+      "addTitle": "Add New Address",
+      "close": "Close"
+    },
+    "fields": {
+      "label": "Label (optional)",
+      "labelPlaceholder": "Home, Work…",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "phone": "Phone",
+      "address": "Address",
+      "addressPlaceholder": "123 Main St",
+      "apt": "Apt, suite (optional)",
+      "city": "City",
+      "state": "State",
+      "zip": "ZIP",
+      "country": "Country",
+      "setDefault": "Set as default address"
+    },
+    "badge": {
+      "default": "Default"
+    },
+    "actions": {
+      "edit": "Edit",
+      "setDefault": "Set Default",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "save": "Save Address",
+      "saving": "Saving…"
+    }
+  },
+
+  "loyalty": {
+    "title": "Loyalty Points",
+    "subtitle": "Earn 10 points for every $1 spent. Redeem 100 points = $1 off your next order.",
+    "stats": {
+      "availableBalance": "Available balance",
+      "pending": "Pending (14-day lock)",
+      "pendingUnlock": "Unlocks 14 days after delivery",
+      "lifetimeEarned": "Lifetime earned"
+    },
+    "howItWorks": {
+      "title": "How it works",
+      "earn": "Earn {points} points for every $1 spent on an order.",
+      "lock": "Points are locked for 14 days after your order is delivered.",
+      "redeem": "Redeem at checkout — 100 points = $1 off. Minimum 100 points.",
+      "cap": "Points cannot cover more than 50% of your order total.",
+      "cancel": "Points are cancelled if an order is refunded."
+    },
+    "history": {
+      "title": "Transaction History",
+      "empty": "No transactions yet. Place your first order to earn points!",
+      "types": {
+        "EARN": "Points earned",
+        "REDEEM": "Points redeemed",
+        "CANCEL": "Points cancelled",
+        "EXPIRE": "Points expired",
+        "ADJUST": "Manual adjustment"
+      }
+    }
+  }
+}

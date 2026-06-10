@@ -1,0 +1,47 @@
+{
+  "title": "Thanh toán",
+  "currencyNote": "Giá hiển thị là quy đổi tham khảo. Thẻ của bạn sẽ bị tính phí bằng {currency}.",
+
+  "steps": {
+    "shipping": "Giao hàng",
+    "delivery": "Phương thức",
+    "payment": "Thanh toán"
+  },
+
+  "stepHeadings": {
+    "shippingInformation": "Thông tin giao hàng",
+    "deliveryMethod": "Phương thức vận chuyển",
+    "payment": "Thanh toán"
+  },
+
+  "orderSummary": {
+    "title": "Tóm tắt đơn hàng",
+    "show": "Xem tóm tắt đơn hàng",
+    "hide": "Ẩn tóm tắt đơn hàng",
+    "subtotal": "Tạm tính",
+    "shipping": "Phí vận chuyển",
+    "free": "MIỄN PHÍ",
+    "discount": "Giảm giá ({couponCode})",
+    "referralDiscount": "Giảm giá giới thiệu",
+    "loyaltyPoints": "Điểm tích lũy",
+    "giftWrapping": "Gói quà",
+    "tax": "Thuế",
+    "taxWithJurisdiction": "Thuế ({jurisdiction})",
+    "total": "Tổng cộng"
+  },
+
+  "loyaltyPoints": {
+    "sectionTitle": "Dùng điểm tích lũy ({balance} điểm)",
+    "remove": "Xóa",
+    "conversionHint": "100 điểm = giảm $1",
+    "discount": "−${amount} giảm"
+  },
+
+  "priceChanged": {
+    "title": "Giá đã thay đổi kể từ khi bạn thêm sản phẩm"
+  },
+
+  "errors": {
+    "createOrderFailed": "Tạo đơn hàng thất bại. Vui lòng thử lại."
+  }
+}

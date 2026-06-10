@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ShoppingBag, ArrowRight, RefreshCw } from 'lucide-react';
 import { useCartStore } from '../../../../lib/store/cart.store';
 import { CartItemRow } from '../../../../components/cart/CartItemRow';
@@ -10,6 +10,7 @@ import { OrderSummary } from '../../../../components/cart/OrderSummary';
 
 export default function CartPage() {
   const locale = useLocale();
+  const t = useTranslations('cart');
   const { cart, fetchCart, isLoading, updateItem, removeItem } = useCartStore();
 
   useEffect(() => {
@@ -39,17 +40,16 @@ export default function CartPage() {
           <ShoppingBag className="w-12 h-12 text-primary/30" aria-hidden />
         </div>
         <h1 className="font-display text-2xl md:text-3xl font-bold text-secondary mb-3">
-          Your cart is empty
+          {t('empty.heading')}
         </h1>
         <p className="text-muted mb-8 max-w-sm leading-relaxed">
-          You haven&apos;t added any items yet. Browse our personalized gifts
-          collection to find something special.
+          {t('empty.description')}
         </p>
         <Link
           href={`/${locale}/products`}
           className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-bold px-8 py-3.5 rounded-button transition-colors text-sm uppercase tracking-wide"
         >
-          Start Shopping
+          {t('empty.startShopping')}
           <ArrowRight className="w-4 h-4" />
         </Link>
         {/* Retry button if we have no cart at all after loading */}
@@ -60,7 +60,7 @@ export default function CartPage() {
             className="mt-4 inline-flex items-center gap-2 text-sm text-muted hover:text-primary transition-colors"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            Refresh
+            {t('empty.refresh')}
           </button>
         )}
       </div>
@@ -76,10 +76,9 @@ export default function CartPage() {
   return (
     <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
       <h1 className="font-display text-2xl md:text-3xl font-bold text-secondary mb-6 md:mb-8">
-        Shopping Cart
+        {t('title')}
         <span className="text-base font-normal text-muted ml-3">
-          ({cart.totals.itemCount}{' '}
-          {cart.totals.itemCount === 1 ? 'item' : 'items'})
+          ({t('itemCount', { count: cart.totals.itemCount })})
         </span>
       </h1>
 
@@ -89,21 +88,16 @@ export default function CartPage() {
           className="mb-6 p-4 bg-warning/8 border border-warning/25 rounded-card"
         >
           <p className="text-sm font-semibold text-warning mb-2">
-            ⚠️ Prices have been updated
+            ⚠️ {t('priceChanged.banner')}
           </p>
           <ul className="space-y-1">
             {priceMismatches.map((item) => (
               <li key={item.id} className="text-sm text-secondary">
-                <span className="font-medium">{item.productName}</span>: price
-                changed from{' '}
-                <span className="line-through text-muted">
-                  ${item.unitPrice.toFixed(2)}
-                </span>{' '}
-                to{' '}
-                <span className="font-semibold">
-                  ${item.currentPrice.toFixed(2)}
-                </span>
-                . Cart updated.
+                <span className="font-medium">{item.productName}</span>:{' '}
+                {t('priceChanged.detail', {
+                  oldPrice: `$${item.unitPrice.toFixed(2)}`,
+                  newPrice: `$${item.currentPrice.toFixed(2)}`,
+                })}
               </li>
             ))}
           </ul>
@@ -129,7 +123,7 @@ export default function CartPage() {
               href={`/${locale}/products`}
               className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline underline-offset-2"
             >
-              ← Continue Shopping
+              {t('continueShopping')}
             </Link>
           </div>
         </section>

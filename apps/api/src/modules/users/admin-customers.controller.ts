@@ -1,0 +1,221 @@
+import {
+  Get,
+  Param,
+  Query,
+  Patch,
+  Body,
+  Req,
+  NotFoundException,
+} from '@nestjs/common';
+import { ApiOperation } from '@nestjs/swagger';
+import type { Request } from 'express';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+import { AuditLogService } from '../../common/services/audit-log.service';
+import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { AdminCustomerQueryDto } from './dto/admin-customer-query.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { buildPagination } from '../../common/dto/paginated-response.dto';
+
+@AdminController('customers')
+export class AdminCustomersController {
+  constructor(
+    private readonly prisma:    PrismaService,
+    private readonly auditLog:  AuditLogService,
+  ) {}
+
+  // GET /admin/customers
+  @Get()
+  @ApiOperation({ summary: 'List customers (paginated, searchable)' })
+  async list(@Query() query: AdminCustomerQueryDto) {
+    const { page = 1, limit = 30, search, role, sort = 'createdAt', order = 'desc' } = query;
+
+    const where: Prisma.UserWhereInput = {
+      role: role ? { equals: role as any } : { in: ['CUSTOMER'] as any },
+      deletedAt: null,
+      ...(search
+        ? {
+            OR: [
+              { email: { contains: search, mode: 'insensitive' } },
+              { firstName: { contains: search, mode: 'insensitive' } },
+              { lastName: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          avatarUrl: true,
+          role: true,
+          createdAt: true,
+          isEmailVerified: true,
+          isActive: true,
+          _count: { select: { orders: true } },
+          orders: {
+            select: { total: true },
+            where: { status: { not: 'CANCELLED' as any } },
+          },
+        },
+        orderBy: { [sort]: order },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    const data = users.map((u) => ({
+      id: u.id,
+      email: u.email,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      avatarUrl: u.avatarUrl,
+      role: u.role,
+      createdAt: u.createdAt,
+      isEmailVerified: u.isEmailVerified,
+      isActive: u.isActive,
+      ordersCount: u._count.orders,
+      totalSpent: u.orders.reduce((sum, o) => sum + Number(o.total), 0),
+    }));
+
+    return { data, pagination: buildPagination(page, limit, total) };
+  }
+
+  // GET /admin/customers/stats
+  @Get('stats')
+  @ApiOperation({ summary: 'Aggregate customer KPIs' })
+  async stats() {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [total, newThisMonth, withOrders, topSpendersRaw] = await Promise.all([
+      this.prisma.user.count({ where: { role: 'CUSTOMER', deletedAt: null } }),
+      this.prisma.user.count({
+        where: { role: 'CUSTOMER', deletedAt: null, createdAt: { gte: startOfMonth } },
+      }),
+      this.prisma.user.count({
+        where: { role: 'CUSTOMER', deletedAt: null, orders: { some: {} } },
+      }),
+      this.prisma.user.findMany({
+        where: { role: 'CUSTOMER', deletedAt: null },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          orders: {
+            select: { total: true },
+            where: { status: { not: 'CANCELLED' as any } },
+          },
+        },
+        take: 50,
+      }),
+    ]);
+
+    const topSpenders = topSpendersRaw
+      .map((u) => ({
+        id: u.id,
+        email: u.email,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        totalSpent: u.orders.reduce((s, o) => s + Number(o.total), 0),
+      }))
+      .sort((a, b) => b.totalSpent - a.totalSpent)
+      .slice(0, 5);
+
+    return { total, newThisMonth, withOrders, topSpenders };
+  }
+
+  // GET /admin/customers/:id
+  @Get(':id')
+  @ApiOperation({ summary: 'Get full customer profile' })
+  async detail(@Param('id') id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      include: {
+        addresses: true,
+        loyaltyAccount: true,
+        affiliateAccount: {
+          select: { id: true, referralCode: true, status: true, balance: true },
+        },
+        _count: { select: { orders: true, reviews: true, wishlistItems: true } },
+      },
+    });
+    if (!user) throw new NotFoundException('Customer not found');
+    const { passwordHash, totpSecret, backupCodes, ...safe } = user as any;
+    void passwordHash; void totpSecret; void backupCodes;
+    return safe;
+  }
+
+  // GET /admin/customers/:id/orders
+  @Get(':id/orders')
+  @ApiOperation({ summary: "Get customer's order history" })
+  async orders(@Param('id') id: string, @Query() query: PaginationDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const [orders, total] = await Promise.all([
+      this.prisma.order.findMany({
+        where: { userId: id },
+        include: {
+          items: {
+            include: { product: { select: { name: true } } },
+            take: 3,
+          },
+          payment: { select: { status: true, method: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.order.count({ where: { userId: id } }),
+    ]);
+
+    return { data: orders, pagination: buildPagination(page, limit, total) };
+  }
+
+  // PATCH /admin/customers/:id/notes
+  @Patch(':id/notes')
+  @ApiOperation({ summary: 'Update admin notes on a customer' })
+  async updateNotes(
+    @Param('id') id: string,
+    @Body('notes') notes: string,
+  ) {
+    await this.prisma.user.update({
+      where: { id },
+      data: { adminNotes: notes },
+    });
+    return { updated: true };
+  }
+
+  // PATCH /admin/customers/:id/status
+  @Patch(':id/status')
+  @ApiOperation({ summary: 'Activate or suspend a customer account' })
+  async updateStatus(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body('isActive') isActive: boolean,
+  ) {
+    await this.prisma.user.update({
+      where: { id },
+      data: { isActive },
+    });
+    const userId = (req.user as { sub: string }).sub;
+    this.auditLog.log({
+      userId,
+      action:     isActive ? 'ACTIVATE' : 'SUSPEND',
+      entityType: 'User',
+      entityId:   id,
+      after:      { isActive },
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
+    return { updated: true };
+  }
+}

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, ChangeEvent } from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,14 +16,15 @@ import { useAuthStore } from '../../../../../lib/store/auth.store';
 
 // ── Password strength ─────────────────────────────────────────────────────────
 
-function getStrength(pw: string): { score: 0 | 1 | 2 | 3 | 4; label: string } {
+const STRENGTH_KEYS = ['tooWeak', 'weak', 'fair', 'strong', 'veryStrong'] as const;
+
+function getStrength(pw: string): { score: 0 | 1 | 2 | 3 | 4; key: typeof STRENGTH_KEYS[number] } {
   let score = 0;
   if (pw.length >= 8)          score++;
   if (/[A-Z]/.test(pw))        score++;
   if (/[0-9]/.test(pw))        score++;
   if (/[^A-Za-z0-9]/.test(pw)) score++;
-  const labels = ['Too weak', 'Weak', 'Fair', 'Strong', 'Very strong'];
-  return { score: score as 0 | 1 | 2 | 3 | 4, label: labels[score] };
+  return { score: score as 0 | 1 | 2 | 3 | 4, key: STRENGTH_KEYS[score] };
 }
 
 const STRENGTH_COLORS = [
@@ -83,6 +85,7 @@ const inp = (err?: string, disabled?: boolean) =>
 
 export default function ProfilePage() {
   const toast = useToast();
+  const t = useTranslations('account');
 
   // useAuthQuery: token-aware fetch that re-runs when the user logs in
   const { data: profile, isLoading } = useAuthQuery<UserDto>(
@@ -223,6 +226,7 @@ export default function ProfilePage() {
   }
 
   const strength = getStrength(newPwValue);
+  const strengthLabel = t(`profile.password.strength.${strength.key}` as Parameters<typeof t>[0]);
   const initials =
     `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`.toUpperCase() || '?';
   const displayAvatar = previewUrl ?? profile.avatarUrl;
@@ -230,13 +234,13 @@ export default function ProfilePage() {
   return (
     <div className="space-y-8">
       <h1 className="font-display text-2xl font-bold text-secondary">
-        Profile & Password
+        {t('profile.title')}
       </h1>
 
       {/* ── Profile section ─────────────────────────────────────────────────── */}
       <section className="border border-border rounded-card p-5 md:p-6 space-y-6">
         <h2 className="font-semibold text-secondary text-base border-b border-border pb-3">
-          Profile Information
+          {t('profile.sections.profileInformation')}
         </h2>
 
         {/* Avatar */}
@@ -258,7 +262,7 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              aria-label="Change avatar"
+              aria-label={t('profile.avatar.changeAriaLabel')}
               className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
             >
               <Camera className="w-5 h-5 text-white" />
@@ -271,7 +275,7 @@ export default function ProfilePage() {
             accept="image/*"
             onChange={handleAvatarSelect}
             className="sr-only"
-            aria-label="Upload avatar"
+            aria-label={t('profile.avatar.uploadAriaLabel')}
           />
 
           <div className="space-y-2">
@@ -283,7 +287,7 @@ export default function ProfilePage() {
                   disabled={uploadAvatar.isPending}
                   className="text-xs font-semibold text-white bg-primary hover:bg-primary-dark px-3 py-1.5 rounded-button transition-colors disabled:opacity-50"
                 >
-                  {uploadAvatar.isPending ? 'Uploading…' : 'Save Photo'}
+                  {uploadAvatar.isPending ? t('profile.avatar.uploading') : t('profile.avatar.savePhoto')}
                 </button>
                 <button
                   type="button"
@@ -294,7 +298,7 @@ export default function ProfilePage() {
                   }}
                   className="text-xs font-medium text-muted hover:text-error px-3 py-1.5 border border-border rounded-button transition-colors"
                 >
-                  Cancel
+                  {t('profile.avatar.cancel')}
                 </button>
               </div>
             ) : (
@@ -303,10 +307,10 @@ export default function ProfilePage() {
                 onClick={() => fileInputRef.current?.click()}
                 className="text-xs font-medium text-primary hover:underline"
               >
-                Change photo
+                {t('profile.avatar.changePhoto')}
               </button>
             )}
-            <p className="text-xs text-muted">JPG, PNG, WebP · Max 5 MB</p>
+            <p className="text-xs text-muted">{t('profile.avatar.hint')}</p>
           </div>
         </div>
 
@@ -315,14 +319,14 @@ export default function ProfilePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-medium text-muted mb-1 block">
-                First Name <span className="text-error">*</span>
+                {t('profile.fields.firstName')} <span className="text-error">*</span>
               </label>
               <input {...regProfile('firstName')} className={inp(pErr.firstName?.message)} />
               {pErr.firstName && <p className="text-xs text-error mt-0.5">{pErr.firstName.message}</p>}
             </div>
             <div>
               <label className="text-xs font-medium text-muted mb-1 block">
-                Last Name <span className="text-error">*</span>
+                {t('profile.fields.lastName')} <span className="text-error">*</span>
               </label>
               <input {...regProfile('lastName')} className={inp(pErr.lastName?.message)} />
               {pErr.lastName && <p className="text-xs text-error mt-0.5">{pErr.lastName.message}</p>}
@@ -332,10 +336,10 @@ export default function ProfilePage() {
           {/* Email (read-only) */}
           <div>
             <label className="text-xs font-medium text-muted mb-1 flex items-center gap-2">
-              Email
+              {t('profile.fields.email')}
               {(profile.isEmailVerified ?? profile.emailVerified) && (
                 <span className="text-[10px] font-semibold text-success bg-success/10 border border-success/20 rounded-pill px-1.5 py-0.5">
-                  ✓ Verified
+                  {t('profile.fields.emailVerified')}
                 </span>
               )}
             </label>
@@ -346,12 +350,12 @@ export default function ProfilePage() {
               className={inp(undefined, true)}
             />
             <p className="text-xs text-muted mt-0.5">
-              Email cannot be changed. Contact support if needed.
+              {t('profile.fields.emailReadonly')}
             </p>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted mb-1 block">Phone</label>
+            <label className="text-xs font-medium text-muted mb-1 block">{t('profile.fields.phone')}</label>
             <input {...regProfile('phone')} type="tel" className={inp()} />
           </div>
 
@@ -360,7 +364,7 @@ export default function ProfilePage() {
             disabled={!pDirty || updateProfileMutation.isPending}
             className="px-6 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors disabled:opacity-50"
           >
-            {updateProfileMutation.isPending ? 'Saving…' : 'Save Changes'}
+            {updateProfileMutation.isPending ? t('profile.buttons.saving') : t('profile.buttons.saveChanges')}
           </button>
         </form>
       </section>
@@ -368,14 +372,14 @@ export default function ProfilePage() {
       {/* ── Change password section ──────────────────────────────────────────── */}
       <section className="border border-border rounded-card p-5 md:p-6 space-y-5">
         <h2 className="font-semibold text-secondary text-base border-b border-border pb-3">
-          Change Password
+          {t('profile.sections.changePassword')}
         </h2>
 
         <form onSubmit={handlePw(onPasswordSave)} className="space-y-4">
           {/* Current password */}
           <div>
             <label className="text-xs font-medium text-muted mb-1 block">
-              Current Password <span className="text-error">*</span>
+              {t('profile.password.currentPassword')} <span className="text-error">*</span>
             </label>
             <div className="relative">
               <input
@@ -399,7 +403,7 @@ export default function ProfilePage() {
           {/* New password */}
           <div>
             <label className="text-xs font-medium text-muted mb-1 block">
-              New Password <span className="text-error">*</span>
+              {t('profile.password.newPassword')} <span className="text-error">*</span>
             </label>
             <div className="relative">
               <input
@@ -434,7 +438,7 @@ export default function ProfilePage() {
                   ))}
                 </div>
                 <p className={`text-xs font-medium ${STRENGTH_TEXT[strength.score]}`}>
-                  {strength.label}
+                  {strengthLabel}
                 </p>
               </div>
             )}
@@ -447,7 +451,7 @@ export default function ProfilePage() {
           {/* Confirm password */}
           <div>
             <label className="text-xs font-medium text-muted mb-1 block">
-              Confirm New Password <span className="text-error">*</span>
+              {t('profile.password.confirmPassword')} <span className="text-error">*</span>
             </label>
             <div className="relative">
               <input
@@ -473,7 +477,7 @@ export default function ProfilePage() {
             disabled={changePassword.isPending}
             className="px-6 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors disabled:opacity-50"
           >
-            {changePassword.isPending ? 'Updating…' : 'Update Password'}
+            {changePassword.isPending ? t('profile.buttons.updating') : t('profile.buttons.updatePassword')}
           </button>
         </form>
       </section>

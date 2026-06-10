@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useCart, useMutateCart } from '@mlh/api-client';
 
 interface CartDrawerProps {
@@ -10,6 +11,7 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
+  const t = useTranslations('cart');
   const { data: cart, isLoading } = useCart();
   const { updateItem, removeItem } = useMutateCart();
 
@@ -28,7 +30,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       {/* Drawer */}
       <div
         role="dialog"
-        aria-label="Shopping cart"
+        aria-label={t('drawer.title')}
         aria-modal="true"
         className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-surface shadow-xl"
         data-testid="cart-drawer"
@@ -36,17 +38,16 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <h2 className="text-base font-semibold text-secondary">
-            Your Cart
+            {t('drawer.title')}
             {cart && cart.totals.itemCount > 0 && (
               <span className="ml-2 text-sm font-normal text-muted">
-                ({cart.totals.itemCount}{' '}
-                {cart.totals.itemCount === 1 ? 'item' : 'items'})
+                ({t('itemCount', { count: cart.totals.itemCount })})
               </span>
             )}
           </h2>
           <button
             onClick={onClose}
-            aria-label="Close cart"
+            aria-label={t('drawer.close')}
             className="min-h-11 min-w-11 flex items-center justify-center rounded-sm text-muted hover:text-secondary transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -72,9 +73,9 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                   d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
-              <p className="text-sm font-medium text-secondary">Your cart is empty</p>
+              <p className="text-sm font-medium text-secondary">{t('drawer.empty')}</p>
               <Link href="/products" onClick={onClose} className="text-sm text-primary hover:underline">
-                Browse products →
+                {t('drawer.browseProducts')}
               </Link>
             </div>
           )}
@@ -109,13 +110,13 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                       <p className="text-xs text-muted">{item.variantName}</p>
                     )}
                     {item.priceChanged && (
-                      <p className="text-xs text-warning">Price updated</p>
+                      <p className="text-xs text-warning">{t('item.priceUpdated')}</p>
                     )}
 
                     <div className="flex items-center justify-between mt-auto">
                       <div className="flex items-center gap-1" aria-label={`Quantity for ${item.productName}`}>
                         <button
-                          aria-label="Decrease quantity"
+                          aria-label={t('item.decreaseQty')}
                           disabled={item.quantity <= 1 || updateItem.isPending}
                           onClick={() => updateItem.mutate({ itemId: item.id, quantity: item.quantity - 1 })}
                           className="w-9 h-9 flex items-center justify-center rounded-sm border border-border text-muted hover:text-secondary disabled:opacity-40"
@@ -126,7 +127,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                           {item.quantity}
                         </span>
                         <button
-                          aria-label="Increase quantity"
+                          aria-label={t('item.increaseQty')}
                           disabled={updateItem.isPending}
                           onClick={() => updateItem.mutate({ itemId: item.id, quantity: item.quantity + 1 })}
                           className="w-9 h-9 flex items-center justify-center rounded-sm border border-border text-muted hover:text-secondary disabled:opacity-40"
@@ -140,7 +141,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                           ${(item.currentPrice * item.quantity).toFixed(2)}
                         </span>
                         <button
-                          aria-label={`Remove ${item.productName}`}
+                          aria-label={t('item.remove', { name: item.productName })}
                           disabled={removeItem.isPending}
                           onClick={() => removeItem.mutate(item.id)}
                           className="text-muted hover:text-error transition-colors disabled:opacity-40"
@@ -164,22 +165,22 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
           <div className="sticky bottom-0 bg-background border-t border-border px-6 py-4 space-y-3" data-testid="cart-footer">
             {cart.discountAmount && cart.discountAmount > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-muted">Discount ({cart.couponCode})</span>
+                <span className="text-muted">{t('drawer.discount', { couponCode: cart.couponCode ?? '' })}</span>
                 <span className="text-success">−${cart.discountAmount.toFixed(2)}</span>
               </div>
             )}
             <div className="flex justify-between text-base font-semibold text-secondary">
-              <span>Subtotal</span>
+              <span>{t('drawer.subtotal')}</span>
               <span>${cart.totals.subtotal.toFixed(2)}</span>
             </div>
-            <p className="text-xs text-muted">Shipping calculated at checkout</p>
+            <p className="text-xs text-muted">{t('drawer.shippingNote')}</p>
             <Link
               href="/checkout"
               onClick={onClose}
               className="block w-full rounded-button bg-primary py-3 text-center text-sm font-semibold text-white hover:bg-primary-dark transition-colors"
               data-testid="checkout-button"
             >
-              Checkout — ${cart.totals.subtotal.toFixed(2)}
+              {t('drawer.checkout', { amount: cart.totals.subtotal.toFixed(2) })}
             </Link>
           </div>
         )}

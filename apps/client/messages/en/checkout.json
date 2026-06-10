@@ -1,0 +1,47 @@
+{
+  "title": "Checkout",
+  "currencyNote": "Prices shown are approximate conversions for reference. Your card will be charged in {currency}.",
+
+  "steps": {
+    "shipping": "Shipping",
+    "delivery": "Delivery",
+    "payment": "Payment"
+  },
+
+  "stepHeadings": {
+    "shippingInformation": "Shipping Information",
+    "deliveryMethod": "Delivery Method",
+    "payment": "Payment"
+  },
+
+  "orderSummary": {
+    "title": "Order Summary",
+    "show": "Show order summary",
+    "hide": "Hide order summary",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "free": "FREE",
+    "discount": "Discount ({couponCode})",
+    "referralDiscount": "Referral discount",
+    "loyaltyPoints": "Loyalty points",
+    "giftWrapping": "Gift wrapping",
+    "tax": "Tax",
+    "taxWithJurisdiction": "Tax ({jurisdiction})",
+    "total": "Total"
+  },
+
+  "loyaltyPoints": {
+    "sectionTitle": "Use Loyalty Points ({balance} pts available)",
+    "remove": "Remove",
+    "conversionHint": "100 pts = $1 off",
+    "discount": "−${amount} off"
+  },
+
+  "priceChanged": {
+    "title": "Prices have changed since you added items"
+  },
+
+  "errors": {
+    "createOrderFailed": "Failed to create order. Please try again."
+  }
+}

@@ -1,10 +1,17 @@
 {
   "actions": {
     "addToCart": "Thêm vào giỏ hàng",
+    "adding": "Đang thêm…",
+    "selectOptions": "Chọn tùy chọn để tiếp tục",
     "personalize": "Cá nhân hóa ngay",
     "addToWishlist": "Thêm vào yêu thích",
     "removeFromWishlist": "Xóa khỏi yêu thích",
+    "addPersonalization": "Thêm cá nhân hóa",
     "quantity": "Số lượng"
+  },
+  "starSeller": {
+    "title": "Người bán xuất sắc",
+    "description": "Người bán này liên tục nhận đánh giá 5 sao, giao hàng đúng hạn và phản hồi tin nhắn nhanh chóng."
   },
   "personalization": {
     "comingSoon": "Tính năng cá nhân hóa sắp ra mắt",

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -53,6 +54,7 @@ function AddressModal({
   onSave:    (data: FormValues) => void;
   isSaving:  boolean;
 }) {
+  const t = useTranslations('account');
   const isEdit = Boolean(initial);
 
   const {
@@ -90,13 +92,13 @@ function AddressModal({
       <div className="bg-surface rounded-modal shadow-modal w-full max-w-lg overflow-y-auto max-h-[90dvh]">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="font-semibold text-secondary text-base">
-            {isEdit ? 'Edit Address' : 'Add New Address'}
+            {isEdit ? t('addresses.modal.editTitle') : t('addresses.modal.addTitle')}
           </h2>
           <button
             type="button"
             onClick={onClose}
             className="p-1 text-muted hover:text-secondary"
-            aria-label="Close"
+            aria-label={t('addresses.modal.close')}
           >
             ✕
           </button>
@@ -106,11 +108,11 @@ function AddressModal({
           {/* Label */}
           <div>
             <label className="text-xs font-medium text-muted mb-1 block">
-              Label (optional)
+              {t('addresses.fields.label')}
             </label>
             <input
               {...register('label')}
-              placeholder="Home, Work…"
+              placeholder={t('addresses.fields.labelPlaceholder')}
               className={inp()}
             />
           </div>
@@ -119,14 +121,14 @@ function AddressModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-muted mb-1 block">
-                First Name <span className="text-error">*</span>
+                {t('addresses.fields.firstName')} <span className="text-error">*</span>
               </label>
               <input {...register('firstName')} className={inp(errors.firstName?.message)} />
               {errors.firstName && <p className="text-xs text-error mt-0.5">{errors.firstName.message}</p>}
             </div>
             <div>
               <label className="text-xs font-medium text-muted mb-1 block">
-                Last Name <span className="text-error">*</span>
+                {t('addresses.fields.lastName')} <span className="text-error">*</span>
               </label>
               <input {...register('lastName')} className={inp(errors.lastName?.message)} />
               {errors.lastName && <p className="text-xs text-error mt-0.5">{errors.lastName.message}</p>}
@@ -135,38 +137,38 @@ function AddressModal({
 
           {/* Phone */}
           <div>
-            <label className="text-xs font-medium text-muted mb-1 block">Phone</label>
+            <label className="text-xs font-medium text-muted mb-1 block">{t('addresses.fields.phone')}</label>
             <input {...register('phone')} type="tel" className={inp()} />
           </div>
 
           {/* Address line 1 */}
           <div>
             <label className="text-xs font-medium text-muted mb-1 block">
-              Address <span className="text-error">*</span>
+              {t('addresses.fields.address')} <span className="text-error">*</span>
             </label>
-            <input {...register('line1')} placeholder="123 Main St" className={inp(errors.line1?.message)} />
+            <input {...register('line1')} placeholder={t('addresses.fields.addressPlaceholder')} className={inp(errors.line1?.message)} />
             {errors.line1 && <p className="text-xs text-error mt-0.5">{errors.line1.message}</p>}
           </div>
 
           {/* Address line 2 */}
           <div>
-            <label className="text-xs font-medium text-muted mb-1 block">Apt, suite (optional)</label>
+            <label className="text-xs font-medium text-muted mb-1 block">{t('addresses.fields.apt')}</label>
             <input {...register('line2')} className={inp()} />
           </div>
 
           {/* City / State / ZIP */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-medium text-muted mb-1 block">City <span className="text-error">*</span></label>
+              <label className="text-xs font-medium text-muted mb-1 block">{t('addresses.fields.city')} <span className="text-error">*</span></label>
               <input {...register('city')} className={inp(errors.city?.message)} />
               {errors.city && <p className="text-xs text-error mt-0.5">{errors.city.message}</p>}
             </div>
             <div>
-              <label className="text-xs font-medium text-muted mb-1 block">State</label>
+              <label className="text-xs font-medium text-muted mb-1 block">{t('addresses.fields.state')}</label>
               <input {...register('state')} className={inp()} />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted mb-1 block">ZIP <span className="text-error">*</span></label>
+              <label className="text-xs font-medium text-muted mb-1 block">{t('addresses.fields.zip')} <span className="text-error">*</span></label>
               <input {...register('postalCode')} className={inp(errors.postalCode?.message)} />
               {errors.postalCode && <p className="text-xs text-error mt-0.5">{errors.postalCode.message}</p>}
             </div>
@@ -174,7 +176,7 @@ function AddressModal({
 
           {/* Country */}
           <div>
-            <label className="text-xs font-medium text-muted mb-1 block">Country <span className="text-error">*</span></label>
+            <label className="text-xs font-medium text-muted mb-1 block">{t('addresses.fields.country')} <span className="text-error">*</span></label>
             <select {...register('country')} className={inp(errors.country?.message)}>
               {COUNTRIES.map((c) => (
                 <option key={c.code} value={c.code}>{c.name}</option>
@@ -185,7 +187,7 @@ function AddressModal({
           {/* Default checkbox */}
           <label className="flex items-center gap-2 cursor-pointer">
             <input {...register('isDefault')} type="checkbox" className="w-4 h-4 accent-primary" />
-            <span className="text-sm text-secondary">Set as default address</span>
+            <span className="text-sm text-secondary">{t('addresses.fields.setDefault')}</span>
           </label>
 
           <div className="flex gap-3 pt-2 border-t border-border">
@@ -194,14 +196,14 @@ function AddressModal({
               onClick={onClose}
               className="flex-1 py-2.5 border border-border text-secondary text-sm font-medium rounded-button hover:border-primary transition-colors"
             >
-              Cancel
+              {t('addresses.actions.cancel')}
             </button>
             <button
               type="submit"
               disabled={isSaving}
               className="flex-1 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors disabled:opacity-50"
             >
-              {isSaving ? 'Saving…' : 'Save Address'}
+              {isSaving ? t('addresses.actions.saving') : t('addresses.actions.save')}
             </button>
           </div>
         </form>
@@ -227,13 +229,14 @@ function AddressCard({
   isDeletingId:      string | null;
   isSettingDefaultId: string | null;
 }) {
+  const t = useTranslations('account');
   return (
     <div className="border border-border rounded-card p-4 space-y-3 relative hover:border-primary/40 transition-colors">
       {/* Default badge */}
       {addr.isDefault && (
         <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 border border-primary/20 rounded-pill px-2 py-0.5">
           <Star className="w-2.5 h-2.5 fill-current" />
-          Default
+          {t('addresses.badge.default')}
         </span>
       )}
 
@@ -262,7 +265,7 @@ function AddressCard({
           className="inline-flex items-center gap-1.5 text-xs font-medium text-secondary border border-border rounded-button px-3 py-1.5 hover:border-primary hover:text-primary transition-colors"
         >
           <Edit2 className="w-3 h-3" />
-          Edit
+          {t('addresses.actions.edit')}
         </button>
 
         {!addr.isDefault && (
@@ -273,7 +276,7 @@ function AddressCard({
             className="inline-flex items-center gap-1.5 text-xs font-medium text-secondary border border-border rounded-button px-3 py-1.5 hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
           >
             <Star className="w-3 h-3" />
-            Set Default
+            {t('addresses.actions.setDefault')}
           </button>
         )}
 
@@ -284,7 +287,7 @@ function AddressCard({
           className="inline-flex items-center gap-1.5 text-xs font-medium text-error border border-error/30 rounded-button px-3 py-1.5 hover:bg-error/5 transition-colors disabled:opacity-50"
         >
           <Trash2 className="w-3 h-3" />
-          Delete
+          {t('addresses.actions.delete')}
         </button>
       </div>
     </div>
@@ -311,6 +314,7 @@ interface AddressPayload {
 
 export default function AddressesPage() {
   const toast = useToast();
+  const t = useTranslations('account');
 
   const { data: addresses = [], isLoading } = useAuthQuery<AddressDto[]>(
     queryKeys.addresses(),
@@ -406,7 +410,7 @@ export default function AddressesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold text-secondary">Address Book</h1>
+        <h1 className="font-display text-2xl font-bold text-secondary">{t('addresses.title')}</h1>
         <button
           type="button"
           onClick={openAdd}
@@ -414,13 +418,13 @@ export default function AddressesPage() {
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary border border-primary/50 rounded-button px-4 py-2 hover:bg-primary/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus className="w-4 h-4" />
-          Add Address
+          {t('addresses.addAddress')}
         </button>
       </div>
 
       {atLimit && (
         <p className="text-sm text-warning bg-warning/8 border border-warning/20 rounded-sm px-4 py-2">
-          You&apos;ve reached the maximum of {MAX_ADDRESSES} addresses.
+          {t('addresses.limitReached', { max: MAX_ADDRESSES })}
         </p>
       )}
 
@@ -441,15 +445,15 @@ export default function AddressesPage() {
       {!isLoading && addresses.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
           <MapPin className="w-12 h-12 text-muted/30" aria-hidden />
-          <p className="text-secondary font-medium">No saved addresses yet</p>
-          <p className="text-sm text-muted">Add an address for faster checkout.</p>
+          <p className="text-secondary font-medium">{t('addresses.empty.noAddresses')}</p>
+          <p className="text-sm text-muted">{t('addresses.empty.hint')}</p>
           <button
             type="button"
             onClick={openAdd}
             className="mt-2 inline-flex items-center gap-1.5 bg-primary text-white text-sm font-bold px-5 py-2.5 rounded-button transition-colors"
           >
             <Plus className="w-4 h-4" />
-            Add Address
+            {t('addresses.addAddress')}
           </button>
         </div>
       )}
@@ -476,7 +480,7 @@ export default function AddressesPage() {
               className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-card p-6 text-muted hover:border-primary hover:text-primary transition-colors min-h-[140px]"
             >
               <Plus className="w-6 h-6" />
-              <span className="text-sm font-medium">Add New Address</span>
+              <span className="text-sm font-medium">{t('addresses.addNewAddress')}</span>
             </button>
           )}
         </div>

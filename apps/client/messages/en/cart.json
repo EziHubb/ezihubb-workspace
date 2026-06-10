@@ -1,0 +1,62 @@
+{
+  "title": "Shopping Cart",
+  "itemCount": "{count, plural, one {# item} other {# items}}",
+
+  "empty": {
+    "heading": "Your cart is empty",
+    "description": "You haven't added any items yet. Browse our personalized gifts collection to find something special.",
+    "startShopping": "Start Shopping",
+    "refresh": "Refresh"
+  },
+
+  "drawer": {
+    "title": "Your Cart",
+    "close": "Close cart",
+    "empty": "Your cart is empty",
+    "browseProducts": "Browse products →",
+    "subtotal": "Subtotal",
+    "shippingNote": "Shipping calculated at checkout",
+    "checkout": "Checkout — ${amount}",
+    "discount": "Discount ({couponCode})"
+  },
+
+  "item": {
+    "remove": "Remove {name}",
+    "decreaseQty": "Decrease quantity",
+    "increaseQty": "Increase quantity",
+    "priceUpdated": "Price updated"
+  },
+
+  "summary": {
+    "title": "Order Summary",
+    "subtotal": "Subtotal ({count, plural, one {# item} other {# items}})",
+    "shipping": "Shipping",
+    "shippingCalculated": "Calculated at checkout",
+    "discount": "Discount",
+    "estimatedTotal": "Estimated Total",
+    "couponPlaceholder": "Coupon code",
+    "applyCoupon": "Apply",
+    "removeCoupon": "Remove coupon",
+    "proceedToCheckout": "Proceed to Checkout"
+  },
+
+  "trust": {
+    "secure": "Secure",
+    "freeShipping": "Free over $50",
+    "returns": "30-day returns"
+  },
+
+  "priceChanged": {
+    "banner": "Prices have been updated",
+    "detail": "price changed from {oldPrice} to {newPrice}. Cart updated."
+  },
+
+  "continueShopping": "← Continue Shopping",
+
+  "errors": {
+    "couponInvalid": "Invalid or expired coupon code.",
+    "couponAlreadyUsed": "You have already used this coupon.",
+    "couponMinOrder": "Minimum order of ${amount} required.",
+    "couponGeneric": "Could not apply coupon. Please try again."
+  }
+}

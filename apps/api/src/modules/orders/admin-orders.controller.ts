@@ -6,13 +6,15 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   Res,
 } from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
-import { Response } from 'express';
+import type { Request, Response } from 'express';
 import { OrdersService } from './orders.service';
 import { PdfService } from '../pdf/pdf.service';
 import { LabelService } from '../shipping/label.service';
+import { AuditLogService } from '../../common/services/audit-log.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
 import { MarkShippedDto } from './dto/mark-shipped.dto';
@@ -27,6 +29,7 @@ export class AdminOrdersController {
     private readonly ordersService: OrdersService,
     private readonly pdfService:    PdfService,
     private readonly labelService:  LabelService,
+    private readonly auditLog:      AuditLogService,
   ) {}
 
   @Get()
@@ -78,11 +81,22 @@ export class AdminOrdersController {
   @Patch(':id/status')
   @ApiOperation({ summary: 'Update order status' })
   async updateStatus(
+    @Req() req: Request,
     @Param('id') id: string,
     @Body() dto: UpdateOrderStatusDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.ordersService.updateStatus(id, dto, user.sub);
+    const result = await this.ordersService.updateStatus(id, dto, user.sub);
+    this.auditLog.log({
+      userId:     user.sub,
+      action:     'UPDATE',
+      entityType: 'Order',
+      entityId:   id,
+      after:      dto as unknown as Record<string, unknown>,
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
+    return result;
   }
 
   @Patch(':id/tracking')
@@ -94,11 +108,22 @@ export class AdminOrdersController {
   @Patch(':id/ship')
   @ApiOperation({ summary: 'Mark order as shipped — sets SHIPPED status, saves tracking, registers EasyPost tracker, emails customer' })
   async markShipped(
+    @Req() req: Request,
     @Param('id') id: string,
     @Body() dto: MarkShippedDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.ordersService.markShipped(id, dto, user.sub);
+    const result = await this.ordersService.markShipped(id, dto, user.sub);
+    this.auditLog.log({
+      userId:     user.sub,
+      action:     'SHIP',
+      entityType: 'Order',
+      entityId:   id,
+      after:      dto as unknown as Record<string, unknown>,
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
+    return result;
   }
 
   // ── Label purchase (EasyPost) ───────────────────────────────────────────────

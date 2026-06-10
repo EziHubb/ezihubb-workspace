@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Req,
   Res,
   UploadedFiles,
   UseInterceptors,
@@ -14,7 +15,7 @@ import {
   HttpStatus,
   BadRequestException,
 } from '@nestjs/common';
-import { Response } from 'express';
+import type { Request, Response } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiOperation,
@@ -34,6 +35,7 @@ import { ProductImageResponseDto } from './dto/product-response.dto';
 import { ProductListItemDto } from './dto/product-list-item.dto';
 import { ParseCuidPipe } from '../../common/pipes/parse-cuid.pipe';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { AuditLogService } from '../../common/services/audit-log.service';
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
 import {
   IsArray, IsString, ArrayMaxSize, IsOptional, IsBoolean,
@@ -145,6 +147,7 @@ export class AdminProductsController {
   constructor(
     private readonly productsService: ProductsService,
     private readonly prisma: PrismaService,
+    private readonly auditLog: AuditLogService,
   ) {}
 
   // GET /admin/products
@@ -185,27 +188,59 @@ export class AdminProductsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: '[Admin] Create product with variants' })
   @ApiResponse({ status: 201, type: ProductResponseDto })
-  create(@Body() dto: CreateProductDto): Promise<ProductResponseDto> {
-    return this.productsService.create(dto);
+  async create(@Req() req: Request, @Body() dto: CreateProductDto): Promise<ProductResponseDto> {
+    const product = await this.productsService.create(dto);
+    const userId = (req.user as { sub: string }).sub;
+    this.auditLog.log({
+      userId,
+      action:     'CREATE',
+      entityType: 'Product',
+      entityId:   product.id,
+      after:      { id: product.id, name: product.name },
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
+    return product;
   }
 
   // PATCH /admin/products/:id
   @Patch(':id')
   @ApiOperation({ summary: '[Admin] Update product' })
   @ApiResponse({ status: 200, type: ProductResponseDto })
-  update(
+  async update(
+    @Req() req: Request,
     @Param('id', ParseCuidPipe) id: string,
     @Body() dto: UpdateProductDto,
   ): Promise<ProductResponseDto> {
-    return this.productsService.update(id, dto);
+    const product = await this.productsService.update(id, dto);
+    const userId = (req.user as { sub: string }).sub;
+    this.auditLog.log({
+      userId,
+      action:     'UPDATE',
+      entityType: 'Product',
+      entityId:   id,
+      after:      dto as unknown as Record<string, unknown>,
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
+    return product;
   }
 
   // DELETE /admin/products/:id
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: '[Admin] Soft-delete product (sets isActive=false)' })
-  delete(@Param('id', ParseCuidPipe) id: string): Promise<void> {
-    return this.productsService.delete(id);
+  async delete(@Req() req: Request, @Param('id', ParseCuidPipe) id: string): Promise<void> {
+    await this.productsService.delete(id);
+    const userId = (req.user as { sub: string }).sub;
+    this.auditLog.log({
+      userId,
+      action:     'DELETE',
+      entityType: 'Product',
+      entityId:   id,
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
   }
 
   // POST /admin/products/:id/duplicate
@@ -497,9 +532,11 @@ export class AdminProductsController {
   // PATCH /admin/products/bulk
   @Patch('bulk')
   @ApiOperation({ summary: '[Admin] Bulk update products (publish/unpublish/archive/set-sale)' })
-  async bulkUpdate(@Body() dto: BulkProductActionDto) {
+  async bulkUpdate(@Req() req: Request, @Body() dto: BulkProductActionDto) {
     if (!dto.ids || dto.ids.length === 0) throw new BadRequestException('No products selected');
     if (dto.ids.length > 200) throw new BadRequestException('Max 200 products per bulk action');
+
+    let result: Record<string, unknown>;
 
     switch (dto.action) {
       case 'publish':
@@ -507,21 +544,24 @@ export class AdminProductsController {
           where: { id: { in: dto.ids } },
           data:  { status: ProductStatus.ACTIVE, isActive: true },
         });
-        return { updated: dto.ids.length, action: 'published' };
+        result = { updated: dto.ids.length, action: 'published' };
+        break;
 
       case 'unpublish':
         await this.prisma.product.updateMany({
           where: { id: { in: dto.ids } },
           data:  { status: ProductStatus.INACTIVE, isActive: false },
         });
-        return { updated: dto.ids.length, action: 'unpublished' };
+        result = { updated: dto.ids.length, action: 'unpublished' };
+        break;
 
       case 'archive':
         await this.prisma.product.updateMany({
           where: { id: { in: dto.ids } },
           data:  { status: ProductStatus.ARCHIVED, isActive: false },
         });
-        return { updated: dto.ids.length, action: 'archived' };
+        result = { updated: dto.ids.length, action: 'archived' };
+        break;
 
       case 'set-sale': {
         const pct = Number(dto.payload?.['discountPercent'] ?? 0);
@@ -539,12 +579,41 @@ export class AdminProductsController {
             });
           }),
         );
-        return { updated: dto.ids.length, action: 'sale-applied', discountPercent: pct };
+        result = { updated: dto.ids.length, action: 'sale-applied', discountPercent: pct };
+        break;
       }
 
       default:
         throw new BadRequestException(`Unknown action: ${dto.action}`);
     }
+
+    const userId = (req.user as { sub: string }).sub;
+    this.auditLog.log({
+      userId,
+      action:     'BULK_UPDATE',
+      entityType: 'Product',
+      entityId:   dto.ids[0] ?? 'bulk',
+      after:      { ids: dto.ids, ...result },
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
+
+    return result;
+  }
+
+  // PATCH /admin/products/:id/related
+  @Patch(':id/related')
+  @ApiOperation({ summary: '[Admin] Set up to 4 manually pinned related products' })
+  async updateRelated(
+    @Param('id') id: string,
+    @Body() body: { ids: string[] },
+  ) {
+    const ids = (body.ids ?? []).slice(0, 4);
+    return this.prisma.product.update({
+      where: { id },
+      data:  { featuredRelatedIds: ids },
+      select: { id: true, featuredRelatedIds: true },
+    });
   }
 
   // POST /admin/products/export

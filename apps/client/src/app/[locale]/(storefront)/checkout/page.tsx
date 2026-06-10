@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { ChevronDown, ChevronUp, Star } from 'lucide-react';
 import { apiClient } from '@mlh/api-client';
@@ -48,6 +48,7 @@ function OrderSummarySidebar({
   affiliateDiscountAmount?: number;
   pointsDiscountAmount?:    number;
 }) {
+  const t = useTranslations('checkout');
   const [expanded, setExpanded] = useState(false);
 
   const discount          = cart.discountAmount ?? 0;
@@ -102,14 +103,14 @@ function OrderSummarySidebar({
 
       <div className="border-t border-border pt-4 space-y-2 text-sm">
         <div className="flex justify-between text-muted">
-          <span>Subtotal</span>
+          <span>{t('orderSummary.subtotal')}</span>
           <span className="tabular-nums">${subtotal.toFixed(2)}</span>
         </div>
         <div className="flex justify-between text-muted">
-          <span>Shipping</span>
+          <span>{t('orderSummary.shipping')}</span>
           <span className="tabular-nums">
             {shippingCost === 0 ? (
-              <span className="text-success">FREE</span>
+              <span className="text-success">{t('orderSummary.free')}</span>
             ) : (
               `$${shippingCost.toFixed(2)}`
             )}
@@ -117,7 +118,7 @@ function OrderSummarySidebar({
         </div>
         {discount > 0 && cart.couponCode && (
           <div className="flex justify-between text-success">
-            <span>Discount ({cart.couponCode})</span>
+            <span>{t('orderSummary.discount', { couponCode: cart.couponCode })}</span>
             <span className="tabular-nums">−${discount.toFixed(2)}</span>
           </div>
         )}
@@ -125,7 +126,7 @@ function OrderSummarySidebar({
           <div className="flex justify-between text-sm text-green-700">
             <span className="flex items-center gap-1">
               <i className="ti ti-gift text-xs" />
-              Referral discount
+              {t('orderSummary.referralDiscount')}
             </span>
             <span className="font-medium tabular-nums">−${affiliateDiscount.toFixed(2)}</span>
           </div>
@@ -134,25 +135,25 @@ function OrderSummarySidebar({
           <div className="flex justify-between text-sm text-amber-700">
             <span className="flex items-center gap-1">
               <Star className="w-3 h-3" />
-              Loyalty points
+              {t('orderSummary.loyaltyPoints')}
             </span>
             <span className="font-medium tabular-nums">−${pointsDiscount.toFixed(2)}</span>
           </div>
         )}
         {giftWrappingCost > 0 && (
           <div className="flex justify-between text-muted">
-            <span>Gift wrapping</span>
+            <span>{t('orderSummary.giftWrapping')}</span>
             <span className="tabular-nums">+$4.99</span>
           </div>
         )}
         {tax > 0 && (
           <div className="flex justify-between text-muted">
-            <span>Tax {taxJurisdiction ? `(${taxJurisdiction})` : ''}</span>
+            <span>{taxJurisdiction ? t('orderSummary.taxWithJurisdiction', { jurisdiction: taxJurisdiction }) : t('orderSummary.tax')}</span>
             <span className="tabular-nums">${tax.toFixed(2)}</span>
           </div>
         )}
         <div className="flex justify-between font-bold text-secondary border-t border-border pt-2">
-          <span>Total</span>
+          <span>{t('orderSummary.total')}</span>
           <span className="tabular-nums">${total.toFixed(2)}</span>
         </div>
       </div>
@@ -170,7 +171,7 @@ function OrderSummarySidebar({
         >
           <span className="flex items-center gap-2 font-medium text-secondary">
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            {expanded ? 'Hide' : 'Show'} order summary
+            {expanded ? t('orderSummary.hide') : t('orderSummary.show')}
           </span>
           <span className="font-bold text-secondary tabular-nums">
             ${total.toFixed(2)}
@@ -183,7 +184,7 @@ function OrderSummarySidebar({
       <aside className="hidden md:block" aria-label="Order summary">
         <div className="bg-surface border border-border rounded-card p-5 sticky top-24">
           <h2 className="font-semibold text-secondary mb-4 text-base">
-            Order Summary
+            {t('orderSummary.title')}
           </h2>
           {content}
         </div>
@@ -198,6 +199,7 @@ export default function CheckoutPage() {
   const locale    = useLocale();
   const router    = useRouter();
   const { currency } = useCurrency();
+  const t = useTranslations('checkout');
 
   const cart      = useCartStore((s) => s.cart);
   const fetchCart = useCartStore((s) => s.fetchCart);
@@ -390,7 +392,7 @@ export default function CheckoutPage() {
       setStep(3);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
-      setOrderError(err instanceof Error ? err.message : 'Failed to create order. Please try again.');
+      setOrderError(err instanceof Error ? err.message : t('errors.createOrderFailed'));
     } finally {
       setIsCreatingOrder(false);
     }
@@ -424,12 +426,12 @@ export default function CheckoutPage() {
           {/* ── Left: form area ─────────────────────────────────────────────── */}
           <div>
             <h1 className="font-display text-2xl font-bold text-secondary mb-6">
-              Checkout
+              {t('title')}
             </h1>
 
             {currency !== 'USD' && (
               <div role="note" className="mb-5 p-3.5 bg-amber-50 border border-amber-200 rounded-card text-sm text-amber-800">
-                Prices shown are approximate conversions for reference. Your card will be charged in <strong>USD</strong>.
+                {t('currencyNote', { currency: 'USD' })}
               </div>
             )}
 
@@ -442,7 +444,7 @@ export default function CheckoutPage() {
                 className="mb-6 p-4 bg-warning/8 border border-warning/25 rounded-card"
               >
                 <p className="text-sm font-semibold text-warning mb-1.5">
-                  ⚠️ Prices have changed since you added items
+                  ⚠️ {t('priceChanged.title')}
                 </p>
                 {priceChangedItems.map((item) => (
                   <p key={item.id} className="text-sm text-secondary">
@@ -459,7 +461,7 @@ export default function CheckoutPage() {
             {step === 1 && (
               <section aria-labelledby="step1-heading">
                 <h2 id="step1-heading" className="text-base font-semibold text-secondary mb-5">
-                  Shipping Information
+                  {t('stepHeadings.shippingInformation')}
                 </h2>
                 <ShippingForm
                   initialValues={
@@ -477,7 +479,7 @@ export default function CheckoutPage() {
             {step === 2 && shippingAddress && (
               <section aria-labelledby="step2-heading">
                 <h2 id="step2-heading" className="text-base font-semibold text-secondary mb-5">
-                  Delivery Method
+                  {t('stepHeadings.deliveryMethod')}
                 </h2>
                 {orderError && (
                   <p className="mb-4 text-sm text-error p-3 bg-error/5 border border-error/20 rounded-sm" role="alert">
@@ -494,7 +496,7 @@ export default function CheckoutPage() {
                     <div className="flex items-center gap-2 mb-3">
                       <Star className="w-4 h-4 text-amber-600" />
                       <span className="text-sm font-semibold text-secondary">
-                        Use Loyalty Points ({loyaltyBalance.toLocaleString()} pts available)
+                        {t('loyaltyPoints.sectionTitle', { balance: loyaltyBalance })}
                       </span>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
@@ -515,18 +517,18 @@ export default function CheckoutPage() {
                       {pointsToRedeem > 0 ? (
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-amber-700">
-                            −${pointsDiscount.toFixed(2)} off
+                            {t('loyaltyPoints.discount', { amount: pointsDiscount.toFixed(2) })}
                           </span>
                           <button
                             type="button"
                             onClick={() => setPointsToRedeem(0)}
                             className="text-xs text-muted hover:text-secondary underline"
                           >
-                            Remove
+                            {t('loyaltyPoints.remove')}
                           </button>
                         </div>
                       ) : (
-                        <p className="text-xs text-muted">100 pts = $1 off</p>
+                        <p className="text-xs text-muted">{t('loyaltyPoints.conversionHint')}</p>
                       )}
                     </div>
                   </div>
@@ -546,10 +548,11 @@ export default function CheckoutPage() {
             {step === 3 && shippingAddress && shippingMethod && clientSecret && (
               <section aria-labelledby="step3-heading" data-hj-suppress>
                 <h2 id="step3-heading" className="text-base font-semibold text-secondary mb-5">
-                  Payment
+                  {t('stepHeadings.payment')}
                 </h2>
                 <PaymentForm
                   clientSecret={clientSecret}
+                  orderId={orderId}
                   orderNumber={orderNumber}
                   totalAmount={orderTotal}
                   locale={locale}

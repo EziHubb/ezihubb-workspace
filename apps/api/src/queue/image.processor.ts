@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import Replicate from 'replicate';
 import { StorageService } from '../common/services/storage.service';
 import { RedisService } from '../common/services/redis.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { ART_STYLES } from '../modules/customization/art-styles.config';
 import type { ArtStyleJobStatus } from '../modules/customization/art-style.service';
 import {
@@ -17,6 +18,8 @@ import {
   GeneratePreviewJobData,
   ApplyArtStyleJobData,
 } from './queue.constants';
+
+const CLEANUP_BATCH_SIZE = 100;
 
 @Processor(QUEUES.IMAGE_PROCESSING)
 export class ImageProcessor extends WorkerHost {
@@ -28,6 +31,7 @@ export class ImageProcessor extends WorkerHost {
     private readonly config:   ConfigService,
     private readonly storage:  StorageService,
     private readonly redis:    RedisService,
+    private readonly prisma:   PrismaService,
   ) {
     super();
     const token = this.config.get<string>('REPLICATE_API_TOKEN');
@@ -181,12 +185,47 @@ export class ImageProcessor extends WorkerHost {
     }
   }
 
-  private async handleCleanupTempImages(): Promise<void> {
+  private async handleCleanupTempImages(): Promise<{ deleted: number; errors: number }> {
     this.logger.log('Cleanup temp images: started');
-    // TODO: query DB for CustomizationDraft records where
-    //       expiresAt < now AND previewUrl IS NOT NULL,
-    //       delete the S3 objects, then update records
-    this.logger.log('Cleanup temp images: completed');
+
+    const expiredDrafts = await this.prisma.customizationDraft.findMany({
+      where: {
+        expiresAt: { lt: new Date() },
+        previewUrl: { not: null },
+      },
+      select: { id: true, previewUrl: true },
+      take: CLEANUP_BATCH_SIZE,
+    });
+
+    if (expiredDrafts.length === 0) {
+      this.logger.log('Cleanup temp images: no expired drafts found');
+      return { deleted: 0, errors: 0 };
+    }
+
+    let deleted = 0;
+    let errors = 0;
+
+    for (const draft of expiredDrafts) {
+      try {
+        if (draft.previewUrl) {
+          const key = this.storage.extractKey(draft.previewUrl);
+          await this.storage.deleteFile(key);
+          deleted++;
+        }
+
+        await this.prisma.customizationDraft.update({
+          where: { id: draft.id },
+          data: { previewUrl: null },
+        });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Failed to clean up draft ${draft.id}: ${msg}`);
+        errors++;
+      }
+    }
+
+    this.logger.log(`Cleanup temp images: ${deleted} deleted, ${errors} errors`);
+    return { deleted, errors };
   }
 
   @OnWorkerEvent('completed')

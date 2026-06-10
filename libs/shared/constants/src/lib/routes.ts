@@ -83,6 +83,8 @@ export const API_ROUTES = {
     GIFT_CARDS_VALIDATE:  '/payments/gift-cards/validate',
     GIFT_CARD_VALIDATE_CODE: (code: string) => `/payments/gift-cards/${code}/validate`,
     WEBHOOK:              '/payments/webhook',
+    PAYPAL_CREATE_ORDER:  '/payments/paypal/create-order',
+    PAYPAL_CAPTURE:       '/payments/paypal/capture',
   },
 
   PROMOTIONS: {
@@ -198,6 +200,7 @@ export const API_ROUTES = {
     PRODUCT_VARIANTS:     (id: string) => `/admin/products/${id}/variants`,
     PRODUCT_VARIANTS_REORDER: (id: string) => `/admin/products/${id}/variants/reorder`,
     PRODUCT_ATTRIBUTES:   (id: string) => `/admin/products/${id}/attributes`,
+    PRODUCT_RELATED:      (id: string) => `/admin/products/${id}/related`,
     PRODUCT_QUESTIONS:    (id: string) => `/admin/products/${id}/questions`,
     PRODUCT_QUESTION_ANSWER: (id: string, qId: string) => `/admin/products/${id}/questions/${qId}/answer`,
     PRODUCT_QUESTION:     (id: string, qId: string) => `/admin/products/${id}/questions/${qId}`,
@@ -234,6 +237,9 @@ export const API_ROUTES = {
     SHOP_SECTION:         (id: string) => `/admin/shop-sections/${id}`,
     PRODUCTION_PARTNERS:  '/admin/production-partners',
     PRODUCTION_PARTNER:   (id: string) => `/admin/production-partners/${id}`,
+    ADMIN_TAGS:           '/admin/tags',
+    ADMIN_TAG:            (id: string) => `/admin/tags/${id}`,
+    AUDIT_LOGS:           '/admin/audit-logs',
 
     // ── Users / Customers ─────────────────────────────────────────────────────
     USERS:                '/admin/users',
