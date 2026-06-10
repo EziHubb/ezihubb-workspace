@@ -1,4 +1,4 @@
-import { prisma } from '../shared/prisma-client';
+import { prisma, pool } from '../shared/prisma-client';
 import { seedUsers }              from './01-users';
 import { seedCategories }         from './02-categories';
 import { seedCollections }        from './03-collections';
@@ -34,9 +34,8 @@ export async function runPgSeeds(): Promise<Record<string, string>> {
   return productIds;
 }
 
-// Allow running standalone: ts-node prisma/seeds/pg/index.ts
+// Allow running standalone: tsx prisma/seeds/pg/index.ts
 if (process.argv[1]?.endsWith('index.ts') || process.argv[1]?.endsWith('index.js')) {
-  const { pool } = await import('../shared/prisma-client');
   runPgSeeds()
     .then(() => { console.log('\n✅ PG seed complete'); })
     .catch(e  => { console.error('❌ PG seed failed:', e); process.exit(1); })

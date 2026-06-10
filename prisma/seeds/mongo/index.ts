@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { prisma } from '../shared/prisma-client';
+import { prisma, pool } from '../shared/prisma-client';
 import { seedCategoriesMegaMenu } from './02-categories-mega-menu';
 import { seedProductDetails }     from './01-product-details';
 
@@ -32,9 +32,8 @@ export async function runMongoSeeds(productIds: Record<string, string>): Promise
   return true;
 }
 
-// Allow running standalone: ts-node prisma/seeds/mongo/index.ts
+// Allow running standalone: tsx prisma/seeds/mongo/index.ts
 if (process.argv[1]?.endsWith('index.ts') || process.argv[1]?.endsWith('index.js')) {
-  const { pool } = await import('../shared/prisma-client');
   runMongoSeeds({})
     .then(() => { console.log('\n✅ Mongo seed complete'); })
     .catch(e  => { console.error('❌ Mongo seed failed:', e); process.exit(1); })

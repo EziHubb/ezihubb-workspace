@@ -12,6 +12,7 @@ allowBuilds:
   '@swc/core': true
   bcrypt: true
   canvas: true
+  esbuild: set this to true or false
   less: true
   msgpackr-extract: true
   nx: true

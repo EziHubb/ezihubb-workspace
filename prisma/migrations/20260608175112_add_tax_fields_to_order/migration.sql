@@ -1,5 +1,0 @@
--- AlterTable
-ALTER TABLE "Order" ADD COLUMN     "taxAmount" DECIMAL(10,2) NOT NULL DEFAULT 0,
-ADD COLUMN     "taxExempt" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "taxJurisdiction" TEXT,
-ADD COLUMN     "taxRate" DECIMAL(5,4) NOT NULL DEFAULT 0;
