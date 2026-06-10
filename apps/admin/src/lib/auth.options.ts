@@ -12,11 +12,13 @@ import { API_ROUTES } from '@mlh/constants';
 
 if (!process.env['NEXTAUTH_URL']) {
   const detected =
-    // Railway injects this per-service (most reliable automatic fallback)
-    (process.env['NEXT_PUBLIC_NEXTAUTH_URL']
-      ? `https://${process.env['NEXT_PUBLIC_NEXTAUTH_URL']}`
+    // NEXT_PUBLIC_NEXTAUTH_URL is set by the user as a full URL (with https://) —
+    // use it as-is; baked into bundle via railway.toml buildArgs.
+    process.env['NEXT_PUBLIC_NEXTAUTH_URL'] ??
+    // Railway auto-injects RAILWAY_PUBLIC_DOMAIN (hostname only, no protocol).
+    (process.env['RAILWAY_PUBLIC_DOMAIN']
+      ? `https://${process.env['RAILWAY_PUBLIC_DOMAIN']}`
       : null) ??
-    // Older Railway var name
     (process.env['RAILWAY_STATIC_URL']
       ? `https://${process.env['RAILWAY_STATIC_URL']}`
       : null);
@@ -194,8 +196,12 @@ export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt', maxAge: 8 * 60 * 60 },
 
   // Use an explicit secret — never rely on the default in production.
+  // Prefer NEXTAUTH_SECRET (server-only); fall back to NEXT_PUBLIC_NEXTAUTH_SECRET
+  // for deployments that only have the NEXT_PUBLIC_ variant set.
   secret:
-    process.env['NEXTAUTH_SECRET'] ?? 'admin-dev-secret-change-in-production',
+    process.env['NEXTAUTH_SECRET'] ??
+    process.env['NEXT_PUBLIC_NEXTAUTH_SECRET'] ??
+    'admin-dev-secret-change-in-production',
 
   // Debug mode in development only
   debug: process.env['NODE_ENV'] === 'development',
