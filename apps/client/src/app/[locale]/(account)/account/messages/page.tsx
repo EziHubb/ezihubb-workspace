@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
 import type { ConversationDto, ConversationWithMessagesDto } from '@mlh/types';
 import { MessageShopModal } from '../../../../../components/messages/MessageShopModal';
@@ -190,7 +191,7 @@ function MessageThread({
   const { data: conv, isLoading } = useQuery<ConversationWithMessagesDto>({
     queryKey: ['conversation', conversationId],
     queryFn: () =>
-      apiClient.get<ConversationWithMessagesDto>(`/messages/conversations/${conversationId}`, {
+      apiClient.get<ConversationWithMessagesDto>(API_ROUTES.MESSAGES.CONVERSATION(conversationId), {
         token: token ?? undefined,
       }),
     refetchInterval: 15_000,
@@ -206,7 +207,7 @@ function MessageThread({
     if (!body || isSending) return;
     setIsSending(true);
     try {
-      await apiClient.post(`/messages/conversations/${conversationId}/messages`, { body }, {
+      await apiClient.post(API_ROUTES.MESSAGES.CONVERSATION_MESSAGES(conversationId), { body }, {
         token: token ?? undefined,
       });
       setNewMessage('');
@@ -304,7 +305,7 @@ function MessageThread({
             <button
               onClick={() =>
                 apiClient
-                  .post(`/messages/conversations/${conversationId}/messages`, { body: '(Reopening conversation)' }, { token: token ?? undefined })
+                  .post(API_ROUTES.MESSAGES.CONVERSATION_MESSAGES(conversationId), { body: '(Reopening conversation)' }, { token: token ?? undefined })
                   .then(() => queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] }))
               }
               className="text-primary hover:underline"
@@ -328,7 +329,7 @@ export default function MessagesPage() {
   const { data: conversations, isLoading } = useQuery<ConversationDto[]>({
     queryKey: ['conversations'],
     queryFn: () =>
-      apiClient.get<ConversationDto[]>('/messages/conversations', { token: token ?? undefined }),
+      apiClient.get<ConversationDto[]>(API_ROUTES.MESSAGES.CONVERSATIONS, { token: token ?? undefined }),
     refetchInterval: 30_000,
     enabled: !!token,
   });

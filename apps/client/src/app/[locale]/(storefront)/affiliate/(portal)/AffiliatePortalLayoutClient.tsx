@@ -7,6 +7,7 @@ import { useLocale } from 'next-intl';
 import { LayoutDashboard, Link2, Banknote, LogOut } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
 
 interface AffiliateProfile {
@@ -38,7 +39,7 @@ export default function AffiliatePortalLayoutClient({
   const { data: affiliate, isLoading, isError } = useQuery<AffiliateProfile | null>({
     queryKey: ['affiliate-me'],
     queryFn:  () =>
-      apiClient.get<AffiliateProfile>('/affiliates/me', { token: token ?? undefined }),
+      apiClient.get<AffiliateProfile>(API_ROUTES.AFFILIATES.ME, { token: token ?? undefined }),
     enabled:   !!token,
     staleTime: 60_000,
     retry:     false,

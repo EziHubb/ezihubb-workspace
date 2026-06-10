@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../../../../../lib/store/auth.store';
 import { apiClient } from '@mlh/api-client';
 import { useAuthQuery } from '../../../../../../lib/hooks/useAuthQuery';
+import { API_ROUTES } from '@mlh/constants';
 
 interface DashboardData {
   balance:     number;
@@ -45,12 +46,12 @@ export default function AffiliatePayoutsPage() {
 
   const { data: dashboard, isLoading: dashLoading } = useAuthQuery<DashboardData>(
     ['affiliate-dashboard'],
-    '/affiliates/me/dashboard',
+    API_ROUTES.AFFILIATES.ME_DASHBOARD,
   );
 
   const { data: payouts, isLoading: payoutsLoading } = useAuthQuery<PayoutRow[]>(
     ['affiliate-payouts'],
-    '/affiliates/me/payouts',
+    API_ROUTES.AFFILIATES.ME_PAYOUTS,
   );
 
   const [method,        setMethod]        = useState<string>(METHODS[0].value);
@@ -82,7 +83,7 @@ export default function AffiliatePayoutsPage() {
     setIsSubmitting(true);
     try {
       await apiClient.post(
-        '/affiliates/me/payouts',
+        API_ROUTES.AFFILIATES.ME_PAYOUTS,
         { paymentMethod: method, paymentDetail: detail, amount },
         { token: token ?? undefined },
       );

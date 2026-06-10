@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import type { CollectionDto, ProductListItemDto } from '@mlh/types';
 import type { PaginatedResponse } from '@mlh/types';
 import { buildAlternates } from '../../../../../lib/seo';
@@ -19,7 +20,7 @@ type SearchParamValue = string | string[] | undefined;
 export async function generateStaticParams() {
   const locales = ['en', 'vi'] as const;
   try {
-    const res = await apiClient.get<PaginatedResponse<CollectionDto>>('/collections', {
+    const res = await apiClient.get<PaginatedResponse<CollectionDto>>(API_ROUTES.CATALOG.COLLECTIONS, {
       params: { isActive: true, limit: 100 },
       next: { revalidate: 3600 },
     });
@@ -41,7 +42,7 @@ export async function generateMetadata({
   const { locale, slug } = await params;
 
   const collection = await apiClient
-    .get<CollectionDto>(`/collections/${slug}`, {
+    .get<CollectionDto>(API_ROUTES.CATALOG.COLLECTION(slug), {
       next: { revalidate: 300 },
     })
     .catch(() => null);
@@ -85,10 +86,10 @@ export default async function CollectionPage({
   };
 
   const [collectionRes, productsRes] = await Promise.allSettled([
-    apiClient.get<CollectionDto>(`/collections/${slug}`, {
+    apiClient.get<CollectionDto>(API_ROUTES.CATALOG.COLLECTION(slug), {
       next: { revalidate: 300 },
     }),
-    apiClient.get<PaginatedResponse<ProductListItemDto>>('/products', {
+    apiClient.get<PaginatedResponse<ProductListItemDto>>(API_ROUTES.PRODUCTS.LIST, {
       params: {
         collectionSlug: slug,
         page:           filters.page,
@@ -110,7 +111,7 @@ export default async function CollectionPage({
 
   // Related collections — non-critical, falls back to null
   const relatedRes = await apiClient
-    .get<PaginatedResponse<CollectionDto>>('/collections', {
+    .get<PaginatedResponse<CollectionDto>>(API_ROUTES.CATALOG.COLLECTIONS, {
       params: { isActive: true, limit: 4, exclude: slug },
       next: { revalidate: 600 },
     })

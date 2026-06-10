@@ -110,13 +110,18 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@parcel/watcher",
       "@prisma/engines",
       "@scarf/scarf",
+      "@swc/core",
       "bcrypt",
+      "canvas",
       "esbuild",
       "msgpackr-extract",
       "prisma",
-      "sharp"
+      "protobufjs",
+      "sharp",
+      "unrs-resolver"
     ]
   },
   "devDependencies": {

@@ -34,7 +34,7 @@ export function AccountSidebar({ profile, onNavigate }: AccountSidebarProps) {
   const { data: conversations } = useQuery<ConversationDto[]>({
     queryKey: ['conversations'],
     queryFn: () =>
-      apiClient.get<ConversationDto[]>('/messages/conversations', { token: token ?? undefined }),
+      apiClient.get<ConversationDto[]>(API_ROUTES.MESSAGES.CONVERSATIONS, { token: token ?? undefined }),
     refetchInterval: 30_000,
     enabled: !!token,
     staleTime: 15_000,

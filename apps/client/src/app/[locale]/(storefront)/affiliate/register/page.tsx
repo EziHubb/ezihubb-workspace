@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { CheckCircle, ArrowLeft } from 'lucide-react';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 interface FormState {
   firstName:           string;
@@ -104,7 +105,7 @@ export default function AffiliateRegisterPage() {
     setError('');
     setIsLoading(true);
     try {
-      await apiClient.post('/affiliates/apply', {
+      await apiClient.post(API_ROUTES.AFFILIATES.APPLY, {
         firstName:           form.firstName,
         lastName:            form.lastName,
         email:               form.email,

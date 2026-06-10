@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import type { ProductListItemDto } from '@mlh/types';
 
 interface ShopCustomizableIdeasProps {
@@ -16,7 +17,7 @@ export function ShopCustomizableIdeas({ query }: ShopCustomizableIdeasProps) {
   const { data: products = [] } = useQuery<ProductListItemDto[]>({
     queryKey: ['search', 'customizable', query],
     queryFn: async () => {
-      const result = await apiClient.get<ProductListItemDto[]>('/products', {
+      const result = await apiClient.get<ProductListItemDto[]>(API_ROUTES.PRODUCTS.LIST, {
         params: { isPersonalizable: 'true', sort: 'bestseller', limit: '6' },
       });
       return (result ?? []).slice(0, 6);

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Palette, ShoppingCart, Bell } from 'lucide-react';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { useCartStore } from '../../lib/store/cart.store';
 import type { ProductDto, ProductVariantDto } from '@mlh/types';
@@ -53,7 +54,7 @@ export function PersonalizationComingSoon({
     if (!notifyEmail.trim()) return;
     setNotifyState('loading');
     try {
-      await apiClient.post('/notifications/product-ready', {
+      await apiClient.post(API_ROUTES.NOTIFICATIONS.PRODUCT_READY, {
         productId: product.id,
         email:     notifyEmail.trim(),
       });

@@ -6,9 +6,15 @@ export const API_ROUTES = {
     REFRESH:         '/auth/refresh',
     FORGOT_PASSWORD: '/auth/forgot-password',
     RESET_PASSWORD:  '/auth/reset-password',
+    CHANGE_PASSWORD: '/auth/change-password',
     GOOGLE:          '/auth/google',
     GOOGLE_CALLBACK: '/auth/google/callback',
     VERIFY_EMAIL:    '/auth/verify-email',
+    RESEND_VERIFY:   '/auth/resend-verification',
+    TOTP_VERIFY:     '/auth/totp/verify',
+    TOTP_SETUP:      '/auth/totp/setup',
+    TOTP_CONFIRM:    '/auth/totp/confirm',
+    TOTP_DISABLE:    '/auth/totp/disable',
   },
 
   USERS: {
@@ -17,6 +23,7 @@ export const API_ROUTES = {
     PASSWORD:        '/users/me/password',
     ADDRESSES:       '/users/me/addresses',
     ADDRESS:         (id: string) => `/users/me/addresses/${id}`,
+    ADDRESS_DEFAULT: (id: string) => `/users/me/addresses/${id}/default`,
     WISHLIST:        '/users/me/wishlist',
     WISHLIST_ITEM:   (productId: string) => `/users/me/wishlist/${productId}`,
     WISHLIST_SHARE:  '/users/me/wishlist/share',
@@ -26,21 +33,25 @@ export const API_ROUTES = {
   },
 
   PRODUCTS: {
-    LIST:            '/products',
-    DETAIL:          (slug: string) => `/products/${slug}`,
-    REVIEWS:         (slug: string) => `/products/${slug}/reviews`,
-    REVIEW_SUMMARY:  (slug: string) => `/products/${slug}/reviews/summary`,
-    RELATED:         (slug: string) => `/products/${slug}/related`,
-    RECENTLY_VIEWED: '/products/recently-viewed',
-    QA:              (slug: string) => `/products/${slug}/questions`,
+    LIST:              '/products',
+    DETAIL:            (slug: string) => `/products/${slug}`,
+    REVIEWS:           (slug: string) => `/products/${slug}/reviews`,
+    REVIEW_SUMMARY:    (slug: string) => `/products/${slug}/reviews/summary`,
+    RELATED:           (slug: string) => `/products/${slug}/related`,
+    RECENTLY_VIEWED:   '/products/recently-viewed',
+    VIEWED:            (id: string) => `/products/${id}/viewed`,
+    TRENDING:          '/products/trending',
+    QA:                (slug: string) => `/products/${slug}/questions`,
+    QUESTION_UPVOTE:   (id: string) => `/questions/${id}/upvote`,
   },
 
   CATALOG: {
     CATEGORIES:  '/catalog/categories',
     CATEGORY:    (slug: string) => `/catalog/categories/${slug}`,
-    COLLECTIONS: '/catalog/collections',
-    COLLECTION:  (slug: string) => `/catalog/collections/${slug}`,
-    TAGS:        '/catalog/tags',
+    CATEGORY_ATTRS: (slug: string) => `/catalog/categories/${slug}/filterable-attributes`,
+    COLLECTIONS: '/collections',
+    COLLECTION:  (slug: string) => `/collections/${slug}`,
+    TAGS:        '/tags',
     MEGA_MENU:   '/catalog/mega-menu',
   },
 
@@ -97,6 +108,7 @@ export const API_ROUTES = {
 
   REVIEWS: {
     LIST:          '/reviews',
+    SUMMARY:       '/reviews/summary',
     UPLOAD_IMAGES: (reviewId: string) => `/reviews/${reviewId}/images`,
     UPLOAD_IMAGE:  '/reviews/upload-image',
     MY_REVIEWS:    '/reviews/me',
@@ -112,12 +124,32 @@ export const API_ROUTES = {
     LOG:          '/search/log',
   },
 
-  WISHLIST_PUBLIC: {
-    SHARED: (token: string) => `/wishlist/${token}`,
+  MESSAGES: {
+    CONVERSATIONS:         '/messages/conversations',
+    CONVERSATION:          (id: string) => `/messages/conversations/${id}`,
+    CONVERSATION_MESSAGES: (id: string) => `/messages/conversations/${id}/messages`,
+    CONVERSATION_READ:     (id: string) => `/messages/conversations/${id}/read`,
+  },
+
+  LOYALTY: {
+    ME:      '/loyalty/me',
+    PREVIEW: '/loyalty/preview',
+    CONFIG:  '/loyalty/config',
   },
 
   AFFILIATES: {
-    TRACK: '/affiliates/track',
+    TRACK:           '/affiliates/track',
+    APPLY:           '/affiliates/apply',
+    RESOLVE:         '/affiliates/resolve',
+    SETTINGS_PUBLIC: '/affiliates/settings/public',
+    ME:              '/affiliates/me',
+    ME_DASHBOARD:    '/affiliates/me/dashboard',
+    ME_CLICKS:       '/affiliates/me/clicks',
+    ME_PAYOUTS:      '/affiliates/me/payouts',
+  },
+
+  WISHLIST_PUBLIC: {
+    SHARED: (token: string) => `/wishlist/${token}`,
   },
 
   CURRENCY: {
@@ -125,7 +157,8 @@ export const API_ROUTES = {
   },
 
   NOTIFICATIONS: {
-    CONTACT: '/notifications/contact',
+    CONTACT:       '/notifications/contact',
+    PRODUCT_READY: '/notifications/product-ready',
   },
 
   NEWSLETTER: {

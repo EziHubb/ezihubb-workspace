@@ -6,6 +6,7 @@ import { useLocale } from 'next-intl';
 import { useState, useRef } from 'react';
 import { Heart, ShoppingCart, HeartOff, Share2, Copy, Check, X, Globe } from 'lucide-react';
 import { queryKeys, useMutateCart } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { useToast } from '@mlh/ui';
 import type { WishlistItemDto } from '@mlh/types';
 import { useAuthQuery, useAuthMutation } from '../../../../../lib/hooks/useAuthQuery';
@@ -101,23 +102,23 @@ function SharingPanel() {
 
   const { data: shareStatus, refetch } = useAuthQuery<WishlistShareStatus>(
     ['wishlist', 'share'],
-    '/users/me/wishlist/share',
+    API_ROUTES.USERS.WISHLIST_SHARE,
   );
 
   const enableMutation = useAuthMutation(
     (_: void, token: string) =>
-      apiClient.post<WishlistShareStatus>('/users/me/wishlist/share', {}, { token }),
+      apiClient.post<WishlistShareStatus>(API_ROUTES.USERS.WISHLIST_SHARE, {}, { token }),
     { onSuccess: () => refetch() },
   );
 
   const updateMutation = useAuthMutation(
     (dto: { name?: string | null; isPublic?: boolean }, token: string) =>
-      apiClient.patch<WishlistShareStatus>('/users/me/wishlist/share', dto, { token }),
+      apiClient.patch<WishlistShareStatus>(API_ROUTES.USERS.WISHLIST_SHARE, dto, { token }),
     { onSuccess: () => refetch() },
   );
 
   const revokeMutation = useAuthMutation(
-    (_: void, token: string) => apiClient.delete<void>('/users/me/wishlist/share', { token }),
+    (_: void, token: string) => apiClient.delete<void>(API_ROUTES.USERS.WISHLIST_SHARE, { token }),
     {
       onSuccess: () => {
         refetch();
@@ -298,7 +299,7 @@ export default function WishlistPage() {
 
   const removeMutation = useAuthMutation(
     (productId: string, token: string) =>
-      apiClient.delete<void>(`/users/me/wishlist/${productId}`, { token }),
+      apiClient.delete<void>(API_ROUTES.USERS.WISHLIST_ITEM(productId), { token }),
     {
       invalidateKeys: [queryKeys.wishlist()],
       onSuccess:      () => toast.info('Removed from wishlist'),

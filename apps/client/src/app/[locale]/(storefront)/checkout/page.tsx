@@ -6,6 +6,7 @@ import { useLocale } from 'next-intl';
 import Image from 'next/image';
 import { ChevronDown, ChevronUp, Star } from 'lucide-react';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { useCartStore } from '../../../../lib/store/cart.store';
 import type { ShippingAddressInput } from '@mlh/api-client';
 import type { ShippingOptionDto, CartDto } from '@mlh/types';
@@ -240,7 +241,7 @@ export default function CheckoutPage() {
     const refCode = getCookie('mlh_affiliate');
     if (!refCode) return;
     apiClient
-      .get<{ discountRate: number; affiliateName?: string } | null>('/affiliates/resolve', {
+      .get<{ discountRate: number; affiliateName?: string } | null>(API_ROUTES.AFFILIATES.RESOLVE, {
         params: { code: refCode },
       })
       .then((data) => {
@@ -272,7 +273,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!isLoggedIn) return;
     apiClient
-      .get<{ pointsBalance: number }>('/loyalty/me', { token: localStorage.getItem('access_token') ?? undefined })
+      .get<{ pointsBalance: number }>(API_ROUTES.LOYALTY.ME, { token: localStorage.getItem('access_token') ?? undefined })
       .then((d) => { setLoyaltyBalance(d.pointsBalance ?? 0); })
       .catch(() => {});
   }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -318,7 +319,7 @@ export default function CheckoutPage() {
     // Fetch tax estimate early (no shipping cost yet — will be refined on order creation)
     if (addr.country === 'US' && addr.postalCode) {
       apiClient
-        .post<{ taxAmount: number; taxRate: number; jurisdiction: string }>('/orders/tax-preview', {
+        .post<{ taxAmount: number; taxRate: number; jurisdiction: string }>(API_ROUTES.ORDERS.TAX_PREVIEW, {
           postalCode:   addr.postalCode,
           state:        addr.state,
           country:      addr.country,
@@ -355,7 +356,7 @@ export default function CheckoutPage() {
         clientSecret: string;
         total:        number;
         taxAmount:    number;
-      }>('/orders', {
+      }>(API_ROUTES.ORDERS.CREATE, {
         cartId: cart.id,
         shippingAddress: {
           fullName:     `${shippingAddress.firstName} ${shippingAddress.lastName}`.trim(),

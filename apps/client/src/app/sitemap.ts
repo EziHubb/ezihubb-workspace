@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next';
+import { API_ROUTES } from '@mlh/constants';
 
 export const revalidate = 3600; // regenerate hourly
 
@@ -42,10 +43,10 @@ async function fetchApi<T>(path: string): Promise<T[]> {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // All fetches in parallel — individual failures yield empty arrays, never crash
   const [products, categories, collections, tags] = await Promise.all([
-    fetchApi<ProductItem>('/products?fields=slug,updatedAt,images,name,shortDescription&limit=500&isActive=true'),
-    fetchApi<SlugItem>('/categories?isVisible=true&fields=slug,updatedAt,level'),
-    fetchApi<SlugItem>('/collections?isActive=true&fields=slug,updatedAt'),
-    fetchApi<SlugItem>('/tags?isFeatured=true&fields=slug'),
+    fetchApi<ProductItem>(`${API_ROUTES.PRODUCTS.LIST}?fields=slug,updatedAt,images,name,shortDescription&limit=500&isActive=true`),
+    fetchApi<SlugItem>(`${API_ROUTES.CATALOG.CATEGORIES}?isVisible=true&fields=slug,updatedAt,level`),
+    fetchApi<SlugItem>(`${API_ROUTES.CATALOG.COLLECTIONS}?isActive=true&fields=slug,updatedAt`),
+    fetchApi<SlugItem>(`${API_ROUTES.CATALOG.TAGS}?isFeatured=true&fields=slug`),
   ]);
 
   const footerPages = [

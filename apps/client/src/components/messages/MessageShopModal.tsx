@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { Modal, ModalHeader, ModalBody, Button } from '@mlh/ui';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { useAuthStore } from '../../lib/store/auth.store';
 import type { ConversationDto } from '@mlh/types';
 
@@ -43,7 +44,7 @@ export function MessageShopModal({ isOpen, onClose, context }: Props) {
   const [sent, setSent] = useState(false);
 
   const onSubmit = async (data: FormValues) => {
-    await apiClient.post<ConversationDto>('/messages/conversations', {
+    await apiClient.post<ConversationDto>(API_ROUTES.MESSAGES.CONVERSATIONS, {
       orderId:    context?.orderId,
       subject:    data.subject || undefined,
       body:       data.message,

@@ -8,6 +8,7 @@ import { useLocale } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { Copy, Check, Package, Home } from 'lucide-react';
 import { apiClient, queryKeys } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { useCartStore } from '../../../../../lib/store/cart.store';
 import type { OrderDto } from '@mlh/types';
 import { analytics } from '../../../../../lib/analytics';
@@ -105,7 +106,7 @@ export default function CheckoutSuccessPage() {
    */
   const { data: order, isLoading, isError } = useQuery({
     queryKey: queryKeys.order(orderNumber),
-    queryFn: () => apiClient.get<OrderDto>(`/orders/${orderNumber}`),
+    queryFn: () => apiClient.get<OrderDto>(API_ROUTES.ORDERS.DETAIL(orderNumber)),
     enabled:  Boolean(orderNumber),
     // Poll every 2 s while still PENDING_PAYMENT (Stripe webhook may take a moment)
     refetchInterval: (query) => {

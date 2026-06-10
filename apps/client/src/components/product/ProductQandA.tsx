@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { MessageCircle, ThumbsUp, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -47,7 +48,7 @@ function AskQuestionModal({ productSlug, onClose, onSubmitted }: AskModalProps) 
   const onSubmit = async (data: FormValues) => {
     setSubmitError('');
     try {
-      await apiClient.post(`/products/${productSlug}/questions`, {
+      await apiClient.post(API_ROUTES.PRODUCTS.QA(productSlug), {
         name:     data.name,
         email:    data.email || undefined,
         question: data.question,
@@ -164,7 +165,7 @@ export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
     setUpvoted(next);
     try { localStorage.setItem('qa_upvoted', JSON.stringify([...next])); } catch {}
     setQas((prev) => prev.map((q) => q.id === qaId ? { ...q, upvotes: q.upvotes + 1 } : q));
-    apiClient.post(`/questions/${qaId}/upvote`).catch(() => {});
+    apiClient.post(API_ROUTES.PRODUCTS.QUESTION_UPVOTE(qaId)).catch(() => {});
   }, [upvoted]);
 
   const handleSubmitted = useCallback(() => {

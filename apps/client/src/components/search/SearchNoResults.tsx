@@ -5,6 +5,7 @@ import { useLocale } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { SearchX } from 'lucide-react';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 interface SearchNoResultsProps {
   query?: string;
@@ -15,7 +16,7 @@ export function SearchNoResults({ query }: SearchNoResultsProps) {
 
   const { data: trending = [] } = useQuery<string[]>({
     queryKey: ['search', 'trending'],
-    queryFn: () => apiClient.get<string[]>('/search/trending'),
+    queryFn: () => apiClient.get<string[]>(API_ROUTES.SEARCH.TRENDING),
     staleTime: 5 * 60_000,
   });
 

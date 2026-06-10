@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { Copy, Check, ExternalLink } from 'lucide-react';
 import { useAuthQuery } from '../../../../../../lib/hooks/useAuthQuery';
+import { API_ROUTES } from '@mlh/constants';
 
 const BASE_URL =
   typeof window !== 'undefined'
@@ -47,7 +48,7 @@ export default function AffiliateDashboardPage() {
 
   const { data, isLoading } = useAuthQuery<DashboardData>(
     ['affiliate-dashboard'],
-    '/affiliates/me/dashboard',
+    API_ROUTES.AFFILIATES.ME_DASHBOARD,
   );
 
   const referralUrl = data ? `${BASE_URL}?ref=${data.referralCode}` : '';

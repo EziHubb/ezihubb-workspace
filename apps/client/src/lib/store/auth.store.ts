@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { setTokenGetter, setTokenUpdater, api } from '@mlh/api-client';
 import { apiClient } from '@mlh/api-client';
 import type { UserDto } from '@mlh/types';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── In-memory access token ────────────────────────────────────────────────────
 // The module-level var keeps the old api client's token getter working.
@@ -82,7 +83,7 @@ export const useAuthStore = create<AuthStore>()(
         const res = await apiClient.post<{
           accessToken: string;
           user: UserDto;
-        }>('/auth/login', { email, password, rememberMe });
+        }>(API_ROUTES.AUTH.LOGIN, { email, password, rememberMe });
 
         const { accessToken, user } = res;
         syncToken(accessToken);
@@ -97,7 +98,7 @@ export const useAuthStore = create<AuthStore>()(
       // ── register ───────────────────────────────────────────────────────────
 
       register: async (dto) => {
-        await apiClient.post('/auth/register', dto);
+        await apiClient.post(API_ROUTES.AUTH.REGISTER, dto);
         // No auto-login — user must verify email first
       },
 
@@ -106,7 +107,7 @@ export const useAuthStore = create<AuthStore>()(
       logout: async () => {
         const token = get().accessToken;
         try {
-          await apiClient.post('/auth/logout', {}, {
+          await apiClient.post(API_ROUTES.AUTH.LOGOUT, {}, {
             token: token ?? undefined,
           });
         } catch { /* best-effort */ }
@@ -122,7 +123,7 @@ export const useAuthStore = create<AuthStore>()(
         if (!token) return;
         set({ isLoading: true });
         try {
-          const user = await apiClient.get<UserDto>('/users/me', { token });
+          const user = await apiClient.get<UserDto>(API_ROUTES.USERS.ME, { token });
           set({ user, isLoading: false });
         } catch {
           syncToken(null);
@@ -137,7 +138,7 @@ export const useAuthStore = create<AuthStore>()(
           const res = await apiClient.post<{
             accessToken: string;
             user: UserDto;
-          }>('/auth/refresh');
+          }>(API_ROUTES.AUTH.REFRESH);
           syncToken(res.accessToken);
           set({ accessToken: res.accessToken, user: res.user });
           return true;

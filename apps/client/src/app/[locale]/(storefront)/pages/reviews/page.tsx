@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import type { ProductListItemDto, PaginatedResponse } from '@mlh/types';
 import { ReviewsPageStructuredData } from '../../../../../components/seo/ReviewsPageStructuredData';
 
@@ -83,11 +84,11 @@ function StarRow({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'lg' }
 
 export default async function ReviewsPage() {
   const [summaryRes, reviewsRes, topProductsRes] = await Promise.allSettled([
-    apiClient.get<GlobalSummary>('/reviews/summary'),
-    apiClient.get<PaginatedResponse<GlobalReview>>('/reviews', {
+    apiClient.get<GlobalSummary>(API_ROUTES.REVIEWS.SUMMARY),
+    apiClient.get<PaginatedResponse<GlobalReview>>(API_ROUTES.REVIEWS.LIST, {
       params: { limit: 12 },
     }),
-    apiClient.get<PaginatedResponse<ProductListItemDto>>('/products', {
+    apiClient.get<PaginatedResponse<ProductListItemDto>>(API_ROUTES.PRODUCTS.LIST, {
       params: { sort: 'rating', limit: 6, isActive: true },
     }),
   ]);

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuthQuery } from '../../../../../../lib/hooks/useAuthQuery';
+import { API_ROUTES } from '@mlh/constants';
 
 const BASE_URL =
   typeof window !== 'undefined'
@@ -43,12 +44,12 @@ export default function AffiliateLinksPage() {
 
   const { data: dashboard } = useAuthQuery<DashboardData>(
     ['affiliate-dashboard'],
-    '/affiliates/me/dashboard',
+    API_ROUTES.AFFILIATES.ME_DASHBOARD,
   );
 
   const { data: clicks, isLoading } = useAuthQuery<ClicksResponse>(
     ['affiliate-clicks', page],
-    '/affiliates/me/clicks',
+    API_ROUTES.AFFILIATES.ME_CLICKS,
     { page, limit: 20 },
   );
 

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 interface RelatedSearchesProps {
   query?: string;
@@ -15,7 +16,7 @@ export function RelatedSearches({ query }: RelatedSearchesProps) {
   const { data: related = [] } = useQuery<string[]>({
     queryKey: ['search', 'related', query],
     queryFn: () =>
-      apiClient.get<string[]>('/search/related', { params: { q: query ?? '' } }),
+      apiClient.get<string[]>(API_ROUTES.SEARCH.RELATED, { params: { q: query ?? '' } }),
     enabled: !!query,
     staleTime: 5 * 60_000,
   });

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { apiClient } from '@mlh/api-client';
 import type { CartDto, CartItemDto, CartTotals } from '@mlh/types';
+import { API_ROUTES } from '@mlh/constants';
 import { analytics } from '../analytics';
 
 // ── Helper: read auth token without circular import ───────────────────────────
@@ -130,7 +131,7 @@ export const useCartStore = create<CartStore>()(
         if (Date.now() - get()._lastMutatedAt < 2000) return;
         set({ isLoading: true });
         try {
-          const res = await apiClient.get<CartDto>('/cart', {
+          const res = await apiClient.get<CartDto>(API_ROUTES.CART.GET, {
             headers: sessionHeader(get().sessionId),
           });
           set({ cart: normalizeCart(res), isLoading: false });
@@ -142,7 +143,7 @@ export const useCartStore = create<CartStore>()(
       addItem: async (dto) => {
         const prevCart = get().cart;
         try {
-          const res = await apiClient.post<CartDto>('/cart/items', dto, {
+          const res = await apiClient.post<CartDto>(API_ROUTES.CART.ADD, dto, {
             headers: sessionHeader(get().sessionId),
           });
           set({ cart: normalizeCart(res), _lastMutatedAt: Date.now() });
@@ -178,7 +179,7 @@ export const useCartStore = create<CartStore>()(
         }
         try {
           const res = await apiClient.patch<CartDto>(
-            `/cart/items/${itemId}`,
+            API_ROUTES.CART.UPDATE_ITEM(itemId),
             { quantity },
             { headers: sessionHeader(get().sessionId) },
           );
@@ -201,7 +202,7 @@ export const useCartStore = create<CartStore>()(
         }
         try {
           const res = await apiClient.delete<CartDto>(
-            `/cart/items/${itemId}`,
+            API_ROUTES.CART.REMOVE_ITEM(itemId),
             { headers: sessionHeader(get().sessionId) },
           );
           set({ cart: normalizeCart(res) });
@@ -213,7 +214,7 @@ export const useCartStore = create<CartStore>()(
 
       applyCoupon: async (code) => {
         const res = await apiClient.post<CartDto>(
-          '/cart/coupon',
+          API_ROUTES.CART.COUPON,
           { code },
           { headers: sessionHeader(get().sessionId) },
         );
@@ -221,7 +222,7 @@ export const useCartStore = create<CartStore>()(
       },
 
       removeCoupon: async () => {
-        const res = await apiClient.delete<CartDto>('/cart/coupon', {
+        const res = await apiClient.delete<CartDto>(API_ROUTES.CART.COUPON, {
           headers: sessionHeader(get().sessionId),
         });
         set({ cart: normalizeCart(res) });
@@ -231,7 +232,7 @@ export const useCartStore = create<CartStore>()(
         const sessionId = get().sessionId;
         if (!sessionId || !getToken()) return;
         try {
-          const res = await apiClient.post<CartDto>('/cart/merge', {
+          const res = await apiClient.post<CartDto>(API_ROUTES.CART.MERGE, {
             sessionId,
           });
           set({ cart: normalizeCart(res), sessionId: null });

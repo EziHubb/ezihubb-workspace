@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { buildAlternates } from '../../../../lib/seo';
 import type { ProductListItemDto, CategoryDto, TagDto } from '@mlh/types';
 import type { PaginatedResponse } from '@mlh/types';
@@ -48,7 +49,7 @@ export default async function ProductsPage({
   };
 
   const productsRes = await apiClient
-    .get<PaginatedResponse<ProductListItemDto>>('/products', {
+    .get<PaginatedResponse<ProductListItemDto>>(API_ROUTES.PRODUCTS.LIST, {
       params: {
         page:       filters.page,
         limit:      24,
@@ -66,11 +67,11 @@ export default async function ProductsPage({
 
   // Secondary fetches — sidebar data, non-critical
   const [categoriesRes, tagsRes] = await Promise.allSettled([
-    apiClient.get<CategoryDto[]>('/categories', {
+    apiClient.get<CategoryDto[]>(API_ROUTES.CATALOG.CATEGORIES, {
       params: { level: 2, isVisible: true },
       next: { revalidate: 600 },
     }),
-    apiClient.get<TagDto[]>('/tags', {
+    apiClient.get<TagDto[]>(API_ROUTES.CATALOG.TAGS, {
       next: { revalidate: 600 },
     }),
   ]);

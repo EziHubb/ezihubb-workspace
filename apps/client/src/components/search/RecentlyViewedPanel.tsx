@@ -6,6 +6,7 @@ import { useLocale } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { X, Clock } from 'lucide-react';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import type { ProductListItemDto } from '@mlh/types';
 
 export function RecentlyViewedPanel() {
@@ -17,7 +18,7 @@ export function RecentlyViewedPanel() {
     queryFn: async () => {
       try {
         const result = await apiClient.get<ProductListItemDto[]>(
-          '/products/recently-viewed',
+          API_ROUTES.PRODUCTS.RECENTLY_VIEWED,
           { auth: true } as Parameters<typeof apiClient.get>[1],
         );
         return (result ?? []).slice(0, 4);

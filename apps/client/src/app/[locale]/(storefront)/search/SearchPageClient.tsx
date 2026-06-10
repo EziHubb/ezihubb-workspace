@@ -4,6 +4,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import type { ProductListItemDto } from '@mlh/types';
 import { analytics } from '../../../../lib/analytics';
 
@@ -108,7 +109,7 @@ export function SearchPageClient() {
   const { data, isLoading, isFetching, isFetched } = useQuery({
     queryKey: ['search', 'results', filters],
     queryFn: () =>
-      apiClient.get<SearchResponse>('/search', {
+      apiClient.get<SearchResponse>(API_ROUTES.SEARCH.QUERY, {
         params: buildApiParams(filters),
       }),
     enabled: trimmedQ.length > 0,

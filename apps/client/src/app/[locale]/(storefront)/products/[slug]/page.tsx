@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { buildAlternates } from '../../../../../lib/seo';
 import type { ProductDto, ProductListItemDto, ReviewSummaryDto } from '@mlh/types';
 import type { PaginatedResponse } from '@mlh/types';
@@ -49,7 +50,7 @@ function buildBreadcrumbs(product: ProductDetailDto, locale: string): Breadcrumb
 export async function generateStaticParams() {
   const locales = ['en', 'vi'] as const;
   const res = await apiClient
-    .get<PaginatedResponse<{ slug: string }>>('/products', {
+    .get<PaginatedResponse<{ slug: string }>>(API_ROUTES.PRODUCTS.LIST, {
       params: { fields: 'slug', limit: 200, isActive: true },
       next: { revalidate: 3600 },
     })
@@ -70,7 +71,7 @@ export async function generateMetadata({
   const { locale, slug } = await params;
 
   const product = await apiClient
-    .get<ProductDetailDto>(`/products/${slug}`, { next: { revalidate: 30 } })
+    .get<ProductDetailDto>(API_ROUTES.PRODUCTS.DETAIL(slug), { next: { revalidate: 30 } })
     .catch(() => null);
 
   if (!product) return { title: 'Product Not Found' };
@@ -113,20 +114,20 @@ export default async function ProductDetailPage({
 
   const [productRes, reviewSummaryRes, relatedRes, moreFromShopRes, qaRes] =
     await Promise.allSettled([
-      apiClient.get<ProductDetailDto>(`/products/${slug}`, {
+      apiClient.get<ProductDetailDto>(API_ROUTES.PRODUCTS.DETAIL(slug), {
         next: { revalidate: 30 },
       }),
-      apiClient.get<ReviewSummaryDto>(`/products/${slug}/reviews/summary`, {
+      apiClient.get<ReviewSummaryDto>(API_ROUTES.PRODUCTS.REVIEW_SUMMARY(slug), {
         next: { revalidate: 60 },
       }),
-      apiClient.get<PaginatedResponse<ProductListItemDto>>(`/products/${slug}/related`, {
+      apiClient.get<PaginatedResponse<ProductListItemDto>>(API_ROUTES.PRODUCTS.RELATED(slug), {
         next: { revalidate: 300 },
       }),
-      apiClient.get<PaginatedResponse<ProductListItemDto>>('/products', {
+      apiClient.get<PaginatedResponse<ProductListItemDto>>(API_ROUTES.PRODUCTS.LIST, {
         params: { sort: 'bestseller', limit: 4 },
         next: { revalidate: 300 },
       }),
-      apiClient.get<QAItem[]>(`/products/${slug}/questions`, {
+      apiClient.get<QAItem[]>(API_ROUTES.PRODUCTS.QA(slug), {
         next: { revalidate: 60 },
       }),
     ]);

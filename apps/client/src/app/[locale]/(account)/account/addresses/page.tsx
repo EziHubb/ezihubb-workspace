@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { Plus, Edit2, Trash2, Star, MapPin } from 'lucide-react';
 import { queryKeys } from '@mlh/api-client';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { useToast } from '@mlh/ui';
 import type { AddressDto } from '@mlh/types';
 import { useAuthQuery, useAuthMutation } from '../../../../../lib/hooks/useAuthQuery';
@@ -313,31 +314,31 @@ export default function AddressesPage() {
 
   const { data: addresses = [], isLoading } = useAuthQuery<AddressDto[]>(
     queryKeys.addresses(),
-    '/users/me/addresses',
+    API_ROUTES.USERS.ADDRESSES,
   );
 
   const addAddress = useAuthMutation(
     (dto: AddressPayload, token: string) =>
-      apiClient.post<AddressDto>('/users/me/addresses', dto, { token }),
+      apiClient.post<AddressDto>(API_ROUTES.USERS.ADDRESSES, dto, { token }),
     { invalidateKeys: [queryKeys.addresses()] },
   );
 
   const updateAddress = useAuthMutation(
     ({ id, ...dto }: AddressPayload & { id: string }, token: string) =>
-      apiClient.patch<AddressDto>(`/users/me/addresses/${id}`, dto, { token }),
+      apiClient.patch<AddressDto>(API_ROUTES.USERS.ADDRESS(id), dto, { token }),
     { invalidateKeys: [queryKeys.addresses()] },
   );
 
   const deleteAddress = useAuthMutation(
     (id: string, token: string) =>
-      apiClient.delete<void>(`/users/me/addresses/${id}`, { token }),
+      apiClient.delete<void>(API_ROUTES.USERS.ADDRESS(id), { token }),
     { invalidateKeys: [queryKeys.addresses()] },
   );
 
   const setDefaultAddress = useAuthMutation(
     (id: string, token: string) =>
       apiClient.patch<AddressDto>(
-        `/users/me/addresses/${id}`,
+        API_ROUTES.USERS.ADDRESS(id),
         { isDefault: true },
         { token },
       ),

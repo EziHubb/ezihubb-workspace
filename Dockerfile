@@ -2,10 +2,27 @@
 
 # ── Install deps ──────────────────────────────────────────────────────────────
 FROM node:22-alpine AS deps
-RUN apk add --no-cache libc6-compat
+# libc6-compat: Alpine glibc shim for native modules
+# python3/make/g++/pkgconf + cairo/pango/jpeg/gif libs: required to compile
+# canvas (pulled in by jsdom → vitest; no pre-built musl binary for Node 22)
+RUN apk add --no-cache \
+    libc6-compat \
+    python3 \
+    make \
+    g++ \
+    pkgconf \
+    cairo-dev \
+    pango-dev \
+    libjpeg-turbo-dev \
+    giflib-dev \
+    pixman-dev \
+    fontconfig-dev
 WORKDIR /app
 RUN npm install -g corepack@latest && corepack enable pnpm
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# scripts/ must be present before pnpm install so the postinstall hook
+# (node scripts/patch-next-build.cjs) can run successfully.
+COPY scripts/ ./scripts/
 RUN pnpm install --no-frozen-lockfile
 
 # ── Build the selected service ────────────────────────────────────────────────

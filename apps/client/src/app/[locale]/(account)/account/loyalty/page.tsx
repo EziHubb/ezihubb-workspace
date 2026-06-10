@@ -3,6 +3,7 @@
 import { Star, Clock, TrendingUp, Tag } from 'lucide-react';
 import { Skeleton } from '@mlh/ui';
 import { useAuthQuery } from '../../../../../lib/hooks/useAuthQuery';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -107,7 +108,7 @@ function LoyaltySkeleton() {
 export default function LoyaltyPage() {
   const { data, isLoading } = useAuthQuery<LoyaltyAccount>(
     ['loyalty', 'me'],
-    '/loyalty/me',
+    API_ROUTES.LOYALTY.ME,
   );
 
   return (

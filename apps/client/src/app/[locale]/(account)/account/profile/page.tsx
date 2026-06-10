@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Camera, Eye, EyeOff } from 'lucide-react';
 import { queryKeys, useMutateProfile, apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { useToast } from '@mlh/ui';
 import type { UserDto } from '@mlh/types';
 import { useAuthQuery, useAuthMutation } from '../../../../../lib/hooks/useAuthQuery';
@@ -86,13 +87,13 @@ export default function ProfilePage() {
   // useAuthQuery: token-aware fetch that re-runs when the user logs in
   const { data: profile, isLoading } = useAuthQuery<UserDto>(
     queryKeys.profile(),
-    '/users/me',
+    API_ROUTES.USERS.ME,
   );
 
   // useAuthMutation for profile update — syncs auth store on success
   const updateProfileMutation = useAuthMutation(
     (dto: ProfileForm, token: string) =>
-      apiClient.patch<UserDto>('/users/me', dto, { token }),
+      apiClient.patch<UserDto>(API_ROUTES.USERS.ME, dto, { token }),
     {
       invalidateKeys: [queryKeys.profile()],
       onSuccess: (user: UserDto) => {

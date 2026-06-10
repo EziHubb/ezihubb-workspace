@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { buildAlternates } from '../../../lib/seo';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import type { CollectionDto, CategoryDto, ProductListItemDto, ReviewDto } from '@mlh/types';
 import type { PaginatedResponse } from '@mlh/types';
 import { HeroBanner } from '../../../components/home/HeroBanner';
@@ -46,16 +47,16 @@ export default async function HomePage({
   // All fetches in parallel — Promise.allSettled so a single failure never crashes the page
   const [trendingRes, collectionsRes, featuredRes, categoriesRes] =
     await Promise.allSettled([
-      apiClient.get<PaginatedResponse<ProductListItemDto>>('/products', {
+      apiClient.get<PaginatedResponse<ProductListItemDto>>(API_ROUTES.PRODUCTS.LIST, {
         params: { sort: 'bestseller', limit: 8, isActive: true },
       }),
-      apiClient.get<PaginatedResponse<CollectionDto>>('/collections', {
+      apiClient.get<PaginatedResponse<CollectionDto>>(API_ROUTES.CATALOG.COLLECTIONS, {
         params: { isActive: true, limit: 6 },
       }),
-      apiClient.get<PaginatedResponse<ReviewDto>>('/reviews', {
+      apiClient.get<PaginatedResponse<ReviewDto>>(API_ROUTES.REVIEWS.LIST, {
         params: { featured: true, limit: 3 },
       }),
-      apiClient.get<CategoryDto[]>('/categories', {
+      apiClient.get<CategoryDto[]>(API_ROUTES.CATALOG.CATEGORIES, {
         params: { level: 1 },
       }),
     ]);

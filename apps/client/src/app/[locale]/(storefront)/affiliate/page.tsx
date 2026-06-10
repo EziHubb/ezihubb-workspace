@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // Settings are fetched server-side and cached at the data level.
 // The storefront layout is force-dynamic, but the fetch itself
@@ -35,7 +36,7 @@ const FAQ = [
 
 export default async function AffiliateLandingPage() {
   const settings = await apiClient
-    .get<AffiliateSettings>('/affiliates/settings/public', {
+    .get<AffiliateSettings>(API_ROUTES.AFFILIATES.SETTINGS_PUBLIC, {
       next: { revalidate: 3600 },
     })
     .catch(() => null);
