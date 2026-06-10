@@ -29,10 +29,6 @@ RUN pnpm install --no-frozen-lockfile
 # ── Build the selected service ────────────────────────────────────────────────
 FROM deps AS builder
 
-# Which service to build: api | admin | client (set via Railway build arg)
-ARG SERVICE
-ENV RAILWAY_SERVICE_NAME=$SERVICE
-
 # Next.js bakes NEXT_PUBLIC_* into the client bundle at build time.
 # These are public values — safe to pass as ARG. Secrets must never appear here.
 ARG NEXT_PUBLIC_API_URL
