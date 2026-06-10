@@ -4,20 +4,20 @@ packages:
   - 'libs/shared/*'
   - 'packages/*'
 
-onlyBuiltDependencies:
-  - '@firebase/util'
-  - '@nestjs/core'
-  - '@parcel/watcher'
-  - '@prisma/engines'
-  - '@scarf/scarf'
-  - '@swc/core'
-  - bcrypt
-  - canvas
-  - esbuild
-  - less
-  - msgpackr-extract
-  - nx
-  - prisma
-  - protobufjs
-  - sharp
-  - unrs-resolver
+allowBuilds:
+  '@firebase/util': true
+  '@nestjs/core': true
+  '@parcel/watcher': true
+  '@prisma/engines': true
+  '@scarf/scarf': true
+  '@swc/core': true
+  bcrypt: true
+  canvas: true
+  esbuild: true
+  less: true
+  msgpackr-extract: true
+  nx: true
+  prisma: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true
