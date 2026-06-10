@@ -358,7 +358,7 @@ export class PaymentsService {
           id: payment.orderId,
           orderNumber: o.orderNumber,
           total: Number(o.total),
-          items: o.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+          items: o.items.map((i) => ({ productId: i.productId ?? '', quantity: i.quantity })),
         };
         return Promise.all([
           this.analyticsService.trackOrderConfirmed(orderData),

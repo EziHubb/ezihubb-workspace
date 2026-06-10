@@ -118,16 +118,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority:        0.5,
     })),
 
-    // ── Priority 0.4: Vietnamese locale equivalents (top 100 products) ─────
-    {
-      url:             `${BASE}/vi`,
-      changeFrequency: 'daily' as const,
-      priority:        0.4,
-    },
-    ...products.slice(0, 100).map((p) => ({
-      url:             `${BASE}/vi/products/${p.slug}`,
-      changeFrequency: 'weekly' as const,
-      priority:        0.4,
-    })),
+    // ── Priority 0.4: Vietnamese & Chinese locale equivalents (top 100 products) ─────
+    ...(['vi', 'zh'] as const).flatMap((locale) => [
+      {
+        url:             `${BASE}/${locale}`,
+        changeFrequency: 'daily' as const,
+        priority:        0.4,
+      },
+      ...products.slice(0, 100).map((p) => ({
+        url:             `${BASE}/${locale}/products/${p.slug}`,
+        changeFrequency: 'weekly' as const,
+        priority:        0.4,
+      })),
+    ]),
   ];
 }

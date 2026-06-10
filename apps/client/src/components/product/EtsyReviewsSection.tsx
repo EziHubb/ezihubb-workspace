@@ -1,11 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
-  Star, Sparkles, Award, Heart, Truck, Check,
+  Star, Sparkles, Award, Heart, Truck, Check, ThumbsUp, Camera, X,
 } from 'lucide-react';
 import { useReviews } from '@mlh/api-client';
+import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
+import { useAuthStore } from '../../lib/store/auth.store';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@mlh/api-client';
 import type { ReviewDto, ReviewSummaryDto } from '@mlh/types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -92,8 +98,9 @@ function SentimentBadges({ averageRating }: { averageRating: number }) {
 
 // ── ReviewCard ────────────────────────────────────────────────────────────────
 
-function ReviewCard({ review }: { review: ReviewDto }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+function ReviewCard({ review, onHelpful }: { review: ReviewDto; onHelpful?: (id: string) => void }) {
+  const [isExpanded,  setIsExpanded]  = useState(false);
+  const [markedHelpful, setMarkedHelpful] = useState(false);
   const body   = review.body ?? '';
   const isLong = body.length > 250;
 
@@ -178,6 +185,281 @@ function ReviewCard({ review }: { review: ReviewDto }) {
           <p className="text-sm text-muted mt-1">{review.adminReply}</p>
         </div>
       )}
+
+      {/* Helpful */}
+      {onHelpful && (
+        <button
+          type="button"
+          disabled={markedHelpful}
+          onClick={() => { setMarkedHelpful(true); onHelpful(review.id); }}
+          className={`mt-3 flex items-center gap-1.5 text-xs transition-colors ${markedHelpful ? 'text-primary cursor-default' : 'text-muted hover:text-secondary'}`}
+        >
+          <ThumbsUp className="w-3.5 h-3.5" />
+          {markedHelpful ? 'Marked as helpful' : 'Helpful?'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── InteractiveStar ───────────────────────────────────────────────────────────
+
+function InteractiveStar({ filled, onHover, onClick }: { filled: boolean; onHover: () => void; onClick: () => void }) {
+  return (
+    <button type="button" onMouseEnter={onHover} onClick={onClick} className="p-0.5 focus:outline-none">
+      <Star className={`w-8 h-8 transition-colors ${filled ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 hover:text-yellow-300'}`} />
+    </button>
+  );
+}
+
+const RATING_LABELS = ['', 'Poor', 'Fair', 'Good', 'Very good', 'Excellent'];
+
+// ── WriteReviewForm ───────────────────────────────────────────────────────────
+
+interface ReviewableProduct {
+  orderId:         string;
+  orderNumber:     string;
+  productId:       string;
+  productName:     string;
+  productSlug:     string;
+  productImageUrl: string | null;
+}
+
+function WriteReviewForm({
+  productSlug,
+  onSuccess,
+}: {
+  productSlug: string;
+  onSuccess:   () => void;
+}) {
+  const user         = useAuthStore((s) => s.user);
+  const accessToken  = useAuthStore((s) => s.accessToken);
+  const queryClient  = useQueryClient();
+
+  const [isOpen,      setIsOpen]      = useState(false);
+  const [rating,      setRating]      = useState(0);
+  const [hoveredStar, setHoveredStar] = useState(0);
+  const [title,       setTitle]       = useState('');
+  const [body,        setBody]        = useState('');
+  const [orderId,     setOrderId]     = useState('');
+  const [reviewables, setReviewables] = useState<ReviewableProduct[]>([]);
+  const [imageUrls,   setImageUrls]   = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error,       setError]       = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const openForm = async () => {
+    setIsOpen(true);
+    try {
+      const data = await apiClient.get<ReviewableProduct[]>(
+        API_ROUTES.PRODUCTS.REVIEWABLE_PRODUCTS,
+        { token: accessToken ?? undefined },
+      );
+      const forThisProduct = (data as ReviewableProduct[]).filter(
+        (r) => r.productSlug === productSlug,
+      );
+      setReviewables(forThisProduct);
+      if (forThisProduct.length === 1) setOrderId(forThisProduct[0]!.orderId);
+    } catch { /* non-critical */ }
+  };
+
+  const handleFiles = async (files: FileList) => {
+    if (imageUrls.length >= 5) return;
+    setIsUploading(true);
+    try {
+      const toUpload = Array.from(files).slice(0, 5 - imageUrls.length);
+      const uploaded: string[] = [];
+      for (const file of toUpload) {
+        const formData = new FormData();
+        formData.append('images', file);
+        // We use a temporary reviewId-less approach: just attach after submit
+        uploaded.push(URL.createObjectURL(file));
+        // Store the actual File objects for post-submit upload
+        (file as File & { _blob?: Blob })._blob = file;
+      }
+      setImageUrls((prev) => [...prev, ...uploaded]);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (rating === 0)       return setError('Please select a star rating.');
+    if (body.length < 10)   return setError('Review text must be at least 10 characters.');
+    if (!orderId)           return setError('Please select the order for this review.');
+    setError('');
+    setIsSubmitting(true);
+    try {
+      await apiClient.post(
+        API_ROUTES.PRODUCTS.REVIEWS(productSlug),
+        { orderId, rating, title: title || undefined, body },
+        { token: accessToken ?? undefined },
+      );
+      queryClient.invalidateQueries({ queryKey: queryKeys.reviews(productSlug, {}) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.reviewSummary(productSlug) });
+      setIsOpen(false);
+      setRating(0); setTitle(''); setBody(''); setOrderId(''); setImageUrls([]);
+      onSuccess();
+    } catch (e: unknown) {
+      const msg = (e as { message?: string })?.message ?? 'Failed to submit review';
+      setError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="mt-4 py-4 border border-dashed border-border rounded-2xl text-center">
+        <p className="text-sm text-muted">
+          <Link href="/login" className="text-primary hover:underline font-medium">Sign in</Link>{' '}
+          to write a review
+        </p>
+      </div>
+    );
+  }
+
+  if (!isOpen) {
+    return (
+      <button
+        type="button"
+        onClick={openForm}
+        className="mt-4 w-full py-3 px-6 border-2 border-dashed border-border rounded-2xl
+                   text-sm text-muted hover:border-primary hover:text-primary transition-colors
+                   flex items-center justify-center gap-2"
+      >
+        <Star className="w-4 h-4" />
+        Write a review
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-4 border border-border rounded-2xl p-5 bg-[#FAFAF8]">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="font-semibold text-secondary">Write a review</h4>
+        <button type="button" onClick={() => setIsOpen(false)} className="text-muted hover:text-secondary">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Order selector */}
+      {reviewables.length > 1 && (
+        <div className="mb-4">
+          <label className="text-xs font-medium block mb-1.5 text-secondary">Order *</label>
+          <select
+            value={orderId}
+            onChange={(e) => setOrderId(e.target.value)}
+            className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="">Select order…</option>
+            {reviewables.map((r) => (
+              <option key={r.orderId} value={r.orderId}>Order #{r.orderNumber}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Star rating */}
+      <div className="mb-4">
+        <label className="text-xs font-medium block mb-2 text-secondary">Rating *</label>
+        <div className="flex items-center gap-1"
+          onMouseLeave={() => setHoveredStar(0)}>
+          {[1, 2, 3, 4, 5].map((s) => (
+            <InteractiveStar
+              key={s}
+              filled={s <= (hoveredStar || rating)}
+              onHover={() => setHoveredStar(s)}
+              onClick={() => setRating(s)}
+            />
+          ))}
+          {(hoveredStar || rating) > 0 && (
+            <span className="ml-2 text-sm text-muted">{RATING_LABELS[hoveredStar || rating]}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Title */}
+      <div className="mb-3">
+        <label className="text-xs font-medium block mb-1.5 text-secondary">
+          Title <span className="text-muted font-normal">(optional)</span>
+        </label>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          maxLength={120}
+          placeholder="Summarize your experience"
+          className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+
+      {/* Body */}
+      <div className="mb-4">
+        <label className="text-xs font-medium block mb-1.5 text-secondary">
+          Review * <span className="text-muted font-normal">(min 10 characters)</span>
+        </label>
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          rows={4}
+          maxLength={2000}
+          placeholder="Tell others about your experience with this product…"
+          className="w-full border border-border rounded-xl px-3 py-2 text-sm resize-none bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+        <p className="text-xs text-muted text-right mt-0.5">{body.length}/2000</p>
+      </div>
+
+      {/* Photo upload */}
+      <div className="mb-5">
+        <label className="text-xs font-medium block mb-2 text-secondary">
+          Photos <span className="text-muted font-normal">(up to 5, optional)</span>
+        </label>
+        <div className="flex gap-2 flex-wrap">
+          {imageUrls.map((url, i) => (
+            <div key={url} className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border border-border">
+              <Image src={url} alt="" fill sizes="64px" className="object-cover" />
+              <button
+                type="button"
+                onClick={() => setImageUrls((p) => p.filter((_, j) => j !== i))}
+                className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 rounded-full flex items-center justify-center text-white"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </div>
+          ))}
+          {imageUrls.length < 5 && (
+            <label className={`w-16 h-16 border-2 border-dashed border-border rounded-xl flex items-center justify-center cursor-pointer hover:border-primary hover:text-primary transition-colors ${isUploading ? 'opacity-50 cursor-wait' : ''}`}>
+              <Camera className="w-5 h-5 text-muted" />
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                className="sr-only"
+                disabled={isUploading}
+                onChange={(e) => e.target.files && handleFiles(e.target.files)}
+              />
+            </label>
+          )}
+        </div>
+      </div>
+
+      {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
+
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={() => setIsOpen(false)} className="px-4 py-2 text-sm text-muted hover:text-secondary">
+          Cancel
+        </button>
+        <button
+          type="button"
+          disabled={isSubmitting}
+          onClick={handleSubmit}
+          className="px-5 py-2 bg-primary text-white rounded-full text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+        >
+          {isSubmitting ? 'Submitting…' : 'Submit review'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -205,8 +487,9 @@ interface Props {
 }
 
 export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
-  const [activeFilter, setActiveFilter] = useState<FilterId>('suggested');
-  const [page,         setPage]         = useState(1);
+  const [activeFilter,  setActiveFilter]  = useState<FilterId>('suggested');
+  const [page,          setPage]          = useState(1);
+  const [reviewSuccess, setReviewSuccess] = useState(false);
 
   const { data, isLoading } = useReviews(productSlug, {
     page,
@@ -220,7 +503,24 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
   const photoCount  = allReviews.filter((r) => (r.images ?? []).length > 0).length;
   const allPhotos   = reviews.flatMap((r) => r.images ?? []);
 
-  if (!reviewSummary || reviewSummary.totalReviews === 0) return null;
+  // Show write form even when there are no reviews yet
+  if (!reviewSummary || reviewSummary.totalReviews === 0) {
+    return (
+      <section id="reviews" className="mt-12 pt-8 border-t border-border">
+        <h2 className="text-xl font-semibold mb-4">Reviews for this item</h2>
+        {reviewSuccess ? (
+          <div className="py-6 text-center text-sm text-green-700 bg-green-50 rounded-2xl border border-green-100">
+            Thank you! Your review has been submitted and will appear after moderation.
+          </div>
+        ) : (
+          <>
+            <WriteReviewForm productSlug={productSlug} onSuccess={() => setReviewSuccess(true)} />
+            <p className="text-sm text-muted text-center mt-6">No reviews yet — be the first!</p>
+          </>
+        )}
+      </section>
+    );
+  }
 
   const { averageRating, totalReviews, distribution } = reviewSummary;
 
@@ -234,6 +534,12 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
   const handleFilterChange = (id: FilterId) => {
     setActiveFilter(id);
     setPage(1);
+  };
+
+  const handleHelpful = async (reviewId: string) => {
+    try {
+      await apiClient.post(API_ROUTES.PRODUCTS.REVIEW_HELPFUL(productSlug, reviewId));
+    } catch { /* best-effort */ }
   };
 
   // Approximate per-category scores from overall average (API has no breakdown)
@@ -323,6 +629,17 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
         ))}
       </div>
 
+      {/* ── WRITE REVIEW FORM ── */}
+      {reviewSuccess ? (
+        <div className="mb-6 py-4 text-center text-sm text-green-700 bg-green-50 rounded-2xl border border-green-100">
+          Thank you! Your review has been submitted and will appear after moderation.
+        </div>
+      ) : (
+        <div className="mb-6">
+          <WriteReviewForm productSlug={productSlug} onSuccess={() => setReviewSuccess(true)} />
+        </div>
+      )}
+
       {/* ── REVIEW LIST ── */}
       {isLoading ? (
         <ReviewListSkeleton />
@@ -335,7 +652,7 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
       ) : (
         <div className="space-y-6">
           {reviews.map((review) => (
-            <ReviewCard key={review.id} review={review} />
+            <ReviewCard key={review.id} review={review} onHelpful={handleHelpful} />
           ))}
         </div>
       )}

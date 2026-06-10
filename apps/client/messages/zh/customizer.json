@@ -1,0 +1,70 @@
+{
+  "step1": {
+    "title": "添加姓名和文字",
+    "desc": "用姓名、日期或心意满满的留言进行个性化定制。"
+  },
+  "step2": {
+    "title": "上传照片",
+    "desc": "添加个人照片，让这份礼物真正独一无二。",
+    "uploadZone": {
+      "title": "点击上传",
+      "subtitle": "或拍摄照片",
+      "hint": "JPG · PNG · HEIC，最大 10MB"
+    },
+    "uploading": "上传中... {progress}%",
+    "ready": "已就绪",
+    "removeBg": {
+      "button": "移除背景",
+      "processing": "✨ 正在移除背景...",
+      "processingHint": "通常需要 5–10 秒",
+      "cancel": "取消",
+      "done": "背景已移除 ✓",
+      "undo": "撤销"
+    },
+    "replace": "更换",
+    "skip": "跳过此步骤 →",
+    "noPhoto": "没有照片？"
+  },
+  "step3": {
+    "title": "选择风格",
+    "desc": "为您的照片选择艺术风格，赋予独特魅力。",
+    "generatePreview": "👁 生成预览",
+    "generateHint": "查看实际效果（约20秒）",
+    "generating": "正在生成预览…",
+    "generatingHint": "请保持页面打开",
+    "lookingGood": "效果不错！✨",
+    "regenerate": "重新生成"
+  },
+  "topBar": {
+    "preview": "预览",
+    "stepLabel": "{name}"
+  },
+  "addToCart": {
+    "button": "加入购物车 🛍",
+    "adding": "添加中…",
+    "success": "已加入购物车！🛍",
+    "missingFields": "请填写：{fields}",
+    "viewCart": "查看购物车"
+  },
+  "unsavedChanges": {
+    "title": "离开而不保存？",
+    "confirm": "如果现在离开，您的定制内容将会丢失。",
+    "stay": "留下",
+    "leave": "离开"
+  },
+  "steps": {
+    "step1": "添加姓名和文字",
+    "step2": "上传照片",
+    "step3": "选择风格"
+  },
+  "progress": "步骤 {current} / {total}",
+  "continue": "继续 →",
+  "back": "← 返回",
+  "bundle": {
+    "tabLabel": "{item} 专属...",
+    "itemTab": "商品 {n}",
+    "complete": "已完成",
+    "incomplete": "缺少必填项",
+    "priceNote": "整套价格"
+  }
+}

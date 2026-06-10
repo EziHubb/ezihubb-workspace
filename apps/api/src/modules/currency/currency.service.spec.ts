@@ -15,17 +15,11 @@ describe('CurrencyService', () => {
 
   const cachedRates: ExchangeRates = {
     USD: 1,
-    EUR: 0.91,
-    GBP: 0.78,
-    CAD: 1.36,
     VND: 25300,
   };
 
   const apiRates: ExchangeRates = {
     USD: 1,
-    EUR: 0.93,
-    GBP: 0.80,
-    CAD: 1.38,
     VND: 25600,
   };
 
@@ -70,7 +64,7 @@ describe('CurrencyService', () => {
         'https://open.er-api.com/v6/latest/USD',
         expect.any(Object),
       );
-      expect(result.EUR).toBe(apiRates.EUR);
+      expect(result.VND).toBe(apiRates.VND);
       expect(mockRedis.set).toHaveBeenCalledWith(
         'exchange-rates:usd-base',
         expect.objectContaining({ USD: 1 }),
@@ -90,8 +84,7 @@ describe('CurrencyService', () => {
 
       // Fallback rates are hardcoded; USD must always be 1
       expect(result.USD).toBe(1);
-      expect(result).toHaveProperty('EUR');
-      expect(result).toHaveProperty('GBP');
+      expect(result).toHaveProperty('VND');
     });
 
     it('returns fallback rates when fetch throws (network error)', async () => {
@@ -105,22 +98,9 @@ describe('CurrencyService', () => {
     });
   });
 
-  // ─── convert ─────────────────────────────────────────────────────────────────
-  // CurrencyService does not expose a convert() method directly — conversion
-  // is computed client-side via the rates returned by getRates().
-  // The tests below verify the rate multiplier logic directly on the returned rates.
+  // ─── rate multiplier ─────────────────────────────────────────────────────────
 
   describe('rate multiplier (convert)', () => {
-    it('applies EUR rate correctly against a USD base amount', async () => {
-      mockRedis.get.mockResolvedValue(cachedRates);
-
-      const rates = await service.getRates();
-      const usdAmount = 100;
-      const converted = usdAmount * rates.EUR;
-
-      expect(converted).toBeCloseTo(91, 0);
-    });
-
     it('applies VND rate correctly against a USD base amount', async () => {
       mockRedis.get.mockResolvedValue(cachedRates);
 

@@ -1,0 +1,6 @@
+{
+  "notFound": "页面未找到",
+  "serverError": "出错了",
+  "networkError": "网络连接错误",
+  "unauthorized": "请登录后继续"
+}

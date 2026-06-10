@@ -1,0 +1,18 @@
+{
+  "shopAll": "全部商品",
+  "collections": "系列",
+  "occasions": "场合",
+  "giftCards": "礼品卡",
+  "login": "登录",
+  "search": "搜索",
+  "wishlist": "心愿单",
+  "cart": "购物车",
+  "account": "我的账户",
+  "home": "首页",
+  "toggleMenu": "切换菜单",
+  "allProducts": "全部商品",
+  "viewAll": "查看全部 {category}",
+  "megaMenu": {
+    "ariaLabel": "商品分类"
+  }
+}

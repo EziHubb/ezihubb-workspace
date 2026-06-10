@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '../../common/services/redis.service';
 
-const SUPPORTED = ['USD', 'EUR', 'GBP', 'CAD', 'VND'] as const;
+const SUPPORTED = ['USD', 'VND'] as const;
 const CACHE_KEY = 'exchange-rates:usd-base';
 const CACHE_TTL = 24 * 60 * 60; // 24h
 
@@ -9,9 +9,6 @@ export type SupportedCurrency = (typeof SUPPORTED)[number];
 
 export interface ExchangeRates {
   USD: number;
-  EUR: number;
-  GBP: number;
-  CAD: number;
   VND: number;
   [key: string]: number;
 }
@@ -54,16 +51,13 @@ export class CurrencyService {
   }
 
   private getFallbackRates(): ExchangeRates {
-    return { USD: 1, EUR: 0.92, GBP: 0.79, CAD: 1.37, VND: 25450 };
+    return { USD: 1, VND: 25450 };
   }
 
   getSupportedCurrencies() {
     return [
-      { code: 'USD', symbol: '$',   name: 'US Dollar',       flag: '🇺🇸' },
-      { code: 'EUR', symbol: '€',   name: 'Euro',            flag: '🇪🇺' },
-      { code: 'GBP', symbol: '£',   name: 'British Pound',   flag: '🇬🇧' },
-      { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar', flag: '🇨🇦' },
-      { code: 'VND', symbol: '₫',   name: 'Vietnamese Dong', flag: '🇻🇳' },
+      { code: 'USD', symbol: '$', name: 'US Dollar',       flag: '🇺🇸' },
+      { code: 'VND', symbol: '₫', name: 'Vietnamese Dong', flag: '🇻🇳' },
     ];
   }
 }

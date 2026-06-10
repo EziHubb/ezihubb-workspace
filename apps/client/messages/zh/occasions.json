@@ -1,0 +1,18 @@
+{
+  "pageTitle": "按场合选购",
+  "pageSubtitle": "为每一个特别时刻找到个性化礼品。",
+  "hero": {
+    "eyebrow": "寻找完美礼品"
+  },
+  "card": {
+    "productCount": "{count, plural, one {# 款个性化礼品} other {# 款个性化礼品}}",
+    "shopNow": "立即选购"
+  },
+  "cta": {
+    "title": "找不到您的场合？",
+    "desc": "浏览我们全部的个性化礼品，或联系我们定制专属订单。",
+    "browse": "浏览全部礼品",
+    "contact": "联系我们"
+  },
+  "empty": "暂无可用场合。"
+}

@@ -1,0 +1,20 @@
+{
+  "hero": {
+    "eyebrow": "系列",
+    "productCount": "{count, plural, one {# 件商品} other {# 件商品}}"
+  },
+  "urgency": "本系列将于 {date} 结束 — 抓紧购买！",
+  "related": "更多系列",
+  "breadcrumb": {
+    "collections": "系列"
+  },
+  "notFound": {
+    "title": "系列未找到",
+    "description": "该系列可能已结束或不存在。"
+  },
+  "all": {
+    "title": "全部系列",
+    "subtitle": "探索适合各种场合和季节的精选礼品系列。",
+    "empty": "暂无系列。"
+  }
+}

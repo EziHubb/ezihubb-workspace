@@ -12,6 +12,9 @@ export class ProductListItemDto {
   @ApiProperty() categoryName: string;
   @ApiProperty() isPersonalizable: boolean;
   @ApiProperty() isFeatured: boolean;
+  @ApiProperty() isActive: boolean;
+  @ApiProperty() status: string;
+  @ApiPropertyOptional() quantity: number | null;
   @ApiProperty() viewCount: number;
   @ApiProperty() soldCount: number;
   @ApiPropertyOptional() averageRating: number | null;

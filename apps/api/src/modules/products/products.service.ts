@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Prisma, OrderStatus } from '@prisma/client';
+import { Prisma, OrderStatus, ProductStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   RedisService,
@@ -37,6 +37,7 @@ import {
   PaginatedResult,
   paginatedResponse,
 } from '../../common/dto/paginated-response.dto';
+import { AutoTranslateService } from '../translations/auto-translate.service';
 
 const IN_DEMAND_KEY = (productId: string) => `product:demand:${productId}`;
 const VIEW_LOCK_KEY = (slug: string, lockId: string) =>
@@ -59,6 +60,7 @@ export class ProductsService {
     private readonly analyticsService: AnalyticsService,
     @InjectModel(ProductDetail.name)
     private readonly productDetailModel: Model<ProductDetail>,
+    private readonly autoTranslate: AutoTranslateService,
   ) {}
 
   // ─── Public — list ─────────────────────────────────────────────────────────
@@ -129,6 +131,9 @@ export class ProductsService {
           categoryName: p.category.name,
           isPersonalizable: p.isPersonalizable,
           isFeatured: p.isFeatured,
+          isActive: p.isActive,
+          status: p.status,
+          quantity: p.quantity,
           viewCount: p.viewCount,
           soldCount: p.soldCount,
           averageRating: ratingMap.get(p.id) ?? null,
@@ -139,6 +144,17 @@ export class ProductsService {
     );
 
     return paginatedResponse<ProductListItemDto>(data, page, limit, total);
+  }
+
+  async getStats(): Promise<{ all: number; active: number; draft: number; inactive: number; archived: number }> {
+    const [all, active, draft, inactive, archived] = await Promise.all([
+      this.prisma.product.count(),
+      this.prisma.product.count({ where: { status: ProductStatus.ACTIVE } }),
+      this.prisma.product.count({ where: { status: ProductStatus.DRAFT } }),
+      this.prisma.product.count({ where: { status: ProductStatus.INACTIVE } }),
+      this.prisma.product.count({ where: { status: ProductStatus.ARCHIVED } }),
+    ]);
+    return { all, active, draft, inactive, archived };
   }
 
   // ─── Public — detail ───────────────────────────────────────────────────────
@@ -393,6 +409,14 @@ export class ProductsService {
 
     await this.redis.invalidatePattern('products:list:*');
 
+    // Trigger background auto-translation (non-blocking)
+    this.autoTranslate.triggerTranslation('Product', product.id, {
+      name:           product.name,
+      description:    product.description ?? '',
+      seoTitle:       (product as Record<string, unknown>)['seoTitle'] as string ?? '',
+      seoDescription: (product as Record<string, unknown>)['seoDescription'] as string ?? '',
+    });
+
     // Write flexible detail to MongoDB (non-blocking — PG product is the source of truth)
     this.productDetailModel
       .findOneAndUpdate(
@@ -516,6 +540,17 @@ export class ProductsService {
 
     await this.redis.invalidatePattern('products:list:*');
     await this.redis.del(CacheKeys.product(product.slug));
+
+    // Trigger background auto-translation if translatable fields changed
+    const hasTextChange = dto.name !== undefined || dto.description !== undefined;
+    if (hasTextChange) {
+      this.autoTranslate.triggerTranslation('Product', product.id, {
+        name:           product.name,
+        description:    product.description ?? '',
+        seoTitle:       (product as Record<string, unknown>)['seoTitle'] as string ?? '',
+        seoDescription: (product as Record<string, unknown>)['seoDescription'] as string ?? '',
+      });
+    }
 
     const inDemandCount =
       (await this.redis.get<number>(IN_DEMAND_KEY(id))) ?? 0;
@@ -1301,6 +1336,7 @@ export class ProductsService {
       ? (query.isActive ?? undefined)
       : true;
     if (query.isFeatured !== undefined) where.isFeatured = query.isFeatured;
+    if (query.status) where.status = query.status;
 
     if (query.categoryId) {
       where.categoryId = query.categoryId;
@@ -1432,6 +1468,9 @@ export class ProductsService {
       category: { id: string; name: string; slug: string };
       isPersonalizable: boolean;
       isFeatured: boolean;
+      isActive: boolean;
+      status: string;
+      quantity: number | null;
       viewCount: number;
       soldCount: number;
       _count: { reviews: number };
@@ -1473,6 +1512,9 @@ export class ProductsService {
       categoryName: p.category.name,
       isPersonalizable: p.isPersonalizable,
       isFeatured: p.isFeatured,
+      isActive: p.isActive,
+      status: p.status,
+      quantity: p.quantity,
       viewCount: p.viewCount,
       soldCount: p.soldCount,
       averageRating: ratingMap.get(p.id) ?? null,

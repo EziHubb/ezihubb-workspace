@@ -283,8 +283,7 @@ function StoreTab() {
             <select value={t('currency', 'USD') as string} onChange={(e) => setTax((s) => ({ ...s, currency: e.target.value }))}
               className={inputCls}>
               <option value="USD">USD — US Dollar</option>
-              <option value="CAD" disabled>CAD — Canadian Dollar (coming soon)</option>
-              <option value="EUR" disabled>EUR — Euro (coming soon)</option>
+              <option value="VND">VND — Vietnamese Dong</option>
             </select>
           </div>
           <div>

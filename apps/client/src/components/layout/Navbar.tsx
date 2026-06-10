@@ -18,6 +18,7 @@ import { SearchInput } from '../search/SearchInput';
 import { MegaMenu } from './MegaMenu';
 import { MobileNavDrawer } from './MobileNavDrawer';
 import { CurrencyPicker } from './CurrencyPicker';
+import { LocaleSwitcher } from './LocaleSwitcher';
 import type { MegaMenuTab } from '../../types/mega-menu';
 
 // ── Badge ─────────────────────────────────────────────────────────────────────
@@ -244,8 +245,9 @@ export function Navbar({ menuData }: NavbarProps = {}) {
                 <Search className="w-5 h-5 text-secondary" />
               </Link>
 
-              {/* Currency picker — desktop only */}
-              <div className="hidden md:block">
+              {/* Language + Currency pickers — desktop only */}
+              <div className="hidden md:flex items-center gap-0.5">
+                <LocaleSwitcher />
                 <CurrencyPicker />
               </div>
 

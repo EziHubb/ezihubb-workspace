@@ -3,7 +3,7 @@ import { OrderStatus, PaymentStatus } from '@prisma/client';
 
 export class OrderItemDto {
   @ApiProperty() id: string;
-  @ApiProperty() productId: string;
+  @ApiPropertyOptional() productId: string | null;
   @ApiPropertyOptional() variantId: string | null;
   @ApiProperty() productName: string;
   @ApiPropertyOptional() variantName: string | null;

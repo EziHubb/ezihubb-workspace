@@ -1,0 +1,62 @@
+{
+  "title": "购物车",
+  "itemCount": "{count, plural, one {# 件商品} other {# 件商品}}",
+
+  "empty": {
+    "heading": "您的购物车是空的",
+    "description": "您还没有添加任何商品。浏览我们的个性化礼品系列，找到您心仪的商品。",
+    "startShopping": "开始购物",
+    "refresh": "刷新"
+  },
+
+  "drawer": {
+    "title": "我的购物车",
+    "close": "关闭购物车",
+    "empty": "您的购物车是空的",
+    "browseProducts": "浏览商品 →",
+    "subtotal": "小计",
+    "shippingNote": "运费在结账时计算",
+    "checkout": "结账 — ${amount}",
+    "discount": "优惠（{couponCode}）"
+  },
+
+  "item": {
+    "remove": "移除 {name}",
+    "decreaseQty": "减少数量",
+    "increaseQty": "增加数量",
+    "priceUpdated": "价格已更新"
+  },
+
+  "summary": {
+    "title": "订单摘要",
+    "subtotal": "小计（{count, plural, one {# 件商品} other {# 件商品}}）",
+    "shipping": "运费",
+    "shippingCalculated": "在结账时计算",
+    "discount": "优惠",
+    "estimatedTotal": "预计总金额",
+    "couponPlaceholder": "优惠券码",
+    "applyCoupon": "使用",
+    "removeCoupon": "移除优惠券",
+    "proceedToCheckout": "前往结账"
+  },
+
+  "trust": {
+    "secure": "安全支付",
+    "freeShipping": "满$50免运费",
+    "returns": "30天退换"
+  },
+
+  "priceChanged": {
+    "banner": "价格已更新",
+    "detail": "价格从 {oldPrice} 变更为 {newPrice}。购物车已更新。"
+  },
+
+  "continueShopping": "← 继续购物",
+
+  "errors": {
+    "couponInvalid": "优惠券码无效或已过期。",
+    "couponAlreadyUsed": "您已使用过此优惠券。",
+    "couponMinOrder": "最低订单金额为 ${amount}。",
+    "couponGeneric": "无法使用优惠券，请重试。"
+  }
+}

@@ -150,6 +150,13 @@ export class AdminProductsController {
     private readonly auditLog: AuditLogService,
   ) {}
 
+  // GET /admin/products/stats — must be declared before :id routes
+  @Get('stats')
+  @ApiOperation({ summary: '[Admin] Product status counts for sidebar' })
+  getStats() {
+    return this.productsService.getStats();
+  }
+
   // GET /admin/products
   @Get()
   @ApiOperation({ summary: '[Admin] List products (includes inactive)' })

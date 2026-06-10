@@ -8,11 +8,8 @@ const CURRENCY_COOKIE = 'mlh_currency';
 const CURRENCY_LS_KEY = 'mlh_currency';
 
 const CURRENCIES = {
-  USD: { symbol: '$',   decimals: 2, flag: '🇺🇸', name: 'US Dollar'       },
-  EUR: { symbol: '€',   decimals: 2, flag: '🇪🇺', name: 'Euro'            },
-  GBP: { symbol: '£',   decimals: 2, flag: '🇬🇧', name: 'British Pound'   },
-  CAD: { symbol: 'CA$', decimals: 2, flag: '🇨🇦', name: 'Canadian Dollar' },
-  VND: { symbol: '₫',   decimals: 0, flag: '🇻🇳', name: 'Vietnamese Dong' },
+  USD: { symbol: '$', decimals: 2, flag: '🇺🇸', name: 'US Dollar'       },
+  VND: { symbol: '₫', decimals: 0, flag: '🇻🇳', name: 'Vietnamese Dong' },
 } as const;
 
 export type CurrencyCode = keyof typeof CURRENCIES;

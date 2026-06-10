@@ -58,7 +58,7 @@ export class LowStockService {
 
     for (const item of order.items) {
       const { product } = item;
-      if (!product.trackInventory || product.quantity === null) continue;
+      if (!product || !product.trackInventory || product.quantity === null) continue;
       if (processed.has(product.id)) continue;
       processed.add(product.id);
 

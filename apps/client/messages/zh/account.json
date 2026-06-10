@@ -1,0 +1,140 @@
+{
+  "orders": {
+    "title": "我的订单",
+    "filterLabel": "按状态筛选订单",
+    "tabs": {
+      "all": "全部",
+      "pending": "待处理",
+      "inProduction": "制作中",
+      "shipped": "已发货",
+      "delivered": "已签收",
+      "cancelled": "已取消"
+    },
+    "empty": {
+      "noOrders": "暂无订单",
+      "noOrdersFiltered": "该状态下暂无订单。",
+      "noOrdersPlaced": "您还没有下过任何订单。",
+      "shopNow": "立即购物"
+    },
+    "count": "{total, plural, one {# 个订单} other {# 个订单}}",
+    "actions": {
+      "viewDetails": "查看详情",
+      "trackOrder": "追踪订单"
+    }
+  },
+
+  "profile": {
+    "title": "个人资料与密码",
+    "sections": {
+      "profileInformation": "个人信息",
+      "changePassword": "修改密码"
+    },
+    "avatar": {
+      "changePhoto": "更换照片",
+      "savePhoto": "保存照片",
+      "uploading": "上传中…",
+      "cancel": "取消",
+      "hint": "JPG、PNG、WebP · 最大 5 MB",
+      "changeAriaLabel": "更换头像",
+      "uploadAriaLabel": "上传头像"
+    },
+    "fields": {
+      "firstName": "名",
+      "lastName": "姓",
+      "email": "邮箱",
+      "emailVerified": "✓ 已验证",
+      "emailReadonly": "邮箱不可更改。如需帮助，请联系客服。",
+      "phone": "手机号"
+    },
+    "password": {
+      "currentPassword": "当前密码",
+      "newPassword": "新密码",
+      "confirmPassword": "确认新密码",
+      "strength": {
+        "tooWeak": "太弱",
+        "weak": "弱",
+        "fair": "一般",
+        "strong": "强",
+        "veryStrong": "非常强"
+      }
+    },
+    "buttons": {
+      "saveChanges": "保存更改",
+      "saving": "保存中…",
+      "updatePassword": "更新密码",
+      "updating": "更新中…"
+    }
+  },
+
+  "addresses": {
+    "title": "地址簿",
+    "addAddress": "添加地址",
+    "addNewAddress": "添加新地址",
+    "limitReached": "您已达到最多 {max} 个地址的上限。",
+    "empty": {
+      "noAddresses": "暂无保存的地址",
+      "hint": "添加地址可加快结账速度。"
+    },
+    "modal": {
+      "editTitle": "编辑地址",
+      "addTitle": "添加新地址",
+      "close": "关闭"
+    },
+    "fields": {
+      "label": "标签（选填）",
+      "labelPlaceholder": "家、公司…",
+      "firstName": "名",
+      "lastName": "姓",
+      "phone": "手机号",
+      "address": "地址",
+      "addressPlaceholder": "123 主街",
+      "apt": "公寓、套房（选填）",
+      "city": "城市",
+      "state": "省/州",
+      "zip": "邮编",
+      "country": "国家/地区",
+      "setDefault": "设为默认地址"
+    },
+    "badge": {
+      "default": "默认"
+    },
+    "actions": {
+      "edit": "编辑",
+      "setDefault": "设为默认",
+      "delete": "删除",
+      "cancel": "取消",
+      "save": "保存地址",
+      "saving": "保存中…"
+    }
+  },
+
+  "loyalty": {
+    "title": "积分",
+    "subtitle": "每消费 $1 获得 10 积分。兑换 100 积分 = 下单立减 $1。",
+    "stats": {
+      "availableBalance": "可用余额",
+      "pending": "待解锁（14天锁定）",
+      "pendingUnlock": "签收后14天解锁",
+      "lifetimeEarned": "累计获得"
+    },
+    "howItWorks": {
+      "title": "积分规则",
+      "earn": "每笔订单消费 $1 获得 {points} 积分。",
+      "lock": "积分在签收后14天内锁定。",
+      "redeem": "结账时兑换 — 100积分 = 立减$1，最少需要100积分。",
+      "cap": "积分抵扣不得超过订单总额的50%。",
+      "cancel": "订单退款后积分将被取消。"
+    },
+    "history": {
+      "title": "交易记录",
+      "empty": "暂无交易记录。下第一单即可开始积累积分！",
+      "types": {
+        "EARN": "获得积分",
+        "REDEEM": "兑换积分",
+        "CANCEL": "积分取消",
+        "EXPIRE": "积分过期",
+        "ADJUST": "手动调整"
+      }
+    }
+  }
+}

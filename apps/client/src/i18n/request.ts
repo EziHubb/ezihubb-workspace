@@ -15,6 +15,9 @@ const NAMESPACES = [
   'collections',
   'occasions',
   'product',
+  'cart',
+  'checkout',
+  'account',
 ] as const;
 
 export default getRequestConfig(async ({ requestLocale }) => {

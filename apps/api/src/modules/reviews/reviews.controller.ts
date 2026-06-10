@@ -15,7 +15,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ReviewsService } from './reviews.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { ReviewQueryDto } from './dto/review-query.dto';
@@ -46,6 +46,17 @@ export class ReviewsController {
   @ApiOperation({ summary: 'Get review summary (average rating, distribution) for a product' })
   async getSummary(@Param('slug') slug: string): Promise<ReviewSummaryDto> {
     return this.reviewsService.getProductSummaryBySlug(slug);
+  }
+
+  @Get('my-review')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Get the current user's own review for this product (null if not reviewed)" })
+  async getMyReview(
+    @Param('slug') slug: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<ReviewResponseDto | null> {
+    return this.reviewsService.getMyReview(user.sub, slug);
   }
 
   @Post()
@@ -79,6 +90,13 @@ export class ReviewsController {
     @CurrentUser() user: JwtPayload,
   ): Promise<void> {
     return this.reviewsService.deleteReview(user.sub, reviewId);
+  }
+
+  @Post(':reviewId/helpful')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Mark a review as helpful (anonymous, one increment per call)' })
+  async markHelpful(@Param('reviewId') reviewId: string): Promise<void> {
+    return this.reviewsService.markHelpful(reviewId);
   }
 
   @Post(':reviewId/images')

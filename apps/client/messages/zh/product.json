@@ -1,0 +1,64 @@
+{
+  "actions": {
+    "addToCart": "加入购物车",
+    "adding": "添加中…",
+    "selectOptions": "请选择选项以继续",
+    "personalize": "立即个性化定制",
+    "addToWishlist": "加入心愿单",
+    "removeFromWishlist": "从心愿单移除",
+    "addPersonalization": "添加个性化内容",
+    "quantity": "数量"
+  },
+  "starSeller": {
+    "title": "明星卖家",
+    "description": "该卖家持续获得5星好评，按时发货，并快速回复所有消息。"
+  },
+  "personalization": {
+    "comingSoon": "个性化功能即将上线",
+    "notifyMe": "上线时通知我",
+    "notified": "上线后我们会给您发送邮件！"
+  },
+  "tabs": {
+    "description": "商品描述",
+    "specifications": "规格参数",
+    "sizeGuide": "尺寸指南",
+    "shipping": "配送与退换",
+    "reviews": "评价"
+  },
+  "specs": {
+    "title": "商品详情",
+    "material": "材质",
+    "dimensions": "尺寸",
+    "care": "保养说明"
+  },
+  "highlights": {
+    "title": "产品亮点"
+  },
+  "shipping": {
+    "production": "制作时间",
+    "businessDays": "{n} 个工作日",
+    "cancellation": "下单后2小时内可取消",
+    "returns": "个性化定制商品不支持退换，除非存在质量问题"
+  },
+  "variants": {
+    "sizeGuide": "尺寸指南",
+    "unavailable": "暂无库存",
+    "colorLabel": "颜色：{color}",
+    "shapeLabel": "形状：{shape}",
+    "modelLabel": "型号：{model}",
+    "outOfStock": "该组合暂时缺货",
+    "selectOption": "选择 {name}"
+  },
+  "sizeGuide": {
+    "title": "尺寸指南",
+    "apparel": {
+      "note": "尺寸以英寸为单位。宽松版型请选大一码。"
+    },
+    "canvas": {
+      "note": "所有画布印刷品均已做画廊装裱处理，可直接挂墙。"
+    },
+    "drinkware": {
+      "note": "所有陶瓷马克杯均可用洗碗机清洗，可微波加热。"
+    }
+  }
+}

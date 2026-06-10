@@ -44,8 +44,8 @@ function makeQueryClient() {
     }),
     defaultOptions: {
       queries: {
-        staleTime:            30_000,
-        gcTime:               5 * 60_000,
+        staleTime:            5 * 60_000,   // 5 min — navigating back won't refetch
+        gcTime:               10 * 60_000,  // 10 min — keep unused data in memory
         retry:                shouldRetry,
         retryDelay,
         refetchOnWindowFocus: false,

@@ -1,0 +1,47 @@
+{
+  "title": "结账",
+  "currencyNote": "显示的价格为参考换算价格，您的银行卡将以 {currency} 结算。",
+
+  "steps": {
+    "shipping": "配送信息",
+    "delivery": "配送方式",
+    "payment": "支付"
+  },
+
+  "stepHeadings": {
+    "shippingInformation": "配送信息",
+    "deliveryMethod": "配送方式",
+    "payment": "支付"
+  },
+
+  "orderSummary": {
+    "title": "订单摘要",
+    "show": "显示订单摘要",
+    "hide": "隐藏订单摘要",
+    "subtotal": "小计",
+    "shipping": "运费",
+    "free": "免费",
+    "discount": "优惠（{couponCode}）",
+    "referralDiscount": "推荐折扣",
+    "loyaltyPoints": "积分兑换",
+    "giftWrapping": "礼品包装",
+    "tax": "税费",
+    "taxWithJurisdiction": "税费（{jurisdiction}）",
+    "total": "合计"
+  },
+
+  "loyaltyPoints": {
+    "sectionTitle": "使用积分（可用 {balance} 积分）",
+    "remove": "移除",
+    "conversionHint": "100积分 = 优惠$1",
+    "discount": "立减 ${amount}"
+  },
+
+  "priceChanged": {
+    "title": "您加入购物车后商品价格有所变动"
+  },
+
+  "errors": {
+    "createOrderFailed": "创建订单失败，请重试。"
+  }
+}

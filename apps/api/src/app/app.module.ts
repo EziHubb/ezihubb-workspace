@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { BullModule } from '@nestjs/bullmq';
 import * as Joi from 'joi';
 import { AppController } from './app.controller';
@@ -39,6 +39,8 @@ import { AffiliatesModule } from '../modules/affiliates/affiliates.module';
 import { LoyaltyModule } from '../modules/loyalty/loyalty.module';
 import { CurrencyModule } from '../modules/currency/currency.module';
 import { UnsubscribeController } from '../modules/unsubscribe/unsubscribe.controller';
+import { TranslationsModule } from '../modules/translations/translations.module';
+import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
 
 @Module({
   imports: [
@@ -136,6 +138,7 @@ import { UnsubscribeController } from '../modules/unsubscribe/unsubscribe.contro
     AffiliatesModule,
     LoyaltyModule,
     CurrencyModule,
+    TranslationsModule,
     HealthModule,
   ],
   controllers: [AppController, UnsubscribeController],
@@ -143,6 +146,8 @@ import { UnsubscribeController } from '../modules/unsubscribe/unsubscribe.contro
     AppService,
     // Apply ThrottlerGuard globally — endpoints opt out via @SkipThrottle()
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Apply I18nInterceptor globally — translates responses based on Accept-Language
+    { provide: APP_INTERCEPTOR, useClass: I18nInterceptor },
   ],
 })
 export class AppModule {}

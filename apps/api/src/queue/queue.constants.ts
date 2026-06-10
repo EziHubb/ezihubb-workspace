@@ -7,6 +7,7 @@ export const QUEUES = {
   AFFILIATE_COMMISSION: 'affiliate-commission',
   LOYALTY:              'loyalty',
   LOW_STOCK:            'low-stock',
+  TRANSLATIONS:         'translations',
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
@@ -35,6 +36,9 @@ export const JOBS = {
 
   // Low stock
   DAILY_LOW_STOCK_SCAN: 'daily-low-stock-scan',
+
+  // Translations
+  TRANSLATE_ENTITY: 'translate-entity',
 } as const;
 
 export type JobName = (typeof JOBS)[keyof typeof JOBS];

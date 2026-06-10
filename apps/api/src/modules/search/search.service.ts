@@ -516,6 +516,9 @@ export class SearchService {
       category: { id: string; name: string; slug: string };
       isPersonalizable: boolean;
       isFeatured: boolean;
+      isActive: boolean;
+      status: string;
+      quantity: number | null;
       viewCount: number;
       soldCount: number;
       _count: { reviews: number };
@@ -535,6 +538,9 @@ export class SearchService {
         categoryName: p.category.name,
         isPersonalizable: p.isPersonalizable,
         isFeatured: p.isFeatured,
+        isActive: p.isActive,
+        status: p.status,
+        quantity: p.quantity,
         viewCount: p.viewCount,
         soldCount: p.soldCount,
         averageRating: null,

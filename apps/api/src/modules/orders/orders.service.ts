@@ -46,10 +46,15 @@ const CART_INCLUDE_FOR_CHECKOUT = {
           basePrice: true,
           isActive: true,
           deletedAt: true,
+          images: {
+            where: { isPrimary: true },
+            select: { url: true },
+            take: 1,
+          },
         },
       },
       variant: {
-        select: { id: true, name: true, price: true },
+        select: { id: true, name: true, price: true, sku: true, options: true },
       },
     },
   },
@@ -291,22 +296,27 @@ export class OrdersService {
         },
       });
 
-      // Snapshot current prices into order items
+      // Snapshot current prices and product data into order items
       await tx.orderItem.createMany({
         data: cart.items.map((item) => ({
-          orderId: newOrder.id,
-          productId: item.productId,
-          variantId: item.variantId,
-          productName: item.product.name,
-          variantName: item.variant?.name ?? null,
-          quantity: item.quantity,
-          unitPrice: item.variant
+          orderId:          newOrder.id,
+          productId:        item.productId,
+          variantId:        item.variantId,
+          quantity:         item.quantity,
+          unitPrice:        item.variant
             ? Number(item.variant.price)
             : Number(item.product.basePrice),
           customizationData: item.customizationData as
             | Prisma.InputJsonValue
             | undefined,
-          previewUrl: item.previewUrl,
+          previewUrl:       item.previewUrl,
+          // ── Snapshots captured at order time ─────────────────────────────
+          productName:      item.product.name,
+          productSlug:      item.product.slug,
+          productImageUrl:  item.product.images?.[0]?.url ?? null,
+          variantName:      item.variant?.name ?? null,
+          variantSnapshot:  item.variant?.options as Prisma.InputJsonValue ?? null,
+          sku:              item.variant?.sku ?? null,
         })),
       });
 

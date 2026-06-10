@@ -293,6 +293,87 @@ export class ReviewsService {
     return this.mapToDto(updated);
   }
 
+  async getMyReview(
+    userId: string,
+    productSlug: string,
+  ): Promise<ReviewResponseDto | null> {
+    const product = await this.prisma.product.findUnique({
+      where: { slug: productSlug },
+      select: { id: true },
+    });
+    if (!product) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+
+    const review = await this.prisma.review.findFirst({
+      where: { productId: product.id, userId },
+      include: REVIEW_INCLUDE,
+    });
+    return review ? this.mapToDto(review) : null;
+  }
+
+  async markHelpful(reviewId: string): Promise<void> {
+    await this.findReviewOrThrow(reviewId);
+    await this.prisma.review.update({
+      where: { id: reviewId },
+      data: { helpfulCount: { increment: 1 } },
+    });
+  }
+
+  async getReviewableProducts(userId: string): Promise<{
+    orderId: string;
+    orderNumber: string;
+    productId: string;
+    productName: string;
+    productSlug: string;
+    productImageUrl: string | null;
+  }[]> {
+    const deliveredOrders = await this.prisma.order.findMany({
+      where: {
+        userId,
+        status: { in: [OrderStatus.DELIVERED, OrderStatus.COMPLETED] },
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        items: {
+          select: {
+            productId: true,
+            productName: true,
+            productSlug: true,
+            productImageUrl: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    // Filter out already-reviewed
+    const reviewed = await this.prisma.review.findMany({
+      where: { userId },
+      select: { productId: true, orderId: true },
+    });
+    const reviewedKeys = new Set(
+      reviewed.map((r) => `${r.productId}-${r.orderId}`),
+    );
+
+    return deliveredOrders.flatMap((order) =>
+      order.items
+        .filter(
+          (item) =>
+            item.productId &&
+            !reviewedKeys.has(`${item.productId}-${order.id}`),
+        )
+        .map((item) => ({
+          orderId:         order.id,
+          orderNumber:     order.orderNumber,
+          productId:       item.productId!,
+          productName:     item.productName,
+          productSlug:     item.productSlug ?? '',
+          productImageUrl: item.productImageUrl,
+        })),
+    );
+  }
+
   // ── Global public ────────────────────────────────────────────────────────────
 
   async getGlobalReviews(

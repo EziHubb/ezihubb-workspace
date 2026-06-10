@@ -76,30 +76,43 @@ function NavRow({
   item:   NavItem;
   level?: number;
 }) {
-  const pathname = usePathname();
-  const isActive =
-    pathname === item.href ||
-    (item.href !== '/dashboard' && pathname.startsWith(item.href));
+  const pathname    = usePathname();
   const hasChildren = !!item.children?.length;
 
-  // Auto-expand if on a child path
-  const [open, setOpen] = useState(() =>
-    !!item.children?.some((c) => pathname.startsWith(c.href)),
+  // Leaf-node active: exact match OR proper sub-path (with "/" separator to avoid prefix collision)
+  const isActive = !hasChildren && (
+    pathname === item.href ||
+    (item.href.length > 1 && pathname.startsWith(item.href + '/'))
   );
+
+  // Parent has an active descendant (used for subtle highlight, NOT full active style)
+  const hasActiveChild = hasChildren && !!item.children?.some(
+    (c) => pathname === c.href || pathname.startsWith(c.href + '/'),
+  );
+
+  // Auto-expand if on a child path
+  const [open, setOpen] = useState(() => hasActiveChild);
 
   // Re-check on pathname changes
   useEffect(() => {
-    if (item.children?.some((c) => pathname.startsWith(c.href))) setOpen(true);
-  }, [pathname, item.children]);
+    if (hasActiveChild) setOpen(true);
+  }, [pathname, hasActiveChild]);
 
   const Icon = item.icon;
 
-  const rowCls = [
+  // Leaf rows: full active style with left border
+  const leafCls = [
     'flex items-center gap-3 w-full px-3 h-11 rounded-lg text-sm font-medium transition-colors select-none',
     isActive
       ? 'bg-sidebar-active text-white border-l-2 border-primary pl-[10px]'
       : 'text-[#9CA3AF] hover:text-white hover:bg-white/5 border-l-2 border-transparent',
     level > 0 ? 'pl-9' : '',
+  ].join(' ');
+
+  // Parent toggle rows: never show active bg — only text brightens when a child is active
+  const parentCls = [
+    'flex items-center justify-between gap-3 w-full px-3 h-11 rounded-lg text-sm font-medium transition-colors select-none',
+    hasActiveChild ? 'text-white hover:bg-white/5' : 'text-[#9CA3AF] hover:text-white hover:bg-white/5',
   ].join(' ');
 
   if (hasChildren) {
@@ -108,7 +121,7 @@ function NavRow({
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className={rowCls + ' justify-between'}
+          className={parentCls}
         >
           <span className="flex items-center gap-3">
             <Icon className="w-5 h-5 shrink-0" />
@@ -132,7 +145,7 @@ function NavRow({
   }
 
   return (
-    <Link href={item.href} className={rowCls}>
+    <Link href={item.href} className={leafCls}>
       <Icon className="w-5 h-5 shrink-0" />
       <span className="flex-1 truncate">{item.label}</span>
       {item.badge !== undefined && item.badge > 0 && (

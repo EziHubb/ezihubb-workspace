@@ -10,6 +10,7 @@ import {
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
+import { ProductStatus } from '@prisma/client';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 export enum ProductSortBy {
@@ -84,6 +85,11 @@ export class ProductQueryDto extends PaginationDto {
   @IsOptional()
   @IsEnum(ProductSortBy)
   sort?: ProductSortBy;
+
+  @ApiPropertyOptional({ enum: ProductStatus })
+  @IsOptional()
+  @IsEnum(ProductStatus)
+  status?: ProductStatus;
 
   // Admin-only: include inactive products
   @ApiPropertyOptional()

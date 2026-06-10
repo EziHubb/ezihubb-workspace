@@ -9,6 +9,7 @@ import { X, ChevronDown, LogOut, Package, Settings } from 'lucide-react';
 import { queryKeys } from '@mlh/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { SearchInput } from '../search/SearchInput';
+import { LocaleSwitcher } from './LocaleSwitcher';
 import type { MegaMenuTab } from '../../types/mega-menu';
 
 interface MobileNavDrawerProps {
@@ -284,8 +285,11 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
           </div>
         </div>
 
-        {/* Footer socials */}
-        <div className="px-4 py-3 border-t border-border shrink-0">
+        {/* Footer: language switcher + socials */}
+        <div className="px-4 py-3 border-t border-border shrink-0 space-y-3">
+          <div className="flex items-center justify-center">
+            <LocaleSwitcher variant="inline" />
+          </div>
           <div className="flex gap-4 justify-center">
             {['Instagram', 'TikTok', 'Pinterest', 'Facebook'].map((sn) => (
               <a

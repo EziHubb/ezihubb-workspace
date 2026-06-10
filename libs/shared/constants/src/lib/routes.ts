@@ -37,12 +37,15 @@ export const API_ROUTES = {
     DETAIL:            (slug: string) => `/products/${slug}`,
     REVIEWS:           (slug: string) => `/products/${slug}/reviews`,
     REVIEW_SUMMARY:    (slug: string) => `/products/${slug}/reviews/summary`,
+    MY_REVIEW:         (slug: string) => `/products/${slug}/reviews/my-review`,
+    REVIEW_HELPFUL:    (slug: string, reviewId: string) => `/products/${slug}/reviews/${reviewId}/helpful`,
     RELATED:           (slug: string) => `/products/${slug}/related`,
     RECENTLY_VIEWED:   '/products/recently-viewed',
     VIEWED:            (id: string) => `/products/${id}/viewed`,
     TRENDING:          '/products/trending',
     QA:                (slug: string) => `/products/${slug}/questions`,
     QUESTION_UPVOTE:   (id: string) => `/questions/${id}/upvote`,
+    REVIEWABLE_PRODUCTS: '/reviews/me/reviewable-products',
   },
 
   CATALOG: {
@@ -190,6 +193,7 @@ export const API_ROUTES = {
 
     // ── Products ─────────────────────────────────────────────────────────────
     PRODUCTS:             '/admin/products',
+    PRODUCTS_STATS:       '/admin/products/stats',
     PRODUCT:              (id: string) => `/admin/products/${id}`,
     PRODUCT_STATUS:       (id: string) => `/admin/products/${id}/status`,
     PRODUCT_IMAGES:       (id: string) => `/admin/products/${id}/images`,
@@ -317,5 +321,9 @@ export const API_ROUTES = {
     SETTINGS_EMAIL_TEST:    '/admin/settings/email/test',
     SETTINGS_NOTIFICATIONS: '/admin/settings/notifications',
     SETTINGS_SEO:           '/admin/settings/seo',
+
+    // ── Translations ─────────────────────────────────────────────────────────
+    TRANSLATIONS:           (entityType: string, entityId: string) => `/admin/translations/${entityType}/${entityId}`,
+    TRANSLATIONS_RETRANSLATE: (entityType: string, entityId: string) => `/admin/translations/${entityType}/${entityId}/retranslate`,
   },
 } as const;

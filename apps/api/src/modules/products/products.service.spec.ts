@@ -7,6 +7,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
 import { StorageService } from '../../common/services/storage.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { AutoTranslateService } from '../translations/auto-translate.service';
 import { ProductDetail } from '../catalog/schemas/product-detail.schema';
 import { ProductSortBy } from './dto/product-query.dto';
 
@@ -70,6 +71,10 @@ describe('ProductsService', () => {
             findOne:          jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(null) }),
             findOneAndUpdate: jest.fn().mockReturnValue({ catch: jest.fn() }),
           },
+        },
+        {
+          provide: AutoTranslateService,
+          useValue: { triggerTranslation: jest.fn() },
         },
       ],
     }).compile();
