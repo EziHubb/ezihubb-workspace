@@ -1,8 +1,22 @@
 [build]
-builder = "NIXPACKS"
-# Nixpacks detects pnpm and runs `pnpm install` then `pnpm build`.
-# `pnpm build` = `nx run-many -t build && node scripts/postbuild.mjs`
-# postbuild.mjs copies .next/static + public/ + messages/ into standalone/.
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+# SERVICE routes the build to the right app via railway-build.mjs.
+# NEXT_PUBLIC_* vars are baked into the Next.js bundle at build time (not secrets).
+# All other variables (DB, JWT, AWS, Stripe secret, etc.) are runtime-only —
+# never pass them here; Railway injects them as container env vars automatically.
+[build.buildArgs]
+SERVICE                          = "${{RAILWAY_SERVICE_NAME}}"
+NEXT_PUBLIC_API_URL              = "${{NEXT_PUBLIC_API_URL}}"
+NEXT_PUBLIC_CDN_URL              = "${{NEXT_PUBLIC_CDN_URL}}"
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "${{NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}}"
+NEXT_PUBLIC_PAYPAL_CLIENT_ID     = "${{NEXT_PUBLIC_PAYPAL_CLIENT_ID}}"
+NEXT_PUBLIC_GA_ID                = "${{NEXT_PUBLIC_GA_ID}}"
+NEXT_PUBLIC_GTM_ID               = "${{NEXT_PUBLIC_GTM_ID}}"
+NEXT_PUBLIC_META_PIXEL_ID        = "${{NEXT_PUBLIC_META_PIXEL_ID}}"
+NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION = "${{NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION}}"
+NEXT_PUBLIC_SENTRY_DSN           = "${{NEXT_PUBLIC_SENTRY_DSN}}"
 
 [deploy]
 startCommand = "node railway-start.mjs"
