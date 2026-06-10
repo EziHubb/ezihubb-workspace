@@ -20,9 +20,10 @@ RUN apk add --no-cache \
 WORKDIR /app
 RUN npm install -g corepack@latest && corepack enable pnpm
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-# scripts/ must be present before pnpm install so the postinstall hook
-# (node scripts/patch-next-build.cjs) can run successfully.
+# scripts/ and prisma/ must be present before pnpm install so the lifecycle
+# hooks (postinstall: patch-next-build.cjs, prepare: prisma generate) work.
 COPY scripts/ ./scripts/
+COPY prisma/ ./prisma/
 RUN pnpm install --no-frozen-lockfile
 
 # ── Build the selected service ────────────────────────────────────────────────
