@@ -6,8 +6,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   X, Plus, Settings,
 } from 'lucide-react';
-import { clientFetch } from '../../../../lib/api';
-import { fetchArr } from '../../../../lib/fmt';
+import { api } from '../../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import type {
   ProductEditFormValues, AdminProductDto, ProductImage,
   VariationOption, VariationGroup, VariationSettings,
@@ -253,10 +253,7 @@ function VariationsSummaryTable({
 
   const { data: groups = [], isLoading } = useQuery<VariationGroup[]>({
     queryKey: ['variation-groups', product.id],
-    queryFn:  async () => {
-      const res = await clientFetch(`/admin/products/${product.id}/variations`);
-      return fetchArr<VariationGroup>(res);
-    },
+    queryFn:  () => api.get<VariationGroup[]>(`/admin/products/${product.id}/variations`),
     enabled:  !!product.id,
     staleTime: 30_000,
   });
@@ -264,20 +261,18 @@ function VariationsSummaryTable({
   const { data: settings } = useQuery<VariationSettings>({
     queryKey: ['variation-settings', product.id],
     queryFn:  async () => {
-      const res  = await clientFetch(`/admin/products/${product.id}/variation-settings`);
-      if (!res.ok) return { enableVariations: false, variesBy: [] };
-      const body = await res.json();
-      return (body.data ?? body) as VariationSettings;
+      try {
+        return await api.get<VariationSettings>(`/admin/products/${product.id}/variation-settings`);
+      } catch {
+        return { enableVariations: false, variesBy: [] };
+      }
     },
     enabled:  !!product.id,
     staleTime: 30_000,
   });
 
   const updateOption = async (groupId: string, optionId: string, patch: Partial<VariationOption>) => {
-    await clientFetch(`/admin/products/${product.id}/variations/${groupId}/options/${optionId}`, {
-      method: 'PATCH',
-      body:   JSON.stringify(patch),
-    });
+    await api.patch(API_ROUTES.ADMIN.PRODUCT_VARIATION_OPTION(product.id, groupId, optionId), patch);
     qc.invalidateQueries({ queryKey: ['variation-groups', product.id] });
   };
 

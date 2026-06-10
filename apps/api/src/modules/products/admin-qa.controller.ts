@@ -1,5 +1,4 @@
 import {
-  Controller,
   Get,
   Post,
   Patch,
@@ -9,14 +8,10 @@ import {
   Query,
   HttpCode,
   HttpStatus,
-  UseGuards,
 } from '@nestjs/common';
 import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { Role } from '@mlh/constants';
 import { QaService } from './qa.service';
+import { AdminController } from '../../common/decorators/admin-controller.decorator';
 import { ConfigService } from '@nestjs/config';
 
 class AnswerDto {
@@ -29,9 +24,7 @@ class PatchQuestionDto {
   @IsOptional() @IsBoolean() isPublished?: boolean;
 }
 
-@Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
+@AdminController('')
 export class AdminQaController {
   constructor(
     private readonly qa: QaService,

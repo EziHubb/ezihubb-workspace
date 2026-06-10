@@ -9,12 +9,8 @@ import { ProductGallery } from '../product/ProductGallery';
 import { VariantPicker } from '../product/VariantPicker';
 import type { FlexVariant, VariantOption } from '../product/VariantPicker';
 import type { ProductDto } from '@mlh/types';
-
-// ── API ───────────────────────────────────────────────────────────────────────
-
-const API = () =>
-  (typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_API_URL']) ||
-  'http://localhost:3002';
+import { apiClient } from '../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Loading skeleton ──────────────────────────────────────────────────────────
 
@@ -75,12 +71,9 @@ export function QuickViewModal({
     setProduct(null);
     setError('');
 
-    fetch(`${API()}/api/v1/products/${productSlug}`, {
-      credentials: 'include',
-      headers:     { Accept: 'application/json' },
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Not found'))))
-      .then((body) => setProduct(body?.data ?? body))
+    apiClient
+      .get<ProductDto>(API_ROUTES.PRODUCTS.DETAIL(productSlug))
+      .then((product) => setProduct(product))
       .catch((err: Error) => setError(err.message ?? 'Product not found'))
       .finally(() => setLoading(false));
   }, [isOpen, productSlug]);

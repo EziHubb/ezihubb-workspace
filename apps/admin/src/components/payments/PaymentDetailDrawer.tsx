@@ -8,8 +8,9 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { clientFetch } from '../../lib/api';
-import { fmtAmount, fmtFixed, fetchArr } from '../../lib/fmt';
+import { api } from '../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
+import { fmtAmount, fmtFixed } from '../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -154,9 +155,7 @@ export function PaymentDetailDrawer({ payment, onClose, onRefund }: PaymentDetai
   // Fetch previous refunds
   const { data: refunds = [] } = useQuery<Refund[]>({
     queryKey: ['payment-refunds', payment.id],
-    queryFn:  async () => fetchArr<Refund>(
-      await clientFetch(`/payments/${payment.id}/refunds`),
-    ),
+    queryFn:  () => api.get<Refund[]>(API_ROUTES.ADMIN.PAYMENT_REFUNDS(payment.id)),
     enabled: canRefund,
   });
 
@@ -168,14 +167,7 @@ export function PaymentDetailDrawer({ payment, onClose, onRefund }: PaymentDetai
     setSubmitting(true);
     setRefundError(null);
     try {
-      const res  = await clientFetch(`/payments/${payment.id}/refund`, {
-        method: 'POST',
-        body:   JSON.stringify({ amount: amt, reason: refundReason || undefined }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error?.message ?? 'Refund failed');
-      }
+      await api.post(API_ROUTES.ADMIN.PAYMENT_REFUND(payment.id), { amount: amt, reason: refundReason || undefined });
       setRefundDone(true);
       setRefundAmount('');
       setRefundReason('');

@@ -1,10 +1,8 @@
 import {
-  Controller,
   Get,
   Query,
-  UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsInt, IsOptional, Max, Min } from 'class-validator';
 import { AdminService } from './admin.service';
@@ -17,10 +15,7 @@ import {
 import { ReviewResponseDto } from '../reviews/dto/review-response.dto';
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { Role } from '@mlh/constants';
+import { AdminController as AdminControllerDecorator } from '../../common/decorators/admin-controller.decorator';
 
 class RevenueChartQuery {
   @IsOptional()
@@ -40,10 +35,7 @@ class TopProductsQuery {
   limit?: number = 10;
 }
 
-@ApiTags('admin / dashboard')
-@Controller('admin/dashboard')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
+@AdminControllerDecorator('dashboard')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 

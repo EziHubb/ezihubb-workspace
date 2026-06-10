@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, ChevronRight, Check, Search, Tag, AlertCircle } from 'lucide-react';
-import { clientFetch } from '../../../lib/api';
-import { fetchArr } from '../../../lib/fmt';
+import { api } from '../../../lib/api-client';
 
 interface Category {
   id:         string;
@@ -40,28 +39,28 @@ export function CategoryPickerModal({
 
   const { data: l1Categories = [], isLoading } = useQuery<Category[]>({
     queryKey: ['categories-l1'],
-    queryFn:  () => clientFetch('/categories?level=1&isVisible=true').then(fetchArr<Category>),
+    queryFn:  () => api.get<Category[]>('/categories?level=1&isVisible=true'),
     enabled:  isOpen,
     staleTime: 10 * 60_000,
   });
 
   const { data: l2Categories = [] } = useQuery<Category[]>({
     queryKey: ['categories-l2', selectedL1],
-    queryFn:  () => clientFetch(`/categories?level=2&parentId=${selectedL1}`).then(fetchArr<Category>),
+    queryFn:  () => api.get<Category[]>(`/categories?level=2&parentId=${selectedL1}`),
     enabled:  !!selectedL1,
     staleTime: 10 * 60_000,
   });
 
   const { data: l3Categories = [] } = useQuery<Category[]>({
     queryKey: ['categories-l3', selectedL2],
-    queryFn:  () => clientFetch(`/categories?level=3&parentId=${selectedL2}`).then(fetchArr<Category>),
+    queryFn:  () => api.get<Category[]>(`/categories?level=3&parentId=${selectedL2}`),
     enabled:  !!selectedL2,
     staleTime: 10 * 60_000,
   });
 
   const { data: searchResults = [] } = useQuery<Category[]>({
     queryKey: ['categories-search', searchQuery],
-    queryFn:  () => clientFetch(`/categories?level=3&q=${encodeURIComponent(searchQuery)}`).then(fetchArr<Category>),
+    queryFn:  () => api.get<Category[]>(`/categories?level=3&q=${encodeURIComponent(searchQuery)}`),
     enabled:  searchQuery.length >= 2,
   });
 
@@ -252,8 +251,7 @@ export function CategoryPickerCard({ value: categoryId, onChange }: CardProps) {
 
   const { data: category } = useQuery<Category>({
     queryKey: ['category', categoryId],
-    queryFn:  () => clientFetch(`/categories/${categoryId}`)
-      .then(r => r.json()).then(r => r.data),
+    queryFn:  () => api.get<Category>(`/categories/${categoryId}`),
     enabled:  !!categoryId,
   });
 

@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { Eye, EyeOff, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { API_ROUTES } from '@mlh/constants';
 import { useToast, ToastProvider } from '@mlh/ui';
+import { apiClient } from '../../../../lib/api-client';
 
 // ── Password strength (reused pattern) ────────────────────────────────────────
 
@@ -68,9 +69,6 @@ function ResetPasswordForm() {
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
-  const apiBase = () =>
-    process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
-
   const strength = calcStrength(pwValue);
 
   const onSubmit = async (data: FormValues) => {
@@ -79,31 +77,19 @@ function ResetPasswordForm() {
     setApiError('');
 
     try {
-      const res = await fetch(`${apiBase()}/api/v1${API_ROUTES.AUTH.RESET_PASSWORD}`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ token, password: data.password }),
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { message?: string; error?: { code?: string } };
-        const isExpired =
-          body?.error?.code === 'ERR_TOKEN_INVALID' ||
-          body?.message?.toLowerCase().includes('expired') ||
-          body?.message?.toLowerCase().includes('invalid');
-
-        if (isExpired) {
-          setTokenInvalid(true);
-        } else {
-          setApiError(body.message ?? 'Failed to reset password.');
-        }
-        return;
-      }
-
+      await apiClient.post(API_ROUTES.AUTH.RESET_PASSWORD, { token, password: data.password });
       toast.success('Password reset successfully. Please sign in.');
       setTimeout(() => router.replace(`/${locale}/login`), 1_500);
     } catch (err) {
-      setApiError(err instanceof Error ? err.message : 'Something went wrong.');
+      const msg = err instanceof Error ? err.message : '';
+      const isExpired =
+        msg.toLowerCase().includes('expired') ||
+        msg.toLowerCase().includes('invalid');
+      if (isExpired) {
+        setTokenInvalid(true);
+      } else {
+        setApiError(msg || 'Failed to reset password.');
+      }
     } finally {
       setIsPending(false);
     }

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { X, ChevronDown, HelpCircle, Plus } from 'lucide-react';
-import { clientFetch } from '../../../lib/api';
+import { api } from '../../../lib/api-client';
 import type { ProductEditFormValues } from './types';
 
 // ─── useDebounce ──────────────────────────────────────────────────────────────
@@ -95,12 +95,12 @@ export function AttributeSearchSelect({
       const url = debouncedInput.length > 0
         ? `${searchEndpoint}?q=${encodeURIComponent(debouncedInput)}`
         : searchEndpoint;
-      const res = await clientFetch(url);
-      if (!res.ok) return [];
-      const body = await res.json();
-      // endpoint returns string[] directly
-      const raw = body.data ?? body;
-      return Array.isArray(raw) ? raw as string[] : [];
+      try {
+        const raw = await api.get<string[]>(url);
+        return Array.isArray(raw) ? raw : [];
+      } catch {
+        return [];
+      }
     },
     enabled:   !reached && (debouncedInput.length >= 1 || isOpen),
     staleTime: 30_000,

@@ -11,6 +11,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { API_ROUTES } from '@mlh/constants';
 import { useToast, ToastProvider } from '@mlh/ui';
 import { useAuthStore } from '../../../../lib/store/auth.store';
+import { API_BASE } from '../../../../lib/api-client';
 
 // ── Password strength ─────────────────────────────────────────────────────────
 
@@ -110,7 +111,6 @@ function RegisterForm() {
 
   const agreeTerms = watch('agreeTerms');
 
-  const apiBase = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
 
   const onSubmit = async (data: FormValues) => {
     setIsPending(true);
@@ -158,7 +158,7 @@ function RegisterForm() {
 
       {/* Google OAuth */}
       <a
-        href={`${apiBase}/api/v1${API_ROUTES.AUTH.GOOGLE}`}
+        href={`${API_BASE}/api/v1${API_ROUTES.AUTH.GOOGLE}`}
         className="flex items-center justify-center gap-3 w-full py-2.5 border border-border rounded-button text-sm font-medium text-secondary hover:bg-muted/5 hover:border-primary/40 transition-colors"
       >
         <GoogleIcon />

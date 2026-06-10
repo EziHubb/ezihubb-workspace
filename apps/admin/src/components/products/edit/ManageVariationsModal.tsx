@@ -7,8 +7,8 @@ import {
   X, Plus, Trash2, Pencil, ChevronLeft, Check,
   ArrowRight, AlignLeft, Palette, LayoutGrid,
 } from 'lucide-react';
-import { clientFetch } from '../../../lib/api';
-import { fetchArr } from '../../../lib/fmt';
+import { api } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { InlinePriceInput } from './primitives';
 import type { VariationGroup, VariationSettings } from './types';
 
@@ -288,19 +288,13 @@ function VariantPriceMatrix({
 
   const { data: variants = [] } = useQuery<VariantRow[]>({
     queryKey: ['variants', productId],
-    queryFn:  async () => {
-      const res = await clientFetch(`/admin/products/${productId}/variations/variants`);
-      return fetchArr<VariantRow>(res);
-    },
+    queryFn:  () => api.get<VariantRow[]>(`/admin/products/${productId}/variations/variants`),
     staleTime: 30_000,
   });
 
   const patchVariant = async (variantId: string | undefined, patch: object) => {
     if (!variantId) return;
-    await clientFetch(`/admin/products/${productId}/variations/variants/${variantId}`, {
-      method: 'PATCH',
-      body:   JSON.stringify(patch),
-    });
+    await api.patch(API_ROUTES.ADMIN.PRODUCT_VARIATION_VARIANT(productId, variantId), patch);
     qc.invalidateQueries({ queryKey: ['variants', productId] });
   };
 
@@ -416,18 +410,15 @@ function AddVariationGroupSheet({
   const handleCreate = async () => {
     setSaving(true);
     try {
-      await clientFetch(`/admin/products/${productId}/variations/groups`, {
-        method: 'POST',
-        body:   JSON.stringify({
-          name:        groupName.trim(),
-          displayType,
-          options:     options.map((o) => ({
-            name:        o.value,
-            value:       o.value.toLowerCase().replace(/\s+/g, '-'),
-            colorHex:    o.colorHex,
-            isAvailable: true,
-          })),
-        }),
+      await api.post(API_ROUTES.ADMIN.PRODUCT_VARIATION_GROUPS(productId), {
+        name:        groupName.trim(),
+        displayType,
+        options:     options.map((o) => ({
+          name:        o.value,
+          value:       o.value.toLowerCase().replace(/\s+/g, '-'),
+          colorHex:    o.colorHex,
+          isAvailable: true,
+        })),
       });
       onSaved();
     } finally {
@@ -618,32 +609,28 @@ function EditVariationGroupSheet({
   const { data: group } = useQuery<VariationGroup>({
     queryKey: ['variation-group-single', groupId],
     queryFn:  async () => {
-      const res  = await clientFetch(`/admin/products/${productId}/variations/${groupId}`);
-      if (!res.ok) return null as unknown as VariationGroup;
-      const body = await res.json();
-      return (body.data ?? body) as VariationGroup;
+      try {
+        return await api.get<VariationGroup>(`/admin/products/${productId}/variations/${groupId}`);
+      } catch {
+        return null as unknown as VariationGroup;
+      }
     },
     staleTime: 10_000,
   });
 
   const addOption = async (opt: { value: string; colorHex?: string }) => {
-    await clientFetch(`/admin/products/${productId}/variations/${groupId}/options`, {
-      method: 'POST',
-      body:   JSON.stringify({
-        name:        opt.value,
-        value:       opt.value.toLowerCase().replace(/\s+/g, '-'),
-        colorHex:    opt.colorHex,
-        isAvailable: true,
-      }),
+    await api.post(API_ROUTES.ADMIN.PRODUCT_VARIATION_OPTIONS(productId, groupId), {
+      name:        opt.value,
+      value:       opt.value.toLowerCase().replace(/\s+/g, '-'),
+      colorHex:    opt.colorHex,
+      isAvailable: true,
     });
     qc.invalidateQueries({ queryKey: ['variation-group-single', groupId] });
     qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
   };
 
   const removeOption = async (optionId: string) => {
-    await clientFetch(`/admin/products/${productId}/variations/${groupId}/options/${optionId}`, {
-      method: 'DELETE',
-    });
+    await api.delete(API_ROUTES.ADMIN.PRODUCT_VARIATION_OPTION(productId, groupId, optionId));
     qc.invalidateQueries({ queryKey: ['variation-group-single', groupId] });
     qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
   };
@@ -743,10 +730,7 @@ export function ManageVariationsModal({
 
   const { data: groups = [], isLoading: groupsLoading } = useQuery<VariationGroup[]>({
     queryKey: ['variation-groups', productId],
-    queryFn:  async () => {
-      const res = await clientFetch(`/admin/products/${productId}/variations`);
-      return fetchArr<VariationGroup>(res);
-    },
+    queryFn:  () => api.get<VariationGroup[]>(API_ROUTES.ADMIN.PRODUCT_VARIATIONS(productId)),
     enabled:   isOpen,
     staleTime: 30_000,
   });
@@ -754,10 +738,11 @@ export function ManageVariationsModal({
   const { data: settings } = useQuery<VariationSettings>({
     queryKey: ['variation-settings', productId],
     queryFn:  async () => {
-      const res  = await clientFetch(`/admin/products/${productId}/variation-settings`);
-      if (!res.ok) return { enableVariations: true, variesBy: [] };
-      const body = await res.json();
-      return (body.data ?? body) as VariationSettings;
+      try {
+        return await api.get<VariationSettings>(API_ROUTES.ADMIN.PRODUCT_VARIATION_SETTINGS(productId));
+      } catch {
+        return { enableVariations: true, variesBy: [] };
+      }
     },
     enabled:   isOpen,
     staleTime: 30_000,
@@ -766,18 +751,12 @@ export function ManageVariationsModal({
   const deleteGroup = async (groupId: string) => {
     // Remove by re-saving without that group
     const remaining = groups.filter((g) => g.id !== groupId);
-    await clientFetch(`/admin/products/${productId}/variations`, {
-      method: 'PUT',
-      body:   JSON.stringify({ groups: remaining }),
-    });
+    await api.put(API_ROUTES.ADMIN.PRODUCT_VARIATIONS(productId), { groups: remaining });
     qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
   };
 
   const saveSettings = async (variesBy: string[]) => {
-    await clientFetch(`/admin/products/${productId}/variation-settings`, {
-      method: 'PATCH',
-      body:   JSON.stringify({ variesBy, enableVariations: true }),
-    });
+    await api.patch(API_ROUTES.ADMIN.PRODUCT_VARIATION_SETTINGS(productId), { variesBy, enableVariations: true });
     qc.invalidateQueries({ queryKey: ['variation-settings', productId] });
   };
 

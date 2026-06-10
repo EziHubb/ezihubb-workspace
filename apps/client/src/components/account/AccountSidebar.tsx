@@ -44,11 +44,7 @@ export function AccountSidebar({ profile, onNavigate }: AccountSidebarProps) {
 
   const handleSignOut = async () => {
     try {
-      const base  = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
-      await fetch(`${base}/api/v1${API_ROUTES.AUTH.LOGOUT}`, {
-        method:      'POST',
-        credentials: 'include',
-      });
+      await apiClient.post(API_ROUTES.AUTH.LOGOUT);
     } catch {
       // Sign out even if the request fails
     }

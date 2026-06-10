@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { MessageCircle, Check, Trash2, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
-import { clientFetch } from '../../../../lib/api';
+import { api } from '../../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { format } from 'date-fns';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -41,11 +42,7 @@ function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
     setSaving(true);
     setError('');
     try {
-      const res  = await clientFetch(`/admin/products/${productId}/questions/${q.id}/answer`, {
-        method: 'POST',
-        body:   JSON.stringify({ answer: answer.trim(), publish }),
-      });
-      if (!res.ok) throw new Error('Save failed');
+      await api.post(API_ROUTES.ADMIN.PRODUCT_QUESTION_ANSWER(productId, q.id), { answer: answer.trim(), publish });
       onRefresh();
       setExpanded(false);
     } catch {
@@ -57,10 +54,7 @@ function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
 
   const handleTogglePublish = async () => {
     try {
-      await clientFetch(`/admin/products/${productId}/questions/${q.id}`, {
-        method: 'PATCH',
-        body:   JSON.stringify({ isPublished: !q.isPublished }),
-      });
+      await api.patch(API_ROUTES.ADMIN.PRODUCT_QUESTION(productId, q.id), { isPublished: !q.isPublished });
       onRefresh();
     } catch { /* ignore */ }
   };
@@ -69,7 +63,7 @@ function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
     if (!confirm('Delete this question? This cannot be undone.')) return;
     setDeleting(true);
     try {
-      await clientFetch(`/admin/products/${productId}/questions/${q.id}`, { method: 'DELETE' });
+      await api.delete(API_ROUTES.ADMIN.PRODUCT_QUESTION(productId, q.id));
       onRefresh();
     } catch { setDeleting(false); }
   };
@@ -77,7 +71,7 @@ function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
   const handleSpam = async () => {
     if (!confirm('Mark as spam? This will hide the question.')) return;
     try {
-      await clientFetch(`/admin/products/${productId}/questions/${q.id}/spam`, { method: 'POST' });
+      await api.post(API_ROUTES.ADMIN.PRODUCT_QUESTION_SPAM(productId, q.id));
       onRefresh();
     } catch { /* ignore */ }
   };
@@ -207,10 +201,8 @@ export function QaTab({ productId }: QaTabProps) {
   const fetchQuestions = async () => {
     setLoading(true);
     try {
-      const res  = await clientFetch(`/admin/products/${productId}/questions?filter=${filter}`);
-      const body = await res.json() as { data?: Question[] } | Question[];
-      const data = Array.isArray(body) ? body : ('data' in body && body.data ? body.data : []);
-      setQuestions(data);
+      const data = await api.get<Question[]>(`${API_ROUTES.ADMIN.PRODUCT_QUESTIONS(productId)}?filter=${filter}`);
+      setQuestions(Array.isArray(data) ? data : []);
     } catch { /* ignore */ }
     setLoading(false);
   };

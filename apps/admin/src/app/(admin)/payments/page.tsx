@@ -16,7 +16,8 @@ import {
   type PaymentStatus,
   type PaymentMethod,
 } from '../../../components/payments/PaymentDetailDrawer';
-import { clientFetch } from '../../../lib/api';
+import { api } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { fmtCurrency, fmtAmount, fmtPercent } from '../../../lib/fmt';
 
 // ── Status badge ──────────────────────────────────────────────────────────────
@@ -140,11 +141,7 @@ export default function PaymentsPage() {
 
   const statsQuery = useQuery<PaymentStats>({
     queryKey: ['payment-stats'],
-    queryFn:  async () => {
-      const res  = await clientFetch('/payments/stats');
-      const body = await res.json();
-      return (body.data ?? body) as PaymentStats;
-    },
+    queryFn:  () => api.get<PaymentStats>(API_ROUTES.ADMIN.PAYMENTS_STATS),
     staleTime: 60_000,
   });
   const stats = statsQuery.data;
@@ -156,14 +153,12 @@ export default function PaymentsPage() {
   const listQuery = useQuery({
     queryKey: listKey,
     queryFn:  async () => {
-      const p = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
-      if (debouncedQ) p.set('q',       debouncedQ);
-      if (method)     p.set('method',  method);
-      if (status)     p.set('status',  status);
-      if (dateRange)  p.set('days',    dateRange);
-      const res  = await clientFetch(`/payments?${p}`);
-      const body = await res.json();
-      return body as { data: PaymentRecord[]; total: number };
+      const params: Record<string, string> = { page: String(page), limit: String(PAGE_SIZE) };
+      if (debouncedQ) params['q']      = debouncedQ;
+      if (method)     params['method'] = method;
+      if (status)     params['status'] = status;
+      if (dateRange)  params['days']   = dateRange;
+      return api.get<{ data: PaymentRecord[]; total: number }>(API_ROUTES.ADMIN.PAYMENTS_LIST, { params });
     },
   });
 

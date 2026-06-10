@@ -9,7 +9,8 @@ import {
   type Review,
 } from '../../../components/reviews/ReviewModerationCard';
 import { ReviewReplyModal } from '../../../components/reviews/ReviewReplyModal';
-import { clientFetch } from '../../../lib/api';
+import { api } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -87,11 +88,7 @@ export default function ReviewsPage() {
 
   const countsQuery = useQuery<ReviewCounts>({
     queryKey: ['review-counts'],
-    queryFn:  async () => {
-      const res  = await clientFetch('/admin/reviews/counts');
-      const body = await res.json();
-      return (body.data ?? body) as ReviewCounts;
-    },
+    queryFn:  () => api.get<ReviewCounts>(API_ROUTES.ADMIN.REVIEWS_COUNTS),
     staleTime: 30_000,
   });
   const counts = countsQuery.data;
@@ -103,13 +100,11 @@ export default function ReviewsPage() {
   const listQuery = useQuery({
     queryKey: listKey,
     queryFn:  async () => {
-      const p = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
-      if (tab !== 'ALL') p.set('status', tab);
-      if (rating)        p.set('rating', String(rating));
-      if (debouncedQ)    p.set('q',      debouncedQ);
-      const res  = await clientFetch(`/admin/reviews?${p}`);
-      const body = await res.json();
-      return body as { data: Review[]; total: number };
+      const params: Record<string, string> = { page: String(page), limit: String(PAGE_SIZE) };
+      if (tab !== 'ALL') params['status'] = tab;
+      if (rating)        params['rating'] = String(rating);
+      if (debouncedQ)    params['q']      = debouncedQ;
+      return api.get<{ data: Review[]; total: number }>(API_ROUTES.ADMIN.REVIEWS, { params });
     },
   });
 
@@ -127,7 +122,7 @@ export default function ReviewsPage() {
   const handleApprove = async (id: string) => {
     setLoadingId(id);
     try {
-      await clientFetch(`/admin/reviews/${id}/approve`, { method: 'POST' });
+      await api.post(API_ROUTES.ADMIN.REVIEW_APPROVE(id));
       invalidate();
     } finally { setLoadingId(null); }
   };
@@ -135,7 +130,7 @@ export default function ReviewsPage() {
   const handleHide = async (id: string) => {
     setLoadingId(id);
     try {
-      await clientFetch(`/admin/reviews/${id}/hide`, { method: 'POST' });
+      await api.post(API_ROUTES.ADMIN.REVIEW_HIDE(id));
       invalidate();
     } finally { setLoadingId(null); }
   };
@@ -144,19 +139,16 @@ export default function ReviewsPage() {
     if (!confirm('Permanently delete this review? This cannot be undone.')) return;
     setLoadingId(id);
     try {
-      await clientFetch(`/admin/reviews/${id}`, { method: 'DELETE' });
+      await api.delete(API_ROUTES.ADMIN.REVIEW(id));
       invalidate();
     } finally { setLoadingId(null); }
   };
 
   const handleReplySubmit = async (replyText: string, statusChange?: 'APPROVED' | 'HIDDEN') => {
     if (!replyTarget) return;
-    await clientFetch(`/admin/reviews/${replyTarget.id}/reply`, {
-      method: 'POST',
-      body:   JSON.stringify({ reply: replyText }),
-    });
-    if (statusChange === 'APPROVED') await clientFetch(`/admin/reviews/${replyTarget.id}/approve`, { method: 'POST' });
-    if (statusChange === 'HIDDEN')   await clientFetch(`/admin/reviews/${replyTarget.id}/hide`,    { method: 'POST' });
+    await api.post(API_ROUTES.ADMIN.REVIEW_REPLY(replyTarget.id), { reply: replyText });
+    if (statusChange === 'APPROVED') await api.post(API_ROUTES.ADMIN.REVIEW_APPROVE(replyTarget.id));
+    if (statusChange === 'HIDDEN')   await api.post(API_ROUTES.ADMIN.REVIEW_HIDE(replyTarget.id));
     invalidate();
     setReplyTarget(null);
   };
@@ -182,7 +174,7 @@ export default function ReviewsPage() {
     setBulkLoading(true);
     try {
       await Promise.all([...selected].map((id) =>
-        clientFetch(`/admin/reviews/${id}/approve`, { method: 'POST' })
+        api.post(API_ROUTES.ADMIN.REVIEW_APPROVE(id))
       ));
       invalidate();
       clearSelection();
@@ -193,7 +185,7 @@ export default function ReviewsPage() {
     setBulkLoading(true);
     try {
       await Promise.all([...selected].map((id) =>
-        clientFetch(`/admin/reviews/${id}/hide`, { method: 'POST' })
+        api.post(API_ROUTES.ADMIN.REVIEW_HIDE(id))
       ));
       invalidate();
       clearSelection();

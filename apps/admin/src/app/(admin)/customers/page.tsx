@@ -11,7 +11,8 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { DataTable } from '../../../components/data/DataTable';
-import { clientFetch } from '../../../lib/api';
+import { api, adminApi } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -140,11 +141,7 @@ export default function CustomersPage() {
 
   const statsQuery = useQuery<CustomerStats>({
     queryKey: ['admin-customer-stats'],
-    queryFn:  async () => {
-      const res  = await clientFetch('/admin/customers/stats');
-      const body = await res.json();
-      return (body.data ?? body) as CustomerStats;
-    },
+    queryFn:  () => api.get<CustomerStats>(API_ROUTES.ADMIN.CUSTOMERS_STATS),
     staleTime: 5 * 60_000,
   });
 
@@ -158,9 +155,7 @@ export default function CustomersPage() {
       if (country)    p.set('country', country);
       if (joined)     p.set('joinedDays', joined);
       if (spent)      p.set('spent',   spent);
-      const res  = await clientFetch(`/admin/customers?${p}`);
-      const body = await res.json();
-      return body as { data: Customer[]; total: number };
+      return api.get<{ data: Customer[]; total: number }>(`/admin/customers?${p}`);
     },
   });
 
@@ -176,8 +171,8 @@ export default function CustomersPage() {
     if (country)    p.set('country',    country);
     if (joined)     p.set('joinedDays', joined);
     if (spent)      p.set('spent',      spent);
-    const res  = await clientFetch(`/admin/customers/export?${p}`);
-    const blob = await res.blob();
+    const res  = await adminApi.get(`/admin/customers/export?${p}`, { responseType: 'blob' });
+    const blob = res.data as Blob;
     const url  = URL.createObjectURL(blob);
     const a    = Object.assign(document.createElement('a'), { href: url, download: `customers-${format(new Date(), 'yyyy-MM-dd')}.csv` });
     a.click();

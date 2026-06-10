@@ -2,7 +2,8 @@ import {
   DollarSign, PackageSearch, Clock, Hammer,
 } from 'lucide-react';
 import Link from 'next/link';
-import { serverFetch } from '../../../lib/api';
+import { serverApi } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { StatCard } from '../../../components/data/StatCard';
 import { RevenueChart } from '../../../components/charts/RevenueChart';
@@ -77,14 +78,8 @@ interface RevenueChartResponse {
 // ── Safe fetch ────────────────────────────────────────────────────────────────
 
 async function safeFetch<T>(path: string, fallback: T): Promise<T> {
-  try {
-    const res  = await serverFetch(path);
-    if (!res.ok) return fallback;
-    const body = await res.json();
-    return (body.data ?? body) as T;
-  } catch {
-    return fallback;
-  }
+  try { return await serverApi<T>('get', path); }
+  catch { return fallback; }
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -92,16 +87,16 @@ async function safeFetch<T>(path: string, fallback: T): Promise<T> {
 export default async function DashboardPage() {
   const [kpis, revenueRaw, ordersByStatus, topProducts, pendingRaw, seoStats] =
     await Promise.all([
-      safeFetch<KpiData>('/admin/dashboard/kpis', {}),
+      safeFetch<KpiData>(API_ROUTES.ADMIN.DASHBOARD_KPIS, {}),
       safeFetch<RevenueChartResponse | RevenueDataPoint[]>(
-        '/admin/dashboard/revenue?days=30', [],
+        `${API_ROUTES.ADMIN.DASHBOARD_REVENUE}?days=30`, [],
       ),
-      safeFetch<OrderStatusDataPoint[]>('/admin/dashboard/orders-by-status', []),
-      safeFetch<TopProductDto[]>('/admin/dashboard/top-products?limit=10', []),
+      safeFetch<OrderStatusDataPoint[]>(API_ROUTES.ADMIN.DASHBOARD_BY_STATUS, []),
+      safeFetch<TopProductDto[]>(`${API_ROUTES.ADMIN.DASHBOARD_TOP}?limit=10`, []),
       safeFetch<{ data?: ReviewDto[]; total?: number } | ReviewDto[]>(
-        '/admin/dashboard/pending-reviews?limit=5', [],
+        `${API_ROUTES.ADMIN.PENDING_REVIEWS}?limit=5`, [],
       ),
-      safeFetch<SeoStats>('/admin/products/seo-stats', {
+      safeFetch<SeoStats>(API_ROUTES.ADMIN.PRODUCTS_SEO_STATS, {
         total: 0, missingTitle: 0, missingDescription: 0, lowScore: 0, noIndex: 0,
       }),
     ]);

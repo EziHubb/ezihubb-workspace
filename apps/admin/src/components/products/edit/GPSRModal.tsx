@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { X, Shield, Check, Loader2 } from 'lucide-react';
-import { clientFetch } from '../../../lib/api';
+import { api } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { FormField } from './primitives/FormField';
 import type { GpsrInfo } from './types';
 
@@ -52,10 +53,7 @@ export function GPSRModal({ productId, isOpen, onClose }: Props) {
     };
     setSaving(true);
     try {
-      await clientFetch(`/admin/products/${productId}/detail`, {
-        method: 'PATCH',
-        body: JSON.stringify({ gpsrInfo }),
-      });
+      await api.patch(API_ROUTES.ADMIN.PRODUCT_DETAIL(productId), { gpsrInfo });
       setSaved(true);
       setTimeout(() => { setSaved(false); onClose(); }, 800);
     } finally {

@@ -10,7 +10,7 @@ export const contentType = 'image/png';
 
 // ── Fetcher ───────────────────────────────────────────────────────────────────
 
-const API = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
+const API = (process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002').replace(/\/api\/v1\/?$/, '');
 
 async function getProduct(slug: string): Promise<ProductDto | null> {
   try {

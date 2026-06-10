@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check, X, Save } from 'lucide-react';
 import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
-import { clientFetch } from '../../../../lib/api';
+import { api } from '../../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -99,14 +100,7 @@ function PendingActions({
     try {
       const body: Record<string, unknown> = {};
       if (approveRate !== '') body['commissionRate'] = Number(approveRate) / 100;
-      const res = await clientFetch(`/admin/affiliates/${affiliate.id}/approve`, {
-        method: 'POST',
-        body:   JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const j = await res.json();
-        throw new Error((j as { error?: { message?: string } })?.error?.message ?? 'Failed');
-      }
+      await api.post(API_ROUTES.ADMIN.AFFILIATE_APPROVE(affiliate.id), body);
       onDone();
     } catch (e) { setError((e as Error).message); }
     finally { setSaving(false); }
@@ -117,14 +111,7 @@ function PendingActions({
     setSaving(true);
     setError('');
     try {
-      const res = await clientFetch(`/admin/affiliates/${affiliate.id}/reject`, {
-        method: 'POST',
-        body:   JSON.stringify({ reason: rejectReason }),
-      });
-      if (!res.ok) {
-        const j = await res.json();
-        throw new Error((j as { error?: { message?: string } })?.error?.message ?? 'Failed');
-      }
+      await api.post(API_ROUTES.ADMIN.AFFILIATE_REJECT(affiliate.id), { reason: rejectReason });
       onDone();
     } catch (e) { setError((e as Error).message); }
     finally { setSaving(false); }
@@ -239,14 +226,7 @@ function EditPanel({
       if (commissionRate !== '') body['commissionRate'] = Number(commissionRate) / 100;
       else body['commissionRate'] = null;
 
-      const res = await clientFetch(`/admin/affiliates/${affiliate.id}`, {
-        method: 'PATCH',
-        body:   JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const j = await res.json();
-        throw new Error((j as { error?: { message?: string } })?.error?.message ?? 'Save failed');
-      }
+      await api.patch(API_ROUTES.ADMIN.AFFILIATE(affiliate.id), body);
       setDone(true);
       setTimeout(() => setDone(false), 3000);
       onSaved();
@@ -326,11 +306,7 @@ export default function AffiliateDetailPage({ params }: { params: Promise<{ id: 
 
   const { data: affiliate, isLoading } = useQuery<AffiliateDetail>({
     queryKey: ['admin-affiliate', id],
-    queryFn:  async () => {
-      const res  = await clientFetch(`/admin/affiliates/${id}`);
-      const body = await res.json();
-      return (body.data ?? body) as AffiliateDetail;
-    },
+    queryFn:  () => api.get<AffiliateDetail>(API_ROUTES.ADMIN.AFFILIATE(id)),
     staleTime: 30_000,
   });
 

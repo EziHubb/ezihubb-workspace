@@ -2,14 +2,14 @@ import Link from 'next/link';
 import type { ProductListItemDto } from '@mlh/types';
 import { ProductCard } from '@mlh/ui';
 import { BackButton } from './BackButton';
+import { API_BASE } from '../../lib/api-client';
 
 // ── Fetch trending products server-side ───────────────────────────────────────
 
 async function getTrending(): Promise<ProductListItemDto[]> {
   try {
-    const base = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
     const res  = await fetch(
-      `${base}/api/v1/products?sort=bestseller&limit=4`,
+      `${API_BASE}/api/v1/products?sort=bestseller&limit=4`,
       { next: { revalidate: 3600 } },
     );
     if (!res.ok) return [];

@@ -1,15 +1,13 @@
 import {
-  Controller, Get, Post, Patch, Delete,
-  Body, Param, HttpCode, HttpStatus, UseGuards,
+  Get, Post, Patch, Delete,
+  Body, Param, HttpCode, HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiOperation } from '@nestjs/swagger';
 import {
   IsString, IsOptional, MaxLength,
 } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { Role } from '@mlh/constants';
+import { AdminController } from '../../common/decorators/admin-controller.decorator';
 
 class CreateProductionPartnerDto {
   @IsString() @MaxLength(200) name: string;
@@ -23,10 +21,7 @@ class UpdateProductionPartnerDto {
   @IsOptional() @IsString() @MaxLength(200) location?: string;
 }
 
-@ApiTags('Admin — Production Partners')
-@UseGuards(RolesGuard)
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
-@Controller('admin/production-partners')
+@AdminController('production-partners')
 export class AdminProductionPartnersController {
   constructor(private readonly prisma: PrismaService) {}
 

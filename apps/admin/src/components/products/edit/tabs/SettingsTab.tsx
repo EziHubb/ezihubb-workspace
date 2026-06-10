@@ -4,8 +4,8 @@ import { useFormContext } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { ExternalLink } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
-import { clientFetch } from '../../../../lib/api';
-import { fetchArr } from '../../../../lib/fmt';
+import { api } from '../../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import type { ProductEditFormValues, RenewalType } from '../types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -171,7 +171,7 @@ export function SettingsTab() {
 
   const { data: sections = [] } = useQuery<ShopSection[]>({
     queryKey: ['shop-sections'],
-    queryFn:  () => clientFetch('/admin/shop-sections').then(r => fetchArr<ShopSection>(r)),
+    queryFn:  () => api.get<ShopSection[]>(API_ROUTES.ADMIN.SHOP_SECTIONS),
     staleTime: 10 * 60_000,
   });
 

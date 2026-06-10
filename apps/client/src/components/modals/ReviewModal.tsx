@@ -4,12 +4,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { Star, X, Upload, CheckCircle } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@mlh/ui';
-
-// ── API base ─────────────────────────────────────────────────────────────────
-
-const API = () =>
-  (typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_API_URL']) ||
-  'http://localhost:3002';
+import { apiClient, apiFetch } from '../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Star selector ─────────────────────────────────────────────────────────────
 
@@ -195,15 +191,11 @@ export function ReviewModal({
     setPhotos([]);
     setSubmitError('');
 
-    fetch(
-      `${API()}/api/v1/reviews/can-review?productId=${productId}&orderId=${orderId}`,
-      { credentials: 'include', headers: { Accept: 'application/json' } },
-    )
-      .then((r) => (r.ok ? r.json() : { data: { allowed: false, reason: 'not_purchased' } }))
-      .then((json) => {
-        const d = json?.data ?? json;
-        setGuardState(d as GuardResult);
+    apiClient
+      .get<GuardResult>(API_ROUTES.REVIEWS.CAN_REVIEW, {
+        params: { productId, orderId },
       })
+      .then((d) => setGuardState(d))
       .catch(() => setGuardState({ allowed: false, reason: 'not_purchased' }));
   }, [isOpen, productId, orderId]);
 
@@ -219,12 +211,10 @@ export function ReviewModal({
     try {
       const form = new FormData();
       form.append('file', file);
-      const res  = await fetch(`${API()}/api/v1/reviews/upload-image`, {
-        method: 'POST', credentials: 'include', body: form,
+      const result = await apiFetch<{ url: string }>(API_ROUTES.REVIEWS.UPLOAD_IMAGE, {
+        method: 'POST', body: form as unknown as BodyInit,
       });
-      if (!res.ok) throw new Error('Upload failed');
-      const json = await res.json();
-      const url: string = json?.data?.url ?? json?.url ?? placeholder.url;
+      const url: string = (result as { url: string })?.url ?? placeholder.url;
       setPhotos((prev) => prev.map((p, i) => i === idx ? { url, uploading: false } : p));
     } catch {
       setPhotos((prev) => prev.filter((_, i) => i !== idx));
@@ -249,24 +239,14 @@ export function ReviewModal({
     setSubmitError('');
 
     try {
-      const res = await fetch(`${API()}/api/v1/reviews`, {
-        method:      'POST',
-        credentials: 'include',
-        headers:     { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productId,
-          orderId,
-          rating,
-          title:     title.trim() || undefined,
-          body:      body.trim(),
-          imageUrls: photos.filter((p) => !p.uploading).map((p) => p.url),
-        }),
+      await apiClient.post(API_ROUTES.REVIEWS.LIST, {
+        productId,
+        orderId,
+        rating,
+        title:     title.trim() || undefined,
+        body:      body.trim(),
+        imageUrls: photos.filter((p) => !p.uploading).map((p) => p.url),
       });
-
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({})) as { message?: string };
-        throw new Error(j.message ?? 'Submission failed');
-      }
 
       setSubmitted(true);
       onSuccess();

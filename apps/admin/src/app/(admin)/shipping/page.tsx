@@ -17,9 +17,10 @@ import {
   type ShippingMethod,
   type ShippingMethodFormData,
 } from '../../../components/shipping/ShippingMethodModal';
-import { clientFetch } from '../../../lib/api';
+import { api } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { Toggle as PrimitiveToggle } from '../../../components/products/edit/primitives';
-import { fmtAmount, fetchArr } from '../../../lib/fmt';
+import { fmtAmount } from '../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -252,10 +253,7 @@ export default function ShippingPage() {
 
   const zonesQuery = useQuery<ShippingZone[]>({
     queryKey: ['admin-shipping-zones'],
-    queryFn:  async () => {
-      const res = await clientFetch('/admin/shipping/zones');
-      return fetchArr<ShippingZone>(res);
-    },
+    queryFn:  () => api.get<ShippingZone[]>(API_ROUTES.ADMIN.SHIPPING_ZONES),
   });
 
   const zones = zonesQuery.data ?? [];
@@ -264,11 +262,7 @@ export default function ShippingPage() {
 
   const settingsQuery = useQuery<ShippingSettings>({
     queryKey: ['admin-shipping-settings'],
-    queryFn:  async () => {
-      const res  = await clientFetch('/admin/shipping/settings');
-      const body = await res.json();
-      return (body.data ?? body) as ShippingSettings;
-    },
+    queryFn:  () => api.get<ShippingSettings>(API_ROUTES.ADMIN.SHIPPING_SETTINGS),
     staleTime: 60_000,
   });
 
@@ -291,10 +285,7 @@ export default function ShippingPage() {
   const saveSettings = async (section: string) => {
     setSettingsSaving(section);
     try {
-      await clientFetch('/admin/shipping/settings', {
-        method: 'PATCH',
-        body:   JSON.stringify(s),
-      });
+      await api.patch(API_ROUTES.ADMIN.SHIPPING_SETTINGS, s);
       qc.invalidateQueries({ queryKey: ['admin-shipping-settings'] });
     } finally { setSettingsSaving(null); }
   };
@@ -308,9 +299,9 @@ export default function ShippingPage() {
 
   const handleSaveZone = async (data: ShippingZoneFormData, id?: string) => {
     if (id) {
-      await clientFetch(`/admin/shipping/zones/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+      await api.patch(API_ROUTES.ADMIN.SHIPPING_ZONE(id), data);
     } else {
-      await clientFetch('/admin/shipping/zones', { method: 'POST', body: JSON.stringify(data) });
+      await api.post(API_ROUTES.ADMIN.SHIPPING_ZONES, data);
     }
     invalidateZones();
     setZoneModal(null);
@@ -318,21 +309,15 @@ export default function ShippingPage() {
 
   const handleDeleteZone = async (id: string) => {
     if (!confirm('Delete this shipping zone and all its methods?')) return;
-    await clientFetch(`/admin/shipping/zones/${id}`, { method: 'DELETE' });
+    await api.delete(API_ROUTES.ADMIN.SHIPPING_ZONE(id));
     invalidateZones();
   };
 
   const handleSaveMethod = async (data: ShippingMethodFormData, zoneId: string, methodId?: string) => {
     if (methodId) {
-      await clientFetch(`/admin/shipping/zones/${zoneId}/methods/${methodId}`, {
-        method: 'PATCH',
-        body:   JSON.stringify(data),
-      });
+      await api.patch(`${API_ROUTES.ADMIN.SHIPPING_ZONE_METHODS(zoneId)}/${methodId}`, data);
     } else {
-      await clientFetch(`/admin/shipping/zones/${zoneId}/methods`, {
-        method: 'POST',
-        body:   JSON.stringify(data),
-      });
+      await api.post(API_ROUTES.ADMIN.SHIPPING_ZONE_METHODS(zoneId), data);
     }
     invalidateZones();
     setMethodModal(null);
@@ -340,7 +325,7 @@ export default function ShippingPage() {
 
   const handleDeleteMethod = async (zoneId: string, methodId: string) => {
     if (!confirm('Delete this shipping method?')) return;
-    await clientFetch(`/admin/shipping/zones/${zoneId}/methods/${methodId}`, { method: 'DELETE' });
+    await api.delete(`${API_ROUTES.ADMIN.SHIPPING_ZONE_METHODS(zoneId)}/${methodId}`);
     invalidateZones();
   };
 

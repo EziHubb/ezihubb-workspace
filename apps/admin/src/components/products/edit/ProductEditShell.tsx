@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ExternalLink, Copy, MoreHorizontal, Archive, Trash2, Check, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import { clientFetch, API_BASE } from '../../../lib/api';
-import { getSession } from 'next-auth/react';
+import { api } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import {
   buildDefaultValues,
   buildCopyDefaultValues,
@@ -54,16 +54,13 @@ function MoreMenu({ productId }: { productId: string; slug: string }) {
 
   const handleArchive = async () => {
     if (!confirm('Archive this listing?')) return;
-    await clientFetch(`/admin/products/${productId}`, {
-      method: 'PATCH',
-      body:   JSON.stringify({ isActive: false }),
-    });
+    await api.patch(API_ROUTES.ADMIN.PRODUCT(productId), { isActive: false });
     router.push('/products');
   };
 
   const handleDelete = async () => {
     if (!confirm('Permanently delete this listing? This cannot be undone.')) return;
-    await clientFetch(`/admin/products/${productId}`, { method: 'DELETE' });
+    await api.delete(API_ROUTES.ADMIN.PRODUCT(productId));
     router.push('/products');
   };
 
@@ -142,10 +139,8 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
 
     (async () => {
       try {
-        const res  = await clientFetch('/admin/products/draft', { method: 'POST' });
-        if (!res.ok) throw new Error('Failed to create draft');
-        const body = await res.json() as { data?: { id: string }; id?: string };
-        const id   = body.data?.id ?? (body as unknown as { id: string }).id;
+        const body = await api.post<{ id: string }>(API_ROUTES.ADMIN.PRODUCTS_DRAFT);
+        const id   = body.id;
         if (!cancelled) {
           draftIdRef.current = id;
           setDraftId(id);
@@ -177,7 +172,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
     return () => {
       if (publishedRef.current || !draftIdRef.current) return;
       // Best-effort cleanup — fire-and-forget
-      clientFetch(`/admin/products/${draftIdRef.current}`, { method: 'DELETE' }).catch(() => {});
+      api.delete(API_ROUTES.ADMIN.PRODUCT(draftIdRef.current)).catch(() => {});
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -200,14 +195,8 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
 
   const handleEdit = async (data: ProductEditFormValues) => {
     await Promise.all([
-      clientFetch(`/admin/products/${product!.id}`, {
-        method: 'PATCH',
-        body:   JSON.stringify(extractPrismaFields(data)),
-      }),
-      clientFetch(`/admin/products/${product!.id}/detail`, {
-        method: 'PUT',
-        body:   JSON.stringify(extractMongoFields(data)),
-      }),
+      api.patch(API_ROUTES.ADMIN.PRODUCT(product!.id), extractPrismaFields(data)),
+      api.put(API_ROUTES.ADMIN.PRODUCT_DETAIL(product!.id), extractMongoFields(data)),
     ]);
     setIsDirty(false);
     setSaved(true);
@@ -231,44 +220,24 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
 
     const sku = data.sku?.trim() || generateSku();
 
-    const patchRes = await clientFetch(`/admin/products/${draftId}`, {
-      method: 'PATCH',
-      body:   JSON.stringify({
-        ...extractPrismaFields(data),
-        name:        data.name.trim(),
-        sku,
-        description: data.description || '',
-        basePrice:   data.basePrice   || 0,
-        categoryId:  data.primaryCategoryId,
-        status:      isCopy ? 'INACTIVE' : 'ACTIVE',
-        isActive:    isCopy ? false : true,
-      }),
+    await api.patch(API_ROUTES.ADMIN.PRODUCT(draftId), {
+      ...extractPrismaFields(data),
+      name:        data.name.trim(),
+      sku,
+      description: data.description || '',
+      basePrice:   data.basePrice   || 0,
+      categoryId:  data.primaryCategoryId,
+      status:      isCopy ? 'INACTIVE' : 'ACTIVE',
+      isActive:    isCopy ? false : true,
     });
 
-    if (!patchRes.ok) {
-      const err = await patchRes.json().catch(() => ({}));
-      throw new Error((err as { error?: { message?: string } })?.error?.message ?? 'Failed to create listing');
-    }
-
     // MongoDB detail (best-effort)
-    await clientFetch(`/admin/products/${draftId}/detail`, {
-      method: 'PUT',
-      body:   JSON.stringify({ ...extractMongoFields(data), productId: draftId }),
-    }).catch(() => {});
+    await api.put(API_ROUTES.ADMIN.PRODUCT_DETAIL(draftId), { ...extractMongoFields(data), productId: draftId }).catch(() => {});
 
     // Attach any presigned images that arrived before publish
     const pendingUrls = data.pendingImageUrls ?? [];
     if (pendingUrls.length > 0) {
-      const session = await getSession();
-      const token   = (session?.user as Record<string, unknown>)?.['accessToken'] as string | undefined;
-      await fetch(`${API_BASE}/admin/products/${draftId}/images/from-urls`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ urls: pendingUrls }),
-      }).catch(() => {});
+      await api.post(API_ROUTES.ADMIN.PRODUCT_IMAGES_FROM_URLS(draftId), { urls: pendingUrls }).catch(() => {});
     }
 
     publishedRef.current = true;             // prevent cleanup on unmount
@@ -302,9 +271,8 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
 
   const handleDuplicate = async () => {
     if (!product?.id) return;
-    const res  = await clientFetch(`/admin/products/${product.id}/duplicate`, { method: 'POST' });
-    const body = await res.json() as { data?: { id: string }; id?: string };
-    const newId = body.data?.id ?? body.id;
+    const body = await api.post<{ id: string }>(`/admin/products/${product.id}/duplicate`);
+    const newId = body.id;
     if (newId) router.push(`/products/${newId}/edit`);
   };
 
@@ -587,7 +555,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
                   type="button"
                   onClick={async () => {
                     if (draftId) {
-                      await clientFetch(`/admin/products/${draftId}`, { method: 'DELETE' }).catch(() => {});
+                      await api.delete(API_ROUTES.ADMIN.PRODUCT(draftId)).catch(() => {});
                     }
                     publishedRef.current = true; // prevent double-delete on unmount
                     setShowLeaveDialog(false);

@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { format } from 'date-fns';
-import { serverFetch } from '../../../../lib/api';
+import { serverApi } from '../../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { OrderStatusBadge } from '../../../../components/orders/OrderStatusBadge';
 import type { OrderDetail } from '../../../../components/orders/OrderDrawer';
@@ -24,10 +25,7 @@ export default async function OrderDetailPage({
 
   let order: OrderDetail | null = null;
   try {
-    const res  = await serverFetch(`/admin/orders/${id}`);
-    if (!res.ok) notFound();
-    const body = await res.json();
-    order = (body.data ?? body) as OrderDetail;
+    order = await serverApi<OrderDetail>('get', API_ROUTES.ADMIN.ORDER(id));
   } catch {
     notFound();
   }

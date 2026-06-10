@@ -1,5 +1,4 @@
 import {
-  Controller,
   Get,
   Post,
   Put,
@@ -13,16 +12,13 @@ import {
   UseInterceptors,
   HttpCode,
   HttpStatus,
-  UseGuards,
   BadRequestException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import {
-  ApiTags,
   ApiOperation,
   ApiResponse,
-  ApiBearerAuth,
   ApiConsumes,
   ApiBody,
 } from '@nestjs/swagger';
@@ -37,10 +33,7 @@ import { ProductResponseDto } from './dto/product-response.dto';
 import { ProductImageResponseDto } from './dto/product-response.dto';
 import { ProductListItemDto } from './dto/product-list-item.dto';
 import { ParseCuidPipe } from '../../common/pipes/parse-cuid.pipe';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { Role } from '@mlh/constants';
+import { AdminController } from '../../common/decorators/admin-controller.decorator';
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
 import {
   IsArray, IsString, ArrayMaxSize, IsOptional, IsBoolean,
@@ -147,11 +140,7 @@ class BulkExportDto {
   @IsOptional() @IsArray() @IsString({ each: true }) @ArrayMaxSize(2000) ids?: string[];
 }
 
-@ApiTags('Admin — Products')
-@ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
-@Controller('admin/products')
+@AdminController('products')
 export class AdminProductsController {
   constructor(
     private readonly productsService: ProductsService,

@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { CollectionDto } from '@mlh/types';
 import { fetchList } from '../../../../components/listing/types';
+import { API_BASE } from '../../../../lib/api-client';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,10 +31,9 @@ export default async function CollectionsPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const base       = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
 
   const collections = await fetchList<CollectionDto & { bannerUrl?: string; imageUrl?: string }>(
-    `${base}/api/v1/catalog/collections?isActive=true`,
+    `${API_BASE}/api/v1/catalog/collections?isActive=true`,
   );
 
   return (

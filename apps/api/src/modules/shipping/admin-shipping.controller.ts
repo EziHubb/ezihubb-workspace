@@ -1,6 +1,5 @@
 import {
   Body,
-  Controller,
   Delete,
   Get,
   HttpCode,
@@ -8,9 +7,8 @@ import {
   Param,
   Post,
   Put,
-  UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation } from '@nestjs/swagger';
 import { ShippingService, ZoneWithMethods } from './shipping.service';
 import {
   CreateShippingZoneDto,
@@ -20,16 +18,12 @@ import {
   CreateShippingMethodDto,
   UpdateShippingMethodDto,
 } from './dto/create-shipping-method.dto';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { Role } from '@mlh/constants';
 import { ShippingMethod } from '@prisma/client';
+import { AdminController } from '../../common/decorators/admin-controller.decorator';
 
-@ApiTags('admin / shipping')
-@Controller('admin/shipping')
-@UseGuards(RolesGuard)
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
+@AdminController('shipping')
 export class AdminShippingController {
+
   constructor(private readonly shippingService: ShippingService) {}
 
   // ── Processing profiles ───────────────────────────────────────────────────────

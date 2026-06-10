@@ -6,7 +6,8 @@ import { AlertTriangle, CheckCircle2, Search, ArrowUpRight, Package } from 'luci
 import Image from 'next/image';
 import Link from 'next/link';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
-import { clientFetch } from '../../../../lib/api';
+import { api } from '../../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -76,10 +77,11 @@ export default function ProductsSeoPage() {
   const { data: statsData } = useQuery<SeoStatsResponse>({
     queryKey: ['seo-stats'],
     queryFn:  async () => {
-      const res = await clientFetch('/admin/products/seo-stats');
-      if (!res.ok) return { total: 0, missingTitle: 0, missingDescription: 0, lowScore: 0, noIndex: 0 };
-      const body = await res.json();
-      return body.data ?? body;
+      try {
+        return await api.get<SeoStatsResponse>(API_ROUTES.ADMIN.PRODUCTS_SEO_STATS);
+      } catch {
+        return { total: 0, missingTitle: 0, missingDescription: 0, lowScore: 0, noIndex: 0 };
+      }
     },
     staleTime: 60_000,
   });
@@ -87,12 +89,13 @@ export default function ProductsSeoPage() {
   const { data: productsData, isLoading } = useQuery<{ data: SeoProductRow[]; total: number }>({
     queryKey: ['seo-products', page, search],
     queryFn:  async () => {
-      const p = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE), seoAudit: 'true' });
-      if (search) p.set('q', search);
-      const res  = await clientFetch(`/admin/products?${p}`);
-      if (!res.ok) return { data: [], total: 0 };
-      const body = await res.json();
-      return { data: body.data ?? [], total: body.total ?? 0 };
+      try {
+        const params: Record<string, string> = { page: String(page), limit: String(PAGE_SIZE), seoAudit: 'true' };
+        if (search) params['q'] = search;
+        return await api.get<{ data: SeoProductRow[]; total: number }>(API_ROUTES.ADMIN.PRODUCTS, { params });
+      } catch {
+        return { data: [], total: 0 };
+      }
     },
     staleTime: 30_000,
   });

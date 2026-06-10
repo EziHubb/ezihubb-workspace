@@ -1,6 +1,5 @@
 import {
   Body,
-  Controller,
   Delete,
   Get,
   HttpCode,
@@ -8,18 +7,14 @@ import {
   Param,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation } from '@nestjs/swagger';
 import { ReviewsService } from './reviews.service';
 import { AdminReviewQueryDto } from './dto/review-query.dto';
 import { AdminReplyDto, ReviewResponseDto } from './dto/review-response.dto';
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { Role } from '@mlh/constants';
 import { IsString, MinLength } from 'class-validator';
+import { AdminController } from '../../common/decorators/admin-controller.decorator';
 
 class ReplyDto {
   @IsString()
@@ -27,10 +22,7 @@ class ReplyDto {
   reply!: string;
 }
 
-@ApiTags('admin / reviews')
-@Controller('admin/reviews')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
+@AdminController('reviews')
 export class AdminReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 

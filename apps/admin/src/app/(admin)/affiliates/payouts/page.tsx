@@ -5,7 +5,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
-import { clientFetch } from '../../../../lib/api';
+import { api } from '../../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -69,14 +70,7 @@ function MarkPaidModal({
     setSaving(true);
     setError('');
     try {
-      const res = await clientFetch(`/admin/affiliates/payouts/${payout.id}/pay`, {
-        method: 'POST',
-        body:   JSON.stringify({ adminNotes: notes || undefined }),
-      });
-      if (!res.ok) {
-        const j = await res.json();
-        throw new Error((j as { error?: { message?: string } })?.error?.message ?? 'Failed to mark as paid');
-      }
+      await api.post(API_ROUTES.ADMIN.PAYOUT_PAY(payout.id), { adminNotes: notes || undefined });
       onDone();
     } catch (e) {
       setError((e as Error).message);
@@ -161,14 +155,7 @@ function RejectPayoutModal({
     setSaving(true);
     setError('');
     try {
-      const res = await clientFetch(`/admin/affiliates/payouts/${payout.id}/reject`, {
-        method: 'POST',
-        body:   JSON.stringify({ reason }),
-      });
-      if (!res.ok) {
-        const j = await res.json();
-        throw new Error((j as { error?: { message?: string } })?.error?.message ?? 'Rejection failed');
-      }
+      await api.post(API_ROUTES.ADMIN.PAYOUT_REJECT(payout.id), { reason });
       onDone();
     } catch (e) {
       setError((e as Error).message);
@@ -243,11 +230,7 @@ export default function AffiliatePayoutsPage() {
 
   const { data, isLoading } = useQuery<PayoutsResponse>({
     queryKey: ['admin-affiliate-payouts', tab, page],
-    queryFn:  async () => {
-      const res  = await clientFetch(`/admin/affiliates/payouts?${params.toString()}`);
-      const body = await res.json();
-      return (body.data ?? body) as PayoutsResponse;
-    },
+    queryFn:  () => api.get<PayoutsResponse>(`${API_ROUTES.ADMIN.AFFILIATES_PAYOUTS}?${params.toString()}`),
     staleTime: 30_000,
   });
 

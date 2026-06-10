@@ -6,7 +6,8 @@ import {
   Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { format, parseISO } from 'date-fns';
-import { clientFetch } from '../../lib/api';
+import { api } from '../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -66,11 +67,13 @@ export function RevenueChart({ initialData, initialTotal }: RevenueChartProps) {
     setRange(r);
     setLoading(true);
     try {
-      const days  = RANGES.find((x) => x.label === r)!.days;
-      const res   = await clientFetch(`/admin/dashboard/revenue?days=${days}`);
-      const body  = await res.json();
-      const newData  = body.data?.data  ?? body.data ?? [];
-      const newTotal = body.data?.total ?? body.total ?? 0;
+      const days = RANGES.find((x) => x.label === r)!.days;
+      const result = await api.get<{ data?: RevenueDataPoint[]; total?: number } | RevenueDataPoint[]>(
+        API_ROUTES.ADMIN.DASHBOARD_REVENUE,
+        { params: { days: String(days) } },
+      );
+      const newData  = Array.isArray(result) ? result : (result.data ?? []);
+      const newTotal = Array.isArray(result) ? newData.reduce((s, d) => s + (d.revenue ?? 0), 0) : (result.total ?? 0);
       setData(newData);
       setTotal(newTotal);
     } catch {

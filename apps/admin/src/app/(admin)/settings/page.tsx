@@ -10,7 +10,8 @@ import {
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
-import { clientFetch } from '../../../lib/api';
+import { api, adminApi } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { Toggle as PrimitiveToggle } from '../../../components/products/edit/primitives';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -164,11 +165,7 @@ function StoreTab() {
 
   const { data, isLoading } = useQuery<StoreSettings>({
     queryKey: ['store-settings'],
-    queryFn:  async () => {
-      const res  = await clientFetch('/admin/settings/store');
-      const body = await res.json();
-      return (body.data ?? body) as StoreSettings;
-    },
+    queryFn:  () => api.get<StoreSettings>(API_ROUTES.ADMIN.SETTINGS_STORE),
     staleTime: 60_000,
   });
 
@@ -190,7 +187,7 @@ function StoreTab() {
   const save = async (section: string, payload: Partial<StoreSettings>) => {
     setSaving(section);
     try {
-      await clientFetch('/admin/settings/store', { method: 'PATCH', body: JSON.stringify(payload) });
+      await api.patch(API_ROUTES.ADMIN.SETTINGS_STORE, payload);
     } finally { setSaving(''); }
   };
 
@@ -342,10 +339,7 @@ function EmailTemplateEditor({
   const handleSave = async () => {
     setSaving(true);
     try {
-      await clientFetch(`/admin/email-templates/${template.slug}`, {
-        method: 'PATCH',
-        body:   JSON.stringify({ body }),
-      });
+      await api.patch(API_ROUTES.ADMIN.EMAIL_TEMPLATE(template.slug), { body });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } finally { setSaving(false); }
@@ -477,29 +471,25 @@ function EmailTab() {
 
   const { data: smtpData } = useQuery({
     queryKey: ['smtp-settings'],
-    queryFn:  async () => {
-      const res  = await clientFetch('/admin/settings/email');
-      const body = await res.json();
-      return body.data ?? body;
-    },
+    queryFn:  () => api.get(API_ROUTES.ADMIN.SETTINGS_EMAIL),
     staleTime: 300_000,
   });
 
   useEffect(() => {
-    if (smtpData) setSmtp(smtpData);
+    if (smtpData) setSmtp(smtpData as typeof smtp);
   }, [smtpData]);
 
   const handleSaveSmtp = async () => {
     setSmtpSaving(true);
     try {
-      await clientFetch('/admin/settings/email', { method: 'PATCH', body: JSON.stringify(smtp) });
+      await api.patch(API_ROUTES.ADMIN.SETTINGS_EMAIL, smtp);
     } finally { setSmtpSaving(false); }
   };
 
   const handleTestEmail = async () => {
     setTestSending(true);
     try {
-      await clientFetch('/admin/settings/email/test', { method: 'POST' });
+      await api.post(API_ROUTES.ADMIN.SETTINGS_EMAIL_TEST);
       setTestDone(true);
       setTimeout(() => setTestDone(false), 4000);
     } finally { setTestSending(false); }
@@ -508,11 +498,12 @@ function EmailTab() {
   const { data: templates = [] } = useQuery<{ slug: string; updatedAt: string }[]>({
     queryKey: ['email-templates-list'],
     queryFn:  async () => {
-      const res  = await clientFetch('/admin/email-templates');
-      if (!res.ok) return [];
-      const body = await res.json();
-      const result = body.data ?? body;
-      return Array.isArray(result) ? result : [];
+      try {
+        const result = await api.get<{ slug: string; updatedAt: string }[]>(API_ROUTES.ADMIN.EMAIL_TEMPLATES);
+        return Array.isArray(result) ? result : [];
+      } catch {
+        return [];
+      }
     },
     staleTime: 300_000,
   });
@@ -650,10 +641,9 @@ function NotificationsTab() {
   useQuery({
     queryKey: ['notif-settings'],
     queryFn:  async () => {
-      const res  = await clientFetch('/admin/settings/notifications');
-      const body = await res.json();
-      if (body.data ?? body) setS(body.data ?? body);
-      return body;
+      const data = await api.get<NotifSettings>(API_ROUTES.ADMIN.SETTINGS_NOTIFICATIONS);
+      if (data) setS(data);
+      return data;
     },
     staleTime: 300_000,
   });
@@ -664,7 +654,7 @@ function NotificationsTab() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await clientFetch('/admin/settings/notifications', { method: 'PATCH', body: JSON.stringify(s) });
+      await api.patch(API_ROUTES.ADMIN.SETTINGS_NOTIFICATIONS, s);
       setDone(true);
       setTimeout(() => setDone(false), 3000);
     } finally { setSaving(false); }
@@ -810,29 +800,30 @@ function TeamTab() {
   const { data: members = [], isLoading } = useQuery<AdminMember[]>({
     queryKey: ['admin-team'],
     queryFn:  async () => {
-      const res  = await clientFetch('/admin/team');
-      if (!res.ok) return [];
-      const body = await res.json();
-      const result = body.data ?? body;
-      return Array.isArray(result) ? result as AdminMember[] : [];
+      try {
+        const result = await api.get<AdminMember[]>(API_ROUTES.ADMIN.TEAM);
+        return Array.isArray(result) ? result : [];
+      } catch {
+        return [];
+      }
     },
     staleTime: 120_000,
   });
 
   const handleInvite = async (email: string, role: string) => {
-    await clientFetch('/admin/team/invite', { method: 'POST', body: JSON.stringify({ email, role }) });
+    await api.post(API_ROUTES.ADMIN.TEAM_INVITE, { email, role });
     qc.invalidateQueries({ queryKey: ['admin-team'] });
     setInviteOpen(false);
   };
 
   const handleRevoke = async (id: string, name: string) => {
     if (!confirm(`Revoke admin access for ${name}? They will be logged out immediately.`)) return;
-    await clientFetch(`/admin/team/${id}`, { method: 'DELETE' });
+    await api.delete(API_ROUTES.ADMIN.TEAM_MEMBER(id));
     qc.invalidateQueries({ queryKey: ['admin-team'] });
   };
 
   const handleRoleChange = async (id: string, role: string) => {
-    await clientFetch(`/admin/team/${id}`, { method: 'PATCH', body: JSON.stringify({ role }) });
+    await api.patch(API_ROUTES.ADMIN.TEAM_MEMBER(id), { role });
     qc.invalidateQueries({ queryKey: ['admin-team'] });
   };
 
@@ -975,19 +966,16 @@ function DangerAction({
 
 function DangerZoneTab() {
   const handleFlushRedis = async () => {
-    const res = await clientFetch('/admin/cache/flush', { method: 'POST' });
-    if (!res.ok) throw new Error('Cache flush failed');
+    await api.post(API_ROUTES.ADMIN.CACHE_FLUSH);
   };
 
   const handleSyncMegaMenu = async () => {
-    const res = await clientFetch('/admin/catalog/sync-mega-menu', { method: 'POST' });
-    if (!res.ok) throw new Error('Mega menu sync failed');
+    await api.post(API_ROUTES.ADMIN.CATALOG_SYNC);
   };
 
   const handleExport = async () => {
-    const res  = await clientFetch('/admin/export/data');
-    if (!res.ok) throw new Error('Export failed');
-    const blob = await res.blob();
+    const res = await adminApi.get(API_ROUTES.ADMIN.EXPORT_DATA, { responseType: 'blob' });
+    const blob = res.data as Blob;
     const url  = URL.createObjectURL(blob);
     const a    = Object.assign(document.createElement('a'), {
       href:     url,
@@ -1062,10 +1050,11 @@ function SeoTab() {
   const { data } = useQuery<SeoSettings>({
     queryKey: ['seo-settings'],
     queryFn:  async () => {
-      const res  = await clientFetch('/admin/settings/seo');
-      if (!res.ok) return {};
-      const body = await res.json();
-      return (body.data ?? body) as SeoSettings;
+      try {
+        return await api.get<SeoSettings>(API_ROUTES.ADMIN.SETTINGS_SEO);
+      } catch {
+        return {};
+      }
     },
     staleTime: 300_000,
   });
@@ -1080,7 +1069,7 @@ function SeoTab() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await clientFetch('/admin/settings/seo', { method: 'PATCH', body: JSON.stringify(s) });
+      await api.patch(API_ROUTES.ADMIN.SETTINGS_SEO, s);
       setDone(true);
       setTimeout(() => setDone(false), 3000);
     } finally { setSaving(false); }

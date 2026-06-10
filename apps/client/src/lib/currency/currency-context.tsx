@@ -1,10 +1,11 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
+import { apiClient } from '../api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 const CURRENCY_COOKIE = 'mlh_currency';
 const CURRENCY_LS_KEY = 'mlh_currency';
-const API_URL         = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
 
 const CURRENCIES = {
   USD: { symbol: '$',   decimals: 2, flag: '🇺🇸', name: 'US Dollar'       },
@@ -52,12 +53,9 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     if (stored in CURRENCIES) setCurrencyState(stored as CurrencyCode);
 
     // Fetch exchange rates
-    fetch(`${API_URL}/api/v1/currency/rates`, { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((data: unknown) => {
-        const payload = (data as { data?: Record<string, number> })?.data ?? data as Record<string, number>;
-        if (payload && typeof payload === 'object') setRates(payload);
-      })
+    apiClient
+      .get<Record<string, number>>(API_ROUTES.CURRENCY.RATES)
+      .then((rates) => { if (rates && typeof rates === 'object') setRates(rates); })
       .catch(() => { /* use fallback { USD: 1 } */ })
       .finally(() => setIsLoading(false));
   }, []);

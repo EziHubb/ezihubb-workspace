@@ -7,6 +7,7 @@ import { AlertTriangle, ArrowLeft, Search } from 'lucide-react';
 import { Button, Input } from '@mlh/ui';
 import type { OrderDto } from '@mlh/types';
 import { OrderTrackingCard } from '../../../../../components/orders/OrderTrackingCard';
+import { API_BASE } from '../../../../../lib/api-client';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -27,10 +28,6 @@ function formatOrderNumber(raw: string): string {
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
-
-const API_BASE = () =>
-  (typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_API_URL']) ||
-  'http://localhost:3002';
 
 // ── Search form (STATE 1) ──────────────────────────────────────────────────────
 
@@ -71,7 +68,7 @@ function SearchForm({ onSuccess, locale }: SearchFormProps) {
     try {
       const url = new URL(
         `/api/v1/orders/${encodeURIComponent(orderNumber.trim())}`,
-        API_BASE(),
+        API_BASE,
       );
       url.searchParams.set('email', email.trim());
 

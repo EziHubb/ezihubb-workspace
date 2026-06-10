@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { getSession } from 'next-auth/react';
 import { ArrowLeft, Upload, FileText, Download, CheckCircle, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
-import { API_BASE } from '../../../../lib/api';
+import { API_BASE } from '../../../../lib/api-client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

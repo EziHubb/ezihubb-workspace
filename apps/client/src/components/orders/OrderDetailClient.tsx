@@ -6,6 +6,7 @@ import { AlertTriangle, Search } from 'lucide-react';
 import { Button, Input } from '@mlh/ui';
 import type { OrderDto } from '@mlh/types';
 import { OrderTrackingCard } from './OrderTrackingCard';
+import { API_BASE } from '../../lib/api-client';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -18,10 +19,6 @@ function maskEmail(email: string): string {
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
-
-const API_BASE = () =>
-  (typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_API_URL']) ||
-  'http://localhost:3002';
 
 // ── Email verification form ───────────────────────────────────────────────────
 
@@ -54,7 +51,7 @@ function VerifyForm({ orderNumber, onVerified }: VerifyFormProps) {
     try {
       const url = new URL(
         `/api/v1/orders/${encodeURIComponent(orderNumber)}`,
-        API_BASE(),
+        API_BASE,
       );
       url.searchParams.set('email', email.trim());
 

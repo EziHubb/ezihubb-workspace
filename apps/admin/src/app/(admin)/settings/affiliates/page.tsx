@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Save } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
-import { clientFetch } from '../../../../lib/api';
+import { api } from '../../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { Toggle as PrimitiveToggle } from '../../../../components/products/edit/primitives';
 
 // ── Shared primitives ──────────────────────────────────────────────────────────
@@ -71,11 +72,7 @@ export default function AffiliateSettingsPage() {
 
   const { data, isLoading } = useQuery<AffiliateSettings>({
     queryKey: ['admin-affiliate-settings'],
-    queryFn:  async () => {
-      const res  = await clientFetch('/admin/affiliates/settings');
-      const body = await res.json();
-      return (body.data ?? body) as AffiliateSettings;
-    },
+    queryFn:  () => api.get<AffiliateSettings>(API_ROUTES.ADMIN.AFFILIATES_SETTINGS),
     staleTime: 60_000,
   });
 
@@ -93,21 +90,14 @@ export default function AffiliateSettingsPage() {
     setSaving(true);
     setError('');
     try {
-      const res = await clientFetch('/admin/affiliates/settings', {
-        method: 'PATCH',
-        body:   JSON.stringify({
-          isEnabled,
-          defaultRate:       Number(defaultRate) / 100,
-          buyerDiscountRate: Number(buyerDiscountRate) / 100,
-          cookieDays:        Number(cookieDays),
-          minPayoutAmount:   Number(minPayoutAmount),
-          lockDays:          Number(lockDays),
-        }),
+      await api.patch(API_ROUTES.ADMIN.AFFILIATES_SETTINGS, {
+        isEnabled,
+        defaultRate:       Number(defaultRate) / 100,
+        buyerDiscountRate: Number(buyerDiscountRate) / 100,
+        cookieDays:        Number(cookieDays),
+        minPayoutAmount:   Number(minPayoutAmount),
+        lockDays:          Number(lockDays),
       });
-      if (!res.ok) {
-        const j = await res.json();
-        throw new Error((j as { error?: { message?: string } })?.error?.message ?? 'Save failed');
-      }
       setDone(true);
       setTimeout(() => setDone(false), 3000);
       void qc.invalidateQueries({ queryKey: ['admin-affiliate-settings'] });

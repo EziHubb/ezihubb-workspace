@@ -1,15 +1,12 @@
 import {
-  Controller, Post, Body, UseGuards, HttpCode, HttpStatus,
+  Post, Body, HttpCode, HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiOperation } from '@nestjs/swagger';
 import { IsArray, IsString, ValidateNested, ArrayMaxSize } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { StorageService } from '../../common/services/storage.service';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { Role } from '@mlh/constants';
+import { AdminController } from '../../common/decorators/admin-controller.decorator';
 
 class PresignFileDto {
   @ApiProperty({ example: 'photo.jpg' })
@@ -30,11 +27,7 @@ class PresignDto {
   files: PresignFileDto[];
 }
 
-@ApiTags('Admin — Assets')
-@ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
-@Controller('admin/assets')
+@AdminController('assets')
 export class AssetsController {
   constructor(private readonly storage: StorageService) {}
 

@@ -1,16 +1,13 @@
 import {
-  Controller, Get, Post, Delete,
+  Get, Post, Delete,
   Body, Param, HttpCode, HttpStatus,
-  UseGuards, BadRequestException,
+  BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiOperation } from '@nestjs/swagger';
 import { IsString, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { Role } from '@mlh/constants';
+import { AdminController } from '../../common/decorators/admin-controller.decorator';
 
 // ── Valid attribute types ─────────────────────────────────────────────────────
 
@@ -27,11 +24,7 @@ class AddAttributeValueDto {
 
 // ── Controller ────────────────────────────────────────────────────────────────
 
-@ApiTags('Admin — Attributes')
-@ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
-@Controller('admin/attributes')
+@AdminController('attributes')
 export class AdminAttributesController {
   constructor(private readonly prisma: PrismaService) {}
 

@@ -13,13 +13,12 @@ import { z } from 'zod';
 import { useLocale } from 'next-intl';
 import { Check, Gift, Search, AlertCircle, Tag } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@mlh/ui';
+import { apiClient } from '../../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const PRESET_AMOUNTS = [25, 50, 75, 100, 150, 200] as const;
-
-const API_BASE = () =>
-  process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
 
 // ── GiftCardVisual ────────────────────────────────────────────────────────────
 
@@ -318,13 +317,10 @@ function BalanceChecker() {
     setResult(null);
 
     try {
-      const res = await fetch(
-        `${API_BASE()}/api/v1/payments/gift-cards/${encodeURIComponent(code.trim())}/validate`,
-        { credentials: 'include' },
+      const data = await apiClient.get<{ isValid: boolean; balance?: number; code?: string }>(
+        API_ROUTES.PAYMENTS.GIFT_CARD_VALIDATE_CODE(code.trim()),
       );
-      if (!res.ok) throw new Error('Gift card not found');
-      const body = await res.json();
-      setResult(body.data ?? body);
+      setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid or expired gift card code');
     } finally {
@@ -408,11 +404,9 @@ export default function GiftCardsPage() {
     setPurchaseError('');
 
     try {
-      const res = await fetch(`${API_BASE()}/api/v1/payments/gift-cards/purchase`, {
-        method:      'POST',
-        headers:     { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body:        JSON.stringify({
+      const result = await apiClient.post<{ code: string }>(
+        API_ROUTES.PAYMENTS.GIFT_CARDS_PURCHASE,
+        {
           amount:         selectedAmount,
           currency:       'USD',
           recipientName:  formData.recipientName,
@@ -420,16 +414,9 @@ export default function GiftCardsPage() {
           senderName:     formData.yourName,
           message:        formData.message,
           sendAt:         formData.sendNow ? null : formData.scheduleDate,
-        }),
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { message?: string };
-        throw new Error(body.message ?? 'Purchase failed. Please try again.');
-      }
-
-      const body = await res.json();
-      const code  = (body.data?.code ?? body.code ?? 'MLH-GIFT-XXXX') as string;
+        },
+      );
+      const code = result?.code ?? 'MLH-GIFT-XXXX';
       setSuccessModal({ giftCardCode: code, recipientEmail: formData.recipientEmail });
     } catch (err) {
       setPurchaseError(err instanceof Error ? err.message : 'Something went wrong.');

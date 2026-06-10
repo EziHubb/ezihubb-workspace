@@ -26,6 +26,7 @@ if (apiUrl) {
 
 export {
   api,
+  apiClient,
   apiFetch,
   setBaseUrl,
   setTokenGetter,

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { apiClient } from '../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 interface NewsletterFormProps {
   placeholder: string;
@@ -23,18 +25,7 @@ export function NewsletterForm({ placeholder, ctaLabel, disclaimer, successMessa
     setError('');
 
     try {
-      const apiBase = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
-      const res = await fetch(`${apiBase}/newsletter/subscribe`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { message?: string }).message ?? 'Subscription failed');
-      }
-
+      await apiClient.post(API_ROUTES.NEWSLETTER.SUBSCRIBE, { email });
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');

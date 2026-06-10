@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider, MutationCache, QueryCache } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ToastProvider } from '@mlh/ui';
+import { ToastProvider, ErrorBoundary } from '@mlh/ui';
 import { AuthInitializer } from './AuthInitializer';
 
 // ── Global error classifier ───────────────────────────────────────────────────
@@ -98,13 +98,15 @@ export function ReactQueryProvider({ children }: { children: React.ReactNode }) 
   const [queryClient] = useState(makeQueryClient);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {/* ToastProvider is globally available — no need to wrap per-page */}
-      <ToastProvider>
-        {children}
-      </ToastProvider>
-      {/* Auth initializer — silently refreshes session token on app boot */}
-      <AuthInitializer />
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        {/* ToastProvider is globally available — no need to wrap per-page */}
+        <ToastProvider>
+          {children}
+        </ToastProvider>
+        {/* Auth initializer — silently refreshes session token on app boot */}
+        <AuthInitializer />
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

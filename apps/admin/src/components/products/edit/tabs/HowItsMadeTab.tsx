@@ -7,8 +7,8 @@ import {
   Plus, X, Check, ExternalLink, Shield, Package2,
   ChevronUp,
 } from 'lucide-react';
-import { clientFetch } from '../../../../lib/api';
-import { fetchArr } from '../../../../lib/fmt';
+import { api } from '../../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import type {
   ProductEditFormValues, WhoMadeIt, HowItWasMade,
 } from '../types';
@@ -144,10 +144,7 @@ function ProductionPartnersSection({
 
   const { data: allPartners = [] } = useQuery<ProductionPartner[]>({
     queryKey: ['production-partners'],
-    queryFn:  async () => {
-      const res = await clientFetch('/admin/production-partners');
-      return fetchArr<ProductionPartner>(res);
-    },
+    queryFn:  () => api.get<ProductionPartner[]>(API_ROUTES.ADMIN.PRODUCTION_PARTNERS),
     staleTime: 5 * 60_000,
   });
 
@@ -170,12 +167,10 @@ function ProductionPartnersSection({
     if (!newName.trim()) return;
     setCreating(true);
     try {
-      const res  = await clientFetch('/admin/production-partners', {
-        method: 'POST',
-        body:   JSON.stringify({ name: newName.trim(), location: newLoc.trim() || undefined }),
+      const created = await api.post<ProductionPartner>(API_ROUTES.ADMIN.PRODUCTION_PARTNERS, {
+        name:     newName.trim(),
+        location: newLoc.trim() || undefined,
       });
-      const body = await res.json();
-      const created = (body.data ?? body) as ProductionPartner;
       qc.invalidateQueries({ queryKey: ['production-partners'] });
       onChange([...selectedIds, created.id]);
       setNewName('');

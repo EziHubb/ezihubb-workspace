@@ -4,7 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Star, Check, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { clientFetch } from '../../lib/api';
+import { api } from '../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -47,12 +48,12 @@ export function PendingReviewsCard({
 
   const handleAction = async (id: string, action: 'approve' | 'hide') => {
     const endpoint = action === 'approve'
-      ? `/admin/reviews/${id}/approve`
-      : `/admin/reviews/${id}/hide`;
+      ? API_ROUTES.ADMIN.REVIEW_APPROVE(id)
+      : API_ROUTES.ADMIN.REVIEW_HIDE(id);
 
     setPending((p) => new Set(p).add(id));
     try {
-      await clientFetch(endpoint, { method: 'PATCH' });
+      await api.patch(endpoint);
       // Fade-out by removing with a small delay
       setTimeout(() => {
         setReviews((prev) => prev.filter((r) => r.id !== id));

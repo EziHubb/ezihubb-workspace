@@ -6,8 +6,8 @@ import { useQuery } from '@tanstack/react-query';
 import {
   ChevronRight, X, ExternalLink, Lightbulb, Truck,
 } from 'lucide-react';
-import { clientFetch } from '../../../../lib/api';
-import { fetchArr } from '../../../../lib/fmt';
+import { api } from '../../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import type { ProductEditFormValues, AdminProductDto, ReturnPolicy } from '../types';
 import { EstimatedEarningsRow }    from '../EstimatedEarningsRow';
 import { ProcessingProfileCard }   from '../ProcessingProfileCard';
@@ -219,10 +219,7 @@ function ShippingProfileCard({
 
   const { data: profiles = [] } = useQuery<ShippingProfile[]>({
     queryKey: ['shipping-profiles'],
-    queryFn:  async () => {
-      const res = await clientFetch('/admin/shipping/profiles');
-      return fetchArr<ShippingProfile>(res);
-    },
+    queryFn:  () => api.get<ShippingProfile[]>(API_ROUTES.ADMIN.SHIPPING_PROFILES),
     staleTime: 10 * 60_000,
   });
 
@@ -326,10 +323,11 @@ function VariationPriceNotice({
   const { data: settings } = useQuery<VariationSettings>({
     queryKey: ['variation-settings', productId],
     queryFn:  async () => {
-      const res  = await clientFetch(`/admin/products/${productId}/variation-settings`);
-      if (!res.ok) return { enableVariations: false, variesBy: [] };
-      const body = await res.json();
-      return (body.data ?? body) as VariationSettings;
+      try {
+        return await api.get<VariationSettings>(`/admin/products/${productId}/variation-settings`);
+      } catch {
+        return { enableVariations: false, variesBy: [] };
+      }
     },
     enabled:  !!productId,
     staleTime: 30_000,

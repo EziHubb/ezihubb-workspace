@@ -24,8 +24,8 @@ import {
   GripVertical, Pencil, Trash2, X, Plus, ChevronDown,
   AlignLeft, List, Paperclip, Check,
 } from 'lucide-react';
-import { clientFetch } from '../../../lib/api';
-import { fetchArr } from '../../../lib/fmt';
+import { api } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { Toggle } from './primitives';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -267,17 +267,10 @@ function CustomOptionSheet({
     setSaving(true);
     setSaveError(null);
     try {
-      const url    = isEditing
-        ? `/admin/products/${productId}/custom-options/${option!.id}`
-        : `/admin/products/${productId}/custom-options`;
-      const method = isEditing ? 'PATCH' : 'POST';
-      const res    = await clientFetch(url, {
-        method,
-        body: JSON.stringify({ type, ...data }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { error?: { message?: string } })?.error?.message ?? 'Save failed');
+      if (isEditing) {
+        await api.patch(API_ROUTES.ADMIN.PRODUCT_CUSTOM_OPTION(productId, option!.id), { type, ...data });
+      } else {
+        await api.post(API_ROUTES.ADMIN.PRODUCT_CUSTOM_OPTIONS(productId), { type, ...data });
       }
       onSaved();
     } catch (e: unknown) {
@@ -491,9 +484,7 @@ export function CustomOptionsEditor({ productId }: CustomOptionsEditorProps) {
   // Fetch options
   const { data: options = [], isLoading } = useQuery<CustomOption[]>({
     queryKey: ['custom-options', productId],
-    queryFn:  async () => fetchArr<CustomOption>(
-      await clientFetch(`/admin/products/${productId}/custom-options`),
-    ),
+    queryFn:  () => api.get<CustomOption[]>(`/admin/products/${productId}/custom-options`),
     staleTime: 30_000,
   });
 
@@ -502,9 +493,7 @@ export function CustomOptionsEditor({ productId }: CustomOptionsEditorProps) {
   // Delete
   const handleDelete = async (optionId: string) => {
     if (!confirm('Remove this custom field?')) return;
-    await clientFetch(`/admin/products/${productId}/custom-options/${optionId}`, {
-      method: 'DELETE',
-    });
+    await api.delete(API_ROUTES.ADMIN.PRODUCT_CUSTOM_OPTION(productId, optionId));
     invalidate();
   };
 
@@ -517,9 +506,8 @@ export function CustomOptionsEditor({ productId }: CustomOptionsEditorProps) {
     if (oldIdx === -1 || newIdx === -1) return;
     const reordered = arrayMove(options, oldIdx, newIdx);
     // Optimistic update via immediate re-fetch + background save
-    clientFetch(`/admin/products/${productId}/custom-options/reorder`, {
-      method: 'PUT',
-      body:   JSON.stringify({ orderedIds: reordered.map((o) => o.id) }),
+    api.put(API_ROUTES.ADMIN.PRODUCT_CUSTOM_OPTIONS_REORDER(productId), {
+      orderedIds: reordered.map((o) => o.id),
     }).then(() => invalidate());
   };
 

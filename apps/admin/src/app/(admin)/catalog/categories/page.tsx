@@ -7,8 +7,8 @@ import {
   LayoutGrid, RefreshCw, GripVertical, Eye, EyeOff,
 } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
-import { clientFetch } from '../../../../lib/api';
-import { fetchArr } from '../../../../lib/fmt';
+import { api } from '../../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -392,10 +392,7 @@ export default function CategoriesPage() {
   // Fetch full category tree
   const { data: tree = [], isLoading } = useQuery<Category[]>({
     queryKey: ['admin-categories'],
-    queryFn:  async () => {
-      const res = await clientFetch('/catalog/categories');
-      return fetchArr<Category>(res);
-    },
+    queryFn:  () => api.get<Category[]>(API_ROUTES.CATALOG.CATEGORIES),
   });
 
   const [selected,   setSelected]   = useState<Category | null>(null);
@@ -448,32 +445,26 @@ export default function CategoriesPage() {
 
   const handleSave = async (data: Partial<Category> & { id?: string; parentId?: string }) => {
     if (data.id) {
-      await clientFetch(`/admin/categories/${data.id}`, {
-        method: 'PATCH',
-        body:   JSON.stringify(data),
-      });
+      await api.patch(API_ROUTES.ADMIN.CATEGORY(data.id), data);
     } else {
-      await clientFetch('/admin/categories', {
-        method: 'POST',
-        body:   JSON.stringify(data),
-      });
+      await api.post(API_ROUTES.ADMIN.CATEGORIES, data);
     }
     qc.invalidateQueries({ queryKey: ['admin-categories'] });
     setSelected(null);
   };
 
   const handleDelete = async (id: string) => {
-    const res  = await clientFetch(`/admin/categories/${id}`, { method: 'DELETE' });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body?.error?.message ?? 'Delete failed — the category may have active products.');
+    try {
+      await api.delete(API_ROUTES.ADMIN.CATEGORY(id));
+    } catch (e: unknown) {
+      throw new Error((e as Error).message ?? 'Delete failed — the category may have active products.');
     }
     qc.invalidateQueries({ queryKey: ['admin-categories'] });
     setSelected(null);
   };
 
   const handleSync = async () => {
-    await clientFetch('/admin/catalog/sync-mega-menu', { method: 'POST' });
+    await api.post(API_ROUTES.ADMIN.CATALOG_SYNC);
     qc.invalidateQueries({ queryKey: ['admin-categories'] });
   };
 

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { HeartOff } from 'lucide-react';
 import { AddToCartFromWishlist } from './AddToCartFromWishlist';
+import { API_BASE } from '../../../../../lib/api-client';
 
 // Never indexed — prevent crawling of share tokens
 export const metadata: Metadata = {
@@ -32,8 +33,7 @@ interface PublicWishlistResponse {
 
 async function getPublicWishlist(token: string): Promise<PublicWishlistResponse | null> {
   try {
-    const base = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
-    const res  = await fetch(`${base}/api/v1/wishlist/${token}`, { cache: 'no-store' });
+    const res  = await fetch(`${API_BASE}/api/v1/wishlist/${token}`, { cache: 'no-store' });
     if (!res.ok) return null;
     const body = await res.json();
     // Unwrap the { success, data } envelope from TransformInterceptor

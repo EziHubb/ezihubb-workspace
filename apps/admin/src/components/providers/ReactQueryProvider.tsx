@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider, MutationCache, QueryCache } from '@ta
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { signOut } from 'next-auth/react';
-import { ApiError } from '../../lib/api';
+import { ApiError } from '../../lib/api-client';
 
 function shouldRetry(failureCount: number, err: unknown): boolean {
   if (err instanceof ApiError) {

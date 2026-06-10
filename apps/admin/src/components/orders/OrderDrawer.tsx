@@ -12,7 +12,8 @@ import { format } from 'date-fns';
 import { OrderStatusBadge, ALL_STATUSES } from './OrderStatusBadge';
 import { CustomizationPreviewModal } from './CustomizationPreviewModal';
 import { BuyLabelModal, type LabelPurchaseResult } from './BuyLabelModal';
-import { clientFetch } from '../../lib/api';
+import { api } from '../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -270,10 +271,7 @@ function ShippingInfo({ order, onUpdate }: { order: OrderDetail; onUpdate: () =>
   const saveTracking = async () => {
     setSaving(true);
     try {
-      await clientFetch(`/admin/orders/${order.id}/tracking`, {
-        method: 'PATCH',
-        body:   JSON.stringify({ trackingNumber: tracking, carrier }),
-      });
+      await api.patch(API_ROUTES.ADMIN.ORDER_TRACKING(order.id), { trackingNumber: tracking, carrier });
       onUpdate();
     } catch { /* silent */ } finally {
       setSaving(false);
@@ -384,10 +382,7 @@ function UpdateStatus({ order, onUpdate }: { order: OrderDetail; onUpdate: () =>
   const handleUpdate = async () => {
     setSaving(true);
     try {
-      await clientFetch(`/admin/orders/${order.id}/status`, {
-        method: 'PATCH',
-        body:   JSON.stringify({ status, note: note || undefined }),
-      });
+      await api.patch(API_ROUTES.ADMIN.ORDER_STATUS(order.id), { status, note: note || undefined });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       onUpdate();
@@ -550,10 +545,7 @@ export function OrderDrawer({ order, onClose, onUpdate }: OrderDrawerProps) {
             type="button"
             onClick={async () => {
               if (!confirm('Issue a refund for this order?')) return;
-              await clientFetch(`/payments/${order.id}/refund`, {
-                method: 'POST',
-                body:   JSON.stringify({ reason: 'Admin initiated' }),
-              });
+              await api.post(API_ROUTES.ADMIN.ORDER_REFUND(order.id), { reason: 'Admin initiated' });
               onUpdate();
             }}
             className="flex items-center gap-1.5 text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 px-3 py-2 rounded-button transition-colors"

@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { Copy, ExternalLink, Package, Check } from 'lucide-react';
 import { Button, Modal, ModalHeader, ModalBody, ModalFooter, OrderStatusBadge } from '@mlh/ui';
 import type { OrderDto, OrderStatus } from '@mlh/types';
+import { apiClient } from '../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { OrderStatusTimeline } from './OrderStatusTimeline';
 import { CancelCountdown } from './CancelCountdown';
 
@@ -117,29 +119,10 @@ export function OrderTrackingCard({ order, guestEmail, onCancel }: OrderTracking
     setCancelLoading(true);
     setCancelError(null);
     try {
-      const apiBase =
-        (typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_API_URL']) ||
-        'http://localhost:3002';
-
-      const res = await fetch(
-        `${apiBase}/api/v1/orders/${order.orderNumber}/cancel`,
-        {
-          method:      'POST',
-          credentials: 'include',
-          headers:     { 'Content-Type': 'application/json' },
-          body:        JSON.stringify(guestEmail ? { email: guestEmail } : undefined),
-        },
+      const updated = await apiClient.post<OrderDto>(
+        API_ROUTES.ORDERS.CANCEL(order.orderNumber),
+        guestEmail ? { email: guestEmail } : undefined,
       );
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(
-          typeof body?.message === 'string' ? body.message : 'Failed to cancel order.',
-        );
-      }
-
-      const json    = await res.json();
-      const updated: OrderDto = json?.data ?? json;
       setCancelOpen(false);
       onCancel?.(updated);
     } catch (err) {

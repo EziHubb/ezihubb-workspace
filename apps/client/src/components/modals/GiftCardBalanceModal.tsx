@@ -3,12 +3,8 @@
 import { useState } from 'react';
 import { CreditCard, Check, X } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@mlh/ui';
-
-// ── API ───────────────────────────────────────────────────────────────────────
-
-const API = () =>
-  (typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_API_URL']) ||
-  'http://localhost:3002';
+import { apiClient } from '../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Gift card visual ──────────────────────────────────────────────────────────
 
@@ -82,27 +78,16 @@ export function GiftCardBalanceModal({
     setValidResult(null);
 
     try {
-      const res = await fetch(
-        `${API()}/api/v1/payments/gift-cards/${encodeURIComponent(trimmed)}/validate`,
-        { credentials: 'include', headers: { Accept: 'application/json' } },
+      const data = await apiClient.get<ValidResult>(
+        API_ROUTES.PAYMENTS.GIFT_CARD_VALIDATE_CODE(trimmed),
       );
-
-      if (res.status === 404 || res.status === 422) {
-        setError('Invalid or already used gift card code.');
-        return;
-      }
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      const json = await res.json();
-      const data = json?.data ?? json;
 
       if (!data?.balance || data.balance <= 0) {
         setError('This gift card has no remaining balance.');
         return;
       }
 
-      setValidResult(data as ValidResult);
+      setValidResult(data);
     } catch {
       setError('Could not validate gift card. Please try again.');
     } finally {

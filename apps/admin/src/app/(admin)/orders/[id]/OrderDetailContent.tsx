@@ -11,7 +11,8 @@ import {
 } from 'lucide-react';
 import { ALL_STATUSES } from '../../../../components/orders/OrderStatusBadge';
 import { CustomizationPreviewModal } from '../../../../components/orders/CustomizationPreviewModal';
-import { clientFetch } from '../../../../lib/api';
+import { api } from '../../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount } from '../../../../lib/fmt';
 import type { OrderDetail, OrderItem } from '../../../../components/orders/OrderDrawer';
 
@@ -69,10 +70,7 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
   const handleStatusUpdate = async () => {
     setSSaving(true);
     try {
-      await clientFetch(`/admin/orders/${order.id}/status`, {
-        method: 'PATCH',
-        body:   JSON.stringify({ status: newStatus, note: note || undefined }),
-      });
+      await api.patch(API_ROUTES.ADMIN.ORDER_STATUS(order.id), { status: newStatus, note: note || undefined });
       setSSuc(true);
       setTimeout(() => setSSuc(false), 3000);
       refresh();
@@ -82,10 +80,7 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
   const handleTrackSave = async () => {
     setTSaving(true);
     try {
-      await clientFetch(`/admin/orders/${order.id}/tracking`, {
-        method: 'PATCH',
-        body:   JSON.stringify({ trackingNumber: trackNum, carrier: trackCarrier }),
-      });
+      await api.patch(API_ROUTES.ADMIN.ORDER_TRACKING(order.id), { trackingNumber: trackNum, carrier: trackCarrier });
       refresh();
     } catch { /* silent */ } finally { setTSaving(false); }
   };
@@ -219,8 +214,7 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
           <button
             type="button"
             onClick={async () => {
-              const res  = await clientFetch(`/admin/orders/${order.id}/invoice`);
-              const { url } = await res.json() as { url: string };
+              const { url } = await api.get<{ url: string }>(API_ROUTES.ADMIN.ORDER_INVOICE(order.id));
               if (url) window.open(url, '_blank');
             }}
             className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-secondary border border-border hover:border-primary/40 px-3 py-2 rounded-button"
@@ -230,8 +224,7 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
           <button
             type="button"
             onClick={async () => {
-              const res  = await clientFetch(`/admin/orders/${order.id}/packing-slip`);
-              const { url } = await res.json() as { url: string };
+              const { url } = await api.get<{ url: string }>(API_ROUTES.ADMIN.ORDER_PACKING_SLIP(order.id));
               if (url) window.open(url, '_blank');
             }}
             className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-secondary border border-border hover:border-primary/40 px-3 py-2 rounded-button"
@@ -242,7 +235,7 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
 
         {/* Actions */}
         <div className="flex gap-3">
-          <button type="button" onClick={() => { if (confirm('Issue refund?')) clientFetch(`/payments/${order.id}/refund`, { method:'POST', body: JSON.stringify({reason:'Admin'}) }).then(refresh); }}
+          <button type="button" onClick={() => { if (confirm('Issue refund?')) api.post(API_ROUTES.ADMIN.ORDER_REFUND(order.id), { reason: 'Admin' }).then(refresh); }}
             className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 px-3 py-2 rounded-button">
             <DollarSign className="w-3.5 h-3.5" />Issue Refund
           </button>

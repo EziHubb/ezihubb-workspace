@@ -6,7 +6,8 @@ import {
 } from 'recharts';
 import { X, Users, DollarSign, TrendingUp, Award } from 'lucide-react';
 import { format } from 'date-fns';
-import { clientFetch } from '../../lib/api';
+import { api } from '../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { fmtNum, fmtAmount, safeArr } from '../../lib/fmt';
 import type { Promotion } from './PromotionModal';
 
@@ -94,11 +95,7 @@ export function PromotionStatsDrawer({ promotion, onClose }: PromotionStatsDrawe
 
   const { data: stats, isLoading } = useQuery<PromotionStats>({
     queryKey: ['promo-stats', promotion.id],
-    queryFn:  async () => {
-      const res  = await clientFetch(`/promotions/${promotion.id}/stats`);
-      const body = await res.json();
-      return (body.data ?? body) as PromotionStats;
-    },
+    queryFn:  () => api.get<PromotionStats>(API_ROUTES.ADMIN.PROMOTION_STATS(promotion.id)),
     staleTime: 60_000,
   });
 

@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
+import { apiClient } from '../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 function getCookie(name: string): string | undefined {
   return document.cookie
@@ -15,16 +17,13 @@ export function AffiliateTracker() {
     const visitorId    = getCookie('mlh_visitor');
     if (!referralCode || !visitorId) return;
 
-    const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? '';
-    fetch(`${apiUrl}/api/v1/affiliates/track`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    apiClient
+      .post(API_ROUTES.AFFILIATES.TRACK, {
         referralCode,
         visitorId,
         landingPage: window.location.href,
-      }),
-    }).catch(() => {}); // non-critical — tracking failure never blocks UX
+      })
+      .catch(() => {}); // non-critical — tracking failure never blocks UX
   }, []);
 
   return null;

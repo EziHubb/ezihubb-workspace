@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { CollectionDto } from '@mlh/types';
 import { OccasionCard } from '../../../../components/occasions/OccasionCard';
 import { fetchList } from '../../../../components/listing/types';
+import { API_BASE } from '../../../../lib/api-client';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,11 +24,10 @@ export default async function OccasionsPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const base        = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
 
   // Fetch collections that have an occasion field set
   const collections = await fetchList<CollectionDto & { occasion?: string }>(
-    `${base}/api/v1/catalog/collections?isActive=true`,
+    `${API_BASE}/api/v1/catalog/collections?isActive=true`,
   );
 
   // Filter to only occasion-based collections (those with an occasion field)

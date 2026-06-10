@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { API_ROUTES } from '@mlh/constants';
+import { apiClient, API_BASE } from '../api-client';
 import type {
   ArtStyle,
   CustomizationPayload,
@@ -92,12 +93,6 @@ function pushHistory(
   return { history: next, historyIndex: next.length - 1 };
 }
 
-function apiBase(): string {
-  return (
-    (typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_API_URL']) ||
-    'http://localhost:3000'
-  );
-}
 
 async function pollJob(
   jobId: string,
@@ -125,15 +120,12 @@ async function pollJob(
     intervalId = setInterval(async () => {
       if (settled) return;
       try {
-        const res = await fetch(`${apiBase()}${API_ROUTES.CUSTOMIZATION.JOB_STATUS(jobId)}`, {
-          credentials: 'include',
-          signal: controller.signal,
-        });
-        if (!res.ok) throw new Error(`Poll request failed: ${res.status}`);
-        const body = await res.json();
-        const job = body?.data ?? body;
+        const job = await apiClient.get<{ status: string; processedKey?: string; processedUrl?: string }>(
+          API_ROUTES.CUSTOMIZATION.JOB_STATUS(jobId),
+          { signal: controller.signal },
+        );
         if (job.status === 'done' && job.processedKey && job.processedUrl) {
-          settle(() => resolve({ processedKey: job.processedKey, processedUrl: job.processedUrl }));
+          settle(() => resolve({ processedKey: job.processedKey!, processedUrl: job.processedUrl! }));
         } else if (job.status === 'failed') {
           settle(() => reject(new Error('Job failed')));
         }
@@ -246,7 +238,7 @@ export const useCustomizerStore = create<CustomizerStore>((set, get) => ({
           }
         });
         xhr.addEventListener('error', () => reject(new Error('Network error')));
-        xhr.open('POST', `${apiBase()}${API_ROUTES.CUSTOMIZATION.UPLOAD}`);
+        xhr.open('POST', `${API_BASE}/api/v1${API_ROUTES.CUSTOMIZATION.UPLOAD}`);
         xhr.withCredentials = true;
         xhr.send(formData);
       });
@@ -276,15 +268,10 @@ export const useCustomizerStore = create<CustomizerStore>((set, get) => ({
     }));
 
     try {
-      const res = await fetch(`${apiBase()}${API_ROUTES.CUSTOMIZATION.REMOVE_BG}`, {
-        method:      'POST',
-        headers:     { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body:        JSON.stringify({ imageKey }),
-      });
-      if (!res.ok) throw new Error(`Background removal request failed: ${res.status}`);
-      const body = await res.json();
-      const { jobId } = body?.data ?? body;
+      const { jobId } = await apiClient.post<{ jobId: string }>(
+        API_ROUTES.CUSTOMIZATION.REMOVE_BG,
+        { imageKey },
+      );
 
       const { processedKey, processedUrl } = await pollJob(jobId);
 
@@ -311,15 +298,10 @@ export const useCustomizerStore = create<CustomizerStore>((set, get) => ({
     }));
 
     try {
-      const res = await fetch(`${apiBase()}${API_ROUTES.CUSTOMIZATION.APPLY_ART_STYLE}`, {
-        method:      'POST',
-        headers:     { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body:        JSON.stringify({ imageKey, style }),
-      });
-      if (!res.ok) throw new Error(`Art style request failed: ${res.status}`);
-      const body = await res.json();
-      const { jobId } = body?.data ?? body;
+      const { jobId } = await apiClient.post<{ jobId: string }>(
+        API_ROUTES.CUSTOMIZATION.APPLY_ART_STYLE,
+        { imageKey, style },
+      );
 
       const { processedKey, processedUrl } = await pollJob(jobId);
 
@@ -374,15 +356,10 @@ export const useCustomizerStore = create<CustomizerStore>((set, get) => ({
         }
       });
 
-      const res = await fetch(`${apiBase()}${API_ROUTES.CUSTOMIZATION.PREVIEW}`, {
-        method:      'POST',
-        headers:     { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body:        JSON.stringify({ templateId: template.id, fields }),
-      });
-      if (!res.ok) throw new Error(`Preview request failed: ${res.status}`);
-      const body = await res.json();
-      const { previewUrl } = body?.data ?? body;
+      const { previewUrl } = await apiClient.post<{ previewUrl: string }>(
+        API_ROUTES.CUSTOMIZATION.PREVIEW,
+        { templateId: template.id, fields },
+      );
 
       set({ isGeneratingPreview: false, previewImageUrl: previewUrl });
     } catch (err) {

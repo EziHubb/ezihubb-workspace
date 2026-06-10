@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Heart } from 'lucide-react';
 import { RatingStars } from '@mlh/ui';
 import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '../../lib/api-client';
 import { useCurrency } from '../../lib/currency/currency-context';
 
 type BadgeType = 'new' | 'sale' | 'hot' | 'bestseller';
@@ -61,13 +62,12 @@ export function ProductCard({
     if (!productId || isTogglingWishlist) return;
     setIsTogglingWishlist(true);
     try {
-      const apiBase = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3000';
-      const method  = isWishlisted ? 'DELETE' : 'POST';
-      const res     = await fetch(
-        `${apiBase}${API_ROUTES.USERS.WISHLIST_ITEM(productId)}`,
-        { method, credentials: 'include' },
-      );
-      if (res.ok) setIsWishlisted((prev) => !prev);
+      if (isWishlisted) {
+        await apiClient.delete(API_ROUTES.USERS.WISHLIST_ITEM(productId));
+      } else {
+        await apiClient.post(API_ROUTES.USERS.WISHLIST_ITEM(productId));
+      }
+      setIsWishlisted((prev) => !prev);
     } catch {
       // Network errors silently ignored — wishlist is non-critical
     } finally {

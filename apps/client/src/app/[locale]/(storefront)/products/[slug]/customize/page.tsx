@@ -19,6 +19,7 @@ import { DEMO_TEMPLATE } from '../../../../../../lib/customizer/types';
 import type { CustomizationTemplate } from '../../../../../../lib/customizer/types';
 import type { ProductDto } from '@mlh/types';
 import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '../../../../../../lib/api-client';
 
 // ── Extended product type ─────────────────────────────────────────────────────
 
@@ -30,9 +31,6 @@ interface ProductDetailDto extends ProductDto {
 
 const TOTAL_STEPS  = 3;
 const STEP_NAMES   = ['Add Names & Text', 'Upload a Photo', 'Choose Your Style'] as const;
-const API_BASE = () =>
-  (typeof process !== 'undefined' && process.env?.['NEXT_PUBLIC_API_URL']) ||
-  'http://localhost:3002';
 
 // ── Unsaved-changes confirm modal ─────────────────────────────────────────────
 
@@ -151,24 +149,13 @@ function InnerPage({ slug, product, locale }: InnerPageProps) {
 
     try {
       const payload = toPayload();
-      const res     = await fetch(`${API_BASE()}/api/v1${API_ROUTES.CART.ADD}`, {
-        method:      'POST',
-        headers:     { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          productId:         product.id,
-          variantId:         payload.variantId,
-          quantity:          1,
-          customizationData: payload,
-          previewUrl:        payload.previewUrl,
-        }),
+      await apiClient.post(API_ROUTES.CART.ADD, {
+        productId:         product.id,
+        variantId:         payload.variantId,
+        quantity:          1,
+        customizationData: payload,
+        previewUrl:        payload.previewUrl,
       });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { message?: string };
-        throw new Error(body.message ?? 'Failed to add to cart');
-      }
-
       router.replace(`/${locale}/products/${slug}`);
     } catch (err) {
       setCartError(err instanceof Error ? err.message : 'Something went wrong.');
@@ -420,13 +407,9 @@ export default function MobileCustomizePage() {
 
   useEffect(() => {
     if (!slug) return;
-    const base = API_BASE();
-    fetch(`${base}/api/v1/products/${slug}`, {
-      credentials: 'include',
-      headers:     { Accept: 'application/json' },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((body) => setProduct(body?.data ?? null))
+    apiClient
+      .get<ProductDetailDto>(API_ROUTES.PRODUCTS.DETAIL(slug))
+      .then((data) => setProduct(data))
       .catch(() => setProduct(null))
       .finally(() => setLoading(false));
   }, [slug]);

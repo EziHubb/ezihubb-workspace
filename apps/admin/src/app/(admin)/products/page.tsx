@@ -10,9 +10,9 @@ import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { DataTable } from '../../../components/data/DataTable';
 import { BulkActionBar } from '../../../components/products/BulkActionBar';
-import { clientFetch, API_BASE } from '../../../lib/api';
+import { api, adminApi } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount } from '../../../lib/fmt';
-import { getSession } from 'next-auth/react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -61,9 +61,8 @@ export default function ProductsPage() {
       if (debouncedQ) p.set('q',          debouncedQ);
       if (status)     p.set('isActive',   status);
       if (category)   p.set('category',   category);
-      const res  = await clientFetch(`/admin/products?${p}`);
-      const body = await res.json();
-      return body as { data: Product[]; total: number };
+      const res = await adminApi.get<{ data: Product[]; total: number }>(`${API_ROUTES.ADMIN.PRODUCTS}?${p}`);
+      return res.data;
     },
   });
 
@@ -71,22 +70,16 @@ export default function ProductsPage() {
   const total    = data?.total ?? 0;
 
   const handleToggleActive = async (p: Product) => {
-    await clientFetch(`/admin/products/${p.id}`, {
-      method: 'PATCH',
-      body:   JSON.stringify({ isActive: !p.isActive }),
-    });
+    await api.patch(API_ROUTES.ADMIN.PRODUCT(p.id), { isActive: !p.isActive });
     qc.invalidateQueries({ queryKey: ['admin-products'] });
   };
 
   const executeBulk = async (action: string, payload?: Record<string, unknown>) => {
     setIsBulkLoading(true);
     try {
-      const res  = await clientFetch('/admin/products/bulk', {
-        method: 'PATCH',
-        body:   JSON.stringify({ ids: selectedIds, action, payload }),
+      const result = await api.patch<{ updated: number; action: string }>(API_ROUTES.ADMIN.PRODUCTS_BULK, {
+        ids: selectedIds, action, payload,
       });
-      const body = await res.json() as { data?: { updated: number; action: string }; updated?: number; action?: string };
-      const result = 'data' in body && body.data ? body.data : body as { updated: number; action: string };
       alert(`${result.updated} products ${result.action}`);
       setSelectedIds([]);
       qc.invalidateQueries({ queryKey: ['admin-products'] });
@@ -98,17 +91,12 @@ export default function ProductsPage() {
   };
 
   const handleExport = async () => {
-    const session = await getSession();
-    const token   = (session?.user as Record<string, unknown> | undefined)?.['accessToken'] as string | undefined;
-    const res     = await fetch(`${API_BASE}/admin/products/export`, {
-      method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ ids: selectedIds }),
-    });
-    const blob = await res.blob();
+    const res = await adminApi.post<Blob>(
+      API_ROUTES.ADMIN.PRODUCTS_EXPORT,
+      { ids: selectedIds },
+      { responseType: 'blob' },
+    );
+    const blob = res.data;
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;

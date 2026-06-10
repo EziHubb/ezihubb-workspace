@@ -26,10 +26,10 @@ import {
   HelpCircle, Film, ImagePlus, Crop as CropIcon,
   Check,
 } from 'lucide-react';
-import { getSession } from 'next-auth/react';
 import type { ProductEditFormValues, AdminProductDto, ProductImage } from '../types';
 import { ThumbnailCropModal } from '../ThumbnailCropModal';
-import { clientFetch, API_BASE } from '../../../../lib/api';
+import { api } from '../../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -40,23 +40,12 @@ const MAX_VIDEOS = 2;
 
 async function presignAndUpload(
   files: File[],
-  token: string | undefined,
 ): Promise<{ url: string }[]> {
   // Step 1: get presigned URLs from the API
-  const presignRes = await fetch(`${API_BASE}/admin/assets/presign`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({
-      files: files.map((f) => ({ name: f.name, mimeType: f.type })),
-    }),
-  });
-  if (!presignRes.ok) throw new Error('Failed to get upload URLs');
-  const { data: presignItems } = await presignRes.json() as {
-    data: { presignedUrl: string; publicUrl: string; key: string }[]
-  };
+  const presignItems = await api.post<{ presignedUrl: string; publicUrl: string; key: string }[]>(
+    API_ROUTES.ADMIN.ASSETS_PRESIGN,
+    { files: files.map((f) => ({ name: f.name, mimeType: f.type })) },
+  );
 
   // Step 2: PUT each file directly to R2
   await Promise.all(
@@ -75,19 +64,11 @@ async function presignAndUpload(
 async function attachImageUrls(
   productId: string,
   urls: string[],
-  token: string | undefined,
 ): Promise<{ id: string; url: string; isPrimary: boolean; sortOrder: number; altText?: string }[]> {
-  const res = await fetch(`${API_BASE}/admin/products/${productId}/images/from-urls`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({ urls }),
-  });
-  if (!res.ok) throw new Error('Failed to attach images');
-  const body = await res.json();
-  return body.data ?? body;
+  return api.post<{ id: string; url: string; isPrimary: boolean; sortOrder: number; altText?: string }[]>(
+    API_ROUTES.ADMIN.PRODUCT_IMAGES_FROM_URLS(productId),
+    { urls },
+  );
 }
 
 // ─── Modals ───────────────────────────────────────────────────────────────────
@@ -435,14 +416,12 @@ function DraggablePhotoGrid({
     setUploading(true);
     setUploadError(null);
     try {
-      const session  = await getSession();
-      const token    = (session?.user as Record<string, unknown>)?.['accessToken'] as string | undefined;
-      const uploaded = await presignAndUpload(subset, token);
+      const uploaded = await presignAndUpload(subset);
       const urls     = uploaded.map((u) => u.url);
 
       if (productId) {
         // Edit mode: attach immediately → get real image IDs
-        const images = await attachImageUrls(productId, urls, token);
+        const images = await attachImageUrls(productId, urls);
         onImagesAdded(images.map((img) => ({ id: img.id, url: img.url })));
       } else {
         // Create mode: store as pending URLs (attach after product creation)
@@ -649,10 +628,7 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
     setValue('imageIds', ids, { shouldDirty: true });
     // Persist the new order to the DB immediately (edit mode only — create mode has no real IDs yet)
     if (product.id) {
-      clientFetch(`/admin/products/${product.id}/images/reorder`, {
-        method: 'PATCH',
-        body:   JSON.stringify({ orderedIds: ids }),
-      }).catch(() => {});
+      api.patch(API_ROUTES.ADMIN.PRODUCT_IMAGES_REORDER(product.id), { orderedIds: ids }).catch(() => {});
     }
   };
   const handleRemove  = (id: string)   => setValue('imageIds', imageIds.filter((i) => i !== id), { shouldDirty: true });

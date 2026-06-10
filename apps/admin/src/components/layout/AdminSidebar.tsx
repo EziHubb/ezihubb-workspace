@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
-import { clientFetch } from '../../lib/api';
+import { api } from '../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import {
   LayoutDashboard, ShoppingCart, ShoppingBag, FolderOpen,
   Tag, Layers, Users, BadgePercent, Star, Truck,
@@ -149,11 +150,7 @@ export function AdminSidebar() {
 
   const { data: pendingData } = useQuery<{ count: number }>({
     queryKey: ['sidebar-affiliate-pending'],
-    queryFn:  async () => {
-      const res  = await clientFetch('/admin/affiliates/pending-count');
-      const body = await res.json();
-      return (body.data ?? body) as { count: number };
-    },
+    queryFn:  () => api.get<{ count: number }>(API_ROUTES.ADMIN.AFFILIATES_PENDING_COUNT),
     staleTime:      60_000,
     refetchInterval: 120_000,
   });

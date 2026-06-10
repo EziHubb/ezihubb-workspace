@@ -10,7 +10,8 @@ import { OrderStatusBadge, ALL_STATUSES } from '../../../components/orders/Order
 import { OrderDrawer } from '../../../components/orders/OrderDrawer';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import type { OrderDetail } from '../../../components/orders/OrderDrawer';
-import { clientFetch } from '../../../lib/api';
+import { api, adminApi } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount, unwrapArr } from '../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -62,8 +63,8 @@ const PRESET_LABELS: Record<DatePreset, string> = {
 // ── CSV export helper ─────────────────────────────────────────────────────────
 
 async function exportCSV(params: URLSearchParams) {
-  const res  = await clientFetch(`/admin/orders/export?${params.toString()}`);
-  const blob = await res.blob();
+  const res  = await adminApi.get(`${API_ROUTES.ADMIN.ORDERS_EXPORT}?${params.toString()}`, { responseType: 'blob' });
+  const blob = res.data as Blob;
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
@@ -110,17 +111,14 @@ export default function OrdersPage() {
   const { data, isLoading, refetch } = useQuery<OrdersResponse>({
     queryKey: ['admin-orders', page, statusFilter, debouncedSearch, datePreset],
     queryFn:  async () => {
-      const res  = await clientFetch(`/admin/orders?${buildParams()}`);
-      const body = await res.json();
-      return (body.data ?? body) as OrdersResponse;
+      return api.get<OrdersResponse>(`${API_ROUTES.ADMIN.ORDERS}?${buildParams()}`);
     },
   });
 
   // Fetch order detail for drawer
   const openOrderDrawer = async (order: OrderRow) => {
-    const res  = await clientFetch(`/admin/orders/${order.id}`);
-    const body = await res.json();
-    setSelected((body.data ?? body) as OrderDetail);
+    const detail = await api.get<OrderDetail>(API_ROUTES.ADMIN.ORDER(order.id));
+    setSelected(detail);
   };
 
   const orders = unwrapArr<OrderRow>(data?.data ?? data);

@@ -1,10 +1,8 @@
 import {
-  Controller,
   Get,
   Post,
   Res,
   UploadedFile,
-  UseGuards,
   UseInterceptors,
   BadRequestException,
   HttpCode,
@@ -12,15 +10,10 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { Role } from '@mlh/constants';
 import { CsvImportService } from './csv-import.service';
+import { AdminController } from '../../common/decorators/admin-controller.decorator';
 
-@Controller('admin/products/import')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
+@AdminController('products/import')
 export class CsvImportController {
   constructor(private readonly csvImport: CsvImportService) {}
 

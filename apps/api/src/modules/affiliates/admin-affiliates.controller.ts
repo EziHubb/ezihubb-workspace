@@ -1,14 +1,12 @@
 import {
   Body,
-  Controller,
   Get,
   Param,
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation } from '@nestjs/swagger';
 import { AdminAffiliatesService } from './admin-affiliates.service';
 import {
   ApproveAffiliateDto,
@@ -18,18 +16,11 @@ import {
   AdminPayoutActionDto,
   RejectPayoutDto,
 } from './dto/admin-affiliate.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
-import { Role } from '@mlh/constants';
+import { AdminController } from '../../common/decorators/admin-controller.decorator';
 
-@ApiTags('Admin — Affiliates')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
-@Controller('admin/affiliates')
+@AdminController('affiliates')
 export class AdminAffiliatesController {
   constructor(private readonly adminAffiliatesService: AdminAffiliatesService) {}
 

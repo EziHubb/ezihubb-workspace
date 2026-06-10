@@ -22,7 +22,8 @@
       "@mlh/ui": ["./libs/ui/src/index.ts"],
       "@mlh/types": ["./libs/shared/types/src/index.ts"],
       "@mlh/constants": ["./libs/shared/constants/src/index.ts"],
-      "@mlh/api-client": ["./libs/shared/api-client/src/index.ts"]
+      "@mlh/api-client": ["./libs/shared/api-client/src/index.ts"],
+      "@mlh/utils": ["./libs/shared/utils/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

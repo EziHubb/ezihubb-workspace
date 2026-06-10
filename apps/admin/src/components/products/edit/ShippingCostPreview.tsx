@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
-import { clientFetch } from '../../../lib/api';
-import { fetchArr } from '../../../lib/fmt';
+import { api } from '../../../lib/api-client';
 
 interface ShippingDestination {
   label: string;
@@ -18,8 +17,7 @@ export function ShippingCostPreview({ profileId }: Props) {
 
   const { data: destinations = [] } = useQuery<ShippingDestination[]>({
     queryKey: ['shipping-preview', profileId],
-    queryFn: () => clientFetch(`/admin/shipping-profiles/${profileId}/preview`)
-      .then(fetchArr<ShippingDestination>),
+    queryFn: () => api.get<ShippingDestination[]>(`/admin/shipping-profiles/${profileId}/preview`),
     enabled: !!profileId && isOpen,
   })
 

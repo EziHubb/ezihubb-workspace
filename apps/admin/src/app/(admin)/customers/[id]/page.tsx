@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { format, differenceInMonths } from 'date-fns';
 import { ArrowLeft, Mail, MapPin, Phone, Calendar } from 'lucide-react';
-import { serverFetch } from '../../../../lib/api';
+import { serverApi } from '../../../../lib/api-client';
 import { fmtAmount, fmtCurrency } from '../../../../lib/fmt';
 import { OrderStatusBadge } from '../../../../components/orders/OrderStatusBadge';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
@@ -62,18 +62,17 @@ export default async function CustomerDetailPage({
 }) {
   const ordersPage = Number(searchParams.page ?? '1');
 
-  const [customerRes, ordersRes] = await Promise.all([
-    serverFetch(`/admin/customers/${params.id}`),
-    serverFetch(`/admin/customers/${params.id}/orders?page=${ordersPage}&limit=10`),
-  ]);
+  let customer: CustomerDetail;
+  let orders: { data: OrderSummary[]; total: number };
 
-  if (!customerRes.ok) notFound();
-
-  const customerBody = await customerRes.json();
-  const ordersBody   = await ordersRes.json();
-
-  const customer = (customerBody.data ?? customerBody) as CustomerDetail;
-  const orders   = ((ordersBody.data ?? ordersBody) as { data: OrderSummary[]; total: number });
+  try {
+    [customer, orders] = await Promise.all([
+      serverApi<CustomerDetail>('get', `/admin/customers/${params.id}`),
+      serverApi<{ data: OrderSummary[]; total: number }>('get', `/admin/customers/${params.id}/orders?page=${ordersPage}&limit=10`),
+    ]);
+  } catch {
+    notFound();
+  }
 
   const fullName       = [customer.firstName, customer.lastName].filter(Boolean).join(' ') || customer.email;
   const monthsAsCustomer = differenceInMonths(new Date(), new Date(customer.createdAt));

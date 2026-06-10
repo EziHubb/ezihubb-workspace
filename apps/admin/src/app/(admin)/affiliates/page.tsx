@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Search, X, Check, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
-import { clientFetch } from '../../../lib/api';
+import { api } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -68,14 +69,7 @@ function ApproveModal({
     try {
       const body: Record<string, unknown> = {};
       if (rate !== '') body['commissionRate'] = Number(rate) / 100;
-      const res = await clientFetch(`/admin/affiliates/${affiliate.id}/approve`, {
-        method: 'POST',
-        body:   JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const j = await res.json();
-        throw new Error((j as { error?: { message?: string } })?.error?.message ?? 'Approval failed');
-      }
+      await api.post(API_ROUTES.ADMIN.AFFILIATE_APPROVE(affiliate.id), body);
       onDone();
     } catch (e) {
       setError((e as Error).message);
@@ -159,14 +153,7 @@ function RejectModal({
     setSaving(true);
     setError('');
     try {
-      const res = await clientFetch(`/admin/affiliates/${affiliate.id}/reject`, {
-        method: 'POST',
-        body:   JSON.stringify({ reason }),
-      });
-      if (!res.ok) {
-        const j = await res.json();
-        throw new Error((j as { error?: { message?: string } })?.error?.message ?? 'Rejection failed');
-      }
+      await api.post(API_ROUTES.ADMIN.AFFILIATE_REJECT(affiliate.id), { reason });
       onDone();
     } catch (e) {
       setError((e as Error).message);
@@ -244,21 +231,13 @@ export default function AffiliatesPage() {
 
   const { data, isLoading } = useQuery<AffiliatesResponse>({
     queryKey: ['admin-affiliates', tab, search, page],
-    queryFn:  async () => {
-      const res  = await clientFetch(`/admin/affiliates?${params.toString()}`);
-      const body = await res.json();
-      return (body.data ?? body) as AffiliatesResponse;
-    },
+    queryFn:  () => api.get<AffiliatesResponse>(`${API_ROUTES.ADMIN.AFFILIATES}?${params.toString()}`),
     staleTime: 30_000,
   });
 
   const { data: pendingCount } = useQuery<{ count: number }>({
     queryKey: ['admin-affiliates-pending-count'],
-    queryFn:  async () => {
-      const res  = await clientFetch('/admin/affiliates/pending-count');
-      const body = await res.json();
-      return (body.data ?? body) as { count: number };
-    },
+    queryFn:  () => api.get<{ count: number }>(API_ROUTES.ADMIN.AFFILIATES_PENDING_COUNT),
     staleTime: 30_000,
   });
 

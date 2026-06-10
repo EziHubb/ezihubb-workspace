@@ -70,6 +70,23 @@ export const queryKeys = {
   filterableAttrs:(slug: string)       => ['filterable-attrs', slug]      as const,
   shippingOptions:(country: string, total: number) =>
                     ['shipping', country, total]                          as const,
+
+  // ── Admin keys ───────────────────────────────────────────────────────────────
+  adminDashboard:  ()                   => ['admin', 'dashboard']            as const,
+  adminOrders:     (q?: object)         => ['admin', 'orders', q ?? {}]      as const,
+  adminOrder:      (id: string)         => ['admin', 'orders', 'detail', id] as const,
+  adminProducts:   (q?: object)         => ['admin', 'products', q ?? {}]    as const,
+  adminProduct:    (id: string)         => ['admin', 'products', 'detail', id] as const,
+  adminCategories: ()                   => ['admin', 'categories']           as const,
+  adminCollections:()                   => ['admin', 'collections']          as const,
+  adminCustomers:  (q?: object)         => ['admin', 'customers', q ?? {}]   as const,
+  adminReviews:    (q?: object)         => ['admin', 'reviews', q ?? {}]     as const,
+  adminAffiliates: (q?: object)         => ['admin', 'affiliates', q ?? {}]  as const,
+  adminAffiliate:  (id: string)         => ['admin', 'affiliates', 'detail', id] as const,
+  adminMessages:   (q?: object)         => ['admin', 'messages', q ?? {}]    as const,
+  adminShipping:   ()                   => ['admin', 'shipping']             as const,
+  adminPromotions: ()                   => ['admin', 'promotions']           as const,
+  adminPayments:   (q?: object)         => ['admin', 'payments', q ?? {}]    as const,
 } as const;
 
 // ── Backward-compat re-exports (used by existing hooks) ──────────────────────

@@ -5,6 +5,8 @@ import { Loader2 } from 'lucide-react';
 import { useCustomizerStore } from '../../lib/store/customizer.store';
 import type { ArtStyle, ImageField } from '../../lib/customizer/types';
 import { hotjarEvent } from '../../lib/analytics/hotjar';
+import { apiClient } from '../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 interface ArtStyleOption {
   id: string;
@@ -32,11 +34,9 @@ export function ArtStylePicker({ fieldId, field }: ArtStylePickerProps) {
 
   useEffect(() => {
     if (!field.allowArtStyle) return;
-    fetch('/api/v1/customization/art-styles', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((body) => {
-        const list: ArtStyleOption[] = (body?.data ?? body) as ArtStyleOption[];
-        // Only show styles enabled for this field
+    apiClient
+      .get<ArtStyleOption[]>(API_ROUTES.CUSTOMIZATION.ART_STYLES)
+      .then((list) => {
         const allowed = field.artStyles ? new Set(field.artStyles) : null;
         setStyles(allowed ? list.filter((s) => allowed.has(s.id as ArtStyle)) : list);
       })

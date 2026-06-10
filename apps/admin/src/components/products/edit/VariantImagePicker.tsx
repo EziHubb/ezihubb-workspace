@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Check, ImageOff, X, ImagePlus } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { clientFetch } from '../../../lib/api';
+import { api } from '../../../lib/api-client';
 import type { ProductImage } from './types';
 import type { VariationOption } from './types';
 
@@ -192,9 +192,9 @@ export function VariantImagePicker({
   const assignedImage = productImages.find((img) => img.id === option.imageId);
 
   const handleSelect = async (imageId: string | null) => {
-    await clientFetch(
+    await api.patch(
       `/admin/products/${productId}/variations/${option.groupId}/options/${option.id}`,
-      { method: 'PATCH', body: JSON.stringify({ imageId }) },
+      { imageId },
     );
     qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
     setIsOpen(false);

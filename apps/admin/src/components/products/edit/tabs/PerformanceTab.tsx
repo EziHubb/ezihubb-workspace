@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import { format, parseISO } from 'date-fns';
 import { Check, X } from 'lucide-react';
-import { clientFetch } from '../../../../lib/api';
+import { api } from '../../../../lib/api-client';
 import { fmtNum, fmtAmount, fmtPercent, fmtFixed } from '../../../../lib/fmt';
 import type { AdminProductDto } from '../types';
 
@@ -139,11 +139,7 @@ export function PerformanceTab({ product }: PerformanceTabProps) {
 
   const { data, isLoading, isFetching } = useQuery<PerformanceData>({
     queryKey: ['product-performance', product.id, range],
-    queryFn:  async () => {
-      const res  = await clientFetch(`/admin/products/${product.id}/performance?range=${range}`);
-      const body = await res.json();
-      return (body.data ?? body) as PerformanceData;
-    },
+    queryFn:  () => api.get<PerformanceData>(`/admin/products/${product.id}/performance?range=${range}`),
     staleTime: 5 * 60_000,
     placeholderData: (prev) => prev,
   });

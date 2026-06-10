@@ -8,8 +8,8 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
-import { clientFetch } from '../../../../lib/api';
-import { fetchArr } from '../../../../lib/fmt';
+import { api } from '../../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -79,8 +79,8 @@ function ProductSearchRow({ onAdd }: { onAdd: (p: ProductSnippet) => void }) {
     if (query.length < 2) { setResults([]); return; }
     setLoading(true);
     try {
-      const res = await clientFetch(`/admin/products?q=${encodeURIComponent(query)}&limit=10`);
-      setResults((await fetchArr<ProductSnippet>(res)).slice(0, 10));
+      const data = await api.get<ProductSnippet[]>(API_ROUTES.ADMIN.PRODUCTS, { params: { q: query, limit: 10 } });
+      setResults(data.slice(0, 10));
     } catch { setResults([]); } finally { setLoading(false); }
   };
 
@@ -459,13 +459,11 @@ export default function CollectionsPage() {
   const { data, isLoading } = useQuery({
     queryKey,
     queryFn: async () => {
-      const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
-      if (debouncedQ)   params.set('q',        debouncedQ);
-      if (occasionFilt) params.set('occasion', occasionFilt);
-      if (statusFilt)   params.set('isActive', statusFilt === 'active' ? 'true' : 'false');
-      const res  = await clientFetch(`/admin/collections?${params.toString()}`);
-      const body = await res.json();
-      return body as { data: Collection[]; total: number; pages: number };
+      const params: Record<string, string> = { page: String(page), limit: String(PAGE_SIZE) };
+      if (debouncedQ)   params['q']        = debouncedQ;
+      if (occasionFilt) params['occasion'] = occasionFilt;
+      if (statusFilt)   params['isActive'] = statusFilt === 'active' ? 'true' : 'false';
+      return api.get<{ data: Collection[]; total: number; pages: number }>(API_ROUTES.ADMIN.COLLECTIONS, { params });
     },
   });
 
@@ -474,18 +472,20 @@ export default function CollectionsPage() {
   const total       = data?.total ?? 0;
 
   const handleSave = async (payload: Partial<Collection>) => {
-    const method = payload.id ? 'PATCH' : 'POST';
-    const url    = payload.id ? `/admin/collections/${payload.id}` : '/admin/collections';
-    await clientFetch(url, { method, body: JSON.stringify(payload) });
+    if (payload.id) {
+      await api.patch(API_ROUTES.ADMIN.COLLECTION(payload.id), payload);
+    } else {
+      await api.post(API_ROUTES.ADMIN.COLLECTIONS, payload);
+    }
     qc.invalidateQueries({ queryKey: ['admin-collections'] });
     setSlideOver(null);
   };
 
   const handleDelete = async (id: string) => {
-    const res = await clientFetch(`/admin/collections/${id}`, { method: 'DELETE' });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body?.error?.message ?? 'Delete failed');
+    try {
+      await api.delete(API_ROUTES.ADMIN.COLLECTION(id));
+    } catch (e: unknown) {
+      throw new Error((e as Error).message ?? 'Delete failed');
     }
     qc.invalidateQueries({ queryKey: ['admin-collections'] });
     setSlideOver(null);

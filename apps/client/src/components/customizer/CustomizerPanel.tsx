@@ -11,6 +11,7 @@ import { ImageUploadField } from './ImageUploadField';
 import { StylePickerGrid } from './StylePickerGrid';
 import { PreviewModal } from './PreviewModal';
 import { useCustomizerStore } from '../../lib/store/customizer.store';
+import { apiClient } from '../../lib/api-client';
 import type {
   CustomizationTemplate,
   TextField,
@@ -62,25 +63,14 @@ function CustomizerPanelInner({
 
     try {
       const payload = toPayload();
-      const base    = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
 
-      const res = await fetch(`${base}/api/v1${API_ROUTES.CART.ADD}`, {
-        method:      'POST',
-        headers:     { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          productId,
-          variantId:         payload.variantId,
-          quantity:          1,
-          customizationData: payload,
-          previewUrl:        payload.previewUrl,
-        }),
+      await apiClient.post(API_ROUTES.CART.ADD, {
+        productId,
+        variantId:         payload.variantId,
+        quantity:          1,
+        customizationData: payload,
+        previewUrl:        payload.previewUrl,
       });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { message?: string };
-        throw new Error(body.message ?? 'Failed to add to cart');
-      }
 
       onCartSuccess();
     } catch (err) {

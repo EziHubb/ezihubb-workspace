@@ -1,16 +1,13 @@
 import {
-  Controller, Get, Post, Patch, Delete,
-  Body, Param, HttpCode, HttpStatus, UseGuards,
+  Get, Post, Patch, Delete,
+  Body, Param, HttpCode, HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiOperation } from '@nestjs/swagger';
 import { IsString, IsInt, IsOptional, Min, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { PrismaService } from '../../prisma/prisma.service';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { Role } from '@mlh/constants';
+import { AdminController } from '../../common/decorators/admin-controller.decorator';
 
 class CreateShopSectionDto {
   @ApiProperty()
@@ -32,11 +29,7 @@ class UpdateShopSectionDto {
   sortOrder?: number;
 }
 
-@ApiTags('Admin — Shop Sections')
-@ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
-@Controller('admin/shop-sections')
+@AdminController('shop-sections')
 export class AdminShopSectionsController {
   constructor(private readonly prisma: PrismaService) {}
 

@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Check, RefreshCw } from 'lucide-react';
-import { apiFetch } from '../../../lib/api';
+import { api } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import type { ConversationDto, ConversationWithMessagesDto } from '@mlh/types';
 
@@ -171,7 +172,7 @@ function AdminMessageThread({
 
   const { data: conv, isLoading } = useQuery<ConversationWithMessagesDto>({
     queryKey: ['admin-conversation', conversationId],
-    queryFn:  () => apiFetch<ConversationWithMessagesDto>(`/admin/messages/conversations/${conversationId}`),
+    queryFn:  () => api.get<ConversationWithMessagesDto>(API_ROUTES.ADMIN.CONVERSATION(conversationId)),
     refetchInterval: 15_000,
     enabled: !!conversationId,
   });
@@ -185,10 +186,7 @@ function AdminMessageThread({
     if (!body || isSending) return;
     setIsSending(true);
     try {
-      await apiFetch(`/admin/messages/conversations/${conversationId}/messages`, {
-        method: 'POST',
-        body:   JSON.stringify({ body }),
-      });
+      await api.post(API_ROUTES.ADMIN.CONVERSATION_MESSAGES(conversationId), { body });
       setReplyText('');
       queryClient.invalidateQueries({ queryKey: ['admin-conversation', conversationId] });
       queryClient.invalidateQueries({ queryKey: ['admin-conversations'] });
@@ -198,10 +196,7 @@ function AdminMessageThread({
   };
 
   const updateStatus = async (status: string) => {
-    await apiFetch(`/admin/messages/conversations/${conversationId}/status`, {
-      method: 'PATCH',
-      body:   JSON.stringify({ status }),
-    });
+    await api.patch(API_ROUTES.ADMIN.CONVERSATION_STATUS(conversationId), { status });
     queryClient.invalidateQueries({ queryKey: ['admin-conversation', conversationId] });
     onStatusChange();
     setStatusMsg(`Marked as ${status.toLowerCase()}`);
@@ -354,7 +349,7 @@ export default function AdminMessagesPage() {
   // queryKey starts with 'admin-conversations' so existing invalidateQueries calls cover it.
   const { data: allData } = useQuery<AdminConvList>({
     queryKey: ['admin-conversations', 'counts'],
-    queryFn:  () => apiFetch<AdminConvList>('/admin/messages/conversations?limit=100'),
+    queryFn:  () => api.get<AdminConvList>(`${API_ROUTES.ADMIN.CONVERSATIONS}?limit=100`),
     refetchInterval: 30_000,
     staleTime: 10_000,
   });
@@ -365,7 +360,7 @@ export default function AdminMessagesPage() {
       const params = new URLSearchParams();
       if (statusFilter)    params.set('status', statusFilter);
       if (debouncedSearch) params.set('search', debouncedSearch);
-      return apiFetch<AdminConvList>(`/admin/messages/conversations?${params.toString()}`);
+      return api.get<AdminConvList>(`${API_ROUTES.ADMIN.CONVERSATIONS}?${params.toString()}`);
     },
     refetchInterval: 30_000,
   });

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { X, Loader2, Check, CreditCard } from 'lucide-react';
-import { apiFetch } from '../../lib/api';
+import { api } from '../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 interface ShippingRate {
   id:           string;
@@ -48,7 +49,7 @@ export function BuyLabelModal({
     setRates([]);
     setSelectedRate(null);
     setIsLoadingRates(true);
-    apiFetch<ShippingRate[]>(`/admin/orders/${orderId}/rates`)
+    api.get<ShippingRate[]>(API_ROUTES.ADMIN.ORDER_RATES(orderId))
       .then((data) => {
         setRates(data);
         if (data.length > 0) setSelectedRate(data[0].id);
@@ -69,9 +70,9 @@ export function BuyLabelModal({
     setIsPurchasing(true);
     setError(null);
     try {
-      const result = await apiFetch<LabelPurchaseResult>(
-        `/admin/orders/${orderId}/buy-label`,
-        { method: 'POST', body: JSON.stringify({ rateId: selectedRate }) },
+      const result = await api.post<LabelPurchaseResult>(
+        API_ROUTES.ADMIN.ORDER_BUY_LABEL(orderId),
+        { rateId: selectedRate },
       );
       onLabelPurchased(result);
       onClose();

@@ -1,16 +1,14 @@
 import {
   BadRequestException,
   Body,
-  Controller,
   Get,
   Param,
   Patch,
   Post,
   Query,
   Res,
-  UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation } from '@nestjs/swagger';
 import { Response } from 'express';
 import { OrdersService } from './orders.service';
 import { PdfService } from '../pdf/pdf.service';
@@ -19,18 +17,11 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
 import { MarkShippedDto } from './dto/mark-shipped.dto';
 import { AdminOrderQueryDto } from './dto/order-list-item.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
-import { Role } from '@mlh/constants';
+import { AdminController } from '../../common/decorators/admin-controller.decorator';
 
-@ApiTags('Admin — Orders')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
-@Controller('admin/orders')
+@AdminController('orders')
 export class AdminOrdersController {
   constructor(
     private readonly ordersService: OrdersService,

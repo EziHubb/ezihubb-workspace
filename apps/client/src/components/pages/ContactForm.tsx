@@ -5,6 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { CheckCircle, Loader2, Send } from 'lucide-react';
+import { apiClient } from '../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
@@ -60,17 +62,7 @@ export function ContactForm() {
   const onSubmit = async (data: FormValues) => {
     setApiError('');
     try {
-      const apiUrl = (process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002')
-        .replace(/\/api\/v1\/?$/, '');
-      const res = await fetch(`${apiUrl}/api/v1/notifications/contact`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { message?: string };
-        throw new Error(body.message ?? 'Failed to send message');
-      }
+      await apiClient.post(API_ROUTES.NOTIFICATIONS.CONTACT, data);
       setSubmitted(true);
       reset();
     } catch (err) {

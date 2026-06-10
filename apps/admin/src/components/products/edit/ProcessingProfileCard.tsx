@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
-import { clientFetch } from '../../../lib/api';
-import { fetchArr } from '../../../lib/fmt';
+import { api } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 interface ProcessingProfile {
   id:      string;
@@ -23,7 +23,7 @@ export function ProcessingProfileCard({ profileId, onChange }: Props) {
 
   const { data: profiles = [] } = useQuery<ProcessingProfile[]>({
     queryKey: ['processing-profiles'],
-    queryFn: () => clientFetch('/admin/processing-profiles').then(fetchArr<ProcessingProfile>),
+    queryFn: () => api.get<ProcessingProfile[]>(API_ROUTES.ADMIN.SHIPPING_PROCESSING_PROFILES),
     staleTime: 5 * 60_000,
   })
 

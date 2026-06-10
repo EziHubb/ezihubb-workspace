@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { Plus, X, Save } from 'lucide-react';
 import { format } from 'date-fns';
-import { clientFetch } from '../../../../lib/api';
+import { api } from '../../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -46,13 +47,7 @@ function NotesCard({ customerId, initialNotes }: { customerId: string; initialNo
     setSaving(true);
     setError(null);
     try {
-      const res  = await clientFetch(`/admin/customers/${customerId}/notes`, {
-        method: 'POST',
-        body:   JSON.stringify({ body: text }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body?.error?.message ?? 'Failed to save note');
-      const note = (body.data ?? body) as CustomerNote;
+      const note = await api.post<CustomerNote>(`/admin/customers/${customerId}/notes`, { body: text });
       setNotes((n) => [note, ...n]);
       setText('');
     } catch (e: unknown) {
@@ -116,10 +111,7 @@ function TagsCard({ customerId, initialTags }: { customerId: string; initialTags
   const sync = async (updated: string[]) => {
     setSaving(true);
     try {
-      await clientFetch(`/admin/customers/${customerId}/tags`, {
-        method: 'PATCH',
-        body:   JSON.stringify({ tags: updated }),
-      });
+      await api.patch(API_ROUTES.ADMIN.CUSTOMER_TAGS(customerId), { tags: updated });
     } catch { /* silent */ } finally { setSaving(false); }
   };
 

@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Mail, ArrowLeft } from 'lucide-react';
 import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '../../../../lib/api-client';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email address'),
@@ -52,26 +53,11 @@ export default function ForgotPasswordPage() {
     }, 1_000);
   };
 
-  const apiBase = () =>
-    process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
-
   const sendLink = async (email: string) => {
     setIsPending(true);
     setApiError('');
     try {
-      const res = await fetch(
-        `${apiBase()}/api/v1${API_ROUTES.AUTH.FORGOT_PASSWORD}`,
-        {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ email }),
-        },
-      );
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { message?: string };
-        setApiError(body.message ?? 'Failed to send reset link.');
-        return;
-      }
+      await apiClient.post(API_ROUTES.AUTH.FORGOT_PASSWORD, { email });
       setSentEmail(email);
       setSubmitted(true);
       startCooldown();

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react';
-import { clientFetch } from '../../../lib/api';
+import { api } from '../../../lib/api-client';
 
 interface Props {
   variantId?: string
@@ -27,9 +27,9 @@ export function InlinePriceInput({
     const numValue = value.trim() === '' ? null : parseFloat(value)
     setIsSaving(true)
     try {
-      await clientFetch(
+      await api.patch(
         `/admin/products/${productId}/variations/variants/${variantId}`,
-        { method: 'PATCH', body: JSON.stringify({ [field]: numValue }) }
+        { [field]: numValue },
       )
       onSaved?.(numValue)
     } finally {

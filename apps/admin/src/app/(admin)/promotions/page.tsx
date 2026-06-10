@@ -12,7 +12,8 @@ import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { DataTable } from '../../../components/data/DataTable';
 import { PromotionModal, type Promotion, type PromotionFormData } from '../../../components/promotions/PromotionModal';
 import { PromotionStatsDrawer } from '../../../components/promotions/PromotionStatsDrawer';
-import { clientFetch } from '../../../lib/api';
+import { api } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount } from '../../../lib/fmt';
 
 // ── Status helpers ────────────────────────────────────────────────────────────
@@ -144,11 +145,7 @@ export default function PromotionsPage() {
   // ── Stats query ───────────────────────────────────────────────────────────────
   const statsQuery = useQuery<PromotionStats>({
     queryKey: ['promo-page-stats'],
-    queryFn:  async () => {
-      const res  = await clientFetch('/promotions/page-stats');
-      const body = await res.json();
-      return (body.data ?? body) as PromotionStats;
-    },
+    queryFn:  () => api.get<PromotionStats>(API_ROUTES.ADMIN.PROMOTIONS_PAGE_STATS),
     staleTime: 60_000,
   });
   const stats = statsQuery.data;
@@ -158,13 +155,11 @@ export default function PromotionsPage() {
   const listQuery = useQuery({
     queryKey: listKey,
     queryFn:  async () => {
-      const p = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
-      if (search)  p.set('q',      search);
-      if (typeF)   p.set('type',   typeF);
-      if (statusF) p.set('status', statusF);
-      const res  = await clientFetch(`/promotions?${p}`);
-      const body = await res.json();
-      return body as { data: Promotion[]; total: number };
+      const params: Record<string, string> = { page: String(page), limit: String(PAGE_SIZE) };
+      if (search)  params['q']      = search;
+      if (typeF)   params['type']   = typeF;
+      if (statusF) params['status'] = statusF;
+      return api.get<{ data: Promotion[]; total: number }>(API_ROUTES.ADMIN.PROMOTIONS, { params });
     },
   });
 
@@ -179,39 +174,27 @@ export default function PromotionsPage() {
   };
 
   const handleToggleActive = async (p: Promotion, active: boolean) => {
-    await clientFetch(`/promotions/${p.id}`, {
-      method: 'PATCH',
-      body:   JSON.stringify({ isActive: active }),
-    });
+    await api.patch(API_ROUTES.ADMIN.PROMOTION(p.id), { isActive: active });
     invalidate();
   };
 
   const handleDelete = async (p: Promotion) => {
     if (!confirm(`Delete coupon "${p.code}"? This cannot be undone.`)) return;
-    await clientFetch(`/promotions/${p.id}`, { method: 'DELETE' });
+    await api.delete(API_ROUTES.ADMIN.PROMOTION(p.id));
     invalidate();
   };
 
   const handleDuplicate = async (p: Promotion) => {
     const code = `${p.code.replace(/-COPY\d*$/, '')}-COPY${Date.now().toString().slice(-4)}`;
-    await clientFetch('/promotions', {
-      method: 'POST',
-      body:   JSON.stringify({ ...p, id: undefined, code, currentUses: 0, isActive: false }),
-    });
+    await api.post(API_ROUTES.ADMIN.PROMOTIONS, { ...p, id: undefined, code, currentUses: 0, isActive: false });
     invalidate();
   };
 
   const handleSave = async (data: PromotionFormData, id?: string) => {
     if (id) {
-      await clientFetch(`/promotions/${id}`, {
-        method: 'PATCH',
-        body:   JSON.stringify(data),
-      });
+      await api.patch(API_ROUTES.ADMIN.PROMOTION(id), data);
     } else {
-      await clientFetch('/promotions', {
-        method: 'POST',
-        body:   JSON.stringify(data),
-      });
+      await api.post(API_ROUTES.ADMIN.PROMOTIONS, data);
     }
     invalidate();
     setModal(null);
