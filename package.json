@@ -116,7 +116,6 @@
       "@swc/core",
       "bcrypt",
       "canvas",
-      "esbuild",
       "msgpackr-extract",
       "prisma",
       "protobufjs",
