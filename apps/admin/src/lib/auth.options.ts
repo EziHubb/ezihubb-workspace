@@ -13,8 +13,8 @@ import { API_ROUTES } from '@mlh/constants';
 if (!process.env['NEXTAUTH_URL']) {
   const detected =
     // Railway injects this per-service (most reliable automatic fallback)
-    (process.env['RAILWAY_PUBLIC_DOMAIN']
-      ? `https://${process.env['RAILWAY_PUBLIC_DOMAIN']}`
+    (process.env['NEXT_PUBLIC_NEXTAUTH_URL']
+      ? `https://${process.env['NEXT_PUBLIC_NEXTAUTH_URL']}`
       : null) ??
     // Older Railway var name
     (process.env['RAILWAY_STATIC_URL']
@@ -27,7 +27,7 @@ if (!process.env['NEXTAUTH_URL']) {
     // Log clearly so Railway build logs show why auth is broken
     console.error(
       '[Admin auth] NEXTAUTH_URL is not set and could not be auto-detected. ' +
-      'Set NEXTAUTH_URL=https://<your-admin-domain> in Railway Variables.',
+        'Set NEXTAUTH_URL=https://<your-admin-domain> in Railway Variables.',
     );
   }
 }
@@ -38,9 +38,9 @@ if (!process.env['NEXTAUTH_URL']) {
 
 function buildApiBase(): string {
   const raw =
-    process.env['API_URL']              // preferred: server-only var
-    ?? process.env['NEXT_PUBLIC_API_URL']  // fallback: build-time public var
-    ?? 'http://localhost:3002';
+    process.env['API_URL'] ?? // preferred: server-only var
+    process.env['NEXT_PUBLIC_API_URL'] ?? // fallback: build-time public var
+    'http://localhost:3002';
 
   // Strip any trailing /api/v1 then re-add — makes both forms equivalent.
   return raw.replace(/\/api\/v1\/?$/, '').replace(/\/$/, '') + '/api/v1';
@@ -54,36 +54,41 @@ export const authOptions: NextAuthOptions = {
   providers: [
     Credentials({
       credentials: {
-        email:        { label: 'Email',         type: 'email'    },
-        password:     { label: 'Password',      type: 'password' },
-        partialToken: { label: 'Partial Token', type: 'text'     },
-        totpCode:     { label: 'TOTP Code',     type: 'text'     },
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
+        partialToken: { label: 'Partial Token', type: 'text' },
+        totpCode: { label: 'TOTP Code', type: 'text' },
       },
 
       async authorize(credentials) {
         // ── STEP 2: TOTP code verification ──────────────────────────────────
         if (credentials?.partialToken && credentials?.totpCode) {
           try {
-            const { data: envelope } = await axios.post<{ data: Record<string, unknown> }>(
-              `${API_BASE}${API_ROUTES.AUTH.TOTP_VERIFY}`,
-              { partialToken: credentials.partialToken, code: credentials.totpCode },
-            );
+            const { data: envelope } = await axios.post<{
+              data: Record<string, unknown>;
+            }>(`${API_BASE}${API_ROUTES.AUTH.TOTP_VERIFY}`, {
+              partialToken: credentials.partialToken,
+              code: credentials.totpCode,
+            });
             const data = envelope.data;
             const user = (data['user'] ?? data) as Record<string, unknown>;
-            if (!['ADMIN', 'SUPER_ADMIN'].includes(user['role'] as string)) return null;
+            if (!['ADMIN', 'SUPER_ADMIN'].includes(user['role'] as string))
+              return null;
             return {
-              id:          String(user['id']),
-              email:       String(user['email']),
-              name:        (
-                `${(user['firstName'] as string) ?? ''} ${(user['lastName'] as string) ?? ''}`.trim()
-                || String(user['email'])
-              ),
-              role:        user['role'] as string,
+              id: String(user['id']),
+              email: String(user['email']),
+              name:
+                `${(user['firstName'] as string) ?? ''} ${(user['lastName'] as string) ?? ''}`.trim() ||
+                String(user['email']),
+              role: user['role'] as string,
               accessToken: data['accessToken'] as string,
             };
           } catch (err) {
             if (process.env['NODE_ENV'] !== 'production') {
-              console.error('[Admin auth] TOTP verify failed:', (err as AxiosError).message);
+              console.error(
+                '[Admin auth] TOTP verify failed:',
+                (err as AxiosError).message,
+              );
             }
             return null;
           }
@@ -95,7 +100,9 @@ export const authOptions: NextAuthOptions = {
         try {
           // The login endpoint uses @Res() (non-passthrough), bypassing TransformInterceptor.
           // Response is the raw service result — no { success, data } envelope.
-          const { data: body, status } = await axios.post<Record<string, unknown>>(
+          const { data: body, status } = await axios.post<
+            Record<string, unknown>
+          >(
             `${API_BASE}${API_ROUTES.AUTH.LOGIN}`,
             { email: credentials.email, password: credentials.password },
             { validateStatus: (s) => s < 500 },
@@ -104,9 +111,9 @@ export const authOptions: NextAuthOptions = {
           // TOTP required (202)
           if (status === 202 || body['requiresTOTP'] === true) {
             return {
-              id:           'totp-pending',
-              email:        credentials.email,
-              name:         credentials.email,
+              id: 'totp-pending',
+              email: credentials.email,
+              name: credentials.email,
               requiresTOTP: true,
               partialToken: body['partialToken'] as string,
             } as unknown as import('next-auth').User;
@@ -118,24 +125,30 @@ export const authOptions: NextAuthOptions = {
 
           if (!['ADMIN', 'SUPER_ADMIN'].includes(user['role'] as string)) {
             if (process.env['NODE_ENV'] !== 'production') {
-              console.warn('[Admin auth] Blocked — role not permitted:', user['role']);
+              console.warn(
+                '[Admin auth] Blocked — role not permitted:',
+                user['role'],
+              );
             }
             return null;
           }
 
           return {
-            id:          String(user['id']),
-            email:       String(user['email']),
-            name:        (
-              `${(user['firstName'] as string) ?? ''} ${(user['lastName'] as string) ?? ''}`.trim()
-              || String(user['email'])
-            ),
-            role:        user['role'] as string,
+            id: String(user['id']),
+            email: String(user['email']),
+            name:
+              `${(user['firstName'] as string) ?? ''} ${(user['lastName'] as string) ?? ''}`.trim() ||
+              String(user['email']),
+            role: user['role'] as string,
             accessToken: body['accessToken'] as string,
           };
         } catch (err) {
           if (process.env['NODE_ENV'] !== 'production') {
-            console.error('[Admin auth] Network error reaching API:', API_BASE, (err as AxiosError).message);
+            console.error(
+              '[Admin auth] Network error reaching API:',
+              API_BASE,
+              (err as AxiosError).message,
+            );
           }
           return null;
         }
@@ -148,17 +161,17 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         const u = user as unknown as Record<string, unknown>;
         if (u['requiresTOTP']) {
-          token['requiresTOTP']  = true;
-          token['partialToken']  = u['partialToken'];
-          token['accessToken']   = undefined;
-          token['id']            = undefined;
-          token['role']          = undefined;
+          token['requiresTOTP'] = true;
+          token['partialToken'] = u['partialToken'];
+          token['accessToken'] = undefined;
+          token['id'] = undefined;
+          token['role'] = undefined;
         } else {
-          token['requiresTOTP']  = false;
-          token['partialToken']  = undefined;
-          token['id']            = u['id'];
-          token['role']          = u['role'];
-          token['accessToken']   = u['accessToken'];
+          token['requiresTOTP'] = false;
+          token['partialToken'] = undefined;
+          token['id'] = u['id'];
+          token['role'] = u['role'];
+          token['accessToken'] = u['accessToken'];
         }
       }
       return token;
@@ -167,21 +180,22 @@ export const authOptions: NextAuthOptions = {
     session: async ({ session, token }) => {
       const u = session.user as Record<string, unknown> | undefined;
       if (u) {
-        u['requiresTOTP']  = token['requiresTOTP'];
-        u['partialToken']  = token['partialToken'];
-        u['id']            = token['id'];
-        u['role']          = token['role'];
-        u['accessToken']   = token['accessToken'];
+        u['requiresTOTP'] = token['requiresTOTP'];
+        u['partialToken'] = token['partialToken'];
+        u['id'] = token['id'];
+        u['role'] = token['role'];
+        u['accessToken'] = token['accessToken'];
       }
       return session;
     },
   },
 
-  pages:   { signIn: '/login', error: '/login' },
+  pages: { signIn: '/login', error: '/login' },
   session: { strategy: 'jwt', maxAge: 8 * 60 * 60 },
 
   // Use an explicit secret — never rely on the default in production.
-  secret: process.env['NEXTAUTH_SECRET'] ?? 'admin-dev-secret-change-in-production',
+  secret:
+    process.env['NEXTAUTH_SECRET'] ?? 'admin-dev-secret-change-in-production',
 
   // Debug mode in development only
   debug: process.env['NODE_ENV'] === 'development',
