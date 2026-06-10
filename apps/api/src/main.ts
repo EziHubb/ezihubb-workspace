@@ -100,7 +100,7 @@ async function bootstrap() {
   // CORS_ORIGINS="*" → reflect any origin (dev); comma-list → strict whitelist.
   // ADMIN_URL and FRONTEND_URL are always added automatically when set so
   // callers don't need to duplicate them in CORS_ORIGINS.
-  const rawOrigins = process.env['CORS_ORIGINS'] ?? 'http://localhost:3000,http://localhost:3001';
+  const rawOrigins = process.env['CORS_ORIGINS'] ?? '*';
   const allowAll   = rawOrigins.trim() === '*';
   const explicitOrigins = rawOrigins.split(',').map((o) => o.trim()).filter(Boolean);
   const autoOrigins = [
