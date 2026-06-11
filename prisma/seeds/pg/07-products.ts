@@ -286,7 +286,7 @@ const PRODUCTS: ProdDef[] = [
   },
 ];
 
-export async function seedProducts(prisma: PrismaClient): Promise<Record<string, string>> {
+export async function seedProducts(prisma: PrismaClient, defaultStoreId?: string): Promise<Record<string, string>> {
   console.log('  📦 Seeding products...');
 
   const slugsNeeded = [
@@ -331,6 +331,10 @@ export async function seedProducts(prisma: PrismaClient): Promise<Record<string,
     const existing = await prisma.product.findUnique({ where: { slug: def.slug } });
     if (existing) {
       productIds[def.slug] = existing.id;
+      // Backfill storeId if missing
+      if (defaultStoreId && !existing.storeId) {
+        await prisma.product.update({ where: { id: existing.id }, data: { storeId: defaultStoreId } });
+      }
       console.log(`    ⏭  Product (exists): ${def.name}`);
       continue;
     }
@@ -340,6 +344,7 @@ export async function seedProducts(prisma: PrismaClient): Promise<Record<string,
     const product = await prisma.product.create({
       data: {
         ...fields,
+        storeId: defaultStoreId ?? null,
         categoryId,
         isFeatured,
         isPersonalizable,

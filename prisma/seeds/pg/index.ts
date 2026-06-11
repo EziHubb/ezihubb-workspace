@@ -12,9 +12,10 @@ import { seedShippingZones }      from './10-shipping-zones';
 import { seedAttributeValues }    from './11-attribute-values';
 import { seedAffiliates }         from './12-affiliates';
 import { seedConversations }      from './13-conversations';
+import { seedStores }             from './14-stores';
 
 export async function runPgSeeds(): Promise<Record<string, string>> {
-  await seedUsers(prisma);
+  const { admin } = await seedUsers(prisma);
   await seedCategories(prisma);
   const collectionIds = await seedCollections(prisma);
 
@@ -23,7 +24,10 @@ export async function runPgSeeds(): Promise<Record<string, string>> {
   await seedShippingProfiles(prisma);
   await seedShopSections(prisma);
 
-  const productIds = await seedProducts(prisma);
+  // Store must exist before products get storeId assigned
+  const { storeId } = await seedStores(prisma, admin.id);
+
+  const productIds = await seedProducts(prisma, storeId);
   await seedCollectionLinks(prisma, collectionIds, productIds);
   await seedPromotions(prisma);
   await seedShippingZones(prisma);

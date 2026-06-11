@@ -21,6 +21,8 @@ export interface ProductCardProps {
   currency?:        string;
   onWishlistToggle?: (id: string) => void;
   onAddToCart?:     (id: string) => void;
+  storeName?:       string | null;
+  storeSlug?:       string | null;
 }
 
 function formatPrice(amount: number, currency = 'USD'): string {
@@ -42,6 +44,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   currency         = 'USD',
   onWishlistToggle,
   onAddToCart,
+  storeName,
+  storeSlug,
 }) => {
   const [hovered, setHovered] = useState(false);
   const discount =
@@ -111,6 +115,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {name}
           </h3>
         </Link>
+        {storeName && storeSlug && (
+          <Link
+            href={`/shops/${storeSlug}`}
+            className="block text-xs text-muted hover:text-primary transition-colors mb-1 truncate"
+            onClick={(e) => e.stopPropagation()}
+          >
+            By {storeName}
+          </Link>
+        )}
 
         {rating !== undefined && (
           <div className="mb-2">

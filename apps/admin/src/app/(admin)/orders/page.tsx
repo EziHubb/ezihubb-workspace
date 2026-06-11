@@ -23,12 +23,13 @@ interface OrderRow {
   total:       number;
   createdAt:   string;
   itemCount:   number;
-  customer: {
+  customer?: {
     id:         string;
-    firstName?: string;
-    lastName?:  string;
+    firstName?: string | null;
+    lastName?:  string | null;
     email:      string;
-  };
+  } | null;
+  stores?: { name: string; slug: string }[];
 }
 
 interface OrdersResponse {
@@ -146,11 +147,29 @@ export default function OrdersPage() {
       header:  'Customer',
       cell:    ({ row }) => {
         const c = row.original.customer;
+        if (!c) return <span className="text-xs text-muted">Guest</span>;
         const name = [c.firstName, c.lastName].filter(Boolean).join(' ') || c.email;
         return (
           <div>
             <p className="text-sm font-medium text-secondary truncate max-w-[160px]">{name}</p>
             <p className="text-xs text-muted truncate max-w-[160px]">{c.email}</p>
+          </div>
+        );
+      },
+    },
+    {
+      id:     'stores',
+      header: 'Store(s)',
+      cell:   ({ row }) => {
+        const stores = row.original.stores ?? [];
+        if (!stores.length) return <span className="text-xs text-muted">—</span>;
+        return (
+          <div className="flex flex-col gap-0.5">
+            {stores.map((s) => (
+              <span key={s.slug} className="text-xs text-secondary font-medium truncate max-w-[140px]" title={s.name}>
+                {s.name}
+              </span>
+            ))}
           </div>
         );
       },

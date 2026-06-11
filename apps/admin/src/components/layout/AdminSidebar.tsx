@@ -11,7 +11,7 @@ import {
   LayoutDashboard, ShoppingCart, ShoppingBag, FolderOpen,
   Tag, Layers, Users, BadgePercent, Star, Truck,
   CreditCard, Settings, ChevronDown, ChevronRight, LogOut, Globe, MessageSquare, Link2,
-  Bookmark, Factory, Shield, GitBranch,
+  Bookmark, Factory, Shield, GitBranch, Store, BarChart2, Wallet,
 } from 'lucide-react';
 
 // ── Nav item types ─────────────────────────────────────────────────────────────
@@ -44,7 +44,17 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Partners',     href: '/catalog/production-partners',  icon: Factory  },
     ],
   },
-  { label: 'Customers',   href: '/customers',   icon: Users         },
+  {
+    label: 'Stores', href: '/stores', icon: Store,
+    children: [
+      { label: 'All Stores',         href: '/stores',              icon: Store    },
+      { label: 'Seller Plans',       href: '/stores/plans',        icon: Layers   },
+      { label: 'Platform Settings',  href: '/stores/settings',     icon: Settings },
+    ],
+  },
+  { label: 'Finance',     href: '/finance',     icon: BarChart2    },
+  { label: 'Payouts',     href: '/payouts',     icon: Wallet       },
+  { label: 'Customers',   href: '/customers',   icon: Users        },
   { label: 'Messages',    href: '/messages',    icon: MessageSquare },
   { label: 'Promotions',  href: '/promotions',  icon: BadgePercent  },
   { label: 'Reviews',     href: '/reviews',     icon: Star         },

@@ -5,6 +5,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { memoryStorage } from 'multer';
 import { ProductsController } from './products.controller';
 import { AdminProductsController } from './admin-products.controller';
+import { SellerProductsController } from './seller-products.controller';
 import { CsvImportController } from './csv-import.controller';
 import { QaController } from './qa.controller';
 import { AdminQaController } from './admin-qa.controller';
@@ -21,6 +22,8 @@ import { AnalyticsModule } from '../analytics/analytics.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { DevBullModule } from '../../queue/dev-bull.module';
 import { QUEUES } from '../../queue/queue.constants';
+import { StoresModule } from '../stores/stores.module';
+import { ShippingModule } from '../shipping/shipping.module';
 
 const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
 
@@ -32,6 +35,8 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
     ]),
     AnalyticsModule,
     NotificationsModule,
+    StoresModule,
+    ShippingModule,
     ...(disableQueue
       ? [DevBullModule.forQueues([QUEUES.LOW_STOCK])]
       : [BullModule.registerQueue({ name: QUEUES.LOW_STOCK })]),
@@ -39,6 +44,7 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
   controllers: [
     ProductsController,
     AdminProductsController,
+    SellerProductsController,
     CsvImportController,
     QaController,
     AdminQaController,

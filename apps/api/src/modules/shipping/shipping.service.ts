@@ -118,6 +118,14 @@ export class ShippingService {
     });
   }
 
+  async getShippingProfilesForStore(storeId: string) {
+    return this.prisma.shippingProfile.findMany({
+      where:   { OR: [{ storeId }, { storeId: null, isDefault: true }] },
+      include: { methods: true },
+      orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
+    });
+  }
+
   // ── Zone CRUD ────────────────────────────────────────────────────────────────
 
   async getZones(): Promise<ZoneWithMethods[]> {

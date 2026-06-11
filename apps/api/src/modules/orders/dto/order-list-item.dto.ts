@@ -11,6 +11,13 @@ export class OrderListItemDto {
   @ApiProperty() itemCount: number;
   @ApiPropertyOptional() previewUrl: string | null;
   @ApiProperty() createdAt: Date;
+  @ApiPropertyOptional() customer?: {
+    id: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    email: string;
+  } | null;
+  @ApiPropertyOptional() stores?: { name: string; slug: string }[];
 }
 
 export class AdminOrderQueryDto extends PaginationDto {

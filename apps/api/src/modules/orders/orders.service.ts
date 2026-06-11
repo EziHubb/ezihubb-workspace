@@ -47,6 +47,7 @@ const CART_INCLUDE_FOR_CHECKOUT = {
           basePrice: true,
           isActive: true,
           deletedAt: true,
+          storeId: true,
           images: {
             where: { isPrimary: true },
             select: { url: true },
@@ -334,6 +335,7 @@ export class OrdersService {
             | Prisma.InputJsonValue
             | undefined,
           previewUrl:       item.previewUrl,
+          storeId:          item.product.storeId ?? null,
           // ── Snapshots captured at order time ─────────────────────────────
           productName:      item.product.name,
           productSlug:      item.product.slug,
@@ -343,6 +345,58 @@ export class OrdersService {
           sku:              item.variant?.sku ?? null,
         })),
       });
+
+      // ── Split into StoreOrders (1 per store) ──────────────────────────────
+      const storeGroups = new Map<string, typeof cart.items>();
+      for (const item of cart.items) {
+        const sid = item.product.storeId;
+        if (!sid) continue;
+        if (!storeGroups.has(sid)) storeGroups.set(sid, []);
+        storeGroups.get(sid)!.push(item);
+      }
+
+      if (storeGroups.size > 0) {
+        const platformSettings = await tx.platformSettings.findUnique({ where: { id: 'singleton' } });
+        const defaultRate = Number(platformSettings?.defaultCommissionRate ?? 0.15);
+
+        const storeRecords = await tx.store.findMany({
+          where:  { id: { in: [...storeGroups.keys()] } },
+          select: { id: true, commissionRate: true },
+        });
+        const storeRateMap = new Map(storeRecords.map(s => [s.id, s.commissionRate]));
+
+        for (const [storeId, items] of storeGroups) {
+          const storeSubtotal = items.reduce((sum, item) => {
+            const price = item.variant ? Number(item.variant.price) : Number(item.product.basePrice);
+            return sum + price * item.quantity;
+          }, 0);
+
+          const rateRaw      = storeRateMap.get(storeId);
+          const feeRate      = rateRaw != null ? Number(rateRaw) : defaultRate;
+          const platformFee  = Math.round(storeSubtotal * feeRate * 100) / 100;
+          const sellerEarnings = Math.round((storeSubtotal - platformFee) * 100) / 100;
+
+          const storeOrder = await tx.storeOrder.create({
+            data: {
+              orderId:        newOrder.id,
+              storeId,
+              status:         OrderStatus.PENDING_PAYMENT,
+              subtotal:       Math.round(storeSubtotal * 100) / 100,
+              platformFee,
+              sellerEarnings,
+              shippingCost:   0,
+            },
+          });
+
+          await tx.orderItem.updateMany({
+            where: {
+              orderId:   newOrder.id,
+              productId: { in: items.map(i => i.productId) },
+            },
+            data: { storeOrderId: storeOrder.id },
+          });
+        }
+      }
 
       // Initial status history entry
       await tx.orderStatusHistory.create({
@@ -603,6 +657,10 @@ export class OrdersService {
             take: 1,
             orderBy: { previewUrl: 'desc' },
           },
+          user: { select: { id: true, email: true, firstName: true, lastName: true } },
+          storeOrders: {
+            select: { store: { select: { name: true, slug: true } } },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -619,6 +677,10 @@ export class OrdersService {
       itemCount: o.items.reduce((s, i) => s + i.quantity, 0),
       previewUrl: o.items[0]?.previewUrl ?? null,
       createdAt: o.createdAt,
+      customer: o.user
+        ? { id: o.user.id, firstName: o.user.firstName, lastName: o.user.lastName, email: o.user.email }
+        : null,
+      stores: o.storeOrders.map((so) => ({ name: so.store.name, slug: so.store.slug })),
     }));
 
     return paginatedResponse(data, page, limit, total);

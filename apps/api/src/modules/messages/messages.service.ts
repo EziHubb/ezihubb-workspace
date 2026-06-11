@@ -34,10 +34,22 @@ export class MessagesService {
   async createConversation(userId: string | null, dto: CreateConversationDto) {
     const { orderId, subject, guestEmail, guestName, body, ..._ } = dto;
 
+    // Resolve storeId from the order's storeOrders (single-store orders only)
+    let storeId: string | undefined;
+    if (orderId) {
+      const storeOrders = await this.prisma.storeOrder.findMany({
+        where:  { orderId },
+        select: { storeId: true },
+        take:   2,
+      });
+      if (storeOrders.length === 1) storeId = storeOrders[0].storeId;
+    }
+
     const conversation = await this.prisma.conversation.create({
       data: {
         ...(userId && { userId }),
         ...(orderId && { orderId }),
+        ...(storeId && { storeId }),
         subject,
         guestEmail: userId ? undefined : guestEmail,
         guestName:  userId ? undefined : guestName,

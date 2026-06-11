@@ -145,6 +145,39 @@ enum ReferralPayoutStatus {
   REJECTED
 }
 
+// ─── Multi-vendor enums ───────────────────────────────────────────────────────
+
+enum StoreStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum StorePlanType {
+  COMMISSION
+  SUBSCRIPTION
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAST_DUE
+  TRIALING
+}
+
+enum SellerPayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+}
+
+enum CategoryScope {
+  PLATFORM
+  STORE
+}
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 model User {
@@ -170,6 +203,10 @@ model User {
   totpVerifiedAt  DateTime?
   backupCodes     String[]
 
+  // ── Seller fields ──────────────────────────────────────────────────────────
+  isSeller        Boolean  @default(false)
+  storeId         String?  // denormalized store id (set when approved); no FK to avoid circular ref
+
   refreshTokens       RefreshToken[]
   emailVerifications  EmailVerification[]
   passwordResets      PasswordReset[]
@@ -183,6 +220,7 @@ model User {
   conversations       Conversation[]
   affiliateAccount    AffiliateAccount?
   loyaltyAccount      LoyaltyAccount?
+  ownedStore          Store?               @relation("StoreOwner")
 
   // ── Referral tree ───────────────────────────────────────────────────────
   referralCode         String?   @unique
@@ -296,23 +334,171 @@ model WishlistItem {
   @@index([userId])
 }
 
+// ─── Multi-vendor: Store & Plans ─────────────────────────────────────────────
+
+model Store {
+  id                 String        @id @default(cuid())
+  slug               String        @unique
+  name               String
+  description        String?       @db.Text
+  logoUrl            String?
+  bannerUrl          String?
+  ownerId            String        @unique
+  owner              User          @relation("StoreOwner", fields: [ownerId], references: [id])
+  status             StoreStatus   @default(PENDING)
+  planType           StorePlanType @default(COMMISSION)
+  commissionRate     Decimal?      @db.Decimal(5, 4)
+  subscriptionPlanId String?
+  subscriptionPlan   SellerPlan?   @relation(fields: [subscriptionPlanId], references: [id])
+  adminNotes         String?       @db.Text
+  rejectedReason     String?
+  verifiedAt         DateTime?
+  approvedById       String?
+
+  // Denormalized stats
+  totalProducts  Int     @default(0)
+  totalOrders    Int     @default(0)
+  totalRevenue   Decimal @default(0) @db.Decimal(12, 2)
+  rating         Decimal @default(0) @db.Decimal(3, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products         Product[]
+  categories       Category[]
+  storeOrders      StoreOrder[]
+  subscriptions    SubscriptionBilling[]
+  payouts          SellerPayout[]
+  shopSections     ShopSection[]
+  shippingProfiles ShippingProfile[]
+  promotions       Promotion[]
+  reviews          Review[]         @relation("StoreReviews")
+  conversations    Conversation[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([ownerId])
+}
+
+model SellerPlan {
+  id             String   @id @default(cuid())
+  name           String
+  monthlyPrice   Decimal  @db.Decimal(10, 2)
+  maxProducts    Int?
+  maxOrders      Int?
+  commissionRate Decimal  @db.Decimal(5, 4)
+  features       String[]
+  isActive       Boolean  @default(true)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  stores        Store[]
+  subscriptions SubscriptionBilling[]
+}
+
+model SubscriptionBilling {
+  id                   String             @id @default(cuid())
+  storeId              String
+  store                Store              @relation(fields: [storeId], references: [id])
+  planId               String
+  plan                 SellerPlan         @relation(fields: [planId], references: [id])
+  status               SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelledAt          DateTime?
+  stripeSubscriptionId String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([storeId])
+  @@index([status])
+}
+
+model StoreOrder {
+  id             String      @id @default(cuid())
+  orderId        String
+  order          Order       @relation(fields: [orderId], references: [id])
+  storeId        String
+  store          Store       @relation(fields: [storeId], references: [id])
+  status         OrderStatus @default(PENDING_PAYMENT)
+  subtotal       Decimal     @db.Decimal(10, 2)
+  shippingCost   Decimal     @default(0) @db.Decimal(10, 2)
+  platformFee    Decimal     @db.Decimal(10, 2)
+  sellerEarnings Decimal     @db.Decimal(10, 2)
+  trackingNumber String?
+  trackingUrl    String?
+  carrier        String?
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  sellerNotes    String?
+  payoutId       String?
+  payout         SellerPayout? @relation(fields: [payoutId], references: [id])
+  items          OrderItem[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@unique([orderId, storeId])
+  @@index([orderId])
+  @@index([storeId])
+  @@index([status])
+}
+
+model SellerPayout {
+  id            String             @id @default(cuid())
+  storeId       String
+  store         Store              @relation(fields: [storeId], references: [id])
+  period        String
+  amount        Decimal            @db.Decimal(10, 2)
+  platformFee   Decimal            @db.Decimal(10, 2)
+  orderCount    Int                @default(0)
+  status        SellerPayoutStatus @default(PENDING)
+  paidAt        DateTime?
+  processedById String?
+  paymentMethod String?
+  paymentDetail String?
+  adminNotes    String?
+  storeOrders   StoreOrder[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([storeId])
+  @@index([status])
+  @@index([period])
+}
+
+model PlatformSettings {
+  id                      String   @id @default("singleton")
+  defaultCommissionRate   Decimal  @default(0.15) @db.Decimal(5, 4)
+  minCommissionRate       Decimal  @default(0.05) @db.Decimal(5, 4)
+  maxCommissionRate       Decimal  @default(0.30) @db.Decimal(5, 4)
+  platformName            String   @default("MapleLoom")
+  allowPublicRegistration Boolean  @default(false)
+  minPayoutAmount         Decimal  @default(100.00) @db.Decimal(10, 2)
+  payoutSchedule          String   @default("monthly")
+  maintenanceMode         Boolean  @default(false)
+  updatedAt               DateTime @updatedAt
+}
+
 // ─── Catalog ─────────────────────────────────────────────────────────────────
 
 model Category {
-  id          String     @id @default(cuid())
+  id          String        @id @default(cuid())
   name        String
-  slug        String     @unique
+  slug        String        @unique
   description String?
   imageUrl    String?
   // 1 = nav tab (L1), 2 = group (L2), 3 = product category (L3)
-  level       Int        @default(1)
+  level       Int           @default(1)
   parentId    String?
-  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id])
-  children    Category[] @relation("CategoryTree")
-  sortOrder   Int        @default(0)
-  isVisible   Boolean    @default(true)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  parent      Category?     @relation("CategoryTree", fields: [parentId], references: [id])
+  children    Category[]    @relation("CategoryTree")
+  sortOrder   Int           @default(0)
+  isVisible   Boolean       @default(true)
+  scope       CategoryScope @default(PLATFORM)
+  storeId     String?
+  store       Store?        @relation(fields: [storeId], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   products          Product[]
   productCategories ProductCategory[]
@@ -320,6 +506,7 @@ model Category {
   @@index([parentId])
   @@index([slug])
   @@index([level, isVisible])
+  @@index([storeId])
 }
 
 // ── Multi-category membership ─────────────────────────────────────────────────
@@ -391,7 +578,7 @@ model ProductTag {
 model Product {
   id                  String   @id @default(cuid())
   name                String
-  slug                String   @unique
+  slug                String
   sku                 String   @unique
   description         String
   shortDescription    String?
@@ -410,6 +597,10 @@ model Product {
   deletedAt           DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+
+  // ── Store ownership ─────────────────────────────────────────────────────────
+  storeId             String?
+  store               Store?   @relation(fields: [storeId], references: [id])
 
   // ── TAB: Item Details ───────────────────────────────────────────────────────
   titleCharCount    Int?                   // cached char count for 140-char limit validation
@@ -471,10 +662,11 @@ model Product {
   variationGroups     VariationGroup[]
   variationSettings   VariationSettings?
 
+  @@unique([slug, storeId])
   @@index([categoryId])
+  @@index([storeId])
   @@index([isActive, isFeatured])
   @@index([isActive, soldCount])
-  @@index([slug])
   @@index([processingProfileId])
   @@index([shippingProfileId])
   @@index([shopSectionId])
@@ -579,15 +771,19 @@ model ProcessingProfile {
 
 model ShippingProfile {
   id             String                  @id @default(cuid())
-  name           String                  @unique // "Standard Shipping", "Embroidered Hat"
+  name           String                  // "Standard Shipping", "Embroidered Hat"
   type           String                  @default("fixed") // "fixed" | "calculated" | "free"
   activeListings Int                     @default(0)       // denormalised count
   isDefault      Boolean                 @default(false)
+  storeId        String?
+  store          Store?                  @relation(fields: [storeId], references: [id])
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
 
   methods        ShippingProfileMethod[]
   products       Product[]
+
+  @@index([storeId])
 }
 
 model ShippingProfileMethod {
@@ -609,11 +805,15 @@ model ShippingProfileMethod {
 
 model ShopSection {
   id        String    @id @default(cuid())
-  name      String    @unique // "Embroidered Hats", "Canvas Prints"
+  name      String
   sortOrder Int       @default(0)
+  storeId   String?
+  store     Store?    @relation(fields: [storeId], references: [id])
   createdAt DateTime  @default(now())
 
   products  Product[]
+
+  @@index([storeId])
 }
 
 // ─── Production Partners ──────────────────────────────────────────────────────
@@ -732,6 +932,7 @@ model Order {
   updatedAt       DateTime    @updatedAt
 
   items           OrderItem[]
+  storeOrders     StoreOrder[]
   statusHistory   OrderStatusHistory[]
   payment         Payment?
   promotionUsages PromotionUsage[]
@@ -791,8 +992,15 @@ model OrderItem {
   variantSnapshot   Json?
   sku               String?
 
+  // ── Store attribution ──────────────────────────────────────────────────────
+  storeId           String?
+  storeOrderId      String?
+  storeOrder        StoreOrder?     @relation(fields: [storeOrderId], references: [id])
+
   @@index([orderId])
   @@index([productId])
+  @@index([storeOrderId])
+  @@index([storeId])
 }
 
 model OrderStatusHistory {
@@ -878,12 +1086,15 @@ model Promotion {
   startsAt       DateTime?
   expiresAt      DateTime?
   description    String?
+  storeId        String?
+  store          Store?       @relation(fields: [storeId], references: [id])
   createdAt      DateTime     @default(now())
 
   usages PromotionUsage[]
 
   @@index([code])
   @@index([isActive])
+  @@index([storeId])
 }
 
 model PromotionUsage {
@@ -939,14 +1150,19 @@ model Review {
   body         String
   imageUrls    String[]
   status       ReviewStatus @default(PENDING)
-  adminReply   String?
-  repliedAt    DateTime?
-  helpfulCount Int          @default(0)
+  adminReply       String?
+  repliedAt        DateTime?
+  sellerReply      String?
+  sellerRepliedAt  DateTime?
+  helpfulCount     Int          @default(0)
+  storeId          String?
+  store            Store?       @relation("StoreReviews", fields: [storeId], references: [id])
   createdAt    DateTime     @default(now())
 
   @@unique([userId, productId, orderId])
   @@index([productId, status])
   @@index([userId])
+  @@index([storeId])
 }
 
 // ─── Product Q&A ─────────────────────────────────────────────────────────────
@@ -1033,6 +1249,10 @@ model Conversation {
   guestEmail String?           // for guest conversations
   guestName  String?
 
+  // Store context (which store this conversation is with)
+  storeId   String?
+  store     Store?             @relation(fields: [storeId], references: [id])
+
   // Metadata
   subject   String?            // optional subject line
   status    ConversationStatus @default(OPEN)
@@ -1052,6 +1272,7 @@ model Conversation {
   @@index([orderId])
   @@index([status])
   @@index([lastMessageAt])
+  @@index([storeId])
 }
 
 model Message {

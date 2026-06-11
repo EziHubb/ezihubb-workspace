@@ -486,6 +486,69 @@ export class ReviewsService {
       include: REVIEW_INCLUDE,
     });
     await this.redis.del(CacheKeys.reviewsSummary(review.productId));
+
+    // Denormalize store rating when review is approved
+    if (review.storeId) {
+      await this.recalcStoreRating(review.storeId);
+    }
+
+    return this.mapToDto(updated);
+  }
+
+  private async recalcStoreRating(storeId: string): Promise<void> {
+    const agg = await this.prisma.review.aggregate({
+      where:   { storeId, status: ReviewStatus.APPROVED },
+      _avg:    { rating: true },
+      _count:  { rating: true },
+    });
+    const avg = agg._avg.rating ?? 0;
+    await this.prisma.store.update({
+      where: { id: storeId },
+      data:  { rating: Math.round(avg * 100) / 100 },
+    });
+  }
+
+  async listReviewsForStore(
+    storeId: string,
+    params: { page?: number; limit?: number; status?: string },
+  ): Promise<PaginatedResult<ReviewResponseDto>> {
+    const page  = params.page ?? 1;
+    const limit = params.limit ?? 20;
+    const skip  = (page - 1) * limit;
+    const where = {
+      storeId,
+      ...(params.status ? { status: params.status as ReviewStatus } : {}),
+    };
+
+    const [reviews, total] = await Promise.all([
+      this.prisma.review.findMany({
+        where,
+        include: REVIEW_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.review.count({ where }),
+    ]);
+
+    return paginatedResponse(reviews.map(this.mapToDto.bind(this)), page, limit, total);
+  }
+
+  async replyToReviewAsSeller(
+    reviewId: string,
+    storeId: string,
+    reply: string,
+  ): Promise<ReviewResponseDto> {
+    const review = await this.prisma.review.findFirst({
+      where: { id: reviewId, storeId },
+    });
+    if (!review) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Review not found' });
+
+    const updated = await this.prisma.review.update({
+      where: { id: reviewId },
+      data:  { sellerReply: reply, sellerRepliedAt: new Date() },
+      include: REVIEW_INCLUDE,
+    });
     return this.mapToDto(updated);
   }
 
@@ -596,9 +659,11 @@ export class ReviewsService {
     body: review.body,
     imageUrls: review.imageUrls,
     status: review.status,
-    adminReply: review.adminReply,
-    repliedAt: review.repliedAt,
-    createdAt: review.createdAt,
+    adminReply:      review.adminReply,
+    repliedAt:       review.repliedAt,
+    sellerReply:     (review as any).sellerReply ?? null,
+    sellerRepliedAt: (review as any).sellerRepliedAt ?? null,
+    createdAt:       review.createdAt,
     author: {
       id: review.user.id,
       firstName: review.user.firstName,

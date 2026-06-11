@@ -353,5 +353,20 @@ export const API_ROUTES = {
     ADMIN_CREATORS_SETTINGS:  '/admin/referrals/settings',
     ADMIN_CREATORS_TIERS:     '/admin/referrals/tiers',
     ADMIN_CREATORS_TIER:      (id: string) => `/admin/referrals/tiers/${id}`,
+
+    // ── Stores (multi-vendor marketplace) ────────────────────────────────────
+    STORES:                   '/admin/stores',
+    STORE:                    (id: string) => `/admin/stores/${id}`,
+    STORE_APPROVE:            (id: string) => `/admin/stores/${id}/approve`,
+    STORE_REJECT:             (id: string) => `/admin/stores/${id}/reject`,
+    STORE_SUSPEND:            (id: string) => `/admin/stores/${id}/suspend`,
+    STORE_PLAN:               (id: string) => `/admin/stores/${id}/plan`,
+    STORES_PENDING_COUNT:     '/admin/stores?status=PENDING',
+    SELLER_PLANS:             '/admin/plans',
+    SELLER_PLAN:              (id: string) => `/admin/plans/${id}`,
+    PLATFORM_SETTINGS:        '/admin/platform-settings',
+    SELLER_PAYOUTS:           '/admin/seller-payouts',
+    SELLER_PAYOUT:            (id: string) => `/admin/seller-payouts/${id}`,
+    SELLER_PAYOUT_PAY:        (id: string) => `/admin/seller-payouts/${id}/pay`,
   },
 } as const;

@@ -22,4 +22,7 @@ export class ProductListItemDto {
   /** Badge: orders confirmed in last 24 hours */
   @ApiProperty() inDemandCount: number;
   @ApiProperty() createdAt: Date;
+  @ApiPropertyOptional() storeId?: string | null;
+  @ApiPropertyOptional() storeName?: string | null;
+  @ApiPropertyOptional() storeSlug?: string | null;
 }

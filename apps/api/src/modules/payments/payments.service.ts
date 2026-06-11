@@ -287,6 +287,11 @@ export class PaymentsService {
       }
     });
 
+    // ── Confirm StoreOrders and notify sellers ─────────────────────────────
+    this.confirmStoreOrders(payment.orderId).catch((err: Error) =>
+      this.logger.error(`StoreOrder confirmation failed for order ${payment.orderId}: ${err.message}`),
+    );
+
     // Queue notifications outside transaction
     const customerEmail =
       payment.order.guestEmail ??
@@ -392,6 +397,46 @@ export class PaymentsService {
       .catch((err: Error) =>
         this.logger.warn(`Analytics tracking failed for order ${payment.orderId}: ${err.message}`),
       );
+  }
+
+  // ─── StoreOrder confirmation (fire-and-forget after payment) ────────────
+
+  private async confirmStoreOrders(orderId: string): Promise<void> {
+    const storeOrders = await this.prisma.storeOrder.findMany({
+      where:   { orderId },
+      include: { store: { include: { owner: { select: { email: true, firstName: true } } } } },
+    });
+
+    for (const so of storeOrders) {
+      await this.prisma.storeOrder.update({
+        where: { id: so.id },
+        data:  { status: 'CONFIRMED' },
+      });
+
+      // Increment denormalized store stats
+      await this.prisma.store.update({
+        where: { id: so.storeId },
+        data:  {
+          totalOrders:   { increment: 1 },
+          totalRevenue:  { increment: Number(so.sellerEarnings) },
+        },
+      });
+
+      // Notify seller of new order
+      if (so.store.owner?.email) {
+        await this.emailQueue.add(JOBS.SEND_EMAIL, {
+          to:       so.store.owner.email,
+          template: 'new-store-order',
+          subject:  `New order for ${so.store.name}`,
+          data: {
+            firstName:  so.store.owner.firstName,
+            storeName:  so.store.name,
+            orderId:    so.id,
+            earnings:   Number(so.sellerEarnings).toFixed(2),
+          },
+        }, DEFAULT_JOB_OPTIONS);
+      }
+    }
   }
 
   private async onPaymentIntentFailed(

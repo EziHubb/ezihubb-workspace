@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your store is approved!</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; background: #faf9f7; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .header { background: #3d2b1f; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #f5e6d3; margin: 0; font-size: 24px; letter-spacing: 1px; }
+    .header p { color: #c8a882; margin: 8px 0 0; font-size: 14px; }
+    .body { padding: 40px; color: #3d2b1f; line-height: 1.7; }
+    .body h2 { font-size: 20px; margin-top: 0; }
+    .highlight-box { background: #f5e6d3; border-left: 4px solid #3d2b1f; border-radius: 4px; padding: 16px 20px; margin: 20px 0; }
+    .cta { display: inline-block; margin: 24px 0; background: #3d2b1f; color: #f5e6d3 !important; padding: 14px 32px; border-radius: 4px; text-decoration: none; font-size: 15px; }
+    .footer { background: #f5e6d3; padding: 20px 40px; text-align: center; font-size: 12px; color: #7a5c45; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>🍁 MapleLoom</h1>
+      <p>Seller Program</p>
+    </div>
+    <div class="body">
+      <h2>Congratulations, {{firstName}}! Your store is live. ✅</h2>
+      <p>We're thrilled to welcome <strong>{{storeName}}</strong> to the MapleLoom marketplace. Your store is now active and ready to receive orders.</p>
+      <div class="highlight-box">
+        <p><strong>Your store URL:</strong><br /><a href="{{storeUrl}}">{{storeUrl}}</a></p>
+      </div>
+      <p>Head to your seller dashboard to add your first products, manage orders, and track your earnings.</p>
+      <a class="cta" href="{{sellerDashboard}}">Go to Seller Dashboard →</a>
+      <p>Warmly,<br /><strong>The MapleLoom Team</strong></p>
+    </div>
+    <div class="footer">
+      &copy; {{year}} MapleLoom. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>

@@ -89,6 +89,8 @@ export function ProductGrid({ products, locale, isLoading = false }: ProductGrid
           badge={product.badge}
           isPersonalizable={product.isPersonalizable}
           onWishlistToggle={handleWishlistToggle}
+          storeName={product.store?.name}
+          storeSlug={product.store?.slug}
         />
       ))}
     </div>

@@ -8,7 +8,7 @@ const intlMiddleware = createMiddleware(routing);
 
 // ── Auth-protected path prefixes (checked after locale is stripped) ───────────
 
-const PROTECTED_PREFIXES = ['/account', '/checkout', '/affiliate/dashboard', '/affiliate/links', '/affiliate/payouts'];
+const PROTECTED_PREFIXES = ['/account', '/checkout', '/affiliate/dashboard', '/affiliate/links', '/affiliate/payouts', '/seller'];
 const ADMIN_PREFIXES     = ['/admin'];
 
 const LOCALE_REGEX = new RegExp(

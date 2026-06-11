@@ -97,4 +97,14 @@ export class ProductQueryDto extends PaginationDto {
   @IsBoolean()
   @Transform(({ value }) => value === 'true' || value === true)
   includeInactive?: boolean;
+
+  @ApiPropertyOptional({ description: 'Filter by store ID' })
+  @IsOptional()
+  @IsString()
+  storeId?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by store slug' })
+  @IsOptional()
+  @IsString()
+  storeSlug?: string;
 }

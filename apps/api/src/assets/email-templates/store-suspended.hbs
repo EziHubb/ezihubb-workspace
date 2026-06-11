@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your store has been suspended</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; background: #faf9f7; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .header { background: #3d2b1f; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #f5e6d3; margin: 0; font-size: 24px; letter-spacing: 1px; }
+    .body { padding: 40px; color: #3d2b1f; line-height: 1.7; }
+    .body h2 { font-size: 20px; margin-top: 0; }
+    .reason-box { background: #fff3f3; border-left: 4px solid #c0392b; border-radius: 4px; padding: 16px 20px; margin: 20px 0; }
+    .footer { background: #f5e6d3; padding: 20px 40px; text-align: center; font-size: 12px; color: #7a5c45; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>🍁 MapleLoom</h1>
+    </div>
+    <div class="body">
+      <h2>Important notice about your store</h2>
+      <p>Dear {{firstName}}, your store <strong>{{storeName}}</strong> has been temporarily suspended from the MapleLoom marketplace.</p>
+      <div class="reason-box">
+        <p><strong>Reason:</strong></p>
+        <p>{{reason}}</p>
+      </div>
+      <p>While suspended, your products will not appear in search results. Existing orders will continue to be processed.</p>
+      <p>To appeal this decision or for assistance, please contact our seller support team.</p>
+      <p>Warmly,<br /><strong>The MapleLoom Team</strong></p>
+    </div>
+    <div class="footer">
+      &copy; {{year}} MapleLoom. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>

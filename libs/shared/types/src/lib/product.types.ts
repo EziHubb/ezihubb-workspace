@@ -81,6 +81,7 @@ export interface ProductListItemDto {
   /** @deprecated use primaryCategory */
   category?: CategoryDto;
   badge?: 'bestseller' | 'new' | 'sale' | 'hot';
+  store?: { id: string; name: string; slug: string } | null;
 }
 
 export interface ProductDto extends ProductListItemDto {

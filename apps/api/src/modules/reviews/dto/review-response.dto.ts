@@ -14,10 +14,12 @@ export class ReviewResponseDto {
   body!: string;
   imageUrls!: string[];
   status!: ReviewStatus;
-  adminReply?: string | null;
-  repliedAt?: Date | null;
-  createdAt!: Date;
-  author!: ReviewAuthorDto;
+  adminReply?:      string | null;
+  repliedAt?:       Date | null;
+  sellerReply?:     string | null;
+  sellerRepliedAt?: Date | null;
+  createdAt!:       Date;
+  author!:          ReviewAuthorDto;
 }
 
 export class ReviewSummaryDto {

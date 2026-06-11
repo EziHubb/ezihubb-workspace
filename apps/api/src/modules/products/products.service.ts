@@ -88,6 +88,7 @@ export class ProductsService {
             take: 1,
           },
           _count: { select: { reviews: { where: { status: 'APPROVED' } } } },
+          store: { select: { id: true, name: true, slug: true } },
         },
       }),
       this.prisma.product.count({ where }),
@@ -140,6 +141,9 @@ export class ProductsService {
           reviewCount: p._count.reviews,
           inDemandCount: inDemandMap.get(p.id) ?? 0,
           createdAt: p.createdAt,
+          storeId:   p.store?.id   ?? null,
+          storeName: p.store?.name ?? null,
+          storeSlug: p.store?.slug ?? null,
         }) satisfies ProductListItemDto,
     );
 
@@ -1367,6 +1371,16 @@ export class ProductsService {
       };
     }
 
+    if (query.storeId) {
+      where.storeId = query.storeId;
+    } else if (query.storeSlug) {
+      const store = await this.prisma.store.findUnique({
+        where:  { slug: query.storeSlug },
+        select: { id: true },
+      });
+      if (store) where.storeId = store.id;
+    }
+
     return where;
   }
 
@@ -1413,16 +1427,111 @@ export class ProductsService {
       });
   }
 
+  // ─── Seller-scoped product methods ────────────────────────────────────────
+
+  async createDraftForStore(storeId: string): Promise<ProductResponseDto> {
+    const placeholder = await this.prisma.category.findFirst({
+      where:   { isVisible: true },
+      orderBy: [{ level: 'asc' }, { sortOrder: 'asc' }],
+      select:  { id: true },
+    });
+    if (!placeholder) throw new BadRequestException({
+      code:    'ERR_NO_CATEGORIES',
+      message: 'No categories found',
+    });
+
+    let sku: string;
+    let skuConflict = true;
+    do {
+      sku = `DRAFT-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+      skuConflict = !!(await this.prisma.product.findUnique({ where: { sku } }));
+    } while (skuConflict);
+
+    const slug = await this.resolveUniqueProductSlug(`draft-${sku.toLowerCase()}`, undefined, storeId);
+
+    const product = await this.prisma.product.create({
+      data: {
+        name:        '',
+        slug,
+        sku,
+        description: '',
+        basePrice:   0,
+        categoryId:  placeholder.id,
+        isActive:    false,
+        storeId,
+      },
+    });
+    return this.findByIdAdmin(product.id);
+  }
+
+  async findByIdForStore(id: string, storeId: string): Promise<ProductResponseDto> {
+    const product = await this.prisma.product.findFirst({
+      where: { id, storeId },
+    });
+    if (!product) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+    return this.findByIdAdmin(id);
+  }
+
+  async updateForStore(
+    id: string,
+    storeId: string,
+    dto: Partial<{ name: string; description: string; shortDescription: string; basePrice: number; compareAtPrice: number; categoryId: string; processingDays: number; isActive: boolean; shippingProfileId: string }>,
+  ): Promise<ProductResponseDto> {
+    const product = await this.prisma.product.findFirst({ where: { id, storeId } });
+    if (!product) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+
+    await this.prisma.product.update({
+      where: { id },
+      data:  {
+        name:             dto.name,
+        description:      dto.description,
+        shortDescription: dto.shortDescription,
+        basePrice:        dto.basePrice,
+        compareAtPrice:   dto.compareAtPrice,
+        categoryId:       dto.categoryId,
+        processingDays:   dto.processingDays,
+        isActive:         dto.isActive,
+        shippingProfileId: dto.shippingProfileId,
+      },
+    });
+
+    await this.redis.invalidatePattern('products:list:*');
+    return this.findByIdAdmin(id);
+  }
+
+  async deleteForStore(id: string, storeId: string): Promise<void> {
+    const product = await this.prisma.product.findFirst({ where: { id, storeId } });
+    if (!product) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+    await this.prisma.product.update({
+      where: { id },
+      data:  { isActive: false, deletedAt: new Date() },
+    });
+    await this.redis.invalidatePattern('products:list:*');
+  }
+
+  async getSellerCategories() {
+    return this.prisma.category.findMany({
+      where:   { isVisible: true, storeId: null },
+      orderBy: [{ level: 'asc' }, { sortOrder: 'asc' }],
+      select:  { id: true, name: true, slug: true, level: true, parentId: true },
+    });
+  }
+
   private async resolveUniqueProductSlug(
     source: string,
     excludeId?: string,
+    storeId?: string | null,
   ): Promise<string> {
     const base = this.slugify(source).substring(0, 200);
     let slug = base;
     let counter = 2;
     while (
       await this.prisma.product.findFirst({
-        where: { slug, NOT: excludeId ? { id: excludeId } : undefined },
+        where: {
+          slug,
+          storeId: storeId ?? null,
+          NOT: excludeId ? { id: excludeId } : undefined,
+        },
       })
     ) {
       slug = `${base}-${counter++}`;
