@@ -15,6 +15,7 @@ import { AffiliateTrackingService } from '../affiliates/affiliate-tracking.servi
 import { CommissionService } from '../affiliates/commission.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { PushService } from '../notifications/push.service';
+import { ReferralService } from '../referrals/referral.service';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
@@ -85,6 +86,7 @@ export class OrdersService {
     private readonly commissionService: CommissionService,
     private readonly loyaltyService: LoyaltyService,
     private readonly pushService: PushService,
+    private readonly referralService: ReferralService,
   ) {}
 
   // ─── Checkout ─────────────────────────────────────────────────────────────
@@ -205,6 +207,26 @@ export class OrdersService {
       }
     }
 
+    // ── Referral attribution (multi-level) ──────────────────────────────────
+    let referralUserId: string | null = null;
+    let referralDiscountAmt = 0;
+    const mlhRef = cookies?.['mlh_ref'];
+
+    if (mlhRef && userId) {
+      const resolved = await this.referralService.resolveCode(mlhRef);
+      if (resolved) {
+        // Find the user who owns this referral code (must not be the buyer)
+        const referrer = await this.prisma.user.findUnique({
+          where: { referralCode: mlhRef.toUpperCase() },
+          select: { id: true },
+        });
+        if (referrer && referrer.id !== userId) {
+          referralUserId    = referrer.id;
+          referralDiscountAmt = Math.round(subtotal * resolved.discountRate * 100) / 100;
+        }
+      }
+    }
+
     // ── Loyalty points redemption ────────────────────────────────────────────
     let pointsDiscount  = 0;
     let pointsToRedeem  = 0;
@@ -247,11 +269,11 @@ export class OrdersService {
           : Number(item.product.basePrice),
       })),
     });
-    // Affiliate discount + loyalty points discount — applied AFTER coupon, BEFORE payment
+    // Affiliate + referral + loyalty discounts — applied AFTER coupon, BEFORE payment
     const total = Math.max(
       0,
       Math.round(
-        (subtotalAfterDiscount + shippingCost + taxResult.taxAmount + giftWrappingCost - affiliateDiscountAmount - pointsDiscount) * 100,
+        (subtotalAfterDiscount + shippingCost + taxResult.taxAmount + giftWrappingCost - affiliateDiscountAmount - referralDiscountAmt - pointsDiscount) * 100,
       ) / 100,
     );
 
@@ -289,8 +311,10 @@ export class OrdersService {
           giftReceipt:    dto.isGift ? (dto.giftReceipt ?? false) : false,
           giftWrapping:            dto.giftWrapping ?? false,
           note:                    dto.note ?? null,
-          affiliateId:             affiliateId,
-          affiliateDiscountAmount: affiliateDiscountAmount > 0 ? affiliateDiscountAmount : undefined,
+          affiliateId:              affiliateId,
+          affiliateDiscountAmount:  affiliateDiscountAmount > 0 ? affiliateDiscountAmount : undefined,
+          referralUserId:           referralUserId ?? undefined,
+          referralDiscountAmount:   referralDiscountAmt > 0 ? referralDiscountAmt : undefined,
           pointsRedeemed:          pointsToRedeem > 0 ? pointsToRedeem : undefined,
           pointsDiscount:          pointsDiscount > 0 ? pointsDiscount : undefined,
         },
@@ -657,6 +681,14 @@ export class OrdersService {
           .scheduleAutoConfirm(id)
           .catch((err: Error) =>
             this.logger.error(`Failed to schedule auto-confirm for order ${id}: ${err.message}`),
+          );
+      }
+      // Referral commission lock period
+      if (order.referralUserId) {
+        this.referralService
+          .scheduleAutoConfirm(id)
+          .catch((err: Error) =>
+            this.logger.error(`Failed to schedule referral auto-confirm for order ${id}: ${err.message}`),
           );
       }
       // Loyalty points lock period (14d after delivery → pending → balance)

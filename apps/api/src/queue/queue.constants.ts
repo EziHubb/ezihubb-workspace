@@ -8,6 +8,7 @@ export const QUEUES = {
   LOYALTY:              'loyalty',
   LOW_STOCK:            'low-stock',
   TRANSLATIONS:         'translations',
+  REFERRAL:             'referral',
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
@@ -39,6 +40,10 @@ export const JOBS = {
 
   // Translations
   TRANSLATE_ENTITY: 'translate-entity',
+
+  // Referral
+  REFERRAL_AUTO_CONFIRM: 'referral-auto-confirm',
+  REFERRAL_CHECK_TIER:   'referral-check-tier',
 } as const;
 
 export type JobName = (typeof JOBS)[keyof typeof JOBS];

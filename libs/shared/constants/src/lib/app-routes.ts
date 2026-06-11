@@ -38,6 +38,11 @@ export const ADMIN_ROUTES = {
   AFFILIATES:    '/affiliates',
   AFFILIATE:     (id: string) => `/affiliates/${id}`,
   AFFILIATES_PAYOUTS: '/affiliates/payouts',
+
+  CREATORS_ADMIN:          '/creators',
+  CREATORS_ADMIN_MEMBERS:  '/creators/members',
+  CREATORS_ADMIN_PAYOUTS:  '/creators/payouts',
+  CREATORS_ADMIN_SETTINGS: '/creators/settings',
 } as const;
 
 // ── Client app routes (apps/client — without /${locale} prefix) ───────────────
@@ -83,6 +88,12 @@ export const CLIENT_ROUTES = {
   ACCOUNT_ADDRESSES: '/account/addresses',
   ACCOUNT_LOYALTY: '/account/loyalty',
   ACCOUNT_MESSAGES: '/account/messages',
+  ACCOUNT_CREATOR:         '/account/creator',
+  ACCOUNT_CREATOR_EARNINGS: '/account/creator/earnings',
+  ACCOUNT_CREATOR_PAYOUTS:  '/account/creator/payouts',
+
+  CREATORS:     '/creators',
+  CREATORS_JOIN: '/creators/join',
 
   AFFILIATE:           '/affiliate',
   AFFILIATE_REGISTER:  '/affiliate/register',

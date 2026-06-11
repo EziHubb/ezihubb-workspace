@@ -40,6 +40,7 @@ import { LoyaltyModule } from '../modules/loyalty/loyalty.module';
 import { CurrencyModule } from '../modules/currency/currency.module';
 import { UnsubscribeController } from '../modules/unsubscribe/unsubscribe.controller';
 import { TranslationsModule } from '../modules/translations/translations.module';
+import { ReferralModule } from '../modules/referrals/referral.module';
 import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
 
 @Module({
@@ -139,6 +140,7 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
     LoyaltyModule,
     CurrencyModule,
     TranslationsModule,
+    ReferralModule,
     HealthModule,
   ],
   controllers: [AppController, UnsubscribeController],

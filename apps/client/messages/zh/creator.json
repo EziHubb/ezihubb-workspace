@@ -1,0 +1,58 @@
+{
+  "creator": {
+    "hub": {
+      "title": "您的创作者中心",
+      "subtitle": "分享您喜爱的内容，当您的社区购物时即可获得收益。",
+      "yourCode": "您的创作者代码",
+      "yourLink": "您的专属链接",
+      "copyLink": "复制链接",
+      "copied": "已复制！",
+      "shareTitle": "分享并获得收益",
+      "shareSubtitle": "每当有人通过您的链接购物，您就能获得收益"
+    },
+    "tiers": {
+      "creator": "创作者",
+      "risingCreator": "新星创作者",
+      "topCreator": "顶级创作者",
+      "eliteCreator": "精英创作者"
+    },
+    "stats": {
+      "yourNetwork": "您的网络",
+      "totalEarnings": "总收益",
+      "availableBalance": "可提现",
+      "pendingEarnings": "待确认收益",
+      "directMembers": "直接成员",
+      "extendedNetwork": "延伸网络"
+    },
+    "earnings": {
+      "title": "您的收益",
+      "directSale": "直接销售",
+      "networkSale": "网络销售",
+      "pending": "待确认",
+      "confirmed": "可提现",
+      "paid": "已提现",
+      "locksIn": "{days} 天后解锁"
+    },
+    "withdraw": {
+      "title": "提现收益",
+      "available": "可用余额",
+      "minNotice": "最低提现金额为 ${min}",
+      "requestBtn": "申请提现",
+      "history": "提现历史"
+    },
+    "onboarding": {
+      "step1Title": "获取您的创作者代码",
+      "step1Body": "每个账户都有专属创作者代码",
+      "step2Title": "分享您喜爱的内容",
+      "step2Body": "在 TikTok、Instagram、Pinterest 等任何平台发布您的链接",
+      "step3Title": "购物即获得收益",
+      "step3Body": "每当有人通过您的链接购买，您就能赚取 {rate}%"
+    },
+    "share": {
+      "productTitle": "分享此产品",
+      "withCode": "您的创作者链接包含您的代码——如果他们购买，您将获得收益",
+      "guestPrompt": "登录后即可从分享中获得收益",
+      "buyerDiscount": "通过您的链接购物的用户自动享受 {discount}% 折扣"
+    }
+  }
+}

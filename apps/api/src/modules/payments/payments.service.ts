@@ -37,6 +37,7 @@ import { AnalyticsService } from '../analytics/analytics.service';
 import { CommissionService } from '../affiliates/commission.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { LowStockService } from '../products/low-stock.service';
+import { ReferralService } from '../referrals/referral.service';
 
 const WEBHOOK_IDEMPOTENCY_TTL = 24 * 60 * 60; // 24 hours in seconds
 const REFUND_WINDOW_DAYS = 60;
@@ -54,6 +55,7 @@ export class PaymentsService {
     private readonly commissionService: CommissionService,
     private readonly loyaltyService: LoyaltyService,
     private readonly lowStockService: LowStockService,
+    private readonly referralService: ReferralService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
     @InjectQueue(QUEUES.ORDER_PROCESSING) private readonly orderQueue: Queue,
   ) {
@@ -319,6 +321,13 @@ export class PaymentsService {
         this.logger.error(`Commission creation failed for order ${payment.orderId}: ${err.message}`),
       );
 
+    // Fire-and-forget referral commission
+    this.referralService
+      .createCommissionsForOrder(payment.orderId)
+      .catch((err: Error) =>
+        this.logger.error(`Referral commission creation failed for order ${payment.orderId}: ${err.message}`),
+      );
+
     // Fire-and-forget loyalty points earn — must not throw or block the webhook response
     if (payment.order.userId) {
       const userId = payment.order.userId;
@@ -531,6 +540,13 @@ export class PaymentsService {
         .cancelCommission(payment.orderId, `Order refunded — ${dto.reason ?? 'admin initiated'}`)
         .catch((err: Error) =>
           this.logger.error(`Commission cancellation failed for order ${payment.orderId}: ${err.message}`),
+        );
+
+      // Cancel referral commissions — fire-and-forget
+      this.referralService
+        .cancelCommissionsForOrder(payment.orderId, `Order refunded — ${dto.reason ?? 'admin initiated'}`)
+        .catch((err: Error) =>
+          this.logger.error(`Referral commission cancel failed for order ${payment.orderId}: ${err.message}`),
         );
 
       // Cancel loyalty points (cancel earned, restore redeemed) — fire-and-forget
@@ -825,6 +841,13 @@ export class PaymentsService {
         this.logger.error(`Commission creation failed for gift-card order ${orderId}: ${err.message}`),
       );
 
+    // Gift card confirmed order — create referral commission
+    this.referralService
+      .createCommissionsForOrder(orderId)
+      .catch((err: Error) =>
+        this.logger.error(`Referral commission creation failed for gift-card order ${orderId}: ${err.message}`),
+      );
+
     // Earn loyalty points for gift-card orders
     const giftOrder = await this.prisma.order.findUnique({
       where:  { id: orderId },
@@ -1017,6 +1040,12 @@ export class PaymentsService {
             this.logger.error(`PayPal commission failed for order ${payment.orderId}: ${err.message}`),
           );
 
+        this.referralService
+          .createCommissionsForOrder(payment.orderId)
+          .catch((err: Error) =>
+            this.logger.error(`PayPal referral commission failed for order ${payment.orderId}: ${err.message}`),
+          );
+
         // ── Fire-and-forget: loyalty points ─────────────────────────────────
         if (payment.order.userId) {
           const userId    = payment.order.userId;
@@ -1075,6 +1104,12 @@ export class PaymentsService {
           .cancelCommission(payment.orderId, 'Order refunded via PayPal')
           .catch((err: Error) =>
             this.logger.error(`PayPal commission cancel failed: ${err.message}`),
+          );
+
+        this.referralService
+          .cancelCommissionsForOrder(payment.orderId, 'Order refunded via PayPal')
+          .catch((err: Error) =>
+            this.logger.error(`PayPal referral commission cancel failed: ${err.message}`),
           );
 
         this.logger.log(`PayPal REFUNDED: order ${payment.orderId}`);

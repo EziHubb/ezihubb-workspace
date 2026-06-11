@@ -13,6 +13,7 @@ import { CategoryShowcase } from '../../../components/home/CategoryShowcase';
 import { SocialProof } from '../../../components/home/SocialProof';
 import { FeaturedReviews } from '../../../components/home/FeaturedReviews';
 import { NewsletterSection } from '../../../components/home/NewsletterSection';
+import { CreatorNetworkCta } from '../../../components/home/CreatorNetworkCta';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,6 +104,8 @@ export default async function HomePage({
       {featuredReviews.length > 0 && (
         <FeaturedReviews reviews={featuredReviews} locale={locale} />
       )}
+
+      <CreatorNetworkCta locale={locale} />
 
       <NewsletterSection
         title={t('newsletter.title')}

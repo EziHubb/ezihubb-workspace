@@ -131,6 +131,20 @@ enum PayoutStatus {
   REJECTED    // admin rejected (under threshold, fraud, etc.)
 }
 
+enum ReferralCommissionStatus {
+  PENDING
+  CONFIRMED
+  PAID
+  CANCELLED
+}
+
+enum ReferralPayoutStatus {
+  REQUESTED
+  PROCESSING
+  PAID
+  REJECTED
+}
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 model User {
@@ -162,13 +176,29 @@ model User {
   addresses           Address[]
   wishlistItems       WishlistItem[]
   cart                Cart?
-  orders              Order[]
+  orders              Order[]              @relation("UserOrders")
   customizationDrafts CustomizationDraft[]
   reviews             Review[]
   notifications       Notification[]
   conversations       Conversation[]
   affiliateAccount    AffiliateAccount?
   loyaltyAccount      LoyaltyAccount?
+
+  // ── Referral tree ───────────────────────────────────────────────────────
+  referralCode         String?   @unique
+  referredByUserId     String?
+  referredBy           User?     @relation("ReferralTree", fields: [referredByUserId], references: [id])
+  referrals            User[]    @relation("ReferralTree")
+  referralDepth        Int       @default(0)
+  totalReferrals       Int       @default(0)
+  referralBalance      Decimal   @default(0) @db.Decimal(10, 2)
+  referralEarned       Decimal   @default(0) @db.Decimal(10, 2)
+  referralTierId       String?
+  referralTier         ReferralTier?        @relation(fields: [referralTierId], references: [id])
+  referralCommissions  ReferralCommission[] @relation("EarnerCommissions")
+  buyerCommissions     ReferralCommission[] @relation("BuyerCommissions")
+  referralPayouts      ReferralPayout[]
+  referralOrders       Order[]              @relation("ReferralOrders")
 
   wishlistShareToken  String?  @unique
   wishlistIsPublic    Boolean  @default(false)
@@ -660,7 +690,7 @@ model Order {
   id              String      @id @default(cuid())
   orderNumber     String      @unique
   userId          String?
-  user            User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user            User?       @relation("UserOrders", fields: [userId], references: [id], onDelete: SetNull)
   guestEmail      String?
   status          OrderStatus @default(PENDING_PAYMENT)
   shippingName    String
@@ -714,6 +744,12 @@ model Order {
   affiliateDiscountAmount Decimal?             @db.Decimal(10, 2)
   commission              AffiliateCommission?
 
+  // Referral attribution (multi-level referral system)
+  referralUserId          String?
+  referralUser            User?                @relation("ReferralOrders", fields: [referralUserId], references: [id])
+  referralDiscountAmount  Decimal?             @db.Decimal(10, 2)
+  referralCommissions     ReferralCommission[]
+
   // Loyalty points
   pointsEarned   Int?              // points awarded when this order completes
   pointsRedeemed Int?              // points spent to discount this order
@@ -731,6 +767,7 @@ model Order {
   @@index([orderNumber])
   @@index([createdAt])
   @@index([affiliateId])
+  @@index([referralUserId])
 }
 
 model OrderItem {
@@ -1220,6 +1257,94 @@ model AffiliatePayout {
   updatedAt     DateTime         @updatedAt
 
   @@index([affiliateId])
+  @@index([status])
+}
+
+// ─── Referral Program ────────────────────────────────────────────────────────
+
+model ReferralSettings {
+  id                   String   @id @default("singleton")
+
+  level1Rate           Decimal  @default(0.10) @db.Decimal(5, 4)
+  level2Rate           Decimal  @default(0.05) @db.Decimal(5, 4)
+  level3Rate           Decimal  @default(0.01) @db.Decimal(5, 4)
+
+  buyerDiscountRate    Decimal  @default(0.05) @db.Decimal(5, 4)
+  buyerDiscountEnabled Boolean  @default(true)
+
+  minPayoutAmount      Decimal  @default(50.00) @db.Decimal(10, 2)
+  lockDays             Int      @default(14)
+
+  isEnabled            Boolean  @default(true)
+
+  updatedAt            DateTime @updatedAt
+}
+
+model ReferralTier {
+  id              String   @id @default(cuid())
+  name            String
+  minReferrals    Int
+  minEarned       Decimal  @db.Decimal(10, 2)
+  commissionBonus Decimal  @default(0) @db.Decimal(5, 4)
+  badgeColor      String   @default("#888888")
+  badgeIcon       String   @default("ti-star")
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  users           User[]
+}
+
+model ReferralCommission {
+  id          String   @id @default(cuid())
+
+  earnerId    String
+  earner      User     @relation("EarnerCommissions", fields: [earnerId], references: [id])
+
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id])
+
+  buyerId     String
+  buyer       User     @relation("BuyerCommissions", fields: [buyerId], references: [id])
+
+  level       Int
+  rate        Decimal  @db.Decimal(5, 4)
+  baseAmount  Decimal  @db.Decimal(10, 2)
+  amount      Decimal  @db.Decimal(10, 2)
+
+  status      ReferralCommissionStatus @default(PENDING)
+  confirmedAt DateTime?
+  cancelledAt DateTime?
+  cancelReason String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([earnerId, orderId])
+  @@index([earnerId])
+  @@index([orderId])
+  @@index([buyerId])
+  @@index([status])
+}
+
+model ReferralPayout {
+  id            String              @id @default(cuid())
+  userId        String
+  user          User                @relation(fields: [userId], references: [id])
+
+  amount        Decimal             @db.Decimal(10, 2)
+  status        ReferralPayoutStatus @default(REQUESTED)
+
+  paymentMethod String
+  paymentDetail String
+
+  adminNotes    String?
+  processedAt   DateTime?
+  processedById String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
   @@index([status])
 }
 

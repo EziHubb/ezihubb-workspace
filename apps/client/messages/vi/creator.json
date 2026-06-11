@@ -1,0 +1,58 @@
+{
+  "creator": {
+    "hub": {
+      "title": "Creator Hub của bạn",
+      "subtitle": "Chia sẻ những gì bạn yêu thích. Kiếm tiền khi cộng đồng của bạn mua sắm.",
+      "yourCode": "Mã creator của bạn",
+      "yourLink": "Liên kết riêng của bạn",
+      "copyLink": "Sao chép liên kết",
+      "copied": "Đã sao chép!",
+      "shareTitle": "Chia sẻ & kiếm tiền",
+      "shareSubtitle": "Mỗi khi ai đó mua hàng qua liên kết của bạn, bạn sẽ kiếm được tiền"
+    },
+    "tiers": {
+      "creator": "Creator",
+      "risingCreator": "Creator Đang Lên",
+      "topCreator": "Top Creator",
+      "eliteCreator": "Elite Creator"
+    },
+    "stats": {
+      "yourNetwork": "Mạng lưới của bạn",
+      "totalEarnings": "Tổng thu nhập",
+      "availableBalance": "Có thể rút",
+      "pendingEarnings": "Thu nhập đang chờ",
+      "directMembers": "Thành viên trực tiếp",
+      "extendedNetwork": "Mạng lưới mở rộng"
+    },
+    "earnings": {
+      "title": "Thu nhập của bạn",
+      "directSale": "Bán hàng trực tiếp",
+      "networkSale": "Bán hàng qua mạng lưới",
+      "pending": "Đang chờ",
+      "confirmed": "Sẵn sàng rút",
+      "paid": "Đã rút",
+      "locksIn": "Mở khóa sau {days} ngày"
+    },
+    "withdraw": {
+      "title": "Rút thu nhập",
+      "available": "Số dư khả dụng",
+      "minNotice": "Số tiền rút tối thiểu là ${min}",
+      "requestBtn": "Yêu cầu rút tiền",
+      "history": "Lịch sử rút tiền"
+    },
+    "onboarding": {
+      "step1Title": "Nhận mã creator của bạn",
+      "step1Body": "Mỗi tài khoản đều có mã creator riêng",
+      "step2Title": "Chia sẻ những gì bạn yêu thích",
+      "step2Body": "Đăng liên kết của bạn lên TikTok, Instagram, Pinterest — bất cứ đâu",
+      "step3Title": "Kiếm tiền khi họ mua sắm",
+      "step3Body": "Bạn kiếm được {rate}% mỗi khi ai đó mua hàng qua liên kết của bạn"
+    },
+    "share": {
+      "productTitle": "Chia sẻ sản phẩm này",
+      "withCode": "Liên kết creator của bạn bao gồm mã của bạn — bạn sẽ kiếm được tiền nếu họ mua",
+      "guestPrompt": "Đăng nhập để kiếm tiền từ các lượt chia sẻ",
+      "buyerDiscount": "Người mua qua liên kết của bạn sẽ được giảm {discount}% tự động"
+    }
+  }
+}

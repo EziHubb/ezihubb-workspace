@@ -11,7 +11,7 @@ import {
   LayoutDashboard, ShoppingCart, ShoppingBag, FolderOpen,
   Tag, Layers, Users, BadgePercent, Star, Truck,
   CreditCard, Settings, ChevronDown, ChevronRight, LogOut, Globe, MessageSquare, Link2,
-  Bookmark, Factory, Shield,
+  Bookmark, Factory, Shield, GitBranch,
 } from 'lucide-react';
 
 // ── Nav item types ─────────────────────────────────────────────────────────────
@@ -53,9 +53,18 @@ const NAV_ITEMS: NavItem[] = [
   {
     label: 'Affiliates', href: '/affiliates', icon: Link2,
     children: [
-      { label: 'Applications', href: '/affiliates',        icon: Link2        },
-      { label: 'Payouts',      href: '/affiliates/payouts', icon: CreditCard   },
-      { label: 'Settings',     href: '/settings/affiliates', icon: Settings    },
+      { label: 'Applications', href: '/affiliates',         icon: Link2      },
+      { label: 'Payouts',      href: '/affiliates/payouts', icon: CreditCard },
+      { label: 'Settings',     href: '/settings/affiliates', icon: Settings  },
+    ],
+  },
+  {
+    label: 'Creator Network', href: '/creators', icon: GitBranch,
+    children: [
+      { label: 'Overview', href: '/creators',          icon: GitBranch  },
+      { label: 'Members',  href: '/creators/members',  icon: Users      },
+      { label: 'Payouts',  href: '/creators/payouts',  icon: CreditCard },
+      { label: 'Settings', href: '/creators/settings', icon: Settings   },
     ],
   },
   {

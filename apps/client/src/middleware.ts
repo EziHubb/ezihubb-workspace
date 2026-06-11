@@ -15,9 +15,10 @@ const LOCALE_REGEX = new RegExp(
   `^/(${routing.locales.join('|')})(/.*)?$`,
 );
 
-// ── Affiliate attribution cookie names ────────────────────────────────────────
+// ── Attribution cookie names ──────────────────────────────────────────────────
 
-const AFFILIATE_COOKIE = 'mlh_affiliate'; // stores referralCode
+const AFFILIATE_COOKIE = 'mlh_affiliate'; // legacy affiliate referralCode
+const REFERRAL_COOKIE  = 'mlh_ref';       // multi-level referral code
 const VISITOR_COOKIE   = 'mlh_visitor';   // anonymous UUID for click dedup
 const COOKIE_MAX_AGE   = 30 * 24 * 60 * 60; // 30 days in seconds
 
@@ -31,20 +32,16 @@ function extractLocale(pathname: string): string {
   return m ? m[1] : routing.defaultLocale;
 }
 
-function applyAffiliateCookies(
+function applyAttributionCookies(
   response: NextResponse,
   req: NextRequest,
   ref: string | null,
 ): void {
-  // Last-click attribution: overwrite existing cookie if new ref present
   if (ref && /^[A-Z0-9]{4,20}$/.test(ref)) {
-    response.cookies.set(AFFILIATE_COOKIE, ref, {
-      sameSite: 'lax',
-      path: '/',
-      maxAge: COOKIE_MAX_AGE,
-    });
+    // Set both legacy affiliate cookie and new referral cookie
+    response.cookies.set(AFFILIATE_COOKIE, ref, { sameSite: 'lax', path: '/', maxAge: COOKIE_MAX_AGE });
+    response.cookies.set(REFERRAL_COOKIE,  ref, { sameSite: 'lax', path: '/', maxAge: COOKIE_MAX_AGE });
   }
-  // Set visitor UUID if not already present (used for click deduplication)
   if (!req.cookies.has(VISITOR_COOKIE)) {
     response.cookies.set(VISITOR_COOKIE, crypto.randomUUID(), {
       sameSite: 'lax',
@@ -60,7 +57,7 @@ export default function middleware(req: NextRequest) {
   const { pathname, searchParams } = req.nextUrl;
   const stripped = stripLocale(pathname);
   const locale   = extractLocale(pathname);
-  const ref      = searchParams.get('ref')?.toUpperCase().trim() ?? null;
+  const ref      = (searchParams.get('c') ?? searchParams.get('ref'))?.toUpperCase().trim() ?? null;
 
   const isProtected = PROTECTED_PREFIXES.some(
     (p) => stripped === p || stripped.startsWith(`${p}/`),
@@ -76,13 +73,13 @@ export default function middleware(req: NextRequest) {
       loginUrl.searchParams.set('redirect', pathname);
       const redirect = NextResponse.redirect(loginUrl);
       // Preserve affiliate cookie even on auth redirects
-      applyAffiliateCookies(redirect, req, ref);
+      applyAttributionCookies(redirect, req, ref);
       return redirect;
     }
   }
 
   const response = intlMiddleware(req);
-  applyAffiliateCookies(response, req, ref);
+  applyAttributionCookies(response, req, ref);
   return response;
 }
 

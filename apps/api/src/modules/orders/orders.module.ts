@@ -9,9 +9,10 @@ import { TaxModule } from '../tax/tax.module';
 import { AffiliatesModule } from '../affiliates/affiliates.module';
 import { PdfModule } from '../pdf/pdf.module';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
+import { ReferralModule } from '../referrals/referral.module';
 
 @Module({
-  imports: [ShippingModule, PaymentsModule, NotificationsModule, TaxModule, AffiliatesModule, PdfModule, LoyaltyModule],
+  imports: [ShippingModule, PaymentsModule, NotificationsModule, TaxModule, AffiliatesModule, PdfModule, LoyaltyModule, ReferralModule],
   controllers: [OrdersController, AdminOrdersController],
   providers: [OrdersService],
   exports: [OrdersService],

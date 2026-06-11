@@ -11,6 +11,7 @@ import {
   User,
   LogOut,
   MessageCircle,
+  Users,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, queryKeys } from '@mlh/api-client';
@@ -63,6 +64,7 @@ export function AccountSidebar({ profile, onNavigate }: AccountSidebarProps) {
     { href: '/account/orders',    icon: Package,         label: 'My Orders',          badge: undefined    },
     { href: '/account/wishlist',  icon: Heart,           label: 'Wishlist',            badge: undefined    },
     { href: '/account/messages',  icon: MessageCircle,   label: 'Messages',            badge: unreadCount > 0 ? unreadCount : undefined },
+    { href: '/account/creator',   icon: Users,           label: 'Creator Hub',         badge: undefined    },
     { href: '/account/addresses', icon: MapPin,          label: 'Address Book',        badge: undefined    },
     { href: '/account/profile',   icon: User,            label: 'Profile & Password',  badge: undefined    },
   ] as const;

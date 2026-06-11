@@ -1,0 +1,58 @@
+{
+  "creator": {
+    "hub": {
+      "title": "Your Creator Hub",
+      "subtitle": "Share what you love. Earn when your community shops.",
+      "yourCode": "Your creator code",
+      "yourLink": "Your unique link",
+      "copyLink": "Copy link",
+      "copied": "Copied!",
+      "shareTitle": "Share & earn",
+      "shareSubtitle": "Every time someone shops through your link, you earn"
+    },
+    "tiers": {
+      "creator": "Creator",
+      "risingCreator": "Rising Creator",
+      "topCreator": "Top Creator",
+      "eliteCreator": "Elite Creator"
+    },
+    "stats": {
+      "yourNetwork": "Your network",
+      "totalEarnings": "Total earnings",
+      "availableBalance": "Available to withdraw",
+      "pendingEarnings": "Pending earnings",
+      "directMembers": "Direct members",
+      "extendedNetwork": "Extended network"
+    },
+    "earnings": {
+      "title": "Your earnings",
+      "directSale": "Direct sale",
+      "networkSale": "Network sale",
+      "pending": "Pending",
+      "confirmed": "Ready to withdraw",
+      "paid": "Withdrawn",
+      "locksIn": "Unlocks in {days} days"
+    },
+    "withdraw": {
+      "title": "Withdraw earnings",
+      "available": "Available balance",
+      "minNotice": "Minimum withdrawal is ${min}",
+      "requestBtn": "Request withdrawal",
+      "history": "Withdrawal history"
+    },
+    "onboarding": {
+      "step1Title": "Get your creator code",
+      "step1Body": "Every account comes with a unique creator code",
+      "step2Title": "Share what you love",
+      "step2Body": "Post your link on TikTok, Instagram, Pinterest — anywhere",
+      "step3Title": "Earn when they shop",
+      "step3Body": "You earn {rate}% every time someone buys through your link"
+    },
+    "share": {
+      "productTitle": "Share this product",
+      "withCode": "Your creator link includes your code — you'll earn if they buy",
+      "guestPrompt": "Sign in to earn from your shares",
+      "buyerDiscount": "People who shop via your link get {discount}% off automatically"
+    }
+  }
+}

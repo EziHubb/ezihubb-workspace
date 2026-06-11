@@ -153,6 +153,23 @@ export const API_ROUTES = {
     ME_PAYOUTS:      '/affiliates/me/payouts',
   },
 
+  REFERRALS: {
+    ME:              '/referrals/me',
+    ME_COMMISSIONS:  '/referrals/me/commissions',
+    ME_PAYOUTS:      '/referrals/me/payouts',
+    ME_PAYOUT_REQUEST: '/referrals/me/payouts/request',
+  },
+
+  CREATORS: {
+    ME:                '/creators/me',
+    ME_EARNINGS:       '/creators/me/earnings',
+    ME_WITHDRAWALS:    '/creators/me/withdrawals',
+    ME_WITHDRAWAL_REQ: '/creators/me/withdrawals/request',
+    ME_TREE:           '/creators/me/tree',
+    RESOLVE:           '/creators/resolve',
+    PUBLIC_STATS:      '/creators/public-stats',
+  },
+
   WISHLIST_PUBLIC: {
     SHARED: (token: string) => `/wishlist/${token}`,
   },
@@ -325,5 +342,16 @@ export const API_ROUTES = {
     // ── Translations ─────────────────────────────────────────────────────────
     TRANSLATIONS:           (entityType: string, entityId: string) => `/admin/translations/${entityType}/${entityId}`,
     TRANSLATIONS_RETRANSLATE: (entityType: string, entityId: string) => `/admin/translations/${entityType}/${entityId}/retranslate`,
+
+    // ── Creator Network (renamed from Referrals) ──────────────────────────────
+    ADMIN_CREATORS_OVERVIEW:  '/admin/referrals/overview',
+    ADMIN_CREATORS_MEMBERS:   '/admin/referrals/users',
+    ADMIN_CREATORS_MEMBER_TREE: (id: string) => `/admin/referrals/users/${id}/tree`,
+    ADMIN_CREATORS_PAYOUTS:   '/admin/referrals/payouts',
+    ADMIN_CREATORS_PAYOUT_PAY:    (id: string) => `/admin/referrals/payouts/${id}/pay`,
+    ADMIN_CREATORS_PAYOUT_REJECT: (id: string) => `/admin/referrals/payouts/${id}/reject`,
+    ADMIN_CREATORS_SETTINGS:  '/admin/referrals/settings',
+    ADMIN_CREATORS_TIERS:     '/admin/referrals/tiers',
+    ADMIN_CREATORS_TIER:      (id: string) => `/admin/referrals/tiers/${id}`,
   },
 } as const;

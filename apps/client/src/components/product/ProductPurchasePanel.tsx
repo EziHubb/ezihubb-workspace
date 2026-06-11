@@ -6,6 +6,7 @@ import {
   Star, CheckCircle2, Clock, ShoppingCart,
   Loader2, Plus, ChevronDown,
 } from 'lucide-react';
+import { ShareButton } from './ShareButton';
 import {
   ItemDetailsAccordion,
   ShippingReturnsAccordion,
@@ -441,13 +442,18 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       {/* ── DELIVERY INFO ── */}
       <DeliveryInfo processingDays={product.processingDays ?? 3} />
 
-      {/* ── RATING ROW ── */}
-      {reviewSummary && reviewSummary.totalReviews > 0 && (
-        <RatingRow
-          averageRating={reviewSummary.averageRating}
-          totalReviews={reviewSummary.totalReviews}
-        />
-      )}
+      {/* ── RATING + SHARE ROW ── */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          {reviewSummary && reviewSummary.totalReviews > 0 && (
+            <RatingRow
+              averageRating={reviewSummary.averageRating}
+              totalReviews={reviewSummary.totalReviews}
+            />
+          )}
+        </div>
+        <ShareButton productSlug={product.slug} productName={product.name} />
+      </div>
 
       {/* ── VARIANT DROPDOWNS ── */}
       {variantCount > 0 && (
