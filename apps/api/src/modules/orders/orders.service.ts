@@ -3,6 +3,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -16,6 +17,8 @@ import { CommissionService } from '../affiliates/commission.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { PushService } from '../notifications/push.service';
 import { ReferralService } from '../referrals/referral.service';
+import { StoreCreditsService } from '../store-credits/store-credits.service';
+import Decimal from 'decimal.js';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
@@ -88,6 +91,7 @@ export class OrdersService {
     private readonly loyaltyService: LoyaltyService,
     private readonly pushService: PushService,
     private readonly referralService: ReferralService,
+    @Optional() private readonly storeCreditsService?: StoreCreditsService,
   ) {}
 
   // ─── Checkout ─────────────────────────────────────────────────────────────
@@ -228,6 +232,9 @@ export class OrdersService {
       }
     }
 
+    // ── Buyer referral token ─────────────────────────────────────────────────
+    const buyerRefToken = dto.buyerRefToken ?? cookies?.['mlh_buyer_ref'] ?? null;
+
     // ── Loyalty points redemption ────────────────────────────────────────────
     let pointsDiscount  = 0;
     let pointsToRedeem  = 0;
@@ -242,6 +249,23 @@ export class OrdersService {
       );
       pointsToRedeem = dto.pointsToRedeem;
       pointsDiscount = validation.pointsDiscount;
+    }
+
+    // ── Store credit pre-calculation ─────────────────────────────────────────
+    // Determine the primary store for this order (first store in cart)
+    const primaryStoreId = cart.items.find(i => i.product.storeId)?.product.storeId ?? null;
+
+    let storeCreditUsed = new Decimal(0);
+    if (dto.useStoreCredit && userId && primaryStoreId) {
+      const available = await this.storeCreditsService?.getUserStoreCredits(userId);
+      const availableForStore = available?.credits
+        .filter((c: { storeId: string; amount: { toString(): string } }) => c.storeId === primaryStoreId)
+        .reduce(
+          (s: Decimal, c: { amount: { toString(): string } }) => s.plus(new Decimal(c.amount.toString())),
+          new Decimal(0),
+        ) ?? new Decimal(0);
+      const subtotalDecimal = new Decimal(subtotalAfterDiscount);
+      storeCreditUsed = availableForStore.gt(subtotalDecimal) ? subtotalDecimal : availableForStore;
     }
 
     // Calculate shipping (waived if FREE_SHIPPING coupon applied)
@@ -270,11 +294,11 @@ export class OrdersService {
           : Number(item.product.basePrice),
       })),
     });
-    // Affiliate + referral + loyalty discounts — applied AFTER coupon, BEFORE payment
+    // Affiliate + referral + loyalty + store-credit discounts — applied AFTER coupon, BEFORE payment
     const total = Math.max(
       0,
       Math.round(
-        (subtotalAfterDiscount + shippingCost + taxResult.taxAmount + giftWrappingCost - affiliateDiscountAmount - referralDiscountAmt - pointsDiscount) * 100,
+        (subtotalAfterDiscount + shippingCost + taxResult.taxAmount + giftWrappingCost - affiliateDiscountAmount - referralDiscountAmt - pointsDiscount - storeCreditUsed.toNumber()) * 100,
       ) / 100,
     );
 
@@ -318,6 +342,8 @@ export class OrdersService {
           referralDiscountAmount:   referralDiscountAmt > 0 ? referralDiscountAmt : undefined,
           pointsRedeemed:          pointsToRedeem > 0 ? pointsToRedeem : undefined,
           pointsDiscount:          pointsDiscount > 0 ? pointsDiscount : undefined,
+          storeCreditUsed:         new Decimal(0), // updated after credit is consumed below
+          buyerRefToken:           buyerRefToken ?? null,
         },
       });
 
@@ -436,6 +462,17 @@ export class OrdersService {
       // Deduct loyalty points inside transaction (atomic: if order fails, points are not deducted)
       if (userId && pointsToRedeem > 0) {
         await this.loyaltyService.redeemPoints(userId, newOrder.id, pointsToRedeem, tx);
+      }
+
+      // Consume store credit inside transaction (atomic with order creation)
+      if (storeCreditUsed.gt(0) && userId && primaryStoreId) {
+        await this.storeCreditsService?.consumeStoreCredit(
+          tx, userId, primaryStoreId, storeCreditUsed, newOrder.id,
+        );
+        await tx.order.update({
+          where: { id: newOrder.id },
+          data:  { storeCreditUsed },
+        });
       }
 
       return newOrder;
@@ -735,6 +772,23 @@ export class OrdersService {
       });
       return o;
     });
+
+    if (dto.status === OrderStatus.CONFIRMED) {
+      // Create buyer referral record for the orderer (so their link can be shared)
+      this.storeCreditsService?.createBuyerReferralForOrder(id).catch((e) =>
+        this.logger.error('createBuyerReferralForOrder failed', e),
+      );
+      // Process incoming buyer referral: credit the person who shared their link
+      const orderWithRef = await this.prisma.order.findUnique({
+        where: { id },
+        select: { buyerRefToken: true },
+      });
+      if (orderWithRef?.buyerRefToken) {
+        this.storeCreditsService?.processBuyerReferral(id, orderWithRef.buyerRefToken).catch((e) =>
+          this.logger.error('processBuyerReferral failed', e),
+        );
+      }
+    }
 
     if (dto.status === OrderStatus.DELIVERED) {
       // Affiliate commission lock period

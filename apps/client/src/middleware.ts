@@ -36,11 +36,22 @@ function applyAttributionCookies(
   response: NextResponse,
   req: NextRequest,
   ref: string | null,
+  searchParams: URLSearchParams,
 ): void {
   if (ref && /^[A-Z0-9]{4,20}$/.test(ref)) {
     // Set both legacy affiliate cookie and new referral cookie
     response.cookies.set(AFFILIATE_COOKIE, ref, { sameSite: 'lax', path: '/', maxAge: COOKIE_MAX_AGE });
     response.cookies.set(REFERRAL_COOKIE,  ref, { sameSite: 'lax', path: '/', maxAge: COOKIE_MAX_AGE });
+  }
+  // Buyer referral cookie
+  const bref = searchParams.get('bref');
+  if (bref && /^[0-9a-f-]{36}$/.test(bref)) {
+    response.cookies.set('mlh_buyer_ref', bref, {
+      httpOnly: true,
+      sameSite: 'lax',
+      path:     '/',
+      maxAge:   30 * 24 * 60 * 60,
+    });
   }
   if (!req.cookies.has(VISITOR_COOKIE)) {
     response.cookies.set(VISITOR_COOKIE, crypto.randomUUID(), {
@@ -73,13 +84,13 @@ export default function middleware(req: NextRequest) {
       loginUrl.searchParams.set('redirect', pathname);
       const redirect = NextResponse.redirect(loginUrl);
       // Preserve affiliate cookie even on auth redirects
-      applyAttributionCookies(redirect, req, ref);
+      applyAttributionCookies(redirect, req, ref, searchParams);
       return redirect;
     }
   }
 
   const response = intlMiddleware(req);
-  applyAttributionCookies(response, req, ref);
+  applyAttributionCookies(response, req, ref, searchParams);
   return response;
 }
 

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
@@ -15,7 +16,14 @@ export const EmailTemplate = {
   CONTACT_MESSAGE:     'contact-message',
   NEW_MESSAGE:         'new-message',
   ABANDONED_CART:      'abandoned-cart',
-  LOW_STOCK_ALERT:     'low-stock-alert',
+  LOW_STOCK_ALERT:            'low-stock-alert',
+  CONTENT_FLAGGED:            'content-flagged',
+  CONTENT_REJECTED_CRITICAL:  'content-rejected-critical',
+  CONTENT_WARNING:            'content-warning',
+  MODERATION_CRITICAL_ALERT:  'moderation-critical-alert',
+  STORE_STRIKE_WARNING:       'store-strike-warning',
+  BUYER_REFERRAL_INVITE:      'buyer-referral-invite',
+  BUYER_REFERRAL_CREDITED:    'buyer-referral-credited',
 } as const;
 
 export type EmailTemplateName = (typeof EmailTemplate)[keyof typeof EmailTemplate];
@@ -33,6 +41,7 @@ export class NotificationsService {
 
   constructor(
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
+    private readonly config: ConfigService,
   ) {}
 
   async queueEmail(options: QueueEmailOptions): Promise<void> {
@@ -219,6 +228,61 @@ export class NotificationsService {
       subject: `Refund processed for order ${order.orderNumber}`,
       template: EmailTemplate.REFUND_NOTIFICATION,
       data: { ...order },
+    });
+  }
+
+  async sendContentFlagged(to: string, data: { sellerName: string; entityType: string; sellerMessage: string; contentPreview: string }): Promise<void> {
+    return this.queueEmail({ to, subject: `Action required: Your ${data.entityType} needs review — MapleLoom`, template: EmailTemplate.CONTENT_FLAGGED, data });
+  }
+
+  async sendContentRejectedCritical(to: string, data: { sellerName: string; violationCategory: string; contentPreview: string }): Promise<void> {
+    return this.queueEmail({ to, subject: 'Important: Content removed from MapleLoom — policy violation', template: EmailTemplate.CONTENT_REJECTED_CRITICAL, data });
+  }
+
+  async sendContentWarning(to: string, data: { sellerName: string; sellerMessage: string }): Promise<void> {
+    return this.queueEmail({ to, subject: 'Heads up: Please review your recent content — MapleLoom', template: EmailTemplate.CONTENT_WARNING, data });
+  }
+
+  async sendModerationCriticalAlert(to: string, data: { storeName: string; entityType: string; entityId: string; categories: string; confidence: string; reasoning: string | null; adminUrl: string; logId: string }): Promise<void> {
+    return this.queueEmail({ to, subject: `🚨 CRITICAL: Content violation detected — ${data.storeName}`, template: EmailTemplate.MODERATION_CRITICAL_ALERT, data });
+  }
+
+  async sendStoreStrikeWarning(to: string, data: { sellerName: string; strikeCount: number; windowDays: number; maxStrikes: number; sellerDashboardUrl: string }): Promise<void> {
+    return this.queueEmail({ to, subject: 'Warning: Your store has received multiple content violations', template: EmailTemplate.STORE_STRIKE_WARNING, data });
+  }
+
+  async sendBuyerReferralInvite(data: {
+    email: string; firstName: string; creditAmount: number;
+    cookieToken: string; expiresAt: Date;
+  }) {
+    const baseUrl = this.config.get<string>('CLIENT_URL', 'https://mapleloom.com');
+    return this.queueEmail({
+      to:       data.email,
+      subject:  `Share your order & earn $${data.creditAmount} store credit`,
+      template: EmailTemplate.BUYER_REFERRAL_INVITE,
+      data: {
+        firstName:    data.firstName,
+        creditAmount: data.creditAmount,
+        referralUrl:  `${baseUrl}?bref=${data.cookieToken}`,
+        expiresAt:    data.expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+        year:         new Date().getFullYear(),
+      },
+    });
+  }
+
+  async sendBuyerReferralCredited(data: {
+    email: string; firstName: string; creditAmount: number; expiresAt: Date;
+  }) {
+    return this.queueEmail({
+      to:       data.email,
+      subject:  `Your friend just bought! You earned $${data.creditAmount} credit 🎉`,
+      template: EmailTemplate.BUYER_REFERRAL_CREDITED,
+      data: {
+        firstName:    data.firstName,
+        creditAmount: data.creditAmount,
+        expiresAt:    data.expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+        year:         new Date().getFullYear(),
+      },
     });
   }
 }

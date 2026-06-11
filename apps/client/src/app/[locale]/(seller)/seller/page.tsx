@@ -2,15 +2,21 @@
 
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
-import { ShoppingBag, DollarSign, Clock, Star, Package } from 'lucide-react';
+import {
+  ShoppingBag, DollarSign, Clock, Star, Package,
+  AlertTriangle, ChevronRight, BarChart2, Settings,
+} from 'lucide-react';
 import { Skeleton } from '@mlh/ui';
 import { useAuthQuery } from '../../../../lib/hooks/useAuthQuery';
+import { API_ROUTES } from '@mlh/constants';
 
 interface DashboardStats {
-  ordersToday:      number;
-  revenueThisMonth: number;
-  pendingShipments: number;
-  rating:           number;
+  ordersToday:          number;
+  revenueThisMonth:     number;
+  pendingShipments:     number;
+  rating:               number;
+  flaggedProducts?:     number;
+  pendingModerations?:  number;
 }
 
 interface RecentOrder {
@@ -33,16 +39,12 @@ const fmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' })
 const $   = (n: number) => `$${n.toFixed(2)}`;
 
 function StatCard({
-  icon: Icon,
-  label,
-  value,
-  sub,
-  color = 'text-primary',
+  icon: Icon, label, value, sub, color = 'text-primary',
 }: {
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-  sub?: string;
+  icon:   React.ElementType;
+  label:  string;
+  value:  string | number;
+  sub?:   string;
   color?: string;
 }) {
   return (
@@ -62,19 +64,44 @@ export default function SellerDashboardPage() {
 
   const { data: stats, isLoading: statsLoading } = useAuthQuery<DashboardStats>(
     ['seller', 'orders', 'stats'],
-    '/seller/orders/stats',
+    API_ROUTES.SELLER.DASHBOARD_STATS,
   );
 
   const { data: recent, isLoading: recentLoading } = useAuthQuery<RecentOrder[]>(
     ['seller', 'orders', 'recent'],
-    '/seller/orders/recent',
+    API_ROUTES.SELLER.DASHBOARD_RECENT,
   );
+
+  const hasModerationAlert = (stats?.flaggedProducts ?? 0) > 0 || (stats?.pendingModerations ?? 0) > 0;
 
   return (
     <div className="space-y-8">
       <h1 className="font-display text-2xl font-bold text-secondary">Dashboard</h1>
 
-      {/* KPI cards */}
+      {/* ── AI Moderation alert ───────────────────────────────────────────── */}
+      {!statsLoading && hasModerationAlert && (
+        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-card text-sm">
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-600" />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-amber-800">Action required — content policy</p>
+            <p className="text-amber-700 text-xs mt-0.5">
+              {stats?.flaggedProducts
+                ? `${stats.flaggedProducts} product${stats.flaggedProducts > 1 ? 's' : ''} flagged by our AI review system.`
+                : ''}
+              {stats?.pendingModerations
+                ? ` ${stats.pendingModerations} item${stats.pendingModerations > 1 ? 's' : ''} pending review.`
+                : ''}
+              {' '}Please update your listings to comply with our policies.
+            </p>
+          </div>
+          <Link href={`/${locale}/seller/products?moderationStatus=FLAGGED`}
+            className="text-xs font-medium text-amber-800 hover:underline shrink-0">
+            Review →
+          </Link>
+        </div>
+      )}
+
+      {/* ── KPI cards ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statsLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
@@ -90,7 +117,7 @@ export default function SellerDashboardPage() {
         )}
       </div>
 
-      {/* Recent orders */}
+      {/* ── Recent orders ─────────────────────────────────────────────────── */}
       <section>
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-secondary">Recent Orders</h2>
@@ -139,21 +166,45 @@ export default function SellerDashboardPage() {
         )}
       </section>
 
-      {/* Quick links */}
-      <section className="grid grid-cols-2 gap-3">
-        {[
-          { href: '/seller/products',  icon: Package,     label: 'Manage Products' },
-          { href: '/seller/store',     icon: ShoppingBag, label: 'Store Settings'  },
-        ].map(({ href, icon: Icon, label }) => (
-          <Link
-            key={href}
-            href={`/${locale}${href}`}
-            className="flex items-center gap-3 p-4 border border-border rounded-card hover:border-primary/40 transition-colors"
-          >
-            <Icon className="w-5 h-5 text-primary" />
-            <span className="font-medium text-secondary text-sm">{label}</span>
-          </Link>
-        ))}
+      {/* ── Quick actions ─────────────────────────────────────────────────── */}
+      <section>
+        <h2 className="font-semibold text-secondary mb-3">Quick Actions</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { href: '/seller/products', icon: Package,    label: 'Manage Products',  sub: 'Add, edit, deactivate' },
+            { href: '/seller/orders',   icon: ShoppingBag, label: 'View Orders',      sub: 'Fulfil pending orders' },
+            { href: '/seller/payouts',  icon: DollarSign,  label: 'Payouts',          sub: 'View earnings & history' },
+            { href: '/seller/store',    icon: Settings,    label: 'Store Settings',   sub: 'Name, logo, description' },
+          ].map(({ href, icon: Icon, label, sub }) => (
+            <Link
+              key={href}
+              href={`/${locale}${href}`}
+              className="flex flex-col gap-2 p-4 border border-border rounded-card hover:border-primary/40 transition-colors group"
+            >
+              <Icon className="w-5 h-5 text-primary" />
+              <div>
+                <p className="font-medium text-secondary text-sm group-hover:text-primary transition-colors">{label}</p>
+                <p className="text-xs text-muted mt-0.5">{sub}</p>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-muted mt-auto self-end" />
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Analytics teaser ──────────────────────────────────────────────── */}
+      <section className="border border-border rounded-card p-5 flex items-center gap-4">
+        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+          <BarChart2 className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-secondary text-sm">Analytics</p>
+          <p className="text-xs text-muted mt-0.5">Track your store performance, top products, and traffic sources.</p>
+        </div>
+        <Link href={`/${locale}/seller/analytics`}
+          className="shrink-0 text-sm font-medium text-primary hover:underline">
+          View →
+        </Link>
       </section>
     </div>
   );

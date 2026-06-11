@@ -5,7 +5,9 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
+import { ModerationService } from '../moderation/moderation.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -32,6 +34,7 @@ export class StoresService {
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
+    @Optional() private readonly moderationService?: ModerationService,
   ) {}
 
   // ─── Seller: Apply ────────────────────────────────────────────────────────
@@ -69,6 +72,9 @@ export class StoresService {
         planType:    dto.planType ?? 'COMMISSION',
       },
     });
+
+    // fire-and-forget
+    this.moderationService?.queueStoreModeration(store.id).catch((e) => this.logger.error('mod queue failed', e));
 
     // Notify seller
     await this.emailQueue.add(JOBS.SEND_EMAIL, {
@@ -111,7 +117,7 @@ export class StoresService {
       throw new ForbiddenException('Only active stores can be updated');
     }
 
-    return this.prisma.store.update({
+    const updatedStore = await this.prisma.store.update({
       where: { id: store.id },
       data:  {
         name:        dto.name        ?? undefined,
@@ -120,6 +126,11 @@ export class StoresService {
         bannerUrl:   dto.bannerUrl   ?? undefined,
       },
     });
+
+    // fire-and-forget
+    this.moderationService?.queueStoreModeration(updatedStore.id).catch((e) => this.logger.error('mod queue failed', e));
+
+    return updatedStore;
   }
 
   // ─── Public: Store page ───────────────────────────────────────────────────
@@ -222,6 +233,9 @@ export class StoresService {
 
       return s;
     });
+
+    // fire-and-forget
+    this.moderationService?.queueStoreModeration(storeId).catch((e) => this.logger.error('mod queue failed', e));
 
     await this.emailQueue.add(JOBS.SEND_EMAIL, {
       to:       store.owner.email,

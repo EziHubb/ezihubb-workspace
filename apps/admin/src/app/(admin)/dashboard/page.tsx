@@ -1,5 +1,7 @@
 import {
-  DollarSign, PackageSearch, Clock, Hammer,
+  DollarSign, PackageSearch, Clock, Hammer, Store, AlertTriangle,
+  Users, ShoppingBag, CheckCircle2, Flag, CreditCard, Star,
+  ArrowRight, TrendingUp, BarChart2, ShieldCheck, Package,
 } from 'lucide-react';
 import Link from 'next/link';
 import { serverApi } from '../../../lib/api-client';
@@ -14,40 +16,12 @@ import type { RevenueDataPoint } from '../../../components/charts/RevenueChart';
 import type { OrderStatusDataPoint } from '../../../components/charts/OrdersDonut';
 import type { TopProductDto } from '../../../components/dashboard/TopProductsTable';
 import type { ReviewDto } from '../../../components/dashboard/PendingReviewsCard';
+import { fmtAmount } from '../../../lib/fmt';
 
 export const metadata = { title: 'Dashboard — Maple Admin' };
 export const dynamic  = 'force-dynamic';
 
-// ── Components ────────────────────────────────────────────────────────────────
-
-function SeoHealthCard({
-  label, value, max, status,
-}: {
-  label:  string;
-  value:  number;
-  max:    number;
-  status: 'good' | 'warning' | 'error' | 'info';
-}) {
-  const cfgs = {
-    good:    { border: 'border-green-200', bg: 'bg-green-50',  num: 'text-green-700',  dot: 'bg-green-400'  },
-    warning: { border: 'border-amber-200', bg: 'bg-amber-50',  num: 'text-amber-700',  dot: 'bg-amber-400'  },
-    error:   { border: 'border-red-200',   bg: 'bg-red-50',    num: 'text-red-700',    dot: 'bg-red-400'    },
-    info:    { border: 'border-blue-200',  bg: 'bg-blue-50',   num: 'text-blue-700',   dot: 'bg-blue-400'   },
-  };
-  const cfg = cfgs[status];
-  return (
-    <div className={`${cfg.bg} ${cfg.border} border rounded-card p-4 flex flex-col gap-1`}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted truncate pr-2">{label}</span>
-        <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} />
-      </div>
-      <p className={`text-2xl font-bold tabular-nums ${cfg.num}`}>{value}</p>
-      <p className="text-xs text-muted">of {max} products</p>
-    </div>
-  );
-}
-
-// ── API response types ────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface SeoStats {
   total:              number;
@@ -75,52 +49,194 @@ interface RevenueChartResponse {
   total?: number;
 }
 
-// ── Safe fetch ────────────────────────────────────────────────────────────────
+interface PlatformKpis {
+  gmvToday?:              number;
+  activeStores?:          number;
+  pendingStores?:         number;
+  openOrders?:            number;
+  moderationQueue?:       number;
+  creatorPayoutsPending?: number;
+}
+
+interface ActivityEvent {
+  id:        string;
+  type:      string;
+  message:   string;
+  timestamp: string;
+  link?:     string;
+}
+
+interface TopStore {
+  id:       string;
+  name:     string;
+  slug:     string;
+  revenue:  number;
+  orders:   number;
+  rating:   number | null;
+}
+
+interface TopCreatorMini {
+  userId:      string;
+  email:       string;
+  firstName:   string | null;
+  lastName:    string | null;
+  earned:      number;
+  directRefs:  number;
+}
+
+interface TopStoresResponse {
+  stores?:   TopStore[];
+  creators?: TopCreatorMini[];
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function safeFetch<T>(path: string, fallback: T): Promise<T> {
   try { return await serverApi<T>('get', path); }
   catch { return fallback; }
 }
 
+const ACTIVITY_ICONS: Record<string, { icon: typeof CheckCircle2; bg: string; color: string }> = {
+  STORE_APPROVED:  { icon: CheckCircle2, bg: 'bg-green-100',  color: 'text-green-600'  },
+  STORE_REJECTED:  { icon: Store,        bg: 'bg-red-100',    color: 'text-red-600'    },
+  CONTENT_FLAGGED: { icon: Flag,         bg: 'bg-red-100',    color: 'text-red-600'    },
+  PAYOUT_REQUEST:  { icon: CreditCard,   bg: 'bg-amber-100',  color: 'text-amber-600'  },
+  REVIEW:          { icon: Star,         bg: 'bg-blue-100',   color: 'text-blue-600'   },
+  ORDER:           { icon: ShoppingBag,  bg: 'bg-purple-100', color: 'text-purple-600' },
+};
+
+const DEFAULT_ACTIVITY = { icon: TrendingUp, bg: 'bg-gray-100', color: 'text-gray-600' };
+
+function timeAgo(ts: string): string {
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1)  return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)  return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function SeoHealthCard({
+  label, value, max, status,
+}: {
+  label:  string;
+  value:  number;
+  max:    number;
+  status: 'good' | 'warning' | 'error' | 'info';
+}) {
+  const cfgs = {
+    good:    { border: 'border-green-200', bg: 'bg-green-50',  num: 'text-green-700', dot: 'bg-green-400' },
+    warning: { border: 'border-amber-200', bg: 'bg-amber-50',  num: 'text-amber-700', dot: 'bg-amber-400' },
+    error:   { border: 'border-red-200',   bg: 'bg-red-50',    num: 'text-red-700',   dot: 'bg-red-400'   },
+    info:    { border: 'border-blue-200',  bg: 'bg-blue-50',   num: 'text-blue-700',  dot: 'bg-blue-400'  },
+  };
+  const cfg = cfgs[status];
+  return (
+    <div className={`${cfg.bg} ${cfg.border} border rounded-card p-4 flex flex-col gap-1`}>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted truncate pr-2">{label}</span>
+        <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} />
+      </div>
+      <p className={`text-2xl font-bold tabular-nums ${cfg.num}`}>{value}</p>
+      <p className="text-xs text-muted">of {max} products</p>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function DashboardPage() {
-  const [kpis, revenueRaw, ordersByStatus, topProducts, pendingRaw, seoStats] =
-    await Promise.all([
-      safeFetch<KpiData>(API_ROUTES.ADMIN.DASHBOARD_KPIS, {}),
-      safeFetch<RevenueChartResponse | RevenueDataPoint[]>(
-        `${API_ROUTES.ADMIN.DASHBOARD_REVENUE}?days=30`, [],
-      ),
-      safeFetch<OrderStatusDataPoint[]>(API_ROUTES.ADMIN.DASHBOARD_BY_STATUS, []),
-      safeFetch<TopProductDto[]>(`${API_ROUTES.ADMIN.DASHBOARD_TOP}?limit=10`, []),
-      safeFetch<{ data?: ReviewDto[]; total?: number } | ReviewDto[]>(
-        `${API_ROUTES.ADMIN.PENDING_REVIEWS}?limit=5`, [],
-      ),
-      safeFetch<SeoStats>(API_ROUTES.ADMIN.PRODUCTS_SEO_STATS, {
-        total: 0, missingTitle: 0, missingDescription: 0, lowScore: 0, noIndex: 0,
-      }),
-    ]);
+  const [
+    kpis, revenueRaw, ordersByStatus, topProducts, pendingRaw, seoStats,
+    platformKpis, activityRaw, topStoresData,
+  ] = await Promise.all([
+    safeFetch<KpiData>(API_ROUTES.ADMIN.DASHBOARD_KPIS, {}),
+    safeFetch<RevenueChartResponse | RevenueDataPoint[]>(
+      `${API_ROUTES.ADMIN.DASHBOARD_REVENUE}?days=30`, [],
+    ),
+    safeFetch<OrderStatusDataPoint[]>(API_ROUTES.ADMIN.DASHBOARD_BY_STATUS, []),
+    safeFetch<TopProductDto[]>(`${API_ROUTES.ADMIN.DASHBOARD_TOP}?limit=10`, []),
+    safeFetch<{ data?: ReviewDto[]; total?: number } | ReviewDto[]>(
+      `${API_ROUTES.ADMIN.PENDING_REVIEWS}?limit=5`, [],
+    ),
+    safeFetch<SeoStats>(API_ROUTES.ADMIN.PRODUCTS_SEO_STATS, {
+      total: 0, missingTitle: 0, missingDescription: 0, lowScore: 0, noIndex: 0,
+    }),
+    safeFetch<PlatformKpis>(API_ROUTES.ADMIN.DASHBOARD_PLATFORM, {}),
+    safeFetch<ActivityEvent[]>(API_ROUTES.ADMIN.DASHBOARD_ACTIVITY, []),
+    safeFetch<TopStoresResponse>(`${API_ROUTES.ADMIN.DASHBOARD_TOP_STORES}?limit=5`, {}),
+  ]);
 
   // Normalise revenue chart data
-  const revenueData  = Array.isArray(revenueRaw)
-    ? revenueRaw
-    : (revenueRaw.data ?? []);
-  const revenueTotal = Array.isArray(revenueRaw)
+  const revenueData   = Array.isArray(revenueRaw) ? revenueRaw : (revenueRaw.data ?? []);
+  const revenueTotal  = Array.isArray(revenueRaw)
     ? revenueData.reduce((s, d) => s + (d.revenue ?? 0), 0)
     : (revenueRaw.total ?? revenueData.reduce((s, d) => s + (d.revenue ?? 0), 0));
 
   // Normalise reviews
-  const reviews     = Array.isArray(pendingRaw) ? pendingRaw : (pendingRaw.data ?? []);
+  const reviews      = Array.isArray(pendingRaw) ? pendingRaw : (pendingRaw.data ?? []);
   const totalPending = Array.isArray(pendingRaw) ? reviews.length : (pendingRaw.total ?? reviews.length);
+
+  const activityFeed  = Array.isArray(activityRaw) ? activityRaw : [];
+  const topStores     = topStoresData.stores   ?? [];
+  const topCreators   = topStoresData.creators ?? [];
 
   return (
     <>
       <AdminPageHeader
         title="Dashboard"
-        subtitle="Your store at a glance"
+        subtitle="Platform overview at a glance"
       />
 
-      {/* ── Row 1: KPI cards ──────────────────────────────────────────────── */}
+      {/* ── Platform KPI row (6 cards) ────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+        {[
+          { icon: DollarSign,   label: 'GMV Today',               value: fmtAmount(platformKpis.gmvToday              ?? 0), color: 'bg-primary'   },
+          { icon: Store,        label: 'Active Stores',            value: String(platformKpis.activeStores             ?? 0), color: 'bg-green-500' },
+          { icon: Clock,        label: 'Pending Stores',           value: String(platformKpis.pendingStores            ?? 0), color: 'bg-amber-500' },
+          { icon: ShoppingBag,  label: 'Open Orders',              value: String(platformKpis.openOrders               ?? 0), color: 'bg-blue-500'  },
+          { icon: AlertTriangle,label: 'Moderation Queue',         value: String(platformKpis.moderationQueue          ?? 0), color: 'bg-red-500'   },
+          { icon: Users,        label: 'Creator Payouts Pending',  value: String(platformKpis.creatorPayoutsPending    ?? 0), color: 'bg-[#7C3AED]' },
+        ].map(({ icon: Icon, label, value, color }) => (
+          <div key={label} className="bg-surface border border-border rounded-card p-4 flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+              <Icon className="w-4 h-4 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] text-muted font-medium leading-tight">{label}</p>
+              <p className="text-base font-bold text-secondary tabular-nums">{value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Quick actions grid (2×3) ──────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-8">
+        {[
+          { href: '/admin/stores?status=PENDING',       label: 'Review Stores',       icon: Store,        badge: platformKpis.pendingStores ?? 0,     color: 'text-amber-600 bg-amber-50 border-amber-200 hover:bg-amber-100'  },
+          { href: '/admin/moderation',                   label: 'Moderation Queue',    icon: ShieldCheck,  badge: platformKpis.moderationQueue ?? 0,   color: 'text-red-600 bg-red-50 border-red-200 hover:bg-red-100'          },
+          { href: '/admin/creators/payouts',             label: 'Creator Payouts',     icon: CreditCard,   badge: platformKpis.creatorPayoutsPending ?? 0, color: 'text-[#7C3AED] bg-[#F3F0FF] border-[#C4B5FD] hover:bg-[#EEEDFE]' },
+          { href: '/admin/orders?status=PENDING',        label: 'Pending Orders',      icon: Package,      badge: kpis.pendingOrders ?? 0,             color: 'text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100'      },
+          { href: '/admin/reviews?status=PENDING',       label: 'Pending Reviews',     icon: Star,         badge: totalPending,                        color: 'text-green-600 bg-green-50 border-green-200 hover:bg-green-100'  },
+          { href: '/admin/finance',                      label: 'Finance Overview',    icon: BarChart2,    badge: 0,                                   color: 'text-secondary bg-surface border-border hover:bg-background'     },
+        ].map(({ href, label, icon: Icon, badge, color }) => (
+          <Link key={href} href={href}
+            className={`flex items-center gap-2.5 px-4 py-3 border rounded-card text-sm font-medium transition-colors ${color}`}>
+            <Icon className="w-4 h-4 shrink-0" />
+            <span className="flex-1 leading-tight">{label}</span>
+            {badge > 0 && (
+              <span className="ml-auto text-[10px] font-bold bg-current/20 px-1.5 py-0.5 rounded-full tabular-nums">
+                {badge}
+              </span>
+            )}
+          </Link>
+        ))}
+      </div>
+
+      {/* ── Row 1: Revenue KPI cards ──────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
         <StatCard
           label="Revenue This Month"
@@ -159,7 +275,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── Row 3: Tables ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[60fr_40fr] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[60fr_40fr] gap-5 mb-8">
         <TopProductsTable products={topProducts} />
         <PendingReviewsCard
           initialReviews={reviews as ReviewDto[]}
@@ -167,8 +283,142 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* ── Row 4: SEO Health ─────────────────────────────────────────────── */}
-      <section className="mt-8">
+      {/* ── Row 4: Activity feed + Top stores/creators ───────────────────── */}
+      <div className="grid grid-cols-1 xl:grid-cols-[40fr_60fr] gap-6 mb-8">
+
+        {/* Activity feed */}
+        <div className="bg-surface border border-border rounded-card overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
+            <h3 className="font-semibold text-secondary text-sm">Recent Activity</h3>
+            <span className="text-xs text-muted">Live</span>
+          </div>
+          {activityFeed.length === 0 ? (
+            <div className="px-5 py-10 text-center text-sm text-muted">No recent activity.</div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {activityFeed.slice(0, 8).map((ev) => {
+                const cfg = ACTIVITY_ICONS[ev.type] ?? DEFAULT_ACTIVITY;
+                const Icon = cfg.icon;
+                return (
+                  <li key={ev.id} className="px-5 py-3.5 flex items-start gap-3 hover:bg-background transition-colors">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${cfg.bg}`}>
+                      <Icon className={`w-3.5 h-3.5 ${cfg.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-secondary leading-snug">
+                        {ev.link
+                          ? <Link href={ev.link} className="hover:underline">{ev.message}</Link>
+                          : ev.message}
+                      </p>
+                      <p className="text-xs text-muted mt-0.5">{timeAgo(ev.timestamp)}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        {/* Top stores + top creators */}
+        <div className="flex flex-col gap-5">
+
+          {/* Top stores */}
+          <div className="bg-surface border border-border rounded-card overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
+              <h3 className="font-semibold text-secondary text-sm">Top Stores This Month</h3>
+              <Link href="/admin/stores" className="text-xs text-primary hover:underline">View all →</Link>
+            </div>
+            {topStores.length === 0 ? (
+              <div className="px-5 py-8 text-center text-sm text-muted">No data yet.</div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-background">
+                    {['Store', 'Revenue', 'Orders', 'Rating'].map((h) => (
+                      <th key={h} className="px-4 py-2.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wide">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {topStores.map((s, i) => (
+                    <tr key={s.id} className="hover:bg-background transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted w-4 tabular-nums">#{i + 1}</span>
+                          <Link href={`/admin/stores/${s.id}`}
+                            className="text-xs font-semibold text-secondary hover:text-primary hover:underline truncate max-w-[120px]">
+                            {s.name}
+                          </Link>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs font-bold text-secondary tabular-nums">{fmtAmount(s.revenue)}</td>
+                      <td className="px-4 py-3 text-xs text-secondary tabular-nums">{s.orders}</td>
+                      <td className="px-4 py-3 text-xs text-secondary">
+                        {s.rating != null ? (
+                          <span className="flex items-center gap-0.5">
+                            <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                            {s.rating.toFixed(1)}
+                          </span>
+                        ) : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Top creators */}
+          <div className="bg-surface border border-border rounded-card overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
+              <h3 className="font-semibold text-secondary text-sm">Top Creators This Month</h3>
+              <Link href="/admin/creators" className="text-xs text-primary hover:underline">View all →</Link>
+            </div>
+            {topCreators.length === 0 ? (
+              <div className="px-5 py-8 text-center text-sm text-muted">No data yet.</div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-background">
+                    {['Creator', 'Earned', 'Members'].map((h) => (
+                      <th key={h} className="px-4 py-2.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wide">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {topCreators.map((c, i) => (
+                    <tr key={c.userId} className="hover:bg-background transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted w-4 tabular-nums">
+                            {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
+                          </span>
+                          <div>
+                            <p className="text-xs font-semibold text-secondary">
+                              {[c.firstName, c.lastName].filter(Boolean).join(' ') || '—'}
+                            </p>
+                            <p className="text-[10px] text-muted font-mono">{c.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs font-bold text-secondary tabular-nums">{fmtAmount(c.earned)}</td>
+                      <td className="px-4 py-3 text-xs text-secondary tabular-nums">{c.directRefs}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <div className="px-5 py-2.5 border-t border-border">
+              <Link href="/admin/creators" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
+                Creator network overview <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Row 5: SEO Health ─────────────────────────────────────────────── */}
+      <section>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-secondary">SEO Health</h3>
           <Link href="/products/seo" className="text-sm text-primary hover:underline">

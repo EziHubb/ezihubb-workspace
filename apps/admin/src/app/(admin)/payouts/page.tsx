@@ -4,11 +4,21 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import type { ColumnDef } from '@tanstack/react-table';
+import { Clock, DollarSign, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { DataTable } from '../../../components/data/DataTable';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount } from '../../../lib/fmt';
+
+interface PayoutStats {
+  pendingCount:      number;
+  pendingAmount:     number;
+  processingCount:   number;
+  processingAmount:  number;
+  paidThisMonth:     number;
+  failedCount:       number;
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -48,6 +58,12 @@ export default function AdminPayoutsPage() {
   const qc = useQueryClient();
   const [page,   setPage  ] = useState(1);
   const [status, setStatus] = useState('PENDING');
+
+  const { data: payoutStats } = useQuery<PayoutStats>({
+    queryKey: ['admin-payout-stats'],
+    queryFn:  () => api.get<PayoutStats>(API_ROUTES.ADMIN.SELLER_PAYOUTS_STATS),
+    staleTime: 60_000,
+  });
 
   const { data, isLoading } = useQuery<PayoutsResponse>({
     queryKey: ['admin-seller-payouts', page, status],
@@ -155,6 +171,27 @@ export default function AdminPayoutsPage() {
         subtitle="Manage and process seller payout disbursements"
         queryKey={['admin-seller-payouts']}
       />
+
+      {/* ── Stats row ─────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {[
+          { icon: Clock,         label: 'Pending',        value: fmtAmount(payoutStats?.pendingAmount     ?? 0), sub: `${payoutStats?.pendingCount     ?? 0} payouts`, color: 'bg-amber-500' },
+          { icon: AlertTriangle, label: 'Processing',     value: fmtAmount(payoutStats?.processingAmount  ?? 0), sub: `${payoutStats?.processingCount  ?? 0} payouts`, color: 'bg-blue-500' },
+          { icon: CheckCircle2,  label: 'Paid This Month',value: fmtAmount(payoutStats?.paidThisMonth     ?? 0), sub: 'completed',                                      color: 'bg-green-500' },
+          { icon: DollarSign,    label: 'Failed',         value: String(payoutStats?.failedCount ?? 0),          sub: 'need attention',                                  color: 'bg-red-500' },
+        ].map(({ icon: Icon, label, value, sub, color }) => (
+          <div key={label} className="bg-surface border border-border rounded-card p-4 flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+              <Icon className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs text-muted font-medium">{label}</p>
+              <p className="text-lg font-bold text-secondary tabular-nums">{value}</p>
+              <p className="text-xs text-muted">{sub}</p>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* Status filter */}
       <div className="mb-6">

@@ -1,276 +1,207 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { getLocale } from 'next-intl/server';
+import { ArrowRight, Gift, Share2, DollarSign } from 'lucide-react';
 
-// Public stats are server-fetched and cached for 5 min
-interface PublicStats {
-  totalCreators:    number;
-  ordersGenerated:  number;
-  totalPaidOut:     number;
-  avgEarningsPerCreator: number;
-}
+export const metadata: Metadata = {
+  title: 'Creator Network — MapleLoom Handmade',
+  description: 'Join thousands of creators who share MapleLoom products and earn every time their community shops.',
+};
 
+// ── Static data ───────────────────────────────────────────────────────────────
 
-const FAQ = [
-  {
-    q: 'Do I need to apply to join?',
-    a: 'No application needed. Any MapleLoom customer can become a creator. Just go to your Creator Hub, grab your link, and start sharing.',
-  },
-  {
-    q: 'How does the buyer discount work?',
-    a: 'Anyone who shops through your link automatically gets a discount at checkout — no code needed. It\'s our way of rewarding both you and the people you share with.',
-  },
-  {
-    q: 'When do earnings unlock?',
-    a: 'Earnings are held for 14 days after delivery (covers the return window), then move to your confirmed balance. You can request a withdrawal any time once you reach the minimum.',
-  },
-  {
-    q: 'What\'s a Network earning?',
-    a: 'When someone you brought to MapleLoom later introduces another person, you earn a small percentage on those sales too — automatically. You don\'t need to do anything extra.',
-  },
-  {
-    q: 'What payment methods are available for withdrawals?',
-    a: 'We support PayPal, bank wire transfer, and USDT crypto. Withdrawals are typically processed within 3–5 business days.',
-  },
-  {
-    q: 'Can I use coupon codes on top of the creator discount?',
-    a: 'Yes — coupon codes and the creator link discount stack together. Your commission is calculated on the subtotal after coupon discounts.',
-  },
+const TIERS = [
+  { icon: '🎨', name: 'Creator',        sub: 'Start here',  rate: '10%',   bonus: null,   bg: 'bg-[#F1EFE8]', border: 'border-[#E8E4DF]', text: 'text-secondary', bColor: ''               },
+  { icon: '🌱', name: 'Rising Creator', sub: '5+ members',  rate: '10.5%', bonus: '+0.5%',bg: 'bg-[#EAF3DE]', border: 'border-[#C8E6C9]', text: 'text-[#2E7D52]', bColor: 'text-[#2E7D52]' },
+  { icon: '⭐', name: 'Top Creator',    sub: '20+ members', rate: '11%',   bonus: '+1%',  bg: 'bg-[#FAEEDA]', border: 'border-[#FDE68A]', text: 'text-[#D97706]', bColor: 'text-[#D97706]', popular: true },
+  { icon: '💎', name: 'Elite Creator',  sub: '50+ members', rate: '12%',   bonus: '+2%',  bg: 'bg-[#EEEDFE]', border: 'border-[#C4B5FD]', text: 'text-[#7C3AED]', bColor: 'text-[#7C3AED]' },
+] as const;
+
+const STEPS = [
+  { icon: Gift,       bg: 'bg-primary',   title: 'Get your creator link', body: 'Every MapleLoom account comes with a unique link. No application needed.' },
+  { icon: Share2,     bg: 'bg-[#7C3AED]', title: 'Share anything',        body: 'Post on TikTok, Instagram, Pinterest. Your link works everywhere.' },
+  { icon: DollarSign, bg: 'bg-[#2E7D52]', title: 'Earn when they shop',   body: 'Earn 10% when someone buys through your link. Your network earns you more over time.' },
+] as const;
+
+const TESTIMONIALS = [
+  { quote: 'I made $340 in my first month just by sharing what I already loved. No selling, just sharing.',  name: 'Sarah K.',  handle: '@sarahcrafts'  },
+  { quote: "The buyer discount feature is genius. My followers love that they save too — it's a win-win.",    name: 'Marcus T.', handle: '@marcusmakes'  },
+  { quote: 'Hit Elite Creator in 6 months. The tiered earnings really motivate you to grow your community.',  name: 'Priya M.',  handle: '@priya_gifting' },
 ];
 
-const HOW_IT_WORKS = [
-  {
-    step: '01',
-    title: 'Get your creator link',
-    body: 'Head to your Creator Hub in your account. Your personal link is ready — no setup required.',
-  },
-  {
-    step: '02',
-    title: 'Share what you love',
-    body: 'Post on social, send to friends, add to your bio. Anyone who clicks your link and shops gets a discount automatically.',
-  },
-  {
-    step: '03',
-    title: 'Earn as your community shops',
-    body: 'You earn a percentage on every order placed through your link. Earnings unlock after 14 days and can be withdrawn to PayPal, bank, or crypto.',
-  },
-];
+// ── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function CreatorsLandingPage() {
-  const statsResult = await apiClient
-    .get<PublicStats>(API_ROUTES.CREATORS.PUBLIC_STATS, { next: { revalidate: 300 } })
-    .catch(() => null);
-
-  const publicStats: PublicStats | null = statsResult ?? null;
-
-  // Programme defaults — update here when admin changes tier structure
-  const commissionPct = 5;   // base tier rate
-  const discountPct   = 5;   // buyer discount
-  const minPayout     = 20;
-
-  const tiers = [
-    { name: 'Creator',     minReferrals: 0,  commissionRate: 0.05, badgeColor: '#8B8882', badgeIcon: '✦' },
-    { name: 'Rising Star', minReferrals: 5,  commissionRate: 0.07, badgeColor: '#B87333', badgeIcon: '⭐' },
-    { name: 'Trendsetter', minReferrals: 20, commissionRate: 0.10, badgeColor: '#9B7EC8', badgeIcon: '💜' },
-    { name: 'Icon',        minReferrals: 50, commissionRate: 0.15, badgeColor: '#D4A843', badgeIcon: '👑' },
-  ];
+export default async function CreatorNetworkPage() {
+  const locale = await getLocale();
 
   return (
-    <div className="bg-background">
+    <div className="min-h-screen">
 
-      {/* ── HERO ──────────────────────────────────────────────────────────────── */}
-      <section className="bg-surface border-b border-border">
-        <div className="max-w-4xl mx-auto px-4 md:px-8 py-20 md:py-28 text-center">
-          <span className="inline-block bg-primary/10 text-primary text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full mb-6">
-            Creator Network
-          </span>
-          <h1 className="font-display text-4xl md:text-6xl font-bold text-secondary leading-tight mb-6">
-            Share what you love.<br className="hidden md:block" />
-            <span className="text-primary">Earn when your community shops.</span>
-          </h1>
-          <p className="text-lg md:text-xl text-muted max-w-2xl mx-auto mb-8">
-            No follower minimum. No application. Just share your creator link —
-            earn {commissionPct}% on every order, and your buyers get {discountPct}% off automatically.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link href="/account/creator"
-              className="inline-flex items-center gap-2 px-8 py-3.5 bg-primary text-white font-bold rounded-button hover:bg-primary/90 transition-colors text-base">
-              Get your creator link
-              <span className="text-white/70 text-xs">→</span>
-            </Link>
-            <a href="#how-it-works"
-              className="inline-flex items-center gap-2 px-6 py-3.5 border border-border text-secondary font-medium rounded-button hover:border-primary/40 transition-colors text-sm">
-              See how it works
-            </a>
-          </div>
-        </div>
-      </section>
+      {/* ── HERO ─────────────────────────────────────────────────────────── */}
+      <section className="py-20 px-4" style={{ background: 'linear-gradient(135deg,#FFF0EC 0%,#F3F0FF 100%)' }}>
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
 
-      {/* ── STATS BAR ─────────────────────────────────────────────────────────── */}
-      {publicStats && (
-        <section className="border-b border-border bg-background">
-          <div className="max-w-4xl mx-auto px-4 md:px-8 py-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-              <div>
-                <p className="text-3xl font-bold tabular-nums text-secondary">{publicStats.totalCreators.toLocaleString()}+</p>
-                <p className="text-xs text-muted mt-1 uppercase tracking-wide">Active creators</p>
-              </div>
-              <div>
-                <p className="text-3xl font-bold tabular-nums text-secondary">${(publicStats.totalPaidOut / 1000).toFixed(0)}k+</p>
-                <p className="text-xs text-muted mt-1 uppercase tracking-wide">Total paid out</p>
-              </div>
-              <div>
-                <p className="text-3xl font-bold tabular-nums text-secondary">{publicStats.ordersGenerated.toLocaleString()}+</p>
-                <p className="text-xs text-muted mt-1 uppercase tracking-wide">Orders generated</p>
-              </div>
-              <div>
-                <p className="text-3xl font-bold tabular-nums text-secondary">${publicStats.avgEarningsPerCreator.toFixed(0)}</p>
-                <p className="text-xs text-muted mt-1 uppercase tracking-wide">Avg. creator earnings</p>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── HOW IT WORKS ──────────────────────────────────────────────────────── */}
-      <section id="how-it-works" className="max-w-4xl mx-auto px-4 md:px-8 py-20">
-        <div className="text-center mb-12">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-secondary">How it works</h2>
-          <p className="text-muted mt-3 max-w-xl mx-auto">Three steps — that's all it takes to start earning.</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {HOW_IT_WORKS.map(({ step, title, body }) => (
-            <div key={step} className="relative">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <span className="text-primary font-bold text-sm">{step}</span>
-              </div>
-              <h3 className="font-semibold text-secondary text-base mb-2">{title}</h3>
-              <p className="text-sm text-muted leading-relaxed">{body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── CREATOR TIERS ─────────────────────────────────────────────────────── */}
-      <section className="bg-surface border-y border-border py-20">
-        <div className="max-w-4xl mx-auto px-4 md:px-8">
-          <div className="text-center mb-12">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-secondary">Earn more as you grow</h2>
-            <p className="text-muted mt-3 max-w-xl mx-auto">
-              Bring more people to MapleLoom and your earnings rate increases automatically.
+          {/* Text */}
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-[#7C3AED] mb-4">
+              MAPLELOOM CREATOR NETWORK
             </p>
+            <h1 className="font-display text-4xl lg:text-5xl font-bold text-secondary leading-tight">
+              Turn your love for<br className="hidden lg:block" />
+              handmade gifts into<br className="hidden lg:block" />
+              real earnings
+            </h1>
+            <p className="text-muted text-base mt-5 max-w-md">
+              Join thousands of creators who share MapleLoom products and earn every time their community shops.
+            </p>
+            <div className="flex flex-wrap gap-3 mt-8">
+              <Link href={`/${locale}/auth/register`}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white font-bold rounded-button hover:bg-primary/90 transition-colors">
+                Get your creator link <ArrowRight className="w-4 h-4" />
+              </Link>
+              <a href="#how-it-works"
+                className="inline-flex items-center gap-1.5 px-6 py-3 border border-secondary/20 text-secondary font-medium rounded-button hover:border-secondary/40 transition-colors">
+                See how it works
+              </a>
+            </div>
+            <div className="mt-10 flex flex-wrap gap-6 text-xs">
+              <span className="flex items-center gap-1.5">
+                <span className="text-amber-400">★★★★★</span>
+                <span className="text-muted">"Earned $340 last month" — @sarahcrafts</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="font-semibold text-[#7C3AED]">2,400+</span>
+                <span className="text-muted">creators on platform</span>
+              </span>
+            </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {tiers.map((tier, i) => (
-              <div key={tier.name}
-                className="bg-background border border-border rounded-card p-5 flex flex-col items-center gap-3 text-center relative overflow-hidden">
-                {i === tiers.length - 1 && (
-                  <div className="absolute top-0 inset-x-0 h-0.5" style={{ backgroundColor: tier.badgeColor }} />
-                )}
-                <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
-                  style={{ backgroundColor: tier.badgeColor + '20', border: `2px solid ${tier.badgeColor}` }}>
-                  {tier.badgeIcon}
-                </div>
+
+          {/* Floating cards */}
+          <div className="relative hidden lg:flex items-center justify-center h-72">
+            <div className="absolute top-0 left-4 bg-white rounded-2xl shadow-xl p-5 w-52 -rotate-3 z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 text-lg flex items-center justify-center">🫙</div>
                 <div>
-                  <p className="font-bold text-secondary text-sm">{tier.name}</p>
-                  <p className="text-2xl font-extrabold tabular-nums mt-1" style={{ color: tier.badgeColor }}>
-                    {(tier.commissionRate * 100).toFixed(0)}%
-                  </p>
-                  <p className="text-xs text-muted mt-0.5">earnings rate</p>
+                  <p className="text-xs font-semibold text-secondary">Custom Name Mug</p>
+                  <p className="text-xs font-bold text-[#2E7D52]">Sarah earned $2.80</p>
                 </div>
-                <p className="text-xs text-muted">
-                  {tier.minReferrals === 0 ? 'Everyone starts here' : `${tier.minReferrals}+ direct members`}
-                </p>
+              </div>
+            </div>
+            <div className="absolute top-8 right-0 bg-white rounded-2xl shadow-xl p-5 w-60 rotate-1 z-20">
+              <p className="text-xs text-muted mb-2 font-medium">Your creator link</p>
+              <div className="flex items-center gap-2 bg-[#FAFAF8] rounded-lg px-3 py-2">
+                <span className="text-xs font-mono text-secondary truncate flex-1">mapleloom.com?c=SARAH2024</span>
+                <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded shrink-0">Copy</span>
+              </div>
+            </div>
+            <div className="absolute bottom-0 right-4 bg-white rounded-2xl shadow-xl p-5 w-48 rotate-2 z-30">
+              <span className="text-[10px] font-bold bg-[#7C3AED] text-white px-2 py-0.5 rounded-full">⭐ Top Creator</span>
+              <p className="text-2xl font-bold text-[#7C3AED] mt-2">$156.40</p>
+              <p className="text-xs text-muted">earned this month</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── HOW IT WORKS ─────────────────────────────────────────────────── */}
+      <section id="how-it-works" className="bg-white py-20 px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="font-display text-3xl font-bold text-secondary">Three steps to start earning</h2>
+          <div className="grid md:grid-cols-3 gap-10 mt-12">
+            {STEPS.map(({ icon: Icon, title, body, bg }) => (
+              <div key={title} className="flex flex-col items-center gap-4">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${bg}`}>
+                  <Icon className="w-7 h-7 text-white" />
+                </div>
+                <h4 className="font-semibold text-secondary">{title}</h4>
+                <p className="text-sm text-muted">{body}</p>
               </div>
             ))}
           </div>
-          <p className="text-center text-xs text-muted mt-6">
-            Your tier is determined by the number of direct members (people who signed up via your link).
-          </p>
         </div>
       </section>
 
-      {/* ── BUYER DISCOUNT ────────────────────────────────────────────────────── */}
-      <section className="max-w-4xl mx-auto px-4 md:px-8 py-20">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
-          <div>
-            <span className="inline-block bg-green-100 text-green-700 text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full mb-4">
-              Better together
-            </span>
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-secondary mb-4">
-              Your community saves while you earn
-            </h2>
-            <p className="text-muted leading-relaxed mb-6">
-              Every person who shops through your link gets <strong>{discountPct}% off</strong> their order
-              automatically — no coupon code, no friction. You earn your commission. They save on every order.
-              Everyone wins.
-            </p>
-            <ul className="space-y-3 text-sm text-muted">
-              {[
-                'Discount applied at checkout automatically',
-                'Stacks with coupon codes',
-                'Works on all products',
-                'Cookie valid for 30 days after first click',
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <span className="text-green-600 mt-0.5 shrink-0">✓</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
+      {/* ── TIERS ────────────────────────────────────────────────────────── */}
+      <section className="bg-[#FAFAF8] py-20 px-4">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="font-display text-3xl font-bold text-secondary">Grow your creator status</h2>
+            <p className="text-muted mt-3">The more your community shops, the more you earn</p>
           </div>
-          <div className="bg-surface border border-border rounded-card p-6 text-center">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted mb-4">Example</p>
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between py-2 border-b border-border">
-                <span className="text-muted">Order subtotal</span>
-                <span className="font-semibold text-secondary">$80.00</span>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {TIERS.map((t) => (
+              <div key={t.name}
+                className={`relative rounded-2xl border p-5 flex flex-col gap-3 ${t.bg} ${t.border}`}>
+                {'popular' in t && t.popular && (
+                  <span className="absolute -top-2.5 right-4 text-[10px] font-bold bg-primary text-white px-2 py-0.5 rounded-full">
+                    Most popular
+                  </span>
+                )}
+                <span className="text-3xl">{t.icon}</span>
+                <div>
+                  <h4 className={`font-bold text-sm ${t.text}`}>{t.name}</h4>
+                  <p className="text-xs text-muted mt-0.5">{t.sub}</p>
+                </div>
+                <div className="border-t border-black/5 pt-3 space-y-1">
+                  <p className="text-sm font-bold text-secondary">{t.rate} earnings</p>
+                  {t.bonus && <p className={`text-xs font-semibold ${t.bColor}`}>{t.bonus} bonus</p>}
+                </div>
               </div>
-              <div className="flex justify-between py-2 border-b border-border">
-                <span className="text-green-700 font-medium">Buyer saves ({discountPct}% off)</span>
-                <span className="text-green-700 font-semibold">−${(80 * discountPct / 100).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-border">
-                <span className="text-muted">Buyer pays</span>
-                <span className="font-semibold text-secondary">${(80 * (1 - discountPct / 100)).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between py-2 bg-primary/5 rounded-button px-3">
-                <span className="text-primary font-semibold">You earn ({commissionPct}%)</span>
-                <span className="text-primary font-bold">+${(80 * commissionPct / 100).toFixed(2)}</span>
-              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── BUYER DISCOUNT ───────────────────────────────────────────────── */}
+      <section className="bg-white py-20 px-4">
+        <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-center">
+          <div>
+            <h2 className="font-display text-3xl font-bold text-secondary">
+              Your community gets<br />5% off every purchase
+            </h2>
+            <p className="text-muted mt-4">
+              Anyone who shops through your link automatically gets a discount — no coupon needed.
+            </p>
+            <Link href={`/${locale}/creators#tiers`}
+              className="inline-flex items-center gap-1 text-primary text-sm font-medium mt-5 hover:underline">
+              Learn more <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+          <div className="bg-white border border-border rounded-2xl shadow-xl p-6 space-y-3">
+            <p className="font-semibold text-secondary text-sm">Your order</p>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted">Custom Name Mug</span>
+              <span className="font-medium text-secondary">$27.99</span>
+            </div>
+            <div className="flex justify-between text-sm text-[#2E7D52]">
+              <span className="font-medium">Referral discount</span>
+              <span className="font-bold">−$1.40</span>
+            </div>
+            <div className="border-t border-border pt-3 flex justify-between">
+              <span className="font-bold text-secondary">Total</span>
+              <span className="font-bold text-secondary">$26.59</span>
+            </div>
+            <div className="flex items-center gap-2 bg-[#FFF0EC] rounded-xl p-3">
+              <span>🎁</span>
+              <p className="text-xs text-primary font-medium">You're saving 5% — thanks to Sarah!</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── TESTIMONIALS ──────────────────────────────────────────────────────── */}
-      <section className="bg-surface border-y border-border py-20">
-        <div className="max-w-4xl mx-auto px-4 md:px-8">
-          <div className="text-center mb-12">
-            <h2 className="font-display text-3xl font-bold text-secondary">What creators are saying</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              {
-                name: 'Sarah K.',
-                handle: '@sarahcrafts',
-                body: 'I just share the products I already buy. My followers love the discount and I\'ve earned over $300 in three months without any extra effort.',
-              },
-              {
-                name: 'Marcus T.',
-                handle: '@giftsbymarc',
-                body: 'The tier system is a great motivator. I went from 5% to 10% earnings rate in two months just by sharing products I genuinely love.',
-              },
-              {
-                name: 'Linh N.',
-                handle: 'Family & friends',
-                body: 'I don\'t have a big following — just shared with family group chats. Still made back the cost of my own order in commissions. Totally worth it.',
-              },
-            ].map(({ name, handle, body }) => (
-              <div key={name} className="bg-background border border-border rounded-card p-5 space-y-3">
-                <p className="text-sm text-secondary leading-relaxed">"{body}"</p>
+      {/* ── TESTIMONIALS ─────────────────────────────────────────────────── */}
+      <section className="bg-[#F3F0FF] py-20 px-4">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="font-display text-3xl font-bold text-secondary text-center mb-12">
+            What creators are saying
+          </h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            {TESTIMONIALS.map(({ quote, name, handle }) => (
+              <div key={handle} className="bg-white rounded-2xl p-6 space-y-3">
+                <span className="text-amber-400 text-sm">★★★★★</span>
+                <p className="text-sm text-secondary italic">"{quote}"</p>
                 <div>
-                  <p className="text-xs font-semibold text-secondary">{name}</p>
+                  <p className="text-sm font-semibold text-secondary">{name}</p>
                   <p className="text-xs text-muted">{handle}</p>
                 </div>
               </div>
@@ -279,41 +210,15 @@ export default async function CreatorsLandingPage() {
         </div>
       </section>
 
-      {/* ── FAQ ───────────────────────────────────────────────────────────────── */}
-      <section className="max-w-3xl mx-auto px-4 md:px-8 py-20">
-        <div className="text-center mb-12">
-          <h2 className="font-display text-3xl font-bold text-secondary">Frequently asked questions</h2>
-        </div>
-        <div className="space-y-4">
-          {FAQ.map(({ q, a }) => (
-            <div key={q} className="border border-border rounded-card p-5">
-              <p className="font-semibold text-secondary text-sm mb-2">{q}</p>
-              <p className="text-sm text-muted leading-relaxed">{a}</p>
-            </div>
-          ))}
-        </div>
-        <p className="text-center text-sm text-muted mt-8">
-          More questions?{' '}
-          <Link href="/account/messages" className="text-primary hover:underline">Contact us</Link>
-        </p>
-      </section>
-
-      {/* ── FINAL CTA ─────────────────────────────────────────────────────────── */}
-      <section className="border-t border-border bg-surface">
-        <div className="max-w-2xl mx-auto px-4 md:px-8 py-20 text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-secondary mb-4">
-            Ready to start earning?
-          </h2>
-          <p className="text-muted mb-8 max-w-lg mx-auto">
-            Your creator link is waiting. Go to your Creator Hub to grab it — takes 30 seconds.
-          </p>
-          <Link href="/account/creator"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-white font-bold rounded-button hover:bg-primary/90 transition-colors text-base">
-            Go to your Creator Hub
+      {/* ── FINAL CTA ────────────────────────────────────────────────────── */}
+      <section className="bg-primary py-20 px-4 text-center">
+        <div className="max-w-2xl mx-auto">
+          <h2 className="font-display text-3xl font-bold text-white">Ready to start earning?</h2>
+          <p className="text-white/90 mt-3 text-base">Join free. No approval needed. Your link is waiting.</p>
+          <Link href={`/${locale}/auth/register`}
+            className="inline-flex items-center gap-2 mt-8 px-7 py-3.5 bg-white text-primary font-bold rounded-button hover:bg-white/90 transition-colors">
+            Create your account <ArrowRight className="w-4 h-4" />
           </Link>
-          <p className="text-xs text-muted mt-4">
-            Min. payout ${minPayout} · Paid via PayPal, bank, or crypto · No fees deducted
-          </p>
         </div>
       </section>
 

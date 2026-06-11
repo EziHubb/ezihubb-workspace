@@ -114,6 +114,17 @@ export class CheckoutDto {
   @Min(0)
   @Max(1_000_000)
   pointsToRedeem?: number;
+
+  @ApiPropertyOptional({ description: 'Apply available store credit to this order' })
+  @IsOptional()
+  @IsBoolean()
+  useStoreCredit?: boolean;
+
+  @ApiPropertyOptional({ description: 'Buyer referral token captured from bref cookie' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(36)
+  buyerRefToken?: string;
 }
 
 export class CancelOrderDto {

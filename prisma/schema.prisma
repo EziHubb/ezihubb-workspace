@@ -249,6 +249,10 @@ model User {
   isActive            Boolean  @default(true)
   lastLoginAt         DateTime?
 
+  buyerReferralsMade     BuyerReferral[]  @relation("BuyerReferralsMade")
+  buyerReferralsReceived BuyerReferral[]  @relation("BuyerReferralsReceived")
+  storeCredits           StoreCredit[]
+
   @@index([email])
 }
 
@@ -364,6 +368,11 @@ model Store {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  moderationStatus  ModerationStatus @default(PENDING)
+  lastModeratedAt   DateTime?
+  strikeCount       Int              @default(0)
+  strikeRecords     StrikeRecord[]
+
   products         Product[]
   categories       Category[]
   storeOrders      StoreOrder[]
@@ -374,6 +383,9 @@ model Store {
   promotions       Promotion[]
   reviews          Review[]         @relation("StoreReviews")
   conversations    Conversation[]
+  buyerReferralCredit Decimal?       @db.Decimal(10, 2)
+  buyerReferrals      BuyerReferral[]
+  storeCredits        StoreCredit[]
 
   @@index([slug])
   @@index([status])
@@ -597,6 +609,9 @@ model Product {
   deletedAt           DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+
+  moderationStatus  ModerationStatus @default(PENDING)
+  lastModeratedAt   DateTime?
 
   // ── Store ownership ─────────────────────────────────────────────────────────
   storeId             String?
@@ -956,6 +971,10 @@ model Order {
   pointsRedeemed Int?              // points spent to discount this order
   pointsDiscount Decimal?          @db.Decimal(10, 2)  // dollar value of redeemed points
 
+  // Buyer referral store credit
+  storeCreditUsed  Decimal           @default(0) @db.Decimal(10, 2)
+  buyerRefToken    String?
+
   // Label purchase (EasyPost)
   easypostShipmentId String?
   labelUrl           String?
@@ -1159,6 +1178,8 @@ model Review {
   store            Store?       @relation("StoreReviews", fields: [storeId], references: [id])
   createdAt    DateTime     @default(now())
 
+  moderationStatus  ModerationStatus @default(PENDING)
+
   @@unique([userId, productId, orderId])
   @@index([productId, status])
   @@index([userId])
@@ -1291,6 +1312,8 @@ model Message {
   readAt  DateTime?
 
   createdAt DateTime @default(now())
+
+  moderationStatus  ModerationStatus @default(CLEAN)
 
   @@index([conversationId])
   @@index([createdAt])
@@ -1605,4 +1628,158 @@ model Translation {
   @@unique([entityType, entityId, locale, field])
   @@index([entityType, entityId, locale])
   @@index([locale])
+}
+
+// ─── Moderation ───────────────────────────────────────────────────────────────
+
+enum ModerationStatus {
+  PENDING    // just created, awaiting moderation
+  CLEAN      // passed moderation
+  FLAGGED    // auto-flagged, awaiting admin review
+  REJECTED   // admin confirmed violation, content hidden
+  APPEALED   // seller appealed, awaiting re-review
+  APPROVED   // admin overrode, restored despite flag
+}
+
+model ModerationLog {
+  id              String   @id @default(cuid())
+
+  entityType      String
+  entityId        String
+  fieldName       String?
+  contentHash     String
+
+  verdict         ModerationStatus
+  severity        String
+  categories      String[]
+  confidence      Float
+  reasoning       String?  @db.Text
+  sellerMessage   String?  @db.Text
+
+  provider        String   @default("claude")
+  modelVersion    String?
+  latencyMs       Int?
+  cost            Decimal? @db.Decimal(10, 6)
+
+  triggeredBy     String
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  adminNotes      String?  @db.Text
+
+  createdAt       DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([verdict])
+  @@index([createdAt])
+  @@index([contentHash])
+}
+
+model ModerationSettings {
+  id                     String   @id @default("singleton")
+
+  isEnabled              Boolean  @default(true)
+
+  moderateProductText    Boolean  @default(true)
+  moderateStoreText      Boolean  @default(true)
+  moderateReviews        Boolean  @default(true)
+  moderateMessages       Boolean  @default(true)
+  moderateImages         Boolean  @default(true)
+
+  autoCriticalBlock      Boolean  @default(true)
+  autoHighFlag           Boolean  @default(true)
+  autoMediumFlag         Boolean  @default(true)
+  autoLowWarn            Boolean  @default(true)
+
+  cacheCleanResultDays   Int      @default(30)
+
+  strikeEnabled          Boolean  @default(true)
+  strikeLimitHigh        Int      @default(3)
+  strikeLimitCritical    Int      @default(1)
+  strikeWindowDays       Int      @default(30)
+
+  maxDailyApiCalls       Int      @default(10000)
+  maxCostPerDayUsd       Decimal  @default(50.00) @db.Decimal(10, 2)
+
+  updatedAt              DateTime @updatedAt
+}
+
+model ModerationRule {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  ruleType     String
+  value        String
+  severity     String
+  isActive     Boolean  @default(true)
+  applyTo      String[]
+  createdBy    String
+  createdAt    DateTime @default(now())
+
+  @@index([ruleType, isActive])
+}
+
+model StrikeRecord {
+  id           String   @id @default(cuid())
+  storeId      String
+  store        Store    @relation(fields: [storeId], references: [id])
+  severity     String
+  logId        String
+  createdAt    DateTime @default(now())
+
+  @@index([storeId, createdAt])
+}
+
+// ── Buyer Referral Store Credit ──────────────────────────────────────────────
+
+enum BuyerReferralStatus {
+  PENDING
+  CREDITED
+  EXPIRED
+}
+
+enum StoreCreditReason {
+  BUYER_REFERRAL
+  ADMIN_GRANT
+  RETURN_CREDIT
+}
+
+model BuyerReferral {
+  id              String              @id @default(cuid())
+  referrerUserId  String
+  referrerUser    User                @relation("BuyerReferralsMade", fields: [referrerUserId], references: [id])
+  referrerOrderId String
+  referredUserId  String?
+  referredUser    User?               @relation("BuyerReferralsReceived", fields: [referredUserId], references: [id])
+  referredOrderId String?
+  storeId         String
+  store           Store               @relation(fields: [storeId], references: [id])
+  cookieToken     String              @unique
+  creditAmount    Decimal             @db.Decimal(10, 2)
+  status          BuyerReferralStatus @default(PENDING)
+  expiresAt       DateTime
+  createdAt       DateTime            @default(now())
+
+  @@index([cookieToken])
+  @@index([referrerUserId])
+  @@index([status, expiresAt])
+}
+
+model StoreCredit {
+  id              String            @id @default(cuid())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id])
+  storeId         String
+  store           Store             @relation(fields: [storeId], references: [id])
+  amount          Decimal           @db.Decimal(10, 2)
+  expiresAt       DateTime
+  reason          StoreCreditReason
+  sourceOrderId   String?
+  referrerOrderId String?
+  isUsed          Boolean           @default(false)
+  usedAt          DateTime?
+  usedInOrderId   String?
+  createdAt       DateTime          @default(now())
+
+  @@index([userId, storeId, isUsed])
+  @@index([expiresAt])
 }

@@ -93,10 +93,10 @@ export default function AdminStoresPage() {
       accessorKey: 'name',
       header:      'Store',
       cell:        ({ row }) => (
-        <div>
-          <p className="font-medium text-secondary">{row.original.name}</p>
+        <a href={`/stores/${row.original.id}`} className="block group">
+          <p className="font-medium text-secondary group-hover:text-primary transition-colors">{row.original.name}</p>
           <p className="text-xs text-muted font-mono">/shops/{row.original.slug}</p>
-        </div>
+        </a>
       ),
     },
     {
@@ -144,11 +144,15 @@ export default function AdminStoresPage() {
     {
       id:     'actions',
       header: '',
-      size:   200,
+      size:   220,
       cell:   ({ row }) => {
         const s = row.original;
         return (
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <a href={`/stores/${s.id}`}
+              className="text-xs font-medium text-secondary border border-border px-3 py-1 rounded-button hover:border-primary hover:text-primary transition-colors">
+              View
+            </a>
             {s.status === 'PENDING' && (
               <>
                 <button

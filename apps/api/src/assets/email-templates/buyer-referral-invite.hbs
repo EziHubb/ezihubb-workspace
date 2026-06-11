@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  body { margin:0; padding:0; background:#FAFAF8; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+  .wrap { max-width:560px; margin:32px auto; background:#fff; border-radius:16px; overflow:hidden; border:1px solid #E8E4DF; }
+  .hero { background:linear-gradient(135deg,#FFF0EC 0%,#F3F0FF 100%); padding:36px 32px 28px; text-align:center; }
+  .emoji { font-size:48px; line-height:1; margin-bottom:12px; }
+  h1 { margin:0 0 8px; font-size:22px; font-weight:700; color:#1A1A1A; }
+  .sub { margin:0; font-size:14px; color:#6B7280; }
+  .body { padding:28px 32px; }
+  .credit-box { background:#FFF0EC; border:1px solid #FED7AA; border-radius:12px; padding:20px; text-align:center; margin:20px 0; }
+  .credit-amt { font-size:36px; font-weight:800; color:#EA6B3A; }
+  .credit-label { font-size:13px; color:#6B7280; margin-top:4px; }
+  .cta { display:block; margin:24px auto 0; padding:14px 28px; background:#EA6B3A; color:#fff; text-decoration:none; border-radius:10px; font-weight:700; font-size:15px; text-align:center; }
+  .link-box { margin:20px 0; background:#FAFAF8; border:1px solid #E8E4DF; border-radius:10px; padding:14px 16px; }
+  .link-text { font-family:monospace; font-size:13px; color:#374151; word-break:break-all; }
+  .expire { font-size:12px; color:#9CA3AF; text-align:center; margin-top:16px; }
+  .rules { font-size:12px; color:#6B7280; margin-top:20px; padding-top:16px; border-top:1px solid #F3F4F6; }
+  .rules ul { margin:6px 0 0; padding-left:18px; }
+  .rules li { margin-bottom:4px; }
+  .footer { background:#FAFAF8; padding:16px 32px; text-align:center; font-size:11px; color:#9CA3AF; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="emoji">🎁</div>
+    <h1>Share & earn store credit</h1>
+    <p class="sub">Hi {{firstName}}, your order is confirmed — now share the love!</p>
+  </div>
+  <div class="body">
+    <p style="font-size:14px;color:#374151;margin:0 0 16px">When a friend clicks your link and places an order, you'll automatically receive store credit for your next purchase.</p>
+    <div class="credit-box">
+      <div class="credit-amt">${{creditAmount}}</div>
+      <div class="credit-label">store credit for your next order</div>
+    </div>
+    <p style="font-size:13px;font-weight:600;color:#374151;margin:20px 0 8px">Your referral link</p>
+    <div class="link-box">
+      <div class="link-text">{{referralUrl}}</div>
+    </div>
+    <a href="{{referralUrl}}" class="cta">Share your link →</a>
+    <p class="expire">Link expires {{expiresAt}} · Your friend gets 5% off automatically</p>
+    <div class="rules">
+      <strong>How it works</strong>
+      <ul>
+        <li>Friend clicks your link &amp; places an order</li>
+        <li>You receive ${{creditAmount}} store credit automatically</li>
+        <li>Credit is valid for 90 days from when it's issued</li>
+        <li>Credit applies to your next order at the same store</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer">© {{year}} MapleLoom Handmade · You're receiving this because you placed an order.</div>
+</div>
+</body>
+</html>

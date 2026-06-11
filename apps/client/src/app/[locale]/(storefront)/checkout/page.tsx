@@ -39,6 +39,7 @@ function OrderSummarySidebar({
   giftWrapping,
   affiliateDiscountAmount,
   pointsDiscountAmount,
+  storeCreditAmount,
 }: {
   cart:                     CartDto;
   shippingCost:             number;
@@ -47,6 +48,7 @@ function OrderSummarySidebar({
   giftWrapping?:            boolean;
   affiliateDiscountAmount?: number;
   pointsDiscountAmount?:    number;
+  storeCreditAmount?:       number;
 }) {
   const t = useTranslations('checkout');
   const [expanded, setExpanded] = useState(false);
@@ -57,7 +59,8 @@ function OrderSummarySidebar({
   const giftWrappingCost  = giftWrapping ? 4.99 : 0;
   const affiliateDiscount = affiliateDiscountAmount ?? 0;
   const pointsDiscount    = pointsDiscountAmount ?? 0;
-  const total             = subtotal + shippingCost - discount + tax + giftWrappingCost - affiliateDiscount - pointsDiscount;
+  const storeCreditDiscount = storeCreditAmount ?? 0;
+  const total             = subtotal + shippingCost - discount + tax + giftWrappingCost - affiliateDiscount - pointsDiscount - storeCreditDiscount;
 
   const content = (
     <div className="space-y-4">
@@ -138,6 +141,12 @@ function OrderSummarySidebar({
               {t('orderSummary.loyaltyPoints')}
             </span>
             <span className="font-medium tabular-nums">−${pointsDiscount.toFixed(2)}</span>
+          </div>
+        )}
+        {storeCreditDiscount > 0.01 && (
+          <div className="flex justify-between text-sm text-green-700">
+            <span className="font-medium">Store credit</span>
+            <span className="font-semibold">−${storeCreditDiscount.toFixed(2)}</span>
           </div>
         )}
         {giftWrappingCost > 0 && (
@@ -267,6 +276,21 @@ export default function CheckoutPage() {
     );
   }, [cart?.totals?.subtotal, cart?.discountAmount, affiliateInfo?.code]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Store credit ───────────────────────────────────────────────────────────
+  const [useStoreCredit,    setUseStoreCredit]    = useState(false);
+  const [storeCreditTotal,  setStoreCreditTotal]  = useState<number>(0);
+
+  useEffect(() => {
+    const token = getCookie('access_token') || getCookie('refresh_token');
+    if (!token) return;
+    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ''}${API_ROUTES.STORE_CREDITS.STORE_CREDITS_ME}`, {
+      credentials: 'include',
+    })
+      .then((r) => r.json())
+      .then((d) => { if (typeof d?.total === 'number') setStoreCreditTotal(d.total); })
+      .catch(() => {/* ignore */});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Loyalty points ─────────────────────────────────────────────────────────
   const [loyaltyBalance,  setLoyaltyBalance]  = useState(0);
   const [pointsToRedeem,  setPointsToRedeem]  = useState(0);
@@ -381,6 +405,8 @@ export default function CheckoutPage() {
         // Cookie is also read server-side from req.cookies — this is a fallback
         affiliateCode:    affiliateInfo?.code,
         pointsToRedeem:   pointsToRedeem > 0 ? pointsToRedeem : undefined,
+        useStoreCredit,
+        buyerRefToken:    getCookie('mlh_buyer_ref') || undefined,
       });
 
       setOrderId(res.orderId);
@@ -418,6 +444,7 @@ export default function CheckoutPage() {
         giftWrapping={giftOptions.giftWrapping}
         affiliateDiscountAmount={affiliateInfo?.discountAmount}
         pointsDiscountAmount={pointsDiscount > 0 ? pointsDiscount : undefined}
+        storeCreditAmount={useStoreCredit && storeCreditTotal > 0 ? Math.min(storeCreditTotal, cart.totals.subtotal) : undefined}
       />
 
       <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-8">
@@ -534,6 +561,35 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
+                {/* Store credit */}
+                {storeCreditTotal > 0 && (
+                  <div className="mb-5 border border-green-200 rounded-xl bg-green-50 p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-green-500 flex items-center justify-center shrink-0">
+                          <span className="text-white text-sm">💳</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-secondary">
+                            Store credit available — ${storeCreditTotal.toFixed(2)}
+                          </p>
+                          <p className="text-xs text-muted mt-0.5">Applied automatically at checkout</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setUseStoreCredit((v) => !v)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shrink-0 ${
+                          useStoreCredit ? 'bg-green-500' : 'bg-gray-300'
+                        }`}>
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                          useStoreCredit ? 'translate-x-6' : 'translate-x-1'
+                        }`} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <DeliveryForm
                   countryCode={shippingAddress.country}
                   orderTotal={cart.totals.subtotal}
@@ -580,6 +636,7 @@ export default function CheckoutPage() {
               giftWrapping={giftOptions.giftWrapping}
               affiliateDiscountAmount={affiliateInfo?.discountAmount}
               pointsDiscountAmount={pointsDiscount > 0 ? pointsDiscount : undefined}
+              storeCreditAmount={useStoreCredit && storeCreditTotal > 0 ? Math.min(storeCreditTotal, cart.totals.subtotal) : undefined}
             />
           </div>
         </div>

@@ -1,0 +1,88 @@
+import {
+  Controller, Get, Post, Patch, Delete, Body, Param, Query,
+  UseGuards, Request,
+} from '@nestjs/common';
+import { ModerationService } from './moderation.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+
+@Controller('admin/moderation')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN', 'SUPER_ADMIN')
+export class ModerationController {
+  constructor(private readonly svc: ModerationService) {}
+
+  @Get('queue')
+  getQueue(@Query() q: { page?: string; limit?: string; severity?: string; entityType?: string }) {
+    return this.svc.getQueue({
+      page: q.page ? Number(q.page) : 1,
+      limit: q.limit ? Number(q.limit) : 25,
+      severity:   q.severity,
+      entityType: q.entityType,
+    });
+  }
+
+  @Get('logs')
+  getLogs(@Query() q: { page?: string; limit?: string; verdict?: string; entityType?: string }) {
+    return this.svc.getLogs({
+      page: q.page ? Number(q.page) : 1,
+      limit: q.limit ? Number(q.limit) : 25,
+      verdict:    q.verdict,
+      entityType: q.entityType,
+    });
+  }
+
+  @Post('logs/:id/approve')
+  approve(@Param('id') id: string, @Body() body: { notes?: string }, @Request() req: { user: { sub: string } }) {
+    return this.svc.adminApprove(id, req.user.sub, body.notes ?? '');
+  }
+
+  @Post('logs/:id/reject')
+  reject(@Param('id') id: string, @Body() body: { notes?: string }, @Request() req: { user: { sub: string } }) {
+    return this.svc.adminReject(id, req.user.sub, body.notes ?? '');
+  }
+
+  @Post('recheck')
+  recheck(@Body() body: { entityType: string; entityId: string }) {
+    return this.svc.reCheckContent(body.entityType, body.entityId);
+  }
+
+  @Get('stats')
+  stats() { return this.svc.getStats(); }
+
+  @Get('settings')
+  getSettings() { return this.svc.getSettings(); }
+
+  @Patch('settings')
+  updateSettings(@Body() body: Record<string, unknown>) { return this.svc.updateSettings(body); }
+
+  @Get('rules')
+  getRules() { return this.svc.getRules(); }
+
+  @Post('rules')
+  createRule(@Body() body: { name: string; description?: string; ruleType: string; value: string; severity: string; applyTo: string[] }, @Request() req: { user: { sub: string } }) {
+    return this.svc.createRule({ ...body, createdBy: req.user.sub });
+  }
+
+  @Patch('rules/:id')
+  updateRule(@Param('id') id: string, @Body() body: Partial<{ name: string; value: string; severity: string; isActive: boolean; applyTo: string[] }>) {
+    return this.svc.updateRule(id, body);
+  }
+
+  @Delete('rules/:id')
+  deleteRule(@Param('id') id: string) { return this.svc.deleteRule(id); }
+}
+
+@Controller('admin/stores')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN', 'SUPER_ADMIN')
+export class StoreViolationsController {
+  constructor(private readonly svc: ModerationService) {}
+
+  @Get(':id/violations')
+  getViolations(@Param('id') id: string) { return this.svc.getStoreViolations(id); }
+
+  @Post(':id/clear-strikes')
+  clearStrikes(@Param('id') id: string) { return this.svc.clearStrikes(id); }
+}

@@ -16,7 +16,7 @@ import { OrderStatus } from '@prisma/client';
 export class UpdateStoreOrderDto {
   @IsEnum(OrderStatus)
   @IsOptional()
-  status?: 'PROCESSING' | 'SHIPPED' | 'DELIVERED';
+  status?: 'IN_PRODUCTION' | 'SHIPPED' | 'DELIVERED';
 
   @IsString()
   @IsOptional()
@@ -35,7 +35,7 @@ export class UpdateStoreOrderDto {
   sellerNotes?: string;
 }
 
-const SELLER_UPDATABLE_STATUSES = ['PROCESSING', 'SHIPPED', 'DELIVERED'];
+const SELLER_UPDATABLE_STATUSES = ['IN_PRODUCTION', 'SHIPPED', 'DELIVERED'];
 
 @Injectable()
 export class StoreOrdersService {
@@ -221,11 +221,11 @@ export class StoreOrdersService {
         where: { storeId, createdAt: { gte: today } },
       }),
       this.prisma.storeOrder.aggregate({
-        where:  { storeId, status: { in: ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'COMPLETED'] }, createdAt: { gte: monthStart } },
+        where:  { storeId, status: { in: ['CONFIRMED', 'IN_PRODUCTION', 'SHIPPED', 'DELIVERED', 'COMPLETED'] as OrderStatus[] }, createdAt: { gte: monthStart } },
         _sum:   { sellerEarnings: true },
       }),
       this.prisma.storeOrder.count({
-        where: { storeId, status: { in: ['CONFIRMED', 'PROCESSING'] } },
+        where: { storeId, status: { in: ['CONFIRMED', 'IN_PRODUCTION'] as OrderStatus[] } },
       }),
       this.prisma.store.findUnique({
         where:  { id: storeId },
@@ -235,7 +235,7 @@ export class StoreOrdersService {
 
     return {
       ordersToday,
-      revenueThisMonth: Number(revenueThisMonth._sum.sellerEarnings ?? 0),
+      revenueThisMonth: Number(revenueThisMonth._sum?.sellerEarnings ?? 0),
       pendingShipments,
       rating:           Number(store?.rating ?? 0),
     };
@@ -276,7 +276,7 @@ export class StoreOrdersService {
     const available = await this.prisma.storeOrder.aggregate({
       where: {
         storeId,
-        status:   { in: ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'COMPLETED'] },
+        status:   { in: ['CONFIRMED', 'IN_PRODUCTION', 'SHIPPED', 'DELIVERED', 'COMPLETED'] as OrderStatus[] },
         payoutId: null,
       },
       _sum: { sellerEarnings: true },
@@ -284,7 +284,7 @@ export class StoreOrdersService {
 
     return {
       ...paginatedResponse(payouts, page, limit, total),
-      availableBalance: Number(available._sum.sellerEarnings ?? 0),
+      availableBalance: Number(available._sum?.sellerEarnings ?? 0),
     };
   }
 }

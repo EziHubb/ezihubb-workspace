@@ -3,9 +3,21 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
-import { ShoppingBag } from 'lucide-react';
+import { ShoppingBag, Clock, Truck, CheckCircle2, XCircle } from 'lucide-react';
 import { Pagination, Skeleton } from '@mlh/ui';
 import { useAuthQuery } from '../../../../../lib/hooks/useAuthQuery';
+import { API_ROUTES } from '@mlh/constants';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface OrderCounts {
+  total:          number;
+  confirmedCount: number;
+  processingCount:number;
+  shippedCount:   number;
+  deliveredCount: number;
+  cancelledCount: number;
+}
 
 interface StoreOrderItem {
   productName: string;
@@ -20,16 +32,18 @@ interface StoreOrderRow {
   sellerEarnings: number;
   createdAt:      string;
   order: {
-    orderNumber: string;
+    orderNumber:  string;
     shippingCity: string | null;
   };
   items: StoreOrderItem[];
 }
 
 interface PaginatedOrders {
-  data: StoreOrderRow[];
+  data:       StoreOrderRow[];
   pagination: { page: number; totalPages: number; total: number };
 }
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const STATUS_TABS = [
   { label: 'All',        value: ''           },
@@ -50,23 +64,21 @@ const STATUS_COLORS: Record<string, string> = {
 
 const fmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-function OrderRowSkeleton() {
-  return (
-    <div className="p-4 border border-border rounded-card space-y-2 animate-pulse">
-      <Skeleton variant="text" className="w-40" />
-      <Skeleton variant="text" className="w-64" />
-    </div>
-  );
-}
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SellerOrdersPage() {
   const locale = useLocale();
   const [status, setStatus] = useState('');
   const [page,   setPage  ] = useState(1);
 
+  const { data: counts } = useAuthQuery<OrderCounts>(
+    ['seller', 'orders', 'counts'],
+    API_ROUTES.SELLER.ORDERS_COUNTS,
+  );
+
   const { data, isLoading } = useAuthQuery<PaginatedOrders>(
     ['seller', 'orders', { status, page }],
-    '/seller/orders',
+    API_ROUTES.SELLER.ORDERS,
     { status: status || undefined, page, limit: 20 },
   );
 
@@ -78,7 +90,28 @@ export default function SellerOrdersPage() {
     <div className="space-y-6">
       <h1 className="font-display text-2xl font-bold text-secondary">Orders</h1>
 
-      {/* Status tabs */}
+      {/* ── Stats row ─────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { icon: ShoppingBag,  label: 'Total Orders', value: String(counts?.total           ?? 0), sub: 'all time',         color: 'bg-blue-500'   },
+          { icon: Clock,        label: 'Processing',   value: String(counts?.processingCount  ?? 0), sub: 'needs fulfillment', color: 'bg-amber-500'  },
+          { icon: Truck,        label: 'Shipped',      value: String(counts?.shippedCount     ?? 0), sub: 'in transit',        color: 'bg-purple-500' },
+          { icon: CheckCircle2, label: 'Delivered',    value: String(counts?.deliveredCount   ?? 0), sub: 'completed',         color: 'bg-green-500'  },
+        ].map(({ icon: Icon, label, value, sub, color }) => (
+          <div key={label} className="bg-surface border border-border rounded-card p-4 flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+              <Icon className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs text-muted font-medium">{label}</p>
+              <p className="text-lg font-bold text-secondary tabular-nums">{value}</p>
+              <p className="text-xs text-muted">{sub}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Status tabs ───────────────────────────────────────────────────── */}
       <div
         role="tablist"
         className="flex gap-1 border-b border-border overflow-x-auto [&::-webkit-scrollbar]:hidden"
@@ -98,21 +131,31 @@ export default function SellerOrdersPage() {
             ].join(' ')}
           >
             {tab.label}
+            {tab.value === 'PROCESSING' && (counts?.processingCount ?? 0) > 0 && (
+              <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 rounded-full">
+                {counts?.processingCount ?? 0}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
-      {/* Loading */}
+      {/* ── Loading ───────────────────────────────────────────────────────── */}
       {isLoading && (
         <div className="space-y-3">
-          {Array.from({ length: 6 }).map((_, i) => <OrderRowSkeleton key={i} />)}
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} variant="rect" className="h-16 rounded-card" />
+          ))}
         </div>
       )}
 
-      {/* Empty */}
+      {/* ── Empty ─────────────────────────────────────────────────────────── */}
       {!isLoading && orders.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-          <ShoppingBag className="w-14 h-14 text-muted/30" />
+          {status === 'CANCELLED'
+            ? <XCircle className="w-14 h-14 text-muted/30" />
+            : <ShoppingBag className="w-14 h-14 text-muted/30" />
+          }
           <p className="font-semibold text-secondary">No orders found</p>
           <p className="text-sm text-muted">
             {status ? 'Try a different status filter.' : 'Your first order will appear here.'}
@@ -120,7 +163,7 @@ export default function SellerOrdersPage() {
         </div>
       )}
 
-      {/* List */}
+      {/* ── Order list ────────────────────────────────────────────────────── */}
       {!isLoading && orders.length > 0 && (
         <>
           <p className="text-sm text-muted">{total} order{total !== 1 ? 's' : ''}</p>
@@ -136,9 +179,7 @@ export default function SellerOrdersPage() {
                     <span className="font-mono text-sm font-semibold text-secondary">
                       {o.order.orderNumber}
                     </span>
-                    <span
-                      className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[o.status] ?? 'bg-muted/10 text-muted'}`}
-                    >
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[o.status] ?? 'bg-muted/10 text-muted'}`}>
                       {o.status}
                     </span>
                   </div>

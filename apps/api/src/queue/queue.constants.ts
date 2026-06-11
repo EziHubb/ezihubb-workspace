@@ -9,6 +9,7 @@ export const QUEUES = {
   LOW_STOCK:            'low-stock',
   TRANSLATIONS:         'translations',
   REFERRAL:             'referral',
+  MODERATION:           'moderation',
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
@@ -44,6 +45,15 @@ export const JOBS = {
   // Referral
   REFERRAL_AUTO_CONFIRM: 'referral-auto-confirm',
   REFERRAL_CHECK_TIER:   'referral-check-tier',
+
+  // Moderation
+  CHECK_TEXT:  'check-text',
+  CHECK_IMAGE: 'check-image',
+
+  // Buyer Referral Store Credit
+  BUYER_REFERRAL_CREATE:  'buyer-referral-create',
+  BUYER_REFERRAL_PROCESS: 'buyer-referral-process',
+  BUYER_REFERRAL_EXPIRE:  'buyer-referral-expire',
 } as const;
 
 export type JobName = (typeof JOBS)[keyof typeof JOBS];
@@ -92,3 +102,21 @@ export interface OrderConfirmedJobData {
 export interface OrderAutoCompleteJobData {
   orderId: string;
 }
+
+export interface CheckTextJobData {
+  entityType: string;
+  entityId:   string;
+  fieldName:  string;
+  content:    string;
+  storeId?:   string;
+}
+
+export interface CheckImageJobData {
+  entityType: string;
+  entityId:   string;
+  imageUrl:   string;
+  storeId?:   string;
+}
+
+export interface BuyerReferralCreateJobData { orderId: string; }
+export interface BuyerReferralProcessJobData { orderId: string; cookieToken: string; }

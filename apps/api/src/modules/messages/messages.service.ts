@@ -3,7 +3,9 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { ModerationService } from '../moderation/moderation.service';
 import { ConversationStatus, SenderType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -29,6 +31,7 @@ export class MessagesService {
     private readonly prisma:         PrismaService,
     private readonly notifications:  NotificationsService,
     private readonly pushService:    PushService,
+    @Optional() private readonly moderationService?: ModerationService,
   ) {}
 
   async createConversation(userId: string | null, dto: CreateConversationDto) {
@@ -123,6 +126,9 @@ export class MessagesService {
         },
       }),
     ]);
+
+    // fire-and-forget
+    this.moderationService?.queueMessageModeration(message.id).catch((e) => this.logger.error('mod queue failed', e));
 
     // Fire email notification (non-blocking)
     const recipientEmail = isCustomer

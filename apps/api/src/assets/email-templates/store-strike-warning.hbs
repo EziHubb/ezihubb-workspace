@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Store strike warning</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; background: #faf9f7; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .header { background: #92400e; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #fef3c7; margin: 0; font-size: 24px; }
+    .body { padding: 40px; color: #3d2b1f; line-height: 1.7; }
+    .warning-box { background: #fffbeb; border-left: 4px solid #d97706; border-radius: 4px; padding: 16px 20px; margin: 20px 0; }
+    .cta { display: inline-block; margin: 16px 0; background: #3d2b1f; color: #f5e6d3 !important; padding: 12px 24px; border-radius: 4px; text-decoration: none; }
+    .footer { background: #f5e6d3; padding: 20px 40px; text-align: center; font-size: 12px; color: #7a5c45; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header"><h1>🍁 MapleLoom</h1><p>Trust &amp; Safety Warning</p></div>
+    <div class="body">
+      <h2>Hi {{sellerName}},</h2>
+      <div class="warning-box">
+        <p>&#9888;&#65039; Your store has received <strong>{{strikeCount}} content violations</strong> in the past <strong>{{windowDays}} days</strong>.</p>
+      </div>
+      <p>If your store reaches <strong>{{maxStrikes}} violations</strong>, it will be automatically suspended pending review.</p>
+      <p>Please review MapleLoom's Seller Policies to ensure all your content complies with our guidelines.</p>
+      {{#if sellerDashboardUrl}}<a class="cta" href="{{sellerDashboardUrl}}/violations">View your violations &rarr;</a>{{/if}}
+      <p><strong>MapleLoom Trust &amp; Safety</strong></p>
+    </div>
+    <div class="footer">&copy; {{year}} MapleLoom. All rights reserved.</div>
+  </div>
+</body>
+</html>

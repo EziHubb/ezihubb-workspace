@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Action required: Content flagged</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; background: #faf9f7; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .header { background: #3d2b1f; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #f5e6d3; margin: 0; font-size: 24px; letter-spacing: 1px; }
+    .body { padding: 40px; color: #3d2b1f; line-height: 1.7; }
+    .highlight-box { background: #fff8f0; border-left: 4px solid #e85d3f; border-radius: 4px; padding: 16px 20px; margin: 20px 0; }
+    .footer { background: #f5e6d3; padding: 20px 40px; text-align: center; font-size: 12px; color: #7a5c45; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header"><h1>🍁 MapleLoom</h1><p>Content Review Notice</p></div>
+    <div class="body">
+      <h2>Action required, {{sellerName}}</h2>
+      <p>One of your <strong>{{entityType}}</strong> listings has been flagged by our automated content review system.</p>
+      <div class="highlight-box">
+        <p><strong>Issue:</strong> {{sellerMessage}}</p>
+        {{#if contentPreview}}<p><strong>Content:</strong> "{{contentPreview}}"</p>{{/if}}
+      </div>
+      <p><strong>What happens next:</strong></p>
+      <ul>
+        <li>Your content is temporarily hidden from the storefront</li>
+        <li>Our team will review it within 24 hours</li>
+        <li>You'll receive an email once reviewed</li>
+      </ul>
+      <p>If you believe this is a mistake, you can submit an appeal from your Seller Dashboard.</p>
+      <p>Warmly,<br /><strong>MapleLoom Seller Support</strong></p>
+    </div>
+    <div class="footer">&copy; {{year}} MapleLoom. All rights reserved.</div>
+  </div>
+</body>
+</html>

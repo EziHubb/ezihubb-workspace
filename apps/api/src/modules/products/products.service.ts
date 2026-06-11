@@ -4,7 +4,9 @@ import {
   BadRequestException,
   ConflictException,
   Logger,
+  Optional,
 } from '@nestjs/common';
+import { ModerationService } from '../moderation/moderation.service';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Prisma, OrderStatus, ProductStatus } from '@prisma/client';
@@ -61,6 +63,7 @@ export class ProductsService {
     @InjectModel(ProductDetail.name)
     private readonly productDetailModel: Model<ProductDetail>,
     private readonly autoTranslate: AutoTranslateService,
+    @Optional() private readonly moderationService?: ModerationService,
   ) {}
 
   // ─── Public — list ─────────────────────────────────────────────────────────
@@ -412,6 +415,9 @@ export class ProductsService {
     });
 
     await this.redis.invalidatePattern('products:list:*');
+
+    // fire-and-forget
+    this.moderationService?.queueProductModeration(product.id).catch((e) => this.logger.error('mod queue failed', e));
 
     // Trigger background auto-translation (non-blocking)
     this.autoTranslate.triggerTranslation('Product', product.id, {
@@ -1494,6 +1500,9 @@ export class ProductsService {
         shippingProfileId: dto.shippingProfileId,
       },
     });
+
+    // fire-and-forget
+    this.moderationService?.queueProductModeration(id).catch((e) => this.logger.error('mod queue failed', e));
 
     await this.redis.invalidatePattern('products:list:*');
     return this.findByIdAdmin(id);

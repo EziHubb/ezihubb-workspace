@@ -342,7 +342,7 @@ export class CsvImportService {
     const slug = row.slug || this.slugify(row.name);
 
     // 5 — check if product exists by slug
-    const existing = await this.prisma.product.findUnique({ where: { slug } });
+    const existing = await this.prisma.product.findFirst({ where: { slug } });
 
     if (existing) {
       // UPDATE — minimal scalar-only update; skip relations for safety
@@ -397,7 +397,7 @@ export class CsvImportService {
 
     // Optionally create a variation group
     if (row.variationGroupName && row.variationOptions.length > 0) {
-      const product = await this.prisma.product.findUnique({ where: { slug } });
+      const product = await this.prisma.product.findFirst({ where: { slug } });
       if (product) {
         await this.prisma.variationGroup.create({
           data: {

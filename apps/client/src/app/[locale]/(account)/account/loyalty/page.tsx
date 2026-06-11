@@ -1,10 +1,11 @@
 'use client';
 
-import { Star, Clock, TrendingUp, Tag } from 'lucide-react';
+import { Star, Clock, TrendingUp, Tag, CreditCard } from 'lucide-react';
 import { Skeleton } from '@mlh/ui';
 import { useTranslations } from 'next-intl';
 import { useAuthQuery } from '../../../../../lib/hooks/useAuthQuery';
 import { API_ROUTES } from '@mlh/constants';
+import { fmtAmount } from '../../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,20 @@ interface LoyaltyAccount {
   pointsPending:  number;
   pointsLifetime: number;
   transactions:   LoyaltyTransaction[];
+}
+
+interface StoreCredit {
+  id:        string;
+  storeId:   string;
+  amount:    number;
+  expiresAt: string;
+  reason:    string;
+  createdAt: string;
+}
+
+interface StoreCreditSummary {
+  credits: StoreCredit[];
+  total:   number;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -112,6 +127,10 @@ export default function LoyaltyPage() {
     ['loyalty', 'me'],
     API_ROUTES.LOYALTY.ME,
   );
+  const { data: storeCreditData } = useAuthQuery<StoreCreditSummary>(
+    ['account', 'store-credits'],
+    API_ROUTES.STORE_CREDITS.STORE_CREDITS_ME,
+  );
 
   return (
     <div className="space-y-6">
@@ -191,6 +210,49 @@ export default function LoyaltyPage() {
             )}
           </div>
         </>
+      )}
+
+      {/* ── Store Credits ──────────────────────────────────────────────────────── */}
+      {storeCreditData && (storeCreditData.total > 0 || storeCreditData.credits.length > 0) && (
+        <section className="mt-8">
+          <div className="flex items-center gap-2 mb-4">
+            <CreditCard className="w-5 h-5 text-green-600" />
+            <h2 className="font-semibold text-secondary">Store Credits</h2>
+          </div>
+
+          {/* Balance summary */}
+          <div className="bg-green-50 border border-green-200 rounded-card p-4 flex items-center gap-4 mb-4">
+            <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center shrink-0">
+              <CreditCard className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs text-muted font-medium">Available balance</p>
+              <p className="text-xl font-bold text-green-700 tabular-nums">{fmtAmount(storeCreditData.total)}</p>
+              <p className="text-xs text-muted">Applied automatically at checkout</p>
+            </div>
+          </div>
+
+          {/* Individual credits */}
+          {storeCreditData.credits.length > 0 && (
+            <div className="border border-border rounded-card overflow-hidden">
+              {storeCreditData.credits.map((c) => (
+                <div key={c.id} className="flex items-center justify-between px-5 py-3.5 border-b border-border last:border-0">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                        {c.reason === 'BUYER_REFERRAL' ? '🎁 Referral' : c.reason === 'ADMIN_GRANT' ? '🎟️ Grant' : '↩ Return'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted">
+                      Expires {new Date(c.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <span className="text-sm font-bold tabular-nums text-green-700">{fmtAmount(Number(c.amount))}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       )}
     </div>
   );

@@ -42,6 +42,8 @@ import { UnsubscribeController } from '../modules/unsubscribe/unsubscribe.contro
 import { TranslationsModule } from '../modules/translations/translations.module';
 import { ReferralModule } from '../modules/referrals/referral.module';
 import { StoresModule } from '../modules/stores/stores.module';
+import { ModerationModule } from '../modules/moderation/moderation.module';
+import { StoreCreditsModule } from '../modules/store-credits/store-credits.module';
 import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
 
 @Module({
@@ -75,6 +77,8 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
         SMTP_USER: Joi.string().optional(),
         SMTP_PASS: Joi.string().optional(),
         EMAIL_FROM: Joi.string().email().default('noreply@mapleloomhandmade.com'),
+        // Anthropic — optional during development
+        ANTHROPIC_API_KEY: Joi.string().optional(),
         // Google OAuth — optional during development
         GOOGLE_CLIENT_ID: Joi.string().optional(),
         GOOGLE_CLIENT_SECRET: Joi.string().optional(),
@@ -143,6 +147,8 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
     TranslationsModule,
     ReferralModule,
     StoresModule,
+    ModerationModule,
+    StoreCreditsModule,
     HealthModule,
   ],
   controllers: [AppController, UnsubscribeController],

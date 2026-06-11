@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CRITICAL: Content violation</title>
+  <style>
+    body { font-family: monospace; background: #0f172a; margin: 0; padding: 0; color: #f8fafc; }
+    .wrapper { max-width: 600px; margin: 40px auto; background: #1e293b; border-radius: 8px; overflow: hidden; }
+    .header { background: #dc2626; padding: 24px 32px; }
+    .header h1 { color: #fff; margin: 0; font-size: 20px; }
+    .body { padding: 32px; line-height: 1.8; }
+    .row { margin: 8px 0; }
+    .label { color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+    .value { color: #f8fafc; font-size: 14px; }
+    .alert { background: #450a0a; border: 1px solid #dc2626; border-radius: 4px; padding: 12px 16px; margin: 16px 0; color: #fca5a5; }
+    .cta { display: inline-block; margin: 16px 0; background: #dc2626; color: #fff !important; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header"><h1>🚨 CRITICAL MODERATION ALERT</h1></div>
+    <div class="body">
+      <div class="row"><div class="label">Entity type</div><div class="value">{{entityType}} — {{entityId}}</div></div>
+      <div class="row"><div class="label">Violation</div><div class="value">{{categories}}</div></div>
+      <div class="row"><div class="label">Confidence</div><div class="value">{{confidence}}%</div></div>
+      {{#if reasoning}}<div class="row"><div class="label">Reasoning</div><div class="value">{{reasoning}}</div></div>{{/if}}
+      <div class="alert">AUTO-ACTION TAKEN: Content hidden + strike recorded</div>
+      {{#if adminUrl}}<a class="cta" href="{{adminUrl}}/moderation/{{logId}}">Review in Admin Panel &rarr;</a>{{/if}}
+    </div>
+  </div>
+</body>
+</html>

@@ -77,6 +77,11 @@ export const API_ROUTES = {
     TAX_PREVIEW: '/orders/tax-preview',
   },
 
+  STORE_CREDITS: {
+    STORE_CREDITS_ME:    '/store-credits/me',
+    BUYER_REFERRAL_LINK: (orderNumber: string) => `/orders/${orderNumber}/buyer-referral`,
+  },
+
   PAYMENTS: {
     INTENT:               '/payments/intent',
     CONFIRM:              '/payments/confirm',
@@ -194,6 +199,9 @@ export const API_ROUTES = {
     DASHBOARD_BY_STATUS: '/admin/dashboard/orders-by-status',
     DASHBOARD_TOP:       '/admin/dashboard/top-products',
     PENDING_REVIEWS:     '/admin/dashboard/pending-reviews',
+    DASHBOARD_PLATFORM:  '/admin/dashboard/platform',
+    DASHBOARD_ACTIVITY:  '/admin/dashboard/activity',
+    DASHBOARD_TOP_STORES: '/admin/dashboard/top-stores',
 
     // ── Orders ───────────────────────────────────────────────────────────────
     ORDERS:               '/admin/orders',
@@ -361,6 +369,8 @@ export const API_ROUTES = {
     STORE_REJECT:             (id: string) => `/admin/stores/${id}/reject`,
     STORE_SUSPEND:            (id: string) => `/admin/stores/${id}/suspend`,
     STORE_PLAN:               (id: string) => `/admin/stores/${id}/plan`,
+    STORE_PRODUCTS:           (id: string) => `/admin/stores/${id}/products`,
+    STORE_ORDERS:             (id: string) => `/admin/stores/${id}/orders`,
     STORES_PENDING_COUNT:     '/admin/stores?status=PENDING',
     SELLER_PLANS:             '/admin/plans',
     SELLER_PLAN:              (id: string) => `/admin/plans/${id}`,
@@ -368,5 +378,55 @@ export const API_ROUTES = {
     SELLER_PAYOUTS:           '/admin/seller-payouts',
     SELLER_PAYOUT:            (id: string) => `/admin/seller-payouts/${id}`,
     SELLER_PAYOUT_PAY:        (id: string) => `/admin/seller-payouts/${id}/pay`,
+    SELLER_PAYOUTS_STATS:     '/admin/seller-payouts/stats',
+
+    // ── Finance ──────────────────────────────────────────────────────────────
+    FINANCE_STATS:            '/admin/finance/stats',
+    FINANCE_STORES:           '/admin/finance/stores',
+    FINANCE_CHART:            '/admin/finance/chart',
+
+    // ── Moderation / Trust & Safety ──────────────────────────────────────────
+    MODERATION_FLAGS:         '/admin/moderation/flags',
+    MODERATION_STATS:         '/admin/moderation/stats',
+    MODERATION_FLAG:          (id: string) => `/admin/moderation/flags/${id}`,
+    MODERATION_FLAG_APPROVE:  (id: string) => `/admin/moderation/flags/${id}/approve`,
+    MODERATION_FLAG_REJECT:   (id: string) => `/admin/moderation/flags/${id}/reject`,
+    MODERATION_FLAG_ESCALATE: (id: string) => `/admin/moderation/flags/${id}/escalate`,
+    MODERATION_RULES:         '/admin/moderation/rules',
+    MODERATION_RULE:          (id: string) => `/admin/moderation/rules/${id}`,
+    MODERATION_RULE_TOGGLE:   (id: string) => `/admin/moderation/rules/${id}/toggle`,
+
+    MODERATION_QUEUE:        '/admin/moderation/queue',
+    MODERATION_LOGS:         '/admin/moderation/logs',
+    MODERATION_LOG:          (id: string) => `/admin/moderation/logs/${id}`,
+    MODERATION_LOG_APPROVE:  (id: string) => `/admin/moderation/logs/${id}/approve`,
+    MODERATION_LOG_REJECT:   (id: string) => `/admin/moderation/logs/${id}/reject`,
+    MODERATION_RECHECK:      '/admin/moderation/recheck',
+    MODERATION_SETTINGS:     '/admin/moderation/settings',
+    MODERATION_STORE_VIOLATIONS: (storeId: string) => `/admin/stores/${storeId}/violations`,
+    MODERATION_STORE_CLEAR_STRIKES: (storeId: string) => `/admin/stores/${storeId}/clear-strikes`,
+
+    // ── Store Credits ────────────────────────────────────────────────────────
+    STORE_CREDITS:         '/admin/store-credits',
+    STORE_CREDITS_STATS:   '/admin/store-credits/stats',
+  },
+
+  // ── Seller (store-owner portal) ─────────────────────────────────────────────
+  SELLER: {
+    DASHBOARD_STATS:   '/seller/orders/stats',
+    DASHBOARD_RECENT:  '/seller/orders/recent',
+    PRODUCTS:          '/seller/products',
+    PRODUCT:           (id: string) => `/seller/products/${id}`,
+    PRODUCT_STATUS:    (id: string) => `/seller/products/${id}/status`,
+    ORDERS:            '/seller/orders',
+    ORDER:             (id: string) => `/seller/orders/${id}`,
+    ORDERS_COUNTS:     '/seller/orders/counts',
+    PAYOUTS:           '/seller/payouts',
+    PAYOUT_REQUEST:    '/seller/payouts/request',
+    PAYOUT_STATS:      '/seller/payouts/stats',
+    STORE_ME:          '/stores/me',
+    STORE_ME_UPDATE:   '/stores/me',
+    STORE_APPLY:       '/stores/apply',
+    STORE_APPLICATION: '/stores/me/application',
   },
 } as const;

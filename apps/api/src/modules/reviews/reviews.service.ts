@@ -4,7 +4,9 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { ModerationService } from '../moderation/moderation.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -43,6 +45,7 @@ export class ReviewsService {
     private readonly storage: StorageService,
     private readonly redis: RedisService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
+    @Optional() private readonly moderationService?: ModerationService,
   ) {}
 
   // ── Public ───────────────────────────────────────────────────────────────────
@@ -51,7 +54,7 @@ export class ReviewsService {
     productSlug: string,
     query: ReviewQueryDto,
   ): Promise<PaginatedResult<ReviewResponseDto>> {
-    const product = await this.prisma.product.findUnique({
+    const product = await this.prisma.product.findFirst({
       where: { slug: productSlug },
       select: { id: true },
     });
@@ -84,7 +87,7 @@ export class ReviewsService {
   }
 
   async getProductSummaryBySlug(slug: string): Promise<ReviewSummaryDto> {
-    const product = await this.prisma.product.findUnique({
+    const product = await this.prisma.product.findFirst({
       where: { slug },
       select: { id: true },
     });
@@ -136,7 +139,7 @@ export class ReviewsService {
     productSlug: string,
     dto: CreateReviewDto,
   ): Promise<ReviewResponseDto> {
-    const product = await this.prisma.product.findUnique({
+    const product = await this.prisma.product.findFirst({
       where: { slug: productSlug },
       select: { id: true },
     });
@@ -195,6 +198,9 @@ export class ReviewsService {
       },
       include: REVIEW_INCLUDE,
     });
+
+    // fire-and-forget
+    this.moderationService?.queueReviewModeration(review.id).catch((e) => this.logger.error('mod queue failed', e));
 
     return this.mapToDto(review);
   }
@@ -297,7 +303,7 @@ export class ReviewsService {
     userId: string,
     productSlug: string,
   ): Promise<ReviewResponseDto | null> {
-    const product = await this.prisma.product.findUnique({
+    const product = await this.prisma.product.findFirst({
       where: { slug: productSlug },
       select: { id: true },
     });

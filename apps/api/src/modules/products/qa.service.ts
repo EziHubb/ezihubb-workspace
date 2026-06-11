@@ -30,7 +30,7 @@ export class QaService {
   // ── Customer: ask a question ─────────────────────────────────────────────────
 
   async askQuestion(productSlug: string, dto: AskQuestionDto) {
-    const product = await this.prisma.product.findUnique({
+    const product = await this.prisma.product.findFirst({
       where:  { slug: productSlug },
       select: { id: true, name: true },
     });
@@ -52,7 +52,7 @@ export class QaService {
   // ── Public: get published Q&As ───────────────────────────────────────────────
 
   async getPublishedQAs(productSlug: string) {
-    const product = await this.prisma.product.findUnique({
+    const product = await this.prisma.product.findFirst({
       where:  { slug: productSlug },
       select: { id: true },
     });
