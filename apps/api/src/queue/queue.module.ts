@@ -7,7 +7,7 @@ import { OrderProcessor } from './order.processor';
 import { AbandonedCartProcessor } from './abandoned-cart.processor';
 import { QueueSchedulerService } from './queue-scheduler.service';
 import { DevBullModule } from './dev-bull.module';
-import { ModerationProcessor } from './moderation.processor';
+import { ModerationProcessor } from '../modules/moderation/moderation.processor';
 
 const ALL_QUEUES = [
   QUEUES.EMAIL,

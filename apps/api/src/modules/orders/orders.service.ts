@@ -18,7 +18,6 @@ import { LoyaltyService } from '../loyalty/loyalty.service';
 import { PushService } from '../notifications/push.service';
 import { ReferralService } from '../referrals/referral.service';
 import { StoreCreditsService } from '../store-credits/store-credits.service';
-import Decimal from 'decimal.js';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
@@ -255,16 +254,16 @@ export class OrdersService {
     // Determine the primary store for this order (first store in cart)
     const primaryStoreId = cart.items.find(i => i.product.storeId)?.product.storeId ?? null;
 
-    let storeCreditUsed = new Decimal(0);
+    let storeCreditUsed = new Prisma.Decimal(0);
     if (dto.useStoreCredit && userId && primaryStoreId) {
       const available = await this.storeCreditsService?.getUserStoreCredits(userId);
       const availableForStore = available?.credits
         .filter((c: { storeId: string; amount: { toString(): string } }) => c.storeId === primaryStoreId)
         .reduce(
-          (s: Decimal, c: { amount: { toString(): string } }) => s.plus(new Decimal(c.amount.toString())),
-          new Decimal(0),
-        ) ?? new Decimal(0);
-      const subtotalDecimal = new Decimal(subtotalAfterDiscount);
+          (s: Prisma.Decimal, c: { amount: { toString(): string } }) => s.plus(new Prisma.Decimal(c.amount.toString())),
+          new Prisma.Decimal(0),
+        ) ?? new Prisma.Decimal(0);
+      const subtotalDecimal = new Prisma.Decimal(subtotalAfterDiscount);
       storeCreditUsed = availableForStore.gt(subtotalDecimal) ? subtotalDecimal : availableForStore;
     }
 
@@ -342,7 +341,7 @@ export class OrdersService {
           referralDiscountAmount:   referralDiscountAmt > 0 ? referralDiscountAmt : undefined,
           pointsRedeemed:          pointsToRedeem > 0 ? pointsToRedeem : undefined,
           pointsDiscount:          pointsDiscount > 0 ? pointsDiscount : undefined,
-          storeCreditUsed:         new Decimal(0), // updated after credit is consumed below
+          storeCreditUsed:         new Prisma.Decimal(0), // updated after credit is consumed below
           buyerRefToken:           buyerRefToken ?? null,
         },
       });

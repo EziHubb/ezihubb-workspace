@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Prisma } from '@prisma/client';
-import Decimal from 'decimal.js';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
@@ -10,7 +9,7 @@ import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
 @Injectable()
 export class StoreCreditsService {
   private readonly logger = new Logger(StoreCreditsService.name);
-  private readonly DEFAULT_CREDIT_AMOUNT = new Decimal(4);
+  private readonly DEFAULT_CREDIT_AMOUNT = new Prisma.Decimal(4);
   private readonly CREDIT_EXPIRY_DAYS    = 90;
   private readonly REFERRAL_WINDOW_DAYS  = 30;
 
@@ -162,8 +161,8 @@ export class StoreCreditsService {
     });
 
     const total = credits.reduce(
-      (sum, c) => sum.plus(new Decimal(c.amount.toString())),
-      new Decimal(0),
+      (sum, c) => sum.plus(new Prisma.Decimal(c.amount.toString())),
+      new Prisma.Decimal(0),
     );
 
     return { credits, total: total.toNumber() };
@@ -175,22 +174,22 @@ export class StoreCreditsService {
     tx: Prisma.TransactionClient,
     userId: string,
     storeId: string,
-    amount: Decimal,
+    amount: Prisma.Decimal,
     orderId: string,
-  ): Promise<Decimal> {
+  ): Promise<Prisma.Decimal> {
     const credits = await tx.storeCredit.findMany({
       where: { userId, storeId, isUsed: false, expiresAt: { gt: new Date() } },
       orderBy: { expiresAt: 'asc' },
     });
 
-    let consumed = new Decimal(0);
+    let consumed = new Prisma.Decimal(0);
     let remaining = amount;
 
     for (const credit of credits) {
       if (remaining.lte(0)) break;
-      const creditAmt = new Decimal(credit.amount.toString());
+      const creditAmt = new Prisma.Decimal(credit.amount.toString());
       consumed = consumed.plus(creditAmt.gt(remaining) ? remaining : creditAmt);
-      remaining = remaining.minus(creditAmt).lt(0) ? new Decimal(0) : remaining.minus(creditAmt);
+      remaining = remaining.minus(creditAmt).lt(0) ? new Prisma.Decimal(0) : remaining.minus(creditAmt);
       await tx.storeCredit.update({
         where: { id: credit.id },
         data: { isUsed: true, usedAt: new Date(), usedInOrderId: orderId },

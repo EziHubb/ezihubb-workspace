@@ -31,13 +31,13 @@ export class ModerationService {
 
   private async getCachedSettings() {
     const cached = await this.redis.get(SETTINGS_CACHE);
-    if (cached) return JSON.parse(cached);
+    if (cached) return cached;
     const settings = await this.prisma.moderationSettings.upsert({
       where:  { id: 'singleton' },
       update: {},
       create: { id: 'singleton' },
     });
-    await this.redis.set(SETTINGS_CACHE, JSON.stringify(settings), 300);
+    await this.redis.set(SETTINGS_CACHE, settings, 300);
     return settings;
   }
 
@@ -169,7 +169,7 @@ export class ModerationService {
     // Quick keyword pre-check
     const rules = await this.getActiveRules();
     const quickResult = this.runLocalRules(dto.content, dto.entityType, rules);
-    if (quickResult?.severity === 'CRITICAL') {
+    if (quickResult?.verdict === 'CRITICAL') {
       await this.saveAndApply({ ...dto, hash, result: quickResult });
       return;
     }
@@ -529,21 +529,19 @@ export class ModerationService {
 
   private async getActiveRules() {
     const cached = await this.redis.get('moderation:rules');
-    if (cached) return JSON.parse(cached);
+    if (cached) return cached;
     const rules = await this.prisma.moderationRule.findMany({ where: { isActive: true } });
-    await this.redis.set('moderation:rules', JSON.stringify(rules), 300);
+    await this.redis.set('moderation:rules', rules, 300);
     return rules;
   }
 
   private async trackApiUsage(result: ModerationResult) {
     const callsKey = DAILY_CALLS_KEY();
     const costKey  = DAILY_COST_KEY();
-    await this.redis.incr(callsKey);
-    // Approximate cost: haiku ~$0.00025 per 1k input tokens
+    await this.redis.increment(callsKey, 86400);
     const cost = 0.001;
-    const existing = parseFloat(await this.redis.get(costKey) ?? '0');
-    await this.redis.set(costKey, String(existing + cost), 86400);
-    await this.redis.expire(callsKey, 86400);
+    const existingCost = await this.redis.get<number>(costKey) ?? 0;
+    await this.redis.set(costKey, existingCost + cost, 86400);
   }
 
   private async notifyAdminCritical(entityType: string, entityId: string, result: ModerationResult) {
@@ -584,5 +582,5 @@ export class ModerationService {
   }
 
   // Expose for tests
-  async incr(key: string) { return this.redis.incr(key); }
+  async incr(key: string) { return this.redis.increment(key); }
 }
