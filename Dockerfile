@@ -29,6 +29,9 @@ RUN pnpm install --no-frozen-lockfile
 # ── Build the selected service ────────────────────────────────────────────────
 FROM deps AS builder
 
+# Limit Next.js static-generation workers to avoid OOM during "Collecting page data"
+ENV NEXT_PRIVATE_CPUS=4
+
 # Next.js bakes NEXT_PUBLIC_* into the client bundle at build time.
 # These are public values — safe to pass as ARG. Secrets must never appear here.
 ARG NEXT_PUBLIC_API_URL
