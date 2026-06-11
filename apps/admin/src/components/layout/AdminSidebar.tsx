@@ -11,7 +11,8 @@ import {
   LayoutDashboard, ShoppingCart, ShoppingBag, FolderOpen,
   Tag, Layers, Users, BadgePercent, Star, Truck,
   CreditCard, Settings, ChevronDown, ChevronRight, LogOut, Globe, MessageSquare, Link2,
-  Bookmark, Factory, Shield, GitBranch, Store, BarChart2, Wallet,
+  Bookmark, Factory, Shield, GitBranch, Store, BarChart2, Wallet, ShieldAlert, History,
+  SlidersHorizontal, ScanSearch,
 } from 'lucide-react';
 
 // ── Nav item types ─────────────────────────────────────────────────────────────
@@ -75,6 +76,16 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Members',  href: '/creators/members',  icon: Users      },
       { label: 'Payouts',  href: '/creators/payouts',  icon: CreditCard },
       { label: 'Settings', href: '/creators/settings', icon: Settings   },
+    ],
+  },
+  {
+    label: 'Moderation', href: '/moderation', icon: ShieldAlert,
+    children: [
+      { label: 'Queue',    href: '/moderation/queue',    icon: ShieldAlert        },
+      { label: 'History',  href: '/moderation/history',  icon: History            },
+      { label: 'IP Scanner', href: '/moderation/ip-scan', icon: ScanSearch        },
+      { label: 'Rules',    href: '/moderation/rules',    icon: SlidersHorizontal  },
+      { label: 'Settings', href: '/moderation/settings', icon: Settings           },
     ],
   },
   {

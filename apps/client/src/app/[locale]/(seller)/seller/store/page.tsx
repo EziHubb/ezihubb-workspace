@@ -8,6 +8,7 @@ import { apiClient } from '@mlh/api-client';
 import { useAuthQuery, useAuthMutation } from '../../../../../lib/hooks/useAuthQuery';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount } from '../../../../../lib/fmt';
+import { CanvaConnectCard } from '../../../../../components/seller/CanvaConnectCard';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -367,6 +368,12 @@ export default function SellerStorePage() {
         <p className="text-xs text-muted uppercase tracking-wider mb-1">Your Store URL</p>
         <p className="font-mono text-sm text-secondary">mapleloom.com/shops/{store.slug}</p>
         <p className="text-xs text-muted mt-1">Store slug cannot be changed after approval.</p>
+      </div>
+
+      {/* ── Canva Integration (NFT-09) ────────────────────────────────────── */}
+      <div>
+        <p className="text-xs text-muted uppercase tracking-wider mb-3">Integrations</p>
+        <CanvaConnectCard />
       </div>
     </div>
   );

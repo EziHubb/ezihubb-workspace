@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { StoreOwnerGuard } from './guards/store-owner.guard';
 import { StoreOrdersService, UpdateStoreOrderDto } from './store-orders.service';
 import { ReviewsService } from '../reviews/reviews.service';
+import { PerformanceScoreService } from './performance-score.service';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
 export class MarkShippedDto {
@@ -119,5 +120,19 @@ export class SellerReviewsController {
     @Body() dto: SellerReviewReplyDto,
   ) {
     return this.reviewsService.replyToReviewAsSeller(id, req.store.id, dto.reply);
+  }
+}
+
+/** GET /seller/score – seller's own performance score */
+@ApiTags('Seller - Score')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, StoreOwnerGuard)
+@Controller('seller/score')
+export class SellerScoreController {
+  constructor(private readonly performanceScoreService: PerformanceScoreService) {}
+
+  @Get()
+  getMyScore(@Req() req: any) {
+    return this.performanceScoreService.getScoreBreakdown(req.store.id);
   }
 }

@@ -3,15 +3,21 @@ import {
   UseGuards, Request,
 } from '@nestjs/common';
 import { ModerationService } from './moderation.service';
+import { IPScanService } from './ip-scan.service';
+import { IPScanDto } from './dto/ip-scan.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '@mlh/constants';
 
 @Controller('admin/moderation')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'SUPER_ADMIN')
+@Roles(Role.ADMIN, Role.SUPER_ADMIN)
 export class ModerationController {
-  constructor(private readonly svc: ModerationService) {}
+  constructor(
+    private readonly svc:        ModerationService,
+    private readonly ipScanSvc:  IPScanService,
+  ) {}
 
   @Get('queue')
   getQueue(@Query() q: { page?: string; limit?: string; severity?: string; entityType?: string }) {
@@ -48,6 +54,11 @@ export class ModerationController {
     return this.svc.reCheckContent(body.entityType, body.entityId);
   }
 
+  @Post('ip-scan')
+  scanIP(@Body() dto: IPScanDto) {
+    return this.ipScanSvc.scanDesignForIP(dto);
+  }
+
   @Get('stats')
   stats() { return this.svc.getStats(); }
 
@@ -76,7 +87,7 @@ export class ModerationController {
 
 @Controller('admin/stores')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'SUPER_ADMIN')
+@Roles(Role.ADMIN, Role.SUPER_ADMIN)
 export class StoreViolationsController {
   constructor(private readonly svc: ModerationService) {}
 

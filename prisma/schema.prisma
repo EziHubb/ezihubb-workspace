@@ -95,40 +95,40 @@ enum ReturnPolicy {
 }
 
 enum ProductStatus {
-  DRAFT     // Being created — not yet published
-  ACTIVE    // Live and visible to buyers
-  INACTIVE  // Hidden from buyers, can be re-activated
-  ARCHIVED  // Soft-archived (replaces deletedAt pattern)
+  DRAFT // Being created — not yet published
+  ACTIVE // Live and visible to buyers
+  INACTIVE // Hidden from buyers, can be re-activated
+  ARCHIVED // Soft-archived (replaces deletedAt pattern)
 }
 
 enum LoyaltyTxType {
-  EARN    // purchase → pointsPending
-  REDEEM  // used at checkout (from pointsBalance)
-  CANCEL  // cancelled on refund
-  EXPIRE  // future use
-  ADJUST  // admin manual adjustment
+  EARN // purchase → pointsPending
+  REDEEM // used at checkout (from pointsBalance)
+  CANCEL // cancelled on refund
+  EXPIRE // future use
+  ADJUST // admin manual adjustment
 }
 
 enum AffiliateStatus {
-  PENDING     // applied, waiting admin review
-  ACTIVE      // approved, can generate links
-  SUSPENDED   // temporarily disabled by admin
-  REJECTED    // application denied
+  PENDING // applied, waiting admin review
+  ACTIVE // approved, can generate links
+  SUSPENDED // temporarily disabled by admin
+  REJECTED // application denied
 }
 
 enum CommissionStatus {
-  PENDING     // order placed, commission created
-  CONFIRMED   // 14 days after DELIVERED, locked
-  APPROVED    // admin approved for payout
-  PAID        // admin marked as paid
-  CANCELLED   // order refunded, commission voided
+  PENDING // order placed, commission created
+  CONFIRMED // 14 days after DELIVERED, locked
+  APPROVED // admin approved for payout
+  PAID // admin marked as paid
+  CANCELLED // order refunded, commission voided
 }
 
 enum PayoutStatus {
-  REQUESTED   // affiliate submitted payout request
-  PROCESSING  // admin acknowledged
-  PAID        // transfer done, admin marked paid
-  REJECTED    // admin rejected (under threshold, fraud, etc.)
+  REQUESTED // affiliate submitted payout request
+  PROCESSING // admin acknowledged
+  PAID // transfer done, admin marked paid
+  REJECTED // admin rejected (under threshold, fraud, etc.)
 }
 
 enum ReferralCommissionStatus {
@@ -195,17 +195,17 @@ model User {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  cartEmailToken   String?   @unique
-  cartEmailOptOut  Boolean   @default(false)
+  cartEmailToken  String? @unique
+  cartEmailOptOut Boolean @default(false)
 
-  totpSecret      String?
-  totpEnabled     Boolean   @default(false)
-  totpVerifiedAt  DateTime?
-  backupCodes     String[]
+  totpSecret     String?
+  totpEnabled    Boolean   @default(false)
+  totpVerifiedAt DateTime?
+  backupCodes    String[]
 
   // ── Seller fields ──────────────────────────────────────────────────────────
-  isSeller        Boolean  @default(false)
-  storeId         String?  // denormalized store id (set when approved); no FK to avoid circular ref
+  isSeller Boolean @default(false)
+  storeId  String? // denormalized store id (set when approved); no FK to avoid circular ref
 
   refreshTokens       RefreshToken[]
   emailVerifications  EmailVerification[]
@@ -223,35 +223,44 @@ model User {
   ownedStore          Store?               @relation("StoreOwner")
 
   // ── Referral tree ───────────────────────────────────────────────────────
-  referralCode         String?   @unique
-  referredByUserId     String?
-  referredBy           User?     @relation("ReferralTree", fields: [referredByUserId], references: [id])
-  referrals            User[]    @relation("ReferralTree")
-  referralDepth        Int       @default(0)
-  totalReferrals       Int       @default(0)
-  referralBalance      Decimal   @default(0) @db.Decimal(10, 2)
-  referralEarned       Decimal   @default(0) @db.Decimal(10, 2)
-  referralTierId       String?
-  referralTier         ReferralTier?        @relation(fields: [referralTierId], references: [id])
-  referralCommissions  ReferralCommission[] @relation("EarnerCommissions")
-  buyerCommissions     ReferralCommission[] @relation("BuyerCommissions")
-  referralPayouts      ReferralPayout[]
-  referralOrders       Order[]              @relation("ReferralOrders")
+  referralCode        String?              @unique
+  referredByUserId    String?
+  referredBy          User?                @relation("ReferralTree", fields: [referredByUserId], references: [id])
+  referrals           User[]               @relation("ReferralTree")
+  referralDepth       Int                  @default(0)
+  totalReferrals      Int                  @default(0)
+  referralBalance     Decimal              @default(0) @db.Decimal(10, 2)
+  referralEarned      Decimal              @default(0) @db.Decimal(10, 2)
+  referralTierId      String?
+  referralTier        ReferralTier?        @relation(fields: [referralTierId], references: [id])
+  referralCommissions ReferralCommission[] @relation("EarnerCommissions")
+  buyerCommissions    ReferralCommission[] @relation("BuyerCommissions")
+  referralPayouts     ReferralPayout[]
+  referralOrders      Order[]              @relation("ReferralOrders")
 
-  wishlistShareToken  String?  @unique
-  wishlistIsPublic    Boolean  @default(false)
-  wishlistName        String?  @db.VarChar(100)
+  wishlistShareToken String? @unique
+  wishlistIsPublic   Boolean @default(false)
+  wishlistName       String? @db.VarChar(100)
 
-  pushEnabled         Boolean  @default(true)
-  fcmTokens           FcmToken[]
+  pushEnabled Boolean    @default(true)
+  fcmTokens   FcmToken[]
 
-  adminNotes          String?  @db.Text
-  isActive            Boolean  @default(true)
-  lastLoginAt         DateTime?
+  adminNotes  String?   @db.Text
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime?
 
-  buyerReferralsMade     BuyerReferral[]  @relation("BuyerReferralsMade")
-  buyerReferralsReceived BuyerReferral[]  @relation("BuyerReferralsReceived")
+  buyerReferralsMade     BuyerReferral[] @relation("BuyerReferralsMade")
+  buyerReferralsReceived BuyerReferral[] @relation("BuyerReferralsReceived")
   storeCredits           StoreCredit[]
+
+  // ── New feature relations ──────────────────────────────────────────────────
+  dropWaitlists           DropWaitlist[]
+  membershipSubscriptions StoreMembershipSubscription[]
+  bountiesPosted          DesignBounty[]                @relation("UserBounties")
+  bountyEntries           DesignBountyEntry[]           @relation("UserBountyEntries")
+  canvaIntegration        CanvaIntegration?
+  socialConnections       SocialConnection[]
+  creatorDNAAnalyses      CreatorDNAAnalysis[]
 
   @@index([email])
 }
@@ -360,32 +369,55 @@ model Store {
   approvedById       String?
 
   // Denormalized stats
-  totalProducts  Int     @default(0)
-  totalOrders    Int     @default(0)
-  totalRevenue   Decimal @default(0) @db.Decimal(12, 2)
-  rating         Decimal @default(0) @db.Decimal(3, 2)
+  totalProducts Int     @default(0)
+  totalOrders   Int     @default(0)
+  totalRevenue  Decimal @default(0) @db.Decimal(12, 2)
+  rating        Decimal @default(0) @db.Decimal(3, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  moderationStatus  ModerationStatus @default(PENDING)
-  lastModeratedAt   DateTime?
-  strikeCount       Int              @default(0)
-  strikeRecords     StrikeRecord[]
+  moderationStatus ModerationStatus @default(PENDING)
+  lastModeratedAt  DateTime?
+  strikeCount      Int              @default(0)
+  strikeRecords    StrikeRecord[]
 
-  products         Product[]
-  categories       Category[]
-  storeOrders      StoreOrder[]
-  subscriptions    SubscriptionBilling[]
-  payouts          SellerPayout[]
-  shopSections     ShopSection[]
-  shippingProfiles ShippingProfile[]
-  promotions       Promotion[]
-  reviews          Review[]         @relation("StoreReviews")
-  conversations    Conversation[]
-  buyerReferralCredit Decimal?       @db.Decimal(10, 2)
+  products            Product[]
+  categories          Category[]
+  storeOrders         StoreOrder[]
+  subscriptions       SubscriptionBilling[]
+  payouts             SellerPayout[]
+  shopSections        ShopSection[]
+  shippingProfiles    ShippingProfile[]
+  promotions          Promotion[]
+  reviews             Review[]              @relation("StoreReviews")
+  conversations       Conversation[]
+  buyerReferralCredit Decimal?              @db.Decimal(10, 2)
   buyerReferrals      BuyerReferral[]
   storeCredits        StoreCredit[]
+
+  // ── Performance Score (NFT-03) ────────────────────────────────────────────
+  performanceScore      Int?
+  scoreShipping         Int?
+  scoreRefund           Int?
+  scoreReview           Int?
+  scoreResponse         Int?
+  scoreBadge            String?
+  scoreLastCalculatedAt DateTime?
+
+  // ── Fan Memberships (NFT-05) ──────────────────────────────────────────────
+  memberships             StoreMembership[]
+  membershipSubscriptions StoreMembershipSubscription[]
+
+  // ── Design (NFT-07/08) ────────────────────────────────────────────────────
+  designAssets          DesignAsset[]
+  designLicensesOwned   DesignLicense[] @relation("StoreLicensee")
+  designLicensesGranted DesignLicense[] @relation("StoreLicensor")
+  bounties              DesignBounty[]
+
+  // ── Trend & DNA (NFT-10/11) ───────────────────────────────────────────────
+  trendDrafts        TrendProductDraft[]
+  creatorDNAAnalyses CreatorDNAAnalysis[]
 
   @@index([slug])
   @@index([status])
@@ -427,16 +459,16 @@ model SubscriptionBilling {
 }
 
 model StoreOrder {
-  id             String      @id @default(cuid())
+  id             String        @id @default(cuid())
   orderId        String
-  order          Order       @relation(fields: [orderId], references: [id])
+  order          Order         @relation(fields: [orderId], references: [id])
   storeId        String
-  store          Store       @relation(fields: [storeId], references: [id])
-  status         OrderStatus @default(PENDING_PAYMENT)
-  subtotal       Decimal     @db.Decimal(10, 2)
-  shippingCost   Decimal     @default(0) @db.Decimal(10, 2)
-  platformFee    Decimal     @db.Decimal(10, 2)
-  sellerEarnings Decimal     @db.Decimal(10, 2)
+  store          Store         @relation(fields: [storeId], references: [id])
+  status         OrderStatus   @default(PENDING_PAYMENT)
+  subtotal       Decimal       @db.Decimal(10, 2)
+  shippingCost   Decimal       @default(0) @db.Decimal(10, 2)
+  platformFee    Decimal       @db.Decimal(10, 2)
+  sellerEarnings Decimal       @db.Decimal(10, 2)
   trackingNumber String?
   trackingUrl    String?
   carrier        String?
@@ -446,8 +478,8 @@ model StoreOrder {
   payoutId       String?
   payout         SellerPayout? @relation(fields: [payoutId], references: [id])
   items          OrderItem[]
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@unique([orderId, storeId])
   @@index([orderId])
@@ -526,10 +558,10 @@ model Category {
 model ProductCategory {
   productId  String
   categoryId String
-  isPrimary  Boolean  @default(false)
+  isPrimary  Boolean @default(false)
 
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@id([productId, categoryId])
   @@index([productId])
@@ -588,79 +620,97 @@ model ProductTag {
 // ─── Product ─────────────────────────────────────────────────────────────────
 
 model Product {
-  id                  String   @id @default(cuid())
+  id                  String        @id @default(cuid())
   name                String
   slug                String
-  sku                 String   @unique
+  sku                 String        @unique
   description         String
   shortDescription    String?
-  basePrice           Decimal  @db.Decimal(10, 2)
-  compareAtPrice      Decimal? @db.Decimal(10, 2)
-  isPersonalizable    Boolean  @default(true)
+  basePrice           Decimal       @db.Decimal(10, 2)
+  compareAtPrice      Decimal?      @db.Decimal(10, 2)
+  isPersonalizable    Boolean       @default(true)
   isActive            Boolean       @default(true)
   status              ProductStatus @default(ACTIVE)
   isFeatured          Boolean       @default(false)
-  viewCount           Int      @default(0)
-  soldCount           Int      @default(0)
-  processingDays      Int      @default(3)
+  viewCount           Int           @default(0)
+  soldCount           Int           @default(0)
+  processingDays      Int           @default(3)
   categoryId          String
-  category            Category @relation(fields: [categoryId], references: [id])
+  category            Category      @relation(fields: [categoryId], references: [id])
   customizationConfig Json?
   deletedAt           DateTime?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 
-  moderationStatus  ModerationStatus @default(PENDING)
-  lastModeratedAt   DateTime?
+  moderationStatus ModerationStatus @default(PENDING)
+  lastModeratedAt  DateTime?
 
   // ── Store ownership ─────────────────────────────────────────────────────────
-  storeId             String?
-  store               Store?   @relation(fields: [storeId], references: [id])
+  storeId String?
+  store   Store?  @relation(fields: [storeId], references: [id])
 
   // ── TAB: Item Details ───────────────────────────────────────────────────────
-  titleCharCount    Int?                   // cached char count for 140-char limit validation
+  titleCharCount Int? // cached char count for 140-char limit validation
 
   // ── TAB: Item Attributes (structured, searchable like Etsy) ────────────────
-  primaryColors     String[]               // multi-select colour tags
-  secondaryColors   String[]
-  materials         String[]               // up to 5 materials
-  occasions         String[]               // up to 13 occasions
-  holidayTags       String[]
-  recipientTags     String[]               // up to 4 recipients
-  styles            String[]
-  sustainability    String[]               // up to 3 sustainability attributes
+  primaryColors   String[] // multi-select colour tags
+  secondaryColors String[]
+  materials       String[] // up to 5 materials
+  occasions       String[] // up to 13 occasions
+  holidayTags     String[]
+  recipientTags   String[] // up to 4 recipients
+  styles          String[]
+  sustainability  String[] // up to 3 sustainability attributes
 
   // ── TAB: Pricing & Inventory ────────────────────────────────────────────────
-  domesticGlobalPricing Boolean            @default(false)
-  quantity          Int?                   // null = unlimited (POD)
-  trackInventory    Boolean                @default(false)
-  lowStockThreshold Int?
-  returnPolicy      ReturnPolicy           @default(NO_RETURNS)
+  domesticGlobalPricing Boolean      @default(false)
+  quantity              Int? // null = unlimited (POD)
+  trackInventory        Boolean      @default(false)
+  lowStockThreshold     Int?
+  returnPolicy          ReturnPolicy @default(NO_RETURNS)
 
   // ── TAB: Processing & Shipping Profiles ─────────────────────────────────────
   processingProfileId String?
-  processingProfile   ProcessingProfile?   @relation(fields: [processingProfileId], references: [id])
+  processingProfile   ProcessingProfile? @relation(fields: [processingProfileId], references: [id])
   shippingProfileId   String?
-  shippingProfile     ShippingProfile?     @relation(fields: [shippingProfileId], references: [id])
+  shippingProfile     ShippingProfile?   @relation(fields: [shippingProfileId], references: [id])
 
   // ── TAB: How It's Made ──────────────────────────────────────────────────────
-  whoMadeIt           WhoMadeIt?
-  howItWasMade        HowItWasMade?
-  toolsUsed           String[]             // "handheld" | "computerized" | "3d-printing" | "none"
-  productionPartnerIds String[]            // cuid references to ProductionPartner records
-  hsCode              String?              // Harmonised System tariff code for customs
-  featuredRelatedIds  String[]            // up to 4 manually pinned related product IDs
+  whoMadeIt            WhoMadeIt?
+  howItWasMade         HowItWasMade?
+  toolsUsed            String[] // "handheld" | "computerized" | "3d-printing" | "none"
+  productionPartnerIds String[] // cuid references to ProductionPartner records
+  hsCode               String? // Harmonised System tariff code for customs
+  featuredRelatedIds   String[] // up to 4 manually pinned related product IDs
 
   // ── TAB: Settings ───────────────────────────────────────────────────────────
-  shopSectionId       String?
-  shopSection         ShopSection?         @relation(fields: [shopSectionId], references: [id])
-  isAdsEnabled        Boolean              @default(false)
-  renewalType         RenewalType          @default(AUTOMATIC)
-  expiresAt           DateTime?            // only relevant when renewalType = MANUAL
+  shopSectionId String?
+  shopSection   ShopSection? @relation(fields: [shopSectionId], references: [id])
+  isAdsEnabled  Boolean      @default(false)
+  renewalType   RenewalType  @default(AUTOMATIC)
+  expiresAt     DateTime? // only relevant when renewalType = MANUAL
 
   // ── TAB: Photo & Video ──────────────────────────────────────────────────────
-  videoUrls           String[]             // up to 2 hosted video URLs
-  thumbnailCropData   Json?                // { x, y, width, height } for thumbnail crop
+  videoUrls         String[] // up to 2 hosted video URLs
+  thumbnailCropData Json? // { x, y, width, height } for thumbnail crop
+
+  // ── Drop Culture (NFT-02) ──────────────────────────────────────────────────
+  isDrop            Boolean   @default(false)
+  dropLaunchAt      DateTime?
+  dropQuantityLimit Int?
+  dropSoldCount     Int       @default(0)
+  dropWaitlistOpen  Boolean   @default(false)
+  dropEndAt         DateTime?
+
+  // ── Fan Membership (NFT-05) ────────────────────────────────────────────────
+  isFanExclusive Boolean @default(false)
+
+  // ── Design Licensing (NFT-07) ──────────────────────────────────────────────
+  designAssetId   String?
+  designLicenseId String?
+
+  // ── Design Bounty (NFT-08) ─────────────────────────────────────────────────
+  bountyEntryId String?
 
   // ── Relations ───────────────────────────────────────────────────────────────
   variants            ProductVariant[]
@@ -676,6 +726,8 @@ model Product {
   productCategories   ProductCategory[]
   variationGroups     VariationGroup[]
   variationSettings   VariationSettings?
+  dropWaitlists       DropWaitlist[]
+  abPricingTests      ABPricingTest[]
 
   @@unique([slug, storeId])
   @@index([categoryId])
@@ -688,15 +740,15 @@ model Product {
 }
 
 model ProductVariant {
-  id                String   @id @default(cuid())
+  id                String  @id @default(cuid())
   productId         String
-  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product           Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   name              String
   options           Json
-  price             Decimal  @db.Decimal(10, 2)
-  sku               String?  @unique
-  isDefault         Boolean  @default(false)
-  sortOrder         Int      @default(0)
+  price             Decimal @db.Decimal(10, 2)
+  sku               String? @unique
+  isDefault         Boolean @default(false)
+  sortOrder         Int     @default(0)
   lowStockThreshold Int?
 
   cartItems           CartItem[]
@@ -725,14 +777,14 @@ model ProductImage {
 // VariationSettings = product-level toggle + metadata
 
 model VariationGroup {
-  id          String            @id @default(cuid())
+  id          String  @id @default(cuid())
   productId   String
-  product     Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
-  name        String            // "Color", "Size", "Material"
-  displayType String            @default("dropdown") // "dropdown" | "color_swatch" | "button" | "image"
-  sortOrder   Int               @default(0)
+  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name        String // "Color", "Size", "Material"
+  displayType String  @default("dropdown") // "dropdown" | "color_swatch" | "button" | "image"
+  sortOrder   Int     @default(0)
 
-  options     VariationOption[]
+  options VariationOption[]
 
   @@index([productId])
 }
@@ -741,13 +793,13 @@ model VariationOption {
   id          String         @id @default(cuid())
   groupId     String
   group       VariationGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  name        String         // "Red", "Small"
-  value       String         // slug / code, e.g. "red", "s"
-  colorHex    String?        // for color_swatch display type
-  imageUrl    String?        // for image display type (custom external URL)
+  name        String // "Red", "Small"
+  value       String // slug / code, e.g. "red", "s"
+  colorHex    String? // for color_swatch display type
+  imageUrl    String? // for image display type (custom external URL)
   // Which product photo represents this variant option.
   // Intentionally no FK → ProductImage so image deletion doesn't cascade.
-  imageId     String?        // references ProductImage.id (soft reference)
+  imageId     String? // references ProductImage.id (soft reference)
   priceDelta  Decimal?       @db.Decimal(10, 2) // price adjustment from base
   sortOrder   Int            @default(0)
   isAvailable Boolean        @default(true)
@@ -761,7 +813,7 @@ model VariationSettings {
   product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   enableVariations Boolean  @default(false)
   variesBy         String[] // names of active VariationGroup dimensions
-  skuPrefix        String?  // e.g. "MLH-MUG" → variants become "MLH-MUG-RED-M"
+  skuPrefix        String? // e.g. "MLH-MUG" → variants become "MLH-MUG-RED-M"
 }
 
 // ─── Processing Profiles ──────────────────────────────────────────────────────
@@ -769,7 +821,7 @@ model VariationSettings {
 
 model ProcessingProfile {
   id        String                @id @default(cuid())
-  name      String                // "Made to order", "Ready to ship"
+  name      String // "Made to order", "Ready to ship"
   type      ProcessingProfileType @default(MADE_TO_ORDER)
   minDays   Int                   @default(3)
   maxDays   Int                   @default(7)
@@ -777,7 +829,7 @@ model ProcessingProfile {
   createdAt DateTime              @default(now())
   updatedAt DateTime              @updatedAt
 
-  products  Product[]
+  products Product[]
 }
 
 // ─── Shipping Profiles ────────────────────────────────────────────────────────
@@ -785,18 +837,18 @@ model ProcessingProfile {
 // the customer-facing rate calculation engine).
 
 model ShippingProfile {
-  id             String                  @id @default(cuid())
-  name           String                  // "Standard Shipping", "Embroidered Hat"
-  type           String                  @default("fixed") // "fixed" | "calculated" | "free"
-  activeListings Int                     @default(0)       // denormalised count
-  isDefault      Boolean                 @default(false)
+  id             String   @id @default(cuid())
+  name           String // "Standard Shipping", "Embroidered Hat"
+  type           String   @default("fixed") // "fixed" | "calculated" | "free"
+  activeListings Int      @default(0) // denormalised count
+  isDefault      Boolean  @default(false)
   storeId        String?
-  store          Store?                  @relation(fields: [storeId], references: [id])
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
+  store          Store?   @relation(fields: [storeId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  methods        ShippingProfileMethod[]
-  products       Product[]
+  methods  ShippingProfileMethod[]
+  products Product[]
 
   @@index([storeId])
 }
@@ -805,7 +857,7 @@ model ShippingProfileMethod {
   id              String          @id @default(cuid())
   profileId       String
   profile         ShippingProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  destinationType String          // "domestic" | "everywhere_else" | ISO country code
+  destinationType String // "domestic" | "everywhere_else" | ISO country code
   carrier         String?
   minDays         Int
   maxDays         Int
@@ -819,14 +871,14 @@ model ShippingProfileMethod {
 // Organise listings into labelled sections visible on the shop front.
 
 model ShopSection {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
-  sortOrder Int       @default(0)
+  sortOrder Int      @default(0)
   storeId   String?
-  store     Store?    @relation(fields: [storeId], references: [id])
-  createdAt DateTime  @default(now())
+  store     Store?   @relation(fields: [storeId], references: [id])
+  createdAt DateTime @default(now())
 
-  products  Product[]
+  products Product[]
 
   @@index([storeId])
 }
@@ -838,7 +890,7 @@ model ProductionPartner {
   id          String   @id @default(cuid())
   name        String
   description String?
-  location    String?  // "Country" or "City, Country"
+  location    String? // "Country" or "City, Country"
   createdAt   DateTime @default(now())
 }
 
@@ -925,26 +977,26 @@ model Order {
   trackingUrl     String?
   carrier         String?
   trackerId       String?
-  taxAmount       Decimal  @default(0) @db.Decimal(10, 2)
-  taxRate         Decimal  @default(0) @db.Decimal(5, 4)
+  taxAmount       Decimal     @default(0) @db.Decimal(10, 2)
+  taxRate         Decimal     @default(0) @db.Decimal(5, 4)
   taxJurisdiction String?
-  taxExempt       Boolean  @default(false)
+  taxExempt       Boolean     @default(false)
 
   // ── Gift options ──────────────────────────────────────────────────────────
-  isGift          Boolean   @default(false)
-  giftMessage     String?   @db.VarChar(500)
-  giftReceipt     Boolean   @default(false)
-  giftWrapping    Boolean   @default(false)
-  giftFrom        String?   @db.VarChar(100)
+  isGift       Boolean @default(false)
+  giftMessage  String? @db.VarChar(500)
+  giftReceipt  Boolean @default(false)
+  giftWrapping Boolean @default(false)
+  giftFrom     String? @db.VarChar(100)
 
-  note            String?
-  cancelReason    String?
-  cancelledAt     DateTime?
-  confirmedAt     DateTime?
-  shippedAt       DateTime?
-  deliveredAt     DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  note         String?
+  cancelReason String?
+  cancelledAt  DateTime?
+  confirmedAt  DateTime?
+  shippedAt    DateTime?
+  deliveredAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   items           OrderItem[]
   storeOrders     StoreOrder[]
@@ -961,19 +1013,19 @@ model Order {
   commission              AffiliateCommission?
 
   // Referral attribution (multi-level referral system)
-  referralUserId          String?
-  referralUser            User?                @relation("ReferralOrders", fields: [referralUserId], references: [id])
-  referralDiscountAmount  Decimal?             @db.Decimal(10, 2)
-  referralCommissions     ReferralCommission[]
+  referralUserId         String?
+  referralUser           User?                @relation("ReferralOrders", fields: [referralUserId], references: [id])
+  referralDiscountAmount Decimal?             @db.Decimal(10, 2)
+  referralCommissions    ReferralCommission[]
 
   // Loyalty points
-  pointsEarned   Int?              // points awarded when this order completes
-  pointsRedeemed Int?              // points spent to discount this order
-  pointsDiscount Decimal?          @db.Decimal(10, 2)  // dollar value of redeemed points
+  pointsEarned   Int? // points awarded when this order completes
+  pointsRedeemed Int? // points spent to discount this order
+  pointsDiscount Decimal? @db.Decimal(10, 2) // dollar value of redeemed points
 
   // Buyer referral store credit
-  storeCreditUsed  Decimal           @default(0) @db.Decimal(10, 2)
-  buyerRefToken    String?
+  storeCreditUsed Decimal @default(0) @db.Decimal(10, 2)
+  buyerRefToken   String?
 
   // Label purchase (EasyPost)
   easypostShipmentId String?
@@ -1004,17 +1056,17 @@ model OrderItem {
   previewUrl        String?
 
   // ── Snapshots (captured at order time, never changes) ──────────────────────
-  productName       String
-  variantName       String?
-  productSlug       String?
-  productImageUrl   String?
-  variantSnapshot   Json?
-  sku               String?
+  productName     String
+  variantName     String?
+  productSlug     String?
+  productImageUrl String?
+  variantSnapshot Json?
+  sku             String?
 
   // ── Store attribution ──────────────────────────────────────────────────────
-  storeId           String?
-  storeOrderId      String?
-  storeOrder        StoreOrder?     @relation(fields: [storeOrderId], references: [id])
+  storeId      String?
+  storeOrderId String?
+  storeOrder   StoreOrder? @relation(fields: [storeOrderId], references: [id])
 
   @@index([orderId])
   @@index([productId])
@@ -1068,11 +1120,11 @@ model GiftCard {
   createdAt    DateTime  @default(now())
 
   // Purchase metadata (set when a customer buys a gift card via Stripe)
-  recipientEmail          String?
-  recipientName           String?
-  personalMessage         String?   @db.Text
-  purchasedByUserId       String?
-  stripePaymentIntentId   String?   @unique
+  recipientEmail        String?
+  recipientName         String?
+  personalMessage       String? @db.Text
+  purchasedByUserId     String?
+  stripePaymentIntentId String? @unique
 
   usages GiftCardUsage[]
 }
@@ -1158,27 +1210,27 @@ model ShippingMethod {
 // ─── Review ──────────────────────────────────────────────────────────────────
 
 model Review {
-  id           String       @id @default(cuid())
-  userId       String
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  productId    String
-  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
-  orderId      String
-  rating       Int
-  title        String?
-  body         String
-  imageUrls    String[]
-  status       ReviewStatus @default(PENDING)
-  adminReply       String?
-  repliedAt        DateTime?
-  sellerReply      String?
-  sellerRepliedAt  DateTime?
-  helpfulCount     Int          @default(0)
-  storeId          String?
-  store            Store?       @relation("StoreReviews", fields: [storeId], references: [id])
-  createdAt    DateTime     @default(now())
+  id              String       @id @default(cuid())
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderId         String
+  rating          Int
+  title           String?
+  body            String
+  imageUrls       String[]
+  status          ReviewStatus @default(PENDING)
+  adminReply      String?
+  repliedAt       DateTime?
+  sellerReply     String?
+  sellerRepliedAt DateTime?
+  helpfulCount    Int          @default(0)
+  storeId         String?
+  store           Store?       @relation("StoreReviews", fields: [storeId], references: [id])
+  createdAt       DateTime     @default(now())
 
-  moderationStatus  ModerationStatus @default(PENDING)
+  moderationStatus ModerationStatus @default(PENDING)
 
   @@unique([userId, productId, orderId])
   @@index([productId, status])
@@ -1189,24 +1241,24 @@ model Review {
 // ─── Product Q&A ─────────────────────────────────────────────────────────────
 
 model ProductQuestion {
-  id           String    @id @default(cuid())
-  productId    String
-  product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  question     String    @db.VarChar(500)
-  askedByName  String    @db.VarChar(100)
+  question     String  @db.VarChar(500)
+  askedByName  String  @db.VarChar(100)
   askedByEmail String?
-  isGuest      Boolean   @default(true)
+  isGuest      Boolean @default(true)
 
-  answer       String?   @db.Text
-  answeredAt   DateTime?
-  isPublished  Boolean   @default(false)
+  answer      String?   @db.Text
+  answeredAt  DateTime?
+  isPublished Boolean   @default(false)
 
-  isSpam       Boolean   @default(false)
-  upvotes      Int       @default(0)
+  isSpam  Boolean @default(false)
+  upvotes Int     @default(0)
 
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([productId, isPublished])
   @@index([productId, createdAt])
@@ -1245,46 +1297,46 @@ model AttributeValue {
 // ─── Messaging ───────────────────────────────────────────────────────────────
 
 enum ConversationStatus {
-  OPEN      // active, needs attention
-  PENDING   // waiting for customer reply
-  RESOLVED  // marked done by admin
-  SPAM      // marked as spam
+  OPEN // active, needs attention
+  PENDING // waiting for customer reply
+  RESOLVED // marked done by admin
+  SPAM // marked as spam
 }
 
 enum SenderType {
-  CUSTOMER  // message from buyer
-  SHOP      // message from shop/admin
-  SYSTEM    // automated message (order update, etc.)
+  CUSTOMER // message from buyer
+  SHOP // message from shop/admin
+  SYSTEM // automated message (order update, etc.)
 }
 
 model Conversation {
-  id        String             @id @default(cuid())
+  id String @id @default(cuid())
 
   // A conversation belongs to either a specific order, or is general inquiry
-  orderId   String?
-  order     Order?             @relation(fields: [orderId], references: [id])
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id])
 
   // The customer side
-  userId    String?            // null if guest
-  user      User?              @relation(fields: [userId], references: [id])
-  guestEmail String?           // for guest conversations
+  userId     String? // null if guest
+  user       User?   @relation(fields: [userId], references: [id])
+  guestEmail String? // for guest conversations
   guestName  String?
 
   // Store context (which store this conversation is with)
-  storeId   String?
-  store     Store?             @relation(fields: [storeId], references: [id])
+  storeId String?
+  store   Store?  @relation(fields: [storeId], references: [id])
 
   // Metadata
-  subject   String?            // optional subject line
-  status    ConversationStatus @default(OPEN)
-  lastMessage    String?       // preview of last message (denormalized)
-  lastMessageAt  DateTime?
+  subject       String? // optional subject line
+  status        ConversationStatus @default(OPEN)
+  lastMessage   String? // preview of last message (denormalized)
+  lastMessageAt DateTime?
 
   // Unread counts (denormalized for badge display)
   unreadByAdmin    Int @default(0)
   unreadByCustomer Int @default(0)
 
-  messages  Message[]
+  messages Message[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1302,18 +1354,18 @@ model Message {
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   // Who sent it
-  senderType  SenderType
-  senderId    String?      // userId if customer, adminId if shop
+  senderType SenderType
+  senderId   String? // userId if customer, adminId if shop
 
   body           String   @db.Text
   attachmentUrls String[] // up to 3 image attachments
 
-  isRead  Boolean   @default(false)
-  readAt  DateTime?
+  isRead Boolean   @default(false)
+  readAt DateTime?
 
   createdAt DateTime @default(now())
 
-  moderationStatus  ModerationStatus @default(CLEAN)
+  moderationStatus ModerationStatus @default(CLEAN)
 
   @@index([conversationId])
   @@index([createdAt])
@@ -1346,50 +1398,50 @@ model AffiliateSettings {
   buyerDiscountRate Decimal  @default(0.05) @db.Decimal(5, 4) // 5%
   cookieDays        Int      @default(30)
   minPayoutAmount   Decimal  @default(50.00) @db.Decimal(10, 2)
-  lockDays          Int      @default(14)   // days after DELIVERED → CONFIRMED
+  lockDays          Int      @default(14) // days after DELIVERED → CONFIRMED
   isEnabled         Boolean  @default(true)
   updatedAt         DateTime @updatedAt
 }
 
 model AffiliateAccount {
-  id               String          @id @default(cuid())
+  id String @id @default(cuid())
 
   // Identity — affiliate may or may not be a registered customer
-  email            String          @unique
+  email            String  @unique
   firstName        String
   lastName         String
-  website          String?         // their blog/social URL
-  promoDescription String?         // how they plan to promote
+  website          String? // their blog/social URL
+  promoDescription String? // how they plan to promote
 
   // Optional link to a User account (if affiliate is also a buyer)
-  userId           String?         @unique
-  user             User?           @relation(fields: [userId], references: [id])
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
 
   // Referral identity
-  referralCode     String          @unique   // e.g. "SARAH2024"
-  referralUrl      String?                   // computed: base_url?ref=CODE
+  referralCode String  @unique // e.g. "SARAH2024"
+  referralUrl  String? // computed: base_url?ref=CODE
 
   // Commission config
-  commissionRate   Decimal?        @db.Decimal(5, 4) // null = use global default
-  status           AffiliateStatus @default(PENDING)
+  commissionRate Decimal?        @db.Decimal(5, 4) // null = use global default
+  status         AffiliateStatus @default(PENDING)
 
   // Financial summary (denormalized for dashboard speed)
-  balance          Decimal         @default(0) @db.Decimal(10, 2) // confirmed, unpaid
-  totalEarned      Decimal         @default(0) @db.Decimal(10, 2) // all-time paid+confirmed
+  balance     Decimal @default(0) @db.Decimal(10, 2) // confirmed, unpaid
+  totalEarned Decimal @default(0) @db.Decimal(10, 2) // all-time paid+confirmed
 
   // Admin notes
-  adminNotes       String?
-  rejectedReason   String?
-  approvedAt       DateTime?
-  approvedById     String?
+  adminNotes     String?
+  rejectedReason String?
+  approvedAt     DateTime?
+  approvedById   String?
 
-  clicks           AffiliateClick[]
-  commissions      AffiliateCommission[]
-  payouts          AffiliatePayout[]
-  orders           Order[]
+  clicks      AffiliateClick[]
+  commissions AffiliateCommission[]
+  payouts     AffiliatePayout[]
+  orders      Order[]
 
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([referralCode])
   @@index([status])
@@ -1397,20 +1449,20 @@ model AffiliateAccount {
 }
 
 model AffiliateClick {
-  id           String           @id @default(cuid())
-  affiliateId  String
-  affiliate    AffiliateAccount @relation(fields: [affiliateId], references: [id])
+  id          String           @id @default(cuid())
+  affiliateId String
+  affiliate   AffiliateAccount @relation(fields: [affiliateId], references: [id])
 
-  visitorId    String           // random UUID stored in cookie
-  ip           String?
-  userAgent    String?
-  landingPage  String           // full URL they landed on
-  referrer     String?          // where they came from
+  visitorId   String // random UUID stored in cookie
+  ip          String?
+  userAgent   String?
+  landingPage String // full URL they landed on
+  referrer    String? // where they came from
 
-  convertedAt  DateTime?        // set when visitor places an order
-  orderId      String?          // FK if converted
+  convertedAt DateTime? // set when visitor places an order
+  orderId     String? // FK if converted
 
-  createdAt    DateTime         @default(now())
+  createdAt DateTime @default(now())
 
   @@index([affiliateId])
   @@index([visitorId])
@@ -1418,24 +1470,24 @@ model AffiliateClick {
 }
 
 model AffiliateCommission {
-  id           String              @id @default(cuid())
-  affiliateId  String
-  affiliate    AffiliateAccount    @relation(fields: [affiliateId], references: [id])
+  id          String           @id @default(cuid())
+  affiliateId String
+  affiliate   AffiliateAccount @relation(fields: [affiliateId], references: [id])
 
-  orderId      String              @unique  // one commission per order
-  order        Order               @relation(fields: [orderId], references: [id])
+  orderId String @unique // one commission per order
+  order   Order  @relation(fields: [orderId], references: [id])
 
-  baseAmount   Decimal             @db.Decimal(10, 2) // order subtotal used
-  rate         Decimal             @db.Decimal(5, 4)  // rate at time of order
-  amount       Decimal             @db.Decimal(10, 2) // baseAmount × rate
-  status       CommissionStatus    @default(PENDING)
+  baseAmount Decimal          @db.Decimal(10, 2) // order subtotal used
+  rate       Decimal          @db.Decimal(5, 4) // rate at time of order
+  amount     Decimal          @db.Decimal(10, 2) // baseAmount × rate
+  status     CommissionStatus @default(PENDING)
 
-  confirmedAt  DateTime?           // 14d after delivery
+  confirmedAt  DateTime? // 14d after delivery
   cancelledAt  DateTime?
   cancelReason String?
 
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([affiliateId])
   @@index([status])
@@ -1445,60 +1497,60 @@ model AffiliateCommission {
 // ─── Loyalty Program ─────────────────────────────────────────────────────────
 
 model LoyaltyAccount {
-  id             String   @id @default(cuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  pointsBalance  Int      @default(0)   // redeemable right now
-  pointsPending  Int      @default(0)   // earned but locked (14-day delivery lock)
-  pointsLifetime Int      @default(0)   // all-time earned (never decrements)
+  pointsBalance  Int @default(0) // redeemable right now
+  pointsPending  Int @default(0) // earned but locked (14-day delivery lock)
+  pointsLifetime Int @default(0) // all-time earned (never decrements)
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  transactions   LoyaltyTransaction[]
+  transactions LoyaltyTransaction[]
 
   @@index([userId])
 }
 
 model LoyaltyTransaction {
-  id          String         @id @default(cuid())
-  accountId   String
-  account     LoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  id        String         @id @default(cuid())
+  accountId String
+  account   LoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
-  orderId     String?        // nullable — adjust/expire have no order
+  orderId     String? // nullable — adjust/expire have no order
   type        LoyaltyTxType
-  points      Int            // positive = earn/restore; negative = redeem/cancel
+  points      Int // positive = earn/restore; negative = redeem/cancel
   description String?
 
   // Set when an EARN transaction is moved from pending → balance (14-day confirm)
   confirmedAt DateTime?
 
-  createdAt   DateTime       @default(now())
+  createdAt DateTime @default(now())
 
   @@index([accountId])
   @@index([orderId])
 }
 
 model AffiliatePayout {
-  id            String           @id @default(cuid())
-  affiliateId   String
-  affiliate     AffiliateAccount @relation(fields: [affiliateId], references: [id])
+  id          String           @id @default(cuid())
+  affiliateId String
+  affiliate   AffiliateAccount @relation(fields: [affiliateId], references: [id])
 
-  amount        Decimal          @db.Decimal(10, 2)
-  status        PayoutStatus     @default(REQUESTED)
+  amount Decimal      @db.Decimal(10, 2)
+  status PayoutStatus @default(REQUESTED)
 
   // Payment details (affiliate fills in)
-  paymentMethod String           // "paypal", "bank_transfer", "store_credit"
-  paymentDetail String           // PayPal email / bank account / etc.
+  paymentMethod String // "paypal", "bank_transfer", "store_credit"
+  paymentDetail String // PayPal email / bank account / etc.
 
   // Admin
   adminNotes    String?
   processedAt   DateTime?
   processedById String?
 
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([affiliateId])
   @@index([status])
@@ -1507,21 +1559,21 @@ model AffiliatePayout {
 // ─── Referral Program ────────────────────────────────────────────────────────
 
 model ReferralSettings {
-  id                   String   @id @default("singleton")
+  id String @id @default("singleton")
 
-  level1Rate           Decimal  @default(0.10) @db.Decimal(5, 4)
-  level2Rate           Decimal  @default(0.05) @db.Decimal(5, 4)
-  level3Rate           Decimal  @default(0.01) @db.Decimal(5, 4)
+  level1Rate Decimal @default(0.10) @db.Decimal(5, 4)
+  level2Rate Decimal @default(0.05) @db.Decimal(5, 4)
+  level3Rate Decimal @default(0.01) @db.Decimal(5, 4)
 
-  buyerDiscountRate    Decimal  @default(0.05) @db.Decimal(5, 4)
-  buyerDiscountEnabled Boolean  @default(true)
+  buyerDiscountRate    Decimal @default(0.05) @db.Decimal(5, 4)
+  buyerDiscountEnabled Boolean @default(true)
 
-  minPayoutAmount      Decimal  @default(50.00) @db.Decimal(10, 2)
-  lockDays             Int      @default(14)
+  minPayoutAmount Decimal @default(50.00) @db.Decimal(10, 2)
+  lockDays        Int     @default(14)
 
-  isEnabled            Boolean  @default(true)
+  isEnabled Boolean @default(true)
 
-  updatedAt            DateTime @updatedAt
+  updatedAt DateTime @updatedAt
 }
 
 model ReferralTier {
@@ -1535,33 +1587,33 @@ model ReferralTier {
   sortOrder       Int      @default(0)
   createdAt       DateTime @default(now())
 
-  users           User[]
+  users User[]
 }
 
 model ReferralCommission {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  earnerId    String
-  earner      User     @relation("EarnerCommissions", fields: [earnerId], references: [id])
+  earnerId String
+  earner   User   @relation("EarnerCommissions", fields: [earnerId], references: [id])
 
-  orderId     String
-  order       Order    @relation(fields: [orderId], references: [id])
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
 
-  buyerId     String
-  buyer       User     @relation("BuyerCommissions", fields: [buyerId], references: [id])
+  buyerId String
+  buyer   User   @relation("BuyerCommissions", fields: [buyerId], references: [id])
 
-  level       Int
-  rate        Decimal  @db.Decimal(5, 4)
-  baseAmount  Decimal  @db.Decimal(10, 2)
-  amount      Decimal  @db.Decimal(10, 2)
+  level      Int
+  rate       Decimal @db.Decimal(5, 4)
+  baseAmount Decimal @db.Decimal(10, 2)
+  amount     Decimal @db.Decimal(10, 2)
 
-  status      ReferralCommissionStatus @default(PENDING)
-  confirmedAt DateTime?
-  cancelledAt DateTime?
+  status       ReferralCommissionStatus @default(PENDING)
+  confirmedAt  DateTime?
+  cancelledAt  DateTime?
   cancelReason String?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([earnerId, orderId])
   @@index([earnerId])
@@ -1571,12 +1623,12 @@ model ReferralCommission {
 }
 
 model ReferralPayout {
-  id            String              @id @default(cuid())
-  userId        String
-  user          User                @relation(fields: [userId], references: [id])
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
-  amount        Decimal             @db.Decimal(10, 2)
-  status        ReferralPayoutStatus @default(REQUESTED)
+  amount Decimal              @db.Decimal(10, 2)
+  status ReferralPayoutStatus @default(REQUESTED)
 
   paymentMethod String
   paymentDetail String
@@ -1585,8 +1637,8 @@ model ReferralPayout {
   processedAt   DateTime?
   processedById String?
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([status])
@@ -1615,15 +1667,15 @@ model EmailTemplateOverride {
 // entity itself; translations live here.
 
 model Translation {
-  id              String   @id @default(cuid())
-  entityType      String   // "Product" | "Category" | "Collection" | "Tag" | "ShopSection"
-  entityId        String
-  locale          String   // "vi" | "fr" | "zh" — never "en"
-  field           String   // "name" | "description" | "seoTitle" | "seoDescription"
-  value           String   @db.Text
-  isAutoTranslated Boolean @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String   @id @default(cuid())
+  entityType       String // "Product" | "Category" | "Collection" | "Tag" | "ShopSection"
+  entityId         String
+  locale           String // "vi" | "fr" | "zh" — never "en"
+  field            String // "name" | "description" | "seoTitle" | "seoDescription"
+  value            String   @db.Text
+  isAutoTranslated Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@unique([entityType, entityId, locale, field])
   @@index([entityType, entityId, locale])
@@ -1633,40 +1685,40 @@ model Translation {
 // ─── Moderation ───────────────────────────────────────────────────────────────
 
 enum ModerationStatus {
-  PENDING    // just created, awaiting moderation
-  CLEAN      // passed moderation
-  FLAGGED    // auto-flagged, awaiting admin review
-  REJECTED   // admin confirmed violation, content hidden
-  APPEALED   // seller appealed, awaiting re-review
-  APPROVED   // admin overrode, restored despite flag
+  PENDING // just created, awaiting moderation
+  CLEAN // passed moderation
+  FLAGGED // auto-flagged, awaiting admin review
+  REJECTED // admin confirmed violation, content hidden
+  APPEALED // seller appealed, awaiting re-review
+  APPROVED // admin overrode, restored despite flag
 }
 
 model ModerationLog {
-  id              String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  entityType      String
-  entityId        String
-  fieldName       String?
-  contentHash     String
+  entityType  String
+  entityId    String
+  fieldName   String?
+  contentHash String
 
-  verdict         ModerationStatus
-  severity        String
-  categories      String[]
-  confidence      Float
-  reasoning       String?  @db.Text
-  sellerMessage   String?  @db.Text
+  verdict       ModerationStatus
+  severity      String
+  categories    String[]
+  confidence    Float
+  reasoning     String?          @db.Text
+  sellerMessage String?          @db.Text
 
-  provider        String   @default("claude")
-  modelVersion    String?
-  latencyMs       Int?
-  cost            Decimal? @db.Decimal(10, 6)
+  provider     String   @default("claude")
+  modelVersion String?
+  latencyMs    Int?
+  cost         Decimal? @db.Decimal(10, 6)
 
-  triggeredBy     String
-  reviewedBy      String?
-  reviewedAt      DateTime?
-  adminNotes      String?  @db.Text
+  triggeredBy String
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  adminNotes  String?   @db.Text
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([entityType, entityId])
   @@index([verdict])
@@ -1675,56 +1727,56 @@ model ModerationLog {
 }
 
 model ModerationSettings {
-  id                     String   @id @default("singleton")
+  id String @id @default("singleton")
 
-  isEnabled              Boolean  @default(true)
+  isEnabled Boolean @default(true)
 
-  moderateProductText    Boolean  @default(true)
-  moderateStoreText      Boolean  @default(true)
-  moderateReviews        Boolean  @default(true)
-  moderateMessages       Boolean  @default(true)
-  moderateImages         Boolean  @default(true)
+  moderateProductText Boolean @default(true)
+  moderateStoreText   Boolean @default(true)
+  moderateReviews     Boolean @default(true)
+  moderateMessages    Boolean @default(true)
+  moderateImages      Boolean @default(true)
 
-  autoCriticalBlock      Boolean  @default(true)
-  autoHighFlag           Boolean  @default(true)
-  autoMediumFlag         Boolean  @default(true)
-  autoLowWarn            Boolean  @default(true)
+  autoCriticalBlock Boolean @default(true)
+  autoHighFlag      Boolean @default(true)
+  autoMediumFlag    Boolean @default(true)
+  autoLowWarn       Boolean @default(true)
 
-  cacheCleanResultDays   Int      @default(30)
+  cacheCleanResultDays Int @default(30)
 
-  strikeEnabled          Boolean  @default(true)
-  strikeLimitHigh        Int      @default(3)
-  strikeLimitCritical    Int      @default(1)
-  strikeWindowDays       Int      @default(30)
+  strikeEnabled       Boolean @default(true)
+  strikeLimitHigh     Int     @default(3)
+  strikeLimitCritical Int     @default(1)
+  strikeWindowDays    Int     @default(30)
 
-  maxDailyApiCalls       Int      @default(10000)
-  maxCostPerDayUsd       Decimal  @default(50.00) @db.Decimal(10, 2)
+  maxDailyApiCalls Int     @default(10000)
+  maxCostPerDayUsd Decimal @default(50.00) @db.Decimal(10, 2)
 
-  updatedAt              DateTime @updatedAt
+  updatedAt DateTime @updatedAt
 }
 
 model ModerationRule {
-  id           String   @id @default(cuid())
-  name         String
-  description  String?
-  ruleType     String
-  value        String
-  severity     String
-  isActive     Boolean  @default(true)
-  applyTo      String[]
-  createdBy    String
-  createdAt    DateTime @default(now())
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  ruleType    String
+  value       String
+  severity    String
+  isActive    Boolean  @default(true)
+  applyTo     String[]
+  createdBy   String
+  createdAt   DateTime @default(now())
 
   @@index([ruleType, isActive])
 }
 
 model StrikeRecord {
-  id           String   @id @default(cuid())
-  storeId      String
-  store        Store    @relation(fields: [storeId], references: [id])
-  severity     String
-  logId        String
-  createdAt    DateTime @default(now())
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id])
+  severity  String
+  logId     String
+  createdAt DateTime @default(now())
 
   @@index([storeId, createdAt])
 }
@@ -1782,4 +1834,326 @@ model StoreCredit {
 
   @@index([userId, storeId, isUsed])
   @@index([expiresAt])
+}
+
+// ─── New Platform Feature Enums ───────────────────────────────────────────────
+
+enum MembershipStatus {
+  ACTIVE
+  CANCELLED
+  PAST_DUE
+}
+
+enum ABTestStatus {
+  RUNNING
+  WINNER_A
+  WINNER_B
+  CANCELLED
+}
+
+enum LicenseType {
+  EXCLUSIVE
+  NON_EXCLUSIVE
+}
+
+enum LicenseModel {
+  ONE_TIME
+  ROYALTY_PER_SALE
+  BOTH
+}
+
+enum LicenseStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum RoyaltyEarningStatus {
+  PENDING
+  PAID
+}
+
+enum BountyStatus {
+  OPEN
+  SELECTING
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum BountyEntryStatus {
+  SUBMITTED
+  SELECTED
+  REJECTED
+}
+
+enum TrendDraftStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum CreatorDNAStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+// ── NFT-02: Drop Culture ──────────────────────────────────────────────────────
+
+model DropWaitlist {
+  id         String    @id @default(cuid())
+  productId  String
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  email      String
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([productId, email])
+  @@index([productId])
+}
+
+// ── NFT-05: Fan Membership ────────────────────────────────────────────────────
+
+model StoreMembership {
+  id              String   @id @default(cuid())
+  storeId         String
+  store           Store    @relation(fields: [storeId], references: [id])
+  name            String
+  description     String   @db.Text
+  price           Decimal  @db.Decimal(10, 2)
+  perks           String[]
+  isActive        Boolean  @default(true)
+  subscriberCount Int      @default(0)
+  mrr             Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  subscriptions StoreMembershipSubscription[]
+
+  @@index([storeId])
+}
+
+model StoreMembershipSubscription {
+  id                   String           @id @default(cuid())
+  userId               String
+  user                 User             @relation(fields: [userId], references: [id])
+  storeId              String
+  store                Store            @relation(fields: [storeId], references: [id])
+  membershipId         String
+  membership           StoreMembership  @relation(fields: [membershipId], references: [id])
+  status               MembershipStatus @default(ACTIVE)
+  stripeSubscriptionId String           @unique
+  stripeCustomerId     String
+  currentPeriodEnd     DateTime
+  cancelledAt          DateTime?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@unique([userId, storeId])
+  @@index([storeId, status])
+}
+
+// ── NFT-06: AI Pricing Optimizer ─────────────────────────────────────────────
+
+model ABPricingTest {
+  id              String       @id @default(cuid())
+  productId       String
+  product         Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantA        Decimal      @db.Decimal(10, 2)
+  variantB        Decimal      @db.Decimal(10, 2)
+  status          ABTestStatus @default(RUNNING)
+  startedAt       DateTime     @default(now())
+  endsAt          DateTime
+  impressionsA    Int          @default(0)
+  conversionsA    Int          @default(0)
+  impressionsB    Int          @default(0)
+  conversionsB    Int          @default(0)
+  winnerId        String?
+  autoApplyWinner Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+
+  @@index([productId, status])
+  @@index([status, endsAt])
+}
+
+// ── NFT-07: Design Licensing Marketplace ─────────────────────────────────────
+
+model DesignAsset {
+  id              String       @id @default(cuid())
+  storeId         String
+  store           Store        @relation(fields: [storeId], references: [id])
+  title           String
+  description     String       @db.Text
+  previewImageUrl String
+  fullResImageUrl String
+  licenseType     LicenseType
+  listingPrice    Decimal      @db.Decimal(10, 2)
+  royaltyRate     Decimal?     @db.Decimal(5, 4)
+  licenseModel    LicenseModel
+  isActive        Boolean      @default(true)
+  licenseCount    Int          @default(0)
+  tags            String[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  licenses DesignLicense[]
+
+  @@index([storeId, isActive])
+  @@index([licenseType])
+}
+
+model DesignLicense {
+  id                    String        @id @default(cuid())
+  assetId               String
+  asset                 DesignAsset   @relation(fields: [assetId], references: [id])
+  licenseeStoreId       String
+  licenseeStore         Store         @relation("StoreLicensee", fields: [licenseeStoreId], references: [id])
+  licensorStoreId       String
+  licensorStore         Store         @relation("StoreLicensor", fields: [licensorStoreId], references: [id])
+  licenseType           LicenseType
+  purchasePrice         Decimal       @db.Decimal(10, 2)
+  royaltyRate           Decimal?      @db.Decimal(5, 4)
+  platformFee           Decimal       @db.Decimal(10, 2)
+  licensorEarnings      Decimal       @db.Decimal(10, 2)
+  status                LicenseStatus @default(ACTIVE)
+  purchasedAt           DateTime      @default(now())
+  stripePaymentIntentId String?
+
+  royaltyEarnings RoyaltyEarning[]
+
+  @@index([licenseeStoreId])
+  @@index([licensorStoreId])
+}
+
+model RoyaltyEarning {
+  id             String               @id @default(cuid())
+  licenseId      String
+  license        DesignLicense        @relation(fields: [licenseId], references: [id])
+  triggerOrderId String
+  amount         Decimal              @db.Decimal(10, 2)
+  status         RoyaltyEarningStatus @default(PENDING)
+  createdAt      DateTime             @default(now())
+
+  @@index([licenseId])
+}
+
+// ── NFT-08: Design Bounty Board ───────────────────────────────────────────────
+
+model DesignBounty {
+  id                    String       @id @default(cuid())
+  posterId              String
+  poster                User         @relation("UserBounties", fields: [posterId], references: [id])
+  posterStoreId         String?
+  posterStore           Store?       @relation(fields: [posterStoreId], references: [id])
+  title                 String
+  brief                 String       @db.Text
+  budget                Decimal      @db.Decimal(10, 2)
+  platformFee           Decimal      @db.Decimal(10, 2)
+  winnerPayout          Decimal      @db.Decimal(10, 2)
+  deadline              DateTime
+  status                BountyStatus @default(OPEN)
+  maxSubmissions        Int?
+  entryCount            Int          @default(0)
+  winnerId              String?
+  stripePaymentIntentId String?
+  stripePayout          String?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  entries DesignBountyEntry[]
+
+  @@index([status, deadline])
+  @@index([posterId])
+}
+
+model DesignBountyEntry {
+  id              String            @id @default(cuid())
+  bountyId        String
+  bounty          DesignBounty      @relation(fields: [bountyId], references: [id])
+  designerId      String
+  designer        User              @relation("UserBountyEntries", fields: [designerId], references: [id])
+  previewImageUrl String
+  fullResImageUrl String
+  description     String?
+  status          BountyEntryStatus @default(SUBMITTED)
+  createdAt       DateTime          @default(now())
+
+  @@index([bountyId, status])
+}
+
+// ── NFT-09: Canva Integration ─────────────────────────────────────────────────
+
+model CanvaIntegration {
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  canvaUserId  String    @unique
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([canvaUserId])
+}
+
+// ── NFT-10: Trend → Product ───────────────────────────────────────────────────
+
+model TrendProductDraft {
+  id                   String           @id @default(cuid())
+  storeId              String
+  store                Store            @relation(fields: [storeId], references: [id])
+  trendTopic           String
+  trendEngagement      Int              @default(0)
+  generatedAt          DateTime         @default(now())
+  designBrief          Json
+  generatedImageUrl    String
+  suggestedProductName String
+  suggestedDescription String           @db.Text
+  suggestedTags        String[]
+  status               TrendDraftStatus @default(PENDING_REVIEW)
+  approvedProductId    String?
+  expiresAt            DateTime
+  createdAt            DateTime         @default(now())
+
+  @@index([storeId, status])
+  @@index([expiresAt])
+}
+
+// ── NFT-11: Creator DNA ───────────────────────────────────────────────────────
+
+model SocialConnection {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform       String
+  accessToken    String
+  refreshToken   String?
+  expiresAt      DateTime?
+  platformUserId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([userId, platform])
+  @@index([userId])
+}
+
+model CreatorDNAAnalysis {
+  id            String           @id @default(cuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id])
+  storeId       String
+  store         Store            @relation(fields: [storeId], references: [id])
+  platform      String
+  analysisData  Json?
+  insights      Json?
+  status        CreatorDNAStatus @default(PENDING)
+  autoPopulated Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+
+  @@index([storeId])
 }

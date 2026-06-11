@@ -3,9 +3,10 @@ import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import { StoresController } from './stores.controller';
 import { AdminStoresController, AdminPlansController, AdminPlatformSettingsController, AdminSellerPayoutsController, AdminFinanceController } from './admin-stores.controller';
-import { SellerOrdersController, SellerPayoutsController, SellerReviewsController } from './seller-orders.controller';
+import { SellerOrdersController, SellerPayoutsController, SellerReviewsController, SellerScoreController } from './seller-orders.controller';
 import { StoresService } from './stores.service';
 import { StoreOrdersService } from './store-orders.service';
+import { PerformanceScoreService } from './performance-score.service';
 import { StoreOwnerGuard } from './guards/store-owner.guard';
 import { DevBullModule } from '../../queue/dev-bull.module';
 import { QUEUES } from '../../queue/queue.constants';
@@ -33,8 +34,9 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
     SellerOrdersController,
     SellerPayoutsController,
     SellerReviewsController,
+    SellerScoreController,
   ],
-  providers: [StoresService, StoreOrdersService, StoreOwnerGuard],
-  exports:   [StoresService, StoreOrdersService, StoreOwnerGuard],
+  providers: [StoresService, StoreOrdersService, StoreOwnerGuard, PerformanceScoreService],
+  exports:   [StoresService, StoreOrdersService, StoreOwnerGuard, PerformanceScoreService],
 })
 export class StoresModule {}

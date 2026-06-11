@@ -12,6 +12,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import { apiClient } from '@mlh/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { StoreCreditBadge } from './StoreCreditBadge';
 
 // ── Stripe promise (singleton per app session) ─────────────────────────────────
 const stripePromise = loadStripe(
@@ -225,6 +226,9 @@ export function PaymentForm({
 
   return (
     <div className="space-y-5">
+      {/* Store credit — shown when the buyer has available balance */}
+      <StoreCreditBadge />
+
       {/* Payment method tabs */}
       <div className="flex rounded-lg border border-border overflow-hidden">
         <button

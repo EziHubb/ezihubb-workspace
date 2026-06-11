@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ModerationService } from './moderation.service';
 import { TextModerationService } from './text-moderation.service';
 import { ImageModerationService } from './image-moderation.service';
+import { IPScanService } from './ip-scan.service';
 import { ModerationProcessor } from './moderation.processor';
 import { ModerationController, StoreViolationsController } from './moderation.controller';
 import { QUEUES } from '../../queue/queue.constants';
@@ -21,8 +22,9 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
     ModerationService,
     TextModerationService,
     ImageModerationService,
+    IPScanService,
     ...(disableQueue ? [] : [ModerationProcessor]),
   ],
-  exports: [ModerationService],
+  exports: [ModerationService, IPScanService],
 })
 export class ModerationModule {}

@@ -19,6 +19,12 @@ export class StoresController {
     return this.storesService.getStoreBySlug(slug);
   }
 
+  /** Public: store performance score by slug */
+  @Get(':slug/score')
+  getStoreScore(@Param('slug') slug: string) {
+    return this.storesService.getStoreScorePublic(slug);
+  }
+
   /** Seller: apply for a new store */
   @Post('apply')
   @UseGuards(JwtAuthGuard)

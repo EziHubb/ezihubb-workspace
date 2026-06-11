@@ -44,6 +44,14 @@ import { ReferralModule } from '../modules/referrals/referral.module';
 import { StoresModule } from '../modules/stores/stores.module';
 import { ModerationModule } from '../modules/moderation/moderation.module';
 import { StoreCreditsModule } from '../modules/store-credits/store-credits.module';
+import { DropsModule } from '../modules/drops/drops.module';
+import { PricingModule } from '../modules/pricing/pricing.module';
+import { MembershipsModule } from '../modules/memberships/memberships.module';
+import { DesignLicensingModule } from '../modules/design-licensing/design-licensing.module';
+import { BountiesModule } from '../modules/bounties/bounties.module';
+import { CanvaModule } from '../modules/canva/canva.module';
+import { TrendsModule } from '../modules/trends/trends.module';
+import { CreatorDnaModule } from '../modules/creator-dna/creator-dna.module';
 import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
 
 @Module({
@@ -149,6 +157,14 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
     StoresModule,
     ModerationModule,
     StoreCreditsModule,
+    DropsModule,
+    PricingModule,
+    MembershipsModule,
+    DesignLicensingModule,
+    BountiesModule,
+    CanvaModule,
+    TrendsModule,
+    CreatorDnaModule,
     HealthModule,
   ],
   controllers: [AppController, UnsubscribeController],

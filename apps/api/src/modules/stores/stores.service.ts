@@ -153,6 +153,20 @@ export class StoresService {
     return store;
   }
 
+  // ─── Public: Store performance score ─────────────────────────────────────
+
+  async getStoreScorePublic(slug: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { slug },
+      select: {
+        performanceScore: true, scoreShipping: true, scoreRefund: true,
+        scoreReview: true, scoreResponse: true, scoreBadge: true, scoreLastCalculatedAt: true,
+      },
+    });
+    if (!store) return null;
+    return store;
+  }
+
   // ─── Admin: List stores ───────────────────────────────────────────────────
 
   async adminListStores(dto: AdminListStoresDto) {

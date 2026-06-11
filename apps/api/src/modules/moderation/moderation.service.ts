@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import type { ModerationSettings } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
 import { TextModerationService } from './text-moderation.service';
@@ -29,8 +30,8 @@ export class ModerationService {
 
   // ── Settings ──────────────────────────────────────────────────────────────
 
-  private async getCachedSettings() {
-    const cached = await this.redis.get(SETTINGS_CACHE);
+  private async getCachedSettings(): Promise<ModerationSettings> {
+    const cached = await this.redis.get<ModerationSettings>(SETTINGS_CACHE);
     if (cached) return cached;
     const settings = await this.prisma.moderationSettings.upsert({
       where:  { id: 'singleton' },
@@ -254,7 +255,7 @@ export class ModerationService {
     entityId:   string,
     result:     ModerationResult,
     storeId:    string | null | undefined,
-    settings?:  Record<string, unknown>,
+    settings?:  ModerationSettings,
   ): Promise<void> {
     const cfg = settings ?? await this.getCachedSettings();
 
@@ -319,10 +320,10 @@ export class ModerationService {
   private async handleStrikes(
     storeId:  string,
     severity: string,
-    settings: Record<string, unknown>,
+    settings: ModerationSettings,
   ): Promise<void> {
     try {
-      const windowDays  = (settings.strikeWindowDays  as number) ?? 30;
+      const windowDays  = settings.strikeWindowDays ?? 30;
       const windowStart = new Date(Date.now() - windowDays * 86400000);
 
       // Find the last moderation log for this store
@@ -346,8 +347,8 @@ export class ModerationService {
         this.prisma.strikeRecord.count({ where: { storeId, severity: 'HIGH',     createdAt: { gte: windowStart } } }),
       ]);
 
-      const critLimit = (settings.strikeLimitCritical as number) ?? 1;
-      const highLimit = (settings.strikeLimitHigh     as number) ?? 3;
+      const critLimit = settings.strikeLimitCritical ?? 1;
+      const highLimit = settings.strikeLimitHigh     ?? 3;
 
       if (severity === 'CRITICAL' && critStrikes >= critLimit) {
         await this.prisma.store.update({ where: { id: storeId }, data: { status: 'SUSPENDED' } });
@@ -527,8 +528,8 @@ export class ModerationService {
     return null;
   }
 
-  private async getActiveRules() {
-    const cached = await this.redis.get('moderation:rules');
+  private async getActiveRules(): Promise<{ ruleType: string; value: string; severity: string; applyTo: string[] }[]> {
+    const cached = await this.redis.get<{ ruleType: string; value: string; severity: string; applyTo: string[] }[]>('moderation:rules');
     if (cached) return cached;
     const rules = await this.prisma.moderationRule.findMany({ where: { isActive: true } });
     await this.redis.set('moderation:rules', rules, 300);
