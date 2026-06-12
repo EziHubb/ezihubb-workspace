@@ -1,7 +1,12 @@
 import { execSync } from 'child_process';
 import { writeFileSync } from 'fs';
 
-console.log('[railway-build] Building all services...');
+// SERVICE is injected as a Docker build ARG from railway.toml (SERVICE = RAILWAY_SERVICE_NAME).
+// Build only the service being deployed to avoid spending 20+ min building all three apps.
+const service = (process.env.SERVICE ?? '').toLowerCase();
+const buildAll = !service;
+
+console.log(`[railway-build] SERVICE="${service || 'all'}" — building accordingly...`);
 
 function run(cmd) {
   console.log(`> ${cmd}`);
@@ -11,12 +16,17 @@ function run(cmd) {
 const prisma = 'node node_modules/prisma/build/index.js';
 const nx     = 'node node_modules/nx/dist/bin/nx.js';
 
-// RAILWAY_SERVICE_NAME is only available at runtime, not as a Docker build ARG,
-// so we always build all three services. The runtime script selects the right one.
 run(`${prisma} generate --schema=prisma/schema.prisma`);
-run(`${nx} build api --configuration=production`);
-run(`${nx} build client --configuration=production`);
-run(`${nx} build admin --configuration=production`);
+
+if (buildAll || service.includes('api')) {
+  run(`${nx} build api --configuration=production`);
+}
+if (buildAll || service.includes('client') || service.includes('web') || service.includes('storefront')) {
+  run(`${nx} build client --configuration=production`);
+}
+if (buildAll || service.includes('admin')) {
+  run(`${nx} build admin --configuration=production`);
+}
 
 // The Nx-generated next.config.js in dist/ loads .nx-helpers/with-nx.js which has a
 // top-level require('semver') — a devDependency that can't resolve from dist/.
@@ -24,7 +34,8 @@ run(`${nx} build admin --configuration=production`);
 // At PHASE_PRODUCTION_SERVER, withNx/withNextIntl/withBundleAnalyzer are all no-ops
 // anyway: withNx just returns { distDir: '.next', ...rest }.
 
-writeFileSync('dist/apps/admin/next.config.js', `/** @type {import('next').NextConfig} */
+if (buildAll || service.includes('admin')) {
+  writeFileSync('dist/apps/admin/next.config.js', `/** @type {import('next').NextConfig} */
 module.exports = {
   distDir: '.next',
   transpilePackages: ['@mlh/constants', '@mlh/types', '@mlh/ui', '@mlh/api-client'],
@@ -39,8 +50,10 @@ module.exports = {
   },
 };
 `);
+}
 
-writeFileSync('dist/apps/client/next.config.js', `/** @type {import('next').NextConfig} */
+if (buildAll || service.includes('client') || service.includes('web') || service.includes('storefront')) {
+  writeFileSync('dist/apps/client/next.config.js', `/** @type {import('next').NextConfig} */
 module.exports = {
   distDir: '.next',
   compress: true,
@@ -66,6 +79,7 @@ module.exports = {
   },
 };
 `);
+}
 
 console.log('[railway-build] next.config.js patched for production.');
 console.log('[railway-build] Done.');
