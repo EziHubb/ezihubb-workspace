@@ -3,11 +3,16 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 # SERVICE routes the build to the right app via railway-build.mjs.
+# RAILWAY_SERVICE_NAME is a runtime-only variable — it cannot be used in build args.
+# Instead, set SERVICE manually in each Railway service's Variables dashboard:
+#   api service   → SERVICE=api
+#   client service → SERVICE=client
+#   admin service  → SERVICE=admin
 # NEXT_PUBLIC_* vars are baked into the Next.js bundle at build time (not secrets).
 # All other variables (DB, JWT, AWS, Stripe secret, etc.) are runtime-only —
 # never pass them here; Railway injects them as container env vars automatically.
 [build.buildArgs]
-SERVICE                          = "${{RAILWAY_SERVICE_NAME}}"
+SERVICE                          = "${{SERVICE}}"
 NEXT_PUBLIC_API_URL              = "${{NEXT_PUBLIC_API_URL}}"
 NEXT_PUBLIC_NEXTAUTH_URL         = "${{NEXT_PUBLIC_NEXTAUTH_URL}}"
 NEXT_PUBLIC_CDN_URL              = "${{NEXT_PUBLIC_CDN_URL}}"

@@ -22,9 +22,12 @@ if (buildAll || service.includes('api')) {
   run(`${nx} build api --configuration=production`);
 }
 if (buildAll || service.includes('client') || service.includes('web') || service.includes('storefront')) {
+  // Limit SSG workers — Railway's build environment OOMs at the default 31 workers
+  process.env.NEXT_PRIVATE_CPUS = '2';
   run(`${nx} build client --configuration=production`);
 }
 if (buildAll || service.includes('admin')) {
+  process.env.NEXT_PRIVATE_CPUS = '2';
   run(`${nx} build admin --configuration=production`);
 }
 
