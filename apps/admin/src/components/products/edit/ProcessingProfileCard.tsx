@@ -111,7 +111,7 @@ export function ProcessingProfileCard({ profileId, onChange }: Props) {
             <div className="px-5 py-3 border-t border-border">
               <p className="text-xs text-muted">
                 Manage profiles in{' '}
-                <a href="/admin/shipping" className="underline hover:text-secondary transition-colors">
+                <a href="/shipping" className="underline hover:text-secondary transition-colors">
                   Shipping settings
                 </a>
               </p>

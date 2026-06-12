@@ -149,11 +149,11 @@ function CreatorDrawer({ creator, onClose }: { creator: TopCreator; onClose: () 
 
           {/* Actions */}
           <div className="flex flex-col gap-2 pt-2 border-t border-border">
-            <a href={`/admin/creators/members?search=${encodeURIComponent(creator.email)}`}
+            <a href={`/creators/members?search=${encodeURIComponent(creator.email)}`}
               className="flex items-center gap-2 text-sm font-medium text-primary hover:underline">
               <GitBranch className="w-4 h-4" /> View full referral tree
             </a>
-            <a href={`/admin/creators/payouts?creatorId=${creator.userId}`}
+            <a href={`/creators/payouts?creatorId=${creator.userId}`}
               className="flex items-center gap-2 text-sm font-medium text-primary hover:underline">
               <DollarSign className="w-4 h-4" /> View payout history
             </a>
@@ -195,7 +195,7 @@ export default function CreatorNetworkOverviewPage() {
         subtitle="Manage creators, commissions, and payouts"
         queryKey={['admin-creators-overview']}
         actions={
-          <a href="/admin/creators/settings"
+          <a href="/creators/settings"
             className="flex items-center gap-2 text-sm font-medium border border-border rounded-button px-3 py-2 text-secondary hover:border-primary transition-colors">
             <Settings className="w-4 h-4" /> Settings
           </a>
@@ -269,7 +269,7 @@ export default function CreatorNetworkOverviewPage() {
         <div className="bg-surface border border-border rounded-card overflow-hidden">
           <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
             <h3 className="font-semibold text-secondary text-sm">Top Creators This Month</h3>
-            <a href="/admin/creators/members" className="text-xs text-primary hover:underline">View all →</a>
+            <a href="/creators/members" className="text-xs text-primary hover:underline">View all →</a>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -371,7 +371,7 @@ export default function CreatorNetworkOverviewPage() {
       <div className="bg-surface border border-border rounded-card overflow-hidden mb-8">
         <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
           <h3 className="font-semibold text-secondary text-sm">Payout Requests</h3>
-          <a href="/admin/creators/payouts" className="text-xs text-primary hover:underline">View all →</a>
+          <a href="/creators/payouts" className="text-xs text-primary hover:underline">View all →</a>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -433,7 +433,7 @@ export default function CreatorNetworkOverviewPage() {
       <div className="bg-surface border border-border rounded-card p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-secondary text-sm">Commission Rates</h3>
-          <a href="/admin/creators/settings" className="text-xs text-primary hover:underline">Edit rates →</a>
+          <a href="/creators/settings" className="text-xs text-primary hover:underline">Edit rates →</a>
         </div>
         <div className="grid grid-cols-3 gap-4">
           {[

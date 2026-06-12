@@ -216,12 +216,12 @@ export default async function DashboardPage() {
       {/* ── Quick actions grid (2×3) ──────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-8">
         {[
-          { href: '/admin/stores?status=PENDING',       label: 'Review Stores',       icon: Store,        badge: platformKpis.pendingStores ?? 0,     color: 'text-amber-600 bg-amber-50 border-amber-200 hover:bg-amber-100'  },
-          { href: '/admin/moderation',                   label: 'Moderation Queue',    icon: ShieldCheck,  badge: platformKpis.moderationQueue ?? 0,   color: 'text-red-600 bg-red-50 border-red-200 hover:bg-red-100'          },
-          { href: '/admin/creators/payouts',             label: 'Creator Payouts',     icon: CreditCard,   badge: platformKpis.creatorPayoutsPending ?? 0, color: 'text-[#7C3AED] bg-[#F3F0FF] border-[#C4B5FD] hover:bg-[#EEEDFE]' },
-          { href: '/admin/orders?status=PENDING',        label: 'Pending Orders',      icon: Package,      badge: kpis.pendingOrders ?? 0,             color: 'text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100'      },
-          { href: '/admin/reviews?status=PENDING',       label: 'Pending Reviews',     icon: Star,         badge: totalPending,                        color: 'text-green-600 bg-green-50 border-green-200 hover:bg-green-100'  },
-          { href: '/admin/finance',                      label: 'Finance Overview',    icon: BarChart2,    badge: 0,                                   color: 'text-secondary bg-surface border-border hover:bg-background'     },
+          { href: '/stores?status=PENDING',       label: 'Review Stores',       icon: Store,        badge: platformKpis.pendingStores ?? 0,     color: 'text-amber-600 bg-amber-50 border-amber-200 hover:bg-amber-100'  },
+          { href: '/moderation',                   label: 'Moderation Queue',    icon: ShieldCheck,  badge: platformKpis.moderationQueue ?? 0,   color: 'text-red-600 bg-red-50 border-red-200 hover:bg-red-100'          },
+          { href: '/creators/payouts',             label: 'Creator Payouts',     icon: CreditCard,   badge: platformKpis.creatorPayoutsPending ?? 0, color: 'text-[#7C3AED] bg-[#F3F0FF] border-[#C4B5FD] hover:bg-[#EEEDFE]' },
+          { href: '/orders?status=PENDING',        label: 'Pending Orders',      icon: Package,      badge: kpis.pendingOrders ?? 0,             color: 'text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100'      },
+          { href: '/reviews?status=PENDING',       label: 'Pending Reviews',     icon: Star,         badge: totalPending,                        color: 'text-green-600 bg-green-50 border-green-200 hover:bg-green-100'  },
+          { href: '/finance',                      label: 'Finance Overview',    icon: BarChart2,    badge: 0,                                   color: 'text-secondary bg-surface border-border hover:bg-background'     },
         ].map(({ href, label, icon: Icon, badge, color }) => (
           <Link key={href} href={href}
             className={`flex items-center gap-2.5 px-4 py-3 border rounded-card text-sm font-medium transition-colors ${color}`}>
@@ -326,7 +326,7 @@ export default async function DashboardPage() {
           <div className="bg-surface border border-border rounded-card overflow-hidden">
             <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
               <h3 className="font-semibold text-secondary text-sm">Top Stores This Month</h3>
-              <Link href="/admin/stores" className="text-xs text-primary hover:underline">View all →</Link>
+              <Link href="/stores" className="text-xs text-primary hover:underline">View all →</Link>
             </div>
             {topStores.length === 0 ? (
               <div className="px-5 py-8 text-center text-sm text-muted">No data yet.</div>
@@ -345,7 +345,7 @@ export default async function DashboardPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-muted w-4 tabular-nums">#{i + 1}</span>
-                          <Link href={`/admin/stores/${s.id}`}
+                          <Link href={`/stores/${s.id}`}
                             className="text-xs font-semibold text-secondary hover:text-primary hover:underline truncate max-w-[120px]">
                             {s.name}
                           </Link>
@@ -372,7 +372,7 @@ export default async function DashboardPage() {
           <div className="bg-surface border border-border rounded-card overflow-hidden">
             <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
               <h3 className="font-semibold text-secondary text-sm">Top Creators This Month</h3>
-              <Link href="/admin/creators" className="text-xs text-primary hover:underline">View all →</Link>
+              <Link href="/creators" className="text-xs text-primary hover:underline">View all →</Link>
             </div>
             {topCreators.length === 0 ? (
               <div className="px-5 py-8 text-center text-sm text-muted">No data yet.</div>
@@ -409,7 +409,7 @@ export default async function DashboardPage() {
               </table>
             )}
             <div className="px-5 py-2.5 border-t border-border">
-              <Link href="/admin/creators" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
+              <Link href="/creators" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
                 Creator network overview <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
