@@ -40,6 +40,12 @@ export class SellerOrdersController {
     return this.storeOrdersService.getSellerDashboardStats(req.store.id);
   }
 
+  /** GET /seller/orders/counts – order counts by status */
+  @Get('counts')
+  getCounts(@Req() req: any) {
+    return this.storeOrdersService.getOrderCounts(req.store.id);
+  }
+
   /** GET /seller/orders/recent – last 5 orders */
   @Get('recent')
   getRecent(@Req() req: any) {
@@ -90,6 +96,11 @@ export class SellerPayoutsController {
   @Get()
   getPayouts(@Req() req: any, @Query() query: PaginationDto) {
     return this.storeOrdersService.getPayoutHistory(req.store.id, query);
+  }
+
+  @Post('request')
+  requestPayout(@Req() req: any, @Body() body: { amount?: number; notes?: string }) {
+    return this.storeOrdersService.requestPayout(req.store.id, body);
   }
 }
 

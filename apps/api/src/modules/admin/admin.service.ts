@@ -161,6 +161,73 @@ export class AdminService {
     }));
   }
 
+  async getPlatformStats() {
+    const [totalStores, activeStores, pendingStores, totalProducts, totalRevenue] = await Promise.all([
+      this.prisma.store.count(),
+      this.prisma.store.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.store.count({ where: { status: 'PENDING' } }),
+      this.prisma.product.count({ where: { isActive: true, deletedAt: null } }),
+      this.prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'PAID' } }),
+    ]);
+    return {
+      totalStores,
+      activeStores,
+      pendingStores,
+      totalProducts,
+      totalRevenue: Number(totalRevenue._sum.amount ?? 0),
+    };
+  }
+
+  async getRecentActivity(limit = 20) {
+    const [recentOrders, recentUsers, recentStores] = await Promise.all([
+      this.prisma.order.findMany({
+        take: 8,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, createdAt: true, total: true, status: true, user: { select: { firstName: true, lastName: true, email: true } } },
+      }),
+      this.prisma.user.findMany({
+        take: 6,
+        orderBy: { createdAt: 'desc' },
+        where: { deletedAt: null },
+        select: { id: true, email: true, firstName: true, lastName: true, createdAt: true, role: true },
+      }),
+      this.prisma.store.findMany({
+        take: 6,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, name: true, status: true, createdAt: true },
+      }),
+    ]);
+
+    const events = [
+      ...recentOrders.map((o) => ({ type: 'order', id: o.id, createdAt: o.createdAt, meta: { total: o.total, status: o.status, user: o.user } })),
+      ...recentUsers.map((u) => ({ type: 'user_signup', id: u.id, createdAt: u.createdAt, meta: { email: u.email, name: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(), role: u.role } })),
+      ...recentStores.map((s) => ({ type: 'store', id: s.id, createdAt: s.createdAt, meta: { name: s.name, status: s.status } })),
+    ];
+
+    return events.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limit);
+  }
+
+  async getTopStores(limit = 5) {
+    const rows = await this.prisma.$queryRaw<{ storeId: string; name: string; slug: string; revenue: number; ordersCount: bigint }[]>`
+      SELECT
+        s.id        AS "storeId",
+        s.name,
+        s.slug,
+        COALESCE(SUM(p.amount), 0)::float AS revenue,
+        COUNT(DISTINCT o.id)              AS "ordersCount"
+      FROM "Store" s
+      LEFT JOIN "Product" pr ON pr."storeId" = s.id
+      LEFT JOIN "OrderItem" oi ON oi."productId" = pr.id
+      LEFT JOIN "Order" o  ON o.id = oi."orderId" AND o.status NOT IN ('CANCELLED','PENDING_PAYMENT')
+      LEFT JOIN "Payment" p ON p."orderId" = o.id AND p.status = 'PAID'
+      WHERE s.status = 'ACTIVE'
+      GROUP BY s.id, s.name, s.slug
+      ORDER BY revenue DESC
+      LIMIT ${limit}
+    `;
+    return rows.map((r) => ({ storeId: r.storeId, name: r.name, slug: r.slug, revenue: Number(r.revenue), ordersCount: Number(r.ordersCount) }));
+  }
+
   async getPendingReviews(
     query: PaginationDto,
   ): Promise<PaginatedResult<ReviewResponseDto>> {

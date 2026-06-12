@@ -52,6 +52,7 @@ import { BountiesModule } from '../modules/bounties/bounties.module';
 import { CanvaModule } from '../modules/canva/canva.module';
 import { TrendsModule } from '../modules/trends/trends.module';
 import { CreatorDnaModule } from '../modules/creator-dna/creator-dna.module';
+import { AdminAiModule } from '../modules/ai/admin-ai.module';
 import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
 
 @Module({
@@ -165,6 +166,7 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
     CanvaModule,
     TrendsModule,
     CreatorDnaModule,
+    AdminAiModule,
     HealthModule,
   ],
   controllers: [AppController, UnsubscribeController],

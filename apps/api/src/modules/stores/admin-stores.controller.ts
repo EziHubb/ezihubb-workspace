@@ -49,6 +49,24 @@ export class AdminStoresController {
   assignPlan(@Param('id') id: string, @Body() dto: AssignPlanDto) {
     return this.storesService.adminAssignPlan(id, dto.planId);
   }
+
+  @Get(':id/products')
+  getStoreProducts(
+    @Param('id') id: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.storesService.adminGetStoreProducts(id, { page: page ? +page : 1, limit: limit ? +limit : 20 });
+  }
+
+  @Get(':id/orders')
+  getStoreOrders(
+    @Param('id') id: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.storesService.adminGetStoreOrders(id, { page: page ? +page : 1, limit: limit ? +limit : 20 });
+  }
 }
 
 // ─── Seller Plans sub-controller (re-uses AdminController pattern) ────────────
@@ -114,6 +132,11 @@ export class AdminSellerPayoutsController {
     });
   }
 
+  @Get('stats')
+  getPayoutStats() {
+    return this.storesService.adminPayoutStats();
+  }
+
   @Post(':id/pay')
   markPaid(@Param('id') id: string, @Req() req: any, @Body() dto: MarkPayoutPaidDto) {
     return this.storesService.adminMarkPayoutPaid(id, req.user.sub ?? req.user.id, dto);
@@ -129,5 +152,21 @@ export class AdminFinanceController {
   @Get('stats')
   getStats() {
     return this.storesService.getFinanceStats();
+  }
+
+  @Get('chart')
+  getChart(@Query('days') days?: string) {
+    return this.storesService.getFinanceChart(days ? +days : 30);
+  }
+
+  @Get('stores')
+  getStoreFinance(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.storesService.getStoreFinanceList({
+      page: page ? +page : 1,
+      limit: limit ? +limit : 20,
+    });
   }
 }

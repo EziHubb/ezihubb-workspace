@@ -157,6 +157,27 @@ export class AdminProductsController {
     return this.productsService.getStats();
   }
 
+  // GET /admin/products/seo-stats — declared before :id routes
+  @Get('seo-stats')
+  @ApiOperation({ summary: '[Admin] SEO health stats across all products' })
+  async getSeoStats() {
+    const [total, withDescription, withImages, withName] = await Promise.all([
+      this.prisma.product.count({ where: { deletedAt: null } }),
+      this.prisma.product.count({ where: { deletedAt: null, description: { not: '' } } }),
+      this.prisma.product.count({ where: { deletedAt: null, images: { some: {} } } }),
+      this.prisma.product.count({ where: { deletedAt: null, name: { not: '' } } }),
+    ]);
+    return {
+      total,
+      withDescription,
+      missingDescription: total - withDescription,
+      withImages,
+      missingImages: total - withImages,
+      withName,
+      seoScore: total > 0 ? Math.round(((withDescription + withImages + withName) / (total * 3)) * 100) : 0,
+    };
+  }
+
   // GET /admin/products
   @Get()
   @ApiOperation({ summary: '[Admin] List products (includes inactive)' })

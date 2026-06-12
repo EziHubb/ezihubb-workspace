@@ -65,6 +65,24 @@ export class AdminController {
     return this.adminService.getTopProducts(query.limit ?? 10);
   }
 
+  @Get('platform')
+  @ApiOperation({ summary: 'Get platform-wide stats (stores, products, revenue)' })
+  getPlatformStats() {
+    return this.adminService.getPlatformStats();
+  }
+
+  @Get('activity')
+  @ApiOperation({ summary: 'Get recent platform activity feed' })
+  getActivity() {
+    return this.adminService.getRecentActivity();
+  }
+
+  @Get('top-stores')
+  @ApiOperation({ summary: 'Get top stores by revenue' })
+  getTopStores(@Query('limit') limit?: string) {
+    return this.adminService.getTopStores(limit ? +limit : 5);
+  }
+
   @Get('pending-reviews')
   @ApiOperation({ summary: 'Get paginated list of pending reviews awaiting approval' })
   async getPendingReviews(

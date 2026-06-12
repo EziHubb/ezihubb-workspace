@@ -41,6 +41,14 @@ export class StoresController {
     return this.storesService.getMyStore(req.user.sub ?? req.user.id);
   }
 
+  /** Seller: get own store application status */
+  @Get('me/application')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  getMyApplication(@Req() req: any) {
+    return this.storesService.getMyStoreApplication(req.user.sub ?? req.user.id);
+  }
+
   /** Seller: update own store profile (ACTIVE stores only) */
   @Patch('me')
   @UseGuards(JwtAuthGuard, StoreOwnerGuard)

@@ -37,19 +37,19 @@ export class CustomizationController {
   @Post('upload')
   @UseInterceptors(FileInterceptor('image'))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({
-    summary:
-      'Upload an image for customization (max 10 MB, JPEG/PNG/WebP/HEIC)',
-  })
-  async uploadImage(
-    @UploadedFile() file: Express.Multer.File,
-  ): Promise<UploadedImageDto> {
-    if (!file) {
-      throw new BadRequestException({
-        code: 'ERR_VALIDATION',
-        message: 'No image file provided',
-      });
-    }
+  @ApiOperation({ summary: 'Upload an image for customization (max 10 MB, JPEG/PNG/WebP/HEIC)' })
+  async uploadImage(@UploadedFile() file: Express.Multer.File): Promise<UploadedImageDto> {
+    if (!file) throw new BadRequestException({ code: 'ERR_VALIDATION', message: 'No image file provided' });
+    return this.customizationService.uploadImage(file);
+  }
+
+  // Alias used by the client store (upload-image → upload)
+  @Post('upload-image')
+  @UseInterceptors(FileInterceptor('image'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Alias: upload an image for customization' })
+  async uploadImageAlias(@UploadedFile() file: Express.Multer.File): Promise<UploadedImageDto> {
+    if (!file) throw new BadRequestException({ code: 'ERR_VALIDATION', message: 'No image file provided' });
     return this.customizationService.uploadImage(file);
   }
 
@@ -82,12 +82,15 @@ export class CustomizationController {
   }
 
   @Post('preview')
-  @ApiOperation({
-    summary: 'Queue preview generation for a customization draft',
-  })
-  async generatePreview(
-    @Body() dto: GeneratePreviewDto,
-  ): Promise<{ jobId: string }> {
+  @ApiOperation({ summary: 'Queue preview generation for a customization draft' })
+  async generatePreview(@Body() dto: GeneratePreviewDto): Promise<{ jobId: string }> {
+    return this.customizationService.generatePreview(dto);
+  }
+
+  // Alias used by the client store (generate-preview → preview)
+  @Post('generate-preview')
+  @ApiOperation({ summary: 'Alias: queue preview generation for a customization draft' })
+  async generatePreviewAlias(@Body() dto: GeneratePreviewDto): Promise<{ jobId: string }> {
     return this.customizationService.generatePreview(dto);
   }
 
@@ -171,9 +174,20 @@ export class CustomizationController {
 
   @Get('draft/:draftId')
   @ApiOperation({ summary: 'Get a customization draft by ID' })
-  async getDraftById(
-    @Param('draftId') draftId: string,
-  ): Promise<CustomizationDraft> {
+  async getDraftById(@Param('draftId') draftId: string): Promise<CustomizationDraft> {
     return this.customizationService.getDraftById(draftId);
+  }
+
+  // Alias: GET /customization/last/:productId (client store uses this path)
+  @Get('last/:productId')
+  @ApiOperation({ summary: 'Alias: get last customization draft for a product' })
+  async getLastByProductId(
+    @Param('productId') productId: string,
+    @CurrentUser() user: JwtPayload | undefined,
+    @Req() req: Request,
+  ): Promise<CustomizationDraft | null> {
+    const userId = user?.sub ?? null;
+    const sessionId = (req.cookies as Record<string, string>)['cart_session'] ?? null;
+    return this.customizationService.getLastCustomization(userId, sessionId, productId);
   }
 }

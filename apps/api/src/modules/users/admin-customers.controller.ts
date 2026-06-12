@@ -1,14 +1,16 @@
 import {
   Get,
+  Post,
   Param,
   Query,
   Patch,
   Body,
   Req,
+  Res,
   NotFoundException,
 } from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditLogService } from '../../common/services/audit-log.service';
@@ -217,5 +219,58 @@ export class AdminCustomersController {
       userAgent:  req.headers['user-agent'],
     });
     return { updated: true };
+  }
+
+  // PATCH /admin/customers/:id/tags
+  @Patch(':id/tags')
+  @ApiOperation({ summary: 'Update admin-managed tags on a customer' })
+  async updateTags(@Param('id') id: string, @Body('tags') tags: string[]) {
+    await this.prisma.user.update({ where: { id }, data: { adminTags: tags ?? [] } });
+    return { updated: true };
+  }
+
+  // GET /admin/customers/export — CSV export
+  @Get('export')
+  @ApiOperation({ summary: 'Export customers to CSV' })
+  async exportCsv(@Query() query: { search?: string; role?: string }, @Res() res: Response) {
+    const where: Prisma.UserWhereInput = {
+      role: query.role ? { equals: query.role as any } : { in: ['CUSTOMER'] as any },
+      deletedAt: null,
+      ...(query.search ? { OR: [
+        { email: { contains: query.search, mode: 'insensitive' } },
+        { firstName: { contains: query.search, mode: 'insensitive' } },
+        { lastName: { contains: query.search, mode: 'insensitive' } },
+      ] } : {}),
+    };
+    const users = await this.prisma.user.findMany({
+      where,
+      select: {
+        id: true, email: true, firstName: true, lastName: true,
+        role: true, createdAt: true, isEmailVerified: true, isActive: true,
+        _count: { select: { orders: true } },
+        orders: { select: { total: true }, where: { status: { not: 'CANCELLED' as any } } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5000,
+    });
+    const header = 'id,email,firstName,lastName,role,ordersCount,totalSpent,isActive,isEmailVerified,createdAt';
+    const rows = users.map((u) => {
+      const totalSpent = u.orders.reduce((s, o) => s + Number(o.total), 0);
+      return [u.id, u.email, u.firstName ?? '', u.lastName ?? '', u.role,
+        u._count.orders, totalSpent.toFixed(2), u.isActive, u.isEmailVerified,
+        u.createdAt.toISOString()].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',');
+    });
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="customers-${Date.now()}.csv"`);
+    res.send([header, ...rows].join('\n'));
+  }
+
+  // POST /admin/customers/:id/impersonate  (stub — returns token-less session info)
+  @Post(':id/impersonate')
+  @ApiOperation({ summary: 'Get customer session info for support impersonation' })
+  async impersonate(@Param('id') id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id }, select: { id: true, email: true, firstName: true, lastName: true, role: true } });
+    if (!user) throw new NotFoundException('Customer not found');
+    return { user };
   }
 }

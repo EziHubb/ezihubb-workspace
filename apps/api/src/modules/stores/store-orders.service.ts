@@ -287,4 +287,34 @@ export class StoreOrdersService {
       availableBalance: Number(available._sum?.sellerEarnings ?? 0),
     };
   }
+
+  async getOrderCounts(storeId: string) {
+    const groups = await this.prisma.storeOrder.groupBy({
+      by: ['status'],
+      where: { storeId },
+      _count: { id: true },
+    });
+    const counts: Record<string, number> = {};
+    for (const g of groups) counts[g.status] = g._count.id;
+    return counts;
+  }
+
+  async requestPayout(storeId: string, body: { amount?: number; notes?: string }) {
+    const available = await this.prisma.storeOrder.aggregate({
+      where: { storeId, status: { in: ['CONFIRMED', 'IN_PRODUCTION', 'SHIPPED', 'DELIVERED', 'COMPLETED'] as OrderStatus[] }, payoutId: null },
+      _sum: { sellerEarnings: true },
+    });
+    const balance = Number(available._sum?.sellerEarnings ?? 0);
+    const amount  = body.amount ?? balance;
+    if (amount <= 0) throw new Error('Nothing to pay out');
+    return this.prisma.sellerPayout.create({
+      data: {
+        storeId,
+        amount,
+        status: 'PENDING',
+        period: new Date().toISOString().slice(0, 7),
+        platformFee: Math.round(Number(amount) * 0.05 * 100) / 100,
+      },
+    });
+  }
 }

@@ -286,4 +286,13 @@ export class NotificationsService {
       },
     });
   }
+
+  async subscribeNewsletter(email: string, firstName?: string): Promise<void> {
+    return this.queueEmail({
+      to:       email,
+      subject:  'Welcome to the Maple Loom newsletter!',
+      template: 'newsletter-welcome' as any,
+      data:     { firstName: firstName ?? 'Friend', year: new Date().getFullYear() },
+    });
+  }
 }

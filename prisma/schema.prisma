@@ -246,6 +246,7 @@ model User {
   fcmTokens   FcmToken[]
 
   adminNotes  String?   @db.Text
+  adminTags   String[]
   isActive    Boolean   @default(true)
   lastLoginAt DateTime?
 

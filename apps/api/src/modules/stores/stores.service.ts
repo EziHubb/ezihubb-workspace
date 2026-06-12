@@ -110,6 +110,14 @@ export class StoresService {
     });
   }
 
+  async getMyStoreApplication(userId: string) {
+    const store = await this.prisma.store.findUnique({
+      where:  { ownerId: userId },
+      select: { id: true, name: true, status: true, rejectedReason: true, createdAt: true, updatedAt: true },
+    });
+    return store ?? { status: 'NONE' };
+  }
+
   async updateMyStore(userId: string, dto: UpdateStoreDto) {
     const store = await this.prisma.store.findUnique({ where: { ownerId: userId } });
     if (!store) throw new NotFoundException('Store not found');
@@ -502,5 +510,79 @@ export class StoresService {
       totalPaidOutCount:     paidPayouts._count,
       activeStores,
     };
+  }
+
+  async getFinanceChart(days = 30) {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1_000);
+    const rows = await this.prisma.$queryRaw<{ date: string; fees: number; payouts: number }[]>`
+      SELECT
+        TO_CHAR(so."createdAt", 'YYYY-MM-DD') AS date,
+        COALESCE(SUM(so."platformFee"), 0)::float AS fees,
+        0::float AS payouts
+      FROM "StoreOrder" so
+      WHERE so."createdAt" >= ${since} AND so.status <> 'CANCELLED'
+      GROUP BY date
+      ORDER BY date ASC
+    `;
+    return rows.map((r) => ({ date: r.date, fees: Number(r.fees), payouts: Number(r.payouts) }));
+  }
+
+  async getStoreFinanceList(query: { page: number; limit: number }) {
+    const { page, limit } = query;
+    const [stores, total] = await Promise.all([
+      this.prisma.store.findMany({
+        where: { status: 'ACTIVE' },
+        select: {
+          id: true, name: true, slug: true,
+          _count: { select: { storeOrders: true } },
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.store.count({ where: { status: 'ACTIVE' } }),
+    ]);
+    return { data: stores, total, page, totalPages: Math.ceil(total / limit) };
+  }
+
+  async adminPayoutStats() {
+    const [pending, processing, paid, totalPaidAmount] = await Promise.all([
+      this.prisma.sellerPayout.count({ where: { status: 'PENDING' } }),
+      this.prisma.sellerPayout.count({ where: { status: 'PROCESSING' } }),
+      this.prisma.sellerPayout.count({ where: { status: 'PAID' } }),
+      this.prisma.sellerPayout.aggregate({ where: { status: 'PAID' }, _sum: { amount: true } }),
+    ]);
+    return { pending, processing, paid, totalPaidAmount: Number(totalPaidAmount._sum.amount ?? 0) };
+  }
+
+  async adminGetStoreProducts(storeId: string, query: { page: number; limit: number }) {
+    const { page, limit } = query;
+    const [products, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where: { storeId, deletedAt: null },
+        select: { id: true, name: true, slug: true, status: true, basePrice: true, soldCount: true, createdAt: true,
+          images: { where: { isPrimary: true }, take: 1, select: { url: true } } },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.product.count({ where: { storeId, deletedAt: null } }),
+    ]);
+    return { data: products, total, page, totalPages: Math.ceil(total / limit) };
+  }
+
+  async adminGetStoreOrders(storeId: string, query: { page: number; limit: number }) {
+    const { page, limit } = query;
+    const [orders, total] = await Promise.all([
+      this.prisma.storeOrder.findMany({
+        where: { storeId },
+        include: { order: { select: { id: true, createdAt: true, total: true, status: true } } },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.storeOrder.count({ where: { storeId } }),
+    ]);
+    return { data: orders, total, page, totalPages: Math.ceil(total / limit) };
   }
 }

@@ -29,6 +29,33 @@ export class ModerationController {
     });
   }
 
+  // /flags is an alias for the queue used by the admin UI
+  @Get('flags')
+  getFlags(@Query() q: { page?: string; limit?: string; severity?: string; entityType?: string; status?: string; type?: string }) {
+    return this.svc.getQueue({
+      page: q.page ? Number(q.page) : 1,
+      limit: q.limit ? Number(q.limit) : 25,
+      severity:   q.severity,
+      entityType: q.entityType ?? q.type,
+    });
+  }
+
+  @Post('flags/:id/approve')
+  approveFlag(@Param('id') id: string, @Body() body: { notes?: string }, @Request() req: { user: { sub: string } }) {
+    return this.svc.adminApprove(id, req.user.sub, body.notes ?? '');
+  }
+
+  @Post('flags/:id/reject')
+  rejectFlag(@Param('id') id: string, @Body() body: { notes?: string }, @Request() req: { user: { sub: string } }) {
+    return this.svc.adminReject(id, req.user.sub, body.notes ?? '');
+  }
+
+  @Post('flags/:id/escalate')
+  escalateFlag(@Param('id') id: string, @Body() body: { notes?: string }, @Request() req: { user: { sub: string } }) {
+    // Escalation marks as needing senior review — treat as a special reject with escalation note
+    return this.svc.adminReject(id, req.user.sub, `[ESCALATED] ${body.notes ?? ''}`);
+  }
+
   @Get('logs')
   getLogs(@Query() q: { page?: string; limit?: string; verdict?: string; entityType?: string }) {
     return this.svc.getLogs({
