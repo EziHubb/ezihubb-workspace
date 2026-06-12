@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES, ADMIN_ROUTES } from '@mlh/constants';
 
 interface ProcessingProfile {
   id:      string;
@@ -111,7 +111,7 @@ export function ProcessingProfileCard({ profileId, onChange }: Props) {
             <div className="px-5 py-3 border-t border-border">
               <p className="text-xs text-muted">
                 Manage profiles in{' '}
-                <a href="/shipping" className="underline hover:text-secondary transition-colors">
+                <a href={ADMIN_ROUTES.SHIPPING} className="underline hover:text-secondary transition-colors">
                   Shipping settings
                 </a>
               </p>

@@ -43,6 +43,14 @@ export const ADMIN_ROUTES = {
   CREATORS_ADMIN_MEMBERS:  '/creators/members',
   CREATORS_ADMIN_PAYOUTS:  '/creators/payouts',
   CREATORS_ADMIN_SETTINGS: '/creators/settings',
+
+  MODERATION:       '/moderation',
+  MODERATION_QUEUE: '/moderation/queue',
+
+  FINANCE: '/finance',
+
+  STORES: '/stores',
+  STORE:  (id: string) => `/stores/${id}`,
 } as const;
 
 // ── Client app routes (apps/client — without /${locale} prefix) ───────────────
