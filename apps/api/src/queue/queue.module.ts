@@ -7,7 +7,6 @@ import { OrderProcessor } from './order.processor';
 import { AbandonedCartProcessor } from './abandoned-cart.processor';
 import { QueueSchedulerService } from './queue-scheduler.service';
 import { DevBullModule } from './dev-bull.module';
-import { ModerationProcessor } from '../modules/moderation/moderation.processor';
 
 const ALL_QUEUES = [
   QUEUES.EMAIL,
@@ -34,7 +33,7 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
   ],
   providers: disableQueue
     ? []
-    : [EmailProcessor, ImageProcessor, OrderProcessor, AbandonedCartProcessor, QueueSchedulerService, ModerationProcessor],
+    : [EmailProcessor, ImageProcessor, OrderProcessor, AbandonedCartProcessor, QueueSchedulerService],
   exports: disableQueue ? [DevBullModule] : [BullModule],
 })
 export class QueueModule {}
