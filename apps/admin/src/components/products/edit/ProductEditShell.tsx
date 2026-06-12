@@ -5,7 +5,7 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ExternalLink, Copy, MoreHorizontal, Archive, Trash2, Check, AlertCircle } from 'lucide-react';
-import { format } from 'date-fns';
+import { fmtDate } from '../../../lib/fmt';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import {
@@ -398,7 +398,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
                       {product.status ?? (product.isActive ? 'Active' : 'Inactive')}
                     </span>
                     <span className="text-xs text-muted">
-                      Listed {format(new Date(product.publishedAt ?? product.createdAt), 'MMM d, yyyy')}
+                      Listed {fmtDate(product.publishedAt ?? product.createdAt)}
                     </span>
                     <span className="text-xs font-mono text-muted">{product.sku}</span>
                   </>

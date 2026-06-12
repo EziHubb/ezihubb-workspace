@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Download, X } from 'lucide-react';
-import { format, subDays, startOfMonth } from 'date-fns';
+import { subDays, startOfMonth } from 'date-fns';
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '../../../components/data/DataTable';
 import { OrderStatusBadge, ALL_STATUSES } from '../../../components/orders/OrderStatusBadge';
@@ -12,7 +12,7 @@ import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import type { OrderDetail } from '../../../components/orders/OrderDrawer';
 import { api, adminApi } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
-import { fmtAmount, unwrapArr } from '../../../lib/fmt';
+import { fmtAmount, fmtDate, unwrapArr } from '../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -44,14 +44,14 @@ type DatePreset = 'today' | 'yesterday' | 'last7' | 'last30' | 'month' | 'custom
 function getDateRange(preset: DatePreset): { from: string; to: string } | null {
   const now   = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const fmt   = (d: Date) => format(d, 'yyyy-MM-dd');
+  const toISO = (d: Date) => d.toISOString().slice(0, 10);
 
   switch (preset) {
-    case 'today':     return { from: fmt(today),             to: fmt(today)              };
-    case 'yesterday': return { from: fmt(subDays(today, 1)), to: fmt(subDays(today, 1))  };
-    case 'last7':     return { from: fmt(subDays(today, 6)), to: fmt(today)              };
-    case 'last30':    return { from: fmt(subDays(today, 29)),to: fmt(today)              };
-    case 'month':     return { from: fmt(startOfMonth(today)), to: fmt(today)            };
+    case 'today':     return { from: toISO(today),             to: toISO(today)              };
+    case 'yesterday': return { from: toISO(subDays(today, 1)), to: toISO(subDays(today, 1))  };
+    case 'last7':     return { from: toISO(subDays(today, 6)), to: toISO(today)              };
+    case 'last30':    return { from: toISO(subDays(today, 29)),to: toISO(today)              };
+    case 'month':     return { from: toISO(startOfMonth(today)), to: toISO(today)            };
     default:          return null;
   }
 }
@@ -69,7 +69,7 @@ async function exportCSV(params: URLSearchParams) {
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `orders-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+  a.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -184,7 +184,7 @@ export default function OrdersPage() {
       header:      'Date',
       cell:        ({ row }) => (
         <span className="text-sm text-muted whitespace-nowrap">
-          {format(new Date(row.original.createdAt), 'MMM d, yyyy')}
+          {fmtDate(row.original.createdAt)}
         </span>
       ),
     },

@@ -9,7 +9,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { Check, X } from 'lucide-react';
 import { api } from '../../../../lib/api-client';
-import { fmtNum, fmtAmount, fmtPercent, fmtFixed } from '../../../../lib/fmt';
+import { fmtDate, fmtNum, fmtAmount, fmtPercent, fmtFixed } from '../../../../lib/fmt';
 import type { AdminProductDto } from '../types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ function ChartTooltip({ active, payload, label }: {
 }) {
   if (!active || !payload?.length || !label) return null;
   let dateLabel = label;
-  try { dateLabel = format(parseISO(label), 'MMM d, yyyy'); } catch { /* keep raw */ }
+  try { dateLabel = fmtDate(label); } catch { /* keep raw */ }
 
   return (
     <div className="bg-surface border border-border rounded-card px-3 py-2 shadow-lg text-xs">
@@ -161,7 +161,7 @@ export function PerformanceTab({ product }: PerformanceTabProps) {
       <div>
         <h2 className="text-base font-semibold text-secondary">Performance</h2>
         <p className="text-sm text-muted mt-0.5">
-          Stats for this listing{pubDate ? ` since it was published on ${format(new Date(pubDate), 'MMM d, yyyy')}` : ''}.
+          Stats for this listing{pubDate ? ` since it was published on ${fmtDate(pubDate)}` : ''}.
         </p>
       </div>
 

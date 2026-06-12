@@ -4,10 +4,10 @@ import { use, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check, X, Save } from 'lucide-react';
-import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { fmtDate, fmtNum, fmtAmount, capitalize } from '../../../../lib/fmt';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -68,7 +68,7 @@ const STATUS_COLORS: Record<string, string> = {
 function StatusBadge({ status }: { status: string }) {
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[status] ?? 'bg-muted/10 text-muted'}`}>
-      {status.charAt(0) + status.slice(1).toLowerCase()}
+      {capitalize(status)}
     </span>
   );
 }
@@ -377,7 +377,7 @@ export default function AffiliateDetailPage({ params }: { params: Promise<{ id: 
                 { label: 'Email',            value: affiliate.email },
                 { label: 'Website',          value: affiliate.website ?? '—' },
                 { label: 'Referral code',    value: affiliate.referralCode },
-                { label: 'Applied',          value: format(new Date(affiliate.createdAt), 'MMM d, yyyy') },
+                { label: 'Applied',          value: fmtDate(affiliate.createdAt) },
               ].map(({ label, value }) => (
                 <div key={label}>
                   <dt className="text-xs font-semibold text-muted uppercase tracking-wide mb-0.5">{label}</dt>
@@ -422,16 +422,16 @@ export default function AffiliateDetailPage({ params }: { params: Promise<{ id: 
                         <td className="px-4 py-2.5">
                           <span className="font-mono text-xs text-primary">{c.orderNumber}</span>
                         </td>
-                        <td className="px-4 py-2.5 text-muted tabular-nums">${c.baseAmount.toFixed(2)}</td>
+                        <td className="px-4 py-2.5 text-muted tabular-nums">${fmtAmount(c.baseAmount)}</td>
                         <td className="px-4 py-2.5 text-muted tabular-nums">{(c.rate * 100).toFixed(1)}%</td>
-                        <td className="px-4 py-2.5 font-semibold text-secondary tabular-nums">${c.amount.toFixed(2)}</td>
+                        <td className="px-4 py-2.5 font-semibold text-secondary tabular-nums">${fmtAmount(c.amount)}</td>
                         <td className="px-4 py-2.5">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${COMMISSION_COLORS[c.status] ?? 'bg-muted/10 text-muted'}`}>
-                            {c.status.charAt(0) + c.status.slice(1).toLowerCase()}
+                            {capitalize(c.status)}
                           </span>
                         </td>
                         <td className="px-4 py-2.5 text-xs text-muted whitespace-nowrap">
-                          {format(new Date(c.createdAt), 'MMM d, yyyy')}
+                          {fmtDate(c.createdAt)}
                         </td>
                       </tr>
                     ))}
@@ -462,7 +462,7 @@ export default function AffiliateDetailPage({ params }: { params: Promise<{ id: 
                     {affiliate.recentClicks.map((cl) => (
                       <tr key={cl.id} className="hover:bg-muted/3 transition-colors">
                         <td className="px-4 py-2.5 text-xs text-muted whitespace-nowrap">
-                          {format(new Date(cl.createdAt), 'MMM d, yyyy')}
+                          {fmtDate(cl.createdAt)}
                         </td>
                         <td className="px-4 py-2.5 text-muted max-w-xs truncate" title={cl.landingPage}>
                           {cl.landingPage}
@@ -495,16 +495,16 @@ export default function AffiliateDetailPage({ params }: { params: Promise<{ id: 
 
             {affiliate.approvedAt && (
               <p className="text-xs text-muted">
-                Approved {format(new Date(affiliate.approvedAt), 'MMM d, yyyy')}
+                Approved {fmtDate(affiliate.approvedAt)}
               </p>
             )}
 
             <div className="grid grid-cols-2 gap-3 pt-1">
               {[
-                { label: 'Balance',     value: `$${affiliate.balance.toFixed(2)}` },
-                { label: 'Total Earned', value: `$${affiliate.totalEarned.toFixed(2)}` },
-                { label: 'Clicks',      value: affiliate.stats.totalClicks.toLocaleString() },
-                { label: 'Conversions', value: affiliate.stats.totalConversions.toLocaleString() },
+                { label: 'Balance',     value: `$${fmtAmount(affiliate.balance)}` },
+                { label: 'Total Earned', value: `$${fmtAmount(affiliate.totalEarned)}` },
+                { label: 'Clicks',      value: fmtNum(affiliate.stats.totalClicks) },
+                { label: 'Conversions', value: fmtNum(affiliate.stats.totalConversions) },
                 { label: 'Conv. Rate',  value: `${(affiliate.stats.conversionRate * 100).toFixed(1)}%` },
                 {
                   label: 'Commission',

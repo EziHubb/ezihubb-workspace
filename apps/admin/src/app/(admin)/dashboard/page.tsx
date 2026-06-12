@@ -16,7 +16,7 @@ import type { RevenueDataPoint } from '../../../components/charts/RevenueChart';
 import type { OrderStatusDataPoint } from '../../../components/charts/OrdersDonut';
 import type { TopProductDto } from '../../../components/dashboard/TopProductsTable';
 import type { ReviewDto } from '../../../components/dashboard/PendingReviewsCard';
-import { fmtAmount } from '../../../lib/fmt';
+import { fmtAmount, fmtRelative, unwrapArr, safeArr, fmtNum } from '../../../lib/fmt';
 
 export const metadata = { title: 'Dashboard — Maple Admin' };
 export const dynamic  = 'force-dynamic';
@@ -107,16 +107,6 @@ const ACTIVITY_ICONS: Record<string, { icon: typeof CheckCircle2; bg: string; co
 
 const DEFAULT_ACTIVITY = { icon: TrendingUp, bg: 'bg-gray-100', color: 'text-gray-600' };
 
-function timeAgo(ts: string): string {
-  const diff = Date.now() - new Date(ts).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1)  return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24)  return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
-
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function SeoHealthCard({
@@ -171,18 +161,18 @@ export default async function DashboardPage() {
   ]);
 
   // Normalise revenue chart data
-  const revenueData   = Array.isArray(revenueRaw) ? revenueRaw : (revenueRaw.data ?? []);
+  const revenueData   = unwrapArr<RevenueDataPoint>(revenueRaw);
   const revenueTotal  = Array.isArray(revenueRaw)
     ? revenueData.reduce((s, d) => s + (d.revenue ?? 0), 0)
     : (revenueRaw.total ?? revenueData.reduce((s, d) => s + (d.revenue ?? 0), 0));
 
   // Normalise reviews
-  const reviews      = Array.isArray(pendingRaw) ? pendingRaw : (pendingRaw.data ?? []);
+  const reviews      = unwrapArr<ReviewDto>(pendingRaw);
   const totalPending = Array.isArray(pendingRaw) ? reviews.length : (pendingRaw.total ?? reviews.length);
 
-  const activityFeed  = Array.isArray(activityRaw) ? activityRaw : [];
-  const topStores     = topStoresData.stores   ?? [];
-  const topCreators   = topStoresData.creators ?? [];
+  const activityFeed  = safeArr(activityRaw);
+  const topStores     = safeArr(topStoresData.stores);
+  const topCreators   = safeArr(topStoresData.creators);
 
   return (
     <>
@@ -310,7 +300,7 @@ export default async function DashboardPage() {
                           ? <Link href={ev.link} className="hover:underline">{ev.message}</Link>
                           : ev.message}
                       </p>
-                      <p className="text-xs text-muted mt-0.5">{timeAgo(ev.timestamp)}</p>
+                      <p className="text-xs text-muted mt-0.5">{fmtRelative(ev.timestamp)}</p>
                     </div>
                   </li>
                 );

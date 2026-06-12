@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Check, EyeOff, MessageSquare } from 'lucide-react';
 import Image from 'next/image';
-import { format } from 'date-fns';
+import { fmtDate } from '../../lib/fmt';
 import type { Review } from './ReviewModerationCard';
 
 // ── Star (inline to avoid import cycle) ──────────────────────────────────────
@@ -123,7 +123,7 @@ export function ReviewReplyModal({
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <Stars rating={review.rating} />
-                  <span className="text-xs text-muted">{format(new Date(review.createdAt), 'MMM d, yyyy')}</span>
+                  <span className="text-xs text-muted">{fmtDate(review.createdAt)}</span>
                 </div>
               </div>
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { MessageCircle, Check, Trash2, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
-import { format } from 'date-fns';
+import { fmtDate, safeArr } from '../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -101,7 +101,7 @@ function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
           <p className="text-xs text-muted mt-0.5">
             {q.askedByName}
             {q.askedByEmail && ` · ${q.askedByEmail}`}
-            {' · '}{format(new Date(q.createdAt), 'MMM d, yyyy')}
+            {' · '}{fmtDate(q.createdAt)}
             {q.upvotes > 0 && ` · ${q.upvotes} helpful`}
           </p>
           {q.answer && !expanded && (
@@ -202,7 +202,7 @@ export function QaTab({ productId }: QaTabProps) {
     setLoading(true);
     try {
       const data = await api.get<Question[]>(`${API_ROUTES.ADMIN.PRODUCT_QUESTIONS(productId)}?filter=${filter}`);
-      setQuestions(Array.isArray(data) ? data : []);
+      setQuestions(safeArr(data));
     } catch { /* ignore */ }
     setLoading(false);
   };

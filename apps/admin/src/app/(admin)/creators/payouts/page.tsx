@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, DollarSign } from 'lucide-react';
-import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { fmtDate, fmtAmount, capitalize } from '../../../../lib/fmt';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -46,7 +46,7 @@ const STATUS_COLORS: Record<string, string> = {
 function StatusBadge({ status }: { status: string }) {
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[status] ?? 'bg-muted/10 text-muted'}`}>
-      {status.charAt(0) + status.slice(1).toLowerCase()}
+      {capitalize(status)}
     </span>
   );
 }
@@ -80,7 +80,7 @@ function MarkPaidModal({ payout, onClose, onDone }: { payout: PayoutRow; onClose
           <p className="text-sm font-semibold text-secondary">{[payout.user.firstName, payout.user.lastName].filter(Boolean).join(' ') || payout.user.email}</p>
           <p className="text-xs text-muted">{payout.user.email}</p>
           <div className="flex items-center gap-3 pt-1">
-            <p className="text-lg font-bold text-secondary tabular-nums">${Number(payout.amount).toFixed(2)}</p>
+            <p className="text-lg font-bold text-secondary tabular-nums">${fmtAmount(payout.amount)}</p>
             <span className="text-xs text-muted capitalize">{payout.paymentMethod.replace(/_/g, ' ')}</span>
             <code className="text-xs font-mono bg-muted/10 px-2 py-0.5 rounded text-muted">{payout.paymentDetail}</code>
           </div>
@@ -130,7 +130,7 @@ function RejectPayoutModal({ payout, onClose, onDone }: { payout: PayoutRow; onC
           <h3 className="font-bold text-secondary">Reject Withdrawal</h3>
           <button type="button" onClick={onClose} className="p-1.5 rounded-button hover:bg-muted/10 text-muted"><X className="w-4 h-4" /></button>
         </div>
-        <p className="text-sm text-muted">Rejecting <strong className="text-secondary">${Number(payout.amount).toFixed(2)}</strong> withdrawal request. The balance will be restored.</p>
+        <p className="text-sm text-muted">Rejecting <strong className="text-secondary">${fmtAmount(payout.amount)}</strong> withdrawal request. The balance will be restored.</p>
         <div>
           <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Reason <span className="text-red-400">*</span></label>
           <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="Invalid payment details provided."
@@ -186,7 +186,7 @@ export default function CreatorPayoutsPage() {
             <button key={t} type="button" onClick={() => { setTab(t); setPage(1); }}
               className={['px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
                 tab === t ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-secondary hover:border-border'].join(' ')}>
-              {t.charAt(0) + t.slice(1).toLowerCase()}
+              {capitalize(t)}
             </button>
           ))}
         </nav>
@@ -213,12 +213,12 @@ export default function CreatorPayoutsPage() {
                         <p className="font-medium text-secondary">{[p.user.firstName, p.user.lastName].filter(Boolean).join(' ') || '—'}</p>
                         <p className="text-xs text-muted mt-0.5">{p.user.email}</p>
                       </td>
-                      <td className="px-4 py-3 font-bold text-secondary tabular-nums">${Number(p.amount).toFixed(2)}</td>
+                      <td className="px-4 py-3 font-bold text-secondary tabular-nums">${fmtAmount(p.amount)}</td>
                       <td className="px-4 py-3">
                         <p className="text-sm text-secondary capitalize">{p.paymentMethod.replace(/_/g, ' ')}</p>
                         <p className="text-xs text-muted mt-0.5 font-mono truncate max-w-[200px]">{p.paymentDetail}</p>
                       </td>
-                      <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">{format(new Date(p.createdAt), 'MMM d, yyyy')}</td>
+                      <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">{fmtDate(p.createdAt)}</td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1">
                           <StatusBadge status={p.status} />
@@ -234,7 +234,7 @@ export default function CreatorPayoutsPage() {
                               className="px-2.5 py-1 text-xs font-semibold bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-button transition-colors">Reject</button>
                           </div>
                         )}
-                        {p.status === 'PAID' && p.processedAt && <p className="text-xs text-muted">Paid {format(new Date(p.processedAt), 'MMM d')}</p>}
+                        {p.status === 'PAID' && p.processedAt && <p className="text-xs text-muted">Paid {fmtDate(p.processedAt)}</p>}
                       </td>
                     </tr>
                   ))

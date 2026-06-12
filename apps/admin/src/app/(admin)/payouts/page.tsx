@@ -2,14 +2,13 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format } from 'date-fns';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Clock, DollarSign, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { DataTable } from '../../../components/data/DataTable';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
-import { fmtAmount } from '../../../lib/fmt';
+import { fmtAmount, fmtDate } from '../../../lib/fmt';
 
 interface PayoutStats {
   pendingCount:      number;
@@ -127,7 +126,7 @@ export default function AdminPayoutsPage() {
       header:      'Created',
       cell:        ({ row }) => (
         <span className="text-xs text-muted">
-          {format(new Date(row.original.createdAt), 'MMM d, yyyy')}
+          {fmtDate(row.original.createdAt)}
         </span>
       ),
     },
@@ -139,7 +138,7 @@ export default function AdminPayoutsPage() {
         if (row.original.status === 'PAID') {
           return (
             <span className="text-xs text-muted">
-              Paid {row.original.paidAt ? format(new Date(row.original.paidAt), 'MMM d') : ''}
+              Paid {row.original.paidAt ? fmtDate(row.original.paidAt) : ''}
               {row.original.paymentMethod ? ` via ${row.original.paymentMethod}` : ''}
             </span>
           );

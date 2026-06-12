@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { format } from 'date-fns';
+import { fmtDateTime, fmtDate } from '../../lib/fmt';
 import { Check, EyeOff, MessageSquare, Trash2, Package, BadgeCheck } from 'lucide-react';
 
 // ── Types (exported for page to share) ───────────────────────────────────────
@@ -151,7 +151,7 @@ export function ReviewModerationCard({
           </div>
           <p className="text-xs text-muted mt-0.5">{review.customerEmail}</p>
           <p className="text-[11px] text-muted/70 mt-0.5">
-            {format(new Date(review.createdAt), 'MMM d, yyyy · h:mm a')}
+            {fmtDateTime(review.createdAt)}
           </p>
         </div>
 
@@ -230,7 +230,7 @@ export function ReviewModerationCard({
             MapleLoomHandmade replied
             {review.repliedAt && (
               <span className="font-normal text-muted ml-1">
-                · {format(new Date(review.repliedAt), 'MMM d, yyyy')}
+                · {fmtDate(review.repliedAt)}
               </span>
             )}
           </p>

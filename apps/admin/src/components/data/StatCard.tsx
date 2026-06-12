@@ -1,5 +1,6 @@
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { fmtNum } from '@mlh/utils';
 
 type ColorKey = 'coral' | 'amber' | 'blue' | 'green';
 
@@ -60,7 +61,7 @@ export function StatCard({
 
       {/* Value */}
       <p className="text-3xl font-bold text-secondary mt-4 leading-none tabular-nums">
-        {prefix}{typeof value === 'number' ? value.toLocaleString() : value}{suffix}
+        {prefix}{typeof value === 'number' ? fmtNum(value) : value}{suffix}
       </p>
 
       {/* Label + period */}

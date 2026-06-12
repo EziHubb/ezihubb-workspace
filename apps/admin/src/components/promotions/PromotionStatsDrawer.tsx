@@ -5,10 +5,9 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import { X, Users, DollarSign, TrendingUp, Award } from 'lucide-react';
-import { format } from 'date-fns';
 import { api } from '../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
-import { fmtNum, fmtAmount, safeArr } from '../../lib/fmt';
+import { fmtNum, fmtAmount, safeArr, fmtDate, capitalize } from '../../lib/fmt';
 import type { Promotion } from './PromotionModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -115,7 +114,7 @@ export function PromotionStatsDrawer({ promotion, onClose }: PromotionStatsDrawe
             </button>
             <code className="font-mono font-bold text-secondary text-base tracking-widest">{promotion.code}</code>
             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLE[status]}`}>
-              {status.charAt(0) + status.slice(1).toLowerCase()}
+              {capitalize(status)}
             </span>
           </div>
         </div>
@@ -176,7 +175,7 @@ export function PromotionStatsDrawer({ promotion, onClose }: PromotionStatsDrawe
                         <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
                         <XAxis
                           dataKey="date"
-                          tickFormatter={(d: string) => format(new Date(d), 'MMM d')}
+                          tickFormatter={(d: string) => fmtDate(d)}
                           tick={{ fontSize: 10, fill: '#9CA3AF' }}
                           axisLine={false}
                           tickLine={false}
@@ -237,7 +236,7 @@ export function PromotionStatsDrawer({ promotion, onClose }: PromotionStatsDrawe
                               −{fmtAmount(u.discountAmount)}
                             </td>
                             <td className="px-3 py-2.5 text-[11px] text-muted whitespace-nowrap">
-                              {format(new Date(u.usedAt), 'MMM d, yy')}
+                              {fmtDate(u.usedAt)}
                             </td>
                           </tr>
                         ))}

@@ -7,14 +7,13 @@ import {
   Plus, Search, X, Tag, TrendingDown, Activity, Zap,
   Copy, Pause, Play, Trash2, BarChart2, Pencil,
 } from 'lucide-react';
-import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { DataTable } from '../../../components/data/DataTable';
 import { PromotionModal, type Promotion, type PromotionFormData } from '../../../components/promotions/PromotionModal';
 import { PromotionStatsDrawer } from '../../../components/promotions/PromotionStatsDrawer';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
-import { fmtAmount } from '../../../lib/fmt';
+import { fmtAmount, fmtDate, fmtNum } from '../../../lib/fmt';
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
@@ -83,7 +82,7 @@ function MiniStat({
       </div>
       <div className="min-w-0">
         <p className="text-xl font-bold text-secondary tabular-nums leading-tight">
-          {typeof value === 'number' ? value.toLocaleString() : value}
+          {typeof value === 'number' ? fmtNum(value) : value}
         </p>
         <p className="text-xs text-muted mt-0.5">{label}</p>
       </div>
@@ -278,7 +277,7 @@ export default function PromotionsPage() {
       size:   110,
       cell:   ({ row }: { row: { original: Promotion } }) =>
         row.original.expiresAt
-          ? <span className="text-xs text-muted">{format(new Date(row.original.expiresAt), 'MMM d, yyyy')}</span>
+          ? <span className="text-xs text-muted">{fmtDate(row.original.expiresAt)}</span>
           : <span className="text-xs text-muted italic">Never</span>,
     },
     {

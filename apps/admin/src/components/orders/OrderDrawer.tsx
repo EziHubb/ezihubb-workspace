@@ -8,7 +8,7 @@ import {
   X, Check, Package, Truck, MapPin, User,
   ExternalLink, Save, Mail, DollarSign, MessageSquare, Gift,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { fmtDate, fmtDateTime } from '../../lib/fmt';
 import { OrderStatusBadge, ALL_STATUSES } from './OrderStatusBadge';
 import { CustomizationPreviewModal } from './CustomizationPreviewModal';
 import { BuyLabelModal, type LabelPurchaseResult } from './BuyLabelModal';
@@ -136,7 +136,7 @@ function StatusTimeline({ order }: { order: OrderDetail }) {
                 </p>
                 {date && (
                   <p className="text-xs text-muted mt-0.5">
-                    {format(new Date(date), 'MMM d, yyyy · h:mm a')}
+                    {fmtDateTime(date)}
                   </p>
                 )}
                 {!date && !isDone && (
@@ -469,9 +469,6 @@ export function OrderDrawer({ order, onClose, onUpdate }: OrderDrawerProps) {
   const customerName = [order.customer.firstName, order.customer.lastName]
     .filter(Boolean).join(' ') || order.customer.email;
 
-  const formatDate = (d?: string) =>
-    d ? format(new Date(d), 'MMM d, yyyy') : '—';
-
   return (
     <>
       {/* Backdrop */}
@@ -497,7 +494,7 @@ export function OrderDrawer({ order, onClose, onUpdate }: OrderDrawerProps) {
               <OrderStatusBadge status={order.status} />
             </div>
             <p className="text-xs text-muted mt-1">
-              {customerName} · {formatDate(order.createdAt)} · ${Number(order.total).toFixed(2)}
+              {customerName} · {fmtDate(order.createdAt)} · ${Number(order.total).toFixed(2)}
             </p>
           </div>
           <button

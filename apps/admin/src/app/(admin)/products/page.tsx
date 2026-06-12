@@ -7,12 +7,11 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { Plus, Search, X, Eye, EyeOff, Package, Upload, LayoutGrid, List, ChevronLeft, ChevronRight, Tag, Download, Archive } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { format } from 'date-fns';
 import { DataTable } from '../../../components/data/DataTable';
 import { ProductCard, type AdminProduct } from '../../../components/products/ProductCard';
 import { api, adminApi } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
-import { fmtAmount } from '../../../lib/fmt';
+import { fmtAmount, fmtDate, capitalize, fmtNum } from '../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -251,7 +250,7 @@ function ProductsPageInner() {
         return (
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-pill text-xs font-semibold ${styles[status] ?? 'bg-gray-100 text-gray-600'}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${status === 'ACTIVE' ? 'bg-green-500' : status === 'ARCHIVED' ? 'bg-red-500' : 'bg-gray-400'}`} />
-            {status.charAt(0) + status.slice(1).toLowerCase()}
+            {capitalize(status)}
           </span>
         );
       },
@@ -262,7 +261,7 @@ function ProductsPageInner() {
       size:        100,
       enableSorting: true,
       cell:        ({ getValue }) => (
-        <span className="text-xs text-muted">{format(new Date(getValue() as string), 'MMM d, yyyy')}</span>
+        <span className="text-xs text-muted">{fmtDate(getValue() as string)}</span>
       ),
     },
     {
@@ -499,7 +498,7 @@ function ProductsPageInner() {
           <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
             <p className="text-sm text-muted">
               Showing <span className="font-semibold text-secondary">{from}–{to}</span> of{' '}
-              <span className="font-semibold text-secondary">{total.toLocaleString()}</span> products
+              <span className="font-semibold text-secondary">{fmtNum(total)}</span> products
             </p>
             <div className="flex items-center gap-1">
               <button
@@ -587,7 +586,7 @@ function ProductsPageInner() {
                     </span>
                     {count !== undefined && (
                       <span className={`text-xs font-semibold tabular-nums ${urlStatus === opt.value ? 'text-primary' : 'text-muted'}`}>
-                        {count.toLocaleString()}
+                        {fmtNum(count)}
                       </span>
                     )}
                   </label>

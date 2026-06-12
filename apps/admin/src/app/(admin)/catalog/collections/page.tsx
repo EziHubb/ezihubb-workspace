@@ -10,6 +10,7 @@ import Image from 'next/image';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { fmtFixed, safeArr } from '../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -118,7 +119,7 @@ function ProductSearchRow({ onAdd }: { onAdd: (p: ProductSnippet) => void }) {
                 : <div className="w-8 h-8 rounded-lg bg-muted/10 flex items-center justify-center shrink-0"><Package className="w-3.5 h-3.5 text-muted" /></div>
               }
               <span className="flex-1 text-sm font-medium text-secondary truncate">{p.name}</span>
-              <span className="text-xs text-muted">${p.price?.toFixed(2)}</span>
+              <span className="text-xs text-muted">${fmtFixed(p.price, 2)}</span>
               <Plus className="w-3.5 h-3.5 text-primary shrink-0" />
             </button>
           ))}
@@ -165,7 +166,7 @@ function CollectionSlideOver({
     isActive:    col?.isActive    ?? true,
     startDate:   col?.startDate   ? col.startDate.slice(0, 10) : '',
     endDate:     col?.endDate     ? col.endDate.slice(0, 10)   : '',
-    products:    col?.products    ?? [],
+    products:    safeArr(col?.products),
   }));
   const [slugEdited, setSlugEdited] = useState(false);
   const [saving,     setSaving]     = useState(false);
@@ -373,7 +374,7 @@ function CollectionSlideOver({
                       : <div className="w-8 h-8 rounded-lg bg-muted/10 flex items-center justify-center shrink-0"><Package className="w-3.5 h-3.5 text-muted" /></div>
                     }
                     <span className="flex-1 text-sm text-secondary truncate">{p.name}</span>
-                    <span className="text-xs text-muted">${p.price?.toFixed(2)}</span>
+                    <span className="text-xs text-muted">${fmtFixed(p.price, 2)}</span>
                     <button
                       type="button"
                       onClick={() => removeProduct(p.id)}
@@ -467,7 +468,7 @@ export default function CollectionsPage() {
     },
   });
 
-  const collections = data?.data ?? [];
+  const collections = safeArr(data?.data);
   const totalPages  = data?.pages ?? 1;
   const total       = data?.total ?? 0;
 

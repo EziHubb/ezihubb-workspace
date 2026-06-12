@@ -3,7 +3,8 @@
 import { useFormContext } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { ExternalLink } from 'lucide-react';
-import { format, addMonths } from 'date-fns';
+import { addMonths } from 'date-fns';
+import { fmtDate } from '../../../../lib/fmt';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import type { ProductEditFormValues, RenewalType } from '../types';
@@ -110,8 +111,8 @@ function RenewalRadio({
 }) {
   // If currently manual + has an expiresAt, show it; otherwise estimate 4 months from now
   const expiryDate = expiresAt
-    ? format(new Date(expiresAt), 'MMMM d, yyyy')
-    : format(addMonths(new Date(), 4), 'MMMM d, yyyy');
+    ? fmtDate(expiresAt)
+    : fmtDate(addMonths(new Date(), 4).toISOString());
 
   const options: { value: RenewalType; label: string; desc: string }[] = [
     {

@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from './roles.decorator';
 import { Role } from '@mlh/constants';
+import { capitalize } from '@mlh/utils';
 
 /**
  * Shorthand decorator for all admin controllers.
@@ -20,7 +21,7 @@ import { Role } from '@mlh/constants';
  */
 export const AdminController = (path: string) => {
   const tag = path
-    ? `Admin — ${path.charAt(0).toUpperCase()}${path.slice(1)}`
+    ? `Admin — ${capitalize(path)}`
     : 'Admin — Dashboard';
 
   return applyDecorators(

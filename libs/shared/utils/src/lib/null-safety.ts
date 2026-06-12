@@ -11,15 +11,16 @@ export function safeStr(val: string | null | undefined, fallback = ''): string {
   return val ?? fallback;
 }
 
-/** Guarantee the value is an array. Handles null, undefined, and API envelopes. */
-export function safeArr<T>(val: unknown): T[] {
-  return Array.isArray(val) ? (val as T[]) : [];
+/** Guarantee the value is an array. Handles null and undefined. */
+export function safeArr<T>(val: T[] | null | undefined): T[] {
+  return Array.isArray(val) ? val : [];
 }
 
 /** Unwrap `{ data: T[] }` API envelope and guarantee an array */
 export function unwrapArr<T>(body: unknown): T[] {
-  const data = (body as { data?: unknown } | null)?.data ?? body;
-  return safeArr<T>(data);
+  const envelope = body as { data?: T[] } | T[] | null | undefined;
+  if (Array.isArray(envelope)) return envelope as T[];
+  return safeArr((envelope as { data?: T[] } | null)?.data);
 }
 
 /** Return `obj[key]` safely, or `undefined` if obj is null/undefined */

@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Search, X, Check, ChevronRight } from 'lucide-react';
-import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { fmtDate, fmtNum, fmtAmount, capitalize, safeArr } from '../../../lib/fmt';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -43,7 +43,7 @@ const STATUS_COLORS: Record<string, string> = {
 function StatusBadge({ status }: { status: string }) {
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[status] ?? 'bg-muted/10 text-muted'}`}>
-      {status.charAt(0) + status.slice(1).toLowerCase()}
+      {capitalize(status)}
     </span>
   );
 }
@@ -270,7 +270,7 @@ export default function AffiliatesPage() {
                   : 'border-transparent text-muted hover:text-secondary hover:border-border',
               ].join(' ')}
             >
-              {t === 'ALL' ? 'All' : t.charAt(0) + t.slice(1).toLowerCase()}
+              {t === 'ALL' ? 'All' : capitalize(t)}
               {t === 'PENDING' && (pendingCount?.count ?? 0) > 0 && (
                 <span className="bg-amber-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                   {pendingCount!.count}
@@ -302,7 +302,7 @@ export default function AffiliatesPage() {
           )}
         </div>
         {data && (
-          <span className="text-sm text-muted ml-auto">{data.total.toLocaleString()} affiliate{data.total !== 1 ? 's' : ''}</span>
+          <span className="text-sm text-muted ml-auto">{fmtNum(data.total)} affiliate{data.total !== 1 ? 's' : ''}</span>
         )}
       </div>
 
@@ -326,7 +326,7 @@ export default function AffiliatesPage() {
                       ))}
                     </tr>
                   ))
-                : (data?.data ?? []).map((a) => (
+                : safeArr(data?.data).map((a) => (
                     <tr key={a.id} className="hover:bg-muted/3 transition-colors">
                       <td className="px-4 py-3">
                         <p className="font-medium text-secondary">
@@ -341,13 +341,13 @@ export default function AffiliatesPage() {
                         {a.commissionRate !== null ? `${(a.commissionRate * 100).toFixed(1)}%` : <span className="text-muted text-xs">Global</span>}
                       </td>
                       <td className="px-4 py-3 font-semibold text-secondary tabular-nums">
-                        ${a.balance.toFixed(2)}
+                        ${fmtAmount(a.balance)}
                       </td>
                       <td className="px-4 py-3">
                         <StatusBadge status={a.status} />
                       </td>
                       <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">
-                        {format(new Date(a.createdAt), 'MMM d, yyyy')}
+                        {fmtDate(a.createdAt)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">

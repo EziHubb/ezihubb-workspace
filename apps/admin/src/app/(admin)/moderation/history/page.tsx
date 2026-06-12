@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
 import { History, ChevronDown, ChevronUp } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { fmtDate, fmtDateTime, safeArr } from '../../../../lib/fmt';
 
 type Verdict = 'PENDING' | 'CLEAN' | 'FLAGGED' | 'REJECTED' | 'APPEALED' | 'APPROVED';
 
@@ -64,7 +64,7 @@ function ExpandableRow({ log }: { log: ModerationLog }) {
   return (
     <>
       <tr className="hover:bg-background/60 transition-colors cursor-pointer" onClick={() => setOpen((v) => !v)}>
-        <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">{format(new Date(log.createdAt), 'MMM d, HH:mm')}</td>
+        <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">{fmtDateTime(log.createdAt)}</td>
         <td className="px-4 py-3">
           <div className="flex items-center gap-1.5">
             <span>{ENTITY_ICONS[log.entityType] ?? '📄'}</span>
@@ -102,7 +102,7 @@ function ExpandableRow({ log }: { log: ModerationLog }) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div><p className="text-muted font-medium mb-0.5">Model</p><p className="font-mono text-secondary">{log.modelVersion ?? log.provider}</p></div>
               <div><p className="text-muted font-medium mb-0.5">Latency</p><p className="text-secondary">{log.latencyMs != null ? `${log.latencyMs}ms` : '—'}</p></div>
-              <div><p className="text-muted font-medium mb-0.5">Reviewed at</p><p className="text-secondary">{log.reviewedAt ? format(new Date(log.reviewedAt), 'MMM d, HH:mm') : '—'}</p></div>
+              <div><p className="text-muted font-medium mb-0.5">Reviewed at</p><p className="text-secondary">{log.reviewedAt ? fmtDateTime(log.reviewedAt) : '—'}</p></div>
               <div><p className="text-muted font-medium mb-0.5">Admin notes</p><p className="text-secondary">{log.adminNotes ?? '—'}</p></div>
             </div>
             {log.reasoning && <div><p className="text-muted font-medium mb-0.5">Reasoning</p><p className="text-secondary leading-relaxed">{log.reasoning}</p></div>}
@@ -129,7 +129,7 @@ export default function ModerationHistoryPage() {
     },
   });
 
-  const logs = data?.data ?? [];
+  const logs = safeArr(data?.data);
 
   return (
     <>

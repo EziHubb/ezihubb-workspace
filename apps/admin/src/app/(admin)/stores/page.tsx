@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format } from 'date-fns';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Search, Store } from 'lucide-react';
 import { DataTable } from '../../../components/data/DataTable';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { fmtDate, safeArr } from '../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -85,7 +85,7 @@ export default function AdminStoresPage() {
     onSuccess:  () => qc.invalidateQueries({ queryKey: ['admin-stores'] }),
   });
 
-  const stores     = data?.data ?? [];
+  const stores     = safeArr(data?.data);
   const pagination = data?.pagination;
 
   const columns: ColumnDef<StoreRow>[] = [
@@ -137,7 +137,7 @@ export default function AdminStoresPage() {
       header:      'Applied',
       cell:        ({ row }) => (
         <span className="text-xs text-muted whitespace-nowrap">
-          {format(new Date(row.original.createdAt), 'MMM d, yyyy')}
+          {fmtDate(row.original.createdAt)}
         </span>
       ),
     },

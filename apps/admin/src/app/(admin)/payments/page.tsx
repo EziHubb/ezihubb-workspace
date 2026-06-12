@@ -7,7 +7,6 @@ import {
   Search, X, DollarSign, CreditCard,
   TrendingUp, AlertCircle, RotateCcw, Eye,
 } from 'lucide-react';
-import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { DataTable } from '../../../components/data/DataTable';
 import {
@@ -18,7 +17,7 @@ import {
 } from '../../../components/payments/PaymentDetailDrawer';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
-import { fmtCurrency, fmtAmount, fmtPercent } from '../../../lib/fmt';
+import { fmtCurrency, fmtAmount, fmtPercent, fmtDate, fmtDateTime, fmtNum } from '../../../lib/fmt';
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
@@ -92,7 +91,7 @@ function MiniStat({
       </div>
       <div className="min-w-0">
         <p className="text-xl font-bold text-secondary tabular-nums leading-tight">
-          {typeof value === 'number' ? value.toLocaleString() : value}
+          {typeof value === 'number' ? fmtNum(value) : value}
         </p>
         <p className="text-xs text-muted mt-0.5">{label}</p>
         {sub && <p className="text-[11px] text-muted/60">{sub}</p>}
@@ -209,11 +208,11 @@ export default function PaymentsPage() {
       cell:        ({ row }: { row: { original: PaymentRecord } }) => (
         <div>
           <span className="text-sm font-bold text-secondary tabular-nums">
-            ${(row.original.amount ?? 0).toFixed(2)}
+            {fmtAmount(row.original.amount)}
           </span>
           {(row.original.refundedAmount ?? 0) > 0 && (
             <p className="text-xs text-orange-600 tabular-nums">
-              −${(row.original.refundedAmount ?? 0).toFixed(2)} refunded
+              −{fmtAmount(row.original.refundedAmount)} refunded
             </p>
           )}
         </div>
@@ -236,9 +235,9 @@ export default function PaymentsPage() {
         const d = row.original.paidAt ?? row.original.createdAt;
         return (
           <span className="text-xs text-muted">
-            {format(new Date(d), 'MMM d, yyyy')}
+            {fmtDate(d)}
             <br />
-            <span className="text-muted/60">{format(new Date(d), 'h:mm a')}</span>
+            <span className="text-muted/60">{fmtDateTime(d)}</span>
           </span>
         );
       },
@@ -283,7 +282,7 @@ export default function PaymentsPage() {
     <>
       <AdminPageHeader
         title="Payments"
-        subtitle={`${total.toLocaleString()} transactions`}
+        subtitle={`${fmtNum(total)} transactions`}
       />
 
       {/* Stats row */}

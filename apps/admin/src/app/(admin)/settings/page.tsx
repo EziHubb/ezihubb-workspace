@@ -8,11 +8,11 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import Image from 'next/image';
-import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api, adminApi } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { Toggle as PrimitiveToggle } from '../../../components/products/edit/primitives';
+import { fmtDate, fmtDateTime, safeStr } from '../../../lib/fmt';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Shared primitives
@@ -370,7 +370,7 @@ function EmailTemplateEditor({
           <div className="flex items-center gap-3">
             <Code className="w-4 h-4 text-primary" />
             <h3 className="font-bold text-secondary">{template.name}</h3>
-            <span className="text-xs text-muted">Last edited {format(new Date(template.updatedAt), 'MMM d, yyyy')}</span>
+            <span className="text-xs text-muted">Last edited {fmtDate(template.updatedAt)}</span>
           </div>
           <button type="button" onClick={onClose} className="p-1.5 rounded-button hover:bg-muted/10 text-muted transition-colors">
             <X className="w-4 h-4" />
@@ -583,7 +583,7 @@ function EmailTab() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-secondary">{tpl.name}</p>
                 <p className="text-xs text-muted mt-0.5">
-                  Last edited {format(new Date(getUpdatedAt(tpl.slug)), 'MMM d, yyyy')}
+                  Last edited {fmtDate(getUpdatedAt(tpl.slug))}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -873,7 +873,7 @@ function TeamTab() {
                       </select>
                     </td>
                     <td className="px-4 py-3 text-xs text-muted">
-                      {m.lastLoginAt ? format(new Date(m.lastLoginAt), 'MMM d, yyyy · h:mm a') : 'Never'}
+                      {m.lastLoginAt ? fmtDateTime(m.lastLoginAt) : 'Never'}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
@@ -1079,7 +1079,7 @@ function SeoTab() {
       <SectionCard title="Analytics">
         <FormField label="Google Analytics ID">
           <input
-            value={s.gaId ?? ''}
+            value={safeStr(s.gaId)}
             onChange={(e) => set('gaId', e.target.value)}
             placeholder="G-XXXXXXXXXX"
             className={`${inputCls} w-48 font-mono`}
@@ -1091,7 +1091,7 @@ function SeoTab() {
 
         <FormField label="Meta Pixel ID">
           <input
-            value={s.metaPixelId ?? ''}
+            value={safeStr(s.metaPixelId)}
             onChange={(e) => set('metaPixelId', e.target.value)}
             placeholder="XXXXXXXXXXXXXXXXXX"
             className={`${inputCls} w-48 font-mono`}
@@ -1105,7 +1105,7 @@ function SeoTab() {
       <SectionCard title="Search Console">
         <FormField label="Google Search Console Verification">
           <input
-            value={s.googleVerification ?? ''}
+            value={safeStr(s.googleVerification)}
             onChange={(e) => set('googleVerification', e.target.value)}
             placeholder="xxxxxxxxxxxxxxxxxxxxx"
             className={`${inputCls} w-96 font-mono`}

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format } from 'date-fns';
 import {
   Shield, AlertTriangle, CheckCircle2, XCircle, Clock,
   Search, ExternalLink, ChevronDown, Eye,
@@ -10,6 +9,7 @@ import {
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { fmtDate, safeArr } from '../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -154,7 +154,7 @@ function FlagRow({
             {flag.status}
           </span>
           <span className="text-xs text-muted whitespace-nowrap">
-            {format(new Date(flag.createdAt), 'MMM d, HH:mm')}
+            {fmtDate(flag.createdAt)}
           </span>
         </div>
 
@@ -203,7 +203,7 @@ function FlagRow({
               <p className="text-muted font-medium mb-0.5">Resolved</p>
               <p className="text-secondary">
                 {flag.resolvedAt
-                  ? `${format(new Date(flag.resolvedAt), 'MMM d')} by ${flag.resolvedBy ?? 'system'}`
+                  ? `${fmtDate(flag.resolvedAt)} by ${flag.resolvedBy ?? 'system'}`
                   : '—'}
               </p>
             </div>
@@ -272,7 +272,7 @@ export default function TrustSafetyQueuePage() {
     onSuccess:  invalidate,
   });
 
-  const flags      = data?.data ?? [];
+  const flags      = safeArr(data?.data);
   const pagination = data?.pagination;
 
   return (

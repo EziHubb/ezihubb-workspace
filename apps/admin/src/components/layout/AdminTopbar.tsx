@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Bell, Download, ChevronDown, X } from 'lucide-react';
-import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { fmtDate } from '../../lib/fmt';
 
 // ── Page title from pathname ──────────────────────────────────────────────────
 
@@ -59,10 +60,9 @@ function DateRangePicker() {
     return () => document.removeEventListener('mousedown', fn);
   }, []);
 
-  const fmt = (d: Date) => format(d, 'MMM d');
   const label = selected.from.toDateString() === selected.to.toDateString()
-    ? fmt(selected.from)
-    : `${fmt(selected.from)} – ${fmt(selected.to)}`;
+    ? fmtDate(selected.from.toISOString())
+    : `${fmtDate(selected.from.toISOString())} – ${fmtDate(selected.to.toISOString())}`;
 
   return (
     <div className="relative" ref={ref}>

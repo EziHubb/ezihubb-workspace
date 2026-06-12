@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { format } from 'date-fns';
 import {
   Check, Package, MapPin, User,
   ExternalLink, Save, Mail, DollarSign, FileText, Printer,
@@ -13,7 +12,7 @@ import { ALL_STATUSES } from '../../../../components/orders/OrderStatusBadge';
 import { CustomizationPreviewModal } from '../../../../components/orders/CustomizationPreviewModal';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
-import { fmtAmount } from '../../../../lib/fmt';
+import { fmtAmount, fmtDateTime } from '../../../../lib/fmt';
 import type { OrderDetail, OrderItem } from '../../../../components/orders/OrderDrawer';
 
 // ── Timeline (same as drawer) ─────────────────────────────────────────────────
@@ -134,7 +133,7 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
                   </span>
                   <div className="ml-1">
                     <p className={`text-sm font-medium ${isDone || isCurrent ? 'text-secondary' : 'text-muted'}`}>{STEP_LABELS[step]}</p>
-                    {date && <p className="text-xs text-muted mt-0.5">{format(new Date(date), 'MMM d, yyyy · h:mm a')}</p>}
+                    {date && <p className="text-xs text-muted mt-0.5">{fmtDateTime(date)}</p>}
                   </div>
                 </li>
               );

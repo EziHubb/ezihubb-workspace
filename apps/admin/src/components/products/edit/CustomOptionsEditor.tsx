@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { safeArr } from '../../../lib/fmt';
 import { Toggle } from './primitives';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -369,10 +370,10 @@ function CustomOptionSheet({
                 <div>
                   <FieldLabel required>Options</FieldLabel>
                   <ChoicesInput
-                    values={watch('choices') ?? []}
+                    values={safeArr(watch('choices'))}
                     onChange={(v) => setValue('choices', v)}
                   />
-                  {(watch('choices') ?? []).length === 0 && (
+                  {safeArr(watch('choices')).length === 0 && (
                     <p className="text-xs text-muted mt-1">Add at least one option.</p>
                   )}
                 </div>
@@ -390,12 +391,12 @@ function CustomOptionSheet({
                   <FieldLabel>Accepted file types</FieldLabel>
                   <div className="space-y-2 mt-1">
                     {ACCEPTED_FILE_TYPES.map((ft) => {
-                      const checked = (watch('acceptedFileTypes') ?? []).includes(ft.value);
+                      const checked = safeArr(watch('acceptedFileTypes')).includes(ft.value);
                       return (
                         <label key={ft.value} className="flex items-center gap-2.5 cursor-pointer">
                           <div
                             onClick={() => {
-                              const current = watch('acceptedFileTypes') ?? [];
+                              const current = safeArr(watch('acceptedFileTypes'));
                               setValue('acceptedFileTypes',
                                 checked
                                   ? current.filter((t) => t !== ft.value)

@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import type { OrderForPdf } from '../pdf.service';
+import { fmtDate } from '@mlh/utils';
 
 const GIFT_WRAPPING_PRICE = 4.99;
 
@@ -77,12 +78,6 @@ const styles = StyleSheet.create({
 
 function fmt(n: number) {
   return `$${n.toFixed(2)}`;
-}
-
-function fmtDate(d: Date) {
-  return new Date(d).toLocaleDateString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric',
-  });
 }
 
 interface Props {

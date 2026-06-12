@@ -8,8 +8,8 @@ import {
   Eye, X, MapPin, TrendingUp,
 } from 'lucide-react';
 import Link from 'next/link';
-import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
+import { fmtDate, fmtNum, fmtAmount, fmtDateISO } from '../../../lib/fmt';
 import { DataTable } from '../../../components/data/DataTable';
 import { api, adminApi } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
@@ -64,7 +64,7 @@ function MiniStat({
       </div>
       <div className="min-w-0">
         <p className="text-2xl font-bold text-secondary tabular-nums leading-none">
-          {typeof value === 'number' ? value.toLocaleString() : value}
+          {typeof value === 'number' ? fmtNum(value) : value}
         </p>
         <p className="text-xs text-muted mt-0.5">{label}</p>
       </div>
@@ -174,7 +174,7 @@ export default function CustomersPage() {
     const res  = await adminApi.get(`/admin/customers/export?${p}`, { responseType: 'blob' });
     const blob = res.data as Blob;
     const url  = URL.createObjectURL(blob);
-    const a    = Object.assign(document.createElement('a'), { href: url, download: `customers-${format(new Date(), 'yyyy-MM-dd')}.csv` });
+    const a    = Object.assign(document.createElement('a'), { href: url, download: `customers-${fmtDateISO(new Date())}.csv` });
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -212,7 +212,7 @@ export default function CustomersPage() {
       enableSorting: true,
       cell:        ({ getValue }) => (
         <span className="text-sm font-bold text-secondary tabular-nums">
-          ${(getValue() as number).toFixed(2)}
+          {fmtAmount(getValue() as number)}
         </span>
       ),
     },
@@ -235,7 +235,7 @@ export default function CustomersPage() {
       size:        100,
       enableSorting: true,
       cell:        ({ getValue }) => (
-        <span className="text-xs text-muted">{format(new Date(getValue() as string), 'MMM d, yyyy')}</span>
+        <span className="text-xs text-muted">{fmtDate(getValue() as string)}</span>
       ),
     },
     {
@@ -245,7 +245,7 @@ export default function CustomersPage() {
       cell:        ({ getValue }) => {
         const v = getValue() as string | undefined;
         return v
-          ? <span className="text-xs text-muted">{format(new Date(v), 'MMM d, yyyy')}</span>
+          ? <span className="text-xs text-muted">{fmtDate(v)}</span>
           : <span className="text-muted text-xs">—</span>;
       },
     },
@@ -278,7 +278,7 @@ export default function CustomersPage() {
     <>
       <AdminPageHeader
         title="Customers"
-        subtitle={`${total.toLocaleString()} customers total`}
+        subtitle={`${fmtNum(total)} customers total`}
       />
 
       {/* ── Stats row ──────────────────────────────────────────────────────── */}

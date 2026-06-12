@@ -5,8 +5,8 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { format, parseISO } from 'date-fns';
 import { api } from '../../lib/api-client';
+import { fmtDate, safeArr } from '../../lib/fmt';
 import { API_ROUTES } from '@mlh/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -33,7 +33,7 @@ function CustomTooltip({
   label?:   string;
 }) {
   if (!active || !payload?.length || !label) return null;
-  const date = (() => { try { return format(parseISO(label), 'MMM d, yyyy'); } catch { return label; } })();
+  const date = (() => { try { return fmtDate(label); } catch { return label; } })();
   return (
     <div className="bg-surface border border-border rounded-card px-3 py-2 shadow-floating text-sm">
       <p className="text-muted mb-0.5">{date}</p>
@@ -72,7 +72,7 @@ export function RevenueChart({ initialData, initialTotal }: RevenueChartProps) {
         API_ROUTES.ADMIN.DASHBOARD_REVENUE,
         { params: { days: String(days) } },
       );
-      const newData  = Array.isArray(result) ? result : (result.data ?? []);
+      const newData  = safeArr(Array.isArray(result) ? result : result.data);
       const newTotal = Array.isArray(result) ? newData.reduce((s, d) => s + (d.revenue ?? 0), 0) : (result.total ?? 0);
       setData(newData);
       setTotal(newTotal);
@@ -84,7 +84,7 @@ export function RevenueChart({ initialData, initialTotal }: RevenueChartProps) {
   };
 
   const formatXAxis = (dateStr: string) => {
-    try { return format(parseISO(dateStr), 'MMM d'); } catch { return dateStr; }
+    try { return fmtDate(dateStr); } catch { return dateStr; }
   };
 
   const formatYAxis = (v: number) => {

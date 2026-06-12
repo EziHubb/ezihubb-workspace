@@ -1,11 +1,11 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
 import { TrendingUp, Users, DollarSign, Clock } from 'lucide-react';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { fmtDate, fmtNum, fmtAmount, capitalize } from '../../../lib/fmt';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -56,7 +56,7 @@ const COMMISSION_STATUS_COLORS: Record<string, string> = {
 function CommissionStatusBadge({ status }: { status: string }) {
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${COMMISSION_STATUS_COLORS[status] ?? 'bg-muted/10 text-muted'}`}>
-      {status.charAt(0) + status.slice(1).toLowerCase()}
+      {capitalize(status)}
     </span>
   );
 }
@@ -115,25 +115,25 @@ export default function ReferralsOverviewPage() {
             <>
               <KpiCard
                 label="Total Referring Users"
-                value={(kpis?.totalReferringUsers ?? 0).toLocaleString()}
+                value={fmtNum(kpis?.totalReferringUsers)}
                 icon={Users}
                 color="bg-blue-500"
               />
               <KpiCard
                 label="Active This Month"
-                value={(kpis?.activeThisMonth ?? 0).toLocaleString()}
+                value={fmtNum(kpis?.activeThisMonth)}
                 icon={TrendingUp}
                 color="bg-green-500"
               />
               <KpiCard
                 label="Total Paid Out"
-                value={`$${(kpis?.totalPaidOut ?? 0).toFixed(2)}`}
+                value={`$${fmtAmount(kpis?.totalPaidOut)}`}
                 icon={DollarSign}
                 color="bg-primary"
               />
               <KpiCard
                 label="Pending Amount"
-                value={`$${(kpis?.pendingAmount ?? 0).toFixed(2)}`}
+                value={`$${fmtAmount(kpis?.pendingAmount)}`}
                 icon={Clock}
                 color="bg-amber-500"
               />
@@ -198,8 +198,8 @@ export default function ReferralsOverviewPage() {
                             }
                           </td>
                           <td className="px-4 py-3 text-secondary tabular-nums text-xs">{r.directRefs}</td>
-                          <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${r.earned.toFixed(2)}</td>
-                          <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${r.balance.toFixed(2)}</td>
+                          <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${fmtAmount(r.earned)}</td>
+                          <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${fmtAmount(r.balance)}</td>
                         </tr>
                       ))
                 }
@@ -240,7 +240,7 @@ export default function ReferralsOverviewPage() {
                     : (data?.recentCommissions ?? []).map((c) => (
                         <tr key={c.id} className="hover:bg-muted/3 transition-colors">
                           <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">
-                            {format(new Date(c.createdAt), 'MMM d')}
+                            {fmtDate(c.createdAt)}
                           </td>
                           <td className="px-4 py-3">
                             <p className="text-xs font-medium text-secondary truncate max-w-[120px]">
@@ -257,7 +257,7 @@ export default function ReferralsOverviewPage() {
                               {c.level}
                             </span>
                           </td>
-                          <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${c.amount.toFixed(2)}</td>
+                          <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${fmtAmount(c.amount)}</td>
                           <td className="px-4 py-3">
                             <CommissionStatusBadge status={c.status} />
                           </td>

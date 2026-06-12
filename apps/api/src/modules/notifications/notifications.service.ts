@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
+import { fmtDate } from '@mlh/utils';
 
 export const EmailTemplate = {
   WELCOME:             'welcome',
@@ -264,7 +265,7 @@ export class NotificationsService {
         firstName:    data.firstName,
         creditAmount: data.creditAmount,
         referralUrl:  `${baseUrl}?bref=${data.cookieToken}`,
-        expiresAt:    data.expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+        expiresAt:    fmtDate(data.expiresAt),
         year:         new Date().getFullYear(),
       },
     });
@@ -280,7 +281,7 @@ export class NotificationsService {
       data: {
         firstName:    data.firstName,
         creditAmount: data.creditAmount,
-        expiresAt:    data.expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+        expiresAt:    fmtDate(data.expiresAt),
         year:         new Date().getFullYear(),
       },
     });

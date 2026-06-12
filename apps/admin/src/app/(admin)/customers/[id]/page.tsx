@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { format, differenceInMonths } from 'date-fns';
+import { differenceInMonths } from 'date-fns';
 import { ArrowLeft, Mail, MapPin, Phone, Calendar } from 'lucide-react';
 import { serverApi } from '../../../../lib/api-client';
-import { fmtAmount, fmtCurrency } from '../../../../lib/fmt';
+import { fmtAmount, fmtCurrency, fmtDate, fmtDateTime } from '../../../../lib/fmt';
 import { OrderStatusBadge } from '../../../../components/orders/OrderStatusBadge';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import {
@@ -144,7 +144,7 @@ export default async function CustomerDetailPage({
             )}
             <li className="flex items-center gap-2">
               <Calendar className="w-3.5 h-3.5 shrink-0" />
-              Joined {format(new Date(customer.createdAt), 'MMM d, yyyy')}
+              Joined {fmtDate(customer.createdAt)}
             </li>
           </ul>
 
@@ -200,7 +200,7 @@ export default async function CustomerDetailPage({
                       <OrderStatusBadge status={order.status} size="sm" />
                     </div>
                     <p className="text-xs text-muted mt-0.5">
-                      {format(new Date(order.createdAt), 'MMM d, yyyy · h:mm a')}
+                      {fmtDateTime(order.createdAt)}
                     </p>
                   </div>
                   <span className="text-sm font-bold text-secondary tabular-nums shrink-0">

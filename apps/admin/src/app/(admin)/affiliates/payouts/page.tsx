@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, DollarSign } from 'lucide-react';
-import { format } from 'date-fns';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { fmtDate, fmtAmount, capitalize, safeArr } from '../../../../lib/fmt';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -46,7 +46,7 @@ const STATUS_COLORS: Record<string, string> = {
 function StatusBadge({ status }: { status: string }) {
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[status] ?? 'bg-muted/10 text-muted'}`}>
-      {status.charAt(0) + status.slice(1).toLowerCase()}
+      {capitalize(status)}
     </span>
   );
 }
@@ -93,7 +93,7 @@ function MarkPaidModal({
           </p>
           <p className="text-xs text-muted">{payout.affiliate.email}</p>
           <div className="flex items-center gap-3 pt-1">
-            <p className="text-lg font-bold text-secondary tabular-nums">${Number(payout.amount).toFixed(2)}</p>
+            <p className="text-lg font-bold text-secondary tabular-nums">${fmtAmount(payout.amount)}</p>
             <span className="text-xs text-muted capitalize">{payout.paymentMethod.replace(/_/g, ' ')}</span>
             <code className="text-xs font-mono bg-muted/10 px-2 py-0.5 rounded text-muted">{payout.paymentDetail}</code>
           </div>
@@ -173,7 +173,7 @@ function RejectPayoutModal({
         </div>
 
         <p className="text-sm text-muted">
-          Rejecting <strong className="text-secondary">${Number(payout.amount).toFixed(2)}</strong> payout request.
+          Rejecting <strong className="text-secondary">${fmtAmount(payout.amount)}</strong> payout request.
           The balance will be restored to the affiliate&apos;s account.
         </p>
 
@@ -262,7 +262,7 @@ export default function AffiliatePayoutsPage() {
                   : 'border-transparent text-muted hover:text-secondary hover:border-border',
               ].join(' ')}
             >
-              {t === 'ALL' ? 'All' : t.charAt(0) + t.slice(1).toLowerCase()}
+              {t === 'ALL' ? 'All' : capitalize(t)}
             </button>
           ))}
         </nav>
@@ -288,7 +288,7 @@ export default function AffiliatePayoutsPage() {
                       ))}
                     </tr>
                   ))
-                : (data?.data ?? []).map((p) => (
+                : safeArr(data?.data).map((p) => (
                     <tr key={p.id} className="hover:bg-muted/3 transition-colors">
                       <td className="px-4 py-3">
                         <p className="font-medium text-secondary">
@@ -297,14 +297,14 @@ export default function AffiliatePayoutsPage() {
                         <p className="text-xs text-muted mt-0.5">{p.affiliate.email}</p>
                       </td>
                       <td className="px-4 py-3 font-bold text-secondary tabular-nums">
-                        ${Number(p.amount).toFixed(2)}
+                        ${fmtAmount(p.amount)}
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-sm text-secondary capitalize">{p.paymentMethod.replace(/_/g, ' ')}</p>
                         <p className="text-xs text-muted mt-0.5 font-mono truncate max-w-[200px]">{p.paymentDetail}</p>
                       </td>
                       <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">
-                        {format(new Date(p.createdAt), 'MMM d, yyyy')}
+                        {fmtDate(p.createdAt)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1">
@@ -336,13 +336,13 @@ export default function AffiliatePayoutsPage() {
                           </div>
                         )}
                         {p.status === 'PAID' && p.processedAt && (
-                          <p className="text-xs text-muted">Paid {format(new Date(p.processedAt), 'MMM d')}</p>
+                          <p className="text-xs text-muted">Paid {fmtDate(p.processedAt)}</p>
                         )}
                       </td>
                     </tr>
                   ))
               }
-              {!isLoading && (data?.data ?? []).length === 0 && (
+              {!isLoading && safeArr(data?.data).length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted">
                     No payout requests{tab !== 'ALL' ? ` with status ${tab}` : ''}.

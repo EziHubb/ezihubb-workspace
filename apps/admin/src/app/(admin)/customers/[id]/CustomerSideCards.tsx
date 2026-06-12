@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { Plus, X, Save } from 'lucide-react';
-import { format } from 'date-fns';
 import { api } from '../../../../lib/api-client';
+import { fmtDate } from '../../../../lib/fmt';
 import { API_ROUTES } from '@mlh/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ function NotesCard({ customerId, initialNotes }: { customerId: string; initialNo
             <li key={n.id} className="text-sm">
               <p className="text-secondary/80 italic leading-snug">"{n.body}"</p>
               <p className="text-[11px] text-muted mt-0.5">
-                {n.authorName ?? 'Admin'} · {format(new Date(n.createdAt), 'MMM d, yyyy')}
+                {n.authorName ?? 'Admin'} · {fmtDate(n.createdAt)}
               </p>
             </li>
           ))}

@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
-import { format } from 'date-fns';
 import { serverApi } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
+import { fmtDate, fmtAmount } from '../../../../lib/fmt';
 import { OrderStatusBadge } from '../../../../components/orders/OrderStatusBadge';
 import type { OrderDetail } from '../../../../components/orders/OrderDrawer';
 import { OrderDetailContent } from './OrderDetailContent';
@@ -45,7 +45,7 @@ export default async function OrderDetailPage({
 
       <AdminPageHeader
         title={`Order #${order.orderNumber}`}
-        subtitle={`${customerName} · ${format(new Date(order.createdAt), 'MMM d, yyyy')} · $${Number(order.total).toFixed(2)}`}
+        subtitle={`${customerName} · ${fmtDate(order.createdAt)} · ${fmtAmount(Number(order.total))}`}
         actions={<OrderStatusBadge status={order.status} />}
       />
 

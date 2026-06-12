@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format } from 'date-fns';
 import {
   ArrowLeft, Store, ShoppingBag, DollarSign, Star, Clock,
   ExternalLink, CheckCircle2, XCircle, PauseCircle, Package,
@@ -15,7 +14,7 @@ import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { StatCard } from '../../../../components/data/StatCard';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
-import { fmtAmount } from '../../../../lib/fmt';
+import { fmtAmount, fmtDate, fmtFixed, safeArr } from '../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -283,11 +282,11 @@ export default function AdminStoreDetailPage() {
                   <Globe className="w-3 h-3" /> mapleloom.com/shops/{store.slug}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Calendar className="w-3 h-3" /> Applied {format(new Date(store.createdAt), 'MMM d, yyyy')}
+                  <Calendar className="w-3 h-3" /> Applied {fmtDate(store.createdAt)}
                 </span>
                 {store.verifiedAt && (
                   <span className="flex items-center gap-1.5">
-                    <ShieldCheck className="w-3 h-3 text-green-600" /> Verified {format(new Date(store.verifiedAt), 'MMM d, yyyy')}
+                    <ShieldCheck className="w-3 h-3 text-green-600" /> Verified {fmtDate(store.verifiedAt)}
                   </span>
                 )}
               </div>
@@ -349,7 +348,7 @@ export default function AdminStoreDetailPage() {
       <div className="bg-surface border border-border rounded-card overflow-hidden mb-6">
         <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
           <h3 className="font-semibold text-secondary text-sm">Products</h3>
-          <span className="text-xs text-muted">{products?.data?.length ?? 0} shown</span>
+          <span className="text-xs text-muted">{safeArr(products?.data).length} shown</span>
         </div>
         {productsLoading ? (
           <div className="p-5 space-y-3">
@@ -380,7 +379,7 @@ export default function AdminStoreDetailPage() {
                     </div>
                   </div>
                   <p className="text-sm font-semibold text-secondary tabular-nums shrink-0">
-                    ${Number(p.basePrice).toFixed(2)}
+                    ${fmtFixed(p.basePrice, 2)}
                   </p>
                 </div>
               );
@@ -393,7 +392,7 @@ export default function AdminStoreDetailPage() {
       <div className="bg-surface border border-border rounded-card overflow-hidden">
         <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
           <h3 className="font-semibold text-secondary text-sm">Recent Orders</h3>
-          <span className="text-xs text-muted">{orders?.data?.length ?? 0} shown</span>
+          <span className="text-xs text-muted">{safeArr(orders?.data).length} shown</span>
         </div>
         {ordersLoading ? (
           <div className="p-5 space-y-3">
@@ -420,7 +419,7 @@ export default function AdminStoreDetailPage() {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-secondary tabular-nums">{fmtAmount(o.sellerEarnings)}</p>
-                  <p className="text-xs text-muted">{format(new Date(o.createdAt), 'MMM d, yyyy')}</p>
+                  <p className="text-xs text-muted">{fmtDate(o.createdAt)}</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted shrink-0" />
               </div>

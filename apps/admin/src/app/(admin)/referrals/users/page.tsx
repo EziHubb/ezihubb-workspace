@@ -6,6 +6,7 @@ import { Search, X, GitBranch } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { fmtNum, fmtAmount } from '../../../../lib/fmt';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -188,7 +189,7 @@ export default function ReferralUsersPage() {
         </select>
 
         {data && (
-          <span className="text-sm text-muted ml-auto">{data.total.toLocaleString()} user{data.total !== 1 ? 's' : ''}</span>
+          <span className="text-sm text-muted ml-auto">{fmtNum(data.total)} user{data.total !== 1 ? 's' : ''}</span>
         )}
       </div>
 
@@ -243,8 +244,8 @@ export default function ReferralUsersPage() {
                           <code className="font-mono text-xs bg-muted/10 px-2 py-0.5 rounded">{u.referralCode}</code>
                         </td>
                         <td className="px-4 py-3 text-secondary tabular-nums text-xs">{u.directRefs}</td>
-                        <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${u.earned.toFixed(2)}</td>
-                        <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${u.balance.toFixed(2)}</td>
+                        <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${fmtAmount(u.earned)}</td>
+                        <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${fmtAmount(u.balance)}</td>
                         <td className="px-4 py-3">
                           <button
                             type="button"

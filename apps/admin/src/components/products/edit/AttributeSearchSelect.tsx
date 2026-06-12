@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { X, ChevronDown, HelpCircle, Plus } from 'lucide-react';
 import { api } from '../../../lib/api-client';
 import type { ProductEditFormValues } from './types';
+import { safeArr } from '@mlh/utils';
 
 // ─── useDebounce ──────────────────────────────────────────────────────────────
 
@@ -76,7 +77,7 @@ export function AttributeSearchSelect({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const debouncedInput = useDebounce(inputValue, 200);
-  const selected       = (watch(name) ?? []) as string[];
+  const selected       = (watch(name) as string[] | undefined) ?? [];
   const reached        = maxSelections !== Infinity && selected.length >= maxSelections;
 
   // Close on outside click
@@ -97,7 +98,7 @@ export function AttributeSearchSelect({
         : searchEndpoint;
       try {
         const raw = await api.get<string[]>(url);
-        return Array.isArray(raw) ? raw : [];
+        return safeArr(raw);
       } catch {
         return [];
       }

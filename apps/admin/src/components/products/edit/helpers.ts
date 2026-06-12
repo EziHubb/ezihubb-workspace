@@ -1,4 +1,5 @@
 import type { AdminProductDto, AdminProductDetailDto, ProductEditFormValues } from './types';
+import { safeArr, safeStr } from '../../../lib/fmt';
 
 // ── Empty defaults (create mode) ─────────────────────────────────────────────
 
@@ -54,33 +55,33 @@ export function buildDefaultValues(
 
   return {
     // Photo & Video
-    imageIds:          (product.images ?? []).sort((a, b) => a.sortOrder - b.sortOrder).map((i) => i.id),
-    videoUrls:         product.videoUrls         ?? [],
+    imageIds:          safeArr(product.images).sort((a, b) => a.sortOrder - b.sortOrder).map((i) => i.id),
+    videoUrls:         safeArr(product.videoUrls),
     thumbnailCropData: product.thumbnailCropData ?? null,
     imageAltTexts:     detail?.imageAltTexts     ?? {},
     pendingImageUrls:  [],
 
     // Item Details
     name:              product.name,
-    description:       detail?.richDescription   ?? product.description ?? '',
-    primaryCategoryId: product.primaryCategoryId ?? product.categoryId  ?? '',
+    description:       safeStr(detail?.richDescription ?? product.description),
+    primaryCategoryId: safeStr(product.primaryCategoryId ?? product.categoryId),
 
     // Item Options
-    tags:            (product.productTags ?? []).map((pt) => pt.tag.name),
-    materials:       product.materials       ?? [],
-    primaryColors:   product.primaryColors   ?? [],
-    secondaryColors: product.secondaryColors ?? [],
-    occasions:       product.occasions       ?? [],
-    holidayTags:     product.holidayTags     ?? [],
-    recipientTags:   product.recipientTags   ?? [],
-    styles:          product.styles          ?? [],
-    sustainability:  product.sustainability  ?? [],
-    customOptions:   (detail?.customOptions  ?? []) as unknown[],
+    tags:            safeArr(product.productTags).map((pt) => pt.tag.name),
+    materials:       safeArr(product.materials),
+    primaryColors:   safeArr(product.primaryColors),
+    secondaryColors: safeArr(product.secondaryColors),
+    occasions:       safeArr(product.occasions),
+    holidayTags:     safeArr(product.holidayTags),
+    recipientTags:   safeArr(product.recipientTags),
+    styles:          safeArr(product.styles),
+    sustainability:  safeArr(product.sustainability),
+    customOptions:   safeArr(detail?.customOptions) as unknown[],
 
     // Pricing & Shipping
     basePrice:             Number(product.basePrice),
     compareAtPrice:        product.compareAtPrice ? Number(product.compareAtPrice) : null,
-    sku:                   product.sku                    ?? '',
+    sku:                   safeStr(product.sku),
     quantity:              product.quantity               ?? null,
     trackInventory:        product.trackInventory         ?? false,
     lowStockThreshold:     product.lowStockThreshold      ?? null,
@@ -92,9 +93,9 @@ export function buildDefaultValues(
     // How It's Made
     whoMadeIt:            product.whoMadeIt            ?? 'I_DID',
     howItWasMade:         product.howItWasMade         ?? 'MADE_TO_ORDER',
-    toolsUsed:            product.toolsUsed            ?? [],
-    productionPartnerIds: product.productionPartnerIds ?? [],
-    hsCode:               product.hsCode               ?? '',
+    toolsUsed:            safeArr(product.toolsUsed),
+    productionPartnerIds: safeArr(product.productionPartnerIds),
+    hsCode:               safeStr(product.hsCode),
     gpsrInfo:             detail?.gpsrInfo             ?? null,
 
     // Settings

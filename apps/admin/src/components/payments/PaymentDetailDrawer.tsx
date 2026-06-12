@@ -7,10 +7,9 @@ import {
   RotateCcw, AlertCircle, Gift,
 } from 'lucide-react';
 import Link from 'next/link';
-import { format } from 'date-fns';
 import { api } from '../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
-import { fmtAmount, fmtFixed } from '../../lib/fmt';
+import { fmtAmount, fmtFixed, fmtDate, fmtDateTime } from '../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -272,7 +271,7 @@ export function PaymentDetailDrawer({ payment, onClose, onRefund }: PaymentDetai
             )}
             <InfoRow label="Date">
               <span className="text-sm text-muted">
-                {format(new Date(payment.paidAt ?? payment.createdAt), 'MMM d, yyyy · h:mm a')}
+                {fmtDateTime(payment.paidAt ?? payment.createdAt)}
               </span>
             </InfoRow>
             <InfoRow label="Customer">
@@ -332,7 +331,7 @@ export function PaymentDetailDrawer({ payment, onClose, onRefund }: PaymentDetai
                       />
                     </div>
                     <div className="flex items-center justify-between mt-1">
-                      <p className="text-xs text-muted">Max: ${maxRefund.toFixed(2)}</p>
+                      <p className="text-xs text-muted">Max: ${fmtFixed(maxRefund, 2)}</p>
                       <button
                         type="button"
                         onClick={() => setRefundAmount(fmtFixed(maxRefund, 2))}
@@ -395,10 +394,10 @@ export function PaymentDetailDrawer({ payment, onClose, onRefund }: PaymentDetai
                   {refunds.map((r) => (
                     <div key={r.id} className="flex items-center justify-between text-xs">
                       <div>
-                        <span className="font-semibold text-secondary tabular-nums">−${r.amount.toFixed(2)}</span>
+                        <span className="font-semibold text-secondary tabular-nums">−${fmtFixed(r.amount, 2)}</span>
                         {r.reason && <span className="text-muted ml-1.5">· {r.reason}</span>}
                       </div>
-                      <span className="text-muted">{format(new Date(r.createdAt), 'MMM d, yyyy')}</span>
+                      <span className="text-muted">{fmtDate(r.createdAt)}</span>
                     </div>
                   ))}
                 </div>

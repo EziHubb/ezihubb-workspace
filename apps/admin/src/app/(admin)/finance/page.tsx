@@ -2,13 +2,12 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
 import { BarChart2, DollarSign, Wallet, Store, Clock, TrendingUp } from 'lucide-react';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { StatCard } from '../../../components/data/StatCard';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
-import { fmtAmount } from '../../../lib/fmt';
+import { fmtAmount, fmtDate, unwrapArr } from '../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -97,7 +96,7 @@ export default function AdminFinancePage() {
     staleTime: 120_000,
   });
 
-  const stores     = storesData?.data ?? [];
+  const stores     = unwrapArr<StoreRevRow>(storesData);
   const pagination = storesData?.pagination;
   const chart      = chartData ?? [];
 
@@ -153,7 +152,7 @@ export default function AdminFinancePage() {
           <div className="space-y-3">
             <MiniBarChart data={chart} valueKey="revenue" />
             <div className="flex items-end justify-between text-xs text-muted">
-              <span>{chart[0]?.date ? format(new Date(chart[0].date), 'MMM d') : ''}</span>
+              <span>{chart[0]?.date ? fmtDate(chart[0].date) : ''}</span>
               <div className="flex items-center gap-4">
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-primary/30" />
@@ -164,7 +163,7 @@ export default function AdminFinancePage() {
                   Fees: {fmtAmount(chart.reduce((s, d) => s + d.fees, 0))}
                 </span>
               </div>
-              <span>{chart[chart.length - 1]?.date ? format(new Date(chart[chart.length - 1].date), 'MMM d') : ''}</span>
+              <span>{chart[chart.length - 1]?.date ? fmtDate(chart[chart.length - 1].date) : ''}</span>
             </div>
           </div>
         )}
