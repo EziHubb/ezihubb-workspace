@@ -2,6 +2,7 @@ import {
   DollarSign, PackageSearch, Clock, Hammer, Store, AlertTriangle,
   Users, ShoppingBag, CheckCircle2, Flag, CreditCard, Star,
   ArrowRight, TrendingUp, BarChart2, ShieldCheck, Package,
+  Sparkles, Dna, FlaskConical, Activity,
 } from 'lucide-react';
 import Link from 'next/link';
 import { serverApi } from '../../../lib/api-client';
@@ -89,6 +90,14 @@ interface TopStoresResponse {
   creators?: TopCreatorMini[];
 }
 
+interface AiStats {
+  pendingTrendDrafts?: number;
+  activePricingTests?: number;
+  creatorDnaProfiles?: number;
+  apiCostThisMonth?:   number;
+  apiCallsToday?:      number;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function safeFetch<T>(path: string, fallback: T): Promise<T> {
@@ -141,7 +150,7 @@ function SeoHealthCard({
 export default async function DashboardPage() {
   const [
     kpis, revenueRaw, ordersByStatus, topProducts, pendingRaw, seoStats,
-    platformKpis, activityRaw, topStoresData,
+    platformKpis, activityRaw, topStoresData, aiStats,
   ] = await Promise.all([
     safeFetch<KpiData>(API_ROUTES.ADMIN.DASHBOARD_KPIS, {}),
     safeFetch<RevenueChartResponse | RevenueDataPoint[]>(
@@ -158,6 +167,7 @@ export default async function DashboardPage() {
     safeFetch<PlatformKpis>(API_ROUTES.ADMIN.DASHBOARD_PLATFORM, {}),
     safeFetch<ActivityEvent[]>(API_ROUTES.ADMIN.DASHBOARD_ACTIVITY, []),
     safeFetch<TopStoresResponse>(`${API_ROUTES.ADMIN.DASHBOARD_TOP_STORES}?limit=5`, {}),
+    safeFetch<AiStats>(API_ROUTES.ADMIN.AI_STATS, {}),
   ]);
 
   // Normalise revenue chart data
@@ -224,6 +234,37 @@ export default async function DashboardPage() {
             )}
           </Link>
         ))}
+      </div>
+
+      {/* ── AI Features KPI row ──────────────────────────────────────────── */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="w-4 h-4 text-primary" />
+          <h3 className="text-sm font-semibold text-secondary">AI Features</h3>
+          <Link href={ADMIN_ROUTES.ai.trends} className="text-xs text-primary hover:underline ml-auto">
+            Manage →
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
+          {[
+            { icon: TrendingUp,    label: 'Pending Trend Drafts', value: String(aiStats.pendingTrendDrafts ?? 0), href: ADMIN_ROUTES.ai.trends,     alert: (aiStats.pendingTrendDrafts ?? 0) > 0 },
+            { icon: FlaskConical,  label: 'Active Pricing Tests', value: String(aiStats.activePricingTests ?? 0), href: ADMIN_ROUTES.ai.pricing,     alert: false },
+            { icon: Dna,           label: 'Creator DNA Profiles', value: String(aiStats.creatorDnaProfiles ?? 0), href: ADMIN_ROUTES.ai.creatorDna,  alert: false },
+            { icon: Activity,      label: 'API Cost This Month',  value: fmtAmount(aiStats.apiCostThisMonth ?? 0), href: ADMIN_ROUTES.ai.usage,       alert: false },
+            { icon: BarChart2,     label: 'API Calls Today',      value: fmtNum(aiStats.apiCallsToday ?? 0),     href: ADMIN_ROUTES.ai.usage,       alert: false },
+          ].map(({ icon: Icon, label, value, href, alert }) => (
+            <Link key={label} href={href}
+              className="bg-surface border border-border rounded-card p-4 flex items-center gap-3 hover:border-primary transition-colors">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${alert ? 'bg-amber-500' : 'bg-primary/10'}`}>
+                <Icon className={`w-4 h-4 ${alert ? 'text-white' : 'text-primary'}`} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] text-muted font-medium leading-tight">{label}</p>
+                <p className="text-base font-bold text-secondary tabular-nums">{value}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* ── Row 1: Revenue KPI cards ──────────────────────────────────────── */}

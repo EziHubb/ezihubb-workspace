@@ -12,17 +12,24 @@ import {
   Tag, Layers, Users, BadgePercent, Star, Truck,
   CreditCard, Settings, ChevronDown, ChevronRight, LogOut, Globe, MessageSquare, Link2,
   Bookmark, Factory, Shield, GitBranch, Store, BarChart2, Wallet, ShieldAlert, History,
-  SlidersHorizontal, ScanSearch,
+  SlidersHorizontal, ScanSearch, Sparkles, TrendingUp, DollarSign, Dna, Activity,
 } from 'lucide-react';
 
 // ── Nav item types ─────────────────────────────────────────────────────────────
 
+interface ChildItem {
+  label:  string;
+  href:   string;
+  icon:   React.ElementType;
+  badge?: number;
+}
+
 interface NavItem {
-  label:    string;
-  href:     string;
-  icon:     React.ElementType;
-  badge?:   number;
-  children?: { label: string; href: string; icon: React.ElementType }[];
+  label:     string;
+  href:      string;
+  icon:      React.ElementType;
+  badge?:    number;
+  children?: ChildItem[];
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -76,6 +83,16 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Members',  href: '/creators/members',  icon: Users      },
       { label: 'Payouts',  href: '/creators/payouts',  icon: CreditCard },
       { label: 'Settings', href: '/creators/settings', icon: Settings   },
+    ],
+  },
+  {
+    label: 'AI Features', href: '/ai/trends', icon: Sparkles,
+    children: [
+      { label: 'Trend Dashboard',   href: '/ai/trends',      icon: TrendingUp, badge: 0 },
+      { label: 'Pricing Optimizer', href: '/ai/pricing',     icon: DollarSign            },
+      { label: 'Creator DNA',       href: '/ai/creator-dna', icon: Activity              },
+      { label: 'AI Usage & Cost',   href: '/ai/usage',       icon: BarChart2             },
+      { label: 'AI Settings',       href: '/ai/settings',    icon: Settings              },
     ],
   },
   {
@@ -208,11 +225,25 @@ export function AdminSidebar() {
     refetchInterval: 120_000,
   });
 
-  const navItems = useMemo(() => NAV_ITEMS.map((item) =>
-    item.href === '/affiliates'
-      ? { ...item, badge: pendingData?.count ?? 0 }
-      : item,
-  ), [pendingData]);
+  const { data: aiTrendPending } = useQuery<{ count: number }>({
+    queryKey: ['sidebar-ai-trend-pending'],
+    queryFn:  () => api.get<{ count: number }>(API_ROUTES.ADMIN.AI_TREND_PENDING_COUNT),
+    staleTime:       60_000,
+    refetchInterval: 120_000,
+  });
+
+  const navItems = useMemo(() => NAV_ITEMS.map((item) => {
+    if (item.href === '/affiliates') return { ...item, badge: pendingData?.count ?? 0 };
+    if (item.label === 'AI Features') {
+      return {
+        ...item,
+        children: item.children?.map((c) =>
+          c.href === '/ai/trends' ? { ...c, badge: aiTrendPending?.count ?? 0 } : c,
+        ),
+      };
+    }
+    return item;
+  }), [pendingData, aiTrendPending]);
 
   return (
     <aside

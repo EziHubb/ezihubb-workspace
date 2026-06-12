@@ -409,6 +409,23 @@ export const API_ROUTES = {
     // ── Store Credits ────────────────────────────────────────────────────────
     STORE_CREDITS:         '/admin/store-credits',
     STORE_CREDITS_STATS:   '/admin/store-credits/stats',
+
+    // ── AI Features ──────────────────────────────────────────────────────────
+    AI_STATS:                    '/admin/ai/stats',
+    AI_TREND_DRAFTS:             '/admin/ai/trend-drafts',
+    AI_TREND_DRAFT:              (id: string) => `/admin/ai/trend-drafts/${id}`,
+    AI_TREND_DRAFT_APPROVE:      (id: string) => `/admin/ai/trend-drafts/${id}/approve`,
+    AI_TREND_DRAFT_REJECT:       (id: string) => `/admin/ai/trend-drafts/${id}/reject`,
+    AI_TREND_SCAN:               '/admin/ai/trends/trigger-scan',
+    AI_TREND_PENDING_COUNT:      '/admin/ai/trend-drafts/pending-count',
+    AI_PRICING_STATS:            '/admin/ai/pricing/stats',
+    AI_PRICING_TESTS:            '/admin/ai/pricing/tests',
+    AI_PRICING_TEST_END:         (id: string) => `/admin/ai/pricing/tests/${id}/end`,
+    AI_PRICING_TEST_REVERT:      (id: string) => `/admin/ai/pricing/tests/${id}/revert`,
+    AI_CREATOR_DNA_LIST:         '/admin/ai/creator-dna',
+    AI_CREATOR_DNA_REANALYZE:    (id: string) => `/admin/ai/creator-dna/${id}/reanalyze`,
+    AI_USAGE:                    '/admin/ai/usage',
+    AI_SETTINGS:                 '/admin/ai/settings',
   },
 
   // ── Seller (store-owner portal) ─────────────────────────────────────────────
