@@ -97,25 +97,12 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // ── CORS ───────────────────────────────────────────────────────────────────
-  // CORS_ORIGINS="*" → reflect any origin (dev); comma-list → strict whitelist.
-  // ADMIN_URL and FRONTEND_URL are always added automatically when set so
-  // callers don't need to duplicate them in CORS_ORIGINS.
-  const rawOrigins = process.env['CORS_ORIGINS'] ?? '*';
-  const allowAll   = rawOrigins.trim() === '*';
-  const explicitOrigins = rawOrigins.split(',').map((o) => o.trim()).filter(Boolean);
-  const autoOrigins = [
-    process.env['ADMIN_URL'],
-    process.env['FRONTEND_URL'],
-    process.env['APP_URL'],
-  ].filter((u): u is string => Boolean(u) && u !== '*');
-  const originList = allowAll ? [] : [...new Set([...explicitOrigins, ...autoOrigins])];
+  // origin: true reflects the incoming Origin header back — required when
+  // credentials:true because browsers reject "Access-Control-Allow-Origin: *"
+  // combined with credentials. Reflecting the origin is functionally equivalent
+  // to allowing all origins while staying spec-compliant.
   app.enableCors({
-    origin: allowAll
-      ? true
-      : (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
-          if (!origin || originList.includes(origin)) cb(null, true);
-          else cb(new Error(`CORS: origin ${origin} not allowed`));
-        },
+    origin: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Session-ID'],
     exposedHeaders: [
@@ -125,13 +112,12 @@ async function bootstrap() {
       'Retry-After',
     ],
     credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
     maxAge: 86400,
   });
 
-  Logger.log(
-    allowAll ? 'CORS: all origins allowed' : `CORS: ${originList.join(', ')}`,
-    'Bootstrap',
-  );
+  Logger.log('CORS: all origins allowed (reflect mode)', 'Bootstrap');
 
   // ── Global prefix ──────────────────────────────────────────────────────────
   app.setGlobalPrefix('api/v1');
