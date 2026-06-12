@@ -18,7 +18,8 @@ apps/api/src/modules/<module>/
 ```
 
 ### Modules present in `apps/api/src/modules/`
-`admin`, `analytics`, `assets`, `auth`, `cart`, `catalog`, `customization`, `database`, `notifications`, `orders`, `payments`, `products`, `promotions`, `reviews`, `search`, `shipping`, `users`
+`admin`, `analytics`, `assets`, `auth`, `cart`, `catalog`, `customization`, `database`, `notifications`, `orders`, `payments`, `products`, `promotions`, `reviews`, `search`, `shipping`, `users`,
+`messages`, `loyalty`, `affiliate`, `referral`, `push`, `pdf`, `label`, `currency`, `creator`, `nft`, `bounty`, `wallet`, `audit-log`
 
 ## 2. Controller Conventions
 
@@ -184,10 +185,15 @@ Pass structured object `{ code, message }` to exception constructors so HttpExce
 ## 9. BullMQ Queues
 
 ```typescript
-// Queue names (apps/api/src/modules/notifications/ and customization/)
-'email-queue'           // email sending jobs
-'image-processing-queue' // background removal, art style
-'order-processing-queue'
+// Queue names
+'email-queue'             // email sending jobs
+'image-processing-queue'  // background removal, art style
+'order-processing-queue'  // order post-processing hooks
+'loyalty-unlock'          // unlock pending points (14-day delay jobs)
+'stock-alert-queue'       // daily low-stock scan (7am UTC cron)
+'pdf-generation-queue'    // async invoice/packing-slip PDF generation
+'push-notification-queue' // FCM push dispatch
+'translation-queue'       // AutoTranslate product content
 
 // Dev mode (DISABLE_QUEUE=true)
 // DevBullModule provides no-op tokens
@@ -249,7 +255,36 @@ pnpm nx e2e api-e2e        # E2E tests
 - Compiled via `@nestjs-modules/mailer` or nodemailer with handlebars
 - Templates: `welcome`, `verify-email`, `reset-password`, `order-confirmation`, `order-shipped`, `order-delivered`, `order-cancelled`
 
-## 15. Presigned Upload Flow (Assets)
+## 15. Key Shared Services (Post-Phase 1)
+
+### AuditLogService
+File: `apps/api/src/modules/admin/audit-log.service.ts`
+```typescript
+auditLogService.log({ userId, action, entity, entityId, before, after })
+```
+Called in: order status change, product CRUD, user role change, settings update.
+
+### AutoTranslateService
+File: `apps/api/src/modules/products/auto-translate.service.ts`
+- Provider priority: Google Cloud → DeepL → LibreTranslate
+- Called via `translation-queue` job (async)
+
+### FcmService / PushService
+File: `apps/api/src/modules/push/fcm.service.ts`
+- `firebase-admin` SDK
+- `pushService.sendToUser(userId, { title, body, data })`
+
+### LabelService
+File: `apps/api/src/modules/shipping/label.service.ts`
+- axios-based EasyPost integration (no SDK)
+- `labelService.getRates(orderId, parcel)`, `labelService.buyLabel(orderId, rateId)`
+
+### PdfService
+File: `apps/api/src/modules/pdf/pdf.service.ts`
+- `puppeteer` / `@sparticuz/chromium` for PDF generation
+- `pdfService.generateInvoice(order)`, `pdfService.getOrCreateInvoicePdf(orderId)`
+
+## 16. Presigned Upload Flow (Assets)
 
 ```typescript
 // POST /admin/assets/presign

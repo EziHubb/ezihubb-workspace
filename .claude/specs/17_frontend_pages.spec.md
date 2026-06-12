@@ -228,7 +228,106 @@ const { data, isLoading } = useQuery({
 - `generateMetadata()` on all product/category/collection pages
 - GA4, GTM, Meta Pixel via `apps/client/src/components/seo/` and layout scripts
 - Structured data: `BreadcrumbStructuredData.tsx`, Product JSON-LD
+- FAQ structured data (`@type: FAQPage`) on product Q&A section
 - Sitemap: `apps/client/src/app/sitemap.ts` (dynamic)
 - Robots: `apps/client/src/app/robots.ts`
 - Noindex layouts for auth/account pages
 - `NEXT_PUBLIC_GA_ID`, `NEXT_PUBLIC_GTM_ID`, `NEXT_PUBLIC_META_PIXEL_ID` env vars
+- Hotjar: `NEXT_PUBLIC_HOTJAR_ID`, `NEXT_PUBLIC_HOTJAR_SV` (see `29_admin_extended.spec.md`)
+- WebVitals → GA4 via web vitals reporting
+
+## 9. Additional Routes (Post-Phase 1)
+
+### Storefront New Routes
+```
+[locale]/
+  (storefront)/
+    creators/
+      page.tsx              # Creator network landing (/creators)
+      [username]/
+        page.tsx            # Creator public profile
+    wishlists/
+      shared/
+        [token]/
+          page.tsx          # Public shared wishlist (noindex SSR)
+    nft/
+      page.tsx              # NFT drops listing
+      drops/
+        [id]/
+          page.tsx          # NFT drop detail + claim
+      memberships/
+        page.tsx            # NFT membership tiers
+    gift-cards/
+      purchase/
+        page.tsx            # Buy gift card as product
+```
+
+### Account New Routes
+```
+[locale]/
+  (account)/
+    account/
+      messages/
+        page.tsx            # Message inbox list
+        [threadId]/
+          page.tsx          # Thread detail + reply
+      loyalty/
+        page.tsx            # Loyalty points dashboard
+      referrals/
+        page.tsx            # Referral hub + tree
+      affiliate/
+        page.tsx            # Affiliate self-serve portal
+      creator/
+        page.tsx            # Creator dashboard
+        designs/
+          page.tsx          # Design portfolio
+          new/page.tsx      # Upload new design
+        earnings/page.tsx   # Earnings + payout
+        profile/page.tsx    # Edit public profile
+```
+
+### Service Worker Route
+```
+firebase-messaging-sw.js/
+  route.ts                  # Dynamic SW serving FCM config
+```
+
+## 10. Additional Components (Post-Phase 1)
+
+```
+apps/client/src/components/
+  currency/
+    CurrencyPicker.tsx        # Currency selector in navbar
+    CurrencyProvider.tsx      # Context provider
+  referral/
+    ReferralSharePanel.tsx    # Copy link + social share
+  loyalty/
+    PointsCard.tsx            # Points balance display
+    PointsHistory.tsx         # Transaction history
+  creators/
+    CreatorCard.tsx           # Public creator card
+    CreatorGrid.tsx           # Grid of creators
+    CreatorCTASection.tsx     # Homepage CTA
+  nft/
+    NftDropCard.tsx           # Drop listing card
+    NftClaimModal.tsx         # Claim flow modal
+    WalletConnectButton.tsx   # Crypto wallet connect
+  product/
+    QaSection.tsx             # Q&A tab component
+    QaAskForm.tsx             # Ask question form
+  push/
+    NotificationPermission.tsx # FCM permission request UI
+```
+
+## 11. i18n Message Files (Extended)
+
+```
+apps/client/messages/
+  en/
+    common.json, product.json, cart.json, checkout.json,
+    account.json, auth.json, customizer.json,
+    loyalty.json, referral.json, messages.json,
+    creators.json, nft.json
+  vi/
+    (same structure — all keys translated)
+```

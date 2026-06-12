@@ -164,7 +164,28 @@ interface CreateOrderDto {
 }
 ```
 
-## 5. Checkout Flow (Client)
+## 5. Additional Endpoints (Post-Phase 1)
+
+### PDF Invoice & Packing Slip
+| Method | Path | Auth |
+|---|---|---|
+| GET | `/api/v1/orders/{orderNumber}/invoice` | Bearer (owner) |
+| GET | `/api/v1/orders/{orderNumber}/packing-slip` | Bearer (owner) |
+| GET | `/api/v1/admin/orders/{id}/invoice` | ADMIN |
+| GET | `/api/v1/admin/orders/{id}/packing-slip` | ADMIN |
+
+See full spec: `28_pdf_invoices_labels.spec.md`
+
+### Carrier Label (Admin)
+| Method | Path | Auth |
+|---|---|---|
+| POST | `/api/v1/admin/orders/{id}/shipping/rates` | ADMIN |
+| POST | `/api/v1/admin/orders/{id}/shipping/buy-label` | ADMIN |
+| GET | `/api/v1/admin/orders/{id}/shipping/label` | ADMIN |
+
+See full spec: `28_pdf_invoices_labels.spec.md`
+
+## 5a. Checkout Flow (Client)
 
 1. `/[locale]/checkout` — Multi-step checkout page
 2. Step 1: `DeliveryForm` — address selection / entry
@@ -192,3 +213,45 @@ Files: `apps/client/src/components/checkout/`
 - `OrderStatusHistory` ghi lại mọi thay đổi status kèm note + admin userId
 - `orderNumber` là human-readable unique string (prefix: `MLH-`)
 - Guest orders: `guestEmail` required, tra cứu qua `/orders/:orderNumber?email=`
+
+## 8. Order Integration Points (Post-Phase 1)
+
+### Loyalty Points
+- Order `CONFIRMED` → `LoyaltyAccount` earns `total * 10` points (locked 14 days)
+- Order `COMPLETED` → points unlocked via BullMQ job
+- Order `CANCELLED`/`REFUNDED` → earned points deducted
+- Checkout `CreateOrderDto` nhận thêm `loyaltyPointsToRedeem?: number`
+- Schema additions:
+  ```prisma
+  model Order {
+    loyaltyPointsEarned   Int?
+    loyaltyPointsRedeemed Int?
+  }
+  ```
+
+### Affiliate / Referral Commission
+- Order `CONFIRMED` → check affiliate cookie → create `AffiliateCommission`
+- Order `CONFIRMED` → check referral tree → create `ReferralCommission` (L1/L2/L3)
+- Order `CANCELLED` → commissions voided
+
+### Carrier Label
+- `Order` schema additions:
+  ```prisma
+  model Order {
+    easypostShipmentId String?
+    easypostRateId     String?
+    labelUrl           String?
+    labelVoidedAt      DateTime?
+  }
+  ```
+- Buying label auto-updates `trackingNumber`, `trackingUrl`, `carrier`
+
+### OrderItem Snapshot
+- At order creation, snapshot product + variant data:
+  ```prisma
+  model OrderItem {
+    productSnapshot Json?  // { name, slug, imageUrl, basePrice, sku }
+    variantSnapshot Json?  // { sku, options, price }
+  }
+  ```
+- Ensures order history stays accurate even after product updates

@@ -231,3 +231,76 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:3001
 - Turbopack optional but not default
 - `apps/client/next.config.js` — image domains, i18n, webpack overrides
 - `apps/admin/next.config.js` — admin-specific config
+
+## 11. Additional Environment Variables (Post-Phase 1)
+
+```
+# EasyPost (Carrier Labels)
+EASYPOST_API_KEY=EZabc...
+
+# Firebase (FCM Push Notifications)
+FIREBASE_PROJECT_ID=...
+FIREBASE_CLIENT_EMAIL=...
+FIREBASE_PRIVATE_KEY=...
+NEXT_PUBLIC_FIREBASE_API_KEY=...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
+NEXT_PUBLIC_FIREBASE_APP_ID=...
+NEXT_PUBLIC_FIREBASE_VAPID_KEY=...
+
+# Replicate (AI Art Style Transformation)
+REPLICATE_API_KEY=r8_...
+
+# Background Removal
+BG_REMOVAL_PROVIDER=remove_bg
+BG_REMOVAL_API_KEY=...
+
+# Multi-Currency
+EXCHANGE_RATE_API_KEY=...
+
+# AI / OpenAI (NFT Pricing, Creator DNA)
+OPENAI_API_KEY=sk-...
+
+# Canva Integration
+CANVA_CLIENT_ID=...
+CANVA_CLIENT_SECRET=...
+CANVA_REDIRECT_URI=...
+
+# Web3 / NFT
+ALCHEMY_API_KEY=...
+NEXT_PUBLIC_CHAIN_ID=1
+NFT_CONTRACT_ADDRESS=...
+
+# Translation Services
+GOOGLE_TRANSLATE_API_KEY=...
+DEEPL_API_KEY=...
+LIBRETRANSLATE_URL=http://localhost:5000  # self-hosted
+
+# Hotjar
+NEXT_PUBLIC_HOTJAR_ID=...
+NEXT_PUBLIC_HOTJAR_SV=6
+```
+
+## 12. Additional BullMQ Queues
+
+| Queue Name | Purpose |
+|---|---|
+| `email-queue` | Email sending (existing) |
+| `image-processing-queue` | BG removal, art style (existing) |
+| `order-processing-queue` | Order post-processing (existing) |
+| `loyalty-unlock` | Unlock pending points after 14 days |
+| `stock-alert-queue` | Daily low-stock scan (7am UTC cron) |
+| `pdf-generation-queue` | Async PDF generation (invoices) |
+| `push-notification-queue` | FCM push dispatch |
+| `translation-queue` | AutoTranslate product content |
+
+## 13. Additional Services (Local Dev)
+
+| Service | How | Port |
+|---|---|---|
+| PostgreSQL | Railway or local Docker | 5432 |
+| MongoDB | Atlas (cloud) | — |
+| Redis | Optional (DISABLE_QUEUE=true to skip) | 6379 |
+| MinIO (S3) | Docker (`minio/minio`) | 9000 / 9001 |
+| MailHog | Docker (`mailhog/mailhog`) | 1025 / 8025 |
+| LibreTranslate | Docker (optional, fallback) | 5000 |

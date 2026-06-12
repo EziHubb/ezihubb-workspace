@@ -352,3 +352,66 @@ File: `apps/admin/src/components/products/edit/ProductEditShell.tsx`
 2. `PUT /admin/products/{id}/detail` — MongoDB fields: `richDescription`, `gpsrInfo`, `imageAltTexts`
 
 **Image reorder:** `PATCH /admin/products/{id}/images/reorder` called immediately on drag end (not on Save).
+
+## 10. Additional Admin Endpoints (Post-Phase 1)
+
+### Q&A Management
+| Method | Path | Auth |
+|---|---|---|
+| GET | `/api/v1/admin/questions` | ADMIN — all pending questions |
+| POST | `/api/v1/admin/questions/{id}/answer` | ADMIN |
+| PATCH | `/api/v1/admin/questions/{id}/status` | ADMIN |
+| DELETE | `/api/v1/admin/questions/{id}` | ADMIN |
+
+### Bulk Actions
+| Method | Path | Auth |
+|---|---|---|
+| POST | `/api/v1/admin/products/bulk` | ADMIN — bulk publish/unpublish/archive/sale/export |
+
+### CSV Import
+| Method | Path | Auth |
+|---|---|---|
+| POST | `/api/v1/admin/products/csv/validate` | ADMIN |
+| POST | `/api/v1/admin/products/csv/execute` | ADMIN |
+| GET | `/api/v1/admin/products/csv/template` | ADMIN |
+
+### Translations
+| Method | Path | Auth |
+|---|---|---|
+| GET | `/api/v1/admin/products/{id}/translations` | ADMIN |
+| PUT | `/api/v1/admin/products/{id}/translations/{locale}` | ADMIN |
+| POST | `/api/v1/admin/products/{id}/translations/{locale}/auto` | ADMIN |
+
+See full details: `29_admin_extended.spec.md`
+
+## 11. Product Schema Additions (Post-Phase 1)
+
+### Low-Stock Inventory Fields
+```prisma
+model Product {
+  // ... existing fields ...
+  trackInventory    Boolean @default(false)
+  lowStockThreshold Int     @default(5)
+}
+```
+
+### OrderItem Snapshot
+`OrderItem` stores a `productSnapshot` JSON at order creation time — ensures historical accuracy when product is later modified:
+```prisma
+model OrderItem {
+  // ... existing fields ...
+  productSnapshot Json?   // { name, slug, imageUrl, basePrice, sku }
+  variantSnapshot Json?   // { sku, options, price }
+}
+```
+
+## 12. Public Q&A Endpoints
+
+| Method | Path | Auth |
+|---|---|---|
+| GET | `/api/v1/products/{slug}/questions` | No — approved Q&A only |
+| POST | `/api/v1/products/{slug}/questions` | Bearer — customer ask question |
+
+Q&A tab in `ProductTabs`, FAQ structured data (`@type: FAQPage`) for answered questions.
+
+See full Q&A spec: `29_admin_extended.spec.md`

@@ -139,7 +139,8 @@ Env: `CORS_ORIGINS="http://localhost:3000,http://localhost:3001"` (comma-separat
 
 ## 9. Swagger Tags
 
-`Auth`, `Users`, `Products`, `Admin-Products`, `Catalog`, `Collections`, `Cart`, `Orders`, `Admin-Orders`, `Payments`, `Webhooks`, `Shipping`, `Reviews`, `Promotions`, `Search`, `Customization`, `Admin-Dashboard`, `Assets`, `Notifications`
+`Auth`, `Users`, `Products`, `Admin-Products`, `Catalog`, `Collections`, `Cart`, `Orders`, `Admin-Orders`, `Payments`, `Webhooks`, `Shipping`, `Reviews`, `Promotions`, `Search`, `Customization`, `Admin-Dashboard`, `Assets`, `Notifications`,
+`Messages`, `Loyalty`, `Affiliate`, `Referral`, `Push`, `PDF`, `Labels`, `Currency`, `Creators`, `NFT`, `Bounties`, `Wallet`, `Admin-Settings`, `Admin-Team`, `Admin-Audit`, `Admin-AI`
 
 ## 10. Error Code Conventions
 
@@ -197,3 +198,8 @@ Available hooks:
 - `useReviews(slug)`, `useReviewSummary(slug)`
 - `useProfile()`, `useMutateProfile()`, `useAddresses()`, `useMutateAddresses()`
 - `useShippingOptions()`, `useNewsletterSubscribe()`
+- `useLoyalty()`, `useLoyaltyPreview()`
+- `useMessages()`, `useMessageThread(threadId)`
+- `useAffiliateMe()`, `useReferralMe()`
+- `useCreators()`, `useCreator(username)`
+- `useCurrencies()`, `useNftDrops()`, `useNftDrop(id)`

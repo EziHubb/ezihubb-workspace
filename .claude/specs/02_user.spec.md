@@ -132,7 +132,55 @@ Route group `(account)` dùng layout riêng với sidebar navigation.
 - `/[locale]/account/orders` — Lịch sử đơn hàng
 - `/[locale]/account/orders/{orderNumber}` — Chi tiết đơn hàng
 - `/[locale]/account/wishlist` — Danh sách yêu thích
+- `/[locale]/account/messages` — Message inbox (xem 21_messages.spec.md)
+- `/[locale]/account/loyalty` — Loyalty points dashboard (xem 23_loyalty_points.spec.md)
+- `/[locale]/account/referrals` — Referral hub + tree (xem 22_affiliate_referral.spec.md)
+- `/[locale]/account/affiliate` — Affiliate self-serve portal (xem 22_affiliate_referral.spec.md)
+- `/[locale]/account/creator` — Creator Hub (xem 26_creator_network.spec.md)
 
 File: `apps/client/src/app/[locale]/(account)/account/`
 Layout client: `apps/client/src/app/[locale]/(account)/AccountLayoutClient.tsx`
 Sidebar: `apps/client/src/components/account/AccountSidebar.tsx`
+
+## 7. Additional Endpoints (Post-Phase 1)
+
+### Wishlist Sharing
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| POST | `/api/v1/users/me/wishlist/share` | Generate/refresh share token | Bearer |
+| DELETE | `/api/v1/users/me/wishlist/share` | Revoke share token | Bearer |
+| GET | `/api/v1/users/me/wishlist/share` | Get current share token + URL | Bearer |
+| GET | `/api/v1/wishlists/shared/{token}` | Public shared wishlist (no auth) | No |
+
+### FCM Push Notification Tokens
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| POST | `/api/v1/push/register` | Register FCM token | Bearer |
+| DELETE | `/api/v1/push/register/{token}` | Unregister FCM token | Bearer |
+
+### Loyalty
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/loyalty/me` | Points balance + history | Bearer |
+| GET | `/api/v1/loyalty/preview` | Preview points earn from cart | Bearer |
+
+See full specs: `23_loyalty_points.spec.md`, `24_fcm_low_stock.spec.md`, `22_affiliate_referral.spec.md`
+
+## 8. Wishlist Sharing Model
+
+```prisma
+model WishlistShare {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  token     String   @unique  // public share token
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+}
+```
+
+Public share URL: `/[locale]/wishlists/shared/{token}`
+- SSR page (noindex)
+- Shows only `isActive: true` wishlist items from active products
+- 404 when token invalid or `isActive: false` (prevents enumeration)

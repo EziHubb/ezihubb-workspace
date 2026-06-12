@@ -262,12 +262,17 @@ model Notification {
 | GET | `/api/v1/admin/dashboard/top-products` | Top products by revenue (`?limit=1-50`) |
 | GET | `/api/v1/admin/dashboard/pending-reviews` | Paginated pending reviews |
 
+Dashboard also includes AI Features KPI row (pricing accuracy, trends, DNA profiles) — see `27_nft_features.spec.md`.
+
 ### Assets / Presign
 | Method | Path | Mô tả |
 |---|---|---|
 | POST | `/api/v1/admin/assets/presign` | Get presigned PUT URLs for direct browser upload to R2 |
 
-### Admin Pages (apps/admin/src/app/(admin)/)
+### Admin Pages (Complete — apps/admin/src/app/(admin)/)
+
+See full list in `29_admin_extended.spec.md`. Core pages:
+
 | Page | Path |
 |---|---|
 | Dashboard | `/dashboard` |
@@ -276,17 +281,33 @@ model Notification {
 | Product edit | `/products/{id}/edit` |
 | Product copy | `/products/copy/{id}` |
 | Product SEO | `/products/seo` |
+| Product CSV import | `/products/import` |
 | Orders list | `/orders` |
 | Order detail | `/orders/{id}` |
 | Customers | `/customers` |
 | Customer detail | `/customers/{id}` |
+| Messages inbox | `/messages` |
 | Payments | `/payments` |
 | Reviews | `/reviews` |
 | Promotions | `/promotions` |
 | Shipping | `/shipping` |
-| Settings | `/settings` |
+| Affiliates | `/affiliates` |
+| Creators | `/creators` |
+| Referrals | `/referrals` |
+| Loyalty stats | `/loyalty` |
+| NFT drops | `/nft/drops` |
+| NFT memberships | `/nft/memberships` |
 | Catalog: Categories | `/catalog/categories` |
 | Catalog: Collections | `/catalog/collections` |
+| Settings: General | `/settings` |
+| Settings: Team | `/settings/team` |
+| Settings: Email Templates | `/settings/email-templates` |
+| Settings: Audit Log | `/settings/audit-log` |
+| AI Features | `/ai-features` |
+| AI: Pricing | `/ai-features/pricing` |
+| AI: Trends | `/ai-features/trends` |
+| AI: Creator DNA | `/ai-features/dna` |
+| AI: Moderation | `/ai-features/moderation` |
 
 ### Guard
 ```typescript
@@ -298,25 +319,41 @@ model Notification {
 ```
 apps/admin/src/components/
   products/edit/
-    ProductEditShell.tsx          # Main 7-tab form shell
+    ProductEditShell.tsx          # Main 8-tab form shell (+ Translations tab)
     tabs/                         # PerformanceTab, PhotoVideoTab, ItemDetailsTab,
                                   # ItemOptionsTab, PricingShippingTab, HowItsMadeTab,
-                                  # SettingsTab
+                                  # SettingsTab, QaTab, TranslationsTab
     ManageVariationsModal.tsx     # Variation group/option CRUD
     CustomOptionsEditor.tsx       # Custom order options CRUD
     GPSRModal.tsx                 # GPSR compliance data
     CategoryPickerModal.tsx       # Category tree picker
     ThumbnailCropModal.tsx        # Thumbnail crop
+    BulkActionBar.tsx             # Bulk publish/unpublish/archive/sale/export
     helpers.ts                    # buildDefaultValues, extractPrismaFields,
                                   # extractMongoFields, generateSku
   dashboard/
-    PendingReviewsCard.tsx, TopProductsTable.tsx
+    PendingReviewsCard.tsx, TopProductsTable.tsx, AiKpiRow.tsx
   orders/
     OrderDrawer.tsx, OrderStatusBadge.tsx, CustomizationPreviewModal.tsx
+    BuyLabelModal.tsx             # EasyPost label purchase
+  messages/
+    MessageList.tsx, MessageThread.tsx, ReplyForm.tsx
   promotions/
     PromotionModal.tsx, PromotionStatsDrawer.tsx
   reviews/
     ReviewModerationCard.tsx, ReviewReplyModal.tsx
   shipping/
     ShippingZoneModal.tsx, ShippingMethodModal.tsx
+  affiliates/
+    AffiliateTable.tsx, AffiliateDetailModal.tsx
+  creators/
+    CreatorTable.tsx, CreatorApplicationModal.tsx
 ```
+
+---
+
+## Module 15 — Messages System
+
+**See dedicated spec: `21_messages.spec.md`**
+
+Summary: Full messaging system between customers and admin. 9 endpoints. Customer inbox at `/account/messages`, admin inbox at `/messages`. Email notifications on both sides.
