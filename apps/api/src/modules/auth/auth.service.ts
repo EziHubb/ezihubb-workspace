@@ -98,6 +98,14 @@ export class AuthService {
       },
     });
 
+    // Link any guest orders placed with this email before account creation
+    this.prisma.order.updateMany({
+      where: { guestEmail: dto.email.toLowerCase(), userId: null },
+      data:  { userId: user.id },
+    }).catch((err: Error) =>
+      this.logger.error(`Failed to link guest orders for ${dto.email}: ${err.message}`),
+    );
+
     // Increment referrer stats (fire-and-forget)
     if (referredByUserId) {
       this.prisma.user.update({

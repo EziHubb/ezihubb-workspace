@@ -86,10 +86,27 @@ export class OrdersController {
     return { url };
   }
 
-  @Get(':orderNumber')
-  @ApiOperation({ summary: 'Get guest order detail by order number + email' })
+  @Get('track')
+  @ApiOperation({ summary: 'Track a guest order by order number + email' })
+  @ApiQuery({ name: 'orderNumber', required: true })
   @ApiQuery({ name: 'email', required: true })
-  async getGuestOrder(@Param('orderNumber') orderNumber: string, @Query('email') email: string) {
+  async trackGuestOrder(
+    @Query('orderNumber') orderNumber: string,
+    @Query('email') email: string,
+  ) {
+    return this.ordersService.findGuestOrder(orderNumber, email);
+  }
+
+  @Get(':orderNumber')
+  @UseGuards(OptionalAuthGuard)
+  @ApiOperation({ summary: 'Get order detail — authenticated users by userId, guests by email query param' })
+  @ApiQuery({ name: 'email', required: false })
+  async getOrderDetail(
+    @Param('orderNumber') orderNumber: string,
+    @Query('email') email: string,
+    @CurrentUser() user: JwtPayload | undefined,
+  ) {
+    if (user) return this.ordersService.findMyOrderByNumber(user.sub, orderNumber);
     return this.ordersService.findGuestOrder(orderNumber, email);
   }
 

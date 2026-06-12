@@ -428,7 +428,8 @@ export default function CheckoutPage() {
     analytics.addPaymentInfo({ total: orderTotal, paymentType: 'credit_card' });
     hotjarEvent('checkout_complete');
     clearCart();
-    router.push(`/${locale}/checkout/success?order=${num}`);
+    const guestParam = !isLoggedIn && guestEmail ? `&email=${encodeURIComponent(guestEmail)}` : '';
+    router.push(`/${locale}/checkout/success?order=${num}${guestParam}`);
   };
 
   const shippingCost = shippingMethod?.isFree ? 0 : (shippingMethod?.price ?? 0);

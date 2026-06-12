@@ -197,8 +197,15 @@ export default function CheckoutSuccessPage() {
   const locale       = useLocale();
   const searchParams = useSearchParams();
   const orderNumber  = searchParams.get('order') ?? '';
+  const guestEmail   = searchParams.get('email') ?? '';
   const closeDrawer  = useCartStore((s) => s.closeDrawer);
   const clearCart    = useCartStore((s) => s.clearCart);
+
+  // Detect guest (no access_token means not logged in)
+  const [isGuest, setIsGuest] = useState(false);
+  useEffect(() => {
+    setIsGuest(!localStorage.getItem('access_token'));
+  }, []);
 
   // Close cart drawer and clear cart data immediately on landing
   useEffect(() => {
@@ -212,7 +219,10 @@ export default function CheckoutSuccessPage() {
    */
   const { data: order, isLoading, isError } = useQuery({
     queryKey: queryKeys.order(orderNumber),
-    queryFn: () => apiClient.get<OrderDto>(API_ROUTES.ORDERS.DETAIL(orderNumber)),
+    queryFn: () => apiClient.get<OrderDto>(
+      API_ROUTES.ORDERS.DETAIL(orderNumber),
+      guestEmail ? { params: { email: guestEmail } } : undefined,
+    ),
     enabled:  Boolean(orderNumber),
     // Poll every 2 s while still PENDING_PAYMENT (Stripe webhook may take a moment)
     refetchInterval: (query) => {
@@ -440,15 +450,41 @@ export default function CheckoutSuccessPage() {
         <BuyerReferralShare orderNumber={order.orderNumber} />
       )}
 
+      {/* Guest: create account CTA */}
+      {isGuest && (
+        <div className="mt-8 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4">
+          <p className="text-sm font-semibold text-secondary mb-1">Save your order history</p>
+          <p className="text-xs text-muted mb-3">
+            Create a free account to track this order, view past purchases, and check out faster next time.
+          </p>
+          <Link
+            href={`/${locale}/register`}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-button hover:bg-primary-dark transition-colors"
+          >
+            Create account →
+          </Link>
+        </div>
+      )}
+
       {/* CTA buttons */}
       <div className="mt-8 flex flex-col sm:flex-row gap-3">
-        <Link
-          href={`/${locale}/account/orders/${orderNumber}`}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors uppercase tracking-wide"
-        >
-          <Package className="w-4 h-4" />
-          Track My Order
-        </Link>
+        {isGuest ? (
+          <Link
+            href={`/${locale}/orders/track?orderNumber=${encodeURIComponent(orderNumber)}&email=${encodeURIComponent(guestEmail)}`}
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors uppercase tracking-wide"
+          >
+            <Package className="w-4 h-4" />
+            Track My Order
+          </Link>
+        ) : (
+          <Link
+            href={`/${locale}/account/orders/${orderNumber}`}
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors uppercase tracking-wide"
+          >
+            <Package className="w-4 h-4" />
+            Track My Order
+          </Link>
+        )}
         <Link
           href={`/${locale}/products`}
           className="flex-1 flex items-center justify-center gap-2 py-3 border border-border text-secondary text-sm font-medium rounded-button hover:border-primary hover:text-primary transition-colors"
