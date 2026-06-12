@@ -1,4 +1,5 @@
 'use client';
+
 import { useEffect, useState } from 'react';
 import { apiClient } from '@mlh/api-client';
 
@@ -14,6 +15,12 @@ interface Membership {
 interface StoreMembershipPanelProps {
   storeSlug: string;
 }
+
+const DEFAULT_PERKS = [
+  { icon: '⚡', text: '24h early drop access' },
+  { icon: '🏷️', text: '10% off always' },
+  { icon: '🔒', text: 'Fan-only designs' },
+];
 
 export function StoreMembershipPanel({ storeSlug }: StoreMembershipPanelProps) {
   const [membership, setMembership]   = useState<Membership | null>(null);
@@ -38,7 +45,6 @@ export function StoreMembershipPanel({ storeSlug }: StoreMembershipPanelProps) {
         `/memberships/${membership.id}/subscribe`,
         {},
       );
-      // In production: redirect to Stripe checkout or embed Stripe Elements
       if (res.clientSecret) {
         window.location.href = `/checkout/membership?secret=${res.clientSecret}`;
       } else {
@@ -54,43 +60,74 @@ export function StoreMembershipPanel({ storeSlug }: StoreMembershipPanelProps) {
 
   if (loading || !membership) return null;
 
-  return (
-    <div className="rounded-xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="font-bold text-gray-900 text-lg">{membership.name}</h3>
-          <p className="text-sm text-gray-600">{membership.description}</p>
+  // ── Already a fan ─────────────────────────────────────────────────────────
+  if (isFan) {
+    return (
+      <div
+        className="rounded-2xl p-5 border"
+        style={{ background: '#F3F0FF', borderColor: '#C4B5FD' }}
+      >
+        <div className="flex items-center justify-between">
+          <span className="font-semibold text-sm" style={{ color: '#7C3AED' }}>
+            ⭐ You&apos;re a fan!
+          </span>
+          <a href="/account/membership" className="text-xs font-medium" style={{ color: '#7C3AED' }}>
+            Manage →
+          </a>
         </div>
-        <div className="text-right">
-          <div className="text-2xl font-bold text-amber-700">${Number(membership.price).toFixed(2)}</div>
-          <div className="text-xs text-gray-500">per month</div>
+        <p className="text-xs mt-1" style={{ color: '#7C3AED', opacity: 0.8 }}>
+          Early access to drops · 10% off every order
+        </p>
+      </div>
+    );
+  }
+
+  // ── Join fan club card ────────────────────────────────────────────────────
+  return (
+    <div
+      className="rounded-2xl p-5 border"
+      style={{ background: 'linear-gradient(135deg, #EEEDFE 0%, #F3F0FF 100%)', borderColor: '#C4B5FD' }}
+    >
+      <div className="flex gap-5">
+        {/* Left: info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="font-bold text-base" style={{ color: '#7C3AED' }}>
+              ⭐ {membership.name}
+            </span>
+            <span className="text-xs text-gray-500">{membership.subscriberCount} fans</span>
+          </div>
+          <p className="text-xs text-gray-600 mb-3">{membership.description}</p>
+          <div className="flex flex-wrap gap-3">
+            {DEFAULT_PERKS.map((perk, i) => (
+              <span key={i} className="flex items-center gap-1 text-xs text-gray-700">
+                {perk.icon} {perk.text}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Right: price + CTA */}
+        <div
+          className="flex flex-col items-center justify-center text-center pl-5 shrink-0"
+          style={{ borderLeft: '1px solid #DDD6FE' }}
+        >
+          <span className="text-2xl font-bold" style={{ color: '#7C3AED' }}>
+            ${Number(membership.price).toFixed(2)}
+          </span>
+          <span className="text-xs text-gray-500 mb-3">/month</span>
+          <button
+            onClick={handleSubscribe}
+            disabled={subscribing}
+            className="rounded-full px-5 py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+            style={{ background: '#7C3AED' }}
+          >
+            {subscribing ? 'Joining…' : 'Join fan club'}
+          </button>
+          <p className="text-[10px] text-gray-400 mt-1.5">Cancel anytime</p>
         </div>
       </div>
-      {membership.perks.length > 0 && (
-        <ul className="space-y-1">
-          {membership.perks.map((perk, i) => (
-            <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-              <span className="text-amber-500 mt-0.5">&#10003;</span>
-              {perk}
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="text-xs text-gray-500">{membership.subscriberCount} fans joined</div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
-      {isFan ? (
-        <div className="rounded-md bg-green-100 px-3 py-2 text-sm font-medium text-green-800 text-center">
-          &#11088; You&apos;re a fan member!
-        </div>
-      ) : (
-        <button
-          onClick={handleSubscribe}
-          disabled={subscribing}
-          className="w-full rounded-lg bg-amber-600 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
-        >
-          {subscribing ? 'Subscribing…' : `Join Fan Club · $${Number(membership.price).toFixed(2)}/mo`}
-        </button>
-      )}
+      {error && <p className="text-xs mt-3" style={{ color: '#DC2626' }}>{error}</p>}
     </div>
   );
 }

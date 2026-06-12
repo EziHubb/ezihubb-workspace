@@ -1,8 +1,10 @@
 'use client';
+
 import { useEffect, useState } from 'react';
+import { Bell, Check } from 'lucide-react';
 
 interface DropCountdownProps {
-  launchAt: string;
+  launchAt:    string;
   productSlug: string;
 }
 
@@ -19,10 +21,10 @@ function getTimeLeft(target: string): TimeLeft {
 }
 
 export function DropCountdown({ launchAt, productSlug }: DropCountdownProps) {
-  const [timeLeft, setTimeLeft]     = useState(getTimeLeft(launchAt));
-  const [email, setEmail]           = useState('');
-  const [submitted, setSubmitted]   = useState(false);
+  const [timeLeft, setTimeLeft]           = useState(getTimeLeft(launchAt));
+  const [submitted, setSubmitted]         = useState(false);
   const [waitlistCount, setWaitlistCount] = useState<number | null>(null);
+  const [joining, setJoining]             = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setTimeLeft(getTimeLeft(launchAt)), 1000);
@@ -36,60 +38,80 @@ export function DropCountdown({ launchAt, productSlug }: DropCountdownProps) {
       .catch(() => {});
   }, [productSlug]);
 
-  const handleWaitlist = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleWaitlist = async () => {
+    setJoining(true);
     await fetch(`/api/v1/products/${productSlug}/waitlist`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({}),
     }).catch(() => {});
     setSubmitted(true);
+    setWaitlistCount(c => (c ?? 0) + 1);
+    setJoining(false);
   };
 
   const pad = (n: number) => String(n).padStart(2, '0');
 
+  const units = [
+    { label: 'DAYS',    value: timeLeft.days    },
+    { label: 'HRS',     value: timeLeft.hours   },
+    { label: 'MIN',     value: timeLeft.minutes },
+    { label: 'SEC',     value: timeLeft.seconds, pulse: true },
+  ];
+
   return (
-    <div className="rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 p-6 text-center space-y-4">
-      <div className="inline-flex items-center gap-1.5 rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-purple-700">
-        <span className="h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
-        Exclusive Drop
-      </div>
-      <p className="text-sm text-gray-600 font-medium">Launching in</p>
-      <div className="flex justify-center gap-3">
-        {[
-          { label: 'Days',    value: timeLeft.days    },
-          { label: 'Hours',   value: timeLeft.hours   },
-          { label: 'Minutes', value: timeLeft.minutes },
-          { label: 'Seconds', value: timeLeft.seconds },
-        ].map(({ label, value }) => (
-          <div key={label} className="flex flex-col items-center">
-            <span className="text-3xl font-bold text-purple-800 tabular-nums">{pad(value)}</span>
-            <span className="text-xs text-gray-500 mt-0.5">{label}</span>
+    <div className="space-y-4">
+      {/* Countdown units */}
+      <div className="flex justify-center gap-2">
+        {units.map(({ label, value, pulse }) => (
+          <div
+            key={label}
+            className={`flex flex-col items-center bg-white rounded-xl px-3 py-2.5 min-w-[60px] shadow-sm ${pulse ? 'animate-pulse' : ''}`}
+            style={{ border: '1px solid #E8E4DF' }}
+          >
+            <span className="text-2xl font-bold text-gray-900 tabular-nums leading-none">
+              {pad(value)}
+            </span>
+            <span className="text-[10px] font-medium text-gray-400 mt-1 tracking-wider">{label}</span>
           </div>
         ))}
       </div>
-      {waitlistCount !== null && (
-        <p className="text-xs text-gray-500">{waitlistCount} people on waitlist</p>
+
+      {/* Waitlist count */}
+      {waitlistCount !== null && !submitted && (
+        <p className="text-xs text-center text-gray-500">{waitlistCount} people are waiting</p>
       )}
+
+      {/* CTA */}
       {submitted ? (
-        <p className="text-sm font-medium text-green-700">You&apos;re on the waitlist!</p>
-      ) : (
-        <form onSubmit={handleWaitlist} className="flex gap-2 max-w-xs mx-auto">
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="your@email.com"
-            className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-          />
-          <button
-            type="submit"
-            className="rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700"
+        <div className="space-y-1.5 text-center">
+          <div
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold"
+            style={{ background: '#F0FDF4', color: '#2E7D52' }}
           >
-            Notify Me
+            <Check className="w-4 h-4" />
+            You&apos;re on the list! We&apos;ll email you when it launches.
+          </div>
+          {waitlistCount !== null && (
+            <p className="text-xs text-gray-500">{waitlistCount} people waiting now</p>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-1">
+          <button
+            type="button"
+            onClick={handleWaitlist}
+            disabled={joining}
+            className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-gray-900 transition-opacity disabled:opacity-50"
+            style={{ background: '#F59E0B' }}
+          >
+            <Bell className="w-4 h-4" />
+            {joining ? 'Joining…' : 'Join the waitlist'}
           </button>
-        </form>
+          {waitlistCount !== null && (
+            <p className="text-xs text-center text-gray-500">{waitlistCount} people are waiting</p>
+          )}
+        </div>
       )}
     </div>
   );

@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { Gift, Copy, Check, Info } from 'lucide-react';
 import { apiClient } from '../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { useAuthStore } from '../../lib/store/auth.store';
 
 interface ReferralSharePanelProps {
-  /** The order's UUID (order.id), used to call the buyer-referral endpoint */
   orderId: string;
 }
 
@@ -34,7 +34,7 @@ export function ReferralSharePanel({ orderId }: ReferralSharePanelProps) {
       setReferralLink(data.referralLink);
       setExpiresAt(data.expiresAt);
     } catch {
-      // silently fail — user can retry
+      // silently fail
     } finally {
       setLoading(false);
     }
@@ -48,82 +48,130 @@ export function ReferralSharePanel({ orderId }: ReferralSharePanelProps) {
     });
   };
 
-  // ── Pre-generate state ────────────────────────────────────────────────────────
+  const expiryText = expiresAt
+    ? new Date(expiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : null;
+
+  // ── Pre-generate: prompt user to get link ─────────────────────────────────
 
   if (!referralLink) {
     return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-5">
-        <h3 className="font-semibold text-amber-900 mb-1">Share &amp; Earn Store Credit</h3>
-        <p className="text-sm text-amber-700 mb-3">
-          Share this order with friends. When they make their first purchase, you earn $5 store credit.
-        </p>
-        <button
-          type="button"
-          onClick={generateLink}
-          disabled={loading}
-          className="rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50 transition-colors"
-        >
-          {loading ? 'Generating…' : 'Get Referral Link'}
-        </button>
+      <div
+        className="max-w-[560px] mx-auto mt-8 rounded-2xl p-6 border"
+        style={{ background: 'linear-gradient(135deg, #FFF0EC 0%, #FFFDF9 100%)', borderColor: '#F5C4B3' }}
+      >
+        <div className="flex items-start gap-3">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0" style={{ background: '#FFF0EC' }}>
+            <Gift className="w-5 h-5" style={{ color: '#E85D3F' }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-semibold text-gray-900 text-base">Share &amp; earn $4 store credit</h4>
+            <p className="text-sm text-gray-500 mt-0.5">
+              When a friend buys through your link, you automatically get $4 off your next order.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={generateLink}
+            disabled={loading}
+            className="rounded-xl px-4 py-2 text-sm font-semibold text-white transition-colors disabled:opacity-50"
+            style={{ background: '#E85D3F' }}
+          >
+            {loading ? 'Generating…' : 'Get your referral link'}
+          </button>
+        </div>
       </div>
     );
   }
 
-  // ── Post-generate state ───────────────────────────────────────────────────────
+  // ── Post-generate: share panel ────────────────────────────────────────────
 
   const encodedLink = encodeURIComponent(referralLink);
-  const expiryText  = expiresAt
-    ? new Date(expiresAt).toLocaleDateString('en-US', {
-        month: 'short',
-        day:   'numeric',
-        year:  'numeric',
-      })
-    : null;
+  const waText      = encodeURIComponent('Check out this handmade shop! ' + referralLink);
 
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 space-y-3">
-      <h3 className="font-semibold text-amber-900">Share &amp; Earn Store Credit</h3>
+    <div
+      className="max-w-[560px] mx-auto mt-8 rounded-2xl p-6 border space-y-4"
+      style={{ background: 'linear-gradient(135deg, #FFF0EC 0%, #FFFDF9 100%)', borderColor: '#F5C4B3' }}
+    >
+      {/* Header */}
+      <div className="flex items-start gap-3">
+        <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0" style={{ background: '#FFF0EC' }}>
+          <Gift className="w-5 h-5" style={{ color: '#E85D3F' }} />
+        </div>
+        <div>
+          <h4 className="font-semibold text-gray-900 text-base">Share &amp; earn $4 store credit</h4>
+          <p className="text-sm text-gray-500 mt-0.5">
+            When a friend buys through your link, you automatically get $4 off your next order.
+          </p>
+        </div>
+      </div>
 
-      {expiryText && (
-        <p className="text-xs text-amber-600">Link expires {expiryText}</p>
-      )}
-
-      {/* Copy row */}
+      {/* Copy link row */}
       <div className="flex items-center gap-2">
         <input
           readOnly
           value={referralLink}
           aria-label="Referral link"
-          className="flex-1 rounded border border-amber-300 bg-white px-3 py-1.5 text-sm font-mono text-gray-700 truncate"
+          className="flex-1 rounded-xl border bg-white px-3.5 py-2.5 text-sm font-mono text-gray-700 truncate"
+          style={{ borderColor: '#E8E4DF' }}
         />
         <button
           type="button"
           onClick={handleCopy}
-          className="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 transition-colors"
+          className="shrink-0 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-white flex items-center gap-1.5 transition-colors"
+          style={{ background: '#E85D3F' }}
         >
-          {copied ? 'Copied!' : 'Copy'}
+          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          {copied ? 'Copied!' : 'Copy link'}
         </button>
       </div>
 
-      {/* Social share buttons */}
-      <div className="flex gap-3">
+      {/* Share buttons */}
+      <div className="flex flex-wrap gap-2">
+        <a
+          href={`https://wa.me/?text=${waText}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors hover:bg-green-50"
+          style={{ borderColor: '#86EFAC', color: '#15803D' }}
+        >
+          💬 WhatsApp
+        </a>
+        <a
+          href={`sms:&body=${waText}`}
+          className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors hover:bg-blue-50"
+          style={{ borderColor: '#93C5FD', color: '#1D4ED8' }}
+        >
+          📱 iMessage
+        </a>
         <a
           href={`https://twitter.com/intent/tweet?url=${encodedLink}&text=Check+out+this+handmade+shop!`}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-md bg-sky-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-600 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-3.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
         >
-          Share on X
+          🐦 Share on X
         </a>
         <a
           href={`https://www.facebook.com/sharer/sharer.php?u=${encodedLink}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-3.5 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-50"
         >
-          Share on Facebook
+          More →
         </a>
       </div>
+
+      {/* Expiry note */}
+      {expiryText && (
+        <div className="flex items-center gap-1.5">
+          <Info className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+          <span className="text-xs text-gray-500">Offer valid until {expiryText}</span>
+        </div>
+      )}
     </div>
   );
 }

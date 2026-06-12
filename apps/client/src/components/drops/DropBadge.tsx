@@ -1,31 +1,70 @@
 export type DropState = 'pre-launch' | 'live' | 'sold-out';
 
 interface DropBadgeProps {
-  state: DropState;
-  soldCount?: number;
+  state:          DropState;
+  soldCount?:     number;
   quantityLimit?: number;
 }
 
 export function DropBadge({ state, soldCount, quantityLimit }: DropBadgeProps) {
   if (state === 'live') {
-    const remaining = quantityLimit != null ? quantityLimit - (soldCount ?? 0) : null;
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-red-500 px-2.5 py-0.5 text-xs font-bold text-white shadow">
+      <span
+        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold text-white shadow-sm"
+        style={{ background: '#E85D3F' }}
+      >
         <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
-        LIVE DROP{remaining !== null ? ` · ${remaining} left` : ''}
+        🔥 DROP LIVE
+        {quantityLimit != null && soldCount != null && quantityLimit - soldCount > 0 && (
+          <span className="opacity-90">· {quantityLimit - soldCount} left</span>
+        )}
       </span>
     );
   }
+
   if (state === 'pre-launch') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-purple-500 px-2.5 py-0.5 text-xs font-bold text-white">
-        🔔 Coming Drop
+      <span
+        className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold text-white"
+        style={{ background: '#F59E0B' }}
+      >
+        DROP
       </span>
     );
   }
+
+  // sold-out
   return (
-    <span className="inline-flex items-center rounded-full bg-gray-400 px-2.5 py-0.5 text-xs font-bold text-white">
-      Sold Out
+    <span className="inline-flex items-center rounded-full bg-gray-400 px-2.5 py-1 text-xs font-bold text-white">
+      SOLD OUT
     </span>
+  );
+}
+
+// ── Stock urgency bar (shown on live drops with limited qty) ─────────────────
+
+interface StockUrgencyBarProps {
+  remaining: number;
+  soldCount: number;
+  total:     number;
+}
+
+export function StockUrgencyBar({ remaining, soldCount, total }: StockUrgencyBarProps) {
+  if (remaining > 100 || total === 0) return null;
+  const pct = Math.max(0, Math.min(100, ((total - remaining) / total) * 100));
+
+  return (
+    <div className="space-y-1">
+      <div className="h-1 rounded-full bg-gray-100 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${pct}%`, background: '#E85D3F' }}
+        />
+      </div>
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-medium" style={{ color: '#E85D3F' }}>Only {remaining} remaining</span>
+        <span className="text-gray-400">{soldCount} sold</span>
+      </div>
+    </div>
   );
 }
