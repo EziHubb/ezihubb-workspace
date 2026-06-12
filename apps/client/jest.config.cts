@@ -1,7 +1,8 @@
+const path = require('path');
 const nextJest = require('next/jest.js');
 
 const createJestConfig = nextJest({
-  dir: './',
+  dir: path.join(__dirname),
 });
 
 const config = {

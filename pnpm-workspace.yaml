@@ -16,6 +16,7 @@ allowBuilds:
   esbuild: true
   less: true
   msgpackr-extract: true
+  msw: true
   nx: true
   prisma: true
   protobufjs: true

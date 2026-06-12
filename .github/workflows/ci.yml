@@ -103,6 +103,18 @@ jobs:
           JWT_REFRESH_SECRET: ci-test-refresh-secret-must-be-64-chars-long-xxxxxxxxxxxxxxxxxxxxx
           NODE_ENV: test
 
+      - name: Run API integration tests
+        run: pnpm test:api:integration
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/mapleloomhandmade_test
+          TEST_DATABASE_URL: postgresql://test:test@localhost:5432/mapleloomhandmade_test
+          JWT_ACCESS_SECRET: test-jwt-access-secret-for-ci
+          JWT_REFRESH_SECRET: test-jwt-refresh-secret-for-ci
+          REDIS_URL: redis://localhost:6379
+          DISABLE_QUEUE: "true"
+          NODE_ENV: test
+        continue-on-error: true
+
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         if: always()
