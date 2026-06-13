@@ -2,7 +2,7 @@ import {
   Controller, Get, Patch, Post, Param, Body, Query, UseGuards, Req,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { IsOptional } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { StoreOwnerGuard } from './guards/store-owner.guard';
 import { StoreOrdersService, UpdateStoreOrderDto } from './store-orders.service';
