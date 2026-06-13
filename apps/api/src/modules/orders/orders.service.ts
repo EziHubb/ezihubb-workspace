@@ -657,7 +657,7 @@ export class OrdersService {
 
   async findAll(
     query: AdminOrderQueryDto,
-  ): Promise<PaginatedResult<OrderListItemDto>> {
+  ): Promise<PaginatedResult<OrderListItemDto> & { statusCounts: Record<string, number> }> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const skip = (page - 1) * limit;
@@ -680,7 +680,7 @@ export class OrdersService {
         (where.createdAt as Prisma.DateTimeFilter).lte = new Date(endDate);
     }
 
-    const [orders, total] = await Promise.all([
+    const [orders, total, statusGroups] = await Promise.all([
       this.prisma.order.findMany({
         where,
         select: {
@@ -688,9 +688,14 @@ export class OrdersService {
           orderNumber: true,
           status: true,
           total: true,
+          shippingName: true,
+          shippingCity: true,
+          shippingCountry: true,
+          shippingMethod: true,
+          shippingCost: true,
           createdAt: true,
           items: {
-            select: { quantity: true, previewUrl: true },
+            select: { quantity: true, previewUrl: true, productImageUrl: true },
             take: 1,
             orderBy: { previewUrl: 'desc' },
           },
@@ -704,7 +709,13 @@ export class OrdersService {
         take: limit,
       }),
       this.prisma.order.count({ where }),
+      this.prisma.order.groupBy({ by: ['status'], _count: { _all: true } }),
     ]);
+
+    const statusCounts: Record<string, number> = {};
+    for (const g of statusGroups) {
+      statusCounts[g.status] = g._count._all;
+    }
 
     const data: OrderListItemDto[] = orders.map((o) => ({
       id: o.id,
@@ -713,6 +724,12 @@ export class OrdersService {
       total: Number(o.total),
       itemCount: o.items.reduce((s, i) => s + i.quantity, 0),
       previewUrl: o.items[0]?.previewUrl ?? null,
+      imageUrl: o.items[0]?.productImageUrl ?? null,
+      shippingName: o.shippingName,
+      shippingCity: o.shippingCity,
+      shippingCountry: o.shippingCountry,
+      shippingMethod: o.shippingMethod,
+      shippingCost: Number(o.shippingCost),
       createdAt: o.createdAt,
       customer: o.user
         ? { id: o.user.id, firstName: o.user.firstName, lastName: o.user.lastName, email: o.user.email }
@@ -720,7 +737,7 @@ export class OrdersService {
       stores: o.storeOrders.map((so) => ({ name: so.store.name, slug: so.store.slug })),
     }));
 
-    return paginatedResponse(data, page, limit, total);
+    return { ...paginatedResponse(data, page, limit, total), statusCounts };
   }
 
   async findById(id: string): Promise<OrderResponseDto> {
@@ -1033,6 +1050,70 @@ export class OrdersService {
     return `MLH-${year}-${Number(nextval).toString().padStart(5, '0')}`;
   }
 
+  // ─── Admin helpers ───────────────────────────────────────────────────────
+
+  async addAdminNote(id: string, note: string): Promise<void> {
+    const order = await this.prisma.order.findUnique({ where: { id }, select: { id: true } });
+    if (!order) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Order not found' });
+    await this.prisma.order.update({ where: { id }, data: { privateNote: note } });
+  }
+
+  async adminCancelOrder(id: string, reason: string, adminId: string): Promise<OrderResponseDto> {
+    const order = await this.prisma.order.findUnique({ where: { id }, include: ORDER_INCLUDE });
+    if (!order) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Order not found' });
+    if (order.status === OrderStatus.CANCELLED) {
+      throw new BadRequestException({ code: 'ERR_ORDER_ALREADY_CANCELLED', message: 'Order is already cancelled' });
+    }
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const o = await tx.order.update({
+        where: { id },
+        data: { status: OrderStatus.CANCELLED, cancelReason: reason ?? null, cancelledAt: new Date() },
+        include: ORDER_INCLUDE,
+      });
+      await tx.orderStatusHistory.create({
+        data: { orderId: id, status: OrderStatus.CANCELLED, note: reason ?? 'Cancelled by admin', createdBy: adminId },
+      });
+      return o;
+    });
+    return this.mapToDto(updated);
+  }
+
+  async getEarnings(id: string): Promise<Record<string, unknown>> {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: { payment: true },
+    });
+    if (!order) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Order not found' });
+
+    const subtotal         = Number(order.subtotal);
+    const shippingCost     = Number(order.shippingCost);
+    const discountAmount   = Number(order.discountAmount);
+    const taxAmount        = Number(order.taxAmount);
+    const affiliateDisc    = Number(order.affiliateDiscountAmount ?? 0);
+    const referralDisc     = Number(order.referralDiscountAmount ?? 0);
+    const pointsDisc       = Number(order.pointsDiscount ?? 0);
+    const total            = Number(order.total);
+
+    // Platform fees (5% transaction + 3%+$0.25 payment processing)
+    const transactionFee   = Math.round(total * 0.05 * 100) / 100;
+    const processingFee    = Math.round((total * 0.03 + 0.25) * 100) / 100;
+    const netEarnings      = Math.round((total - transactionFee - processingFee) * 100) / 100;
+
+    return {
+      buyerPaid:         total,
+      itemRevenue:       subtotal,
+      shippingRevenue:   shippingCost,
+      couponDiscount:    discountAmount,
+      affiliateDiscount: affiliateDisc,
+      referralDiscount:  referralDisc,
+      pointsDiscount:    pointsDisc,
+      taxAmount,
+      transactionFee,
+      processingFee,
+      netEarnings,
+    };
+  }
+
   private mapToDto(
     order: Prisma.OrderGetPayload<{ include: typeof ORDER_INCLUDE }>,
   ): OrderResponseDto {
@@ -1041,11 +1122,13 @@ export class OrdersService {
       productId: i.productId,
       variantId: i.variantId,
       productName: i.productName,
+      productSlug: i.productSlug,
       variantName: i.variantName,
       quantity: i.quantity,
       unitPrice: Number(i.unitPrice),
       customizationData: i.customizationData as Record<string, unknown> | null,
       previewUrl: i.previewUrl,
+      imageUrl: i.productImageUrl,
     }));
 
     const payment: OrderPaymentDto | null = order.payment
@@ -1108,6 +1191,7 @@ export class OrdersService {
       giftReceipt:    order.giftReceipt,
       giftWrapping:   order.giftWrapping,
       note:           order.note,
+      privateNote:    order.privateNote,
       cancelReason: order.cancelReason,
       cancelledAt: order.cancelledAt,
       confirmedAt: order.confirmedAt,

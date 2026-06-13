@@ -215,6 +215,17 @@ export const API_ROUTES = {
     ORDER_BUY_LABEL:      (id: string) => `/admin/orders/${id}/buy-label`,
     ORDERS_BULK_SLIPS:    '/admin/orders/bulk-packing-slips',
     ORDERS_EXPORT:        '/admin/orders/export',
+    ORDER_NOTE:           (id: string) => `/admin/orders/${id}/note`,
+    ORDER_CANCEL:         (id: string) => `/admin/orders/${id}/cancel`,
+    ORDER_EARNINGS:       (id: string) => `/admin/orders/${id}/earnings`,
+
+    // ── Shop Stats ───────────────────────────────────────────────────────────
+    STATS_OVERVIEW:       '/admin/stats/overview',
+    STATS_SHOPPER:        '/admin/stats/shopper-stats',
+    STATS_TRAFFIC_SOURCES:'/admin/stats/traffic-sources',
+    STATS_LISTINGS:       '/admin/stats/listings',
+    STATS_LISTING:        (id: string) => `/admin/stats/listings/${id}`,
+    STATS_SEARCH_TERMS:   '/admin/stats/search-terms',
 
     // ── Products ─────────────────────────────────────────────────────────────
     PRODUCTS:             '/admin/products',
@@ -370,6 +381,8 @@ export const API_ROUTES = {
     STORE_REJECT:             (id: string) => `/admin/stores/${id}/reject`,
     STORE_SUSPEND:            (id: string) => `/admin/stores/${id}/suspend`,
     STORE_PLAN:               (id: string) => `/admin/stores/${id}/plan`,
+    STORE_BANNER:             (id: string) => `/admin/stores/${id}/banner`,
+    STORE_LOGO:               (id: string) => `/admin/stores/${id}/logo`,
     STORE_PRODUCTS:           (id: string) => `/admin/stores/${id}/products`,
     STORE_ORDERS:             (id: string) => `/admin/stores/${id}/orders`,
     STORES_PENDING_COUNT:     '/admin/stores?status=PENDING',
@@ -429,6 +442,13 @@ export const API_ROUTES = {
     AI_SETTINGS:                 '/admin/ai/settings',
   },
 
+  STORES: {
+    LIST:             '/stores',
+    DETAIL:           (slug: string) => `/stores/${slug}`,
+    REVIEWS:          (slug: string) => `/stores/${slug}/reviews`,
+    REVIEWS_SUMMARY:  (slug: string) => `/stores/${slug}/reviews/summary`,
+  },
+
   // ── Seller (store-owner portal) ─────────────────────────────────────────────
   SELLER: {
     DASHBOARD_STATS:   '/seller/orders/stats',
@@ -448,3 +468,4 @@ export const API_ROUTES = {
     STORE_APPLICATION: '/stores/me/application',
   },
 } as const;
+

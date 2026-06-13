@@ -1,9 +1,26 @@
 import {
   Get, Post, Patch, Delete, Body, Param, Query, Req,
+  UseInterceptors, UploadedFile, BadRequestException,
 } from '@nestjs/common';
-import { IsOptional, IsString } from 'class-validator';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
 import { StoresService } from './stores.service';
+
+class AdminUpdateStoreDto {
+  @IsOptional() @IsString() @MaxLength(100)
+  name?: string;
+
+  @IsOptional() @IsString() @MaxLength(2000)
+  description?: string;
+
+  @IsOptional() @IsUrl()
+  bannerUrl?: string;
+
+  @IsOptional() @IsUrl()
+  logoUrl?: string;
+}
 
 export class MarkPayoutPaidDto {
   paymentMethod: string;
@@ -43,6 +60,31 @@ export class AdminStoresController {
   @Post(':id/suspend')
   suspendStore(@Param('id') id: string, @Req() req: any, @Body() dto: SuspendStoreDto) {
     return this.storesService.adminSuspendStore(id, req.user.sub ?? req.user.id, dto);
+  }
+
+  @Patch(':id')
+  updateStore(@Param('id') id: string, @Body() dto: AdminUpdateStoreDto) {
+    return this.storesService.adminUpdateStore(id, dto);
+  }
+
+  @Post(':id/banner')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  async uploadBanner(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException({ code: 'ERR_FILE_REQUIRED', message: 'file is required' });
+    return this.storesService.adminUploadStoreBanner(id, file);
+  }
+
+  @Post(':id/logo')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  async uploadLogo(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException({ code: 'ERR_FILE_REQUIRED', message: 'file is required' });
+    return this.storesService.adminUploadStoreLogo(id, file);
   }
 
   @Patch(':id/plan')

@@ -45,6 +45,13 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Orders',    href: '/orders',    icon: ShoppingCart    },
+      {
+        label: 'Stats', href: '/stats', icon: BarChart2,
+        children: [
+          { label: 'Shop Traffic',         href: '/stats',            icon: TrendingUp },
+          { label: 'Marketplace Insights', href: '/stats/listings',   icon: BarChart2  },
+        ],
+      },
     ],
   },
   {

@@ -11,6 +11,7 @@ import { ModerationService } from '../moderation/moderation.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
+import { StorageService } from '../../common/services/storage.service';
 import { JOBS, QUEUES, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
 import { ApplyStoreDto, isReservedSlug } from './dto/apply-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
@@ -34,6 +35,7 @@ export class StoresService {
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
+    private readonly storageService: StorageService,
     @Optional() private readonly moderationService?: ModerationService,
   ) {}
 
@@ -150,7 +152,7 @@ export class StoresService {
         id: true, slug: true, name: true, description: true,
         logoUrl: true, bannerUrl: true, status: true,
         totalProducts: true, totalOrders: true, rating: true,
-        createdAt: true,
+        createdAt: true, verifiedAt: true,
       },
     });
 
@@ -584,5 +586,135 @@ export class StoresService {
       this.prisma.storeOrder.count({ where: { storeId } }),
     ]);
     return { data: orders, total, page, totalPages: Math.ceil(total / limit) };
+  }
+
+  // ─── Admin: Update store profile (name, description, urls) ──────────────
+
+  async adminUpdateStore(
+    storeId: string,
+    dto: { name?: string; description?: string; bannerUrl?: string; logoUrl?: string },
+  ) {
+    const store = await this.prisma.store.findUnique({ where: { id: storeId } });
+    if (!store) throw new NotFoundException('Store not found');
+
+    return this.prisma.store.update({
+      where: { id: storeId },
+      data:  {
+        name:        dto.name        ?? undefined,
+        description: dto.description ?? undefined,
+        bannerUrl:   dto.bannerUrl   ?? undefined,
+        logoUrl:     dto.logoUrl     ?? undefined,
+      },
+    });
+  }
+
+  async adminUploadStoreBanner(storeId: string, file: Express.Multer.File) {
+    if (!file) throw new BadRequestException({ code: 'ERR_FILE_REQUIRED', message: 'Banner file is required' });
+
+    const store = await this.prisma.store.findUnique({ where: { id: storeId } });
+    if (!store) throw new NotFoundException('Store not found');
+
+    const key = this.storageService.generateKey(`stores/${storeId}`, file.originalname);
+    const url = await this.storageService.uploadFile(file.buffer, key, file.mimetype);
+
+    const updated = await this.prisma.store.update({
+      where: { id: storeId },
+      data:  { bannerUrl: url },
+    });
+
+    return { bannerUrl: url, store: updated };
+  }
+
+  async adminUploadStoreLogo(storeId: string, file: Express.Multer.File) {
+    if (!file) throw new BadRequestException({ code: 'ERR_FILE_REQUIRED', message: 'Logo file is required' });
+
+    const store = await this.prisma.store.findUnique({ where: { id: storeId } });
+    if (!store) throw new NotFoundException('Store not found');
+
+    const key = this.storageService.generateKey(`stores/${storeId}`, file.originalname);
+    const url = await this.storageService.uploadFile(file.buffer, key, file.mimetype);
+
+    const updated = await this.prisma.store.update({
+      where: { id: storeId },
+      data:  { logoUrl: url },
+    });
+
+    return { logoUrl: url, store: updated };
+  }
+
+  // ─── Public: Store Reviews ────────────────────────────────────────────────
+
+  async getStoreReviewsSummary(slug: string) {
+    const store = await this.prisma.store.findUnique({
+      where:  { slug },
+      select: { id: true, status: true },
+    });
+    if (!store || store.status === 'PENDING' || store.status === 'REJECTED') {
+      throw new NotFoundException('Store not found');
+    }
+
+    const ratings = await this.prisma.review.findMany({
+      where:  { product: { storeId: store.id }, status: 'APPROVED' },
+      select: { rating: true },
+    });
+
+    const totalReviews = ratings.length;
+    if (totalReviews === 0) {
+      return { averageRating: 0, totalReviews: 0, distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } };
+    }
+
+    const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    let sum = 0;
+    for (const r of ratings) {
+      distribution[r.rating] = (distribution[r.rating] ?? 0) + 1;
+      sum += r.rating;
+    }
+
+    return {
+      averageRating: parseFloat((sum / totalReviews).toFixed(1)),
+      totalReviews,
+      distribution,
+    };
+  }
+
+  async getStoreReviews(slug: string, page: number, limit: number) {
+    const store = await this.prisma.store.findUnique({
+      where:  { slug },
+      select: { id: true, status: true },
+    });
+    if (!store || store.status === 'PENDING' || store.status === 'REJECTED') {
+      throw new NotFoundException('Store not found');
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [reviews, total] = await this.prisma.$transaction([
+      this.prisma.review.findMany({
+        where: { product: { storeId: store.id }, status: 'APPROVED' },
+        select: {
+          id:          true,
+          rating:      true,
+          title:       true,
+          body:        true,
+          imageUrls:   true,
+          createdAt:   true,
+          sellerReply: true,
+          user: {
+            select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+          },
+          product: {
+            select: { id: true, name: true, slug: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.review.count({
+        where: { product: { storeId: store.id }, status: 'APPROVED' },
+      }),
+    ]);
+
+    return paginatedResponse(reviews, page, limit, total);
   }
 }

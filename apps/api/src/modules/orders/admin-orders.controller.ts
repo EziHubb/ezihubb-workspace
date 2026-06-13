@@ -143,4 +143,41 @@ export class AdminOrdersController {
     if (!rateId) throw new BadRequestException('rateId is required');
     return this.labelService.purchaseLabel(id, rateId);
   }
+
+  @Post(':id/note')
+  @ApiOperation({ summary: 'Add or update private admin note on order' })
+  async addNote(
+    @Param('id') id: string,
+    @Body('note') note: string,
+  ) {
+    await this.ordersService.addAdminNote(id, note ?? '');
+    return { success: true };
+  }
+
+  @Post(':id/cancel')
+  @ApiOperation({ summary: 'Admin-cancel an order (no time-window restriction)' })
+  async adminCancelOrder(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const result = await this.ordersService.adminCancelOrder(id, reason ?? 'Cancelled by admin', user.sub);
+    this.auditLog.log({
+      userId:     user.sub,
+      action:     'CANCEL',
+      entityType: 'Order',
+      entityId:   id,
+      after:      { reason } as Record<string, unknown>,
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
+    return result;
+  }
+
+  @Get(':id/earnings')
+  @ApiOperation({ summary: 'Get earnings breakdown for an order (fees, net earnings)' })
+  async getEarnings(@Param('id') id: string) {
+    return this.ordersService.getEarnings(id);
+  }
 }

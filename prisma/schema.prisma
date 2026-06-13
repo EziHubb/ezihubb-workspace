@@ -998,6 +998,7 @@ model Order {
   giftFrom     String? @db.VarChar(100)
 
   note         String?
+  privateNote  String?
   cancelReason String?
   cancelledAt  DateTime?
   confirmedAt  DateTime?

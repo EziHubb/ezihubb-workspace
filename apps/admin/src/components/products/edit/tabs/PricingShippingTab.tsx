@@ -352,7 +352,7 @@ function VariationPriceNotice({
 // ─── Main tab ─────────────────────────────────────────────────────────────────
 
 // Must stay in sync with ProductEditShell TABS ids
-type AnyTabId = 'performance' | 'photo-video' | 'item-details' | 'item-options' | 'pricing-shipping' | 'how-its-made' | 'settings';
+type AnyTabId = 'photo-video' | 'item-details' | 'item-options' | 'pricing-shipping' | 'how-its-made' | 'settings';
 
 interface PricingShippingTabProps {
   product:      AdminProductDto;

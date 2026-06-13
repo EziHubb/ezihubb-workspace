@@ -341,6 +341,21 @@ export class ProductsService {
     return this.findByIdAdmin(product.id);
   }
 
+  private async resolveTagNames(names: string[]): Promise<string[]> {
+    const ids: string[] = [];
+    for (const name of names) {
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const tag = await this.prisma.tag.upsert({
+        where:  { slug },
+        create: { name, slug },
+        update: {},
+        select: { id: true },
+      });
+      ids.push(tag.id);
+    }
+    return ids;
+  }
+
   async create(dto: CreateProductDto): Promise<ProductResponseDto> {
     if (
       dto.compareAtPrice !== undefined &&
@@ -404,7 +419,9 @@ export class ProductsService {
           : undefined,
         tags: dto.tagIds?.length
           ? { create: dto.tagIds.map((tagId) => ({ tagId })) }
-          : undefined,
+          : dto.tags?.length
+            ? { create: (await this.resolveTagNames(dto.tags)).map((tagId) => ({ tagId })) }
+            : undefined,
         collections: dto.collectionIds?.length
           ? {
               create: dto.collectionIds.map((collectionId, i) => ({
@@ -529,11 +546,11 @@ export class ProductsService {
       data.slug = dto.slug;
     }
 
-    if (dto.tagIds !== undefined) {
-      data.tags = {
-        deleteMany: {},
-        create: dto.tagIds.map((tagId) => ({ tagId })),
-      };
+    if (dto.tags !== undefined) {
+      const resolvedIds = await this.resolveTagNames(dto.tags);
+      data.tags = { deleteMany: {}, create: resolvedIds.map((tagId) => ({ tagId })) };
+    } else if (dto.tagIds !== undefined) {
+      data.tags = { deleteMany: {}, create: dto.tagIds.map((tagId) => ({ tagId })) };
     }
     if (dto.collectionIds !== undefined) {
       data.collections = {
@@ -693,7 +710,7 @@ export class ProductsService {
           JOIN "Order" o ON o.id = oi."orderId"
           WHERE oi."productId" = ${id}
             AND o."createdAt" >= ${since}
-            AND o.status = ANY(${ACTIVE}::text[])
+            AND o.status = ANY(${ACTIVE}::"OrderStatus"[])
           GROUP BY day
           ORDER BY day ASC
         `,
@@ -708,7 +725,7 @@ export class ProductsService {
           WHERE oi."productId" = ${id}
             AND o."createdAt" >= ${prevSince}
             AND o."createdAt" < ${since}
-            AND o.status = ANY(${ACTIVE}::text[])
+            AND o.status = ANY(${ACTIVE}::"OrderStatus"[])
           GROUP BY day
           ORDER BY day ASC
         `,

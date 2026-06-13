@@ -123,6 +123,12 @@ export class CreateProductDto {
   @IsString({ each: true })
   tagIds?: string[];
 
+  @ApiPropertyOptional({ type: [String], description: 'Tag names (auto-upserted)' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
   @ApiPropertyOptional({ type: [String], description: 'Collection IDs' })
   @IsOptional()
   @IsArray()

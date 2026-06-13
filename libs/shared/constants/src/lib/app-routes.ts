@@ -59,6 +59,10 @@ export const ADMIN_ROUTES = {
     usage:       '/ai/usage',
     settings:    '/ai/settings',
   },
+
+  STATS:          '/stats',
+  STATS_LISTINGS: '/stats/listings',
+  STATS_LISTING:  (id: string) => `/stats/listings/${id}`,
 } as const;
 
 // ── Client app routes (apps/client — without /${locale} prefix) ───────────────

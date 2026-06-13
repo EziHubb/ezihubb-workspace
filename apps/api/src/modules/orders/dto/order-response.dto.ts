@@ -6,11 +6,13 @@ export class OrderItemDto {
   @ApiPropertyOptional() productId: string | null;
   @ApiPropertyOptional() variantId: string | null;
   @ApiProperty() productName: string;
+  @ApiPropertyOptional() productSlug: string | null;
   @ApiPropertyOptional() variantName: string | null;
   @ApiProperty() quantity: number;
   @ApiProperty() unitPrice: number;
   @ApiPropertyOptional() customizationData: Record<string, unknown> | null;
   @ApiPropertyOptional() previewUrl: string | null;
+  @ApiPropertyOptional() imageUrl: string | null;
 }
 
 export class OrderPaymentDto {
@@ -81,6 +83,7 @@ export class OrderResponseDto {
   @ApiProperty()         giftWrapping:    boolean;
 
   @ApiPropertyOptional() note: string | null;
+  @ApiPropertyOptional() privateNote: string | null;
   @ApiPropertyOptional() cancelReason: string | null;
   @ApiPropertyOptional() cancelledAt: Date | null;
   @ApiPropertyOptional() confirmedAt: Date | null;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -8,11 +8,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, Store, ShoppingBag, DollarSign, Star, Clock,
   ExternalLink, CheckCircle2, XCircle, PauseCircle, Package,
-  ChevronRight, Globe, Calendar, User, ShieldCheck,
+  ChevronRight, Globe, Calendar, User, ShieldCheck, Pencil,
+  Camera, Upload, Loader2, Image as ImageIcon,
 } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { StatCard } from '../../../../components/data/StatCard';
-import { api } from '../../../../lib/api-client';
+import { api, adminApi } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount, fmtDate, fmtFixed, safeArr } from '../../../../lib/fmt';
 
@@ -87,6 +88,9 @@ const PRODUCT_STATUS_COLORS: Record<string, string> = {
   ARCHIVED: 'bg-red-100 text-red-600',
 };
 
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_SIZE      = 10 * 1024 * 1024; // 10 MB
+
 // ── Action dialog ─────────────────────────────────────────────────────────────
 
 function ActionModal({
@@ -136,6 +140,269 @@ function ActionModal({
   );
 }
 
+// ── Store Edit Modal ──────────────────────────────────────────────────────────
+
+function StoreEditModal({
+  store,
+  onClose,
+  onSaved,
+}: {
+  store:   StoreDetail;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [name,        setName]        = useState(store.name);
+  const [description, setDescription] = useState(store.description ?? '');
+  const [bannerUrl,   setBannerUrl]   = useState(store.bannerUrl);
+  const [logoUrl,     setLogoUrl]     = useState(store.logoUrl);
+  const [bannerLoading, setBannerLoading] = useState(false);
+  const [logoLoading,   setLogoLoading]   = useState(false);
+  const [saveError,  setSaveError]    = useState('');
+
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef   = useRef<HTMLInputElement>(null);
+
+  // ── Image upload helpers ────────────────────────────────────────────────
+
+  const validateFile = (file: File): string | null => {
+    if (!ALLOWED_TYPES.includes(file.type)) return 'Only JPG, PNG and WebP images are allowed.';
+    if (file.size > MAX_SIZE)               return 'File must be under 10 MB.';
+    return null;
+  };
+
+  const handleBannerFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const err = validateFile(file);
+    if (err) { setSaveError(err); return; }
+
+    setBannerLoading(true);
+    setSaveError('');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await adminApi.post<{ data?: { bannerUrl: string }; bannerUrl?: string }>(
+        API_ROUTES.ADMIN.STORE_BANNER(store.id),
+        form,
+      );
+      const payload = res.data?.data ?? res.data;
+      setBannerUrl((payload as { bannerUrl: string }).bannerUrl);
+      onSaved();
+    } catch {
+      setSaveError('Banner upload failed. Please try again.');
+    } finally {
+      setBannerLoading(false);
+      if (bannerInputRef.current) bannerInputRef.current.value = '';
+    }
+  };
+
+  const handleLogoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const err = validateFile(file);
+    if (err) { setSaveError(err); return; }
+
+    setLogoLoading(true);
+    setSaveError('');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await adminApi.post<{ data?: { logoUrl: string }; logoUrl?: string }>(
+        API_ROUTES.ADMIN.STORE_LOGO(store.id),
+        form,
+      );
+      const payload = res.data?.data ?? res.data;
+      setLogoUrl((payload as { logoUrl: string }).logoUrl);
+      onSaved();
+    } catch {
+      setSaveError('Logo upload failed. Please try again.');
+    } finally {
+      setLogoLoading(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+    }
+  };
+
+  // ── Save text fields ────────────────────────────────────────────────────
+
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError('');
+    try {
+      await api.patch(API_ROUTES.ADMIN.STORE(store.id), { name: name.trim(), description: description.trim() || null });
+      onSaved();
+      onClose();
+    } catch {
+      setSaveError('Save failed. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-card shadow-modal w-full max-w-xl my-4">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h2 className="font-semibold text-secondary text-base">Edit Store Profile</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-7 h-7 flex items-center justify-center rounded-full text-muted hover:bg-muted/10 hover:text-secondary transition-colors"
+          >
+            <XCircle className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+          {/* ── Banner ─────────────────────────────────────────────────── */}
+          <div>
+            <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-2">
+              Banner Image
+            </label>
+            <div
+              className="relative h-32 rounded-card overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5 cursor-pointer group"
+              onClick={() => bannerInputRef.current?.click()}
+            >
+              {bannerUrl && (
+                <Image src={bannerUrl} alt="banner" fill className="object-cover" sizes="576px" />
+              )}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                {bannerLoading ? (
+                  <Loader2 className="w-8 h-8 text-white animate-spin" />
+                ) : (
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center gap-1 text-white">
+                    <Camera className="w-7 h-7" />
+                    <span className="text-xs font-semibold">Upload Banner</span>
+                  </div>
+                )}
+              </div>
+              {!bannerUrl && !bannerLoading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-1 text-muted/50">
+                    <ImageIcon className="w-8 h-8" />
+                    <span className="text-xs">Click to upload banner</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            <input
+              ref={bannerInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={handleBannerFile}
+            />
+            <p className="text-xs text-muted mt-1">Recommended: 1200 × 300 px · JPG, PNG or WebP · max 10 MB</p>
+          </div>
+
+          {/* ── Logo ───────────────────────────────────────────────────── */}
+          <div>
+            <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-2">
+              Logo Image
+            </label>
+            <div className="flex items-center gap-4">
+              <div
+                className="relative w-20 h-20 rounded-xl border-2 border-dashed border-border overflow-hidden bg-muted/5 cursor-pointer group flex items-center justify-center shrink-0"
+                onClick={() => logoInputRef.current?.click()}
+              >
+                {logoUrl ? (
+                  <Image src={logoUrl} alt="logo" width={80} height={80} className="object-cover w-full h-full" />
+                ) : (
+                  <span className="text-2xl font-bold text-primary/40">
+                    {store.name[0]?.toUpperCase()}
+                  </span>
+                )}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                  {logoLoading ? (
+                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  ) : (
+                    <Upload className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  )}
+                </div>
+              </div>
+              <div className="text-xs text-muted space-y-0.5">
+                <p className="font-medium text-secondary">Store Logo</p>
+                <p>Click the logo to upload a new image</p>
+                <p>JPG, PNG or WebP · max 10 MB</p>
+                <p>Recommended: 400 × 400 px (square)</p>
+              </div>
+            </div>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={handleLogoFile}
+            />
+          </div>
+
+          {/* ── Name ───────────────────────────────────────────────────── */}
+          <div>
+            <label htmlFor="edit-store-name" className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
+              Store Name
+            </label>
+            <input
+              id="edit-store-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={100}
+              className="w-full text-sm border border-border rounded-button px-3 py-2.5 focus:outline-none focus:border-primary transition-colors"
+              placeholder="Store name"
+            />
+          </div>
+
+          {/* ── Description ────────────────────────────────────────────── */}
+          <div>
+            <label htmlFor="edit-store-desc" className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
+              Description
+            </label>
+            <textarea
+              id="edit-store-desc"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={2000}
+              rows={4}
+              className="w-full text-sm border border-border rounded-button px-3 py-2.5 resize-none focus:outline-none focus:border-primary transition-colors"
+              placeholder="Describe the store..."
+            />
+            <p className="text-xs text-muted text-right mt-0.5">{description.length}/2000</p>
+          </div>
+
+          {/* Error */}
+          {saveError && (
+            <p className="text-xs text-error bg-error/5 border border-error/20 rounded-button px-3 py-2">
+              {saveError}
+            </p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-background rounded-b-card">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium border border-border text-secondary rounded-button hover:border-muted transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !name.trim()}
+            className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-primary rounded-button hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AdminStoreDetailPage() {
@@ -143,7 +410,7 @@ export default function AdminStoreDetailPage() {
   const router  = useRouter();
   const qc      = useQueryClient();
 
-  const [modal, setModal] = useState<'approve' | 'reject' | 'suspend' | null>(null);
+  const [modal, setModal] = useState<'approve' | 'reject' | 'suspend' | 'edit' | null>(null);
 
   const { data: store, isLoading } = useQuery<StoreDetail>({
     queryKey: ['admin-store', id],
@@ -222,11 +489,21 @@ export default function AdminStoreDetailPage() {
             queryKey={['admin-store', id]}
           />
         </div>
-        <a href={`/shops/${store.slug}`} target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-1.5 text-sm text-primary hover:underline shrink-0">
-          <ExternalLink className="w-4 h-4" />
-          View store
-        </a>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setModal('edit')}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-border text-secondary rounded-button hover:border-primary hover:text-primary transition-colors"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            Edit
+          </button>
+          <a href={`/shops/${store.slug}`} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-sm text-primary hover:underline">
+            <ExternalLink className="w-4 h-4" />
+            View store
+          </a>
+        </div>
       </div>
 
       {/* ── Store header card ─────────────────────────────────────────────── */}
@@ -236,10 +513,25 @@ export default function AdminStoreDetailPage() {
           {store.bannerUrl && (
             <Image src={store.bannerUrl} alt="banner" fill className="object-cover" sizes="100vw" />
           )}
+          {/* Quick-edit banner overlay */}
+          <button
+            type="button"
+            onClick={() => setModal('edit')}
+            title="Edit banner"
+            className="absolute top-2 right-2 flex items-center gap-1 bg-black/50 hover:bg-black/70 text-white text-xs font-medium px-2.5 py-1.5 rounded-full transition-colors backdrop-blur-sm"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            Change banner
+          </button>
         </div>
         <div className="px-6 pb-6">
           <div className="flex items-end gap-4 -mt-10 mb-4">
-            <div className="w-20 h-20 rounded-xl border-4 border-surface bg-surface overflow-hidden shadow shrink-0">
+            {/* Logo with quick-edit */}
+            <div
+              className="relative w-20 h-20 rounded-xl border-4 border-surface bg-surface overflow-hidden shadow cursor-pointer group shrink-0"
+              onClick={() => setModal('edit')}
+              title="Edit logo"
+            >
               {store.logoUrl ? (
                 <Image src={store.logoUrl} alt="logo" width={80} height={80} className="object-cover w-full h-full" />
               ) : (
@@ -247,14 +539,17 @@ export default function AdminStoreDetailPage() {
                   {store.name[0]?.toUpperCase()}
                 </div>
               )}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                <Camera className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
             </div>
             <div className="pb-1 flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${statusCfg}`}>
-                  {store.status === 'ACTIVE' && <CheckCircle2 className="w-3 h-3" />}
-                  {store.status === 'PENDING' && <Clock className="w-3 h-3" />}
-                  {store.status === 'SUSPENDED' && <PauseCircle className="w-3 h-3" />}
-                  {store.status === 'REJECTED' && <XCircle className="w-3 h-3" />}
+                  {store.status === 'ACTIVE'    && <CheckCircle2 className="w-3 h-3" />}
+                  {store.status === 'PENDING'   && <Clock        className="w-3 h-3" />}
+                  {store.status === 'SUSPENDED' && <PauseCircle  className="w-3 h-3" />}
+                  {store.status === 'REJECTED'  && <XCircle      className="w-3 h-3" />}
                   {store.status}
                 </span>
                 {store.verifiedAt && (
@@ -459,6 +754,13 @@ export default function AdminStoreDetailPage() {
           onCancel={() => setModal(null)}
           confirmLabel="Suspend"
           confirmClass="bg-orange-600 hover:bg-orange-700"
+        />
+      )}
+      {modal === 'edit' && store && (
+        <StoreEditModal
+          store={store}
+          onClose={() => setModal(null)}
+          onSaved={invalidate}
         />
       )}
     </>

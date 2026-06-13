@@ -41,14 +41,6 @@ function setPricesGroup(variesBy: string[], groupId: string | null): string[] {
 
 type DisplayType = 'dropdown' | 'color_swatch' | 'button' | 'image';
 
-interface VariantRow {
-  id:             string;
-  option1Id?:     string;
-  option2Id?:     string;
-  price:          number;
-  compareAtPrice?: number | null;
-  sku?:           string;
-}
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
@@ -266,20 +258,16 @@ function VariantPriceMatrix({
   settings:  VariationSettings;
 }) {
   const pricesGroupId = getPricesGroupId(settings.variesBy);
-  const skusVary      = hasSetting(settings.variesBy, 'sku');
   const priceGroup    = groups.find((g) => g.id === pricesGroupId);
   const qc = useQueryClient();
 
-  const { data: variants = [] } = useQuery<VariantRow[]>({
-    queryKey: ['variants', productId],
-    queryFn:  () => api.get<VariantRow[]>(`/admin/products/${productId}/variations/variants`),
-    staleTime: 30_000,
-  });
-
-  const patchVariant = async (variantId: string | undefined, patch: object) => {
-    if (!variantId) return;
-    await api.patch(API_ROUTES.ADMIN.PRODUCT_VARIATION_VARIANT(productId, variantId), patch);
-    qc.invalidateQueries({ queryKey: ['variants', productId] });
+  const patchOption = async (optionId: string, priceDelta: number | null) => {
+    if (!priceGroup) return;
+    await api.patch(
+      API_ROUTES.ADMIN.PRODUCT_VARIATION_OPTION(productId, priceGroup.id, optionId),
+      { priceDelta },
+    );
+    qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
   };
 
   if (!priceGroup) return null;
@@ -288,8 +276,9 @@ function VariantPriceMatrix({
     <div className="mt-5 border border-border rounded-xl overflow-hidden">
       <div className="px-4 py-2.5 bg-background border-b border-border">
         <p className="text-xs font-semibold text-muted uppercase tracking-wide">
-          Price per {priceGroup.name}
+          Price adjustment per {priceGroup.name}
         </p>
+        <p className="text-xs text-muted mt-0.5">Added to the base price for this option</p>
       </div>
       <table className="w-full text-sm">
         <thead>
@@ -297,52 +286,32 @@ function VariantPriceMatrix({
             <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted uppercase tracking-wide">
               {priceGroup.name}
             </th>
-            <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted uppercase tracking-wide">Price</th>
-            <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted uppercase tracking-wide">Compare at</th>
-            {skusVary && <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted uppercase tracking-wide">SKU</th>}
+            <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted uppercase tracking-wide">
+              Price delta
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {priceGroup.options.map((opt) => {
-            const variant = variants.find(
-              (v) => v.option1Id === opt.id || v.option2Id === opt.id,
-            );
-            return (
-              <tr key={opt.id}>
-                <td className="px-4 py-2.5">
-                  <div className="flex items-center gap-2">
-                    {opt.colorHex && (
-                      <div className="w-3.5 h-3.5 rounded-full border border-border shrink-0" style={{ backgroundColor: opt.colorHex }} />
-                    )}
-                    <span className="text-sm font-medium text-secondary">{opt.name || opt.value}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-2.5">
-                  <InlinePriceInput
-                    value={variant?.price ?? null}
-                    onChange={(v) => patchVariant(variant?.id, { price: v })}
-                  />
-                </td>
-                <td className="px-4 py-2.5">
-                  <InlinePriceInput
-                    value={variant?.compareAtPrice ?? null}
-                    onChange={(v) => patchVariant(variant?.id, { compareAtPrice: v })}
-                    placeholder="—"
-                  />
-                </td>
-                {skusVary && (
-                  <td className="px-4 py-2.5">
-                    <input
-                      defaultValue={variant?.sku ?? ''}
-                      onBlur={(e) => patchVariant(variant?.id, { sku: e.target.value || null })}
-                      placeholder="e.g. OA26-021216"
-                      className="w-full px-2.5 py-1.5 text-sm border border-border rounded-button bg-background font-mono focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:font-sans placeholder:text-muted"
-                    />
-                  </td>
-                )}
-              </tr>
-            );
-          })}
+          {priceGroup.options.map((opt) => (
+            <tr key={opt.id}>
+              <td className="px-4 py-2.5">
+                <div className="flex items-center gap-2">
+                  {opt.colorHex && (
+                    <div className="w-3.5 h-3.5 rounded-full border border-border shrink-0" style={{ backgroundColor: opt.colorHex }} />
+                  )}
+                  <span className="text-sm font-medium text-secondary">{opt.name || opt.value}</span>
+                </div>
+              </td>
+              <td className="px-4 py-2.5">
+                <InlinePriceInput
+                  value={opt.priceDelta ?? null}
+                  onChange={(v) => patchOption(opt.id, v)}
+                  prefix="+$"
+                  placeholder="0"
+                />
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>

@@ -53,6 +53,7 @@ import { CanvaModule } from '../modules/canva/canva.module';
 import { TrendsModule } from '../modules/trends/trends.module';
 import { CreatorDnaModule } from '../modules/creator-dna/creator-dna.module';
 import { AdminAiModule } from '../modules/ai/admin-ai.module';
+import { ShopStatsModule } from '../modules/shop-stats/shop-stats.module';
 import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
 
 @Module({
@@ -167,6 +168,7 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
     TrendsModule,
     CreatorDnaModule,
     AdminAiModule,
+    ShopStatsModule,
     HealthModule,
   ],
   controllers: [AppController, UnsubscribeController],

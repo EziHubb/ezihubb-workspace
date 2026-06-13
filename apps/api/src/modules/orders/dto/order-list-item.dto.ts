@@ -10,6 +10,12 @@ export class OrderListItemDto {
   @ApiProperty() total: number;
   @ApiProperty() itemCount: number;
   @ApiPropertyOptional() previewUrl: string | null;
+  @ApiPropertyOptional() imageUrl?: string | null;
+  @ApiPropertyOptional() shippingName?: string;
+  @ApiPropertyOptional() shippingCity?: string;
+  @ApiPropertyOptional() shippingCountry?: string;
+  @ApiPropertyOptional() shippingMethod?: string;
+  @ApiPropertyOptional() shippingCost?: number;
   @ApiProperty() createdAt: Date;
   @ApiPropertyOptional() customer?: {
     id: string;

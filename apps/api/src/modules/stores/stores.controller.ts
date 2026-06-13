@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Body, Param, UseGuards, Req,
+  Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Req,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -23,6 +23,26 @@ export class StoresController {
   @Get(':slug/score')
   getStoreScore(@Param('slug') slug: string) {
     return this.storesService.getStoreScorePublic(slug);
+  }
+
+  /** Public: store reviews rating summary */
+  @Get(':slug/reviews/summary')
+  getStoreReviewsSummary(@Param('slug') slug: string) {
+    return this.storesService.getStoreReviewsSummary(slug);
+  }
+
+  /** Public: paginated store reviews */
+  @Get(':slug/reviews')
+  getStoreReviews(
+    @Param('slug') slug: string,
+    @Query('page')  page  = '1',
+    @Query('limit') limit = '10',
+  ) {
+    return this.storesService.getStoreReviews(
+      slug,
+      Math.max(1, parseInt(page,  10) || 1),
+      Math.min(50, Math.max(1, parseInt(limit, 10) || 10)),
+    );
   }
 
   /** Seller: apply for a new store */

@@ -141,6 +141,18 @@ function ProductsPageInner() {
     qc.invalidateQueries({ queryKey: ['admin-products-stats'] });
   }, [qc]);
 
+  const handleToggleFeatured = useCallback(async (p: AdminProduct) => {
+    await api.patch(API_ROUTES.ADMIN.PRODUCT(p.id), { isFeatured: !p.isFeatured });
+    qc.invalidateQueries({ queryKey: ['admin-products'] });
+  }, [qc]);
+
+  const handleDelete = useCallback(async (p: AdminProduct) => {
+    if (!await confirm(`Permanently delete "${p.name}"? This cannot be undone.`, { confirmLabel: 'Delete', destructive: true })) return;
+    await api.delete(API_ROUTES.ADMIN.PRODUCT(p.id));
+    qc.invalidateQueries({ queryKey: ['admin-products'] });
+    qc.invalidateQueries({ queryKey: ['admin-products-stats'] });
+  }, [qc]);
+
   const executeBulk = async (action: string, payload?: Record<string, unknown>) => {
     setIsBulkLoading(true);
     try {
@@ -484,6 +496,9 @@ function ProductsPageInner() {
                     onToggleSelect={handleToggleSelect}
                     onToggleActive={handleToggleActive}
                     onArchive={handleArchive}
+                    onToggleFeatured={handleToggleFeatured}
+                    onDelete={handleDelete}
+                    clientBaseUrl={process.env.NEXT_PUBLIC_CLIENT_URL ?? 'http://localhost:3000'}
                   />
                 ))}
               </div>

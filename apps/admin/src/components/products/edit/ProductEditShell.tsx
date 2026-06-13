@@ -18,32 +18,28 @@ import {
 } from './helpers';
 import type { AdminProductDto, AdminProductDetailDto, ProductEditFormValues } from './types';
 
-import { PerformanceTab }     from './tabs/PerformanceTab';
 import { PhotoVideoTab }      from './tabs/PhotoVideoTab';
 import { ItemDetailsTab }     from './tabs/ItemDetailsTab';
 import { ItemOptionsTab }     from './tabs/ItemOptionsTab';
 import { PricingShippingTab } from './tabs/PricingShippingTab';
 import { HowItsMadeTab }      from './tabs/HowItsMadeTab';
 import { SettingsTab }        from './tabs/SettingsTab';
-import { QaTab }              from './tabs/QaTab';
 
 // ── Tab config ────────────────────────────────────────────────────────────────
 
 const ALL_TABS = [
-  { id: 'performance',      label: 'Performance'        },
   { id: 'photo-video',      label: 'Photo & Video'      },
   { id: 'item-details',     label: 'Item Details'       },
   { id: 'item-options',     label: 'Item Options'       },
   { id: 'pricing-shipping', label: 'Pricing & Shipping' },
   { id: 'how-its-made',     label: "How It's Made"      },
   { id: 'settings',         label: 'Settings'           },
-  { id: 'qa',               label: 'Q&A'                },
 ] as const;
 
 type TabId = (typeof ALL_TABS)[number]['id'];
 
 const EDIT_TABS   = ALL_TABS;
-const CREATE_TABS = ALL_TABS.filter((t) => t.id !== 'performance' && t.id !== 'qa');
+const CREATE_TABS = ALL_TABS;
 
 // ── MoreMenu ─────────────────────────────────────────────────────────────────
 
@@ -433,16 +429,6 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
         {/* ── Sections ─────────────────────────────────────────────────────── */}
         <div className="flex-1 bg-background">
 
-          {/* Performance — edit only */}
-          {mode === 'edit' && product && (
-            <>
-              <div ref={(el) => { sectionRefs.current['performance'] = el; }}>
-                <PerformanceTab product={product} />
-              </div>
-              <div className="h-px bg-border" />
-            </>
-          )}
-
           {/* Photo & Video */}
           <div ref={(el) => { sectionRefs.current['photo-video'] = el; }}>
             <PhotoVideoTab
@@ -487,16 +473,6 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
               initialRelatedIds={product?.featuredRelatedIds}
             />
           </div>
-
-          {/* Q&A — edit only, existing product */}
-          {product?.id && (
-            <>
-              <div className="h-px bg-border" />
-              <div ref={(el) => { sectionRefs.current['qa'] = el; }}>
-                <QaTab productId={product.id} />
-              </div>
-            </>
-          )}
 
           {/* Bottom breathing room */}
           <div className="h-16" />
