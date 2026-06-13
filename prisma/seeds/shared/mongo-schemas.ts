@@ -70,7 +70,7 @@ export interface IProductDetail {
 
 const productDetailSchema = new Schema<IProductDetail>(
   {
-    productId:      { type: String, required: true, unique: true, index: true },
+    productId:      { type: String, required: true, unique: true },
     attributes:     [{ key: String, value: String, filterable: Boolean, unit: String, _id: false }],
     variantOptions: [{ name: String, values: [String], _id: false }],
     richDescription: String,

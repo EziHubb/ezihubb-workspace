@@ -31,8 +31,8 @@ export class CategoryMenu extends Document {
    * The top-level nav tab label shown in the header.
    * e.g. "Home & Living", "Apparel", "Accessories"
    */
-  @Prop({ required: true, unique: true }) navLabel: string;
-  @Prop({ required: true, unique: true }) navSlug: string;
+  @Prop({ required: true }) navLabel: string;
+  @Prop({ required: true }) navSlug: string;
 
   /** Points to PostgreSQL Category.id (L1 parent) */
   @Prop({ required: true }) categoryId: string;
@@ -50,5 +50,6 @@ export class CategoryMenu extends Document {
 }
 
 export const CategoryMenuSchema = SchemaFactory.createForClass(CategoryMenu);
+CategoryMenuSchema.index({ navLabel: 1 }, { unique: true });
 CategoryMenuSchema.index({ navSlug: 1 }, { unique: true });
 CategoryMenuSchema.index({ isVisible: 1, sortOrder: 1 });
