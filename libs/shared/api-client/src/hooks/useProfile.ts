@@ -44,7 +44,7 @@ export function useMutateProfile() {
   const uploadAvatar = useMutation({
     mutationFn: async (file: File) => {
       const form  = new FormData();
-      form.append('file', file);
+      form.append('avatar', file);
 
       const base  = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
       const token =

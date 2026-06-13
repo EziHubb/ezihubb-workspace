@@ -1,0 +1,33 @@
+{
+  "title": "神秘礼盒",
+  "subtitle": "告诉我们您的预算和兴趣，我们将为您精心策划一个惊喜。",
+  "budget": "预算",
+  "interests": "兴趣爱好",
+  "interestsSub": "（可多选）",
+  "submit": "申请我的神秘礼盒",
+  "submitting": "提交中…",
+  "submitError": "提交失败，请重试。",
+  "pendingTitle": "正在寻找您的神秘匹配…",
+  "pendingSub": "我们正在为您精心策划完美的惊喜，通常需要几分钟。",
+  "checkingMsg": "每隔几秒检查一次",
+  "matchedTitle": "您的神秘礼盒已准备好！",
+  "matchedSub": "您的礼物已匹配成功，准备好揭晓了吗？",
+  "revealBtn": "🎁 揭晓我的礼物",
+  "revealing": "✨ 揭晓中…",
+  "yourMatch": "您的神秘匹配",
+  "viewProduct": "查看商品",
+  "rateMatch": "您对这次匹配感觉如何？",
+  "submitRating": "提交评分",
+  "thanksForRating": "感谢您的评分！",
+  "interestLabels": {
+    "art": "艺术与手工艺",
+    "home": "家居装饰",
+    "nature": "自然与植物",
+    "fashion": "时尚",
+    "food": "美食与烘焙",
+    "travel": "旅行",
+    "books": "书籍",
+    "music": "音乐",
+    "games": "游戏"
+  }
+}

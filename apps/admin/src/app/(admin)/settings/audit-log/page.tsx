@@ -6,6 +6,7 @@ import { Shield, ChevronLeft, ChevronRight, Search, ChevronDown, ChevronUp } fro
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { FilterSelect } from '../../../../components/ui/FilterSelect';
 
 interface AuditLogEntry {
   id:         string;
@@ -92,21 +93,11 @@ export default function AuditLogPage() {
       <div className="flex flex-wrap items-end gap-3 mb-5">
         <div>
           <label className="block text-xs font-semibold text-secondary mb-1">Entity type</label>
-          <select value={entityType} onChange={(e) => { setEntityType(e.target.value); resetPage(); }} className={selectCls}>
-            <option value="">All types</option>
-            {entityTypes.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
+          <FilterSelect value={entityType} onChange={(v) => { setEntityType(v); resetPage(); }} options={[{ value: '', label: 'All Types' }, ...(entityTypes.map((t) => ({ value: t, label: t })))]} />
         </div>
         <div>
           <label className="block text-xs font-semibold text-secondary mb-1">Action</label>
-          <select value={action} onChange={(e) => { setAction(e.target.value); resetPage(); }} className={selectCls}>
-            <option value="">All actions</option>
-            <option value="create">create</option>
-            <option value="update">update</option>
-            <option value="delete">delete</option>
-          </select>
+          <FilterSelect value={action} onChange={(v) => { setAction(v); resetPage(); }} options={[{ value: '', label: 'All Actions' }, { value: 'create', label: 'Create' }, { value: 'update', label: 'Update' }, { value: 'delete', label: 'Delete' }]} />
         </div>
         <div>
           <label className="block text-xs font-semibold text-secondary mb-1">User ID</label>

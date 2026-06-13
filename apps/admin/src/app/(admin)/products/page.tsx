@@ -14,6 +14,7 @@ import { api, adminApi } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount, fmtDate, capitalize, fmtNum } from '../../../lib/fmt';
 import { useDialog } from '../../../contexts/DialogContext';
+import { FilterSelect } from '../../../components/ui/FilterSelect';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -380,24 +381,16 @@ function ProductsPageInner() {
 
         {/* Mobile filter row (visible on < lg, replaces hidden sidebar) */}
         <div className="flex lg:hidden items-center gap-2 mb-4 flex-wrap">
-          <select
+          <FilterSelect
             value={urlSort}
-            onChange={(e) => setUrlParam('sort', e.target.value)}
-            className="px-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            {SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-          <select
+            onChange={(v) => setUrlParam('sort', v)}
+            options={SORT_OPTIONS as unknown as Array<{ value: string; label: string }>}
+          />
+          <FilterSelect
             value={urlStatus}
-            onChange={(e) => setUrlParam('status', e.target.value)}
-            className="px-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            {STATUS_FILTER_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+            onChange={(v) => setUrlParam('status', v)}
+            options={STATUS_FILTER_OPTIONS as unknown as Array<{ value: string; label: string }>}
+          />
         </div>
 
         {/* Bulk action bar */}
@@ -594,15 +587,12 @@ function ProductsPageInner() {
           {/* Sort */}
           <div>
             <label className="text-xs font-semibold text-muted uppercase tracking-wider block mb-2">Sort by</label>
-            <select
+            <FilterSelect
               value={urlSort}
-              onChange={(e) => setUrlParam('sort', e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              {SORT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+              onChange={(v) => setUrlParam('sort', v)}
+              options={SORT_OPTIONS as unknown as Array<{ value: string; label: string }>}
+              className="w-full"
+            />
           </div>
 
           {/* Status filter */}

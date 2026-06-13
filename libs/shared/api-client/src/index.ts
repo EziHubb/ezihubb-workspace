@@ -24,7 +24,8 @@ export * from './hooks/useCheckout';   // useCheckout
 
 // Wishlist
 export * from './hooks/useWishlist';        // useWishlist
-export * from './hooks/useMutateWishlist';  // useMutateWishlist
+export * from './hooks/useMutateWishlist';  // useMutateWishlist (direct add/remove)
+export * from './hooks/useWishlistToggle';  // useWishlistToggle (debounced + instant visual)
 
 // Search
 export * from './hooks/useSearch';     // useSearch, useSearchSuggestions

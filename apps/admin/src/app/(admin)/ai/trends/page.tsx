@@ -304,7 +304,7 @@ function SourcePicker({
               key={src.id}
               type="button"
               onClick={() => toggle(src.id)}
-              className={`w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded-button transition-colors ${
+              className={`w-full flex items-center justify-start gap-2 px-2 py-1.5 text-xs text-left rounded-button transition-colors ${
                 selected.includes(src.id) ? 'bg-primary/10 text-primary' : 'text-secondary hover:bg-background'
               }`}
             >
@@ -313,9 +313,9 @@ function SourcePicker({
               }`}>
                 {selected.includes(src.id) && <CheckCircle className="w-2.5 h-2.5 text-white" />}
               </span>
-              <span className="flex-1">{src.name}</span>
+              <span className="flex-1 text-left">{src.name}</span>
               {src.requiresApiKey && (
-                <span className="text-[10px] text-amber-600 font-medium">key</span>
+                <span className="text-[10px] text-amber-600 font-medium ml-auto">key</span>
               )}
             </button>
           ))}

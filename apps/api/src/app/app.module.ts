@@ -54,6 +54,15 @@ import { TrendsModule } from '../modules/trends/trends.module';
 import { CreatorDnaModule } from '../modules/creator-dna/creator-dna.module';
 import { AdminAiModule } from '../modules/ai/admin-ai.module';
 import { ShopStatsModule } from '../modules/shop-stats/shop-stats.module';
+import { CoinModule } from '../modules/coins/coin.module';
+import { VipModule } from '../modules/vip/vip.module';
+import { OrderTrackingModule } from '../modules/order-tracking/order-tracking.module';
+import { FlashDealModule } from '../modules/flash-deals/flash-deal.module';
+import { BundleModule } from '../modules/bundles/bundle.module';
+import { GiftPoolModule } from '../modules/gift-pools/gift-pool.module';
+import { GiftFinderModule } from '../modules/gift-finder/gift-finder.module';
+import { GiftChainModule } from '../modules/gift-chains/gift-chain.module';
+import { BlindMatchModule } from '../modules/blind-match/blind-match.module';
 import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
 
 @Module({
@@ -169,6 +178,16 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
     CreatorDnaModule,
     AdminAiModule,
     ShopStatsModule,
+    // ── BF-01–BF-09: Buyer Features ──────────────────────────────────────────
+    CoinModule,
+    VipModule,
+    OrderTrackingModule,
+    FlashDealModule,
+    BundleModule,
+    GiftPoolModule,
+    GiftFinderModule,
+    GiftChainModule,
+    BlindMatchModule,
     HealthModule,
   ],
   controllers: [AppController, UnsubscribeController],

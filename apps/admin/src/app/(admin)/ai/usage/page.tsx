@@ -11,6 +11,7 @@ import { StatCard } from '../../../../components/data/StatCard';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount, fmtDate, fmtNum, safeArr } from '../../../../lib/fmt';
+import { FilterSelect } from '../../../../components/ui/FilterSelect';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -141,16 +142,7 @@ export default function AiUsagePage() {
               <h3 className="font-semibold text-secondary text-sm">Usage Over Time</h3>
               <p className="text-xs text-muted mt-0.5">API cost and call volume trend</p>
             </div>
-            <select
-              value={days}
-              onChange={(e) => setDays(Number(e.target.value))}
-              className="text-sm border border-border rounded-button px-3 py-1.5 focus:outline-none focus:border-primary transition-colors"
-            >
-              <option value={7}>Last 7 days</option>
-              <option value={14}>Last 14 days</option>
-              <option value={30}>Last 30 days</option>
-              <option value={90}>Last 90 days</option>
-            </select>
+            <FilterSelect value={String(days)} onChange={(v) => setDays(Number(v))} size="sm" options={[{value:'7',label:'Last 7 days'},{value:'14',label:'Last 14 days'},{value:'30',label:'Last 30 days'},{value:'90',label:'Last 90 days'}]} />
           </div>
           {isLoading ? (
             <div className="h-64 bg-muted/10 rounded animate-pulse" />

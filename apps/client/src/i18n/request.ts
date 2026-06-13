@@ -19,6 +19,10 @@ const NAMESPACES = [
   'checkout',
   'account',
   'creator',
+  'blindMatch',
+  'giftFinder',
+  'giftChain',
+  'giftPool',
 ] as const;
 
 export default getRequestConfig(async ({ requestLocale }) => {

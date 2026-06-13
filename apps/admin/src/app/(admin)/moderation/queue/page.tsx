@@ -10,6 +10,7 @@ import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtDate, safeArr } from '../../../../lib/fmt';
+import { FilterSelect } from '../../../../components/ui/FilterSelect';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -300,18 +301,21 @@ export default function TrustSafetyQueuePage() {
             className="pl-9 pr-4 py-2 text-sm border border-border rounded-button focus:outline-none focus:border-primary transition-colors"
           />
         </div>
-        {[
-          { value: type,     options: TYPE_OPTIONS,     onChange: (v: string) => { setType(v);     setPage(1); }, label: 'All types'     },
-          { value: severity, options: SEVERITY_OPTIONS, onChange: (v: string) => { setSeverity(v); setPage(1); }, label: 'All severities' },
-          { value: status,   options: STATUS_OPTIONS,   onChange: (v: string) => { setStatus(v);   setPage(1); }, label: 'All statuses'  },
-        ].map(({ value, options, onChange, label }, idx) => (
-          <select key={idx} value={value} onChange={(e) => onChange(e.target.value)}
-            className="text-sm border border-border rounded-button px-3 py-2 focus:outline-none focus:border-primary transition-colors">
-            {options.map((o) => (
-              <option key={o} value={o}>{o || label}</option>
-            ))}
-          </select>
-        ))}
+        <FilterSelect
+          value={type}
+          onChange={(v) => { setType(v); setPage(1); }}
+          options={TYPE_OPTIONS.map((o) => ({ value: o, label: o || 'All Types' }))}
+        />
+        <FilterSelect
+          value={severity}
+          onChange={(v) => { setSeverity(v); setPage(1); }}
+          options={SEVERITY_OPTIONS.map((o) => ({ value: o, label: o || 'All Severities' }))}
+        />
+        <FilterSelect
+          value={status}
+          onChange={(v) => { setStatus(v); setPage(1); }}
+          options={STATUS_OPTIONS.map((o) => ({ value: o, label: o || 'All Statuses' }))}
+        />
       </div>
 
       {/* ── Queue ─────────────────────────────────────────────────────────── */}

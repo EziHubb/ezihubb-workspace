@@ -136,5 +136,54 @@
         "ADJUST": "手动调整"
       }
     }
+  },
+
+  "coins": {
+    "title": "金币余额",
+    "subtitle": "每次购物赚取金币，并兑换折扣。",
+    "currentBalance": "当前余额",
+    "lifetimeEarned": "累计获得",
+    "expiringIn30Days": "30天内到期",
+    "useThemSoon": "请在到期前使用！",
+    "nothingExpiring": "近期无到期金币",
+    "worth": "价值 ${value}",
+    "howToEarn": "如何赚取金币",
+    "earnPurchase": "购物 — 每消费 $1 获得 10 枚金币",
+    "earnReview": "撰写评价",
+    "earnPhotoReview": "图片评价",
+    "infoExchange": "100 枚金币 = 结账立减 $1.00。",
+    "infoLock": "金币在购买后14天内锁定，之后自动确认。",
+    "infoExpiry": "金币自获得之日起12个月后到期。",
+    "history": "交易记录",
+    "historyEmpty": "暂无交易记录。开始购物赚取金币吧！",
+    "tableDate": "日期",
+    "tableType": "类型",
+    "tableAmount": "数量",
+    "tableBalanceAfter": "操作后余额",
+    "dateLabel": "日期：",
+    "typeLabel": "类型：",
+    "amountLabel": "数量：",
+    "balanceLabel": "操作后余额：",
+    "coinsUnit": "枚"
+  },
+
+  "vip": {
+    "title": "VIP 状态",
+    "subtitle": "基于近90天消费的专属会员权益。",
+    "currentTier": "当前 VIP 等级",
+    "rollingSpend": "90天消费：",
+    "nextAt": "下一级：{tier}（满 ${amount}）",
+    "moreToReach": "还需 ${amount} 达到 {tier}",
+    "maxTier": "您已达到最高等级，尽享所有 Diamond 权益！",
+    "allTiers": "所有等级与权益",
+    "currentBadge": "当前",
+    "upcomingDeals": "即将开始的 VIP 特卖",
+    "dealStarts": "开始于 {date}",
+    "dealOff": "立减 {discount}%",
+    "dealView": "查看",
+    "noDeals": "当前没有即将开始的 VIP 特卖活动，请稍后再来！",
+    "signIn": "登录查看您的 VIP 状态",
+    "signInSub": "购物即可解锁专属权益。",
+    "signInBtn": "登录"
   }
 }

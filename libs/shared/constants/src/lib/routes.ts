@@ -183,6 +183,70 @@ export const API_ROUTES = {
     RATES: '/currency/rates',
   },
 
+  // BF-01: BuyCoins
+  COINS: {
+    ME:        '/coins/me',
+    HISTORY:   '/coins/me/history',
+    REDEEM:    '/coins/me/redeem',
+    ESTIMATE:  '/coins/me/estimate',
+  },
+
+  // BF-02: Live Order Tracking
+  ORDER_TRACKING: {
+    DETAIL:  (orderId: string) => `/orders/${orderId}/tracking`,
+    EVENTS:  (orderId: string) => `/orders/${orderId}/tracking/events`,
+  },
+
+  // BF-03: Flash Deals
+  FLASH_DEALS: {
+    ACTIVE:       '/flash-deals/active',
+    DETAIL:       (id: string) => `/flash-deals/${id}`,
+    PURCHASE:     (id: string) => `/flash-deals/${id}/purchase`,
+  },
+
+  // BF-04: Bundle Builder
+  BUNDLES: {
+    STORE_SETTINGS: (storeId: string) => `/bundles/${storeId}/settings`,
+    UPSELL:         (storeId: string) => `/bundles/${storeId}/upsell`,
+  },
+
+  // BF-05: VIP Early Access
+  VIP: {
+    ME:            '/vip/me',
+    PREVIEW_DEALS: '/vip/flash-deals/preview',
+  },
+
+  // BF-06: Group Gifting
+  GIFT_POOLS: {
+    CREATE:      '/gift-pools',
+    DETAIL:      (token: string) => `/gift-pools/${token}`,
+    CONTRIBUTE:  (token: string) => `/gift-pools/${token}/contribute`,
+    MY_POOLS:    '/gift-pools/my',
+  },
+
+  // BF-07: AI Gift Finder
+  GIFT_FINDER: {
+    START:    '/gift-finder/session',
+    STEP:     (sessionId: string) => `/gift-finder/session/${sessionId}/step`,
+    RESULTS:  (sessionId: string) => `/gift-finder/session/${sessionId}/results`,
+  },
+
+  // BF-08: Gift Chain Relay
+  GIFT_CHAINS: {
+    INITIATE:  '/gift-chains',
+    DETAIL:    (chainId: string) => `/gift-chains/${chainId}`,
+    FORWARD:   (chainId: string) => `/gift-chains/${chainId}/forward`,
+    MY_CHAINS: '/gift-chains/my',
+  },
+
+  // BF-09: Blind Taste Match
+  BLIND_MATCH: {
+    REQUEST:  '/blind-match/request',
+    MYSTERY:  (requestId: string) => `/blind-match/${requestId}/mystery`,
+    RATE:     (requestId: string) => `/blind-match/${requestId}/rate`,
+    HISTORY:  '/blind-match/history',
+  },
+
   NOTIFICATIONS: {
     CONTACT:       '/notifications/contact',
     PRODUCT_READY: '/notifications/product-ready',
@@ -442,6 +506,27 @@ export const API_ROUTES = {
     AI_USAGE:                    '/admin/ai/usage',
     AI_SETTINGS:                 '/admin/ai/settings',
     AI_SOURCES:                  '/admin/ai/sources',
+
+    // ── BF-01: Coins (admin) ─────────────────────────────────────────────────
+    COINS_CONFIG:             '/admin/coins/config',
+    COINS_USER_BALANCE:       (userId: string) => `/admin/coins/users/${userId}`,
+    COINS_USER_ADJUST:        (userId: string) => `/admin/coins/users/${userId}/adjust`,
+    COINS_STATS:              '/admin/coins/stats',
+
+    // ── BF-03: Flash Deals (admin) ───────────────────────────────────────────
+    FLASH_DEALS:              '/admin/flash-deals',
+    FLASH_DEAL:               (id: string) => `/admin/flash-deals/${id}`,
+    FLASH_DEAL_CREATE:        '/admin/flash-deals',
+    FLASH_DEAL_TOGGLE:        (id: string) => `/admin/flash-deals/${id}/toggle`,
+
+    // ── BF-06: Gift Pools (admin) ────────────────────────────────────────────
+    GIFT_POOLS:               '/admin/gift-pools',
+    GIFT_POOL:                (id: string) => `/admin/gift-pools/${id}`,
+    GIFT_POOL_REFUND:         (id: string) => `/admin/gift-pools/${id}/refund`,
+
+    // ── BF-09: Blind Match (admin) ───────────────────────────────────────────
+    BLIND_MATCH_REQUESTS:     '/admin/blind-match/requests',
+    BLIND_MATCH_REQUEST:      (id: string) => `/admin/blind-match/requests/${id}`,
   },
 
   STORES: {

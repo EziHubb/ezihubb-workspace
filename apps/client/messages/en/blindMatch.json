@@ -1,0 +1,33 @@
+{
+  "title": "Mystery Box",
+  "subtitle": "Tell us your budget and interests — we'll curate a surprise just for you.",
+  "budget": "Budget",
+  "interests": "Interests",
+  "interestsSub": "(select all that apply)",
+  "submit": "Request My Mystery Box",
+  "submitting": "Submitting…",
+  "submitError": "Failed to submit request. Please try again.",
+  "pendingTitle": "Finding your mystery match…",
+  "pendingSub": "We're curating the perfect surprise. This usually takes a few minutes.",
+  "checkingMsg": "Checking every few seconds",
+  "matchedTitle": "Your mystery box is ready!",
+  "matchedSub": "Your gift has been matched. Ready to reveal?",
+  "revealBtn": "🎁 Reveal My Gift",
+  "revealing": "✨ Revealing…",
+  "yourMatch": "Your Mystery Match",
+  "viewProduct": "View Product",
+  "rateMatch": "How does this match feel?",
+  "submitRating": "Submit rating",
+  "thanksForRating": "Thanks for rating!",
+  "interestLabels": {
+    "art": "Art & Crafts",
+    "home": "Home Decor",
+    "nature": "Nature & Plants",
+    "fashion": "Fashion",
+    "food": "Food & Baking",
+    "travel": "Travel",
+    "books": "Books",
+    "music": "Music",
+    "games": "Games"
+  }
+}

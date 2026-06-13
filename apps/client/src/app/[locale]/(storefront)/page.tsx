@@ -14,6 +14,7 @@ import { SocialProof } from '../../../components/home/SocialProof';
 import { FeaturedReviews } from '../../../components/home/FeaturedReviews';
 import { NewsletterSection } from '../../../components/home/NewsletterSection';
 import { CreatorNetworkCta } from '../../../components/home/CreatorNetworkCta';
+import { FlashDealsSection } from '../../../components/flash-deals/FlashDealsSection';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,6 +91,8 @@ export default async function HomePage({
       <CollectionsGrid collections={collections} locale={locale} />
 
       <HowItWorks locale={locale} />
+
+      <FlashDealsSection locale={locale} />
 
       <TrendingProducts
         products={trendingProducts}

@@ -7,6 +7,7 @@ import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtDate, fmtDateTime, safeArr } from '../../../../lib/fmt';
+import { FilterSelect } from '../../../../components/ui/FilterSelect';
 
 type Verdict = 'PENDING' | 'CLEAN' | 'FLAGGED' | 'REJECTED' | 'APPEALED' | 'APPROVED';
 
@@ -141,18 +142,8 @@ export default function ModerationHistoryPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6">
-        <select value={verdict} onChange={(e) => { setVerdict(e.target.value); setPage(1); }}
-          className="text-sm border border-border rounded-button px-3 py-2 focus:outline-none focus:border-primary">
-          {['', 'CLEAN', 'FLAGGED', 'REJECTED', 'APPEALED', 'APPROVED'].map((v) => (
-            <option key={v} value={v}>{v || 'All verdicts'}</option>
-          ))}
-        </select>
-        <select value={entityType} onChange={(e) => { setEntityType(e.target.value); setPage(1); }}
-          className="text-sm border border-border rounded-button px-3 py-2 focus:outline-none focus:border-primary">
-          {['', 'Product', 'Store', 'Review', 'Message'].map((t) => (
-            <option key={t} value={t}>{t || 'All types'}</option>
-          ))}
-        </select>
+        <FilterSelect value={verdict} onChange={(v) => { setVerdict(v); setPage(1); }} options={[{value:'',label:'All Verdicts'},{value:'CLEAN',label:'Clean'},{value:'FLAGGED',label:'Flagged'},{value:'REJECTED',label:'Rejected'},{value:'APPEALED',label:'Appealed'},{value:'APPROVED',label:'Approved'}]} />
+        <FilterSelect value={entityType} onChange={(v) => { setEntityType(v); setPage(1); }} options={[{value:'',label:'All Types'},{value:'Product',label:'Product'},{value:'Store',label:'Store'},{value:'Review',label:'Review'},{value:'Message',label:'Message'}]} />
       </div>
 
       <div className="bg-surface border border-border rounded-card overflow-hidden">

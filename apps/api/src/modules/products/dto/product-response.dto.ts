@@ -30,6 +30,12 @@ export class ProductCategoryDto {
   @ApiProperty() slug: string;
 }
 
+export class ProductStoreDto {
+  @ApiProperty() id: string;
+  @ApiProperty() name: string;
+  @ApiProperty() slug: string;
+}
+
 export class ProductResponseDto {
   @ApiProperty() id: string;
   @ApiProperty() name: string;
@@ -46,6 +52,7 @@ export class ProductResponseDto {
   @ApiProperty() soldCount: number;
   @ApiProperty() processingDays: number;
   @ApiProperty({ type: () => ProductCategoryDto }) category: ProductCategoryDto;
+  @ApiPropertyOptional({ type: () => ProductStoreDto }) store: ProductStoreDto | null;
   @ApiProperty({ type: [VariantResponseDto] }) variants: VariantResponseDto[];
   @ApiProperty({ type: [ProductImageResponseDto] }) images: ProductImageResponseDto[];
   @ApiProperty({ type: [ProductTagResponseDto] }) tags: ProductTagResponseDto[];

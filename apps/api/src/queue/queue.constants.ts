@@ -11,6 +11,12 @@ export const QUEUES = {
   REFERRAL:             'referral',
   MODERATION:           'moderation',
   AI_FEATURES:          'ai-features',
+  COINS:                'coins',
+  ORDER_TRACKING:       'order-tracking',
+  FLASH_DEALS:          'flash-deals',
+  GIFT_POOLS:           'gift-pools',
+  GIFT_CHAINS:          'gift-chains',
+  BLIND_MATCH:          'blind-match',
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
@@ -55,6 +61,34 @@ export const JOBS = {
   BUYER_REFERRAL_CREATE:  'buyer-referral-create',
   BUYER_REFERRAL_PROCESS: 'buyer-referral-process',
   BUYER_REFERRAL_EXPIRE:  'buyer-referral-expire',
+
+  // BF-01: Coins
+  COIN_EXPIRE_DAILY:      'coin-expire-daily',
+
+  // BF-02: Order Tracking
+  POLL_CARRIER_STATUS:    'poll-carrier-status',
+  TRACKING_STAGE_UPDATE:  'tracking-stage-update',
+
+  // BF-03: Flash Deals
+  FLASH_DEAL_ACTIVATE:    'flash-deal-activate',
+  FLASH_DEAL_END:         'flash-deal-end',
+  FLASH_DEAL_REMINDER:    'flash-deal-reminder',
+
+  // BF-05: VIP
+  VIP_TIER_RECOMPUTE:     'vip-tier-recompute',
+
+  // BF-06: Gift Pools
+  GIFT_POOL_COMPLETE:     'gift-pool-complete',
+  GIFT_POOL_EXPIRE:       'gift-pool-expire',
+  GIFT_POOL_REMINDER:     'gift-pool-reminder',
+
+  // BF-08: Gift Chain
+  GIFT_CHAIN_NUDGE:       'gift-chain-nudge',
+  GIFT_CHAIN_CLOSE:       'gift-chain-close',
+
+  // BF-09: Blind Match
+  BLIND_MATCH_PROCESS:    'blind-match-process',
+  BLIND_MATCH_CREDIT:     'blind-match-credit',
 } as const;
 
 export type JobName = (typeof JOBS)[keyof typeof JOBS];

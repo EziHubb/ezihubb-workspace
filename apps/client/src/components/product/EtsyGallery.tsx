@@ -3,9 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import Image from 'next/image';
 import { ChevronLeft, ChevronRight, Heart, Flag, X } from 'lucide-react';
-import { useWishlist, useMutateWishlist } from '@mlh/api-client';
+import { useWishlist, useWishlistToggle } from '@mlh/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
 import type { ProductDto } from '@mlh/types';
 
@@ -35,8 +34,9 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
 
   // ── Wishlist ──────────────────────────────────────────────────────────────────
   const isLoggedIn = Boolean(useAuthStore((s) => s.user));
-  const { data: wishlistItems }               = useWishlist(isLoggedIn);
-  const { addToWishlist, removeFromWishlist } = useMutateWishlist();
+  const isAuthReady    = useAuthStore((s) => s.isAuthReady);
+  const { data: wishlistItems } = useWishlist(isAuthReady && isLoggedIn);
+  const wishlistToggle          = useWishlistToggle();
   const isInWishlist = wishlistItems?.some((item) => item.productId === product.id) ?? false;
 
   const handleWishlist = () => {
@@ -44,8 +44,7 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
       router.push(`/${locale}/login?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
-    if (isInWishlist) removeFromWishlist.mutate(product.id);
-    else              addToWishlist.mutate(product.id);
+    wishlistToggle(product.id, isInWishlist);
   };
 
   // ── Navigation ────────────────────────────────────────────────────────────────
@@ -109,12 +108,11 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
                   : 'border-transparent hover:border-[#CCC]',
               ].join(' ')}
             >
-              <Image
+              <img
                 src={img.url}
                 alt={img.altText ?? `${product.name} photo ${i + 1}`}
-                fill
-                sizes="76px"
-                className="object-cover"
+                loading="lazy"
+                className="absolute inset-0 w-full h-full object-cover"
               />
             </button>
           ))}
@@ -144,13 +142,11 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
               />
             </button>
 
-            <Image
+            <img
               src={mainImage.url}
               alt={mainImage.altText ?? product.name}
-              fill
-              sizes="(max-width: 1024px) 100vw, calc(100vw - 476px)"
-              priority
-              className="object-cover"
+              loading="eager"
+              className="absolute inset-0 w-full h-full object-cover"
             />
 
             {/* ◀ ▶ arrows */}
@@ -209,12 +205,11 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
                     i === activeIndex ? 'border-secondary' : 'border-transparent',
                   ].join(' ')}
                 >
-                  <Image
+                  <img
                     src={img.url}
                     alt={img.altText ?? ''}
-                    fill
-                    sizes="56px"
-                    className="object-cover"
+                    loading="lazy"
+                    className="absolute inset-0 w-full h-full object-cover"
                   />
                 </button>
               ))}
@@ -260,13 +255,11 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
               onTouchEnd={handleTouchEnd}
             >
               <div className="relative w-full max-h-[80vh] aspect-square">
-                <Image
+                <img
                   src={mainImage.url}
                   alt={mainImage.altText ?? product.name}
-                  fill
-                  sizes="(max-width: 1200px) 70vw, 840px"
-                  className="object-contain"
-                  priority
+                  loading="eager"
+                  className="absolute inset-0 w-full h-full object-contain"
                 />
               </div>
 
@@ -311,12 +304,11 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
                         : 'border-transparent opacity-60 hover:opacity-90',
                     ].join(' ')}
                   >
-                    <Image
+                    <img
                       src={img.url}
                       alt={img.altText ?? `${product.name} photo ${i + 1}`}
-                      fill
-                      sizes="130px"
-                      className="object-cover"
+                      loading="lazy"
+                      className="absolute inset-0 w-full h-full object-cover"
                     />
                   </button>
                 ))}

@@ -75,7 +75,7 @@ function SaveButton({ label = 'Save Changes', saving, onClick }: { label?: strin
   );
 }
 
-// Image upload preview
+// Image upload preview (square)
 function ImageUpload({
   label, value, size, onChange,
 }: {
@@ -137,6 +137,69 @@ function ImageUpload({
   );
 }
 
+// Wide banner upload preview (landscape)
+function BannerUpload({
+  label, value, hint, onChange,
+}: {
+  label:    string;
+  value?:   string;
+  hint?:    string;
+  onChange: (url: string) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+
+  const handleFile = (f: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => onChange(e.target?.result as string);
+    reader.readAsDataURL(f);
+  };
+
+  return (
+    <div>
+      <FieldLabel>{label}</FieldLabel>
+      <div
+        className="relative w-full h-28 rounded-lg border-2 border-dashed border-border bg-background overflow-hidden cursor-pointer hover:border-primary/40 transition-colors group"
+        onClick={() => ref.current?.click()}
+      >
+        {value ? (
+          <Image src={value} alt={label} fill className="object-cover" sizes="800px" />
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+            <span className="text-muted text-xs">Recommended: 1200 × 300 px</span>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+      </div>
+      <div className="flex items-center gap-4 mt-2">
+        <input
+          type="file"
+          ref={ref}
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+        />
+        <button
+          type="button"
+          onClick={() => ref.current?.click()}
+          className="text-xs font-medium text-primary hover:underline"
+        >
+          Upload image
+        </button>
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="text-xs text-muted hover:text-red-500 transition-colors"
+          >
+            Remove
+          </button>
+        )}
+        {hint && <p className="text-xs text-muted">{hint}</p>}
+      </div>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Tab 1 — Store Settings
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -148,6 +211,7 @@ interface StoreSettings {
   supportPhone:   string;
   logoUrl:        string;
   faviconUrl:     string;
+  bannerUrl:      string;
   addressLine1:   string;
   addressLine2:   string;
   city:           string;
@@ -177,7 +241,7 @@ function StoreTab() {
     setGeneral({
       name: data.name, description: data.description,
       contactEmail: data.contactEmail, supportPhone: data.supportPhone,
-      logoUrl: data.logoUrl, faviconUrl: data.faviconUrl,
+      logoUrl: data.logoUrl, faviconUrl: data.faviconUrl, bannerUrl: data.bannerUrl,
     });
     setAddress({
       addressLine1: data.addressLine1, addressLine2: data.addressLine2,
@@ -236,6 +300,12 @@ function StoreTab() {
           <ImageUpload label="Favicon" value={general.faviconUrl ?? data?.faviconUrl}
             size={32} onChange={(v) => setGeneral((s) => ({ ...s, faviconUrl: v }))} />
         </div>
+        <BannerUpload
+          label="Shop Banner"
+          value={general.bannerUrl ?? data?.bannerUrl}
+          hint="Displayed at the top of your public shop page."
+          onChange={(v) => setGeneral((s) => ({ ...s, bannerUrl: v }))}
+        />
         <SaveButton label="Save General" saving={saving === 'general'} onClick={() => save('general', general)} />
       </SectionCard>
 

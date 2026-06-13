@@ -15,6 +15,7 @@ import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount, fmtDate, fmtNum } from '../../../lib/fmt';
 import { useDialog } from '../../../contexts/DialogContext';
+import { FilterSelect } from '../../../components/ui/FilterSelect';
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
@@ -384,29 +385,29 @@ export default function PromotionsPage() {
         </div>
 
         {/* Type filter */}
-        <select
+        <FilterSelect
           value={typeF}
-          onChange={(e) => { setTypeF(e.target.value); setPage(1); }}
-          className="px-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          <option value="">All types</option>
-          <option value="PERCENTAGE">% Percentage</option>
-          <option value="FIXED_AMOUNT">$ Fixed Amount</option>
-          <option value="FREE_SHIPPING">Free Shipping</option>
-        </select>
+          onChange={(v) => { setTypeF(v); setPage(1); }}
+          options={[
+            { value: '', label: 'All Types' },
+            { value: 'PERCENTAGE',   label: '% Percentage'  },
+            { value: 'FIXED_AMOUNT', label: '$ Fixed Amount' },
+            { value: 'FREE_SHIPPING',label: 'Free Shipping'  },
+          ]}
+        />
 
         {/* Status filter */}
-        <select
+        <FilterSelect
           value={statusF}
-          onChange={(e) => { setStatusF(e.target.value); setPage(1); }}
-          className="px-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          <option value="">All statuses</option>
-          <option value="ACTIVE">Active</option>
-          <option value="PAUSED">Paused</option>
-          <option value="EXPIRED">Expired</option>
-          <option value="SCHEDULED">Scheduled</option>
-        </select>
+          onChange={(v) => { setStatusF(v); setPage(1); }}
+          options={[
+            { value: '',          label: 'All Statuses' },
+            { value: 'ACTIVE',    label: 'Active'       },
+            { value: 'PAUSED',    label: 'Paused'       },
+            { value: 'EXPIRED',   label: 'Expired'      },
+            { value: 'SCHEDULED', label: 'Scheduled'    },
+          ]}
+        />
 
         {(search || typeF || statusF) && (
           <button

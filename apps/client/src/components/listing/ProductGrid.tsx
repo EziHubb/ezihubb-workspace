@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { PackageOpen } from 'lucide-react';
 import { ProductCard, ProductCardSkeleton } from '@mlh/ui';
-import { useMutateWishlist } from '@mlh/api-client';
+import { useWishlist, useWishlistToggle } from '@mlh/api-client';
+import { useAuthStore } from '../../lib/store/auth.store';
 import type { ProductListItemDto } from '@mlh/types';
 
 interface ProductGridProps {
@@ -14,28 +15,21 @@ interface ProductGridProps {
 }
 
 export function ProductGrid({ products, locale, isLoading = false }: ProductGridProps) {
-  const router   = useRouter();
-  const pathname = usePathname();
-  const { addToWishlist, removeFromWishlist } = useMutateWishlist();
+  const router         = useRouter();
+  const pathname       = usePathname();
+  const isLoggedIn     = Boolean(useAuthStore((s) => s.user));
+  const isAuthReady    = useAuthStore((s) => s.isAuthReady);
+  const { data: wishlistData } = useWishlist(isAuthReady && isLoggedIn);
+  const wishlistToggle = useWishlistToggle();
+  const wishlistedIds  = new Set((wishlistData ?? []).map((w) => w.productId));
 
-  /**
-   * Toggle wishlist for a product.
-   * If the user is not authenticated, redirect to /login first.
-   */
   const handleWishlistToggle = (productId: string) => {
-    const token =
-      typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-
-    if (!token) {
+    if (!isLoggedIn) {
       const redirect = encodeURIComponent(`${pathname}${window.location.search}`);
       router.push(`/${locale}/login?redirect=${redirect}`);
       return;
     }
-
-    // Note: We don't know the current wishlist state here without reading the
-    // wishlist cache. For now, optimistically try to add; if the product is
-    // already wishlisted the API will return a 409 which is silently ignored.
-    addToWishlist.mutate(productId);
+    wishlistToggle(productId, wishlistedIds.has(productId));
   };
 
   // ── Loading ────────────────────────────────────────────────────────────────
@@ -88,6 +82,7 @@ export function ProductGrid({ products, locale, isLoading = false }: ProductGrid
           reviewCount={product.rating?.count}
           badge={product.badge}
           isPersonalizable={product.isPersonalizable}
+          isWishlisted={wishlistedIds.has(product.id)}
           onWishlistToggle={handleWishlistToggle}
           storeName={product.store?.name}
           storeSlug={product.store?.slug}

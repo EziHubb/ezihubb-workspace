@@ -378,7 +378,7 @@ export default function OrderDetailPage() {
                   <p className="text-xs text-muted mt-0.5">Qty {item.quantity}</p>
                 </div>
                 <p className="text-sm font-bold text-secondary tabular-nums shrink-0">
-                  ${item.totalPrice.toFixed(2)}
+                  ${Number(item.totalPrice ?? 0).toFixed(2)}
                 </p>
               </div>
             );
@@ -412,7 +412,7 @@ export default function OrderDetailPage() {
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-muted">
               <span>Subtotal</span>
-              <span>${order.subtotal.toFixed(2)}</span>
+              <span>${Number(order.subtotal ?? 0).toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-muted">
               <span>Shipping</span>
@@ -420,19 +420,19 @@ export default function OrderDetailPage() {
                 {order.shippingCost === 0 ? (
                   <span className="text-success">FREE</span>
                 ) : (
-                  `$${order.shippingCost.toFixed(2)}`
+                  `$${Number(order.shippingCost ?? 0).toFixed(2)}`
                 )}
               </span>
             </div>
             {order.discount > 0 && (
               <div className="flex justify-between text-success">
                 <span>Discount</span>
-                <span>−${order.discount.toFixed(2)}</span>
+                <span>−${Number(order.discount ?? 0).toFixed(2)}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-secondary border-t border-border pt-2">
               <span>Total</span>
-              <span>${order.total.toFixed(2)}</span>
+              <span>${Number(order.total ?? 0).toFixed(2)}</span>
             </div>
           </div>
 

@@ -13,6 +13,7 @@ import { fmtDate, fmtNum, fmtAmount, fmtDateISO } from '../../../lib/fmt';
 import { DataTable } from '../../../components/data/DataTable';
 import { api, adminApi } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { FilterSelect } from '../../../components/ui/FilterSelect';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -308,38 +309,28 @@ export default function CustomersPage() {
       {/* ── Filter bar ─────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3 mb-5">
         {/* Country */}
-        <select
+        <FilterSelect
           value={country}
-          onChange={(e) => { setCountry(e.target.value); setPage(1); }}
-          className="px-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          <option value="">Country ▾</option>
-          {['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'JP', 'SG', 'VN'].map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
+          onChange={(v) => { setCountry(v); setPage(1); }}
+          options={[
+            { value: '', label: 'All Countries' },
+            ...['US','CA','GB','AU','DE','FR','JP','SG','VN'].map((c) => ({ value: c, label: c })),
+          ]}
+        />
 
         {/* Joined */}
-        <select
+        <FilterSelect
           value={joined}
-          onChange={(e) => { setJoined(e.target.value); setPage(1); }}
-          className="px-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          {JOINED_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>Joined: {o.label}</option>
-          ))}
-        </select>
+          onChange={(v) => { setJoined(v); setPage(1); }}
+          options={JOINED_OPTIONS.map((o) => ({ value: o.value, label: `Joined: ${o.label}` }))}
+        />
 
         {/* Spent */}
-        <select
+        <FilterSelect
           value={spent}
-          onChange={(e) => { setSpent(e.target.value); setPage(1); }}
-          className="px-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          {SPENT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>Spent: {o.label}</option>
-          ))}
-        </select>
+          onChange={(v) => { setSpent(v); setPage(1); }}
+          options={SPENT_OPTIONS.map((o) => ({ value: o.value, label: `Spent: ${o.label}` }))}
+        />
 
         {/* Search */}
         <div className="relative flex-1 min-w-[220px] max-w-sm ml-auto">

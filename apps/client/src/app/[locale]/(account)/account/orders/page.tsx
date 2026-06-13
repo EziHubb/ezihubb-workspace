@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
-import { Package, ExternalLink, ShoppingBag } from 'lucide-react';
+import { Package, ShoppingBag, ChevronRight, Truck, MapPin } from 'lucide-react';
 import { queryKeys } from '@mlh/api-client';
 import { OrderStatusBadge, Pagination, Skeleton } from '@mlh/ui';
 import type { OrderListItemDto } from '@mlh/types';
@@ -21,7 +21,7 @@ const STATUS_TABS: { key: string; value: string }[] = [
   { key: 'cancelled',    value: 'CANCELLED'     },
 ];
 
-// ── Date formatter ────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const fmt = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -29,7 +29,24 @@ const fmt = new Intl.DateTimeFormat('en-US', {
   year:  'numeric',
 });
 
-// ── Pagination shape returned after apiRequest envelope unwrap ────────────────
+function fmtMoney(v: unknown) {
+  return `$${Number(v ?? 0).toFixed(2)}`;
+}
+
+const STATUS_ACCENT: Record<string, string> = {
+  CONFIRMED:        'border-l-blue-400',
+  IN_PRODUCTION:    'border-l-violet-400',
+  SHIPPED:          'border-l-amber-400',
+  DELIVERED:        'border-l-green-500',
+  COMPLETED:        'border-l-green-500',
+  CANCELLED:        'border-l-red-400',
+  REFUNDED:         'border-l-red-300',
+  REFUND_REQUESTED: 'border-l-orange-400',
+  DISPUTED:         'border-l-red-500',
+  PENDING_PAYMENT:  'border-l-gray-300',
+};
+
+// ── Pagination shape ──────────────────────────────────────────────────────────
 
 interface OrdersPage {
   data:       OrderListItemDto[];
@@ -47,19 +64,22 @@ interface OrdersPage {
 
 function OrderCardSkeleton() {
   return (
-    <div className="border border-border rounded-card p-4 space-y-4 animate-pulse">
-      <div className="flex gap-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} variant="rect" className="w-16 h-16 rounded-sm" />
-        ))}
+    <div className="border border-border rounded-card overflow-hidden animate-pulse">
+      <div className="flex gap-4 p-4">
+        <Skeleton variant="rect" className="w-20 h-20 rounded-lg shrink-0" />
+        <div className="flex-1 space-y-2 py-1">
+          <Skeleton variant="text" className="w-36" />
+          <Skeleton variant="text" className="w-24" />
+          <Skeleton variant="text" className="w-48" />
+        </div>
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <Skeleton variant="rect" className="w-24 h-6 rounded-full" />
+          <Skeleton variant="text" className="w-16" />
+        </div>
       </div>
-      <div className="space-y-2">
-        <Skeleton variant="text" className="w-48" />
-        <Skeleton variant="text" className="w-32" />
-      </div>
-      <div className="flex gap-3">
-        <Skeleton variant="rect" className="h-9 w-28 rounded-button" />
-        <Skeleton variant="rect" className="h-9 w-28 rounded-button" />
+      <div className="border-t border-border px-4 py-3 flex gap-2">
+        <Skeleton variant="rect" className="h-8 w-28 rounded-button" />
+        <Skeleton variant="rect" className="h-8 w-28 rounded-button" />
       </div>
     </div>
   );
@@ -68,62 +88,99 @@ function OrderCardSkeleton() {
 // ── OrderCard ─────────────────────────────────────────────────────────────────
 
 function OrderCard({ order, locale }: { order: OrderListItemDto; locale: string }) {
-  const t     = useTranslations('account');
-  // List endpoint returns one previewUrl + itemCount — no full items array
-  const extra = Math.max(0, order.itemCount - 1);
+  const t      = useTranslations('account');
+  const thumb  = order.previewUrl ?? order.imageUrl ?? null;
+  const accent = STATUS_ACCENT[order.status] ?? 'border-l-border';
+  const extra  = Math.max(0, order.itemCount - 1);
 
   return (
-    <article className="border border-border rounded-card p-4 hover:border-primary/40 transition-colors space-y-4">
-      {/* Item thumbnails */}
-      <div className="flex items-center gap-2">
-        <div className="relative w-16 h-16 rounded-sm overflow-hidden bg-background border border-border shrink-0">
-          {order.previewUrl ? (
+    <article
+      className={`border border-border border-l-4 ${accent} rounded-card overflow-hidden hover:shadow-card-hover transition-shadow bg-surface`}
+    >
+      {/* ── Main row ── */}
+      <div className="flex gap-4 p-4">
+
+        {/* Thumbnail */}
+        <div className="relative w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-background border border-border">
+          {thumb ? (
             <Image
-              src={order.previewUrl}
-              alt={order.orderNumber}
+              src={thumb}
+              alt={`Order ${order.orderNumber}`}
               fill
-              sizes="64px"
+              sizes="80px"
               className="object-cover"
             />
           ) : (
-            <div className="w-full h-full bg-muted/20 flex items-center justify-center">
-              <Package className="w-5 h-5 text-muted" />
+            <div className="w-full h-full flex items-center justify-center">
+              <Package className="w-8 h-8 text-muted/40" />
+            </div>
+          )}
+          {extra > 0 && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+              <span className="text-white text-xs font-bold">+{extra}</span>
             </div>
           )}
         </div>
-        {extra > 0 && (
-          <div className="w-16 h-16 rounded-sm bg-muted/10 border border-border flex items-center justify-center shrink-0">
-            <span className="text-xs font-semibold text-muted">+{extra}</span>
-          </div>
-        )}
-      </div>
 
-      {/* Order meta */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div>
-          <p className="font-mono text-sm font-semibold text-secondary">
+        {/* Info */}
+        <div className="flex-1 min-w-0 py-0.5 space-y-1.5">
+          <p className="font-mono text-sm font-bold text-secondary tracking-tight">
             {order.orderNumber}
           </p>
-          <p className="text-xs text-muted">{fmt.format(new Date(order.createdAt as string))}</p>
+          <p className="text-xs text-muted">
+            {fmt.format(new Date(order.createdAt as string))}
+            {' · '}
+            <span className="font-medium text-secondary">
+              {order.itemCount} item{order.itemCount !== 1 ? 's' : ''}
+            </span>
+          </p>
+          {/* Status + total on same row for desktop */}
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            <OrderStatusBadge
+              status={order.status as Parameters<typeof OrderStatusBadge>[0]['status']}
+            />
+            <span className="text-sm font-bold text-secondary tabular-nums">
+              {fmtMoney(order.total)}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <OrderStatusBadge
-            status={order.status as Parameters<typeof OrderStatusBadge>[0]['status']}
-          />
-          <span className="font-bold text-secondary text-sm tabular-nums">
-            ${order.total.toFixed(2)}
-          </span>
-        </div>
-      </div>
 
-      {/* Actions */}
-      <div className="flex flex-wrap gap-2 pt-1 border-t border-border">
+        {/* Chevron */}
         <Link
           href={`/${locale}/account/orders/${order.orderNumber}`}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-secondary border border-border rounded-button px-4 py-2 hover:border-primary hover:text-primary transition-colors"
+          className="self-center shrink-0 text-muted hover:text-primary transition-colors"
+          aria-label="View order details"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </Link>
+      </div>
+
+      {/* ── Action bar ── */}
+      <div className="border-t border-border px-4 py-2.5 flex flex-wrap gap-2 bg-background/50">
+        <Link
+          href={`/${locale}/account/orders/${order.orderNumber}`}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-secondary border border-border rounded-button px-3 py-1.5 hover:border-primary hover:text-primary transition-colors"
         >
           {t('orders.actions.viewDetails')}
         </Link>
+        {order.status === 'SHIPPED' && (
+          <Link
+            href={`/${locale}/account/orders/${order.orderNumber}`}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary border border-primary/40 rounded-button px-3 py-1.5 hover:bg-primary/5 transition-colors"
+          >
+            <Truck className="w-3.5 h-3.5" />
+            Track Package
+          </Link>
+        )}
+        {order.status === 'DELIVERED' && (
+          <Link
+            href={`/${locale}/products`}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary border border-primary/40 rounded-button px-3 py-1.5 hover:bg-primary/5 transition-colors"
+          >
+            <MapPin className="w-3.5 h-3.5" />
+            Write a Review
+          </Link>
+        )}
       </div>
     </article>
   );
@@ -188,7 +245,7 @@ export default function OrdersPage() {
 
       {/* Loading */}
       {isLoading && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <OrderCardSkeleton key={i} />
           ))}
@@ -222,7 +279,7 @@ export default function OrdersPage() {
           <p className="text-sm text-muted">
             {t('orders.count', { total })}
           </p>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {orders.map((order) => (
               <OrderCard key={order.id} order={order} locale={locale} />
             ))}

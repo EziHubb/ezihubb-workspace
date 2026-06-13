@@ -7,7 +7,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { SlidersHorizontal, X, Heart } from 'lucide-react';
 import { Pagination } from '@mlh/ui';
-import { useMutateWishlist } from '@mlh/api-client';
+import { useWishlist, useWishlistToggle } from '@mlh/api-client';
+import { useAuthStore } from '../../lib/store/auth.store';
 import type { ProductListItemDto, CategoryDto, TagDto } from '@mlh/types';
 import { buildFilterUrl, SORT_OPTIONS } from '../listing/types';
 import type { ListingFilters } from '../listing/types';
@@ -56,24 +57,23 @@ function SearchProductCard({
   query:   string;
   locale:  string;
 }) {
-  const router   = useRouter();
-  const pathname = usePathname();
-  const { addToWishlist } = useMutateWishlist();
+  const router         = useRouter();
+  const pathname       = usePathname();
+  const isLoggedIn     = Boolean(useAuthStore((s) => s.user));
+  const isAuthReady    = useAuthStore((s) => s.isAuthReady);
+  const { data: wishlistData } = useWishlist(isAuthReady && isLoggedIn);
+  const wishlistToggle = useWishlistToggle();
+  const isInWishlist   = wishlistData?.some((w) => w.productId === product.id) ?? false;
 
   const handleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
-    const token =
-      typeof window !== 'undefined'
-        ? localStorage.getItem('access_token')
-        : null;
-
-    if (!token) {
+    if (!isLoggedIn) {
       router.push(
         `/${locale}/login?redirect=${encodeURIComponent(pathname + window.location.search)}`,
       );
       return;
     }
-    addToWishlist.mutate(product.id);
+    wishlistToggle(product.id, isInWishlist);
   };
 
   const discount =
@@ -120,10 +120,10 @@ function SearchProductCard({
         <button
           type="button"
           onClick={handleWishlist}
-          aria-label={`Add ${product.name} to wishlist`}
-          className="absolute top-2 right-2 p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-sm text-muted hover:text-error transition-colors"
+          aria-label={isInWishlist ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
+          className={`absolute top-2 right-2 p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-sm transition-colors ${isInWishlist ? 'text-error' : 'text-muted hover:text-error'}`}
         >
-          <Heart className="w-4 h-4" />
+          <Heart className="w-4 h-4" fill={isInWishlist ? 'currentColor' : 'none'} />
         </button>
       </Link>
 

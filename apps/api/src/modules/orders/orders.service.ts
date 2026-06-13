@@ -13,11 +13,13 @@ import { PaymentsService } from '../payments/payments.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TaxService } from '../tax/tax.service';
 import { AffiliateTrackingService } from '../affiliates/affiliate-tracking.service';
+import { fmtDateTimeVN } from '../../common/utils/date';
 import { CommissionService } from '../affiliates/commission.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { PushService } from '../notifications/push.service';
 import { ReferralService } from '../referrals/referral.service';
 import { StoreCreditsService } from '../store-credits/store-credits.service';
+import { CoinService } from '../coins/coin.service';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
@@ -92,6 +94,7 @@ export class OrdersService {
     private readonly pushService: PushService,
     private readonly referralService: ReferralService,
     @Optional() private readonly storeCreditsService?: StoreCreditsService,
+    @Optional() private readonly coinService?: CoinService,
   ) {}
 
   // ─── Checkout ─────────────────────────────────────────────────────────────
@@ -521,7 +524,20 @@ export class OrdersService {
           total: true,
           createdAt: true,
           items: {
-            select: { quantity: true, previewUrl: true },
+            select: {
+              quantity: true,
+              previewUrl: true,
+              productImageUrl: true,
+              product: {
+                select: {
+                  images: {
+                    where: { isPrimary: true },
+                    select: { url: true },
+                    take: 1,
+                  },
+                },
+              },
+            },
             take: 1,
             orderBy: { previewUrl: 'desc' },
           },
@@ -540,6 +556,7 @@ export class OrdersService {
       total: Number(o.total),
       itemCount: o.items.reduce((s, i) => s + i.quantity, 0),
       previewUrl: o.items[0]?.previewUrl ?? null,
+      imageUrl: o.items[0]?.productImageUrl ?? o.items[0]?.product?.images?.[0]?.url ?? null,
       createdAt: o.createdAt,
     }));
 
@@ -695,8 +712,22 @@ export class OrdersService {
           shippingCost: true,
           createdAt: true,
           items: {
-            select: { quantity: true, previewUrl: true, productImageUrl: true },
+            select: {
+              quantity: true,
+              previewUrl: true,
+              productImageUrl: true,
+              product: {
+                select: {
+                  images: {
+                    where: { isPrimary: true },
+                    select: { url: true },
+                    take: 1,
+                  },
+                },
+              },
+            },
             orderBy: { previewUrl: 'desc' },
+            take: 1,
           },
           user: { select: { id: true, email: true, firstName: true, lastName: true } },
           storeOrders: {
@@ -723,7 +754,7 @@ export class OrdersService {
       total: Number(o.total),
       itemCount: o.items.reduce((s, i) => s + i.quantity, 0),
       previewUrl: o.items[0]?.previewUrl ?? null,
-      imageUrl: o.items[0]?.productImageUrl ?? null,
+      imageUrl: o.items[0]?.productImageUrl ?? o.items[0]?.product?.images?.[0]?.url ?? null,
       shippingName: o.shippingName,
       shippingCity: o.shippingCity,
       shippingCountry: o.shippingCountry,
@@ -829,6 +860,14 @@ export class OrdersService {
           .schedulePointsConfirm(id, order.userId)
           .catch((err: Error) =>
             this.logger.error(`Failed to schedule loyalty confirm for order ${id}: ${err.message}`),
+          );
+      }
+      // BuyCoins: earn coins immediately on delivery
+      if (order.userId && this.coinService) {
+        this.coinService
+          .earnCoins(order.userId, id, Number(order.total))
+          .catch((err: Error) =>
+            this.logger.error(`Failed to earn coins for order ${id}: ${err.message}`),
           );
       }
     }
@@ -1028,7 +1067,7 @@ export class OrdersService {
         o.couponCode ?? '',
         o.carrier ?? '',
         o.trackingNumber ?? '',
-        o.createdAt.toISOString(),
+        fmtDateTimeVN(o.createdAt),
       ]
         .map((v) => `"${String(v).replace(/"/g, '""')}"`)
         .join(','),

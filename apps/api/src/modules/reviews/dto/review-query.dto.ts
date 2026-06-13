@@ -37,4 +37,9 @@ export class AdminReviewQueryDto extends PaginationDto {
   @IsOptional()
   @IsString()
   q?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by product ID' })
+  @IsOptional()
+  @IsString()
+  productId?: string;
 }

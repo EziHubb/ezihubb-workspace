@@ -7,13 +7,15 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import {
   Search, Heart, ShoppingBag, Menu,
-  ChevronDown, Package, Settings, LogOut,
+  ChevronDown, Package, Settings, LogOut, Star,
 } from 'lucide-react';
 import { useWishlist, queryKeys } from '@mlh/api-client';
 import { signOut } from 'next-auth/react';
 import { useCartStore } from '../../lib/store/cart.store';
 import { useAuthStore } from '../../lib/store/auth.store';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { CartDrawer } from './CartDrawer';
 import { SearchInput } from '../search/SearchInput';
 import { MegaMenu } from './MegaMenu';
@@ -42,6 +44,14 @@ function UserMenu({ locale }: { locale: string }) {
   const qc               = useQueryClient();
   const profile          = useAuthStore((s) => s.user);
   const authLogout       = useAuthStore((s) => s.logout);
+  const token            = useAuthStore((s) => s.accessToken);
+
+  const { data: coinData } = useQuery<{ balance: number }>({
+    queryKey: ['coins', 'me'],
+    queryFn:  () => apiClient.get<{ balance: number }>(API_ROUTES.COINS.ME, { token: token ?? undefined }),
+    enabled:  !!token,
+    staleTime: 60_000,
+  });
 
   useEffect(() => {
     const fn = (e: MouseEvent) => {
@@ -105,6 +115,12 @@ function UserMenu({ locale }: { locale: string }) {
               {profile.firstName} {profile.lastName}
             </p>
             <p className="text-xs text-muted truncate">{profile.email}</p>
+            {coinData !== undefined && (
+              <div className="mt-1.5 inline-flex items-center gap-1 bg-primary/8 text-primary text-xs font-semibold px-2 py-0.5 rounded-full">
+                <Star className="w-3 h-3" />
+                {coinData.balance.toLocaleString()} coins
+              </div>
+            )}
           </div>
           {[
             { icon: Package,  label: 'My Orders', href: `/${locale}/account/orders`  },
@@ -151,7 +167,8 @@ export function Navbar({ menuData }: NavbarProps = {}) {
   const [mobileOpen, setMobileOpen]   = useState(false);
 
   const user        = useAuthStore((s) => s.user);
-  const { data: wishlistItems } = useWishlist(!!user);
+  const isAuthReady = useAuthStore((s) => s.isAuthReady);
+  const { data: wishlistItems } = useWishlist(isAuthReady && !!user);
   const cart        = useCartStore((s) => s.cart);
   const openDrawer  = useCartStore((s) => s.openDrawer);
   const cartCount   = cart?.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;

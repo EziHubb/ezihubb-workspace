@@ -12,6 +12,7 @@ import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtFixed, safeArr } from '../../../../lib/fmt';
 import { useDialog } from '../../../../contexts/DialogContext';
+import { FilterSelect } from '../../../../components/ui/FilterSelect';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -531,27 +532,10 @@ export default function CollectionsPage() {
         </div>
 
         {/* Occasion filter */}
-        <select
-          value={occasionFilt}
-          onChange={(e) => { setOccasionFilt(e.target.value); setPage(1); }}
-          className="px-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          <option value="">All occasions</option>
-          {OCCASION_OPTIONS.slice(1).map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
+        <FilterSelect value={occasionFilt} onChange={(v) => { setOccasionFilt(v); setPage(1); }} options={OCCASION_OPTIONS} />
 
         {/* Status filter */}
-        <select
-          value={statusFilt}
-          onChange={(e) => { setStatusFilt(e.target.value as '' | 'active' | 'inactive'); setPage(1); }}
-          className="px-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          <option value="">All statuses</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
+        <FilterSelect value={statusFilt} onChange={(v) => { setStatusFilt(v as '' | 'active' | 'inactive'); setPage(1); }} options={[{value:'',label:'All Statuses'},{value:'active',label:'Active'},{value:'inactive',label:'Inactive'}]} />
       </div>
 
       {/* Table */}

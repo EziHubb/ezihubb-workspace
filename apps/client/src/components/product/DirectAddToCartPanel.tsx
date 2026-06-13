@@ -6,7 +6,7 @@ import { useLocale } from 'next-intl';
 import { ShoppingCart, Heart, Truck, Clock, ShieldCheck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useCartStore } from '../../lib/store/cart.store';
-import { useWishlist, useMutateWishlist } from '@mlh/api-client';
+import { useWishlist, useWishlistToggle } from '@mlh/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
 import type { ProductDto, ProductVariantDto, ProductAttributeDto } from '@mlh/types';
 
@@ -35,10 +35,11 @@ export function DirectAddToCartPanel({
   const [addError,  setAddError]            = useState('');
 
   // Wishlist
-  const isLoggedIn   = Boolean(useAuthStore((s) => s.user));
-  const { data: wishlistItems }             = useWishlist(isLoggedIn);
-  const { addToWishlist, removeFromWishlist } = useMutateWishlist();
-  const isWishlisted = wishlistItems?.some((i) => i.productId === product.id) ?? false;
+  const isLoggedIn     = Boolean(useAuthStore((s) => s.user));
+  const isAuthReady    = useAuthStore((s) => s.isAuthReady);
+  const { data: wishlistItems } = useWishlist(isAuthReady && isLoggedIn);
+  const wishlistToggle = useWishlistToggle();
+  const isWishlisted   = wishlistItems?.some((i) => i.productId === product.id) ?? false;
 
   // Debounced quantity ref to avoid spamming
   const qtyRef = useRef(quantity);
@@ -80,11 +81,7 @@ export function DirectAddToCartPanel({
       router.push(`/${locale}/login?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
-    if (isWishlisted) {
-      removeFromWishlist.mutate(product.id);
-    } else {
-      addToWishlist.mutate(product.id);
-    }
+    wishlistToggle(product.id, isWishlisted);
   };
 
   // Extract filterable attributes for highlights

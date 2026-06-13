@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   Users, DollarSign, TrendingUp, Copy, Check, Share2, ChevronRight, MousePointer,
 } from 'lucide-react';
@@ -70,7 +70,7 @@ const STATUS_COLORS: Record<Earning['status'], string> = {
 
 // ── Copy button ───────────────────────────────────────────────────────────────
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, copyLabel, copiedLabel }: { text: string; copyLabel: string; copiedLabel: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
     try {
@@ -83,7 +83,7 @@ function CopyButton({ text }: { text: string }) {
     <button type="button" onClick={handleCopy}
       className="flex items-center gap-1.5 px-3 py-2 rounded-button bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors shrink-0">
       {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-      {copied ? 'Copied!' : 'Copy'}
+      {copied ? copiedLabel : copyLabel}
     </button>
   );
 }
@@ -92,6 +92,7 @@ function CopyButton({ text }: { text: string }) {
 
 export default function CreatorHubPage() {
   const locale = useLocale();
+  const t = useTranslations('creator.creator');
 
   const { data: me, isLoading: meLoading } = useAuthQuery<CreatorMe>(
     ['creator', 'me'],
@@ -129,12 +130,12 @@ export default function CreatorHubPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-secondary">Creator Hub</h1>
-          <p className="text-sm text-muted mt-0.5">Share what you love. Earn when your community shops.</p>
+          <h1 className="font-display text-2xl font-bold text-secondary">{t('hub.pageTitle')}</h1>
+          <p className="text-sm text-muted mt-0.5">{t('hub.subtitle')}</p>
         </div>
         <Link href={`/${locale}/account/creator/earnings`}
           className="text-xs text-primary hover:underline font-medium">
-          View earnings history →
+          {t('hub.viewEarningsHistory')} →
         </Link>
       </div>
 
@@ -174,16 +175,16 @@ export default function CreatorHubPage() {
                       {me.tier.name}
                     </span>
                     <span className="text-xs text-muted">
-                      {(me.tier.commissionRate * 100).toFixed(0)}% earnings rate
+                      {t('hub.earningsRate', { rate: (me.tier.commissionRate * 100).toFixed(0) })}
                     </span>
                   </div>
                   <p className="text-sm font-semibold text-secondary mt-1">
-                    {me.directReferrals} direct member{me.directReferrals !== 1 ? 's' : ''}
+                    {t('hub.directMember', { count: me.directReferrals })}
                   </p>
                   {me.tier.nextTier && (
                     <div className="mt-3 max-w-xs">
                       <div className="flex items-center justify-between text-xs text-muted mb-1">
-                        <span>Progress to {me.tier.nextTier.name}</span>
+                        <span>{t('hub.progressTo', { tier: me.tier.nextTier.name })}</span>
                         <span>{me.directReferrals} / {me.tier.nextTier.minReferrals}</span>
                       </div>
                       <div className="h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: me.tier.badgeColor + '30' }}>
@@ -205,9 +206,9 @@ export default function CreatorHubPage() {
                 🌱
               </div>
               <div>
-                <p className="text-sm font-semibold text-secondary">Starter Creator</p>
+                <p className="text-sm font-semibold text-secondary">{t('hub.starterCreator')}</p>
                 <p className="text-xs text-muted mt-0.5">
-                  {me.directReferrals} direct member{me.directReferrals !== 1 ? 's' : ''} · Share your link to start earning
+                  {t('hub.directMember', { count: me.directReferrals })} · {t('hub.starterCreatorSub')}
                 </p>
               </div>
             </div>
@@ -216,10 +217,10 @@ export default function CreatorHubPage() {
           {/* ── KPI row ─────────────────────────────────────────────────────── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { icon: Users,        label: 'Direct members', value: String(me.directReferrals),                                               sub: 'in your network',    color: 'bg-[#7C3AED]' },
-              { icon: DollarSign,   label: 'Available',       value: fmtAmount(me.confirmedBalance),                                          sub: 'ready to withdraw',  color: 'bg-green-500' },
-              { icon: TrendingUp,   label: 'Total earned',    value: fmtAmount(me.totalEarned),                                               sub: 'all time',           color: 'bg-primary'   },
-              { icon: MousePointer, label: 'Link clicks',      value: String(me.linkClicks ?? 0),                                              sub: 'this month',         color: 'bg-blue-500'  },
+              { icon: Users,        label: t('hub.kpiDirectMembers'), value: String(me.directReferrals),    sub: t('hub.kpiInYourNetwork'),    color: 'bg-[#7C3AED]' },
+              { icon: DollarSign,   label: t('hub.kpiAvailable'),     value: fmtAmount(me.confirmedBalance), sub: t('hub.kpiReadyToWithdraw'),  color: 'bg-green-500' },
+              { icon: TrendingUp,   label: t('hub.kpiTotalEarned'),   value: fmtAmount(me.totalEarned),      sub: t('hub.kpiAllTime'),          color: 'bg-primary'   },
+              { icon: MousePointer, label: t('hub.kpiLinkClicks'),    value: String(me.linkClicks ?? 0),     sub: t('hub.kpiThisMonth'),        color: 'bg-blue-500'  },
             ].map(({ icon: Icon, label, value, sub, color }) => (
               <div key={label} className="bg-surface border border-border rounded-card p-4 flex items-center gap-3">
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
@@ -238,15 +239,15 @@ export default function CreatorHubPage() {
           <div className="bg-surface border border-border rounded-card p-5 space-y-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-secondary">
               <Share2 className="w-4 h-4 text-primary" />
-              Your creator link
+              {t('hub.yourCreatorLink')}
             </div>
             <div className="flex items-center gap-2">
               <input readOnly value={creatorLink}
                 className="flex-1 min-w-0 bg-[#FAFAF8] border border-border rounded-button px-3 py-2 text-sm text-secondary font-mono truncate focus:outline-none focus:border-primary" />
-              <CopyButton text={creatorLink} />
+              <CopyButton text={creatorLink} copyLabel={t('hub.copy')} copiedLabel={t('hub.copied')} />
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-muted font-medium">Share via:</span>
+              <span className="text-xs text-muted font-medium">{t('hub.shareVia')}</span>
               {[
                 { href: twitterUrl,   label: 'Twitter/X',  bg: 'bg-[#1DA1F2]/10 text-[#1DA1F2]' },
                 { href: facebookUrl,  label: 'Facebook',   bg: 'bg-[#1877F2]/10 text-[#1877F2]' },
@@ -260,7 +261,7 @@ export default function CreatorHubPage() {
               ))}
             </div>
             <div className="p-3 rounded-xl text-xs text-[#7C3AED] font-medium" style={{ background: '#F3F0FF' }}>
-              🎁 People who shop via your link get 5% off automatically — no coupon needed.
+              🎁 {t('hub.buyerDiscountNote', { discount: 5 })}
             </div>
           </div>
 
@@ -269,19 +270,19 @@ export default function CreatorHubPage() {
             <Link href={`/${locale}/account/creator/earnings`}
               className="flex items-center justify-between px-5 py-4 bg-surface border border-border rounded-card hover:border-primary/40 transition-colors group">
               <div>
-                <p className="text-sm font-semibold text-secondary group-hover:text-primary transition-colors">Earnings History</p>
-                <p className="text-xs text-muted mt-0.5">View all earnings by order and type</p>
+                <p className="text-sm font-semibold text-secondary group-hover:text-primary transition-colors">{t('hub.earningsHistoryTitle')}</p>
+                <p className="text-xs text-muted mt-0.5">{t('hub.earningsHistoryDesc')}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted group-hover:text-primary transition-colors" />
             </Link>
             <Link href={`/${locale}/account/creator/payouts`}
               className="flex items-center justify-between px-5 py-4 bg-surface border border-border rounded-card hover:border-primary/40 transition-colors group">
               <div>
-                <p className="text-sm font-semibold text-secondary group-hover:text-primary transition-colors">Withdraw Earnings</p>
+                <p className="text-sm font-semibold text-secondary group-hover:text-primary transition-colors">{t('hub.withdrawEarnings')}</p>
                 <p className="text-xs text-muted mt-0.5">
                   {me.confirmedBalance > 0
-                    ? `${fmtAmount(me.confirmedBalance)} available`
-                    : 'Request a withdrawal'}
+                    ? t('hub.amountAvailable', { amount: fmtAmount(me.confirmedBalance) })
+                    : t('hub.requestWithdrawal')}
                 </p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted group-hover:text-primary transition-colors" />
@@ -291,8 +292,8 @@ export default function CreatorHubPage() {
           {/* ── Recent earnings ─────────────────────────────────────────────── */}
           <section>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-secondary">Recent Earnings</h2>
-              <Link href={`/${locale}/account/creator/earnings`} className="text-xs text-primary hover:underline">View all →</Link>
+              <h2 className="font-semibold text-secondary">{t('hub.recentEarnings')}</h2>
+              <Link href={`/${locale}/account/creator/earnings`} className="text-xs text-primary hover:underline">{t('hub.viewAll')}</Link>
             </div>
 
             {earningsLoading && (
@@ -310,7 +311,7 @@ export default function CreatorHubPage() {
               earningsPage.data.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center gap-3 border border-dashed border-border rounded-card">
                   <Users className="w-10 h-10 text-muted/30" />
-                  <p className="text-sm text-muted">No earnings yet. Share your creator link to start earning!</p>
+                  <p className="text-sm text-muted">{t('hub.noEarnings')}</p>
                 </div>
               ) : (
                 <div className="border border-border rounded-card overflow-hidden">
@@ -322,18 +323,18 @@ export default function CreatorHubPage() {
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-2">
                             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${c.level === 1 ? 'bg-primary/10 text-primary' : 'bg-[#7C3AED]/10 text-[#7C3AED]'}`}>
-                              {c.level === 1 ? 'Direct' : 'Community'}
+                              {c.level === 1 ? t('hub.levelDirect') : t('hub.levelCommunity')}
                             </span>
                             {c.orderId && <span className="text-xs text-muted font-mono">#{c.orderId.slice(-8).toUpperCase()}</span>}
                           </div>
                           <p className="text-xs text-muted">
                             {formatDate(c.createdAt)}
-                            {lockDays !== null && ` · Unlocks in ${lockDays}d`}
+                            {lockDays !== null && ` · ${t('hub.unlocksDays', { days: lockDays })}`}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[c.status]}`}>
-                            {c.status === 'CONFIRMED' ? 'Ready' : c.status.charAt(0) + c.status.slice(1).toLowerCase()}
+                            {c.status === 'CONFIRMED' ? t('hub.statusReady') : c.status === 'PENDING' ? t('earnings.pending') : c.status === 'PAID' ? t('earnings.paid') : t('earnings.cancelled')}
                           </span>
                           <span className="text-sm font-bold tabular-nums text-green-700">+{fmtAmount(c.amount)}</span>
                         </div>

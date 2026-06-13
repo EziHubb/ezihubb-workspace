@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import type { ProductListItemDto } from '@mlh/types';
-import { useWishlist, useMutateWishlist } from '@mlh/api-client';
+import { useWishlist, useWishlistToggle } from '@mlh/api-client';
 import { useCartStore } from '../../lib/store/cart.store';
 import { useAuthStore } from '../../lib/store/auth.store';
 
@@ -48,9 +48,10 @@ export function SearchProductCard({ product, priority = false }: Props) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   const { addItem, isLoading: cartLoading } = useCartStore();
-  const isLoggedIn = Boolean(useAuthStore((s) => s.user));
-  const { data: wishlistData } = useWishlist(isLoggedIn);
-  const { addToWishlist, removeFromWishlist } = useMutateWishlist();
+  const isLoggedIn     = Boolean(useAuthStore((s) => s.user));
+  const isAuthReady    = useAuthStore((s) => s.isAuthReady);
+  const { data: wishlistData } = useWishlist(isAuthReady && isLoggedIn);
+  const wishlistToggle = useWishlistToggle();
 
   const isInWishlist = wishlistData?.some((w) => w.productId === product.id) ?? false;
 
@@ -70,18 +71,12 @@ export function SearchProductCard({ product, priority = false }: Props) {
 
   const handleWishlistClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    const token =
-      typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-    if (!token) {
+    if (!isLoggedIn) {
       const redirect = encodeURIComponent(window.location.pathname + window.location.search);
       router.push(`/${locale}/login?redirect=${redirect}`);
       return;
     }
-    if (isInWishlist) {
-      removeFromWishlist.mutate(product.id);
-    } else {
-      addToWishlist.mutate(product.id);
-    }
+    wishlistToggle(product.id, isInWishlist);
   };
 
   const handleAddToCart = (e: React.MouseEvent) => {

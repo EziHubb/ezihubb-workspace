@@ -1,0 +1,63 @@
+{
+  "title": "Gift Finder",
+  "subtitle": "Answer 5 quick questions and we'll suggest the perfect gift.",
+  "stepOf": "Step {step} of {total}",
+  "percentComplete": "{pct}% complete",
+  "loading": "Finding the perfect gifts…",
+  "loadingSub": "Analysing your preferences to find the best matches.",
+  "resultsTitle": "Perfect gifts for them!",
+  "resultsSub": "Based on your answers, we think they'll love these.",
+  "startOver": "Start over",
+  "noResults": "No results found",
+  "noResultsSub": "Try adjusting your preferences.",
+  "tryAgain": "Try again",
+  "back": "← Back",
+  "error": "Something went wrong. Please try again.",
+  "questions": {
+    "relationship": "Who is this gift for?",
+    "age_group": "How old are they?",
+    "interests": "What are their interests?",
+    "occasion": "What's the occasion?",
+    "budget": "What's your budget?"
+  },
+  "options": {
+    "relationship": {
+      "partner": "Partner",
+      "friend": "Friend",
+      "parent": "Parent",
+      "sibling": "Sibling",
+      "colleague": "Colleague",
+      "child": "Child"
+    },
+    "age_group": {
+      "child": "Under 13",
+      "teen": "13–17",
+      "young": "18–30",
+      "adult": "31–50",
+      "senior": "50+"
+    },
+    "interests": {
+      "art": "Art & Crafts",
+      "home": "Home Decor",
+      "nature": "Nature & Plants",
+      "fashion": "Fashion",
+      "food": "Food & Baking",
+      "travel": "Travel"
+    },
+    "occasion": {
+      "birthday": "Birthday",
+      "anniversary": "Anniversary",
+      "holiday": "Holiday",
+      "graduation": "Graduation",
+      "just_because": "Just Because",
+      "wedding": "Wedding"
+    },
+    "budget": {
+      "under_25": "Under $25",
+      "25_50": "$25 – $50",
+      "50_100": "$50 – $100",
+      "100_200": "$100 – $200",
+      "over_200": "Over $200"
+    }
+  }
+}

@@ -18,6 +18,7 @@ import { AdminController } from '../../common/decorators/admin-controller.decora
 import { AdminCustomerQueryDto } from './dto/admin-customer-query.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { buildPagination } from '../../common/dto/paginated-response.dto';
+import { fmtDateTimeVN } from '../../common/utils/date';
 
 @AdminController('customers')
 export class AdminCustomersController {
@@ -258,7 +259,7 @@ export class AdminCustomersController {
       const totalSpent = u.orders.reduce((s, o) => s + Number(o.total), 0);
       return [u.id, u.email, u.firstName ?? '', u.lastName ?? '', u.role,
         u._count.orders, totalSpent.toFixed(2), u.isActive, u.isEmailVerified,
-        u.createdAt.toISOString()].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',');
+        fmtDateTimeVN(u.createdAt)].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',');
     });
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="customers-${Date.now()}.csv"`);

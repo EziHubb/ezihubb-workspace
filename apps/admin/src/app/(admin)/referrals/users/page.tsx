@@ -7,6 +7,7 @@ import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtNum, fmtAmount } from '../../../../lib/fmt';
+import { FilterSelect } from '../../../../components/ui/FilterSelect';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -180,16 +181,11 @@ export default function ReferralUsersPage() {
           )}
         </div>
 
-        <select
+        <FilterSelect
           value={tierId}
-          onChange={(e) => { setTierId(e.target.value); setPage(1); }}
-          className="px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          <option value="">All Tiers</option>
-          {(tiers as Tier[]).map((t) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </select>
+          onChange={(v) => { setTierId(v); setPage(1); }}
+          options={[{ value: '', label: 'All Tiers' }, ...(tiers as Tier[]).map((t) => ({ value: t.id, label: t.name }))]}
+        />
 
         {data && (
           <span className="text-sm text-muted ml-auto">{fmtNum(data.meta.total)} user{data.meta.total !== 1 ? 's' : ''}</span>

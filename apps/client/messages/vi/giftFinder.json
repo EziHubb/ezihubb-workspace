@@ -1,0 +1,63 @@
+{
+  "title": "Tìm Quà Tặng",
+  "subtitle": "Trả lời 5 câu hỏi nhanh và chúng tôi sẽ gợi ý món quà hoàn hảo.",
+  "stepOf": "Bước {step} trong {total}",
+  "percentComplete": "{pct}% hoàn thành",
+  "loading": "Đang tìm kiếm món quà hoàn hảo…",
+  "loadingSub": "Phân tích sở thích của bạn để tìm kết quả phù hợp nhất.",
+  "resultsTitle": "Những món quà hoàn hảo dành cho họ!",
+  "resultsSub": "Dựa trên câu trả lời của bạn, chúng tôi nghĩ họ sẽ yêu thích những món này.",
+  "startOver": "Bắt đầu lại",
+  "noResults": "Không tìm thấy kết quả",
+  "noResultsSub": "Hãy thử điều chỉnh sở thích của bạn.",
+  "tryAgain": "Thử lại",
+  "back": "← Quay lại",
+  "error": "Đã xảy ra lỗi. Vui lòng thử lại.",
+  "questions": {
+    "relationship": "Đây là quà tặng cho ai?",
+    "age_group": "Họ bao nhiêu tuổi?",
+    "interests": "Sở thích của họ là gì?",
+    "occasion": "Dịp gì vậy?",
+    "budget": "Ngân sách của bạn là bao nhiêu?"
+  },
+  "options": {
+    "relationship": {
+      "partner": "Người yêu",
+      "friend": "Bạn bè",
+      "parent": "Bố/Mẹ",
+      "sibling": "Anh/Chị/Em",
+      "colleague": "Đồng nghiệp",
+      "child": "Trẻ em"
+    },
+    "age_group": {
+      "child": "Dưới 13",
+      "teen": "13–17",
+      "young": "18–30",
+      "adult": "31–50",
+      "senior": "50+"
+    },
+    "interests": {
+      "art": "Nghệ thuật & Thủ công",
+      "home": "Trang trí nhà",
+      "nature": "Thiên nhiên & Cây cảnh",
+      "fashion": "Thời trang",
+      "food": "Ẩm thực & Nướng bánh",
+      "travel": "Du lịch"
+    },
+    "occasion": {
+      "birthday": "Sinh nhật",
+      "anniversary": "Kỷ niệm",
+      "holiday": "Ngày lễ",
+      "graduation": "Tốt nghiệp",
+      "just_because": "Không cần lý do",
+      "wedding": "Đám cưới"
+    },
+    "budget": {
+      "under_25": "Dưới $25",
+      "25_50": "$25 – $50",
+      "50_100": "$50 – $100",
+      "100_200": "$100 – $200",
+      "over_200": "Trên $200"
+    }
+  }
+}

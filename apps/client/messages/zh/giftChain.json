@@ -1,0 +1,17 @@
+{
+  "notFound": "未找到礼物链",
+  "notFoundSub": "此链接可能无效或已过期。",
+  "giftChainLabel": "礼物链",
+  "yourDiscountCode": "您的折扣码",
+  "copy": "复制",
+  "copied": "已复制！",
+  "chainJourney": "礼物旅程",
+  "forwardTitle": "转发礼物",
+  "forwardSub": "传递爱心 — 将这份礼物传递给其他人。",
+  "recipientEmail": "收件人电子邮件地址",
+  "forwarding": "转发中…",
+  "forwardBtn": "转发礼物",
+  "forwardedTitle": "礼物已转发！",
+  "forwardedSub": "下一位收件人已收到通知。",
+  "emailRequired": "请输入有效的电子邮件地址。"
+}

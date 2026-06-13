@@ -136,5 +136,54 @@
         "ADJUST": "Điều chỉnh thủ công"
       }
     }
+  },
+
+  "coins": {
+    "title": "Số dư xu",
+    "subtitle": "Kiếm xu với mỗi đơn hàng và đổi lấy giảm giá.",
+    "currentBalance": "Số dư hiện tại",
+    "lifetimeEarned": "Tổng đã kiếm",
+    "expiringIn30Days": "Sẽ hết hạn trong 30 ngày",
+    "useThemSoon": "Dùng trước khi hết hạn!",
+    "nothingExpiring": "Không có xu sắp hết hạn",
+    "worth": "tương đương ${value}",
+    "howToEarn": "Cách kiếm xu",
+    "earnPurchase": "Mua hàng — 10 xu mỗi $1",
+    "earnReview": "Viết đánh giá",
+    "earnPhotoReview": "Đánh giá có ảnh",
+    "infoExchange": "100 xu = giảm $1,00 khi thanh toán.",
+    "infoLock": "Xu được khóa 14 ngày sau khi mua và tự động xác nhận.",
+    "infoExpiry": "Xu hết hạn sau 12 tháng kể từ khi kiếm được.",
+    "history": "Lịch sử giao dịch",
+    "historyEmpty": "Chưa có giao dịch. Hãy mua sắm để kiếm xu!",
+    "tableDate": "Ngày",
+    "tableType": "Loại",
+    "tableAmount": "Số tiền",
+    "tableBalanceAfter": "Số dư sau",
+    "dateLabel": "Ngày:",
+    "typeLabel": "Loại:",
+    "amountLabel": "Số tiền:",
+    "balanceLabel": "Số dư sau:",
+    "coinsUnit": "xu"
+  },
+
+  "vip": {
+    "title": "VIP",
+    "subtitle": "Quyền lợi thành viên độc quyền dựa trên chi tiêu 90 ngày gần nhất.",
+    "currentTier": "Hạng VIP hiện tại",
+    "rollingSpend": "Chi tiêu 90 ngày:",
+    "nextAt": "Tiếp theo: {tier} tại ${amount}",
+    "moreToReach": "Còn ${amount} để đạt {tier}",
+    "maxTier": "Bạn đã đạt hạng cao nhất. Tận hưởng mọi quyền lợi Diamond!",
+    "allTiers": "Tất cả hạng & quyền lợi",
+    "currentBadge": "Hiện tại",
+    "upcomingDeals": "Ưu đãi VIP sắp tới",
+    "dealStarts": "Bắt đầu {date}",
+    "dealOff": "Giảm {discount}%",
+    "dealView": "Xem",
+    "noDeals": "Hiện tại không có ưu đãi VIP nào. Quay lại sau nhé!",
+    "signIn": "Đăng nhập để xem trạng thái VIP của bạn",
+    "signInSub": "Mở khóa quyền lợi độc quyền khi mua sắm.",
+    "signInBtn": "Đăng nhập"
   }
 }

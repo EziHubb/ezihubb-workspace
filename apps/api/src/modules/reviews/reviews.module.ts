@@ -7,10 +7,12 @@ import { AdminReviewsController } from './admin-reviews.controller';
 import { ReviewsService } from './reviews.service';
 import { QUEUES } from '../../queue/queue.constants';
 import { ModerationModule } from '../moderation/moderation.module';
+import { CoinModule } from '../coins/coin.module';
 
 @Module({
   imports: [
     ModerationModule,
+    CoinModule,
     ...(process.env['DISABLE_QUEUE'] !== 'true'
       ? [BullModule.registerQueue({ name: QUEUES.EMAIL })]
       : [DevBullModule.forQueues([QUEUES.EMAIL])]),

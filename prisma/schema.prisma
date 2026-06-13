@@ -263,6 +263,20 @@ model User {
   socialConnections       SocialConnection[]
   creatorDNAAnalyses      CreatorDNAAnalysis[]
 
+  // ── BF-01/05/06/07/08/09 ─────────────────────────────────────────────────
+  coinBalance             BuyerCoinBalance?
+  coinTransactions        CoinTransaction[]
+  vipStatus               BuyerVipStatus?
+  organizedGiftPools      GiftPool[]                    @relation("GiftPoolOrganizer")
+  giftContributions       GiftContribution[]            @relation("GiftContributor")
+  giftFinderSessions      GiftFinderSession[]
+  giftChainsSent          GiftChainLink[]               @relation("ChainSender")
+  giftChainsReceived      GiftChainLink[]               @relation("ChainRecipient")
+  giftChainsInitiated     GiftChain[]                   @relation("GiftChainInitiator")
+  giftChainRewards        GiftChainReward[]              @relation("GiftChainRewardUser")
+  blindMatchRequests      BlindMatchRequest[]           @relation("BlindMatchBuyer")
+  blindMatchRatings       BlindMatchRating[]            @relation("BlindMatchRatingUser")
+
   @@index([email])
 }
 
@@ -419,6 +433,11 @@ model Store {
   // ── Trend & DNA (NFT-10/11) ───────────────────────────────────────────────
   trendDrafts        TrendProductDraft[]
   creatorDNAAnalyses CreatorDNAAnalysis[]
+
+  // ── BF-03/04 ─────────────────────────────────────────────────────────────
+  flashDeals     FlashDeal[]
+  bundleSettings StoreBundleSettings?
+  cartItems      CartItem[]           @relation("CartItemStore")
 
   @@index([slug])
   @@index([status])
@@ -737,6 +756,14 @@ model Product {
   dropWaitlists       DropWaitlist[]
   abPricingTests      ABPricingTest[]
 
+  // ── BF-03/04/05/06/08/09 ──────────────────────────────────────────────────
+  flashDeals              FlashDeal[]
+  vipExclusiveProduct     VipExclusiveProduct?
+  giftPools               GiftPool[]
+  giftChainLinks          GiftChainLink[]               @relation("GiftChainLinkProduct")
+  giftChainInitialLinks   GiftChain[]                   @relation("GiftChainProduct")
+  blindMatchProducts      BlindMatchRequest[]           @relation("BlindMatchProduct")
+
   @@unique([slug, storeId])
   @@index([categoryId])
   @@index([storeId])
@@ -955,6 +982,9 @@ model CartItem {
   previewUrl        String?
   createdAt         DateTime        @default(now())
 
+  storeId   String?
+  store     Store?  @relation("CartItemStore", fields: [storeId], references: [id])
+
   @@index([cartId])
   @@index([productId])
 }
@@ -1047,8 +1077,21 @@ model Order {
   @@index([status])
   @@index([orderNumber])
   @@index([createdAt])
+  // ── BF-01/03/04 fields ──────────────────────────────────────────────────────
+  flashDealId     String?
+  flashDeal       FlashDeal?       @relation("OrderFlashDeal", fields: [flashDealId], references: [id])
+  flashDealOrder  FlashDealOrder?
+  bundleDiscount  BundleDiscount?
+  tracking        OrderTracking?
+  giftPool        GiftPool?
+  giftChainLink   GiftChainLink?
+  blindMatch      BlindMatchRequest?
+  coinDiscountAmt Decimal?         @db.Decimal(10, 2)
+  coinsRedeemed   Int?
+
   @@index([affiliateId])
   @@index([referralUserId])
+  @@index([flashDealId])
 }
 
 model OrderItem {
@@ -2207,3 +2250,430 @@ model CreatorDNAAnalysis {
 
   @@index([storeId])
 }
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// BF-01: BuyCoins Loyalty System
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+enum CoinTxType {
+  PURCHASE
+  PURCHASE_FLASH_DEAL
+  PURCHASE_BUNDLE
+  REVIEW_TEXT
+  REVIEW_PHOTO
+  REFERRAL_BUYER
+  GIFT_CONTRIBUTION
+  DELIVERY_BONUS
+  BIRTHDAY_BONUS
+  FIRST_PURCHASE
+  PROFILE_COMPLETE
+  REDEEM
+  REDEEM_SHIPPING
+  REDEEM_FAN_MEMBERSHIP
+  REDEEM_VIP_UPGRADE
+  EXPIRY
+  ADMIN_ADJUSTMENT
+  BONUS_EVENT
+  REFUND_DEDUCTION
+  CHAIN_INITIATOR
+  CHAIN_RELAY
+}
+
+model BuyerCoinBalance {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  availableCoins   Int      @default(0)
+  pendingCoins     Int      @default(0)
+  lifetimeEarned   Int      @default(0)
+  lifetimeRedeemed Int      @default(0)
+  updatedAt        DateTime @updatedAt
+}
+
+model CoinTransaction {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id])
+  amount        Int
+  type          CoinTxType
+  referenceId   String?
+  referenceType String?
+  note          String?
+  expiresAt     DateTime?
+  isExpired     Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, expiresAt])
+  @@index([type])
+}
+
+model CoinBonusEvent {
+  id         String   @id @default(cuid())
+  name       String
+  multiplier Float
+  startsAt   DateTime
+  endsAt     DateTime
+  isActive   Boolean  @default(true)
+  createdBy  String
+  createdAt  DateTime @default(now())
+
+  @@index([startsAt, endsAt])
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// BF-02: Live Order Tracking
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+enum TrackingStage {
+  ORDER_CONFIRMED
+  SENT_TO_FULFILLMENT
+  IN_PRODUCTION
+  QUALITY_CHECK
+  PACKAGED
+  PICKED_UP
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+}
+
+model OrderTracking {
+  id                    String        @id @default(cuid())
+  orderId               String        @unique
+  order                 Order         @relation(fields: [orderId], references: [id])
+  currentStage          TrackingStage @default(ORDER_CONFIRMED)
+  carrierTrackingNumber String?
+  carrierName           String?
+  estimatedDeliveryMin  DateTime?
+  estimatedDeliveryMax  DateTime?
+  printifyOrderId       String?
+  lastPolledAt          DateTime?
+  rawCarrierData        Json?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  events TrackingEvent[]
+}
+
+model TrackingEvent {
+  id          String        @id @default(cuid())
+  trackingId  String
+  tracking    OrderTracking @relation(fields: [trackingId], references: [id])
+  stage       TrackingStage
+  title       String
+  description String?
+  source      String
+  eventAt     DateTime
+  rawData     Json?
+  createdAt   DateTime      @default(now())
+
+  @@index([trackingId])
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// BF-03: Flash Deals
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+enum FlashDealStatus {
+  PENDING
+  APPROVED
+  ACTIVE
+  ENDED
+  CANCELLED
+}
+
+model FlashDeal {
+  id            String          @id @default(cuid())
+  productId     String
+  product       Product         @relation(fields: [productId], references: [id])
+  storeId       String
+  store         Store           @relation(fields: [storeId], references: [id])
+  originalPrice Decimal         @db.Decimal(10, 2)
+  dealPrice     Decimal         @db.Decimal(10, 2)
+  discountPct   Int
+  startsAt      DateTime
+  endsAt        DateTime
+  quantityLimit Int?
+  soldCount     Int             @default(0)
+  status        FlashDealStatus @default(PENDING)
+  isFeatured    Boolean         @default(false)
+  adminNotes    String?
+  createdAt     DateTime        @default(now())
+
+  orders     FlashDealOrder[]
+  orderLinks Order[]          @relation("OrderFlashDeal")
+
+  @@index([status, startsAt, endsAt])
+  @@index([storeId])
+  @@index([productId])
+}
+
+model FlashDealOrder {
+  id          String    @id @default(cuid())
+  flashDealId String
+  flashDeal   FlashDeal @relation(fields: [flashDealId], references: [id])
+  orderId     String    @unique
+  order       Order     @relation(fields: [orderId], references: [id])
+  coinsEarned Int       @default(0)
+  createdAt   DateTime  @default(now())
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// BF-04: Bundle Builder
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+model BundleDiscount {
+  id             String   @id @default(cuid())
+  orderId        String   @unique
+  order          Order    @relation(fields: [orderId], references: [id])
+  storeId        String
+  itemsCount     Int
+  discountPct    Int
+  discountAmount Decimal  @db.Decimal(10, 2)
+  sellerShare    Decimal  @db.Decimal(10, 2)
+  platformShare  Decimal  @db.Decimal(10, 2)
+  appliedAt      DateTime @default(now())
+}
+
+model StoreBundleSettings {
+  id                 String   @id @default(cuid())
+  storeId            String   @unique
+  store              Store    @relation(fields: [storeId], references: [id])
+  isEnabled          Boolean  @default(true)
+  minBundleValue     Decimal  @default(30.00) @db.Decimal(10, 2)
+  tier2Discount      Int      @default(15)
+  tier3Discount      Int      @default(20)
+  tier4PlusDiscount  Int      @default(25)
+  excludedProductIds String[]
+  updatedAt          DateTime @updatedAt
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// BF-05: VIP Early Access
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+enum VipTier {
+  NONE
+  SILVER
+  GOLD
+}
+
+model BuyerVipStatus {
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  user                User      @relation(fields: [userId], references: [id])
+  tier                VipTier   @default(NONE)
+  qualifiedAt         DateTime?
+  expiresAt           DateTime?
+  gracePeriodEndsAt   DateTime?
+  qualificationMethod String?
+  currentCoins90d     Int       @default(0)
+  currentGmv90d       Decimal   @default(0) @db.Decimal(10, 2)
+  lastCheckedAt       DateTime?
+  updatedAt           DateTime  @updatedAt
+}
+
+model VipExclusiveProduct {
+  id            String   @id @default(cuid())
+  productId     String   @unique
+  product       Product  @relation(fields: [productId], references: [id])
+  tierRequired  VipTier
+  quantityLimit Int
+  quantitySold  Int      @default(0)
+  availableFrom DateTime @default(now())
+  createdAt     DateTime @default(now())
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// BF-06: Group Gifting
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+enum GiftPoolStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+model GiftPool {
+  id              String         @id @default(cuid())
+  productId       String
+  product         Product        @relation(fields: [productId], references: [id])
+  organizerId     String
+  organizer       User           @relation("GiftPoolOrganizer", fields: [organizerId], references: [id])
+  recipientName   String
+  shippingAddress Json
+  targetAmount    Decimal        @db.Decimal(10, 2)
+  collectedAmount Decimal        @default(0) @db.Decimal(10, 2)
+  processingFee   Decimal        @default(0) @db.Decimal(10, 2)
+  deadline        DateTime
+  giftMessage     String?        @db.Text
+  shareToken      String         @unique @default(cuid())
+  status          GiftPoolStatus @default(ACTIVE)
+  orderId         String?        @unique
+  order           Order?         @relation(fields: [orderId], references: [id])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  contributions GiftContribution[]
+
+  @@index([shareToken])
+  @@index([organizerId])
+}
+
+model GiftContribution {
+  id              String    @id @default(cuid())
+  giftPoolId      String
+  giftPool        GiftPool  @relation(fields: [giftPoolId], references: [id])
+  contributorId   String?
+  contributor     User?     @relation("GiftContributor", fields: [contributorId], references: [id])
+  amount          Decimal   @db.Decimal(10, 2)
+  stripePaymentId String    @unique
+  coinsEarned     Int       @default(0)
+  isAnonymous     Boolean   @default(false)
+  contributedAt   DateTime  @default(now())
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// BF-07: AI Gift Finder
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+model GiftFinderSession {
+  id                  String   @id @default(cuid())
+  buyerId             String?
+  buyer               User?    @relation(fields: [buyerId], references: [id])
+  quizAnswers         Json
+  recommendedProducts Json
+  convertedToOrder    Boolean  @default(false)
+  createdAt           DateTime @default(now())
+
+  @@index([buyerId])
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// BF-08: Gift Chain Relay
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+enum GiftChainStatus {
+  ACTIVE
+  CLOSED
+}
+
+model GiftChain {
+  id               String          @id @default(cuid())
+  initiatorId      String
+  initiator        User            @relation("GiftChainInitiator", fields: [initiatorId], references: [id])
+  initialProductId String
+  product          Product         @relation("GiftChainProduct", fields: [initialProductId], references: [id])
+  status           GiftChainStatus @default(ACTIVE)
+  isPublic         Boolean         @default(true)
+  totalLinks       Int             @default(1)
+  startedAt        DateTime        @default(now())
+  lastActivityAt   DateTime        @default(now())
+  closedAt         DateTime?
+
+  links   GiftChainLink[]
+  rewards GiftChainReward[]
+
+  @@index([status])
+}
+
+model GiftChainLink {
+  id              String    @id @default(cuid())
+  chainId         String
+  chain           GiftChain @relation(fields: [chainId], references: [id])
+  senderId        String
+  sender          User      @relation("ChainSender", fields: [senderId], references: [id])
+  recipientEmail  String
+  recipientId     String?
+  recipient       User?     @relation("ChainRecipient", fields: [recipientId], references: [id])
+  productId       String
+  product         Product   @relation("GiftChainLinkProduct", fields: [productId], references: [id])
+  orderId         String?   @unique
+  order           Order?    @relation(fields: [orderId], references: [id])
+  message         String?
+  linkPosition    Int
+  discountApplied Boolean   @default(false)
+  continuedChain  Boolean   @default(false)
+  nudgeSentAt     DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([chainId])
+  @@index([recipientEmail])
+}
+
+model GiftChainReward {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation("GiftChainRewardUser", fields: [userId], references: [id])
+  chainId     String
+  chain       GiftChain @relation(fields: [chainId], references: [id])
+  role        String
+  coinsEarned Int
+  createdAt   DateTime  @default(now())
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// BF-09: Blind Taste Match
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+enum BlindMatchStatus {
+  PENDING
+  MATCHED
+  ORDERED
+  DELIVERED
+  REVEALED
+}
+
+model BlindMatchRequest {
+  id                String           @id @default(cuid())
+  buyerId           String
+  buyer             User             @relation("BlindMatchBuyer", fields: [buyerId], references: [id])
+  recipientName     String
+  recipientEmail    String
+  shippingAddress   Json
+  niche             String[]
+  personality       String
+  budgetMin         Decimal          @db.Decimal(10, 2)
+  budgetMax         Decimal          @db.Decimal(10, 2)
+  occasion          String
+  giftMessage       String?
+  selectedProductId String?
+  selectedProduct   Product?         @relation("BlindMatchProduct", fields: [selectedProductId], references: [id])
+  curationFee       Decimal          @default(2.99) @db.Decimal(10, 2)
+  aiConfidenceScore Float?
+  orderId           String?          @unique
+  order             Order?           @relation(fields: [orderId], references: [id])
+  status            BlindMatchStatus @default(PENDING)
+  buyerRevealed     Boolean          @default(false)
+  createdAt         DateTime         @default(now())
+
+  ratings   BlindMatchRating[]
+  auditLogs BlindMatchAuditLog[]
+
+  @@index([buyerId])
+}
+
+model BlindMatchRating {
+  id                String            @id @default(cuid())
+  requestId         String
+  request           BlindMatchRequest @relation(fields: [requestId], references: [id])
+  recipientId       String?
+  recipient         User?             @relation("BlindMatchRatingUser", fields: [recipientId], references: [id])
+  rating            Int
+  feedbackText      String?
+  ratedAt           DateTime          @default(now())
+  buyerRefundIssued Boolean           @default(false)
+}
+
+model BlindMatchAuditLog {
+  id                String            @id @default(cuid())
+  requestId         String
+  request           BlindMatchRequest @relation(fields: [requestId], references: [id])
+  aiModelVersion    String
+  candidateProducts Json
+  selectedProductId String
+  selectionReason   String            @db.Text
+  createdAt         DateTime          @default(now())
+}
+

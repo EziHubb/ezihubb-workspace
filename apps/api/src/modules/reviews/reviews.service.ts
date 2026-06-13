@@ -30,6 +30,7 @@ import {
 import { ReviewQueryDto, AdminReviewQueryDto } from './dto/review-query.dto';
 import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
 import { OrderStatus, Review, ReviewStatus } from '@prisma/client';
+import { CoinService } from '../coins/coin.service';
 
 const REVIEW_INCLUDE = {
   user: {
@@ -62,6 +63,7 @@ export class ReviewsService {
     private readonly redis: RedisService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
     @Optional() private readonly moderationService?: ModerationService,
+    @Optional() private readonly coinService?: CoinService,
   ) {}
 
   // ── Public ───────────────────────────────────────────────────────────────────
@@ -217,6 +219,7 @@ export class ReviewsService {
 
     // fire-and-forget
     this.moderationService?.queueReviewModeration(review.id).catch((e) => this.logger.error('mod queue failed', e));
+    this.coinService?.earnReviewCoins(userId, review.id, false).catch((e) => this.logger.error('coin review earn failed', e));
 
     return this.mapToDto(review);
   }
@@ -462,8 +465,9 @@ export class ReviewsService {
     const limit = query.limit ?? 24;
 
     const where: Record<string, unknown> = {};
-    if (query.status !== undefined) where['status'] = query.status;
-    if (query.rating  !== undefined) where['rating'] = query.rating;
+    if (query.status    !== undefined) where['status']    = query.status;
+    if (query.rating    !== undefined) where['rating']    = query.rating;
+    if (query.productId !== undefined) where['productId'] = query.productId;
     if (query.q) {
       where['OR'] = [
         { title: { contains: query.q, mode: 'insensitive' } },

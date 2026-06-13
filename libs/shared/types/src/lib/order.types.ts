@@ -46,6 +46,7 @@ export interface OrderListItemDto {
   total:        number;
   itemCount:    number;
   previewUrl:   string | null;
+  imageUrl?:    string | null;
   createdAt:    string | Date;
 }
 

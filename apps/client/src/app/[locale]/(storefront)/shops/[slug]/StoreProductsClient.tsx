@@ -4,15 +4,13 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter, usePathname } from 'next/navigation';
 import { ChevronDown, PackageOpen, X } from 'lucide-react';
-import { apiClient, useMutateWishlist } from '@mlh/api-client';
+import { apiClient, useWishlist, useWishlistToggle } from '@mlh/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { ProductCard, Pagination, Skeleton } from '@mlh/ui';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
 import type { ProductListItemDto } from '@mlh/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-type Mode = 'featured' | 'all';
 
 interface PaginatedProducts {
   data:       ProductListItemDto[];
@@ -88,54 +86,41 @@ function SortDropdown({ sort, onChange }: { sort: string; onChange: (v: string) 
 function SectionsSidebar({
   storeSlug,
   selected,
+  onSaleSelected,
   onSelect,
 }: {
-  storeSlug: string;
-  selected:  string | null;
-  onSelect:  (section: string | null, onSale?: boolean) => void;
+  storeSlug:      string;
+  selected:       string | null;
+  onSaleSelected: boolean;
+  onSelect:       (sectionId: string | null, onSale?: boolean) => void;
 }) {
-  const [onSaleSelected, setOnSaleSelected] = useState(false);
-
   const { data } = useQuery<StoreSectionsResponse>({
-    queryKey: ['store-sections', storeSlug],
-    queryFn:  () => apiClient.get<StoreSectionsResponse>(API_ROUTES.STORES.SECTIONS(storeSlug)),
+    queryKey:  ['store-sections', storeSlug],
+    queryFn:   () => apiClient.get<StoreSectionsResponse>(API_ROUTES.STORES.SECTIONS(storeSlug)),
     staleTime: 60_000,
   });
 
   if (!data) return null;
 
-  const handleAll = () => {
-    setOnSaleSelected(false);
-    onSelect(null, false);
-  };
-
-  const handleOnSale = () => {
-    setOnSaleSelected(true);
-    onSelect(null, true);
-  };
-
-  const handleSection = (section: StoreSection) => {
-    setOnSaleSelected(false);
-    onSelect(section.id, false);
-  };
-
   const isAllSelected = !selected && !onSaleSelected;
 
   return (
-    <nav className="w-56 shrink-0 hidden md:block">
+    <nav className="w-52 shrink-0 hidden md:block" aria-label="Shop sections">
       <ul className="space-y-0.5">
         {/* All */}
         <li>
           <button
             type="button"
-            onClick={handleAll}
+            onClick={() => onSelect(null, false)}
             className={[
-              'w-full flex items-center justify-between px-2 py-1.5 rounded text-sm transition-colors text-left',
-              isAllSelected ? 'font-semibold text-secondary' : 'text-secondary/70 hover:text-secondary',
+              'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors text-left',
+              isAllSelected
+                ? 'font-semibold text-secondary bg-secondary/5'
+                : 'text-secondary/70 hover:text-secondary hover:bg-secondary/5',
             ].join(' ')}
           >
             <span>All</span>
-            <span className="text-muted text-xs">{data.total}</span>
+            <span className="text-muted text-xs tabular-nums">{data.total}</span>
           </button>
         </li>
 
@@ -144,31 +129,38 @@ function SectionsSidebar({
           <li>
             <button
               type="button"
-              onClick={handleOnSale}
+              onClick={() => onSelect(null, true)}
               className={[
-                'w-full flex items-center justify-between px-2 py-1.5 rounded text-sm transition-colors text-left',
-                onSaleSelected ? 'font-semibold text-secondary' : 'text-secondary/70 hover:text-secondary',
+                'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors text-left',
+                onSaleSelected
+                  ? 'font-semibold text-secondary bg-secondary/5'
+                  : 'text-secondary/70 hover:text-secondary hover:bg-secondary/5',
               ].join(' ')}
             >
               <span>On sale</span>
-              <span className="text-muted text-xs">{data.onSale}</span>
+              <span className="text-muted text-xs tabular-nums">{data.onSale}</span>
             </button>
           </li>
         )}
+
+        {/* Divider */}
+        {data.sections.length > 0 && <li><div className="my-2 border-t border-border" /></li>}
 
         {/* Category sections */}
         {data.sections.map((s) => (
           <li key={s.id}>
             <button
               type="button"
-              onClick={() => handleSection(s)}
+              onClick={() => onSelect(s.id, false)}
               className={[
-                'w-full flex items-center justify-between px-2 py-1.5 rounded text-sm transition-colors text-left',
-                selected === s.id ? 'font-semibold text-secondary' : 'text-secondary/70 hover:text-secondary',
+                'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors text-left',
+                selected === s.id
+                  ? 'font-semibold text-secondary bg-secondary/5'
+                  : 'text-secondary/70 hover:text-secondary hover:bg-secondary/5',
               ].join(' ')}
             >
               <span className="truncate pr-2">{s.name}</span>
-              <span className="text-muted text-xs shrink-0">{s.count}</span>
+              <span className="text-muted text-xs shrink-0 tabular-nums">{s.count}</span>
             </button>
           </li>
         ))}
@@ -179,25 +171,60 @@ function SectionsSidebar({
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 
-function EmptyState({ mode, onSeeAll }: { mode: Mode; onSeeAll?: () => void }) {
+function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
       <PackageOpen className="w-14 h-14 text-muted/30" aria-hidden />
       <div>
-        <p className="font-semibold text-secondary">
-          {mode === 'featured' ? 'No featured items yet' : 'No products yet'}
-        </p>
-        <p className="text-sm text-muted mt-1">This shop hasn't added any listings yet. Check back soon!</p>
+        <p className="font-semibold text-secondary">No products found</p>
+        <p className="text-sm text-muted mt-1">Try a different filter or check back soon.</p>
       </div>
-      {mode === 'featured' && onSeeAll && (
-        <button
-          type="button"
-          onClick={onSeeAll}
-          className="mt-1 text-sm font-medium text-primary border border-primary/30 px-5 py-2.5 rounded-button hover:bg-primary/5 transition-colors"
-        >
-          Browse all items
-        </button>
-      )}
+    </div>
+  );
+}
+
+// ── Product grid skeleton ─────────────────────────────────────────────────────
+
+function GridSkeleton({ count }: { count: number }) {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
+      {Array.from({ length: count }).map((_, i) => (
+        <Skeleton key={i} variant="rect" className="aspect-[4/5] rounded-card" />
+      ))}
+    </div>
+  );
+}
+
+// ── Product grid ──────────────────────────────────────────────────────────────
+
+function ProductGrid({
+  products,
+  wishlistedIds,
+  onWishlistToggle,
+}: {
+  products:         ProductListItemDto[];
+  wishlistedIds:    Set<string>;
+  onWishlistToggle: (id: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
+      {products.map((product) => (
+        <ProductCard
+          key={product.id}
+          id={product.id}
+          slug={product.slug}
+          name={product.name}
+          imageUrl={product.primaryImage ?? 'https://placehold.co/400x500.png?text=No+Image'}
+          basePrice={product.basePrice}
+          compareAtPrice={product.compareAtPrice}
+          rating={product.rating?.avg}
+          reviewCount={product.rating?.count}
+          badge={product.badge}
+          isPersonalizable={product.isPersonalizable}
+          isWishlisted={wishlistedIds.has(product.id)}
+          onWishlistToggle={onWishlistToggle}
+        />
+      ))}
     </div>
   );
 }
@@ -207,15 +234,11 @@ function EmptyState({ mode, onSeeAll }: { mode: Mode; onSeeAll?: () => void }) {
 export function StoreProductsClient({
   storeSlug,
   locale,
-  mode,
-  onSeeAll,
   searchQuery,
   onSearchClear,
 }: {
   storeSlug:      string;
   locale:         string;
-  mode:           Mode;
-  onSeeAll?:      () => void;
   searchQuery?:   string;
   onSearchClear?: () => void;
 }) {
@@ -224,45 +247,60 @@ export function StoreProductsClient({
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [onSaleFilter,    setOnSaleFilter]    = useState(false);
 
-  const router   = useRouter();
-  const pathname = usePathname();
-  const { addToWishlist } = useMutateWishlist();
-  const token = useAuthStore((s) => s.accessToken);
+  const router      = useRouter();
+  const pathname    = usePathname();
+  const wishlistToggle = useWishlistToggle();
+  const token          = useAuthStore((s) => s.accessToken);
+  const isAuthReady    = useAuthStore((s) => s.isAuthReady);
+
+  const { data: wishlistData } = useWishlist(isAuthReady && !!token);
+  const wishlistedIds = new Set((wishlistData ?? []).map((w) => w.productId));
 
   // Reset page when filters change
   useEffect(() => { setPage(1); }, [sort, selectedSection, onSaleFilter, searchQuery]);
 
-  type QP = Record<string, string | number | boolean | undefined>;
-  const queryParams: QP =
-    mode === 'featured'
-      ? { storeSlug, isFeatured: true, isActive: true, limit: 8, sort: 'featured' }
-      : {
-          storeSlug,
-          isActive:   true,
-          sort,
-          page,
-          limit:      24,
-          categoryId: selectedSection ?? undefined,
-          onSale:     onSaleFilter   ? true : undefined,
-          search:     searchQuery?.trim() || undefined,
-        };
+  const hasFilter = !!selectedSection || onSaleFilter || !!searchQuery?.trim();
 
-  const { data, isLoading } = useQuery<PaginatedProducts>({
-    queryKey: ['store-products', storeSlug, mode, sort, page, selectedSection, onSaleFilter, searchQuery],
-    queryFn:  () => apiClient.get<PaginatedProducts>(API_ROUTES.PRODUCTS.LIST, { params: queryParams }),
+  // Featured items query (only shown in default state: no section/sale/search filter)
+  const { data: featuredData, isLoading: featuredLoading } = useQuery<PaginatedProducts>({
+    queryKey: ['store-products-featured', storeSlug],
+    queryFn:  () => apiClient.get<PaginatedProducts>(API_ROUTES.PRODUCTS.LIST, {
+      params: { storeSlug, isFeatured: true, isActive: true, limit: 4, sort: 'featured' },
+    }),
+    staleTime: 60_000,
+    enabled:   !hasFilter,
+  });
+
+  // All items query
+  type QP = Record<string, string | number | boolean | undefined>;
+  const allParams: QP = {
+    storeSlug,
+    isActive:   true,
+    sort,
+    page,
+    limit:      24,
+    categoryId: selectedSection ?? undefined,
+    onSale:     onSaleFilter ? true : undefined,
+    search:     searchQuery?.trim() || undefined,
+  };
+
+  const { data: allData, isLoading: allLoading } = useQuery<PaginatedProducts>({
+    queryKey: ['store-products', storeSlug, sort, page, selectedSection, onSaleFilter, searchQuery],
+    queryFn:  () => apiClient.get<PaginatedProducts>(API_ROUTES.PRODUCTS.LIST, { params: allParams }),
     staleTime: 30_000,
   });
 
-  const products   = data?.data                  ?? [];
-  const totalPages = data?.pagination?.totalPages ?? 1;
-  const total      = data?.pagination?.total      ?? 0;
+  const featured   = featuredData?.data                  ?? [];
+  const products   = allData?.data                       ?? [];
+  const totalPages = allData?.pagination?.totalPages     ?? 1;
+  const total      = allData?.pagination?.total          ?? 0;
 
   const handleWishlistToggle = (productId: string) => {
     if (!token) {
       router.push(`/${locale}/login?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
-    addToWishlist.mutate(productId);
+    wishlistToggle(productId, wishlistedIds.has(productId));
   };
 
   const handleSectionSelect = (section: string | null, onSale?: boolean) => {
@@ -278,120 +316,100 @@ export function StoreProductsClient({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // ── Loading skeleton ──────────────────────────────────────────────────────
-
-  if (isLoading) {
-    const count = mode === 'featured' ? 8 : 12;
-    return (
-      <div className={`grid gap-4 md:gap-6 ${
-        mode === 'featured'
-          ? 'grid-cols-2 md:grid-cols-4'
-          : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
-      }`}>
-        {Array.from({ length: count }).map((_, i) => (
-          <Skeleton key={i} variant="rect" className="aspect-[4/5] rounded-card" />
-        ))}
-      </div>
-    );
-  }
-
-  // ── Featured mode ─────────────────────────────────────────────────────────
-
-  if (mode === 'featured') {
-    if (products.length === 0) return <EmptyState mode={mode} onSeeAll={onSeeAll} />;
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-        {products.map((product) => (
-          <ProductCard
-            key={product.id}
-            id={product.id}
-            slug={product.slug}
-            name={product.name}
-            imageUrl={product.primaryImage ?? 'https://placehold.co/400x500.png?text=No+Image'}
-            basePrice={product.basePrice}
-            compareAtPrice={product.compareAtPrice}
-            rating={product.rating?.avg}
-            reviewCount={product.rating?.count}
-            badge={product.badge}
-            isPersonalizable={product.isPersonalizable}
-            onWishlistToggle={handleWishlistToggle}
-          />
-        ))}
-      </div>
-    );
-  }
-
-  // ── All mode: sections sidebar + sort + grid + pagination ─────────────────
-
   return (
     <div className="flex gap-8">
       {/* ── Sections sidebar ─────────────────────────────────────────────── */}
       <SectionsSidebar
         storeSlug={storeSlug}
         selected={selectedSection}
+        onSaleSelected={onSaleFilter}
         onSelect={handleSectionSelect}
       />
 
       {/* ── Main content ─────────────────────────────────────────────────── */}
-      <div className="flex-1 min-w-0 space-y-5">
+      <div className="flex-1 min-w-0 space-y-10">
 
-        {/* ── Featured Items heading + sort ──────────────────────────────── */}
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h2 className="font-display text-xl font-bold text-secondary">
-              {onSaleFilter ? 'On Sale' : selectedSection ? null : 'All Items'}
-            </h2>
-            {/* Active filters */}
-            {(searchQuery || onSaleFilter) && (
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                {searchQuery && (
-                  <span className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary rounded-full px-2.5 py-0.5">
-                    "{searchQuery}"
-                    <button type="button" onClick={onSearchClear}>
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                )}
+        {/* ── Featured Items (only shown when no filter active) ─────────── */}
+        {!hasFilter && (
+          <section>
+            <h2 className="font-display text-xl font-bold text-secondary mb-5">Featured items</h2>
+            {featuredLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} variant="rect" className="aspect-[4/5] rounded-card" />
+                ))}
               </div>
-            )}
-            <p className="text-sm text-muted mt-0.5">
-              {total.toLocaleString()} result{total !== 1 ? 's' : ''}
-            </p>
-          </div>
-          <SortDropdown sort={sort} onChange={handleSortChange} />
-        </div>
+            ) : featured.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
+                {featured.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    id={product.id}
+                    slug={product.slug}
+                    name={product.name}
+                    imageUrl={product.primaryImage ?? 'https://placehold.co/400x500.png?text=No+Image'}
+                    basePrice={product.basePrice}
+                    compareAtPrice={product.compareAtPrice}
+                    rating={product.rating?.avg}
+                    reviewCount={product.rating?.count}
+                    badge={product.badge}
+                    isPersonalizable={product.isPersonalizable}
+                    isWishlisted={wishlistedIds.has(product.id)}
+                    onWishlistToggle={handleWishlistToggle}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </section>
+        )}
 
-        {/* ── Product grid ───────────────────────────────────────────────── */}
-        {products.length === 0 ? (
-          <EmptyState mode={mode} onSeeAll={onSeeAll} />
-        ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
-            {products.map((product) => (
-              <ProductCard
-                key={product.id}
-                id={product.id}
-                slug={product.slug}
-                name={product.name}
-                imageUrl={product.primaryImage ?? 'https://placehold.co/400x500.png?text=No+Image'}
-                basePrice={product.basePrice}
-                compareAtPrice={product.compareAtPrice}
-                rating={product.rating?.avg}
-                reviewCount={product.rating?.count}
-                badge={product.badge}
-                isPersonalizable={product.isPersonalizable}
-                onWishlistToggle={handleWishlistToggle}
+        {/* ── All Items section ─────────────────────────────────────────── */}
+        <section>
+          {/* Header row */}
+          <div className="flex items-center justify-between gap-4 flex-wrap mb-5">
+            <div>
+              <h2 className="font-display text-xl font-bold text-secondary">
+                {onSaleFilter ? 'On Sale' : selectedSection ? 'Section Items' : 'All items'}
+              </h2>
+
+              {/* Active search filter chip */}
+              {searchQuery && (
+                <span className="inline-flex items-center gap-1 mt-1 text-xs bg-primary/10 text-primary rounded-full px-2.5 py-0.5">
+                  "{searchQuery}"
+                  <button type="button" onClick={onSearchClear} aria-label="Clear search">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+
+              {!allLoading && (
+                <p className="text-sm text-muted mt-0.5">
+                  {total.toLocaleString()} result{total !== 1 ? 's' : ''}
+                </p>
+              )}
+            </div>
+            <SortDropdown sort={sort} onChange={handleSortChange} />
+          </div>
+
+          {/* Grid */}
+          {allLoading ? (
+            <GridSkeleton count={12} />
+          ) : products.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <ProductGrid products={products} wishlistedIds={wishlistedIds} onWishlistToggle={handleWishlistToggle} />
+          )}
+
+          {totalPages > 1 && (
+            <div className="mt-8">
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
               />
-            ))}
-          </div>
-        )}
-
-        {totalPages > 1 && (
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-          />
-        )}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

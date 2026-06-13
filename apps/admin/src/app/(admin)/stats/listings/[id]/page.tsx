@@ -1,14 +1,15 @@
 'use client';
 
-import { use, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { use, useState, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, BarChart, Bar, Legend,
 } from 'recharts';
 import {
   ArrowLeft, Eye, Heart, ShoppingBag, DollarSign,
-  Star, ExternalLink,
+  Star, ExternalLink, CheckCircle, EyeOff, MessageSquare,
+  ChevronLeft, ChevronRight, Image as ImageIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '../../../../../lib/api-client';
@@ -18,18 +19,19 @@ import { fmtCurrency, fmtDate, fmtNum } from '../../../../../lib/fmt';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Range = '7d' | '30d' | '90d';
+type ReviewStatus = 'PENDING' | 'APPROVED' | 'HIDDEN';
 
 interface ListingStatsData {
   product: {
-    id:            string;
-    name:          string;
-    slug:          string;
-    status:        string;
-    isActive:      boolean;
-    imageUrl:      string | null;
-    basePrice:     number;
+    id:             string;
+    name:           string;
+    slug:           string;
+    status:         string;
+    isActive:       boolean;
+    imageUrl:       string | null;
+    basePrice:      number;
     compareAtPrice: number | null;
-    createdAt:     string;
+    createdAt:      string;
   };
   summary: {
     views:      number;
@@ -42,6 +44,33 @@ interface ListingStatsData {
   timeSeries: Array<{ date: string; visits: number; orders: number; revenue: number }>;
 }
 
+interface ReviewSummaryData {
+  averageRating: number;
+  totalReviews:  number;
+  distribution:  Record<string, number>;
+}
+
+interface AdminReview {
+  id:                string;
+  userId:            string;
+  rating:            number;
+  title?:            string | null;
+  body:              string;
+  imageUrls:         string[];
+  status:            ReviewStatus;
+  adminReply?:       string | null;
+  repliedAt?:        string | null;
+  createdAt:         string;
+  customerName:      string;
+  customerEmail:     string;
+  customerAvatarUrl?: string | null;
+}
+
+interface ReviewsPage {
+  data: AdminReview[];
+  pagination: { total: number; page: number; totalPages: number };
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const RANGES: { id: Range; label: string }[] = [
@@ -50,11 +79,24 @@ const RANGES: { id: Range; label: string }[] = [
   { id: '90d', label: 'Last 90 days' },
 ];
 
+const REVIEW_STATUS_TABS: { id: string; label: string }[] = [
+  { id: '',         label: 'All'      },
+  { id: 'PENDING',  label: 'Pending'  },
+  { id: 'APPROVED', label: 'Approved' },
+  { id: 'HIDDEN',   label: 'Hidden'   },
+];
+
 const STATUS_STYLE: Record<string, string> = {
   ACTIVE:   'bg-green-100 text-green-700',
   INACTIVE: 'bg-gray-100 text-gray-500',
   ARCHIVED: 'bg-orange-100 text-orange-700',
   DRAFT:    'bg-blue-100 text-blue-700',
+};
+
+const REVIEW_STATUS_BADGE: Record<ReviewStatus, string> = {
+  PENDING:  'bg-amber-100 text-amber-700',
+  APPROVED: 'bg-green-100 text-green-700',
+  HIDDEN:   'bg-gray-100 text-gray-500',
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -112,9 +154,9 @@ function ChartTooltip({ active, payload, label }: {
   );
 }
 
-function StarRating({ rating, count }: { rating: number; count: number }) {
-  const full  = Math.floor(rating);
-  const half  = rating - full >= 0.5;
+function StarRow({ rating, count }: { rating: number; count: number }) {
+  const full = Math.floor(rating);
+  const half = rating - full >= 0.5;
   return (
     <div className="flex items-center gap-2">
       <div className="flex items-center gap-0.5">
@@ -135,6 +177,207 @@ function StarRating({ rating, count }: { rating: number; count: number }) {
   );
 }
 
+// ── Inline stars (small, read-only) ──────────────────────────────────────────
+
+function InlineStars({ rating }: { rating: number }) {
+  return (
+    <div className="flex gap-0.5">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star
+          key={i}
+          className={`w-3.5 h-3.5 ${i < rating ? 'text-amber-400 fill-amber-400' : 'text-border fill-border'}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Avatar initials ────────────────────────────────────────────────────────────
+
+function Avatar({ name, url }: { name: string; url?: string | null }) {
+  const initials = name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
+  if (url) {
+    return <img src={url} alt={name} className="w-9 h-9 rounded-full object-cover shrink-0" />;
+  }
+  return (
+    <div className="w-9 h-9 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
+      {initials}
+    </div>
+  );
+}
+
+// ── Review card ────────────────────────────────────────────────────────────────
+
+function ReviewCard({
+  review,
+  productId,
+}: {
+  review:    AdminReview;
+  productId: string;
+}) {
+  const qc          = useQueryClient();
+  const [replying,  setReplying]  = useState(false);
+  const [replyText, setReplyText] = useState(review.adminReply ?? '');
+  const [lightbox,  setLightbox]  = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const invalidate = () =>
+    void qc.invalidateQueries({ queryKey: ['listing-reviews', productId] });
+
+  const approveMutation = useMutation({
+    mutationFn: () => api.post(`${API_ROUTES.ADMIN.REVIEW_APPROVE(review.id)}`),
+    onSuccess:  invalidate,
+  });
+  const hideMutation = useMutation({
+    mutationFn: () => api.post(`${API_ROUTES.ADMIN.REVIEW_HIDE(review.id)}`),
+    onSuccess:  invalidate,
+  });
+  const replyMutation = useMutation({
+    mutationFn: (reply: string) =>
+      api.post(`${API_ROUTES.ADMIN.REVIEW_REPLY(review.id)}`, { reply }),
+    onSuccess: () => { setReplying(false); invalidate(); },
+  });
+
+  const isBusy = approveMutation.isPending || hideMutation.isPending || replyMutation.isPending;
+
+  return (
+    <>
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <img src={lightbox} alt="Review image" className="max-w-full max-h-full object-contain rounded-lg" />
+        </div>
+      )}
+
+      <div className="border border-border rounded-card p-4 space-y-3 hover:shadow-sm transition-shadow">
+        {/* Header row */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <Avatar name={review.customerName} url={review.customerAvatarUrl} />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-secondary truncate">{review.customerName}</p>
+              <p className="text-xs text-muted truncate">{review.customerEmail}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${REVIEW_STATUS_BADGE[review.status]}`}>
+              {review.status}
+            </span>
+            <span className="text-xs text-muted">{fmtDate(review.createdAt)}</span>
+          </div>
+        </div>
+
+        {/* Stars + title */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <InlineStars rating={review.rating} />
+          {review.title && (
+            <span className="text-sm font-semibold text-secondary">{review.title}</span>
+          )}
+        </div>
+
+        {/* Body */}
+        <p className="text-sm text-secondary leading-relaxed">{review.body}</p>
+
+        {/* Images */}
+        {review.imageUrls.length > 0 && (
+          <div className="flex gap-2 flex-wrap">
+            {review.imageUrls.map((url, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setLightbox(url)}
+                className="w-16 h-16 rounded-lg overflow-hidden border border-border hover:ring-2 hover:ring-primary/40 transition-all shrink-0"
+              >
+                <img src={url} alt={`Review image ${i + 1}`} className="w-full h-full object-cover" />
+              </button>
+            ))}
+            <div className="flex items-center gap-1 text-xs text-muted self-center">
+              <ImageIcon className="w-3 h-3" />
+              {review.imageUrls.length} photo{review.imageUrls.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+        )}
+
+        {/* Existing admin reply */}
+        {review.adminReply && !replying && (
+          <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5">
+            <p className="text-[11px] font-semibold text-blue-700 mb-1">Admin reply</p>
+            <p className="text-xs text-blue-900 leading-relaxed">{review.adminReply}</p>
+          </div>
+        )}
+
+        {/* Inline reply form */}
+        {replying && (
+          <div className="space-y-2">
+            <textarea
+              ref={textareaRef}
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              rows={3}
+              placeholder="Write a reply…"
+              className="w-full text-sm border border-border rounded-lg px-3 py-2 resize-none focus:outline-none focus:border-primary/60 bg-surface"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={isBusy || !replyText.trim()}
+                onClick={() => replyMutation.mutate(replyText.trim())}
+                className="px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-button disabled:opacity-50 hover:bg-primary/90 transition-colors"
+              >
+                {replyMutation.isPending ? 'Saving…' : 'Save Reply'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setReplying(false); setReplyText(review.adminReply ?? ''); }}
+                className="px-3 py-1.5 border border-border text-xs font-medium rounded-button hover:border-primary/40 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Action bar */}
+        <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+          {review.status !== 'APPROVED' && (
+            <button
+              type="button"
+              disabled={isBusy}
+              onClick={() => approveMutation.mutate()}
+              className="inline-flex items-center gap-1 text-xs font-medium text-green-700 border border-green-200 rounded-button px-2.5 py-1 hover:bg-green-50 disabled:opacity-50 transition-colors"
+            >
+              <CheckCircle className="w-3 h-3" />
+              Approve
+            </button>
+          )}
+          {review.status !== 'HIDDEN' && (
+            <button
+              type="button"
+              disabled={isBusy}
+              onClick={() => hideMutation.mutate()}
+              className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 border border-gray-200 rounded-button px-2.5 py-1 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              <EyeOff className="w-3 h-3" />
+              Hide
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={isBusy}
+            onClick={() => { setReplying(true); setTimeout(() => textareaRef.current?.focus(), 50); }}
+            className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 border border-blue-200 rounded-button px-2.5 py-1 hover:bg-blue-50 disabled:opacity-50 transition-colors"
+          >
+            <MessageSquare className="w-3 h-3" />
+            {review.adminReply ? 'Edit Reply' : 'Reply'}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ListingStatsDetailPage({
@@ -143,9 +386,14 @@ export default function ListingStatsDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id }       = use(params);
-  const [range, setRange] = useState<Range>('30d');
+  const [range,  setRange]  = useState<Range>('30d');
   const [metric, setMetric] = useState<'visits' | 'orders' | 'revenue'>('visits');
 
+  // Reviews section state
+  const [reviewStatus, setReviewStatus] = useState('');
+  const [reviewPage,   setReviewPage]   = useState(1);
+
+  // ── Stats query ──────────────────────────────────────────────────────────────
   const { data, isLoading, isFetching } = useQuery<ListingStatsData>({
     queryKey: ['listing-stats', id, range],
     queryFn:  () => api.get(`${API_ROUTES.ADMIN.STATS_LISTING(id)}?range=${range}`),
@@ -153,16 +401,45 @@ export default function ListingStatsDetailPage({
     placeholderData: (prev) => prev,
   });
 
+  // ── Review summary (distribution bars) ───────────────────────────────────────
+  const { data: reviewSummary } = useQuery<ReviewSummaryData>({
+    queryKey: ['listing-review-summary', data?.product?.slug],
+    queryFn:  () =>
+      api.get(`/products/${data!.product.slug}/reviews/summary`),
+    enabled: !!data?.product?.slug,
+    staleTime: 60_000,
+  });
+
+  // ── Paginated reviews list ────────────────────────────────────────────────────
+  const reviewsQP = new URLSearchParams({
+    productId: id,
+    page:      String(reviewPage),
+    limit:     '8',
+    ...(reviewStatus ? { status: reviewStatus } : {}),
+  });
+  const { data: reviewsData, isLoading: reviewsLoading } = useQuery<ReviewsPage>({
+    queryKey: ['listing-reviews', id, reviewStatus, reviewPage],
+    queryFn:  () => api.get(`${API_ROUTES.ADMIN.REVIEWS}?${reviewsQP}`),
+    enabled:  !!id,
+    staleTime: 30_000,
+  });
+
   const p  = data?.product;
   const s  = data?.summary;
   const ts = data?.timeSeries ?? [];
 
-  // Chart series — views / orders / revenue tabs
   const METRIC_CFG = {
     visits:  { label: 'Views',   color: '#6366f1', stroke: '#6366f1' },
     orders:  { label: 'Orders',  color: '#22c55e', stroke: '#22c55e' },
     revenue: { label: 'Revenue', color: '#f59e0b', stroke: '#f59e0b' },
   } as const;
+
+  const dist      = reviewSummary?.distribution ?? {};
+  const totalRevs = reviewSummary?.totalReviews ?? 0;
+
+  const reviews    = reviewsData?.data        ?? [];
+  const revTotal   = reviewsData?.pagination?.total      ?? 0;
+  const revPages   = reviewsData?.pagination?.totalPages ?? 1;
 
   return (
     <div className="space-y-6">
@@ -218,7 +495,7 @@ export default function ListingStatsDetailPage({
             </div>
             {s?.avgRating != null && s.reviews > 0 && (
               <div className="mt-2">
-                <StarRating rating={s.avgRating} count={s.reviews} />
+                <StarRow rating={s.avgRating} count={s.reviews} />
               </div>
             )}
           </div>
@@ -249,9 +526,9 @@ export default function ListingStatsDetailPage({
           Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28" />)
         ) : (
           <>
-            <KpiCard icon={Eye}        label="Views"      value={fmtNum(s?.views ?? 0)}           color="text-indigo-500" />
-            <KpiCard icon={Heart}      label="Favourites" value={fmtNum(s?.favourites ?? 0)}       color="text-rose-500"   />
-            <KpiCard icon={ShoppingBag}label="Orders"     value={fmtNum(s?.orders ?? 0)}           color="text-green-500"  />
+            <KpiCard icon={Eye}         label="Views"      value={fmtNum(s?.views ?? 0)}           color="text-indigo-500" />
+            <KpiCard icon={Heart}       label="Favourites" value={fmtNum(s?.favourites ?? 0)}       color="text-rose-500"   />
+            <KpiCard icon={ShoppingBag} label="Orders"     value={fmtNum(s?.orders ?? 0)}           color="text-green-500"  />
             <KpiCard
               icon={DollarSign}
               label="Revenue"
@@ -265,7 +542,6 @@ export default function ListingStatsDetailPage({
 
       {/* ── Time series chart ──────────────────────────────────────────────── */}
       <div className="bg-surface border border-border rounded-card p-6">
-        {/* Metric switcher */}
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-sm font-semibold text-secondary">Performance over time</h2>
           <div className="flex gap-1">
@@ -385,29 +661,143 @@ export default function ListingStatsDetailPage({
         </div>
       )}
 
-      {/* ── Reviews summary ──────────────────────────────────────────────────── */}
+      {/* ── Reviews summary (distribution) ───────────────────────────────────── */}
       {!isLoading && s && s.reviews > 0 && (
         <div className="bg-surface border border-border rounded-card p-6">
-          <h2 className="text-sm font-semibold text-secondary mb-4">Reviews in period</h2>
-          <div className="flex items-center gap-6">
-            <div className="text-center">
-              <p className="text-4xl font-bold text-secondary">{s.avgRating?.toFixed(1) ?? '—'}</p>
-              {s.avgRating != null && <StarRating rating={s.avgRating} count={s.reviews} />}
+          <h2 className="text-sm font-semibold text-secondary mb-4">Rating distribution</h2>
+          <div className="flex items-start gap-8">
+            <div className="text-center shrink-0">
+              <p className="text-5xl font-bold text-secondary tabular-nums">
+                {reviewSummary?.averageRating.toFixed(1) ?? s.avgRating?.toFixed(1) ?? '—'}
+              </p>
+              {(reviewSummary?.averageRating ?? s.avgRating) != null && (
+                <StarRow
+                  rating={reviewSummary?.averageRating ?? s.avgRating!}
+                  count={reviewSummary?.totalReviews ?? s.reviews}
+                />
+              )}
+              <p className="text-xs text-muted mt-1">{totalRevs || s.reviews} total reviews</p>
             </div>
-            <div className="flex-1 space-y-2">
-              {[5, 4, 3, 2, 1].map((star) => (
-                <div key={star} className="flex items-center gap-2">
-                  <span className="text-xs text-muted w-3">{star}</span>
-                  <Star className="w-3 h-3 text-amber-400 fill-amber-400 shrink-0" />
-                  <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
-                    <div className="h-full bg-amber-400 rounded-full w-0" />
+            <div className="flex-1 space-y-2 py-1">
+              {[5, 4, 3, 2, 1].map((star) => {
+                const count = dist[String(star)] ?? 0;
+                const pct   = totalRevs > 0 ? (count / totalRevs) * 100 : 0;
+                return (
+                  <div key={star} className="flex items-center gap-2">
+                    <span className="text-xs text-muted w-3 text-right shrink-0">{star}</span>
+                    <Star className="w-3 h-3 text-amber-400 fill-amber-400 shrink-0" />
+                    <div className="flex-1 h-2.5 bg-border rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-amber-400 rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-muted tabular-nums w-16 text-right shrink-0">
+                      {count > 0 ? `${count} (${pct.toFixed(0)}%)` : '—'}
+                    </span>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
       )}
+
+      {/* ── Reviews list ─────────────────────────────────────────────────────── */}
+      <div className="bg-surface border border-border rounded-card overflow-hidden">
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="text-sm font-semibold text-secondary">Reviews</h2>
+            {!reviewsLoading && (
+              <p className="text-xs text-muted mt-0.5">
+                {revTotal} review{revTotal !== 1 ? 's' : ''} total
+              </p>
+            )}
+          </div>
+
+          {/* Status filter tabs */}
+          <div className="flex gap-1">
+            {REVIEW_STATUS_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => { setReviewStatus(tab.id); setReviewPage(1); }}
+                className={[
+                  'px-3 py-1 text-xs font-medium rounded-full border transition-colors',
+                  reviewStatus === tab.id
+                    ? 'bg-primary text-white border-primary'
+                    : 'border-border text-muted hover:border-primary/40 hover:text-secondary',
+                ].join(' ')}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-5">
+          {reviewsLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="border border-border rounded-card p-4 space-y-3 animate-pulse">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="w-9 h-9 rounded-full shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-3.5 w-32" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-3.5 w-24" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ))}
+            </div>
+          ) : reviews.length === 0 ? (
+            <div className="py-10 text-center">
+              <Star className="w-10 h-10 text-border mx-auto mb-3" />
+              <p className="text-sm font-medium text-secondary">No reviews yet</p>
+              <p className="text-xs text-muted mt-1">
+                {reviewStatus ? 'No reviews with this status.' : 'This product has not been reviewed.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {reviews.map((r) => (
+                <ReviewCard key={r.id} review={r} productId={id} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Pagination */}
+        {!reviewsLoading && revPages > 1 && (
+          <div className="px-5 py-3 border-t border-border flex items-center justify-between">
+            <p className="text-xs text-muted">
+              Page {reviewPage} of {revPages} · {revTotal} reviews
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={reviewPage <= 1}
+                onClick={() => setReviewPage((p) => Math.max(1, p - 1))}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs border border-border rounded-button disabled:opacity-40 hover:border-primary/40 transition-colors"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" /> Prev
+              </button>
+              <button
+                type="button"
+                disabled={reviewPage >= revPages}
+                onClick={() => setReviewPage((p) => p + 1)}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs border border-border rounded-button disabled:opacity-40 hover:border-primary/40 transition-colors"
+              >
+                Next <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
     </div>
   );

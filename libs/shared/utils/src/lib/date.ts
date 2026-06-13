@@ -2,6 +2,35 @@
 
 const LOCALE = 'en-US';
 
+/** Vietnam timezone — UTC+7 */
+export const VN_TZ = 'Asia/Ho_Chi_Minh';
+
+/**
+ * Format a date as "2026-06-13 09:42:02" in Vietnam local time (UTC+7).
+ * Used in CSV/spreadsheet exports so timestamps are human-readable.
+ */
+export function fmtDateTimeVN(val: string | Date | null | undefined): string {
+  if (!val) return '';
+  try {
+    return new Date(val).toLocaleString('sv', { timeZone: VN_TZ });
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Format a date as "2026-06-13" in Vietnam local time (UTC+7).
+ * Used in export filenames.
+ */
+export function fmtDateISOVN(val: string | Date | null | undefined): string {
+  if (!val) return '';
+  try {
+    return new Date(val).toLocaleDateString('sv', { timeZone: VN_TZ });
+  } catch {
+    return '';
+  }
+}
+
 /** ISO string or Date → `"Jan 5, 2025"` */
 export function fmtDate(val: string | Date | null | undefined): string {
   if (!val) return '—';

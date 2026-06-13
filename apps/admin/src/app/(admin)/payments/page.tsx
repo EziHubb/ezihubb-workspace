@@ -17,6 +17,7 @@ import {
 } from '../../../components/payments/PaymentDetailDrawer';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { FilterSelect } from '../../../components/ui/FilterSelect';
 import { fmtCurrency, fmtAmount, fmtPercent, fmtDate, fmtDateTime, fmtNum } from '../../../lib/fmt';
 
 // ── Status badge ──────────────────────────────────────────────────────────────
@@ -318,42 +319,38 @@ export default function PaymentsPage() {
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-3 mb-5">
         {/* Method */}
-        <select
+        <FilterSelect
           value={method}
-          onChange={(e) => { setMethod(e.target.value); setPage(1); }}
-          className="px-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          <option value="">Method: All</option>
-          <option value="STRIPE">Stripe</option>
-          <option value="PAYPAL">PayPal</option>
-          <option value="GIFT_CARD">Gift Card</option>
-          <option value="MIXED">Mixed</option>
-        </select>
+          onChange={(v) => { setMethod(v); setPage(1); }}
+          options={[
+            { value: '',           label: 'Method: All'  },
+            { value: 'STRIPE',     label: 'Stripe'       },
+            { value: 'PAYPAL',     label: 'PayPal'       },
+            { value: 'GIFT_CARD',  label: 'Gift Card'    },
+            { value: 'MIXED',      label: 'Mixed'        },
+          ]}
+        />
 
         {/* Status */}
-        <select
+        <FilterSelect
           value={status}
-          onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-          className="px-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          <option value="">Status: All</option>
-          <option value="PAID">Paid</option>
-          <option value="PENDING">Pending</option>
-          <option value="FAILED">Failed</option>
-          <option value="REFUNDED">Refunded</option>
-          <option value="PARTIALLY_REFUNDED">Partial Refund</option>
-        </select>
+          onChange={(v) => { setStatus(v); setPage(1); }}
+          options={[
+            { value: '',                    label: 'Status: All'    },
+            { value: 'PAID',               label: 'Paid'           },
+            { value: 'PENDING',            label: 'Pending'        },
+            { value: 'FAILED',             label: 'Failed'         },
+            { value: 'REFUNDED',           label: 'Refunded'       },
+            { value: 'PARTIALLY_REFUNDED', label: 'Partial Refund' },
+          ]}
+        />
 
         {/* Date range */}
-        <select
+        <FilterSelect
           value={dateRange}
-          onChange={(e) => { setDateRange(e.target.value); setPage(1); }}
-          className="px-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          {DATE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
+          onChange={(v) => { setDateRange(v); setPage(1); }}
+          options={DATE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+        />
 
         {/* Search */}
         <div className="relative flex-1 min-w-[220px] max-w-sm ml-auto">

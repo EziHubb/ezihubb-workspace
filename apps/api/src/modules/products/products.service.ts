@@ -177,6 +177,7 @@ export class ProductsService {
       where: { slug, isActive: true },
       include: {
         category: { select: { id: true, name: true, slug: true } },
+        store: { select: { id: true, name: true, slug: true } },
         variants: { orderBy: { sortOrder: 'asc' } },
         images: { orderBy: { sortOrder: 'asc' } },
         tags: {
@@ -1691,6 +1692,7 @@ export class ProductsService {
       createdAt: Date;
       updatedAt: Date;
       category: { id: string; name: string; slug: string };
+      store?: { id: string; name: string; slug: string } | null;
       variants: {
         id: string;
         name: string;
@@ -1731,6 +1733,7 @@ export class ProductsService {
       soldCount: product.soldCount,
       processingDays: product.processingDays,
       category: product.category,
+      store: product.store ?? null,
       variants: product.variants.map((v) => ({
         id: v.id,
         name: v.name,

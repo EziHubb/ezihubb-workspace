@@ -72,17 +72,7 @@ export class TrendsService {
       return topics;
     }
 
-    return this.getMockTrends();
-  }
-
-  private getMockTrends(): TrendTopic[] {
-    return [
-      { hashtag: 'nursehumor',   description: 'Nursing and healthcare humor content', engagementScore: 2_400_000, source: 'mock' },
-      { hashtag: 'teacherlife',  description: 'Teachers sharing classroom moments',   engagementScore: 1_800_000, source: 'mock' },
-      { hashtag: 'coffeelovers', description: 'Coffee culture and morning routines',  engagementScore: 3_200_000, source: 'mock' },
-      { hashtag: 'dogmom',       description: 'Dog owner lifestyle content',          engagementScore: 2_100_000, source: 'mock' },
-      { hashtag: 'bookworm',     description: 'Reading and book club culture',        engagementScore: 1_500_000, source: 'mock' },
-    ];
+    return [];
   }
 
   // ── Generate design brief (GPT-4o / Claude) ───────────────────────────────
@@ -339,6 +329,27 @@ Return ONLY valid JSON:
   // ── Admin direct scan — runs synchronously, skips image generation ─────────
 
   async triggerAdminDirectScan(sourceIds?: string[]): Promise<{ created: number; stores: number; message: string; sources: string[] }> {
+    // Pre-check: ensure at least one source is configured before hitting external APIs
+    const sourceConfigs = await this.getSourceSettings();
+    const idsToCheck = sourceIds?.length
+      ? sourceIds
+      : Object.entries(sourceConfigs).filter(([, c]) => c.enabled).map(([id]) => id);
+
+    const anyConfigured = idsToCheck.some((id) => {
+      const src = this.registry.getSource(id);
+      if (!src) return false;
+      return src.isConfigured({ apiKey: sourceConfigs[id]?.apiKey ?? undefined });
+    });
+
+    if (!anyConfigured) {
+      return {
+        created: 0,
+        stores:  0,
+        message: 'No trend sources are configured — set API keys in AI Settings before scanning',
+        sources: [],
+      };
+    }
+
     const stores = await this.prisma.store.findMany({
       where:  { status: 'ACTIVE' },
       select: { id: true },
@@ -349,6 +360,11 @@ Return ONLY valid JSON:
     }
 
     const topics      = await this.getTrendingTopics(sourceIds);
+
+    if (topics.length === 0) {
+      return { created: 0, stores: stores.length, message: 'No trends returned from configured sources — check source API keys or try again later', sources: [] };
+    }
+
     const topTopics   = topics.slice(0, 3);
     const usedSources = [...new Set(topTopics.map(t => (t as any).source ?? 'unknown'))];
     let created = 0;

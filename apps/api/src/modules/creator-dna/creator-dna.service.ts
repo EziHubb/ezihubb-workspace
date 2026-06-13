@@ -107,6 +107,11 @@ export class CreatorDnaService {
   // ── Run audience analysis ─────────────────────────────────────────────────
 
   async runAnalysis(userId: string, platform: string): Promise<void> {
+    if (!this.anthropicKey) {
+      this.logger.warn('Creator DNA analysis skipped — ANTHROPIC_API_KEY not configured');
+      return;
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId }, select: { storeId: true },
     });
@@ -122,25 +127,22 @@ export class CreatorDnaService {
     });
 
     try {
-      const mockData = {
-        topHashtags:          ['nursing', 'nurselife', 'healthcare'],
-        avgEngagement:        8.5,
-        followerCount:        12400,
-        captionThemes:        ['humor', 'workplace', 'daily life'],
-        audienceDemographics: { ageRange: '25-34', location: 'US', gender: 'female 72%' },
-        postsAnalyzed:        47,
-      };
+      const socialData = platform === 'tiktok'
+        ? await this.fetchTikTokData(connection.accessToken)
+        : platform === 'instagram'
+          ? await this.fetchInstagramData(connection.accessToken)
+          : (() => { throw new Error(`Unsupported platform: ${platform}`); })();
 
       await this.prisma.creatorDNAAnalysis.update({
         where: { id: analysis.id },
-        data:  { status: 'ANALYZING', postsAnalyzed: mockData.postsAnalyzed },
+        data:  { status: 'ANALYZING', postsAnalyzed: socialData.postsAnalyzed },
       });
 
-      const insights = await this.callClaudeForAnalysis(mockData, platform);
+      const insights = await this.callClaudeForAnalysis(socialData, platform);
 
       await this.prisma.creatorDNAAnalysis.update({
         where: { id: analysis.id },
-        data:  { insights, status: 'COMPLETED', postsAnalyzed: mockData.postsAnalyzed },
+        data:  { insights, status: 'COMPLETED', postsAnalyzed: socialData.postsAnalyzed },
       });
     } catch (err) {
       await this.prisma.creatorDNAAnalysis.update({
@@ -149,6 +151,84 @@ export class CreatorDnaService {
       });
       this.logger.error('Creator DNA analysis failed', err);
     }
+  }
+
+  private async fetchTikTokData(accessToken: string) {
+    const res = await fetch(
+      'https://open.tiktokapis.com/v2/video/list/?fields=id,like_count,comment_count,share_count,view_count,hashtag_names',
+      {
+        method:  'POST',
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ max_count: 20 }),
+        signal:  AbortSignal.timeout(15_000),
+      },
+    );
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`TikTok API error ${res.status}: ${body}`);
+    }
+
+    type TikTokVideo = { like_count: number; comment_count: number; share_count: number; view_count: number; hashtag_names?: string[] };
+    const json: { data?: { videos?: TikTokVideo[] } } = await res.json();
+    const videos = json.data?.videos ?? [];
+
+    if (videos.length === 0) throw new Error('No TikTok videos found for this account');
+
+    const totalEng = videos.reduce((s, v) => s + v.like_count + v.comment_count + v.share_count, 0);
+    const hashtagCounts: Record<string, number> = {};
+    for (const v of videos) {
+      for (const tag of v.hashtag_names ?? []) {
+        hashtagCounts[tag] = (hashtagCounts[tag] ?? 0) + 1;
+      }
+    }
+    const topHashtags = Object.entries(hashtagCounts)
+      .sort(([, a], [, b]) => b - a).slice(0, 10).map(([t]) => t);
+
+    return {
+      topHashtags,
+      avgEngagement:        Math.round(totalEng / videos.length),
+      followerCount:        0,
+      captionThemes:        [] as string[],
+      audienceDemographics: {} as Record<string, string>,
+      postsAnalyzed:        videos.length,
+    };
+  }
+
+  private async fetchInstagramData(accessToken: string) {
+    const url = `https://graph.instagram.com/me/media?fields=id,caption,like_count,comments_count&access_token=${encodeURIComponent(accessToken)}&limit=20`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`Instagram API error ${res.status}: ${body}`);
+    }
+
+    type IgMedia = { caption?: string; like_count: number; comments_count: number };
+    const json: { data?: IgMedia[] } = await res.json();
+    const media = json.data ?? [];
+
+    if (media.length === 0) throw new Error('No Instagram posts found for this account');
+
+    const totalEng = media.reduce((s, m) => s + m.like_count + m.comments_count, 0);
+    const hashtagCounts: Record<string, number> = {};
+    for (const m of media) {
+      for (const tag of (m.caption ?? '').match(/#(\w+)/g) ?? []) {
+        const cleaned = tag.slice(1).toLowerCase();
+        hashtagCounts[cleaned] = (hashtagCounts[cleaned] ?? 0) + 1;
+      }
+    }
+    const topHashtags = Object.entries(hashtagCounts)
+      .sort(([, a], [, b]) => b - a).slice(0, 10).map(([t]) => t);
+
+    return {
+      topHashtags,
+      avgEngagement:        Math.round(totalEng / media.length),
+      followerCount:        0,
+      captionThemes:        [] as string[],
+      audienceDemographics: {} as Record<string, string>,
+      postsAnalyzed:        media.length,
+    };
   }
 
   private async callClaudeForAnalysis(data: any, platform: string): Promise<any> {

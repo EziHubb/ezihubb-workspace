@@ -3,6 +3,7 @@ import { ApiOperation } from '@nestjs/swagger';
 import { Response } from 'express';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
+import { fmtDateTimeVN, fmtDateISOVN } from '../../common/utils/date';
 
 @AdminController('export')
 export class AdminExportController {
@@ -64,7 +65,7 @@ export class AdminExportController {
         csvEscape(o.shippingCity),
         csvEscape(o.shippingState ?? ''),
         csvEscape(o.shippingCountry),
-        o.createdAt.toISOString(),
+        fmtDateTimeVN(o.createdAt),
       ].join(','));
     }
 
@@ -81,12 +82,12 @@ export class AdminExportController {
         csvEscape(c.lastName ?? ''),
         c.isActive ? 'yes' : 'no',
         c._count.orders.toString(),
-        c.createdAt.toISOString(),
+        fmtDateTimeVN(c.createdAt),
       ].join(','));
     }
 
     const csv = lines.join('\n');
-    const filename = `daily-daisy-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    const filename = `daily-daisy-export-${fmtDateISOVN(new Date())}.csv`;
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

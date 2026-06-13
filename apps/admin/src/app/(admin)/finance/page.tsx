@@ -8,6 +8,7 @@ import { StatCard } from '../../../components/data/StatCard';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount, fmtDate, unwrapArr } from '../../../lib/fmt';
+import { FilterSelect } from '../../../components/ui/FilterSelect';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -136,13 +137,17 @@ export default function AdminFinancePage() {
             <h3 className="font-semibold text-secondary">Revenue & Fees Trend</h3>
             <p className="text-xs text-muted mt-0.5">Gross merchandise value and platform fees</p>
           </div>
-          <select value={chartDays} onChange={(e) => setChartDays(Number(e.target.value))}
-            className="text-sm border border-border rounded-button px-3 py-1.5 focus:outline-none focus:border-primary transition-colors">
-            <option value={7}>Last 7 days</option>
-            <option value={14}>Last 14 days</option>
-            <option value={30}>Last 30 days</option>
-            <option value={90}>Last 90 days</option>
-          </select>
+          <FilterSelect
+            value={String(chartDays)}
+            onChange={(v) => setChartDays(Number(v))}
+            size="sm"
+            options={[
+              { value: '7',  label: 'Last 7 days' },
+              { value: '14', label: 'Last 14 days' },
+              { value: '30', label: 'Last 30 days' },
+              { value: '90', label: 'Last 90 days' },
+            ]}
+          />
         </div>
         {chartLoading ? (
           <div className="h-24 bg-muted/10 rounded animate-pulse" />
@@ -179,12 +184,16 @@ export default function AdminFinancePage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <select value={storeSort} onChange={(e) => { setStoreSort(e.target.value); setStorePage(1); }}
-              className="text-xs border border-border rounded-button px-2 py-1.5 focus:outline-none focus:border-primary transition-colors">
-              <option value="revenue">Sort: Revenue ↓</option>
-              <option value="orders">Sort: Orders ↓</option>
-              <option value="fees">Sort: Fees ↓</option>
-            </select>
+            <FilterSelect
+              value={storeSort}
+              onChange={(v) => { setStoreSort(v); setStorePage(1); }}
+              size="sm"
+              options={[
+                { value: 'revenue', label: 'Revenue ↓' },
+                { value: 'orders',  label: 'Orders ↓' },
+                { value: 'fees',    label: 'Fees ↓' },
+              ]}
+            />
           </div>
         </div>
 

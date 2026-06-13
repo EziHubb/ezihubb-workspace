@@ -11,9 +11,10 @@ import { PdfModule } from '../pdf/pdf.module';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
 import { ReferralModule } from '../referrals/referral.module';
 import { StoreCreditsModule } from '../store-credits/store-credits.module';
+import { CoinModule } from '../coins/coin.module';
 
 @Module({
-  imports: [ShippingModule, PaymentsModule, NotificationsModule, TaxModule, AffiliatesModule, PdfModule, LoyaltyModule, ReferralModule, StoreCreditsModule],
+  imports: [ShippingModule, PaymentsModule, NotificationsModule, TaxModule, AffiliatesModule, PdfModule, LoyaltyModule, ReferralModule, StoreCreditsModule, CoinModule],
   controllers: [OrdersController, AdminOrdersController],
   providers: [OrdersService],
   exports: [OrdersService],

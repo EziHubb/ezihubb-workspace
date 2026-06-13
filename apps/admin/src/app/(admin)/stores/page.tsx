@@ -10,6 +10,7 @@ import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtDate, safeArr } from '../../../lib/fmt';
 import { useDialog } from '../../../contexts/DialogContext';
+import { FilterSelect } from '../../../components/ui/FilterSelect';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -214,15 +215,11 @@ export default function AdminStoresPage() {
             className="pl-9 pr-4 py-2 text-sm border border-border rounded-button focus:outline-none focus:border-primary transition-colors"
           />
         </div>
-        <select
+        <FilterSelect
           value={status}
-          onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-          className="text-sm border border-border rounded-button px-3 py-2 focus:outline-none focus:border-primary transition-colors"
-        >
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s}>{s || 'All Statuses'}</option>
-          ))}
-        </select>
+          onChange={(v) => { setStatus(v); setPage(1); }}
+          options={STATUS_OPTIONS.map((s) => ({ value: s, label: s || 'All Statuses' }))}
+        />
       </div>
 
       <DataTable

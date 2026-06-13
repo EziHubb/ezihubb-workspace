@@ -64,6 +64,13 @@ export class UsersService {
     userId: string,
     file: Express.Multer.File,
   ): Promise<{ avatarUrl: string }> {
+    if (!file) {
+      throw new BadRequestException({
+        code: 'ERR_MISSING_FILE',
+        message: 'Avatar file is required — send it as the "avatar" field in a multipart/form-data request',
+      });
+    }
+
     if (!AVATAR_ALLOWED_MIMETYPES.has(file.mimetype)) {
       throw new BadRequestException({
         code: 'ERR_INVALID_FILE_TYPE',

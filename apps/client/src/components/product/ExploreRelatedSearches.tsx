@@ -26,10 +26,13 @@ function buildRelatedSearches(product: ProductDto, locale: string): RelatedSearc
     (a) => a.key.toLowerCase() === 'material' || a.key.toLowerCase() === 'materials',
   );
 
+  const storeSlug = product.store?.slug;
+  const storeName = product.store?.name ?? 'Daily Daisy';
+
   const featured: FeaturedChip[] = [
     {
-      label:    'DailyDaisy',
-      href:     `/${locale}/search`,
+      label:    storeName,
+      href:     storeSlug ? `/${locale}/shops/${storeSlug}` : `/${locale}/search`,
       imageUrl: null,
     },
     ...tags.slice(0, 3).map((t) => ({

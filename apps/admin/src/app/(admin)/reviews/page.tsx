@@ -12,6 +12,7 @@ import { ReviewReplyModal } from '../../../components/reviews/ReviewReplyModal';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { useDialog } from '../../../contexts/DialogContext';
+import { FilterSelect } from '../../../components/ui/FilterSelect';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -247,16 +248,14 @@ export default function ReviewsPage() {
       {/* ── Filter bar ───────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3 mb-5">
         {/* Rating */}
-        <select
-          value={rating}
-          onChange={(e) => { setRating(e.target.value ? Number(e.target.value) : ''); setPage(1); }}
-          className="px-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          <option value="">Rating ▾</option>
-          {[5, 4, 3, 2, 1].map((r) => (
-            <option key={r} value={r}>{'⭐'.repeat(r)} {r} star{r !== 1 ? 's' : ''}</option>
-          ))}
-        </select>
+        <FilterSelect
+          value={String(rating)}
+          onChange={(v) => { setRating(v ? Number(v) : ''); setPage(1); }}
+          options={[
+            { value: '', label: 'All Ratings' },
+            ...[5, 4, 3, 2, 1].map((r) => ({ value: String(r), label: `${'★'.repeat(r)} ${r} star${r !== 1 ? 's' : ''}` })),
+          ]}
+        />
 
         {/* Search */}
         <div className="relative flex-1 min-w-[220px] max-w-sm">

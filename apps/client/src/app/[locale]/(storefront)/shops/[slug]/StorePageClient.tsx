@@ -5,7 +5,7 @@ import { Search } from 'lucide-react';
 import { StoreProductsClient } from './StoreProductsClient';
 import { StoreReviewsClient } from './StoreReviewsClient';
 
-type Tab = 'featured' | 'all' | 'reviews' | 'about';
+type Tab = 'items' | 'reviews' | 'about';
 
 interface StoreDto {
   id:            string;
@@ -56,23 +56,20 @@ export function StorePageClient({
   store:  StoreDto;
   locale: string;
 }) {
-  const [activeTab,   setActiveTab]   = useState<Tab>('featured');
+  const [activeTab,   setActiveTab]   = useState<Tab>('items');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'featured', label: 'Featured Items'                     },
-    { id: 'all',      label: `All Items (${store.totalProducts})` },
-    { id: 'reviews',  label: 'Reviews'                            },
-    { id: 'about',    label: 'About'                              },
+    { id: 'items',   label: `Items (${store.totalProducts})` },
+    { id: 'reviews', label: 'Reviews'                        },
+    { id: 'about',   label: 'About'                          },
   ];
-
-  const isItemTab = activeTab === 'featured' || activeTab === 'all';
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearchQuery(searchInput);
-    if (activeTab !== 'all') setActiveTab('all');
+    setActiveTab('items');
   };
 
   return (
@@ -106,8 +103,8 @@ export function StorePageClient({
               ))}
             </div>
 
-            {/* Search bar — only on item tabs */}
-            {isItemTab && (
+            {/* Search bar — only on items tab */}
+            {activeTab === 'items' && (
               <form onSubmit={handleSearch} className="shrink-0 hidden sm:flex">
                 <div className="flex items-center gap-2 border border-border rounded-full px-3.5 py-1.5 bg-surface hover:border-primary/40 focus-within:border-primary/60 transition-colors">
                   <Search className="w-3.5 h-3.5 text-muted shrink-0" />
@@ -127,32 +124,10 @@ export function StorePageClient({
       {/* ── Tab Content ────────────────────────────────────────────────────── */}
       <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-8 min-h-[400px]">
 
-        {activeTab === 'featured' && (
-          <section>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="font-display text-xl font-bold text-secondary">Featured Items</h2>
-              <button
-                type="button"
-                onClick={() => setActiveTab('all')}
-                className="text-sm text-primary font-medium hover:underline underline-offset-2"
-              >
-                See all items →
-              </button>
-            </div>
-            <StoreProductsClient
-              storeSlug={store.slug}
-              locale={locale}
-              mode="featured"
-              onSeeAll={() => setActiveTab('all')}
-            />
-          </section>
-        )}
-
-        {activeTab === 'all' && (
+        {activeTab === 'items' && (
           <StoreProductsClient
             storeSlug={store.slug}
             locale={locale}
-            mode="all"
             searchQuery={searchQuery}
             onSearchClear={() => { setSearchQuery(''); setSearchInput(''); }}
           />

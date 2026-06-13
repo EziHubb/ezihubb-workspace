@@ -136,5 +136,54 @@
         "ADJUST": "Manual adjustment"
       }
     }
+  },
+
+  "coins": {
+    "title": "Coin Balance",
+    "subtitle": "Earn coins on every purchase and redeem them for discounts.",
+    "currentBalance": "Current Balance",
+    "lifetimeEarned": "Lifetime Earned",
+    "expiringIn30Days": "Expiring in 30 Days",
+    "useThemSoon": "Use them before they expire!",
+    "nothingExpiring": "Nothing expiring soon",
+    "worth": "worth ${value}",
+    "howToEarn": "How to Earn Coins",
+    "earnPurchase": "Purchase — 10 coins per $1 spent",
+    "earnReview": "Write a review",
+    "earnPhotoReview": "Photo review",
+    "infoExchange": "100 coins = $1.00 discount at checkout.",
+    "infoLock": "Coins are locked for 14 days after purchase and confirmed automatically.",
+    "infoExpiry": "Coins expire 12 months after they are earned.",
+    "history": "Transaction History",
+    "historyEmpty": "No transactions yet. Start shopping to earn coins!",
+    "tableDate": "Date",
+    "tableType": "Type",
+    "tableAmount": "Amount",
+    "tableBalanceAfter": "Balance After",
+    "dateLabel": "Date:",
+    "typeLabel": "Type:",
+    "amountLabel": "Amount:",
+    "balanceLabel": "Balance After:",
+    "coinsUnit": "coins"
+  },
+
+  "vip": {
+    "title": "VIP Status",
+    "subtitle": "Your exclusive member benefits based on rolling 90-day spend.",
+    "currentTier": "Current VIP tier",
+    "rollingSpend": "90-day spend:",
+    "nextAt": "Next: {tier} at ${amount}",
+    "moreToReach": "${amount} more to reach {tier}",
+    "maxTier": "You've reached the highest tier. Enjoy all Diamond benefits!",
+    "allTiers": "All Tiers & Benefits",
+    "currentBadge": "Current",
+    "upcomingDeals": "Upcoming VIP Deals",
+    "dealStarts": "Starts {date}",
+    "dealOff": "{discount}% off",
+    "dealView": "View",
+    "noDeals": "No upcoming VIP deals right now. Check back soon!",
+    "signIn": "Sign in to see your VIP status",
+    "signInSub": "Unlock exclusive benefits as you shop.",
+    "signInBtn": "Sign In"
   }
 }

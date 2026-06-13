@@ -17,6 +17,10 @@ if (typeof window !== 'undefined') {
   setTokenGetter(() => _accessToken);
   setTokenUpdater((token) => {
     _accessToken = token ?? null;
+    // Refresh failed — session expired; sign the user out in UI too
+    if (!token) {
+      useAuthStore.setState({ user: null, accessToken: null });
+    }
   });
 }
 
