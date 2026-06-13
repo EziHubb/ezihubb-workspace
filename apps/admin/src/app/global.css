@@ -4,6 +4,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Default theme (Coral) ── */
+:root {
+  --c-primary:       232 93 63;
+  --c-primary-dark:  #C44A2E;
+  --c-primary-light: #FFF0EC;
+  --c-sidebar:       #1E1E2E;
+}
+
 @layer base {
   * { box-sizing: border-box; }
   html {
@@ -12,11 +20,11 @@
   }
 }
 
-/* Sidebar active state helper — Tailwind can't express rgba directly in a class */
+/* These use primary RGB so they update when the theme changes */
 .bg-sidebar-active {
-  background-color: rgba(232, 93, 63, 0.12);
+  background-color: rgb(var(--c-primary) / 0.12);
 }
 
 .bg-primary\/3 {
-  background-color: rgba(232, 93, 63, 0.03);
+  background-color: rgb(var(--c-primary) / 0.03);
 }

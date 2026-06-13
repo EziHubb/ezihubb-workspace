@@ -189,6 +189,7 @@ export default async function DashboardPage() {
       <AdminPageHeader
         title="Dashboard"
         subtitle="Platform overview at a glance"
+        queryKey={false}
       />
 
       {/* ── Platform KPI row (6 cards) ────────────────────────────────────── */}

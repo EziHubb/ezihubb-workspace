@@ -138,148 +138,137 @@ function AppDialog({ state }: { state: NonNullable<DialogState> }) {
   const isPreview = state.type === 'preview';
 
   return (
-    <div
-      className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-4 sm:p-0"
-      style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
-      onClick={() => dismiss(state)}
-    >
+    <>
+      <style>{`
+        @keyframes dlg-overlay-in { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes dlg-card-in { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+      `}</style>
+
+      {/* Overlay — no backdropFilter to avoid blurring dialog text */}
       <div
-        className={`relative bg-card border border-border/60 shadow-2xl flex flex-col overflow-hidden
-          ${isPreview
-            ? 'w-[92vw] h-[88vh] max-w-6xl rounded-2xl'
-            : 'w-full max-w-[400px] rounded-2xl sm:mx-4'
-          }`}
-        style={{
-          animation: 'dlg-in 0.18s cubic-bezier(0.34,1.56,0.64,1) both',
-        }}
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+        style={{ background: 'rgba(10,10,20,0.5)', animation: 'dlg-overlay-in 0.15s ease both' }}
+        onClick={() => dismiss(state)}
       >
-        <style>{`
-          @keyframes dlg-in {
-            from { opacity: 0; transform: scale(0.92) translateY(8px); }
-            to   { opacity: 1; transform: scale(1)    translateY(0);   }
-          }
-        `}</style>
-
-        {/* Close button — top-right corner */}
-        <button
-          type="button"
-          onClick={() => dismiss(state)}
-          className="absolute top-3.5 right-3.5 z-10 w-7 h-7 flex items-center justify-center rounded-full text-muted hover:text-secondary hover:bg-muted/10 transition-colors"
-          aria-label="Close"
+        {/* Card */}
+        <div
+          className={`relative bg-surface border border-border flex flex-col
+            ${isPreview
+              ? 'w-[92vw] h-[88vh] max-w-6xl rounded-xl shadow-2xl'
+              : 'w-full max-w-sm rounded-xl shadow-floating'
+            }`}
+          style={{ animation: 'dlg-card-in 0.2s ease both' }}
+          onClick={(e) => e.stopPropagation()}
         >
-          <X className="w-4 h-4" />
-        </button>
 
-        {/* Preview iframe */}
-        {isPreview ? (
-          <>
-            <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-border/60 shrink-0">
-              <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
-              <span className="font-semibold text-sm text-secondary truncate pr-8">{state.title}</span>
-            </div>
-            <div className="flex-1 min-h-0 relative">
-              {loading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-card z-10">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                </div>
-              )}
-              <iframe
-                src={state.url}
-                className="w-full h-full border-0"
-                title={state.title}
-                onLoad={() => setLoading(false)}
-                onLoadStart={() => setLoading(true)}
-              />
-            </div>
-          </>
-        ) : (
-          /* Alert / Confirm / Prompt */
-          <div className="px-6 pt-7 pb-6 flex flex-col gap-5">
-            {/* Icon + Title */}
-            <div className="flex flex-col items-center gap-3 text-center">
-              <DialogIconBadge state={state} />
-              <h2 className="text-base font-semibold text-secondary leading-snug">
-                {state.title}
-              </h2>
-            </div>
-
-            {/* Message */}
-            <p className="text-sm text-muted text-center leading-relaxed -mt-1">
-              {state.message}
-            </p>
-
-            {/* Prompt input */}
-            {state.type === 'prompt' && (
-              <input
-                ref={inputRef}
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder={state.placeholder}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') { e.preventDefault(); state.resolve(input.trim() || null); }
-                }}
-                className="w-full text-sm border border-border rounded-lg px-3.5 py-2.5 bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-shadow"
-              />
-            )}
-
-            {/* Buttons */}
-            <div className={`flex gap-2.5 ${state.type === 'alert' ? 'justify-center' : 'justify-end'} pt-1`}>
-              {state.type !== 'alert' && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (state.type === 'confirm') state.resolve(false);
-                    else state.resolve(null);
-                  }}
-                  className="h-9 px-5 rounded-lg border border-border text-sm font-medium text-secondary bg-transparent hover:bg-muted/10 transition-colors"
-                >
-                  Cancel
+          {/* ── Preview ── */}
+          {isPreview ? (
+            <>
+              <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-border shrink-0">
+                <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+                <span className="font-semibold text-sm text-secondary pr-8 truncate">{state.title}</span>
+                <button type="button" onClick={() => dismiss(state)}
+                  className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full text-muted hover:text-secondary hover:bg-muted/10 transition-colors">
+                  <X className="w-4 h-4" />
                 </button>
-              )}
+              </div>
+              <div className="flex-1 min-h-0 relative rounded-b-xl overflow-hidden">
+                {loading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-surface z-10">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  </div>
+                )}
+                <iframe src={state.url} className="w-full h-full border-0" title={state.title}
+                  onLoad={() => setLoading(false)} onLoadStart={() => setLoading(true)} />
+              </div>
+            </>
+          ) : (
+            /* ── Alert / Confirm / Prompt ── */
+            <>
+              {/* Close X */}
+              <button
+                type="button"
+                onClick={() => dismiss(state)}
+                className="absolute top-3.5 right-3.5 w-7 h-7 flex items-center justify-center rounded-full text-muted hover:text-secondary hover:bg-black/5 transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-[15px] h-[15px]" />
+              </button>
 
-              {state.type === 'alert' && (
-                <button
-                  ref={confirmRef}
-                  type="button"
-                  onClick={() => state.resolve()}
-                  className="h-9 px-8 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm"
-                >
-                  OK
-                </button>
-              )}
+              {/* Body */}
+              <div className="px-6 pt-8 pb-5 flex flex-col items-center gap-3">
+                <DialogIconBadge state={state} />
 
-              {state.type === 'confirm' && (
-                <button
-                  ref={confirmRef}
-                  type="button"
-                  onClick={() => state.resolve(true)}
-                  className={`h-9 px-5 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] shadow-sm ${
-                    state.destructive
-                      ? 'bg-red-500 text-white hover:bg-red-600'
-                      : 'bg-primary text-white hover:bg-primary/90'
-                  }`}
-                >
-                  {state.confirmLabel}
-                </button>
-              )}
+                <h2 className="text-[15px] font-semibold leading-snug text-center" style={{ color: '#1C1C1E' }}>
+                  {state.title}
+                </h2>
 
-              {state.type === 'prompt' && (
-                <button
-                  ref={confirmRef}
-                  type="button"
-                  onClick={() => state.resolve(input.trim() || null)}
-                  className="h-9 px-5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm"
-                >
-                  Submit
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+                <p className="text-sm leading-relaxed text-center" style={{ color: '#555560' }}>
+                  {state.message}
+                </p>
+
+                {state.type === 'prompt' && (
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder={state.placeholder}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); state.resolve(input.trim() || null); }
+                    }}
+                    className="w-full mt-1 text-sm border border-border rounded-lg px-3.5 py-2.5 bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-shadow"
+                  />
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 pb-5 flex gap-2.5 justify-end">
+                {state.type !== 'alert' && (
+                  <button
+                    type="button"
+                    onClick={() => { if (state.type === 'confirm') state.resolve(false); else state.resolve(null); }}
+                    className="h-9 px-5 rounded-lg border border-border text-sm font-medium bg-transparent transition-colors"
+                    style={{ color: '#2D2D2D' }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#f0efed'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+                  >
+                    Cancel
+                  </button>
+                )}
+
+                {state.type === 'alert' && (
+                  <button ref={confirmRef} type="button" onClick={() => state.resolve()}
+                    className="h-9 px-8 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-dark active:scale-[0.98] transition-all shadow-sm">
+                    OK
+                  </button>
+                )}
+
+                {state.type === 'confirm' && (
+                  <button
+                    ref={confirmRef}
+                    type="button"
+                    onClick={() => state.resolve(true)}
+                    className={`h-9 px-5 rounded-lg text-sm font-semibold text-white active:scale-[0.98] transition-all shadow-sm ${
+                      state.destructive ? 'bg-error hover:bg-red-600' : 'bg-primary hover:bg-primary-dark'
+                    }`}
+                  >
+                    {state.confirmLabel}
+                  </button>
+                )}
+
+                {state.type === 'prompt' && (
+                  <button ref={confirmRef} type="button" onClick={() => state.resolve(input.trim() || null)}
+                    className="h-9 px-5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-dark active:scale-[0.98] transition-all shadow-sm">
+                    Submit
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

@@ -151,6 +151,7 @@ export default function CreatorMembersPage() {
       <AdminPageHeader
         title="Creator Members"
         subtitle="All users in the Creator Network with their statistics"
+        queryKey={['admin-creator-members']}
       />
 
       {/* Filters */}

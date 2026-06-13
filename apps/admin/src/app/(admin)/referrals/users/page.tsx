@@ -156,6 +156,7 @@ export default function ReferralUsersPage() {
       <AdminPageHeader
         title="Referral Users"
         subtitle="All users with their referral programme statistics"
+        queryKey={['admin-referral-users']}
       />
 
       {/* Filters */}

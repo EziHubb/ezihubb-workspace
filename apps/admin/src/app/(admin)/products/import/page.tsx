@@ -186,6 +186,7 @@ export default function ProductImportPage() {
             </Link>
           </div>
         }
+        queryKey={false}
       />
 
       <div className="max-w-4xl space-y-6">

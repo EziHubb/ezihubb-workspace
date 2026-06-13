@@ -219,6 +219,7 @@ export default function AdminStoreDetailPage() {
           <AdminPageHeader
             title={store.name}
             subtitle={`/shops/${store.slug}`}
+            queryKey={['admin-store', id]}
           />
         </div>
         <a href={`/shops/${store.slug}`} target="_blank" rel="noopener noreferrer"

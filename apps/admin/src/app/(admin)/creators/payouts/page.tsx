@@ -180,7 +180,7 @@ export default function CreatorPayoutsPage() {
 
   return (
     <>
-      <AdminPageHeader title="Creator Withdrawals" subtitle="Review and process creator withdrawal requests" />
+      <AdminPageHeader title="Creator Withdrawals" subtitle="Review and process creator withdrawal requests" queryKey={['admin-creator-payouts']} />
 
       <div className="border-b border-border mb-6">
         <nav className="flex gap-0.5">

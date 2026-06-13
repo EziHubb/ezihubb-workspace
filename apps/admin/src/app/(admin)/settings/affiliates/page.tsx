@@ -116,7 +116,7 @@ export default function AffiliateSettingsPage() {
 
   if (isLoading) return (
     <>
-      <AdminPageHeader title="Affiliate Settings" subtitle="Configure the affiliate program" />
+      <AdminPageHeader title="Affiliate Settings" subtitle="Configure the affiliate program" queryKey={['admin-affiliate-settings']} />
       {skeleton}
     </>
   );
@@ -126,6 +126,7 @@ export default function AffiliateSettingsPage() {
       <AdminPageHeader
         title="Affiliate Settings"
         subtitle="Configure commission rates, cookie duration, and payout rules"
+        queryKey={['admin-affiliate-settings']}
       />
 
       <div className="max-w-[640px] space-y-6">

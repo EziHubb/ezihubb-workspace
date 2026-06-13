@@ -283,6 +283,7 @@ export default function PaymentsPage() {
       <AdminPageHeader
         title="Payments"
         subtitle={`${fmtNum(total)} transactions`}
+        queryKey={['admin-payments']}
       />
 
       {/* Stats row */}

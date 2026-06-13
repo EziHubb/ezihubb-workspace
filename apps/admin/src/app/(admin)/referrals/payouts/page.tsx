@@ -246,6 +246,7 @@ export default function ReferralPayoutsPage() {
       <AdminPageHeader
         title="Referral Payouts"
         subtitle="Review and process referral programme payout requests"
+        queryKey={['admin-referral-payouts']}
       />
 
       {/* Tab strip */}

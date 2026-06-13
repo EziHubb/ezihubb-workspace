@@ -201,6 +201,7 @@ export default function ReviewsPage() {
       <AdminPageHeader
         title="Reviews"
         subtitle="Moderate customer reviews and manage public replies"
+        queryKey={['admin-reviews']}
       />
 
       {/* ── Filter tabs ──────────────────────────────────────────────────── */}

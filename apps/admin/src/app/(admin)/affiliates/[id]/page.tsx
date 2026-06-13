@@ -12,69 +12,71 @@ import { fmtDate, fmtNum, fmtAmount, capitalize } from '../../../../lib/fmt';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface CommissionRow {
-  id:          string;
-  orderId:     string;
+  id: string;
+  orderId: string;
   orderNumber: string;
-  baseAmount:  number;
-  rate:        number;
-  amount:      number;
-  status:      string;
+  baseAmount: number;
+  rate: number;
+  amount: number;
+  status: string;
   confirmedAt: string | null;
   cancelledAt: string | null;
-  createdAt:   string;
+  createdAt: string;
 }
 
 interface ClickRow {
-  id:          string;
+  id: string;
   landingPage: string;
   convertedAt: string | null;
-  createdAt:   string;
+  createdAt: string;
 }
 
 interface AffiliateDetail {
-  id:               string;
-  email:            string;
-  firstName:        string | null;
-  lastName:         string | null;
-  website:          string | null;
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  website: string | null;
   promoDescription: string | null;
-  referralCode:     string;
-  commissionRate:   number | null;
-  status:           string;
-  balance:          number;
-  totalEarned:      number;
-  adminNotes:       string | null;
-  rejectedReason:   string | null;
-  approvedAt:       string | null;
-  createdAt:        string;
+  referralCode: string;
+  commissionRate: number | null;
+  status: string;
+  balance: number;
+  totalEarned: number;
+  adminNotes: string | null;
+  rejectedReason: string | null;
+  approvedAt: string | null;
+  createdAt: string;
   stats: {
-    totalClicks:       number;
-    totalConversions:  number;
-    conversionRate:    number;
+    totalClicks: number;
+    totalConversions: number;
+    conversionRate: number;
   };
-  commissions:  CommissionRow[];
+  commissions: CommissionRow[];
   recentClicks: ClickRow[];
 }
 
 // ── Status badge ───────────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING:   'bg-amber-100 text-amber-700',
-  ACTIVE:    'bg-green-100 text-green-700',
+  PENDING: 'bg-amber-100 text-amber-700',
+  ACTIVE: 'bg-green-100 text-green-700',
   SUSPENDED: 'bg-orange-100 text-orange-700',
-  REJECTED:  'bg-red-100 text-red-700',
+  REJECTED: 'bg-red-100 text-red-700',
 };
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[status] ?? 'bg-muted/10 text-muted'}`}>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[status] ?? 'bg-muted/10 text-muted'}`}
+    >
       {capitalize(status)}
     </span>
   );
 }
 
 const COMMISSION_COLORS: Record<string, string> = {
-  PENDING:   'bg-amber-100 text-amber-700',
+  PENDING: 'bg-amber-100 text-amber-700',
   CONFIRMED: 'bg-green-100 text-green-700',
   CANCELLED: 'bg-muted/10 text-muted',
 };
@@ -86,40 +88,54 @@ function PendingActions({
   onDone,
 }: {
   affiliate: AffiliateDetail;
-  onDone:    () => void;
+  onDone: () => void;
 }) {
   const [approveRate, setApproveRate] = useState('');
   const [rejectReason, setRejectReason] = useState('');
-  const [mode,    setMode]    = useState<'idle' | 'approve' | 'reject'>('idle');
-  const [saving,  setSaving]  = useState(false);
-  const [error,   setError]   = useState('');
+  const [mode, setMode] = useState<'idle' | 'approve' | 'reject'>('idle');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const handleApprove = async () => {
     setSaving(true);
     setError('');
     try {
       const body: Record<string, unknown> = {};
-      if (approveRate !== '') body['commissionRate'] = Number(approveRate) / 100;
+      if (approveRate !== '')
+        body['commissionRate'] = Number(approveRate) / 100;
       await api.post(API_ROUTES.ADMIN.AFFILIATE_APPROVE(affiliate.id), body);
       onDone();
-    } catch (e) { setError((e as Error).message); }
-    finally { setSaving(false); }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleReject = async () => {
-    if (!rejectReason.trim()) { setError('Reason required.'); return; }
+    if (!rejectReason.trim()) {
+      setError('Reason required.');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
-      await api.post(API_ROUTES.ADMIN.AFFILIATE_REJECT(affiliate.id), { reason: rejectReason });
+      await api.post(API_ROUTES.ADMIN.AFFILIATE_REJECT(affiliate.id), {
+        reason: rejectReason,
+      });
       onDone();
-    } catch (e) { setError((e as Error).message); }
-    finally { setSaving(false); }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div className="bg-amber-50 border border-amber-200 rounded-card p-5">
-      <p className="text-sm font-semibold text-amber-800 mb-3">Application pending review</p>
+      <p className="text-sm font-semibold text-amber-800 mb-3">
+        Application pending review
+      </p>
 
       {mode === 'idle' && (
         <div className="flex gap-2">
@@ -144,7 +160,8 @@ function PendingActions({
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1">
-              Commission rate % <span className="font-normal">(blank = global default)</span>
+              Commission rate %{' '}
+              <span className="font-normal">(blank = global default)</span>
             </label>
             <div className="relative w-36">
               <input
@@ -152,19 +169,31 @@ function PendingActions({
                 value={approveRate}
                 onChange={(e) => setApproveRate(e.target.value)}
                 placeholder="e.g. 10"
-                min={0} max={100} step={0.1}
+                min={0}
+                max={100}
+                step={0.1}
                 className="w-full px-3 py-1.5 pr-7 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted text-sm">%</span>
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted text-sm">
+                %
+              </span>
             </div>
           </div>
           {error && <p className="text-xs text-red-600">{error}</p>}
           <div className="flex gap-2">
-            <button type="button" onClick={handleApprove} disabled={saving}
-              className="px-3 py-1.5 text-xs font-bold bg-green-600 hover:bg-green-700 text-white rounded-button disabled:opacity-50 transition-colors">
+            <button
+              type="button"
+              onClick={handleApprove}
+              disabled={saving}
+              className="px-3 py-1.5 text-xs font-bold bg-green-600 hover:bg-green-700 text-white rounded-button disabled:opacity-50 transition-colors"
+            >
               {saving ? 'Approving…' : 'Confirm Approve'}
             </button>
-            <button type="button" onClick={() => setMode('idle')} className="px-3 py-1.5 text-xs text-muted border border-border rounded-button hover:border-primary/40 transition-colors">
+            <button
+              type="button"
+              onClick={() => setMode('idle')}
+              className="px-3 py-1.5 text-xs text-muted border border-border rounded-button hover:border-primary/40 transition-colors"
+            >
               Cancel
             </button>
           </div>
@@ -186,11 +215,19 @@ function PendingActions({
           </div>
           {error && <p className="text-xs text-red-600">{error}</p>}
           <div className="flex gap-2">
-            <button type="button" onClick={handleReject} disabled={saving}
-              className="px-3 py-1.5 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-button disabled:opacity-50 transition-colors">
+            <button
+              type="button"
+              onClick={handleReject}
+              disabled={saving}
+              className="px-3 py-1.5 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-button disabled:opacity-50 transition-colors"
+            >
               {saving ? 'Rejecting…' : 'Confirm Reject'}
             </button>
-            <button type="button" onClick={() => setMode('idle')} className="px-3 py-1.5 text-xs text-muted border border-border rounded-button hover:border-primary/40 transition-colors">
+            <button
+              type="button"
+              onClick={() => setMode('idle')}
+              className="px-3 py-1.5 text-xs text-muted border border-border rounded-button hover:border-primary/40 transition-colors"
+            >
               Cancel
             </button>
           </div>
@@ -207,31 +244,40 @@ function EditPanel({
   onSaved,
 }: {
   affiliate: AffiliateDetail;
-  onSaved:   () => void;
+  onSaved: () => void;
 }) {
-  const [status,         setStatus]         = useState(affiliate.status);
+  const [status, setStatus] = useState(affiliate.status);
   const [commissionRate, setCommissionRate] = useState(
-    affiliate.commissionRate !== null ? String((affiliate.commissionRate * 100).toFixed(1)) : '',
+    affiliate.commissionRate !== null
+      ? String((affiliate.commissionRate * 100).toFixed(1))
+      : '',
   );
   const [adminNotes, setAdminNotes] = useState(affiliate.adminNotes ?? '');
-  const [saving,     setSaving]     = useState(false);
-  const [done,       setDone]       = useState(false);
-  const [error,      setError]      = useState('');
+  const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSave = async () => {
     setSaving(true);
     setError('');
     try {
-      const body: Record<string, unknown> = { status, adminNotes: adminNotes || null };
-      if (commissionRate !== '') body['commissionRate'] = Number(commissionRate) / 100;
+      const body: Record<string, unknown> = {
+        status,
+        adminNotes: adminNotes || null,
+      };
+      if (commissionRate !== '')
+        body['commissionRate'] = Number(commissionRate) / 100;
       else body['commissionRate'] = null;
 
       await api.patch(API_ROUTES.ADMIN.AFFILIATE(affiliate.id), body);
       setDone(true);
       setTimeout(() => setDone(false), 3000);
       onSaved();
-    } catch (e) { setError((e as Error).message); }
-    finally { setSaving(false); }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -240,7 +286,9 @@ function EditPanel({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Status</label>
+          <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
+            Status
+          </label>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
@@ -255,7 +303,7 @@ function EditPanel({
 
         <div>
           <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
-            Commission Rate % <span className="font-normal">(blank = global default)</span>
+            Commission Rate %
           </label>
           <div className="relative">
             <input
@@ -263,16 +311,25 @@ function EditPanel({
               value={commissionRate}
               onChange={(e) => setCommissionRate(e.target.value)}
               placeholder="Global default"
-              min={0} max={100} step={0.1}
+              min={0}
+              max={100}
+              step={0.1}
               className="w-full px-3 py-2 pr-7 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted text-sm">%</span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted text-sm">
+              %
+            </span>
           </div>
+          <p className="text-xs text-muted mt-1">
+            Leave blank to use the global default rate
+          </p>
         </div>
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Admin Notes (internal)</label>
+        <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
+          Admin Notes (internal)
+        </label>
         <textarea
           value={adminNotes}
           onChange={(e) => setAdminNotes(e.target.value)}
@@ -282,7 +339,11 @@ function EditPanel({
         />
       </div>
 
-      {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-button px-3 py-2">{error}</p>}
+      {error && (
+        <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-button px-3 py-2">
+          {error}
+        </p>
+      )}
 
       <button
         type="button"
@@ -299,18 +360,23 @@ function EditPanel({
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 
-export default function AffiliateDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function AffiliateDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
   const router = useRouter();
   const qc = useQueryClient();
 
   const { data: affiliate, isLoading } = useQuery<AffiliateDetail>({
     queryKey: ['admin-affiliate', id],
-    queryFn:  () => api.get<AffiliateDetail>(API_ROUTES.ADMIN.AFFILIATE(id)),
+    queryFn: () => api.get<AffiliateDetail>(API_ROUTES.ADMIN.AFFILIATE(id)),
     staleTime: 30_000,
   });
 
-  const invalidate = () => void qc.invalidateQueries({ queryKey: ['admin-affiliate', id] });
+  const invalidate = () =>
+    void qc.invalidateQueries({ queryKey: ['admin-affiliate', id] });
 
   if (isLoading) {
     return (
@@ -320,7 +386,10 @@ export default function AffiliateDetailPage({ params }: { params: Promise<{ id: 
         </div>
         <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-32 bg-surface border border-border rounded-card animate-pulse" />
+            <div
+              key={i}
+              className="h-32 bg-surface border border-border rounded-card animate-pulse"
+            />
           ))}
         </div>
       </>
@@ -331,14 +400,20 @@ export default function AffiliateDetailPage({ params }: { params: Promise<{ id: 
     return (
       <div className="text-center py-20">
         <p className="text-secondary font-medium">Affiliate not found.</p>
-        <button type="button" onClick={() => router.back()} className="mt-3 text-sm text-primary hover:underline">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="mt-3 text-sm text-primary hover:underline"
+        >
           Go back
         </button>
       </div>
     );
   }
 
-  const fullName = [affiliate.firstName, affiliate.lastName].filter(Boolean).join(' ') || affiliate.email;
+  const fullName =
+    [affiliate.firstName, affiliate.lastName].filter(Boolean).join(' ') ||
+    affiliate.email;
 
   return (
     <>
@@ -355,13 +430,12 @@ export default function AffiliateDetailPage({ params }: { params: Promise<{ id: 
       <AdminPageHeader
         title={fullName}
         subtitle={affiliate.email}
+        queryKey={['admin-affiliate', id]}
       />
 
       <div className="grid grid-cols-3 gap-6 mt-2">
-
         {/* ── Left column (2/3) ─────────────────────────────────────────────── */}
         <div className="col-span-2 space-y-6">
-
           {/* Pending banner */}
           {affiliate.status === 'PENDING' && (
             <PendingActions affiliate={affiliate} onDone={invalidate} />
@@ -369,30 +443,40 @@ export default function AffiliateDetailPage({ params }: { params: Promise<{ id: 
 
           {/* Application info */}
           <div className="bg-surface border border-border rounded-card p-5">
-            <h4 className="font-semibold text-secondary text-sm mb-4">Application</h4>
+            <h4 className="font-semibold text-secondary text-sm mb-4">
+              Application
+            </h4>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
               {[
-                { label: 'First name',       value: affiliate.firstName ?? '—' },
-                { label: 'Last name',        value: affiliate.lastName  ?? '—' },
-                { label: 'Email',            value: affiliate.email },
-                { label: 'Website',          value: affiliate.website ?? '—' },
-                { label: 'Referral code',    value: affiliate.referralCode },
-                { label: 'Applied',          value: fmtDate(affiliate.createdAt) },
+                { label: 'First name', value: affiliate.firstName ?? '—' },
+                { label: 'Last name', value: affiliate.lastName ?? '—' },
+                { label: 'Email', value: affiliate.email },
+                { label: 'Website', value: affiliate.website ?? '—' },
+                { label: 'Referral code', value: affiliate.referralCode },
+                { label: 'Applied', value: fmtDate(affiliate.createdAt) },
               ].map(({ label, value }) => (
                 <div key={label}>
-                  <dt className="text-xs font-semibold text-muted uppercase tracking-wide mb-0.5">{label}</dt>
+                  <dt className="text-xs font-semibold text-muted uppercase tracking-wide mb-0.5">
+                    {label}
+                  </dt>
                   <dd className="text-secondary">{value}</dd>
                 </div>
               ))}
               {affiliate.promoDescription && (
                 <div className="col-span-2">
-                  <dt className="text-xs font-semibold text-muted uppercase tracking-wide mb-0.5">Promo description</dt>
-                  <dd className="text-secondary">{affiliate.promoDescription}</dd>
+                  <dt className="text-xs font-semibold text-muted uppercase tracking-wide mb-0.5">
+                    Promo description
+                  </dt>
+                  <dd className="text-secondary">
+                    {affiliate.promoDescription}
+                  </dd>
                 </div>
               )}
               {affiliate.rejectedReason && (
                 <div className="col-span-2">
-                  <dt className="text-xs font-semibold text-muted uppercase tracking-wide mb-0.5">Rejection reason</dt>
+                  <dt className="text-xs font-semibold text-muted uppercase tracking-wide mb-0.5">
+                    Rejection reason
+                  </dt>
                   <dd className="text-red-600">{affiliate.rejectedReason}</dd>
                 </div>
               )}
@@ -402,31 +486,60 @@ export default function AffiliateDetailPage({ params }: { params: Promise<{ id: 
           {/* Commission history */}
           <div className="bg-surface border border-border rounded-card overflow-hidden">
             <div className="px-5 py-4 border-b border-border">
-              <h4 className="font-semibold text-secondary text-sm">Commission History</h4>
+              <h4 className="font-semibold text-secondary text-sm">
+                Commission History
+              </h4>
             </div>
             {affiliate.commissions.length === 0 ? (
-              <p className="px-5 py-8 text-sm text-muted text-center">No commissions yet.</p>
+              <p className="px-5 py-8 text-sm text-muted text-center">
+                No commissions yet.
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-background">
-                      {['Order', 'Commission', 'Rate', 'Amount', 'Status', 'Date'].map((h) => (
-                        <th key={h} className="px-4 py-2.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wide">{h}</th>
+                      {[
+                        'Order',
+                        'Commission',
+                        'Rate',
+                        'Amount',
+                        'Status',
+                        'Date',
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          className="px-4 py-2.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wide"
+                        >
+                          {h}
+                        </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {affiliate.commissions.map((c) => (
-                      <tr key={c.id} className="hover:bg-muted/3 transition-colors">
+                      <tr
+                        key={c.id}
+                        className="hover:bg-muted/3 transition-colors"
+                      >
                         <td className="px-4 py-2.5">
-                          <span className="font-mono text-xs text-primary">{c.orderNumber}</span>
+                          <span className="font-mono text-xs text-primary">
+                            {c.orderNumber}
+                          </span>
                         </td>
-                        <td className="px-4 py-2.5 text-muted tabular-nums">${fmtAmount(c.baseAmount)}</td>
-                        <td className="px-4 py-2.5 text-muted tabular-nums">{(c.rate * 100).toFixed(1)}%</td>
-                        <td className="px-4 py-2.5 font-semibold text-secondary tabular-nums">${fmtAmount(c.amount)}</td>
+                        <td className="px-4 py-2.5 text-muted tabular-nums">
+                          ${fmtAmount(c.baseAmount)}
+                        </td>
+                        <td className="px-4 py-2.5 text-muted tabular-nums">
+                          {(c.rate * 100).toFixed(1)}%
+                        </td>
+                        <td className="px-4 py-2.5 font-semibold text-secondary tabular-nums">
+                          ${fmtAmount(c.amount)}
+                        </td>
                         <td className="px-4 py-2.5">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${COMMISSION_COLORS[c.status] ?? 'bg-muted/10 text-muted'}`}>
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${COMMISSION_COLORS[c.status] ?? 'bg-muted/10 text-muted'}`}
+                          >
                             {capitalize(c.status)}
                           </span>
                         </td>
@@ -444,32 +557,49 @@ export default function AffiliateDetailPage({ params }: { params: Promise<{ id: 
           {/* Recent clicks */}
           <div className="bg-surface border border-border rounded-card overflow-hidden">
             <div className="px-5 py-4 border-b border-border">
-              <h4 className="font-semibold text-secondary text-sm">Recent Clicks (last 20)</h4>
+              <h4 className="font-semibold text-secondary text-sm">
+                Recent Clicks (last 20)
+              </h4>
             </div>
             {affiliate.recentClicks.length === 0 ? (
-              <p className="px-5 py-8 text-sm text-muted text-center">No clicks tracked yet.</p>
+              <p className="px-5 py-8 text-sm text-muted text-center">
+                No clicks tracked yet.
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-background">
                       {['Date', 'Landing Page', 'Converted?'].map((h) => (
-                        <th key={h} className="px-4 py-2.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wide">{h}</th>
+                        <th
+                          key={h}
+                          className="px-4 py-2.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wide"
+                        >
+                          {h}
+                        </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {affiliate.recentClicks.map((cl) => (
-                      <tr key={cl.id} className="hover:bg-muted/3 transition-colors">
+                      <tr
+                        key={cl.id}
+                        className="hover:bg-muted/3 transition-colors"
+                      >
                         <td className="px-4 py-2.5 text-xs text-muted whitespace-nowrap">
                           {fmtDate(cl.createdAt)}
                         </td>
-                        <td className="px-4 py-2.5 text-muted max-w-xs truncate" title={cl.landingPage}>
+                        <td
+                          className="px-4 py-2.5 text-muted max-w-xs truncate"
+                          title={cl.landingPage}
+                        >
                           {cl.landingPage}
                         </td>
                         <td className="px-4 py-2.5">
                           {cl.convertedAt ? (
-                            <span className="text-xs font-semibold text-green-700">✓ Yes</span>
+                            <span className="text-xs font-semibold text-green-700">
+                              ✓ Yes
+                            </span>
                           ) : (
                             <span className="text-xs text-muted">—</span>
                           )}
@@ -485,7 +615,6 @@ export default function AffiliateDetailPage({ params }: { params: Promise<{ id: 
 
         {/* ── Right column (1/3) ────────────────────────────────────────────── */}
         <div className="space-y-4">
-
           {/* Status + KPIs */}
           <div className="bg-surface border border-border rounded-card p-5 space-y-4">
             <div className="flex items-center justify-between">
@@ -501,21 +630,36 @@ export default function AffiliateDetailPage({ params }: { params: Promise<{ id: 
 
             <div className="grid grid-cols-2 gap-3 pt-1">
               {[
-                { label: 'Balance',     value: `$${fmtAmount(affiliate.balance)}` },
-                { label: 'Total Earned', value: `$${fmtAmount(affiliate.totalEarned)}` },
-                { label: 'Clicks',      value: fmtNum(affiliate.stats.totalClicks) },
-                { label: 'Conversions', value: fmtNum(affiliate.stats.totalConversions) },
-                { label: 'Conv. Rate',  value: `${(affiliate.stats.conversionRate * 100).toFixed(1)}%` },
+                { label: 'Balance', value: `${fmtAmount(affiliate.balance)}` },
+                {
+                  label: 'Total Earned',
+                  value: `${fmtAmount(affiliate.totalEarned)}`,
+                },
+                { label: 'Clicks', value: fmtNum(affiliate.stats.totalClicks) },
+                {
+                  label: 'Conversions',
+                  value: fmtNum(affiliate.stats.totalConversions),
+                },
+                {
+                  label: 'Conv. Rate',
+                  value: `${(affiliate.stats.conversionRate * 100).toFixed(1)}%`,
+                },
                 {
                   label: 'Commission',
-                  value: affiliate.commissionRate !== null
-                    ? `${(affiliate.commissionRate * 100).toFixed(1)}%`
-                    : 'Global',
+                  value:
+                    affiliate.commissionRate !== null
+                      ? `${(affiliate.commissionRate * 100).toFixed(1)}%`
+                      : 'Global',
                 },
               ].map(({ label, value }) => (
-                <div key={label} className="text-center bg-background rounded-card p-3">
+                <div
+                  key={label}
+                  className="text-center bg-background rounded-card p-3"
+                >
                   <p className="text-xs text-muted mb-0.5">{label}</p>
-                  <p className="font-bold text-secondary tabular-nums">{value}</p>
+                  <p className="font-bold text-secondary tabular-nums">
+                    {value}
+                  </p>
                 </div>
               ))}
             </div>

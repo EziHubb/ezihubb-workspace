@@ -245,6 +245,7 @@ export default function AffiliatePayoutsPage() {
       <AdminPageHeader
         title="Affiliate Payouts"
         subtitle="Review and process payout requests"
+        queryKey={['admin-affiliate-payouts']}
       />
 
       {/* Tab strip */}

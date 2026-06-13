@@ -51,8 +51,10 @@ function ProductsPageInner() {
   const qc           = useQueryClient();
   const { confirm, alert } = useDialog();
 
+  const VALID_SORTS = new Set(SORT_OPTIONS.map((o) => o.value));
   const urlStatus = searchParams.get('status') ?? '';
-  const urlSort   = searchParams.get('sort')   ?? 'newest';
+  const rawSort   = searchParams.get('sort') ?? '';
+  const urlSort   = VALID_SORTS.has(rawSort as typeof SORT_OPTIONS[number]['value']) ? rawSort : 'newest';
 
   const [search,        setSearch]        = useState('');
   const [debouncedQ,    setDebouncedQ]    = useState('');
@@ -121,9 +123,14 @@ function ProductsPageInner() {
   // ── Actions ──────────────────────────────────────────────────────────────────
 
   const handleToggleActive = useCallback(async (p: AdminProduct) => {
-    await api.patch(API_ROUTES.ADMIN.PRODUCT(p.id), { isActive: !p.isActive });
-    qc.invalidateQueries({ queryKey: ['admin-products'] });
-    qc.invalidateQueries({ queryKey: ['admin-products-stats'] });
+    // Use bulk endpoint so both `isActive` AND `status` are synced atomically
+    // (publish → status=ACTIVE; unpublish → status=INACTIVE)
+    const action = p.isActive ? 'unpublish' : 'publish';
+    await api.patch(API_ROUTES.ADMIN.PRODUCTS_BULK, { ids: [p.id], action });
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ['admin-products'] }),
+      qc.invalidateQueries({ queryKey: ['admin-products-stats'] }),
+    ]);
   }, [qc]);
 
   const handleArchive = useCallback(async (p: AdminProduct) => {

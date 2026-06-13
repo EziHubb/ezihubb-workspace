@@ -112,6 +112,7 @@ export default function ProductionPartnersPage() {
       <AdminPageHeader
         title="Production Partners"
         subtitle="Manage production partners — used for transparency disclosures on product listings"
+        queryKey={['admin-partners']}
       />
 
       <div className="max-w-[720px] space-y-5">

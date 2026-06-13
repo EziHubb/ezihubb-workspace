@@ -279,6 +279,7 @@ export default function CustomersPage() {
       <AdminPageHeader
         title="Customers"
         subtitle={`${fmtNum(total)} customers total`}
+        queryKey={['admin-customers']}
       />
 
       {/* ── Stats row ──────────────────────────────────────────────────────── */}

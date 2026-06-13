@@ -509,6 +509,7 @@ export default function CollectionsPage() {
             New Collection
           </button>
         }
+        queryKey={['admin-collections']}
       />
 
       {/* Filters */}

@@ -489,6 +489,7 @@ export default function CategoriesPage() {
             New Top-Level
           </button>
         }
+        queryKey={['admin-categories']}
       />
 
       {/* 3-panel layout */}

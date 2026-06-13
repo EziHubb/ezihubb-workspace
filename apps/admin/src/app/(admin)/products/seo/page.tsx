@@ -90,7 +90,7 @@ export default function ProductsSeoPage() {
     queryKey: ['seo-products', page, search],
     queryFn:  async () => {
       try {
-        const params: Record<string, string> = { page: String(page), limit: String(PAGE_SIZE), seoAudit: 'true' };
+        const params: Record<string, string> = { page: String(page), limit: String(PAGE_SIZE) };
         if (search) params['q'] = search;
         return await api.get<{ data: SeoProductRow[]; total: number }>(API_ROUTES.ADMIN.PRODUCTS, { params });
       } catch {
@@ -127,6 +127,7 @@ export default function ProductsSeoPage() {
             ← All Products
           </Link>
         }
+        queryKey={['seo-products']}
       />
 
       {/* ── Stats strip ─────────────────────────────────────────────────────── */}

@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -262,7 +262,9 @@ export function Navbar({ menuData }: NavbarProps = {}) {
           {/* ── Row 2: Category Nav (desktop only) ─────────────────────────── */}
           <div className="hidden lg:flex items-center border-t border-border/60">
             {tabs.length > 0 ? (
-              <MegaMenu tabs={tabs} locale={locale} />
+              <Suspense fallback={null}>
+                <MegaMenu tabs={tabs} locale={locale} />
+              </Suspense>
             ) : (
               <div className="flex items-center gap-6 h-10">
                 {[

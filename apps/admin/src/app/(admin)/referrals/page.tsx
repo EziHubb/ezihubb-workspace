@@ -105,6 +105,7 @@ export default function ReferralsOverviewPage() {
       <AdminPageHeader
         title="Referrals"
         subtitle="Overview of the multi-level referral programme"
+        queryKey={['admin-referrals-overview']}
       />
 
       {/* ── KPI cards ── */}

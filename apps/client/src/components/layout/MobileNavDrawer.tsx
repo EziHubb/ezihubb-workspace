@@ -39,7 +39,7 @@ function AccordionSection({
   if (groups.length === 0) {
     return (
       <Link
-        href={`/${locale}/categories/${slug}`}
+        href={`/${locale}/search?category=${slug}`}
         onClick={onClose}
         className="flex items-center px-3 py-3 rounded-button text-sm font-semibold text-secondary hover:bg-muted/5 transition-colors"
       >
@@ -68,7 +68,7 @@ function AccordionSection({
             <div key={group.slug}>
               {/* L2 group link */}
               <Link
-                href={`/${locale}/categories/${group.slug}`}
+                href={`/${locale}/search?category=${group.slug}`}
                 onClick={onClose}
                 className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5 hover:text-primary transition-colors"
               >
@@ -80,7 +80,7 @@ function AccordionSection({
                 {group.items.map((item) => (
                   <Link
                     key={item.slug}
-                    href={`/${locale}/categories/${item.slug}`}
+                    href={`/${locale}/search?category=${item.slug}`}
                     onClick={onClose}
                     className="block py-1.5 text-sm text-secondary hover:text-primary transition-colors"
                   >

@@ -338,6 +338,7 @@ export default function ShippingPage() {
       <AdminPageHeader
         title="Shipping"
         subtitle="Manage shipping zones, methods, and delivery settings"
+        queryKey={['admin-shipping-zones']}
       />
 
       <div className="grid grid-cols-[1fr_380px] gap-6 items-start">

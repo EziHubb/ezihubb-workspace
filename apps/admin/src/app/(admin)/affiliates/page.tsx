@@ -253,6 +253,7 @@ export default function AffiliatesPage() {
       <AdminPageHeader
         title="Affiliates"
         subtitle="Manage affiliate applications, approvals, and accounts"
+        queryKey={['admin-affiliates']}
       />
 
       {/* Tab strip */}

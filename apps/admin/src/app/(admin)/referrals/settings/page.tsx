@@ -325,6 +325,7 @@ export default function ReferralSettingsPage() {
       <AdminPageHeader
         title="Referral Settings"
         subtitle="Configure commission rates, tiers, and payout rules"
+        queryKey={['admin-referral-settings']}
       />
 
       <div className="max-w-[820px] space-y-6">

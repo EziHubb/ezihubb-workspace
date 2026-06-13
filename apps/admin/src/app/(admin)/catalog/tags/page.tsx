@@ -55,6 +55,7 @@ export default function TagsPage() {
       <AdminPageHeader
         title="Tags"
         subtitle="Manage product tags — tags are used for filtering and discovery"
+        queryKey={['admin-tags']}
       />
 
       <div className="max-w-[640px] space-y-5">

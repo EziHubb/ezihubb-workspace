@@ -119,9 +119,17 @@ export const useAuthStore = create<AuthStore>()(
       // ── fetchCurrentUser ───────────────────────────────────────────────────
 
       fetchCurrentUser: async () => {
-        const token = get().accessToken ?? _accessToken;
-        if (!token) return;
         set({ isLoading: true });
+        const token = get().accessToken ?? _accessToken;
+
+        if (!token) {
+          // No in-memory token — silently restore session via refresh cookie.
+          // refreshToken() sets user + accessToken on success, clears on failure.
+          await get().refreshToken();
+          set({ isLoading: false });
+          return;
+        }
+
         try {
           const user = await apiClient.get<UserDto>(API_ROUTES.USERS.ME, { token });
           set({ user, isLoading: false });

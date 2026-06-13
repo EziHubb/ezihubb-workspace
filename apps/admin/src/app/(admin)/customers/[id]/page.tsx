@@ -94,6 +94,7 @@ export default async function CustomerDetailPage({
       <AdminPageHeader
         title={fullName}
         subtitle={customer.email}
+        queryKey={false}
         actions={
           <div className="flex items-center gap-3">
             <Link

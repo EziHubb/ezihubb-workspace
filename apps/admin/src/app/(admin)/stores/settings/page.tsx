@@ -118,7 +118,7 @@ export default function PlatformSettingsPage() {
   if (isLoading) {
     return (
       <>
-        <AdminPageHeader title="Platform Settings" subtitle="Configure global marketplace settings" />
+        <AdminPageHeader title="Platform Settings" subtitle="Configure global marketplace settings" queryKey={['admin-platform-settings']} />
         <div className="space-y-4 max-w-2xl">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-40 bg-surface border border-border rounded-card animate-pulse" />
@@ -133,6 +133,7 @@ export default function PlatformSettingsPage() {
       <AdminPageHeader
         title="Platform Settings"
         subtitle="Configure global commission rates, payouts, and marketplace behaviour"
+        queryKey={['admin-platform-settings']}
       />
 
       <div className="space-y-4 max-w-2xl">

@@ -12,6 +12,7 @@ import type {
   ProductEditFormValues, AdminProductDto, ProductImage,
   VariationOption, VariationGroup, VariationSettings,
 } from '../types';
+import { Toggle } from '../primitives/Toggle';
 import { VariantImagePicker } from '../VariantImagePicker';
 import { ManageVariationsModal } from '../ManageVariationsModal';
 import { CustomOptionsEditor } from '../CustomOptionsEditor';
@@ -165,7 +166,7 @@ function AttributeTagInput({
 
 function VariationOptionRow({
   option,
-  group,
+  showPhoto,
   priceVaries,
   productImages,
   productId,
@@ -173,19 +174,13 @@ function VariationOptionRow({
   onPriceChange,
 }: {
   option:        VariationOption;
-  group:         VariationGroup;
+  showPhoto:     boolean;
   priceVaries:   boolean;
   productImages: ProductImage[];
   productId:     string;
   onToggle:      (available: boolean) => void;
   onPriceChange: (price: number) => void;
 }) {
-  // Show photo column for color swatches, image cards, or any group with images
-  const showPhoto =
-    group.displayType === 'color_swatch' ||
-    group.displayType === 'image'         ||
-    productImages.length > 0;             // always show if product has photos
-
   return (
     <tr className={`border-b border-border last:border-0 group transition-opacity ${!option.isAvailable ? 'opacity-40' : ''}`}>
       {/* Photo thumbnail — opens VariantImagePicker modal */}
@@ -230,13 +225,11 @@ function VariationOptionRow({
 
       {/* Visible toggle */}
       <td className="py-2.5 text-right">
-        <button
-          type="button"
-          onClick={() => onToggle(!option.isAvailable)}
-          className={`relative w-10 h-5 rounded-full transition-colors ${option.isAvailable ? 'bg-primary' : 'bg-border'}`}
-        >
-          <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${option.isAvailable ? 'translate-x-5' : 'translate-x-0.5'}`} />
-        </button>
+        <Toggle
+          checked={option.isAvailable}
+          onChange={onToggle}
+          ariaLabel={`Toggle visibility of ${option.name || option.value}`}
+        />
       </td>
     </tr>
   );
@@ -306,6 +299,10 @@ function VariationsSummaryTable({
     <div className="space-y-7">
       {groups.map((group) => {
         const priceVaries = settings?.variesBy?.includes(group.id + ':price') ?? false;
+        const showPhoto =
+          group.displayType === 'color_swatch' ||
+          group.displayType === 'image' ||
+          (product.images ?? []).length > 0;
         return (
           <div key={group.id}>
             <div className="flex items-baseline gap-2 mb-2">
@@ -316,7 +313,7 @@ function VariationsSummaryTable({
               <table className="w-full text-sm table-auto">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left pb-2 text-xs font-semibold text-muted uppercase tracking-wide w-12">Photo</th>
+                    {showPhoto && <th className="text-left pb-2 text-xs font-semibold text-muted uppercase tracking-wide w-12">Photo</th>}
                     <th className="text-left pb-2 text-xs font-semibold text-muted uppercase tracking-wide">{group.name}</th>
                     {priceVaries && <th className="text-left pb-2 text-xs font-semibold text-muted uppercase tracking-wide w-28">Price</th>}
                     <th className="text-right pb-2 text-xs font-semibold text-muted uppercase tracking-wide">Visible</th>
@@ -327,7 +324,7 @@ function VariationsSummaryTable({
                     <VariationOptionRow
                       key={opt.id}
                       option={opt}
-                      group={group}
+                      showPhoto={showPhoto}
                       priceVaries={priceVaries}
                       productImages={product.images ?? []}
                       productId={product.id}

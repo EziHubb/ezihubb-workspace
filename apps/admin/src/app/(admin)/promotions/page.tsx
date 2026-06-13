@@ -334,6 +334,7 @@ export default function PromotionsPage() {
             Create Promotion
           </button>
         }
+        queryKey={['admin-promotions']}
       />
 
       {/* Stats row */}

@@ -220,7 +220,7 @@ export default function OrdersPage() {
 
   return (
     <>
-      <AdminPageHeader title="Orders" subtitle={pagination ? `${pagination.total} total orders` : undefined} />
+      <AdminPageHeader title="Orders" subtitle={pagination ? `${pagination.total} total orders` : undefined} queryKey={['admin-orders']} />
 
       {/* Filter bar */}
       <div className="bg-surface border border-border rounded-card p-4 mb-4 flex flex-wrap items-center gap-3">

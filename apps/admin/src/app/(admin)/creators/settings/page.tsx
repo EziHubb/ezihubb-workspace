@@ -240,7 +240,7 @@ export default function CreatorSettingsPage() {
 
   return (
     <>
-      <AdminPageHeader title="Creator Network Settings" subtitle="Configure earning rates, tiers, and withdrawal rules" />
+      <AdminPageHeader title="Creator Network Settings" subtitle="Configure earning rates, tiers, and withdrawal rules" queryKey={['admin-creator-settings']} />
 
       <div className="max-w-[820px] space-y-6">
 

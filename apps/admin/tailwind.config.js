@@ -12,11 +12,11 @@ module.exports = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#E85D3F',
-          dark:    '#C44A2E',
-          light:   '#FFF0EC',
+          DEFAULT: 'rgb(var(--c-primary) / <alpha-value>)',
+          dark:    'var(--c-primary-dark)',
+          light:   'var(--c-primary-light)',
         },
-        sidebar:          '#1E1E2E',
+        sidebar:          'var(--c-sidebar)',
         'sidebar-active': 'rgba(232,93,63,0.12)',
         background:       '#F5F5F7',
         surface:          '#FFFFFF',

@@ -48,6 +48,7 @@ export default async function OrderDetailPage({
         title={`Order #${order.orderNumber}`}
         subtitle={`${customerName} · ${fmtDate(order.createdAt)} · ${fmtAmount(Number(order.total))}`}
         actions={<OrderStatusBadge status={order.status} />}
+        queryKey={['admin-order', id]}
       />
 
       <OrderDetailContent order={order} />

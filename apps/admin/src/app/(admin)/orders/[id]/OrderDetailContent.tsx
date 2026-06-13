@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -48,19 +48,24 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail }) {
-  const router = useRouter();
+  const qc = useQueryClient();
   const { confirm, preview } = useDialog();
-  const [order]      = useState<OrderDetail>(initialOrder);
+  const { data: order = initialOrder } = useQuery({
+    queryKey: ['admin-order', initialOrder.id],
+    queryFn: () => api.get<OrderDetail>(API_ROUTES.ADMIN.ORDER(initialOrder.id)),
+    initialData: initialOrder,
+    staleTime: 30_000,
+  });
   const [previewItem,setPreview]    = useState<OrderItem | null>(null);
-  const [newStatus,  setNewStatus]  = useState(order.status);
+  const [newStatus,  setNewStatus]  = useState(initialOrder.status);
   const [note,       setNote]       = useState('');
   const [statusSaving, setSSaving]  = useState(false);
-  const [trackCarrier,  setCarrier] = useState(order.trackingCarrier ?? 'FedEx');
-  const [trackNum,      setTrackNum]= useState(order.trackingNumber ?? '');
+  const [trackCarrier,  setCarrier] = useState(initialOrder.trackingCarrier ?? 'FedEx');
+  const [trackNum,      setTrackNum]= useState(initialOrder.trackingNumber ?? '');
   const [trackSaving,   setTSaving] = useState(false);
   const [statusSuccess, setSSuc]    = useState(false);
 
-  const refresh = () => router.refresh();
+  const refresh = () => qc.invalidateQueries({ queryKey: ['admin-order', initialOrder.id] });
 
   const currentIdx = TIMELINE_STEPS.indexOf(order.status as typeof TIMELINE_STEPS[number]);
   const address =

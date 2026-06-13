@@ -145,9 +145,12 @@ function DraftRow({
 
 const QK = (status: string, page: number) => ['ai-trend-drafts', status, page];
 
+interface ScanResult { triggered: boolean; created: number; message?: string }
+
 export default function AiTrendsPage() {
   const [status, setStatus] = useState<'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'ALL'>('PENDING_REVIEW');
   const [page,   setPage]   = useState(1);
+  const [scanMsg, setScanMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery<TrendDraftsResponse>({
@@ -174,9 +177,22 @@ export default function AiTrendsPage() {
     onSettled:  () => { setActionId(null); qc.invalidateQueries({ queryKey: ['ai-trend-drafts'] }); qc.invalidateQueries({ queryKey: ['sidebar-ai-trend-pending'] }); },
   });
 
-  const scan = useMutation({
-    mutationFn: () => api.post(API_ROUTES.ADMIN.AI_TREND_SCAN, {}),
-    onSettled:  () => qc.invalidateQueries({ queryKey: ['ai-trend-drafts'] }),
+  const scan = useMutation<ScanResult>({
+    mutationFn: () => api.post<ScanResult>(API_ROUTES.ADMIN.AI_TREND_SCAN, {}),
+    onSuccess: (res) => {
+      const text = res.message ?? (res.created > 0
+        ? `Scan complete — ${res.created} new trend${res.created > 1 ? 's' : ''} queued for review`
+        : 'Scan complete — no new trends this time');
+      setScanMsg({ type: 'success', text });
+      setTimeout(() => setScanMsg(null), 6000);
+      setStatus('PENDING_REVIEW');
+      setPage(1);
+      qc.invalidateQueries({ queryKey: ['ai-trend-drafts'] });
+    },
+    onError: () => {
+      setScanMsg({ type: 'error', text: 'Scan failed — check API logs and try again' });
+      setTimeout(() => setScanMsg(null), 6000);
+    },
   });
 
   const drafts     = safeArr(data?.data);
@@ -200,6 +216,20 @@ export default function AiTrendsPage() {
           </button>
         }
       />
+
+      {/* Scan feedback */}
+      {scanMsg && (
+        <div className={`mb-4 flex items-center gap-2.5 px-4 py-2.5 rounded-button text-sm border ${
+          scanMsg.type === 'success'
+            ? 'bg-green-50 text-green-700 border-green-200'
+            : 'bg-red-50 text-red-700 border-red-200'
+        }`}>
+          {scanMsg.type === 'success'
+            ? <CheckCircle className="w-4 h-4 shrink-0" />
+            : <XCircle className="w-4 h-4 shrink-0" />}
+          {scanMsg.text}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex items-center gap-2 mb-6">

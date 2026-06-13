@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useId } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 import type { MegaMenuTab } from '../../types/mega-menu';
 
@@ -13,19 +13,18 @@ interface MegaMenuProps {
 
 // ── Active tab detection ───────────────────────────────────────────────────────
 
-function getActiveTabSlug(tabs: MegaMenuTab[], pathname: string): string | null {
-  // Strip locale prefix and leading slash
+function getActiveTabSlug(tabs: MegaMenuTab[], pathname: string, categoryParam?: string | null): string | null {
   const normalized = pathname.replace(/^\/[a-z]{2}(\/|$)/, '/').replace(/^\//, '');
 
   for (const tab of tabs) {
-    // Direct match on tab nav slug
     if (normalized === tab.navSlug || normalized.startsWith(`${tab.navSlug}/`)) return tab.navSlug;
-    // Check L2 group slugs
     for (const group of tab.groups) {
       if (normalized === `categories/${group.slug}`) return tab.navSlug;
-      // Check L3 item slugs
+      // Search page filtered by this group's category
+      if (normalized === 'search' && categoryParam === group.slug) return tab.navSlug;
       for (const item of group.items) {
         if (normalized === `categories/${item.slug}`) return tab.navSlug;
+        if (normalized === 'search' && categoryParam === item.slug) return tab.navSlug;
       }
     }
   }
@@ -36,12 +35,14 @@ function getActiveTabSlug(tabs: MegaMenuTab[], pathname: string): string | null 
 
 export function MegaMenu({ tabs, locale }: MegaMenuProps) {
   const pathname        = usePathname();
+  const searchParams    = useSearchParams();
+  const categoryParam   = searchParams.get('category');
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const openTimerRef    = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const closeTimerRef   = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const menuRef         = useRef<HTMLDivElement>(null);
   const panelId         = useId();
-  const activeTabSlug   = getActiveTabSlug(tabs, pathname);
+  const activeTabSlug   = getActiveTabSlug(tabs, pathname, categoryParam);
   const currentTab      = tabs.find((t) => t.navSlug === activeTab);
 
   const clearTimers = () => {
@@ -143,9 +144,9 @@ export function MegaMenu({ tabs, locale }: MegaMenuProps) {
             >
               {currentTab.groups.map((group) => (
                 <div key={group.slug}>
-                  {/* Group heading — links to L2 category page */}
+                  {/* Group heading — search filtered by this L2 category */}
                   <Link
-                    href={`/${locale}/categories/${group.slug}`}
+                    href={`/${locale}/search?category=${group.slug}`}
                     onClick={closeNow}
                     className="block text-[11px] font-bold uppercase tracking-wider text-secondary mb-2 hover:text-primary transition-colors"
                   >
@@ -157,7 +158,7 @@ export function MegaMenu({ tabs, locale }: MegaMenuProps) {
                     {group.items.slice(0, 8).map((item) => (
                       <li key={item.slug}>
                         <Link
-                          href={`/${locale}/categories/${item.slug}`}
+                          href={`/${locale}/search?category=${item.slug}`}
                           onClick={closeNow}
                           className="block text-sm text-muted hover:text-primary hover:underline underline-offset-2 transition-colors py-0.5"
                         >
@@ -168,7 +169,7 @@ export function MegaMenu({ tabs, locale }: MegaMenuProps) {
                     {group.items.length > 8 && (
                       <li>
                         <Link
-                          href={`/${locale}/categories/${group.slug}`}
+                          href={`/${locale}/search?category=${group.slug}`}
                           onClick={closeNow}
                           className="block text-sm text-primary font-medium hover:underline underline-offset-2 transition-colors py-0.5"
                         >

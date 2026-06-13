@@ -214,7 +214,7 @@ export function QaTab({ productId }: QaTabProps) {
   const unanswered = questions.filter((q) => !q.answer).length;
 
   return (
-    <div className="p-6 max-w-3xl space-y-5">
+    <div className="p-6 space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-base font-bold text-secondary">Customer Q&amp;A</h3>

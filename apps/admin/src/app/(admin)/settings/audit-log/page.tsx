@@ -85,6 +85,7 @@ export default function AuditLogPage() {
       <AdminPageHeader
         title="Audit Log"
         subtitle="Track admin actions — create, update, delete events across all entities"
+        queryKey={['audit-logs']}
       />
 
       {/* Filters */}

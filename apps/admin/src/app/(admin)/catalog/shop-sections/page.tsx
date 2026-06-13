@@ -69,6 +69,7 @@ export default function ShopSectionsPage() {
       <AdminPageHeader
         title="Shop Sections"
         subtitle="Organise products into named sections (e.g. New Arrivals, Best Sellers)"
+        queryKey={['admin-shop-sections']}
       />
 
       <div className="max-w-[680px] space-y-5">

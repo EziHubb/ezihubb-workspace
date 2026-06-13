@@ -14,6 +14,7 @@ import { API_ROUTES } from '@mlh/constants';
 import { Toggle as PrimitiveToggle } from '../../../components/products/edit/primitives';
 import { fmtDate, fmtDateTime, safeStr } from '../../../lib/fmt';
 import { useDialog } from '../../../contexts/DialogContext';
+import { ADMIN_THEMES, saveTheme, loadSavedTheme, type AdminTheme } from '../../../lib/admin-theme';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Shared primitives
@@ -1136,10 +1137,88 @@ function SeoTab() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Appearance tab
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function AppearanceTab() {
+  const [active, setActive] = useState<AdminTheme>(() => {
+    if (typeof window === 'undefined') return ADMIN_THEMES[0];
+    return loadSavedTheme();
+  });
+
+  const handleSelect = (theme: AdminTheme) => {
+    setActive(theme);
+    saveTheme(theme);
+  };
+
+  return (
+    <div className="space-y-5">
+      <SectionCard title="Admin Color Theme">
+        <p className="text-sm text-muted -mt-2">
+          Choose a colour scheme for the admin interface. The change applies instantly and is saved to this browser.
+        </p>
+
+        <div className="grid grid-cols-3 gap-3 pt-1">
+          {ADMIN_THEMES.map((theme) => {
+            const isActive = active.key === theme.key;
+            const [r, g, b] = theme.primaryRgb.split(' ').map(Number);
+            const hex = `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+            return (
+              <button
+                key={theme.key}
+                type="button"
+                onClick={() => handleSelect(theme)}
+                className={[
+                  'relative flex flex-col items-center gap-2.5 p-4 rounded-card border-2 transition-all text-center',
+                  isActive
+                    ? 'border-primary bg-primary/5 shadow-sm'
+                    : 'border-border hover:border-primary/40 bg-surface',
+                ].join(' ')}
+              >
+                {/* Mini UI preview */}
+                <div className="w-full h-14 rounded-lg overflow-hidden flex shadow-card" aria-hidden>
+                  {/* Sidebar strip */}
+                  <div className="w-6 h-full shrink-0 rounded-l-lg" style={{ backgroundColor: theme.sidebar }} />
+                  {/* Content area */}
+                  <div className="flex-1 bg-[#F5F5F7] p-1.5 space-y-1">
+                    <div className="h-2.5 rounded-sm w-4/5" style={{ backgroundColor: hex, opacity: 0.9 }} />
+                    <div className="h-1.5 rounded-sm w-3/5 bg-[#D1D5DB]" />
+                    <div className="h-1.5 rounded-sm w-2/5 bg-[#D1D5DB]" />
+                    <div className="mt-1.5 h-4 rounded-sm w-full" style={{ backgroundColor: hex }} />
+                  </div>
+                </div>
+
+                <span className="text-xs font-semibold text-secondary">{theme.name}</span>
+
+                {isActive && (
+                  <span className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: hex }}>
+                    <svg viewBox="0 0 10 8" className="w-2.5 h-2" fill="none" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 4 L4 7 L9 1" />
+                    </svg>
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-3 pt-1 border-t border-border">
+          <div className="w-8 h-8 rounded-button shrink-0" style={{ backgroundColor: `rgb(${active.primaryRgb.replace(/ /g, ',')})` }} />
+          <div>
+            <p className="text-sm font-medium text-secondary">Active: {active.name}</p>
+            <p className="text-xs text-muted">Primary #{active.primaryRgb.split(' ').map(n => parseInt(n).toString(16).padStart(2,'0')).join('')} · Sidebar {active.sidebar}</p>
+          </div>
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Tab navigation
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type TabKey = 'store' | 'email' | 'notifications' | 'team' | 'seo' | 'danger';
+type TabKey = 'store' | 'email' | 'notifications' | 'team' | 'seo' | 'appearance' | 'danger';
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: 'store',         label: 'Store',           icon: '🏪' },
@@ -1147,6 +1226,7 @@ const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: 'notifications', label: 'Notifications',    icon: '🔔' },
   { key: 'team',          label: 'Team',             icon: '👥' },
   { key: 'seo',           label: 'SEO & Analytics',  icon: '📈' },
+  { key: 'appearance',    label: 'Appearance',       icon: '🎨' },
   { key: 'danger',        label: 'Danger Zone',      icon: '⚠️' },
 ];
 
@@ -1162,6 +1242,7 @@ export default function SettingsPage() {
       <AdminPageHeader
         title="Settings"
         subtitle="Configure your store, emails, team, and system preferences"
+        queryKey={['store-settings']}
       />
 
       {/* Tab strip */}
@@ -1198,6 +1279,7 @@ export default function SettingsPage() {
         {activeTab === 'notifications' && <NotificationsTab />}
         {activeTab === 'team'          && <TeamTab />}
         {activeTab === 'seo'           && <SeoTab />}
+        {activeTab === 'appearance'    && <AppearanceTab />}
         {activeTab === 'danger'        && <DangerZoneTab />}
       </div>
     </>

@@ -246,6 +246,7 @@ export default function SellerPlansPage() {
       <AdminPageHeader
         title="Seller Plans"
         subtitle="Manage subscription tiers and commissions for marketplace sellers"
+        queryKey={['admin-seller-plans']}
       />
 
       <div className="flex justify-end mb-4">
