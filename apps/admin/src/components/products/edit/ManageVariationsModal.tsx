@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useDialog } from '../../../contexts/DialogContext';
 import Image from 'next/image';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -10,6 +11,7 @@ import {
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { InlinePriceInput } from './primitives';
+import { Toggle } from './primitives/Toggle';
 import type { VariationGroup, VariationSettings } from './types';
 
 // ─── Settings helpers ─────────────────────────────────────────────────────────
@@ -51,24 +53,6 @@ interface VariantRow {
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
 const inputCls = 'w-full px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted';
-
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${checked ? 'bg-[#3D3D3D]' : 'bg-[#9CA3AF]'}`}
-      style={{ height: 26 }}
-    >
-      <span
-        aria-hidden
-        className={`absolute top-[3px] w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${checked ? 'translate-x-[22px]' : 'translate-x-[3px]'}`}
-      />
-    </button>
-  );
-}
 
 // ─── Tag input (text pills) ───────────────────────────────────────────────────
 
@@ -724,6 +708,7 @@ export function ManageVariationsModal({
   productId, isOpen, onClose, onSaved,
 }: ManageVariationsModalProps) {
   const qc = useQueryClient();
+  const { confirm } = useDialog();
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [addingGroup,    setAddingGroup]    = useState(false);
   const [savedMsg,       setSavedMsg]       = useState(false);
@@ -760,7 +745,17 @@ export function ManageVariationsModal({
     qc.invalidateQueries({ queryKey: ['variation-settings', productId] });
   };
 
-  const handleApply = () => {
+  const handleApply = async () => {
+    // Ensure enableVariations is persisted as true when groups exist
+    if (groups.length > 0) {
+      const currentVariesBy = settings?.variesBy ?? [];
+      await api.patch(API_ROUTES.ADMIN.PRODUCT_VARIATION_SETTINGS(productId), {
+        enableVariations: true,
+        variesBy: currentVariesBy,
+      });
+      qc.invalidateQueries({ queryKey: ['variation-settings', productId] });
+      qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
+    }
     onSaved();
     onClose();
     setSavedMsg(true);
@@ -809,8 +804,8 @@ export function ManageVariationsModal({
                       key={group.id}
                       group={group}
                       onEdit={() => setEditingGroupId(group.id)}
-                      onDelete={() => {
-                        if (confirm(`Delete "${group.name}" group and all its options?`)) {
+                      onDelete={async () => {
+                        if (await confirm(`Delete "${group.name}" group and all its options?`, { confirmLabel: 'Delete', destructive: true })) {
                           deleteGroup(group.id);
                         }
                       }}

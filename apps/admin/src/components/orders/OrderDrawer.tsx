@@ -14,6 +14,7 @@ import { CustomizationPreviewModal } from './CustomizationPreviewModal';
 import { BuyLabelModal, type LabelPurchaseResult } from './BuyLabelModal';
 import { api } from '../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { useDialog } from '../../contexts/DialogContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -49,11 +50,11 @@ export interface OrderDetail {
   shippingMethod?: { name: string; carrier?: string };
   customer: {
     id:        string;
-    firstName?: string;
-    lastName?:  string;
+    firstName?: string | null;
+    lastName?:  string | null;
     email:     string;
-    phone?:    string;
-  };
+    phone?:    string | null;
+  } | null;
   items: OrderItem[];
   statusHistory?: { status: string; createdAt: string; note?: string }[];
   isGift?:          boolean;
@@ -443,6 +444,7 @@ interface OrderDrawerProps {
 export function OrderDrawer({ order, onClose, onUpdate }: OrderDrawerProps) {
   const backdropRef   = useRef<HTMLDivElement>(null);
   const router        = useRouter();
+  const { confirm }   = useDialog();
   const [buyLabelOpen, setBuyLabelOpen] = useState(false);
   const [localLabelUrl, setLocalLabelUrl] = useState<string | null>(null);
 
@@ -466,8 +468,9 @@ export function OrderDrawer({ order, onClose, onUpdate }: OrderDrawerProps) {
     return () => window.removeEventListener('keydown', fn);
   }, [onClose]);
 
-  const customerName = [order.customer.firstName, order.customer.lastName]
-    .filter(Boolean).join(' ') || order.customer.email;
+  const customerName = order.customer
+    ? [order.customer.firstName, order.customer.lastName].filter(Boolean).join(' ') || order.customer.email
+    : 'Guest';
 
   return (
     <>
@@ -521,15 +524,17 @@ export function OrderDrawer({ order, onClose, onUpdate }: OrderDrawerProps) {
             </h5>
             <div className="text-sm space-y-0.5">
               <p className="font-medium text-secondary">{customerName}</p>
-              <p className="text-muted">{order.customer.email}</p>
-              {order.customer.phone && <p className="text-muted">{order.customer.phone}</p>}
+              {order.customer && <p className="text-muted">{order.customer.email}</p>}
+              {order.customer?.phone && <p className="text-muted">{order.customer.phone}</p>}
             </div>
-            <Link
-              href={`/customers/${order.customer.id}`}
-              className="text-xs text-primary hover:underline mt-2 inline-block"
-            >
-              View Customer Profile →
-            </Link>
+            {order.customer?.id && (
+              <Link
+                href={`/customers/${order.customer.id}`}
+                className="text-xs text-primary hover:underline mt-2 inline-block"
+              >
+                View Customer Profile →
+              </Link>
+            )}
           </div>
 
           <ShippingInfo order={order} onUpdate={onUpdate} />
@@ -541,7 +546,7 @@ export function OrderDrawer({ order, onClose, onUpdate }: OrderDrawerProps) {
           <button
             type="button"
             onClick={async () => {
-              if (!confirm('Issue a refund for this order?')) return;
+              if (!await confirm('Issue a refund for this order?', { title: 'Issue Refund', confirmLabel: 'Issue Refund', destructive: true })) return;
               await api.post(API_ROUTES.ADMIN.ORDER_REFUND(order.id), { reason: 'Admin initiated' });
               onUpdate();
             }}
@@ -592,7 +597,7 @@ export function OrderDrawer({ order, onClose, onUpdate }: OrderDrawerProps) {
 
       <BuyLabelModal
         orderId={order.id}
-        shippingName={shippingAddr['fullName'] ?? order.customer.firstName ?? ''}
+        shippingName={shippingAddr['fullName'] ?? order.customer?.firstName ?? ''}
         shippingCity={shippingAddr['city'] ?? ''}
         shippingState={shippingAddr['state']}
         shippingCountry={shippingAddr['country'] ?? 'US'}

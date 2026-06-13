@@ -13,7 +13,7 @@ import { CategoryMenu } from './schemas/category-menu.schema';
 import { ProductDetail } from './schemas/product-detail.schema';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
-import { CategoryResponseDto, CategoryChildDto } from './dto/category-response.dto';
+import { CategoryResponseDto, CategoryChildDto, CategoryL3Dto } from './dto/category-response.dto';
 import { CreateCollectionDto } from './dto/create-collection.dto';
 import { UpdateCollectionDto } from './dto/update-collection.dto';
 import { CollectionResponseDto, TagResponseDto } from './dto/collection-response.dto';
@@ -66,7 +66,14 @@ export class CatalogService {
       include: {
         children: {
           where: { isVisible: true },
-          include: { _count: { select: { products: { where: { isActive: true } } } } },
+          include: {
+            children: {
+              where: { isVisible: true },
+              include: { _count: { select: { products: { where: { isActive: true } } } } },
+              orderBy: { sortOrder: 'asc' },
+            },
+            _count: { select: { products: { where: { isActive: true } } } },
+          },
           orderBy: { sortOrder: 'asc' },
         },
         _count: { select: { products: { where: { isActive: true } } } },
@@ -95,6 +102,14 @@ export class CatalogService {
           imageUrl: child.imageUrl,
           sortOrder: child.sortOrder,
           productCount: child._count.products,
+          children: child.children.map((gc): CategoryL3Dto => ({
+            id: gc.id,
+            name: gc.name,
+            slug: gc.slug,
+            imageUrl: gc.imageUrl,
+            sortOrder: gc.sortOrder,
+            productCount: gc._count.products,
+          })),
         })),
       }));
 
@@ -137,6 +152,7 @@ export class CatalogService {
         imageUrl: child.imageUrl,
         sortOrder: child.sortOrder,
         productCount: child._count.products,
+        children: [],
       })),
     };
   }
@@ -252,6 +268,7 @@ export class CatalogService {
         imageUrl: child.imageUrl,
         sortOrder: child.sortOrder,
         productCount: child._count.products,
+        children: [],
       })),
     };
   }
@@ -582,6 +599,28 @@ export class CatalogService {
   }
 
   // ─── Admin helpers ─────────────────────────────────────────────────────────
+
+  async getAdminCategoryById(id: string): Promise<CategoryResponseDto> {
+    const cat = await this.prisma.category.findUnique({
+      where: { id },
+      include: { _count: { select: { products: true } } },
+    });
+    if (!cat) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Category not found' });
+    return {
+      id: cat.id,
+      name: cat.name,
+      slug: cat.slug,
+      description: cat.description,
+      imageUrl: cat.imageUrl,
+      sortOrder: cat.sortOrder,
+      isVisible: cat.isVisible,
+      parentId: cat.parentId,
+      level: (cat as Record<string, unknown>)['level'] as number | undefined,
+      productCount: cat._count.products,
+      createdAt: cat.createdAt,
+      children: [],
+    } as CategoryResponseDto;
+  }
 
   async getAdminCategories(limit = 500): Promise<CategoryResponseDto[]> {
     const categories = await this.prisma.category.findMany({

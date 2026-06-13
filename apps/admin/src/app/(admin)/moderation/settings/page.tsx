@@ -6,6 +6,7 @@ import { Settings2, Save } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { Toggle as PrimitiveToggle } from '../../../../components/products/edit/primitives/Toggle';
 
 interface ModSettings {
   isEnabled:           boolean;
@@ -34,10 +35,9 @@ function Toggle({ value, onChange, label, description }: { value: boolean; onCha
         <p className="text-sm font-medium text-secondary">{label}</p>
         {description && <p className="text-xs text-muted mt-0.5">{description}</p>}
       </div>
-      <button type="button" onClick={() => onChange(!value)}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shrink-0 ml-4 ${value ? 'bg-primary' : 'bg-muted/30'}`}>
-        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`} />
-      </button>
+      <div className="shrink-0 ml-4">
+        <PrimitiveToggle checked={value} onChange={onChange} ariaLabel={label} />
+      </div>
     </div>
   );
 }

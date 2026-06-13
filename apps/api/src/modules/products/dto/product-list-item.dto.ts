@@ -8,6 +8,8 @@ export class ProductListItemDto {
   @ApiProperty() basePrice: number;
   @ApiPropertyOptional() compareAtPrice: number | null;
   @ApiPropertyOptional() primaryImageUrl: string | null;
+  @ApiPropertyOptional() primaryImage: string | null;
+  @ApiProperty() images: { url: string; isPrimary?: boolean }[];
   @ApiProperty() categoryId: string;
   @ApiProperty() categoryName: string;
   @ApiProperty() isPersonalizable: boolean;

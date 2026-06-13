@@ -131,6 +131,8 @@ export class ProductsService {
           basePrice: Number(p.basePrice),
           compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
           primaryImageUrl: p.images[0]?.url ?? null,
+          primaryImage:    p.images[0]?.url ?? null,
+          images:          p.images.map((img) => ({ url: img.url, isPrimary: true })),
           categoryId: p.categoryId,
           categoryName: p.category.name,
           isPersonalizable: p.isPersonalizable,
@@ -249,10 +251,10 @@ export class ProductsService {
     };
   }
 
-  async findRelated(productId: string): Promise<ProductListItemDto[]> {
-    const product = await this.prisma.product.findUnique({
-      where: { id: productId },
-      select: { categoryId: true, tags: { select: { tagId: true } } },
+  async findRelated(slugOrId: string): Promise<ProductListItemDto[]> {
+    const product = await this.prisma.product.findFirst({
+      where: { OR: [{ slug: slugOrId }, { id: slugOrId }] },
+      select: { id: true, categoryId: true, tags: { select: { tagId: true } } },
     });
     if (!product) return [];
 
@@ -261,7 +263,7 @@ export class ProductsService {
     const related = await this.prisma.product.findMany({
       where: {
         isActive: true,
-        id: { not: productId },
+        id: { not: product.id },
         OR: [
           { categoryId: product.categoryId },
           ...(tagIds.length
@@ -1626,6 +1628,8 @@ export class ProductsService {
       basePrice: Number(p.basePrice),
       compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
       primaryImageUrl: p.images[0]?.url ?? null,
+      primaryImage:    p.images[0]?.url ?? null,
+      images:          p.images.map((img) => ({ url: img.url, isPrimary: true })),
       categoryId: p.categoryId,
       categoryName: p.category.name,
       isPersonalizable: p.isPersonalizable,

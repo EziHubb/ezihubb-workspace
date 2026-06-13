@@ -23,6 +23,7 @@ import {
 import { CreateReviewDto } from './dto/create-review.dto';
 import {
   ReviewResponseDto,
+  AdminReviewResponseDto,
   ReviewSummaryDto,
   ReviewAuthorDto,
 } from './dto/review-response.dto';
@@ -33,6 +34,21 @@ import { OrderStatus, Review, ReviewStatus } from '@prisma/client';
 const REVIEW_INCLUDE = {
   user: {
     select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+  },
+} as const;
+
+const ADMIN_REVIEW_INCLUDE = {
+  user: {
+    select: { id: true, firstName: true, lastName: true, email: true, avatarUrl: true },
+  },
+  product: {
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      images: { where: { isPrimary: true }, select: { url: true }, take: 1 },
+      category: { select: { name: true } },
+    },
   },
 } as const;
 
@@ -441,19 +457,24 @@ export class ReviewsService {
 
   // ── Admin ────────────────────────────────────────────────────────────────────
 
-  async findAllAdmin(
-    query: AdminReviewQueryDto,
-  ): Promise<PaginatedResult<ReviewResponseDto>> {
-    const page = query.page ?? 1;
+  async findAllAdmin(query: AdminReviewQueryDto): Promise<PaginatedResult<AdminReviewResponseDto>> {
+    const page  = query.page  ?? 1;
     const limit = query.limit ?? 24;
-    const where = {
-      ...(query.status !== undefined ? { status: query.status } : {}),
-    };
+
+    const where: Record<string, unknown> = {};
+    if (query.status !== undefined) where['status'] = query.status;
+    if (query.rating  !== undefined) where['rating'] = query.rating;
+    if (query.q) {
+      where['OR'] = [
+        { title: { contains: query.q, mode: 'insensitive' } },
+        { body:  { contains: query.q, mode: 'insensitive' } },
+      ];
+    }
 
     const [reviews, total] = await Promise.all([
       this.prisma.review.findMany({
         where,
-        include: REVIEW_INCLUDE,
+        include: ADMIN_REVIEW_INCLUDE,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -461,7 +482,33 @@ export class ReviewsService {
       this.prisma.review.count({ where }),
     ]);
 
-    return paginatedResponse(reviews.map(this.mapToDto), page, limit, total);
+    const data = reviews.map((r) => {
+      const u = r.user as { id: string; firstName: string | null; lastName: string | null; email: string; avatarUrl: string | null };
+      const p = (r as any).product as { id: string; name: string; slug: string; images: { url: string }[]; category: { name: string } | null } | null;
+      return {
+        id:               r.id,
+        userId:           r.userId,
+        orderId:          r.orderId,
+        productId:        r.productId,
+        rating:           r.rating,
+        title:            r.title,
+        body:             r.body,
+        imageUrls:        r.imageUrls,
+        status:           r.status,
+        adminReply:       r.adminReply,
+        repliedAt:        r.repliedAt,
+        createdAt:        r.createdAt,
+        customerName:     `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email,
+        customerEmail:    u.email,
+        customerAvatarUrl: u.avatarUrl,
+        productName:      p?.name   ?? '',
+        productSlug:      p?.slug   ?? '',
+        productImageUrl:  p?.images[0]?.url ?? null,
+        categoryName:     p?.category?.name ?? null,
+      };
+    });
+
+    return paginatedResponse(data, page, limit, total);
   }
 
   async getAdminCounts(): Promise<Record<string, number>> {

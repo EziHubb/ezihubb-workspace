@@ -16,7 +16,7 @@ interface TrendDraft {
   category:    string | null;
   score:       number;
   source:      string;
-  status:      'PENDING' | 'APPROVED' | 'REJECTED';
+  status:      'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
   summary:     string | null;
   suggestedAt: string;
   reviewedAt:  string | null;
@@ -30,15 +30,23 @@ interface TrendDraftsResponse {
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
+const STATUS_LABEL: Record<TrendDraft['status'], string> = {
+  PENDING_REVIEW: 'Pending',
+  APPROVED:       'Approved',
+  REJECTED:       'Rejected',
+  EXPIRED:        'Expired',
+};
+
 function StatusBadge({ status }: { status: TrendDraft['status'] }) {
   const cfg = {
-    PENDING:  'bg-amber-100 text-amber-700',
-    APPROVED: 'bg-green-100 text-green-700',
-    REJECTED: 'bg-red-100 text-red-700',
+    PENDING_REVIEW: 'bg-amber-100 text-amber-700',
+    APPROVED:       'bg-green-100 text-green-700',
+    REJECTED:       'bg-red-100 text-red-700',
+    EXPIRED:        'bg-gray-100 text-gray-500',
   }[status];
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${cfg}`}>
-      {capitalize(status.toLowerCase())}
+      {STATUS_LABEL[status]}
     </span>
   );
 }
@@ -74,7 +82,7 @@ function DraftRow({
   rejecting: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const isPending = draft.status === 'PENDING';
+  const isPending = draft.status === 'PENDING_REVIEW';
 
   return (
     <>
@@ -138,7 +146,7 @@ function DraftRow({
 const QK = (status: string, page: number) => ['ai-trend-drafts', status, page];
 
 export default function AiTrendsPage() {
-  const [status, setStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL'>('PENDING');
+  const [status, setStatus] = useState<'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'ALL'>('PENDING_REVIEW');
   const [page,   setPage]   = useState(1);
   const qc = useQueryClient();
 
@@ -195,7 +203,7 @@ export default function AiTrendsPage() {
 
       {/* Filters */}
       <div className="flex items-center gap-2 mb-6">
-        {(['PENDING', 'APPROVED', 'REJECTED', 'ALL'] as const).map((s) => (
+        {(['PENDING_REVIEW', 'APPROVED', 'REJECTED', 'ALL'] as const).map((s) => (
           <button
             key={s}
             type="button"
@@ -207,7 +215,7 @@ export default function AiTrendsPage() {
                 : 'border-border text-muted hover:border-primary hover:text-secondary',
             ].join(' ')}
           >
-            {capitalize(s.toLowerCase())}
+            {s === 'PENDING_REVIEW' ? 'Pending' : capitalize(s.toLowerCase())}
           </button>
         ))}
         {pagination && (

@@ -11,7 +11,7 @@ import {
 import { ApiOperation } from '@nestjs/swagger';
 import { ReviewsService } from './reviews.service';
 import { AdminReviewQueryDto } from './dto/review-query.dto';
-import { AdminReplyDto, ReviewResponseDto } from './dto/review-response.dto';
+import { AdminReplyDto, AdminReviewResponseDto, ReviewResponseDto } from './dto/review-response.dto';
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
 import { IsString, MinLength } from 'class-validator';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
@@ -36,7 +36,7 @@ export class AdminReviewsController {
   @ApiOperation({ summary: 'List all reviews with optional status filter' })
   async findAll(
     @Query() query: AdminReviewQueryDto,
-  ): Promise<PaginatedResult<ReviewResponseDto>> {
+  ): Promise<PaginatedResult<AdminReviewResponseDto>> {
     return this.reviewsService.findAllAdmin(query);
   }
 

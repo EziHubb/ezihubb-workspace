@@ -9,6 +9,7 @@ import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount, fmtDate } from '../../../lib/fmt';
+import { useDialog } from '../../../contexts/DialogContext';
 
 interface PayoutStats {
   pendingCount:      number;
@@ -55,6 +56,7 @@ const STATUS_OPTIONS = ['', 'PENDING', 'PROCESSING', 'PAID', 'FAILED'];
 
 export default function AdminPayoutsPage() {
   const qc = useQueryClient();
+  const { prompt } = useDialog();
   const [page,   setPage  ] = useState(1);
   const [status, setStatus] = useState('PENDING');
 
@@ -148,8 +150,8 @@ export default function AdminPayoutsPage() {
             <button
               type="button"
               disabled={payMutation.isPending}
-              onClick={() => {
-                const method = prompt('Payment method (e.g. Bank Transfer, PayPal):');
+              onClick={async () => {
+                const method = await prompt('Payment method', { placeholder: 'e.g. Bank Transfer, PayPal', title: 'Process Payout' });
                 if (method) payMutation.mutate({ id: row.original.id, method });
               }}
               className="text-xs font-medium text-white bg-green-600 px-3 py-1 rounded-button hover:bg-green-700 transition-colors disabled:opacity-50"

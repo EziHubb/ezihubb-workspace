@@ -30,7 +30,7 @@ export function Toggle({ checked, onChange, disabled, ariaLabel }: ToggleProps) 
         'relative inline-flex w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/50',
         'disabled:cursor-not-allowed disabled:opacity-50',
-        checked ? 'bg-[#3D3D3D]' : 'bg-[#9CA3AF]',
+        checked ? 'bg-primary' : 'bg-[#9CA3AF]',
       ].join(' ')}
       style={{ height: 26 }}
     >
@@ -46,7 +46,7 @@ export function Toggle({ checked, onChange, disabled, ariaLabel }: ToggleProps) 
       >
         {checked ? (
           /* ✓ checkmark */
-          <svg viewBox="0 0 10 8" className="w-2.5 h-2" fill="none" stroke="#3D3D3D" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+          <svg viewBox="0 0 10 8" className="w-2.5 h-2" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-primary)' }}>
             <path d="M1 4 L4 7 L9 1" />
           </svg>
         ) : (

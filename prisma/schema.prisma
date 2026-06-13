@@ -521,6 +521,13 @@ model PlatformSettings {
   minPayoutAmount         Decimal  @default(100.00) @db.Decimal(10, 2)
   payoutSchedule          String   @default("monthly")
   maintenanceMode         Boolean  @default(false)
+  // Shipping settings
+  freeShippingEnabled     Boolean  @default(false)
+  freeShippingMinAmount   Decimal  @default(50.00) @db.Decimal(10, 2)
+  freeShippingZoneIds     String[] @default([])
+  defaultProcessingDays   Int      @default(2)
+  showEstimatedDelivery   Boolean  @default(true)
+  showCarrierInCheckout   Boolean  @default(true)
   updatedAt               DateTime @updatedAt
 }
 

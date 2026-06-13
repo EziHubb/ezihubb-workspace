@@ -30,8 +30,9 @@ export default async function OrderDetailPage({
     notFound();
   }
 
-  const customerName = [order.customer.firstName, order.customer.lastName]
-    .filter(Boolean).join(' ') || order.customer.email;
+  const customerName = order.customer
+    ? [order.customer.firstName, order.customer.lastName].filter(Boolean).join(' ') || order.customer.email
+    : 'Guest';
 
   return (
     <>

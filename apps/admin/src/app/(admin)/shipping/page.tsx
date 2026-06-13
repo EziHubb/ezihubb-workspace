@@ -21,6 +21,7 @@ import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { Toggle as PrimitiveToggle } from '../../../components/products/edit/primitives';
 import { fmtAmount } from '../../../lib/fmt';
+import { useDialog } from '../../../contexts/DialogContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -195,7 +196,7 @@ function ZoneCard({
                   </span>
 
                   <span className={`text-sm font-semibold shrink-0 tabular-nums ${Number(method.price) === 0 ? 'text-green-600' : 'text-secondary'}`}>
-                    {(method.price ?? 0) == 0 ? 'Free' : fmtAmount(method.price)}
+                    {Number(method.price) === 0 ? 'Free' : fmtAmount(method.price)}
                   </span>
 
                   {!method.isActive && (
@@ -248,6 +249,7 @@ function ZoneCard({
 
 export default function ShippingPage() {
   const qc = useQueryClient();
+  const { confirm } = useDialog();
 
   // ── Zones ─────────────────────────────────────────────────────────────────
 
@@ -308,7 +310,7 @@ export default function ShippingPage() {
   };
 
   const handleDeleteZone = async (id: string) => {
-    if (!confirm('Delete this shipping zone and all its methods?')) return;
+    if (!await confirm('Delete this shipping zone and all its methods?', { confirmLabel: 'Delete zone', destructive: true })) return;
     await api.delete(API_ROUTES.ADMIN.SHIPPING_ZONE(id));
     invalidateZones();
   };
@@ -324,7 +326,7 @@ export default function ShippingPage() {
   };
 
   const handleDeleteMethod = async (zoneId: string, methodId: string) => {
-    if (!confirm('Delete this shipping method?')) return;
+    if (!await confirm('Delete this shipping method?', { confirmLabel: 'Delete method', destructive: true })) return;
     await api.delete(`${API_ROUTES.ADMIN.SHIPPING_ZONE_METHODS(zoneId)}/${methodId}`);
     invalidateZones();
   };

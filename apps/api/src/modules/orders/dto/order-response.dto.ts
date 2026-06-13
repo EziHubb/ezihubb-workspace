@@ -34,6 +34,14 @@ export class OrderStatusHistoryDto {
   @ApiProperty() createdAt: Date;
 }
 
+export class OrderCustomerDto {
+  @ApiProperty() id: string;
+  @ApiPropertyOptional() firstName: string | null;
+  @ApiPropertyOptional() lastName: string | null;
+  @ApiProperty() email: string;
+  @ApiPropertyOptional() phone: string | null;
+}
+
 export class OrderResponseDto {
   @ApiProperty() id: string;
   @ApiProperty() orderNumber: string;
@@ -80,6 +88,9 @@ export class OrderResponseDto {
   @ApiPropertyOptional() deliveredAt: Date | null;
   @ApiProperty() createdAt: Date;
   @ApiProperty() updatedAt: Date;
+
+  @ApiPropertyOptional({ type: () => OrderCustomerDto })
+  customer: OrderCustomerDto | null;
 
   @ApiProperty({ type: [OrderItemDto] }) items: OrderItemDto[];
   @ApiPropertyOptional({ type: () => OrderPaymentDto })

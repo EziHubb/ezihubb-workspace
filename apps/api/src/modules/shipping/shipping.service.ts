@@ -245,6 +245,53 @@ export class ShippingService {
     await this.prisma.shippingMethod.delete({ where: { id } });
   }
 
+  async getShippingSettings() {
+    const s = await this.prisma.platformSettings.upsert({
+      where:  { id: 'singleton' },
+      update: {},
+      create: { id: 'singleton' },
+      select: {
+        freeShippingEnabled:   true,
+        freeShippingMinAmount: true,
+        freeShippingZoneIds:   true,
+        defaultProcessingDays: true,
+        showEstimatedDelivery: true,
+        showCarrierInCheckout: true,
+      },
+    });
+    return {
+      ...s,
+      freeShippingMinAmount: Number(s.freeShippingMinAmount),
+    };
+  }
+
+  async updateShippingSettings(dto: {
+    freeShippingEnabled?:   boolean;
+    freeShippingMinAmount?: number;
+    freeShippingZoneIds?:   string[];
+    defaultProcessingDays?: number;
+    showEstimatedDelivery?: boolean;
+    showCarrierInCheckout?: boolean;
+  }) {
+    const s = await this.prisma.platformSettings.upsert({
+      where:  { id: 'singleton' },
+      update: dto,
+      create: { id: 'singleton', ...dto },
+      select: {
+        freeShippingEnabled:   true,
+        freeShippingMinAmount: true,
+        freeShippingZoneIds:   true,
+        defaultProcessingDays: true,
+        showEstimatedDelivery: true,
+        showCarrierInCheckout: true,
+      },
+    });
+    return {
+      ...s,
+      freeShippingMinAmount: Number(s.freeShippingMinAmount),
+    };
+  }
+
   /** Returns the carrier-specific tracking URL for a given tracking number. */
   buildTrackingUrl(carrier: string, trackingNumber: string): string {
     const c = carrier.toUpperCase();

@@ -1,6 +1,7 @@
 ﻿import './global.css';
 import { ReactQueryProvider } from '../components/providers/ReactQueryProvider';
 import { SessionProvider } from '../components/providers/SessionProvider';
+import { DialogProvider } from '../contexts/DialogContext';
 
 export const metadata = {
   title:       'Daily Daisy — Admin',
@@ -17,7 +18,9 @@ export default function RootLayout({
       <body className="bg-background text-secondary antialiased font-sans">
         <SessionProvider>
           <ReactQueryProvider>
-            {children}
+            <DialogProvider>
+              {children}
+            </DialogProvider>
           </ReactQueryProvider>
         </SessionProvider>
       </body>

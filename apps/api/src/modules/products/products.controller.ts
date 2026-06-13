@@ -58,13 +58,13 @@ export class ProductsController {
     return this.productsService.findBySlug(slug, lockId);
   }
 
-  // GET /products/:id/related
+  // GET /products/:slug/related
   @Public()
-  @Get(':id/related')
+  @Get(':slug/related')
   @ApiOperation({ summary: 'Get 8 related products (same category + tags)' })
   @ApiResponse({ status: 200, type: [ProductListItemDto] })
-  findRelated(@Param('id', ParseCuidPipe) id: string): Promise<ProductListItemDto[]> {
-    return this.productsService.findRelated(id);
+  findRelated(@Param('slug') slug: string): Promise<ProductListItemDto[]> {
+    return this.productsService.findRelated(slug);
   }
 
   // POST /products/:id/viewed

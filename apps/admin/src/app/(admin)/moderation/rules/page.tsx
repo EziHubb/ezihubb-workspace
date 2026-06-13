@@ -6,6 +6,7 @@ import { Shield, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, AlertTriangle, S
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { useDialog } from '../../../../contexts/DialogContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -175,6 +176,7 @@ function RuleFormModal({
 
 export default function ModerationRulesPage() {
   const qc = useQueryClient();
+  const { confirm } = useDialog();
   const [showForm,    setShowForm   ] = useState(false);
   const [editingRule, setEditingRule] = useState<ModerationRule | null>(null);
 
@@ -328,8 +330,8 @@ export default function ModerationRulesPage() {
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button type="button"
-                    onClick={() => {
-                      if (window.confirm(`Delete rule "${rule.name}"?`)) {
+                    onClick={async () => {
+                      if (await confirm(`Delete rule "${rule.name}"?`, { confirmLabel: 'Delete', destructive: true })) {
                         deleteMutation.mutate(rule.id);
                       }
                     }}

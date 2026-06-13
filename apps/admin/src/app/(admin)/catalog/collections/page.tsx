@@ -11,6 +11,7 @@ import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtFixed, safeArr } from '../../../../lib/fmt';
+import { useDialog } from '../../../../contexts/DialogContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -154,6 +155,7 @@ function CollectionSlideOver({
   onSave:     (data: Partial<Collection>) => Promise<void>;
   onDelete?:  (id: string) => Promise<void>;
 }) {
+  const { confirm } = useDialog();
   const isNew = collection === 'new';
   const col   = isNew ? null : (collection as Collection);
 
@@ -212,7 +214,7 @@ function CollectionSlideOver({
 
   const handleDelete = async () => {
     if (!col?.id) return;
-    if (!confirm(`Delete collection "${col.name}"? This cannot be undone.`)) return;
+    if (!await confirm(`Delete collection "${col.name}"? This cannot be undone.`, { confirmLabel: 'Delete', destructive: true })) return;
     setDeleting(true);
     try {
       await onDelete?.(col.id);

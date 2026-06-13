@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useDialog } from '../../../contexts/DialogContext';
 import { useForm, FormProvider } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -51,15 +52,16 @@ const CREATE_TABS = ALL_TABS.filter((t) => t.id !== 'performance');
 function MoreMenu({ productId }: { productId: string; slug: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const { confirm } = useDialog();
 
   const handleArchive = async () => {
-    if (!confirm('Archive this listing?')) return;
+    if (!await confirm('Archive this listing?', { confirmLabel: 'Archive', destructive: true })) return;
     await api.patch(API_ROUTES.ADMIN.PRODUCT(productId), { isActive: false });
     router.push('/products');
   };
 
   const handleDelete = async () => {
-    if (!confirm('Permanently delete this listing? This cannot be undone.')) return;
+    if (!await confirm('Permanently delete this listing? This cannot be undone.', { confirmLabel: 'Delete', destructive: true })) return;
     await api.delete(API_ROUTES.ADMIN.PRODUCT(productId));
     router.push('/products');
   };
@@ -165,16 +167,6 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
   }, [mode, draftId]);
-
-  // Silently delete the draft when component unmounts (e.g. SPA navigation away)
-  // Only if the product was NOT published
-  useEffect(() => {
-    return () => {
-      if (publishedRef.current || !draftIdRef.current) return;
-      // Best-effort cleanup — fire-and-forget
-      api.delete(API_ROUTES.ADMIN.PRODUCT(draftIdRef.current)).catch(() => {});
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Leave confirmation dialog state
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);

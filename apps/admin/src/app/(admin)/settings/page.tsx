@@ -13,6 +13,7 @@ import { api, adminApi } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { Toggle as PrimitiveToggle } from '../../../components/products/edit/primitives';
 import { fmtDate, fmtDateTime, safeStr } from '../../../lib/fmt';
+import { useDialog } from '../../../contexts/DialogContext';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Shared primitives
@@ -458,6 +459,7 @@ const EMAIL_TEMPLATES = [
 ];
 
 function EmailTab() {
+  const { preview } = useDialog();
   const [smtp, setSmtp] = useState({
     host: '', port: '587', user: '', password: '',
     fromName: 'DailyDaisy', fromEmail: '',
@@ -589,7 +591,7 @@ function EmailTab() {
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
-                  onClick={() => window.open(`/api/email-preview/${tpl.slug}`, '_blank')}
+                  onClick={() => void preview(`/api/email-preview/${tpl.slug}`, `${tpl.name} Preview`)}
                   className="flex items-center gap-1 text-xs font-medium text-muted border border-border px-2.5 py-1.5 rounded-button hover:border-primary/40 hover:text-primary transition-colors"
                 >
                   <Eye className="w-3.5 h-3.5" />
@@ -794,6 +796,7 @@ function InviteModal({ onClose, onInvite }: { onClose: () => void; onInvite: (em
 
 function TeamTab() {
   const qc = useQueryClient();
+  const { confirm } = useDialog();
   const [inviteOpen, setInviteOpen] = useState(false);
 
   const { data: members = [], isLoading } = useQuery<AdminMember[]>({
@@ -816,7 +819,7 @@ function TeamTab() {
   };
 
   const handleRevoke = async (id: string, name: string) => {
-    if (!confirm(`Revoke admin access for ${name}? They will be logged out immediately.`)) return;
+    if (!await confirm(`Revoke admin access for ${name}? They will be logged out immediately.`, { confirmLabel: 'Revoke', destructive: true })) return;
     await api.delete(API_ROUTES.ADMIN.TEAM_MEMBER(id));
     qc.invalidateQueries({ queryKey: ['admin-team'] });
   };

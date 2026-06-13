@@ -13,6 +13,7 @@ import { CustomizationPreviewModal } from '../../../../components/orders/Customi
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount, fmtDateTime } from '../../../../lib/fmt';
+import { useDialog } from '../../../../contexts/DialogContext';
 import type { OrderDetail, OrderItem } from '../../../../components/orders/OrderDrawer';
 
 // ── Timeline (same as drawer) ─────────────────────────────────────────────────
@@ -48,6 +49,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail }) {
   const router = useRouter();
+  const { confirm, preview } = useDialog();
   const [order]      = useState<OrderDetail>(initialOrder);
   const [previewItem,setPreview]    = useState<OrderItem | null>(null);
   const [newStatus,  setNewStatus]  = useState(order.status);
@@ -166,14 +168,20 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
           <div className="flex items-start gap-2 mb-2">
             <User className="w-4 h-4 text-muted shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-secondary">{[order.customer.firstName, order.customer.lastName].filter(Boolean).join(' ') || order.customer.email}</p>
-              <p className="text-sm text-muted">{order.customer.email}</p>
-              {order.customer.phone && <p className="text-sm text-muted">{order.customer.phone}</p>}
+              <p className="text-sm font-medium text-secondary">
+                {order.customer
+                  ? [order.customer.firstName, order.customer.lastName].filter(Boolean).join(' ') || order.customer.email
+                  : 'Guest'}
+              </p>
+              {order.customer && <p className="text-sm text-muted">{order.customer.email}</p>}
+              {order.customer?.phone && <p className="text-sm text-muted">{order.customer.phone}</p>}
             </div>
           </div>
-          <Link href={`/customers/${order.customer.id}`} className="text-xs text-primary hover:underline">
-            View Customer Profile →
-          </Link>
+          {order.customer?.id && (
+            <Link href={`/customers/${order.customer.id}`} className="text-xs text-primary hover:underline">
+              View Customer Profile →
+            </Link>
+          )}
         </Section>
 
         {/* Shipping */}
@@ -214,7 +222,7 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
             type="button"
             onClick={async () => {
               const { url } = await api.get<{ url: string }>(API_ROUTES.ADMIN.ORDER_INVOICE(order.id));
-              if (url) window.open(url, '_blank');
+              if (url) await preview(url, 'Invoice');
             }}
             className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-secondary border border-border hover:border-primary/40 px-3 py-2 rounded-button"
           >
@@ -224,7 +232,7 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
             type="button"
             onClick={async () => {
               const { url } = await api.get<{ url: string }>(API_ROUTES.ADMIN.ORDER_PACKING_SLIP(order.id));
-              if (url) window.open(url, '_blank');
+              if (url) await preview(url, 'Packing Slip');
             }}
             className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-secondary border border-border hover:border-primary/40 px-3 py-2 rounded-button"
           >
@@ -234,7 +242,7 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
 
         {/* Actions */}
         <div className="flex gap-3">
-          <button type="button" onClick={() => { if (confirm('Issue refund?')) api.post(API_ROUTES.ADMIN.ORDER_REFUND(order.id), { reason: 'Admin' }).then(refresh); }}
+          <button type="button" onClick={async () => { if (await confirm('Issue refund?', { title: 'Issue Refund', confirmLabel: 'Issue Refund', destructive: true })) void api.post(API_ROUTES.ADMIN.ORDER_REFUND(order.id), { reason: 'Admin' }).then(refresh); }}
             className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 px-3 py-2 rounded-button">
             <DollarSign className="w-3.5 h-3.5" />Issue Refund
           </button>

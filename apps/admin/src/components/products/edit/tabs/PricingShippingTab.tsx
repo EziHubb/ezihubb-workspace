@@ -13,6 +13,7 @@ import { EstimatedEarningsRow }    from '../EstimatedEarningsRow';
 import { ProcessingProfileCard }   from '../ProcessingProfileCard';
 import { ShippingCostPreview }     from '../ShippingCostPreview';
 import { ReturnPolicyCard }        from '../ReturnPolicyCard';
+import { Toggle as PrimitiveToggle } from '../primitives/Toggle';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -85,10 +86,7 @@ function FormField({ label, required, hint, children }: {
 }
 
 function Toggle({ checked, onChange, label, sub }: {
-  checked:  boolean;
-  onChange: (v: boolean) => void;
-  label:    string;
-  sub?:     string;
+  checked: boolean; onChange: (v: boolean) => void; label: string; sub?: string;
 }) {
   return (
     <label className="flex items-start justify-between gap-4 cursor-pointer py-1">
@@ -96,10 +94,9 @@ function Toggle({ checked, onChange, label, sub }: {
         <p className="text-sm font-medium text-secondary">{label}</p>
         {sub && <p className="text-sm text-muted mt-0.5">{sub}</p>}
       </div>
-      <button type="button" onClick={() => onChange(!checked)}
-        className={`relative w-10 h-5 rounded-full transition-colors shrink-0 mt-0.5 ${checked ? 'bg-primary' : 'bg-border'}`}>
-        <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`} />
-      </button>
+      <div className="shrink-0 mt-0.5">
+        <PrimitiveToggle checked={checked} onChange={onChange} ariaLabel={label} />
+      </div>
     </label>
   );
 }

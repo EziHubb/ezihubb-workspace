@@ -9,6 +9,7 @@ import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtDate, safeArr } from '../../../lib/fmt';
+import { useDialog } from '../../../contexts/DialogContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -45,6 +46,7 @@ const STATUS_COLORS: Record<string, string> = {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AdminStoresPage() {
+  const { prompt } = useDialog();
   const qc = useQueryClient();
   const [page,   setPage  ] = useState(1);
   const [status, setStatus] = useState('PENDING');
@@ -164,8 +166,8 @@ export default function AdminStoresPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    const reason = prompt('Rejection reason:');
+                  onClick={async () => {
+                    const reason = await prompt('Rejection reason:', { title: 'Reject Store', placeholder: 'Enter reason...' });
                     if (reason) rejectMutation.mutate({ id: s.id, reason });
                   }}
                   className="text-xs font-medium text-white bg-error px-3 py-1 rounded-button hover:opacity-80 transition-colors"
@@ -177,8 +179,8 @@ export default function AdminStoresPage() {
             {s.status === 'ACTIVE' && (
               <button
                 type="button"
-                onClick={() => {
-                  const reason = prompt('Suspension reason:');
+                onClick={async () => {
+                  const reason = await prompt('Suspension reason:', { title: 'Suspend Store', placeholder: 'Enter reason...' });
                   if (reason) suspendMutation.mutate({ id: s.id, reason });
                 }}
                 className="text-xs font-medium text-secondary border border-border px-3 py-1 rounded-button hover:border-error hover:text-error transition-colors"

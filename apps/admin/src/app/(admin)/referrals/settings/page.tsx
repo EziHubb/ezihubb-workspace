@@ -7,6 +7,7 @@ import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { Toggle as PrimitiveToggle } from '../../../../components/products/edit/primitives';
+import { useDialog } from '../../../../contexts/DialogContext';
 
 // ── Shared primitives ──────────────────────────────────────────────────────────
 
@@ -258,6 +259,7 @@ function TierModal({
 
 export default function ReferralSettingsPage() {
   const qc = useQueryClient();
+  const { confirm } = useDialog();
 
   // ── Settings state ──────────────────────────────────────────────────────────
   const [s,        setS]        = useState<ReferralSettings>({
@@ -307,7 +309,7 @@ export default function ReferralSettingsPage() {
   };
 
   const handleDeleteTier = async (id: string) => {
-    if (!confirm('Delete this tier? Users assigned to it will have their tier cleared.')) return;
+    if (!await confirm('Delete this tier? Users assigned to it will have their tier cleared.', { confirmLabel: 'Delete', destructive: true })) return;
     setDeletingTier(id);
     try {
       await api.delete(API_ROUTES.ADMIN.ADMIN_CREATORS_TIER(id));

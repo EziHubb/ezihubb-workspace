@@ -12,6 +12,7 @@ import { ProductCard, type AdminProduct } from '../../../components/products/Pro
 import { api, adminApi } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount, fmtDate, capitalize, fmtNum } from '../../../lib/fmt';
+import { useDialog } from '../../../contexts/DialogContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -48,6 +49,7 @@ function ProductsPageInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const qc           = useQueryClient();
+  const { confirm, alert } = useDialog();
 
   const urlStatus = searchParams.get('status') ?? '';
   const urlSort   = searchParams.get('sort')   ?? 'newest';
@@ -92,7 +94,7 @@ function ProductsPageInner() {
 
   const { data: stats } = useQuery<ProductStats>({
     queryKey: ['admin-products-stats'],
-    queryFn:  () => adminApi.get<ProductStats>(API_ROUTES.ADMIN.PRODUCTS_STATS).then((r) => r.data),
+    queryFn:  () => api.get<ProductStats>(API_ROUTES.ADMIN.PRODUCTS_STATS),
     staleTime: 2 * 60_000,
   });
 
@@ -106,13 +108,12 @@ function ProductsPageInner() {
       const p = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE), sort: urlSort });
       if (debouncedQ) p.set('q',      debouncedQ);
       if (urlStatus)  p.set('status', urlStatus);
-      const res = await adminApi.get<{ data: AdminProduct[]; total: number }>(`${API_ROUTES.ADMIN.PRODUCTS}?${p}`);
-      return res.data;
+      return api.get<{ data: AdminProduct[]; pagination: { total: number } }>(`${API_ROUTES.ADMIN.PRODUCTS}?${p}`);
     },
   });
 
-  const products = data?.data  ?? [];
-  const total    = data?.total ?? 0;
+  const products = data?.data                ?? [];
+  const total    = data?.pagination?.total   ?? 0;
   const from     = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const to       = Math.min(page * PAGE_SIZE, total);
   const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -126,7 +127,7 @@ function ProductsPageInner() {
   }, [qc]);
 
   const handleArchive = useCallback(async (p: AdminProduct) => {
-    if (!confirm(`Archive "${p.name}"? It will be hidden from the store.`)) return;
+    if (!await confirm(`Archive "${p.name}"? It will be hidden from the store.`, { confirmLabel: 'Archive', destructive: true })) return;
     await api.patch(API_ROUTES.ADMIN.PRODUCTS_BULK, { ids: [p.id], action: 'archive' });
     qc.invalidateQueries({ queryKey: ['admin-products'] });
     qc.invalidateQueries({ queryKey: ['admin-products-stats'] });
@@ -138,12 +139,12 @@ function ProductsPageInner() {
       const result = await api.patch<{ updated: number; action: string }>(API_ROUTES.ADMIN.PRODUCTS_BULK, {
         ids: selectedIds, action, payload,
       });
-      alert(`${result.updated} products ${result.action}`);
+      await alert(`${result.updated} products ${result.action}`);
       setSelectedIds([]);
       qc.invalidateQueries({ queryKey: ['admin-products'] });
       qc.invalidateQueries({ queryKey: ['admin-products-stats'] });
     } catch {
-      alert('Bulk action failed. Please try again.');
+      await alert('Bulk action failed. Please try again.');
     } finally {
       setIsBulkLoading(false);
     }
@@ -400,8 +401,8 @@ function ProductsPageInner() {
             <button
               type="button"
               disabled={isBulkLoading}
-              onClick={() => {
-                if (confirm(`Archive ${selectedIds.length} product${selectedIds.length !== 1 ? 's' : ''}?`)) {
+              onClick={async () => {
+                if (await confirm(`Archive ${selectedIds.length} product${selectedIds.length !== 1 ? 's' : ''}?`, { confirmLabel: 'Archive', destructive: true })) {
                   executeBulk('archive');
                 }
               }}

@@ -280,7 +280,7 @@ function VariationsSummaryTable({
     return <div className="h-24 bg-muted/5 rounded-lg animate-pulse" />;
   }
 
-  if (!groups.length || !settings?.enableVariations) {
+  if (!groups.length) {
     return (
       <div className="flex items-center gap-4 py-4">
         <div className="w-12 h-12 rounded-lg bg-muted/10 flex items-center justify-center shrink-0">
@@ -305,7 +305,7 @@ function VariationsSummaryTable({
   return (
     <div className="space-y-7">
       {groups.map((group) => {
-        const priceVaries = settings.variesBy?.includes(group.id + ':price') ?? false;
+        const priceVaries = settings?.variesBy?.includes(group.id + ':price') ?? false;
         return (
           <div key={group.id}>
             <div className="flex items-baseline gap-2 mb-2">

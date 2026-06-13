@@ -1,41 +1,48 @@
 // ── Number utilities ──────────────────────────────────────────────────────────
 
+type Numeric = number | string | null | undefined;
+
+function toNum(val: Numeric): number {
+  const n = Number(val);
+  return isNaN(n) ? 0 : n;
+}
+
 /** `12.3` → `"12.30"` (defaults to 2 decimal places) */
-export function fmtFixed(val: number | null | undefined, decimals = 2): string {
-  return (val ?? 0).toFixed(decimals);
+export function fmtFixed(val: Numeric, decimals = 2): string {
+  return toNum(val).toFixed(decimals);
 }
 
 /** `1234.5` → `"$1,235"` (0 decimals by default — for rounded display) */
-export function fmtCurrency(val: number | null | undefined, decimals = 0): string {
-  return `$${(val ?? 0).toLocaleString('en-US', {
+export function fmtCurrency(val: Numeric, decimals = 0): string {
+  return `$${toNum(val).toLocaleString('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })}`;
 }
 
 /** `12.345` → `"$12.35"` (always 2 decimals — for exact amounts) */
-export function fmtAmount(val: number | null | undefined): string {
-  return `$${(val ?? 0).toFixed(2)}`;
+export function fmtAmount(val: Numeric): string {
+  return `$${toNum(val).toFixed(2)}`;
 }
 
 /** `0.1234` → `"12.3%"` (pass fractional, not percentage) */
-export function fmtPercent(val: number | null | undefined, decimals = 1): string {
-  return `${((val ?? 0) * 100).toFixed(decimals)}%`;
+export function fmtPercent(val: Numeric, decimals = 1): string {
+  return `${(toNum(val) * 100).toFixed(decimals)}%`;
 }
 
 /** `0.1234` (already percentage) → `"12.3%"` */
-export function fmtPercentRaw(val: number | null | undefined, decimals = 1): string {
-  return `${(val ?? 0).toFixed(decimals)}%`;
+export function fmtPercentRaw(val: Numeric, decimals = 1): string {
+  return `${toNum(val).toFixed(decimals)}%`;
 }
 
 /** `1234567` → `"1,234,567"` */
-export function fmtNum(val: number | null | undefined): string {
-  return (val ?? 0).toLocaleString();
+export function fmtNum(val: Numeric): string {
+  return toNum(val).toLocaleString();
 }
 
 /** `4.567` → `"4.6"` (one decimal, for ratings) */
-export function fmtRating(val: number | null | undefined): string {
-  return (val ?? 0).toFixed(1);
+export function fmtRating(val: Numeric): string {
+  return toNum(val).toFixed(1);
 }
 
 /** Parse a string or number to float; return 0 on failure */

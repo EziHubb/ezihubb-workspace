@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useDialog } from '../../../../contexts/DialogContext';
 import { MessageCircle, Check, Trash2, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
@@ -30,6 +31,7 @@ interface QuestionRowProps {
 }
 
 function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
+  const { confirm } = useDialog();
   const [answer,    setAnswer]    = useState(q.answer ?? '');
   const [publish,   setPublish]   = useState(q.isPublished);
   const [expanded,  setExpanded]  = useState(!q.answer);
@@ -60,7 +62,7 @@ function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Delete this question? This cannot be undone.')) return;
+    if (!await confirm('Delete this question? This cannot be undone.', { confirmLabel: 'Delete', destructive: true })) return;
     setDeleting(true);
     try {
       await api.delete(API_ROUTES.ADMIN.PRODUCT_QUESTION(productId, q.id));
@@ -69,7 +71,7 @@ function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
   };
 
   const handleSpam = async () => {
-    if (!confirm('Mark as spam? This will hide the question.')) return;
+    if (!await confirm('Mark as spam? This will hide the question.', { confirmLabel: 'Mark as spam', destructive: true })) return;
     try {
       await api.post(API_ROUTES.ADMIN.PRODUCT_QUESTION_SPAM(productId, q.id));
       onRefresh();

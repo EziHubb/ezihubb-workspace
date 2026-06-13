@@ -10,15 +10,15 @@ import { API_ROUTES } from '@mlh/constants';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface CreatorRow {
-  id:           string;
-  email:        string;
-  firstName:    string | null;
-  lastName:     string | null;
-  referralCode: string;
-  directRefs:   number;
-  balance:      number;
-  earned:       number;
-  tier: {
+  id:              string;
+  email:           string;
+  firstName:       string | null;
+  lastName:        string | null;
+  referralCode:    string;
+  totalReferrals:  number;
+  referralBalance: number;
+  referralEarned:  number;
+  referralTier: {
     id:         string;
     name:       string;
     badgeColor: string;
@@ -26,11 +26,13 @@ interface CreatorRow {
 }
 
 interface CreatorsResponse {
-  data:       CreatorRow[];
-  total:      number;
-  page:       number;
-  limit:      number;
-  totalPages: number;
+  data: CreatorRow[];
+  meta: {
+    total:      number;
+    page:       number;
+    limit:      number;
+    totalPages: number;
+  };
 }
 
 interface Tier {
@@ -180,7 +182,7 @@ export default function CreatorMembersPage() {
         </select>
 
         {data && (
-          <span className="text-sm text-muted ml-auto">{data.total.toLocaleString()} creator{data.total !== 1 ? 's' : ''}</span>
+          <span className="text-sm text-muted ml-auto">{data.meta.total.toLocaleString()} creator{data.meta.total !== 1 ? 's' : ''}</span>
         )}
       </div>
 
@@ -209,17 +211,17 @@ export default function CreatorMembersPage() {
                           <p className="text-xs text-muted mt-0.5 font-mono">{u.email}</p>
                         </td>
                         <td className="px-4 py-3">
-                          {u.tier
-                            ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold text-white" style={{ background: u.tier.badgeColor }}>{u.tier.name}</span>
+                          {u.referralTier
+                            ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold text-white" style={{ background: u.referralTier.badgeColor }}>{u.referralTier.name}</span>
                             : <span className="text-xs text-muted">—</span>
                           }
                         </td>
                         <td className="px-4 py-3">
                           <code className="font-mono text-xs bg-muted/10 px-2 py-0.5 rounded">{u.referralCode}</code>
                         </td>
-                        <td className="px-4 py-3 text-secondary tabular-nums text-xs">{u.directRefs}</td>
-                        <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${u.earned.toFixed(2)}</td>
-                        <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${u.balance.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-secondary tabular-nums text-xs">{u.totalReferrals}</td>
+                        <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${u.referralEarned.toFixed(2)}</td>
+                        <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${u.referralBalance.toFixed(2)}</td>
                         <td className="px-4 py-3">
                           <button
                             type="button"
@@ -237,15 +239,15 @@ export default function CreatorMembersPage() {
           </table>
         </div>
 
-        {data && data.totalPages > 1 && (
+        {data && data.meta.totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-            <p className="text-sm text-muted">Page {data.page} of {data.totalPages}</p>
+            <p className="text-sm text-muted">Page {data.meta.page} of {data.meta.totalPages}</p>
             <div className="flex gap-2">
               <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}
                 className="px-3 py-1.5 text-xs font-medium border border-border rounded-button text-secondary hover:border-primary/40 disabled:opacity-40 transition-colors">
                 Previous
               </button>
-              <button type="button" onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))} disabled={page >= data.totalPages}
+              <button type="button" onClick={() => setPage((p) => Math.min(data.meta.totalPages, p + 1))} disabled={page >= data.meta.totalPages}
                 className="px-3 py-1.5 text-xs font-medium border border-border rounded-button text-secondary hover:border-primary/40 disabled:opacity-40 transition-colors">
                 Next
               </button>

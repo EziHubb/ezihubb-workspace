@@ -22,6 +22,28 @@ export class ReviewResponseDto {
   author!:          ReviewAuthorDto;
 }
 
+export class AdminReviewResponseDto {
+  id!: string;
+  userId!: string;
+  orderId?: string | null;
+  productId?: string | null;
+  rating!: number;
+  title?: string | null;
+  body!: string;
+  imageUrls!: string[];
+  status!: ReviewStatus;
+  adminReply?: string | null;
+  repliedAt?: Date | null;
+  createdAt!: Date;
+  customerName!: string;
+  customerEmail!: string;
+  customerAvatarUrl?: string | null;
+  productName!: string;
+  productSlug!: string;
+  productImageUrl?: string | null;
+  categoryName?: string | null;
+}
+
 export class ReviewSummaryDto {
   productId!: string;
   averageRating!: number;

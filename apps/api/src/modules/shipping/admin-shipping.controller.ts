@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Put,
 } from '@nestjs/common';
@@ -113,5 +114,19 @@ export class AdminShippingController {
   @ApiOperation({ summary: 'Delete a shipping method' })
   async deleteMethod(@Param('id') id: string): Promise<void> {
     return this.shippingService.deleteMethod(id);
+  }
+
+  // ── Settings ──────────────────────────────────────────────────────────────
+
+  @Get('settings')
+  @ApiOperation({ summary: 'Get shipping settings' })
+  getSettings() {
+    return this.shippingService.getShippingSettings();
+  }
+
+  @Patch('settings')
+  @ApiOperation({ summary: 'Update shipping settings' })
+  updateSettings(@Body() dto: Record<string, unknown>) {
+    return this.shippingService.updateShippingSettings(dto as any);
   }
 }

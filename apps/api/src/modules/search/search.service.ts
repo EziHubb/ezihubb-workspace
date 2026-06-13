@@ -534,6 +534,8 @@ export class SearchService {
         basePrice: Number(p.basePrice),
         compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
         primaryImageUrl: p.images[0]?.url ?? null,
+        primaryImage:    p.images[0]?.url ?? null,
+        images:          p.images.map((img) => ({ url: img.url })),
         categoryId: p.categoryId,
         categoryName: p.category.name,
         isPersonalizable: p.isPersonalizable,

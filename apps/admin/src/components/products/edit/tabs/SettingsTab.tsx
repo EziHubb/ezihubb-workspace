@@ -9,6 +9,7 @@ import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import type { ProductEditFormValues, RenewalType } from '../types';
 import { RelatedProductsPicker } from '../RelatedProductsPicker';
+import { Toggle } from '../primitives/Toggle';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -79,22 +80,6 @@ function FormField({ label, required, description, link, children, className = '
       )}
       {children}
     </div>
-  );
-}
-
-// ── Toggle ─────────────────────────────────────────────────────────────────────
-
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      aria-checked={checked}
-      role="switch"
-      className={`relative w-11 h-6 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${checked ? 'bg-primary' : 'bg-border'}`}
-    >
-      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
-    </button>
   );
 }
 

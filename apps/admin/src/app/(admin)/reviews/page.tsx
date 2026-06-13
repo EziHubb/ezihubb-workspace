@@ -11,6 +11,7 @@ import {
 import { ReviewReplyModal } from '../../../components/reviews/ReviewReplyModal';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { useDialog } from '../../../contexts/DialogContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -64,6 +65,7 @@ function SkeletonCard() {
 const PAGE_SIZE = 12;
 
 export default function ReviewsPage() {
+  const { confirm } = useDialog();
   const qc = useQueryClient();
 
   const [tab,          setTab]          = useState<TabValue>('PENDING');
@@ -104,12 +106,12 @@ export default function ReviewsPage() {
       if (tab !== 'ALL') params['status'] = tab;
       if (rating)        params['rating'] = String(rating);
       if (debouncedQ)    params['q']      = debouncedQ;
-      return api.get<{ data: Review[]; total: number }>(API_ROUTES.ADMIN.REVIEWS, { params });
+      return api.get<{ data: Review[]; pagination: { total: number } }>(API_ROUTES.ADMIN.REVIEWS, { params });
     },
   });
 
   const reviews    = listQuery.data?.data ?? [];
-  const total      = listQuery.data?.total ?? 0;
+  const total      = listQuery.data?.pagination?.total ?? 0;
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const invalidate = useCallback(() => {
@@ -136,7 +138,7 @@ export default function ReviewsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Permanently delete this review? This cannot be undone.')) return;
+    if (!await confirm('Permanently delete this review? This cannot be undone.', { confirmLabel: 'Delete', destructive: true })) return;
     setLoadingId(id);
     try {
       await api.delete(API_ROUTES.ADMIN.REVIEW(id));

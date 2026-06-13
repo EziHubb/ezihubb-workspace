@@ -6,6 +6,7 @@ import { Settings, Save, Loader2, CheckCircle } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { Toggle } from '../../../../components/products/edit/primitives/Toggle';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -26,30 +27,6 @@ interface AiSettings {
 
   monthlyCostLimitUsd:    number;
   dailyCallLimit:         number;
-}
-
-// ── Toggle ────────────────────────────────────────────────────────────────────
-
-function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!value)}
-      className={[
-        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
-        value ? 'bg-primary' : 'bg-muted/30',
-      ].join(' ')}
-      role="switch"
-      aria-checked={value}
-    >
-      <span
-        className={[
-          'pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform',
-          value ? 'translate-x-4' : 'translate-x-0',
-        ].join(' ')}
-      />
-    </button>
-  );
 }
 
 // ── Field row ─────────────────────────────────────────────────────────────────
@@ -167,7 +144,7 @@ export default function AiSettingsPage() {
 
       <Section title="Trend Discovery">
         <FieldRow label="Enable Trend Discovery" description="Automatically scan and suggest trending products based on market signals.">
-          <Toggle value={form.trendsEnabled} onChange={(v) => patch('trendsEnabled', v)} />
+          <Toggle checked={form.trendsEnabled} onChange={(v) => patch('trendsEnabled', v)} />
         </FieldRow>
         <FieldRow label="Scan Interval" description="How often the AI scans for new trends.">
           <NumInput value={form.trendScanIntervalHours} onChange={(v) => patch('trendScanIntervalHours', v)} min={1} max={168} unit="hours" />
@@ -179,28 +156,28 @@ export default function AiSettingsPage() {
 
       <Section title="AI Pricing Optimizer">
         <FieldRow label="Enable Pricing Optimizer" description="Run automatic A/B price tests to maximize revenue per product.">
-          <Toggle value={form.pricingEnabled} onChange={(v) => patch('pricingEnabled', v)} />
+          <Toggle checked={form.pricingEnabled} onChange={(v) => patch('pricingEnabled', v)} />
         </FieldRow>
         <FieldRow label="Max Variant Price Deviation" description="Maximum percentage difference allowed between control and variant price.">
           <NumInput value={form.pricingMaxVariantPct} onChange={(v) => patch('pricingMaxVariantPct', v)} min={1} max={50} unit="%" />
         </FieldRow>
         <FieldRow label="Auto-approve Tests" description="Automatically approve winning variants without manual review.">
-          <Toggle value={form.pricingAutoApprove} onChange={(v) => patch('pricingAutoApprove', v)} />
+          <Toggle checked={form.pricingAutoApprove} onChange={(v) => patch('pricingAutoApprove', v)} />
         </FieldRow>
       </Section>
 
       <Section title="Creator DNA">
         <FieldRow label="Enable Creator DNA Analysis" description="Analyse creator portfolios to generate style and audience profiles.">
-          <Toggle value={form.creatorDnaEnabled} onChange={(v) => patch('creatorDnaEnabled', v)} />
+          <Toggle checked={form.creatorDnaEnabled} onChange={(v) => patch('creatorDnaEnabled', v)} />
         </FieldRow>
         <FieldRow label="Auto-run on New Uploads" description="Automatically trigger DNA analysis when a creator adds new products.">
-          <Toggle value={form.creatorDnaAutoRun} onChange={(v) => patch('creatorDnaAutoRun', v)} />
+          <Toggle checked={form.creatorDnaAutoRun} onChange={(v) => patch('creatorDnaAutoRun', v)} />
         </FieldRow>
       </Section>
 
       <Section title="Image Generation (Replicate)">
         <FieldRow label="Enable Replicate Integration" description="Use Replicate models for AI art style generation in the product customizer.">
-          <Toggle value={form.replicateEnabled} onChange={(v) => patch('replicateEnabled', v)} />
+          <Toggle checked={form.replicateEnabled} onChange={(v) => patch('replicateEnabled', v)} />
         </FieldRow>
         <FieldRow label="Model ID" description="The Replicate model to use for image-to-image generation.">
           <input

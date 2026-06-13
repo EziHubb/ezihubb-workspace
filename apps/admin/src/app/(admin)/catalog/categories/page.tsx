@@ -9,6 +9,7 @@ import {
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
+import { useDialog } from '../../../../contexts/DialogContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -137,6 +138,7 @@ function CategoryForm({
   onDelete:   (id: string) => Promise<void>;
   onAddChild: (parentId: string) => void;
 }) {
+  const { confirm } = useDialog();
   const isNew = !category?.id;
 
   const [form,    setForm]    = useState<FormState>(() => ({
@@ -187,7 +189,7 @@ function CategoryForm({
 
   const handleDelete = async () => {
     if (!category?.id) return;
-    if (!confirm(`Delete "${category.name}"? This cannot be undone.`)) return;
+    if (!await confirm(`Delete "${category.name}"? This cannot be undone.`, { confirmLabel: 'Delete', destructive: true })) return;
     setDeleting(true);
     try {
       await onDelete(category.id);

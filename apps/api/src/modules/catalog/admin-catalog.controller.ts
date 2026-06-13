@@ -43,6 +43,14 @@ export class AdminCatalogController {
     return this.catalogService.getAdminCategories(limit ? Math.min(Number(limit), 2000) : 500);
   }
 
+  // GET /admin/categories/:id
+  @Get('categories/:id')
+  @ApiOperation({ summary: '[Admin] Get single category by ID' })
+  @ApiResponse({ status: 200, type: CategoryResponseDto })
+  getAdminCategory(@Param('id', ParseCuidPipe) id: string): Promise<CategoryResponseDto> {
+    return this.catalogService.getAdminCategoryById(id);
+  }
+
   // POST /admin/categories
   @Post('categories')
   @HttpCode(HttpStatus.CREATED)

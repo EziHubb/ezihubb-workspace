@@ -29,6 +29,23 @@ class Variant {
 }
 
 @Schema({ _id: false })
+class CustomOption {
+  @Prop({ required: true }) id!: string;
+  @Prop({ default: 0 }) sortOrder!: number;
+  @Prop({ required: true, enum: ['TEXT_BOX', 'LIST_OF_OPTIONS', 'FILE_UPLOAD', 'CHECKBOX', 'COLOR_SWATCH'] }) type!: string;
+  @Prop({ required: true }) label!: string;
+  @Prop({ default: false }) required!: boolean;
+  @Prop({ default: '' }) instructionText!: string;
+  @Prop({ default: '' }) placeholder!: string;
+  @Prop({ default: 250 }) maxLength!: number;
+  @Prop({ default: false }) isMultiline!: boolean;
+  @Prop({ type: [String], default: [] }) choices!: string[];
+  @Prop({ default: false }) allowMultiSelect!: boolean;
+  @Prop({ type: [String], default: ['image/*'] }) acceptedFileTypes!: string[];
+  @Prop({ default: 10 }) maxFileSizeMB!: number;
+}
+
+@Schema({ _id: false })
 class CustomizerField {
   @Prop({ required: true }) id!: string;
   @Prop({ required: true, enum: ['text', 'textarea', 'image', 'select', 'color'] }) type!: string;
@@ -114,6 +131,10 @@ export class ProductDetail extends Document {
    */
   @Prop({ type: Object, default: {} })
   imageAltTexts!: Record<string, string>;
+
+  /** Custom order options (e.g. personalisation text boxes, file uploads) */
+  @Prop({ type: [CustomOption], default: [] })
+  customOptions!: CustomOption[];
 
   /**
    * EU General Product Safety Regulation (GPSR) manufacturer / responsible

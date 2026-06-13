@@ -64,8 +64,8 @@ function StatusBadge({ status }: { status: ReviewStatus }) {
 
 // ── Avatar ───────────────────────────────────────────────────────────────────
 
-function CustomerAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string }) {
-  const initials = name
+function CustomerAvatar({ name, avatarUrl }: { name?: string; avatarUrl?: string }) {
+  const initials = (name ?? '')
     .split(' ')
     .map((n) => n[0] ?? '')
     .slice(0, 2)
@@ -76,7 +76,7 @@ function CustomerAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string 
     return (
       <Image
         src={avatarUrl}
-        alt={name}
+        alt={name ?? ''}
         width={36}
         height={36}
         className="w-9 h-9 rounded-full object-cover border border-border shrink-0"

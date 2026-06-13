@@ -57,18 +57,20 @@ export default async function CustomerDetailPage({
   params,
   searchParams,
 }: {
-  params:       { id: string };
-  searchParams: { page?: string };
+  params:       Promise<{ id: string }>;
+  searchParams: Promise<{ page?: string }>;
 }) {
-  const ordersPage = Number(searchParams.page ?? '1');
+  const { id }   = await params;
+  const sp       = await searchParams;
+  const ordersPage = Number(sp.page ?? '1');
 
   let customer: CustomerDetail;
-  let orders: { data: OrderSummary[]; total: number };
+  let orders: { data: OrderSummary[]; pagination: { total: number } };
 
   try {
     [customer, orders] = await Promise.all([
-      serverApi<CustomerDetail>('get', `/admin/customers/${params.id}`),
-      serverApi<{ data: OrderSummary[]; total: number }>('get', `/admin/customers/${params.id}/orders?page=${ordersPage}&limit=10`),
+      serverApi<CustomerDetail>('get', `/admin/customers/${id}`),
+      serverApi<{ data: OrderSummary[]; pagination: { total: number } }>('get', `/admin/customers/${id}/orders?page=${ordersPage}&limit=10`),
     ]);
   } catch {
     notFound();
@@ -78,7 +80,7 @@ export default async function CustomerDetailPage({
   const monthsAsCustomer = differenceInMonths(new Date(), new Date(customer.createdAt));
   const location       = [customer.city, customer.country].filter(Boolean).join(', ');
 
-  const totalOrderPages = Math.ceil(orders.total / 10);
+  const totalOrderPages = Math.ceil((orders.pagination?.total ?? 0) / 10);
 
   return (
     <>
@@ -180,7 +182,7 @@ export default async function CustomerDetailPage({
         {/* ── CENTER: Order history ─────────────────────────────────────────── */}
         <div className="bg-surface rounded-card border border-border shadow-card p-5">
           <h4 className="font-semibold text-secondary mb-4">
-            Order History ({orders.total})
+            Order History ({orders.pagination?.total ?? 0})
           </h4>
 
           {orders.data.length === 0 ? (
@@ -218,7 +220,7 @@ export default async function CustomerDetailPage({
               <div className="flex items-center gap-1.5">
                 {ordersPage > 1 && (
                   <Link
-                    href={`/customers/${params.id}?page=${ordersPage - 1}`}
+                    href={`/customers/${id}?page=${ordersPage - 1}`}
                     className="px-2.5 py-1 text-xs border border-border rounded-button hover:border-primary/40 text-muted transition-colors"
                   >
                     ← Prev
@@ -226,7 +228,7 @@ export default async function CustomerDetailPage({
                 )}
                 {ordersPage < totalOrderPages && (
                   <Link
-                    href={`/customers/${params.id}?page=${ordersPage + 1}`}
+                    href={`/customers/${id}?page=${ordersPage + 1}`}
                     className="px-2.5 py-1 text-xs border border-border rounded-button hover:border-primary/40 text-muted transition-colors"
                   >
                     Next →

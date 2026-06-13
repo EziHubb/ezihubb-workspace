@@ -14,6 +14,7 @@ import { PromotionStatsDrawer } from '../../../components/promotions/PromotionSt
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount, fmtDate, fmtNum } from '../../../lib/fmt';
+import { useDialog } from '../../../contexts/DialogContext';
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
@@ -133,6 +134,7 @@ const PAGE_SIZE = 20;
 
 export default function PromotionsPage() {
   const qc = useQueryClient();
+  const { confirm } = useDialog();
 
   const [page,     setPage]     = useState(1);
   const [search,   setSearch]   = useState('');
@@ -178,7 +180,7 @@ export default function PromotionsPage() {
   };
 
   const handleDelete = async (p: Promotion) => {
-    if (!confirm(`Delete coupon "${p.code}"? This cannot be undone.`)) return;
+    if (!await confirm(`Delete coupon "${p.code}"? This cannot be undone.`, { confirmLabel: 'Delete', destructive: true })) return;
     await api.delete(API_ROUTES.ADMIN.PROMOTION(p.id));
     invalidate();
   };

@@ -6,6 +6,26 @@ import { X, ChevronRight, Check, Search, Tag, AlertCircle } from 'lucide-react';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 
+interface CategoryL3 {
+  id:   string;
+  name: string;
+  slug: string;
+}
+
+interface CategoryL2 {
+  id:       string;
+  name:     string;
+  slug:     string;
+  children: CategoryL3[];
+}
+
+interface CategoryL1 {
+  id:       string;
+  name:     string;
+  slug:     string;
+  children: CategoryL2[];
+}
+
 interface Category {
   id:         string;
   name:       string;
@@ -38,32 +58,28 @@ export function CategoryPickerModal({
     return () => document.removeEventListener('keydown', h);
   }, [onClose]);
 
-  const { data: l1Categories = [], isLoading } = useQuery<Category[]>({
-    queryKey: ['categories-l1'],
-    queryFn:  () => api.get<Category[]>(`${API_ROUTES.CATALOG.CATEGORIES}?level=1&isVisible=true`),
+  const { data: tree = [], isLoading } = useQuery<CategoryL1[]>({
+    queryKey: ['categories-tree'],
+    queryFn:  () => api.get<CategoryL1[]>(API_ROUTES.CATALOG.CATEGORIES),
     enabled:  isOpen,
     staleTime: 10 * 60_000,
   });
 
-  const { data: l2Categories = [] } = useQuery<Category[]>({
-    queryKey: ['categories-l2', selectedL1],
-    queryFn:  () => api.get<Category[]>(`${API_ROUTES.CATALOG.CATEGORIES}?level=2&parentId=${selectedL1}`),
-    enabled:  !!selectedL1,
-    staleTime: 10 * 60_000,
-  });
+  const l1Categories = tree;
+  const l2Categories = tree.find(c => c.id === selectedL1)?.children ?? [];
+  const l3Categories = l2Categories.find(c => c.id === selectedL2)?.children ?? [];
 
-  const { data: l3Categories = [] } = useQuery<Category[]>({
-    queryKey: ['categories-l3', selectedL2],
-    queryFn:  () => api.get<Category[]>(`${API_ROUTES.CATALOG.CATEGORIES}?level=3&parentId=${selectedL2}`),
-    enabled:  !!selectedL2,
-    staleTime: 10 * 60_000,
-  });
-
-  const { data: searchResults = [] } = useQuery<Category[]>({
-    queryKey: ['categories-search', searchQuery],
-    queryFn:  () => api.get<Category[]>(`${API_ROUTES.CATALOG.CATEGORIES}?level=3&q=${encodeURIComponent(searchQuery)}`),
-    enabled:  searchQuery.length >= 2,
-  });
+  // Search: flatten all L2/L3 nodes
+  const allLeaves: Category[] = tree.flatMap(l1 =>
+    l1.children.flatMap(l2 =>
+      l2.children.length > 0
+        ? l2.children.map(l3 => ({ ...l3, breadcrumb: `${l1.name} > ${l2.name} > ${l3.name}` }))
+        : [{ ...l2, breadcrumb: `${l1.name} > ${l2.name}` }]
+    )
+  );
+  const searchResults = searchQuery.length >= 2
+    ? allLeaves.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : [];
 
   if (!isOpen) return null;
 

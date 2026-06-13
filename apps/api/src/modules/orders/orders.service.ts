@@ -27,6 +27,7 @@ import {
   OrderItemDto,
   OrderPaymentDto,
   OrderStatusHistoryDto,
+  OrderCustomerDto,
 } from './dto/order-response.dto';
 import {
   OrderListItemDto,
@@ -68,7 +69,7 @@ const ORDER_INCLUDE = {
   items: true,
   payment: true,
   statusHistory: { orderBy: { createdAt: 'asc' as const } },
-  user: { select: { email: true, firstName: true } },
+  user: { select: { id: true, email: true, firstName: true, lastName: true } },
 } satisfies Prisma.OrderInclude;
 
 const CANCEL_WINDOW_MS   = 2 * 60 * 60 * 1_000; // 2 hours
@@ -1114,6 +1115,17 @@ export class OrdersService {
       deliveredAt: order.deliveredAt,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
+      customer: order.user
+        ? {
+            id:        order.user.id,
+            firstName: order.user.firstName ?? null,
+            lastName:  order.user.lastName ?? null,
+            email:     order.user.email,
+            phone:     null,
+          } as OrderCustomerDto
+        : order.guestEmail
+          ? { id: '', firstName: null, lastName: null, email: order.guestEmail, phone: null } as OrderCustomerDto
+          : null,
       items,
       payment,
       statusHistory,

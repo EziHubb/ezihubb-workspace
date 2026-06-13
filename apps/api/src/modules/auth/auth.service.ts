@@ -171,8 +171,8 @@ export class AuthService {
       return { requiresTOTP: true, partialToken };
     }
 
-    const tokens = await this.generateTokens(user.id, user.email, user.role);
-    this.setRefreshTokenCookie(res, tokens.refreshToken);
+    const tokens = await this.generateTokens(user.id, user.email, user.role, dto.rememberMe);
+    this.setRefreshTokenCookie(res, tokens.refreshToken, dto.rememberMe);
 
     return {
       accessToken: tokens.accessToken,
@@ -483,6 +483,7 @@ export class AuthService {
     userId: string,
     email: string,
     role: string,
+    rememberMe = false,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const secret = this.config.get<string>('jwt.accessSecret');
     if (!secret) {
@@ -500,7 +501,7 @@ export class AuthService {
 
     const rawRefreshToken = randomBytes(40).toString('hex');
     const tokenHash = createHash('sha256').update(rawRefreshToken).digest('hex');
-    const refreshDays = 30;
+    const refreshDays = rememberMe ? 90 : 30;
     const expiresAt = new Date(Date.now() + refreshDays * 24 * 60 * 60 * 1_000);
 
     await this.prisma.refreshToken.create({
@@ -510,13 +511,14 @@ export class AuthService {
     return { accessToken, refreshToken: rawRefreshToken };
   }
 
-  setRefreshTokenCookie(res: Response, token: string): void {
+  setRefreshTokenCookie(res: Response, token: string, rememberMe = false): void {
     const isProd = this.config.get<string>('app.env') === 'production';
+    const maxAgeDays = rememberMe ? 90 : 30;
     res.cookie('refresh_token', token, {
       httpOnly: true,
       secure: isProd,
       sameSite: isProd ? 'none' : 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1_000, // 30 days in ms
+      maxAge: maxAgeDays * 24 * 60 * 60 * 1_000,
       path: '/api/v1/auth',
     });
   }

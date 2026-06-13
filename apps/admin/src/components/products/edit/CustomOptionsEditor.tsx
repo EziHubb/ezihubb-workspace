@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useDialog } from '../../../contexts/DialogContext';
 import { useForm } from 'react-hook-form';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -462,6 +463,7 @@ interface CustomOptionsEditorProps {
 
 export function CustomOptionsEditor({ productId }: CustomOptionsEditorProps) {
   const qc = useQueryClient();
+  const { confirm } = useDialog();
   const [editingOption, setEditingOption] = useState<CustomOption | null>(null);
   const [addingType,    setAddingType]    = useState<CustomOptionType | null>(null);
   const [dropdownOpen,  setDropdownOpen]  = useState(false);
@@ -493,7 +495,7 @@ export function CustomOptionsEditor({ productId }: CustomOptionsEditorProps) {
 
   // Delete
   const handleDelete = async (optionId: string) => {
-    if (!confirm('Remove this custom field?')) return;
+    if (!await confirm('Remove this custom field?', { confirmLabel: 'Remove', destructive: true })) return;
     await api.delete(API_ROUTES.ADMIN.PRODUCT_CUSTOM_OPTION(productId, optionId));
     invalidate();
   };

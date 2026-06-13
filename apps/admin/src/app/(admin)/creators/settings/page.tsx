@@ -7,6 +7,7 @@ import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { Toggle as PrimitiveToggle } from '../../../../components/products/edit/primitives';
+import { useDialog } from '../../../../contexts/DialogContext';
 
 // ── Shared primitives ──────────────────────────────────────────────────────────
 
@@ -180,6 +181,7 @@ function TierModal({ tier, onClose, onSave }: { tier: Tier | null; onClose: () =
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function CreatorSettingsPage() {
+  const { confirm } = useDialog();
   const qc = useQueryClient();
 
   const [s, setS] = useState<CreatorSettings>({
@@ -226,7 +228,7 @@ export default function CreatorSettingsPage() {
   };
 
   const handleDeleteTier = async (id: string) => {
-    if (!confirm('Delete this tier? Creators assigned to it will have their tier cleared.')) return;
+    if (!await confirm('Delete this tier? Creators assigned to it will have their tier cleared.', { confirmLabel: 'Delete', destructive: true })) return;
     setDeletingTier(id);
     try {
       await api.delete(API_ROUTES.ADMIN.ADMIN_CREATORS_TIER(id));
