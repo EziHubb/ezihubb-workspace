@@ -10,6 +10,7 @@ export const QUEUES = {
   TRANSLATIONS:         'translations',
   REFERRAL:             'referral',
   MODERATION:           'moderation',
+  AI_FEATURES:          'ai-features',
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
@@ -120,3 +121,23 @@ export interface CheckImageJobData {
 
 export interface BuyerReferralCreateJobData { orderId: string; }
 export interface BuyerReferralProcessJobData { orderId: string; cookieToken: string; }
+
+export const AI_JOBS = {
+  // Pricing
+  ANALYZE_PRICING:       'analyze-pricing',
+  RECORD_IMPRESSION:     'record-impression',
+  RECORD_CONVERSION:     'record-conversion',
+  EVALUATE_AB_TEST:      'evaluate-ab-test',
+
+  // Trend → Product
+  FETCH_TRENDS:          'fetch-trends',
+  GENERATE_DESIGN_BRIEF: 'generate-design-brief',
+  GENERATE_DESIGN_IMAGE: 'generate-design-image',
+  EXPIRE_OLD_DRAFTS:     'expire-old-drafts',
+
+  // Creator DNA
+  FETCH_SOCIAL_DATA:     'fetch-social-data',
+  ANALYZE_AUDIENCE:      'analyze-audience',
+} as const;
+
+export type AiJobName = (typeof AI_JOBS)[keyof typeof AI_JOBS];

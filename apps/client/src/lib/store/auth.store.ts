@@ -143,20 +143,26 @@ export const useAuthStore = create<AuthStore>()(
 
       fetchCurrentUser: async () => {
         set({ isLoading: true });
-        const token = get().accessToken ?? _accessToken;
+        let token = get().accessToken ?? _accessToken;
 
         if (!token) {
-          // No in-memory token — silently restore session via refresh cookie.
-          // refreshToken() sets user + accessToken on success, clears on failure.
-          await get().refreshToken();
+          // No in-memory token — attempt silent restore via httpOnly refresh cookie.
+          const refreshed = await get().refreshToken();
+          if (!refreshed) {
+            set({ isLoading: false, isAuthReady: true });
+            return;
+          }
+          // Refresh succeeded — pick up the newly stored token.
+          token = get().accessToken ?? _accessToken;
+        }
+
+        if (!token) {
           set({ isLoading: false, isAuthReady: true });
           return;
         }
 
         try {
-          const user = await apiClient.get<UserDto>(API_ROUTES.USERS.ME, {
-            token,
-          });
+          const user = await apiClient.get<UserDto>(API_ROUTES.USERS.ME, { token });
           set({ user, isLoading: false, isAuthReady: true });
         } catch {
           syncToken(null);
@@ -165,15 +171,14 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       // ── refreshToken ───────────────────────────────────────────────────────
+      // The /auth/refresh endpoint only returns { accessToken } — no user.
+      // fetchCurrentUser() calls /me separately after a successful refresh.
 
       refreshToken: async () => {
         try {
-          const res = await apiClient.post<{
-            accessToken: string;
-            user: UserDto;
-          }>(API_ROUTES.AUTH.REFRESH);
+          const res = await apiClient.post<{ accessToken: string }>(API_ROUTES.AUTH.REFRESH);
           syncToken(res.accessToken);
-          set({ accessToken: res.accessToken, user: res.user });
+          set({ accessToken: res.accessToken });
           return true;
         } catch {
           syncToken(null);

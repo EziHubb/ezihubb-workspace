@@ -8,6 +8,7 @@ import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server
 import { notFound } from 'next/navigation';
 import { routing } from '../../i18n/routing';
 import { ReactQueryProvider } from '../../components/providers/ReactQueryProvider';
+import { NextAuthProvider } from '../../components/providers/NextAuthProvider';
 import { ToastContainer } from '../../components/ui/ToastContainer';
 import { WebVitals } from '../../components/providers/WebVitals';
 import { CookieConsentBanner } from '../../components/analytics/CookieConsentBanner';
@@ -97,7 +98,7 @@ async function fetchSiteThemeStyle(): Promise<string> {
   try {
     const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3002';
     const res = await fetch(`${apiBase}/api/v1/settings/theme`, {
-      next: { revalidate: 300 },
+      cache: 'no-store',
     });
     if (!res.ok) return '';
     const json = (await res.json()) as {
@@ -138,11 +139,11 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} className={`${inter.variable} ${playfair.variable}`}>
-      {/* Site theme CSS variables — injected before any paint to avoid FOUC */}
-      {themeStyle && <style dangerouslySetInnerHTML={{ __html: themeStyle }} />}
       {/* GTM script — injected into <head> as early as possible */}
       {isProd && gtmId && <GoogleTagManager gtmId={gtmId} />}
       <body className="font-sans bg-background text-secondary antialiased">
+        {/* Site theme CSS vars — placed inside body so it comes after <link> stylesheets in cascade */}
+        {themeStyle && <style dangerouslySetInnerHTML={{ __html: themeStyle }} />}
         {/* GTM noscript fallback */}
         {isProd && gtmId && (
           <noscript>
@@ -156,6 +157,7 @@ export default async function LocaleLayout({
         )}
         <OrganizationStructuredData />
         <WebsiteStructuredData />
+        <NextAuthProvider>
         <ReactQueryProvider>
           <CurrencyProvider>
           <NextIntlClientProvider messages={messages}>
@@ -170,6 +172,7 @@ export default async function LocaleLayout({
           </NextIntlClientProvider>
           </CurrencyProvider>
         </ReactQueryProvider>
+        </NextAuthProvider>
         {/* Direct GA4 tag — keep while GTM is being validated; remove once GTM is confirmed */}
         {isProd && gaId && <GoogleAnalytics gaId={gaId} />}
         {/* Hotjar — afterInteractive so it never blocks LCP */}

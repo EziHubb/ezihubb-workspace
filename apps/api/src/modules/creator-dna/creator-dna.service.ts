@@ -1,6 +1,9 @@
 ﻿import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
+import { QUEUES, AI_JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
 
 @Injectable()
 export class CreatorDnaService {
@@ -15,6 +18,7 @@ export class CreatorDnaService {
   constructor(
     private readonly prisma:  PrismaService,
     private readonly config:  ConfigService,
+    @InjectQueue(QUEUES.AI_FEATURES) private readonly aiQueue: Queue,
   ) {
     this.anthropicKey       = this.config.get<string>('ANTHROPIC_API_KEY')       ?? '';
     this.tiktokClientKey    = this.config.get<string>('TIKTOK_CLIENT_KEY')       ?? '';
@@ -113,26 +117,30 @@ export class CreatorDnaService {
     });
     if (!connection) return;
 
-    // Create analysis record
     const analysis = await this.prisma.creatorDNAAnalysis.create({
-      data: { userId, storeId: user.storeId, platform, status: 'PENDING' },
+      data: { userId, storeId: user.storeId, platform, status: 'FETCHING_SOCIAL' },
     });
 
     try {
-      // Fetch social data (simplified — real impl calls platform APIs)
       const mockData = {
         topHashtags:          ['nursing', 'nurselife', 'healthcare'],
         avgEngagement:        8.5,
         followerCount:        12400,
         captionThemes:        ['humor', 'workplace', 'daily life'],
         audienceDemographics: { ageRange: '25-34', location: 'US', gender: 'female 72%' },
+        postsAnalyzed:        47,
       };
+
+      await this.prisma.creatorDNAAnalysis.update({
+        where: { id: analysis.id },
+        data:  { status: 'ANALYZING', postsAnalyzed: mockData.postsAnalyzed },
+      });
 
       const insights = await this.callClaudeForAnalysis(mockData, platform);
 
       await this.prisma.creatorDNAAnalysis.update({
         where: { id: analysis.id },
-        data:  { insights, status: 'COMPLETED' },
+        data:  { insights, status: 'COMPLETED', postsAnalyzed: mockData.postsAnalyzed },
       });
     } catch (err) {
       await this.prisma.creatorDNAAnalysis.update({
@@ -208,5 +216,45 @@ Recommend 3 most profitable POD niches. Return ONLY valid JSON:
     await this.prisma.socialConnection.deleteMany({
       where: { userId, platform },
     });
+  }
+
+  // ── Admin methods ─────────────────────────────────────────────────────────
+
+  async listAnalyses(page = 1, limit = 20) {
+    const [data, total] = await Promise.all([
+      this.prisma.creatorDNAAnalysis.findMany({
+        skip:    (page - 1) * limit,
+        take:    limit,
+        orderBy: { createdAt: 'desc' },
+        include: { user: { select: { id: true, email: true, firstName: true, lastName: true } } },
+      }),
+      this.prisma.creatorDNAAnalysis.count(),
+    ]);
+    return { data, total, page, totalPages: Math.ceil(total / limit) };
+  }
+
+  async queueReanalysis(id: string): Promise<{ queued: boolean; jobId: string }> {
+    const analysis = await this.prisma.creatorDNAAnalysis.findUniqueOrThrow({
+      where:  { id },
+      select: { userId: true, platform: true },
+    });
+
+    await this.prisma.creatorDNAAnalysis.update({
+      where: { id },
+      data:  { status: 'PENDING', jobId: null },
+    });
+
+    const job = await this.aiQueue.add(
+      AI_JOBS.ANALYZE_AUDIENCE,
+      { userId: analysis.userId, platform: analysis.platform },
+      DEFAULT_JOB_OPTIONS,
+    );
+
+    await this.prisma.creatorDNAAnalysis.update({
+      where: { id },
+      data:  { jobId: String(job.id) },
+    });
+
+    return { queued: true, jobId: String(job.id) };
   }
 }

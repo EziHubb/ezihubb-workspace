@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { useProfile } from '@mlh/api-client';
-import { useAuthStore } from '../../../lib/store/auth.store';
+import { useSession } from 'next-auth/react';
 import { BrandPanel, BrandStrip } from '../../../components/auth/BrandPanel';
 
 export default function AuthLayoutClient({
@@ -16,35 +15,23 @@ export default function AuthLayoutClient({
   const router       = useRouter();
   const searchParams = useSearchParams();
 
-  // Wait for Zustand persist to rehydrate from localStorage before checking
-  // auth state — prevents premature "no user" reads on the first render.
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => { setHydrated(true); }, []);
+  const { status } = useSession();
 
-  const storeUser   = useAuthStore((s) => s.user);
-  const isAuthReady = useAuthStore((s) => s.isAuthReady);
-  const { data: profile, isLoading } = useProfile(hydrated && isAuthReady && !!storeUser);
-
-  // ── Redirect logged-in users away from auth pages ──────────────────────────
+  // Redirect logged-in users away from auth pages
   useEffect(() => {
-    if (!hydrated || !isAuthReady || isLoading) return;
-    if (profile) {
-      const redirect = searchParams.get('redirect') ?? `/${locale}/account`;
-      router.replace(redirect);
-    }
-  }, [profile, isLoading, hydrated, isAuthReady, router, locale, searchParams]);
+    if (status !== 'authenticated') return;
+    const redirect = searchParams.get('redirect') ?? `/${locale}/account`;
+    router.replace(redirect);
+  }, [status, router, locale, searchParams]);
 
-  // ── While hydrating or checking auth, show minimal loading state ───────────
-  if (!hydrated || (isAuthReady && isLoading)) {
+  // Show spinner while checking session or while about to redirect
+  if (status === 'loading' || status === 'authenticated') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
-
-  // ── If user loaded (and useEffect will redirect), show nothing briefly ─────
-  if (profile) return null;
 
   return (
     <div className="min-h-screen bg-background">

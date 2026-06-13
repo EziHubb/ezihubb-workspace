@@ -3,7 +3,8 @@
 import { QueryClient, QueryClientProvider, MutationCache, QueryCache } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ToastProvider, ErrorBoundary } from '@mlh/ui';
-import { AuthInitializer } from './AuthInitializer';
+import { SessionSyncer } from './SessionSyncer';
+import { AuthProvider } from './AuthProvider';
 
 // ── Global error classifier ───────────────────────────────────────────────────
 
@@ -104,8 +105,10 @@ export function ReactQueryProvider({ children }: { children: React.ReactNode }) 
         <ToastProvider>
           {children}
         </ToastProvider>
-        {/* Auth initializer — silently refreshes session token on app boot */}
-        <AuthInitializer />
+        {/* Syncs next-auth session token → shared apiClient module variable */}
+        <SessionSyncer />
+        {/* Hotjar user identification + FCM push notifications */}
+        <AuthProvider />
       </QueryClientProvider>
     </ErrorBoundary>
   );

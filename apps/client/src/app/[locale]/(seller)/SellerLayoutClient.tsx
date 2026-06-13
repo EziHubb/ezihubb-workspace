@@ -6,6 +6,7 @@ import { useLocale } from 'next-intl';
 import { Menu, AlertCircle, Clock } from 'lucide-react';
 import { ToastProvider } from '@mlh/ui';
 import { useProfile } from '@mlh/api-client';
+import { useSession } from 'next-auth/react';
 import { useAuthStore } from '../../../lib/store/auth.store';
 import { useAuthQuery } from '../../../lib/hooks/useAuthQuery';
 import { SellerSidebar } from '../../../components/seller/SellerSidebar';
@@ -24,14 +25,16 @@ export default function SellerLayoutClient({ children }: { children: React.React
   const router   = useRouter();
   const pathname = usePathname();
 
-  const storeUser   = useAuthStore((s) => s.user);
-  const isAuthReady = useAuthStore((s) => s.isAuthReady);
-  const { data: profile, isLoading: profileLoading, isError: profileError } = useProfile(isAuthReady && !!storeUser);
+  const { status } = useSession();
+  const token    = useAuthStore((s) => s.accessToken);
+  const canFetch = status === 'authenticated' && !!token;
+
+  const { data: profile, isLoading: profileLoading, isError: profileError } = useProfile(canFetch);
   const { data: store,   isLoading: storeLoading,   isError: storeError   } = useAuthQuery<StoreDto>(
     ['seller', 'store', 'me'],
     '/stores/me',
     undefined,
-    { enabled: isAuthReady && !!storeUser },
+    { enabled: canFetch },
   );
 
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -39,22 +42,27 @@ export default function SellerLayoutClient({ children }: { children: React.React
   const isApplyPath = pathname.endsWith('/seller/apply');
   const isLoading   = profileLoading || storeLoading;
 
-  // ── Auth guard ──────────────────────────────────────────────────────────────
+  // ── Auth guard: not logged in ───────────────────────────────────────────────
   useEffect(() => {
-    if (!isAuthReady || isLoading) return;
+    if (status !== 'unauthenticated') return;
+    router.replace(`/${locale}/login?redirect=${encodeURIComponent(pathname)}`);
+  }, [status, router, locale, pathname]);
+
+  // ── Auth guard: profile fetch failed ───────────────────────────────────────
+  useEffect(() => {
+    if (!canFetch || isLoading) return;
     if (profileError || !profile) {
-      const redirect = encodeURIComponent(pathname);
-      router.replace(`/${locale}/login?redirect=${redirect}`);
+      router.replace(`/${locale}/login?redirect=${encodeURIComponent(pathname)}`);
     }
-  }, [profile, isLoading, profileError, isAuthReady, router, locale, pathname]);
+  }, [canFetch, isLoading, profileError, profile, router, locale, pathname]);
 
   // ── Store redirect ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isAuthReady || isLoading) return;
+    if (!canFetch || isLoading) return;
     if (profile && (storeError || !store) && !isApplyPath) {
       router.replace(`/${locale}/seller/apply`);
     }
-  }, [store, isLoading, storeError, profile, isApplyPath, isAuthReady, router, locale]);
+  }, [canFetch, store, isLoading, storeError, profile, isApplyPath, router, locale]);
 
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (isLoading || !profile) {

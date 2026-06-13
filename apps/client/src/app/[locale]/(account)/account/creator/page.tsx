@@ -150,54 +150,68 @@ export default function CreatorHubPage() {
       {me && (
         <>
           {/* ── Tier hero card ──────────────────────────────────────────────── */}
-          <div
-            className="rounded-card border p-5"
-            style={{
-              background: `linear-gradient(135deg, #F3F0FF 0%, #EEEDFE 100%)`,
-              borderColor: '#C4B5FD',
-            }}
-          >
-            <div className="flex items-start gap-4 flex-wrap">
-              <div
-                className="w-14 h-14 rounded-full flex items-center justify-center text-2xl shrink-0"
-                style={{ backgroundColor: me.tier.badgeColor + '20', border: `2px solid ${me.tier.badgeColor}` }}
-              >
-                {me.tier.badgeIcon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span
-                    className="text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
-                    style={{ backgroundColor: me.tier.badgeColor + '20', color: me.tier.badgeColor }}
-                  >
-                    {me.tier.name}
-                  </span>
-                  <span className="text-xs text-muted">
-                    {(me.tier.commissionRate * 100).toFixed(0)}% earnings rate
-                  </span>
+          {me.tier ? (
+            <div
+              className="rounded-card border p-5"
+              style={{
+                background: `linear-gradient(135deg, #F3F0FF 0%, #EEEDFE 100%)`,
+                borderColor: '#C4B5FD',
+              }}
+            >
+              <div className="flex items-start gap-4 flex-wrap">
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center text-2xl shrink-0"
+                  style={{ backgroundColor: me.tier.badgeColor + '20', border: `2px solid ${me.tier.badgeColor}` }}
+                >
+                  {me.tier.badgeIcon}
                 </div>
-                <p className="text-sm font-semibold text-secondary mt-1">
-                  {me.directReferrals} direct member{me.directReferrals !== 1 ? 's' : ''}
-                </p>
-                {me.tier.nextTier && (
-                  <div className="mt-3 max-w-xs">
-                    <div className="flex items-center justify-between text-xs text-muted mb-1">
-                      <span>Progress to {me.tier.nextTier.name}</span>
-                      <span>{me.directReferrals} / {me.tier.nextTier.minReferrals}</span>
-                    </div>
-                    <div className="h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: me.tier.badgeColor + '30' }}>
-                      <div className="h-full rounded-full transition-all duration-700"
-                        style={{
-                          width: `${Math.min(100, (me.directReferrals / me.tier.nextTier.minReferrals) * 100)}%`,
-                          backgroundColor: me.tier.badgeColor,
-                        }}
-                      />
-                    </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className="text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: me.tier.badgeColor + '20', color: me.tier.badgeColor }}
+                    >
+                      {me.tier.name}
+                    </span>
+                    <span className="text-xs text-muted">
+                      {(me.tier.commissionRate * 100).toFixed(0)}% earnings rate
+                    </span>
                   </div>
-                )}
+                  <p className="text-sm font-semibold text-secondary mt-1">
+                    {me.directReferrals} direct member{me.directReferrals !== 1 ? 's' : ''}
+                  </p>
+                  {me.tier.nextTier && (
+                    <div className="mt-3 max-w-xs">
+                      <div className="flex items-center justify-between text-xs text-muted mb-1">
+                        <span>Progress to {me.tier.nextTier.name}</span>
+                        <span>{me.directReferrals} / {me.tier.nextTier.minReferrals}</span>
+                      </div>
+                      <div className="h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: me.tier.badgeColor + '30' }}>
+                        <div className="h-full rounded-full transition-all duration-700"
+                          style={{
+                            width: `${Math.min(100, (me.directReferrals / me.tier.nextTier.minReferrals) * 100)}%`,
+                            backgroundColor: me.tier.badgeColor,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="rounded-card border border-border p-5 flex items-center gap-4 bg-surface">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center text-2xl shrink-0 bg-muted/10 border border-border">
+                🌱
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-secondary">Starter Creator</p>
+                <p className="text-xs text-muted mt-0.5">
+                  {me.directReferrals} direct member{me.directReferrals !== 1 ? 's' : ''} · Share your link to start earning
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* ── KPI row ─────────────────────────────────────────────────────── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

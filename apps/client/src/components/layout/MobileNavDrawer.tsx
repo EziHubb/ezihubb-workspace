@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { X, ChevronDown, LogOut, Package, Settings } from 'lucide-react';
+import { signOut } from 'next-auth/react';
 import { queryKeys } from '@mlh/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { SearchInput } from '../search/SearchInput';
@@ -127,6 +128,7 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
     await authLogout();
     qc.setQueryData(queryKeys.profile(), null);
     qc.clear();
+    await signOut({ redirect: false });
     router.push(`/${locale}`);
   };
 

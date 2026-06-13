@@ -10,6 +10,7 @@ import {
   ChevronDown, Package, Settings, LogOut,
 } from 'lucide-react';
 import { useWishlist, queryKeys } from '@mlh/api-client';
+import { signOut } from 'next-auth/react';
 import { useCartStore } from '../../lib/store/cart.store';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { useQueryClient } from '@tanstack/react-query';
@@ -55,6 +56,7 @@ function UserMenu({ locale }: { locale: string }) {
     await authLogout();
     qc.setQueryData(queryKeys.profile(), null);
     qc.clear();
+    await signOut({ redirect: false });
     router.push(`/${locale}`);
   };
 

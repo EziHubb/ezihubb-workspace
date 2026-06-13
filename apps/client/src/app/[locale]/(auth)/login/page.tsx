@@ -8,8 +8,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff } from 'lucide-react';
+import { signIn } from 'next-auth/react';
 import { API_ROUTES } from '@mlh/constants';
-import { useAuthStore } from '../../../../lib/store/auth.store';
 import { API_BASE } from '../../../../lib/api-client';
 
 // ── Zod schema ────────────────────────────────────────────────────────────────
@@ -54,35 +54,38 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
-
   const onSubmit = async (data: FormValues) => {
     setIsPending(true);
     setGlobalError('');
 
-    try {
-      await useAuthStore.getState().login(data.email, data.password, data.rememberMe);
+    const result = await signIn('credentials', {
+      redirect:   false,
+      email:      data.email,
+      password:   data.password,
+      rememberMe: String(data.rememberMe ?? false),
+    });
 
-      const redirect = searchParams.get('redirect') ?? `/${locale}/account`;
-      router.replace(redirect);
-    } catch (err: unknown) {
-      const apiErr = err as { code?: string };
+    if (!result?.ok) {
+      const code = result?.error ?? 'UNKNOWN';
 
-      if (apiErr.code === 'ERR_CREDENTIALS_INVALID') {
+      if (code === 'ERR_CREDENTIALS_INVALID') {
         setError('email', { message: 'Invalid email or password.' });
         setShake(true);
         setTimeout(() => setShake(false), 500);
-      } else if (apiErr.code === 'ERR_ACCOUNT_LOCKED') {
+      } else if (code === 'ERR_ACCOUNT_LOCKED') {
         setGlobalError('Account locked after too many failed attempts. Try again in 15 minutes.');
-      } else if (apiErr.code === 'ERR_EMAIL_NOT_VERIFIED') {
+      } else if (code === 'ERR_EMAIL_NOT_VERIFIED') {
         setGlobalError('Please verify your email address before signing in.');
       } else {
-        setGlobalError(
-          err instanceof Error ? err.message : 'Something went wrong. Please try again.',
-        );
+        setGlobalError('Something went wrong. Please try again.');
       }
-    } finally {
+
       setIsPending(false);
+      return;
     }
+
+    const redirect = searchParams.get('redirect') ?? `/${locale}/account`;
+    router.replace(redirect);
   };
 
   const inp = (err?: string) =>

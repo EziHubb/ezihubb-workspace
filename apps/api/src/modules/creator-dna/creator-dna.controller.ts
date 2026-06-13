@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Delete, Param, Query, Request, UseGuards, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Delete,
+  Param,
+  Query,
+  Request,
+  UseGuards,
+  Res,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { CreatorDnaService } from './creator-dna.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -14,9 +23,15 @@ export class CreatorDnaController {
   }
 
   @Get('tiktok/callback')
-  async tiktokCallback(@Query('code') code: string, @Query('state') state: string, @Res() res: Response) {
+  async tiktokCallback(
+    @Query('code') code: string,
+    @Query('state') state: string,
+    @Res() res: Response,
+  ) {
     await this.svc.handleTikTokCallback(code, state);
-    res.redirect(`${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/seller/creator-dna?platform=tiktok`);
+    res.redirect(
+      `${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/seller/creator-dna?platform=tiktok`,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -26,9 +41,15 @@ export class CreatorDnaController {
   }
 
   @Get('instagram/callback')
-  async instagramCallback(@Query('code') code: string, @Query('state') state: string, @Res() res: Response) {
+  async instagramCallback(
+    @Query('code') code: string,
+    @Query('state') state: string,
+    @Res() res: Response,
+  ) {
     await this.svc.handleInstagramCallback(code, state);
-    res.redirect(`${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/seller/creator-dna?platform=instagram`);
+    res.redirect(
+      `${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/seller/creator-dna?platform=instagram`,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

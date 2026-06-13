@@ -1857,6 +1857,7 @@ enum ABTestStatus {
   WINNER_A
   WINNER_B
   CANCELLED
+  INSUFFICIENT_DATA
 }
 
 enum LicenseType {
@@ -1900,12 +1901,17 @@ enum TrendDraftStatus {
   APPROVED
   REJECTED
   EXPIRED
+  PENDING_GENERATION
+  GENERATING_BRIEF
+  GENERATING_IMAGE
 }
 
 enum CreatorDNAStatus {
   PENDING
   COMPLETED
   FAILED
+  FETCHING_SOCIAL
+  ANALYZING
 }
 
 // ── NFT-02: Drop Culture ──────────────────────────────────────────────────────
@@ -1981,11 +1987,36 @@ model ABPricingTest {
   impressionsB    Int          @default(0)
   conversionsB    Int          @default(0)
   winnerId        String?
-  autoApplyWinner Boolean      @default(true)
-  createdAt       DateTime     @default(now())
+  autoApplyWinner     Boolean      @default(true)
+  storeId             String?
+  recommendedBy       String?
+  recommendation      Json?
+  conversionLiftPct   Float?
+  appliedAt           DateTime?
+  updatedAt           DateTime     @updatedAt
+  createdAt           DateTime     @default(now())
 
   @@index([productId, status])
   @@index([status, endsAt])
+}
+
+model PricingAnalyticsLog {
+  id               String   @id @default(cuid())
+  productId        String
+  storeId          String
+  currentPrice     Decimal  @db.Decimal(10, 2)
+  recommendedPrice Decimal  @db.Decimal(10, 2)
+  minPrice         Decimal  @db.Decimal(10, 2)
+  maxPrice         Decimal  @db.Decimal(10, 2)
+  confidence       Float
+  reasoning        String   @db.Text
+  competitorData   Json?
+  testCreated      Boolean  @default(false)
+  testId           String?
+  createdAt        DateTime @default(now())
+
+  @@index([productId])
+  @@index([storeId])
 }
 
 // ── NFT-07: Design Licensing Marketplace ─────────────────────────────────────
@@ -2126,6 +2157,13 @@ model TrendProductDraft {
   status               TrendDraftStatus @default(PENDING_REVIEW)
   approvedProductId    String?
   expiresAt            DateTime
+  trendPlatform        String           @default("tiktok")
+  trendDataSnapshot    Json?
+  ipScanStatus         String           @default("PENDING")
+  suggestedPrice       Decimal?         @db.Decimal(10, 2)
+  suggestedCategoryId  String?
+  briefJobId           String?
+  imageJobId           String?
   createdAt            DateTime         @default(now())
 
   @@index([storeId, status])
@@ -2160,8 +2198,11 @@ model CreatorDNAAnalysis {
   analysisData  Json?
   insights      Json?
   status        CreatorDNAStatus @default(PENDING)
-  autoPopulated Boolean          @default(false)
-  createdAt     DateTime         @default(now())
+  autoPopulated   Boolean          @default(false)
+  postsAnalyzed   Int              @default(0)
+  jobId           String?
+  draftsGenerated Int              @default(0)
+  createdAt       DateTime         @default(now())
 
   @@index([storeId])
 }

@@ -6,6 +6,7 @@ import { useLocale } from 'next-intl';
 import { Menu } from 'lucide-react';
 import { ToastProvider } from '@mlh/ui';
 import { useProfile } from '@mlh/api-client';
+import { useSession } from 'next-auth/react';
 import { useAuthStore } from '../../../lib/store/auth.store';
 import { AccountSidebar } from '../../../components/account/AccountSidebar';
 
@@ -18,28 +19,31 @@ export default function AccountLayoutClient({
   const router   = useRouter();
   const pathname = usePathname();
 
-  // Wait for Zustand persist to rehydrate before checking auth state.
-  // Without this, storeUser is null on the first render even when a user
-  // is persisted in localStorage, causing an immediate redirect to login.
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => { setHydrated(true); }, []);
+  const { status } = useSession();
+  // SessionSyncer syncs next-auth token → Zustand after session loads.
+  // Gate useProfile on both conditions to avoid fetching with a missing token.
+  const token    = useAuthStore((s) => s.accessToken);
+  const canFetch = status === 'authenticated' && !!token;
 
-  const storeUser    = useAuthStore((s) => s.user);
-  const isAuthReady  = useAuthStore((s) => s.isAuthReady);
-  const { data: profile, isLoading, isError } = useProfile(hydrated && isAuthReady && !!storeUser);
+  const { data: profile, isLoading, isError } = useProfile(canFetch);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // ── Auth guard ─────────────────────────────────────────────────────────────
+  // ── Auth guard: not logged in ──────────────────────────────────────────────
   useEffect(() => {
-    if (!hydrated || !isAuthReady || isLoading) return;
-    if (isError || !profile) {
-      const redirect = encodeURIComponent(pathname);
-      router.replace(`/${locale}/login?redirect=${redirect}`);
-    }
-  }, [profile, isLoading, isError, hydrated, isAuthReady, router, locale, pathname]);
+    if (status !== 'unauthenticated') return;
+    router.replace(`/${locale}/login?redirect=${encodeURIComponent(pathname)}`);
+  }, [status, router, locale, pathname]);
 
-  // ── Loading / unauthenticated ──────────────────────────────────────────────
-  if (!hydrated || !isAuthReady || isLoading || !profile) {
+  // ── Auth guard: profile fetch failed ──────────────────────────────────────
+  useEffect(() => {
+    if (!canFetch || isLoading) return;
+    if (isError || !profile) {
+      router.replace(`/${locale}/login?redirect=${encodeURIComponent(pathname)}`);
+    }
+  }, [canFetch, isLoading, isError, profile, router, locale, pathname]);
+
+  // Show spinner while session loading, token syncing, or profile fetching
+  if (!profile) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />

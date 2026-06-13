@@ -4,7 +4,7 @@ import { Queue } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
-import { QUEUES, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
+import { QUEUES, AI_JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
 
 interface PricingRecommendation {
   productId:        string;
@@ -28,6 +28,7 @@ export class PricingService {
     private readonly redis:  RedisService,
     private readonly config: ConfigService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
+    @InjectQueue(QUEUES.AI_FEATURES) private readonly aiQueue: Queue,
   ) {
     this.anthropicKey = this.config.get<string>('ANTHROPIC_API_KEY') ?? '';
   }
@@ -325,5 +326,59 @@ Recommend optimal price.`,
     const cached = await this.redis.get(`pricing:rec:${productId}`);
     if (cached) return cached;
     return this.analyzePricing(productId, storeId);
+  }
+
+  // ── Admin methods ─────────────────────────────────────────────────────────
+
+  async getAdminStats() {
+    const [total, running, ended] = await Promise.all([
+      this.prisma.aBPricingTest.count(),
+      this.prisma.aBPricingTest.count({ where: { status: 'RUNNING' } }),
+      this.prisma.aBPricingTest.count({ where: { status: { not: 'RUNNING' } } }),
+    ]);
+    return { total, running, ended };
+  }
+
+  async listTests(page = 1, limit = 20) {
+    const [data, total] = await Promise.all([
+      this.prisma.aBPricingTest.findMany({
+        skip:    (page - 1) * limit,
+        take:    limit,
+        orderBy: { createdAt: 'desc' },
+        include: { product: { select: { id: true, name: true, slug: true } } },
+      }),
+      this.prisma.aBPricingTest.count(),
+    ]);
+    return { data, total, page, totalPages: Math.ceil(total / limit) };
+  }
+
+  async cancelTest(id: string) {
+    return this.prisma.aBPricingTest.update({
+      where: { id },
+      data:  { status: 'CANCELLED' },
+    });
+  }
+
+  async revertTest(id: string) {
+    const test = await this.prisma.aBPricingTest.findUniqueOrThrow({
+      where:  { id },
+      select: { productId: true, variantA: true },
+    });
+    await this.prisma.product.update({
+      where: { id: test.productId },
+      data:  { basePrice: test.variantA },
+    });
+    return this.prisma.aBPricingTest.update({
+      where: { id },
+      data:  { status: 'CANCELLED' },
+    });
+  }
+
+  async queueAnalysis(productId: string, storeId: string) {
+    return this.aiQueue.add(
+      AI_JOBS.ANALYZE_PRICING,
+      { productId, storeId },
+      DEFAULT_JOB_OPTIONS,
+    );
   }
 }

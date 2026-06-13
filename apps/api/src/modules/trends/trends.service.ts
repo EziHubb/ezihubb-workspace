@@ -4,7 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { QUEUES } from '../../queue/queue.constants';
+import { QUEUES, AI_JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
 
 interface TrendTopic {
   hashtag:         string;
@@ -25,7 +25,8 @@ export class TrendsService {
     private readonly prisma:  PrismaService,
     private readonly redis:   RedisService,
     private readonly config:  ConfigService,
-    @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
+    @InjectQueue(QUEUES.EMAIL)        private readonly emailQueue: Queue,
+    @InjectQueue(QUEUES.AI_FEATURES)  private readonly aiQueue:   Queue,
   ) {
     this.anthropicKey   = this.config.get<string>('ANTHROPIC_API_KEY')    ?? '';
     this.replicateToken = this.config.get<string>('REPLICATE_API_TOKEN')  ?? '';
@@ -281,5 +282,82 @@ Return ONLY valid JSON:
     for (const store of stores) {
       await this.generateTrendDraftsForStore(store.id).catch((err: Error) => this.logger.warn(`Trend generation failed for store ${store.id}: ${err.message}`));
     }
+  }
+
+  // ── Admin methods ─────────────────────────────────────────────────────────
+
+  async getPendingCount(): Promise<{ count: number }> {
+    const count = await this.prisma.trendProductDraft.count({
+      where: { status: 'PENDING_REVIEW' },
+    });
+    return { count };
+  }
+
+  async listDrafts(page = 1, limit = 20, status?: string) {
+    const where = status ? { status: status as any } : {};
+    const [rows, total] = await Promise.all([
+      this.prisma.trendProductDraft.findMany({
+        where,
+        skip:    (page - 1) * limit,
+        take:    limit,
+        orderBy: { createdAt: 'desc' },
+        include: { store: { select: { id: true, name: true } } },
+      }),
+      this.prisma.trendProductDraft.count({ where }),
+    ]);
+    const data = rows.map((d) => {
+      const brief = (d.designBrief ?? {}) as Record<string, unknown>;
+      return {
+        id:          d.id,
+        storeId:     d.storeId,
+        storeName:   (d as any).store?.name ?? null,
+        keyword:     d.trendTopic,
+        category:    (brief['category'] as string) ?? null,
+        score:       d.trendEngagement,
+        source:      d.trendPlatform ?? (brief['source'] as string) ?? 'AI',
+        status:      d.status,
+        summary:     (brief['summary'] as string) ?? d.suggestedDescription ?? null,
+        suggestedAt: d.generatedAt.toISOString(),
+      };
+    });
+    return { data, pagination: { total, page, totalPages: Math.ceil(total / limit) } };
+  }
+
+  async queueManualScan(): Promise<{ queued: boolean; jobId: string; triggered: boolean; created: number; message: string }> {
+    const job = await this.aiQueue.add(
+      AI_JOBS.FETCH_TRENDS,
+      {},
+      DEFAULT_JOB_OPTIONS,
+    );
+    await this.redis.set('trends:last:scan:queued', new Date().toISOString(), 86400);
+    return {
+      queued:    true,
+      jobId:     String(job.id),
+      triggered: true,
+      created:   0,
+      message:   'Trend scan queued — drafts will appear shortly',
+    };
+  }
+
+  async adminApproveDraft(id: string) {
+    return this.prisma.trendProductDraft.update({
+      where: { id },
+      data:  { status: 'APPROVED' },
+    });
+  }
+
+  async adminRejectDraft(id: string) {
+    return this.prisma.trendProductDraft.update({
+      where: { id },
+      data:  { status: 'REJECTED' },
+    });
+  }
+
+  async expireOldDrafts(): Promise<{ expired: number }> {
+    const result = await this.prisma.trendProductDraft.updateMany({
+      where: { status: 'PENDING_REVIEW', expiresAt: { lte: new Date() } },
+      data:  { status: 'EXPIRED' },
+    });
+    return { expired: result.count };
   }
 }
