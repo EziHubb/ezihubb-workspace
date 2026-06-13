@@ -45,7 +45,7 @@ export function HeroBanner({
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start mb-10">
               <Link
-                href={`/${locale}/products`}
+                href={`/${locale}/search`}
                 className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white font-semibold px-8 py-4 rounded-button transition-colors text-sm uppercase tracking-wide"
               >
                 {ctaPrimary}

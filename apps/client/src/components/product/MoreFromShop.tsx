@@ -81,7 +81,7 @@ export function MoreFromShop({ products, locale }: MoreFromShopProps) {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-secondary">More from this shop</h2>
         <Link
-          href={`/${locale}/products`}
+          href={`/${locale}/search`}
           className="text-sm text-primary hover:underline"
         >
           Visit shop

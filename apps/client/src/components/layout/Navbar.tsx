@@ -177,7 +177,8 @@ export function Navbar({ menuData }: NavbarProps = {}) {
         ].join(' ')}
       >
         <div className="max-w-[1440px] mx-auto px-4 md:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 md:h-[60px] gap-4 relative">
+          {/* ── Row 1: Logo + Search + Icons ───────────────────────────────── */}
+          <div className="flex items-center h-16 md:h-[72px] gap-3 md:gap-4">
 
             {/* Left: hamburger (mobile) + logo */}
             <div className="flex items-center gap-3 shrink-0">
@@ -201,41 +202,15 @@ export function Navbar({ menuData }: NavbarProps = {}) {
               </Link>
             </div>
 
-            {/* Center: mega menu tabs (desktop) OR simple links fallback */}
-            <div className="hidden lg:flex items-center flex-1 justify-center">
-              {tabs.length > 0 ? (
-                <MegaMenu tabs={tabs} locale={locale} />
-              ) : (
-                /* Fallback simple nav when mega-menu data is unavailable */
-                <div className="flex items-center gap-6">
-                  {[
-                    { href: `/${locale}/products`,    label: t('shopAll')     },
-                    { href: `/${locale}/collections`, label: t('collections') },
-                    { href: `/${locale}/occasions`,   label: t('occasions')   },
-                    { href: `/${locale}/gift-cards`,  label: t('giftCards')   },
-                  ].map(({ href, label }) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      className={[
-                        'text-sm font-medium transition-colors whitespace-nowrap',
-                        pathname === href ? 'text-primary' : 'text-secondary hover:text-primary',
-                      ].join(' ')}
-                    >
-                      {label}
-                    </Link>
-                  ))}
-                </div>
-              )}
+            {/* Center: large search bar (desktop only) */}
+            <div className="hidden lg:flex flex-1 justify-center px-6">
+              <div className="w-full max-w-2xl">
+                <SearchInput variant="header" placeholder={t('search')} className="w-full" />
+              </div>
             </div>
 
-            {/* Right: search + icons + user */}
-            <div className="flex items-center gap-1 md:gap-2 shrink-0">
-              {/* Desktop search bar */}
-              <div className="hidden lg:block w-40 xl:w-52">
-                <SearchInput variant="navbar" placeholder={t('search')} />
-              </div>
-
+            {/* Right: icons + user */}
+            <div className="flex items-center gap-1 md:gap-2 ml-auto lg:ml-0 shrink-0">
               {/* Mobile search icon */}
               <Link
                 href={`/${locale}/search`}
@@ -282,6 +257,33 @@ export function Navbar({ menuData }: NavbarProps = {}) {
 
               <UserMenu locale={locale} />
             </div>
+          </div>
+
+          {/* ── Row 2: Category Nav (desktop only) ─────────────────────────── */}
+          <div className="hidden lg:flex items-center border-t border-border/60">
+            {tabs.length > 0 ? (
+              <MegaMenu tabs={tabs} locale={locale} />
+            ) : (
+              <div className="flex items-center gap-6 h-10">
+                {[
+                  { href: `/${locale}/search`,      label: t('shopAll')     },
+                  { href: `/${locale}/collections`, label: t('collections') },
+                  { href: `/${locale}/occasions`,   label: t('occasions')   },
+                  { href: `/${locale}/gift-cards`,  label: t('giftCards')   },
+                ].map(({ href, label }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={[
+                      'text-sm font-medium transition-colors whitespace-nowrap',
+                      pathname === href ? 'text-primary' : 'text-secondary hover:text-primary',
+                    ].join(' ')}
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </nav>

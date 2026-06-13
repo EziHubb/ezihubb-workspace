@@ -555,7 +555,7 @@ export default function GiftCardsPage() {
               Buy Another
             </button>
             <a
-              href={`/${locale}/products`}
+              href={`/${locale}/search`}
               className="flex-1 py-2.5 bg-primary text-white text-sm font-bold rounded-button text-center hover:bg-primary-dark transition-colors"
             >
               Shop Now

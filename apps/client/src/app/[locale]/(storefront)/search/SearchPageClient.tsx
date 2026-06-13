@@ -112,7 +112,6 @@ export function SearchPageClient() {
       apiClient.get<SearchResponse>(API_ROUTES.SEARCH.QUERY, {
         params: buildApiParams(filters),
       }),
-    enabled: trimmedQ.length > 0,
     staleTime: 60_000,
     placeholderData: (prev) => prev,
   });

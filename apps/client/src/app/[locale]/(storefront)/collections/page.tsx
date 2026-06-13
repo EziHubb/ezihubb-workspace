@@ -53,7 +53,7 @@ export default async function CollectionsPage({
       {collections.length === 0 ? (
         <div className="text-center py-20 text-muted">
           <p className="text-lg">No collections available right now.</p>
-          <Link href={`/${locale}/products`} className="text-primary hover:underline mt-4 inline-block text-sm">
+          <Link href={`/${locale}/search`} className="text-primary hover:underline mt-4 inline-block text-sm">
             Shop all products →
           </Link>
         </div>

@@ -3,7 +3,7 @@
 import { memo, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { MoreHorizontal, Package, Star, Eye, EyeOff, Copy, Archive } from 'lucide-react';
+import { MoreHorizontal, Package, Star, Eye, EyeOff, Copy, Archive, Pencil } from 'lucide-react';
 import { fmtAmount } from '../../lib/fmt';
 
 export interface AdminProduct {
@@ -77,7 +77,8 @@ function GearMenu({ product, onToggleActive, onArchive }: {
             className={itemCls}
             onClick={() => setOpen(false)}
           >
-            Edit listing
+            <Pencil className="w-3.5 h-3.5" />
+            Edit
           </Link>
           <Link
             href={`/products/copy/${product.id}`}
@@ -196,13 +197,7 @@ export const ProductCard = memo(function ProductCard({
           )}
         </div>
 
-        <div className="flex items-center justify-between pt-0.5">
-          <Link
-            href={`/products/${product.id}/edit`}
-            className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
-          >
-            Edit
-          </Link>
+        <div className="flex items-center justify-end pt-0.5">
           <GearMenu product={product} onToggleActive={onToggleActive} onArchive={onArchive} />
         </div>
       </div>

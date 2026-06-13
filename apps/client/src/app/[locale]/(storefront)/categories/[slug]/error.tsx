@@ -35,7 +35,7 @@ export default function CategoryError({
           Try again
         </button>
         <Link
-          href="/products"
+          href="/search"
           className="text-sm text-primary hover:underline underline-offset-2"
         >
           Browse all products

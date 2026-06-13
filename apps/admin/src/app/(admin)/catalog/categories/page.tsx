@@ -7,6 +7,7 @@ import {
   LayoutGrid, RefreshCw, GripVertical, Eye, EyeOff,
 } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
+import { Toggle } from '../../../../components/products/edit/primitives/Toggle';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { useDialog } from '../../../../contexts/DialogContext';
@@ -277,13 +278,11 @@ function CategoryForm({
 
         {/* Visible toggle */}
         <div className="flex items-center gap-3 pt-6">
-          <button
-            type="button"
-            onClick={() => setForm((f) => ({ ...f, isVisible: !f.isVisible }))}
-            className={`relative w-10 h-5 rounded-full transition-colors ${form.isVisible ? 'bg-primary' : 'bg-border'}`}
-          >
-            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.isVisible ? 'translate-x-5' : 'translate-x-0.5'}`} />
-          </button>
+          <Toggle
+            checked={form.isVisible}
+            onChange={(v) => setForm((f) => ({ ...f, isVisible: v }))}
+            ariaLabel="Visible"
+          />
           <span className="text-sm text-secondary flex items-center gap-1.5">
             {form.isVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
             {form.isVisible ? 'Visible' : 'Hidden'}

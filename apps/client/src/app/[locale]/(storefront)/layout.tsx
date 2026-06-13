@@ -24,7 +24,7 @@ export default async function StorefrontLayout({
   return (
     <>
       <Navbar menuData={menuData} />
-      <main className="pt-16 md:pt-[60px] min-h-screen">
+      <main className="pt-16 md:pt-[112px] min-h-screen">
         {children}
       </main>
       {/* Extra bottom padding on mobile so content clears the fixed MobileBottomNav */}

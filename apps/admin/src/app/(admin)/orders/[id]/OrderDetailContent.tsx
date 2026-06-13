@@ -8,7 +8,7 @@ import {
   Check, Package, MapPin, User,
   ExternalLink, Save, Mail, DollarSign, FileText, Printer,
 } from 'lucide-react';
-import { ALL_STATUSES } from '../../../../components/orders/OrderStatusBadge';
+import { StatusSelect } from '../../../../components/orders/OrderStatusBadge';
 import { CustomizationPreviewModal } from '../../../../components/orders/CustomizationPreviewModal';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
@@ -150,10 +150,7 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
         {/* Update status */}
         <Section title="Update Status">
           <div className="space-y-3">
-            <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-1 focus:ring-primary/30">
-              {ALL_STATUSES.map((s) => <option key={s} value={s}>{s.replace(/_/g,' ')}</option>)}
-            </select>
+            <StatusSelect value={newStatus} onChange={setNewStatus} />
             <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" rows={2}
               className="w-full px-3 py-2 text-sm border border-border rounded-button resize-none focus:outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted" />
             <button type="button" onClick={handleStatusUpdate} disabled={statusSaving || newStatus === order.status}

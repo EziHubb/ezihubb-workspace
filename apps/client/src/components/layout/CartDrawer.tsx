@@ -125,7 +125,7 @@ export function CartDrawer() {
                 Your cart is empty
               </p>
               <Link
-                href={`/${locale}/products`}
+                href={`/${locale}/search`}
                 onClick={closeDrawer}
                 className="text-sm text-primary hover:underline underline-offset-2"
               >

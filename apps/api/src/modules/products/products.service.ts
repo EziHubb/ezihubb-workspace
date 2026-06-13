@@ -333,6 +333,7 @@ export class ProductsService {
         basePrice:   0,
         categoryId:  placeholder.id,
         isActive:    false,
+        status:      ProductStatus.DRAFT,
       },
     });
 
@@ -1347,8 +1348,15 @@ export class ProductsService {
     where.isActive = query.includeInactive
       ? (query.isActive ?? undefined)
       : true;
+    if (query.q) {
+      where.name = { contains: query.q, mode: 'insensitive' };
+    }
     if (query.isFeatured !== undefined) where.isFeatured = query.isFeatured;
-    if (query.status) where.status = query.status;
+    if (query.status) {
+      where.status = query.status;
+    } else {
+      where.status = { not: ProductStatus.DRAFT };
+    }
 
     if (query.categoryId) {
       where.categoryId = query.categoryId;

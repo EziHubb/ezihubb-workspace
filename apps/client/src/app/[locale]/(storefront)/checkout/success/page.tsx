@@ -264,7 +264,7 @@ export default function CheckoutSuccessPage() {
       <div className="max-w-[600px] mx-auto px-4 py-16 text-center">
         <p className="text-muted mb-4">Order number not found.</p>
         <Link
-          href={`/${locale}/products`}
+          href={`/${locale}/search`}
           className="text-primary hover:underline text-sm"
         >
           Continue Shopping
@@ -296,7 +296,7 @@ export default function CheckoutSuccessPage() {
           Check your email for confirmation.
         </p>
         <Link
-          href={`/${locale}/products`}
+          href={`/${locale}/search`}
           className="text-primary hover:underline text-sm"
         >
           Continue Shopping
@@ -486,7 +486,7 @@ export default function CheckoutSuccessPage() {
           </Link>
         )}
         <Link
-          href={`/${locale}/products`}
+          href={`/${locale}/search`}
           className="flex-1 flex items-center justify-center gap-2 py-3 border border-border text-secondary text-sm font-medium rounded-button hover:border-primary hover:text-primary transition-colors"
         >
           <Home className="w-4 h-4" />

@@ -23,6 +23,12 @@ export enum ProductSortBy {
 }
 
 export class ProductQueryDto extends PaginationDto {
+  @ApiPropertyOptional({ description: 'Search by product name (ILIKE)' })
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  q?: string;
+
   @ApiPropertyOptional({ description: 'Category ID' })
   @IsOptional()
   @IsString()

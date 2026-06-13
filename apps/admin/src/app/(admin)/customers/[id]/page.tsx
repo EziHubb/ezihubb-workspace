@@ -185,11 +185,11 @@ export default async function CustomerDetailPage({
             Order History ({orders.pagination?.total ?? 0})
           </h4>
 
-          {orders.data.length === 0 ? (
+          {(orders.data ?? []).length === 0 ? (
             <p className="text-sm text-muted text-center py-8">No orders yet.</p>
           ) : (
             <ul className="divide-y divide-border">
-              {orders.data.map((order) => (
+              {(orders.data ?? []).map((order) => (
                 <li key={order.id} className="py-3 flex items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -242,9 +242,9 @@ export default async function CustomerDetailPage({
         {/* ── RIGHT: Notes, tags, addresses ─────────────────────────────────── */}
         <CustomerSideCards
           customerId={customer.id}
-          notes={customer.notes}
-          tags={customer.tags}
-          addresses={customer.addresses}
+          notes={customer.notes ?? []}
+          tags={customer.tags ?? []}
+          addresses={customer.addresses ?? []}
         />
       </div>
     </>

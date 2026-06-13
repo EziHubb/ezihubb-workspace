@@ -133,7 +133,7 @@ export default function OurStoryPage() {
           Browse our collection and find the perfect personalized gift for someone you love.
         </p>
         <Link
-          href="/products"
+          href="/search"
           className="inline-flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-full font-semibold hover:bg-primary-dark transition-colors"
         >
           Shop Personalized Gifts

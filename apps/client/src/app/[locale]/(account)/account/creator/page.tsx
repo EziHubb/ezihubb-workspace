@@ -108,8 +108,8 @@ export default function CreatorHubPage() {
 
   const creatorLink = me?.referralCode
     ? (typeof window !== 'undefined'
-        ? `${window.location.origin}/products?c=${me.referralCode}`
-        : `/products?c=${me.referralCode}`)
+        ? `${window.location.origin}/search?c=${me.referralCode}`
+        : `/search?c=${me.referralCode}`)
     : '';
 
   const whatsappUrl = creatorLink

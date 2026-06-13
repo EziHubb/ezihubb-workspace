@@ -74,7 +74,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
               <p className="text-sm font-medium text-secondary">{t('drawer.empty')}</p>
-              <Link href="/products" onClick={onClose} className="text-sm text-primary hover:underline">
+              <Link href="/search" onClick={onClose} className="text-sm text-primary hover:underline">
                 {t('drawer.browseProducts')}
               </Link>
             </div>

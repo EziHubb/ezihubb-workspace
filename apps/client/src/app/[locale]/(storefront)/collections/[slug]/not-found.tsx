@@ -16,7 +16,7 @@ export default function CollectionNotFound() {
 
       <div className="flex flex-col sm:flex-row gap-3">
         <Link
-          href="/products"
+          href="/search"
           className="bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-3 rounded-button transition-colors text-sm uppercase tracking-wide"
         >
           Shop All Products

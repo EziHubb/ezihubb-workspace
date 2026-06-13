@@ -193,9 +193,7 @@ function useNavData() {
 
 // ── Child nav row ─────────────────────────────────────────────────────────────
 
-function ChildRow({ item }: { item: ChildItem }) {
-  const pathname = usePathname();
-  const isActive = pathname === item.href || (item.href.length > 1 && pathname.startsWith(item.href + '/'));
+function ChildRow({ item, isActive }: { item: ChildItem; isActive: boolean }) {
   const Icon = item.icon;
 
   return (
@@ -233,6 +231,16 @@ function NavRow({ item }: { item: NavItem }) {
     (c) => pathname === c.href || pathname.startsWith(c.href + '/'),
   );
 
+  // Most-specific match wins: exact first, then longest prefix — prevents siblings from both activating
+  const activeChildHref = (() => {
+    const children = item.children ?? [];
+    const exact = children.find((c) => pathname === c.href);
+    if (exact) return exact.href;
+    const prefixMatches = children.filter((c) => c.href.length > 1 && pathname.startsWith(c.href + '/'));
+    if (!prefixMatches.length) return null;
+    return prefixMatches.reduce((a, b) => (a.href.length >= b.href.length ? a : b)).href;
+  })();
+
   const [open, setOpen] = useState(() => hasActiveChild);
   useEffect(() => { if (hasActiveChild) setOpen(true); }, [pathname, hasActiveChild]);
 
@@ -267,7 +275,7 @@ function NavRow({ item }: { item: NavItem }) {
         {open && (
           <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-white/[0.08] space-y-0.5">
             {item.children!.map((child) => (
-              <ChildRow key={child.href} item={child} />
+              <ChildRow key={child.href} item={child} isActive={child.href === activeChildHref} />
             ))}
           </div>
         )}
@@ -353,18 +361,15 @@ function SidebarBody({
   return (
     <>
       {/* Nav */}
-      <nav className="flex-1 px-2 pb-4 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-2 pb-2 space-y-0.5 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {navSections.map((section, i) => (
           <NavSectionGroup key={i} section={section} />
         ))}
       </nav>
 
       {/* User footer */}
-      <div
-        className="mx-3 mb-4 mt-1 rounded-xl p-3"
-        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
-      >
-        <div className="flex items-center gap-3 mb-3">
+      <div className="shrink-0 px-3 py-3 border-t border-white/[0.06]">
+        <div className="flex items-center gap-2.5">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
             style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)' }}
@@ -375,15 +380,15 @@ function SidebarBody({
             <p className="text-white text-xs font-semibold truncate leading-tight">{name}</p>
             <p className="text-[11px] truncate leading-tight mt-0.5" style={{ color: '#6B7280' }}>{email}</p>
           </div>
+          <button
+            type="button"
+            onClick={() => signOut({ callbackUrl: '/login' })}
+            className="shrink-0 p-1.5 rounded-lg text-[#6B7280] hover:text-red-400 hover:bg-red-500/10 transition-all duration-150"
+            title="Sign out"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => signOut({ callbackUrl: '/login' })}
-          className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-xs font-medium text-[#6B7280] hover:text-red-400 hover:bg-red-500/10 transition-all duration-150"
-        >
-          <LogOut className="w-3.5 h-3.5" />
-          Sign out
-        </button>
       </div>
     </>
   );
@@ -396,7 +401,7 @@ export function AdminSidebar() {
 
   return (
     <aside
-      className="hidden lg:flex flex-col w-[248px] shrink-0 h-screen overflow-y-auto"
+      className="hidden lg:flex flex-col w-[248px] shrink-0 h-screen"
       style={{ background: 'linear-gradient(180deg, #16161F 0%, #1A1A26 100%)' }}
     >
       <div className="px-4 pt-5 pb-3">
@@ -454,7 +459,7 @@ export function AdminMobileNav() {
       {/* ── Drawer ───────────────────────────────────────────────────────── */}
       <div
         className={[
-          'fixed inset-y-0 left-0 z-50 flex flex-col w-[280px] lg:hidden transition-transform duration-300 ease-in-out',
+          'fixed inset-y-0 left-0 z-50 flex flex-col w-[280px] lg:hidden transition-transform duration-300 ease-in-out overflow-hidden',
           open ? 'translate-x-0' : '-translate-x-full',
         ].join(' ')}
         style={{ background: 'linear-gradient(180deg, #16161F 0%, #1A1A26 100%)' }}

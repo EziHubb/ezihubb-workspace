@@ -11,15 +11,15 @@ import { fmtNum, fmtAmount } from '../../../../lib/fmt';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface ReferralUserRow {
-  id:           string;
-  email:        string;
-  firstName:    string | null;
-  lastName:     string | null;
-  referralCode: string;
-  directRefs:   number;
-  balance:      number;
-  earned:       number;
-  tier: {
+  id:              string;
+  email:           string;
+  firstName:       string | null;
+  lastName:        string | null;
+  referralCode:    string;
+  totalReferrals:  number;
+  referralBalance: number;
+  referralEarned:  number;
+  referralTier: {
     id:         string;
     name:       string;
     badgeColor: string;
@@ -27,11 +27,13 @@ interface ReferralUserRow {
 }
 
 interface ReferralUsersResponse {
-  data:       ReferralUserRow[];
-  total:      number;
-  page:       number;
-  limit:      number;
-  totalPages: number;
+  data: ReferralUserRow[];
+  meta: {
+    total:      number;
+    page:       number;
+    limit:      number;
+    totalPages: number;
+  };
 }
 
 interface Tier {
@@ -189,7 +191,7 @@ export default function ReferralUsersPage() {
         </select>
 
         {data && (
-          <span className="text-sm text-muted ml-auto">{fmtNum(data.total)} user{data.total !== 1 ? 's' : ''}</span>
+          <span className="text-sm text-muted ml-auto">{fmtNum(data.meta.total)} user{data.meta.total !== 1 ? 's' : ''}</span>
         )}
       </div>
 
@@ -228,13 +230,13 @@ export default function ReferralUsersPage() {
                           <p className="text-xs text-muted mt-0.5 font-mono">{u.email}</p>
                         </td>
                         <td className="px-4 py-3">
-                          {u.tier
+                          {u.referralTier
                             ? (
                                 <span
                                   className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold text-white"
-                                  style={{ background: u.tier.badgeColor }}
+                                  style={{ background: u.referralTier.badgeColor }}
                                 >
-                                  {u.tier.name}
+                                  {u.referralTier.name}
                                 </span>
                               )
                             : <span className="text-xs text-muted">—</span>
@@ -243,9 +245,9 @@ export default function ReferralUsersPage() {
                         <td className="px-4 py-3">
                           <code className="font-mono text-xs bg-muted/10 px-2 py-0.5 rounded">{u.referralCode}</code>
                         </td>
-                        <td className="px-4 py-3 text-secondary tabular-nums text-xs">{u.directRefs}</td>
-                        <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${fmtAmount(u.earned)}</td>
-                        <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${fmtAmount(u.balance)}</td>
+                        <td className="px-4 py-3 text-secondary tabular-nums text-xs">{u.totalReferrals}</td>
+                        <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${fmtAmount(u.referralEarned)}</td>
+                        <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${fmtAmount(u.referralBalance)}</td>
                         <td className="px-4 py-3">
                           <button
                             type="button"
@@ -264,9 +266,9 @@ export default function ReferralUsersPage() {
         </div>
 
         {/* Pagination */}
-        {data && data.totalPages > 1 && (
+        {data && data.meta.totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-            <p className="text-sm text-muted">Page {data.page} of {data.totalPages}</p>
+            <p className="text-sm text-muted">Page {data.meta.page} of {data.meta.totalPages}</p>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -278,8 +280,8 @@ export default function ReferralUsersPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
-                disabled={page >= data.totalPages}
+                onClick={() => setPage((p) => Math.min(data.meta.totalPages, p + 1))}
+                disabled={page >= data.meta.totalPages}
                 className="px-3 py-1.5 text-xs font-medium border border-border rounded-button text-secondary hover:border-primary/40 disabled:opacity-40 transition-colors"
               >
                 Next

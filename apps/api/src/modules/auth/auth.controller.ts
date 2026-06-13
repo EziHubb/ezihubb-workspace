@@ -70,7 +70,8 @@ export class AuthController {
     const status = 'requiresTOTP' in result && result.requiresTOTP
       ? HttpStatus.ACCEPTED
       : HttpStatus.OK;
-    res.status(status).json(result);
+    // Manually wrap in the standard API envelope since @Res() bypasses TransformInterceptor
+    res.status(status).json({ success: true, data: result, meta: null });
   }
 
   // POST /auth/totp/verify

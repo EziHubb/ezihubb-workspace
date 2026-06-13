@@ -146,7 +146,7 @@ export function EmptyCart({ onShop }: { onShop?: () => void }) {
       illustration="cart"
       title="Your cart is empty"
       description="Looks like you haven't added anything yet. Explore our handmade gifts!"
-      action={{ label: 'Start Shopping', href: '/products' }}
+      action={{ label: 'Start Shopping', href: '/search' }}
     />
   );
 }
@@ -157,7 +157,7 @@ export function EmptyOrders() {
       illustration="orders"
       title="No orders yet"
       description="Your order history will appear here once you make your first purchase."
-      action={{ label: 'Shop Now', href: '/products' }}
+      action={{ label: 'Shop Now', href: '/search' }}
     />
   );
 }
@@ -168,7 +168,7 @@ export function EmptyWishlist() {
       illustration="wishlist"
       title="Nothing saved yet"
       description="Tap the heart icon on any product to save it for later."
-      action={{ label: 'Explore Gifts', href: '/products' }}
+      action={{ label: 'Explore Gifts', href: '/search' }}
     />
   );
 }
@@ -179,7 +179,7 @@ export function EmptySearchResults({ query }: { query: string }) {
       illustration="search"
       title={`No results for "${query}"`}
       description="Try different keywords or browse our full collection."
-      action={{ label: 'Browse All Products', href: '/products' }}
+      action={{ label: 'Browse All Products', href: '/search' }}
     />
   );
 }

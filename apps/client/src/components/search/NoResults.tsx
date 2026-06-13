@@ -108,7 +108,7 @@ export function NoResults({ query, onSearch }: NoResultsProps) {
       {/* Browse all */}
       <div className="text-center">
         <Link
-          href={`/${locale}/products`}
+          href={`/${locale}/search`}
           className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-bold text-sm px-8 py-3.5 rounded-button transition-colors uppercase tracking-wide"
         >
           Browse All Products

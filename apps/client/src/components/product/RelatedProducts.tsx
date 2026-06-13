@@ -18,7 +18,7 @@ export function RelatedProducts({ products, locale }: RelatedProductsProps) {
           You Might Also Like
         </h2>
         <Link
-          href={`/${locale}/products`}
+          href={`/${locale}/search`}
           className="hidden md:inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
         >
           Shop All

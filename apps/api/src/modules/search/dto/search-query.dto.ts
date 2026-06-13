@@ -131,5 +131,5 @@ export class SearchQueryDto extends PaginationDto {
   @ApiPropertyOptional({ enum: SearchSortBy })
   @IsOptional()
   @IsEnum(SearchSortBy)
-  sort?: SearchSortBy;
+  override sort?: SearchSortBy = SearchSortBy.RELEVANCE;
 }

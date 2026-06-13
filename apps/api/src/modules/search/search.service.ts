@@ -216,15 +216,22 @@ export class SearchService {
       whereParts.push(`p."soldCount" >= ${(baseWhere.soldCount as { gte: number }).gte}`);
     }
 
-    const orderSql = this.buildRawOrderBy(sort, 'ts_rank(p.search_vector, query)');
+    // Use COALESCE so ORDER BY works even when search_vector is NULL
+    const orderSql = this.buildRawOrderBy(sort, 'COALESCE(ts_rank(p.search_vector, query), 0)');
     const whereStr = whereParts.length ? whereParts.join(' AND ') + ' AND ' : '';
+    const likeQ = `%${q.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`;
 
+    // Hybrid: prefer FTS relevance but also match via ILIKE so NULL search_vector rows are found
     const searchSql = Prisma.sql`
       SELECT p.id
       FROM "Product" p,
            plainto_tsquery('english', ${q}) query
       WHERE ${Prisma.raw(whereStr)}
-            p.search_vector @@ query
+            (
+              (p.search_vector IS NOT NULL AND p.search_vector @@ query)
+              OR p.name ILIKE ${likeQ}
+              OR p.description ILIKE ${likeQ}
+            )
       ORDER BY ${Prisma.raw(orderSql)}
       LIMIT ${limit} OFFSET ${offset}
     `;
@@ -234,7 +241,11 @@ export class SearchService {
       FROM "Product" p,
            plainto_tsquery('english', ${q}) query
       WHERE ${Prisma.raw(whereStr)}
-            p.search_vector @@ query
+            (
+              (p.search_vector IS NOT NULL AND p.search_vector @@ query)
+              OR p.name ILIKE ${likeQ}
+              OR p.description ILIKE ${likeQ}
+            )
     `;
 
     let productIds: string[] = [];
@@ -248,7 +259,7 @@ export class SearchService {
       productIds = rows.map((r) => r.id);
       total = parseInt(countRows[0]?.total ?? '0', 10);
     } catch {
-      this.logger.warn('search_vector not available, falling back to ILIKE search');
+      this.logger.warn('Hybrid search failed, falling back to pure ILIKE');
       const ilikeFallback: Prisma.ProductWhereInput = {
         ...baseWhere,
         OR: [

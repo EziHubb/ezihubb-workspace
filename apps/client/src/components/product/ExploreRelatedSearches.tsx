@@ -29,12 +29,12 @@ function buildRelatedSearches(product: ProductDto, locale: string): RelatedSearc
   const featured: FeaturedChip[] = [
     {
       label:    'DailyDaisy',
-      href:     `/${locale}/products`,
+      href:     `/${locale}/search`,
       imageUrl: null,
     },
     ...tags.slice(0, 3).map((t) => ({
       label:    t.name,
-      href:     `/${locale}/products?tag=${t.slug}`,
+      href:     `/${locale}/search?tags=${t.slug}`,
       imageUrl: null,
     })),
   ];
@@ -108,7 +108,7 @@ export function ExploreRelatedSearches({ product, locale }: ExploreRelatedSearch
             {keywords.map((kw) => (
               <Link
                 key={kw}
-                href={`/${locale}/products?tag=${encodeURIComponent(kw)}`}
+                href={`/${locale}/search?q=${encodeURIComponent(kw)}`}
                 className="px-3 py-1.5 border border-border rounded-full text-sm text-secondary hover:border-secondary hover:text-secondary transition-colors"
               >
                 {kw}

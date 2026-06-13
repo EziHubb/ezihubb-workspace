@@ -120,7 +120,7 @@ export default async function ProductDetailPage({
       apiClient.get<ReviewSummaryDto>(API_ROUTES.PRODUCTS.REVIEW_SUMMARY(slug), {
         next: { revalidate: 60 },
       }),
-      apiClient.get<PaginatedResponse<ProductListItemDto>>(API_ROUTES.PRODUCTS.RELATED(slug), {
+      apiClient.get<ProductListItemDto[]>(API_ROUTES.PRODUCTS.RELATED(slug), {
         next: { revalidate: 300 },
       }),
       apiClient.get<PaginatedResponse<ProductListItemDto>>(API_ROUTES.PRODUCTS.LIST, {
@@ -139,7 +139,7 @@ export default async function ProductDetailPage({
     ? reviewSummaryRes.value : null;
 
   const relatedProducts = relatedRes.status === 'fulfilled'
-    ? relatedRes.value.data : [];
+    ? relatedRes.value : [];
 
   const moreFromShop = moreFromShopRes.status === 'fulfilled'
     ? moreFromShopRes.value.data : [];

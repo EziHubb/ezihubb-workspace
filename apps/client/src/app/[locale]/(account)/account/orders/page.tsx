@@ -210,7 +210,7 @@ export default function OrdersPage() {
             </p>
           </div>
           <Link
-            href={`/${locale}/products`}
+            href={`/${locale}/search`}
             className="mt-2 bg-primary hover:bg-primary-dark text-white font-bold text-sm px-6 py-3 rounded-button transition-colors uppercase tracking-wide"
           >
             {t('orders.empty.shopNow')}

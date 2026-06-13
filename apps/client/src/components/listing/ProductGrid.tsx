@@ -61,7 +61,7 @@ export function ProductGrid({ products, locale, isLoading = false }: ProductGrid
           Try adjusting or clearing your filters.
         </p>
         <Link
-          href={`/${locale}/products`}
+          href={`/${locale}/search`}
           className="bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-3 rounded-button transition-colors text-sm uppercase tracking-wide"
         >
           Clear Filters

@@ -520,17 +520,17 @@ function EmailTab() {
           <div className="col-span-1">
             <FieldLabel>SMTP Host</FieldLabel>
             <input value={smtp.host} onChange={(e) => setSmtp((s) => ({ ...s, host: e.target.value }))}
-              className={inputCls} placeholder="smtp.sendgrid.net" />
+              className={inputCls} placeholder="smtp.sendgrid.net" autoComplete="off" />
           </div>
           <div>
             <FieldLabel>SMTP Port</FieldLabel>
             <input value={smtp.port} onChange={(e) => setSmtp((s) => ({ ...s, port: e.target.value }))}
-              className={inputCls} placeholder="587" />
+              className={inputCls} placeholder="587" autoComplete="off" />
           </div>
           <div>
             <FieldLabel>SMTP User</FieldLabel>
             <input value={smtp.user} onChange={(e) => setSmtp((s) => ({ ...s, user: e.target.value }))}
-              className={inputCls} placeholder="apikey" />
+              className={inputCls} placeholder="apikey" autoComplete="off" />
           </div>
           <div>
             <FieldLabel>SMTP Password</FieldLabel>
@@ -541,6 +541,7 @@ function EmailTab() {
                 onChange={(e) => setSmtp((s) => ({ ...s, password: e.target.value }))}
                 className={`${inputCls} pr-9`}
                 placeholder="••••••••"
+                autoComplete="new-password"
               />
               <button
                 type="button"
@@ -554,12 +555,12 @@ function EmailTab() {
           <div>
             <FieldLabel>From Name</FieldLabel>
             <input value={smtp.fromName} onChange={(e) => setSmtp((s) => ({ ...s, fromName: e.target.value }))}
-              className={inputCls} />
+              className={inputCls} autoComplete="off" />
           </div>
           <div>
             <FieldLabel>From Email</FieldLabel>
             <input type="email" value={smtp.fromEmail} onChange={(e) => setSmtp((s) => ({ ...s, fromEmail: e.target.value }))}
-              className={inputCls} placeholder="noreply@dailydaisy.com" />
+              className={inputCls} placeholder="noreply@dailydaisy.com" autoComplete="off" />
           </div>
         </div>
         <div className="flex items-center gap-3">

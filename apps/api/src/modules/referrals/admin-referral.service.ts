@@ -156,22 +156,29 @@ export class AdminReferralService {
   async getUserTree(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, firstName: true, lastName: true, referralCode: true },
+      select: { id: true },
     });
     if (!user) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'User not found' });
 
-    const level1 = await this.prisma.user.findMany({
-      where: { referredByUserId: userId },
-      select: {
-        id: true, firstName: true, lastName: true, createdAt: true,
-        referralCode: true, totalReferrals: true,
-        referrals: {
-          select: { id: true, firstName: true, lastName: true, createdAt: true, referralCode: true },
-        },
-      },
-    });
+    const buildLevel = async (parentId: string, level: number): Promise<any[]> => {
+      if (level > 3) return [];
+      const refs = await this.prisma.user.findMany({
+        where: { referredByUserId: parentId },
+        select: { id: true, email: true, firstName: true, lastName: true },
+      });
+      return Promise.all(
+        refs.map(async (u) => ({
+          userId:    u.id,
+          email:     u.email,
+          firstName: u.firstName,
+          lastName:  u.lastName,
+          level,
+          children:  await buildLevel(u.id, level + 1),
+        })),
+      );
+    };
 
-    return { user, downline: level1 };
+    return buildLevel(userId, 1);
   }
 
   async adjustBalance(userId: string, dto: AdminBalanceAdjustDto): Promise<void> {

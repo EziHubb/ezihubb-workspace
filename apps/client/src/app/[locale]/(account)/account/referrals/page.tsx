@@ -176,8 +176,8 @@ export default function ReferralsPage() {
   const referralLink =
     me?.referralCode
       ? (typeof window !== 'undefined'
-          ? `${window.location.origin}/products?ref=${me.referralCode}`
-          : `/products?ref=${me.referralCode}`)
+          ? `${window.location.origin}/search?ref=${me.referralCode}`
+          : `/search?ref=${me.referralCode}`)
       : '';
 
   const whatsappUrl = referralLink

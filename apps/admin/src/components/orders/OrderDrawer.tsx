@@ -9,7 +9,7 @@ import {
   ExternalLink, Save, Mail, DollarSign, MessageSquare, Gift,
 } from 'lucide-react';
 import { fmtDate, fmtDateTime } from '../../lib/fmt';
-import { OrderStatusBadge, ALL_STATUSES } from './OrderStatusBadge';
+import { OrderStatusBadge, ALL_STATUSES, StatusSelect } from './OrderStatusBadge';
 import { CustomizationPreviewModal } from './CustomizationPreviewModal';
 import { BuyLabelModal, type LabelPurchaseResult } from './BuyLabelModal';
 import { api } from '../../lib/api-client';
@@ -397,15 +397,7 @@ function UpdateStatus({ order, onUpdate }: { order: OrderDetail; onUpdate: () =>
       <h5 className="font-semibold text-secondary text-sm mb-3">Update Status</h5>
 
       <div className="space-y-3">
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="w-full px-3 py-2 text-sm border border-border rounded-button bg-background text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          {ALL_STATUSES.map((s) => (
-            <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
-          ))}
-        </select>
+        <StatusSelect value={status} onChange={setStatus} />
 
         <textarea
           value={note}

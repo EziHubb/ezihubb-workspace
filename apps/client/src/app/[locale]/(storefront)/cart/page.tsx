@@ -46,7 +46,7 @@ export default function CartPage() {
           {t('empty.description')}
         </p>
         <Link
-          href={`/${locale}/products`}
+          href={`/${locale}/search`}
           className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-bold px-8 py-3.5 rounded-button transition-colors text-sm uppercase tracking-wide"
         >
           {t('empty.startShopping')}
@@ -120,7 +120,7 @@ export default function CartPage() {
           </ul>
           <div className="mt-6">
             <Link
-              href={`/${locale}/products`}
+              href={`/${locale}/search`}
               className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline underline-offset-2"
             >
               {t('continueShopping')}

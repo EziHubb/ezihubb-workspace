@@ -6,18 +6,24 @@ import { SearchGridSkeleton } from '../../../../components/search/SearchProductG
 export async function generateMetadata({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; category?: string }>;
 }): Promise<Metadata> {
   const params = await searchParams;
   const q = params.q?.trim();
+  const category = params.category?.trim();
+  const title = q
+    ? `"${q}" — Personalized Gifts | DailyDaisy`
+    : category
+      ? `${category} Gifts | DailyDaisy`
+      : 'All Personalized Gifts | DailyDaisy';
+  const description = q
+    ? `Find the perfect personalized "${q}" gift. Custom-made with love at DailyDaisy.`
+    : 'Shop 120+ personalized gift ideas — custom mugs, canvas prints, apparel and more.';
   return {
-    title: q
-      ? `"${q}" — Personalized Gifts | DailyDaisy`
-      : 'Search Personalized Gifts | DailyDaisy',
-    description: q
-      ? `Find the perfect personalized "${q}" gift. Custom-made with love at DailyDaisy.`
-      : 'Search 120+ personalized gift ideas. Custom mugs, canvas prints, apparel and more.',
-    robots: { index: false, follow: true },
+    title,
+    description,
+    robots: { index: !q, follow: true },
+    alternates: { canonical: '/search' },
   };
 }
 

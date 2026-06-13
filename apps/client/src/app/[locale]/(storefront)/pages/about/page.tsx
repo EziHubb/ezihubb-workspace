@@ -216,7 +216,7 @@ export default function AboutPage() {
           Browse our collection and create a personalized gift they&apos;ll never forget.
         </p>
         <Link
-          href="/products"
+          href="/search"
           className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-bold px-8 py-3.5 rounded-button transition-colors text-sm uppercase tracking-wide"
         >
           Shop Personalized Gifts

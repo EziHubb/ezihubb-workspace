@@ -50,7 +50,7 @@ export function SearchNoResults({ query }: SearchNoResultsProps) {
       )}
 
       <Link
-        href={`/${locale}/products`}
+        href={`/${locale}/search`}
         className="inline-flex items-center gap-2 mt-8 bg-primary hover:bg-primary-dark text-white font-bold text-sm px-8 py-3.5 rounded-button transition-colors uppercase tracking-wide"
       >
         Browse All Products

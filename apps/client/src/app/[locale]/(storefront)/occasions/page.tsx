@@ -57,7 +57,7 @@ export default async function OccasionsPage({
           <div className="text-center py-20">
             <p className="text-muted text-lg mb-4">No occasions available right now.</p>
             <Link
-              href={`/${locale}/products`}
+              href={`/${locale}/search`}
               className="text-primary hover:underline text-sm font-medium"
             >
               Browse all products →
@@ -86,7 +86,7 @@ export default async function OccasionsPage({
         </p>
         <div className="flex items-center justify-center gap-4 flex-wrap">
           <Link
-            href={`/${locale}/products`}
+            href={`/${locale}/search`}
             className="bg-primary hover:bg-primary-dark text-white font-semibold px-8 py-3 rounded-button transition-colors text-sm uppercase tracking-wide"
           >
             Browse All Gifts

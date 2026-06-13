@@ -11,35 +11,37 @@ import { fmtDate, fmtNum, fmtAmount, capitalize } from '../../../lib/fmt';
 
 interface ReferralOverview {
   kpis: {
-    totalReferringUsers:  number;
-    activeThisMonth:      number;
+    totalReferrers:       number;
+    monthlyActive:        number;
     totalPaidOut:         number;
-    pendingAmount:        number;
+    pendingCommissions:   { count: number; amount: number };
+    confirmedCommissions: { count: number; amount: number };
   };
   topReferrers: TopReferrer[];
   recentCommissions: RecentCommission[];
 }
 
 interface TopReferrer {
-  rank:        number;
-  userId:      string;
-  email:       string;
-  firstName:   string | null;
-  lastName:    string | null;
-  tierName:    string | null;
-  tierColor:   string | null;
-  directRefs:  number;
-  earned:      number;
-  balance:     number;
+  id:             string;
+  name:           string;
+  email:          string;
+  referralCode:   string;
+  totalReferrals: number;
+  earned:         number;
+  balance:        number;
+  tier: {
+    name:       string;
+    badgeColor: string;
+    badgeIcon:  string;
+  } | null;
 }
 
 interface RecentCommission {
-  id:         string;
-  createdAt:  string;
-  earnerEmail: string;
-  earnerName:  string | null;
-  buyerEmail:  string | null;
-  buyerName:   string | null;
+  id:          string;
+  createdAt:   string;
+  earner:      string;
+  buyer:       string;
+  orderNumber: string;
   level:       number;
   amount:      number;
   status:      string;
@@ -115,13 +117,13 @@ export default function ReferralsOverviewPage() {
             <>
               <KpiCard
                 label="Total Referring Users"
-                value={fmtNum(kpis?.totalReferringUsers)}
+                value={fmtNum(kpis?.totalReferrers)}
                 icon={Users}
                 color="bg-blue-500"
               />
               <KpiCard
                 label="Active This Month"
-                value={fmtNum(kpis?.activeThisMonth)}
+                value={fmtNum(kpis?.monthlyActive)}
                 icon={TrendingUp}
                 color="bg-green-500"
               />
@@ -133,7 +135,7 @@ export default function ReferralsOverviewPage() {
               />
               <KpiCard
                 label="Pending Amount"
-                value={`$${fmtAmount(kpis?.pendingAmount)}`}
+                value={`$${fmtAmount(kpis?.pendingCommissions?.amount)}`}
                 icon={Clock}
                 color="bg-amber-500"
               />
@@ -173,31 +175,29 @@ export default function ReferralsOverviewPage() {
                           <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted">No referrers yet.</td>
                         </tr>
                       )
-                    : (data?.topReferrers ?? []).map((r) => (
-                        <tr key={r.userId} className="hover:bg-muted/3 transition-colors">
+                    : (data?.topReferrers ?? []).map((r, i) => (
+                        <tr key={r.id} className="hover:bg-muted/3 transition-colors">
                           <td className="px-4 py-3 font-bold text-secondary tabular-nums w-10">
-                            #{r.rank}
+                            #{i + 1}
                           </td>
                           <td className="px-4 py-3">
-                            <p className="font-medium text-secondary text-xs">
-                              {[r.firstName, r.lastName].filter(Boolean).join(' ') || '—'}
-                            </p>
+                            <p className="font-medium text-secondary text-xs">{r.name || '—'}</p>
                             <p className="text-xs text-muted font-mono mt-0.5">{r.email}</p>
                           </td>
                           <td className="px-4 py-3">
-                            {r.tierName
+                            {r.tier
                               ? (
                                   <span
                                     className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold text-white"
-                                    style={{ background: r.tierColor ?? '#6B7280' }}
+                                    style={{ background: r.tier.badgeColor }}
                                   >
-                                    {r.tierName}
+                                    {r.tier.name}
                                   </span>
                                 )
                               : <span className="text-xs text-muted">—</span>
                             }
                           </td>
-                          <td className="px-4 py-3 text-secondary tabular-nums text-xs">{r.directRefs}</td>
+                          <td className="px-4 py-3 text-secondary tabular-nums text-xs">{r.totalReferrals}</td>
                           <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${fmtAmount(r.earned)}</td>
                           <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${fmtAmount(r.balance)}</td>
                         </tr>
@@ -244,12 +244,12 @@ export default function ReferralsOverviewPage() {
                           </td>
                           <td className="px-4 py-3">
                             <p className="text-xs font-medium text-secondary truncate max-w-[120px]">
-                              {c.earnerName || c.earnerEmail}
+                              {c.earner || '—'}
                             </p>
                           </td>
                           <td className="px-4 py-3">
                             <p className="text-xs text-muted truncate max-w-[120px]">
-                              {c.buyerName || c.buyerEmail || '—'}
+                              {c.buyer || '—'}
                             </p>
                           </td>
                           <td className="px-4 py-3">

@@ -104,13 +104,19 @@ export function DialogProvider({ children }: { children: ReactNode }) {
 
 // ── Dialog renderer ───────────────────────────────────────────────────────────
 
+function dismiss(state: NonNullable<DialogState>) {
+  if (state.type === 'confirm') state.resolve(false);
+  else if (state.type === 'prompt') state.resolve(null);
+  else if (state.type === 'alert') state.resolve();
+  else if (state.type === 'preview') state.resolve();
+}
+
 function AppDialog({ state }: { state: NonNullable<DialogState> }) {
-  const inputRef  = useRef<HTMLInputElement>(null);
+  const inputRef   = useRef<HTMLInputElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
   const [input,   setInput]   = useState(state.type === 'prompt' ? state.defaultValue : '');
   const [loading, setLoading] = useState(false);
 
-  // Focus input on mount for prompt; focus confirm button for others
-  const confirmRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (state.type === 'prompt') {
       inputRef.current?.focus();
@@ -120,18 +126,10 @@ function AppDialog({ state }: { state: NonNullable<DialogState> }) {
     }
   }, [state.type]);
 
-  // Keyboard: Escape = cancel, Enter = confirm (except preview/prompt)
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        if (state.type === 'confirm')  state.resolve(false);
-        else if (state.type === 'prompt')   state.resolve(null);
-        else if (state.type === 'alert')    state.resolve();
-        else if (state.type === 'preview')  state.resolve();
-      }
-      if (e.key === 'Enter' && state.type === 'confirm') {
-        state.resolve(true);
-      }
+      if (e.key === 'Escape') dismiss(state);
+      if (e.key === 'Enter' && state.type === 'confirm') state.resolve(true);
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -141,61 +139,77 @@ function AppDialog({ state }: { state: NonNullable<DialogState> }) {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.55)' }}
-      onClick={() => {
-        if (state.type === 'confirm')  state.resolve(false);
-        else if (state.type === 'prompt')   state.resolve(null);
-        else if (state.type === 'alert')    state.resolve();
-        else if (state.type === 'preview')  state.resolve();
-      }}
+      className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-4 sm:p-0"
+      style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+      onClick={() => dismiss(state)}
     >
       <div
-        className={`relative bg-card border border-border shadow-2xl rounded-xl flex flex-col ${
-          isPreview ? 'w-[90vw] h-[85vh] max-w-6xl' : 'w-full max-w-md mx-4'
-        }`}
+        className={`relative bg-card border border-border/60 shadow-2xl flex flex-col overflow-hidden
+          ${isPreview
+            ? 'w-[92vw] h-[88vh] max-w-6xl rounded-2xl'
+            : 'w-full max-w-[400px] rounded-2xl sm:mx-4'
+          }`}
+        style={{
+          animation: 'dlg-in 0.18s cubic-bezier(0.34,1.56,0.64,1) both',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
-          <div className="flex items-center gap-2.5">
-            <DialogIcon type={state.type} />
-            <span className="font-semibold text-sm">{state.title}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              if (state.type === 'confirm')  state.resolve(false);
-              else if (state.type === 'prompt')   state.resolve(null);
-              else if (state.type === 'alert')    state.resolve();
-              else if (state.type === 'preview')  state.resolve();
-            }}
-            className="text-muted hover:text-secondary transition-colors rounded p-0.5"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        <style>{`
+          @keyframes dlg-in {
+            from { opacity: 0; transform: scale(0.92) translateY(8px); }
+            to   { opacity: 1; transform: scale(1)    translateY(0);   }
+          }
+        `}</style>
 
-        {/* Body */}
+        {/* Close button — top-right corner */}
+        <button
+          type="button"
+          onClick={() => dismiss(state)}
+          className="absolute top-3.5 right-3.5 z-10 w-7 h-7 flex items-center justify-center rounded-full text-muted hover:text-secondary hover:bg-muted/10 transition-colors"
+          aria-label="Close"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
+        {/* Preview iframe */}
         {isPreview ? (
-          <div className="flex-1 min-h-0 relative">
-            {loading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-card z-10">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
-              </div>
-            )}
-            <iframe
-              src={state.url}
-              className="w-full h-full border-0 rounded-b-xl"
-              title={state.title}
-              onLoad={() => setLoading(false)}
-              onLoadStart={() => setLoading(true)}
-            />
-          </div>
+          <>
+            <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-border/60 shrink-0">
+              <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+              <span className="font-semibold text-sm text-secondary truncate pr-8">{state.title}</span>
+            </div>
+            <div className="flex-1 min-h-0 relative">
+              {loading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-card z-10">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              )}
+              <iframe
+                src={state.url}
+                className="w-full h-full border-0"
+                title={state.title}
+                onLoad={() => setLoading(false)}
+                onLoadStart={() => setLoading(true)}
+              />
+            </div>
+          </>
         ) : (
-          <div className="px-5 py-5 space-y-4">
-            <p className="text-sm text-secondary leading-relaxed">{state.message}</p>
+          /* Alert / Confirm / Prompt */
+          <div className="px-6 pt-7 pb-6 flex flex-col gap-5">
+            {/* Icon + Title */}
+            <div className="flex flex-col items-center gap-3 text-center">
+              <DialogIconBadge state={state} />
+              <h2 className="text-base font-semibold text-secondary leading-snug">
+                {state.title}
+              </h2>
+            </div>
 
+            {/* Message */}
+            <p className="text-sm text-muted text-center leading-relaxed -mt-1">
+              {state.message}
+            </p>
+
+            {/* Prompt input */}
             {state.type === 'prompt' && (
               <input
                 ref={inputRef}
@@ -204,16 +218,14 @@ function AppDialog({ state }: { state: NonNullable<DialogState> }) {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={state.placeholder}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    state.resolve(input.trim() || null);
-                  }
+                  if (e.key === 'Enter') { e.preventDefault(); state.resolve(input.trim() || null); }
                 }}
-                className="w-full text-sm border border-border rounded-button px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="w-full text-sm border border-border rounded-lg px-3.5 py-2.5 bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-shadow"
               />
             )}
 
-            <div className="flex gap-2.5 justify-end pt-1">
+            {/* Buttons */}
+            <div className={`flex gap-2.5 ${state.type === 'alert' ? 'justify-center' : 'justify-end'} pt-1`}>
               {state.type !== 'alert' && (
                 <button
                   type="button"
@@ -221,7 +233,7 @@ function AppDialog({ state }: { state: NonNullable<DialogState> }) {
                     if (state.type === 'confirm') state.resolve(false);
                     else state.resolve(null);
                   }}
-                  className="text-sm px-4 py-2 rounded-button border border-border text-secondary hover:bg-muted/30 transition-colors"
+                  className="h-9 px-5 rounded-lg border border-border text-sm font-medium text-secondary bg-transparent hover:bg-muted/10 transition-colors"
                 >
                   Cancel
                 </button>
@@ -232,7 +244,7 @@ function AppDialog({ state }: { state: NonNullable<DialogState> }) {
                   ref={confirmRef}
                   type="button"
                   onClick={() => state.resolve()}
-                  className="text-sm px-5 py-2 rounded-button bg-primary text-white hover:bg-primary/90 transition-colors font-medium"
+                  className="h-9 px-8 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm"
                 >
                   OK
                 </button>
@@ -243,9 +255,9 @@ function AppDialog({ state }: { state: NonNullable<DialogState> }) {
                   ref={confirmRef}
                   type="button"
                   onClick={() => state.resolve(true)}
-                  className={`text-sm px-5 py-2 rounded-button font-medium transition-colors ${
+                  className={`h-9 px-5 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] shadow-sm ${
                     state.destructive
-                      ? 'bg-error text-white hover:bg-error/90'
+                      ? 'bg-red-500 text-white hover:bg-red-600'
                       : 'bg-primary text-white hover:bg-primary/90'
                   }`}
                 >
@@ -258,7 +270,7 @@ function AppDialog({ state }: { state: NonNullable<DialogState> }) {
                   ref={confirmRef}
                   type="button"
                   onClick={() => state.resolve(input.trim() || null)}
-                  className="text-sm px-5 py-2 rounded-button bg-primary text-white hover:bg-primary/90 transition-colors font-medium"
+                  className="h-9 px-5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm"
                 >
                   Submit
                 </button>
@@ -271,15 +283,22 @@ function AppDialog({ state }: { state: NonNullable<DialogState> }) {
   );
 }
 
-function DialogIcon({ type }: { type: NonNullable<DialogState>['type'] }) {
-  switch (type) {
-    case 'alert':
-      return <Info className="w-4 h-4 text-primary" />;
-    case 'confirm':
-      return <AlertTriangle className="w-4 h-4 text-amber-500" />;
-    case 'prompt':
-      return <Info className="w-4 h-4 text-primary" />;
-    case 'preview':
-      return <CheckCircle className="w-4 h-4 text-green-500" />;
-  }
+function DialogIconBadge({ state }: { state: NonNullable<DialogState> }) {
+  const isDestructive = state.type === 'confirm' && state.destructive;
+
+  const bg =
+    isDestructive                ? 'bg-red-500/10'
+    : state.type === 'confirm'   ? 'bg-amber-500/10'
+    : state.type === 'alert'     ? 'bg-primary/10'
+    :                              'bg-primary/10';
+
+  return (
+    <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${bg}`}>
+      {isDestructive       ? <AlertTriangle className="w-6 h-6 text-red-500" />    :
+       state.type === 'confirm' ? <AlertTriangle className="w-6 h-6 text-amber-500" /> :
+       state.type === 'alert'   ? <Info           className="w-6 h-6 text-primary"   /> :
+                                  <Info           className="w-6 h-6 text-primary"   />
+      }
+    </div>
+  );
 }

@@ -30,7 +30,7 @@ export async function TrendingProducts({ products, locale, viewAllLabel }: Trend
             <p className="text-muted">{t('trending.subtitle')}</p>
           </div>
           <Link
-            href={`/${locale}/products`}
+            href={`/${locale}/search`}
             className="hidden md:inline-flex items-center gap-1.5 text-primary font-semibold hover:underline text-sm shrink-0 mt-1"
           >
             {viewAllLabel}
@@ -68,7 +68,7 @@ export async function TrendingProducts({ products, locale, viewAllLabel }: Trend
         {products.length > 0 && (
           <div className="mt-6 text-center md:hidden">
             <Link
-              href={`/${locale}/products`}
+              href={`/${locale}/search`}
               className="inline-flex items-center gap-2 text-primary font-semibold border border-primary px-6 py-3 rounded-button hover:bg-primary hover:text-white transition-colors text-sm"
             >
               {viewAllLabel}

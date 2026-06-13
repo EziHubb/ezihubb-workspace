@@ -35,7 +35,7 @@ function escapeRegExp(s: string) {
 
 interface SearchInputProps {
   defaultValue?: string;
-  variant?:      'page' | 'navbar';
+  variant?:      'page' | 'navbar' | 'header';
   placeholder?:  string;
   className?:    string;
   onSearch?:     (query: string) => void;
@@ -166,18 +166,25 @@ export function SearchInput({
     isFocused && (suggestions.length > 0 || value.trim().length === 0);
 
   // ── Styles by variant ──────────────────────────────────────────────────────
-  const isPage    = variant === 'page';
-  const inputSize = isPage ? 'py-3 text-base pl-12 pr-10' : 'py-2 text-sm pl-9 pr-8';
-  const iconSize  = isPage ? 'w-5 h-5 left-4 top-3.5' : 'w-4 h-4 left-2.5 top-2.5';
+  const isPage   = variant === 'page';
+  const isHeader = variant === 'header';
+  const inputSize = isPage
+    ? 'py-3 text-base pl-12 pr-10'
+    : isHeader
+      ? 'py-3 pl-5 pr-24 text-sm'
+      : 'py-2 text-sm pl-9 pr-8';
+  const iconSize = isPage ? 'w-5 h-5 left-4 top-3.5' : 'w-4 h-4 left-2.5 top-2.5';
 
   return (
     <div className={`relative ${className}`}>
       {/* Input */}
       <div className="relative">
-        <Search
-          className={`absolute ${iconSize} text-muted pointer-events-none`}
-          aria-hidden="true"
-        />
+        {!isHeader && (
+          <Search
+            className={`absolute ${iconSize} text-muted pointer-events-none`}
+            aria-hidden="true"
+          />
+        )}
         <input
           ref={inputRef}
           id={id}
@@ -199,8 +206,11 @@ export function SearchInput({
           autoComplete="off"
           spellCheck="false"
           className={[
-            'w-full border border-border rounded-button bg-surface text-secondary',
-            'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors',
+            'w-full bg-surface text-secondary transition-colors',
+            isHeader
+              ? 'border-2 border-border rounded-full focus:outline-none focus:border-primary'
+              : 'border border-border rounded-button focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary',
+            '[&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden',
             inputSize,
           ].join(' ')}
         />
@@ -210,9 +220,24 @@ export function SearchInput({
             type="button"
             onClick={clearInput}
             aria-label="Clear search"
-            className="absolute right-0 top-0 h-full px-2.5 flex items-center text-muted hover:text-secondary transition-colors"
+            className={
+              isHeader
+                ? 'absolute right-14 top-1/2 -translate-y-1/2 p-1.5 text-muted hover:text-secondary transition-colors'
+                : 'absolute right-0 top-0 h-full px-2.5 flex items-center text-muted hover:text-secondary transition-colors'
+            }
           >
             <X className="w-4 h-4" />
+          </button>
+        )}
+
+        {isHeader && (
+          <button
+            type="button"
+            onClick={() => { setActiveIdx(-1); navigate(value); inputRef.current?.blur(); }}
+            aria-label="Search"
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-primary hover:bg-primary-dark rounded-full flex items-center justify-center transition-colors shrink-0"
+          >
+            <Search className="w-4 h-4 text-white" />
           </button>
         )}
       </div>

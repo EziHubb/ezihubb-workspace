@@ -27,11 +27,13 @@ interface PayoutRow {
 }
 
 interface PayoutsResponse {
-  data:       PayoutRow[];
-  total:      number;
-  page:       number;
-  limit:      number;
-  totalPages: number;
+  data: PayoutRow[];
+  meta: {
+    total:      number;
+    page:       number;
+    limit:      number;
+    totalPages: number;
+  };
 }
 
 // ── Status badge ───────────────────────────────────────────────────────────────
@@ -246,13 +248,13 @@ export default function CreatorPayoutsPage() {
           </table>
         </div>
 
-        {data && data.totalPages > 1 && (
+        {data && data.meta.totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-            <p className="text-sm text-muted">Page {data.page} of {data.totalPages} · {data.total} total</p>
+            <p className="text-sm text-muted">Page {data.meta.page} of {data.meta.totalPages} · {data.meta.total} total</p>
             <div className="flex gap-2">
               <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}
                 className="px-3 py-1.5 text-xs font-medium border border-border rounded-button text-secondary hover:border-primary/40 disabled:opacity-40 transition-colors">Previous</button>
-              <button type="button" onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))} disabled={page >= data.totalPages}
+              <button type="button" onClick={() => setPage((p) => Math.min(data.meta.totalPages, p + 1))} disabled={page >= data.meta.totalPages}
                 className="px-3 py-1.5 text-xs font-medium border border-border rounded-button text-secondary hover:border-primary/40 disabled:opacity-40 transition-colors">Next</button>
             </div>
           </div>

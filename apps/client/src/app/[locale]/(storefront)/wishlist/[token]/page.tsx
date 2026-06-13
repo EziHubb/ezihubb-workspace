@@ -162,7 +162,7 @@ export default async function SharedWishlistPage({
           <p className="text-secondary font-semibold">This wishlist is empty</p>
           <p className="text-sm text-muted">Nothing here yet — but there's plenty to love in the store.</p>
           <Link
-            href={`/${locale}/products`}
+            href={`/${locale}/search`}
             className="mt-2 bg-primary hover:bg-primary-dark text-white font-bold text-sm px-6 py-3 rounded-button transition-colors uppercase tracking-wide"
           >
             Explore Gifts
