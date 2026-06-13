@@ -102,8 +102,8 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         try {
-          // The login endpoint uses @Res() (non-passthrough), bypassing TransformInterceptor.
-          // Response is the raw service result — no { success, data } envelope.
+          // The login endpoint uses @Res() (non-passthrough) but manually wraps:
+          // res.json({ success: true, data: { accessToken, user }, meta: null })
           const { data: body, status } = await axios.post<
             Record<string, unknown>
           >(
@@ -112,20 +112,23 @@ export const authOptions: NextAuthOptions = {
             { validateStatus: (s) => s < 500 },
           );
 
+          // Unwrap the { success, data, meta } envelope
+          const result = (body?.['data'] ?? body) as Record<string, unknown>;
+
           // TOTP required (202)
-          if (status === 202 || body['requiresTOTP'] === true) {
+          if (status === 202) {
             return {
               id: 'totp-pending',
               email: credentials.email,
               name: credentials.email,
               requiresTOTP: true,
-              partialToken: body['partialToken'] as string,
+              partialToken: result['partialToken'] as string,
             } as unknown as import('next-auth').User;
           }
 
-          if (status !== 200 || !body) return null;
+          if (status !== 200 || !result) return null;
 
-          const user = (body['user'] ?? body) as Record<string, unknown>;
+          const user = (result['user'] ?? result) as Record<string, unknown>;
 
           if (!['ADMIN', 'SUPER_ADMIN'].includes(user['role'] as string)) {
             if (process.env['NODE_ENV'] !== 'production') {
@@ -144,7 +147,7 @@ export const authOptions: NextAuthOptions = {
               `${(user['firstName'] as string) ?? ''} ${(user['lastName'] as string) ?? ''}`.trim() ||
               String(user['email']),
             role: user['role'] as string,
-            accessToken: body['accessToken'] as string,
+            accessToken: result['accessToken'] as string,
           };
         } catch (err) {
           if (process.env['NODE_ENV'] !== 'production') {
