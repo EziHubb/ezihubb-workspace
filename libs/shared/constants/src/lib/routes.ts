@@ -346,6 +346,7 @@ export const API_ROUTES = {
     SETTINGS_EMAIL_TEST:    '/admin/settings/email/test',
     SETTINGS_NOTIFICATIONS: '/admin/settings/notifications',
     SETTINGS_SEO:           '/admin/settings/seo',
+    SETTINGS_THEME:         '/admin/settings/theme',
 
     // ── Translations ─────────────────────────────────────────────────────────
     TRANSLATIONS:           (entityType: string, entityId: string) => `/admin/translations/${entityType}/${entityId}`,

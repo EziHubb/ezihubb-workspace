@@ -1140,73 +1140,151 @@ function SeoTab() {
 // Appearance tab
 // ═══════════════════════════════════════════════════════════════════════════════
 
+interface SiteThemeSettings {
+  primaryRgb:   string;
+  primaryDark:  string;
+  primaryLight: string;
+}
+
+function ThemePresetGrid({
+  selected,
+  onSelect,
+}: {
+  selected: string;
+  onSelect: (theme: AdminTheme) => void;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-3 pt-1">
+      {ADMIN_THEMES.map((theme) => {
+        const isActive = selected === theme.key;
+        const [r, g, b] = theme.primaryRgb.split(' ').map(Number);
+        const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        return (
+          <button
+            key={theme.key}
+            type="button"
+            onClick={() => onSelect(theme)}
+            className={[
+              'relative flex flex-col items-center gap-2.5 p-4 rounded-card border-2 transition-all text-center',
+              isActive
+                ? 'border-primary bg-primary/5 shadow-sm'
+                : 'border-border hover:border-primary/40 bg-surface',
+            ].join(' ')}
+          >
+            <div className="w-full h-14 rounded-lg overflow-hidden flex shadow-card" aria-hidden>
+              <div className="w-6 h-full shrink-0 rounded-l-lg" style={{ backgroundColor: theme.sidebar }} />
+              <div className="flex-1 bg-[#F5F5F7] p-1.5 space-y-1">
+                <div className="h-2.5 rounded-sm w-4/5" style={{ backgroundColor: hex, opacity: 0.9 }} />
+                <div className="h-1.5 rounded-sm w-3/5 bg-[#D1D5DB]" />
+                <div className="h-1.5 rounded-sm w-2/5 bg-[#D1D5DB]" />
+                <div className="mt-1.5 h-4 rounded-sm w-full" style={{ backgroundColor: hex }} />
+              </div>
+            </div>
+            <span className="text-xs font-semibold text-secondary">{theme.name}</span>
+            {isActive && (
+              <span className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: hex }}>
+                <svg viewBox="0 0 10 8" className="w-2.5 h-2" fill="none" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 4 L4 7 L9 1" />
+                </svg>
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function AppearanceTab() {
-  const [active, setActive] = useState<AdminTheme>(() => {
+  // ── Admin theme (browser-local) ────────────────────────────────────────────
+  const [adminTheme, setAdminTheme] = useState<AdminTheme>(() => {
     if (typeof window === 'undefined') return ADMIN_THEMES[0];
     return loadSavedTheme();
   });
 
-  const handleSelect = (theme: AdminTheme) => {
-    setActive(theme);
+  const handleAdminSelect = (theme: AdminTheme) => {
+    setAdminTheme(theme);
     saveTheme(theme);
   };
 
+  // ── Site theme (server-saved, applies to all visitors) ─────────────────────
+  const qc = useQueryClient();
+  const [siteKey,   setSiteKey]   = useState('coral');
+  const [siteSaving, setSiteSaving] = useState(false);
+  const [siteDone,   setSiteDone]   = useState(false);
+
+  const { data: siteThemeData } = useQuery<SiteThemeSettings>({
+    queryKey: ['site-theme-settings'],
+    queryFn:  () => api.get<SiteThemeSettings>(API_ROUTES.ADMIN.SETTINGS_THEME),
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    if (!siteThemeData) return;
+    const match = ADMIN_THEMES.find((t) => t.primaryRgb === siteThemeData.primaryRgb);
+    if (match) setSiteKey(match.key);
+  }, [siteThemeData]);
+
+  const handleSiteSave = async () => {
+    const theme = ADMIN_THEMES.find((t) => t.key === siteKey) ?? ADMIN_THEMES[0];
+    setSiteSaving(true);
+    try {
+      await api.patch(API_ROUTES.ADMIN.SETTINGS_THEME, {
+        primaryRgb:   theme.primaryRgb,
+        primaryDark:  theme.primaryDark,
+        primaryLight: theme.primaryLight,
+      });
+      qc.invalidateQueries({ queryKey: ['site-theme-settings'] });
+      setSiteDone(true);
+      setTimeout(() => setSiteDone(false), 3000);
+    } finally { setSiteSaving(false); }
+  };
+
+  const activeSite = ADMIN_THEMES.find((t) => t.key === siteKey) ?? ADMIN_THEMES[0];
+
   return (
     <div className="space-y-5">
-      <SectionCard title="Admin Color Theme">
+      {/* ── Site Theme ──────────────────────────────────────────────────────── */}
+      <SectionCard title="Site Color Theme">
         <p className="text-sm text-muted -mt-2">
-          Choose a colour scheme for the admin interface. The change applies instantly and is saved to this browser.
+          Choose the primary colour for the customer-facing storefront. Changes are saved to the server and apply to all visitors within 5 minutes.
         </p>
 
-        <div className="grid grid-cols-3 gap-3 pt-1">
-          {ADMIN_THEMES.map((theme) => {
-            const isActive = active.key === theme.key;
-            const [r, g, b] = theme.primaryRgb.split(' ').map(Number);
-            const hex = `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
-            return (
-              <button
-                key={theme.key}
-                type="button"
-                onClick={() => handleSelect(theme)}
-                className={[
-                  'relative flex flex-col items-center gap-2.5 p-4 rounded-card border-2 transition-all text-center',
-                  isActive
-                    ? 'border-primary bg-primary/5 shadow-sm'
-                    : 'border-border hover:border-primary/40 bg-surface',
-                ].join(' ')}
-              >
-                {/* Mini UI preview */}
-                <div className="w-full h-14 rounded-lg overflow-hidden flex shadow-card" aria-hidden>
-                  {/* Sidebar strip */}
-                  <div className="w-6 h-full shrink-0 rounded-l-lg" style={{ backgroundColor: theme.sidebar }} />
-                  {/* Content area */}
-                  <div className="flex-1 bg-[#F5F5F7] p-1.5 space-y-1">
-                    <div className="h-2.5 rounded-sm w-4/5" style={{ backgroundColor: hex, opacity: 0.9 }} />
-                    <div className="h-1.5 rounded-sm w-3/5 bg-[#D1D5DB]" />
-                    <div className="h-1.5 rounded-sm w-2/5 bg-[#D1D5DB]" />
-                    <div className="mt-1.5 h-4 rounded-sm w-full" style={{ backgroundColor: hex }} />
-                  </div>
-                </div>
+        <ThemePresetGrid selected={siteKey} onSelect={(t) => setSiteKey(t.key)} />
 
-                <span className="text-xs font-semibold text-secondary">{theme.name}</span>
-
-                {isActive && (
-                  <span className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: hex }}>
-                    <svg viewBox="0 0 10 8" className="w-2.5 h-2" fill="none" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 4 L4 7 L9 1" />
-                    </svg>
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        <div className="flex items-center justify-between pt-1 border-t border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-button shrink-0" style={{ backgroundColor: `rgb(${activeSite.primaryRgb.replace(/ /g, ',')})` }} />
+            <div>
+              <p className="text-sm font-medium text-secondary">Selected: {activeSite.name}</p>
+              <p className="text-xs text-muted">#{activeSite.primaryRgb.split(' ').map((n) => parseInt(n).toString(16).padStart(2, '0')).join('')}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleSiteSave}
+            disabled={siteSaving}
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-button transition-colors disabled:opacity-50 ${siteDone ? 'bg-green-500 text-white' : 'bg-primary hover:bg-primary-dark text-white'}`}
+          >
+            <Save className="w-3.5 h-3.5" />
+            {siteSaving ? 'Saving…' : siteDone ? '✓ Saved' : 'Apply to Site'}
+          </button>
         </div>
+      </SectionCard>
+
+      {/* ── Admin Theme (browser-only) ──────────────────────────────────────── */}
+      <SectionCard title="Admin Interface Theme">
+        <p className="text-sm text-muted -mt-2">
+          Choose a colour scheme for this admin panel. Saved to this browser only — does not affect the storefront.
+        </p>
+
+        <ThemePresetGrid selected={adminTheme.key} onSelect={handleAdminSelect} />
 
         <div className="flex items-center gap-3 pt-1 border-t border-border">
-          <div className="w-8 h-8 rounded-button shrink-0" style={{ backgroundColor: `rgb(${active.primaryRgb.replace(/ /g, ',')})` }} />
+          <div className="w-8 h-8 rounded-button shrink-0" style={{ backgroundColor: `rgb(${adminTheme.primaryRgb.replace(/ /g, ',')})` }} />
           <div>
-            <p className="text-sm font-medium text-secondary">Active: {active.name}</p>
-            <p className="text-xs text-muted">Primary #{active.primaryRgb.split(' ').map(n => parseInt(n).toString(16).padStart(2,'0')).join('')} · Sidebar {active.sidebar}</p>
+            <p className="text-sm font-medium text-secondary">Active: {adminTheme.name}</p>
+            <p className="text-xs text-muted">Primary #{adminTheme.primaryRgb.split(' ').map((n) => parseInt(n).toString(16).padStart(2, '0')).join('')} · Sidebar {adminTheme.sidebar}</p>
           </div>
         </div>
       </SectionCard>

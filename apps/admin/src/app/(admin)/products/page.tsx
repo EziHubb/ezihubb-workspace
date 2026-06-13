@@ -7,6 +7,7 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { Plus, Search, X, Eye, EyeOff, Package, Upload, LayoutGrid, List, ChevronLeft, ChevronRight, Tag, Download, Archive } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { DataTable } from '../../../components/data/DataTable';
 import { ProductCard, type AdminProduct } from '../../../components/products/ProductCard';
 import { api, adminApi } from '../../../lib/api-client';
@@ -670,9 +671,10 @@ function ProductsPageInner() {
 export default function ProductsPage() {
   return (
     <>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-secondary leading-tight">Products</h1>
-      </div>
+      <AdminPageHeader
+        title="Products"
+        queryKey={['admin-products']}
+      />
       <Suspense fallback={<div className="animate-pulse h-96 bg-muted/5 rounded-xl" />}>
         <ProductsPageInner />
       </Suspense>

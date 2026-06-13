@@ -79,4 +79,18 @@ export class AdminSettingsController {
   updateSeo(@Body() body: Record<string, unknown>) {
     return this.settings.updateSettings('seo', body);
   }
+
+  // ── Theme ─────────────────────────────────────────────────────────────────
+
+  @Get('theme')
+  @ApiOperation({ summary: 'Get site theme settings' })
+  getTheme() {
+    return this.settings.getSettings('theme');
+  }
+
+  @Patch('theme')
+  @ApiOperation({ summary: 'Update site theme settings' })
+  updateTheme(@Body() body: Record<string, unknown>) {
+    return this.settings.updateSettings('theme', body);
+  }
 }

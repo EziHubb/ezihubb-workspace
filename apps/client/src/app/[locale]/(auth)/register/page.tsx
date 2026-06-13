@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -54,17 +54,18 @@ function PasswordStrengthBar({ password }: { password: string }) {
 
 const schema = z
   .object({
-    firstName:   z.string().min(1, 'Required'),
-    lastName:    z.string().min(1, 'Required'),
-    email:       z.string().email('Enter a valid email'),
-    password:    z
+    firstName:    z.string().min(1, 'Required'),
+    lastName:     z.string().min(1, 'Required'),
+    email:        z.string().email('Enter a valid email'),
+    password:     z
       .string()
       .min(8, 'At least 8 characters')
       .regex(/[A-Z]/, 'Include an uppercase letter')
       .regex(/[0-9]/, 'Include a number')
       .regex(/[^A-Za-z0-9]/, 'Include a special character'),
-    confirmPw:   z.string(),
-    agreeTerms:  z.boolean().refine((v) => v === true, {
+    confirmPw:    z.string(),
+    referralCode: z.string().trim().optional(),
+    agreeTerms:   z.boolean().refine((v) => v === true, {
       message: 'You must agree to the terms',
     }),
   })
@@ -91,9 +92,13 @@ function GoogleIcon() {
 // ── Inner component (needs toast context) ─────────────────────────────────────
 
 function RegisterForm() {
-  const locale  = useLocale();
-  const router  = useRouter();
-  const toast = useToast();
+  const locale       = useLocale();
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+  const toast        = useToast();
+
+  // Pre-fill referral code from URL ?ref= or ?c= (set by affiliate/referral links)
+  const urlRef = searchParams.get('ref') ?? searchParams.get('c') ?? '';
 
   const [showPw,      setShowPw]      = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -107,10 +112,12 @@ function RegisterForm() {
     setError,
     watch,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { referralCode: urlRef },
+  });
 
   const agreeTerms = watch('agreeTerms');
-
 
   const onSubmit = async (data: FormValues) => {
     setIsPending(true);
@@ -118,10 +125,11 @@ function RegisterForm() {
 
     try {
       await useAuthStore.getState().register({
-        email:     data.email,
-        password:  data.password,
-        firstName: data.firstName,
-        lastName:  data.lastName,
+        email:        data.email,
+        password:     data.password,
+        firstName:    data.firstName,
+        lastName:     data.lastName,
+        referralCode: data.referralCode?.trim() || undefined,
       });
 
       toast.success('Account created! Check your email to verify. 📧');
@@ -259,6 +267,25 @@ function RegisterForm() {
             </button>
           </div>
           {errors.confirmPw && <p className="text-xs text-error mt-0.5">{errors.confirmPw.message}</p>}
+        </div>
+
+        {/* Referral code (optional) */}
+        <div>
+          <label className="text-xs font-medium text-muted mb-1 block">
+            Referral Code <span className="text-muted font-normal">(optional)</span>
+          </label>
+          <input
+            {...register('referralCode')}
+            type="text"
+            placeholder="e.g. SOPHIE1A2B"
+            autoComplete="off"
+            className={inp()}
+            style={{ textTransform: 'uppercase' }}
+            onInput={(e) => {
+              const el = e.currentTarget;
+              el.value = el.value.toUpperCase();
+            }}
+          />
         </div>
 
         {/* Terms checkbox */}

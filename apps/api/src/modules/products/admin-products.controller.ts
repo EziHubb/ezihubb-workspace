@@ -231,6 +231,78 @@ export class AdminProductsController {
     return product;
   }
 
+  // PATCH /admin/products/bulk — must be declared BEFORE :id to avoid route conflict
+  @Patch('bulk')
+  @ApiOperation({ summary: '[Admin] Bulk update products (publish/unpublish/archive/set-sale)' })
+  async bulkUpdate(@Req() req: Request, @Body() dto: BulkProductActionDto) {
+    if (!dto.ids || dto.ids.length === 0) throw new BadRequestException('No products selected');
+    if (dto.ids.length > 200) throw new BadRequestException('Max 200 products per bulk action');
+
+    let result: Record<string, unknown>;
+
+    switch (dto.action) {
+      case 'publish':
+        await this.prisma.product.updateMany({
+          where: { id: { in: dto.ids } },
+          data:  { status: ProductStatus.ACTIVE, isActive: true },
+        });
+        result = { updated: dto.ids.length, action: 'published' };
+        break;
+
+      case 'unpublish':
+        await this.prisma.product.updateMany({
+          where: { id: { in: dto.ids } },
+          data:  { status: ProductStatus.INACTIVE, isActive: false },
+        });
+        result = { updated: dto.ids.length, action: 'unpublished' };
+        break;
+
+      case 'archive':
+        await this.prisma.product.updateMany({
+          where: { id: { in: dto.ids } },
+          data:  { status: ProductStatus.ARCHIVED, isActive: false },
+        });
+        result = { updated: dto.ids.length, action: 'archived' };
+        break;
+
+      case 'set-sale': {
+        const pct = Number(dto.payload?.['discountPercent'] ?? 0);
+        if (pct <= 0 || pct >= 100) throw new BadRequestException('Discount must be 1–99%');
+        const products = await this.prisma.product.findMany({
+          where:  { id: { in: dto.ids } },
+          select: { id: true, basePrice: true },
+        });
+        await this.prisma.$transaction(
+          products.map((p) => {
+            const salePrice = Math.round(Number(p.basePrice) * (1 - pct / 100) * 100) / 100;
+            return this.prisma.product.update({
+              where: { id: p.id },
+              data:  { compareAtPrice: p.basePrice, basePrice: salePrice },
+            });
+          }),
+        );
+        result = { updated: dto.ids.length, action: 'sale-applied', discountPercent: pct };
+        break;
+      }
+
+      default:
+        throw new BadRequestException(`Unknown action: ${dto.action}`);
+    }
+
+    const userId = (req.user as { sub: string }).sub;
+    this.auditLog.log({
+      userId,
+      action:     'BULK_UPDATE',
+      entityType: 'Product',
+      entityId:   dto.ids[0] ?? 'bulk',
+      after:      { ids: dto.ids, ...result },
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
+
+    return result;
+  }
+
   // PATCH /admin/products/:id
   @Patch(':id')
   @ApiOperation({ summary: '[Admin] Update product' })
@@ -553,80 +625,6 @@ export class AdminProductsController {
     @Body() dto: ReorderIdsDto,
   ) {
     return this.productsService.reorderCustomOptions(id, dto.orderedIds);
-  }
-
-  // ── Bulk actions ──────────────────────────────────────────────────────────────
-
-  // PATCH /admin/products/bulk
-  @Patch('bulk')
-  @ApiOperation({ summary: '[Admin] Bulk update products (publish/unpublish/archive/set-sale)' })
-  async bulkUpdate(@Req() req: Request, @Body() dto: BulkProductActionDto) {
-    if (!dto.ids || dto.ids.length === 0) throw new BadRequestException('No products selected');
-    if (dto.ids.length > 200) throw new BadRequestException('Max 200 products per bulk action');
-
-    let result: Record<string, unknown>;
-
-    switch (dto.action) {
-      case 'publish':
-        await this.prisma.product.updateMany({
-          where: { id: { in: dto.ids } },
-          data:  { status: ProductStatus.ACTIVE, isActive: true },
-        });
-        result = { updated: dto.ids.length, action: 'published' };
-        break;
-
-      case 'unpublish':
-        await this.prisma.product.updateMany({
-          where: { id: { in: dto.ids } },
-          data:  { status: ProductStatus.INACTIVE, isActive: false },
-        });
-        result = { updated: dto.ids.length, action: 'unpublished' };
-        break;
-
-      case 'archive':
-        await this.prisma.product.updateMany({
-          where: { id: { in: dto.ids } },
-          data:  { status: ProductStatus.ARCHIVED, isActive: false },
-        });
-        result = { updated: dto.ids.length, action: 'archived' };
-        break;
-
-      case 'set-sale': {
-        const pct = Number(dto.payload?.['discountPercent'] ?? 0);
-        if (pct <= 0 || pct >= 100) throw new BadRequestException('Discount must be 1–99%');
-        const products = await this.prisma.product.findMany({
-          where:  { id: { in: dto.ids } },
-          select: { id: true, basePrice: true },
-        });
-        await this.prisma.$transaction(
-          products.map((p) => {
-            const salePrice = Math.round(Number(p.basePrice) * (1 - pct / 100) * 100) / 100;
-            return this.prisma.product.update({
-              where: { id: p.id },
-              data:  { compareAtPrice: p.basePrice, basePrice: salePrice },
-            });
-          }),
-        );
-        result = { updated: dto.ids.length, action: 'sale-applied', discountPercent: pct };
-        break;
-      }
-
-      default:
-        throw new BadRequestException(`Unknown action: ${dto.action}`);
-    }
-
-    const userId = (req.user as { sub: string }).sub;
-    this.auditLog.log({
-      userId,
-      action:     'BULK_UPDATE',
-      entityType: 'Product',
-      entityId:   dto.ids[0] ?? 'bulk',
-      after:      { ids: dto.ids, ...result },
-      ip:         req.ip,
-      userAgent:  req.headers['user-agent'],
-    });
-
-    return result;
   }
 
   // PATCH /admin/products/:id/related

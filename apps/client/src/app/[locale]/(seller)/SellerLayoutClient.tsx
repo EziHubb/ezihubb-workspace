@@ -24,13 +24,14 @@ export default function SellerLayoutClient({ children }: { children: React.React
   const router   = useRouter();
   const pathname = usePathname();
 
-  const storeUser = useAuthStore((s) => s.user);
-  const { data: profile, isLoading: profileLoading, isError: profileError } = useProfile(!!storeUser);
+  const storeUser   = useAuthStore((s) => s.user);
+  const isAuthReady = useAuthStore((s) => s.isAuthReady);
+  const { data: profile, isLoading: profileLoading, isError: profileError } = useProfile(isAuthReady && !!storeUser);
   const { data: store,   isLoading: storeLoading,   isError: storeError   } = useAuthQuery<StoreDto>(
     ['seller', 'store', 'me'],
     '/stores/me',
     undefined,
-    { enabled: !!storeUser },
+    { enabled: isAuthReady && !!storeUser },
   );
 
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -40,18 +41,20 @@ export default function SellerLayoutClient({ children }: { children: React.React
 
   // ── Auth guard ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isLoading && (profileError || !profile)) {
+    if (!isAuthReady || isLoading) return;
+    if (profileError || !profile) {
       const redirect = encodeURIComponent(pathname);
       router.replace(`/${locale}/login?redirect=${redirect}`);
     }
-  }, [profile, isLoading, profileError, router, locale, pathname]);
+  }, [profile, isLoading, profileError, isAuthReady, router, locale, pathname]);
 
   // ── Store redirect ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isLoading && profile && (storeError || !store) && !isApplyPath) {
+    if (!isAuthReady || isLoading) return;
+    if (profile && (storeError || !store) && !isApplyPath) {
       router.replace(`/${locale}/seller/apply`);
     }
-  }, [store, isLoading, storeError, profile, isApplyPath, router, locale]);
+  }, [store, isLoading, storeError, profile, isApplyPath, isAuthReady, router, locale]);
 
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (isLoading || !profile) {

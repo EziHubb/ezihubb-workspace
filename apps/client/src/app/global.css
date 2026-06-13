@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 :root {
+  /* Theme CSS vars — overridden server-side via <style> tag from DB settings */
+  --c-primary: 232 93 63;
+  --c-primary-dark: #C44A2E;
+  --c-primary-light: #FFF0EC;
+  /* Legacy color vars (kept for non-Tailwind usages) */
   --color-primary: #E85D3F;
   --color-primary-dark: #C44A2E;
   --color-secondary: #2D2D2D;

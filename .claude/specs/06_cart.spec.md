@@ -2,32 +2,35 @@
 
 ## 1. Endpoints
 
-| Method | Path | Mô tả | Auth |
-|---|---|---|---|
-| GET | `/api/v1/cart` | Lấy giỏ hàng | Optional |
-| POST | `/api/v1/cart/items` | Thêm sản phẩm | Optional |
-| PATCH | `/api/v1/cart/items/{itemId}` | Cập nhật số lượng | Optional |
-| DELETE | `/api/v1/cart/items/{itemId}` | Xoá sản phẩm | Optional |
-| DELETE | `/api/v1/cart` | Xoá toàn bộ giỏ hàng | Optional |
-| POST | `/api/v1/cart/merge` | Merge guest cart vào user cart | Bearer |
-| POST | `/api/v1/cart/apply-coupon` | Apply coupon code | Optional |
-| DELETE | `/api/v1/cart/coupon` | Remove coupon | Optional |
-| POST | `/api/v1/cart/estimate-shipping` | Estimate shipping costs | Optional |
+| Method | Path                             | Mô tả                          | Auth     |
+| ------ | -------------------------------- | ------------------------------ | -------- |
+| GET    | `/api/v1/cart`                   | Lấy giỏ hàng                   | Optional |
+| POST   | `/api/v1/cart/items`             | Thêm sản phẩm                  | Optional |
+| PATCH  | `/api/v1/cart/items/{itemId}`    | Cập nhật số lượng              | Optional |
+| DELETE | `/api/v1/cart/items/{itemId}`    | Xoá sản phẩm                   | Optional |
+| DELETE | `/api/v1/cart`                   | Xoá toàn bộ giỏ hàng           | Optional |
+| POST   | `/api/v1/cart/merge`             | Merge guest cart vào user cart | Bearer   |
+| POST   | `/api/v1/cart/apply-coupon`      | Apply coupon code              | Optional |
+| DELETE | `/api/v1/cart/coupon`            | Remove coupon                  | Optional |
+| POST   | `/api/v1/cart/estimate-shipping` | Estimate shipping costs        | Optional |
 
 ## 2. Guest Cart vs Authenticated Cart
 
 ### Guest Cart
-- `sessionId` (UUID v4) lưu trong localStorage (key: `mlh-cart`)
+
+- `sessionId` (UUID v4) lưu trong localStorage (key: `daisy-cart`)
 - Mỗi request gửi header: `X-Session-ID: <sessionId>`
 - Cart lưu trong Redis với key: `cart:session:<sessionId>`
 - TTL: 7 ngày (tự động gia hạn mỗi lần access)
 
 ### Authenticated Cart
+
 - Dùng `Authorization: Bearer <token>` header
 - Cart lưu trong PostgreSQL (Prisma) + Redis cache
 - Sau login: `POST /api/v1/cart/merge` tự động được gọi bởi auth store
 
 ### Merge Flow
+
 1. User login → auth store gọi `cartStore.mergeGuestCart()`
 2. Cart store POST `/api/v1/cart/merge` với `X-Session-ID` header
 3. API merge items (quantity cộng dồn nếu trùng productId + variantId + customizationData hash)
@@ -92,12 +95,16 @@ interface CartDto {
 
 File: `apps/client/src/lib/store/cart.store.ts`
 
-**Persisted state** (key: `mlh-cart`):
+**Persisted state** (key: `daisy-cart`):
+
 ```typescript
-{ sessionId: string | null }  // only sessionId persisted
+{
+  sessionId: string | null;
+} // only sessionId persisted
 ```
 
 **In-memory state:**
+
 ```typescript
 {
   cart: CartDto | null;
@@ -107,6 +114,7 @@ File: `apps/client/src/lib/store/cart.store.ts`
 ```
 
 **Actions:**
+
 - `initSession()` — generate session UUID if needed
 - `fetchCart()` — GET /cart
 - `addItem(dto: AddItemDto)` — POST /cart/items + optimistic update + analytics

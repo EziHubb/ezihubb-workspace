@@ -28,6 +28,6 @@ import { QUEUES } from '../../queue/queue.constants';
     AdminAuditLogController,
   ],
   providers: [AdminService, SettingsService],
-  exports: [AdminService],
+  exports: [AdminService, SettingsService],
 })
 export class AdminModule {}

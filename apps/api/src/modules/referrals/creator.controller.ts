@@ -18,7 +18,7 @@ import { ReferralRequestPayoutDto as RequestPayoutDto } from './dto/referral.dto
 import { ReferralCommissionStatus } from '@prisma/client';
 
 @ApiTags('creators')
-@Controller('api/v1/creators')
+@Controller('creators')
 export class CreatorController {
   constructor(private readonly referralService: ReferralService) {}
 

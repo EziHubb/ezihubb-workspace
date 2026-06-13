@@ -49,6 +49,11 @@ const DEFAULTS: Record<string, Record<string, unknown>> = {
     googleVerification: '',
     metaPixelId: '',
   },
+  theme: {
+    primaryRgb:   '232 93 63',
+    primaryDark:  '#C44A2E',
+    primaryLight: '#FFF0EC',
+  },
 };
 
 const TEMPLATE_NAMES: Record<string, string> = {

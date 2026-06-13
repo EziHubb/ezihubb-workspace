@@ -93,6 +93,24 @@ export async function generateMetadata({
   };
 }
 
+async function fetchSiteThemeStyle(): Promise<string> {
+  try {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3002';
+    const res = await fetch(`${apiBase}/api/v1/settings/theme`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return '';
+    const json = (await res.json()) as {
+      success: boolean;
+      data: { primaryRgb?: string; primaryDark?: string; primaryLight?: string };
+    };
+    const { primaryRgb = '232 93 63', primaryDark = '#C44A2E', primaryLight = '#FFF0EC' } = json.data ?? {};
+    return `:root{--c-primary:${primaryRgb};--c-primary-dark:${primaryDark};--c-primary-light:${primaryLight};}`;
+  } catch {
+    return '';
+  }
+}
+
 export default async function LocaleLayout({
   children,
   params,
@@ -112,13 +130,16 @@ export default async function LocaleLayout({
 
   const messages = await getMessages({ locale });
 
-  const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
-  const gaId  = process.env.NEXT_PUBLIC_GA_ID;
-  const hjId  = process.env.NEXT_PUBLIC_HOTJAR_ID;
-  const isProd = process.env.NODE_ENV === 'production';
+  const gtmId      = process.env.NEXT_PUBLIC_GTM_ID;
+  const gaId       = process.env.NEXT_PUBLIC_GA_ID;
+  const hjId       = process.env.NEXT_PUBLIC_HOTJAR_ID;
+  const isProd     = process.env.NODE_ENV === 'production';
+  const themeStyle = await fetchSiteThemeStyle();
 
   return (
     <html lang={locale} className={`${inter.variable} ${playfair.variable}`}>
+      {/* Site theme CSS variables — injected before any paint to avoid FOUC */}
+      {themeStyle && <style dangerouslySetInnerHTML={{ __html: themeStyle }} />}
       {/* GTM script — injected into <head> as early as possible */}
       {isProd && gtmId && <GoogleTagManager gtmId={gtmId} />}
       <body className="font-sans bg-background text-secondary antialiased">

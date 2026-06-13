@@ -141,7 +141,7 @@ export default function OrdersPage() {
 
   const { data: pagedData, isLoading } = useAuthQuery<PaginatedResponse<OrderDto>>(
     queryKeys.orders({ status: activeStatus || undefined, page }),
-    '/users/me/orders',
+    '/orders/me',
     { status: activeStatus || undefined, limit: 10, page },
   );
 

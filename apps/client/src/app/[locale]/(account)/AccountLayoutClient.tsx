@@ -24,21 +24,22 @@ export default function AccountLayoutClient({
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => { setHydrated(true); }, []);
 
-  const storeUser = useAuthStore((s) => s.user);
-  const { data: profile, isLoading, isError } = useProfile(hydrated && !!storeUser);
+  const storeUser    = useAuthStore((s) => s.user);
+  const isAuthReady  = useAuthStore((s) => s.isAuthReady);
+  const { data: profile, isLoading, isError } = useProfile(hydrated && isAuthReady && !!storeUser);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // ── Auth guard ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!hydrated || isLoading) return;
+    if (!hydrated || !isAuthReady || isLoading) return;
     if (isError || !profile) {
       const redirect = encodeURIComponent(pathname);
       router.replace(`/${locale}/login?redirect=${redirect}`);
     }
-  }, [profile, isLoading, isError, hydrated, router, locale, pathname]);
+  }, [profile, isLoading, isError, hydrated, isAuthReady, router, locale, pathname]);
 
   // ── Loading / unauthenticated ──────────────────────────────────────────────
-  if (!hydrated || isLoading || !profile) {
+  if (!hydrated || !isAuthReady || isLoading || !profile) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />

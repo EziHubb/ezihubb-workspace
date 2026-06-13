@@ -33,8 +33,8 @@ function sessionHeader(sessionId: string | null): Record<string, string> {
 function normalizeItem(item: CartItemDto): CartItemDto {
   return {
     ...item,
-    productName:    item.productName    || item.product?.name  || '',
-    productSlug:    item.productSlug    || item.product?.slug  || '',
+    productName: item.productName || item.product?.name || '',
+    productSlug: item.productSlug || item.product?.slug || '',
     productImageUrl:
       item.productImageUrl !== undefined
         ? item.productImageUrl
@@ -42,9 +42,9 @@ function normalizeItem(item: CartItemDto): CartItemDto {
     variantName:
       item.variantName !== undefined
         ? item.variantName
-        : (item.variant
-            ? Object.values(item.variant.options).join(' / ')
-            : null),
+        : item.variant
+          ? Object.values(item.variant.options).join(' / ')
+          : null,
     priceChanged:
       item.priceChanged !== undefined
         ? item.priceChanged
@@ -54,56 +54,64 @@ function normalizeItem(item: CartItemDto): CartItemDto {
 }
 
 function normalizeCart(cart: CartDto): CartDto {
-  const items     = cart.items.map(normalizeItem);
+  const items = cart.items.map(normalizeItem);
   const itemCount = cart.itemCount ?? items.reduce((s, i) => s + i.quantity, 0);
-  const subtotal  = cart.subtotal ?? items.reduce((s, i) => s + i.currentPrice * i.quantity, 0);
-  const discount  = cart.discountAmount ?? 0;
+  const subtotal =
+    cart.subtotal ?? items.reduce((s, i) => s + i.currentPrice * i.quantity, 0);
+  const discount = cart.discountAmount ?? 0;
 
   const totals: CartTotals = cart.totals ?? {
     subtotal,
     discount,
     shipping: 0,
-    total:    Math.max(0, subtotal - discount),
+    total: Math.max(0, subtotal - discount),
     itemCount,
   };
 
-  return { ...cart, items, itemCount, subtotal, discountAmount: discount, totals };
+  return {
+    ...cart,
+    items,
+    itemCount,
+    subtotal,
+    discountAmount: discount,
+    totals,
+  };
 }
 
 // ── Add-item DTO ──────────────────────────────────────────────────────────────
 
 export interface AddItemDto {
-  productId:         string;
-  variantId?:        string | null;
-  quantity:          number;
+  productId: string;
+  variantId?: string | null;
+  quantity: number;
   customizationData?: unknown;
-  previewUrl?:       string | null;
+  previewUrl?: string | null;
 }
 
 // ── Store interface ───────────────────────────────────────────────────────────
 
 interface CartStore {
   // ── Cart data ──────────────────────────────────────────────────────────────
-  cart:           CartDto | null;
-  sessionId:      string | null;
-  isLoading:      boolean;
+  cart: CartDto | null;
+  sessionId: string | null;
+  isLoading: boolean;
   _lastMutatedAt: number;
 
   // ── Drawer UI (kept for backward compat — Navbar/CartDrawer use these) ─────
   isDrawerOpen: boolean;
-  openDrawer:   () => void;
-  closeDrawer:  () => void;
+  openDrawer: () => void;
+  closeDrawer: () => void;
 
   // ── Actions ────────────────────────────────────────────────────────────────
-  initSession:    () => void;
-  fetchCart:      () => Promise<void>;
-  addItem:        (dto: AddItemDto) => Promise<void>;
-  updateItem:     (itemId: string, quantity: number) => Promise<void>;
-  removeItem:     (itemId: string) => Promise<void>;
-  applyCoupon:    (code: string) => Promise<void>;
-  removeCoupon:   () => Promise<void>;
+  initSession: () => void;
+  fetchCart: () => Promise<void>;
+  addItem: (dto: AddItemDto) => Promise<void>;
+  updateItem: (itemId: string, quantity: number) => Promise<void>;
+  removeItem: (itemId: string) => Promise<void>;
+  applyCoupon: (code: string) => Promise<void>;
+  removeCoupon: () => Promise<void>;
   mergeGuestCart: () => Promise<void>;
-  clearCart:      () => void;
+  clearCart: () => void;
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
@@ -111,13 +119,13 @@ interface CartStore {
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
-      cart:           null,
-      sessionId:      null,
-      isLoading:      false,
-      isDrawerOpen:   false,
+      cart: null,
+      sessionId: null,
+      isLoading: false,
+      isDrawerOpen: false,
       _lastMutatedAt: 0,
 
-      openDrawer:  () => set({ isDrawerOpen: true }),
+      openDrawer: () => set({ isDrawerOpen: true }),
       closeDrawer: () => set({ isDrawerOpen: false }),
 
       initSession: () => {
@@ -147,14 +155,16 @@ export const useCartStore = create<CartStore>()(
             headers: sessionHeader(get().sessionId),
           });
           set({ cart: normalizeCart(res), _lastMutatedAt: Date.now() });
-          const addedItem = res.items.find((i) => i.productId === dto.productId);
+          const addedItem = res.items.find(
+            (i) => i.productId === dto.productId,
+          );
           if (addedItem) {
             analytics.addToCart({
-              id:        dto.productId,
-              name:      addedItem.productName,
-              category:  '',
-              price:     Number(addedItem.currentPrice),
-              quantity:  dto.quantity,
+              id: dto.productId,
+              name: addedItem.productName,
+              category: '',
+              price: Number(addedItem.currentPrice),
+              quantity: dto.quantity,
               variantId: dto.variantId ?? undefined,
             });
           }
@@ -244,7 +254,7 @@ export const useCartStore = create<CartStore>()(
       clearCart: () => set({ cart: null }),
     }),
     {
-      name: 'mlh-cart',
+      name: 'daisy-cart',
       // Only persist sessionId — cart data is always fetched fresh from server
       partialize: (state) => ({ sessionId: state.sessionId }),
     },

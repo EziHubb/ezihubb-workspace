@@ -15,7 +15,9 @@ let _accessToken: string | null = null;
 // Wire in-memory token into every apiFetch() call (the old `api` client).
 if (typeof window !== 'undefined') {
   setTokenGetter(() => _accessToken);
-  setTokenUpdater((token) => { _accessToken = token ?? null; });
+  setTokenUpdater((token) => {
+    _accessToken = token ?? null;
+  });
 }
 
 // ── Lazy cart store accessor (avoids circular import) ─────────────────────────
@@ -24,7 +26,12 @@ function getCartStore() {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const mod = require('./cart.store') as {
-      useCartStore: { getState: () => { mergeGuestCart: () => Promise<void>; clearCart: () => void } };
+      useCartStore: {
+        getState: () => {
+          mergeGuestCart: () => Promise<void>;
+          clearCart: () => void;
+        };
+      };
     };
     return mod.useCartStore.getState();
   } catch {
@@ -35,31 +42,38 @@ function getCartStore() {
 // ── DTOs ──────────────────────────────────────────────────────────────────────
 
 export interface RegisterDto {
-  email:     string;
-  password:  string;
-  firstName: string;
-  lastName:  string;
+  email:         string;
+  password:      string;
+  firstName:     string;
+  lastName:      string;
+  referralCode?: string;
 }
 
 // ── Store interface ───────────────────────────────────────────────────────────
 
 interface AuthStore {
-  user:        UserDto | null;
-  accessToken: string | null;  // in-memory only — NOT persisted
-  isLoading:   boolean;
+  user: UserDto | null;
+  accessToken: string | null; // in-memory only — NOT persisted
+  isLoading: boolean;
+  /** True after the first fetchCurrentUser() attempt completes (success or fail). */
+  isAuthReady: boolean;
 
-  login:            (email: string, password: string, rememberMe?: boolean) => Promise<void>;
-  register:         (dto: RegisterDto) => Promise<void>;
-  logout:           () => Promise<void>;
+  login: (
+    email: string,
+    password: string,
+    rememberMe?: boolean,
+  ) => Promise<void>;
+  register: (dto: RegisterDto) => Promise<void>;
+  logout: () => Promise<void>;
   fetchCurrentUser: () => Promise<void>;
-  refreshToken:     () => Promise<boolean>;
-  setTokens:        (accessToken: string, user: UserDto) => void;
+  refreshToken: () => Promise<boolean>;
+  setTokens: (accessToken: string, user: UserDto) => void;
 
   // ── Legacy aliases (kept for backward compat with existing consumers) ──────
   /** @deprecated use setTokens */
-  setUser:   (user: UserDto, accessToken: string) => void;
+  setUser: (user: UserDto, accessToken: string) => void;
   clearAuth: () => void;
-  getToken:  () => string | null;
+  getToken: () => string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -73,9 +87,10 @@ function syncToken(token: string | null) {
 export const useAuthStore = create<AuthStore>()(
   persist(
     (set, get) => ({
-      user:        null,
+      user: null,
       accessToken: null,
-      isLoading:   false,
+      isLoading: false,
+      isAuthReady: false,
 
       // ── login ──────────────────────────────────────────────────────────────
 
@@ -92,7 +107,9 @@ export const useAuthStore = create<AuthStore>()(
         // Merge guest cart into the authenticated cart (non-critical)
         try {
           await getCartStore()?.mergeGuestCart();
-        } catch { /* non-fatal */ }
+        } catch {
+          /* non-fatal */
+        }
       },
 
       // ── register ───────────────────────────────────────────────────────────
@@ -107,10 +124,16 @@ export const useAuthStore = create<AuthStore>()(
       logout: async () => {
         const token = get().accessToken;
         try {
-          await apiClient.post(API_ROUTES.AUTH.LOGOUT, {}, {
-            token: token ?? undefined,
-          });
-        } catch { /* best-effort */ }
+          await apiClient.post(
+            API_ROUTES.AUTH.LOGOUT,
+            {},
+            {
+              token: token ?? undefined,
+            },
+          );
+        } catch {
+          /* best-effort */
+        }
         syncToken(null);
         set({ user: null, accessToken: null });
         getCartStore()?.clearCart();
@@ -126,16 +149,18 @@ export const useAuthStore = create<AuthStore>()(
           // No in-memory token — silently restore session via refresh cookie.
           // refreshToken() sets user + accessToken on success, clears on failure.
           await get().refreshToken();
-          set({ isLoading: false });
+          set({ isLoading: false, isAuthReady: true });
           return;
         }
 
         try {
-          const user = await apiClient.get<UserDto>(API_ROUTES.USERS.ME, { token });
-          set({ user, isLoading: false });
+          const user = await apiClient.get<UserDto>(API_ROUTES.USERS.ME, {
+            token,
+          });
+          set({ user, isLoading: false, isAuthReady: true });
         } catch {
           syncToken(null);
-          set({ user: null, accessToken: null, isLoading: false });
+          set({ user: null, accessToken: null, isLoading: false, isAuthReady: true });
         }
       },
 
@@ -180,8 +205,8 @@ export const useAuthStore = create<AuthStore>()(
     }),
 
     {
-      name: 'mlh-auth',
-      // Never persist the access token — re-acquired from the httpOnly refresh cookie.
+      name: 'daisy-auth',
+      // Only persist the user profile. accessToken and isAuthReady reset on every load.
       partialize: (state) => ({ user: state.user }),
     },
   ),

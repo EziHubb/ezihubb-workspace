@@ -96,6 +96,7 @@ Default: `en`
 Library: `next-intl`
 
 Messages location:
+
 ```
 apps/client/messages/
   en/
@@ -108,39 +109,47 @@ apps/client/messages/
 ## 3. Key Pages
 
 ### Homepage (`/[locale]`)
+
 - Server Component
 - Sections: HeroBanner, TrendingProducts, CategoryShowcase, CollectionsGrid, HowItWorks, FeaturedReviews, SocialProof, NewsletterSection
 - `GET /products/trending` (top 12), category data
 
 ### Product Listing (`/[locale]/products`)
+
 - Server Component with Client filters
 - Components: `ProductListingLayout`, `FilterSidebar`, `FilterSheet` (mobile), `ProductGrid`, `SortDropdown`, `Pagination`
 
 ### Product Detail (`/[locale]/products/[slug]`)
+
 - Server Component + `ProductPageInteractive` (Client)
 - SSR with revalidate: 60s
 - Components: `ProductGallery`, `ProductInfo`, `SmartVariantPicker`, `ProductActions`
 - `ProductTabs` (Description, Specifications, Shipping & Returns, Reviews)
 
 ### Full-Screen Customizer (`/[locale]/products/[slug]/customize`)
+
 - Dedicated full-screen layout
 - Fabric.js canvas
 - `CustomizerPanel` or `BundleCustomizerPanel`
 
 ### Search Results (`/[locale]/search`)
+
 - Client Component (dynamic)
 - `SearchInput`, `SearchResults`, `NoResults`
 - Debounced search, URL sync, facet filters
 
 ### Checkout (`/[locale]/checkout`)
+
 - Client Component (requires auth)
 - Steps: `DeliveryForm` → `ShippingForm` → `PaymentForm`
 - `StepIndicator` component
 
 ### Order Tracking (`/[locale]/orders/track`)
+
 - Public page — guest can look up by `orderNumber + email`
 
 ### Account Pages
+
 - Protected: redirect to login if not authenticated
 - `AccountSidebar` with active state
 
@@ -199,23 +208,25 @@ Components: `Avatar`, `Badge`, `BottomNav`, `Button`, `Input`, `Modal`, `Paginat
 
 ## 6. State Management
 
-| Store | File | Persisted |
-|---|---|---|
-| auth | `lib/store/auth.store.ts` | `user` (mlh-auth key) |
-| cart | `lib/store/cart.store.ts` | `sessionId` (mlh-cart key) |
-| customizer | `lib/store/customizer.store.ts` | No (volatile) |
-| toast | `lib/store/toast.store.ts` | No |
+| Store      | File                            | Persisted                    |
+| ---------- | ------------------------------- | ---------------------------- |
+| auth       | `lib/store/auth.store.ts`       | `user` (mlh-auth key)        |
+| cart       | `lib/store/cart.store.ts`       | `sessionId` (daisy-cart key) |
+| customizer | `lib/store/customizer.store.ts` | No (volatile)                |
+| toast      | `lib/store/toast.store.ts`      | No                           |
 
 ## 7. Data Fetching Pattern
 
 ### Server Components
+
 ```typescript
 const product = await apiClient.get<ProductDto>('/products/my-slug', {
-  next: { revalidate: 60, tags: ['product-my-slug'] }
+  next: { revalidate: 60, tags: ['product-my-slug'] },
 });
 ```
 
 ### Client Components (React Query)
+
 ```typescript
 const { data, isLoading } = useQuery({
   queryKey: ['products', slug],
@@ -239,6 +250,7 @@ const { data, isLoading } = useQuery({
 ## 9. Additional Routes (Post-Phase 1)
 
 ### Storefront New Routes
+
 ```
 [locale]/
   (storefront)/
@@ -263,6 +275,7 @@ const { data, isLoading } = useQuery({
 ```
 
 ### Account New Routes
+
 ```
 [locale]/
   (account)/
@@ -287,6 +300,7 @@ const { data, isLoading } = useQuery({
 ```
 
 ### Service Worker Route
+
 ```
 firebase-messaging-sw.js/
   route.ts                  # Dynamic SW serving FCM config

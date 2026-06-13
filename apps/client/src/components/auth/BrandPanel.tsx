@@ -1,4 +1,5 @@
-﻿import Image from 'next/image';
+﻿import Link from 'next/link';
+import Image from 'next/image';
 import { Star } from 'lucide-react';
 
 const TESTIMONIALS = [
@@ -22,14 +23,14 @@ export function BrandPanel() {
 
       {/* Top: logo + tagline */}
       <div className="relative z-10">
-        <div className="flex items-center gap-3 mb-6">
+        <Link href="/" className="inline-flex items-center gap-3 mb-6 hover:opacity-90 transition-opacity">
           <div className="w-11 h-11 bg-white rounded-xl flex items-center justify-center shadow-sm">
             <span className="font-display font-bold text-2xl text-primary">M</span>
           </div>
           <span className="font-display font-bold text-2xl text-white">
             Daily Daisy
           </span>
-        </div>
+        </Link>
 
         <h2 className="font-display text-3xl lg:text-4xl font-bold text-white leading-tight mb-4">
           Gifts That Tell<br />Their Story
@@ -97,7 +98,7 @@ export function BrandPanel() {
 
 export function BrandStrip() {
   return (
-    <div className="bg-gradient-to-r from-primary to-[#C44A2E] px-4 py-4 flex items-center gap-3">
+    <Link href="/" className="bg-gradient-to-r from-primary to-[#C44A2E] px-4 py-4 flex items-center gap-3 hover:opacity-95 transition-opacity">
       <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shrink-0">
         <span className="font-display font-bold text-lg text-primary">M</span>
       </div>
@@ -109,6 +110,6 @@ export function BrandStrip() {
           Gifts that tell their story
         </p>
       </div>
-    </div>
+    </Link>
   );
 }

@@ -21,20 +21,21 @@ export default function AuthLayoutClient({
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => { setHydrated(true); }, []);
 
-  const storeUser = useAuthStore((s) => s.user);
-  const { data: profile, isLoading } = useProfile(hydrated && !!storeUser);
+  const storeUser   = useAuthStore((s) => s.user);
+  const isAuthReady = useAuthStore((s) => s.isAuthReady);
+  const { data: profile, isLoading } = useProfile(hydrated && isAuthReady && !!storeUser);
 
   // ── Redirect logged-in users away from auth pages ──────────────────────────
   useEffect(() => {
-    if (!hydrated || isLoading) return;
+    if (!hydrated || !isAuthReady || isLoading) return;
     if (profile) {
       const redirect = searchParams.get('redirect') ?? `/${locale}/account`;
       router.replace(redirect);
     }
-  }, [profile, isLoading, hydrated, router, locale, searchParams]);
+  }, [profile, isLoading, hydrated, isAuthReady, router, locale, searchParams]);
 
   // ── While hydrating or checking auth, show minimal loading state ───────────
-  if (!hydrated || isLoading) {
+  if (!hydrated || (isAuthReady && isLoading)) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
