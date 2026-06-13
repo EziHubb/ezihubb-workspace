@@ -115,37 +115,45 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
   const [saveError,  setSaveError]  = useState<string | null>(null);
 
   // ── Scroll-spy ───────────────────────────────────────────────────────────────
+  // The actual scroll container is <main> in the admin layout (overflow-y-auto),
+  // not an inner div. We locate it once on mount and attach everything to it.
 
-  const scrollRef    = useRef<HTMLDivElement>(null);
-  const sectionRefs  = useRef<Partial<Record<TabId, HTMLDivElement | null>>>({});
-  // Track whether a programmatic scroll is in flight (suppresses spy while scrolling)
+  const [scrollContainer, setScrollContainer] = useState<HTMLElement | null>(null);
+  const headerRef      = useRef<HTMLDivElement>(null);
+  const sectionRefs    = useRef<Partial<Record<TabId, HTMLDivElement | null>>>({});
   const isScrollingRef = useRef(false);
 
-  const scrollToSection = useCallback((id: TabId) => {
-    const container = scrollRef.current;
-    const el = sectionRefs.current[id];
-    if (!container || !el) return;
-    setActiveTab(id);
-    isScrollingRef.current = true;
-    const top =
-      el.getBoundingClientRect().top -
-      container.getBoundingClientRect().top +
-      container.scrollTop -
-      8;
-    container.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-    // Re-enable spy after smooth scroll finishes (~600 ms)
-    setTimeout(() => { isScrollingRef.current = false; }, 650);
+  useEffect(() => {
+    setScrollContainer(document.querySelector<HTMLElement>('main'));
   }, []);
 
+  const scrollToSection = useCallback((id: TabId) => {
+    if (!scrollContainer) return;
+    const el = sectionRefs.current[id];
+    if (!el) return;
+    setActiveTab(id);
+    isScrollingRef.current = true;
+    const headerHeight = headerRef.current?.offsetHeight ?? 120;
+    const top =
+      el.getBoundingClientRect().top -
+      scrollContainer.getBoundingClientRect().top +
+      scrollContainer.scrollTop -
+      headerHeight -
+      8;
+    scrollContainer.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    // Re-enable spy after smooth scroll finishes (~600 ms)
+    setTimeout(() => { isScrollingRef.current = false; }, 650);
+  }, [scrollContainer]);
+
   useEffect(() => {
-    const container = scrollRef.current;
-    if (!container) return;
+    if (!scrollContainer) return;
 
     const handleScroll = () => {
       if (isScrollingRef.current) return;
-      const containerTop = container.getBoundingClientRect().top;
-      // Highlight the last section whose top edge is within the top 40% of the container
-      const threshold = containerTop + container.clientHeight * 0.4;
+      const containerTop  = scrollContainer.getBoundingClientRect().top;
+      const headerHeight  = headerRef.current?.offsetHeight ?? 120;
+      // Highlight the last section whose top edge passed just below the sticky header
+      const threshold = containerTop + headerHeight + 32;
       let active: TabId = TABS[0].id;
       for (const { id } of TABS) {
         const el = sectionRefs.current[id];
@@ -155,9 +163,9 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
       setActiveTab(active);
     };
 
-    container.addEventListener('scroll', handleScroll, { passive: true });
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [TABS]);
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, [scrollContainer, TABS]);
 
   // ── Draft lifecycle (create mode only) ───────────────────────────────────────
 
@@ -318,7 +326,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
       <div className="-m-6 lg:-m-8 flex flex-col" style={{ minHeight: 'calc(100vh - 64px)' }}>
 
         {/* ── Page header ───────────────────────────────────────────────────── */}
-        <div className="px-6 pt-5 pb-0 border-b border-border bg-surface sticky -top-6 lg:-top-8 z-20">
+        <div ref={headerRef} className="px-6 pt-5 pb-0 border-b border-border bg-surface sticky -top-6 lg:-top-8 z-20">
 
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-xs text-muted mb-3">
@@ -422,8 +430,8 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
           </nav>
         </div>
 
-        {/* ── Scrollable sections ───────────────────────────────────────────── */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-background">
+        {/* ── Sections ─────────────────────────────────────────────────────── */}
+        <div className="flex-1 bg-background">
 
           {/* Performance — edit only */}
           {mode === 'edit' && product && (

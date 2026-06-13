@@ -38,6 +38,17 @@ export interface OrderStatusHistoryDto {
   createdAt: string;
 }
 
+/** Lightweight summary returned by the list endpoint (GET /orders/me). */
+export interface OrderListItemDto {
+  id:           string;
+  orderNumber:  string;
+  status:       OrderStatus;
+  total:        number;
+  itemCount:    number;
+  previewUrl:   string | null;
+  createdAt:    string | Date;
+}
+
 export interface OrderDto {
   id: string;
   orderNumber: string;

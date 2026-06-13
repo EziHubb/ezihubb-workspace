@@ -7,7 +7,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { Package, ExternalLink, ShoppingBag } from 'lucide-react';
 import { queryKeys } from '@mlh/api-client';
 import { OrderStatusBadge, Pagination, Skeleton } from '@mlh/ui';
-import type { OrderDto, OrderStatus, PaginatedResponse } from '@mlh/types';
+import type { OrderListItemDto } from '@mlh/types';
 import { useAuthQuery } from '../../../../../lib/hooks/useAuthQuery';
 
 // ── Filter tabs ───────────────────────────────────────────────────────────────
@@ -28,6 +28,20 @@ const fmt = new Intl.DateTimeFormat('en-US', {
   day:   'numeric',
   year:  'numeric',
 });
+
+// ── Pagination shape returned after apiRequest envelope unwrap ────────────────
+
+interface OrdersPage {
+  data:       OrderListItemDto[];
+  pagination: {
+    page:       number;
+    limit:      number;
+    total:      number;
+    totalPages: number;
+    hasNext:    boolean;
+    hasPrev:    boolean;
+  };
+}
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 
@@ -53,35 +67,30 @@ function OrderCardSkeleton() {
 
 // ── OrderCard ─────────────────────────────────────────────────────────────────
 
-function OrderCard({ order, locale }: { order: OrderDto; locale: string }) {
-  const t = useTranslations('account');
-  const thumbnails = order.items.slice(0, 3);
-  const extra      = order.items.length - 3;
+function OrderCard({ order, locale }: { order: OrderListItemDto; locale: string }) {
+  const t     = useTranslations('account');
+  // List endpoint returns one previewUrl + itemCount — no full items array
+  const extra = Math.max(0, order.itemCount - 1);
 
   return (
     <article className="border border-border rounded-card p-4 hover:border-primary/40 transition-colors space-y-4">
       {/* Item thumbnails */}
       <div className="flex items-center gap-2">
-        {thumbnails.map((item) => {
-          const src =
-            (item.customization as Record<string, unknown> | null)?.['previewUrl'] as
-              | string
-              | undefined ?? item.product?.imageUrl;
-          return (
-            <div
-              key={item.id}
-              className="relative w-16 h-16 rounded-sm overflow-hidden bg-background border border-border shrink-0"
-            >
-              {src ? (
-                <Image src={src} alt={item.product?.name ?? ''} fill sizes="64px" className="object-cover" />
-              ) : (
-                <div className="w-full h-full bg-muted/20 flex items-center justify-center">
-                  <Package className="w-5 h-5 text-muted" />
-                </div>
-              )}
+        <div className="relative w-16 h-16 rounded-sm overflow-hidden bg-background border border-border shrink-0">
+          {order.previewUrl ? (
+            <Image
+              src={order.previewUrl}
+              alt={order.orderNumber}
+              fill
+              sizes="64px"
+              className="object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-muted/20 flex items-center justify-center">
+              <Package className="w-5 h-5 text-muted" />
             </div>
-          );
-        })}
+          )}
+        </div>
         {extra > 0 && (
           <div className="w-16 h-16 rounded-sm bg-muted/10 border border-border flex items-center justify-center shrink-0">
             <span className="text-xs font-semibold text-muted">+{extra}</span>
@@ -95,7 +104,7 @@ function OrderCard({ order, locale }: { order: OrderDto; locale: string }) {
           <p className="font-mono text-sm font-semibold text-secondary">
             {order.orderNumber}
           </p>
-          <p className="text-xs text-muted">{fmt.format(new Date(order.createdAt))}</p>
+          <p className="text-xs text-muted">{fmt.format(new Date(order.createdAt as string))}</p>
         </div>
         <div className="flex items-center gap-3">
           <OrderStatusBadge
@@ -115,17 +124,6 @@ function OrderCard({ order, locale }: { order: OrderDto; locale: string }) {
         >
           {t('orders.actions.viewDetails')}
         </Link>
-        {order.trackingUrl && (
-          <a
-            href={order.trackingUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary border border-primary/30 rounded-button px-4 py-2 hover:bg-primary/5 transition-colors"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            {t('orders.actions.trackOrder')}
-          </a>
-        )}
       </div>
     </article>
   );
@@ -139,7 +137,7 @@ export default function OrdersPage() {
   const [activeStatus, setActiveStatus] = useState('');
   const [page,         setPage]         = useState(1);
 
-  const { data: pagedData, isLoading } = useAuthQuery<PaginatedResponse<OrderDto>>(
+  const { data: pagedData, isLoading } = useAuthQuery<OrdersPage>(
     queryKeys.orders({ status: activeStatus || undefined, page }),
     '/orders/me',
     { status: activeStatus || undefined, limit: 10, page },
@@ -225,7 +223,7 @@ export default function OrdersPage() {
             {t('orders.count', { total })}
           </p>
           <div className="space-y-4">
-            {orders.map((order: OrderDto) => (
+            {orders.map((order) => (
               <OrderCard key={order.id} order={order} locale={locale} />
             ))}
           </div>
