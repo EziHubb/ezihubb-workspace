@@ -19,6 +19,12 @@ export class StoresController {
     return this.storesService.getStoreBySlug(slug);
   }
 
+  /** Public: product category sections with counts for the sidebar */
+  @Get(':slug/sections')
+  getStoreSections(@Param('slug') slug: string) {
+    return this.storesService.getStoreSections(slug);
+  }
+
   /** Public: store performance score by slug */
   @Get(':slug/score')
   getStoreScore(@Param('slug') slug: string) {

@@ -11,7 +11,7 @@ export const dynamic = 'force-static';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: 'Returns & Exchanges | DailyDaisy',
+    title: 'Returns & Exchanges',
     description:
       "Our return and exchange policy. Learn what's covered, how to initiate a return, and how we make things right.",
     robots: { index: true, follow: true },

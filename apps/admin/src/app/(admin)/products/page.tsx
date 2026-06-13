@@ -378,6 +378,28 @@ function ProductsPageInner() {
           </div>
         </div>
 
+        {/* Mobile filter row (visible on < lg, replaces hidden sidebar) */}
+        <div className="flex lg:hidden items-center gap-2 mb-4 flex-wrap">
+          <select
+            value={urlSort}
+            onChange={(e) => setUrlParam('sort', e.target.value)}
+            className="px-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          <select
+            value={urlStatus}
+            onChange={(e) => setUrlParam('status', e.target.value)}
+            className="px-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            {STATUS_FILTER_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+
         {/* Bulk action bar */}
         {selectedIds.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 mb-4 bg-secondary/5 border border-border rounded-xl">

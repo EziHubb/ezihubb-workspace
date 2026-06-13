@@ -198,8 +198,9 @@ export default function AdminFinancePage() {
           <div className="p-10 text-center text-sm text-muted">No store data available.</div>
         ) : (
           <>
+            <div className="overflow-x-auto">
             {/* Header */}
-            <div className="grid grid-cols-5 gap-4 px-5 py-2.5 bg-background border-b border-border text-[11px] font-semibold text-muted uppercase tracking-wide">
+            <div className="grid grid-cols-5 gap-4 px-5 py-2.5 bg-background border-b border-border text-[11px] font-semibold text-muted uppercase tracking-wide min-w-[480px]">
               <span className="col-span-2">Store</span>
               <span className="text-right">Revenue</span>
               <span className="text-right">Orders</span>
@@ -207,7 +208,7 @@ export default function AdminFinancePage() {
             </div>
             <div className="divide-y divide-border">
               {stores.map((s) => (
-                <div key={s.storeId} className="grid grid-cols-5 gap-4 px-5 py-3 items-center hover:bg-background/50 transition-colors">
+                <div key={s.storeId} className="grid grid-cols-5 gap-4 px-5 py-3 items-center hover:bg-background/50 transition-colors min-w-[480px]">
                   <div className="col-span-2 min-w-0">
                     <a href={`/stores/${s.storeId}`}
                       className="text-sm font-medium text-secondary hover:text-primary transition-colors truncate block">
@@ -220,6 +221,7 @@ export default function AdminFinancePage() {
                   <p className="text-sm font-semibold text-green-700 tabular-nums text-right">{fmtAmount(s.feesCollected)}</p>
                 </div>
               ))}
+            </div>
             </div>
 
             {/* Pagination */}

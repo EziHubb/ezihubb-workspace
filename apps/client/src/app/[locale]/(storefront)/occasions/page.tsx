@@ -13,7 +13,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title:       'Gift Ideas by Occasion | Daily Daisy',
+    title:       'Gift Ideas by Occasion',
     description: 'Find the perfect personalized gift for every occasion — birthdays, anniversaries, holidays, and more.',
   };
 }

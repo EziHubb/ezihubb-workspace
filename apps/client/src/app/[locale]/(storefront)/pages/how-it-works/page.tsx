@@ -10,7 +10,7 @@ export const dynamic = 'force-static';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: 'How It Works | DailyDaisy',
+    title: 'How It Works',
     description:
       "Creating a personalized gift is easy. Choose a product, customize it with your photos and names, preview it, and we'll ship it to your door.",
     robots: { index: true, follow: true },

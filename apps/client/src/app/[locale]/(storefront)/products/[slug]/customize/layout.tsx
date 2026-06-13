@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Customize Your Gift | DailyDaisy',
+  title: 'Customize Your Gift',
   robots: { index: false, follow: false },
 };
 

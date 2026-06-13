@@ -123,7 +123,7 @@ export function PromotionStatsDrawer({ promotion, onClose }: PromotionStatsDrawe
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
           {isLoading ? (
             <div className="space-y-4 animate-pulse">
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="h-20 bg-muted/10 rounded-button" />
                 ))}
@@ -134,7 +134,7 @@ export function PromotionStatsDrawer({ promotion, onClose }: PromotionStatsDrawe
           ) : stats ? (
             <>
               {/* Stats row */}
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <StatMini
                   label="Total Used"
                   value={fmtNum(stats.totalUsed)}

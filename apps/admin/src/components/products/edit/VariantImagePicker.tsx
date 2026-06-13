@@ -89,7 +89,7 @@ function VariantImagePickerModal({
                 <p className="text-xs mt-1">Upload photos in the Photo & Video tab first.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {/* "None" option */}
                 <button
                   type="button"

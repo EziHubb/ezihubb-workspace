@@ -245,7 +245,7 @@ export default function CreatorSettingsPage() {
       <div className="max-w-[820px] space-y-6">
 
         <SectionCard title="Earning Rates" subtitle="Percentage of the order total earned at each network level.">
-          <div className="grid grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             <div>
               <FieldLabel>Level 1 (direct)</FieldLabel>
               <PercentInput value={s.level1Rate} onChange={(v) => set('level1Rate', v)} placeholder="10" />

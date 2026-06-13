@@ -198,13 +198,16 @@ export function DataTable<T>({
 
         {/* ── Pagination ───────────────────────────────────────────────────── */}
         {pagination && totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-            <p className="text-sm text-muted">
+          <div className="flex items-center justify-between px-3 sm:px-4 py-3 border-t border-border gap-2">
+            <p className="hidden sm:block text-sm text-muted shrink-0">
               Showing <span className="font-medium text-secondary">{showingFrom}–{showingTo}</span> of{' '}
               <span className="font-medium text-secondary">{pagination.total}</span>
             </p>
+            <p className="sm:hidden text-xs text-muted shrink-0">
+              {pagination.page}/{totalPages}
+            </p>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
               <button
                 type="button"
                 onClick={() => pagination.onPageChange(pagination.page - 1)}
@@ -214,15 +217,19 @@ export function DataTable<T>({
                 <ChevronLeft className="w-4 h-4" />
               </button>
 
-              {Array.from({ length: Math.min(totalPages, 7) }).map((_, i) => {
-                const p = i + 1;
+              {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => {
+                const p = totalPages <= 5
+                  ? i + 1
+                  : pagination.page <= 3 ? i + 1
+                  : pagination.page >= totalPages - 2 ? totalPages - 4 + i
+                  : pagination.page - 2 + i;
                 return (
                   <button
                     key={p}
                     type="button"
                     onClick={() => pagination.onPageChange(p)}
                     className={[
-                      'w-8 h-8 rounded text-xs font-medium transition-colors',
+                      'w-7 h-7 sm:w-8 sm:h-8 rounded text-xs font-medium transition-colors',
                       p === pagination.page
                         ? 'bg-primary text-white'
                         : 'hover:bg-muted/10 text-secondary',

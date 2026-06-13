@@ -5,11 +5,14 @@ import { RedisService } from '../../common/services/redis.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { QUEUES, AI_JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
+import { TrendSourceRegistry, SourceSettings } from './source-registry.service';
+import type { TrendTopic as RegistryTrendTopic } from './source-registry.service';
 
 interface TrendTopic {
   hashtag:         string;
   description:     string;
   engagementScore: number;
+  source?:         string;
 }
 
 @Injectable()
@@ -17,68 +20,68 @@ export class TrendsService {
   private readonly logger = new Logger(TrendsService.name);
   private readonly anthropicKey: string;
   private readonly replicateToken: string;
-  private readonly rapidApiKey: string;
   private readonly TREND_CACHE_TTL = 3600; // 1h
   private readonly MAX_DRAFTS_PER_STORE_PER_DAY = 3;
 
   constructor(
-    private readonly prisma:  PrismaService,
-    private readonly redis:   RedisService,
-    private readonly config:  ConfigService,
+    private readonly prisma:    PrismaService,
+    private readonly redis:     RedisService,
+    private readonly config:    ConfigService,
+    private readonly registry:  TrendSourceRegistry,
     @InjectQueue(QUEUES.EMAIL)        private readonly emailQueue: Queue,
     @InjectQueue(QUEUES.AI_FEATURES)  private readonly aiQueue:   Queue,
   ) {
-    this.anthropicKey   = this.config.get<string>('ANTHROPIC_API_KEY')    ?? '';
-    this.replicateToken = this.config.get<string>('REPLICATE_API_TOKEN')  ?? '';
-    this.rapidApiKey    = this.config.get<string>('RAPIDAPI_TIKTOK_KEY')  ?? '';
+    this.anthropicKey   = this.config.get<string>('ANTHROPIC_API_KEY')   ?? '';
+    this.replicateToken = this.config.get<string>('REPLICATE_API_TOKEN') ?? '';
+  }
+
+  // ── Load source settings (Redis cache → DB → defaults) ───────────────────
+
+  private async getSourceSettings(): Promise<Record<string, SourceSettings>> {
+    // Read from Redis cache (populated by AiStatsService when admin saves)
+    const cached  = await this.redis.get<Record<string, unknown>>('admin:ai:settings');
+    if (cached?.['trendSources']) {
+      return { ...this.registry.getDefaultConfigs(), ...(cached['trendSources'] as Record<string, SourceSettings>) };
+    }
+
+    // Fallback: read directly from DB
+    const row = await this.prisma.appSettings.findUnique({ where: { key: 'ai:settings' } });
+    if (row?.value) {
+      const stored = ((row.value as Record<string, unknown>)['trendSources'] ?? {}) as Record<string, SourceSettings>;
+      return { ...this.registry.getDefaultConfigs(), ...stored };
+    }
+
+    return this.registry.getDefaultConfigs();
   }
 
   // ── Get trending topics ────────────────────────────────────────────────────
 
-  async getTrendingTopics(): Promise<TrendTopic[]> {
-    const cacheKey = 'trends:tiktok:latest';
+  async getTrendingTopics(sourceFilter?: string[]): Promise<TrendTopic[]> {
+    const cacheKey = sourceFilter?.length
+      ? `trends:multi:${sourceFilter.sort().join('+')}`
+      : 'trends:multi:default';
+
     const cached = await this.redis.get(cacheKey) as TrendTopic[] | null;
     if (cached) return cached;
 
-    // If no RapidAPI key, return mock trends for development
-    if (!this.rapidApiKey) {
-      return this.getMockTrends();
+    const sourceConfigs = await this.getSourceSettings();
+    const topics        = await this.registry.fetchFromSources(sourceConfigs, sourceFilter, 15);
+
+    if (topics.length > 0) {
+      await this.redis.set(cacheKey, topics, this.TREND_CACHE_TTL);
+      return topics;
     }
 
-    try {
-      const res = await fetch(
-        'https://tiktok-api6.p.rapidapi.com/hashtags/trending',
-        {
-          headers: {
-            'X-RapidAPI-Key':  this.rapidApiKey,
-            'X-RapidAPI-Host': 'tiktok-api6.p.rapidapi.com',
-          },
-          signal: AbortSignal.timeout(10_000),
-        },
-      );
-      if (!res.ok) return this.getMockTrends();
-
-      const data: any = await res.json();
-      const trends: TrendTopic[] = (data.data ?? []).slice(0, 20).map((t: any) => ({
-        hashtag:         t.name ?? t.hashtag_name,
-        description:     t.description ?? `Trending: #${t.name}`,
-        engagementScore: t.video_views ?? t.engagement ?? 0,
-      }));
-
-      await this.redis.set(cacheKey, trends, this.TREND_CACHE_TTL);
-      return trends;
-    } catch {
-      return this.getMockTrends();
-    }
+    return this.getMockTrends();
   }
 
   private getMockTrends(): TrendTopic[] {
     return [
-      { hashtag: 'nursehumor',     description: 'Nursing and healthcare humor content', engagementScore: 2_400_000 },
-      { hashtag: 'teacherlife',    description: 'Teachers sharing classroom moments',   engagementScore: 1_800_000 },
-      { hashtag: 'coffeelovers',   description: 'Coffee culture and morning routines',  engagementScore: 3_200_000 },
-      { hashtag: 'dogmom',         description: 'Dog owner lifestyle content',          engagementScore: 2_100_000 },
-      { hashtag: 'bookworm',       description: 'Reading and book club culture',        engagementScore: 1_500_000 },
+      { hashtag: 'nursehumor',   description: 'Nursing and healthcare humor content', engagementScore: 2_400_000, source: 'mock' },
+      { hashtag: 'teacherlife',  description: 'Teachers sharing classroom moments',   engagementScore: 1_800_000, source: 'mock' },
+      { hashtag: 'coffeelovers', description: 'Coffee culture and morning routines',  engagementScore: 3_200_000, source: 'mock' },
+      { hashtag: 'dogmom',       description: 'Dog owner lifestyle content',          engagementScore: 2_100_000, source: 'mock' },
+      { hashtag: 'bookworm',     description: 'Reading and book club culture',        engagementScore: 1_500_000, source: 'mock' },
     ];
   }
 
@@ -308,19 +311,92 @@ Return ONLY valid JSON:
     const data = rows.map((d) => {
       const brief = (d.designBrief ?? {}) as Record<string, unknown>;
       return {
-        id:          d.id,
-        storeId:     d.storeId,
-        storeName:   (d as any).store?.name ?? null,
-        keyword:     d.trendTopic,
-        category:    (brief['category'] as string) ?? null,
-        score:       d.trendEngagement,
-        source:      d.trendPlatform ?? (brief['source'] as string) ?? 'AI',
-        status:      d.status,
-        summary:     (brief['summary'] as string) ?? d.suggestedDescription ?? null,
-        suggestedAt: d.generatedAt.toISOString(),
+        id:               d.id,
+        storeId:          d.storeId,
+        storeName:        (d as any).store?.name ?? null,
+        keyword:          d.trendTopic,
+        // brief fields — correct keys from generateDesignBrief output
+        category:         (brief['productType']    as string) ?? null,
+        score:            d.trendEngagement,
+        source:           d.trendPlatform ?? 'TikTok',
+        status:           d.status,
+        summary:          (brief['designConcept']  as string) ?? d.suggestedDescription ?? null,
+        textContent:      (brief['textContent']    as string) ?? null,
+        colorPalette:     (brief['colorPalette']   as string) ?? null,
+        style:            (brief['style']          as string) ?? null,
+        targetAudience:   (brief['targetAudience'] as string) ?? null,
+        imageUrl:         d.generatedImageUrl || null,
+        productName:      d.suggestedProductName,
+        approvedProductId: d.approvedProductId ?? null,
+        suggestedAt:      d.generatedAt.toISOString(),
+        reviewedAt:       null as string | null,
+        reviewedBy:       null as string | null,
       };
     });
     return { data, pagination: { total, page, totalPages: Math.ceil(total / limit) } };
+  }
+
+  // ── Admin direct scan — runs synchronously, skips image generation ─────────
+
+  async triggerAdminDirectScan(sourceIds?: string[]): Promise<{ created: number; stores: number; message: string; sources: string[] }> {
+    const stores = await this.prisma.store.findMany({
+      where:  { status: 'ACTIVE' },
+      select: { id: true },
+    });
+
+    if (stores.length === 0) {
+      return { created: 0, stores: 0, message: 'No active stores found — activate a store first', sources: [] };
+    }
+
+    const topics      = await this.getTrendingTopics(sourceIds);
+    const topTopics   = topics.slice(0, 3);
+    const usedSources = [...new Set(topTopics.map(t => (t as any).source ?? 'unknown'))];
+    let created = 0;
+
+    for (const store of stores) {
+      for (const topic of topTopics) {
+        try {
+          let brief: Record<string, string>;
+
+          if (this.anthropicKey) {
+            brief = await this.generateDesignBrief(topic);
+          } else {
+            brief = {
+              productType:    'mug',
+              designConcept:  `Print-on-demand design inspired by #${topic.hashtag}`,
+              textContent:    `#${topic.hashtag}`,
+              colorPalette:   'navy and white',
+              style:          'modern',
+              targetAudience: 'social media enthusiasts',
+            };
+          }
+
+          await this.prisma.trendProductDraft.create({
+            data: {
+              storeId:              store.id,
+              trendTopic:           `#${topic.hashtag}`,
+              trendEngagement:      topic.engagementScore,
+              trendPlatform:        (topic as any).source ?? 'unknown',
+              designBrief:          brief as any,
+              generatedImageUrl:    '',
+              suggestedProductName: `${brief['textContent']} ${brief['productType']}`,
+              suggestedDescription: `${brief['designConcept']}. Perfect for ${brief['targetAudience']}.`,
+              suggestedTags:        [topic.hashtag, brief['style'] ?? 'modern', brief['productType'] ?? 'mug'],
+              expiresAt:            new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            },
+          });
+          created++;
+        } catch (err) {
+          this.logger.error(`Direct scan failed for store ${store.id}, topic ${topic.hashtag}`, err);
+        }
+      }
+    }
+
+    const message = created > 0
+      ? `${created} draft${created > 1 ? 's' : ''} created across ${stores.length} store${stores.length > 1 ? 's' : ''} from: ${usedSources.join(', ')}`
+      : 'No drafts created — check API logs or configure at least one trend source';
+
+    return { created, stores: stores.length, message, sources: usedSources };
   }
 
   async queueManualScan(): Promise<{ queued: boolean; jobId: string; triggered: boolean; created: number; message: string }> {
@@ -351,6 +427,12 @@ Return ONLY valid JSON:
       where: { id },
       data:  { status: 'REJECTED' },
     });
+  }
+
+  async adminCreateProductFromDraft(draftId: string): Promise<{ productSlug: string }> {
+    const draft = await this.prisma.trendProductDraft.findUnique({ where: { id: draftId } });
+    if (!draft) throw new Error('Draft not found');
+    return this.approveDraft(draft.storeId, draftId);
   }
 
   async expireOldDrafts(): Promise<{ expired: number }> {

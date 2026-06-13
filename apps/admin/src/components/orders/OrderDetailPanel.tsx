@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import {
   X, Package, Truck, MapPin, User, Save, Mail, MessageSquare,
-  DollarSign, Gift, ExternalLink, MoreVertical, ChevronDown,
+  DollarSign, Gift, ExternalLink, MoreVertical,
   Check, Ban, Printer,
 } from 'lucide-react';
 import { fmtDate, fmtDateTime } from '../../lib/fmt';
@@ -110,14 +110,21 @@ function Row({ label, value, negative, muted }: { label: string; value: string; 
 
 // ── Order detail tab ───────────────────────────────────────────────────────────
 
+const PRESET_CARRIERS = ['FedEx', 'USPS', 'UPS', 'DHL', 'VNPost', 'GHN', 'GHTK', 'Other'];
+
 function OrderDetailsTab({ order, onUpdate }: { order: OrderDetail; onUpdate: () => void }) {
-  const [carrier,    setCarrier]    = useState(order.trackingCarrier ?? 'FedEx');
+  const savedCarrier  = order.trackingCarrier ?? 'FedEx';
+  const isCustom      = savedCarrier !== '' && !PRESET_CARRIERS.includes(savedCarrier);
+  const [carrier,    setCarrier]    = useState(isCustom ? 'Other' : savedCarrier);
+  const [customCarrier, setCustomCarrier] = useState(isCustom ? savedCarrier : '');
   const [tracking,   setTracking]   = useState(order.trackingNumber ?? '');
   const [note,       setNote]       = useState((order as OrderDetail & { privateNote?: string }).privateNote ?? '');
   const [savingNote, setSavingNote] = useState(false);
   const [noteSaved,  setNoteSaved]  = useState(false);
   const [savingTrk,  setSavingTrk]  = useState(false);
   const [previewItem, setPreviewItem] = useState<OrderItem | null>(null);
+
+  const effectiveCarrier = carrier === 'Other' ? customCarrier.trim() : carrier;
 
   const address = (() => {
     try {
@@ -139,16 +146,19 @@ function OrderDetailsTab({ order, onUpdate }: { order: OrderDetail; onUpdate: ()
   const saveTracking = async () => {
     setSavingTrk(true);
     try {
-      await api.patch(API_ROUTES.ADMIN.ORDER_TRACKING(order.id), { trackingNumber: tracking, carrier });
+      await api.patch(API_ROUTES.ADMIN.ORDER_TRACKING(order.id), { trackingNumber: tracking, carrier: effectiveCarrier });
       onUpdate();
     } catch { /* silent */ } finally { setSavingTrk(false); }
   };
 
   const trackingUrl =
-    carrier === 'FedEx' ? `https://www.fedex.com/fedextrack/?trknbr=${tracking}` :
-    carrier === 'USPS'  ? `https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=${tracking}` :
-    carrier === 'UPS'   ? `https://www.ups.com/track?tracknum=${tracking}` :
-    carrier === 'DHL'   ? `https://www.dhl.com/en/express/tracking.html?AWB=${tracking}` : null;
+    effectiveCarrier === 'FedEx' ? `https://www.fedex.com/fedextrack/?trknbr=${tracking}` :
+    effectiveCarrier === 'USPS'  ? `https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=${tracking}` :
+    effectiveCarrier === 'UPS'   ? `https://www.ups.com/track?tracknum=${tracking}` :
+    effectiveCarrier === 'DHL'   ? `https://www.dhl.com/en/express/tracking.html?AWB=${tracking}` :
+    effectiveCarrier === 'VNPost'? `https://www.vnpost.vn/en-us/dinh-vi/buu-pham?key=${tracking}` :
+    effectiveCarrier === 'GHN'   ? `https://donhang.ghn.vn/?order_code=${tracking}` :
+    effectiveCarrier === 'GHTK'  ? `https://i.gotit.vn/don-hang/${tracking}` : null;
 
   return (
     <div className="space-y-5">
@@ -275,31 +285,42 @@ function OrderDetailsTab({ order, onUpdate }: { order: OrderDetail; onUpdate: ()
           <select
             value={carrier}
             onChange={(e) => setCarrier(e.target.value)}
-            className="px-2 py-1.5 text-xs border border-border rounded-button bg-background text-secondary focus:outline-none focus:ring-1 focus:ring-primary/30"
+            className="px-2 py-1.5 text-xs border border-border rounded-button bg-background text-secondary focus:outline-none focus:ring-1 focus:ring-primary/30 shrink-0"
           >
-            {['FedEx', 'USPS', 'UPS', 'DHL'].map((c) => <option key={c}>{c}</option>)}
+            {PRESET_CARRIERS.map((c) => <option key={c}>{c}</option>)}
           </select>
           <input
             value={tracking}
             onChange={(e) => setTracking(e.target.value)}
             placeholder="Tracking number"
-            className="flex-1 px-3 py-1.5 text-xs border border-border rounded-button bg-background focus:outline-none focus:ring-1 focus:ring-primary/30 font-mono"
+            className="flex-1 min-w-0 px-3 py-1.5 text-xs border border-border rounded-button bg-background focus:outline-none focus:ring-1 focus:ring-primary/30 font-mono"
           />
           <button
             type="button"
             onClick={saveTracking}
-            disabled={savingTrk || !tracking}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-button hover:bg-primary-dark disabled:opacity-50"
+            disabled={savingTrk || !tracking || (carrier === 'Other' && !customCarrier.trim())}
+            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-button hover:bg-primary-dark disabled:opacity-50 shrink-0"
           >
             <Save className="w-3 h-3" />
             {savingTrk ? '…' : 'Save'}
           </button>
         </div>
+        {carrier === 'Other' && (
+          <input
+            value={customCarrier}
+            onChange={(e) => setCustomCarrier(e.target.value)}
+            placeholder="Carrier name (e.g. Ninja Van, J&T, Vietnam Post…)"
+            className="mt-1.5 w-full px-3 py-1.5 text-xs border border-border rounded-button bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
+          />
+        )}
         {tracking && trackingUrl && (
           <a href={trackingUrl} target="_blank" rel="noopener noreferrer"
             className="mt-1.5 flex items-center gap-1.5 text-xs text-primary hover:underline">
-            <ExternalLink className="w-3 h-3" /> Track — {carrier} {tracking}
+            <ExternalLink className="w-3 h-3" /> Track — {effectiveCarrier} {tracking}
           </a>
+        )}
+        {tracking && effectiveCarrier && !trackingUrl && (
+          <p className="mt-1.5 text-xs text-muted">{effectiveCarrier} · {tracking}</p>
         )}
         {order.labelUrl && (
           <div className="mt-1.5 flex items-center gap-1.5 text-xs text-green-700">
@@ -346,58 +367,27 @@ function OrderDetailsTab({ order, onUpdate }: { order: OrderDetail; onUpdate: ()
   );
 }
 
-// ── Progress dropdown ──────────────────────────────────────────────────────────
+// ── Status changer — full control over all statuses ───────────────────────────
 
-function UpdateProgressDropdown({ order, onUpdate }: { order: OrderDetail; onUpdate: () => void }) {
-  const [open, setOpen]   = useState(false);
+function StatusChanger({ order, onUpdate }: { order: OrderDetail; onUpdate: () => void }) {
   const [saving, setSaving] = useState(false);
 
-  const NEXT_STATUSES: Record<string, { label: string; status: string }[]> = {
-    PENDING_PAYMENT: [{ label: 'Mark as Confirmed',      status: 'CONFIRMED' }],
-    CONFIRMED:       [{ label: 'Start Production',       status: 'IN_PRODUCTION' }],
-    IN_PRODUCTION:   [{ label: 'Mark as Shipped',        status: 'SHIPPED' }],
-    SHIPPED:         [{ label: 'Mark as Delivered',      status: 'DELIVERED' }],
-    DELIVERED:       [{ label: 'Mark as Completed',      status: 'COMPLETED' }],
-  };
-
-  const options = NEXT_STATUSES[order.status] ?? [];
-
   const update = async (status: string) => {
+    if (status === order.status || saving) return;
     setSaving(true);
-    setOpen(false);
     try {
       await api.patch(API_ROUTES.ADMIN.ORDER_STATUS(order.id), { status });
       onUpdate();
     } catch { /* silent */ } finally { setSaving(false); }
   };
 
-  if (!options.length) return null;
-
   return (
-    <div className="relative">
-      <button
-        type="button"
-        disabled={saving}
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-button hover:bg-primary-dark disabled:opacity-50 transition-colors"
-      >
-        {saving ? 'Updating…' : 'Update progress'}
-        <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && (
-        <div className="absolute z-50 top-full mt-1 left-0 min-w-[200px] bg-surface border border-border rounded-xl shadow-xl py-1">
-          {options.map((opt) => (
-            <button
-              key={opt.status}
-              type="button"
-              onClick={() => update(opt.status)}
-              className="w-full text-left px-4 py-2.5 text-sm text-secondary hover:bg-muted/8 transition-colors"
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
+    <div className="flex items-center gap-2 min-w-0">
+      <span className="text-xs text-muted shrink-0">Status:</span>
+      <div className="w-52">
+        <StatusSelect value={order.status} onChange={update} />
+      </div>
+      {saving && <span className="text-xs text-muted shrink-0">Saving…</span>}
     </div>
   );
 }
@@ -572,9 +562,9 @@ export function OrderDetailPanel({ order, onClose, onUpdate }: OrderDetailPanelP
             </div>
           </div>
 
-          {/* Update progress button */}
-          <div className="flex items-center gap-2 mt-3">
-            <UpdateProgressDropdown order={order} onUpdate={onUpdate} />
+          {/* Status changer + label actions */}
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
+            <StatusChanger order={order} onUpdate={onUpdate} />
             {!labelUrl ? (
               <button
                 type="button"

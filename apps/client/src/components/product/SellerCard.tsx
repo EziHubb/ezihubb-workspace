@@ -1,6 +1,8 @@
 ﻿'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { useLocale } from 'next-intl';
 import { Star, Heart, MessageCircle, Package } from 'lucide-react';
 import type { ProductDto } from '@mlh/types';
 import { MessageShopModal } from '../messages/MessageShopModal';
@@ -35,6 +37,18 @@ interface SellerCardProps {
 
 export function SellerCard({ product }: SellerCardProps) {
   const [isMessageOpen, setIsMessageOpen] = useState(false);
+  const locale = useLocale();
+
+  const storeName = product.store?.name ?? 'Daily Daisy';
+  const storeSlug = product.store?.slug;
+  const storeHref = storeSlug ? `/${locale}/shops/${storeSlug}` : null;
+
+  const initials = storeName
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <section className="mt-12 pt-8 border-t border-border">
@@ -43,15 +57,26 @@ export function SellerCard({ product }: SellerCardProps) {
       <div className="flex items-start gap-4 mb-6">
 
         {/* Avatar */}
-        <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center text-xl font-bold text-primary flex-shrink-0">
-          ML
-        </div>
+        {storeHref ? (
+          <Link href={storeHref} className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center text-xl font-bold text-primary flex-shrink-0 hover:opacity-80 transition-opacity">
+            {initials}
+          </Link>
+        ) : (
+          <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center text-xl font-bold text-primary flex-shrink-0">
+            {initials}
+          </div>
+        )}
 
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-semibold text-lg text-secondary">DailyDaisy</h3>
-            <span className="text-sm text-muted">United States</span>
+            {storeHref ? (
+              <Link href={storeHref} className="font-semibold text-lg text-secondary hover:text-primary transition-colors">
+                {storeName}
+              </Link>
+            ) : (
+              <h3 className="font-semibold text-lg text-secondary">{storeName}</h3>
+            )}
           </div>
           <div className="flex items-center gap-3 mt-1 text-sm text-muted flex-wrap">
             <span className="flex items-center gap-1">
@@ -61,7 +86,6 @@ export function SellerCard({ product }: SellerCardProps) {
                 <span>({product.soldCount.toLocaleString()} sales)</span>
               )}
             </span>
-            <span>Est. 2017 · Daily Daisy</span>
           </div>
         </div>
 

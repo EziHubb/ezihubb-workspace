@@ -34,7 +34,8 @@ const nextConfig = {
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'placehold.co' },
       { protocol: 'https', hostname: 's3.amazonaws.com' },
-      { protocol: 'http', hostname: 'localhost' },
+      { protocol: 'https', hostname: '*.r2.dev' },
+      { protocol: 'http',  hostname: 'localhost' },
     ],
   },
   experimental: {

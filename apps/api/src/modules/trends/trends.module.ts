@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
-import { TrendsService } from './trends.service';
-import { TrendsController } from './trends.controller';
-import { TrendsProcessor } from './trends.processor';
+import { TrendsService }        from './trends.service';
+import { TrendsController }     from './trends.controller';
+import { TrendsProcessor }      from './trends.processor';
+import { TrendSourceRegistry }  from './source-registry.service';
 import { DevBullModule } from '../../queue/dev-bull.module';
 import { QUEUES } from '../../queue/queue.constants';
 
@@ -20,7 +21,7 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
         ]),
   ],
   controllers: [TrendsController],
-  providers:   [TrendsService, TrendsProcessor],
-  exports:     [TrendsService, TrendsProcessor],
+  providers:   [TrendsService, TrendsProcessor, TrendSourceRegistry],
+  exports:     [TrendsService, TrendsProcessor, TrendSourceRegistry],
 })
 export class TrendsModule {}

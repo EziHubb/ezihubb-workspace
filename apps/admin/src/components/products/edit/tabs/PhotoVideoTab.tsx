@@ -445,7 +445,7 @@ function DraggablePhotoGrid({
       >
         <SortableContext items={imageIds} strategy={rectSortingStrategy}>
           {/* 5-column grid */}
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {/* Slot 0: Featured image */}
             {imageIds.length > 0 && imageMap[imageIds[0]] && (
               <SortableImageSlot

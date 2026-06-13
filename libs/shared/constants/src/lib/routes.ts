@@ -299,8 +299,8 @@ export const API_ROUTES = {
     REVIEW_REPLY:         (id: string) => `/admin/reviews/${id}/reply`,
 
     // ── Promotions ───────────────────────────────────────────────────────────
-    PROMOTIONS:             '/admin/promotions',
-    PROMOTION:              (id: string) => `/admin/promotions/${id}`,
+    PROMOTIONS:             '/promotions',
+    PROMOTION:              (id: string) => `/promotions/${id}`,
     PROMOTIONS_PAGE_STATS:  '/promotions/page-stats',
     PROMOTION_STATS:        (id: string) => `/promotions/${id}/stats`,
 
@@ -428,9 +428,10 @@ export const API_ROUTES = {
     AI_STATS:                    '/admin/ai/stats',
     AI_TREND_DRAFTS:             '/admin/ai/trend-drafts',
     AI_TREND_DRAFT:              (id: string) => `/admin/ai/trend-drafts/${id}`,
-    AI_TREND_DRAFT_APPROVE:      (id: string) => `/admin/ai/trend-drafts/${id}/approve`,
-    AI_TREND_DRAFT_REJECT:       (id: string) => `/admin/ai/trend-drafts/${id}/reject`,
-    AI_TREND_SCAN:               '/admin/ai/trends/trigger-scan',
+    AI_TREND_DRAFT_APPROVE:        (id: string) => `/admin/ai/trend-drafts/${id}/approve`,
+    AI_TREND_DRAFT_REJECT:         (id: string) => `/admin/ai/trend-drafts/${id}/reject`,
+    AI_TREND_DRAFT_CREATE_PRODUCT: (id: string) => `/admin/ai/trend-drafts/${id}/create-product`,
+    AI_TREND_SCAN:                 '/admin/ai/trends/trigger-scan',
     AI_TREND_PENDING_COUNT:      '/admin/ai/trend-drafts/pending-count',
     AI_PRICING_STATS:            '/admin/ai/pricing/stats',
     AI_PRICING_TESTS:            '/admin/ai/pricing/tests',
@@ -440,11 +441,13 @@ export const API_ROUTES = {
     AI_CREATOR_DNA_REANALYZE:    (id: string) => `/admin/ai/creator-dna/${id}/reanalyze`,
     AI_USAGE:                    '/admin/ai/usage',
     AI_SETTINGS:                 '/admin/ai/settings',
+    AI_SOURCES:                  '/admin/ai/sources',
   },
 
   STORES: {
     LIST:             '/stores',
     DETAIL:           (slug: string) => `/stores/${slug}`,
+    SECTIONS:         (slug: string) => `/stores/${slug}/sections`,
     REVIEWS:          (slug: string) => `/stores/${slug}/reviews`,
     REVIEWS_SUMMARY:  (slug: string) => `/stores/${slug}/reviews/summary`,
   },

@@ -287,7 +287,7 @@ export default function PaymentsPage() {
       />
 
       {/* Stats row */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <MiniStat
           label="Revenue This Month"
           value={stats ? fmtCurrency(stats.revenueThisMonth, 2) : '—'}

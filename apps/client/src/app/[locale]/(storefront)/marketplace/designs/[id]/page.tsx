@@ -39,7 +39,7 @@ export default async function DesignDetailPage({ params }: { params: Promise<{ i
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{design.title}</h1>
             <p className="text-sm text-gray-500">
-              by <a href={`/stores/${design.store.slug}`} className="underline">{design.store.name}</a>
+              by <a href={`/shops/${design.store.slug}`} className="underline hover:text-primary transition-colors">{design.store.name}</a>
             </p>
           </div>
           <p className="text-gray-700">{design.description}</p>

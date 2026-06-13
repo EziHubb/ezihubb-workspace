@@ -230,7 +230,7 @@ export default function CreatorNetworkOverviewPage() {
       {/* ── Commission pipeline ───────────────────────────────────────────── */}
       <div className="bg-surface border border-border rounded-card p-5 mb-8">
         <h3 className="font-semibold text-secondary text-sm mb-4">Commission Pipeline</h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { label: 'Pending',   value: fmtAmount(pipeline?.pending   ?? 0), sub: 'locked, await delivery', color: 'bg-amber-500' },
             { label: 'Confirmed', value: fmtAmount(pipeline?.confirmed ?? 0), sub: 'ready for payout',        color: 'bg-green-500' },
@@ -435,7 +435,7 @@ export default function CreatorNetworkOverviewPage() {
           <h3 className="font-semibold text-secondary text-sm">Commission Rates</h3>
           <a href={ADMIN_ROUTES.CREATORS_ADMIN_SETTINGS} className="text-xs text-primary hover:underline">Edit rates →</a>
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { level: 'Level 1', desc: 'Direct referral',      rate: '10%', color: 'bg-primary'   },
             { level: 'Level 2', desc: 'Community (2nd level)', rate: '5%',  color: 'bg-[#7C3AED]' },

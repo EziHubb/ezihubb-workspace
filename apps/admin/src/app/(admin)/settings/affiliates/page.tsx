@@ -190,7 +190,7 @@ export default function AffiliateSettingsPage() {
         <div className="bg-surface rounded-card border border-border shadow-card p-6 space-y-5">
           <h4 className="font-semibold text-secondary">Tracking &amp; Payouts</h4>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <FieldLabel>Cookie duration (days)</FieldLabel>
               <input

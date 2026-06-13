@@ -9,7 +9,7 @@ export function useMutateWishlist() {
 
   const addToWishlist = useMutation({
     mutationFn: (productId: string) =>
-      api.post<void>(API_ROUTES.USERS.WISHLIST, { productId }),
+      api.post<void>(API_ROUTES.USERS.WISHLIST_ITEM(productId)),
     onSuccess: invalidate,
   });
 

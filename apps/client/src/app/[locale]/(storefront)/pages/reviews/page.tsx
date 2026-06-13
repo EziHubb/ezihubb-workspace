@@ -9,7 +9,7 @@ export const revalidate = 3600;
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: 'Customer Reviews | DailyDaisy',
+    title: 'Customer Reviews',
     description:
       "50,000+ happy customers. Read real reviews from people who've ordered personalized gifts from DailyDaisy.",
     robots: { index: true, follow: true },

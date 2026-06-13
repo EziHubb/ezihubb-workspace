@@ -180,7 +180,13 @@ function DesignCard({ design }: { design: DesignAsset }) {
           {design.store.logoUrl && (
             <img src={design.store.logoUrl} alt="" className="w-4 h-4 rounded-full object-cover" />
           )}
-          <p className="text-xs text-gray-400 truncate">by {design.store.name}</p>
+          <a
+            href={`/shops/${design.store.slug}`}
+            className="text-xs text-gray-400 hover:text-primary transition-colors truncate"
+            onClick={(e) => e.stopPropagation()}
+          >
+            by {design.store.name}
+          </a>
         </div>
 
         {/* Price */}

@@ -110,11 +110,16 @@ function BulkStatusDropdown({ selectedIds, onDone }: { selectedIds: string[]; on
   }, [open]);
 
   const STATUSES = [
-    { status: 'CONFIRMED',    label: 'Mark as Confirmed'    },
-    { status: 'IN_PRODUCTION',label: 'Start Production'     },
-    { status: 'SHIPPED',      label: 'Mark as Shipped'      },
-    { status: 'DELIVERED',    label: 'Mark as Delivered'    },
-    { status: 'COMPLETED',    label: 'Mark as Completed'    },
+    { status: 'PENDING_PAYMENT',  label: 'Mark as Pending Payment'  },
+    { status: 'CONFIRMED',        label: 'Mark as Confirmed'        },
+    { status: 'IN_PRODUCTION',    label: 'Start Production'         },
+    { status: 'SHIPPED',          label: 'Mark as Shipped'          },
+    { status: 'DELIVERED',        label: 'Mark as Delivered'        },
+    { status: 'COMPLETED',        label: 'Mark as Completed'        },
+    { status: 'CANCELLED',        label: 'Cancel orders'            },
+    { status: 'REFUND_REQUESTED', label: 'Mark Refund Requested'    },
+    { status: 'REFUNDED',         label: 'Mark as Refunded'         },
+    { status: 'DISPUTED',         label: 'Mark as Disputed'         },
   ];
 
   const updateAll = async (status: string) => {
@@ -267,7 +272,7 @@ function FilterSidebar({
   const hasFilters = !!filters.datePreset || !!filters.country || filters.giftOnly || filters.withNotes;
 
   return (
-    <div className="w-64 shrink-0 bg-surface border border-border rounded-card p-4 self-start sticky top-4 space-y-5">
+    <div className="w-full lg:w-64 shrink-0 bg-surface border border-border rounded-card p-4 self-start lg:sticky top-4 space-y-5">
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold text-secondary flex items-center gap-2">
           <Filter className="w-4 h-4 text-muted" /> Filters
@@ -529,7 +534,7 @@ export default function OrdersPage() {
       </div>
 
       {/* Main content: list + sidebar */}
-      <div className="flex gap-4 items-start">
+      <div className="flex flex-col lg:flex-row gap-4 items-start">
         {/* Orders list */}
         <div className="flex-1 min-w-0 bg-surface border border-border border-t-0 rounded-b-card overflow-hidden">
           {/* Bulk action bar */}

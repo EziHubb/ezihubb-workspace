@@ -4,7 +4,7 @@ import { getLocale } from 'next-intl/server';
 import { ArrowRight, Gift, Share2, DollarSign } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Creator Network — Daily Daisy',
+  title: 'Creator Network',
   description: 'Join thousands of creators who share Daily Daisy products and earn every time their community shops.',
 };
 

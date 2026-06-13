@@ -163,27 +163,36 @@ function VariantDropdown({
   values,
   selected,
   onChange,
+  hasError,
+  id,
 }: {
   label:    string;
   values:   string[];
   selected: string;
   onChange: (v: string) => void;
+  hasError?: boolean;
+  id?:       string;
 }) {
   return (
-    <div>
+    <div id={id}>
       <label className="text-sm font-medium block mb-1.5">
         {label} <span className="text-red-500">*</span>
       </label>
+      {hasError && !selected && (
+        <p className="text-xs text-red-500 mb-1">Please select an option</p>
+      )}
       <div className="relative">
         <select
           value={selected}
           onChange={(e) => onChange(e.target.value)}
           className={[
             'w-full appearance-none border rounded-lg px-3 py-2.5 text-sm bg-white pr-8',
-            'cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20',
+            'cursor-pointer transition-colors focus:outline-none focus:ring-2',
             selected
-              ? 'border-primary text-secondary'
-              : 'border-border text-muted',
+              ? 'border-primary text-secondary focus:ring-primary/20'
+              : hasError
+                ? 'border-red-400 text-muted focus:ring-red-200 bg-red-50'
+                : 'border-border text-muted focus:ring-primary/20',
           ].join(' ')}
         >
           <option value="">Select an option</option>
@@ -348,6 +357,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
   const [isPersonalizationOpen, setIsPersonalizationOpen] = useState(false);
   const [isAdding,              setIsAdding]              = useState(false);
   const [quantity,              setQuantity]              = useState(1);
+  const [hasAttemptedSubmit,    setHasAttemptedSubmit]    = useState(false);
 
   const addItem    = useCartStore((s) => s.addItem);
   const openDrawer = useCartStore((s) => s.openDrawer);
@@ -391,7 +401,21 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
   // ── Add to cart ───────────────────────────────────────────────────────────
 
   const handleAddToCart = async () => {
-    if (!canAddToCart || isAdding) return;
+    if (!canAddToCart) {
+      setHasAttemptedSubmit(true);
+      // Scroll to the first unselected variant dropdown
+      const firstMissing = product.variantOptions?.find(
+        (opt) => !selectedOptions[opt.name],
+      );
+      if (firstMissing) {
+        document.getElementById(`variant-${firstMissing.name}`)?.scrollIntoView({
+          behavior: 'smooth', block: 'center',
+        });
+      }
+      toast.error('Please select all required options before adding to cart.');
+      return;
+    }
+    if (isAdding) return;
     setIsAdding(true);
     try {
       await addItem({
@@ -461,12 +485,14 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
           {product.variantOptions!.map((opt) => (
             <VariantDropdown
               key={opt.name}
+              id={`variant-${opt.name}`}
               label={opt.name}
               values={opt.values}
               selected={selectedOptions[opt.name] ?? ''}
-              onChange={(v) =>
-                setSelectedOptions((prev) => ({ ...prev, [opt.name]: v }))
-              }
+              onChange={(v) => {
+                setSelectedOptions((prev) => ({ ...prev, [opt.name]: v }));
+              }}
+              hasError={hasAttemptedSubmit && !selectedOptions[opt.name]}
             />
           ))}
         </div>
@@ -489,13 +515,11 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       <button
         type="button"
         onClick={handleAddToCart}
-        disabled={!canAddToCart || isAdding}
+        disabled={isAdding}
         className={[
           'w-full py-3.5 rounded-full font-semibold text-sm transition-all',
           'flex items-center justify-center gap-2',
-          canAddToCart
-            ? 'bg-primary text-white hover:bg-primary-dark active:scale-[0.98]'
-            : 'bg-gray-200 text-muted cursor-not-allowed',
+          'bg-primary text-white hover:bg-primary-dark active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed',
         ].join(' ')}
       >
         {isAdding ? (
@@ -503,8 +527,6 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
             <Loader2 className="w-4 h-4 animate-spin" />
             {t('actions.adding')}
           </>
-        ) : !canAddToCart ? (
-          t('actions.selectOptions')
         ) : (
           <>
             <ShoppingCart className="w-4 h-4" />

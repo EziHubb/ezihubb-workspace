@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Search } from 'lucide-react';
 import { StoreProductsClient } from './StoreProductsClient';
 import { StoreReviewsClient } from './StoreReviewsClient';
 
@@ -55,48 +56,77 @@ export function StorePageClient({
   store:  StoreDto;
   locale: string;
 }) {
-  const [activeTab, setActiveTab] = useState<Tab>('featured');
+  const [activeTab,   setActiveTab]   = useState<Tab>('featured');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'featured', label: 'Featured Items'                  },
+    { id: 'featured', label: 'Featured Items'                     },
     { id: 'all',      label: `All Items (${store.totalProducts})` },
-    { id: 'reviews',  label: 'Reviews'                         },
-    { id: 'about',    label: 'About'                           },
+    { id: 'reviews',  label: 'Reviews'                            },
+    { id: 'about',    label: 'About'                              },
   ];
+
+  const isItemTab = activeTab === 'featured' || activeTab === 'all';
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSearchQuery(searchInput);
+    if (activeTab !== 'all') setActiveTab('all');
+  };
 
   return (
     <div className="mt-6">
       {/* ── Sticky Tab Navigation ──────────────────────────────────────────── */}
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border shadow-sm">
         <div className="max-w-[1200px] mx-auto px-4 md:px-8">
-          <div
-            role="tablist"
-            aria-label="Store sections"
-            className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden"
-          >
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                role="tab"
-                type="button"
-                aria-selected={activeTab === tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={[
-                  'px-5 py-4 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors shrink-0',
-                  activeTab === tab.id
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted hover:text-secondary',
-                ].join(' ')}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <div className="flex items-center gap-4">
+            {/* Tabs */}
+            <div
+              role="tablist"
+              aria-label="Store sections"
+              className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden flex-1"
+            >
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  role="tab"
+                  type="button"
+                  aria-selected={activeTab === tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={[
+                    'px-5 py-4 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors shrink-0',
+                    activeTab === tab.id
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted hover:text-secondary',
+                  ].join(' ')}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Search bar — only on item tabs */}
+            {isItemTab && (
+              <form onSubmit={handleSearch} className="shrink-0 hidden sm:flex">
+                <div className="flex items-center gap-2 border border-border rounded-full px-3.5 py-1.5 bg-surface hover:border-primary/40 focus-within:border-primary/60 transition-colors">
+                  <Search className="w-3.5 h-3.5 text-muted shrink-0" />
+                  <input
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    placeholder={`Search all ${store.totalProducts} items`}
+                    className="bg-transparent text-xs text-secondary placeholder:text-muted outline-none w-44"
+                  />
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </div>
 
       {/* ── Tab Content ────────────────────────────────────────────────────── */}
       <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-8 min-h-[400px]">
+
         {activeTab === 'featured' && (
           <section>
             <div className="flex items-center justify-between mb-6">
@@ -119,14 +149,13 @@ export function StorePageClient({
         )}
 
         {activeTab === 'all' && (
-          <section>
-            <h2 className="font-display text-xl font-bold text-secondary mb-6">All Items</h2>
-            <StoreProductsClient
-              storeSlug={store.slug}
-              locale={locale}
-              mode="all"
-            />
-          </section>
+          <StoreProductsClient
+            storeSlug={store.slug}
+            locale={locale}
+            mode="all"
+            searchQuery={searchQuery}
+            onSearchClear={() => { setSearchQuery(''); setSearchInput(''); }}
+          />
         )}
 
         {activeTab === 'reviews' && (

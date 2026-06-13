@@ -1154,7 +1154,7 @@ function ThemePresetGrid({
   onSelect: (theme: AdminTheme) => void;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-3 pt-1">
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
       {ADMIN_THEMES.map((theme) => {
         const isActive = selected === theme.key;
         const [r, g, b] = theme.primaryRgb.split(' ').map(Number);

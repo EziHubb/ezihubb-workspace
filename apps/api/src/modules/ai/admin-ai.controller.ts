@@ -7,10 +7,11 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@mlh/constants';
-import { PricingService } from '../pricing/pricing.service';
-import { TrendsService } from '../trends/trends.service';
-import { CreatorDnaService } from '../creator-dna/creator-dna.service';
-import { AiStatsService } from './ai-stats.service';
+import { PricingService }       from '../pricing/pricing.service';
+import { TrendsService }        from '../trends/trends.service';
+import { CreatorDnaService }    from '../creator-dna/creator-dna.service';
+import { AiStatsService }       from './ai-stats.service';
+import { TrendSourceRegistry }  from '../trends/source-registry.service';
 
 @ApiTags('Admin AI')
 @Controller('admin/ai')
@@ -22,6 +23,7 @@ export class AdminAiController {
     private readonly trendsService:     TrendsService,
     private readonly creatorDnaService: CreatorDnaService,
     private readonly aiStatsService:    AiStatsService,
+    private readonly sourceRegistry:    TrendSourceRegistry,
   ) {}
 
   // ── Stats ─────────────────────────────────────────────────────────────────
@@ -130,9 +132,21 @@ export class AdminAiController {
     return this.trendsService.adminRejectDraft(id);
   }
 
+  @Post('trend-drafts/:id/create-product')
+  @ApiOperation({ summary: 'Create a product from an approved trend draft' })
+  createProductFromDraft(@Param('id') id: string) {
+    return this.trendsService.adminCreateProductFromDraft(id);
+  }
+
+  @Get('sources')
+  @ApiOperation({ summary: 'List available trend sources with metadata' })
+  getTrendSources() {
+    return this.sourceRegistry.getSourcesMeta();
+  }
+
   @Post('trends/trigger-scan')
-  @ApiOperation({ summary: 'Manually trigger a trend scan via BullMQ' })
-  triggerTrendScan() {
-    return this.trendsService.queueManualScan();
+  @ApiOperation({ summary: 'Trigger a synchronous trend scan — creates drafts immediately, skips image generation' })
+  triggerTrendScan(@Body() body: { sources?: string[] } = {}) {
+    return this.trendsService.triggerAdminDirectScan(body.sources);
   }
 }

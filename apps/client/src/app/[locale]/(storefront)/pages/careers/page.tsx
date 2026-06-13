@@ -9,7 +9,7 @@ export const dynamic = 'force-static';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: 'Careers | DailyDaisy',
+    title: 'Careers',
     description:
       "Join the DailyDaisy team. We're a small, passionate team creating personalized gifts. See open roles or send us your resume.",
     robots: { index: true, follow: true },

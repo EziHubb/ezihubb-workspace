@@ -34,7 +34,7 @@ export async function generateMetadata({
   if (!store) return { title: 'Store not found' };
 
   return {
-    title:       `${store.name} | Daily Daisy`,
+    title:       store.name,
     description: store.description?.slice(0, 160) ?? `Shop ${store.name} on Daily Daisy.`,
     openGraph: {
       title:       store.name,

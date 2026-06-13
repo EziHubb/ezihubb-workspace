@@ -131,7 +131,7 @@ export default function ProductsSeoPage() {
       />
 
       {/* ── Stats strip ─────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Missing SEO Title',       value: stats.missingTitle,       color: stats.missingTitle > 0       ? 'text-amber-600' : 'text-green-600' },
           { label: 'Missing Description',      value: stats.missingDescription, color: stats.missingDescription > 0 ? 'text-amber-600' : 'text-green-600' },

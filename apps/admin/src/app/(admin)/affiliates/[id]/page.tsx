@@ -433,7 +433,7 @@ export default function AffiliateDetailPage({
         queryKey={['admin-affiliate', id]}
       />
 
-      <div className="grid grid-cols-3 gap-6 mt-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-2">
         {/* ── Left column (2/3) ─────────────────────────────────────────────── */}
         <div className="col-span-2 space-y-6">
           {/* Pending banner */}

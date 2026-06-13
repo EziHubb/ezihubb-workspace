@@ -104,7 +104,7 @@ function RuleFormModal({
         </div>
 
         {/* Target / Trigger / Action row */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { label: 'Target',  key: 'target'  as const, options: ['ALL', 'PRODUCT', 'REVIEW', 'STORE', 'USER'] },
             { label: 'Trigger', key: 'trigger' as const, options: ['KEYWORD', 'AI_SCORE', 'REPORT_COUNT', 'PATTERN'] },

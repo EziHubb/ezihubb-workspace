@@ -457,7 +457,7 @@ export default async function DashboardPage() {
             Fix issues →
           </Link>
         </div>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <SeoHealthCard
             label="Missing SEO title"
             value={seoStats.missingTitle}

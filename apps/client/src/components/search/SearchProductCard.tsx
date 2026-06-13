@@ -89,11 +89,6 @@ export function SearchProductCard({ product, priority = false }: Props) {
     addItem({ productId: product.id, quantity: 1 });
   };
 
-  const handleMoreLikeThis = (e: React.MouseEvent) => {
-    e.preventDefault();
-    router.push(`/${locale}/search?similar=${product.id}`);
-  };
-
   const activeImage =
     product.images[activeImageIndex]?.url ?? product.images[0]?.url ?? '';
   const badge = getProductBadge(product);
@@ -117,7 +112,7 @@ export function SearchProductCard({ product, priority = false }: Props) {
             src={activeImage}
             alt={product.name}
             loading={priority ? 'eager' : 'lazy'}
-            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-[1.03]"
+            className="w-full h-full object-cover transition-all duration-500"
           />
         </Link>
 
@@ -186,20 +181,22 @@ export function SearchProductCard({ product, priority = false }: Props) {
             </Link>
           )}
 
-          <button
-            type="button"
-            onClick={handleMoreLikeThis}
-            title="More like this"
-            className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-secondary hover:bg-primary hover:text-white transition-colors shadow-sm flex-shrink-0 text-xs font-bold"
-          >
-            ···
-          </button>
         </div>
       </div>
 
       {/* CARD INFO */}
       <div className="space-y-0.5 px-0.5">
-        <p className="text-xs text-muted truncate">DailyDaisy</p>
+        {product.store?.slug ? (
+          <Link
+            href={`/${locale}/shops/${product.store.slug}`}
+            className="block text-xs text-muted hover:text-primary transition-colors truncate"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {product.store.name}
+          </Link>
+        ) : (
+          <p className="text-xs text-muted truncate">{product.store?.name ?? 'Daily Daisy'}</p>
+        )}
 
         <Link href={`/${locale}/products/${product.slug}`}>
           <p className="text-sm text-secondary line-clamp-2 leading-snug hover:underline hover:text-primary transition-colors">

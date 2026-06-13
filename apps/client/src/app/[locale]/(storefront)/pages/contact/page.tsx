@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: 'Contact Us | DailyDaisy',
+    title: 'Contact Us',
     description:
       'Get in touch with DailyDaisy. We respond to all messages within 2 hours during business hours.',
     robots: { index: true, follow: true },

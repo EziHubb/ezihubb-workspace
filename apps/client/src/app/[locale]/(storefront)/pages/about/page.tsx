@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title:       'About Us | Daily Daisy',
+    title:       'About Us',
     description: 'Learn about our mission to create meaningful, personalized handmade gifts crafted with love for every occasion.',
   };
 }

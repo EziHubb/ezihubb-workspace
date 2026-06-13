@@ -73,6 +73,8 @@ export const CLIENT_ROUTES = {
   PRODUCT:  (slug: string) => `/products/${slug}`,
   PRODUCT_CUSTOMIZE: (slug: string) => `/products/${slug}/customize`,
 
+  SHOP:     (slug: string) => `/shops/${slug}`,
+
   CATEGORIES:  '/categories',
   CATEGORY:    (slug: string) => `/categories/${slug}`,
 

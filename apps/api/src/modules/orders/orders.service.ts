@@ -696,7 +696,6 @@ export class OrdersService {
           createdAt: true,
           items: {
             select: { quantity: true, previewUrl: true, productImageUrl: true },
-            take: 1,
             orderBy: { previewUrl: 'desc' },
           },
           user: { select: { id: true, email: true, firstName: true, lastName: true } },

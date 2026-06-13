@@ -71,15 +71,9 @@ export function MobileStickyCartBar({
         <button
           type="button"
           onClick={onAddToCart}
-          disabled={!canAddToCart}
-          className={[
-            'px-5 py-2.5 rounded-full text-sm font-semibold flex-shrink-0 transition-colors',
-            canAddToCart
-              ? 'bg-primary text-white hover:bg-primary-dark active:scale-[0.97]'
-              : 'bg-gray-200 text-muted cursor-not-allowed',
-          ].join(' ')}
+          className="px-5 py-2.5 rounded-full text-sm font-semibold flex-shrink-0 transition-colors bg-primary text-white hover:bg-primary-dark active:scale-[0.97]"
         >
-          {canAddToCart ? 'Add to cart' : 'Select options'}
+          Add to cart
         </button>
 
       </div>
