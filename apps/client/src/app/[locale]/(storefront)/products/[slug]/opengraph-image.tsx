@@ -60,7 +60,7 @@ export default async function OGImage({
           }}
         >
           <div style={{ fontSize: 56, fontWeight: 700, color: CORAL }}>
-            Maple Handmade
+            Daily Daisy
           </div>
           <div style={{ fontSize: 28, color: MUTED }}>
             Personalized Handmade Gifts
@@ -139,7 +139,7 @@ export default async function OGImage({
               }}
             />
             <span style={{ fontSize: 22, color: MUTED, fontWeight: 600 }}>
-              Maple Handmade
+              Daily Daisy
             </span>
           </div>
 

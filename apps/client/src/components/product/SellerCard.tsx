@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { Star, Heart, MessageCircle, Package } from 'lucide-react';
@@ -50,7 +50,7 @@ export function SellerCard({ product }: SellerCardProps) {
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-semibold text-lg text-secondary">MapleLoomHandmade</h3>
+            <h3 className="font-semibold text-lg text-secondary">DailyDaisy</h3>
             <span className="text-sm text-muted">United States</span>
           </div>
           <div className="flex items-center gap-3 mt-1 text-sm text-muted flex-wrap">
@@ -61,7 +61,7 @@ export function SellerCard({ product }: SellerCardProps) {
                 <span>({product.soldCount.toLocaleString()} sales)</span>
               )}
             </span>
-            <span>Est. 2017 · MapleLoom</span>
+            <span>Est. 2017 · Daily Daisy</span>
           </div>
         </div>
 

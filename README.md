@@ -1,4 +1,4 @@
-# MapleLoomHandmade — Handcrafted Goods Platform
+# DailyDaisy — Handcrafted Goods Platform
 
 A full-stack e-commerce platform for personalized handmade goods. Customers browse products, customize them in a live canvas editor (Fabric.js), and check out via Stripe or PayPal. Artisans and admins manage inventory, orders, and promotions through a separate admin panel.
 
@@ -48,8 +48,8 @@ A full-stack e-commerce platform for personalized handmade goods. Customers brow
 
 ```bash
 # 1. Clone and enter the repo
-git clone https://github.com/your-org/maple-loom-handmade.git
-cd maple-loom-handmade-workspace
+git clone https://github.com/your-org/daily-daisy.git
+cd daily-daisy-workspace
 
 # 2. First-time setup (installs deps, starts infra, migrates DB, seeds data)
 make setup
@@ -127,7 +127,7 @@ pnpm nx run-many -t build --parallel=3 # Build all in parallel
 ## Project Structure
 
 ```
-maple-loom-handmade-workspace/
+daily-daisy-workspace/
 ├── apps/
 │   ├── api/              # NestJS REST API
 │   │   └── src/
@@ -218,7 +218,7 @@ SENTRY_DSN             # https://...@sentry.io/...
 ./scripts/smoke-test.sh
 
 # Test a deployed environment
-./scripts/smoke-test.sh https://api.mapleloomhandmade.com https://mapleloomhandmade.com
+./scripts/smoke-test.sh https://api.dailydaisy.com https://dailydaisy.com
 ```
 
 ---

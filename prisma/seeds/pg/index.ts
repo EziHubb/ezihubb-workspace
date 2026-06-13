@@ -13,6 +13,12 @@ import { seedAttributeValues }    from './11-attribute-values';
 import { seedAffiliates }         from './12-affiliates';
 import { seedConversations }      from './13-conversations';
 import { seedStores }             from './14-stores';
+import { seedOrders }             from './16-orders';
+import { seedReviews }            from './17-reviews';
+import { seedGiftCards }          from './18-gift-cards';
+import { seedLoyalty }            from './19-loyalty';
+import { seedWishlists, seedProductQandA } from './20-wishlists-qanda';
+import { seedAddresses }          from './21-addresses';
 
 export async function runPgSeeds(): Promise<Record<string, string>> {
   const { admin } = await seedUsers(prisma);
@@ -33,7 +39,22 @@ export async function runPgSeeds(): Promise<Record<string, string>> {
   await seedShippingZones(prisma);
   await seedAttributeValues(prisma);
   await seedAffiliates(prisma);
+
+  // Addresses must exist before orders (for display)
+  await seedAddresses(prisma);
+
+  // Orders + conversations depend on users + products
+  await seedOrders(prisma, storeId);
   await seedConversations(prisma);
+
+  // Reviews depend on orders
+  await seedReviews(prisma, storeId);
+
+  // Loyalty, wishlists, Q&A
+  await seedGiftCards(prisma);
+  await seedLoyalty(prisma);
+  await seedWishlists(prisma);
+  await seedProductQandA(prisma);
 
   return productIds;
 }

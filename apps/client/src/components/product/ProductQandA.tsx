@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
@@ -234,7 +234,7 @@ export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
                     <p className="text-secondary text-sm leading-relaxed">{qa.answer}</p>
                     <div className="flex items-center gap-4 mt-2">
                       <p className="text-xs text-muted">
-                        MapleLoomHandmade
+                        DailyDaisy
                         {qa.answeredAt && ` · ${formatRelativeTime(qa.answeredAt)}`}
                       </p>
                       <button

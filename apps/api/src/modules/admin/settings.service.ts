@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as path from 'path';
@@ -12,7 +12,7 @@ const SETTINGS_TTL = 300; // 5 minutes
 
 const DEFAULTS: Record<string, Record<string, unknown>> = {
   store: {
-    name: 'MapleLoomHandmade',
+    name: 'DailyDaisy',
     description: '',
     contactEmail: '',
     supportPhone: '',
@@ -33,7 +33,7 @@ const DEFAULTS: Record<string, Record<string, unknown>> = {
     port: '587',
     user: '',
     password: '',
-    fromName: 'MapleLoomHandmade',
+    fromName: 'DailyDaisy',
     fromEmail: '',
   },
   notifications: {
@@ -107,7 +107,7 @@ export class SettingsService {
   async sendTestEmail(to: string): Promise<void> {
     await this.emailQueue.add(JOBS.SEND_EMAIL, {
       to,
-      subject: 'Test Email from MapleLoomHandmade',
+      subject: 'Test Email from DailyDaisy',
       template: 'welcome',
       data: { firstName: 'Admin' },
     } satisfies SendEmailJobData);

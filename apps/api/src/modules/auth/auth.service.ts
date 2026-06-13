@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   BadRequestException,
   UnauthorizedException,
@@ -378,7 +378,7 @@ export class AuthService {
       {
         to: email,
         template: 'password-reset',
-        subject: 'Reset your MapleLoom password',
+        subject: 'Reset your Daily Daisy password',
         data: { firstName: user.firstName, resetUrl: `${frontendUrl}/reset-password?token=${token}` },
       } satisfies SendEmailJobData,
       DEFAULT_JOB_OPTIONS,
@@ -564,7 +564,7 @@ export class AuthService {
       {
         to: email,
         template: 'email-verification',
-        subject: 'Verify your MapleLoom email',
+        subject: 'Verify your Daily Daisy email',
         data: { firstName, verifyUrl: `${frontendUrl}/verify-email?token=${token}` },
       } satisfies SendEmailJobData,
       DEFAULT_JOB_OPTIONS,

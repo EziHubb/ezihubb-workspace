@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+﻿import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -107,7 +107,7 @@ export class DropsService {
       });
 
       // Notify waitlist
-      const baseUrl = this.config.get('NEXT_PUBLIC_URL') ?? 'https://mapleloomhandmade.com';
+      const baseUrl = this.config.get('NEXT_PUBLIC_URL') ?? 'https://dailydaisy.com';
       for (const entry of product.dropWaitlists) {
         await this.emailQueue.add(
           JOBS.SEND_EMAIL,

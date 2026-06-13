@@ -51,7 +51,7 @@ jobs:
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
-          POSTGRES_DB: mapleloomhandmade_test
+          POSTGRES_DB: dailydaisy_test
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -89,7 +89,7 @@ jobs:
       - name: Run Prisma migrations
         run: pnpm exec prisma migrate deploy --schema=prisma/schema.prisma
         env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/mapleloomhandmade_test
+          DATABASE_URL: postgresql://test:test@localhost:5432/dailydaisy_test
 
       - name: Set Nx SHAs
         uses: nrwl/nx-set-shas@v4
@@ -97,7 +97,7 @@ jobs:
       - name: Run tests (affected)
         run: pnpm nx affected -t test --base=$NX_BASE --head=$NX_HEAD --parallel=2 --ci
         env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/mapleloomhandmade_test
+          DATABASE_URL: postgresql://test:test@localhost:5432/dailydaisy_test
           REDIS_URL: redis://localhost:6379
           JWT_ACCESS_SECRET: ci-test-access-secret-must-be-64-characters-long-xxxxxxxxxxxxxx
           JWT_REFRESH_SECRET: ci-test-refresh-secret-must-be-64-chars-long-xxxxxxxxxxxxxxxxxxxxx
@@ -106,8 +106,8 @@ jobs:
       - name: Run API integration tests
         run: pnpm test:api:integration
         env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/mapleloomhandmade_test
-          TEST_DATABASE_URL: postgresql://test:test@localhost:5432/mapleloomhandmade_test
+          DATABASE_URL: postgresql://test:test@localhost:5432/dailydaisy_test
+          TEST_DATABASE_URL: postgresql://test:test@localhost:5432/dailydaisy_test
           JWT_ACCESS_SECRET: test-jwt-access-secret-for-ci
           JWT_REFRESH_SECRET: test-jwt-refresh-secret-for-ci
           REDIS_URL: redis://localhost:6379
@@ -132,7 +132,7 @@ jobs:
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
-          POSTGRES_DB: mapleloomhandmade_e2e
+          POSTGRES_DB: dailydaisy_e2e
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -168,12 +168,12 @@ jobs:
       - name: Run Prisma migrations
         run: pnpm exec prisma migrate deploy --schema=prisma/schema.prisma
         env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/mapleloomhandmade_e2e
+          DATABASE_URL: postgresql://test:test@localhost:5432/dailydaisy_e2e
 
       - name: Run API E2E tests
         run: pnpm test:api:e2e
         env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/mapleloomhandmade_e2e
+          DATABASE_URL: postgresql://test:test@localhost:5432/dailydaisy_e2e
           REDIS_URL: redis://localhost:6379
           JWT_ACCESS_SECRET: ci-test-access-secret-must-be-64-characters-long-xxxxxxxxxxxxxx
           JWT_REFRESH_SECRET: ci-test-refresh-secret-must-be-64-chars-long-xxxxxxxxxxxxxxxxxxxxx

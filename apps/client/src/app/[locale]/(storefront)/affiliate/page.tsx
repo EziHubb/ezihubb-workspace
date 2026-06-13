@@ -172,7 +172,7 @@ export default async function AffiliateLandingPage() {
             Ready to start earning?
           </h2>
           <p className="text-muted mb-8">
-            Join other creators already earning with Maple Loom Handmade.
+            Join other creators already earning with Daily Daisy.
           </p>
           <Link
             href="./affiliate/register"

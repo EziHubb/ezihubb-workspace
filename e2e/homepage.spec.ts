@@ -6,7 +6,7 @@ test.describe('Homepage', () => {
   });
 
   test('loads homepage and shows hero section', async ({ page }) => {
-    await expect(page).toHaveTitle(/maple loom/i);
+    await expect(page).toHaveTitle(/daily daisy/i);
     // Hero section is visible
     const hero = page.locator('[data-testid="hero"], section').first();
     await expect(hero).toBeVisible();

@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   Injectable,
   Logger,
@@ -663,7 +663,7 @@ export class PaymentsService {
       {
         to: dto.recipientEmail,
         template: 'gift-card-delivery',
-        subject: `You've received a $${dto.amount} MapleLoomHandmade Gift Card!`,
+        subject: `You've received a $${dto.amount} DailyDaisy Gift Card!`,
         data: {
           recipientName: dto.recipientName ?? 'Friend',
           code: giftCard.code,
@@ -676,7 +676,7 @@ export class PaymentsService {
           }),
           shopUrl:
             this.config.get<string>('NEXT_PUBLIC_URL') ??
-            'https://mapleloomhandmade.com',
+            'https://dailydaisy.com',
           year: new Date().getFullYear(),
         },
       } satisfies SendEmailJobData,

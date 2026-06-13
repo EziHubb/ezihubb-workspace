@@ -9,9 +9,9 @@ export const dynamic = 'force-static';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: 'Careers | MapleLoomHandmade',
+    title: 'Careers | DailyDaisy',
     description:
-      "Join the MapleLoomHandmade team. We're a small, passionate team creating personalized gifts. See open roles or send us your resume.",
+      "Join the DailyDaisy team. We're a small, passionate team creating personalized gifts. See open roles or send us your resume.",
     robots: { index: true, follow: true },
   };
 }
@@ -57,7 +57,7 @@ export default function CareersPage() {
           Careers
         </p>
         <h1 className="font-display text-4xl md:text-5xl font-bold text-secondary mb-4">
-          Work at MapleLoomHandmade
+          Work at DailyDaisy
         </h1>
         <p className="text-lg text-muted max-w-xl mx-auto">
           We&apos;re a small team with big ambitions. If you love craftsmanship, creativity,
@@ -76,7 +76,7 @@ export default function CareersPage() {
           />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-secondary mb-4">Life at MapleLoom</h2>
+          <h2 className="text-2xl font-bold text-secondary mb-4">Life at Daily Daisy</h2>
           <div className="space-y-4">
             {perks.map(({ Icon, text }) => (
               <div key={text} className="flex items-center gap-3 text-sm text-secondary">
@@ -102,7 +102,7 @@ export default function CareersPage() {
             Send us your resume and we&apos;ll keep you in mind for future opportunities.
           </p>
           <a
-            href="mailto:careers@mapleloomhandmade.com"
+            href="mailto:careers@dailydaisy.com"
             className="inline-flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-primary-dark transition-colors"
           >
             <Mail className="w-4 h-4" />

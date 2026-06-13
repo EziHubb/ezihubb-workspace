@@ -19,7 +19,7 @@ import type { TopProductDto } from '../../../components/dashboard/TopProductsTab
 import type { ReviewDto } from '../../../components/dashboard/PendingReviewsCard';
 import { fmtAmount, fmtRelative, unwrapArr, safeArr, fmtNum } from '../../../lib/fmt';
 
-export const metadata = { title: 'Dashboard — Maple Admin' };
+export const metadata = { title: 'Dashboard — Daily Daisy Admin' };
 export const dynamic  = 'force-dynamic';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

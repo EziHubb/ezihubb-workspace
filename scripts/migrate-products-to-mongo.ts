@@ -146,7 +146,7 @@ async function migrateProducts() {
   const uri = process.env['MONGODB_URI'] ?? 'mongodb://localhost:27017';
   console.log(`🍃 Connecting to MongoDB at ${uri.replace(/\/\/.*@/, '//<credentials>@')}...`);
 
-  await mongoose.connect(uri, { dbName: 'mapleloomhandmade' });
+  await mongoose.connect(uri, { dbName: 'dailydaisy' });
   console.log('✅ Connected\n');
 
   const products = await prisma.product.findMany({

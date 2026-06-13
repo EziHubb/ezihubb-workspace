@@ -132,7 +132,7 @@ function BuyerReferralShare({ orderNumber }: { orderNumber: string }) {
   if (loading) return null; // Don't show skeleton — just wait silently
   if (!referral || referral.status === 'CREDITED') return null;
 
-  const referralUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://mapleloom.com'}?bref=${referral.cookieToken}`;
+  const referralUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://dailydaisy.com'}?bref=${referral.cookieToken}`;
   const creditAmt = Number(referral.creditAmount);
   const expiresDate = new Date(referral.expiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
@@ -144,7 +144,7 @@ function BuyerReferralShare({ orderNumber }: { orderNumber: string }) {
     } catch { /* ignore */ }
   };
 
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`I just ordered from MapleLoom! You can use my link to get 5% off: ${referralUrl}`)}`;
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`I just ordered from Daily Daisy! You can use my link to get 5% off: ${referralUrl}`)}`;
 
   return (
     <div className="mt-8 rounded-2xl border border-[#FDE68A] bg-[#FFFBEB] overflow-hidden">

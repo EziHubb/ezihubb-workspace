@@ -1,4 +1,4 @@
-import { Logger, ValidationPipe } from '@nestjs/common';
+﻿import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
@@ -145,9 +145,9 @@ async function bootstrap() {
   // ── Swagger (disabled in production) ──────────────────────────────────────
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()
-      .setTitle('MapleLoomHandmade API')
+      .setTitle('DailyDaisy API')
       .setDescription(
-        'REST API for MapleLoomHandmade — personalized gifts e-commerce',
+        'REST API for DailyDaisy — personalized gifts e-commerce',
       )
       .setVersion('1.0')
       .addBearerAuth(

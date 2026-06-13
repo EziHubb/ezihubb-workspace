@@ -113,7 +113,7 @@ export default function CreatorHubPage() {
     : '';
 
   const whatsappUrl = creatorLink
-    ? `https://wa.me/?text=${encodeURIComponent(`Check out Maple Loom Handmade! ${creatorLink}`)}`
+    ? `https://wa.me/?text=${encodeURIComponent(`Check out Daily Daisy! ${creatorLink}`)}`
     : '#';
   const facebookUrl = creatorLink
     ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(creatorLink)}`
@@ -122,7 +122,7 @@ export default function CreatorHubPage() {
     ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Shop handmade gifts with my link and save! ${creatorLink}`)}`
     : '#';
   const pinterestUrl = creatorLink
-    ? `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(creatorLink)}&description=${encodeURIComponent('Shop MapleLoom Handmade!')}`
+    ? `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(creatorLink)}&description=${encodeURIComponent('Shop Daily Daisy!')}`
     : '#';
 
   return (

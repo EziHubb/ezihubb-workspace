@@ -46,9 +46,9 @@ async function getPublicWishlist(token: string): Promise<PublicWishlistResponse 
 // ── Share bar ─────────────────────────────────────────────────────────────────
 
 function ShareBar({ token, title }: { token: string; title: string }) {
-  const url     = `https://mapleloomhandmade.com/wishlist/${token}`;
+  const url     = `https://dailydaisy.com/wishlist/${token}`;
   const encoded = encodeURIComponent(url);
-  const text    = encodeURIComponent(`Check out this wishlist on MapleLoom: "${title}"`);
+  const text    = encodeURIComponent(`Check out this wishlist on Daily Daisy: "${title}"`);
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
@@ -181,7 +181,7 @@ export default async function SharedWishlistPage({
 
           {/* ── CTA footer ──────────────────────────────────────────────────── */}
           <div className="border-t border-border pt-8 text-center">
-            <p className="text-sm text-muted mb-3">Love what you see? Create your own wishlist on MapleLoom.</p>
+            <p className="text-sm text-muted mb-3">Love what you see? Create your own wishlist on Daily Daisy.</p>
             <Link href={`/${locale}/register`}
               className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white font-bold text-sm rounded-button hover:bg-primary/90 transition-colors">
               <Heart className="w-4 h-4" />

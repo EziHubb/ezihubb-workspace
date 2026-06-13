@@ -279,7 +279,7 @@ export default function AdminStoreDetailPage() {
                   <User className="w-3 h-3" /> {ownerName} · {store.owner.email}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Globe className="w-3 h-3" /> mapleloom.com/shops/{store.slug}
+                  <Globe className="w-3 h-3" /> dailydaisy.com/shops/{store.slug}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Calendar className="w-3 h-3" /> Applied {fmtDate(store.createdAt)}

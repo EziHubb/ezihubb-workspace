@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
@@ -257,7 +257,7 @@ export function AdminSidebar() {
             <span className="text-white font-bold text-base">M</span>
           </div>
           <div>
-            <p className="text-white font-bold text-sm leading-none">MapleLoom</p>
+            <p className="text-white font-bold text-sm leading-none">Daily Daisy</p>
             <p className="text-[#9CA3AF] text-[11px] leading-none mt-0.5">Admin Panel</p>
           </div>
         </div>

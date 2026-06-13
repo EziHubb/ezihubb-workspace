@@ -328,7 +328,7 @@ export async function seedProducts(prisma: PrismaClient, defaultStoreId?: string
       throw new Error(`Seed error: category slug '${catSlug}' not found for product '${def.name}'.`);
     }
 
-    const existing = await prisma.product.findUnique({ where: { slug: def.slug } });
+    const existing = await prisma.product.findFirst({ where: { slug: def.slug } });
     if (existing) {
       productIds[def.slug] = existing.id;
       // Backfill storeId if missing

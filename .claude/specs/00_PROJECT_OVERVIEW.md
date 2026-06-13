@@ -1,8 +1,8 @@
-# Maple Loom Handmade — Project Overview
+# Daily Daisy — Project Overview
 
 ## 1. Mô tả dự án
 
-**Maple Loom Handmade** là nền tảng thương mại điện tử chuyên về quà tặng cá nhân hoá (personalized gifts). Người dùng có thể chọn sản phẩm (cốc, canvas, hoodie, ornament...) và cá nhân hoá trực tiếp bằng công cụ customizer tích hợp Fabric.js trước khi mua hàng.
+**Daily Daisy** là nền tảng thương mại điện tử chuyên về quà tặng cá nhân hoá (personalized gifts). Người dùng có thể chọn sản phẩm (cốc, canvas, hoodie, ornament...) và cá nhân hoá trực tiếp bằng công cụ customizer tích hợp Fabric.js trước khi mua hàng.
 
 ## 2. Tech Stack
 
@@ -32,7 +32,7 @@
 ## 3. Kiến trúc Monorepo
 
 ```
-maple-loom-handmade-workspace/
+daily-daisy-workspace/
 ├── apps/
 │   ├── api/          → NestJS backend (port 3002)
 │   ├── client/       → Next.js storefront (port 3000)

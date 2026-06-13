@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
@@ -156,7 +156,7 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold font-display text-base">M</span>
             </div>
-            <span className="font-display font-bold text-lg text-secondary">Maple Handmade</span>
+            <span className="font-display font-bold text-lg text-secondary">Daily Daisy</span>
           </Link>
           <button
             type="button"

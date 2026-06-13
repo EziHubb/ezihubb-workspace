@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useRef, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -210,7 +210,7 @@ function StoreTab() {
           <div className="col-span-2">
             <FieldLabel required>Store Name</FieldLabel>
             <input value={g('name')} onChange={(e) => setGeneral((s) => ({ ...s, name: e.target.value }))}
-              className={inputCls} placeholder="MapleLoomHandmade" />
+              className={inputCls} placeholder="DailyDaisy" />
           </div>
           <div className="col-span-2">
             <FieldLabel>Store Description</FieldLabel>
@@ -220,7 +220,7 @@ function StoreTab() {
           <div>
             <FieldLabel>Contact Email</FieldLabel>
             <input type="email" value={g('contactEmail')} onChange={(e) => setGeneral((s) => ({ ...s, contactEmail: e.target.value }))}
-              className={inputCls} placeholder="hello@mapleloomhandmade.com" />
+              className={inputCls} placeholder="hello@dailydaisy.com" />
           </div>
           <div>
             <FieldLabel>Support Phone</FieldLabel>
@@ -244,7 +244,7 @@ function StoreTab() {
           <div className="col-span-2">
             <FieldLabel>Address Line 1</FieldLabel>
             <input value={a('addressLine1')} onChange={(e) => setAddress((s) => ({ ...s, addressLine1: e.target.value }))}
-              className={inputCls} placeholder="123 Maple Street" />
+              className={inputCls} placeholder="123 Daisy Lane" />
           </div>
           <div className="col-span-2">
             <FieldLabel>Address Line 2</FieldLabel>
@@ -357,7 +357,7 @@ function EmailTemplateEditor({
     .replace(/\{\{trackingUrl\}\}/g, '#')
     .replace(/\{\{resetLink\}\}/g, '#')
     .replace(/\{\{reviewLink\}\}/g, '#')
-    .replace(/\{\{storeUrl\}\}/g, 'https://mapleloomhandmade.com')
+    .replace(/\{\{storeUrl\}\}/g, 'https://dailydaisy.com')
     .replace(/\{\{refundAmount\}\}/g, '$12.00')
     .replace(/\{\{reason\}\}/g, 'Customer request')
     .replace(/\{\{[\w]+\}\}/g, '<span style="background:#fef3c7;padding:1px 4px;border-radius:3px;font-size:12px">[var]</span>');
@@ -460,7 +460,7 @@ const EMAIL_TEMPLATES = [
 function EmailTab() {
   const [smtp, setSmtp] = useState({
     host: '', port: '587', user: '', password: '',
-    fromName: 'MapleLoomHandmade', fromEmail: '',
+    fromName: 'DailyDaisy', fromEmail: '',
   });
   const [showPwd,     setShowPwd]     = useState(false);
   const [smtpSaving,  setSmtpSaving]  = useState(false);
@@ -557,7 +557,7 @@ function EmailTab() {
           <div>
             <FieldLabel>From Email</FieldLabel>
             <input type="email" value={smtp.fromEmail} onChange={(e) => setSmtp((s) => ({ ...s, fromEmail: e.target.value }))}
-              className={inputCls} placeholder="noreply@mapleloomhandmade.com" />
+              className={inputCls} placeholder="noreply@dailydaisy.com" />
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -978,7 +978,7 @@ function DangerZoneTab() {
     const url  = URL.createObjectURL(blob);
     const a    = Object.assign(document.createElement('a'), {
       href:     url,
-      download: `maple-handmade-export-${new Date().toISOString().slice(0, 10)}.csv`,
+      download: `daily-daisy-export-${new Date().toISOString().slice(0, 10)}.csv`,
     });
     a.click();
     URL.revokeObjectURL(url);

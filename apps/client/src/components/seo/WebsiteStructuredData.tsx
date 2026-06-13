@@ -1,14 +1,14 @@
-export function WebsiteStructuredData() {
+﻿export function WebsiteStructuredData() {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'MapleLoomHandmade',
-    url: 'https://mapleloomhandmade.com',
+    name: 'DailyDaisy',
+    url: 'https://dailydaisy.com',
     potentialAction: {
       '@type': 'SearchAction',
       target: {
         '@type': 'EntryPoint',
-        urlTemplate: 'https://mapleloomhandmade.com/search?q={search_term_string}',
+        urlTemplate: 'https://dailydaisy.com/search?q={search_term_string}',
       },
       'query-input': 'required name=search_term_string',
     },

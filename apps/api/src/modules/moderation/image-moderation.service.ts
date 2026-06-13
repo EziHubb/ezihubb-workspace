@@ -1,10 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ModerationResult } from './dto/moderation-result.dto';
 
 const MODEL = 'claude-haiku-4-5';
 
-const IMAGE_SYSTEM = `You are an image moderation AI for MapleLoom, a handmade goods marketplace.
+const IMAGE_SYSTEM = `You are an image moderation AI for Daily Daisy, a handmade goods marketplace.
 Analyze this image and return ONLY a JSON object.
 
 Check for:

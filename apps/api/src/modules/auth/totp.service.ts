@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { generateSecret, generateURI, verify } from 'otplib';
 import * as QRCode from 'qrcode';
@@ -29,7 +29,7 @@ export class TotpService {
   }
 
   otpAuthUri(secret: string, email: string): string {
-    return generateURI({ issuer: 'MapleLoom Admin', label: email, secret });
+    return generateURI({ issuer: 'Daily Daisy Admin', label: email, secret });
   }
 
   async qrCodeDataUrl(otpauthUri: string): Promise<string> {

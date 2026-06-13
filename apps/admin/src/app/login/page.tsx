@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { signIn, getSession } from 'next-auth/react';
@@ -53,7 +53,7 @@ export default function AdminLoginPage() {
           <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
             <span className="text-white font-bold text-xl">M</span>
           </div>
-          <span className="text-white font-bold text-xl">Maple Handmade</span>
+          <span className="text-white font-bold text-xl">Daily Daisy</span>
         </div>
 
         {/* Center copy */}
@@ -83,7 +83,7 @@ export default function AdminLoginPage() {
 
         {/* Footer */}
         <p className="text-white/50 text-xs">
-          © {new Date().getFullYear()} Maple Handmade. Admin access only.
+          © {new Date().getFullYear()} Daily Daisy. Admin access only.
         </p>
       </div>
 
@@ -95,7 +95,7 @@ export default function AdminLoginPage() {
             <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center">
               <span className="text-white font-bold">M</span>
             </div>
-            <span className="font-bold text-xl text-secondary">Maple Handmade</span>
+            <span className="font-bold text-xl text-secondary">Daily Daisy</span>
           </div>
 
           <h2 className="text-2xl font-bold text-secondary mb-1">Sign in to Admin</h2>
@@ -117,7 +117,7 @@ export default function AdminLoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-2.5 bg-surface border border-border rounded-button text-sm text-secondary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                placeholder="admin@mapleloomhandmade.com"
+                placeholder="admin@dailydaisy.com"
               />
             </div>
 

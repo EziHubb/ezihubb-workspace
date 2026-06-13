@@ -193,7 +193,7 @@ export default function LoginPage() {
 
       {/* Register link */}
       <p className="text-center text-sm text-muted mt-6">
-        New to Maple Handmade?{' '}
+        New to Daily Daisy?{' '}
         <Link
           href={`/${locale}/register`}
           className="text-primary font-medium hover:underline"

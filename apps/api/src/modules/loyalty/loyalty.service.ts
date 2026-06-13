@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+﻿import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { LoyaltyTxType, Prisma } from '@prisma/client';
@@ -226,7 +226,7 @@ export class LoyaltyService {
       select: { pointsBalance: true },
     });
 
-    const shopUrl = this.config.get<string>('FRONTEND_URL', 'https://mapleloomhandmade.com');
+    const shopUrl = this.config.get<string>('FRONTEND_URL', 'https://dailydaisy.com');
 
     void this.emailQueue
       .add(JOBS.SEND_EMAIL, {

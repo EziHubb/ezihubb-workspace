@@ -1,4 +1,4 @@
-export function ReviewsPageStructuredData({
+﻿export function ReviewsPageStructuredData({
   avgRating,
   totalCount,
 }: {
@@ -8,8 +8,8 @@ export function ReviewsPageStructuredData({
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
-    name: 'MapleLoomHandmade',
-    url: 'https://mapleloomhandmade.com',
+    name: 'DailyDaisy',
+    url: 'https://dailydaisy.com',
     aggregateRating: {
       '@type': 'AggregateRating',
       ratingValue: avgRating.toFixed(1),

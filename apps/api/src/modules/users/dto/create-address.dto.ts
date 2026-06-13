@@ -15,7 +15,7 @@ export class CreateAddressDto {
   @MaxLength(100)
   fullName: string;
 
-  @ApiProperty({ example: '123 Maple Street' })
+  @ApiProperty({ example: '123 Daisy Lane' })
   @IsString()
   @MinLength(1)
   @MaxLength(200)

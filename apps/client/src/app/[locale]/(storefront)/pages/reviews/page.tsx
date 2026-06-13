@@ -9,9 +9,9 @@ export const revalidate = 3600;
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: 'Customer Reviews | MapleLoomHandmade',
+    title: 'Customer Reviews | DailyDaisy',
     description:
-      "50,000+ happy customers. Read real reviews from people who've ordered personalized gifts from MapleLoomHandmade.",
+      "50,000+ happy customers. Read real reviews from people who've ordered personalized gifts from DailyDaisy.",
     robots: { index: true, follow: true },
   };
 }

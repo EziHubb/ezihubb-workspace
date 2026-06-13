@@ -46,7 +46,7 @@ Files: `apps/api/src/modules/pdf/templates/`
 - `packing-slip.hbs` — Packing slip layout
 
 #### Invoice Template Content
-- Maple Loom Handmade logo + address
+- Daily Daisy logo + address
 - Bill to: customer name, shipping address
 - Invoice #: `INV-{orderNumber}`
 - Invoice date, due date: "Due on receipt"

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+﻿import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { AffiliateStatus, CommissionStatus, PayoutStatus, Prisma } from '@prisma/client';
@@ -181,14 +181,14 @@ export class AdminAffiliatesService {
     });
 
     // Fire-and-forget: affiliate approved email
-    const shopUrl         = this.config.get<string>('FRONTEND_URL', 'https://mapleloomhandmade.com');
+    const shopUrl         = this.config.get<string>('FRONTEND_URL', 'https://dailydaisy.com');
     const effectiveRate   = dto.commissionRate ?? Number(settings?.defaultRate ?? 0.10);
     const buyerDiscount   = Number(settings?.buyerDiscountRate ?? 0.05);
 
     void this.emailQueue
       .add(JOBS.SEND_EMAIL, {
         to:       existing.email,
-        subject:  "You're in! Your MapleLoom affiliate account is ready ✅",
+        subject:  "You're in! Your Daily Daisy affiliate account is ready ✅",
         template: 'affiliate-approved',
         data: {
           firstName:        existing.firstName ?? 'there',
@@ -221,12 +221,12 @@ export class AdminAffiliatesService {
     });
 
     // Fire-and-forget: affiliate rejected email
-    const shopUrl = this.config.get<string>('FRONTEND_URL', 'https://mapleloomhandmade.com');
+    const shopUrl = this.config.get<string>('FRONTEND_URL', 'https://dailydaisy.com');
 
     void this.emailQueue
       .add(JOBS.SEND_EMAIL, {
         to:       affiliate.email,
-        subject:  'Update on your MapleLoom affiliate application',
+        subject:  'Update on your Daily Daisy affiliate application',
         template: 'affiliate-rejected',
         data: {
           firstName:      affiliate.firstName ?? 'there',
@@ -322,7 +322,7 @@ export class AdminAffiliatesService {
     ]);
 
     // Fire-and-forget: payout processed email
-    const shopUrl          = this.config.get<string>('FRONTEND_URL', 'https://mapleloomhandmade.com');
+    const shopUrl          = this.config.get<string>('FRONTEND_URL', 'https://dailydaisy.com');
     const amount           = Number(payout.amount);
     // Balance was already decremented when affiliate requested; this is the current remaining balance
     const remainingBalance = Number(payout.affiliate.balance);

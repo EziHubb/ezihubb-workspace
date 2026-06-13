@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -63,7 +63,7 @@ export function MessageShopModal({ isOpen, onClose, context }: Props) {
   return (
     <Modal isOpen={isOpen} onClose={handleClose} size="md">
       <ModalHeader onClose={handleClose}>
-        {sent ? 'Message sent!' : 'Message MapleLoomHandmade'}
+        {sent ? 'Message sent!' : 'Message DailyDaisy'}
       </ModalHeader>
       <ModalBody>
         {sent ? (
@@ -98,7 +98,7 @@ export function MessageShopModal({ isOpen, onClose, context }: Props) {
                 ML
               </div>
               <div>
-                <p className="text-sm font-medium">MapleLoomHandmade</p>
+                <p className="text-sm font-medium">DailyDaisy</p>
                 <p className="text-xs text-muted">Usually responds within 2 hours</p>
               </div>
             </div>

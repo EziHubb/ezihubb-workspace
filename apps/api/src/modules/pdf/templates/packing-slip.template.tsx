@@ -1,4 +1,4 @@
-import { Document, Page, Text, View } from '@react-pdf/renderer';
+﻿import { Document, Page, Text, View } from '@react-pdf/renderer';
 import type { OrderForPdf } from '../pdf.service';
 
 export function PackingSlipDocument({ order }: { order: OrderForPdf }) {
@@ -14,7 +14,7 @@ export function PackingSlipDocument({ order }: { order: OrderForPdf }) {
         }}>
           <View>
             <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#1A1A1A' }}>
-              MapleLoomHandmade
+              DailyDaisy
             </Text>
             <Text style={{ fontSize: 9, color: '#6B7280', marginTop: 2 }}>PACKING SLIP</Text>
           </View>

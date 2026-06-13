@@ -35,8 +35,8 @@ export async function generateMetadata({
   if (!store) return { title: 'Store not found' };
 
   return {
-    title:       `${store.name} | MapleLoom`,
-    description: store.description?.slice(0, 160) ?? `Shop ${store.name} on MapleLoom.`,
+    title:       `${store.name} | Daily Daisy`,
+    description: store.description?.slice(0, 160) ?? `Shop ${store.name} on Daily Daisy.`,
     openGraph: {
       title:       store.name,
       description: store.description?.slice(0, 160),
@@ -52,9 +52,9 @@ export const dynamic = 'force-dynamic';
 // ── Share button ──────────────────────────────────────────────────────────────
 
 function ShareSection({ name, slug }: { name: string; slug: string }) {
-  const url     = `https://mapleloomhandmade.com/shops/${slug}`;
+  const url     = `https://dailydaisy.com/shops/${slug}`;
   const encoded = encodeURIComponent(url);
-  const text    = encodeURIComponent(`Check out ${name} on MapleLoom!`);
+  const text    = encodeURIComponent(`Check out ${name} on Daily Daisy!`);
 
   return (
     <div className="flex items-center gap-2 flex-wrap">

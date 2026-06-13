@@ -8,7 +8,7 @@ import { API_ROUTES } from '@mlh/constants';
 const BASE_URL =
   typeof window !== 'undefined'
     ? window.location.origin
-    : process.env['NEXT_PUBLIC_SITE_URL'] ?? 'https://mapleloomhandmade.com';
+    : process.env['NEXT_PUBLIC_SITE_URL'] ?? 'https://dailydaisy.com';
 
 interface ClickRow {
   id:          string;

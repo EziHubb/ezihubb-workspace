@@ -1,4 +1,4 @@
-// ── Props ─────────────────────────────────────────────────────────────────────
+﻿// ── Props ─────────────────────────────────────────────────────────────────────
 
 type ProductType = 'apparel' | 'canvas' | 'drinkware' | 'other';
 
@@ -37,7 +37,7 @@ export function ShippingReturnsContent({
     row('↩', 'Cancel within 2 hours of ordering'),
     row('🎁', 'Personalized items cannot be returned unless defective'),
     row('🛡', 'Defective items: contact us within 30 days for replacement'),
-    row('📧', 'Issues? Email support@mapleloomhandmade.com'),
+    row('📧', 'Issues? Email support@dailydaisy.com'),
   ];
 
   // Product-type-specific notes

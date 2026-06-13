@@ -44,7 +44,7 @@ export async function generateMetadata({
     .catch(() => null);
 
   if (!category) return { title: 'Category Not Found' };
-  const title = `${category.name} Personalized Gifts | MapleLoomHandmade`;
+  const title = `${category.name} Personalized Gifts | DailyDaisy`;
   const description = category.description ??
     `Shop personalized ${category.name.toLowerCase()} gifts custom-made to order.`;
   return {

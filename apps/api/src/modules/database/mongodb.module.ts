@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigService } from '@nestjs/config';
 import * as https from 'https';
@@ -48,7 +48,7 @@ async function resolveMongoSrvUri(originalUri: string): Promise<string> {
       useFactory: async (config: ConfigService) => {
         const rawUri = config.get<string>('MONGODB_URI') ?? 'mongodb://localhost:27017';
         const uri    = await resolveMongoSrvUri(rawUri);
-        return { uri, dbName: 'mapleloomhandmade', maxPoolSize: 10, connectTimeoutMS: 10_000, serverSelectionTimeoutMS: 10_000 };
+        return { uri, dbName: 'dailydaisy', maxPoolSize: 10, connectTimeoutMS: 10_000, serverSelectionTimeoutMS: 10_000 };
       },
       inject: [ConfigService],
     }),

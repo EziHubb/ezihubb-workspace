@@ -3,7 +3,7 @@
 ## 1. Nx Monorepo Structure
 
 ```
-maple-loom-handmade-workspace/
+daily-daisy-workspace/
   apps/
     api/           # NestJS REST API (port 3002)
     client/        # Next.js 16 storefront (port 3000)
@@ -64,7 +64,7 @@ maple-loom-handmade-workspace/
 
 ### CORS Fix for Production
 ```
-CORS_ORIGINS="https://mapleloomhandmade.com,https://admin.mapleloomhandmade.com"
+CORS_ORIGINS="https://dailydaisy.com,https://admin.dailydaisy.com"
 ```
 Do NOT use `origin: '*'` with `credentials: true`.
 
@@ -183,7 +183,7 @@ PAYPAL_CLIENT_SECRET=...
 
 # Email
 SENDGRID_API_KEY=...
-EMAIL_FROM=noreply@mapleloomhandmade.com
+EMAIL_FROM=noreply@dailydaisy.com
 SMTP_HOST=localhost        # dev: MailHog
 SMTP_PORT=1025
 
@@ -201,7 +201,7 @@ GA_API_SECRET=...
 # Monitoring
 SENTRY_DSN=...
 AXIOM_TOKEN=...
-AXIOM_DATASET=mapleloomhandmade-dev
+AXIOM_DATASET=dailydaisy-dev
 
 # Rate Limiting
 THROTTLE_TTL=60000

@@ -1,4 +1,4 @@
-# Audit Report — MapleLoomHandmade Architecture
+# Audit Report — DailyDaisy Architecture
 > Generated: ARCH-00 audit pass  
 > Date: 2026-06-10  
 > Status: **READ-ONLY** — no code was modified

@@ -24,7 +24,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'site' });
-  const title = 'Personalized Gifts Made with Love | MapleLoomHandmade';
+  const title = 'Personalized Gifts Made with Love | DailyDaisy';
   const description = 'Create meaningful personalized gifts with photos, names & messages. 50,000+ happy customers. Free shipping on $50+.';
   return {
     title,

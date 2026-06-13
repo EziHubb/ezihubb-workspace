@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
@@ -196,7 +196,7 @@ export function Navbar({ menuData }: NavbarProps = {}) {
                   <span className="text-white font-bold text-xl font-display">M</span>
                 </div>
                 <span className="font-display font-bold text-lg md:text-xl text-secondary hidden sm:block">
-                  Maple Handmade
+                  Daily Daisy
                 </span>
               </Link>
             </div>

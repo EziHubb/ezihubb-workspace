@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+﻿import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -37,7 +37,7 @@ export class LabelService {
   private readonly baseUrl = 'https://api.easypost.com/v2';
 
   private readonly fromAddress = {
-    name:    process.env['WAREHOUSE_NAME']   ?? 'MapleLoomHandmade',
+    name:    process.env['WAREHOUSE_NAME']   ?? 'DailyDaisy',
     street1: process.env['WAREHOUSE_STREET'] ?? '123 Main St',
     city:    process.env['WAREHOUSE_CITY']   ?? 'New York',
     state:   process.env['WAREHOUSE_STATE']  ?? 'NY',

@@ -1,4 +1,4 @@
-# MapleLoomHandmade — Feature Gap Analysis & Phase Roadmap
+# DailyDaisy — Feature Gap Analysis & Phase Roadmap
 
 **Scan date:** 2026-06-10
 **Scanned by:** senior-architect · product-manager · tech-stack-evaluator

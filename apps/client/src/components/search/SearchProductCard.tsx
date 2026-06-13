@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { Heart, Star } from 'lucide-react';
@@ -199,7 +199,7 @@ export function SearchProductCard({ product, priority = false }: Props) {
 
       {/* CARD INFO */}
       <div className="space-y-0.5 px-0.5">
-        <p className="text-xs text-muted truncate">MapleLoomHandmade</p>
+        <p className="text-xs text-muted truncate">DailyDaisy</p>
 
         <Link href={`/${locale}/products/${product.slug}`}>
           <p className="text-sm text-secondary line-clamp-2 leading-snug hover:underline hover:text-primary transition-colors">

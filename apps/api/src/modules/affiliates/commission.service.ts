@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+﻿import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { CommissionStatus } from '@prisma/client';
@@ -143,7 +143,7 @@ export class CommissionService {
     );
 
     // Fire-and-forget: commission confirmed email
-    const shopUrl    = this.config.get<string>('FRONTEND_URL', 'https://mapleloomhandmade.com');
+    const shopUrl    = this.config.get<string>('FRONTEND_URL', 'https://dailydaisy.com');
     const amount     = Number(commission.amount);
     const minPayout  = Number(settings?.minPayoutAmount ?? 50);
 

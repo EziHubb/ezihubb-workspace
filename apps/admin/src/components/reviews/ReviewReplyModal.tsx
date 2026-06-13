@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { X, Check, EyeOff, MessageSquare } from 'lucide-react';
@@ -165,7 +165,7 @@ export function ReviewReplyModal({
                 <span className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
                   <span className="text-primary font-bold text-xs">M</span>
                 </span>
-                Reply as MapleLoomHandmade
+                Reply as DailyDaisy
               </h5>
 
               <textarea

@@ -1,4 +1,4 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+﻿import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -21,7 +21,7 @@ export class CreatorDnaService {
     this.tiktokClientSecret = this.config.get<string>('TIKTOK_CLIENT_SECRET')    ?? '';
     this.instagramAppId     = this.config.get<string>('INSTAGRAM_APP_ID')        ?? '';
     this.instagramSecret    = this.config.get<string>('INSTAGRAM_APP_SECRET')    ?? '';
-    this.baseUrl            = this.config.get<string>('NEXT_PUBLIC_URL')         ?? 'https://mapleloomhandmade.com';
+    this.baseUrl            = this.config.get<string>('NEXT_PUBLIC_URL')         ?? 'https://dailydaisy.com';
   }
 
   // ── OAuth URLs ────────────────────────────────────────────────────────────

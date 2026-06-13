@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title:       'About Us | Maple Handmade',
+    title:       'About Us | Daily Daisy',
     description: 'Learn about our mission to create meaningful, personalized handmade gifts crafted with love for every occasion.',
   };
 }
@@ -120,7 +120,7 @@ export default function AboutPage() {
           </div>
           <div className="space-y-4 text-secondary text-base leading-relaxed">
             <p>
-              Maple Handmade was born from a simple belief: the most meaningful gifts
+              Daily Daisy was born from a simple belief: the most meaningful gifts
               are the ones made uniquely for someone. We started in 2019 as a small
               workshop with two people and a single embroidery machine.
             </p>

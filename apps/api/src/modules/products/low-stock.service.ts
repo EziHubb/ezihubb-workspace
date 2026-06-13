@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
 import { NotificationsService, EmailTemplate } from '../notifications/notifications.service';
@@ -137,7 +137,7 @@ export class LowStockService {
 
     await this.redis.set(dedupKey, '1', DEDUP_TTL);
 
-    const adminEmail  = process.env['ADMIN_EMAIL'] ?? 'admin@mapleloomhandmade.com';
+    const adminEmail  = process.env['ADMIN_EMAIL'] ?? 'admin@dailydaisy.com';
     const adminUrl    = process.env['ADMIN_URL']   ?? 'http://localhost:3001';
     const qty         = product.quantity ?? 0;
     const subject     = type === 'out-of-stock'

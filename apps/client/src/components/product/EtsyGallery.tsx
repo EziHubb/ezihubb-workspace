@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -240,7 +240,7 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
           className="mt-3 text-xs text-muted hover:underline flex items-center gap-1"
         >
           <Flag className="w-3 h-3" />
-          Report this item to MapleLoomHandmade
+          Report this item to DailyDaisy
         </button>
       </div>
     </div>

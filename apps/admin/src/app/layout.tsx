@@ -1,10 +1,10 @@
-import './global.css';
+﻿import './global.css';
 import { ReactQueryProvider } from '../components/providers/ReactQueryProvider';
 import { SessionProvider } from '../components/providers/SessionProvider';
 
 export const metadata = {
-  title:       'Maple Handmade — Admin',
-  description: 'Admin dashboard for Maple Handmade',
+  title:       'Daily Daisy — Admin',
+  description: 'Admin dashboard for Daily Daisy',
 };
 
 export default function RootLayout({

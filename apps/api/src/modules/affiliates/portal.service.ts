@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -73,11 +73,11 @@ export class PortalService {
     });
 
     // Fire-and-forget: application received confirmation
-    const shopUrl = this.config.get<string>('FRONTEND_URL', 'https://mapleloomhandmade.com');
+    const shopUrl = this.config.get<string>('FRONTEND_URL', 'https://dailydaisy.com');
     void this.emailQueue
       .add(JOBS.SEND_EMAIL, {
         to:       dto.email.toLowerCase(),
-        subject:  'We received your MapleLoom affiliate application 🎉',
+        subject:  'We received your Daily Daisy affiliate application 🎉',
         template: 'application-received',
         data: {
           firstName: dto.firstName,

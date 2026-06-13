@@ -1,4 +1,4 @@
-import { Test } from '@nestjs/testing';
+﻿import { Test } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { LoyaltyTxType } from '@prisma/client';
@@ -46,7 +46,7 @@ describe('LoyaltyService', () => {
       providers: [
         LoyaltyService,
         { provide: PrismaService, useValue: mockDeep<PrismaService>() },
-        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('https://mapleloomhandmade.com') } },
+        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('https://dailydaisy.com') } },
         { provide: PushService, useValue: pushService },
         { provide: getQueueToken(QUEUES.LOYALTY), useValue: loyaltyQueue },
         { provide: getQueueToken(QUEUES.EMAIL), useValue: emailQueue },

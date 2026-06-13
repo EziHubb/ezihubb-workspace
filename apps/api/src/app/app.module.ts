@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -85,7 +85,7 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
         SMTP_PORT: Joi.number().default(587),
         SMTP_USER: Joi.string().optional(),
         SMTP_PASS: Joi.string().optional(),
-        EMAIL_FROM: Joi.string().email().default('noreply@mapleloomhandmade.com'),
+        EMAIL_FROM: Joi.string().email().default('noreply@dailydaisy.com'),
         // Anthropic — optional during development
         ANTHROPIC_API_KEY: Joi.string().optional(),
         // Google OAuth — optional during development

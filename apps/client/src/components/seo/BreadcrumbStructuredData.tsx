@@ -1,4 +1,4 @@
-export interface BreadcrumbItem {
+﻿export interface BreadcrumbItem {
   name: string;
   url:  string;
 }
@@ -13,9 +13,9 @@ export interface BreadcrumbStructuredDataProps {
  *
  * @example
  * <BreadcrumbStructuredData items={[
- *   { name: 'Home', url: 'https://maplehandmade.com' },
- *   { name: 'Products', url: 'https://maplehandmade.com/products' },
- *   { name: 'Custom Mug', url: 'https://maplehandmade.com/products/custom-mug' },
+ *   { name: 'Home', url: 'https://dailydaisy.com' },
+ *   { name: 'Products', url: 'https://dailydaisy.com/products' },
+ *   { name: 'Custom Mug', url: 'https://dailydaisy.com/products/custom-mug' },
  * ]} />
  */
 export function BreadcrumbStructuredData({ items }: BreadcrumbStructuredDataProps) {

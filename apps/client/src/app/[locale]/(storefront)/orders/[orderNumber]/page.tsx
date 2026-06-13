@@ -12,7 +12,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { orderNumber } = await params;
   return {
-    title: `Order #${orderNumber} | MapleHandmade`,
+    title: `Order #${orderNumber} | DailyDaisy`,
     robots: { index: false, follow: false },
   };
 }

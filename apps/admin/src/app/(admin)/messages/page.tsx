@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -303,7 +303,7 @@ function AdminMessageThread({
           />
           <div className="flex items-center justify-between px-4 py-2.5 bg-[#F9FAFB] border-t">
             <p className="text-xs text-muted">
-              Sending as <span className="font-medium">MapleLoomHandmade</span>
+              Sending as <span className="font-medium">DailyDaisy</span>
             </p>
             <button
               type="button"

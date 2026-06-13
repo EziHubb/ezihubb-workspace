@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -105,7 +105,7 @@ export function GPSRModal({ productId, isOpen, onClose }: Props) {
             >
               <input
                 {...register('manufacturerName', { required: true })}
-                placeholder="e.g. MapleLoom Ltd"
+                placeholder="e.g. Daily Daisy Ltd"
                 className={inputCls}
               />
             </FormField>
@@ -118,7 +118,7 @@ export function GPSRModal({ productId, isOpen, onClose }: Props) {
               <textarea
                 {...register('manufacturerAddress', { required: true })}
                 rows={3}
-                placeholder="123 Maple St, Portland, OR 97201, US"
+                placeholder="123 Daisy St, Portland, OR 97201, US"
                 className={`${inputCls} resize-none`}
               />
             </FormField>

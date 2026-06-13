@@ -69,7 +69,7 @@ export default function ApplyStorePage() {
         </div>
         <h1 className="font-display text-3xl font-bold text-secondary">Open Your Store</h1>
         <p className="text-muted mt-2">
-          Join MapleLoom as a seller and start reaching handmade-loving customers.
+          Join Daily Daisy as a seller and start reaching handmade-loving customers.
         </p>
       </div>
 
@@ -86,7 +86,7 @@ export default function ApplyStorePage() {
             required
             minLength={1}
             maxLength={100}
-            placeholder="e.g. Maple Crafts Co."
+            placeholder="e.g. Daily Daisy Co."
             className="w-full text-sm border border-border rounded-button px-3 py-2.5 focus:outline-none focus:border-primary transition-colors"
           />
         </div>
@@ -98,7 +98,7 @@ export default function ApplyStorePage() {
           </label>
           <div className="flex items-center border border-border rounded-button overflow-hidden focus-within:border-primary transition-colors">
             <span className="px-3 py-2.5 text-sm text-muted bg-background border-r border-border whitespace-nowrap">
-              mapleloom.com/shops/
+              dailydaisy.com/shops/
             </span>
             <input
               type="text"

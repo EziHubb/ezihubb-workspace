@@ -1,9 +1,9 @@
-import type { MetadataRoute } from 'next';
+﻿import type { MetadataRoute } from 'next';
 import { API_ROUTES } from '@mlh/constants';
 
 export const revalidate = 3600; // regenerate hourly
 
-const BASE = 'https://mapleloomhandmade.com';
+const BASE = 'https://dailydaisy.com';
 // NEXT_PUBLIC_API_URL may include /api/v1 (client lib) or be the bare origin.
 // Strip any trailing /api/v1 so the helper can append it consistently.
 const API_ORIGIN = (process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002')

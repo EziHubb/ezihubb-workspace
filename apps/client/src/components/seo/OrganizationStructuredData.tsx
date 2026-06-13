@@ -1,19 +1,19 @@
-export function OrganizationStructuredData() {
+﻿export function OrganizationStructuredData() {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'MapleLoomHandmade',
-    url: 'https://mapleloomhandmade.com',
-    logo: 'https://mapleloomhandmade.com/logo.png',
+    name: 'DailyDaisy',
+    url: 'https://dailydaisy.com',
+    logo: 'https://dailydaisy.com/logo.png',
     sameAs: [
-      'https://instagram.com/mapleloomhandmade',
-      'https://facebook.com/mapleloomhandmade',
-      'https://pinterest.com/mapleloomhandmade',
+      'https://instagram.com/dailydaisy',
+      'https://facebook.com/dailydaisy',
+      'https://pinterest.com/dailydaisy',
     ],
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'customer service',
-      email: 'support@mapleloomhandmade.com',
+      email: 'support@dailydaisy.com',
       availableLanguage: ['English', 'Vietnamese'],
     },
   };

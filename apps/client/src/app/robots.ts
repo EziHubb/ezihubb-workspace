@@ -1,7 +1,7 @@
-import type { MetadataRoute } from 'next';
+﻿import type { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
-  const base = 'https://mapleloomhandmade.com';
+  const base = 'https://dailydaisy.com';
   return {
     rules: [
       {

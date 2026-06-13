@@ -4,8 +4,8 @@ import { getLocale } from 'next-intl/server';
 import { ArrowRight, Gift, Share2, DollarSign } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Creator Network — MapleLoom Handmade',
-  description: 'Join thousands of creators who share MapleLoom products and earn every time their community shops.',
+  title: 'Creator Network — Daily Daisy',
+  description: 'Join thousands of creators who share Daily Daisy products and earn every time their community shops.',
 };
 
 // ── Static data ───────────────────────────────────────────────────────────────
@@ -18,7 +18,7 @@ const TIERS = [
 ] as const;
 
 const STEPS = [
-  { icon: Gift,       bg: 'bg-primary',   title: 'Get your creator link', body: 'Every MapleLoom account comes with a unique link. No application needed.' },
+  { icon: Gift,       bg: 'bg-primary',   title: 'Get your creator link', body: 'Every Daily Daisy account comes with a unique link. No application needed.' },
   { icon: Share2,     bg: 'bg-[#7C3AED]', title: 'Share anything',        body: 'Post on TikTok, Instagram, Pinterest. Your link works everywhere.' },
   { icon: DollarSign, bg: 'bg-[#2E7D52]', title: 'Earn when they shop',   body: 'Earn 10% when someone buys through your link. Your network earns you more over time.' },
 ] as const;
@@ -44,7 +44,7 @@ export default async function CreatorNetworkPage() {
           {/* Text */}
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-[#7C3AED] mb-4">
-              MAPLELOOM CREATOR NETWORK
+              DAILY DAISY CREATOR NETWORK
             </p>
             <h1 className="font-display text-4xl lg:text-5xl font-bold text-secondary leading-tight">
               Turn your love for<br className="hidden lg:block" />
@@ -52,7 +52,7 @@ export default async function CreatorNetworkPage() {
               real earnings
             </h1>
             <p className="text-muted text-base mt-5 max-w-md">
-              Join thousands of creators who share MapleLoom products and earn every time their community shops.
+              Join thousands of creators who share Daily Daisy products and earn every time their community shops.
             </p>
             <div className="flex flex-wrap gap-3 mt-8">
               <Link href={`/${locale}/auth/register`}
@@ -90,7 +90,7 @@ export default async function CreatorNetworkPage() {
             <div className="absolute top-8 right-0 bg-white rounded-2xl shadow-xl p-5 w-60 rotate-1 z-20">
               <p className="text-xs text-muted mb-2 font-medium">Your creator link</p>
               <div className="flex items-center gap-2 bg-[#FAFAF8] rounded-lg px-3 py-2">
-                <span className="text-xs font-mono text-secondary truncate flex-1">mapleloom.com?c=SARAH2024</span>
+                <span className="text-xs font-mono text-secondary truncate flex-1">dailydaisy.com?c=SARAH2024</span>
                 <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded shrink-0">Copy</span>
               </div>
             </div>

@@ -49,7 +49,7 @@ export async function generateMetadata({
 
   if (!collection) return { title: 'Collection Not Found' };
 
-  const title = `${collection.name} Gift Ideas | MapleLoomHandmade`;
+  const title = `${collection.name} Gift Ideas | DailyDaisy`;
   const description = collection.description ??
     `Explore our ${collection.name} collection of personalized handmade gifts. Custom-made to order.`;
   return {

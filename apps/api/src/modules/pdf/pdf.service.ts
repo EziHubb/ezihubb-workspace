@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+﻿import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { renderToBuffer } from '@react-pdf/renderer';
 import { createElement, type ReactElement } from 'react';
@@ -55,7 +55,7 @@ export class PdfService {
     private readonly storage:  StorageService,
     private readonly config:   ConfigService,
   ) {
-    this.shopUrl = this.config.get<string>('FRONTEND_URL', 'https://mapleloomhandmade.com');
+    this.shopUrl = this.config.get<string>('FRONTEND_URL', 'https://dailydaisy.com');
   }
 
   // ── Public generators ───────────────────────────────────────────────────────

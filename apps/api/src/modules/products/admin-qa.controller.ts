@@ -1,4 +1,4 @@
-import {
+﻿import {
   Get,
   Post,
   Patch,
@@ -53,7 +53,7 @@ export class AdminQaController {
     @Param('qId') qId: string,
     @Body() dto: AnswerDto,
   ) {
-    const shopBaseUrl = this.config.get<string>('NEXT_PUBLIC_URL') ?? 'https://mapleloomhandmade.com';
+    const shopBaseUrl = this.config.get<string>('NEXT_PUBLIC_URL') ?? 'https://dailydaisy.com';
     return this.qa.answerQuestion(qId, dto, shopBaseUrl);
   }
 

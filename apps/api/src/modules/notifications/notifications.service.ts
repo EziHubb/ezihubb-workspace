@@ -55,7 +55,7 @@ export class NotificationsService {
   async sendWelcomeEmail(to: string, firstName?: string): Promise<void> {
     return this.queueEmail({
       to,
-      subject: 'Welcome to Maple Loom Handmade!',
+      subject: 'Welcome to Daily Daisy!',
       template: EmailTemplate.WELCOME,
       data: { firstName: firstName ?? 'Valued Customer' },
     });
@@ -157,7 +157,7 @@ export class NotificationsService {
     message:     string;
     orderNumber?: string;
   }): Promise<void> {
-    const supportEmail = process.env['SUPPORT_EMAIL'] ?? 'support@mapleloomhandmade.com';
+    const supportEmail = process.env['SUPPORT_EMAIL'] ?? 'support@dailydaisy.com';
     // Notify support inbox
     await this.queueEmail({
       to:       supportEmail,
@@ -168,7 +168,7 @@ export class NotificationsService {
     // Confirm receipt to sender
     return this.queueEmail({
       to:       params.email,
-      subject:  'We received your message — MapleLoomHandmade',
+      subject:  'We received your message — DailyDaisy',
       template: EmailTemplate.CONTACT_MESSAGE,
       data:     { ...params, isConfirmation: true },
     });
@@ -182,7 +182,7 @@ export class NotificationsService {
     orderNumber?:   string;
     orderId?:       string;
   }): Promise<void> {
-    const adminEmail  = process.env['ADMIN_EMAIL'] ?? 'admin@mapleloomhandmade.com';
+    const adminEmail  = process.env['ADMIN_EMAIL'] ?? 'admin@dailydaisy.com';
     const adminUrl    = process.env['ADMIN_URL']   ?? 'http://localhost:3001';
     const frontendUrl = process.env['NEXT_PUBLIC_URL'] ?? 'http://localhost:3000';
     const year = new Date().getFullYear();
@@ -205,7 +205,7 @@ export class NotificationsService {
 
     return this.queueEmail({
       to:       params.recipientEmail,
-      subject:  'MapleLoomHandmade replied to your message',
+      subject:  'DailyDaisy replied to your message',
       template: EmailTemplate.NEW_MESSAGE,
       data: {
         isForAdmin:     false,
@@ -233,15 +233,15 @@ export class NotificationsService {
   }
 
   async sendContentFlagged(to: string, data: { sellerName: string; entityType: string; sellerMessage: string; contentPreview: string }): Promise<void> {
-    return this.queueEmail({ to, subject: `Action required: Your ${data.entityType} needs review — MapleLoom`, template: EmailTemplate.CONTENT_FLAGGED, data });
+    return this.queueEmail({ to, subject: `Action required: Your ${data.entityType} needs review — Daily Daisy`, template: EmailTemplate.CONTENT_FLAGGED, data });
   }
 
   async sendContentRejectedCritical(to: string, data: { sellerName: string; violationCategory: string; contentPreview: string }): Promise<void> {
-    return this.queueEmail({ to, subject: 'Important: Content removed from MapleLoom — policy violation', template: EmailTemplate.CONTENT_REJECTED_CRITICAL, data });
+    return this.queueEmail({ to, subject: 'Important: Content removed from Daily Daisy — policy violation', template: EmailTemplate.CONTENT_REJECTED_CRITICAL, data });
   }
 
   async sendContentWarning(to: string, data: { sellerName: string; sellerMessage: string }): Promise<void> {
-    return this.queueEmail({ to, subject: 'Heads up: Please review your recent content — MapleLoom', template: EmailTemplate.CONTENT_WARNING, data });
+    return this.queueEmail({ to, subject: 'Heads up: Please review your recent content — Daily Daisy', template: EmailTemplate.CONTENT_WARNING, data });
   }
 
   async sendModerationCriticalAlert(to: string, data: { storeName: string; entityType: string; entityId: string; categories: string; confidence: string; reasoning: string | null; adminUrl: string; logId: string }): Promise<void> {
@@ -256,7 +256,7 @@ export class NotificationsService {
     email: string; firstName: string; creditAmount: number;
     cookieToken: string; expiresAt: Date;
   }) {
-    const baseUrl = this.config.get<string>('CLIENT_URL', 'https://mapleloom.com');
+    const baseUrl = this.config.get<string>('CLIENT_URL', 'https://dailydaisy.com');
     return this.queueEmail({
       to:       data.email,
       subject:  `Share your order & earn $${data.creditAmount} store credit`,
@@ -290,7 +290,7 @@ export class NotificationsService {
   async subscribeNewsletter(email: string, firstName?: string): Promise<void> {
     return this.queueEmail({
       to:       email,
-      subject:  'Welcome to the Maple Loom newsletter!',
+      subject:  'Welcome to the Daily Daisy newsletter!',
       template: 'newsletter-welcome' as any,
       data:     { firstName: firstName ?? 'Friend', year: new Date().getFullYear() },
     });

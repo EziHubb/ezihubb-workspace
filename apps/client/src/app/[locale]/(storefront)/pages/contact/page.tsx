@@ -8,9 +8,9 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: 'Contact Us | MapleLoomHandmade',
+    title: 'Contact Us | DailyDaisy',
     description:
-      'Get in touch with MapleLoomHandmade. We respond to all messages within 2 hours during business hours.',
+      'Get in touch with DailyDaisy. We respond to all messages within 2 hours during business hours.',
     robots: { index: true, follow: true },
   };
 }
@@ -36,9 +36,9 @@ const CONTACT_CARDS: {
   {
     Icon:   Mail,
     title:  'Email',
-    desc:   'support@mapleloomhandmade.com',
+    desc:   'support@dailydaisy.com',
     action: 'Send email →',
-    href:   'mailto:support@mapleloomhandmade.com',
+    href:   'mailto:support@dailydaisy.com',
     accent: 'bg-green-50 text-green-600',
   },
   {

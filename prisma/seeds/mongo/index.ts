@@ -1,5 +1,11 @@
+import 'dotenv/config';
+import dns from 'dns';
 import mongoose from 'mongoose';
 import { prisma, pool } from '../shared/prisma-client';
+
+// Force Node.js c-ares to use real DNS servers instead of local proxy (127.0.0.1)
+// which blocks SRV record queries needed by mongodb+srv:// connection strings.
+dns.setServers(['8.8.8.8', '1.1.1.1']);
 import { seedCategoriesMegaMenu } from './02-categories-mega-menu';
 import { seedProductDetails }     from './01-product-details';
 
@@ -9,7 +15,7 @@ async function connectMongo(retries = 3, delayMs = 2000): Promise<boolean> {
 
   for (let i = 0; i < retries; i++) {
     try {
-      await mongoose.connect(uri, { dbName: 'mapleloomhandmade', serverSelectionTimeoutMS: 3000 });
+      await mongoose.connect(uri, { dbName: 'dailydaisy', serverSelectionTimeoutMS: 3000 });
       console.log('  ✅ MongoDB connected');
       return true;
     } catch (err) {

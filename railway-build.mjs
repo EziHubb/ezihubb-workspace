@@ -68,7 +68,7 @@ module.exports = {
     dangerouslyAllowSVG: true,
     contentDispositionType: 'attachment',
     remotePatterns: [
-      { protocol: 'https', hostname: 'cdn.mapleloomhandmade.com' },
+      { protocol: 'https', hostname: 'cdn.dailydaisy.com' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'placehold.co' },
       { protocol: 'https', hostname: 's3.amazonaws.com' },

@@ -97,7 +97,7 @@ function ApplyForm({ onSuccess }: { onSuccess: () => void }) {
           </label>
           <div className="flex items-center border border-border rounded-button overflow-hidden focus-within:border-primary transition-colors">
             <span className="px-3 py-2.5 bg-muted/10 text-muted text-sm border-r border-border">
-              mapleloom.com/shops/
+              dailydaisy.com/shops/
             </span>
             <input
               type="text" value={storeSlug} required pattern="[a-z0-9-]+" maxLength={60}
@@ -366,7 +366,7 @@ export default function SellerStorePage() {
       {/* ── Store URL info ────────────────────────────────────────────────── */}
       <div className="border border-border rounded-card p-4 bg-background">
         <p className="text-xs text-muted uppercase tracking-wider mb-1">Your Store URL</p>
-        <p className="font-mono text-sm text-secondary">mapleloom.com/shops/{store.slug}</p>
+        <p className="font-mono text-sm text-secondary">dailydaisy.com/shops/{store.slug}</p>
         <p className="text-xs text-muted mt-1">Store slug cannot be changed after approval.</p>
       </div>
 

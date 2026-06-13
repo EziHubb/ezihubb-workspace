@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 
 // Dynamic route that serves the Firebase Messaging service worker with env vars injected.
 // Registered as /firebase-messaging-sw.js so FCM can find it at the root scope.
@@ -21,7 +21,7 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
   const { title, body } = payload.notification ?? {};
-  self.registration.showNotification(title ?? 'MapleLoomHandmade', {
+  self.registration.showNotification(title ?? 'DailyDaisy', {
     body:    body ?? '',
     icon:    '/icons/icon-192x192.png',
     badge:   '/icons/badge-72x72.png',

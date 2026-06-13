@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FcmService } from './fcm.service';
 
@@ -65,7 +65,7 @@ export class PushService {
 
   async notifyNewMessage(userId: string, conversationId: string): Promise<void> {
     await this.sendToUser(userId, {
-      title:       'MapleLoomHandmade replied 💬',
+      title:       'DailyDaisy replied 💬',
       body:        'You have a new message from the shop',
       clickAction: '/account/messages',
       data:        { type: 'new_message', conversationId },

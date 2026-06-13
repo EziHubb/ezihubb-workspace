@@ -46,7 +46,7 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: 'site' });
   const isVi = locale === 'vi';
   return {
-    metadataBase: new URL('https://mapleloomhandmade.com'),
+    metadataBase: new URL('https://dailydaisy.com'),
     title: {
       template: `%s | ${t('name')}`,
       default:  t('defaultTitle'),
@@ -54,22 +54,22 @@ export async function generateMetadata({
     description: t('defaultDescription'),
     keywords: [
       'personalized gifts', 'custom gifts', 'photo gifts',
-      'handmade gifts', 'custom mugs', 'canvas prints', 'maple loom',
+      'handmade gifts', 'custom mugs', 'canvas prints', 'daily daisy',
     ],
-    authors:   [{ name: 'MapleLoomHandmade' }],
-    creator:   'MapleLoomHandmade',
-    publisher: 'MapleLoomHandmade',
+    authors:   [{ name: 'DailyDaisy' }],
+    creator:   'DailyDaisy',
+    publisher: 'DailyDaisy',
     openGraph: {
       siteName: t('name'),
       locale:   isVi ? 'vi_VN' : 'en_US',
       type:     'website',
       images:   [{ url: '/og-default.jpg', width: 1200, height: 630,
-                   alt: 'MapleLoomHandmade — Personalized Gifts' }],
+                   alt: 'DailyDaisy — Personalized Gifts' }],
     },
     twitter: {
       card:    'summary_large_image',
-      site:    '@mapleloomhandmade',
-      creator: '@mapleloomhandmade',
+      site:    '@dailydaisy',
+      creator: '@dailydaisy',
     },
     robots: {
       index:  true,
@@ -83,11 +83,11 @@ export async function generateMetadata({
       google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
     },
     alternates: {
-      canonical: isVi ? 'https://mapleloomhandmade.com/vi' : 'https://mapleloomhandmade.com',
+      canonical: isVi ? 'https://dailydaisy.com/vi' : 'https://dailydaisy.com',
       languages: {
-        'en':        'https://mapleloomhandmade.com',
-        'vi':        'https://mapleloomhandmade.com/vi',
-        'x-default': 'https://mapleloomhandmade.com',
+        'en':        'https://dailydaisy.com',
+        'vi':        'https://dailydaisy.com/vi',
+        'x-default': 'https://dailydaisy.com',
       },
     },
   };

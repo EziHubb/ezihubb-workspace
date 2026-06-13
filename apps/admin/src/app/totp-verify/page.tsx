@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Suspense, useState } from 'react';
 import { signIn } from 'next-auth/react';
@@ -49,7 +49,7 @@ function TotpVerifyForm() {
           <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center">
             <span className="text-white font-bold">M</span>
           </div>
-          <span className="font-bold text-xl text-secondary">Maple Handmade</span>
+          <span className="font-bold text-xl text-secondary">Daily Daisy</span>
         </div>
 
         <div className="flex items-center gap-3 mb-2">
@@ -130,7 +130,7 @@ export default function TotpVerifyPage() {
           <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
             <span className="text-white font-bold text-xl">M</span>
           </div>
-          <span className="text-white font-bold text-xl">Maple Handmade</span>
+          <span className="text-white font-bold text-xl">Daily Daisy</span>
         </div>
 
         <div>
@@ -146,7 +146,7 @@ export default function TotpVerifyPage() {
         </div>
 
         <p className="text-white/50 text-xs">
-          © {new Date().getFullYear()} Maple Handmade. Admin access only.
+          © {new Date().getFullYear()} Daily Daisy. Admin access only.
         </p>
       </div>
 

@@ -26,21 +26,33 @@ async function main() {
   }
 
   // Summary
-  const [users, categories, collections, products, promotions, zones] = await Promise.all([
+  const [users, categories, collections, products, promotions, zones, orders, reviews, giftCards, loyaltyAccounts, wishlistItems, qanda] = await Promise.all([
     prisma.user.count(),
     prisma.category.count(),
     prisma.collection.count(),
     prisma.product.count(),
     prisma.promotion.count(),
     prisma.shippingZone.count(),
+    prisma.order.count(),
+    prisma.review.count(),
+    prisma.giftCard.count(),
+    prisma.loyaltyAccount.count(),
+    prisma.wishlistItem.count(),
+    prisma.productQuestion.count(),
   ]);
   console.log('\n📊 Summary:');
-  console.log(`  Users:          ${users}`);
-  console.log(`  Categories:     ${categories}`);
-  console.log(`  Collections:    ${collections}`);
-  console.log(`  Products:       ${products}`);
-  console.log(`  Promotions:     ${promotions}`);
-  console.log(`  Shipping zones: ${zones}`);
+  console.log(`  Users:            ${users}`);
+  console.log(`  Categories:       ${categories}`);
+  console.log(`  Collections:      ${collections}`);
+  console.log(`  Products:         ${products}`);
+  console.log(`  Orders:           ${orders}`);
+  console.log(`  Reviews:          ${reviews}`);
+  console.log(`  Gift Cards:       ${giftCards}`);
+  console.log(`  Loyalty Accounts: ${loyaltyAccounts}`);
+  console.log(`  Wishlist Items:   ${wishlistItems}`);
+  console.log(`  Product Q&A:      ${qanda}`);
+  console.log(`  Promotions:       ${promotions}`);
+  console.log(`  Shipping zones:   ${zones}`);
 
   console.log('\n✅ Seed complete!');
 }

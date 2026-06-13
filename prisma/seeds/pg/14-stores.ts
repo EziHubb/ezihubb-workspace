@@ -6,13 +6,13 @@ export async function seedStores(prisma: PrismaClient, adminUserId: string): Pro
   // ── PlatformSettings singleton ─────────────────────────────────────────────
   await prisma.platformSettings.upsert({
     where:  { id: 'singleton' },
-    update: {},
+    update: { platformName: 'Daily Daisy' },
     create: {
       id:                      'singleton',
       defaultCommissionRate:   0.15,
       minCommissionRate:       0.05,
       maxCommissionRate:       0.30,
-      platformName:            'MapleLoom',
+      platformName:            'Daily Daisy',
       allowPublicRegistration: false,
       minPayoutAmount:         100.00,
       payoutSchedule:          'monthly',
@@ -71,18 +71,18 @@ export async function seedStores(prisma: PrismaClient, adminUserId: string): Pro
   ]);
   console.log(`    ✓ ${plans.length} seller plans`);
 
-  // ── Default store: MapleHandmade (owned by super admin) ───────────────────
+  // ── Default store: Daily Daisy (owned by super admin) ────────────────────
   const store = await prisma.store.upsert({
-    where:  { slug: 'maplehandmade' },
+    where:  { slug: 'daily-daisy' },
     update: {},
     create: {
-      slug:           'maplehandmade',
-      name:           'MapleLoom Handmade',
-      description:    'The official MapleLoom Handmade store — premium personalized gifts crafted with care.',
+      slug:           'daily-daisy',
+      name:           'Daily Daisy',
+      description:    'The official Daily Daisy store — unique personalized gifts and handcrafted keepsakes for every occasion.',
       ownerId:        adminUserId,
       status:         'ACTIVE',
       planType:       'COMMISSION',
-      commissionRate: 0,   // owner pays no commission to themselves
+      commissionRate: 0,
       verifiedAt:     new Date(),
       approvedById:   adminUserId,
     },
@@ -96,7 +96,7 @@ export async function seedStores(prisma: PrismaClient, adminUserId: string): Pro
   });
   console.log('    ✓ Admin user marked as seller');
 
-  // ── Backfill existing products → MapleHandmade ────────────────────────────
+  // ── Backfill existing products → Daily Daisy ────────────────────────────
   const { count: backfilledProducts } = await prisma.product.updateMany({
     where: { storeId: null },
     data:  { storeId: store.id },
@@ -110,14 +110,14 @@ export async function seedStores(prisma: PrismaClient, adminUserId: string): Pro
   });
   console.log(`    ✓ Confirmed ${backfilledCategories} platform categories`);
 
-  // ── Backfill existing ShopSections → MapleHandmade ────────────────────────
+  // ── Backfill existing ShopSections → Daily Daisy ────────────────────────
   const { count: backfilledSections } = await prisma.shopSection.updateMany({
     where: { storeId: null },
     data:  { storeId: store.id },
   });
   console.log(`    ✓ Backfilled ${backfilledSections} shop sections → ${store.name}`);
 
-  // ── Backfill ShippingProfiles → MapleHandmade ─────────────────────────────
+  // ── Backfill ShippingProfiles → Daily Daisy ─────────────────────────────
   const { count: backfilledProfiles } = await prisma.shippingProfile.updateMany({
     where: { storeId: null },
     data:  { storeId: store.id },

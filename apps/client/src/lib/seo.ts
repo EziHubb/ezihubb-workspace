@@ -1,4 +1,4 @@
-export const SEO_DOMAIN = 'https://mapleloomhandmade.com';
+﻿export const SEO_DOMAIN = 'https://dailydaisy.com';
 
 /** Build canonical + hreflang alternates for a given site-relative path (e.g. '/categories/mugs'). */
 export function buildAlternates(path: string, locale?: string) {

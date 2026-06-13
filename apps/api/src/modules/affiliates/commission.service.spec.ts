@@ -1,4 +1,4 @@
-import { Test } from '@nestjs/testing';
+﻿import { Test } from '@nestjs/testing';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { CommissionStatus } from '@prisma/client';
 import { getQueueToken } from '@nestjs/bullmq';
@@ -67,7 +67,7 @@ describe('CommissionService', () => {
       providers: [
         CommissionService,
         { provide: PrismaService, useValue: mockDeep<PrismaService>() },
-        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('https://mapleloomhandmade.com') } },
+        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('https://dailydaisy.com') } },
         { provide: getQueueToken(QUEUES.AFFILIATE_COMMISSION), useValue: commissionQueue },
         { provide: getQueueToken(QUEUES.EMAIL), useValue: emailQueue },
       ],

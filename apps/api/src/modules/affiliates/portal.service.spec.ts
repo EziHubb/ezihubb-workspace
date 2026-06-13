@@ -1,4 +1,4 @@
-import { Test } from '@nestjs/testing';
+﻿import { Test } from '@nestjs/testing';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { AffiliateStatus } from '@prisma/client';
@@ -58,7 +58,7 @@ describe('PortalService', () => {
       providers: [
         PortalService,
         { provide: PrismaService, useValue: mockDeep<PrismaService>() },
-        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('https://mapleloomhandmade.com') } },
+        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('https://dailydaisy.com') } },
         { provide: getQueueToken(QUEUES.EMAIL), useValue: emailQueue },
       ],
     }).compile();

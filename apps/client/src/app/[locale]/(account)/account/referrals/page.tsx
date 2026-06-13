@@ -181,7 +181,7 @@ export default function ReferralsPage() {
       : '';
 
   const whatsappUrl = referralLink
-    ? `https://wa.me/?text=${encodeURIComponent(`Check out Maple Loom Handmade! Use my referral link: ${referralLink}`)}`
+    ? `https://wa.me/?text=${encodeURIComponent(`Check out Daily Daisy! Use my referral link: ${referralLink}`)}`
     : '#';
   const facebookUrl = referralLink
     ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`

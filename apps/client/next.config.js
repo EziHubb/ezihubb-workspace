@@ -1,4 +1,4 @@
-//@ts-check
+﻿//@ts-check
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { composePlugins, withNx } = require('@nx/next');
@@ -30,7 +30,7 @@ const nextConfig = {
     dangerouslyAllowSVG: true,
     contentDispositionType: 'attachment',
     remotePatterns: [
-      { protocol: 'https', hostname: 'cdn.mapleloomhandmade.com' },
+      { protocol: 'https', hostname: 'cdn.dailydaisy.com' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'placehold.co' },
       { protocol: 'https', hostname: 's3.amazonaws.com' },

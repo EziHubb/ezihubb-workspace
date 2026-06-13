@@ -32,7 +32,7 @@ export interface ProductDetailDto extends ProductDto {
 
 // ── Breadcrumbs ───────────────────────────────────────────────────────────────
 
-const BASE = 'https://mapleloomhandmade.com';
+const BASE = 'https://dailydaisy.com';
 
 function buildBreadcrumbs(product: ProductDetailDto, locale: string): BreadcrumbItem[] {
   const prefix = locale !== 'en' ? `/${locale}` : '';
@@ -79,7 +79,7 @@ export async function generateMetadata({
   const description =
     product.shortDescription ??
     product.description?.slice(0, 160) ??
-    `Shop ${product.name} — personalized and custom-made at MapleLoomHandmade.`;
+    `Shop ${product.name} — personalized and custom-made at DailyDaisy.`;
   const primaryImage = product.images?.[0];
 
   return {

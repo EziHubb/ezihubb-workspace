@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useRef } from 'react';
 import Image from 'next/image';
@@ -180,7 +180,7 @@ function ReviewCard({ review, onHelpful }: { review: ReviewDto; onHelpful?: (id:
       {review.adminReply && (
         <div className="mt-3 pl-3 border-l-2 border-border">
           <p className="text-xs font-semibold text-secondary">
-            Response from MapleLoomHandmade
+            Response from DailyDaisy
           </p>
           <p className="text-sm text-muted mt-1">{review.adminReply}</p>
         </div>

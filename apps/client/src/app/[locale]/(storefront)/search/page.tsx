@@ -12,10 +12,10 @@ export async function generateMetadata({
   const q = params.q?.trim();
   return {
     title: q
-      ? `"${q}" — Personalized Gifts | MapleLoomHandmade`
-      : 'Search Personalized Gifts | MapleLoomHandmade',
+      ? `"${q}" — Personalized Gifts | DailyDaisy`
+      : 'Search Personalized Gifts | DailyDaisy',
     description: q
-      ? `Find the perfect personalized "${q}" gift. Custom-made with love at MapleLoomHandmade.`
+      ? `Find the perfect personalized "${q}" gift. Custom-made with love at DailyDaisy.`
       : 'Search 120+ personalized gift ideas. Custom mugs, canvas prints, apparel and more.',
     robots: { index: false, follow: true },
   };

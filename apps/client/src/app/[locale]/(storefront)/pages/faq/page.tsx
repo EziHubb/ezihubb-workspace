@@ -10,9 +10,9 @@ export const dynamic = 'force-static';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: 'FAQ | MapleLoomHandmade',
+    title: 'FAQ | DailyDaisy',
     description:
-      'Frequently asked questions about ordering, personalization, shipping, and returns at MapleLoomHandmade.',
+      'Frequently asked questions about ordering, personalization, shipping, and returns at DailyDaisy.',
     robots: { index: true, follow: true },
   };
 }

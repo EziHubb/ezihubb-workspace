@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+﻿import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
@@ -17,7 +17,7 @@ export class CanvaService {
   ) {
     this.clientKey    = this.config.get<string>('CANVA_CLIENT_KEY')    ?? '';
     this.clientSecret = this.config.get<string>('CANVA_CLIENT_SECRET') ?? '';
-    this.baseUrl      = this.config.get<string>('NEXT_PUBLIC_URL')     ?? 'https://mapleloomhandmade.com';
+    this.baseUrl      = this.config.get<string>('NEXT_PUBLIC_URL')     ?? 'https://dailydaisy.com';
   }
 
   // ── OAuth: get authorization URL ─────────────────────────────────────────

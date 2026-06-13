@@ -25,7 +25,7 @@ import {
 } from './dto/admin-stores.dto';
 import { paginatedResponse } from '../../common/dto/paginated-response.dto';
 
-const SHOP_URL = process.env['CLIENT_URL'] ?? 'https://mapleloom.com';
+const SHOP_URL = process.env['CLIENT_URL'] ?? 'https://dailydaisy.com';
 
 @Injectable()
 export class StoresService {
@@ -80,7 +80,7 @@ export class StoresService {
     await this.emailQueue.add(JOBS.SEND_EMAIL, {
       to:       user?.email,
       template: 'store-application-received',
-      subject:  'We received your MapleLoom store application',
+      subject:  'We received your Daily Daisy store application',
       data:     { firstName: user?.firstName, storeName: store.name, shopUrl: SHOP_URL },
     }, DEFAULT_JOB_OPTIONS);
 
@@ -262,7 +262,7 @@ export class StoresService {
     await this.emailQueue.add(JOBS.SEND_EMAIL, {
       to:       store.owner.email,
       template: 'store-approved',
-      subject:  'Your MapleLoom store is approved!',
+      subject:  'Your Daily Daisy store is approved!',
       data: {
         firstName:    store.owner.firstName,
         storeName:    store.name,
@@ -291,7 +291,7 @@ export class StoresService {
     await this.emailQueue.add(JOBS.SEND_EMAIL, {
       to:       store.owner.email,
       template: 'store-rejected',
-      subject:  'Update on your MapleLoom store application',
+      subject:  'Update on your Daily Daisy store application',
       data: {
         firstName: store.owner.firstName,
         storeName: store.name,
@@ -328,7 +328,7 @@ export class StoresService {
     await this.emailQueue.add(JOBS.SEND_EMAIL, {
       to:       store.owner.email,
       template: 'store-suspended',
-      subject:  'Your MapleLoom store has been suspended',
+      subject:  'Your Daily Daisy store has been suspended',
       data: {
         firstName: store.owner.firstName,
         storeName: store.name,

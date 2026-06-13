@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+﻿import { Fragment } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { ProductDto } from '@mlh/types';
@@ -28,7 +28,7 @@ function buildRelatedSearches(product: ProductDto, locale: string): RelatedSearc
 
   const featured: FeaturedChip[] = [
     {
-      label:    'MapleLoomHandmade',
+      label:    'DailyDaisy',
       href:     `/${locale}/products`,
       imageUrl: null,
     },

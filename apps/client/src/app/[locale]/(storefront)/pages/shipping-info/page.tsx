@@ -7,9 +7,9 @@ export const dynamic = 'force-static';
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: 'Shipping Information | MapleLoomHandmade',
+    title: 'Shipping Information | DailyDaisy',
     description:
-      'Learn about our shipping rates, delivery times, tracking, and international shipping at MapleLoomHandmade.',
+      'Learn about our shipping rates, delivery times, tracking, and international shipping at DailyDaisy.',
     robots: { index: true, follow: true },
   };
 }

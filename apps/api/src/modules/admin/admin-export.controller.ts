@@ -86,7 +86,7 @@ export class AdminExportController {
     }
 
     const csv = lines.join('\n');
-    const filename = `maple-handmade-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    const filename = `daily-daisy-export-${new Date().toISOString().slice(0, 10)}.csv`;
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

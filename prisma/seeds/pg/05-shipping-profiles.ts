@@ -3,18 +3,19 @@ import { PrismaClient } from '@prisma/client';
 export async function seedShippingProfiles(prisma: PrismaClient) {
   console.log('  📦 Seeding shipping profiles...');
 
-  const [standard, express] = await Promise.all([
-    prisma.shippingProfile.upsert({
-      where:  { name: 'Standard Shipping' },
-      update: {},
-      create: { name: 'Standard Shipping', type: 'fixed', isDefault: true  },
-    }),
-    prisma.shippingProfile.upsert({
-      where:  { name: 'Express Shipping' },
-      update: {},
-      create: { name: 'Express Shipping',  type: 'fixed', isDefault: false },
-    }),
-  ]);
+  let standard = await prisma.shippingProfile.findFirst({ where: { name: 'Standard Shipping' } });
+  if (!standard) {
+    standard = await prisma.shippingProfile.create({
+      data: { name: 'Standard Shipping', type: 'fixed', isDefault: true },
+    });
+  }
+
+  let express = await prisma.shippingProfile.findFirst({ where: { name: 'Express Shipping' } });
+  if (!express) {
+    express = await prisma.shippingProfile.create({
+      data: { name: 'Express Shipping', type: 'fixed', isDefault: false },
+    });
+  }
 
   const existing = await prisma.shippingProfileMethod.count({ where: { profileId: standard.id } });
   if (!existing) {

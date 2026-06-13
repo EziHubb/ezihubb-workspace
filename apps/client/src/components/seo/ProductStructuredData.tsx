@@ -1,7 +1,7 @@
-import type { ProductDto } from '@mlh/types';
+﻿import type { ProductDto } from '@mlh/types';
 import type { ReviewSummaryDto } from '@mlh/types';
 
-const BASE_URL = 'https://mapleloomhandmade.com';
+const BASE_URL = 'https://dailydaisy.com';
 
 export interface ProductStructuredDataProps {
   product:       ProductDto;
@@ -30,7 +30,7 @@ export function ProductStructuredData({
     sku:        product.sku,
     brand: {
       '@type': 'Brand',
-      name:    'Maple Handmade',
+      name:    'Daily Daisy',
     },
     offers: {
       '@type':        'Offer',

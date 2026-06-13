@@ -4,18 +4,18 @@ services:
   # ── PostgreSQL ──────────────────────────────────────────────────────────────
   postgres:
     image: postgres:15-alpine
-    container_name: mapleloomhandmade_postgres
+    container_name: dailydaisy_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: mapleloomhandmade
-      POSTGRES_PASSWORD: mapleloomhandmade_dev_pass
-      POSTGRES_DB: mapleloomhandmade_dev
+      POSTGRES_USER: dailydaisy
+      POSTGRES_PASSWORD: dailydaisy_dev_pass
+      POSTGRES_DB: dailydaisy_dev
     ports:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U mapleloomhandmade']
+      test: ['CMD-SHELL', 'pg_isready -U dailydaisy']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -23,7 +23,7 @@ services:
   # ── Redis ───────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: mapleloomhandmade_redis
+    container_name: dailydaisy_redis
     restart: unless-stopped
     ports:
       - '6379:6379'
@@ -38,7 +38,7 @@ services:
   # ── MinIO (local S3-compatible storage) ────────────────────────────────────
   minio:
     image: minio/minio:latest
-    container_name: mapleloomhandmade_minio
+    container_name: dailydaisy_minio
     restart: unless-stopped
     command: server /data --console-address ':9001'
     environment:
@@ -58,14 +58,14 @@ services:
   # ── MongoDB ─────────────────────────────────────────────────────────────────
   mongodb:
     image: mongo:7-jammy
-    container_name: mapleloomhandmade_mongodb
+    container_name: dailydaisy_mongodb
     restart: unless-stopped
     ports:
       - '27017:27017'
     volumes:
       - mongodb_data:/data/db
     environment:
-      MONGO_INITDB_DATABASE: mapleloomhandmade
+      MONGO_INITDB_DATABASE: dailydaisy
     healthcheck:
       test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
       interval: 10s
@@ -75,7 +75,7 @@ services:
   # ── MailHog (local email testing) ──────────────────────────────────────────
   mailhog:
     image: mailhog/mailhog:latest
-    container_name: mapleloomhandmade_mailhog
+    container_name: dailydaisy_mailhog
     restart: unless-stopped
     ports:
       - '1025:1025'
@@ -87,7 +87,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.api
       target: development
-    container_name: mapleloomhandmade_api
+    container_name: dailydaisy_api
     restart: unless-stopped
     depends_on:
       postgres:
@@ -97,7 +97,7 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3002
-      DATABASE_URL: postgresql://mapleloomhandmade:mapleloomhandmade_dev_pass@postgres:5432/mapleloomhandmade_dev
+      DATABASE_URL: postgresql://dailydaisy:dailydaisy_dev_pass@postgres:5432/dailydaisy_dev
       REDIS_URL: redis://redis:6379
       AWS_S3_ENDPOINT: http://minio:9000
       AWS_S3_BUCKET: mlh-assets
@@ -121,7 +121,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.client
       target: development
-    container_name: mapleloomhandmade_client
+    container_name: dailydaisy_client
     restart: unless-stopped
     depends_on:
       - api
@@ -139,7 +139,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.admin
       target: development
-    container_name: mapleloomhandmade_admin
+    container_name: dailydaisy_admin
     restart: unless-stopped
     depends_on:
       - api

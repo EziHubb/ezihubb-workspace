@@ -19,8 +19,8 @@ export async function generateMetadata({
   const { locale } = await params;
   return {
     title:       locale === 'vi'
-      ? 'Bộ Sưu Tập | Maple Handmade'
-      : 'Collections | Maple Handmade',
+      ? 'Bộ Sưu Tập | Daily Daisy'
+      : 'Collections | Daily Daisy',
     description: 'Explore our curated gift collections — seasonal, occasion-based, and themed.',
   };
 }

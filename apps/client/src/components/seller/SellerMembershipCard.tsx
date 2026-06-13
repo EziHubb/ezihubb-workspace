@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { apiClient } from '@mlh/api-client';
@@ -144,7 +144,7 @@ export function SellerMembershipCard() {
             required
             value={form.name}
             onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-            placeholder="e.g. MapleLoom Fan Club"
+            placeholder="e.g. Daily Daisy Fan Club"
             className="w-full rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2"
             style={{ borderColor: '#E8E4DF' }}
           />

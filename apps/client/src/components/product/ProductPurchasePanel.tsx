@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
@@ -423,7 +423,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       {product.isFeatured && (
         <div className="inline-flex items-center gap-1.5 bg-[#FFF0EC] text-primary text-xs font-medium px-2.5 py-1 rounded-full">
           <Star className="w-3 h-3 fill-primary" />
-          MapleLoom&apos;s Pick
+          Daily Daisy&apos;s Pick
         </div>
       )}
 
