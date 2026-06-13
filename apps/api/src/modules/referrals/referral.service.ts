@@ -4,7 +4,7 @@ import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
 import { ReferralCommissionStatus } from '@prisma/client';
-import type { RequestPayoutDto } from './dto/referral.dto';
+import type { ReferralRequestPayoutDto as RequestPayoutDto } from './dto/referral.dto';
 
 const MAX_TREE_DEPTH = 3;
 

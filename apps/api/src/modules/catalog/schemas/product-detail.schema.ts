@@ -130,4 +130,3 @@ export class ProductDetail extends Document {
 }
 
 export const ProductDetailSchema = SchemaFactory.createForClass(ProductDetail);
-ProductDetailSchema.index({ productId: 1 }, { unique: true });

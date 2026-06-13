@@ -2,25 +2,16 @@ import {
   Controller, Get, Patch, Post, Param, Body, Query, UseGuards, Req,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional } from 'class-validator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { StoreOwnerGuard } from './guards/store-owner.guard';
 import { StoreOrdersService, UpdateStoreOrderDto } from './store-orders.service';
 import { ReviewsService } from '../reviews/reviews.service';
 import { PerformanceScoreService } from './performance-score.service';
 import { PaginationDto } from '../../common/dto/pagination.dto';
+import { MarkShippedDto } from '../orders/dto/mark-shipped.dto';
 
-export class MarkShippedDto {
-  trackingNumber: string;
-
-  @IsOptional()
-  @IsString()
-  trackingUrl?: string;
-
-  @IsOptional()
-  @IsString()
-  carrier?: string;
-}
+export { MarkShippedDto };
 
 export class ListStoreOrdersQueryDto extends PaginationDto {
   @IsOptional()

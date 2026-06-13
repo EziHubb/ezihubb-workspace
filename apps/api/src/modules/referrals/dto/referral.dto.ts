@@ -2,7 +2,7 @@ import { IsString, IsIn, IsOptional, IsNumber, Min, IsUrl } from 'class-validato
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ReferralCommissionStatus, ReferralPayoutStatus } from '@prisma/client';
 
-export class RequestPayoutDto {
+export class ReferralRequestPayoutDto {
   @ApiProperty({ example: 'paypal' })
   @IsString()
   @IsIn(['paypal', 'bank_transfer', 'store_credit'])

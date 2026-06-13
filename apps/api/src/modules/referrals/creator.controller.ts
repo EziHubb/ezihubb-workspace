@@ -14,7 +14,7 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ReferralService } from './referral.service';
-import { RequestPayoutDto } from './dto/referral.dto';
+import { ReferralRequestPayoutDto as RequestPayoutDto } from './dto/referral.dto';
 import { ReferralCommissionStatus } from '@prisma/client';
 
 @ApiTags('creators')
