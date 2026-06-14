@@ -18,7 +18,6 @@ const SUPER_ADMIN_ONLY_PREFIXES = [
   '/moderation',
   '/settings',
   '/referrals',
-  '/admins',
   '/finance',
 ];
 

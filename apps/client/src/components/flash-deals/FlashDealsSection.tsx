@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Zap } from 'lucide-react';
+import { Zap, ShoppingBag } from 'lucide-react';
 import { apiClient } from '@mlh/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import { useCountdown } from '../../hooks/useCountdown';
@@ -21,6 +21,7 @@ interface FlashDeal {
   discountPct:   number;
   endsAt:        string;
   stockLeft?:    number | null;
+  soldOut?:      boolean;
 }
 
 // ── Section-level countdown (resets HH:MM:SS) ────────────────────────────────
@@ -83,9 +84,13 @@ function DealCard({ deal, locale }: { deal: FlashDeal; locale: string }) {
   const dealPrice  = deal.originalPrice * (1 - deal.discountPct / 100);
   const { hours }  = useCountdown(deal.endsAt);
   const isUrgent   = hours === 0;
+  const isSoldOut  = deal.soldOut === true || deal.stockLeft === 0;
 
   return (
-    <article className="snap-start shrink-0 w-[200px] sm:w-[220px] border border-border rounded-card overflow-hidden bg-surface hover:border-primary/40 transition-colors flex flex-col">
+    <article className={[
+      'snap-start shrink-0 w-[200px] sm:w-[220px] border rounded-card overflow-hidden bg-surface flex flex-col transition-colors',
+      isSoldOut ? 'border-border opacity-70' : 'border-border hover:border-primary/40',
+    ].join(' ')}>
       {/* Product image */}
       <div className="relative w-full h-[160px] bg-muted/10">
         {deal.productImage ? (
@@ -94,7 +99,7 @@ function DealCard({ deal, locale }: { deal: FlashDeal; locale: string }) {
             alt={deal.productName}
             fill
             sizes="220px"
-            className="object-cover"
+            className={['object-cover', isSoldOut ? 'grayscale' : ''].join(' ')}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -102,26 +107,31 @@ function DealCard({ deal, locale }: { deal: FlashDeal; locale: string }) {
           </div>
         )}
 
-        {/* Discount badge */}
-        <div className="absolute top-2 left-2">
-          <UrgencyBadge variant="flash" />
-        </div>
-        <div className="absolute top-2 right-2 bg-error text-white text-xs font-bold px-2 py-0.5 rounded-full">
-          -{deal.discountPct}%
-        </div>
-
-        {/* Low-stock badge */}
-        {typeof deal.stockLeft === 'number' && deal.stockLeft > 0 && deal.stockLeft <= 5 && (
-          <div className="absolute bottom-2 left-2">
-            <UrgencyBadge variant="remaining" count={deal.stockLeft} />
+        {isSoldOut ? (
+          <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+            <span className="bg-background border border-border text-secondary text-xs font-bold px-3 py-1 rounded-full">
+              Sold out
+            </span>
           </div>
-        )}
-
-        {/* Ends-today badge */}
-        {isUrgent && (
-          <div className="absolute bottom-2 right-2">
-            <UrgencyBadge variant="endstoday" />
-          </div>
+        ) : (
+          <>
+            <div className="absolute top-2 left-2">
+              <UrgencyBadge variant="flash" />
+            </div>
+            <div className="absolute top-2 right-2 bg-error text-white text-xs font-bold px-2 py-0.5 rounded-full">
+              -{deal.discountPct}%
+            </div>
+            {typeof deal.stockLeft === 'number' && deal.stockLeft > 0 && deal.stockLeft <= 5 && (
+              <div className="absolute bottom-2 left-2">
+                <UrgencyBadge variant="remaining" count={deal.stockLeft} />
+              </div>
+            )}
+            {isUrgent && (
+              <div className="absolute bottom-2 right-2">
+                <UrgencyBadge variant="endstoday" />
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -133,27 +143,52 @@ function DealCard({ deal, locale }: { deal: FlashDeal; locale: string }) {
 
         {/* Pricing */}
         <div className="flex items-baseline gap-1.5">
-          <span className="text-base font-bold text-primary tabular-nums">
-            ${dealPrice.toFixed(2)}
-          </span>
-          <span className="text-xs text-muted line-through tabular-nums">
-            ${deal.originalPrice.toFixed(2)}
-          </span>
+          {isSoldOut ? (
+            <span className="text-base font-bold text-muted line-through tabular-nums">
+              ${dealPrice.toFixed(2)}
+            </span>
+          ) : (
+            <>
+              <span className="text-base font-bold text-primary tabular-nums">
+                ${dealPrice.toFixed(2)}
+              </span>
+              <span className="text-xs text-muted line-through tabular-nums">
+                ${deal.originalPrice.toFixed(2)}
+              </span>
+            </>
+          )}
         </div>
 
-        {/* Per-card countdown */}
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-muted">Ends in</span>
-          <InlineCountdown endsAt={deal.endsAt} />
-        </div>
+        {/* Countdown or sold-out message */}
+        {isSoldOut ? (
+          <div className="flex items-center gap-1">
+            <ShoppingBag className="w-3.5 h-3.5 text-muted" />
+            <span className="text-xs text-muted">Deal ended</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-muted">Ends in</span>
+            <InlineCountdown endsAt={deal.endsAt} />
+          </div>
+        )}
 
         {/* CTA */}
-        <Link
-          href={`/${locale}/products/${deal.productSlug}`}
-          className="mt-auto block w-full text-center bg-primary hover:bg-primary-dark text-white font-semibold text-xs py-2 rounded-button transition-colors uppercase tracking-wide"
-        >
-          Shop Now
-        </Link>
+        {isSoldOut ? (
+          <button
+            type="button"
+            disabled
+            className="mt-auto block w-full text-center bg-muted/10 text-muted font-semibold text-xs py-2 rounded-button uppercase tracking-wide cursor-not-allowed"
+          >
+            Sold Out
+          </button>
+        ) : (
+          <Link
+            href={`/${locale}/products/${deal.productSlug}`}
+            className="mt-auto block w-full text-center bg-primary hover:bg-primary-dark text-white font-semibold text-xs py-2 rounded-button transition-colors uppercase tracking-wide"
+          >
+            Shop Now
+          </Link>
+        )}
       </div>
     </article>
   );

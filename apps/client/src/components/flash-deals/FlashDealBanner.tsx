@@ -8,8 +8,10 @@ type BannerState = 'normal' | 'urgent' | 'grace';
 interface FlashDealBannerProps {
   endsAt:        string | Date;
   discountPct:   number;
-  gracePct?:     number;  // discount % locked during grace
+  gracePct?:     number;
   graceEndsAt?:  string | Date;
+  soldOut?:      boolean;
+  soldOutAt?:    string | Date;
 }
 
 function Timer({ target }: { target: string | Date }) {
@@ -28,7 +30,25 @@ export function FlashDealBanner({
   discountPct,
   graceEndsAt,
   gracePct,
+  soldOut = false,
+  soldOutAt,
 }: FlashDealBannerProps) {
+  if (soldOut) {
+    return (
+      <div className="flex items-center gap-3 bg-muted/10 border border-border rounded-xl px-4 py-3">
+        <AlertTriangle className="w-4 h-4 text-muted shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-secondary">Flash deal sold out</p>
+          <p className="text-xs text-muted mt-0.5">
+            {soldOutAt
+              ? `All ${discountPct}% off units claimed · ended ${new Date(soldOutAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+              : `All ${discountPct}% off units have been claimed`}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const { hours: h, minutes: m, expired } = useCountdown(endsAt);
   const isUrgent = !expired && h === 0 && m < 60;
   const isGrace  = expired && !!graceEndsAt;

@@ -134,13 +134,6 @@ const NAV_SECTIONS: NavSection[] = [
     title: 'System',
     items: [
       {
-        label: 'Shop Admins', href: '/admins', icon: Shield,
-        children: [
-          { label: 'All Shop Admins', href: '/admins',              icon: Users   },
-          { label: 'Permissions',     href: '/admins',              icon: Shield  },
-        ],
-      },
-      {
         label: 'Moderation', href: '/moderation', icon: ShieldAlert,
         children: [
           { label: 'Queue',      href: '/moderation/queue',    icon: ShieldAlert       },

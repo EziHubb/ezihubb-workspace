@@ -605,10 +605,16 @@ export default function AdminStoreDetailPage() {
                   </>
                 )}
                 {store.status === 'ACTIVE' && (
-                  <button type="button" onClick={() => setModal('suspend')}
-                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-border text-secondary rounded-button hover:border-error hover:text-error transition-colors">
-                    <PauseCircle className="w-4 h-4" /> Suspend
-                  </button>
+                  <>
+                    <button type="button" onClick={() => setModal('suspend')}
+                      className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-border text-secondary rounded-button hover:border-error hover:text-error transition-colors">
+                      <PauseCircle className="w-4 h-4" /> Suspend
+                    </button>
+                    <Link href={`/stores/${store.id}/permissions`}
+                      className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-border text-secondary rounded-button hover:border-primary hover:text-primary transition-colors">
+                      <ShieldCheck className="w-4 h-4" /> Permissions
+                    </Link>
+                  </>
                 )}
                 {store.status === 'SUSPENDED' && (
                   <button type="button" onClick={() => approveMutation.mutate()}

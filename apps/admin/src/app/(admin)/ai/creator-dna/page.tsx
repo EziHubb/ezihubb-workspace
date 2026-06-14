@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Dna, RefreshCw, ChevronDown, ChevronRight, Loader2,
-  Link2, Link2Off, Play,
+  Link2Off, Play, AlertCircle,
 } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
@@ -37,6 +38,48 @@ interface CreatorDnaResponse {
   data:       CreatorDna[];
   pagination: { total: number; page: number; totalPages: number };
 }
+
+// ── Platform brand icons ───────────────────────────────────────────────────────
+
+function TikTokIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.87a8.18 8.18 0 0 0 4.77 1.52V6.9a4.85 4.85 0 0 1-1-.21z" />
+    </svg>
+  );
+}
+
+function InstagramIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" />
+    </svg>
+  );
+}
+
+// ── Platform definitions ───────────────────────────────────────────────────────
+
+const PLATFORMS: Array<{
+  id:       string;
+  label:    string;
+  Icon:     (p: { className?: string }) => React.ReactElement;
+  btnClass: string;
+  style?:   CSSProperties;
+}> = [
+  {
+    id:       'tiktok',
+    label:    'TikTok',
+    Icon:     TikTokIcon,
+    btnClass: 'bg-[#010101] hover:bg-[#1c1c1c] text-white',
+  },
+  {
+    id:       'instagram',
+    label:    'Instagram',
+    Icon:     InstagramIcon,
+    btnClass: 'text-white hover:opacity-90',
+    style:    { background: 'linear-gradient(45deg,#833AB4,#C13584,#E1306C,#FD1D1D,#F77737)' },
+  },
+];
 
 // ── Tag chip ──────────────────────────────────────────────────────────────────
 
@@ -148,21 +191,22 @@ function DnaRow({
 
 // ── Platform connect card ─────────────────────────────────────────────────────
 
-const PLATFORMS = [
-  { id: 'tiktok',    label: 'TikTok',    icon: '🎵' },
-  { id: 'instagram', label: 'Instagram', icon: '📸' },
-] as const;
-
 function ConnectSection({
   platforms,
+  onConnect,
   onDisconnect,
   onFetch,
+  connectingP,
+  connectError,
   disconnecting,
   fetching,
 }: {
   platforms:    ConnectedPlatform[];
+  onConnect:    (p: string) => void;
   onDisconnect: (p: string) => void;
   onFetch:      (p: string) => void;
+  connectingP:  string | null;
+  connectError: string | null;
   disconnecting: string | null;
   fetching:      string | null;
 }) {
@@ -174,15 +218,17 @@ function ConnectSection({
       <p className="text-xs text-muted mb-4">
         Connect your store&apos;s social accounts. After connecting, click <strong>Fetch &amp; Analyze</strong> to generate a Creator DNA profile.
       </p>
+
       <div className="flex flex-wrap gap-3">
         {PLATFORMS.map((pl) => {
-          const connected = connectedIds.has(pl.id);
-          const conn      = platforms.find((p) => p.platform === pl.id);
+          const connected    = connectedIds.has(pl.id);
+          const conn         = platforms.find((p) => p.platform === pl.id);
+          const isConnecting = connectingP === pl.id;
 
           if (connected && conn) {
             return (
               <div key={pl.id} className="flex items-center gap-2 px-3 py-2 border border-border rounded-button bg-background">
-                <span className="text-base leading-none">{pl.icon}</span>
+                <pl.Icon className="w-4 h-4 text-secondary" />
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-secondary">{pl.label}</p>
                   {conn.platformUserId && (
@@ -213,23 +259,41 @@ function ConnectSection({
             );
           }
 
-          const isTikTok = pl.id === 'tiktok';
           return (
-            <a
+            <button
               key={pl.id}
-              href={`/api/v1/creator-dna/${pl.id}/connect`}
+              type="button"
+              onClick={() => onConnect(pl.id)}
+              disabled={connectingP !== null}
               className={[
-                'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-button transition-opacity hover:opacity-90',
-                isTikTok ? 'bg-black text-white hover:bg-zinc-800' : '',
+                'flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-button transition-all',
+                'disabled:opacity-60 disabled:cursor-not-allowed',
+                pl.btnClass,
               ].join(' ')}
-              style={!isTikTok ? { background: 'linear-gradient(135deg,#833AB4,#FD1D1D,#F77737)', color: '#fff' } : undefined}
+              style={pl.style}
             >
-              <Link2 className="w-4 h-4" />
-              {pl.icon} Connect {pl.label}
-            </a>
+              {isConnecting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Connecting…
+                </>
+              ) : (
+                <>
+                  <pl.Icon className="w-4 h-4" />
+                  Connect {pl.label}
+                </>
+              )}
+            </button>
           );
         })}
       </div>
+
+      {connectError && (
+        <div className="mt-3 flex items-start gap-2 p-2.5 rounded-lg bg-error/8 border border-error/20">
+          <AlertCircle className="w-3.5 h-3.5 text-error shrink-0 mt-0.5" />
+          <span className="text-xs text-error">{connectError}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -245,18 +309,38 @@ export default function AiCreatorDnaPage() {
   const [disconnectP, setDisconnectP] = useState<string | null>(null);
   const [fetchingP,   setFetchingP]   = useState<string | null>(null);
   const [fetchMsg,    setFetchMsg]    = useState<string | null>(null);
+  const [connectingP, setConnectingP] = useState<string | null>(null);
+  const [connectError, setConnectError] = useState<string | null>(null);
   const qc = useQueryClient();
 
-  // Check ?platform= query param on return from OAuth
+  // Handle OAuth callback:
+  //  – If running inside a popup (window.opener exists), post a message to the
+  //    parent and close this window.
+  //  – Otherwise (direct navigation fallback), show the success banner.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const sp = new URLSearchParams(window.location.search);
+    const sp       = new URLSearchParams(window.location.search);
     const platform = sp.get('platform');
-    if (platform) {
-      setFetchMsg(`${platform} connected! Click Fetch & Analyze to generate a Creator DNA profile.`);
-      qc.invalidateQueries({ queryKey: QK_PLATFORMS });
-      window.history.replaceState({}, '', window.location.pathname);
+    if (!platform) return;
+
+    if (window.opener && !window.opener.closed) {
+      try {
+        window.opener.postMessage(
+          { type: 'oauth-callback', platform, success: true },
+          window.location.origin,
+        );
+      } catch {
+        // cross-origin guard; ignore
+      }
+      window.close();
+      return;
     }
+
+    // Fallback: direct redirect (no popup)
+    const label = PLATFORMS.find((p) => p.id === platform)?.label ?? platform;
+    setFetchMsg(`${label} connected! Click Fetch & Analyze to generate a Creator DNA profile.`);
+    qc.invalidateQueries({ queryKey: QK_PLATFORMS });
+    window.history.replaceState({}, '', window.location.pathname);
   }, [qc]);
 
   const { data: platformsData } = useQuery<ConnectedPlatform[]>({
@@ -297,6 +381,57 @@ export default function AiCreatorDnaPage() {
     onSettled:  () => setFetchingP(null),
   });
 
+  function handleConnect(platform: string) {
+    const connectUrl = `/api/v1/creator-dna/${platform}/connect`;
+    const features   = 'width=600,height=700,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no';
+    const popup      = window.open(connectUrl, `oauth_${platform}`, features);
+
+    if (!popup || popup.closed) {
+      setConnectError('Popup was blocked. Please allow pop-ups for this page and try again.');
+      return;
+    }
+
+    setConnectingP(platform);
+    setConnectError(null);
+    setFetchMsg(null);
+    let resolved = false;
+
+    function cleanup() {
+      clearInterval(interval);
+      window.removeEventListener('message', handleMessage);
+    }
+
+    function handleMessage(evt: MessageEvent) {
+      if (evt.origin !== window.location.origin) return;
+      if (evt.data?.type !== 'oauth-callback' || evt.data?.platform !== platform) return;
+      resolved = true;
+      cleanup();
+      setConnectingP(null);
+      if (evt.data.success) {
+        qc.invalidateQueries({ queryKey: QK_PLATFORMS });
+        const label = PLATFORMS.find((p) => p.id === platform)?.label ?? platform;
+        setFetchMsg(`${label} connected! Click Fetch & Analyze to generate a Creator DNA profile.`);
+      } else {
+        const label = PLATFORMS.find((p) => p.id === platform)?.label ?? platform;
+        setConnectError(evt.data.error ?? `Failed to connect ${label}. Please try again.`);
+      }
+    }
+
+    // Poll for popup closure — fires when user closes the window without completing OAuth
+    const interval = setInterval(() => {
+      if (!popup.closed) return;
+      clearInterval(interval);
+      window.removeEventListener('message', handleMessage);
+      if (!resolved) {
+        setConnectingP(null);
+        const label = PLATFORMS.find((p) => p.id === platform)?.label ?? platform;
+        setConnectError(`${label} connection was cancelled — the authorization window was closed.`);
+      }
+    }, 500);
+
+    window.addEventListener('message', handleMessage);
+  }
+
   const profiles   = safeArr(data?.data);
   const pagination = data?.pagination;
   const platforms  = safeArr(platformsData);
@@ -312,8 +447,11 @@ export default function AiCreatorDnaPage() {
       {/* ── Connect section ── */}
       <ConnectSection
         platforms={platforms}
+        onConnect={handleConnect}
         onDisconnect={(p) => disconnect.mutate(p)}
         onFetch={(p) => fetchAnalyze.mutate(p)}
+        connectingP={connectingP}
+        connectError={connectError}
         disconnecting={disconnectP}
         fetching={fetchingP}
       />

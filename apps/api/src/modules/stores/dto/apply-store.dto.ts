@@ -1,4 +1,4 @@
-import { IsString, IsEnum, IsOptional, MinLength, MaxLength, Matches } from 'class-validator';
+import { IsString, IsEnum, IsOptional, MinLength, MaxLength, Matches, ValidateIf } from 'class-validator';
 import { StorePlanType } from '@prisma/client';
 
 const RESERVED_SLUGS = ['admin', 'api', 'shops', 'products', 'cart', 'checkout', 'account', 'creators', 'pages'];
@@ -15,10 +15,12 @@ export class ApplyStoreDto {
   @Matches(/^[a-z0-9-]+$/, { message: 'Slug must be lowercase alphanumeric with hyphens' })
   slug: string;
 
+  @IsOptional()
+  @ValidateIf((o) => o.description !== undefined && o.description !== '')
   @IsString()
   @MinLength(10)
   @MaxLength(2000)
-  description: string;
+  description?: string;
 
   @IsEnum(StorePlanType)
   @IsOptional()
