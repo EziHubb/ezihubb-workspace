@@ -113,4 +113,9 @@ export class ProductQueryDto extends PaginationDto {
   @IsOptional()
   @IsString()
   storeSlug?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by shop section ID' })
+  @IsOptional()
+  @IsString()
+  shopSectionId?: string;
 }

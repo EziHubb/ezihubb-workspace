@@ -342,10 +342,15 @@ Return ONLY valid JSON:
     });
 
     if (!anyConfigured) {
+      const needsKey = idsToCheck.some((id) => this.registry.getSource(id)?.meta.requiresApiKey);
       return {
         created: 0,
         stores:  0,
-        message: 'No trend sources are configured — set API keys in AI Settings before scanning',
+        message: needsKey
+          ? 'One or more selected sources require an API key — set them in AI Settings before scanning'
+          : idsToCheck.length === 0
+            ? 'No trend sources are enabled — go to AI Settings and enable at least one source'
+            : 'Selected sources could not be reached — check your network or try again later',
         sources: [],
       };
     }
@@ -362,7 +367,15 @@ Return ONLY valid JSON:
     const topics      = await this.getTrendingTopics(sourceIds);
 
     if (topics.length === 0) {
-      return { created: 0, stores: stores.length, message: 'No trends returned from configured sources — check source API keys or try again later', sources: [] };
+      const anyNeedsKey = idsToCheck.some((id) => this.registry.getSource(id)?.meta.requiresApiKey);
+      return {
+        created: 0,
+        stores:  stores.length,
+        message: anyNeedsKey
+          ? 'No trends returned — verify API keys in AI Settings or try again later'
+          : 'No trends returned — selected sources may be temporarily unavailable. Try again later.',
+        sources: [],
+      };
     }
 
     const topTopics   = topics.slice(0, 3);

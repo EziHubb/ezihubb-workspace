@@ -1164,9 +1164,15 @@ export class OrdersService {
       variantName: i.variantName,
       quantity: i.quantity,
       unitPrice: Number(i.unitPrice),
+      totalPrice: Number(i.unitPrice) * i.quantity,
       customizationData: i.customizationData as Record<string, unknown> | null,
       previewUrl: i.previewUrl,
       imageUrl: i.productImageUrl,
+      product: {
+        name: i.productName,
+        slug: i.productSlug,
+        imageUrl: i.productImageUrl ?? undefined,
+      },
     }));
 
     const payment: OrderPaymentDto | null = order.payment
@@ -1204,7 +1210,14 @@ export class OrdersService {
       status: order.status,
       shippingName: order.shippingName,
       shippingPhone: order.shippingPhone,
-      shippingAddress: order.shippingAddress,
+      shippingAddress: {
+        addressLine1: order.shippingAddress,
+        city:         order.shippingCity,
+        state:        order.shippingState ?? undefined,
+        postalCode:   order.shippingZip,
+        country:      order.shippingCountry,
+        phone:        order.shippingPhone || undefined,
+      } as any,
       shippingCity: order.shippingCity,
       shippingState: order.shippingState,
       shippingZip: order.shippingZip,

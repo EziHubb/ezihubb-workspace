@@ -17,6 +17,8 @@ import { PaymentForm }              from '../../../../components/checkout/Paymen
 import { GiftOptionsSection }       from '../../../../components/checkout/GiftOptionsSection';
 import type { GiftOptions }         from '../../../../components/checkout/GiftOptionsSection';
 import { AffiliateDiscountBanner }  from '../../../../components/checkout/AffiliateDiscountBanner';
+import { ExpressPayStrip }          from '../../../../components/checkout/ExpressPayStrip';
+import { CoinsCheckoutPanel }       from '../../../../components/checkout/CoinsCheckoutPanel';
 import { analytics }                from '../../../../lib/analytics';
 import { hotjarEvent }              from '../../../../lib/analytics/hotjar';
 import { useCurrency }              from '../../../../lib/currency/currency-context';
@@ -296,6 +298,18 @@ export default function CheckoutPage() {
   const [pointsToRedeem,  setPointsToRedeem]  = useState(0);
   const pointsDiscount = Math.round(pointsToRedeem * 0.01 * 100) / 100;
 
+  // ── Buyer Coins ────────────────────────────────────────────────────────────
+  const [coinBalance, setCoinBalance] = useState(0);
+  const [coinsUsed,   setCoinsUsed]   = useState(0);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    apiClient
+      .get<{ balance: number }>(API_ROUTES.COINS.ME, { token: localStorage.getItem('access_token') ?? undefined })
+      .then((d) => { setCoinBalance(d.balance ?? 0); })
+      .catch(() => {});
+  }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!isLoggedIn) return;
     apiClient
@@ -488,6 +502,9 @@ export default function CheckoutPage() {
             {/* Step 1: Shipping address */}
             {step === 1 && (
               <section aria-labelledby="step1-heading">
+                {/* Express pay shortcut */}
+                <ExpressPayStrip total={cart.totals.subtotal} />
+
                 <h2 id="step1-heading" className="text-base font-semibold text-secondary mb-5">
                   {t('stepHeadings.shippingInformation')}
                 </h2>
@@ -628,6 +645,17 @@ export default function CheckoutPage() {
                 affiliateName={affiliateInfo.affiliateName}
                 discountAmount={affiliateInfo.discountAmount}
               />
+            )}
+            {/* Coins redemption panel — only shown to logged-in users before payment */}
+            {isLoggedIn && step < 3 && coinBalance > 0 && (
+              <div className="mb-4">
+                <CoinsCheckoutPanel
+                  availableCoins={coinBalance}
+                  coinsUsed={coinsUsed}
+                  onChange={setCoinsUsed}
+                  orderTotal={cart.totals.subtotal}
+                />
+              </div>
             )}
             <OrderSummarySidebar
               cart={cart}

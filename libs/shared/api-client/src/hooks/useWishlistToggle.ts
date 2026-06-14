@@ -31,8 +31,16 @@ export function useWishlistToggle() {
 
   const toggle = useCallback(
     (productId: string, isCurrentlyWishlisted: boolean) => {
-      const existing       = pending.current.get(productId);
-      const currentDesired = existing?.desiredActive ?? isCurrentlyWishlisted;
+      const existing   = pending.current.get(productId);
+
+      // Read live cache as source of truth — avoids adding when the item is
+      // already wishlisted but the query hasn't returned yet (race on first load).
+      const cacheItems  = qc.getQueryData<WishlistItemDto[]>(KEY);
+      const isInCache   = cacheItems !== undefined
+        ? cacheItems.some((w) => w.productId === productId)
+        : isCurrentlyWishlisted;
+
+      const currentDesired = existing?.desiredActive ?? isInCache;
       const nextDesired    = !currentDesired;
 
       // Preserve the pre-interaction snapshot so we can roll back on failure

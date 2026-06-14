@@ -27,4 +27,5 @@ export class ProductListItemDto {
   @ApiPropertyOptional() storeId?: string | null;
   @ApiPropertyOptional() storeName?: string | null;
   @ApiPropertyOptional() storeSlug?: string | null;
+  @ApiPropertyOptional() store?: { id: string; name: string; slug: string } | null;
 }

@@ -37,7 +37,7 @@ export function DirectAddToCartPanel({
   // Wishlist
   const isLoggedIn     = Boolean(useAuthStore((s) => s.user));
   const isAuthReady    = useAuthStore((s) => s.isAuthReady);
-  const { data: wishlistItems } = useWishlist(isAuthReady && isLoggedIn);
+  const { data: wishlistItems, isLoading: wishlistLoading } = useWishlist(isAuthReady && isLoggedIn);
   const wishlistToggle = useWishlistToggle();
   const isWishlisted   = wishlistItems?.some((i) => i.productId === product.id) ?? false;
 
@@ -167,8 +167,9 @@ export function DirectAddToCartPanel({
       <button
         type="button"
         onClick={handleWishlist}
+        disabled={isLoggedIn && wishlistLoading}
         className={[
-          'w-full flex items-center justify-center gap-2 py-3 rounded-button border text-sm font-medium transition-colors',
+          'w-full flex items-center justify-center gap-2 py-3 rounded-button border text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-wait',
           isWishlisted
             ? 'border-primary/30 text-primary bg-primary/5 hover:bg-primary/10'
             : 'border-border text-secondary hover:border-primary hover:text-primary',

@@ -350,9 +350,7 @@ export default function OrderDetailPage() {
         </h2>
         <div className="space-y-3">
           {order.items.map((item) => {
-            const previewUrl = (item.customization as Record<string, unknown> | null)
-              ?.['previewUrl'] as string | undefined;
-            const thumb = previewUrl ?? item.product?.imageUrl;
+            const thumb = item.previewUrl ?? item.product?.imageUrl;
 
             return (
               <div
@@ -395,7 +393,7 @@ export default function OrderDetailPage() {
             Shipping Address
           </h3>
           <address className="not-italic text-sm text-secondary leading-relaxed">
-            {addr.firstName} {addr.lastName}<br />
+            {order.shippingName}<br />
             {addr.addressLine1}
             {addr.addressLine2 && <>, {addr.addressLine2}</>}<br />
             {addr.city}, {addr.state} {addr.postalCode}<br />

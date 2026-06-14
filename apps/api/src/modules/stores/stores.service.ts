@@ -163,7 +163,7 @@ export class StoresService {
     return store;
   }
 
-  // ─── Public: Store sections (category sidebar) ────────────────────────────
+  // ─── Public: Store sections (shop sections sidebar) ───────────────────────
 
   async getStoreSections(slug: string) {
     const store = await this.prisma.store.findUnique({
@@ -176,43 +176,32 @@ export class StoresService {
 
     const baseWhere = { storeId: store.id, isActive: true, deletedAt: null as null };
 
-    const [total, onSaleCount, categories] = await Promise.all([
+    const [total, onSaleCount, shopSections] = await Promise.all([
       this.prisma.product.count({ where: baseWhere }),
       this.prisma.product.count({
         where: { ...baseWhere, NOT: { compareAtPrice: null } },
       }),
-      this.prisma.product.groupBy({
-        by:     ['categoryId'],
-        where:  { ...baseWhere, categoryId: { not: undefined } },
-        _count: true,
-        orderBy: { _count: { categoryId: 'desc' } },
+      this.prisma.shopSection.findMany({
+        where:   { storeId: store.id },
+        select: {
+          id:       true,
+          name:     true,
+          sortOrder: true,
+          _count:   { select: { products: { where: baseWhere } } },
+        },
+        orderBy: { sortOrder: 'asc' },
       }),
     ]);
-
-    const catIds = categories
-      .map((c) => c.categoryId)
-      .filter((id): id is string => !!id);
-
-    const catNames = catIds.length > 0
-      ? await this.prisma.category.findMany({
-          where:  { id: { in: catIds } },
-          select: { id: true, name: true, slug: true },
-        })
-      : [];
-    const catMap = new Map(catNames.map((c) => [c.id, c]));
 
     return {
       total,
       onSale: onSaleCount,
-      sections: categories
-        .filter((c): c is typeof c & { categoryId: string } =>
-          !!c.categoryId && catMap.has(c.categoryId)
-        )
-        .map((c) => ({
-          id:    c.categoryId,
-          name:  catMap.get(c.categoryId)!.name,
-          slug:  catMap.get(c.categoryId)!.slug,
-          count: typeof c._count === 'number' ? c._count : (c._count as { _all: number })._all,
+      sections: shopSections
+        .filter((s) => s._count.products > 0)
+        .map((s) => ({
+          id:    s.id,
+          name:  s.name,
+          count: s._count.products,
         })),
     };
   }

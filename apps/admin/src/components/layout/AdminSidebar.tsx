@@ -13,7 +13,7 @@ import {
   CreditCard, Settings, ChevronDown, LogOut, Globe, MessageSquare, Link2,
   Bookmark, Factory, Shield, GitBranch, Store, BarChart2, Wallet, ShieldAlert, History,
   SlidersHorizontal, ScanSearch, Sparkles, TrendingUp, DollarSign, Activity,
-  Menu, X, FileEdit,
+  Menu, X, Megaphone,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -60,9 +60,8 @@ const NAV_SECTIONS: NavSection[] = [
       {
         label: 'Products', href: '/products', icon: ShoppingBag,
         children: [
-          { label: 'All Products', href: '/products',        icon: ShoppingBag },
-          { label: 'Drafts',       href: '/products/drafts', icon: FileEdit    },
-          { label: 'SEO Audit',    href: '/products/seo',    icon: Globe       },
+          { label: 'All Products', href: '/products',     icon: ShoppingBag },
+          { label: 'SEO Audit',    href: '/products/seo', icon: Globe       },
         ],
       },
       {
@@ -96,6 +95,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Messages',   href: '/messages',   icon: MessageSquare },
       { label: 'Reviews',    href: '/reviews',    icon: Star          },
       { label: 'Promotions', href: '/promotions', icon: BadgePercent  },
+      { label: 'Campaigns',  href: '/campaigns',  icon: Megaphone     },
     ],
   },
   {

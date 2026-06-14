@@ -15,6 +15,10 @@ import { FeaturedReviews } from '../../../components/home/FeaturedReviews';
 import { NewsletterSection } from '../../../components/home/NewsletterSection';
 import { CreatorNetworkCta } from '../../../components/home/CreatorNetworkCta';
 import { FlashDealsSection } from '../../../components/flash-deals/FlashDealsSection';
+import { GiftFinderCta } from '../../../components/home/GiftFinderCta';
+import { BlindMatchCta } from '../../../components/home/BlindMatchCta';
+import { GroupGiftingSpotlight } from '../../../components/home/GroupGiftingSpotlight';
+import { MobileHeroCarousel } from '../../../components/home/MobileHeroCarousel';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,6 +81,11 @@ export default async function HomePage({
 
   return (
     <div className="bg-background">
+      {/* Mobile-only rotating feature carousel (hidden on md+) */}
+      <MobileHeroCarousel locale={locale} />
+
+      {/* Desktop hero (hidden on mobile to avoid duplication) */}
+      <div className="hidden md:block">
       <HeroBanner
         locale={locale}
         headline={t('hero.headline')}
@@ -87,6 +96,7 @@ export default async function HomePage({
         trust2={t('hero.trust2')}
         trust3={t('hero.trust3')}
       />
+      </div>
 
       <CollectionsGrid collections={collections} locale={locale} />
 
@@ -100,13 +110,19 @@ export default async function HomePage({
         viewAllLabel={t('trending.viewAll')}
       />
 
+      <GiftFinderCta locale={locale} />
+
       <CategoryShowcase categories={rootCategories} locale={locale} />
+
+      <GroupGiftingSpotlight locale={locale} />
 
       <SocialProof locale={locale} />
 
       {featuredReviews.length > 0 && (
         <FeaturedReviews reviews={featuredReviews} locale={locale} />
       )}
+
+      <BlindMatchCta locale={locale} />
 
       <CreatorNetworkCta locale={locale} />
 

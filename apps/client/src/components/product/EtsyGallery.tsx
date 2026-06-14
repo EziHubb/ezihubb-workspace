@@ -35,9 +35,9 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
   // ── Wishlist ──────────────────────────────────────────────────────────────────
   const isLoggedIn = Boolean(useAuthStore((s) => s.user));
   const isAuthReady    = useAuthStore((s) => s.isAuthReady);
-  const { data: wishlistItems } = useWishlist(isAuthReady && isLoggedIn);
-  const wishlistToggle          = useWishlistToggle();
-  const isInWishlist = wishlistItems?.some((item) => item.productId === product.id) ?? false;
+  const { data: wishlistItems, isLoading: wishlistLoading } = useWishlist(isAuthReady && isLoggedIn);
+  const wishlistToggle = useWishlistToggle();
+  const isInWishlist   = wishlistItems?.some((item) => item.productId === product.id) ?? false;
 
   const handleWishlist = () => {
     if (!isLoggedIn) {
@@ -133,7 +133,8 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
               type="button"
               onClick={(e) => { e.stopPropagation(); handleWishlist(); }}
               aria-label={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
-              className="absolute top-3 right-3 z-10 w-9 h-9 bg-white rounded-full shadow flex items-center justify-center hover:scale-110 transition-transform"
+              disabled={isLoggedIn && wishlistLoading}
+              className="absolute top-3 right-3 z-10 w-9 h-9 bg-white rounded-full shadow flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-60 disabled:cursor-wait"
             >
               <Heart
                 className={`w-5 h-5 transition-colors ${

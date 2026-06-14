@@ -10,9 +10,11 @@ export class OrderItemDto {
   @ApiPropertyOptional() variantName: string | null;
   @ApiProperty() quantity: number;
   @ApiProperty() unitPrice: number;
+  @ApiProperty() totalPrice: number;
   @ApiPropertyOptional() customizationData: Record<string, unknown> | null;
   @ApiPropertyOptional() previewUrl: string | null;
   @ApiPropertyOptional() imageUrl: string | null;
+  @ApiPropertyOptional() product?: { name: string; slug: string | null; imageUrl?: string | null };
 }
 
 export class OrderPaymentDto {

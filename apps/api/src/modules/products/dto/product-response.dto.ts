@@ -36,6 +36,11 @@ export class ProductStoreDto {
   @ApiProperty() slug: string;
 }
 
+export class VariantOptionDto {
+  @ApiProperty() name: string;
+  @ApiProperty({ type: [String] }) values: string[];
+}
+
 export class ProductResponseDto {
   @ApiProperty() id: string;
   @ApiProperty() name: string;
@@ -54,6 +59,7 @@ export class ProductResponseDto {
   @ApiProperty({ type: () => ProductCategoryDto }) category: ProductCategoryDto;
   @ApiPropertyOptional({ type: () => ProductStoreDto }) store: ProductStoreDto | null;
   @ApiProperty({ type: [VariantResponseDto] }) variants: VariantResponseDto[];
+  @ApiProperty({ type: [VariantOptionDto] }) variantOptions: VariantOptionDto[];
   @ApiProperty({ type: [ProductImageResponseDto] }) images: ProductImageResponseDto[];
   @ApiProperty({ type: [ProductTagResponseDto] }) tags: ProductTagResponseDto[];
   @ApiPropertyOptional() customizationConfig: Record<string, unknown> | null;

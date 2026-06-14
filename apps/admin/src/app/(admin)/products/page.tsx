@@ -40,7 +40,6 @@ const SORT_OPTIONS = [
 const STATUS_FILTER_OPTIONS = [
   { value: '',         label: 'All listings', statsKey: 'all'      },
   { value: 'ACTIVE',   label: 'Active',       statsKey: 'active'   },
-  { value: 'DRAFT',    label: 'Draft',        statsKey: 'draft'    },
   { value: 'INACTIVE', label: 'Inactive',     statsKey: 'inactive' },
   { value: 'ARCHIVED', label: 'Archived',     statsKey: 'archived' },
 ] as const;
@@ -142,8 +141,8 @@ function ProductsPageInner() {
     qc.invalidateQueries({ queryKey: ['admin-products-stats'] });
   }, [qc]);
 
-  const handleToggleFeatured = useCallback(async (p: AdminProduct) => {
-    await api.patch(API_ROUTES.ADMIN.PRODUCT(p.id), { isFeatured: !p.isFeatured });
+  const handleToggleFeatured = useCallback(async (p: AdminProduct, newValue: boolean) => {
+    await api.patch(API_ROUTES.ADMIN.PRODUCT(p.id), { isFeatured: newValue });
     qc.invalidateQueries({ queryKey: ['admin-products'] });
   }, [qc]);
 

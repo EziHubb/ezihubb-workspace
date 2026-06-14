@@ -51,6 +51,18 @@ const ALLOWED_IMAGE_MIMETYPES = new Set([
 ]);
 const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
+function deriveVariantOptions(variants: { options: unknown }[]): { name: string; values: string[] }[] {
+  const optionMap = new Map<string, Set<string>>();
+  for (const v of variants) {
+    const opts = (v.options ?? {}) as Record<string, string>;
+    for (const [key, val] of Object.entries(opts)) {
+      if (!optionMap.has(key)) optionMap.set(key, new Set());
+      optionMap.get(key)!.add(val);
+    }
+  }
+  return Array.from(optionMap.entries()).map(([name, valSet]) => ({ name, values: Array.from(valSet) }));
+}
+
 @Injectable()
 export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);
@@ -149,6 +161,7 @@ export class ProductsService {
           storeId:   p.store?.id   ?? null,
           storeName: p.store?.name ?? null,
           storeSlug: p.store?.slug ?? null,
+          store:     p.store       ?? null,
         }) satisfies ProductListItemDto,
     );
 
@@ -230,21 +243,38 @@ export class ProductsService {
         .catch(() => null),
     ]);
 
+    // If the product has no store association (e.g. platform-created products),
+    // fall back to the first active store so the seller card / shop chip still links correctly.
+    const effectiveStore: { id: string; name: string; slug: string } | null =
+      product.store ??
+      (await this.prisma.store
+        .findFirst({
+          where:   { status: 'ACTIVE' },
+          select:  { id: true, name: true, slug: true },
+          orderBy: { createdAt: 'asc' },
+        })
+        .catch(() => null));
+
+    const productForMapping = { ...product, store: effectiveStore };
+
     const base = this.mapToProductResponse(
-      product as Parameters<typeof this.mapToProductResponse>[0],
+      productForMapping as Parameters<typeof this.mapToProductResponse>[0],
       inDemandCount,
       averageRating,
     );
 
+    // Derive variantOptions from Prisma variants — always authoritative, never stale
+    const variantOptions = deriveVariantOptions(product.variants as { options: unknown }[]);
+
     // Merge MongoDB fields on top of the PG response
     return {
       ...base,
+      variantOptions,
       ...(mongoDetail && {
         richDescription:  mongoDetail.richDescription  ?? undefined,
         sizeGuide:        mongoDetail.sizeGuide         ?? undefined,
         shippingNote:     mongoDetail.shippingNote      ?? undefined,
         attributes:       mongoDetail.attributes        ?? [],
-        variantOptions:   mongoDetail.variantOptions    ?? [],
         mongoVariants:    mongoDetail.variants          ?? [],
         customization:    mongoDetail.customization     ?? null,
         printSpecs:       mongoDetail.printSpecs        ?? null,
@@ -1415,6 +1445,10 @@ export class ProductsService {
       if (store) where.storeId = store.id;
     }
 
+    if (query.shopSectionId) {
+      where.shopSectionId = query.shopSectionId;
+    }
+
     return where;
   }
 
@@ -1759,6 +1793,7 @@ export class ProductsService {
         string,
         unknown
       > | null,
+      variantOptions: [],
       averageRating,
       reviewCount: product._count.reviews,
       inDemandCount,

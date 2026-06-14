@@ -32,6 +32,9 @@ export class TaobaoSource extends TrendSourceBase {
       const json: any    = JSON.parse(text);
       const items: any[] = json?.result ?? [];
 
+      // Empty query (q=) often returns no suggestions — use curated fallback
+      if (items.length === 0) return this.getTaobaoFallback(limit);
+
       return items.slice(0, limit).map(([kw, score]: [string, string]) => ({
         hashtag:         kw.toLowerCase().replace(/\s+/g, ''),
         description:     `Taobao hot search: ${kw}`,

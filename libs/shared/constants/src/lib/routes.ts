@@ -527,6 +527,13 @@ export const API_ROUTES = {
     // ── BF-09: Blind Match (admin) ───────────────────────────────────────────
     BLIND_MATCH_REQUESTS:     '/admin/blind-match/requests',
     BLIND_MATCH_REQUEST:      (id: string) => `/admin/blind-match/requests/${id}`,
+
+    // ── Campaigns (admin) ────────────────────────────────────────────────────
+    CAMPAIGNS:                '/admin/campaigns',
+    CAMPAIGN:                 (id: string) => `/admin/campaigns/${id}`,
+    CAMPAIGN_ACTIVATE:        (id: string) => `/admin/campaigns/${id}/activate`,
+    CAMPAIGN_DEACTIVATE:      (id: string) => `/admin/campaigns/${id}/deactivate`,
+    CAMPAIGN_STATS:           '/admin/campaigns/stats',
   },
 
   STORES: {

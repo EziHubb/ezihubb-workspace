@@ -3,6 +3,7 @@
 import { memo, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   MoreHorizontal, Package, Star, Eye, EyeOff, Copy, Archive,
   Pencil, ExternalLink, BarChart2, RefreshCw, Layers, Share2,
@@ -36,7 +37,7 @@ interface ProductCardProps {
   onToggleSelect:    (id: string) => void;
   onToggleActive:    (p: AdminProduct) => void;
   onArchive:         (p: AdminProduct) => void;
-  onToggleFeatured?: (p: AdminProduct) => void;
+  onToggleFeatured?: (p: AdminProduct, newValue: boolean) => void;
   onDelete?:         (p: AdminProduct) => void;
   clientBaseUrl?:    string;
 }
@@ -61,7 +62,7 @@ function GearMenu({
   product:          AdminProduct;
   onToggleActive:   (p: AdminProduct) => void;
   onArchive:        (p: AdminProduct) => void;
-  onToggleFeatured?: (p: AdminProduct) => void;
+  onToggleFeatured?: (p: AdminProduct, newValue: boolean) => void;
   onDelete?:        (p: AdminProduct) => void;
   clientBaseUrl?:   string;
 }) {
@@ -234,11 +235,35 @@ export const ProductCard = memo(function ProductCard({
   onDelete,
   clientBaseUrl,
 }: ProductCardProps) {
+  const router          = useRouter();
   const checkboxVisible = anySelected || selected;
   const statusLabel     = product.status.charAt(0) + product.status.slice(1).toLowerCase();
 
+  // Optimistic featured state with debounce
+  const [optimisticFeatured, setOptimisticFeatured] = useState(product.isFeatured);
+  const featuredDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync when server data refreshes
+  useEffect(() => {
+    setOptimisticFeatured(product.isFeatured);
+  }, [product.isFeatured]);
+
+  const handleStarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onToggleFeatured) return;
+    const next = !optimisticFeatured;
+    setOptimisticFeatured(next);
+    if (featuredDebounceRef.current) clearTimeout(featuredDebounceRef.current);
+    featuredDebounceRef.current = setTimeout(() => {
+      onToggleFeatured(product, next);
+    }, 500);
+  };
+
   return (
-    <div className={`relative group border rounded-xl bg-surface transition-all hover:shadow-md ${selected ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}>
+    <div
+      className={`relative group border rounded-xl bg-surface transition-all hover:shadow-md cursor-pointer ${selected ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+      onClick={() => router.push(`/products/${product.id}/edit`)}
+    >
       {/* Image area */}
       <div className="relative aspect-square rounded-t-xl overflow-hidden bg-muted/5">
         {product.primaryImageUrl ? (
@@ -284,21 +309,21 @@ export const ProductCard = memo(function ProductCard({
           </span>
         </div>
 
-        {/* Clickable star (feature toggle) */}
+        {/* Clickable star (feature toggle) — optimistic + debounced */}
         {onToggleFeatured && (
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onToggleFeatured(product); }}
+            onClick={handleStarClick}
             className={[
               'absolute bottom-2 left-2 p-1 rounded-full transition-all',
-              product.isFeatured
-                ? 'text-amber-500'
+              optimisticFeatured
+                ? 'text-amber-500 opacity-100'
                 : 'text-white/70 hover:text-amber-400 opacity-0 group-hover:opacity-100',
             ].join(' ')}
-            title={product.isFeatured ? 'Unpin from shop top' : 'Pin to shop top'}
+            title={optimisticFeatured ? 'Unpin from shop top' : 'Pin to shop top'}
           >
             <Star
-              className={`w-5 h-5 drop-shadow-sm ${product.isFeatured ? 'fill-amber-400 text-amber-500' : 'fill-black/20 text-white'}`}
+              className={`w-5 h-5 drop-shadow-sm transition-all ${optimisticFeatured ? 'fill-amber-400 text-amber-500 scale-110' : 'fill-black/20 text-white scale-100'}`}
             />
           </button>
         )}

@@ -20,7 +20,6 @@ interface PaginatedProducts {
 interface StoreSection {
   id:    string;
   name:  string;
-  slug:  string;
   count: number;
 }
 
@@ -275,13 +274,13 @@ export function StoreProductsClient({
   type QP = Record<string, string | number | boolean | undefined>;
   const allParams: QP = {
     storeSlug,
-    isActive:   true,
+    isActive:      true,
     sort,
     page,
-    limit:      24,
-    categoryId: selectedSection ?? undefined,
-    onSale:     onSaleFilter ? true : undefined,
-    search:     searchQuery?.trim() || undefined,
+    limit:         24,
+    shopSectionId: selectedSection ?? undefined,
+    onSale:        onSaleFilter ? true : undefined,
+    search:        searchQuery?.trim() || undefined,
   };
 
   const { data: allData, isLoading: allLoading } = useQuery<PaginatedProducts>({

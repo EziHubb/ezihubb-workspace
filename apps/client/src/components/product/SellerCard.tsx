@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -26,6 +26,23 @@ const SELLER_BADGES = [
     desc:  'Average review rating is 4.8 or higher',
   },
 ] as const;
+
+// ── Helper: renders a Link when href is set, otherwise a plain div/span ───────
+
+function ShopLink({
+  href,
+  className,
+  children,
+}: {
+  href:      string | null;
+  className: string;
+  children:  React.ReactNode;
+}) {
+  if (href) {
+    return <Link href={href} className={className}>{children}</Link>;
+  }
+  return <div className={className}>{children}</div>;
+}
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -56,28 +73,27 @@ export function SellerCard({ product }: SellerCardProps) {
       {/* ── SELLER PROFILE ── */}
       <div className="flex items-start gap-4 mb-6">
 
-        {/* Avatar */}
-        {storeHref ? (
-          <Link href={storeHref} className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center text-xl font-bold text-primary flex-shrink-0 hover:opacity-80 transition-opacity">
-            {initials}
-          </Link>
-        ) : (
-          <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center text-xl font-bold text-primary flex-shrink-0">
-            {initials}
-          </div>
-        )}
+        {/* Avatar — clickable when store slug is available */}
+        <ShopLink
+          href={storeHref}
+          className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center text-xl font-bold text-primary flex-shrink-0 hover:opacity-80 transition-opacity"
+        >
+          {initials}
+        </ShopLink>
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            {storeHref ? (
-              <Link href={storeHref} className="font-semibold text-lg text-secondary hover:text-primary transition-colors">
-                {storeName}
-              </Link>
-            ) : (
-              <h3 className="font-semibold text-lg text-secondary">{storeName}</h3>
-            )}
-          </div>
+          {/* Store name — clickable when store slug is available */}
+          <ShopLink
+            href={storeHref}
+            className={[
+              'font-semibold text-lg text-secondary',
+              storeHref ? 'hover:text-primary transition-colors cursor-pointer' : '',
+            ].join(' ')}
+          >
+            {storeName}
+          </ShopLink>
+
           <div className="flex items-center gap-3 mt-1 text-sm text-muted flex-wrap">
             <span className="flex items-center gap-1">
               <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
