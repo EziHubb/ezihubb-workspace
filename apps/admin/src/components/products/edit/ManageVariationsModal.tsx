@@ -16,11 +16,16 @@ import type { VariationGroup, VariationSettings } from './types';
 
 // ─── Settings helpers ─────────────────────────────────────────────────────────
 // Settings are encoded in `variesBy: string[]` to avoid a new migration.
-// Encoding: 'price:<groupId>' | 'processing' | 'quantity' | 'sku'
+// Encoding: 'price' | 'processing' | 'quantity' | 'sku'
+// Legacy 'price:<groupId>' entries are treated as 'price' (prices-on for all groups).
 
-function getPricesGroupId(variesBy: string[]): string | null {
-  const entry = variesBy.find((v) => v.startsWith('price:'));
-  return entry ? entry.slice(6) : null;
+function hasPricing(variesBy: string[]): boolean {
+  return variesBy.some((v) => v === 'price' || v.startsWith('price:'));
+}
+
+function togglePricing(variesBy: string[], on: boolean): string[] {
+  const without = variesBy.filter((v) => v !== 'price' && !v.startsWith('price:'));
+  return on ? [...without, 'price'] : without;
 }
 
 function hasSetting(variesBy: string[], key: string): boolean {
@@ -30,11 +35,6 @@ function hasSetting(variesBy: string[], key: string): boolean {
 function setSetting(variesBy: string[], key: string, on: boolean): string[] {
   const without = variesBy.filter((v) => v !== key && !v.startsWith(`${key}:`));
   return on ? [...without, key] : without;
-}
-
-function setPricesGroup(variesBy: string[], groupId: string | null): string[] {
-  const without = variesBy.filter((v) => !v.startsWith('price:'));
-  return groupId ? [...without, `price:${groupId}`] : without;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -202,33 +202,22 @@ function VariationGroupCard({
 // ─── VariationSettingsToggles ─────────────────────────────────────────────────
 
 function VariationSettingsToggles({
-  groups, settings, onChange,
+  settings, onChange,
 }: {
-  groups:   VariationGroup[];
   settings: VariationSettings | undefined;
   onChange: (variesBy: string[]) => void;
 }) {
-  const variesBy     = settings?.variesBy ?? [];
-  const pricesGroupId = getPricesGroupId(variesBy);
+  const variesBy = settings?.variesBy ?? [];
 
   return (
     <div className="space-y-4">
       {/* Prices vary */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-3">
         <Toggle
-          checked={!!pricesGroupId}
-          onChange={(on) => onChange(setPricesGroup(variesBy, on ? (groups[0]?.id ?? null) : null))}
+          checked={hasPricing(variesBy)}
+          onChange={(on) => onChange(togglePricing(variesBy, on))}
         />
         <span className="text-sm font-medium text-secondary">Prices vary for each</span>
-        {pricesGroupId && groups.length > 0 && (
-          <select
-            value={pricesGroupId}
-            onChange={(e) => onChange(setPricesGroup(variesBy, e.target.value))}
-            className="text-sm border border-border rounded-button px-2.5 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-          </select>
-        )}
       </div>
 
       {[
@@ -250,33 +239,27 @@ function VariationSettingsToggles({
 
 // ─── VariantPriceMatrix ───────────────────────────────────────────────────────
 
-function VariantPriceMatrix({
-  productId, groups, settings,
+function VariantPriceTable({
+  productId, group,
 }: {
   productId: string;
-  groups:    VariationGroup[];
-  settings:  VariationSettings;
+  group:     VariationGroup;
 }) {
-  const pricesGroupId = getPricesGroupId(settings.variesBy);
-  const priceGroup    = groups.find((g) => g.id === pricesGroupId);
   const qc = useQueryClient();
 
   const patchOption = async (optionId: string, priceDelta: number | null) => {
-    if (!priceGroup) return;
     await api.patch(
-      API_ROUTES.ADMIN.PRODUCT_VARIATION_OPTION(productId, priceGroup.id, optionId),
+      API_ROUTES.ADMIN.PRODUCT_VARIATION_OPTION(productId, group.id, optionId),
       { priceDelta },
     );
     qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
   };
 
-  if (!priceGroup) return null;
-
   return (
-    <div className="mt-5 border border-border rounded-xl overflow-hidden">
+    <div className="border border-border rounded-xl overflow-hidden">
       <div className="px-4 py-2.5 bg-background border-b border-border">
         <p className="text-xs font-semibold text-muted uppercase tracking-wide">
-          Price adjustment per {priceGroup.name}
+          Price adjustment per {group.name}
         </p>
         <p className="text-xs text-muted mt-0.5">Added to the base price for this option</p>
       </div>
@@ -284,7 +267,7 @@ function VariantPriceMatrix({
         <thead>
           <tr className="border-b border-border bg-muted/3">
             <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted uppercase tracking-wide">
-              {priceGroup.name}
+              {group.name}
             </th>
             <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted uppercase tracking-wide">
               Price delta
@@ -292,7 +275,7 @@ function VariantPriceMatrix({
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {priceGroup.options.map((opt) => (
+          {group.options.map((opt) => (
             <tr key={opt.id}>
               <td className="px-4 py-2.5">
                 <div className="flex items-center gap-2">
@@ -314,6 +297,22 @@ function VariantPriceMatrix({
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function VariantPriceMatrix({
+  productId, groups,
+}: {
+  productId: string;
+  groups:    VariationGroup[];
+}) {
+  if (groups.length === 0) return null;
+  return (
+    <div className="space-y-4">
+      {groups.map((group) => (
+        <VariantPriceTable key={group.id} productId={productId} group={group} />
+      ))}
     </div>
   );
 }
@@ -799,18 +798,16 @@ export function ManageVariationsModal({
                   <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-4">Variation settings</p>
 
                   <VariationSettingsToggles
-                    groups={groups}
                     settings={settings}
                     onChange={saveSettings}
                   />
                 </div>
 
-                {/* Price matrix */}
-                {settings && getPricesGroupId(settings.variesBy) && (
+                {/* Price matrix — shown for all groups when pricing is enabled */}
+                {settings && hasPricing(settings.variesBy) && groups.length > 0 && (
                   <VariantPriceMatrix
                     productId={productId}
                     groups={groups}
-                    settings={settings}
                   />
                 )}
               </>

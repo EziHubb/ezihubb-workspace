@@ -86,22 +86,22 @@ export default function ProductsSeoPage() {
     staleTime: 60_000,
   });
 
-  const { data: productsData, isLoading } = useQuery<{ data: SeoProductRow[]; total: number }>({
+  const { data: productsData, isLoading } = useQuery<{ data: SeoProductRow[]; pagination: { total: number; totalPages: number } }>({
     queryKey: ['seo-products', page, search],
     queryFn:  async () => {
       try {
         const params: Record<string, string> = { page: String(page), limit: String(PAGE_SIZE) };
         if (search) params['q'] = search;
-        return await api.get<{ data: SeoProductRow[]; total: number }>(API_ROUTES.ADMIN.PRODUCTS, { params });
+        return await api.get<{ data: SeoProductRow[]; pagination: { total: number; totalPages: number } }>(API_ROUTES.ADMIN.PRODUCTS, { params });
       } catch {
-        return { data: [], total: 0 };
+        return { data: [], pagination: { total: 0, totalPages: 0 } };
       }
     },
     staleTime: 30_000,
   });
 
   const allProducts = productsData?.data ?? [];
-  const total       = productsData?.total ?? 0;
+  const total       = productsData?.pagination?.total ?? 0;
 
   // Client-side filter for "issues" (products with score < 70)
   const products = useMemo(() => {
@@ -112,7 +112,7 @@ export default function ProductsSeoPage() {
   }, [allProducts, filter]);
 
   const stats = statsData ?? { total: 0, missingTitle: 0, missingDescription: 0, lowScore: 0, noIndex: 0 };
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const totalPages = productsData?.pagination?.totalPages ?? Math.ceil(total / PAGE_SIZE);
 
   return (
     <>
