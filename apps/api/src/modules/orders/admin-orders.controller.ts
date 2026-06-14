@@ -48,7 +48,8 @@ export class AdminOrdersController {
   @ApiOperation({ summary: 'List orders (scoped to own store for shop owners)' })
   async findAll(@Req() req: Request, @Query() query: AdminOrderQueryDto) {
     const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
-    return this.ordersService.findAll(storeId ? { ...query, storeId } : query);
+    if (storeId) query.storeId = storeId;
+    return this.ordersService.findAll(query);
   }
 
   // ── PDF endpoints — two-segment routes BEFORE :id to avoid param conflicts ─
@@ -80,7 +81,8 @@ export class AdminOrdersController {
   @ApiOperation({ summary: 'Export orders as CSV' })
   async exportCsv(@Req() req: Request, @Query() query: AdminOrderQueryDto, @Res() res: Response) {
     const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
-    const csv = await this.ordersService.exportOrdersCsv(storeId ? { ...query, storeId } : query);
+    if (storeId) query.storeId = storeId;
+    const csv = await this.ordersService.exportOrdersCsv(query);
     res.header('Content-Type', 'text/csv; charset=utf-8');
     res.header('Content-Disposition', `attachment; filename="orders-${Date.now()}.csv"`);
     res.send(csv);
