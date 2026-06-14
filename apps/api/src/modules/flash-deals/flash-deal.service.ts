@@ -164,4 +164,88 @@ export class FlashDealService {
     });
     await this.redis.del(ACTIVE_DEALS_CACHE_KEY);
   }
+
+  async findAdmin(params: { status?: string; page: number; limit: number }) {
+    const { status, page, limit } = params;
+    const statusMap: Partial<Record<string, FlashDealStatus>> = {
+      PENDING:  FlashDealStatus.PENDING,
+      ACTIVE:   FlashDealStatus.ACTIVE,
+      UPCOMING: FlashDealStatus.APPROVED,
+      ENDED:    FlashDealStatus.ENDED,
+    };
+    const where: { status?: FlashDealStatus } = {};
+    if (status && statusMap[status]) where.status = statusMap[status];
+
+    const [rows, total] = await Promise.all([
+      this.prisma.flashDeal.findMany({
+        where,
+        include: {
+          store:   { select: { id: true, name: true } },
+          product: { select: { id: true, name: true, images: { take: 1, select: { url: true } } } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.flashDeal.count({ where }),
+    ]);
+
+    return {
+      data: rows.map((d) => ({
+        id:            d.id,
+        storeId:       d.storeId,
+        storeName:     d.store.name,
+        productId:     d.productId,
+        productName:   d.product.name,
+        productImage:  d.product.images[0]?.url ?? null,
+        originalPrice: Number(d.originalPrice),
+        dealPrice:     Number(d.dealPrice),
+        discountPct:   Number(d.discountPct),
+        startsAt:      d.startsAt.toISOString(),
+        endsAt:        d.endsAt.toISOString(),
+        quantityLimit: d.quantityLimit,
+        soldCount:     d.soldCount,
+        submittedAt:   d.createdAt.toISOString(),
+        status:        d.status as string,
+        isFeatured:    d.isFeatured,
+      })),
+      total,
+    };
+  }
+
+  async getAdminStats() {
+    const now = new Date();
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [activeNow, pendingReview, endingToday, totalThisWeek] = await Promise.all([
+      this.prisma.flashDeal.count({ where: { status: FlashDealStatus.ACTIVE } }),
+      this.prisma.flashDeal.count({ where: { status: FlashDealStatus.PENDING } }),
+      this.prisma.flashDeal.count({ where: { status: FlashDealStatus.ACTIVE, endsAt: { lte: todayEnd } } }),
+      this.prisma.flashDeal.count({ where: { createdAt: { gte: weekStart } } }),
+    ]);
+
+    return { activeNow, pendingReview, endingToday, totalThisWeek };
+  }
+
+  async reviewDeal(dealId: string, payload: {
+    approved: boolean;
+    commissionOverride: number | null;
+    featured: boolean;
+    adminNote: string;
+    rejectionReason?: string;
+  }) {
+    const deal = await this.prisma.flashDeal.findUnique({ where: { id: dealId } });
+    if (!deal) throw new NotFoundException('Flash deal not found');
+    await this.prisma.flashDeal.update({
+      where: { id: dealId },
+      data: {
+        status: payload.approved ? FlashDealStatus.APPROVED : FlashDealStatus.CANCELLED,
+        ...(payload.featured !== undefined && { isFeatured: payload.featured }),
+      },
+    });
+    if (!payload.approved) {
+      await this.redis.del(ACTIVE_DEALS_CACHE_KEY);
+    }
+  }
 }

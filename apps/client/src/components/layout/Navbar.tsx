@@ -20,7 +20,6 @@ import { CartDrawer } from './CartDrawer';
 import { SearchInput } from '../search/SearchInput';
 import { MegaMenu } from './MegaMenu';
 import { MobileNavDrawer } from './MobileNavDrawer';
-import { CurrencyPicker } from './CurrencyPicker';
 import { LocaleSwitcher } from './LocaleSwitcher';
 import type { MegaMenuTab } from '../../types/mega-menu';
 
@@ -236,7 +235,7 @@ export function Navbar({ menuData }: NavbarProps = {}) {
             </div>
 
             {/* Right: icons + user */}
-            <div className="flex items-center gap-1 md:gap-2 ml-auto lg:ml-0 shrink-0">
+            <div className="flex items-center gap-1.5 md:gap-2.5 ml-auto lg:ml-0 shrink-0">
               {/* Mobile search icon */}
               <Link
                 href={`/${locale}/search`}
@@ -246,10 +245,9 @@ export function Navbar({ menuData }: NavbarProps = {}) {
                 <Search className="w-5 h-5 text-secondary" />
               </Link>
 
-              {/* Language + Currency pickers — desktop only */}
-              <div className="hidden md:flex items-center gap-0.5">
+              {/* Language picker — desktop only */}
+              <div className="hidden md:block">
                 <LocaleSwitcher />
-                <CurrencyPicker />
               </div>
 
               {/* Wishlist — desktop only */}

@@ -63,13 +63,13 @@ export class ModerationService {
       for (const { fieldName, content } of textJobs) {
         await this.queue.add(JOBS.CHECK_TEXT, {
           entityType: 'Product', entityId: productId, fieldName, content, storeId: product.storeId,
-        }, { ...DEFAULT_JOB_OPTIONS, jobId: `mod:product:${productId}:${fieldName}` });
+        }, { ...DEFAULT_JOB_OPTIONS, jobId: `mod_product_${productId}_${fieldName}` });
       }
       for (const img of product.images) {
         const hash = crypto.createHash('sha256').update(img.url).digest('hex').slice(0, 12);
         await this.queue.add(JOBS.CHECK_IMAGE, {
           entityType: 'Product', entityId: productId, imageUrl: img.url, storeId: product.storeId,
-        }, { ...DEFAULT_JOB_OPTIONS, delay: 500, jobId: `mod:product:${productId}:img:${hash}` });
+        }, { ...DEFAULT_JOB_OPTIONS, delay: 500, jobId: `mod_product_${productId}_img_${hash}` });
       }
     } catch (err) {
       this.logger.error('queueProductModeration failed', err);
@@ -92,7 +92,7 @@ export class ModerationService {
         if (!content) continue;
         await this.queue.add(JOBS.CHECK_TEXT, {
           entityType: 'Store', entityId: storeId, fieldName, content, storeId,
-        }, { ...DEFAULT_JOB_OPTIONS, jobId: `mod:store:${storeId}:${fieldName}` });
+        }, { ...DEFAULT_JOB_OPTIONS, jobId: `mod_store_${storeId}_${fieldName}` });
       }
     } catch (err) {
       this.logger.error('queueStoreModeration failed', err);
@@ -115,7 +115,7 @@ export class ModerationService {
         if (!content) continue;
         await this.queue.add(JOBS.CHECK_TEXT, {
           entityType: 'Review', entityId: reviewId, fieldName, content, storeId: review.storeId,
-        }, { ...DEFAULT_JOB_OPTIONS, jobId: `mod:review:${reviewId}:${fieldName}` });
+        }, { ...DEFAULT_JOB_OPTIONS, jobId: `mod_review_${reviewId}_${fieldName}` });
       }
     } catch (err) {
       this.logger.error('queueReviewModeration failed', err);
@@ -133,7 +133,7 @@ export class ModerationService {
       await this.queue.add(JOBS.CHECK_TEXT, {
         entityType: 'Message', entityId: messageId, fieldName: 'body',
         content: msg.body, storeId: msg.conversation?.storeId,
-      }, { ...DEFAULT_JOB_OPTIONS, delay: 3_000, jobId: `mod:message:${messageId}:body` });
+      }, { ...DEFAULT_JOB_OPTIONS, delay: 3_000, jobId: `mod_message_${messageId}_body` });
     } catch (err) {
       this.logger.error('queueMessageModeration failed', err);
     }

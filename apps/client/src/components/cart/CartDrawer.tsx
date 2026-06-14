@@ -106,9 +106,15 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                     >
                       {item.productName}
                     </Link>
-                    {item.variantName && (
+                    {item.variantOptions && Object.keys(item.variantOptions).length > 0 ? (
+                      <p className="text-xs text-muted">
+                        {Object.entries(item.variantOptions)
+                          .map(([k, v]) => `${k}: ${v}`)
+                          .join(' · ')}
+                      </p>
+                    ) : item.variantName ? (
                       <p className="text-xs text-muted">{item.variantName}</p>
-                    )}
+                    ) : null}
                     {item.priceChanged && (
                       <p className="text-xs text-warning">{t('item.priceUpdated')}</p>
                     )}

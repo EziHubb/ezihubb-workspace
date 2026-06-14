@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@mlh/api-client';
-import { useAuthStore } from '../../../../lib/store/auth.store';
+import { useAuthStore } from '../../../../../lib/store/auth.store';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

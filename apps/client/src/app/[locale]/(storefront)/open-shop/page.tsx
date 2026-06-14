@@ -9,7 +9,7 @@ import {
   Store, Clock, CheckCircle, XCircle, ArrowRight,
   Package, TrendingUp, Palette, Globe, ChevronRight, AlertCircle,
 } from 'lucide-react';
-import { useAuthStore } from '../../../lib/store/auth.store';
+import { useAuthStore } from '../../../../lib/store/auth.store';
 import { apiClient } from '@mlh/api-client';
 
 // ── Types ──────────────────────────────────────────────────────────────────────

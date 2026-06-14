@@ -28,7 +28,7 @@ export function GroupGiftingSpotlight({ locale }: GroupGiftingSpotlightProps) {
 
   useEffect(() => {
     apiClient.get<GiftPoolPreview[]>('/gift-pools/public?limit=3')
-      .then(setPools)
+      .then((data) => setPools(Array.isArray(data) ? data : []))
       .catch(() => setPools([]));
   }, []);
 

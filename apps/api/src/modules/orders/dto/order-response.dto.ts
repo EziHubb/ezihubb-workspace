@@ -8,6 +8,8 @@ export class OrderItemDto {
   @ApiProperty() productName: string;
   @ApiPropertyOptional() productSlug: string | null;
   @ApiPropertyOptional() variantName: string | null;
+  @ApiPropertyOptional() variantSnapshot: Record<string, string> | null;
+  @ApiPropertyOptional() sku: string | null;
   @ApiProperty() quantity: number;
   @ApiProperty() unitPrice: number;
   @ApiProperty() totalPrice: number;

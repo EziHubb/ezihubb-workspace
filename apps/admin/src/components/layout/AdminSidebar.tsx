@@ -13,7 +13,7 @@ import {
   CreditCard, Settings, ChevronDown, LogOut, Globe, MessageSquare, Link2,
   Bookmark, Factory, Shield, GitBranch, Store, BarChart2, Wallet, ShieldAlert, History,
   SlidersHorizontal, ScanSearch, Sparkles, TrendingUp, DollarSign, Activity,
-  Menu, X, Megaphone,
+  Menu, X, Megaphone, Zap, Gift, Plus,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -82,6 +82,13 @@ const NAV_SECTIONS: NavSection[] = [
           { label: 'Platform Settings', href: '/stores/settings', icon: Settings },
         ],
       },
+      {
+        label: 'Flash Deals', href: '/flash-deals', icon: Zap,
+        children: [
+          { label: 'Review Queue', href: '/flash-deals',        icon: Zap   },
+          { label: 'Submit Deal',  href: '/flash-deals/submit', icon: Plus  },
+        ],
+      },
       { label: 'Finance',  href: '/finance',  icon: BarChart2  },
       { label: 'Payouts',  href: '/payouts',  icon: Wallet     },
       { label: 'Shipping', href: '/shipping', icon: Truck      },
@@ -94,6 +101,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Customers',  href: '/customers',  icon: Users         },
       { label: 'Messages',   href: '/messages',   icon: MessageSquare },
       { label: 'Reviews',    href: '/reviews',    icon: Star          },
+      { label: 'Gift Pools', href: '/gift-pools', icon: Gift          },
       { label: 'Promotions', href: '/promotions', icon: BadgePercent  },
       { label: 'Campaigns',  href: '/campaigns',  icon: Megaphone     },
     ],
@@ -177,6 +185,13 @@ const SHOP_NAV_SECTIONS: NavSection[] = [
       { label: 'Orders',   href: '/orders',   icon: ShoppingCart },
       { label: 'Reviews',  href: '/reviews',  icon: Star         },
       { label: 'Messages', href: '/messages', icon: MessageSquare },
+      {
+        label: 'Flash Deals', href: '/flash-deals/submit', icon: Zap,
+        children: [
+          { label: 'My Deals',    href: '/flash-deals/submit', icon: Zap  },
+          { label: 'Submit Deal', href: '/flash-deals/submit', icon: Plus },
+        ],
+      },
     ],
   },
   {

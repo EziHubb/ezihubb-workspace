@@ -8,6 +8,7 @@ export class CartItemDto {
   @ApiPropertyOptional() productImageUrl: string | null;
   @ApiPropertyOptional() variantId: string | null;
   @ApiPropertyOptional() variantName: string | null;
+  @ApiPropertyOptional() variantOptions: Record<string, string> | null;
   @ApiProperty() quantity: number;
   /** Price at time of adding to cart */
   @ApiProperty() unitPrice: number;

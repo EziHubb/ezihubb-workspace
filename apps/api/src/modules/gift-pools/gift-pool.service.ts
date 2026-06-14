@@ -135,6 +135,40 @@ export class GiftPoolService {
     }
   }
 
+  async findPublic(limit: number) {
+    const pools = await this.prisma.giftPool.findMany({
+      where: { status: GiftPoolStatus.ACTIVE, deadline: { gt: new Date() } },
+      select: {
+        id:              true,
+        shareToken:      true,
+        recipientName:   true,
+        targetAmount:    true,
+        collectedAmount: true,
+        product: {
+          select: {
+            name:   true,
+            images: { take: 1, select: { url: true }, orderBy: { isPrimary: 'desc' } },
+          },
+        },
+        _count: { select: { contributions: true } },
+      },
+      orderBy: { collectedAmount: 'desc' },
+      take: Math.min(limit, 20),
+    });
+
+    return pools.map((p) => ({
+      id:              p.id,
+      title:           p.recipientName,
+      shareToken:      p.shareToken,
+      targetAmount:    Number(p.targetAmount),
+      collectedAmount: Number(p.collectedAmount),
+      contributors:    p._count.contributions,
+      product: p.product
+        ? { name: p.product.name, imageUrl: p.product.images[0]?.url ?? null }
+        : null,
+    }));
+  }
+
   async getMyPools(userId: string) {
     return this.prisma.giftPool.findMany({
       where: { organizerId: userId },
@@ -144,6 +178,75 @@ export class GiftPoolService {
         },
       },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findAdmin(params: { status?: string; page: number; limit: number }) {
+    const { status, page, limit } = params;
+    const where: { status?: GiftPoolStatus } = {};
+    if (status && Object.values(GiftPoolStatus).includes(status as GiftPoolStatus)) {
+      where.status = status as GiftPoolStatus;
+    }
+
+    const [rows, total] = await Promise.all([
+      this.prisma.giftPool.findMany({
+        where,
+        include: {
+          organizer: { select: { id: true, email: true } },
+          product:   { select: { id: true, name: true, images: { take: 1, select: { url: true }, orderBy: { isPrimary: 'desc' } } } },
+          _count:    { select: { contributions: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.giftPool.count({ where }),
+    ]);
+
+    return {
+      data: rows.map((p) => ({
+        id:              p.id,
+        shareToken:      p.shareToken,
+        recipientName:   p.recipientName,
+        targetAmount:    Number(p.targetAmount),
+        collectedAmount: Number(p.collectedAmount),
+        status:          p.status as string,
+        deadline:        p.deadline.toISOString(),
+        createdAt:       p.createdAt.toISOString(),
+        contributions:   p._count.contributions,
+        organizer:       { id: p.organizer.id, email: p.organizer.email },
+        product: p.product
+          ? { id: p.product.id, name: p.product.name, imageUrl: p.product.images[0]?.url ?? null }
+          : null,
+      })),
+      total,
+    };
+  }
+
+  async getAdminStats() {
+    const [totalActive, totalCompleted, totalExpired, totalCancelled, agg] = await Promise.all([
+      this.prisma.giftPool.count({ where: { status: GiftPoolStatus.ACTIVE } }),
+      this.prisma.giftPool.count({ where: { status: GiftPoolStatus.COMPLETED } }),
+      this.prisma.giftPool.count({ where: { status: GiftPoolStatus.EXPIRED } }),
+      this.prisma.giftPool.count({ where: { status: GiftPoolStatus.CANCELLED } }),
+      this.prisma.giftPool.aggregate({ _sum: { collectedAmount: true } }),
+    ]);
+
+    return {
+      totalActive,
+      totalCompleted,
+      totalExpired,
+      totalCancelled,
+      totalCollected: Number(agg._sum.collectedAmount ?? 0),
+    };
+  }
+
+  async adminClose(poolId: string) {
+    const pool = await this.prisma.giftPool.findUnique({ where: { id: poolId } });
+    if (!pool) throw new NotFoundException('Gift pool not found');
+    await this.prisma.giftPool.update({
+      where: { id: poolId },
+      data: { status: GiftPoolStatus.CANCELLED },
     });
   }
 }

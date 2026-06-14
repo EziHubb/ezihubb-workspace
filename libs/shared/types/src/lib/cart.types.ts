@@ -25,6 +25,7 @@ export interface CartItemDto {
   productImageUrl: string | null;
   /** @deprecated use variant.options */
   variantName: string | null;
+  variantOptions?: Record<string, string> | null;
   /** @deprecated compare unitPrice vs currentPrice */
   priceChanged: boolean;
   totalPrice: number;

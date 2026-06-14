@@ -49,12 +49,13 @@ const CART_INCLUDE_FOR_CHECKOUT = {
           id: true,
           name: true,
           slug: true,
+          sku: true,
           basePrice: true,
           isActive: true,
           deletedAt: true,
           storeId: true,
           images: {
-            where: { isPrimary: true },
+            orderBy: { isPrimary: 'desc' as const },
             select: { url: true },
             take: 1,
           },
@@ -146,9 +147,8 @@ export class OrdersService {
 
     // Recalculate subtotal from current prices (server-side, never trust client)
     const subtotal = cart.items.reduce((sum, item) => {
-      const price = item.variant
-        ? Number(item.variant.price)
-        : Number(item.product.basePrice);
+      const variantPrice = item.variant ? Number(item.variant.price) : 0;
+      const price = variantPrice > 0 ? variantPrice : Number(item.product.basePrice);
       return sum + price * item.quantity;
     }, 0);
 
@@ -289,13 +289,14 @@ export class OrdersService {
       toCountry: addr.country,
       subtotal:  subtotalAfterDiscount + giftWrappingCost,
       shipping:  shippingCost,
-      lineItems: cart.items.map((item) => ({
-        id:        item.productId,
-        quantity:  item.quantity,
-        unitPrice: item.variant
-          ? Number(item.variant.price)
-          : Number(item.product.basePrice),
-      })),
+      lineItems: cart.items.map((item) => {
+        const vp = item.variant ? Number(item.variant.price) : 0;
+        return {
+          id:        item.productId,
+          quantity:  item.quantity,
+          unitPrice: vp > 0 ? vp : Number(item.product.basePrice),
+        };
+      }),
     });
     // Affiliate + referral + loyalty + store-credit discounts — applied AFTER coupon, BEFORE payment
     const total = Math.max(
@@ -357,9 +358,10 @@ export class OrdersService {
           productId:        item.productId,
           variantId:        item.variantId,
           quantity:         item.quantity,
-          unitPrice:        item.variant
-            ? Number(item.variant.price)
-            : Number(item.product.basePrice),
+          unitPrice:        (() => {
+            const vp = item.variant ? Number(item.variant.price) : 0;
+            return vp > 0 ? vp : Number(item.product.basePrice);
+          })(),
           customizationData: item.customizationData as
             | Prisma.InputJsonValue
             | undefined,
@@ -371,7 +373,7 @@ export class OrdersService {
           productImageUrl:  item.product.images?.[0]?.url ?? null,
           variantName:      item.variant?.name ?? null,
           variantSnapshot:  item.variant?.options as Prisma.InputJsonValue ?? null,
-          sku:              item.variant?.sku ?? null,
+          sku:              item.variant?.sku ?? item.product.sku ?? null,
         })),
       });
 
@@ -396,7 +398,8 @@ export class OrdersService {
 
         for (const [storeId, items] of storeGroups) {
           const storeSubtotal = items.reduce((sum, item) => {
-            const price = item.variant ? Number(item.variant.price) : Number(item.product.basePrice);
+            const vp = item.variant ? Number(item.variant.price) : 0;
+            const price = vp > 0 ? vp : Number(item.product.basePrice);
             return sum + price * item.quantity;
           }, 0);
 
@@ -528,15 +531,6 @@ export class OrdersService {
               quantity: true,
               previewUrl: true,
               productImageUrl: true,
-              product: {
-                select: {
-                  images: {
-                    where: { isPrimary: true },
-                    select: { url: true },
-                    take: 1,
-                  },
-                },
-              },
             },
             take: 1,
             orderBy: { previewUrl: 'desc' },
@@ -556,7 +550,7 @@ export class OrdersService {
       total: Number(o.total),
       itemCount: o.items.reduce((s, i) => s + i.quantity, 0),
       previewUrl: o.items[0]?.previewUrl ?? null,
-      imageUrl: o.items[0]?.productImageUrl ?? o.items[0]?.product?.images?.[0]?.url ?? null,
+      imageUrl: o.items[0]?.previewUrl ?? o.items[0]?.productImageUrl ?? null,
       createdAt: o.createdAt,
     }));
 
@@ -716,15 +710,6 @@ export class OrdersService {
               quantity: true,
               previewUrl: true,
               productImageUrl: true,
-              product: {
-                select: {
-                  images: {
-                    where: { isPrimary: true },
-                    select: { url: true },
-                    take: 1,
-                  },
-                },
-              },
             },
             orderBy: { previewUrl: 'desc' },
             take: 1,
@@ -754,7 +739,7 @@ export class OrdersService {
       total: Number(o.total),
       itemCount: o.items.reduce((s, i) => s + i.quantity, 0),
       previewUrl: o.items[0]?.previewUrl ?? null,
-      imageUrl: o.items[0]?.productImageUrl ?? o.items[0]?.product?.images?.[0]?.url ?? null,
+      imageUrl: o.items[0]?.previewUrl ?? o.items[0]?.productImageUrl ?? null,
       shippingName: o.shippingName,
       shippingCity: o.shippingCity,
       shippingCountry: o.shippingCountry,
@@ -1162,6 +1147,8 @@ export class OrdersService {
       productName: i.productName,
       productSlug: i.productSlug,
       variantName: i.variantName,
+      variantSnapshot: i.variantSnapshot as Record<string, string> | null,
+      sku: i.sku,
       quantity: i.quantity,
       unitPrice: Number(i.unitPrice),
       totalPrice: Number(i.unitPrice) * i.quantity,

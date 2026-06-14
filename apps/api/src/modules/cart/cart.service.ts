@@ -32,13 +32,13 @@ const CART_INCLUDE = {
           basePrice: true,
           isActive: true,
           images: {
-            where: { isPrimary: true },
+            orderBy: { isPrimary: 'desc' as const },
             select: { url: true },
             take: 1,
           },
         },
       },
-      variant: { select: { id: true, name: true, price: true } },
+      variant: { select: { id: true, name: true, price: true, options: true } },
     },
     orderBy: { createdAt: 'asc' as const },
   },
@@ -453,9 +453,8 @@ export class CartService {
 
   private calcSubtotal(items: CartWithItems['items']): number {
     return items.reduce((sum, item) => {
-      const price = item.variant
-        ? Number(item.variant.price)
-        : Number(item.product.basePrice);
+      const variantPrice = item.variant ? Number(item.variant.price) : 0;
+      const price = variantPrice > 0 ? variantPrice : Number(item.product.basePrice);
       return sum + price * item.quantity;
     }, 0);
   }
@@ -473,8 +472,9 @@ export class CartService {
 
   private mapToDto(cart: CartWithItems): CartResponseDto {
     const items: CartItemDto[] = cart.items.map((item) => {
-      const currentPrice = item.variant
-        ? Number(item.variant.price)
+      const variantPrice = item.variant ? Number(item.variant.price) : 0;
+      const currentPrice = variantPrice > 0
+        ? variantPrice
         : Number(item.product.basePrice);
       const unitPrice = Number(item.unitPrice);
       return {
@@ -485,6 +485,7 @@ export class CartService {
         productImageUrl: item.product.images[0]?.url ?? null,
         variantId: item.variantId,
         variantName: item.variant?.name ?? null,
+        variantOptions: (item.variant?.options as Record<string, string> | null) ?? null,
         quantity: item.quantity,
         unitPrice,
         currentPrice,

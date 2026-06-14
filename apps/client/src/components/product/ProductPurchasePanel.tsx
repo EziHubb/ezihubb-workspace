@@ -425,7 +425,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
     try {
       await addItem({
         productId:         product.id,
-        variantId:         selectedVariant?.sku ?? null,
+        variantId:         selectedVariant?.id ?? selectedVariant?.sku ?? null,
         quantity,
         customizationData: null,
       });
