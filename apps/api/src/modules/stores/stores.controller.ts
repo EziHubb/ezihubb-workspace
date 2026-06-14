@@ -13,6 +13,18 @@ import { UpdateStoreDto } from './dto/update-store.dto';
 export class StoresController {
   constructor(private readonly storesService: StoresService) {}
 
+  /** Public: paginated list of active stores */
+  @Get()
+  listStores(
+    @Query('page')  page  = '1',
+    @Query('limit') limit = '12',
+  ) {
+    return this.storesService.listStores(
+      Math.max(1, parseInt(page, 10)  || 1),
+      Math.min(50, Math.max(1, parseInt(limit, 10) || 12)),
+    );
+  }
+
   /** Public: list active seller plans for open-shop page */
   @Get('plans')
   getPublicPlans() {

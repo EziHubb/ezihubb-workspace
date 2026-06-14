@@ -149,6 +149,28 @@ export class StoresService {
     return updatedStore;
   }
 
+  // ─── Public: Store list ───────────────────────────────────────────────────
+
+  async listStores(page = 1, limit = 12) {
+    const where = { status: 'ACTIVE' as const };
+    const skip  = (page - 1) * limit;
+    const [total, data] = await Promise.all([
+      this.prisma.store.count({ where }),
+      this.prisma.store.findMany({
+        where,
+        skip,
+        take:    limit,
+        orderBy: { rating: 'desc' },
+        select: {
+          id: true, slug: true, name: true, description: true,
+          logoUrl: true, bannerUrl: true,
+          totalProducts: true, rating: true,
+        },
+      }),
+    ]);
+    return paginatedResponse(data, total, page, limit);
+  }
+
   // ─── Public: Store page ───────────────────────────────────────────────────
 
   async getStoreBySlug(slug: string) {

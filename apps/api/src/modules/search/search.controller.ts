@@ -37,6 +37,24 @@ export class SearchController {
     return this.searchService.getTrending();
   }
 
+  // GET /search/suggestions?q=...
+  @Get('suggestions')
+  @ApiOperation({ summary: 'Search suggestions combining autocomplete + related keywords' })
+  @ApiQuery({ name: 'q', required: true, description: 'Search term' })
+  @ApiResponse({ status: 200, schema: { type: 'array', items: { type: 'string' } } })
+  async getSuggestions(@Query('q') q = ''): Promise<string[]> {
+    const [autocomplete, related] = await Promise.all([
+      this.searchService.autocomplete(q),
+      this.searchService.getRelated(q),
+    ]);
+    const seen = new Set<string>();
+    const merged: string[] = [];
+    for (const item of [...autocomplete, ...related]) {
+      if (!seen.has(item)) { seen.add(item); merged.push(item); }
+    }
+    return merged.slice(0, 10);
+  }
+
   // GET /search/related?q=...
   @Get('related')
   @ApiOperation({ summary: 'Related search keyword suggestions based on trending data' })

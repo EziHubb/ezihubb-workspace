@@ -136,4 +136,57 @@ export class BlindMatchService {
       include: { ratings: { select: { rating: true, feedbackText: true, ratedAt: true } } },
     });
   }
+
+  async getHallOfFame(limit = 10) {
+    const ratings = await this.prisma.blindMatchRating.findMany({
+      where:   { rating: { gte: 4 } },
+      orderBy: { rating: 'desc' },
+      take:    Math.min(limit, 50),
+      select: {
+        rating:      true,
+        feedbackText: true,
+        ratedAt:     true,
+        request: {
+          select: {
+            recipientName: true,
+            occasion:      true,
+            selectedProductId: true,
+          },
+        },
+      },
+    });
+    return ratings.map((r) => ({
+      rating:       r.rating,
+      feedback:     r.feedbackText,
+      ratedAt:      r.ratedAt,
+      recipientName: r.request.recipientName,
+      occasion:     r.request.occasion,
+    }));
+  }
+
+  async getUgc(limit = 12) {
+    const ratings = await this.prisma.blindMatchRating.findMany({
+      where:   { rating: { gte: 4 }, feedbackText: { not: null } },
+      orderBy: { ratedAt: 'desc' },
+      take:    Math.min(limit, 50),
+      select: {
+        rating:      true,
+        feedbackText: true,
+        ratedAt:     true,
+        request: {
+          select: {
+            recipientName: true,
+            occasion:      true,
+          },
+        },
+      },
+    });
+    return ratings.map((r) => ({
+      rating:       r.rating,
+      feedback:     r.feedbackText,
+      ratedAt:      r.ratedAt,
+      recipientName: r.request.recipientName,
+      occasion:     r.request.occasion,
+    }));
+  }
 }

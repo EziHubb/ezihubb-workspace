@@ -1,10 +1,23 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Public } from '../../common/decorators/public.decorator';
 import { BlindMatchService } from './blind-match.service';
 
 @Controller('blind-match')
 export class BlindMatchController {
   constructor(private readonly blindMatchService: BlindMatchService) {}
+
+  @Public()
+  @Get('hall-of-fame')
+  getHallOfFame(@Query('limit') limit = '10') {
+    return this.blindMatchService.getHallOfFame(parseInt(limit, 10) || 10);
+  }
+
+  @Public()
+  @Get('ugc')
+  getUgc(@Query('limit') limit = '12') {
+    return this.blindMatchService.getUgc(parseInt(limit, 10) || 12);
+  }
 
   @UseGuards(JwtAuthGuard)
   @Post('request')
