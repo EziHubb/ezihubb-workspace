@@ -88,9 +88,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }),
     })),
 
-    // ── Priority 0.75: Category pages (leaf only — avoids thin-content dups)
+    // ── Priority 0.75: Category search pages
     ...leafCategories.map((c) => ({
-      url:             `${BASE}/categories/${c.slug}`,
+      url:             `${BASE}/search?category=${c.slug}`,
       lastModified:    c.updatedAt ? new Date(c.updatedAt) : undefined,
       changeFrequency: 'weekly' as const,
       priority:        0.75,

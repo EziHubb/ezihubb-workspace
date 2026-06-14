@@ -59,19 +59,37 @@ function Stars({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'md' }) 
 
 // ── Rating distribution bar ───────────────────────────────────────────────────
 
-function RatingBar({ star, count, total }: { star: number; count: number; total: number }) {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+function RatingBar({
+  star, count, total, active, onClick,
+}: {
+  star:    number;
+  count:   number;
+  total:   number;
+  active:  boolean;
+  onClick: () => void;
+}) {
+  const pct      = total > 0 ? Math.round((count / total) * 100) : 0;
+  const isEmpty  = count === 0;
   return (
-    <div className="flex items-center gap-3 text-sm">
+    <button
+      type="button"
+      onClick={isEmpty ? undefined : onClick}
+      disabled={isEmpty}
+      className={[
+        'w-full flex items-center gap-3 text-sm rounded-md px-2 py-1 -mx-2 transition-colors text-left',
+        active  ? 'bg-yellow-50 ring-1 ring-yellow-300' : '',
+        isEmpty ? 'opacity-40 cursor-default' : 'hover:bg-gray-50 cursor-pointer',
+      ].join(' ')}
+    >
       <span className="text-muted w-6 text-right text-xs tabular-nums">{star}★</span>
       <div className="flex-1 h-2.5 bg-muted/10 rounded-full overflow-hidden">
         <div
-          className="h-full bg-amber-400 rounded-full transition-all duration-500"
+          className={`h-full rounded-full transition-all duration-500 ${active ? 'bg-yellow-500' : 'bg-amber-400'}`}
           style={{ width: `${pct}%` }}
         />
       </div>
       <span className="text-muted text-xs tabular-nums w-8">{pct}%</span>
-    </div>
+    </button>
   );
 }
 
@@ -167,7 +185,13 @@ export function StoreReviewsClient({
   storeSlug:   string;
   storeRating: number;
 }) {
-  const [page, setPage] = useState(1);
+  const [page,       setPage]       = useState(1);
+  const [starFilter, setStarFilter] = useState<number | null>(null);
+
+  const handleStarFilter = (star: number) => {
+    setStarFilter((prev) => (prev === star ? null : star));
+    setPage(1);
+  };
 
   const { data: summary, isLoading: summaryLoading } = useQuery<StoreReviewsSummary>({
     queryKey: ['store-reviews-summary', storeSlug],
@@ -176,9 +200,11 @@ export function StoreReviewsClient({
   });
 
   const { data: reviewsPage, isLoading: reviewsLoading } = useQuery<PaginatedReviews>({
-    queryKey: ['store-reviews', storeSlug, page],
+    queryKey: ['store-reviews', storeSlug, page, starFilter],
     queryFn:  () =>
-      apiClient.get(API_ROUTES.STORES.REVIEWS(storeSlug), { params: { page, limit: 10 } }),
+      apiClient.get(API_ROUTES.STORES.REVIEWS(storeSlug), {
+        params: { page, limit: 10, ...(starFilter ? { rating: starFilter } : {}) },
+      }),
     staleTime: 30_000,
   });
 
@@ -239,13 +265,15 @@ export function StoreReviewsClient({
           </div>
 
           {/* Distribution bars */}
-          <div className="flex-1 min-w-[200px] space-y-2">
+          <div className="flex-1 min-w-[200px] space-y-1">
             {[5, 4, 3, 2, 1].map((star) => (
               <RatingBar
                 key={star}
                 star={star}
                 count={dist[star] ?? 0}
                 total={total}
+                active={starFilter === star}
+                onClick={() => handleStarFilter(star)}
               />
             ))}
           </div>
@@ -254,9 +282,22 @@ export function StoreReviewsClient({
 
       {/* Reviews list */}
       <div>
-        <h3 className="font-display text-lg font-bold text-secondary mb-5">
-          {total.toLocaleString()} Review{total !== 1 ? 's' : ''}
-        </h3>
+        <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+          <h3 className="font-display text-lg font-bold text-secondary">
+            {starFilter
+              ? `${starFilter}-star reviews`
+              : `${total.toLocaleString()} Review${total !== 1 ? 's' : ''}`}
+          </h3>
+          {starFilter && (
+            <button
+              type="button"
+              onClick={() => { setStarFilter(null); setPage(1); }}
+              className="text-sm text-primary hover:underline"
+            >
+              All reviews
+            </button>
+          )}
+        </div>
 
         {reviewsLoading ? (
           <div className="space-y-8">
@@ -273,6 +314,19 @@ export function StoreReviewsClient({
                 <Skeleton variant="text" className="w-3/4" />
               </div>
             ))}
+          </div>
+        ) : reviews.length === 0 ? (
+          <div className="py-12 text-center">
+            <p className="font-semibold text-secondary mb-1">
+              No {starFilter}-star reviews yet
+            </p>
+            <button
+              type="button"
+              onClick={() => { setStarFilter(null); setPage(1); }}
+              className="text-sm text-primary hover:underline mt-1"
+            >
+              Show all reviews
+            </button>
           </div>
         ) : (
           <div className="space-y-7">

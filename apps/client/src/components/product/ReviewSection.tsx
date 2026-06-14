@@ -11,19 +11,37 @@ interface ReviewSectionProps {
   initialReviews?: ReviewDto[];
 }
 
-function StarBar({ label, count, total }: { label: string; count: number; total: number }) {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+function StarBar({
+  label, count, total, active, onClick,
+}: {
+  label:   string;
+  count:   number;
+  total:   number;
+  active:  boolean;
+  onClick: () => void;
+}) {
+  const pct     = total > 0 ? Math.round((count / total) * 100) : 0;
+  const isEmpty = count === 0;
   return (
-    <div className="flex items-center gap-2 text-sm">
+    <button
+      type="button"
+      onClick={isEmpty ? undefined : onClick}
+      disabled={isEmpty}
+      className={[
+        'w-full flex items-center gap-2 text-sm rounded px-1.5 py-0.5 -mx-1.5 transition-colors text-left',
+        active  ? 'bg-yellow-50 ring-1 ring-yellow-300' : '',
+        isEmpty ? 'opacity-40 cursor-default' : 'hover:bg-gray-50 cursor-pointer',
+      ].join(' ')}
+    >
       <span className="text-xs text-secondary w-5 shrink-0">{label}★</span>
       <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
         <div
-          className="h-full bg-warning rounded-full transition-all"
+          className={`h-full rounded-full transition-all ${active ? 'bg-yellow-500' : 'bg-warning'}`}
           style={{ width: `${pct}%` } as React.CSSProperties}
         />
       </div>
       <span className="text-xs text-muted w-6 text-right shrink-0 tabular-nums">{count}</span>
-    </div>
+    </button>
   );
 }
 
@@ -141,36 +159,35 @@ export function ReviewSection({ productSlug, reviewSummary, initialReviews }: Re
               <p className="text-xs text-muted">{reviewSummary.totalReviews} reviews</p>
             </div>
 
-            <div className="flex-1 space-y-1.5">
+            <div className="flex-1 space-y-1">
               {([5, 4, 3, 2, 1] as const).map((star) => (
                 <StarBar
                   key={star}
                   label={String(star)}
                   count={reviewSummary.distribution[star] ?? 0}
                   total={reviewSummary.totalReviews}
+                  active={starFilter === star}
+                  onClick={() => { setStarFilter((p) => p === star ? undefined : star); setPage(1); }}
                 />
               ))}
             </div>
           </div>
 
-          {/* Star filter */}
-          <div className="flex flex-wrap gap-2">
-            {[undefined, 5, 4, 3, 2, 1].map((s) => (
+          {/* Active filter chip */}
+          {starFilter && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-secondary">
+                {starFilter}-star reviews
+              </span>
               <button
-                key={s ?? 'all'}
                 type="button"
-                onClick={() => { setStarFilter(s); setPage(1); }}
-                className={[
-                  'text-xs px-3 py-1.5 rounded-pill border transition-colors',
-                  starFilter === s
-                    ? 'bg-primary text-white border-primary'
-                    : 'border-border text-secondary',
-                ].join(' ')}
+                onClick={() => { setStarFilter(undefined); setPage(1); }}
+                className="text-xs text-primary hover:underline"
               >
-                {s === undefined ? 'All' : '★'.repeat(s)}
+                All reviews
               </button>
-            ))}
-          </div>
+            </div>
+          )}
 
           {/* Review list */}
           {isError ? (

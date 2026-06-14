@@ -29,10 +29,8 @@ const SLUG_EMOJI: Record<string, string> = {
   'mothers-day': '🌺', 'fathers-day': '👔', 'valentines-day': '💝', halloween: '🎃',
 };
 
-// L1 nav-tab categories: link to /categories/[slug] which shows the full catalog section
-// (The category page will list L2 groups and L3 items under it)
 function categoryHref(locale: string, slug: string): string {
-  return `/${locale}/categories/${slug}`;
+  return `/${locale}/search?category=${slug}`;
 }
 
 export async function CategoryShowcase({ categories, locale }: CategoryShowcaseProps) {

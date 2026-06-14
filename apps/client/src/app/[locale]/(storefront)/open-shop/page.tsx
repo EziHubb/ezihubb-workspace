@@ -539,8 +539,7 @@ export default function OpenShopPage() {
 
   // Store already approved — go straight to seller hub
   if (status === 'ACTIVE') {
-    const adminUrl = process.env['NEXT_PUBLIC_ADMIN_URL'] ?? 'http://localhost:3001';
-    if (typeof window !== 'undefined') window.location.href = adminUrl;
+    if (typeof window !== 'undefined') window.location.href = `/${locale}/seller`;
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-3">

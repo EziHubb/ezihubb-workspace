@@ -39,7 +39,7 @@ function buildBreadcrumbs(product: ProductDetailDto, locale: string): Breadcrumb
   return [
     { name: 'Home', href: `${prefix}/` },
     ...(product.primaryCategory
-      ? [{ name: product.primaryCategory.name, href: `${prefix}/categories/${product.primaryCategory.slug}` }]
+      ? [{ name: product.primaryCategory.name, href: `${prefix}/search?category=${product.primaryCategory.slug}` }]
       : []),
     { name: product.name, href: `${prefix}/products/${product.slug}` },
   ];

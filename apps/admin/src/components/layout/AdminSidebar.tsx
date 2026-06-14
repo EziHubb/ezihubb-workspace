@@ -178,8 +178,9 @@ const SHOP_NAV_SECTIONS: NavSection[] = [
       {
         label: 'Products', href: '/products', icon: ShoppingBag,
         children: [
-          { label: 'All Products', href: '/products',     icon: ShoppingBag },
-          { label: 'Add Product',  href: '/products/new', icon: ShoppingBag },
+          { label: 'All Products', href: '/products',                  icon: ShoppingBag },
+          { label: 'Add Product',  href: '/products/new',              icon: ShoppingBag },
+          { label: 'Sections',     href: '/catalog/shop-sections',     icon: Bookmark    },
         ],
       },
       { label: 'Orders',   href: '/orders',   icon: ShoppingCart },

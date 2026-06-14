@@ -466,13 +466,7 @@ function WriteReviewForm({
 
 // ── Filter types ──────────────────────────────────────────────────────────────
 
-type FilterId = 'suggested' | 'quality' | 'photo' | 'all';
-
-// Map filter tab → rating param (undefined = no star filter)
-function filterToRating(filter: FilterId): number | undefined {
-  if (filter === 'quality') return 5;
-  return undefined;
-}
+type FilterId = 'suggested' | 'photo' | 'all';
 
 function applyClientFilter(reviews: ReviewDto[], filter: FilterId): ReviewDto[] {
   if (filter === 'photo') return reviews.filter((r) => (r.images ?? []).length > 0);
@@ -488,13 +482,14 @@ interface Props {
 
 export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
   const [activeFilter,  setActiveFilter]  = useState<FilterId>('suggested');
+  const [starFilter,    setStarFilter]    = useState<number | null>(null);
   const [page,          setPage]          = useState(1);
   const [reviewSuccess, setReviewSuccess] = useState(false);
 
   const { data, isLoading } = useReviews(productSlug, {
     page,
     limit:  10,
-    rating: filterToRating(activeFilter),
+    rating: starFilter ?? undefined,
     status: 'APPROVED',
   });
 
@@ -526,13 +521,29 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
 
   const filterTabs: { id: FilterId; label: string }[] = [
     { id: 'suggested', label: 'Suggested' },
-    { id: 'quality',   label: `Quality (${totalReviews})` },
     { id: 'photo',     label: `With photos (${photoCount})` },
     { id: 'all',       label: 'All' },
   ];
 
   const handleFilterChange = (id: FilterId) => {
     setActiveFilter(id);
+    setStarFilter(null);
+    setPage(1);
+  };
+
+  const handleStarFilter = (star: number) => {
+    if (starFilter === star) {
+      setStarFilter(null);
+    } else {
+      setStarFilter(star);
+      setActiveFilter('all');
+    }
+    setPage(1);
+  };
+
+  const clearStarFilter = () => {
+    setStarFilter(null);
+    setActiveFilter('suggested');
     setPage(1);
   };
 
@@ -551,7 +562,14 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
 
   return (
     <section id="reviews" className="mt-12 pt-8 border-t border-border">
-      <h2 className="text-xl font-semibold mb-6">Reviews for this item</h2>
+      <div className="flex items-baseline gap-3 mb-6">
+        <h2 className="text-xl font-semibold">
+          {starFilter !== null ? `${starFilter}-star reviews` : 'Reviews for this item'}
+        </h2>
+        <span className="text-sm text-muted">
+          {totalReviews.toLocaleString()} total
+        </span>
+      </div>
 
       {/* ── SENTIMENT BADGES ── */}
       <SentimentBadges averageRating={averageRating} />
@@ -574,22 +592,38 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
           </div>
         </div>
 
-        {/* Star distribution bars */}
+        {/* Star distribution bars — clickable to filter */}
         <div className="flex-1 space-y-1.5">
           {([5, 4, 3, 2, 1] as const).map((star) => {
-            const count = distribution[star] ?? 0;
-            const pct   = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
+            const count     = distribution[star] ?? 0;
+            const pct       = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
+            const isActive  = starFilter === star;
+            const isDisabled = count === 0;
             return (
-              <div key={star} className="flex items-center gap-2 text-sm">
-                <span className="w-3 text-right text-muted tabular-nums">{star}</span>
+              <button
+                key={star}
+                type="button"
+                disabled={isDisabled}
+                onClick={() => !isDisabled && handleStarFilter(star)}
+                className={[
+                  'w-full flex items-center gap-2 text-sm rounded-lg px-2 py-1 -mx-2 transition-colors group',
+                  isDisabled  ? 'cursor-default opacity-40' : 'cursor-pointer',
+                  isActive    ? 'bg-yellow-50 ring-1 ring-yellow-300' : isDisabled ? '' : 'hover:bg-gray-50',
+                ].join(' ')}
+              >
+                <span className={`w-4 text-right tabular-nums shrink-0 text-xs font-medium ${isActive ? 'text-yellow-600' : 'text-muted'}`}>
+                  {star}★
+                </span>
                 <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-yellow-400 rounded-full transition-all"
+                    className={`h-full rounded-full transition-all ${isActive ? 'bg-yellow-500' : 'bg-yellow-400 group-hover:bg-yellow-500'}`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <span className="text-xs text-muted w-6 text-right tabular-nums">{count}</span>
-              </div>
+                <span className={`text-xs w-8 text-right tabular-nums shrink-0 ${isActive ? 'text-yellow-700 font-semibold' : 'text-muted'}`}>
+                  {Math.round(pct)}%
+                </span>
+              </button>
             );
           })}
         </div>
@@ -611,8 +645,25 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
       </div>
 
       {/* ── FILTER TABS ── */}
-      <div className="flex gap-2 overflow-x-auto pb-1 mb-6 [&::-webkit-scrollbar]:hidden">
-        {filterTabs.map((tab) => (
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-6 [&::-webkit-scrollbar]:hidden">
+        {/* Active star filter chip */}
+        {starFilter !== null && (
+          <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm bg-yellow-400 text-yellow-900 font-medium">
+            <Star className="w-3.5 h-3.5 fill-yellow-700 text-yellow-700" />
+            {starFilter} stars
+            <button
+              type="button"
+              onClick={clearStarFilter}
+              aria-label="Clear star filter"
+              className="ml-0.5 hover:text-yellow-900/70 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Tab pills (hidden when star filter is active, except All) */}
+        {starFilter === null && filterTabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
@@ -627,6 +678,17 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
             {tab.label}
           </button>
         ))}
+
+        {/* When star filter active, show "All reviews" shortcut */}
+        {starFilter !== null && (
+          <button
+            type="button"
+            onClick={clearStarFilter}
+            className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm border border-border text-secondary hover:border-secondary transition-colors"
+          >
+            All reviews
+          </button>
+        )}
       </div>
 
       {/* ── WRITE REVIEW FORM ── */}
@@ -644,11 +706,24 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
       {isLoading ? (
         <ReviewListSkeleton />
       ) : reviews.length === 0 ? (
-        <p className="text-sm text-muted text-center py-8">
-          {activeFilter === 'photo'
-            ? 'No reviews with photos yet.'
-            : 'No reviews match this filter.'}
-        </p>
+        <div className="text-center py-10">
+          <p className="text-sm text-muted">
+            {starFilter !== null
+              ? `No ${starFilter}-star reviews yet.`
+              : activeFilter === 'photo'
+                ? 'No reviews with photos yet.'
+                : 'No reviews match this filter.'}
+          </p>
+          {starFilter !== null && (
+            <button
+              type="button"
+              onClick={clearStarFilter}
+              className="mt-2 text-sm text-primary hover:underline"
+            >
+              Show all reviews
+            </button>
+          )}
+        </div>
       ) : (
         <div className="space-y-6">
           {reviews.map((review) => (

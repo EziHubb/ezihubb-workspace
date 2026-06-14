@@ -89,10 +89,9 @@ function UserMenu({ locale }: { locale: string }) {
   }
 
   const initials = `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`.toUpperCase() || '?';
-  const adminUrl = process.env['NEXT_PUBLIC_ADMIN_URL'] ?? 'http://localhost:3001';
   const isSeller = (profile as unknown as Record<string, unknown>)['isSeller'] === true
     || storeApp?.status === 'ACTIVE';
-  const shopLink = isSeller ? adminUrl : `/${locale}/open-shop`;
+  const shopLink = isSeller ? `/${locale}/seller` : `/${locale}/open-shop`;
 
   return (
     <div className="relative hidden md:block" ref={menuRef}>
@@ -134,14 +133,15 @@ function UserMenu({ locale }: { locale: string }) {
             )}
           </div>
           {[
-            { icon: Package,  label: 'My Orders',                          href: `/${locale}/account/orders`  },
-            { icon: Settings, label: 'Profile',                             href: `/${locale}/account/profile` },
-            { icon: Store,    label: isSeller ? 'Seller Hub' : 'Open a Shop', href: shopLink },
-          ].map(({ icon: Icon, label, href }) => (
+            { icon: Package,  label: 'My Orders',                             href: `/${locale}/account/orders`,  newTab: false },
+            { icon: Settings, label: 'Profile',                               href: `/${locale}/account/profile`, newTab: false },
+            { icon: Store,    label: isSeller ? 'Seller Hub' : 'Open a Shop', href: shopLink,                     newTab: isSeller },
+          ].map(({ icon: Icon, label, href, newTab }) => (
             <Link
               key={label}
               href={href}
               onClick={() => setOpen(false)}
+              {...(newTab ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
               className="flex items-center gap-3 px-4 py-2.5 text-sm text-secondary hover:bg-muted/5 hover:text-primary transition-colors"
             >
               <Icon className="w-4 h-4 text-muted" />
@@ -181,8 +181,6 @@ export function Navbar({ menuData }: NavbarProps = {}) {
   const user        = useAuthStore((s) => s.user);
   const isAuthReady = useAuthStore((s) => s.isAuthReady);
   const token_      = useAuthStore((s) => s.accessToken);
-  const adminUrl    = process.env['NEXT_PUBLIC_ADMIN_URL'] ?? 'http://localhost:3001';
-
   // Shared cache key with UserMenu — served from cache after first fetch
   const { data: storeApp_ } = useQuery<{ status: string }>({
     queryKey: ['my-store-application'],
@@ -193,7 +191,7 @@ export function Navbar({ menuData }: NavbarProps = {}) {
 
   const isSeller    = (user as unknown as Record<string, unknown> | null)?.['isSeller'] === true
     || storeApp_?.status === 'ACTIVE';
-  const shopHref    = isSeller ? adminUrl : `/${locale}/open-shop`;
+  const shopHref    = isSeller ? `/${locale}/seller` : `/${locale}/open-shop`;
   const { data: wishlistItems } = useWishlist(isAuthReady && !!user);
   const cart        = useCartStore((s) => s.cart);
   const openDrawer  = useCartStore((s) => s.openDrawer);
@@ -303,6 +301,7 @@ export function Navbar({ menuData }: NavbarProps = {}) {
               <Link
                 href={shopHref}
                 aria-label={isSeller ? 'My Shop' : 'Open a Shop'}
+                {...(isSeller ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                 className="hidden md:flex relative p-2 hover:bg-muted/10 rounded-full transition-colors"
               >
                 <Store className="w-5 h-5 text-secondary" />
