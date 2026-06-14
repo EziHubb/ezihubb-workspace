@@ -38,7 +38,7 @@ interface NavSection {
   items:  NavItem[];
 }
 
-// ── Navigation structure ───────────────────────────────────────────────────────
+// ── Navigation structure — SUPER_ADMIN ────────────────────────────────────────
 
 const NAV_SECTIONS: NavSection[] = [
   {
@@ -134,6 +134,13 @@ const NAV_SECTIONS: NavSection[] = [
     title: 'System',
     items: [
       {
+        label: 'Shop Admins', href: '/admins', icon: Shield,
+        children: [
+          { label: 'All Shop Admins', href: '/admins',              icon: Users   },
+          { label: 'Permissions',     href: '/admins',              icon: Shield  },
+        ],
+      },
+      {
         label: 'Moderation', href: '/moderation', icon: ShieldAlert,
         children: [
           { label: 'Queue',      href: '/moderation/queue',    icon: ShieldAlert       },
@@ -154,6 +161,52 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
+// ── Navigation structure — ADMIN (shop owner) ─────────────────────────────────
+// Shop owners use the SAME routes as super admin — the API scopes data to their store.
+
+const SHOP_NAV_SECTIONS: NavSection[] = [
+  {
+    items: [
+      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'Analytics', href: '/stats',     icon: BarChart2       },
+    ],
+  },
+  {
+    title: 'Manage',
+    items: [
+      {
+        label: 'Products', href: '/products', icon: ShoppingBag,
+        children: [
+          { label: 'All Products', href: '/products',     icon: ShoppingBag },
+          { label: 'Add Product',  href: '/products/new', icon: ShoppingBag },
+        ],
+      },
+      { label: 'Orders',   href: '/orders',   icon: ShoppingCart },
+      { label: 'Reviews',  href: '/reviews',  icon: Star         },
+      { label: 'Messages', href: '/messages', icon: MessageSquare },
+    ],
+  },
+  {
+    title: 'Finance',
+    items: [
+      { label: 'Payouts', href: '/payouts', icon: Wallet },
+    ],
+  },
+  {
+    title: 'Setup',
+    items: [
+      {
+        label: 'Store Settings', href: '/stores', icon: Settings,
+        children: [
+          { label: 'General',    href: '/stores',           icon: Settings     },
+          { label: 'Shipping',   href: '/shipping',         icon: Truck        },
+          { label: 'Promotions', href: '/promotions',       icon: BadgePercent },
+        ],
+      },
+    ],
+  },
+];
+
 // ── Shared data hook ──────────────────────────────────────────────────────────
 
 function useNavData() {
@@ -161,11 +214,15 @@ function useNavData() {
   const user     = session?.user as Record<string, unknown> | undefined;
   const name     = (user?.['name']  as string) || 'Admin';
   const email    = (user?.['email'] as string) || '';
+  const role     = (user?.['role']  as string) || '';
   const initials = name.split(' ').map((n) => n[0] ?? '').slice(0, 2).join('').toUpperCase();
+
+  const isSuperAdmin = role === 'SUPER_ADMIN';
 
   const { data: pendingData } = useQuery<{ count: number }>({
     queryKey: ['sidebar-affiliate-pending'],
     queryFn:  () => api.get<{ count: number }>(API_ROUTES.ADMIN.AFFILIATES_PENDING_COUNT),
+    enabled:  isSuperAdmin,
     staleTime:       60_000,
     refetchInterval: 120_000,
   });
@@ -173,11 +230,12 @@ function useNavData() {
   const { data: aiTrendPending } = useQuery<{ count: number }>({
     queryKey: ['sidebar-ai-trend-pending'],
     queryFn:  () => api.get<{ count: number }>(API_ROUTES.ADMIN.AI_TREND_PENDING_COUNT),
+    enabled:  isSuperAdmin,
     staleTime:       60_000,
     refetchInterval: 120_000,
   });
 
-  const navSections = useMemo<NavSection[]>(() =>
+  const superAdminSections = useMemo<NavSection[]>(() =>
     NAV_SECTIONS.map((section) => ({
       ...section,
       items: section.items.map((item) => {
@@ -195,7 +253,9 @@ function useNavData() {
     })),
   [pendingData, aiTrendPending]);
 
-  return { name, email, initials, navSections };
+  const navSections = isSuperAdmin ? superAdminSections : SHOP_NAV_SECTIONS;
+
+  return { name, email, initials, navSections, role };
 }
 
 // ── Child nav row ─────────────────────────────────────────────────────────────
@@ -333,19 +393,24 @@ function NavSectionGroup({ section }: { section: NavSection }) {
 
 // ── Logo mark ─────────────────────────────────────────────────────────────────
 
-function LogoMark() {
+function LogoMark({ role }: { role?: string }) {
+  const isShopOwner = role === 'ADMIN';
   return (
     <div className="flex items-center gap-3">
       <div
         className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-lg"
-        style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)' }}
+        style={{ background: isShopOwner
+          ? 'linear-gradient(135deg, #059669 0%, #047857 100%)'
+          : 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)' }}
       >
-        <span className="text-white font-black text-base tracking-tight">D</span>
+        <span className="text-white font-black text-base tracking-tight">
+          {isShopOwner ? <Store className="w-5 h-5" /> : 'D'}
+        </span>
       </div>
       <div>
         <p className="text-white font-bold text-sm leading-tight tracking-tight">Daily Daisy</p>
-        <p className="text-[10px] font-medium leading-tight mt-0.5 tracking-wide" style={{ color: '#6366F1' }}>
-          Admin Panel
+        <p className="text-[10px] font-medium leading-tight mt-0.5 tracking-wide" style={{ color: isShopOwner ? '#6EE7B7' : '#6366F1' }}>
+          {isShopOwner ? 'Seller Hub' : 'Admin Panel'}
         </p>
       </div>
     </div>
@@ -359,11 +424,13 @@ function SidebarBody({
   name,
   email,
   initials,
+  role,
 }: {
   navSections: NavSection[];
   name:        string;
   email:       string;
   initials:    string;
+  role?:       string;
 }) {
   return (
     <>
@@ -386,6 +453,12 @@ function SidebarBody({
           <div className="min-w-0 flex-1">
             <p className="text-white text-xs font-semibold truncate leading-tight">{name}</p>
             <p className="text-[11px] truncate leading-tight mt-0.5" style={{ color: '#6B7280' }}>{email}</p>
+            <span className={[
+              'inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded mt-0.5',
+              role === 'SUPER_ADMIN' ? 'bg-[#7C3AED]/20 text-[#A78BFA]' : 'bg-emerald-500/20 text-emerald-400',
+            ].join(' ')}>
+              {role === 'SUPER_ADMIN' ? 'Super Admin' : 'Shop Owner'}
+            </span>
           </div>
           <button
             type="button"
@@ -404,7 +477,7 @@ function SidebarBody({
 // ── Desktop sidebar ───────────────────────────────────────────────────────────
 
 export function AdminSidebar() {
-  const { name, email, initials, navSections } = useNavData();
+  const { name, email, initials, navSections, role } = useNavData();
 
   return (
     <aside
@@ -412,10 +485,10 @@ export function AdminSidebar() {
       style={{ background: 'linear-gradient(180deg, #16161F 0%, #1A1A26 100%)' }}
     >
       <div className="px-4 pt-5 pb-3">
-        <LogoMark />
+        <LogoMark role={role} />
       </div>
       <div className="mx-4 mb-2 border-t border-white/5" />
-      <SidebarBody navSections={navSections} name={name} email={email} initials={initials} />
+      <SidebarBody navSections={navSections} name={name} email={email} initials={initials} role={role} />
     </aside>
   );
 }
@@ -425,7 +498,7 @@ export function AdminSidebar() {
 export function AdminMobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const { name, email, initials, navSections } = useNavData();
+  const { name, email, initials, navSections, role } = useNavData();
 
   // Close drawer on route change
   useEffect(() => { setOpen(false); }, [pathname]);
@@ -443,7 +516,7 @@ export function AdminMobileNav() {
         className="lg:hidden flex items-center justify-between px-4 h-14 shrink-0 border-b border-white/5"
         style={{ background: '#16161F' }}
       >
-        <LogoMark />
+        <LogoMark role={role} />
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -473,7 +546,7 @@ export function AdminMobileNav() {
       >
         {/* Drawer header */}
         <div className="flex items-center justify-between px-4 h-14 border-b border-white/5 shrink-0">
-          <LogoMark />
+          <LogoMark role={role} />
           <button
             type="button"
             onClick={() => setOpen(false)}
@@ -485,7 +558,7 @@ export function AdminMobileNav() {
         </div>
 
         {/* Drawer body — same nav content */}
-        <SidebarBody navSections={navSections} name={name} email={email} initials={initials} />
+        <SidebarBody navSections={navSections} name={name} email={email} initials={initials} role={role} />
       </div>
     </>
   );

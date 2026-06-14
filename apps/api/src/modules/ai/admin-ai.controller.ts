@@ -1,6 +1,6 @@
 import {
-  Controller, Get, Post, Put, Param, Query, Body,
-  UseGuards,
+  Controller, Get, Post, Put, Delete, Param, Query, Body, Request,
+  UseGuards, NotFoundException,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -85,6 +85,24 @@ export class AdminAiController {
     return this.pricingService.revertTest(id);
   }
 
+  @Get('pricing/products/:productId/recommendation')
+  @ApiOperation({ summary: 'Get AI pricing recommendation for a product (admin)' })
+  async getProductPricingRecommendation(@Param('productId') productId: string) {
+    return this.pricingService.adminGetRecommendation(productId);
+  }
+
+  @Post('pricing/products/:productId/ab-test')
+  @ApiOperation({ summary: 'Start an A/B pricing test for a product (admin)' })
+  async startProductABTest(@Param('productId') productId: string) {
+    return this.pricingService.adminStartABTest(productId);
+  }
+
+  @Get('pricing/products/:productId/ab-test')
+  @ApiOperation({ summary: 'Get current A/B test status for a product (admin)' })
+  async getProductABTestStatus(@Param('productId') productId: string) {
+    return this.pricingService.adminGetTestStatus(productId);
+  }
+
   // ── Creator DNA ───────────────────────────────────────────────────────────
 
   @Get('creator-dna')
@@ -100,6 +118,24 @@ export class AdminAiController {
   @ApiOperation({ summary: 'Trigger re-analysis of a creator DNA profile' })
   reanalyzeCreatorDna(@Param('id') id: string) {
     return this.creatorDnaService.queueReanalysis(id);
+  }
+
+  @Get('creator-dna/platforms')
+  @ApiOperation({ summary: 'Get connected social platforms for the current admin user' })
+  getCreatorDnaPlatforms(@Request() req: any) {
+    return this.creatorDnaService.getConnectedPlatforms(req.user.id);
+  }
+
+  @Delete('creator-dna/platforms/:platform')
+  @ApiOperation({ summary: 'Disconnect a social platform for the current admin user' })
+  disconnectCreatorDnaPlatform(@Param('platform') platform: string, @Request() req: any) {
+    return this.creatorDnaService.disconnect(req.user.id, platform);
+  }
+
+  @Post('creator-dna/fetch')
+  @ApiOperation({ summary: 'Fetch social data and run Creator DNA analysis for the current admin user' })
+  fetchCreatorDna(@Body() body: { platform: string }, @Request() req: any) {
+    return this.creatorDnaService.runAnalysis(req.user.id, body.platform);
   }
 
   // ── Trend Drafts ──────────────────────────────────────────────────────────

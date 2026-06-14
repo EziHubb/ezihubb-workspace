@@ -331,25 +331,94 @@ Recommend optimal price.`,
   // ── Admin methods ─────────────────────────────────────────────────────────
 
   async getAdminStats() {
-    const [total, running, ended] = await Promise.all([
-      this.prisma.aBPricingTest.count(),
+    const [activeTests, completedTests, totalProductsTested, liftAgg] = await Promise.all([
       this.prisma.aBPricingTest.count({ where: { status: 'RUNNING' } }),
-      this.prisma.aBPricingTest.count({ where: { status: { not: 'RUNNING' } } }),
+      this.prisma.aBPricingTest.count({ where: { status: { in: ['WINNER_A', 'WINNER_B', 'CANCELLED'] } } }),
+      this.prisma.aBPricingTest.findMany({
+        distinct:  ['productId'],
+        select:    { productId: true },
+      }).then((r) => r.length),
+      // Average revenue & conversion lift from completed tests that have impression data
+      this.prisma.aBPricingTest.findMany({
+        where: { status: { in: ['WINNER_A', 'WINNER_B'] }, impressionsA: { gt: 0 }, impressionsB: { gt: 0 } },
+        select: { variantA: true, variantB: true, impressionsA: true, impressionsB: true, conversionsA: true, conversionsB: true },
+      }),
     ]);
-    return { total, running, ended };
+
+    let avgRevenueUplift: number | null    = null;
+    let avgConversionUplift: number | null = null;
+
+    if (Array.isArray(liftAgg) && liftAgg.length > 0) {
+      const lifts = liftAgg.map((t) => {
+        const convA = t.impressionsA > 0 ? t.conversionsA / t.impressionsA : 0;
+        const convB = t.impressionsB > 0 ? t.conversionsB / t.impressionsB : 0;
+        const revA  = convA * Number(t.variantA);
+        const revB  = convB * Number(t.variantB);
+        return {
+          convLift: convA > 0 ? ((convB - convA) / convA) * 100 : 0,
+          revLift:  revA  > 0 ? ((revB  - revA)  / revA)  * 100 : 0,
+        };
+      });
+      avgConversionUplift = lifts.reduce((s, l) => s + l.convLift, 0) / lifts.length;
+      avgRevenueUplift    = lifts.reduce((s, l) => s + l.revLift,  0) / lifts.length;
+    }
+
+    return { activeTests, completedTests, totalProductsTested, avgRevenueUplift, avgConversionUplift };
   }
 
-  async listTests(page = 1, limit = 20) {
-    const [data, total] = await Promise.all([
+  async listTests(page = 1, limit = 20, status?: string) {
+    const statusFilter = status && status !== 'ALL' ? this.mapUiStatus(status) : undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = statusFilter ? { status: { in: statusFilter } } : undefined;
+
+    const [raw, total] = await Promise.all([
       this.prisma.aBPricingTest.findMany({
+        where,
         skip:    (page - 1) * limit,
         take:    limit,
         orderBy: { createdAt: 'desc' },
         include: { product: { select: { id: true, name: true, slug: true } } },
       }),
-      this.prisma.aBPricingTest.count(),
+      this.prisma.aBPricingTest.count({ where }),
     ]);
+
+    const data = raw.map((t) => {
+      const convA = t.impressionsA > 0 ? t.conversionsA / t.impressionsA : 0;
+      const convB = t.impressionsB > 0 ? t.conversionsB / t.impressionsB : 0;
+      const revA  = convA * Number(t.variantA);
+      const revB  = convB * Number(t.variantB);
+      return {
+        id:            t.id,
+        productId:     t.productId,
+        productTitle:  t.product?.name ?? t.productId,
+        controlPrice:  Number(t.variantA),
+        variantPrice:  Number(t.variantB),
+        status:        this.mapDbStatus(t.status),
+        startedAt:     t.createdAt,
+        endedAt:       t.status !== 'RUNNING' ? t.updatedAt : null,
+        controlRevenue: revA || null,
+        variantRevenue: revB || null,
+        conversionLift: convA > 0 ? ((convB - convA) / convA) * 100 : null,
+        revenueLift:    revA  > 0 ? ((revB  - revA)  / revA)  * 100 : null,
+      };
+    });
+
     return { data, total, page, totalPages: Math.ceil(total / limit) };
+  }
+
+  private mapUiStatus(ui: string): string[] {
+    switch (ui) {
+      case 'ACTIVE':    return ['RUNNING'];
+      case 'COMPLETED': return ['WINNER_A', 'WINNER_B'];
+      case 'REVERTED':  return ['CANCELLED'];
+      default:          return [];
+    }
+  }
+
+  private mapDbStatus(db: string): 'ACTIVE' | 'COMPLETED' | 'REVERTED' {
+    if (db === 'RUNNING')                   return 'ACTIVE';
+    if (db === 'WINNER_A' || db === 'WINNER_B') return 'COMPLETED';
+    return 'REVERTED';
   }
 
   async cancelTest(id: string) {
@@ -380,5 +449,31 @@ Recommend optimal price.`,
       { productId, storeId },
       DEFAULT_JOB_OPTIONS,
     );
+  }
+
+  // ── Admin helpers (no store session required — look up storeId from product) ──
+
+  private async getStoreIdForProduct(productId: string): Promise<string> {
+    const product = await this.prisma.product.findUnique({
+      where:  { id: productId },
+      select: { storeId: true },
+    });
+    if (!product?.storeId) throw new Error(`Product ${productId} has no associated store`);
+    return product.storeId;
+  }
+
+  async adminGetRecommendation(productId: string) {
+    const storeId = await this.getStoreIdForProduct(productId);
+    return this.getRecommendation(productId, storeId);
+  }
+
+  async adminStartABTest(productId: string) {
+    const storeId = await this.getStoreIdForProduct(productId);
+    return this.startABTest(productId, storeId);
+  }
+
+  async adminGetTestStatus(productId: string) {
+    const storeId = await this.getStoreIdForProduct(productId);
+    return this.getTestStatus(productId, storeId);
   }
 }

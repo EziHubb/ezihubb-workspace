@@ -51,18 +51,6 @@ const ALLOWED_IMAGE_MIMETYPES = new Set([
 ]);
 const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
-function deriveVariantOptions(variants: { options: unknown }[]): { name: string; values: string[] }[] {
-  const optionMap = new Map<string, Set<string>>();
-  for (const v of variants) {
-    const opts = (v.options ?? {}) as Record<string, string>;
-    for (const [key, val] of Object.entries(opts)) {
-      if (!optionMap.has(key)) optionMap.set(key, new Set());
-      optionMap.get(key)!.add(val);
-    }
-  }
-  return Array.from(optionMap.entries()).map(([name, valSet]) => ({ name, values: Array.from(valSet) }));
-}
-
 @Injectable()
 export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);
@@ -192,6 +180,10 @@ export class ProductsService {
         category: { select: { id: true, name: true, slug: true } },
         store: { select: { id: true, name: true, slug: true } },
         variants: { orderBy: { sortOrder: 'asc' } },
+        variationGroups: {
+          orderBy: { sortOrder: 'asc' },
+          include: { options: { orderBy: { sortOrder: 'asc' } } },
+        },
         images: { orderBy: { sortOrder: 'asc' } },
         tags: {
           include: { tag: { select: { id: true, name: true, slug: true } } },
@@ -263,8 +255,13 @@ export class ProductsService {
       averageRating,
     );
 
-    // Derive variantOptions from Prisma variants — always authoritative, never stale
-    const variantOptions = deriveVariantOptions(product.variants as { options: unknown }[]);
+    // Derive variantOptions from VariationGroup+VariationOption — the admin-configurable source of truth
+    const variantOptions = (product as typeof product & {
+      variationGroups?: { name: string; options: { name: string }[] }[];
+    }).variationGroups?.map((g) => ({
+      name:   g.name,
+      values: g.options.map((o) => o.name),
+    })) ?? [];
 
     // Merge MongoDB fields on top of the PG response
     return {

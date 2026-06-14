@@ -72,20 +72,22 @@ function OrderSummarySidebar({
           const thumb = item.previewUrl ?? item.productImageUrl;
           return (
             <li key={item.id} className="flex gap-3">
-              <div className="relative w-14 h-14 shrink-0 rounded-sm overflow-hidden bg-background border border-border">
-                {thumb ? (
-                  <Image
-                    src={thumb}
-                    alt={item.productName}
-                    fill
-                    sizes="56px"
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-muted/20" />
-                )}
+              <div className="relative w-14 h-14 shrink-0">
+                <div className="w-full h-full rounded-sm overflow-hidden bg-background border border-border">
+                  {thumb ? (
+                    <Image
+                      src={thumb}
+                      alt={item.productName}
+                      fill
+                      sizes="56px"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-muted/20" />
+                  )}
+                </div>
                 {item.quantity > 1 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
                     {item.quantity}
                   </span>
                 )}
@@ -397,7 +399,6 @@ export default function CheckoutPage() {
         total:        number;
         taxAmount:    number;
       }>(API_ROUTES.ORDERS.CREATE, {
-        cartId: cart.id,
         shippingAddress: {
           fullName:     `${shippingAddress.firstName} ${shippingAddress.lastName}`.trim(),
           phone:         shippingAddress.phone,

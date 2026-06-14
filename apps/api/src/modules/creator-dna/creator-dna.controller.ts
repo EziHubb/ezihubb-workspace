@@ -30,7 +30,7 @@ export class CreatorDnaController {
   ) {
     await this.svc.handleTikTokCallback(code, state);
     res.redirect(
-      `${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/seller/creator-dna?platform=tiktok`,
+      `${process.env['ADMIN_URL'] ?? 'http://localhost:4200'}/ai/creator-dna?platform=tiktok`,
     );
   }
 
@@ -48,7 +48,7 @@ export class CreatorDnaController {
   ) {
     await this.svc.handleInstagramCallback(code, state);
     res.redirect(
-      `${process.env['CLIENT_URL'] ?? 'http://localhost:3000'}/seller/creator-dna?platform=instagram`,
+      `${process.env['ADMIN_URL'] ?? 'http://localhost:4200'}/ai/creator-dna?platform=instagram`,
     );
   }
 

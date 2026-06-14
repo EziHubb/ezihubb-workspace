@@ -204,8 +204,9 @@ model User {
   backupCodes    String[]
 
   // ── Seller fields ──────────────────────────────────────────────────────────
-  isSeller Boolean @default(false)
-  storeId  String? // denormalized store id (set when approved); no FK to avoid circular ref
+  isSeller    Boolean @default(false)
+  storeId     String? // denormalized store id (set when approved); no FK to avoid circular ref
+  permissions Json?   // per-user granular permissions (ADMIN role only); null = use role defaults
 
   refreshTokens       RefreshToken[]
   emailVerifications  EmailVerification[]
@@ -2677,3 +2678,33 @@ model BlindMatchAuditLog {
   createdAt         DateTime          @default(now())
 }
 
+
+// ─── Campaigns ────────────────────────────────────────────────────────────────
+
+enum CampaignSeason {
+  spring
+  summer
+  autumn
+  winter
+}
+
+model Campaign {
+  id           String         @id @default(cuid())
+  name         String
+  season       CampaignSeason @unique
+  isActive     Boolean        @default(false)
+  bannerText   String         @default("")
+  ctaLabel     String         @default("Shop now")
+  ctaHref      String         @default("/products")
+  countdownEnd DateTime?
+  gradient     String         @default("")
+  primaryColor String         @default("#000000")
+  accentColor  String         @default("#000000")
+  bgColor      String         @default("#ffffff")
+  startDate    DateTime?
+  endDate      DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([isActive])
+}

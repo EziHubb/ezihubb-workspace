@@ -84,7 +84,10 @@ export const authOptions: NextAuthOptions = {
               name:
                 `${(user['firstName'] as string) ?? ''} ${(user['lastName'] as string) ?? ''}`.trim() ||
                 String(user['email']),
-              role: user['role'] as string,
+              role:        user['role'] as string,
+              storeId:     (user['storeId'] as string | null) ?? null,
+              isSeller:    Boolean(user['isSeller']),
+              permissions: user['permissions'] ?? null,
               accessToken: data['accessToken'] as string,
             };
           } catch (err) {
@@ -146,7 +149,10 @@ export const authOptions: NextAuthOptions = {
             name:
               `${(user['firstName'] as string) ?? ''} ${(user['lastName'] as string) ?? ''}`.trim() ||
               String(user['email']),
-            role: user['role'] as string,
+            role:        user['role'] as string,
+            storeId:     (user['storeId'] as string | null) ?? null,
+            isSeller:    Boolean(user['isSeller']),
+            permissions: user['permissions'] ?? null,
             accessToken: result['accessToken'] as string,
           };
         } catch (err) {
@@ -173,11 +179,16 @@ export const authOptions: NextAuthOptions = {
           token['accessToken'] = undefined;
           token['id'] = undefined;
           token['role'] = undefined;
+          token['storeId'] = undefined;
+          token['isSeller'] = undefined;
         } else {
           token['requiresTOTP'] = false;
           token['partialToken'] = undefined;
           token['id'] = u['id'];
           token['role'] = u['role'];
+          token['storeId'] = u['storeId'] ?? null;
+          token['isSeller'] = u['isSeller'] ?? false;
+          token['permissions'] = u['permissions'] ?? null;
           token['accessToken'] = u['accessToken'];
         }
       }
@@ -191,6 +202,9 @@ export const authOptions: NextAuthOptions = {
         u['partialToken'] = token['partialToken'];
         u['id'] = token['id'];
         u['role'] = token['role'];
+        u['storeId'] = token['storeId'] ?? null;
+        u['isSeller'] = token['isSeller'] ?? false;
+        u['permissions'] = token['permissions'] ?? null;
         u['accessToken'] = token['accessToken'];
       }
       return session;

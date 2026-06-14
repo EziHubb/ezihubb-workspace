@@ -26,7 +26,8 @@ import {
 } from './dto/admin-stores.dto';
 import { paginatedResponse } from '../../common/dto/paginated-response.dto';
 
-const SHOP_URL = process.env['CLIENT_URL'] ?? 'https://dailydaisy.com';
+const SHOP_URL   = process.env['CLIENT_URL'] ?? 'https://dailydaisy.com';
+const ADMIN_URL  = process.env['ADMIN_URL']  ?? 'http://localhost:3001';
 
 @Injectable()
 export class StoresService {
@@ -293,9 +294,15 @@ export class StoresService {
         },
       });
 
+      // Promote owner to ADMIN role and set default shop_owner permissions
       await tx.user.update({
         where: { id: store.ownerId },
-        data:  { isSeller: true, storeId: store.id },
+        data:  {
+          isSeller:    true,
+          storeId:     store.id,
+          role:        'ADMIN',
+          permissions: { roles: ['shop_owner'] },
+        },
       });
 
       return s;
@@ -307,12 +314,13 @@ export class StoresService {
     await this.emailQueue.add(JOBS.SEND_EMAIL, {
       to:       store.owner.email,
       template: 'store-approved',
-      subject:  'Your Daily Daisy store is approved!',
+      subject:  `🎉 Your store "${store.name}" is approved — here's how to get started`,
       data: {
-        firstName:    store.owner.firstName,
-        storeName:    store.name,
-        storeUrl:     `${SHOP_URL}/shops/${store.slug}`,
-        sellerDashboard: `${SHOP_URL}/seller`,
+        firstName:       store.owner.firstName,
+        storeName:       store.name,
+        storeUrl:        `${SHOP_URL}/shops/${store.slug}`,
+        adminPanelUrl:   ADMIN_URL,
+        adminLoginUrl:   `${ADMIN_URL}/login`,
       },
     }, DEFAULT_JOB_OPTIONS);
 
@@ -758,6 +766,20 @@ export class StoresService {
       }),
     ]);
 
-    return paginatedResponse(reviews, page, limit, total);
+    const mapped = reviews.map((r) => ({
+      id:          r.id,
+      rating:      r.rating,
+      title:       r.title,
+      body:        r.body,
+      imageUrls:   r.imageUrls,
+      createdAt:   r.createdAt,
+      sellerReply: r.sellerReply,
+      author: r.user
+        ? { id: r.user.id, firstName: r.user.firstName, lastName: r.user.lastName, avatarUrl: r.user.avatarUrl }
+        : { id: '', firstName: 'Customer', lastName: null, avatarUrl: null },
+      product: r.product,
+    }));
+
+    return paginatedResponse(mapped, page, limit, total);
   }
 }

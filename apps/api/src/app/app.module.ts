@@ -63,6 +63,8 @@ import { GiftPoolModule } from '../modules/gift-pools/gift-pool.module';
 import { GiftFinderModule } from '../modules/gift-finder/gift-finder.module';
 import { GiftChainModule } from '../modules/gift-chains/gift-chain.module';
 import { BlindMatchModule } from '../modules/blind-match/blind-match.module';
+import { CampaignsModule } from '../modules/campaigns/campaigns.module';
+import { AdminUsersModule } from '../modules/admin-users/admin-users.module';
 import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
 
 @Module({
@@ -188,6 +190,8 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
     GiftFinderModule,
     GiftChainModule,
     BlindMatchModule,
+    CampaignsModule,
+    AdminUsersModule,
     HealthModule,
   ],
   controllers: [AppController, UnsubscribeController],

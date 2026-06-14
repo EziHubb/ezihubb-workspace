@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PermissionDocument } from '@mlh/constants';
 
 export class AuthUserDto {
   @ApiProperty() id: string;
@@ -8,6 +9,9 @@ export class AuthUserDto {
   @ApiProperty() role: string;
   @ApiPropertyOptional() avatarUrl: string | null;
   @ApiProperty() isEmailVerified: boolean;
+  @ApiPropertyOptional() storeId: string | null;
+  @ApiProperty() isSeller: boolean;
+  @ApiPropertyOptional() permissions: PermissionDocument | null;
 }
 
 export class AuthResponseDto {

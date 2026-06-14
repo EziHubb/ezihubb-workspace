@@ -6,13 +6,13 @@ interface ExpressPayStripProps {
   /** Cart total in USD for display */
   total:    number;
   /** Called when user taps an express button — receives which provider was chosen */
-  onSelect?: (provider: 'apple' | 'google' | 'paypal') => void;
+  onSelect?: (provider: 'apple' | 'paypal') => void;
 }
 
 export function ExpressPayStrip({ total, onSelect }: ExpressPayStripProps) {
-  const [loading, setLoading] = useState<'apple' | 'google' | 'paypal' | null>(null);
+  const [loading, setLoading] = useState<'apple' | 'paypal' | null>(null);
 
-  const handleClick = async (provider: 'apple' | 'google' | 'paypal') => {
+  const handleClick = async (provider: 'apple' | 'paypal') => {
     setLoading(provider);
     try {
       onSelect?.(provider);
@@ -31,7 +31,7 @@ export function ExpressPayStrip({ total, onSelect }: ExpressPayStripProps) {
         <div className="flex-1 h-px bg-border" />
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {/* Apple Pay */}
         <button
           type="button"
@@ -52,33 +52,6 @@ export function ExpressPayStrip({ total, onSelect }: ExpressPayStripProps) {
                  Pay
               </text>
             </svg>
-          )}
-        </button>
-
-        {/* Google Pay */}
-        <button
-          type="button"
-          onClick={() => handleClick('google')}
-          disabled={loading !== null}
-          aria-label="Pay with Google Pay"
-          className={[
-            'flex items-center justify-center h-12 rounded-lg border transition-all',
-            'bg-white text-secondary border-border hover:bg-muted/10 active:scale-[0.98]',
-            loading === 'google' ? 'opacity-50 cursor-not-allowed' : '',
-          ].join(' ')}
-        >
-          {loading === 'google' ? (
-            <span className="w-4 h-4 border-2 border-secondary border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <span className="text-xs font-bold tracking-tight">
-              <span style={{ color: '#4285F4' }}>G</span>
-              <span style={{ color: '#EA4335' }}>o</span>
-              <span style={{ color: '#FBBC05' }}>o</span>
-              <span style={{ color: '#4285F4' }}>g</span>
-              <span style={{ color: '#34A853' }}>l</span>
-              <span style={{ color: '#EA4335' }}>e</span>
-              <span className="text-secondary ml-0.5">Pay</span>
-            </span>
           )}
         </button>
 

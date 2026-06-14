@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { X, ChevronDown, LogOut, Package, Settings } from 'lucide-react';
+import { X, ChevronDown, LogOut, Package, Settings, Store } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { queryKeys } from '@mlh/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
@@ -243,8 +243,9 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
                 </div>
 
                 {[
-                  { href: `/${locale}/account/orders`,   label: 'My Orders', icon: Package  },
-                  { href: `/${locale}/account/profile`,  label: 'Profile',   icon: Settings },
+                  { href: `/${locale}/account/orders`,   label: 'My Orders',  icon: Package  },
+                  { href: `/${locale}/account/profile`,  label: 'Profile',    icon: Settings },
+                  { href: `/${locale}/open-shop`,        label: 'Open a Shop', icon: Store   },
                 ].map(({ href, label, icon: Icon }) => (
                   <Link
                     key={href}
@@ -281,6 +282,14 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
                   className="block text-center py-2 text-sm font-medium text-secondary hover:text-primary transition-colors"
                 >
                   Create Account
+                </Link>
+                <Link
+                  href={`/${locale}/open-shop`}
+                  onClick={onClose}
+                  className="flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-primary hover:underline transition-colors"
+                >
+                  <Store className="w-3.5 h-3.5" />
+                  Sell on Daily Daisy
                 </Link>
               </div>
             )}

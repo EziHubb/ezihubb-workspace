@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import {
   Search, Heart, ShoppingBag, Menu,
-  ChevronDown, Package, Settings, LogOut, Star,
+  ChevronDown, Package, Settings, LogOut, Star, Store,
 } from 'lucide-react';
 import { useWishlist, queryKeys } from '@mlh/api-client';
 import { signOut } from 'next-auth/react';
@@ -82,6 +82,9 @@ function UserMenu({ locale }: { locale: string }) {
   }
 
   const initials = `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`.toUpperCase() || '?';
+  const adminUrl = process.env['NEXT_PUBLIC_ADMIN_URL'] ?? 'http://localhost:3001';
+  const isSeller = (profile as unknown as Record<string, unknown>)['isSeller'] === true;
+  const shopLink = isSeller ? adminUrl : `/${locale}/open-shop`;
 
   return (
     <div className="relative hidden md:block" ref={menuRef}>
@@ -123,11 +126,12 @@ function UserMenu({ locale }: { locale: string }) {
             )}
           </div>
           {[
-            { icon: Package,  label: 'My Orders', href: `/${locale}/account/orders`  },
-            { icon: Settings, label: 'Profile',   href: `/${locale}/account/profile` },
+            { icon: Package,  label: 'My Orders',                          href: `/${locale}/account/orders`  },
+            { icon: Settings, label: 'Profile',                             href: `/${locale}/account/profile` },
+            { icon: Store,    label: isSeller ? 'Seller Hub' : 'Open a Shop', href: shopLink },
           ].map(({ icon: Icon, label, href }) => (
             <Link
-              key={href}
+              key={label}
               href={href}
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-4 py-2.5 text-sm text-secondary hover:bg-muted/5 hover:text-primary transition-colors"
@@ -168,6 +172,9 @@ export function Navbar({ menuData }: NavbarProps = {}) {
 
   const user        = useAuthStore((s) => s.user);
   const isAuthReady = useAuthStore((s) => s.isAuthReady);
+  const adminUrl    = process.env['NEXT_PUBLIC_ADMIN_URL'] ?? 'http://localhost:3001';
+  const isSeller    = (user as unknown as Record<string, unknown> | null)?.['isSeller'] === true;
+  const shopHref    = isSeller ? adminUrl : `/${locale}/open-shop`;
   const { data: wishlistItems } = useWishlist(isAuthReady && !!user);
   const cart        = useCartStore((s) => s.cart);
   const openDrawer  = useCartStore((s) => s.openDrawer);
@@ -274,6 +281,15 @@ export function Navbar({ menuData }: NavbarProps = {}) {
                 <Badge count={cartCount} />
               </Link>
 
+              {/* Sell / Seller Hub link — desktop only */}
+              <Link
+                href={shopHref}
+                className="hidden md:flex items-center gap-1.5 text-sm font-semibold text-secondary hover:text-primary transition-colors whitespace-nowrap"
+              >
+                <Store className="w-4 h-4" />
+                {isSeller ? 'My Shop' : 'Sell'}
+              </Link>
+
               <UserMenu locale={locale} />
             </div>
           </div>
@@ -287,10 +303,13 @@ export function Navbar({ menuData }: NavbarProps = {}) {
             ) : (
               <div className="flex items-center gap-6 h-10">
                 {[
-                  { href: `/${locale}/search`,      label: t('shopAll')     },
-                  { href: `/${locale}/collections`, label: t('collections') },
-                  { href: `/${locale}/occasions`,   label: t('occasions')   },
-                  { href: `/${locale}/gift-cards`,  label: t('giftCards')   },
+                  { href: `/${locale}/search`,       label: t('shopAll')     },
+                  { href: `/${locale}/collections`,  label: t('collections') },
+                  { href: `/${locale}/occasions`,    label: t('occasions')   },
+                  { href: `/${locale}/gift-cards`,   label: t('giftCards')   },
+                  { href: `/${locale}/flash-deals`,  label: 'Flash Deals'    },
+                  { href: `/${locale}/gift-pools`,   label: 'Group Gift'     },
+                  { href: `/${locale}/blind-match`,  label: 'Blind Match'    },
                 ].map(({ href, label }) => (
                   <Link
                     key={href}

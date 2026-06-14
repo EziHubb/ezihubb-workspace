@@ -132,6 +132,9 @@ export class AuthService {
         role: user.role,
         avatarUrl: user.avatarUrl,
         isEmailVerified: user.isEmailVerified,
+        storeId:     user.storeId ?? null,
+        isSeller:    user.isSeller,
+        permissions: (user.permissions ?? null) as import('@mlh/constants').PermissionDocument | null,
       },
     };
   }
@@ -184,6 +187,9 @@ export class AuthService {
         role: user.role,
         avatarUrl: user.avatarUrl,
         isEmailVerified: user.isEmailVerified,
+        storeId:     user.storeId ?? null,
+        isSeller:    user.isSeller,
+        permissions: (user.permissions ?? null) as import('@mlh/constants').PermissionDocument | null,
       },
     };
   }
@@ -240,6 +246,9 @@ export class AuthService {
         role: user.role,
         avatarUrl: user.avatarUrl,
         isEmailVerified: user.isEmailVerified,
+        storeId:     user.storeId ?? null,
+        isSeller:    user.isSeller,
+        permissions: (user.permissions ?? null) as import('@mlh/constants').PermissionDocument | null,
       },
     };
   }
@@ -473,6 +482,9 @@ export class AuthService {
         role: user.role,
         avatarUrl: user.avatarUrl,
         isEmailVerified: user.isEmailVerified,
+        storeId:     user.storeId ?? null,
+        isSeller:    user.isSeller,
+        permissions: (user.permissions ?? null) as import('@mlh/constants').PermissionDocument | null,
       },
     };
   }

@@ -461,7 +461,105 @@ Return ONLY valid JSON:
   async adminCreateProductFromDraft(draftId: string): Promise<{ productSlug: string }> {
     const draft = await this.prisma.trendProductDraft.findUnique({ where: { id: draftId } });
     if (!draft) throw new Error('Draft not found');
-    return this.approveDraft(draft.storeId, draftId);
+
+    if (draft.approvedProductId) {
+      const product = await this.prisma.product.findUnique({
+        where:  { id: draft.approvedProductId },
+        select: { slug: true },
+      });
+      return { productSlug: product?.slug ?? draft.approvedProductId };
+    }
+
+    // Parse the AI-generated design brief stored as JSON
+    const brief = (draft.designBrief ?? {}) as Record<string, string>;
+    const colorPalette   = brief['colorPalette']   ?? '';
+    const style          = brief['style']          ?? '';
+    const targetAudience = brief['targetAudience'] ?? '';
+    const textContent    = brief['textContent']    ?? '';
+    const productType    = brief['productType']    ?? '';
+    const designConcept  = brief['designConcept']  ?? '';
+
+    // Prefer the category suggested by AI, fall back to first available
+    const category = draft.suggestedCategoryId
+      ? await this.prisma.category.findUnique({
+          where:  { id: draft.suggestedCategoryId },
+          select: { id: true },
+        })
+      : null;
+    const fallbackCategory = category
+      ?? await this.prisma.category.findFirst({ select: { id: true } });
+
+    const slug =
+      draft.suggestedProductName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .slice(0, 60) +
+      '-' +
+      Date.now().toString(36);
+
+    // Upsert tags from AI suggestions
+    const tagIds: string[] = [];
+    for (const t of draft.suggestedTags) {
+      const tagSlug = t.toLowerCase().replace(/\s+/g, '-');
+      const tag = await this.prisma.tag.upsert({
+        where:  { slug: tagSlug },
+        create: { name: t, slug: tagSlug },
+        update: {},
+      });
+      tagIds.push(tag.id);
+    }
+
+    // Build short description from brief fields
+    const shortDescription = [productType, designConcept].filter(Boolean).join(' — ').slice(0, 160) || undefined;
+
+    // Map colorPalette → primaryColors (split "coral and white" → ["coral", "white"])
+    const primaryColors = colorPalette
+      ? colorPalette.split(/\s+and\s+|,\s*/).map((c) => c.trim()).filter(Boolean)
+      : [];
+
+    // Map style → styles[]
+    const styles = style ? [style] : [];
+
+    // Map targetAudience → recipientTags[] (single value, trimmed)
+    const recipientTags = targetAudience ? [targetAudience.slice(0, 50)] : [];
+
+    // Embed textContent into customizationConfig so the customizer can pre-fill it
+    const customizationConfig = textContent
+      ? { defaultText: textContent, hint: `Trending: ${draft.trendTopic}` }
+      : undefined;
+
+    const product = await this.prisma.product.create({
+      data: {
+        name:             draft.suggestedProductName,
+        slug,
+        sku:              `TREND-${Date.now().toString(36).toUpperCase()}`,
+        description:      draft.suggestedDescription,
+        shortDescription: shortDescription ?? null,
+        basePrice:        draft.suggestedPrice ?? 19.99,
+        categoryId:       fallbackCategory?.id ?? '',
+        storeId:          draft.storeId,
+        status:           'ACTIVE',
+        isPersonalizable: true,
+        primaryColors,
+        styles,
+        recipientTags,
+        customizationConfig: customizationConfig ?? undefined,
+        tags: { create: tagIds.map((tagId) => ({ tagId })) },
+      },
+    });
+
+    if (draft.generatedImageUrl) {
+      await this.prisma.productImage.create({
+        data: { productId: product.id, url: draft.generatedImageUrl, isPrimary: true },
+      });
+    }
+
+    await this.prisma.trendProductDraft.update({
+      where: { id: draftId },
+      data:  { approvedProductId: product.id },
+    });
+
+    return { productSlug: slug };
   }
 
   async expireOldDrafts(): Promise<{ expired: number }> {
