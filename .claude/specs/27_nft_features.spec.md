@@ -2,305 +2,486 @@
 
 ## 1. Tổng quan
 
-Tích hợp NFT cho marketplace: drops, memberships, design licensing, creator DNA, bounties, Canva integration, và AI-powered pricing. Schema đã được push lên DB.
+Tích hợp các tính năng nâng cao: drop culture, fan memberships, AI-powered pricing, design licensing marketplace, creator bounties, Canva integration, trend-to-product pipeline, và Creator DNA. Schema đã được push lên DB. AI features dùng chung BullMQ queue `ai-features` với per-domain processors.
 
-## 2. Feature List (11 features)
+## 2. NFT numbering vs actual implementation
 
-### NFT-01 — NFT Drops
-Limited edition digital collectibles gắn với sản phẩm vật lý.
+Lưu ý: numbering trong Prisma comment khác với spec ban đầu. Mapping thực tế từ schema:
 
+| Schema Label | Feature |
+|---|---|
+| NFT-02 | Drop Culture (DropWaitlist) |
+| NFT-05 | Fan Membership (StoreMembership) |
+| NFT-06 | AI Pricing Optimizer (ABPricingTest) |
+| NFT-07 | Design Licensing Marketplace (DesignAsset, DesignLicense, RoyaltyEarning) |
+| NFT-08 | Design Bounty Board (DesignBounty, DesignBountyEntry) |
+| NFT-09 | Canva Integration (CanvaIntegration) |
+| NFT-10 | Trend → Product Pipeline (TrendProductDraft) |
+| NFT-11 | Creator DNA (SocialConnection, CreatorDNAAnalysis) |
+
+## 3. Feature Details
+
+### NFT-01 (actual) — Drop Culture / Product Drops
+
+Products can be configured as "drops" with waitlist, launch date, and quantity limit.
+
+**Prisma Model:**
 ```prisma
-model NftDrop {
-  id          String   @id @default(cuid())
-  productId   String?
-  name        String
-  description String?
-  imageUrl    String
-  totalSupply Int
-  minted      Int      @default(0)
-  price       Decimal  // USD price for claiming
-  mintPrice   Decimal? // ETH price (future)
-  startDate   DateTime
-  endDate     DateTime?
-  isActive    Boolean  @default(true)
-  contractAddress String? // after on-chain deploy
-  metadata    Json?
-  createdAt   DateTime @default(now())
-}
-
-model NftClaim {
-  id       String   @id @default(cuid())
-  dropId   String
-  userId   String
-  tokenId  Int?     // NFT token ID after mint
-  txHash   String?
-  claimedAt DateTime @default(now())
-  drop     NftDrop  @relation(fields: [dropId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
+model DropWaitlist {
+  id         String    @id @default(cuid())
+  productId  String
+  email      String
+  userId     String?
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+  @@unique([productId, email])
 }
 ```
 
-**Endpoints:**
+Product fields extended (on Product model):
+- `isDrop Boolean @default(false)`
+- `dropLaunchAt DateTime?`
+- `dropQuantityLimit Int?`
+- `dropWaitlistOpen Boolean @default(false)`
+- `dropEndAt DateTime?`
+
+**Endpoints (DropsController):**
+
 | Method | Path | Auth |
 |---|---|---|
-| GET | `/api/v1/nft/drops` | No |
-| GET | `/api/v1/nft/drops/{id}` | No |
-| POST | `/api/v1/nft/drops/{id}/claim` | Bearer |
-| GET | `/api/v1/admin/nft/drops` | ADMIN |
-| POST | `/api/v1/admin/nft/drops` | ADMIN |
-| PATCH | `/api/v1/admin/nft/drops/{id}` | ADMIN |
+| POST | `/api/v1/products/:slug/waitlist` | Optional (guest or bearer) |
+| GET | `/api/v1/products/:slug/waitlist/count` | Public |
+| PATCH | `/api/v1/seller/products/:id/drops` | Bearer (seller/store owner) |
 
 ---
 
-### NFT-02 — NFT Memberships
-Token-gated access tiers cho exclusive products/discounts.
+### NFT-02 (actual) — Fan Membership (Store Memberships)
 
+Stores can create paid memberships for fans. Subscribers get perks (set by store owner).
+
+**Prisma Models:**
 ```prisma
-enum MembershipTier { BRONZE SILVER GOLD PLATINUM }
+model StoreMembership {
+  id              String   @id @default(cuid())
+  storeId         String
+  name            String
+  description     String   @db.Text
+  price           Decimal  @db.Decimal(10, 2)
+  perks           String[]
+  isActive        Boolean  @default(true)
+  subscriberCount Int      @default(0)
+  mrr             Decimal  @default(0)
+  subscriptions   StoreMembershipSubscription[]
+}
 
-model NftMembership {
-  id           String         @id @default(cuid())
-  userId       String
-  tier         MembershipTier
-  tokenId      String?
-  walletAddress String?
-  isActive     Boolean        @default(true)
-  expiresAt    DateTime?
-  benefits     Json?          // { discountRate, earlyAccess, freeShipping }
-  createdAt    DateTime       @default(now())
-  user         User           @relation(fields: [userId], references: [id])
+model StoreMembershipSubscription {
+  id                   String           @id @default(cuid())
+  userId               String
+  storeId              String
+  membershipId         String
+  status               MembershipStatus @default(ACTIVE)
+  stripeSubscriptionId String           @unique
+  stripeCustomerId     String
+  currentPeriodEnd     DateTime
+  cancelledAt          DateTime?
 }
 ```
 
+**Endpoints (MembershipsController):**
+
+| Method | Path | Auth |
+|---|---|---|
+| GET | `/api/v1/stores/:slug/membership` | Public |
+| GET | `/api/v1/memberships/me/:storeId` | Bearer — check if user is fan |
+| POST | `/api/v1/memberships/:membershipId/subscribe` | Bearer |
+| DELETE | `/api/v1/memberships/:storeId/cancel` | Bearer |
+| POST | `/api/v1/seller/membership` | Bearer (store owner) |
+| PATCH | `/api/v1/seller/membership/:id` | Bearer (store owner) |
+| GET | `/api/v1/seller/membership/stats` | Bearer (store owner) |
+
 ---
 
-### NFT-03 — AI Pricing Engine
-AI-assisted pricing suggestions cho creators based on design complexity, market trends.
+### NFT-03 (actual) — AI Pricing Optimizer (A/B Testing)
 
+AI suggests optimal prices; seller can start A/B test. Auto-applies winner after test period.
+
+**Prisma Models:**
 ```prisma
-model AiPricingSuggestion {
-  id          String   @id @default(cuid())
-  productId   String?
-  creatorId   String?
-  suggestedPrice Decimal
-  confidence  Float
-  rationale   Json     // { factors: string[], comparables: [] }
-  modelVersion String
-  createdAt   DateTime @default(now())
+model ABPricingTest {
+  id              String       @id @default(cuid())
+  productId       String
+  variantA        Decimal      // control price
+  variantB        Decimal      // AI-suggested price
+  status          ABTestStatus @default(RUNNING)
+  startedAt       DateTime     @default(now())
+  endsAt          DateTime
+  impressionsA    Int          @default(0)
+  conversionsA    Int          @default(0)
+  impressionsB    Int          @default(0)
+  conversionsB    Int          @default(0)
+  autoApplyWinner Boolean      @default(true)
+  recommendation  Json?        // AI reasoning
+  conversionLiftPct Float?
+  appliedAt       DateTime?
+}
+
+model PricingAnalyticsLog {
+  id               String   @id @default(cuid())
+  productId        String
+  storeId          String
+  currentPrice     Decimal
+  recommendedPrice Decimal
+  confidence       Float
+  reasoning        String   @db.Text
+  competitorData   Json?
 }
 ```
 
-**Endpoint:**
-- `POST /api/v1/admin/ai/pricing-suggestion` — ADMIN
-- `POST /api/v1/creators/me/ai/pricing-suggestion` — CREATOR
+**Seller Endpoints (PricingController — `/api/v1/seller/products/:id/pricing`):**
+
+| Method | Path | Auth |
+|---|---|---|
+| GET | `/api/v1/seller/products/:id/pricing/recommendation` | Bearer (store owner) |
+| POST | `/api/v1/seller/products/:id/pricing/ab-test` | Bearer (store owner) |
+| GET | `/api/v1/seller/products/:id/pricing/ab-test` | Bearer (store owner) |
+
+**Admin Endpoints (AdminAiController — `/api/v1/admin/ai/pricing/*`):**
+
+| Method | Path |
+|---|---|
+| GET | `/api/v1/admin/ai/pricing/stats` |
+| GET | `/api/v1/admin/ai/pricing/tests` |
+| POST | `/api/v1/admin/ai/pricing/tests/:id/end` |
+| POST | `/api/v1/admin/ai/pricing/tests/:id/revert` |
+| GET | `/api/v1/admin/ai/pricing/products/:productId/recommendation` |
+| POST | `/api/v1/admin/ai/pricing/products/:productId/ab-test` |
+| GET | `/api/v1/admin/ai/pricing/products/:productId/ab-test` |
 
 ---
 
-### NFT-04 — Design Licensing
-Creators license designs với royalty on each sale.
+### NFT-04 (actual) — Design Licensing Marketplace
 
+Sellers list designs for license purchase by other stores. Supports royalty on subsequent sales.
+
+**Prisma Models:**
 ```prisma
-enum LicenseType { EXCLUSIVE NON_EXCLUSIVE COMMERCIAL PERSONAL }
+enum LicenseType  { EXCLUSIVE NON_EXCLUSIVE }
+enum LicenseModel { ONE_TIME ROYALTY SUBSCRIPTION }
+enum LicenseStatus { ACTIVE EXPIRED REVOKED }
+
+model DesignAsset {
+  id              String
+  storeId         String      // licensor
+  title           String
+  previewImageUrl String
+  fullResImageUrl String
+  licenseType     LicenseType
+  listingPrice    Decimal
+  royaltyRate     Decimal?    // for ROYALTY license model
+  licenseModel    LicenseModel
+  isActive        Boolean     @default(true)
+  licenseCount    Int         @default(0)
+  tags            String[]
+}
 
 model DesignLicense {
-  id          String      @id @default(cuid())
-  designId    String
-  licenseeId  String       // buyer
-  licensorId  String       // creator
-  type        LicenseType
-  royaltyRate Decimal      @default(0.05)
-  isActive    Boolean      @default(true)
-  expiresAt   DateTime?
-  terms       String?
-  createdAt   DateTime     @default(now())
+  id                    String
+  assetId               String
+  licenseeStoreId       String
+  licensorStoreId       String
+  licenseType           LicenseType
+  purchasePrice         Decimal
+  royaltyRate           Decimal?
+  platformFee           Decimal
+  licensorEarnings      Decimal
+  status                LicenseStatus @default(ACTIVE)
+  stripePaymentIntentId String?
+}
+
+model RoyaltyEarning {
+  id             String               @id @default(cuid())
+  licenseId      String
+  triggerOrderId String
+  amount         Decimal
+  status         RoyaltyEarningStatus @default(PENDING)
 }
 ```
 
----
+**Endpoints (DesignLicensingController):**
 
-### NFT-05 — Creator Bounties
-Brands post design requests, creators submit, winner earns bounty.
-
-```prisma
-enum BountyStatus { OPEN REVIEWING AWARDED CLOSED }
-
-model Bounty {
-  id          String       @id @default(cuid())
-  posterId    String       // brand/admin
-  title       String
-  description String
-  reward      Decimal
-  deadline    DateTime
-  status      BountyStatus @default(OPEN)
-  winnerId    String?
-  createdAt   DateTime     @default(now())
-  submissions BountySubmission[]
-}
-
-model BountySubmission {
-  id          String   @id @default(cuid())
-  bountyId    String
-  creatorId   String
-  designUrl   String
-  description String?
-  isWinner    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-}
-```
-
----
-
-### NFT-06 — Canva Integration
-Design via Canva Connect API, import into customizer or creator portfolio.
-
-- Auth flow: OAuth with Canva
-- Import design → convert to customizable template
-- Env: `CANVA_CLIENT_ID`, `CANVA_CLIENT_SECRET`
-
-**Endpoints:**
 | Method | Path | Auth |
 |---|---|---|
-| GET | `/api/v1/integrations/canva/auth` | Bearer |
-| GET | `/api/v1/integrations/canva/callback` | Bearer |
-| GET | `/api/v1/integrations/canva/designs` | Bearer |
-| POST | `/api/v1/integrations/canva/import/{designId}` | Bearer |
+| GET | `/api/v1/marketplace/designs` | Public (query: page, limit, licenseType, search) |
+| GET | `/api/v1/marketplace/designs/:id` | Public |
+| POST | `/api/v1/marketplace/designs/:id/license` | Bearer (store) |
+| POST | `/api/v1/seller/designs` | Bearer (store) — list design for license |
+| GET | `/api/v1/seller/licenses` | Bearer (store) — role: licensor | licensee |
+
+**Client Page:** `/marketplace/designs`
 
 ---
 
-### NFT-07 — Design Trends
-AI-generated trend analysis for creators.
+### NFT-05 (actual) — Design Bounty Board
 
+Brands post design requests with a reward; creators submit entries; poster selects winner.
+
+**Prisma Models:**
 ```prisma
-model DesignTrend {
-  id         String   @id @default(cuid())
-  category   String
-  keywords   String[]
-  imageUrls  String[]
-  trendScore Float
-  period     String   // e.g. "2026-Q2"
-  source     String   // "internal" | "pinterest" | "etsy"
-  createdAt  DateTime @default(now())
+enum BountyStatus     { OPEN REVIEWING AWARDED CLOSED }
+enum BountyEntryStatus { SUBMITTED SHORTLISTED WINNER REJECTED }
+
+model DesignBounty {
+  id            String
+  posterId      String
+  posterStoreId String?
+  title         String
+  brief         String   @db.Text
+  budget        Decimal
+  platformFee   Decimal
+  winnerPayout  Decimal
+  deadline      DateTime
+  status        BountyStatus @default(OPEN)
+  entryCount    Int          @default(0)
+  entries       DesignBountyEntry[]
+}
+
+model DesignBountyEntry {
+  id              String
+  bountyId        String
+  designerId      String
+  previewImageUrl String
+  fullResImageUrl String
+  description     String?
+  status          BountyEntryStatus @default(SUBMITTED)
 }
 ```
 
-**Endpoint:** `GET /api/v1/creators/me/trends` — CREATOR
+**Endpoints (BountiesController):**
+
+| Method | Path | Auth |
+|---|---|---|
+| GET | `/api/v1/marketplace/bounties` | Public (query: page, limit, status) |
+| GET | `/api/v1/marketplace/bounties/:id` | Public |
+| POST | `/api/v1/marketplace/bounties` | Bearer — create bounty |
+| POST | `/api/v1/marketplace/bounties/:id/entries` | Bearer — submit entry |
+| POST | `/api/v1/marketplace/bounties/:id/select-winner` | Bearer — poster selects winner |
+| GET | `/api/v1/marketplace/bounties/me` | Bearer — my bounties (as poster) |
+
+**Client Page:** `/marketplace/bounties`
 
 ---
 
-### NFT-08 — Creator DNA
-Unique style fingerprint for each creator based on their portfolio.
+### NFT-06 (actual) — Canva Integration
 
+OAuth with Canva; sellers publish product images from Canva designs.
+
+**Prisma Model:**
 ```prisma
-model CreatorDna {
-  id          String   @id @default(cuid())
-  creatorId   String   @unique
-  styleVector Json     // embedding vector (array of floats)
-  tags        String[] // auto-detected style tags
-  colorPalette String[] // dominant colors
-  updatedAt   DateTime @updatedAt
-  creator     Creator  @relation(fields: [creatorId], references: [id])
+model CanvaIntegration {
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  canvaUserId  String    @unique
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
 }
 ```
 
-- Auto-generated via AI image analysis on design upload
-- Used for: creator recommendation, design trend matching
+**Endpoints (CanvaController — `/api/v1/canva/*`):**
+
+| Method | Path | Auth |
+|---|---|---|
+| GET | `/api/v1/canva/authorize` | Bearer — redirects to Canva OAuth |
+| GET | `/api/v1/canva/callback` | Public — OAuth callback |
+| GET | `/api/v1/canva/products` | Bearer — seller's products |
+| POST | `/api/v1/canva/publish` | Bearer — upload image (multipart/form-data) |
+| GET | `/api/v1/canva/status` | Bearer — integration status |
+| DELETE | `/api/v1/canva/disconnect` | Bearer |
+
+**Env:** `CANVA_CLIENT_ID`, `CANVA_CLIENT_SECRET`, `CANVA_REDIRECT_URI`
 
 ---
 
-### NFT-09 — Token-Gated Products
-Products only purchasable if user holds specific NFT.
+### NFT-07 (actual) — Trend → Product Pipeline
 
+AI scans social platforms for trending topics → generates product design briefs + images → admin reviews drafts → creates real products.
+
+**Prisma Model:**
 ```prisma
-model TokenGate {
-  id              String   @id @default(cuid())
-  productId       String
-  requiredTokenId String?  // specific NFT token
-  contractAddress String   // NFT contract
-  chainId         Int      @default(1) // Ethereum mainnet
-  isActive        Boolean  @default(true)
+enum TrendDraftStatus { PENDING_REVIEW APPROVED REJECTED EXPIRED PRODUCT_CREATED }
+
+model TrendProductDraft {
+  id                   String
+  storeId              String
+  trendTopic           String
+  trendEngagement      Int
+  trendPlatform        String   @default("tiktok")
+  designBrief          Json
+  generatedImageUrl    String
+  suggestedProductName String
+  suggestedDescription String   @db.Text
+  suggestedTags        String[]
+  suggestedPrice       Decimal?
+  status               TrendDraftStatus @default(PENDING_REVIEW)
+  expiresAt            DateTime         // auto-expire old drafts
+  ipScanStatus         String   @default("PENDING")
+  trendDataSnapshot    Json?
+  approvedProductId    String?
 }
 ```
 
+Trend sources: TikTok, Pinterest, Google Trends, Reddit, Amazon, Shopee, Taobao.
+
+**Seller Endpoints (TrendsController — `/api/v1/seller/trends`):**
+
+| Method | Path | Auth |
+|---|---|---|
+| GET | `/api/v1/seller/trends` | Bearer (store) — list my drafts |
+| GET | `/api/v1/seller/trends/topics` | Bearer — trending topics |
+| POST | `/api/v1/seller/trends/generate` | Bearer — trigger generation |
+| POST | `/api/v1/seller/trends/:draftId/approve` | Bearer — approve draft |
+| POST | `/api/v1/seller/trends/:draftId/reject` | Bearer — reject draft |
+
+**Admin Endpoints (AdminAiController — `/api/v1/admin/ai/trend-drafts/*`):**
+
+| Method | Path |
+|---|---|
+| GET | `/api/v1/admin/ai/trend-drafts/pending-count` |
+| GET | `/api/v1/admin/ai/trend-drafts` |
+| POST | `/api/v1/admin/ai/trend-drafts/:id/approve` |
+| POST | `/api/v1/admin/ai/trend-drafts/:id/reject` |
+| POST | `/api/v1/admin/ai/trend-drafts/:id/create-product` |
+| GET | `/api/v1/admin/ai/sources` — list trend sources |
+| POST | `/api/v1/admin/ai/trends/trigger-scan` — trigger immediate scan |
+
 ---
 
-### NFT-10 — Wallet Connect
-Connect crypto wallet for NFT operations.
+### NFT-08 (actual) — Creator DNA
 
+Analyzes admin user's social media content to identify their creative style, audience, and generate personalized product ideas.
+
+**Prisma Models:**
 ```prisma
-model WalletConnection {
-  id            String   @id @default(cuid())
+enum CreatorDNAStatus { PENDING PROCESSING COMPLETED FAILED }
+
+model SocialConnection {
+  id             String
+  userId         String
+  platform       String      // "tiktok" | "instagram"
+  accessToken    String
+  refreshToken   String?
+  expiresAt      DateTime?
+  platformUserId String?
+  @@unique([userId, platform])
+}
+
+model CreatorDNAAnalysis {
+  id            String
   userId        String
-  walletAddress String
-  chainId       Int
-  isVerified    Boolean  @default(false)
-  verifiedAt    DateTime?
-  createdAt     DateTime @default(now())
+  storeId       String
+  platform      String
+  analysisData  Json?
+  insights      Json?
+  status        CreatorDNAStatus @default(PENDING)
+  postsAnalyzed Int              @default(0)
+  draftsGenerated Int            @default(0)
 }
 ```
 
-**Endpoints:**
+**Endpoints (CreatorDnaController — `/api/v1/creator-dna`):**
+
 | Method | Path | Auth |
 |---|---|---|
-| POST | `/api/v1/wallet/connect` | Bearer |
-| POST | `/api/v1/wallet/verify` | Bearer |
-| DELETE | `/api/v1/wallet/{id}` | Bearer |
+| GET | `/api/v1/creator-dna/tiktok/connect` | Bearer — redirect to TikTok OAuth |
+| GET | `/api/v1/creator-dna/tiktok/callback` | Public — OAuth callback |
+| GET | `/api/v1/creator-dna/instagram/connect` | Bearer — redirect to Instagram OAuth |
+| GET | `/api/v1/creator-dna/instagram/callback` | Public — OAuth callback |
+| GET | `/api/v1/creator-dna/analysis` | Bearer — get my DNA analysis |
+| GET | `/api/v1/creator-dna/platforms` | Bearer — connected platforms |
+| DELETE | `/api/v1/creator-dna/platforms/:platform` | Bearer — disconnect |
+
+**Admin Endpoints (AdminAiController — `/api/v1/admin/ai/creator-dna/*`):**
+
+| Method | Path |
+|---|---|
+| GET | `/api/v1/admin/ai/creator-dna` |
+| POST | `/api/v1/admin/ai/creator-dna/:id/reanalyze` |
+| GET | `/api/v1/admin/ai/creator-dna/platforms` |
+| DELETE | `/api/v1/admin/ai/creator-dna/platforms/:platform` |
+| POST | `/api/v1/admin/ai/creator-dna/fetch` |
 
 ---
 
-### NFT-11 — NFT-backed Gift Cards
-Gift cards as NFTs with blockchain provenance.
+## 4. AI Features BullMQ Queue
 
-```prisma
-model NftGiftCard {
-  id           String   @id @default(cuid())
-  giftCardId   String   @unique // links to GiftCard
-  tokenId      String?
-  contractAddress String?
-  txHash       String?
-  mintedAt     DateTime?
-  createdAt    DateTime @default(now())
-  giftCard     GiftCard @relation(fields: [giftCardId], references: [id])
-}
+Queue name: `ai-features` (QUEUES.AI_FEATURES)
+
+All AI work is processed through a single `AiFeaturesProcessor` that routes by job name:
+
+```typescript
+// Job names (AI_JOBS constant)
+ANALYZE_PRICING     → PricingProcessor
+EVALUATE_AB_TEST    → PricingProcessor
+RECORD_IMPRESSION   → PricingProcessor
+RECORD_CONVERSION   → PricingProcessor
+FETCH_TRENDS        → TrendsProcessor
+GENERATE_DESIGN_BRIEF → TrendsProcessor
+GENERATE_DESIGN_IMAGE → TrendsProcessor
+EXPIRE_OLD_DRAFTS   → TrendsProcessor
+FETCH_SOCIAL_DATA   → CreatorDnaProcessor
+ANALYZE_AUDIENCE    → CreatorDnaProcessor
 ```
 
-## 3. Admin AI Features Section
+## 5. Admin AI Section
 
-A dedicated section in admin sidebar: "AI Features"
+Admin sidebar section: "AI"
 
 Pages:
-- `/ai-features` — Dashboard: AI usage stats, model performance KPIs
-- `/ai-features/pricing` — AI Pricing Suggestions
-- `/ai-features/trends` — Design Trends
-- `/ai-features/dna` — Creator DNA management
-- `/ai-features/moderation` — AI content moderation queue
+- `apps/admin/src/app/(admin)/ai/creator-dna/page.tsx` — Creator DNA management
+- `apps/admin/src/app/(admin)/ai/pricing/page.tsx` — A/B pricing tests dashboard
+- `apps/admin/src/app/(admin)/ai/trends/page.tsx` — Trend drafts management
+- `apps/admin/src/app/(admin)/ai/usage/page.tsx` — AI API usage + cost metrics
+- `apps/admin/src/app/(admin)/ai/settings/page.tsx` — AI feature settings
 
-**Dashboard KPI Row** (added to main admin dashboard):
-- AI pricing accuracy score
-- Trend detection count
-- Creator DNA profiles generated
+**Admin AI API Stats endpoints:**
 
-## 4. Environment Variables
+| Method | Path |
+|---|---|
+| GET | `/api/v1/admin/ai/stats` — overall stats |
+| GET | `/api/v1/admin/ai/settings` |
+| PUT | `/api/v1/admin/ai/settings` |
+| GET | `/api/v1/admin/ai/usage` — cost metrics (query: `days`) |
+
+## 6. Client Pages
+
+- `/marketplace/bounties` — Design Bounty Board (public)
+- `/marketplace/designs` — Design Licensing Marketplace (public)
+- `/mystery/[orderId]` — Mystery box reveal (linked to blind-match feature)
+
+## 7. Environment Variables
 
 ```
-# NFT / Web3
-ALCHEMY_API_KEY=...        # Ethereum RPC
-NEXT_PUBLIC_CHAIN_ID=1     # 1=mainnet, 11155111=sepolia
-NFT_CONTRACT_ADDRESS=...   # deployed NFT contract
-
 # Canva
 CANVA_CLIENT_ID=...
 CANVA_CLIENT_SECRET=...
 CANVA_REDIRECT_URI=...
 
-# AI
-OPENAI_API_KEY=...         # for pricing & DNA analysis
-REPLICATE_API_KEY=...      # for design trend images
+# AI (pricing + DNA + trends)
+OPENAI_API_KEY=...          # GPT-4 for brief generation, DNA analysis
+REPLICATE_API_KEY=...       # image generation for trend drafts
+
+# Creator DNA OAuth
+TIKTOK_CLIENT_KEY=...
+TIKTOK_CLIENT_SECRET=...
+INSTAGRAM_APP_ID=...
+INSTAGRAM_APP_SECRET=...
 ```
 
-## 5. Implementation Notes
+## 8. Implementation Notes
 
-- NFT minting is async (webhook from blockchain)
-- All monetary values still USD (not ETH)
-- On-chain operations use Alchemy provider
-- Token verification done server-side (signature check)
 - Schema pushed — migration applied 2026-06-11
+- No actual blockchain/NFT minting — features use naming ("drop", "membership") but are web2 implementations
+- Trend pipeline: async image generation via BullMQ → admin reviews before product creation
+- Creator DNA: processes social posts to identify niches, recommends trending product ideas
+- A/B pricing: splits traffic 50/50, auto-applies winner at test end if `autoApplyWinner=true`
+- Design licensing royalties: triggered per-order via hook in order completion flow

@@ -2,7 +2,7 @@
 
 ## 1. Tổng quan
 
-Hệ thống tích điểm thưởng cho khách hàng. Earn khi mua hàng, redeem khi thanh toán. 14-day lock trước khi points có thể dùng. BullMQ auto-confirm.
+Hệ thống tích điểm thưởng cho khách hàng. Earn khi mua hàng, redeem khi thanh toán. 14-day lock trước khi points có thể dùng. BullMQ auto-confirm sau 14 ngày.
 
 ## 2. API Endpoints
 
@@ -12,7 +12,7 @@ Hệ thống tích điểm thưởng cho khách hàng. Earn khi mua hàng, redee
 | GET | `/api/v1/loyalty/me` | Points balance + tier + history | Bearer |
 | GET | `/api/v1/loyalty/me/transactions` | Toàn bộ giao dịch points (phân trang) | Bearer |
 | POST | `/api/v1/loyalty/redeem` | Redeem points cho đơn hàng | Bearer |
-| GET | `/api/v1/loyalty/preview` | Preview points sẽ earn từ cart | Bearer |
+| GET | `/api/v1/loyalty/preview` | Preview points sẽ earn từ cart (không tạo transaction) | Bearer |
 
 ### Admin
 | Method | Path | Mô tả | Auth |
@@ -52,7 +52,7 @@ model PointTransaction {
   points      Int                  // positive = earn, negative = spend
   orderId     String?
   description String?
-  lockedUntil DateTime?            // for EARNED_ORDER: now + 14 days
+  lockedUntil DateTime?            // EARNED_ORDER: now + 14 days
   unlockedAt  DateTime?            // when BullMQ unlocks
   createdAt   DateTime             @default(now())
   account     LoyaltyAccount       @relation(fields: [accountId], references: [id])
@@ -64,57 +64,60 @@ model PointTransaction {
 | Event | Points Earned |
 |---|---|
 | Order CONFIRMED | 10 pts per $1 spent (order total after discounts) |
-| Order COMPLETED | Points unlocked (moved from pending → balance) |
-| Order CANCELLED | Earned points deducted (refund_deducted) |
+| Order COMPLETED | Points unlocked (pending → balance) |
+| Order CANCELLED | Earned points deducted (REFUND_DEDUCTED) |
 
-- Points earned in `PENDING` state for 14 days after order confirmation
-- BullMQ job `loyalty-unlock` scheduled at `confirmedAt + 14d`
+- Points earned ở trạng thái `PENDING` trong 14 ngày sau order confirmation
+- BullMQ job `loyalty-unlock` scheduled tại `confirmedAt + 14d`
 
 ## 5. Redeem Rules
 
-| Rate | Meaning |
+| Rate | Ý nghĩa |
 |---|---|
 | 100 pts = $1 | Redeem 100 points → $1 off order |
 
-- Only `pointsBalance` (unlocked) can be redeemed
+- Chỉ `pointsBalance` (unlocked) có thể redeem
 - Min redeem: 100 points ($1)
-- Max redeem per order: capped at order total
-- Redeem applies as discount in checkout flow
+- Max redeem per order: capped tại order total
+- Redeem áp dụng như discount trong checkout flow
 
 ## 6. BullMQ Queue: `loyalty-unlock`
 
 ```typescript
-// Job: unlock pending points after 14 days
+// Job: unlock pending points sau 14 ngày
 interface LoyaltyUnlockJob {
   transactionId: string;
   userId: string;
   points: number;
 }
-// Scheduled delay = 14 * 24 * 60 * 60 * 1000 ms from confirmedAt
+// Scheduled delay = 14 * 24 * 60 * 60 * 1000 ms từ confirmedAt
 ```
+
+File processor: `apps/api/src/modules/loyalty/loyalty.processor.ts`
 
 ## 7. Checkout Integration
 
-In `CreateOrderDto`:
+Trong `CreateOrderDto`:
 ```typescript
 {
   loyaltyPointsToRedeem?: number;  // points to apply as discount
 }
 ```
 
-Server validates: `pointsToRedeem <= account.pointsBalance` and converts to discount amount.
+Server validates: `pointsToRedeem <= account.pointsBalance` và convert thành discount amount.
 
 Order stores:
 ```prisma
 model Order {
-  loyaltyPointsEarned  Int? // points queued (pending)
-  loyaltyPointsRedeemed Int? // points spent on this order
+  loyaltyPointsEarned   Int?  // points queued (pending)
+  loyaltyPointsRedeemed Int?  // points spent on this order
 }
 ```
 
 ## 8. Customer Dashboard Page
 
 Route: `/[locale]/account/loyalty`
+File: `apps/client/src/app/[locale]/(account)/account/loyalty/page.tsx`
 
 Components:
 - Points balance card (available vs pending)
@@ -122,19 +125,29 @@ Components:
 - Earn history timeline
 - Redeem summary
 
-File: `apps/client/src/app/[locale]/(account)/account/loyalty/page.tsx`
+## 9. Email Notifications
 
-## 9. Email Notification
-
-- `loyalty-points-earned.hbs`: "You earned X points on order #MLH-..." (sent when CONFIRMED)
-- `loyalty-points-unlocked.hbs`: "Your X points are now available!" (sent when unlocked)
+- `loyalty-points-earned.hbs`: "You earned X points on order #MLH-..." (sent khi CONFIRMED)
+- `loyalty-points-unlocked.hbs`: "Your X points are now available!" (sent khi unlocked)
 - Queued via `email-queue`
 
 ## 10. Business Rules
 
-- LoyaltyAccount auto-created on first earned transaction (lazy create)
-- Soft prevent negative balance (redeem blocked if insufficient)
-- Admin adjust: can be positive or negative, no lock period
+- `LoyaltyAccount` auto-created on first earned transaction (lazy create)
+- Soft prevent negative balance (redeem blocked nếu không đủ)
+- Admin adjust: có thể positive hoặc negative, không có lock period
 - Points không expire (trừ khi thêm expiry feature sau)
 - Rate configurable trong admin settings (earn: pts per dollar, redeem: pts per dollar)
-- `POST /loyalty/preview` trả về points sẽ earn (based on current cart total) — không tạo transaction
+- `GET /loyalty/preview` trả về points sẽ earn (based on current cart total) — không tạo transaction
+
+## 11. File Structure (API)
+
+```
+apps/api/src/modules/loyalty/
+  loyalty.module.ts
+  loyalty.controller.ts
+  loyalty.service.ts
+  loyalty.processor.ts   # BullMQ processor
+  loyalty.config.ts      # Earn/redeem rate config
+  loyalty.service.spec.ts
+```

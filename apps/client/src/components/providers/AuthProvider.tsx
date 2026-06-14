@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { identifyHotjarUser } from '../../lib/analytics/hotjar';
 import { toast } from '../../lib/store/toast.store';
 import { api } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { initPushNotifications, setupForegroundMessages } from '../../lib/notifications/push';
 
 export function AuthProvider({ children }: { children?: React.ReactNode }) {
@@ -27,7 +28,7 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
     initPushNotifications()
       .then((token) => {
         if (!token) return;
-        api.post('/users/me/fcm-token', { token, platform: 'web' }).catch(() => {});
+        api.post(API_ROUTES.USERS.FCM_TOKEN, { token, platform: 'web' }).catch(() => {});
       })
       .catch(() => {});
 

@@ -24,6 +24,16 @@ jest.mock('next-auth/react', () => ({
   useSession: jest.fn().mockReturnValue({ data: null, status: 'unauthenticated' }),
 }));
 
+// Mock DialogContext — stores page uses useDialog for confirm prompts
+jest.mock('../../../../contexts/DialogContext', () => ({
+  useDialog: jest.fn(() => ({
+    alert:   jest.fn().mockResolvedValue(undefined),
+    confirm: jest.fn().mockResolvedValue(true),
+    prompt:  jest.fn().mockResolvedValue(null),
+    preview: jest.fn().mockResolvedValue(undefined),
+  })),
+}));
+
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),

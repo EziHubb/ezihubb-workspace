@@ -45,6 +45,10 @@ function normalizeItem(item: CartItemDto): CartItemDto {
         : item.variant
           ? Object.values(item.variant.options).join(' / ')
           : null,
+    variantOptions:
+      item.variantOptions !== undefined
+        ? item.variantOptions
+        : (item.variant?.options ?? null),
     priceChanged:
       item.priceChanged !== undefined
         ? item.priceChanged

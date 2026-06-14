@@ -1,12 +1,11 @@
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
 import { MobileBottomNav } from '../../../components/layout/MobileBottomNav';
+import { CampaignBannerBar } from '../../../components/campaign/CampaignBannerBar';
 import type { MegaMenuTab } from '../../../types/mega-menu';
 
-// All storefront routes render dynamically at request time.
-// The mega-menu fetch below is still DATA-cached for 10 minutes via next.revalidate —
-// only the route-level full-route cache is disabled.
 export const dynamic = 'force-dynamic';
 
 export default async function StorefrontLayout({
@@ -14,17 +13,23 @@ export default async function StorefrontLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // apiClient auto-unwraps the envelope; result is MegaMenuTab[] directly
-  const menuData = await apiClient
-    .get<MegaMenuTab[]>('/catalog/mega-menu', {
-      next: { revalidate: 600 },
-    })
-    .catch(() => [] as MegaMenuTab[]);
+  const [menuData, activeCampaign] = await Promise.all([
+    apiClient
+      .get<MegaMenuTab[]>('/catalog/mega-menu', { next: { revalidate: 600 } })
+      .catch(() => [] as MegaMenuTab[]),
+    apiClient
+      .get<any>(API_ROUTES.CAMPAIGNS.ACTIVE)
+      .catch(() => null),
+  ]);
 
   return (
     <>
-      <Navbar menuData={menuData} />
-      <main className="pt-16 md:pt-[112px] min-h-screen">
+      {/* Sticky header: campaign banner (when active) + navbar */}
+      <div className="sticky top-0 z-50">
+        <CampaignBannerBar campaign={activeCampaign} />
+        <Navbar menuData={menuData} />
+      </div>
+      <main className="min-h-screen">
         {children}
       </main>
       {/* Extra bottom padding on mobile so content clears the fixed MobileBottomNav */}

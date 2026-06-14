@@ -223,12 +223,14 @@ export class StoresService {
 
   // ─── Admin: List stores ───────────────────────────────────────────────────
 
-  async adminListStores(dto: AdminListStoresDto) {
+  async adminListStores(dto: AdminListStoresDto, scopedOwnerId?: string) {
     const page  = dto.page  ?? 1;
     const limit = dto.limit ?? 20;
     const skip  = (page - 1) * limit;
 
     const where: any = {};
+    // Shop owners (ADMIN role) can only see their own store(s)
+    if (scopedOwnerId) where.ownerId = scopedOwnerId;
     if (dto.status) where.status = dto.status;
     if (dto.search) {
       where.OR = [
@@ -251,17 +253,21 @@ export class StoresService {
     return paginatedResponse(stores, page, limit, total);
   }
 
-  async adminGetStore(storeId: string) {
+  async adminGetStore(storeId: string, scopedOwnerId?: string) {
     const store = await this.prisma.store.findUnique({
       where:   { id: storeId },
       include: {
-        owner:        { select: { email: true, firstName: true, lastName: true } },
+        owner:        { select: { id: true, email: true, firstName: true, lastName: true } },
         subscriptionPlan: true,
         subscriptions:    true,
         payouts:          { orderBy: { createdAt: 'desc' }, take: 5 },
       },
     });
     if (!store) throw new NotFoundException('Store not found');
+    // Shop owners (ADMIN role) can only access their own store
+    if (scopedOwnerId && store.ownerId !== scopedOwnerId) {
+      throw new NotFoundException('Store not found');
+    }
     return store;
   }
 
@@ -648,7 +654,7 @@ export class StoresService {
     const store = await this.prisma.store.findUnique({ where: { id: storeId } });
     if (!store) throw new NotFoundException('Store not found');
 
-    return this.prisma.store.update({
+    const updated = await this.prisma.store.update({
       where: { id: storeId },
       data:  {
         name:        dto.name        ?? undefined,
@@ -657,6 +663,15 @@ export class StoresService {
         logoUrl:     dto.logoUrl     ?? undefined,
       },
     });
+
+    if (dto.bannerUrl) {
+      this.moderationService?.queueStoreImageModeration(storeId, dto.bannerUrl, 'banner').catch((e) => this.logger.error('mod queue failed', e));
+    }
+    if (dto.logoUrl) {
+      this.moderationService?.queueStoreImageModeration(storeId, dto.logoUrl, 'logo').catch((e) => this.logger.error('mod queue failed', e));
+    }
+
+    return updated;
   }
 
   async adminUploadStoreBanner(storeId: string, file: Express.Multer.File) {
@@ -672,6 +687,8 @@ export class StoresService {
       where: { id: storeId },
       data:  { bannerUrl: url },
     });
+
+    this.moderationService?.queueStoreImageModeration(storeId, url, 'banner').catch((e) => this.logger.error('mod queue failed', e));
 
     return { bannerUrl: url, store: updated };
   }
@@ -689,6 +706,8 @@ export class StoresService {
       where: { id: storeId },
       data:  { logoUrl: url },
     });
+
+    this.moderationService?.queueStoreImageModeration(storeId, url, 'logo').catch((e) => this.logger.error('mod queue failed', e));
 
     return { logoUrl: url, store: updated };
   }

@@ -139,6 +139,64 @@ export class ModerationService {
     }
   }
 
+  async queueStoreImageModeration(storeId: string, imageUrl: string, imageType: 'banner' | 'logo'): Promise<void> {
+    try {
+      const hash = crypto.createHash('sha256').update(imageUrl).digest('hex').slice(0, 12);
+      await this.queue.add(JOBS.CHECK_IMAGE, {
+        entityType: 'Store', entityId: storeId, imageUrl, storeId,
+      }, { ...DEFAULT_JOB_OPTIONS, delay: 500, jobId: `mod_store_${storeId}_${imageType}_${hash}` });
+    } catch (err) {
+      this.logger.error('queueStoreImageModeration failed', err);
+    }
+  }
+
+  async queueReviewImageModeration(reviewId: string, imageUrls: string[], storeId: string | null): Promise<void> {
+    try {
+      for (const imageUrl of imageUrls) {
+        const hash = crypto.createHash('sha256').update(imageUrl).digest('hex').slice(0, 12);
+        await this.queue.add(JOBS.CHECK_IMAGE, {
+          entityType: 'Review', entityId: reviewId, imageUrl, storeId,
+        }, { ...DEFAULT_JOB_OPTIONS, delay: 500, jobId: `mod_review_${reviewId}_img_${hash}` });
+      }
+    } catch (err) {
+      this.logger.error('queueReviewImageModeration failed', err);
+    }
+  }
+
+  async queueQAModeration(questionId: string): Promise<void> {
+    try {
+      const q = await this.prisma.productQuestion.findUnique({
+        where:  { id: questionId },
+        select: { id: true, question: true, answer: true, product: { select: { storeId: true } } },
+      });
+      if (!q) return;
+      const jobs: { fieldName: string; content: string | null }[] = [
+        { fieldName: 'question', content: q.question },
+        { fieldName: 'answer',   content: q.answer   },
+      ];
+      for (const { fieldName, content } of jobs) {
+        if (!content) continue;
+        await this.queue.add(JOBS.CHECK_TEXT, {
+          entityType: 'ProductQuestion', entityId: questionId, fieldName, content,
+          storeId: q.product?.storeId ?? null,
+        }, { ...DEFAULT_JOB_OPTIONS, jobId: `mod_qa_${questionId}_${fieldName}` });
+      }
+    } catch (err) {
+      this.logger.error('queueQAModeration failed', err);
+    }
+  }
+
+  async queueUserAvatarModeration(userId: string, avatarUrl: string): Promise<void> {
+    try {
+      const hash = crypto.createHash('sha256').update(avatarUrl).digest('hex').slice(0, 12);
+      await this.queue.add(JOBS.CHECK_IMAGE, {
+        entityType: 'UserAvatar', entityId: userId, imageUrl: avatarUrl, storeId: null,
+      }, { ...DEFAULT_JOB_OPTIONS, delay: 500, jobId: `mod_avatar_${userId}_${hash}` });
+    } catch (err) {
+      this.logger.error('queueUserAvatarModeration failed', err);
+    }
+  }
+
   // ── Core check ────────────────────────────────────────────────────────────
 
   async checkText(dto: {
@@ -222,7 +280,7 @@ export class ModerationService {
     const severity  = dto.result.verdict;
 
     // Save log
-    await this.prisma.moderationLog.create({
+    const moderationLog = await this.prisma.moderationLog.create({
       data: {
         entityType:   dto.entityType,
         entityId:     dto.entityId,
@@ -241,7 +299,7 @@ export class ModerationService {
       },
     });
 
-    await this.applyModerationResult(dto.entityType, dto.entityId, dto.result, dto.storeId, settings);
+    await this.applyModerationResult(dto.entityType, dto.entityId, dto.result, dto.storeId, settings, moderationLog.id);
 
     // Cache CLEAN results
     if (dto.result.verdict === 'CLEAN') {
@@ -256,6 +314,7 @@ export class ModerationService {
     result:     ModerationResult,
     storeId:    string | null | undefined,
     settings?:  ModerationSettings,
+    logId?:     string,
   ): Promise<void> {
     const cfg = settings ?? await this.getCachedSettings();
 
@@ -263,7 +322,7 @@ export class ModerationService {
       case 'CRITICAL':
         if (cfg.autoCriticalBlock) {
           await this.updateEntityStatus(entityType, entityId, 'REJECTED');
-          if (storeId) await this.handleStrikes(storeId, 'CRITICAL', cfg);
+          if (storeId) await this.handleStrikes(storeId, 'CRITICAL', cfg, logId);
           await this.notifyAdminCritical(entityType, entityId, result);
           if (storeId) await this.notifySeller(storeId, entityType, result, 'content-rejected-critical');
         }
@@ -272,7 +331,7 @@ export class ModerationService {
       case 'HIGH':
         if (cfg.autoHighFlag) {
           await this.updateEntityStatus(entityType, entityId, 'FLAGGED');
-          if (storeId) await this.handleStrikes(storeId, 'HIGH', cfg);
+          if (storeId) await this.handleStrikes(storeId, 'HIGH', cfg, logId);
           if (storeId) await this.notifySeller(storeId, entityType, result, 'content-flagged');
         }
         break;
@@ -309,6 +368,13 @@ export class ModerationService {
         case 'Store':   await this.prisma.store.update(  { where: { id: entityId }, data }); break;
         case 'Review':  await this.prisma.review.update( { where: { id: entityId }, data: { moderationStatus: status as never } }); break;
         case 'Message': await this.prisma.message.update({ where: { id: entityId }, data: { moderationStatus: status as never } }); break;
+        case 'UserAvatar': /* No DB status field — violation logged only */ break;
+        case 'ProductQuestion':
+          await this.prisma.productQuestion.update({
+            where: { id: entityId },
+            data:  { isSpam: status === 'REJECTED' || status === 'FLAGGED' },
+          });
+          break;
       }
     } catch (err) {
       this.logger.error(`updateEntityStatus failed for ${entityType}:${entityId}`, err);
@@ -321,20 +387,21 @@ export class ModerationService {
     storeId:  string,
     severity: string,
     settings: ModerationSettings,
+    logId?:   string,
   ): Promise<void> {
     try {
       const windowDays  = settings.strikeWindowDays ?? 30;
       const windowStart = new Date(Date.now() - windowDays * 86400000);
 
-      // Find the last moderation log for this store
-      const lastLog = await this.prisma.moderationLog.findFirst({
+      // Use the provided logId from the triggering moderation log, or fall back to the most recent log for this store
+      const resolvedLogId = logId ?? (await this.prisma.moderationLog.findFirst({
         where:   { entityType: 'Store', entityId: storeId },
         orderBy: { createdAt: 'desc' },
         select:  { id: true },
-      });
+      }))?.id ?? 'unknown';
 
       await this.prisma.strikeRecord.create({
-        data: { storeId, severity, logId: lastLog?.id ?? 'unknown' },
+        data: { storeId, severity, logId: resolvedLogId },
       });
 
       await this.prisma.store.update({
@@ -391,10 +458,16 @@ export class ModerationService {
 
   async reCheckContent(entityType: string, entityId: string): Promise<void> {
     switch (entityType) {
-      case 'Product': await this.queueProductModeration(entityId); break;
-      case 'Store':   await this.queueStoreModeration(entityId);   break;
-      case 'Review':  await this.queueReviewModeration(entityId);  break;
-      case 'Message': await this.queueMessageModeration(entityId); break;
+      case 'Product':         await this.queueProductModeration(entityId);   break;
+      case 'Store':           await this.queueStoreModeration(entityId);     break;
+      case 'Review':          await this.queueReviewModeration(entityId);    break;
+      case 'Message':         await this.queueMessageModeration(entityId);   break;
+      case 'ProductQuestion': await this.queueQAModeration(entityId);        break;
+      case 'UserAvatar': {
+        const user = await this.prisma.user.findUnique({ where: { id: entityId }, select: { avatarUrl: true } });
+        if (user?.avatarUrl) await this.queueUserAvatarModeration(entityId, user.avatarUrl);
+        break;
+      }
     }
   }
 

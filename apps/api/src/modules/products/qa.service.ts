@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { IsEmail, IsOptional, IsString, MaxLength } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ModerationService } from '../moderation/moderation.service';
 
 // ── DTOs ──────────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,7 @@ export class QaService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    @Optional() private readonly moderationService?: ModerationService,
   ) {}
 
   // ── Customer: ask a question ─────────────────────────────────────────────────
@@ -46,6 +48,7 @@ export class QaService {
     });
 
     this.logger.log(`New question on product ${product.id}: "${q.question.slice(0, 60)}"`);
+    this.moderationService?.queueQAModeration(q.id).catch((e: Error) => this.logger.error('qa mod queue failed', e));
     return { id: q.id, message: "Question submitted! We'll answer it soon." };
   }
 
@@ -128,6 +131,8 @@ export class QaService {
         isPublished: publish,
       },
     });
+
+    this.moderationService?.queueQAModeration(q.id).catch((e: Error) => this.logger.error('qa mod queue failed', e));
 
     if (q.askedByEmail && publish) {
       this.notifications.queueEmail({

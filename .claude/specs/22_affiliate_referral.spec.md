@@ -87,29 +87,27 @@ model AffiliateLinkClick {
 
 - Khi order có affiliate cookie: buyer nhận discount tùy theo cấu hình affiliate
 - Áp dụng như coupon tự động (không cần input code)
+- Hiển thị trong checkout: `AffiliateDiscountBanner.tsx`
 
 ### A5. Self-Serve Portal (Client)
 
-Route: `/[locale]/account/affiliate`
-- Dashboard: clicks, conversions, earnings, pending payout
-- Referral link generator với copy-to-clipboard
-- Commission history table
-- Payout request (khi pendingAmount >= $50)
+Route: `/[locale]/affiliate/` (landing) + `/[locale]/affiliate/register` + `/[locale]/affiliate/(portal)/`
+- Portal sub-routes: `dashboard`, `links`, `payouts`
 
 ### A6. Admin UI
 
-File: `apps/admin/src/app/(admin)/affiliates/page.tsx`
-- Table: affiliate name, code, status, conversions, earnings
-- Detail modal: stats + commission list
-- Approve/reject/suspend controls
-- Manual payout action
+Files:
+- `apps/admin/src/app/(admin)/affiliates/page.tsx` — list + detail modal
+- `apps/admin/src/app/(admin)/affiliates/[id]/page.tsx` — affiliate detail
+- `apps/admin/src/app/(admin)/affiliates/payouts/page.tsx` — payout management
+- `apps/admin/src/app/(admin)/settings/affiliates/page.tsx` — settings
 
 ### A7. Business Rules
 
 - Commission calculated on order `total` (after discounts, before tax)
 - Default rate: 5% (overridable per affiliate)
 - Cookie-based tracking (30-day window)
-- Commission locked when order `COMPLETED` (không phải khi CONFIRMED)
+- Commission locked khi order `COMPLETED` (không phải khi CONFIRMED)
 - Min payout threshold: $50
 
 ---
@@ -152,16 +150,16 @@ model ReferralNode {
 }
 
 model ReferralCommission {
-  id          String           @id @default(cuid())
-  userId      String           // earner
-  orderId     String
-  sourceUserId String          // who placed the order
-  level       Int              // 1, 2, or 3
-  amount      Decimal
-  rate        Decimal
-  status      CommissionStatus @default(PENDING)
-  paidAt      DateTime?
-  createdAt   DateTime         @default(now())
+  id           String           @id @default(cuid())
+  userId       String           // earner
+  orderId      String
+  sourceUserId String           // who placed the order
+  level        Int              // 1, 2, or 3
+  amount       Decimal
+  rate         Decimal
+  status       CommissionStatus @default(PENDING)
+  paidAt       DateTime?
+  createdAt    DateTime         @default(now())
 }
 ```
 
@@ -185,6 +183,7 @@ model ReferralCommission {
 ### B5. Customer Hub
 
 Route: `/[locale]/account/referrals`
+- Sub-routes: `/account/referrals/earnings`, `/account/referrals/payouts`
 - Referral tree visualization (L1/L2/L3 counts)
 - Commission summary card
 - Share link + social share buttons (Facebook, Twitter, copy)
@@ -197,7 +196,15 @@ File: `apps/client/src/components/referral/ReferralSharePanel.tsx`
 - Social share: Facebook, Twitter, WhatsApp, Email
 - QR code option
 
-### B7. Business Rules
+### B7. Admin UI
+
+Files:
+- `apps/admin/src/app/(admin)/referrals/page.tsx`
+- `apps/admin/src/app/(admin)/referrals/users/page.tsx`
+- `apps/admin/src/app/(admin)/referrals/payouts/page.tsx`
+- `apps/admin/src/app/(admin)/referrals/settings/page.tsx`
+
+### B8. Business Rules
 
 - Tự đăng ký không được tạo commission cho chính mình
 - L1 commission cộng dồn không giới hạn referral count

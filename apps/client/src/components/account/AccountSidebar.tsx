@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, queryKeys } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES, CLIENT_ROUTES } from '@mlh/constants';
 import type { UserDto } from '@mlh/types';
 import type { ConversationDto } from '@mlh/types';
 import { useAuthStore } from '../../lib/store/auth.store';
@@ -61,12 +61,12 @@ export function AccountSidebar({ profile, onNavigate }: AccountSidebarProps) {
     `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`.toUpperCase() || '?';
 
   const NAV_LINKS = [
-    { href: '/account/orders',    icon: Package,         label: 'My Orders',          badge: undefined    },
-    { href: '/account/wishlist',  icon: Heart,           label: 'Wishlist',            badge: undefined    },
-    { href: '/account/messages',  icon: MessageCircle,   label: 'Messages',            badge: unreadCount > 0 ? unreadCount : undefined },
-    { href: '/account/creator',   icon: Users,           label: 'Creator Hub',         badge: undefined    },
-    { href: '/account/addresses', icon: MapPin,          label: 'Address Book',        badge: undefined    },
-    { href: '/account/profile',   icon: User,            label: 'Profile & Password',  badge: undefined    },
+    { href: CLIENT_ROUTES.ACCOUNT_ORDERS,    icon: Package,       label: 'My Orders',          badge: undefined    },
+    { href: CLIENT_ROUTES.ACCOUNT_WISHLIST,  icon: Heart,         label: 'Wishlist',            badge: undefined    },
+    { href: CLIENT_ROUTES.ACCOUNT_MESSAGES,  icon: MessageCircle, label: 'Messages',            badge: unreadCount > 0 ? unreadCount : undefined },
+    { href: CLIENT_ROUTES.ACCOUNT_CREATOR,   icon: Users,         label: 'Creator Hub',         badge: undefined    },
+    { href: CLIENT_ROUTES.ACCOUNT_ADDRESSES, icon: MapPin,        label: 'Address Book',        badge: undefined    },
+    { href: CLIENT_ROUTES.ACCOUNT_PROFILE,   icon: User,          label: 'Profile & Password',  badge: undefined    },
   ] as const;
 
   return (

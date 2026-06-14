@@ -13,25 +13,53 @@
 | PATCH | `/api/v1/users/me/addresses/{id}` | Cập nhật địa chỉ | Bearer |
 | DELETE | `/api/v1/users/me/addresses/{id}` | Xoá địa chỉ | Bearer |
 | PATCH | `/api/v1/users/me/addresses/{id}/default` | Đặt làm địa chỉ mặc định | Bearer |
+| GET | `/api/v1/users/me/customization-history` | Lịch sử customization drafts (phân trang) | Bearer |
 | GET | `/api/v1/users/me/wishlist` | Lấy wishlist (phân trang) | Bearer |
+| GET | `/api/v1/users/me/wishlist/share` | Lấy trạng thái share wishlist hiện tại | Bearer |
+| POST | `/api/v1/users/me/wishlist/share` | Bật chia sẻ wishlist (tạo share token) | Bearer |
+| PATCH | `/api/v1/users/me/wishlist/share` | Cập nhật tên/visibility wishlist share | Bearer |
+| DELETE | `/api/v1/users/me/wishlist/share` | Thu hồi link chia sẻ wishlist | Bearer |
 | POST | `/api/v1/users/me/wishlist/{productId}` | Thêm vào wishlist | Bearer |
 | DELETE | `/api/v1/users/me/wishlist/{productId}` | Xoá khỏi wishlist | Bearer |
 | GET | `/api/v1/users/me/wishlist/{productId}` | Kiểm tra sản phẩm trong wishlist | Bearer |
-| GET | `/api/v1/users/me/customization-history` | Lịch sử customization drafts | Bearer |
+| POST | `/api/v1/users/me/fcm-token` | Đăng ký FCM token thiết bị (max 5/user) | Bearer |
+| DELETE | `/api/v1/users/me/fcm-token` | Huỷ đăng ký FCM token | Bearer |
+| PATCH | `/api/v1/users/me/push-preferences` | Cập nhật tuỳ chọn push notification | Bearer |
+| GET | `/api/v1/wishlist/{token}` | Wishlist chia sẻ công khai (no auth) | No |
+
+**Lưu ý routing:** Các static routes (`/wishlist/share`) PHẢI đứng trước dynamic `/:productId` để tránh xung đột.
 
 ## 2. DTOs
 
-### UserDto
+### UserResponseDto
 ```typescript
-interface UserDto {
+interface UserResponseDto {
   id: string;
   email: string;
-  firstName?: string;
-  lastName?: string;
-  avatarUrl?: string;
-  phone?: string;
-  role: 'CUSTOMER' | 'ADMIN' | 'SUPER_ADMIN';
+  firstName: string;
+  lastName: string;
+  role: string;
+  avatarUrl: string | null;
   isEmailVerified: boolean;
+  phone: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+### AuthUserDto (dùng trong auth responses)
+```typescript
+interface AuthUserDto {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  avatarUrl: string | null;
+  isEmailVerified: boolean;
+  storeId: string | null;
+  isSeller: boolean;
+  permissions: PermissionDocument | null;
 }
 ```
 
@@ -91,6 +119,25 @@ model WishlistItem {
   @@unique([userId, productId])
 }
 
+model WishlistShare {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  token     String   @unique  // public share token
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model FcmToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String   @default("web")
+  lastSeen  DateTime @default(now())
+  createdAt DateTime @default(now())
+}
+
 model Notification {
   id        String   @id @default(cuid())
   userId    String
@@ -108,21 +155,31 @@ model Notification {
 
 - Max size: 5MB
 - Formats: JPG, PNG, WebP
-- Upload qua multipart/form-data (`POST /users/me/avatar`)
+- Upload qua multipart/form-data (`POST /users/me/avatar`), field name: `avatar`
 - Xoá qua `DELETE /users/me/avatar`
 - Lưu trữ trên Cloudflare R2 (dev: MinIO)
-- CDN URL từ `CDN_URL` env var
-- Sau upload: cập nhật `User.avatarUrl`
+- Cập nhật `User.avatarUrl` sau upload
+- Tự động xoá avatar cũ trên R2 trước khi upload mới
 
-## 5. Business Rules
+## 5. FCM Push Notifications
+
+- `POST /users/me/fcm-token` — upsert token, enforce max 5 per user (oldest removed)
+- `DELETE /users/me/fcm-token` — xoá token khi logout
+- `PATCH /users/me/push-preferences` — bật/tắt push (`{ pushEnabled: boolean }`)
+- Platform: `web` | `ios` | `android`
+- Xem chi tiết: `24_fcm_low_stock.spec.md`
+
+## 6. Business Rules
 
 - Tối đa 10 địa chỉ mỗi user
 - Xoá địa chỉ mặc định → địa chỉ đầu tiên còn lại thành mặc định
 - Wishlist chỉ lưu productId (không lưu variant)
 - Guest cố truy cập wishlist → 401, frontend redirect login
-- Customization history: lưu `CustomizationDraft` records liên kết với user
+- Customization history: paginated (`?page=&limit=`) trả về `{ data, page, limit }`
+- FCM: max 5 token/user, excess removed by `lastSeen` oldest first
+- Wishlist share public page (noindex): 404 khi token invalid hoặc `isActive: false`
 
-## 6. Account Pages (client)
+## 7. Account Pages (client)
 
 Route group `(account)` dùng layout riêng với sidebar navigation.
 
@@ -142,21 +199,11 @@ File: `apps/client/src/app/[locale]/(account)/account/`
 Layout client: `apps/client/src/app/[locale]/(account)/AccountLayoutClient.tsx`
 Sidebar: `apps/client/src/components/account/AccountSidebar.tsx`
 
-## 7. Additional Endpoints (Post-Phase 1)
+Public wishlist share: `/[locale]/wishlists/shared/{token}`
+- SSR page (noindex)
+- Hiển thị wishlist items `isActive: true` từ active products
 
-### Wishlist Sharing
-| Method | Path | Mô tả | Auth |
-|---|---|---|---|
-| POST | `/api/v1/users/me/wishlist/share` | Generate/refresh share token | Bearer |
-| DELETE | `/api/v1/users/me/wishlist/share` | Revoke share token | Bearer |
-| GET | `/api/v1/users/me/wishlist/share` | Get current share token + URL | Bearer |
-| GET | `/api/v1/wishlists/shared/{token}` | Public shared wishlist (no auth) | No |
-
-### FCM Push Notification Tokens
-| Method | Path | Mô tả | Auth |
-|---|---|---|---|
-| POST | `/api/v1/push/register` | Register FCM token | Bearer |
-| DELETE | `/api/v1/push/register/{token}` | Unregister FCM token | Bearer |
+## 8. Additional Endpoints
 
 ### Loyalty
 | Method | Path | Mô tả | Auth |
@@ -164,23 +211,4 @@ Sidebar: `apps/client/src/components/account/AccountSidebar.tsx`
 | GET | `/api/v1/loyalty/me` | Points balance + history | Bearer |
 | GET | `/api/v1/loyalty/preview` | Preview points earn from cart | Bearer |
 
-See full specs: `23_loyalty_points.spec.md`, `24_fcm_low_stock.spec.md`, `22_affiliate_referral.spec.md`
-
-## 8. Wishlist Sharing Model
-
-```prisma
-model WishlistShare {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  token     String   @unique  // public share token
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id])
-}
-```
-
-Public share URL: `/[locale]/wishlists/shared/{token}`
-- SSR page (noindex)
-- Shows only `isActive: true` wishlist items from active products
-- 404 when token invalid or `isActive: false` (prevents enumeration)
+Xem full spec: `23_loyalty_points.spec.md`, `24_fcm_low_stock.spec.md`, `22_affiliate_referral.spec.md`

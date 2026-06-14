@@ -1,6 +1,6 @@
 # Module 29 — Admin Extended Features
 
-Tập hợp các tính năng admin được implement trong các phase sau ban đầu: CSV import, Q&A, Bulk Actions, Hotjar Analytics, Admin Settings, Team Management, Email Template Management, CSV Export, AuditLog, và AI Features dashboard.
+Tập hợp các tính năng admin được implement trong các phase sau ban đầu: CSV import, Q&A, Bulk Actions, Hotjar Analytics, Admin Settings, Team Management, Email Template Management, CSV Export, AuditLog, AI Features dashboard, và Permission System.
 
 ---
 
@@ -107,11 +107,10 @@ File: `apps/admin/src/components/products/edit/tabs/QaTab.tsx`
 - Approve/reject/delete controls
 
 ### Business Rules
-
 - Questions visible when `status === ANSWERED && isPublic === true`
 - Admin must answer before approving
-- Guest can ask (with email) — no authentication required for public Q&A
-- `isPublic: false` for sensitive questions (show privately to asker only)
+- Guest can ask (with email) — no authentication required
+- `isPublic: false` for sensitive questions
 
 ---
 
@@ -262,7 +261,7 @@ File: `apps/admin/src/app/(admin)/settings/page.tsx`
 
 ### Admin UI
 
-File: `apps/admin/src/app/(admin)/settings/team/page.tsx`
+File: `apps/admin/src/app/(admin)/settings/team/page.tsx` (phần của settings)
 - Team member table (name, email, role, last active)
 - "Invite Admin" modal: send invitation email
 - Role picker: ADMIN / SUPER_ADMIN
@@ -305,7 +304,7 @@ File: `apps/admin/src/app/(admin)/settings/email-templates/page.tsx`
 - `status` — filter by status
 - `format` — `csv` (default) | `xlsx` (future)
 
-Response: `Content-Type: text/csv` với `Content-Disposition: attachment; filename="orders-export-2026-06-12.csv"`
+Response: `Content-Type: text/csv` với `Content-Disposition: attachment; filename="orders-export-YYYY-MM-DD.csv"`
 
 ---
 
@@ -380,16 +379,14 @@ Audit log viewer: `apps/admin/src/app/(admin)/settings/audit-log/page.tsx`
 
 ```prisma
 model ProductTranslation {
-  id          String   @id @default(cuid())
-  productId   String
-  locale      String   // "vi" | "fr" | "de" | ...
-  name        String?
-  description String?
+  id               String   @id @default(cuid())
+  productId        String
+  locale           String   // "vi" | "fr" | "de" | ...
+  name             String?
+  description      String?
   shortDescription String?
-  autoTranslated Boolean @default(false)
-  approvedAt  DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  autoTranslated   Boolean  @default(false)
+  approvedAt       DateTime?
   @@unique([productId, locale])
 }
 ```
@@ -403,22 +400,6 @@ Providers (priority order):
 2. DeepL API (`DEEPL_API_KEY`)
 3. LibreTranslate (self-hosted, `LIBRETRANSLATE_URL`)
 
-```typescript
-@Injectable()
-export class AutoTranslateService {
-  async translate(text: string, targetLocale: string): Promise<string>;
-  async translateProduct(productId: string, locale: string): Promise<void>;
-}
-```
-
-### Admin UI
-
-In `ProductEditShell` — "Translations" tab (8th tab):
-- Language selector
-- Auto-translate button (triggers API)
-- Manual edit fields: name, description, shortDescription
-- Approve translation toggle
-
 ### Endpoints
 
 | Method | Path | Auth |
@@ -429,45 +410,260 @@ In `ProductEditShell` — "Translations" tab (8th tab):
 
 ---
 
-## 11. Admin Pages Reference (Complete List)
+## 11. Permission System (PERMISSION-00→04)
+
+### Architecture: Hybrid RBAC + ABAC
+
+Each ADMIN user (shop owner) has a `permissions` JSON field on their `User` record:
+
+```json
+{
+  "roles": ["editor"],
+  "overrides": {
+    "allow": ["orders:refund"],
+    "deny":  ["products:delete"]
+  },
+  "conditions": {
+    "orders:view": { "owner_only": true },
+    "reports:export": { "max_rows": 1000 }
+  }
+}
+```
+
+**Evaluation order (deny wins):**
+1. `overrides.deny` → explicit deny → return `false` immediately
+2. `overrides.allow` → explicit allow → return `true` immediately
+3. `roles` → role-based grant check (union of all assigned roles)
+4. default → `false`
+
+SUPER_ADMIN always passes every check — no document needed.
+
+### Resources & Actions
+
+File: `libs/shared/constants/src/lib/permissions.ts`
+
+```typescript
+export const PERMISSION_RESOURCES = [
+  'dashboard', 'products', 'orders', 'reviews',
+  'payouts', 'analytics', 'settings', 'shipping',
+  'coupons', 'messages',
+] as const;
+
+export const PERMISSION_ACTIONS = ['view', 'edit', 'add', 'delete'] as const;
+
+export const RESOURCE_ACTIONS: Record<PermissionResource, PermissionAction[]> = {
+  dashboard: ['view'],
+  products:  ['view', 'edit', 'add', 'delete'],
+  orders:    ['view', 'edit'],
+  reviews:   ['view', 'edit', 'delete'],
+  payouts:   ['view', 'edit'],
+  analytics: ['view'],
+  settings:  ['view', 'edit'],
+  shipping:  ['view', 'edit', 'add', 'delete'],
+  coupons:   ['view', 'edit', 'add', 'delete'],
+  messages:  ['view', 'edit'],
+};
+```
+
+### Built-in Roles (3 roles)
+
+```typescript
+export const BUILTIN_ROLES = {
+  /** Full shop management — granted on store approval. */
+  shop_owner: [
+    'dashboard:view',
+    'products:view', 'products:edit', 'products:add', 'products:delete',
+    'orders:view', 'orders:edit',
+    'reviews:view', 'reviews:edit', 'reviews:delete',
+    'payouts:view', 'payouts:edit',
+    'analytics:view',
+    'settings:view', 'settings:edit',
+    'shipping:view', 'shipping:edit', 'shipping:add', 'shipping:delete',
+    'coupons:view', 'coupons:edit', 'coupons:add', 'coupons:delete',
+    'messages:view', 'messages:edit',
+  ],
+  /** Can manage content but not financial or destructive actions. */
+  editor: [
+    'dashboard:view',
+    'products:view', 'products:edit', 'products:add',
+    'orders:view', 'orders:edit',
+    'reviews:view',
+    'analytics:view',
+    'settings:view',
+    'messages:view', 'messages:edit',
+  ],
+  /** Read-only access. */
+  viewer: [
+    'dashboard:view',
+    'products:view',
+    'orders:view',
+    'analytics:view',
+    'messages:view',
+  ],
+};
+```
+
+### Default Document
+
+```typescript
+export const DEFAULT_PERMISSION_DOCUMENT: PermissionDocument = {
+  roles: ['shop_owner'],
+};
+```
+
+Applied when a store is approved — shop owner gets full `shop_owner` role.
+
+### Core Runtime Functions
+
+```typescript
+// Check single permission
+can(systemRole: string, permDoc: PermissionDocument | null, permission: string): boolean
+
+// Check with resource + action pair
+canDo(systemRole, permDoc, resource: PermissionResource, action: PermissionAction): boolean
+
+// Get ABAC conditions for a permission
+getConditions(permDoc, permission: string): Record<string, unknown> | null
+
+// Returns flat map { "products:delete": true, ... } for all known perms
+resolveEffectivePermissions(systemRole, permDoc): Record<string, boolean>
+```
+
+### API Endpoints (AdminUsersController)
+
+File: `apps/api/src/modules/admin-users/admin-users.controller.ts`
+
+Controller: `@Controller('admin/users')` — requires SUPER_ADMIN role
+
+| Method | Path | Mô tả |
+|---|---|---|
+| GET | `/api/v1/admin/users` | List all shop-owner admin accounts (with effectivePermissions) |
+| GET | `/api/v1/admin/users/:id/permissions` | Get permission document + effective map |
+| PUT | `/api/v1/admin/users/:id/permissions` | Update permissions (body: `{ document: PermissionDocument }`) |
+| PUT | `/api/v1/admin/users/:id/permissions/reset` | Reset to `DEFAULT_PERMISSION_DOCUMENT` |
+
+**GET /admin/users/:id/permissions response:**
+```typescript
+{
+  userId: string;
+  email: string;
+  name: string;
+  document: PermissionDocument;
+  effectivePermissions: Record<string, boolean>;  // flat map
+  availableRoles: BuiltinRole[];  // ['shop_owner', 'editor', 'viewer']
+}
+```
+
+**PUT /admin/users/:id/permissions** sanitizes input — only allows known role names and `resource:action` strings from PERMISSION_RESOURCES.
+
+### Admin UI: Permission Matrix Page
+
+File: `apps/admin/src/app/(admin)/stores/[id]/permissions/page.tsx`
+
+Route: `/stores/[storeId]/permissions`
+
+Features:
+- Header: store name + owner info
+- Role pills: toggle built-in roles (multiple allowed, union semantics)
+- Permission matrix table (resources × actions: view/edit/add/delete)
+- 4 cell states with color coding:
+  - 🔵 Indigo: from role grant (`resolveEffectivePermissions` via assigned role)
+  - 🟢 Emerald: explicit allow (overrides.allow)
+  - 🔴 Red: explicit deny (overrides.deny)
+  - ⬜ Gray: not granted
+- Toggle cycle on click: none → allow → deny → remove deny
+- Save / Cancel / Reset buttons (Reset returns to `DEFAULT_PERMISSION_DOCUMENT`)
+- Loads via `GET /admin/users/:ownerId/permissions` (fetches owner ID from store detail first)
+
+**permissionSource() logic:**
+```typescript
+function permissionSource(doc, perm): 'deny' | 'allow' | 'role' | 'none' {
+  if (doc.overrides?.deny?.includes(perm))  return 'deny';
+  if (doc.overrides?.allow?.includes(perm)) return 'allow';
+  for (const role of doc.roles) {
+    if (resolveEffectivePermissions('ADMIN', { roles: [role] })[perm]) return 'role';
+  }
+  return 'none';
+}
+```
+
+### Shop Owner Access Model
+
+- Shop owners use the **same admin UI** as SUPER_ADMIN (same Next.js app)
+- API scopes data by `storeId` — shop owners only see their own store's data
+- Routes marked `SUPER_ADMIN_ONLY` block ADMIN role users
+- Default on store approval: `permissions = { roles: ['shop_owner'] }`
+
+---
+
+## 12. Admin Pages Reference (Complete List)
 
 ```
 apps/admin/src/app/(admin)/
-  dashboard/              # Main dashboard with KPI row
-  products/               # Product list + import
+  dashboard/
+  products/
     new/
     [id]/edit/
     copy/[id]/
     seo/
     import/               # CSV bulk import
-  orders/                 # Order list
+  orders/
     [id]/                 # Order detail
-  customers/              # Customer list
-    [id]/                 # Customer detail
-  messages/               # Message inbox
+  customers/
+    [id]/
+  messages/
   payments/
   reviews/
   promotions/
   shipping/
-  affiliates/             # Affiliate management
-  creators/               # Creator management
-  referrals/              # Referral network
-  loyalty/                # Loyalty program stats
-  nft/                    # NFT drops & memberships
-    drops/
-    memberships/
+  affiliates/
+    [id]/
+    payouts/
+  creators/               # Creator Network management
+    members/
+    payouts/
+    settings/
+  referrals/
+    users/
+    payouts/
+    settings/
+  stores/
+    [id]/
+      permissions/        # Permission matrix editor
+    plans/
+    settings/
   catalog/
     categories/
     collections/
-  settings/
-    index/                # General settings
-    team/                 # Team management
-    email-templates/      # Email template editor
-    audit-log/            # Audit log viewer
-  ai-features/            # AI Features section
-    index/                # Dashboard + KPI row
+    tags/
+    shop-sections/
+    production-partners/
+  campaigns/
+  flash-deals/
+    submit/
+  gift-chains/
+  gift-pools/
+  blind-match/
+  moderation/
+    queue/
+    rules/
+    history/
+    ip-scan/
+    settings/
+  finance/
+  payouts/
+  stats/
+    listings/
+      [id]/
+  ai/                     # AI Features section
+    creator-dna/
     pricing/
     trends/
-    dna/
-    moderation/
+    usage/
+    settings/
+  settings/
+    index/                # General settings (AdminSetting model)
+    affiliates/
+    audit-log/            # Audit log viewer
+  loyalty/                # (linked from dashboard)
 ```

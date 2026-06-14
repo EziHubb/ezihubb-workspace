@@ -1,31 +1,50 @@
-# Module 03 — Catalog (Categories, Collections & Tags)
+# Module 03 — Catalog (Categories, Collections, Tags & Attributes)
 
 ## 1. Public Endpoints
 
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
-| GET | `/api/v1/catalog/mega-menu` | Mega-menu data từ MongoDB | No |
+| GET | `/api/v1/catalog/mega-menu` | Mega-menu data từ MongoDB (Redis-cached 10min) | No |
 | GET | `/api/v1/catalog/categories` | Cây danh mục (tree, visible only) | No |
 | GET | `/api/v1/catalog/categories/{slug}` | Chi tiết danh mục + L2/L3 children | No |
-| GET | `/api/v1/catalog/tags` | All active tags | No |
-| GET | `/api/v1/catalog/categories/{slug}/filterable-attributes` | Filterable attributes for category | No |
-| GET | `/api/v1/collections` | Danh sách active collections | No |
+| GET | `/api/v1/catalog/tags` | All active tags (backward compat alias) | No |
+| GET | `/api/v1/catalog/categories/{slug}/filterable-attributes` | Filterable attributes cho category | No |
+| GET | `/api/v1/collections` | Danh sách active collections (`?occasion=`) | No |
 | GET | `/api/v1/collections/{slug}` | Chi tiết collection + paginated products | No |
 | GET | `/api/v1/tags` | All tags with product counts | No |
 
 ## 2. Admin Endpoints
 
+### Categories & Collections
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
-| POST | `/api/v1/admin/catalog/sync-mega-menu` | Rebuild MongoDB mega-menu from Prisma | ADMIN |
-| GET | `/api/v1/admin/categories` | All categories (flat, including hidden) | ADMIN |
+| POST | `/api/v1/admin/catalog/sync-mega-menu` | Rebuild MongoDB mega-menu từ Prisma | ADMIN |
+| GET | `/api/v1/admin/categories` | All categories (flat, including hidden, `?limit=`) | ADMIN |
+| GET | `/api/v1/admin/categories/{id}` | Get single category by ID | ADMIN |
 | POST | `/api/v1/admin/categories` | Create category | ADMIN |
 | PATCH | `/api/v1/admin/categories/{id}` | Update category | ADMIN |
-| DELETE | `/api/v1/admin/categories/{id}` | Delete (rejected if has active products) | ADMIN |
-| GET | `/api/v1/admin/collections` | List all collections | ADMIN |
+| DELETE | `/api/v1/admin/categories/{id}` | Delete (rejected nếu có active products) | ADMIN |
+| GET | `/api/v1/admin/collections` | List all collections (including inactive) | ADMIN |
 | POST | `/api/v1/admin/collections` | Create collection | ADMIN |
 | PATCH | `/api/v1/admin/collections/{id}` | Update collection | ADMIN |
 | DELETE | `/api/v1/admin/collections/{id}` | Delete collection | ADMIN |
+
+### Tags
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/admin/tags` | List all tags with product counts | ADMIN |
+| POST | `/api/v1/admin/tags` | Create tag (auto-slug) | ADMIN |
+| PATCH | `/api/v1/admin/tags/{id}` | Rename tag | ADMIN |
+| DELETE | `/api/v1/admin/tags/{id}` | Delete tag (cascades to all products) | ADMIN |
+
+### Attributes
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/admin/attributes/{type}` | Get attribute values by type | ADMIN |
+| POST | `/api/v1/admin/attributes/{type}` | Add custom attribute value | ADMIN |
+| DELETE | `/api/v1/admin/attributes/{type}/{value}` | Remove attribute value | ADMIN |
+
+Valid attribute types: `color`, `material`, `occasion`, `holiday`, `recipient`, `style`, `sustainability`, `hat-type`
 
 ## 3. Data Sources
 
@@ -58,7 +77,15 @@ model Tag {
 model ProductTag {
   productId String
   tagId     String
+  tag       Tag     @relation(fields: [tagId], references: [id])
   @@id([productId, tagId])
+}
+
+model AttributeValue {
+  id    String @id @default(cuid())
+  type  String
+  value String
+  @@unique([type, value], name: "type_value")
 }
 ```
 
@@ -116,9 +143,9 @@ interface CategoryMenu {
 
 - Route: `GET /api/v1/catalog/mega-menu`
 - Redis cache TTL: 10 minutes (key: `mega-menu:v1`)
-- Fallback: fetch from MongoDB directly when Redis unavailable
+- Fallback: fetch từ MongoDB trực tiếp khi Redis không khả dụng
 - Client: Next.js `fetch({ next: { revalidate: 600 } })`
-- Admin rebuild: `POST /api/v1/admin/catalog/sync-mega-menu`
+- Admin rebuild: `POST /api/v1/admin/catalog/sync-mega-menu` → trả về `{ synced: number }`
 
 ## 5. Category Tree Response
 
@@ -139,7 +166,16 @@ interface CategoryMenu {
 }
 ```
 
-## 6. Frontend Pages
+## 6. Admin Categories — limit param
+
+`GET /api/v1/admin/categories?limit=N` — default 500, max 2000
+
+## 7. Collections — occasion filter
+
+`GET /api/v1/collections?occasion=christmas` — lọc theo occasion string (optional)
+Admin `GET /api/v1/admin/collections` — trả về tất cả kể cả inactive
+
+## 8. Frontend Pages
 
 - `/[locale]/categories/[slug]` — Category listing with product grid
 - `/[locale]/collections` — All collections
@@ -147,11 +183,14 @@ interface CategoryMenu {
 - Mega menu component: `apps/client/src/components/layout/MegaMenu.tsx`
 - Category data fetched server-side for SEO
 
-## 7. Business Rules
+## 9. Business Rules
 
 - Categories support L1/L2/L3 nesting (level field)
 - Only `isVisible: true` categories shown in public tree
 - `sortOrder` controls display order within same level
-- Collections support date ranges (`startDate`, `endDate`) for seasonal visibility
-- `GET /collections` only returns collections active within current date range
-- Deleting a category with active products is rejected by the API
+- Collections support date ranges (`startDate`, `endDate`) cho seasonal visibility
+- `GET /collections` chỉ trả về collections active trong ngày hiện tại + `isActive: true`
+- Deleting a category with active products bị rejected bởi API
+- Tag slug tự động generated từ name (lowercase, replace spaces với `-`)
+- Tag delete cascades to all products (via FK `onDelete: Cascade`)
+- Attribute types hardcoded: `color`, `material`, `occasion`, `holiday`, `recipient`, `style`, `sustainability`, `hat-type`

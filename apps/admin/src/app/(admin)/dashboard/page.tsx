@@ -5,6 +5,8 @@ import {
   Sparkles, Dna, FlaskConical, Activity,
 } from 'lucide-react';
 import Link from 'next/link';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../../../lib/auth.options';
 import { serverApi } from '../../../lib/api-client';
 import { API_ROUTES, ADMIN_ROUTES } from '@mlh/constants';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
@@ -148,6 +150,11 @@ function SeoHealthCard({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function DashboardPage() {
+  const session    = await getServerSession(authOptions);
+  const sessionUser = session?.user as Record<string, unknown> | undefined;
+  const role        = sessionUser?.['role'] as string | undefined;
+  const isShopOwner = role === 'ADMIN';
+
   const [
     kpis, revenueRaw, ordersByStatus, topProducts, pendingRaw, seoStats,
     platformKpis, activityRaw, topStoresData, aiStats,
@@ -164,10 +171,11 @@ export default async function DashboardPage() {
     safeFetch<SeoStats>(API_ROUTES.ADMIN.PRODUCTS_SEO_STATS, {
       total: 0, missingTitle: 0, missingDescription: 0, lowScore: 0, noIndex: 0,
     }),
-    safeFetch<PlatformKpis>(API_ROUTES.ADMIN.DASHBOARD_PLATFORM, {}),
-    safeFetch<ActivityEvent[]>(API_ROUTES.ADMIN.DASHBOARD_ACTIVITY, []),
-    safeFetch<TopStoresResponse>(`${API_ROUTES.ADMIN.DASHBOARD_TOP_STORES}?limit=5`, {}),
-    safeFetch<AiStats>(API_ROUTES.ADMIN.AI_STATS, {}),
+    // Platform-wide data — only fetched for SUPER_ADMIN
+    isShopOwner ? Promise.resolve({} as PlatformKpis) : safeFetch<PlatformKpis>(API_ROUTES.ADMIN.DASHBOARD_PLATFORM, {}),
+    isShopOwner ? Promise.resolve([] as ActivityEvent[]) : safeFetch<ActivityEvent[]>(API_ROUTES.ADMIN.DASHBOARD_ACTIVITY, []),
+    isShopOwner ? Promise.resolve({} as TopStoresResponse) : safeFetch<TopStoresResponse>(`${API_ROUTES.ADMIN.DASHBOARD_TOP_STORES}?limit=5`, {}),
+    isShopOwner ? Promise.resolve({} as AiStats) : safeFetch<AiStats>(API_ROUTES.ADMIN.AI_STATS, {}),
   ]);
 
   // Normalise revenue chart data
@@ -188,11 +196,12 @@ export default async function DashboardPage() {
     <>
       <AdminPageHeader
         title="Dashboard"
-        subtitle="Platform overview at a glance"
+        subtitle={isShopOwner ? 'Your store overview' : 'Platform overview at a glance'}
         queryKey={false}
       />
 
-      {/* ── Platform KPI row (6 cards) ────────────────────────────────────── */}
+      {/* ── SUPER_ADMIN-only sections ─────────────────────────────────────── */}
+      {!isShopOwner && (<>
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         {[
           { icon: DollarSign,   label: 'GMV Today',               value: fmtAmount(platformKpis.gmvToday              ?? 0), color: 'bg-primary'   },
@@ -267,6 +276,28 @@ export default async function DashboardPage() {
           ))}
         </div>
       </div>
+      </>)}
+
+      {/* ── Seller quick-links (shop owner only) ─────────────────────────── */}
+      {isShopOwner && (
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+        {[
+          { href: '/products/new',                         label: 'Add Product',    icon: ShoppingBag, color: 'text-primary bg-primary/5 border-primary/20 hover:bg-primary/10'        },
+          { href: `${ADMIN_ROUTES.ORDERS}?status=PENDING`, label: 'Pending Orders', icon: Package,     color: 'text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100',   badge: kpis.pendingOrders  ?? 0 },
+          { href: `${ADMIN_ROUTES.REVIEWS}?status=PENDING`,label: 'New Reviews',    icon: Star,        color: 'text-amber-600 bg-amber-50 border-amber-200 hover:bg-amber-100', badge: totalPending },
+          { href: '/messages',                             label: 'Messages',       icon: ShoppingBag, color: 'text-green-600 bg-green-50 border-green-200 hover:bg-green-100'          },
+        ].map(({ href, label, icon: Icon, color, badge }) => (
+          <Link key={href} href={href}
+            className={`flex items-center gap-2.5 px-4 py-3 border rounded-card text-sm font-medium transition-colors ${color}`}>
+            <Icon className="w-4 h-4 shrink-0" />
+            <span className="flex-1 leading-tight">{label}</span>
+            {badge != null && badge > 0 && (
+              <span className="ml-auto text-[10px] font-bold bg-current/20 px-1.5 py-0.5 rounded-full tabular-nums">{badge}</span>
+            )}
+          </Link>
+        ))}
+      </div>
+      )}
 
       {/* ── Row 1: Revenue KPI cards ──────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
@@ -315,7 +346,8 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* ── Row 4: Activity feed + Top stores/creators ───────────────────── */}
+      {/* ── Row 4: Activity feed + Top stores/creators — SUPER_ADMIN only ── */}
+      {!isShopOwner && (<>
       <div className="grid grid-cols-1 xl:grid-cols-[40fr_60fr] gap-6 mb-8">
 
         {/* Activity feed */}
@@ -448,6 +480,7 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+      </>)}
 
       {/* ── Row 5: SEO Health ─────────────────────────────────────────────── */}
       <section>

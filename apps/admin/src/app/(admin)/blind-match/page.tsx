@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Star, Package, Heart, Camera, Check, X, Loader2, Gift, Sparkles, RefreshCw } from 'lucide-react';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount } from '../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -136,36 +137,36 @@ export default function AdminBlindMatchPage() {
 
   const statsQ = useQuery<BlindMatchStats>({
     queryKey: ['admin', 'blind-match', 'stats'],
-    queryFn:  () => api.get<BlindMatchStats>('/admin/blind-match/stats'),
+    queryFn:  () => api.get<BlindMatchStats>(API_ROUTES.ADMIN.BLIND_MATCH_STATS),
   });
 
   const listQ = useQuery<BlindMatchListResponse>({
     queryKey: ['admin', 'blind-match', 'list', page],
-    queryFn:  () => api.get<BlindMatchListResponse>(`/admin/blind-match?page=${page}&limit=20`),
+    queryFn:  () => api.get<BlindMatchListResponse>(`${API_ROUTES.ADMIN.BLIND_MATCH_REQUESTS}?page=${page}&limit=20`),
   });
 
   const refundsQ = useQuery<RefundRow[]>({
     queryKey: ['admin', 'blind-match', 'refunds'],
-    queryFn:  () => api.get<RefundRow[]>('/admin/blind-match/refunds'),
+    queryFn:  () => api.get<RefundRow[]>(API_ROUTES.ADMIN.BLIND_MATCH_REFUNDS),
   });
 
   const topProductsQ = useQuery<TopAiProduct[]>({
     queryKey: ['admin', 'blind-match', 'top-products'],
-    queryFn:  () => api.get<TopAiProduct[]>('/admin/blind-match/top-products'),
+    queryFn:  () => api.get<TopAiProduct[]>(API_ROUTES.ADMIN.BLIND_MATCH_TOP_PRODUCTS),
   });
 
   const ugcQ = useQuery<UgcPendingResponse>({
     queryKey: ['admin', 'blind-match', 'ugc', 'pending'],
-    queryFn:  () => api.get<UgcPendingResponse>('/admin/blind-match/ugc/pending'),
+    queryFn:  () => api.get<UgcPendingResponse>(API_ROUTES.ADMIN.BLIND_MATCH_UGC_PENDING),
   });
 
   const approveMutation = useMutation({
-    mutationFn: (id: string) => api.post(`/admin/blind-match/ugc/${id}/approve`),
+    mutationFn: (id: string) => api.post(API_ROUTES.ADMIN.BLIND_MATCH_UGC_APPROVE(id)),
     onSuccess:  () => qc.invalidateQueries({ queryKey: ['admin', 'blind-match', 'ugc'] }),
   });
 
   const rejectMutation = useMutation({
-    mutationFn: (id: string) => api.post(`/admin/blind-match/ugc/${id}/reject`),
+    mutationFn: (id: string) => api.post(API_ROUTES.ADMIN.BLIND_MATCH_UGC_REJECT(id)),
     onSuccess:  () => qc.invalidateQueries({ queryKey: ['admin', 'blind-match', 'ugc'] }),
   });
 

@@ -4,7 +4,7 @@
 
 ### A1. Tổng quan
 
-Tự động tạo PDF invoice và packing slip cho mỗi đơn hàng. Lưu cache trên Cloudflare R2. Admin và customer đều có nút download.
+Tự động tạo PDF invoice và packing slip cho mỗi đơn hàng. Lưu cache trên Cloudflare R2. Admin và customer đều có nút download. PDF được render với `@react-pdf/renderer` (React-PDF, không dùng Puppeteer/headless Chrome).
 
 ### A2. API Endpoints
 
@@ -16,7 +16,7 @@ Tự động tạo PDF invoice và packing slip cho mỗi đơn hàng. Lưu cach
 | GET | `/api/v1/admin/orders/{id}/packing-slip` | Admin download packing slip | ADMIN |
 | POST | `/api/v1/admin/orders/{id}/invoice/regenerate` | Force regenerate (invalidate cache) | ADMIN |
 
-Response: `Content-Type: application/pdf` với `Content-Disposition: attachment; filename="invoice-MLH-XXXX.pdf"`
+Response: redirect to R2 public URL hoặc `Content-Type: application/pdf`.
 
 ### A3. Service: PdfService
 
@@ -25,64 +25,114 @@ File: `apps/api/src/modules/pdf/pdf.service.ts`
 ```typescript
 @Injectable()
 export class PdfService {
-  // Generate invoice PDF → return Buffer
-  async generateInvoice(order: OrderWithItems): Promise<Buffer>;
+  // Generate (or return cached) invoice PDF.
+  // isGiftReceipt: undefined = auto-detect from order.giftReceipt
+  // userId: provided for customer callers; omit for admin
+  async generateInvoice(
+    orderId: string,
+    isGiftReceipt: boolean | undefined,
+    userId?: string,
+  ): Promise<string>;  // returns R2 public URL
 
-  // Generate packing slip PDF → return Buffer
-  async generatePackingSlip(order: OrderWithItems): Promise<Buffer>;
+  // Generate (or return cached) packing slip PDF.
+  async generatePackingSlip(orderId: string): Promise<string>;
 
-  // Check R2 cache → if miss, generate + upload to R2 → return URL
-  async getOrCreateInvoicePdf(orderId: string): Promise<string>;
-  async getOrCreatePackingSlipPdf(orderId: string): Promise<string>;
+  // Invalidate all cached PDFs for an order (call when order data changes)
+  async invalidatePdfs(orderId: string): Promise<void>;
 }
 ```
 
-PDF library: `puppeteer` (headless Chrome) hoặc `@sparticuz/chromium` (serverless-compatible)
+PDF library: `@react-pdf/renderer` (renderToBuffer) — server-side React component rendering.
 
-### A4. PDF Templates (Handlebars)
+### A4. OrderForPdf interface
+
+```typescript
+interface OrderForPdf {
+  id: string;
+  orderNumber: string;
+  guestEmail: string | null;
+  createdAt: Date;
+  shippingName: string;
+  shippingAddress: string;  // may be JSON string with addressLine1
+  shippingCity: string;
+  shippingState: string | null;
+  shippingZip: string;
+  shippingCountry: string;
+  subtotal: number;
+  discountAmount: number;
+  affiliateDiscountAmount: number;
+  shippingCost: number;
+  taxAmount: number;
+  taxJurisdiction: string | null;
+  total: number;
+  couponCode: string | null;
+  isGift: boolean;
+  giftMessage: string | null;
+  giftFrom: string | null;
+  giftReceipt: boolean;
+  giftWrapping: boolean;
+  userEmail: string | null;
+  items: {
+    id: string;
+    productName: string;
+    variantName: string | null;
+    quantity: number;
+    unitPrice: number;
+    customizationData: Record<string, unknown> | null;
+  }[];
+}
+```
+
+### A5. PDF Templates (React-PDF)
 
 Files: `apps/api/src/modules/pdf/templates/`
-- `invoice.hbs` — Invoice layout
-- `packing-slip.hbs` — Packing slip layout
+- `invoice.template.tsx` — `InvoiceDocument` component (supports gift receipt mode)
+- `packing-slip.template.tsx` — `PackingSlipDocument` component
 
-#### Invoice Template Content
+#### Invoice Template Content (full invoice mode)
 - Daily Daisy logo + address
 - Bill to: customer name, shipping address
 - Invoice #: `INV-{orderNumber}`
 - Invoice date, due date: "Due on receipt"
 - Line items: product name, variant, qty, unit price, subtotal
-- Totals: subtotal, shipping, discount, tax, total
+- Customization details per item (if any)
+- Totals: subtotal, shipping, discount (coupon + affiliate), tax, gift wrapping ($4.99 if applicable), total
 - Payment method + status
 - Footer: terms & conditions
+
+#### Gift Receipt Mode
+When `order.giftReceipt === true`, generateInvoice() produces a gift receipt (no pricing). Cache key: `pdfs/{orderId}/gift-receipt.pdf`.
 
 #### Packing Slip Template Content
 - Order #, order date
 - Ship to address
 - Items: product name, variant, qty
 - Customization details (if any)
-- Special instructions/notes
-- No pricing info (for gift packaging)
+- Gift message (if `isGift === true`)
+- No pricing info
 
-### A5. R2 Cache Strategy
+### A6. R2 Cache Strategy
 
-- Invoice PDF key: `pdfs/invoices/{orderId}.pdf`
-- Packing slip key: `pdfs/packing-slips/{orderId}.pdf`
-- Generated on first request, cached indefinitely
-- Regenerate API: delete from R2 → regenerate on next request
-- Regenerate trigger: when order is updated (status change, tracking added)
+Cache keys:
+- Invoice: `pdfs/{orderId}/invoice.pdf`
+- Gift receipt: `pdfs/{orderId}/gift-receipt.pdf`
+- Packing slip: `pdfs/{orderId}/packing-slip.pdf`
 
-### A6. Client UI
+Generated on first request, cached indefinitely. `invalidatePdfs()` deletes all three variants — call when admin corrects order address or when order data changes significantly.
+
+### A7. Client UI
 
 - `OrderDetailClient.tsx`: "Download Invoice" button (shown when order CONFIRMED+)
-- `OrderDrawer.tsx` (admin): "Invoice" + "Packing Slip" download buttons
+- Customer account orders page: download invoice button per order
 
-### A7. Business Rules
+### A8. Business Rules
 
 - Invoice available after order `CONFIRMED`
 - Packing slip available after `IN_PRODUCTION`
-- Customer can only download their own orders
-- PDF generated server-side (not client-side)
-- Tax amount: calculated based on order total (configurable rate)
+- Customer can only download their own orders (userId ownership check before cache lookup)
+- Gift receipt auto-used when `order.giftReceipt === true`
+- PDF generated server-side using React-PDF renderToBuffer
+- `GIFT_WRAPPING_PRICE = 4.99` (constant in pdf.service.ts)
 
 ---
 
@@ -90,7 +140,7 @@ Files: `apps/api/src/modules/pdf/templates/`
 
 ### B1. Tổng quan
 
-Admin có thể mua nhãn vận chuyển trực tiếp từ admin panel thông qua EasyPost API. Hỗ trợ nhiều carrier (USPS, UPS, FedEx, DHL).
+Admin mua nhãn vận chuyển trực tiếp từ admin panel thông qua EasyPost API (axios-based, không dùng EasyPost SDK). Hỗ trợ nhiều carrier. Sau khi mua label: auto-update order status to `SHIPPED` + tracking info.
 
 ### B2. API Endpoints
 
@@ -108,54 +158,65 @@ File: `apps/api/src/modules/shipping/label.service.ts`
 ```typescript
 @Injectable()
 export class LabelService {
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
+    private readonly trackingService: TrackingService,
+  ) {}
   // axios-based (không dùng EasyPost SDK)
+  // EasyPost base URL: https://api.easypost.com/v2
 
-  async getRates(orderId: string, dto: GetRatesDto): Promise<ShipmentRate[]>;
-  async buyLabel(orderId: string, rateId: string): Promise<LabelResult>;
-  async voidLabel(labelId: string): Promise<void>;
+  async getRates(orderId: string): Promise<ShippingRate[]>;
+  // - Reuses existing EasyPost shipment if easypostShipmentId exists
+  // - Creates new shipment with order's address + default parcel
+  // - Saves easypostShipmentId to Order
+  // - Default parcel: 10x8x4 inches, 8oz (0.5 lb)
+
+  async purchaseLabel(orderId: string, rateId: string): Promise<LabelResult>;
+  // - Throws if label already purchased
+  // - Throws if getRates not called first
+  // - Auto-updates Order: status=SHIPPED, trackingNumber, trackingUrl, carrier,
+  //   trackerId, labelUrl, labelCost, labelPurchasedAt, shippedAt, shippingRateId
+
+  // Warehouse from-address uses env vars:
+  // WAREHOUSE_NAME, WAREHOUSE_STREET, WAREHOUSE_CITY,
+  // WAREHOUSE_STATE, WAREHOUSE_ZIP, WAREHOUSE_PHONE
 }
 ```
 
 ### B4. DTOs
 
 ```typescript
-interface GetRatesDto {
-  parcelWeight: number;   // oz
-  parcelLength: number;   // inches
-  parcelWidth: number;
-  parcelHeight: number;
-}
-
-interface ShipmentRate {
-  rateId: string;         // EasyPost rate ID
-  carrier: string;        // "USPS" | "UPS" | "FedEx" | "DHL"
-  service: string;        // "Priority Mail" | "Ground" | etc.
-  price: number;          // USD
-  deliveryDays: number;
-  deliveryDate?: string;
+interface ShippingRate {
+  id:           string;   // EasyPost rate ID
+  carrier:      string;   // "USPS" | "UPS" | "FedEx" | "DHL"
+  service:      string;
+  price:        number;   // USD
+  deliveryDays?: number;
+  currency:     string;   // "USD"
 }
 
 interface LabelResult {
-  labelId: string;
+  labelUrl:       string;  // PDF label URL from EasyPost
   trackingNumber: string;
-  trackingUrl: string;
-  labelUrl: string;       // URL to download PDF label
-  carrier: string;
-  service: string;
-  price: number;
+  trackingUrl:    string;
+  carrier:        string;
+  cost:           number;
 }
 ```
 
 ### B5. Prisma Extension
 
+Fields added to `Order` model:
+
 ```prisma
 model Order {
   // ... existing fields ...
-  easypostShipmentId String?   // EasyPost shipment ID
-  easypostRateId     String?   // selected rate ID
-  labelUrl           String?   // PDF label URL
-  labelVoidedAt      DateTime?
+  easypostShipmentId String?   // EasyPost shipment ID (set on getRates)
+  labelUrl           String?   // PDF label URL (set on purchaseLabel)
+  labelCost          Decimal?  // label purchase cost
+  labelPurchasedAt   DateTime?
+  shippingRateId     String?   // selected EasyPost rate ID
 }
 ```
 
@@ -163,31 +224,39 @@ model Order {
 
 File: `apps/admin/src/components/orders/BuyLabelModal.tsx`
 
-1. Admin inputs parcel dimensions + weight
-2. Click "Get Rates" → shows table of carrier options with price + ETA
-3. Admin selects rate → "Buy Label" button
-4. Success: tracking number + label download link shown in OrderDrawer
+Flow:
+1. Admin clicks "Buy Shipping Label"
+2. Modal opens → auto-calls `GET /rates` endpoint
+3. Rate table: carrier, service, price, ETA
+4. Admin selects rate → "Buy Label" button
+5. Success: tracking number + label download link shown in OrderDrawer
 
 ### B7. OrderDrawer Integration
 
 File: `apps/admin/src/components/orders/OrderDrawer.tsx`
 
 When order status `IN_PRODUCTION` or `SHIPPED`:
-- "Buy Shipping Label" button (opens BuyLabelModal) — shown if no label purchased
-- "Print Label" button → open `labelUrl` in new tab — shown if label exists
+- "Buy Shipping Label" button (opens BuyLabelModal) — shown if `!order.labelUrl`
+- "Print Label" button → open `labelUrl` in new tab — shown if `order.labelUrl` exists
 - "Void Label" button — shown if label exists and not voided
 
 ### B8. Environment Variables
 
 ```
 EASYPOST_API_KEY=EZ...     # EasyPost API key
+WAREHOUSE_NAME=...         # From-address for labels
+WAREHOUSE_STREET=...
+WAREHOUSE_CITY=...
+WAREHOUSE_STATE=...
+WAREHOUSE_ZIP=...
+WAREHOUSE_PHONE=...
 ```
 
 ### B9. Business Rules
 
-- Chỉ mua label khi đơn hàng `IN_PRODUCTION` hoặc `SHIPPED`
-- Sau khi mua label: auto-update `Order.trackingNumber`, `Order.trackingUrl`, `Order.carrier`
-- Auto-update order status to `SHIPPED` when label bought
-- Void label chỉ trong vòng 28 ngày (EasyPost limitation)
-- Void không hoàn tiền tự động — phải request refund riêng với EasyPost
-- Rates refresh mỗi lần mở modal (không cache rates)
+- getRates: fetches from EasyPost, saves `easypostShipmentId` to Order (reuses on retry)
+- purchaseLabel: one label per order (`labelUrl` already set → throws BadRequestException)
+- After purchase: auto-update order status to `SHIPPED` + all tracking fields
+- Carrier detection: uses `TrackingService.detectCarrier(trackingCode)` if EasyPost doesn't return carrier
+- Rates are not cached — always fetched fresh (existing shipment is reused)
+- Void label: EasyPost limitation 28 days, no automatic refund

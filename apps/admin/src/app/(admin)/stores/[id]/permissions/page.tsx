@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, use, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { api } from '../../../../../lib/api-client';
 import { API_ROUTES } from '@mlh/constants';
 import {
@@ -58,7 +60,16 @@ function PermCell({ source, onToggle }: { source: 'deny' | 'allow' | 'role' | 'n
 
 export default function StorePermissionsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: storeId } = use(params);
-  const qc = useQueryClient();
+  const qc              = useQueryClient();
+  const { data: session } = useSession();
+  const router = useRouter();
+  const sessionUser = session?.user as Record<string, unknown> | undefined;
+  const role = sessionUser?.['role'] as string | undefined;
+
+  // SUPER_ADMIN only page
+  useEffect(() => {
+    if (role && role !== 'SUPER_ADMIN') router.replace('/dashboard');
+  }, [role, router]);
 
   // Fetch store to get owner's user ID
   const { data: store } = useQuery<StoreDetail>({

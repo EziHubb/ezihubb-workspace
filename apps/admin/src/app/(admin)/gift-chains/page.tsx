@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { fmtDate, fmtAmount, fmtNum, safeArr } from '../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -242,26 +243,26 @@ export default function GiftChainsAdminPage() {
 
   const { data: stats } = useQuery<GiftChainStats>({
     queryKey: ['admin-gift-chain-stats'],
-    queryFn:  () => api.get<GiftChainStats>('/admin/gift-chains/stats').catch(() => MOCK_STATS),
+    queryFn:  () => api.get<GiftChainStats>(API_ROUTES.ADMIN.GIFT_CHAINS_STATS).catch(() => MOCK_STATS),
     staleTime: 60_000,
   });
 
   const { data, isLoading } = useQuery<GiftChainListResponse>({
     queryKey: ['admin-gift-chains', page],
-    queryFn:  () => api.get<GiftChainListResponse>(`/admin/gift-chains?page=${page}&limit=20`),
+    queryFn:  () => api.get<GiftChainListResponse>(`${API_ROUTES.ADMIN.GIFT_CHAINS}?page=${page}&limit=20`),
     staleTime: 30_000,
   });
 
   const s = stats ?? MOCK_STATS;
 
   const handleClose = async (id: string) => {
-    await api.delete(`/admin/gift-chains/${id}`).catch(() => null);
+    await api.delete(API_ROUTES.ADMIN.GIFT_CHAIN(id)).catch(() => null);
     qc.invalidateQueries({ queryKey: ['admin-gift-chains'] });
     qc.invalidateQueries({ queryKey: ['admin-gift-chain-stats'] });
   };
 
   const handleFlag = async (id: string) => {
-    await api.patch(`/admin/gift-chains/${id}`, { status: 'FLAGGED' }).catch(() => null);
+    await api.patch(API_ROUTES.ADMIN.GIFT_CHAIN(id), { status: 'FLAGGED' }).catch(() => null);
     qc.invalidateQueries({ queryKey: ['admin-gift-chains'] });
   };
 

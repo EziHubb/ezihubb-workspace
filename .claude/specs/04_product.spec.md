@@ -4,51 +4,98 @@
 
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
-| GET | `/api/v1/products` | Danh sách sản phẩm (phân trang, filter) | No |
+| GET | `/api/v1/products` | Danh sách sản phẩm (phân trang, filter, rate: 120/min) | No |
 | GET | `/api/v1/products/trending` | Top 12 trending sản phẩm (by soldCount) | No |
 | GET | `/api/v1/products/recently-viewed` | 8 sản phẩm xem gần đây | Bearer |
-| GET | `/api/v1/products/{slug}` | Chi tiết sản phẩm | No |
-| GET | `/api/v1/products/{id}/related` | 8 sản phẩm liên quan | No |
-| POST | `/api/v1/products/{id}/viewed` | Ghi lại lượt xem | Optional |
+| GET | `/api/v1/products/{slug}` | Chi tiết sản phẩm (auto-increment viewCount) | No |
+| GET | `/api/v1/products/{slug}/related` | 8 sản phẩm liên quan (same category + tags) | No |
+| POST | `/api/v1/products/{id}/viewed` | Ghi lại lượt xem (HTTP 204) | Bearer |
+| GET | `/api/v1/products/{slug}/questions` | Public Q&A (answered only) | No |
+| POST | `/api/v1/products/{slug}/questions` | Customer submit question | Bearer |
 
 ## 2. Admin Endpoints
 
+### Core CRUD
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
+| GET | `/api/v1/admin/products/stats` | Product status counts cho sidebar | ADMIN |
+| GET | `/api/v1/admin/products/seo-stats` | SEO health stats across all products | ADMIN |
 | GET | `/api/v1/admin/products` | Danh sách sản phẩm (includes inactive) | ADMIN |
 | GET | `/api/v1/admin/products/{id}` | Full product by ID for edit form | ADMIN |
 | GET | `/api/v1/admin/products/{id}/performance` | Stats (`?range=7d\|30d\|90d\|1y\|all`) | ADMIN |
 | POST | `/api/v1/admin/products/draft` | Auto-create draft product | ADMIN |
 | POST | `/api/v1/admin/products` | Create product with variants | ADMIN |
+| PATCH | `/api/v1/admin/products/bulk` | Bulk publish/unpublish/archive/set-sale (max 200) | ADMIN |
 | PATCH | `/api/v1/admin/products/{id}` | Update product | ADMIN |
 | DELETE | `/api/v1/admin/products/{id}` | Soft-delete product | ADMIN |
 | POST | `/api/v1/admin/products/{id}/duplicate` | Deep copy product | ADMIN |
-| POST | `/api/v1/admin/products/{id}/images` | Upload images (multipart, max 10) | ADMIN |
-| POST | `/api/v1/admin/products/{id}/images/from-urls` | Attach presigned image URLs | ADMIN |
-| DELETE | `/api/v1/admin/products/{id}/images/{imgId}` | Delete image | ADMIN |
-| PATCH | `/api/v1/admin/products/{id}/images/reorder` | Reorder images | ADMIN |
-| GET | `/api/v1/admin/products/{id}/detail` | Get MongoDB product detail | ADMIN |
-| PUT | `/api/v1/admin/products/{id}/detail` | Upsert MongoDB product detail | ADMIN |
-| POST | `/api/v1/admin/products/{id}/variants` | Add variant | ADMIN |
-| DELETE | `/api/v1/admin/products/{id}/variants/{sku}` | Remove variant by SKU | ADMIN |
-| POST | `/api/v1/admin/products/{id}/attributes` | Replace all attributes | ADMIN |
-| POST | `/api/v1/admin/products/{id}/customization` | Set customization template | ADMIN |
-| GET | `/api/v1/admin/products/{id}/variations` | List variation groups with options | ADMIN |
-| PUT | `/api/v1/admin/products/{id}/variations` | Bulk-replace variation groups | ADMIN |
-| POST | `/api/v1/admin/products/{id}/variations/groups` | Create variation group | ADMIN |
-| DELETE | `/api/v1/admin/products/{id}/variations/groups/{groupId}` | Delete variation group | ADMIN |
-| POST | `/api/v1/admin/products/{id}/variations/{groupId}/options` | Add option to group | ADMIN |
-| PATCH | `/api/v1/admin/products/{id}/variations/{groupId}/options/{optionId}` | Update option | ADMIN |
-| DELETE | `/api/v1/admin/products/{id}/variations/{groupId}/options/{optionId}` | Delete option | ADMIN |
-| GET | `/api/v1/admin/products/{id}/variation-settings` | Get variation settings | ADMIN |
-| PATCH | `/api/v1/admin/products/{id}/variation-settings` | Update variation settings | ADMIN |
-| GET | `/api/v1/admin/products/{id}/variations/variants` | Flat variants for price matrix | ADMIN |
-| PATCH | `/api/v1/admin/products/{id}/variations/variants/{variantId}` | Update variant | ADMIN |
-| GET | `/api/v1/admin/products/{id}/custom-options` | List custom order options | ADMIN |
-| POST | `/api/v1/admin/products/{id}/custom-options` | Add custom option field | ADMIN |
-| PATCH | `/api/v1/admin/products/{id}/custom-options/{optionId}` | Update custom option | ADMIN |
-| DELETE | `/api/v1/admin/products/{id}/custom-options/{optionId}` | Delete custom option | ADMIN |
-| PUT | `/api/v1/admin/products/{id}/custom-options/reorder` | Reorder custom options | ADMIN |
+| PATCH | `/api/v1/admin/products/{id}/related` | Set up to 4 manually pinned related products | ADMIN |
+| POST | `/api/v1/admin/products/export` | Export products to CSV (body: `{ ids?: string[] }`) | ADMIN |
+
+### Images
+| Method | Path | Auth |
+|---|---|---|
+| POST | `/api/v1/admin/products/{id}/images` | ADMIN — multipart, max 10 files, 10MB each |
+| POST | `/api/v1/admin/products/{id}/images/from-urls` | ADMIN — attach presigned URLs (max 20) |
+| DELETE | `/api/v1/admin/products/{id}/images/{imgId}` | ADMIN |
+| PATCH | `/api/v1/admin/products/{id}/images/reorder` | ADMIN — immediate on drag-end |
+
+### MongoDB Detail
+| Method | Path | Auth |
+|---|---|---|
+| GET | `/api/v1/admin/products/{id}/detail` | ADMIN |
+| PUT | `/api/v1/admin/products/{id}/detail` | ADMIN — upsert full detail |
+| POST | `/api/v1/admin/products/{id}/variants` | ADMIN |
+| DELETE | `/api/v1/admin/products/{id}/variants/{sku}` | ADMIN |
+| POST | `/api/v1/admin/products/{id}/attributes` | ADMIN — replace all attributes |
+| POST | `/api/v1/admin/products/{id}/customization` | ADMIN — set customization template |
+
+### Variation Groups & Options
+| Method | Path | Auth |
+|---|---|---|
+| GET | `/api/v1/admin/products/{id}/variations` | ADMIN |
+| PUT | `/api/v1/admin/products/{id}/variations` | ADMIN — bulk-replace all groups |
+| GET | `/api/v1/admin/products/{id}/variations/{groupId}` | ADMIN |
+| POST | `/api/v1/admin/products/{id}/variations/groups` | ADMIN |
+| DELETE | `/api/v1/admin/products/{id}/variations/groups/{groupId}` | ADMIN — cascades options |
+| POST | `/api/v1/admin/products/{id}/variations/{groupId}/options` | ADMIN |
+| PATCH | `/api/v1/admin/products/{id}/variations/{groupId}/options/{optionId}` | ADMIN |
+| DELETE | `/api/v1/admin/products/{id}/variations/{groupId}/options/{optionId}` | ADMIN |
+| GET | `/api/v1/admin/products/{id}/variation-settings` | ADMIN |
+| PATCH | `/api/v1/admin/products/{id}/variation-settings` | ADMIN |
+| GET | `/api/v1/admin/products/{id}/variations/variants` | ADMIN — flat variants for price matrix |
+| PATCH | `/api/v1/admin/products/{id}/variations/variants/{variantId}` | ADMIN |
+
+### Custom Options
+| Method | Path | Auth |
+|---|---|---|
+| GET | `/api/v1/admin/products/{id}/custom-options` | ADMIN |
+| POST | `/api/v1/admin/products/{id}/custom-options` | ADMIN |
+| PATCH | `/api/v1/admin/products/{id}/custom-options/{optionId}` | ADMIN |
+| DELETE | `/api/v1/admin/products/{id}/custom-options/{optionId}` | ADMIN |
+| PUT | `/api/v1/admin/products/{id}/custom-options/reorder` | ADMIN |
+
+### Q&A Management
+| Method | Path | Auth |
+|---|---|---|
+| GET | `/api/v1/admin/questions` | ADMIN — all pending questions |
+| POST | `/api/v1/admin/questions/{id}/answer` | ADMIN |
+| PATCH | `/api/v1/admin/questions/{id}/status` | ADMIN |
+| DELETE | `/api/v1/admin/questions/{id}` | ADMIN |
+
+### CSV Import
+| Method | Path | Auth |
+|---|---|---|
+| POST | `/api/v1/admin/products/csv/validate` | ADMIN |
+| POST | `/api/v1/admin/products/csv/execute` | ADMIN |
+| GET | `/api/v1/admin/products/csv/template` | ADMIN |
+
+### Translations
+| Method | Path | Auth |
+|---|---|---|
+| GET | `/api/v1/admin/products/{id}/translations` | ADMIN |
+| PUT | `/api/v1/admin/products/{id}/translations/{locale}` | ADMIN |
+| POST | `/api/v1/admin/products/{id}/translations/{locale}/auto` | ADMIN |
 
 ## 3. Data Architecture
 
@@ -113,6 +160,11 @@ model Product {
   videoUrls             String[]
   thumbnailCropData     Json?
   customizationConfig   Json?
+  // Low-stock inventory
+  trackInventory        Boolean         @default(false)
+  lowStockThreshold     Int             @default(5)
+  // Related products
+  featuredRelatedIds    String[]
   deletedAt             DateTime?
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
@@ -224,6 +276,15 @@ model ProductionPartner {
 }
 ```
 
+### OrderItem Snapshot
+```prisma
+model OrderItem {
+  // ... existing fields ...
+  productSnapshot Json?   // { name, slug, imageUrl, basePrice, sku }
+  variantSnapshot Json?   // { sku, options, price }
+}
+```
+
 ## 5. MongoDB Schema
 
 Collection: `product_details`
@@ -301,7 +362,19 @@ interface ProductDetail {
 | sort | string | `newest`, `price_asc`, `price_desc`, `bestseller`, `rating`, `featured` |
 | includeInactive | boolean | Admin only |
 
-## 7. Product Page Flow (Client)
+## 7. Bulk Action DTO
+
+```typescript
+interface BulkProductActionDto {
+  ids: string[];    // max 200
+  action: 'publish' | 'unpublish' | 'archive' | 'set-sale';
+  payload?: {
+    discountPercent?: number;  // required for 'set-sale' (1–99)
+  };
+}
+```
+
+## 8. Product Page Flow (Client)
 
 ```
 /[locale]/products/[slug]/page.tsx  (Server Component)
@@ -318,7 +391,7 @@ interface ProductDetail {
   └── Full customizer UI (Fabric.js canvas)
 ```
 
-## 8. SmartVariantPicker Widget Detection
+## 9. SmartVariantPicker Widget Detection
 
 File: `apps/client/src/components/product/SmartVariantPicker.tsx`
 
@@ -332,7 +405,7 @@ const OPTION_WIDGET_MAP: Record<string, WidgetType> = {
 // fallback: 'pill' for unknown option names
 ```
 
-## 9. Admin Product Edit Shell
+## 10. Admin Product Edit Shell
 
 File: `apps/admin/src/components/products/edit/ProductEditShell.tsx`
 
@@ -353,65 +426,24 @@ File: `apps/admin/src/components/products/edit/ProductEditShell.tsx`
 
 **Image reorder:** `PATCH /admin/products/{id}/images/reorder` called immediately on drag end (not on Save).
 
-## 10. Additional Admin Endpoints (Post-Phase 1)
+**Audit log:** CREATE, UPDATE, DELETE, BULK_UPDATE actions logged via `AuditLogService`.
 
-### Q&A Management
-| Method | Path | Auth |
-|---|---|---|
-| GET | `/api/v1/admin/questions` | ADMIN — all pending questions |
-| POST | `/api/v1/admin/questions/{id}/answer` | ADMIN |
-| PATCH | `/api/v1/admin/questions/{id}/status` | ADMIN |
-| DELETE | `/api/v1/admin/questions/{id}` | ADMIN |
+## 11. View Tracking
 
-### Bulk Actions
-| Method | Path | Auth |
-|---|---|---|
-| POST | `/api/v1/admin/products/bulk` | ADMIN — bulk publish/unpublish/archive/sale/export |
+`GET /products/{slug}` — auto-increments `viewCount` with rate limiting per IP+UA fingerprint (base64 hash).
+`POST /products/{id}/viewed` — explicit tracking for recently-viewed list.
 
-### CSV Import
-| Method | Path | Auth |
-|---|---|---|
-| POST | `/api/v1/admin/products/csv/validate` | ADMIN |
-| POST | `/api/v1/admin/products/csv/execute` | ADMIN |
-| GET | `/api/v1/admin/products/csv/template` | ADMIN |
+## 12. SEO Stats Response
 
-### Translations
-| Method | Path | Auth |
-|---|---|---|
-| GET | `/api/v1/admin/products/{id}/translations` | ADMIN |
-| PUT | `/api/v1/admin/products/{id}/translations/{locale}` | ADMIN |
-| POST | `/api/v1/admin/products/{id}/translations/{locale}/auto` | ADMIN |
-
-See full details: `29_admin_extended.spec.md`
-
-## 11. Product Schema Additions (Post-Phase 1)
-
-### Low-Stock Inventory Fields
-```prisma
-model Product {
-  // ... existing fields ...
-  trackInventory    Boolean @default(false)
-  lowStockThreshold Int     @default(5)
+`GET /admin/products/seo-stats`:
+```json
+{
+  "total": 150,
+  "withDescription": 120,
+  "missingDescription": 30,
+  "withImages": 148,
+  "missingImages": 2,
+  "withName": 150,
+  "seoScore": 91
 }
 ```
-
-### OrderItem Snapshot
-`OrderItem` stores a `productSnapshot` JSON at order creation time — ensures historical accuracy when product is later modified:
-```prisma
-model OrderItem {
-  // ... existing fields ...
-  productSnapshot Json?   // { name, slug, imageUrl, basePrice, sku }
-  variantSnapshot Json?   // { sku, options, price }
-}
-```
-
-## 12. Public Q&A Endpoints
-
-| Method | Path | Auth |
-|---|---|---|
-| GET | `/api/v1/products/{slug}/questions` | No — approved Q&A only |
-| POST | `/api/v1/products/{slug}/questions` | Bearer — customer ask question |
-
-Q&A tab in `ProductTabs`, FAQ structured data (`@type: FAQPage`) for answered questions.
-
-See full Q&A spec: `29_admin_extended.spec.md`

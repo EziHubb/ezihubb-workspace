@@ -12,6 +12,12 @@ export class GiftChainController {
     return this.giftChainService.initiateChain(req.user.sub, dto);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('my')
+  getMyChains(@Request() req: any) {
+    return this.giftChainService.getMyChains(req.user.sub);
+  }
+
   @Get(':chainId')
   getChain(@Param('chainId') chainId: string) {
     return this.giftChainService.getChain(chainId);
@@ -26,11 +32,5 @@ export class GiftChainController {
     @Body('productId') productId: string,
   ) {
     return this.giftChainService.forwardChain(chainId, req.user.sub, email, productId);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('my')
-  getMyChains(@Request() req: any) {
-    return this.giftChainService.getMyChains(req.user.sub);
   }
 }

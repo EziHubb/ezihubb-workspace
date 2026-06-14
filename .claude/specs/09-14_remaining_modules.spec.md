@@ -2,36 +2,46 @@
 
 ## Module 09 — Reviews & Ratings
 
-### Endpoints
+### Endpoints (Customer)
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
-| GET | `/api/v1/products/{slug}/reviews` | Approved reviews for product | No |
+| GET | `/api/v1/products/{slug}/reviews` | Approved reviews for product (paginated) | No |
 | GET | `/api/v1/products/{slug}/reviews/summary` | Review summary (avg, distribution) | No |
-| POST | `/api/v1/products/{slug}/reviews` | Tạo review (requires delivered order) | Bearer |
-| PATCH | `/api/v1/products/{slug}/reviews/{reviewId}` | Update own pending review | Bearer (owner) |
-| DELETE | `/api/v1/products/{slug}/reviews/{reviewId}` | Xoá review | Bearer (owner/admin) |
-| POST | `/api/v1/products/{slug}/reviews/{reviewId}/images` | Upload review images (max 5) | Bearer |
-| GET | `/api/v1/admin/dashboard/pending-reviews` | Paginated pending reviews | ADMIN |
+| GET | `/api/v1/products/{slug}/reviews/my-review` | Current user's own review | Bearer |
+| POST | `/api/v1/products/{slug}/reviews` | Tạo review (requires delivered/completed order) | Bearer |
+| PATCH | `/api/v1/products/{slug}/reviews/{reviewId}` | Update own pending review | Bearer |
+| DELETE | `/api/v1/products/{slug}/reviews/{reviewId}` | Delete own review | Bearer |
+| POST | `/api/v1/products/{slug}/reviews/{reviewId}/helpful` | Mark review as helpful (anonymous) | No |
+| POST | `/api/v1/products/{slug}/reviews/{reviewId}/images` | Upload review images (max 5, max 5 MB each) | Bearer |
 
-Admin review moderation is in admin dashboard KPIs.
+### Endpoints (Admin)
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/admin/reviews/counts` | Count reviews grouped by status (for tab badges) | ADMIN |
+| GET | `/api/v1/admin/reviews` | List all reviews (filterable by status) | ADMIN |
+| DELETE | `/api/v1/admin/reviews/{reviewId}` | Permanently delete a review | ADMIN |
+| POST | `/api/v1/admin/reviews/{reviewId}/approve` | Approve pending review | ADMIN |
+| POST | `/api/v1/admin/reviews/{reviewId}/hide` | Hide a review (without deleting) | ADMIN |
+| POST | `/api/v1/admin/reviews/{reviewId}/reply` | Add/update admin reply | ADMIN |
 
 ### Prisma Model
 ```prisma
 enum ReviewStatus { PENDING APPROVED HIDDEN }
 
 model Review {
-  id         String       @id @default(cuid())
-  userId     String
-  productId  String
-  orderId    String?
-  rating     Int          // 1-5
-  title      String?
-  body       String?
-  imageUrls  String[]
-  status     ReviewStatus @default(PENDING)
-  adminReply String?
-  repliedAt  DateTime?
-  createdAt  DateTime     @default(now())
+  id          String       @id @default(cuid())
+  userId      String
+  productId   String
+  orderId     String?
+  rating      Int          // 1-5
+  title       String?
+  body        String?
+  imageUrls   String[]
+  status      ReviewStatus @default(PENDING)
+  helpfulCount Int         @default(0)
+  adminReply  String?
+  repliedAt   DateTime?
+  createdAt   DateTime     @default(now())
 }
 ```
 
@@ -40,11 +50,13 @@ File: `apps/admin/src/app/(admin)/reviews/page.tsx`
 Components: `ReviewModerationCard.tsx`, `ReviewReplyModal.tsx`
 
 ### Business Rules
-- Review cần được duyệt (`APPROVED`) trước khi hiển thị public
-- User chỉ review 1 lần/product (một orderId valid required for verification)
+- Review cần `APPROVED` trước khi hiển thị public
+- User chỉ review 1 lần/product (verified via delivered/completed `orderId`)
 - Rating aggregate cập nhật trên `Product` (avg, count) khi review approved
-- `HIDDEN` status: admin ẩn review không cần xoá
-- Admin có thể reply kèm timestamp
+- `HIDDEN`: admin ẩn mà không xoá
+- Image upload: max 5 images, max 5 MB each, accepted types: jpeg/jpg/png/webp
+- `helpful` endpoint: anonymous, one increment per call (no dedup)
+- Admin `GET /admin/reviews/counts` returns counts per status for tab badges
 
 ---
 
@@ -89,11 +101,11 @@ File: `apps/api/src/modules/search/dto/search-query.dto.ts`
 
 ### Implementation
 - PostgreSQL full-text search via `plainto_tsquery()`
-- Index trên `Product.name`, `Product.description`
-- Fallback: ILIKE search khi FTS không có kết quả
+- Index on `Product.name`, `Product.description`
+- Fallback: ILIKE search when FTS returns no results
 - Returns facets (colors, materials, styles, occasions, holidays, recipients)
 - `logSearch()` → Redis sorted set for trending
-- `computeFacets()` — MongoDB + SQL attribute facets
+- `computeFacets()` — combines SQL + MongoDB attribute facets
 
 ### Frontend
 - Search bar: `apps/client/src/components/search/SearchInput.tsx`
@@ -107,16 +119,16 @@ File: `apps/api/src/modules/search/dto/search-query.dto.ts`
 ### Endpoints
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
-| POST | `/api/v1/promotions/validate` | Validate coupon code | Optional |
-| POST | `/api/v1/promotions` | Create promotion (admin) | ADMIN |
-| GET | `/api/v1/promotions/page-stats` | Promotions dashboard stats | ADMIN |
-| GET | `/api/v1/promotions` | List all promotions | ADMIN |
+| POST | `/api/v1/promotions/validate` | Validate coupon code (does not consume it) | Optional |
+| POST | `/api/v1/promotions` | Create promotion | ADMIN |
+| GET | `/api/v1/promotions/page-stats` | Promotions dashboard aggregate stats | ADMIN |
+| GET | `/api/v1/promotions` | List all promotions (paginated) | ADMIN |
 | GET | `/api/v1/promotions/{id}` | Get by ID | ADMIN |
-| PUT | `/api/v1/promotions/{id}` | Update promotion | ADMIN |
-| PATCH | `/api/v1/promotions/{id}` | Partial update | ADMIN |
+| PUT | `/api/v1/promotions/{id}` | Full update | ADMIN |
+| PATCH | `/api/v1/promotions/{id}` | Partial update (incl. `isActive` toggle) | ADMIN |
 | DELETE | `/api/v1/promotions/{id}` | Delete promotion | ADMIN |
 | PATCH | `/api/v1/promotions/{id}/deactivate` | Deactivate | ADMIN |
-| GET | `/api/v1/promotions/{id}/stats` | Usage stats | ADMIN |
+| GET | `/api/v1/promotions/{id}/stats` | Usage statistics | ADMIN |
 
 ### Prisma Model
 ```prisma
@@ -155,20 +167,44 @@ Components: `PromotionModal.tsx`, `PromotionStatsDrawer.tsx`
 ### Business Rules
 - Code case-insensitive
 - Validate: active + date range + usage limit + per-user limit + min order
-- `DiscountType.PERCENTAGE`: value = percentage (e.g. 10 = 10%)
-- `DiscountType.FIXED_AMOUNT`: value = USD amount
-- `DiscountType.FREE_SHIPPING`: shipping cost set to 0
+- `PERCENTAGE`: value = percentage (e.g. 10 = 10%)
+- `FIXED_AMOUNT`: value = USD amount
+- `FREE_SHIPPING`: shipping cost set to 0
 - Discount capped at order subtotal
+- `validate` endpoint: does NOT consume the coupon, auth optional (per-user limit check uses `userId` when available)
 
 ---
 
 ## Module 12 — Shipping
 
-### Endpoints
+### Public Endpoints
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
-| POST | `/api/v1/shipping/calculate` | Get available shipping options for country + order total | No |
-| GET | `/api/v1/shipping/methods` | Active shipping methods for country (`?countryCode=`) | No |
+| POST | `/api/v1/shipping/calculate` | Get shipping options for country + order total | No |
+| GET | `/api/v1/shipping/methods` | Active methods for country (`?countryCode=`) | No |
+
+### Admin Endpoints
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/admin/shipping/processing-profiles` | List processing profiles | ADMIN |
+| GET | `/api/v1/admin/shipping/profiles` | List shipping profiles with methods | ADMIN |
+| GET | `/api/v1/admin/shipping/zones` | List all zones with methods | ADMIN |
+| GET | `/api/v1/admin/shipping/zones/{id}` | Get zone by ID | ADMIN |
+| POST | `/api/v1/admin/shipping/zones` | Create shipping zone | ADMIN |
+| PUT | `/api/v1/admin/shipping/zones/{id}` | Update shipping zone | ADMIN |
+| DELETE | `/api/v1/admin/shipping/zones/{id}` | Delete zone + all methods | ADMIN |
+| GET | `/api/v1/admin/shipping/zones/{zoneId}/methods` | List methods for a zone | ADMIN |
+| POST | `/api/v1/admin/shipping/zones/{zoneId}/methods` | Add method to zone | ADMIN |
+| PUT | `/api/v1/admin/shipping/methods/{id}` | Update method | ADMIN |
+| DELETE | `/api/v1/admin/shipping/methods/{id}` | Delete method | ADMIN |
+| GET | `/api/v1/admin/shipping/settings` | Get shipping settings | ADMIN |
+| PATCH | `/api/v1/admin/shipping/settings` | Update shipping settings | ADMIN |
+
+### Carrier Label Purchase (Admin — on Order)
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/admin/orders/{id}/rates` | Get EasyPost rates (no charge) | ADMIN |
+| POST | `/api/v1/admin/orders/{id}/buy-label` | Purchase label (irreversible) | ADMIN |
 
 ### Prisma Models
 ```prisma
@@ -192,11 +228,28 @@ model ShippingMethod {
 }
 ```
 
-Note: Products also have `ShippingProfile` + `ShippingProfileMethod` (per-product shipping overrides managed in admin).
+Also: Products have `ShippingProfile` + `ShippingProfileMethod` for per-product shipping overrides.
+
+### EasyPost Integration (`LabelService`)
+File: `apps/api/src/modules/shipping/label.service.ts`
+- axios-based (no EasyPost SDK)
+- `EASYPOST_API_KEY` required; logs warning if unset
+- `fromAddress` configured via env vars (`WAREHOUSE_NAME`, `WAREHOUSE_STREET`, etc.)
+- `getRates(orderId)` → creates EasyPost shipment, returns rates
+- `purchaseLabel(orderId, rateId)` → buys label, updates order tracking fields
+
+### EasyPost Tracking Webhook
+```
+POST /api/v1/webhooks/easypost
+```
+File: `apps/api/src/modules/shipping/tracking-webhook.controller.ts`
+- HMAC-SHA256 via `X-Hmac-Signature` (key: `EASYPOST_WEBHOOK_SECRET`)
+- On `delivered` event: auto-updates order to `DELIVERED`, sends delivery email
+- `TrackingService` also detects carrier from tracking number pattern (USPS/UPS/FedEx/DHL)
 
 ### Admin UI
 File: `apps/admin/src/app/(admin)/shipping/page.tsx`
-Components: `ShippingZoneModal.tsx`, `ShippingMethodModal.tsx`
+Components: `ShippingZoneModal.tsx`, `ShippingMethodModal.tsx`, `BuyLabelModal.tsx`
 
 ---
 
@@ -206,6 +259,9 @@ Components: `ShippingZoneModal.tsx`, `ShippingMethodModal.tsx`
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
 | POST | `/api/v1/notifications/contact` | Submit contact form message | No |
+| POST | `/api/v1/notifications/product-ready` | Subscribe to product availability notification | No |
+| POST | `/api/v1/notifications/newsletter` | Subscribe to newsletter | No |
+| POST | `/api/v1/newsletter/subscribe` | Subscribe to newsletter (canonical path) | No |
 
 ### Email Service
 - Dev: SMTP (MailHog localhost:1025, port 8025 for UI)
@@ -214,25 +270,34 @@ Components: `ShippingZoneModal.tsx`, `ShippingMethodModal.tsx`
 - Env: `EMAIL_FROM`, `EMAIL_FROM_NAME`, `SMTP_HOST`, `SMTP_PORT`
 
 ### Email Types
-- Welcome email (sau register)
+- Welcome email (after register)
 - Email verification
 - Password reset
 - Order confirmation
 - Order status updates (shipped, delivered)
 - Order cancelled / refunded
 - Admin: new order notification
+- Contact form submission forwarded to admin
+- Product availability subscription confirmation
 
 ### Queue (BullMQ)
-- Queue name: `email-queue`
+- Queue name: `email-queue` (`QUEUES.EMAIL`)
 - Dev fallback: `DISABLE_QUEUE=true` → DevBullModule (no-op)
-- Job retry: 3 lần với exponential backoff
-- `apps/api/src/modules/notifications/` module
+- Job retry: 3 times with exponential backoff
+- Module: `apps/api/src/modules/notifications/`
+
+### FCM Push Notifications
+File: `apps/api/src/modules/notifications/fcm.service.ts`, `push.service.ts`
+- `firebase-admin` SDK
+- `pushService.sendToUser(userId, { title, body, data })`
+- Queue: `push-notification-queue`
+- See: `24_fcm_low_stock.spec.md`
 
 ### Notification Model (Prisma)
 ```prisma
 model Notification {
   id        String   @id @default(cuid())
-  userId    String
+  userId    String?  // null for anonymous (e.g. product-ready without account)
   type      String
   title     String
   body      String
@@ -251,7 +316,7 @@ model Notification {
 - Separate Next.js app: `apps/admin`
 - Port: 3001
 - Auth: NextAuth.js sessions (same JWT, checks `role === ADMIN || SUPER_ADMIN`)
-- Auto-logout on 401 (ApiError class carries HTTP status)
+- Auto-logout on 401 (`ApiError` class carries HTTP status)
 
 ### Dashboard Endpoints
 | Method | Path | Mô tả |
@@ -268,6 +333,17 @@ Dashboard also includes AI Features KPI row (pricing accuracy, trends, DNA profi
 | Method | Path | Mô tả |
 |---|---|---|
 | POST | `/api/v1/admin/assets/presign` | Get presigned PUT URLs for direct browser upload to R2 |
+
+### Guard Pattern
+All admin controllers use `@AdminController('path')` composite decorator:
+```typescript
+// Automatically applies:
+Controller('admin/path')
+UseGuards(JwtAuthGuard, RolesGuard)
+Roles(Role.ADMIN, Role.SUPER_ADMIN)
+ApiBearerAuth()
+ApiTags('Admin — Path')
+```
 
 ### Admin Pages (Complete — apps/admin/src/app/(admin)/)
 
@@ -309,12 +385,6 @@ See full list in `29_admin_extended.spec.md`. Core pages:
 | AI: Creator DNA | `/ai-features/dna` |
 | AI: Moderation | `/ai-features/moderation` |
 
-### Guard
-```typescript
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'SUPER_ADMIN')
-```
-
 ### Key Admin Components
 ```
 apps/admin/src/components/
@@ -352,7 +422,62 @@ apps/admin/src/components/
 
 ---
 
-## Module 15 — Messages System
+## Module 15 — Store Credits
+
+### Endpoints
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/store-credits/me` | Get current user's store credit balance | Bearer |
+| GET | `/api/v1/orders/{orderNumber}/buyer-referral` | Get buyer referral store credit for order | Bearer |
+
+File: `apps/api/src/modules/store-credits/store-credits.controller.ts`
+
+Store credits are applied at checkout via `useStoreCredit: true` in `CheckoutDto`. The `StoreCreditsService` is injected `@Optional()` into `OrdersService`.
+
+---
+
+## Module 16 — Tax
+
+### Endpoint
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| POST | `/api/v1/orders/tax-preview` | Preview tax for address + cart total (US only) | No |
+
+File: `apps/api/src/modules/tax/tax.service.ts`
+
+### TaxPreviewDto
+```typescript
+interface TaxPreviewDto {
+  postalCode: string;
+  state: string;
+  country: string;  // only 'US' supported
+  subtotal: number;
+  shippingCost: number;
+}
+
+// Response: TaxCalculation
+interface TaxCalculation {
+  taxAmount: number;
+  taxRate: number;
+  jurisdiction: string;
+  breakdown?: {
+    stateTax: number;
+    countyTax: number;
+    cityTax: number;
+    specialTax: number;
+  };
+}
+```
+
+### Implementation
+- Primary: TaxJar API (`TAXJAR_API_KEY`) — real nexus-based calculation
+- Fallback: static `STATE_RATES` lookup table (average state rates, not compliance-grade)
+- Redis cache for TaxJar results
+- US only — non-US orders return `{ taxAmount: 0, taxRate: 0, jurisdiction: 'N/A' }`
+
+---
+
+## Module 17 — Messages System
 
 **See dedicated spec: `21_messages.spec.md`**
 

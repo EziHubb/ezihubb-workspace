@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { randomBytes } from 'crypto';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QUEUES, JOBS } from '../../queue/queue.constants';
 import { GiftPoolStatus } from '@prisma/client';
@@ -11,7 +12,7 @@ const generateToken = () => randomBytes(8).toString('hex'); // 16 chars hex
 export interface CreatePoolDto {
   productId: string;
   recipientName: string;
-  shippingAddress: object;
+  shippingAddress?: object | null;
   targetAmount: number;
   deadline: Date;
   giftMessage?: string;
@@ -39,7 +40,7 @@ export class GiftPoolService {
         organizerId,
         productId: dto.productId,
         recipientName: dto.recipientName,
-        shippingAddress: dto.shippingAddress,
+        shippingAddress: (dto.shippingAddress ?? Prisma.JsonNull) as Prisma.InputJsonValue,
         targetAmount: dto.targetAmount,
         collectedAmount: 0,
         status: GiftPoolStatus.ACTIVE,

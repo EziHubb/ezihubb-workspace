@@ -2,39 +2,40 @@
 
 ## 1. Endpoints
 
-| Method | Path                             | Mô tả                          | Auth     |
-| ------ | -------------------------------- | ------------------------------ | -------- |
-| GET    | `/api/v1/cart`                   | Lấy giỏ hàng                   | Optional |
-| POST   | `/api/v1/cart/items`             | Thêm sản phẩm                  | Optional |
-| PATCH  | `/api/v1/cart/items/{itemId}`    | Cập nhật số lượng              | Optional |
-| DELETE | `/api/v1/cart/items/{itemId}`    | Xoá sản phẩm                   | Optional |
-| DELETE | `/api/v1/cart`                   | Xoá toàn bộ giỏ hàng           | Optional |
-| POST   | `/api/v1/cart/merge`             | Merge guest cart vào user cart | Bearer   |
-| POST   | `/api/v1/cart/apply-coupon`      | Apply coupon code              | Optional |
-| DELETE | `/api/v1/cart/coupon`            | Remove coupon                  | Optional |
-| POST   | `/api/v1/cart/estimate-shipping` | Estimate shipping costs        | Optional |
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/cart` | Lấy giỏ hàng (tạo mới nếu chưa có) | Optional |
+| POST | `/api/v1/cart/items` | Thêm sản phẩm | Optional |
+| PATCH | `/api/v1/cart/items/{itemId}` | Cập nhật số lượng | Optional |
+| DELETE | `/api/v1/cart/items/{itemId}` | Xoá sản phẩm | Optional |
+| DELETE | `/api/v1/cart` | Xoá toàn bộ giỏ hàng (HTTP 204) | Optional |
+| POST | `/api/v1/cart/merge` | Merge guest cart vào user cart | Bearer |
+| POST | `/api/v1/cart/apply-coupon` | Apply coupon code | Optional |
+| DELETE | `/api/v1/cart/coupon` | Remove coupon | Optional |
+| POST | `/api/v1/cart/estimate-shipping` | Estimate shipping costs | Optional |
 
 ## 2. Guest Cart vs Authenticated Cart
 
 ### Guest Cart
 
-- `sessionId` (UUID v4) lưu trong localStorage (key: `daisy-cart`)
-- Mỗi request gửi header: `X-Session-ID: <sessionId>`
-- Cart lưu trong Redis với key: `cart:session:<sessionId>`
-- TTL: 7 ngày (tự động gia hạn mỗi lần access)
+- `sessionId` (UUID) sinh server-side, lưu trong httpOnly cookie: `cart_session`
+- Cookie: `httpOnly: true`, `secure: true` (production), `sameSite: none` (production) / `lax` (dev), TTL: 30 ngày
+- Cart lưu trong PostgreSQL với `sessionId` (không phải userId)
+- Mỗi GET/POST `/cart` — nếu chưa có cookie, API tạo session mới và set cookie qua `Set-Cookie` header
+- **Lưu ý:** Client store dùng localStorage key `daisy-cart` chỉ để persist `sessionId`, nhưng session thực tế được quản lý bởi cookie phía server
 
 ### Authenticated Cart
 
 - Dùng `Authorization: Bearer <token>` header
-- Cart lưu trong PostgreSQL (Prisma) + Redis cache
+- Cart lưu trong PostgreSQL với `userId`
 - Sau login: `POST /api/v1/cart/merge` tự động được gọi bởi auth store
 
 ### Merge Flow
 
 1. User login → auth store gọi `cartStore.mergeGuestCart()`
-2. Cart store POST `/api/v1/cart/merge` với `X-Session-ID` header
+2. Cart store POST `/api/v1/cart/merge` với cookie `cart_session`
 3. API merge items (quantity cộng dồn nếu trùng productId + variantId + customizationData hash)
-4. Cart store xoá sessionId khỏi localStorage
+4. Guest cart được xoá sau khi merge
 
 ## 3. Shared Types
 
@@ -96,15 +97,13 @@ interface CartDto {
 File: `apps/client/src/lib/store/cart.store.ts`
 
 **Persisted state** (key: `daisy-cart`):
-
 ```typescript
 {
   sessionId: string | null;
-} // only sessionId persisted
+} // only sessionId persisted (backup; server cookie is authoritative)
 ```
 
 **In-memory state:**
-
 ```typescript
 {
   cart: CartDto | null;
@@ -114,7 +113,6 @@ File: `apps/client/src/lib/store/cart.store.ts`
 ```
 
 **Actions:**
-
 - `initSession()` — generate session UUID if needed
 - `fetchCart()` — GET /cart
 - `addItem(dto: AddItemDto)` — POST /cart/items + optimistic update + analytics
@@ -126,7 +124,7 @@ File: `apps/client/src/lib/store/cart.store.ts`
 - `mergeGuestCart()` — POST /cart/merge (called after login)
 - `openDrawer()` / `closeDrawer()` — manage CartDrawer UI
 
-**normalizeCart():** Ensures compat fields exist on all items.
+**normalizeCart():** Ensures compat fields (`productName`, `productSlug`, `productImageUrl`) exist on all items.
 
 ## 5. Prisma Models
 
@@ -153,18 +151,48 @@ model CartItem {
   customizationData Json?
   previewUrl        String?
   createdAt         DateTime @default(now())
-  cart              Cart     @relation(...)
-  product           Product  @relation(...)
+  cart              Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product           Product  @relation(fields: [productId], references: [id])
+  variant           ProductVariant? @relation(fields: [variantId], references: [id])
 }
 ```
 
-## 6. Business Rules
+## 6. AddCartItemDto
 
-- Giới hạn mềm: 50 items
+```typescript
+interface AddCartItemDto {
+  productId: string;
+  variantId?: string;
+  quantity: number;
+  customizationData?: {
+    templateId: string;
+    fields?: Record<string, string>;
+    bundleCount?: number;
+    items?: { fields: Record<string, string> }[];
+  };
+  previewUrl?: string;
+}
+```
+
+## 7. EstimateShippingDto
+
+```typescript
+interface EstimateShippingDto {
+  country: string;
+  state?: string;
+  postalCode?: string;
+}
+```
+
+## 8. Business Rules
+
+- Giới hạn mềm: 50 items (`MAX_ITEMS = 50`)
 - `priceChanged: true` trong CartItemDto khi variant đổi giá
 - Quantity min: 1, max: 99 per line item
-- Guest cart expire: 7 ngày không hoạt động (`expiresAt`)
+- Guest cart expire: 30 ngày không hoạt động (`GUEST_CART_TTL_MS`)
 - Merge: quantity cộng dồn nếu cùng (productId + variantId + customizationData hash)
 - Customization khác nhau → line items riêng biệt
 - Coupon validation: active + date range + usage limit + min order amount
 - Discount capped at order subtotal
+- Cart session cookie path: `/` (không bị restrict như refresh token)
+- `getOrCreateCart()` — tự động tạo cart nếu chưa có, trả về `{ cart, newSessionId? }`; client nhận `newSessionId` và persist vào store

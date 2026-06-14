@@ -286,7 +286,7 @@ export function CreateGiftPoolPanel({ product, onClose, onCreated }: Props) {
             <button
               type="button"
               onClick={() => setStep(0)}
-              className="flex-1 border border-border text-secondary text-sm font-semibold py-2.5 rounded-button hover:bg-background transition-colors"
+              className="shrink-0 px-4 border border-border text-secondary text-sm font-semibold py-2.5 rounded-button hover:bg-background transition-colors"
             >
               Back
             </button>
@@ -349,19 +349,12 @@ export function CreateGiftPoolPanel({ product, onClose, onCreated }: Props) {
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className="flex-1 border border-border text-secondary text-sm font-semibold py-2.5 rounded-button hover:bg-background transition-colors"
-            >
-              Back
-            </button>
+          <div className="space-y-2">
             <button
               type="button"
               onClick={handleCreate}
               disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2 bg-primary text-white text-sm font-semibold py-2.5 rounded-button hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 bg-primary text-white text-sm font-semibold py-2.5 rounded-button hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               {loading ? (
                 <>
@@ -374,6 +367,13 @@ export function CreateGiftPoolPanel({ product, onClose, onCreated }: Props) {
                   Launch gift pool &amp; get link
                 </>
               )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="w-full text-sm font-semibold text-secondary py-2 rounded-button border border-border hover:bg-background transition-colors"
+            >
+              Back
             </button>
           </div>
         </div>

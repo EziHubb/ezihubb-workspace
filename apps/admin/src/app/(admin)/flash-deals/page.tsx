@@ -10,6 +10,7 @@ import {
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { DataTable } from '../../../components/data/DataTable';
 import { api } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount, fmtDate, fmtDateTime, fmtNum } from '../../../lib/fmt';
 
 type DealStatus = 'PENDING' | 'ACTIVE' | 'UPCOMING' | 'ENDED';
@@ -126,7 +127,7 @@ export default function AdminFlashDealsPage() {
 
   const statsQuery = useQuery<FlashDealStats>({
     queryKey: ['admin-flash-deals-stats'],
-    queryFn:  () => api.get<FlashDealStats>('/admin/flash-deals/stats'),
+    queryFn:  () => api.get<FlashDealStats>(API_ROUTES.ADMIN.FLASH_DEALS_STATS),
     staleTime: 60_000,
   });
   const stats = statsQuery.data;
@@ -135,7 +136,7 @@ export default function AdminFlashDealsPage() {
   const listQuery = useQuery<{ data: FlashDealRow[]; total: number }>({
     queryKey: listKey,
     queryFn:  () =>
-      api.get<{ data: FlashDealRow[]; total: number }>('/admin/flash-deals', {
+      api.get<{ data: FlashDealRow[]; total: number }>(API_ROUTES.ADMIN.FLASH_DEALS, {
         params: { status: tab, page: String(page), limit: String(PAGE_SIZE) },
       }),
   });
@@ -159,7 +160,7 @@ export default function AdminFlashDealsPage() {
 
   const reviewMutation = useMutation<void, Error, ReviewPayload & { id: string }>({
     mutationFn: ({ id, ...payload }) =>
-      api.patch(`/admin/flash-deals/${id}`, payload),
+      api.patch(API_ROUTES.ADMIN.FLASH_DEAL(id), payload),
     onSuccess: () => {
       invalidate();
       setReviewing(null);

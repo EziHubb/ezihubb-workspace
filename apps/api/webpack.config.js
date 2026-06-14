@@ -2,6 +2,7 @@ const { NxAppWebpackPlugin } = require('@nx/webpack/app-plugin');
 const { join } = require('path');
 
 module.exports = {
+  externals: [{ '@sentry/node': 'commonjs @sentry/node' }],
   output: {
     path: join(__dirname, '../../dist/apps/api'),
     clean: true,

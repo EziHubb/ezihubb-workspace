@@ -8,11 +8,12 @@ Firebase Cloud Messaging (FCM) cho push notifications trên browser/PWA. Khách 
 
 ### A2. API Endpoints
 
+FCM token quản lý qua **users** controller (không phải push controller riêng):
+
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
-| POST | `/api/v1/push/register` | Đăng ký FCM token | Bearer |
-| DELETE | `/api/v1/push/register/{token}` | Huỷ đăng ký token | Bearer |
-| GET | `/api/v1/push/tokens/me` | Danh sách tokens của user | Bearer |
+| POST | `/api/v1/users/me/fcm-token` | Đăng ký FCM token | Bearer |
+| DELETE | `/api/v1/users/me/fcm-token` | Huỷ đăng ký token | Bearer |
 
 ### A3. Prisma Model
 
@@ -31,8 +32,9 @@ model FcmToken {
 
 - Package: `firebase-admin`
 - Env: `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`
-- Service: `FcmService` (`apps/api/src/modules/push/fcm.service.ts`)
-- Service: `PushService` — high-level wrapper with event hooks
+- Service: `FcmService` (`apps/api/src/modules/notifications/fcm.service.ts`)
+- Service: `PushService` (`apps/api/src/modules/notifications/push.service.ts`) — high-level wrapper with event hooks
+- Cả hai service đặt trong `notifications` module (không phải module `push` riêng biệt)
 
 ### A5. Service Worker (Dynamic Route)
 
@@ -43,11 +45,11 @@ Route: `apps/client/src/app/firebase-messaging-sw.js/route.ts`
 
 ### A6. Client Integration
 
-File: `apps/client/src/components/auth/AuthProvider.tsx` (hook)
+File: `apps/client/src/components/providers/AuthProvider.tsx`
 
 ```typescript
-// On login: request notification permission → get FCM token → POST /push/register
-// On logout: DELETE /push/register/{token}
+// On login: request notification permission → get FCM token → POST /users/me/fcm-token
+// On logout: DELETE /users/me/fcm-token
 ```
 
 ### A7. Push Notification Events (3 triggers)
@@ -71,6 +73,22 @@ NEXT_PUBLIC_FIREBASE_APP_ID=...
 NEXT_PUBLIC_FIREBASE_VAPID_KEY=...
 ```
 
+### A9. File Structure (API)
+
+```
+apps/api/src/modules/notifications/
+  notifications.module.ts
+  notifications.controller.ts  # Contact form, product-ready, newsletter
+  notifications.service.ts
+  fcm.service.ts               # Firebase Admin SDK wrapper
+  push.service.ts              # High-level push event dispatcher
+```
+
+```
+apps/api/src/modules/users/dto/
+  fcm-token.dto.ts             # RegisterFcmTokenDto, UnregisterFcmTokenDto
+```
+
 ---
 
 ## Part B — Low-Stock Alerts (P3-04)
@@ -86,34 +104,35 @@ model Product {
   // ... existing fields ...
   trackInventory    Boolean @default(false)  // bật/tắt theo dõi tồn kho
   lowStockThreshold Int     @default(5)      // cảnh báo khi quantity <= threshold
-  // quantity field already exists
+  // quantity field đã có sẵn
 }
 ```
 
 ### B3. Low-Stock Flow
 
 #### Order Trigger (real-time)
-1. Order `CONFIRMED` → decrement `Product.quantity` by ordered amount
-2. If `trackInventory && quantity <= lowStockThreshold`:
+1. Order `CONFIRMED` → decrement `Product.quantity` theo ordered amount
+2. Nếu `trackInventory && quantity <= lowStockThreshold`:
    - Check Redis dedup key `low-stock:{productId}` (TTL: 24h)
-   - If not exists: send admin email + set Redis key
-3. If `quantity <= 0`: `Product.status → INACTIVE` (out of stock)
+   - Nếu không tồn tại: gửi admin email + set Redis key
+3. Nếu `quantity <= 0`: `Product.status → INACTIVE` (out of stock)
 
 #### Daily BullMQ Scan (7am UTC)
 - Queue: `stock-alert-queue`
 - Job: `daily-low-stock-scan`
 - Cron: `0 7 * * *`
-- Finds all products with `trackInventory: true && quantity <= lowStockThreshold && status: ACTIVE`
-- Sends admin summary email (batch, not per-product)
-- Redis dedup: skip products already alerted in last 24h
+- Tìm tất cả products với `trackInventory: true && quantity <= lowStockThreshold && status: ACTIVE`
+- Gửi admin summary email (batch, không phải per-product)
+- Redis dedup: skip products đã alert trong 24h qua
 
 ### B4. BullMQ Queue Setup
 
 ```typescript
 // Queue: 'stock-alert-queue'
 // Recurring job scheduled via BullMQ repeatable
-// apps/api/src/modules/products/jobs/low-stock-scan.processor.ts
 ```
+
+File processor: `apps/api/src/modules/products/low-stock.service.ts`
 
 ### B5. Admin Email Template
 
@@ -123,9 +142,9 @@ Template: `low-stock-alert.hbs`
 
 ### B6. Admin UI Integration
 
-In Product edit (`PricingShippingTab`):
+Trong Product edit (`PricingShippingTab`):
 - Toggle: "Track inventory"
-- Number input: "Low stock threshold" (shown when trackInventory: true)
+- Number input: "Low stock threshold" (hiển thị khi trackInventory: true)
 - Display current stock quantity
 
 ### B7. Business Rules

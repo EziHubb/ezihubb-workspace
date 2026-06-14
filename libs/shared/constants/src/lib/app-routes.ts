@@ -49,8 +49,28 @@ export const ADMIN_ROUTES = {
 
   FINANCE: '/finance',
 
-  STORES: '/stores',
-  STORE:  (id: string) => `/stores/${id}`,
+  STORES:             '/stores',
+  STORE:              (id: string) => `/stores/${id}`,
+  STORE_PERMISSIONS:  (id: string) => `/stores/${id}/permissions`,
+  STORES_PLANS:       '/stores/plans',
+  STORES_SETTINGS:    '/stores/settings',
+
+  PAYOUTS:       '/payouts',
+  CAMPAIGNS:     '/campaigns',
+  GIFT_POOLS:    '/gift-pools',
+  GIFT_CHAINS:   '/gift-chains',
+  BLIND_MATCH:   '/blind-match',
+
+  FLASH_DEALS:        '/flash-deals',
+  FLASH_DEALS_SUBMIT: '/flash-deals/submit',
+
+  REFERRALS:          '/referrals',
+  REFERRALS_USERS:    '/referrals/users',
+  REFERRALS_PAYOUTS:  '/referrals/payouts',
+  REFERRALS_SETTINGS: '/referrals/settings',
+
+  SETTINGS:           '/settings',
+  SETTINGS_AUDIT_LOG: '/settings/audit-log',
 
   ai: {
     trends:      '/ai/trends',
@@ -120,10 +140,28 @@ export const CLIENT_ROUTES = {
   AFFILIATE:           '/affiliate',
   AFFILIATE_REGISTER:  '/affiliate/register',
   AFFILIATE_DASHBOARD: '/affiliate/dashboard',
+  AFFILIATE_LINKS:     '/affiliate/links',
   AFFILIATE_PAYOUTS:   '/affiliate/payouts',
 
-  PAGE_CONTACT:  '/pages/contact',
-  PAGE_REVIEWS:  '/pages/reviews',
-  PAGE_TERMS:    '/pages/terms',
-  PAGE_PRIVACY:  '/pages/privacy',
+  OPEN_SHOP:     '/open-shop',
+  FLASH_DEALS:   '/flash-deals',
+  GIFT_POOLS:    '/gift-pools',
+  GIFT_CHAINS:   '/gift-chains',
+  BLIND_MATCH:   '/blind-match',
+  BLIND_MATCH_HALL_OF_FAME: '/blind-match/hall-of-fame',
+
+  MARKETPLACE_BOUNTIES: '/marketplace/bounties',
+  MARKETPLACE_DESIGNS:  '/marketplace/designs',
+
+  PAGE_CONTACT:       '/pages/contact',
+  PAGE_REVIEWS:       '/pages/reviews',
+  PAGE_TERMS:         '/pages/terms',
+  PAGE_PRIVACY:       '/pages/privacy',
+  PAGE_PRIVACY_POLICY: '/pages/privacy-policy',
+  PAGE_OUR_STORY:     '/pages/our-story',
+  PAGE_HOW_IT_WORKS:  '/pages/how-it-works',
+  PAGE_SHIPPING_INFO: '/pages/shipping-info',
+  PAGE_RETURNS:       '/pages/returns',
+  PAGE_FAQ:           '/pages/faq',
+  PAGE_CAREERS:       '/pages/careers',
 } as const;

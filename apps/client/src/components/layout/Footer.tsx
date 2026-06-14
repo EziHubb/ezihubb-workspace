@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { CLIENT_ROUTES } from '@mlh/constants';
 
 // ── Social icon SVGs ──────────────────────────────────────────────────────────
 
@@ -62,17 +63,17 @@ export function Footer() {
   ];
 
   const aboutLinks = [
-    { label: t('about.ourStory'),   href: '/pages/our-story'   },
-    { label: t('about.howItWorks'), href: '/pages/how-it-works'},
-    { label: t('about.reviews'),    href: '/pages/reviews'     },
-    { label: t('about.careers'),    href: '/pages/careers'     },
+    { label: t('about.ourStory'),   href: CLIENT_ROUTES.PAGE_OUR_STORY    },
+    { label: t('about.howItWorks'), href: CLIENT_ROUTES.PAGE_HOW_IT_WORKS },
+    { label: t('about.reviews'),    href: CLIENT_ROUTES.PAGE_REVIEWS      },
+    { label: t('about.careers'),    href: CLIENT_ROUTES.PAGE_CAREERS      },
   ];
 
   const helpLinks = [
-    { label: t('help.contact'),  href: '/pages/contact'       },
-    { label: t('help.faq'),      href: '/pages/faq'           },
-    { label: t('help.shipping'), href: '/pages/shipping-info' },
-    { label: t('help.returns'),  href: '/pages/returns'       },
+    { label: t('help.contact'),  href: CLIENT_ROUTES.PAGE_CONTACT       },
+    { label: t('help.faq'),      href: CLIENT_ROUTES.PAGE_FAQ            },
+    { label: t('help.shipping'), href: CLIENT_ROUTES.PAGE_SHIPPING_INFO  },
+    { label: t('help.returns'),  href: CLIENT_ROUTES.PAGE_RETURNS        },
   ];
 
   return (
@@ -149,10 +150,10 @@ export function Footer() {
         <div className="mt-10 pt-6 border-t border-[#3D3D4E] flex flex-col sm:flex-row items-center justify-between gap-3 text-[#6B7280] text-xs">
           <p>© {year} DailyDaisy. All rights reserved.</p>
           <div className="flex gap-4">
-            <Link href="/pages/privacy-policy" className="hover:text-white transition-colors">
+            <Link href={CLIENT_ROUTES.PAGE_PRIVACY_POLICY} className="hover:text-white transition-colors">
               {t('privacyPolicy')}
             </Link>
-            <Link href="/pages/terms" className="hover:text-white transition-colors">
+            <Link href={CLIENT_ROUTES.PAGE_TERMS} className="hover:text-white transition-colors">
               {t('termsOfService')}
             </Link>
           </div>

@@ -5,27 +5,41 @@
 ### Public / Customer
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
-| POST | `/api/v1/orders` | Tạo đơn hàng (checkout) | Bearer |
+| POST | `/api/v1/orders/tax-preview` | Preview tax (US only — TaxJar or fallback) | No |
+| POST | `/api/v1/orders` | Tạo đơn hàng (checkout) | Optional (guest allowed) |
 | GET | `/api/v1/orders/me` | Đơn hàng của tôi (phân trang) | Bearer |
 | GET | `/api/v1/orders/me/{orderNumber}` | Chi tiết đơn hàng của tôi | Bearer |
-| GET | `/api/v1/orders/{orderNumber}` | Guest order tra cứu (`?email=` required) | No |
-| POST | `/api/v1/orders/{orderNumber}/cancel` | Huỷ đơn (trong 2h sau confirm) | Bearer |
+| GET | `/api/v1/orders/track` | Guest order lookup (`?orderNumber=&email=`) | No |
+| GET | `/api/v1/orders/{orderNumber}` | Order detail — auth user by userId, guest by `?email=` | Optional |
+| POST | `/api/v1/orders/{orderNumber}/cancel` | Huỷ đơn (2h window, guest allowed) | Optional |
+| GET | `/api/v1/orders/{id}/invoice` | Download own invoice PDF | Bearer |
+| GET | `/api/v1/orders/{orderId}/tracking` | Get order tracking stages + events | Bearer |
+| GET | `/api/v1/orders/{orderNumber}/buyer-referral` | Get buyer referral info for order | Bearer |
 
 ### Admin
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
-| GET | `/api/v1/admin/orders` | All orders (filterable) | ADMIN |
+| GET | `/api/v1/admin/orders` | All orders (filterable, paginated) | ADMIN |
 | GET | `/api/v1/admin/orders/export` | Export orders as CSV | ADMIN |
+| GET | `/api/v1/admin/orders/{id}/invoice` | Generate / return cached invoice PDF | ADMIN |
+| GET | `/api/v1/admin/orders/{id}/packing-slip` | Generate / return cached packing slip PDF | ADMIN |
+| POST | `/api/v1/admin/orders/bulk-packing-slips` | Generate packing slips for multiple orders | ADMIN |
 | GET | `/api/v1/admin/orders/{id}` | Chi tiết đơn hàng by ID | ADMIN |
 | PATCH | `/api/v1/admin/orders/{id}/status` | Cập nhật order status | ADMIN |
 | PATCH | `/api/v1/admin/orders/{id}/tracking` | Add tracking information | ADMIN |
+| PATCH | `/api/v1/admin/orders/{id}/ship` | Mark order SHIPPED — saves tracking, registers EasyPost tracker, emails customer | ADMIN |
+| GET | `/api/v1/admin/orders/{id}/rates` | Get EasyPost shipping rates (no charge) | ADMIN |
+| POST | `/api/v1/admin/orders/{id}/buy-label` | Purchase EasyPost label (irreversible) | ADMIN |
+| POST | `/api/v1/admin/orders/{id}/note` | Add / update private admin note | ADMIN |
+| POST | `/api/v1/admin/orders/{id}/cancel` | Admin-cancel order (no time restriction) | ADMIN |
+| GET | `/api/v1/admin/orders/{id}/earnings` | Earnings breakdown (fees, net) | ADMIN |
 
 ## 2. Order Status Flow
 
 ```
 PENDING_PAYMENT
   └── CONFIRMED → IN_PRODUCTION → SHIPPED → DELIVERED → COMPLETED
-               ↘ CANCELLED (within 2h of CONFIRMED)
+               ↘ CANCELLED (within 2h of CONFIRMED, or admin-cancel at any time)
   └── (expired/failed)
 
 CONFIRMED → REFUND_REQUESTED → REFUNDED
@@ -62,14 +76,32 @@ model Order {
   // Totals
   subtotal        Decimal
   discountAmount  Decimal       @default(0)
+  taxAmount       Decimal       @default(0)
   total           Decimal
   couponCode      String?
   // Tracking
   trackingNumber  String?
   trackingUrl     String?
   carrier         String?
+  trackerId       String?       // EasyPost tracker ID
+  // EasyPost label
+  easypostShipmentId String?
+  easypostRateId     String?
+  labelUrl           String?
+  labelVoidedAt      DateTime?
+  // Gift options
+  isGift          Boolean       @default(false)
+  giftMessage     String?
+  giftFrom        String?
+  giftReceipt     Boolean       @default(false)
+  giftWrapping    Boolean       @default(false)
+  // Loyalty & credits
+  loyaltyPointsEarned   Int?
+  loyaltyPointsRedeemed Int?
+  storeCreditUsed Decimal?
   // Meta
   note            String?
+  adminNote       String?
   cancelReason    String?
   cancelledAt     DateTime?
   confirmedAt     DateTime?
@@ -83,6 +115,7 @@ model Order {
   payment         Payment?
   promotionUsages PromotionUsage[]
   giftCardUsages  GiftCardUsage[]
+  tracking        OrderTracking?
 }
 
 model OrderItem {
@@ -96,6 +129,8 @@ model OrderItem {
   unitPrice         Decimal
   customizationData Json?
   previewUrl        String?
+  productSnapshot   Json?    // { name, slug, imageUrl, basePrice, sku }
+  variantSnapshot   Json?    // { sku, options, price }
 }
 
 model OrderStatusHistory {
@@ -106,11 +141,78 @@ model OrderStatusHistory {
   createdBy String?     // userId of admin who changed
   createdAt DateTime    @default(now())
 }
+
+// Detailed tracking stages (OrderTrackingController)
+enum TrackingStage {
+  ORDER_CONFIRMED
+  IN_PRODUCTION
+  READY_TO_SHIP
+  SHIPPED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  EXCEPTION
+}
+
+model OrderTracking {
+  id                    String         @id @default(cuid())
+  orderId               String         @unique
+  currentStage          TrackingStage
+  carrierName           String?
+  carrierTrackingNumber String?
+  lastPolledAt          DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  events                TrackingEvent[]
+}
+
+model TrackingEvent {
+  id         String        @id @default(cuid())
+  trackingId String
+  stage      TrackingStage
+  title      String
+  source     String
+  eventAt    DateTime
+  createdAt  DateTime      @default(now())
+}
 ```
 
 ## 4. DTOs
 
-### OrderDto
+### CheckoutDto (POST /orders)
+```typescript
+interface CheckoutDto {
+  shippingAddress: {
+    fullName: string; phone: string;
+    addressLine1: string; addressLine2?: string;
+    city: string; state?: string;
+    postalCode: string; country: string; // 2-letter ISO
+  };
+  shippingMethodId: string;
+  guestEmail?: string;      // required for guest checkout
+  couponCode?: string;
+  giftCardCode?: string;
+  note?: string;
+  isGift?: boolean;
+  giftMessage?: string;
+  giftFrom?: string;
+  giftReceipt?: boolean;
+  giftWrapping?: boolean;
+  pointsToRedeem?: number;
+  useStoreCredit?: boolean;
+  buyerRefToken?: string;   // referral tracking cookie
+}
+
+// Response
+interface CheckoutResponseDto {
+  orderId: string;
+  orderNumber: string;
+  clientSecret: string;   // Stripe PaymentIntent client secret
+  total: number;
+  taxAmount: number;
+}
+```
+
+### OrderDto (response)
 ```typescript
 interface OrderDto {
   id: string;
@@ -119,6 +221,7 @@ interface OrderDto {
   subtotal: number;
   shippingCost: number;
   discountAmount: number;
+  taxAmount: number;
   total: number;
   shippingAddress: {
     name: string; phone: string; address: string;
@@ -138,120 +241,84 @@ interface OrderDto {
   cancelledAt?: string;
   cancelReason?: string;
 }
-
-interface OrderItemDto {
-  id: string;
-  productId: string;
-  variantId?: string;
-  productName: string;
-  variantName?: string;
-  quantity: number;
-  unitPrice: number;
-  customizationData?: object;
-  previewUrl?: string;
-}
 ```
 
-### CreateOrderDto
-```typescript
-interface CreateOrderDto {
-  shippingAddressId: string;
-  shippingMethod: string;
-  paymentMethod: 'stripe' | 'paypal' | 'gift_card' | 'mixed';
-  couponCode?: string;
-  giftCardCode?: string;
-  note?: string;
-}
-```
-
-## 5. Additional Endpoints (Post-Phase 1)
-
-### PDF Invoice & Packing Slip
-| Method | Path | Auth |
-|---|---|---|
-| GET | `/api/v1/orders/{orderNumber}/invoice` | Bearer (owner) |
-| GET | `/api/v1/orders/{orderNumber}/packing-slip` | Bearer (owner) |
-| GET | `/api/v1/admin/orders/{id}/invoice` | ADMIN |
-| GET | `/api/v1/admin/orders/{id}/packing-slip` | ADMIN |
-
-See full spec: `28_pdf_invoices_labels.spec.md`
-
-### Carrier Label (Admin)
-| Method | Path | Auth |
-|---|---|---|
-| POST | `/api/v1/admin/orders/{id}/shipping/rates` | ADMIN |
-| POST | `/api/v1/admin/orders/{id}/shipping/buy-label` | ADMIN |
-| GET | `/api/v1/admin/orders/{id}/shipping/label` | ADMIN |
-
-See full spec: `28_pdf_invoices_labels.spec.md`
-
-## 5a. Checkout Flow (Client)
+## 5. Checkout Flow (Client)
 
 1. `/[locale]/checkout` — Multi-step checkout page
-2. Step 1: `DeliveryForm` — address selection / entry
+2. Step 1: `DeliveryForm` — address entry (inline, no saved address selector)
 3. Step 2: `ShippingForm` — shipping method selection
-4. Step 3: `PaymentForm` — Stripe Elements / PayPal / Gift Card
-5. Payment success → `POST /api/v1/orders`
-6. Redirect → `/[locale]/checkout/success?orderNumber=...`
+4. Step 3: `PaymentForm` — Stripe Elements + `ExpressPayStrip` (PayPal only)
+5. Checkout submit → `POST /api/v1/orders` → receives `clientSecret`
+6. Confirm payment → Stripe webhook → order `CONFIRMED`
+7. Redirect → `/[locale]/checkout/success?orderNumber=...`
 
-Also: `/[locale]/orders/track` — guest order tracking page
+Client files: `apps/client/src/components/checkout/`
+- `DeliveryForm.tsx`, `ShippingForm.tsx`, `PaymentForm.tsx`
+- `ExpressPayStrip.tsx` — PayPal express button (full-width, no Apple Pay)
+- `GiftOptionsSection.tsx` — gift wrap / message / receipt
+- `StoreCreditBadge.tsx` — shows available store credit
+- `CoinsCheckoutPanel.tsx` — loyalty points redemption
+- `AffiliateDiscountBanner.tsx` — shows affiliate discount if applicable
 
-Files: `apps/client/src/components/checkout/`
+Client routes:
+- `/[locale]/account/orders` — order history
+- `/[locale]/account/orders/[orderNumber]` — order detail
+- `/[locale]/account/orders/[orderNumber]/tracking` — tracking page
+- `/[locale]/orders/track` — guest order tracking page
 
 ## 6. Cancellation Window
 
-- 2 giờ sau khi CONFIRMED
-- Sau 2 giờ: phải liên hệ support
-- Huỷ → trigger refund flow qua Payment service
+- 2 giờ sau khi CONFIRMED (`CANCEL_WINDOW_MS = 2 * 60 * 60 * 1000`)
+- Customer cancel: cần `userId` hoặc `guestEmail` để xác thực ownership
+- Admin cancel: không bị giới hạn thời gian (`POST /admin/orders/{id}/cancel`)
+- Huỷ → trigger refund flow qua PaymentsService
 - Email notification khi order cancelled
-- `CancelCountdown` component trong order detail page
+- `CancelOrderDto`: `{ reason?, guestEmail? }`
 
 ## 7. Business Rules
 
-- Tạo order: validate cart items còn hàng + giá không đổi
-- Shipping address snapshot vào scalar fields (không FK) để tránh mất data khi user update address
-- `OrderStatusHistory` ghi lại mọi thay đổi status kèm note + admin userId
+- Checkout: validate cart items còn hàng + giá không đổi
+- Tax preview: TaxJar API (US only); fallback to static STATE_RATES table
+- Gift wrapping adds $4.99 to order total
+- Shipping address snapshot vào scalar fields (không FK)
+- `OrderStatusHistory` ghi lại mọi thay đổi kèm note + admin userId + AuditLog
 - `orderNumber` là human-readable unique string (prefix: `MLH-`)
-- Guest orders: `guestEmail` required, tra cứu qua `/orders/:orderNumber?email=`
+- Guest orders: `guestEmail` required; lookup qua `/orders/{orderNumber}?email=`
+- `GET /orders/track?orderNumber=&email=` là alias cho guest tracking
 
-## 8. Order Integration Points (Post-Phase 1)
+## 8. Order Integration Points
 
 ### Loyalty Points
 - Order `CONFIRMED` → `LoyaltyAccount` earns `total * 10` points (locked 14 days)
-- Order `COMPLETED` → points unlocked via BullMQ job
+- Order `COMPLETED` → points unlocked via BullMQ `loyalty-unlock` queue
 - Order `CANCELLED`/`REFUNDED` → earned points deducted
-- Checkout `CreateOrderDto` nhận thêm `loyaltyPointsToRedeem?: number`
-- Schema additions:
-  ```prisma
-  model Order {
-    loyaltyPointsEarned   Int?
-    loyaltyPointsRedeemed Int?
-  }
-  ```
+- Checkout: `pointsToRedeem` field in `CheckoutDto`
+
+### Store Credits
+- Checkout: `useStoreCredit: true` → applies available balance
+- `storeCreditsService.getBuyerReferralForOrder(orderNumber, userId)` — referral store credit info
 
 ### Affiliate / Referral Commission
 - Order `CONFIRMED` → check affiliate cookie → create `AffiliateCommission`
 - Order `CONFIRMED` → check referral tree → create `ReferralCommission` (L1/L2/L3)
 - Order `CANCELLED` → commissions voided
 
-### Carrier Label
-- `Order` schema additions:
-  ```prisma
-  model Order {
-    easypostShipmentId String?
-    easypostRateId     String?
-    labelUrl           String?
-    labelVoidedAt      DateTime?
-  }
-  ```
-- Buying label auto-updates `trackingNumber`, `trackingUrl`, `carrier`
+### Carrier Label & Tracking
+- Admin buys label via EasyPost → auto-updates `trackingNumber`, `trackingUrl`, `carrier`, `easypostShipmentId`
+- `PATCH /admin/orders/{id}/ship` → sets SHIPPED, emails customer, registers EasyPost tracker
+- EasyPost webhook (`POST /webhooks/easypost`) → auto-updates order to `DELIVERED`
+- Printify webhook (`POST /webhooks/printify`) → handled by `OrderTrackingService`
 
 ### OrderItem Snapshot
-- At order creation, snapshot product + variant data:
-  ```prisma
-  model OrderItem {
-    productSnapshot Json?  // { name, slug, imageUrl, basePrice, sku }
-    variantSnapshot Json?  // { sku, options, price }
-  }
-  ```
-- Ensures order history stays accurate even after product updates
+- At order creation: `productSnapshot` + `variantSnapshot` captured on each `OrderItem`
+- Ensures order history stays accurate after product updates
+
+## 9. EasyPost Webhook
+
+```
+POST /api/v1/webhooks/easypost
+```
+- HMAC-SHA256 signature via `X-Hmac-Signature` header (key: `EASYPOST_WEBHOOK_SECRET`)
+- On `delivered` event: auto-updates order to `DELIVERED` + sends delivery email
+- Matches by `trackerId` first, then `trackingNumber` fallback

@@ -197,7 +197,7 @@ export function Navbar({ menuData }: NavbarProps = {}) {
       {/* ── Top bar ──────────────────────────────────────────────────────────── */}
       <nav
         className={[
-          'fixed top-0 left-0 right-0 z-50 bg-surface transition-shadow duration-300',
+          'w-full bg-surface transition-shadow duration-300',
           isScrolled ? 'shadow-floating' : '',
         ].join(' ')}
       >
@@ -279,13 +279,13 @@ export function Navbar({ menuData }: NavbarProps = {}) {
                 <Badge count={cartCount} />
               </Link>
 
-              {/* Sell / Seller Hub link — desktop only */}
+              {/* Shop icon — desktop only */}
               <Link
                 href={shopHref}
-                className="hidden md:flex items-center gap-1.5 text-sm font-semibold text-secondary hover:text-primary transition-colors whitespace-nowrap"
+                aria-label={isSeller ? 'My Shop' : 'Open a Shop'}
+                className="hidden md:flex relative p-2 hover:bg-muted/10 rounded-full transition-colors"
               >
-                <Store className="w-4 h-4" />
-                {isSeller ? 'My Shop' : 'Sell'}
+                <Store className="w-5 h-5 text-secondary" />
               </Link>
 
               <UserMenu locale={locale} />

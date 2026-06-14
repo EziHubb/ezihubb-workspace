@@ -4,11 +4,13 @@ import {
   BadRequestException,
   ConflictException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services/storage.service';
 import { RedisService } from '../../common/services/redis.service';
+import { ModerationService } from '../moderation/moderation.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
@@ -31,6 +33,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly redis: RedisService,
+    @Optional() private readonly moderationService?: ModerationService,
   ) {}
 
   // ─── Profile ───────────────────────────────────────────────────────────────
@@ -104,6 +107,8 @@ export class UsersService {
 
     await this.prisma.user.update({ where: { id: userId }, data: { avatarUrl } });
     await this.redis.del(`user:${userId}`);
+
+    this.moderationService?.queueUserAvatarModeration(userId, avatarUrl).catch((e) => this.logger.error('avatar mod queue failed', e));
 
     return { avatarUrl };
   }

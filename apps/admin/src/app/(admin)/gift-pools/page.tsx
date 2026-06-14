@@ -10,6 +10,7 @@ import {
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { DataTable } from '../../../components/data/DataTable';
 import { api } from '../../../lib/api-client';
+import { API_ROUTES } from '@mlh/constants';
 import { fmtAmount, fmtDate, fmtDateTime } from '../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -235,7 +236,7 @@ export default function AdminGiftPoolsPage() {
 
   const statsQuery = useQuery<AdminGiftPoolStats>({
     queryKey: ['admin-gift-pools-stats'],
-    queryFn:  () => api.get<AdminGiftPoolStats>('/admin/gift-pools/stats'),
+    queryFn:  () => api.get<AdminGiftPoolStats>(API_ROUTES.ADMIN.GIFT_POOLS_STATS),
     staleTime: 60_000,
   });
   const stats = statsQuery.data;
@@ -243,7 +244,7 @@ export default function AdminGiftPoolsPage() {
   const listQuery = useQuery<{ data: GiftPoolRow[]; total: number }>({
     queryKey: ['admin-gift-pools', tab, page],
     queryFn:  () =>
-      api.get<{ data: GiftPoolRow[]; total: number }>('/admin/gift-pools', {
+      api.get<{ data: GiftPoolRow[]; total: number }>(API_ROUTES.ADMIN.GIFT_POOLS, {
         params: {
           ...(tab !== 'ALL' && { status: tab }),
           page:  String(page),
@@ -256,7 +257,7 @@ export default function AdminGiftPoolsPage() {
   const total = listQuery.data?.total ?? 0;
 
   const closeMutation = useMutation<void, Error, string>({
-    mutationFn: (id) => api.patch(`/admin/gift-pools/${id}/close`, {}),
+    mutationFn: (id) => api.patch(API_ROUTES.ADMIN.GIFT_POOL_CLOSE(id), {}),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-gift-pools'] });
       qc.invalidateQueries({ queryKey: ['admin-gift-pools-stats'] });

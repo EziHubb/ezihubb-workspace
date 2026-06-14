@@ -14,6 +14,7 @@ import { SocialProof } from '../../../components/home/SocialProof';
 import { FeaturedReviews } from '../../../components/home/FeaturedReviews';
 import { NewsletterSection } from '../../../components/home/NewsletterSection';
 import { CreatorNetworkCta } from '../../../components/home/CreatorNetworkCta';
+import { OpenShopCta } from '../../../components/home/OpenShopCta';
 import { FlashDealsSection } from '../../../components/flash-deals/FlashDealsSection';
 import { GiftFinderCta } from '../../../components/home/GiftFinderCta';
 import { BlindMatchCta } from '../../../components/home/BlindMatchCta';
@@ -123,6 +124,8 @@ export default async function HomePage({
       )}
 
       <BlindMatchCta locale={locale} />
+
+      <OpenShopCta locale={locale} />
 
       <CreatorNetworkCta locale={locale} />
 

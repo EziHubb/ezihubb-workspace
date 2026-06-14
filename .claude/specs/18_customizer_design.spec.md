@@ -2,14 +2,14 @@
 
 ## 1. Tổng quan
 
-Hệ thống customizer 3 flow, kích hoạt từ `ProductActions.tsx`. Canvas render bằng **Fabric.js**. Hỗ trợ AI background removal, art style transformation, undo/redo, và job-based async processing.
+Hệ thống customizer 3 flow, kích hoạt từ `ProductActions.tsx`. Canvas render bằng **Fabric.js**. Hỗ trợ AI background removal (Remove.bg), AI art style transformation (Replicate img2img), undo/redo, và job-based async processing.
 
 ## 2. Flow Detection
 
 ```typescript
 // apps/client/src/components/product/ProductActions.tsx
 function detectFlow(product: ProductDto): 'A' | 'B' | 'C' {
-  if (!product.isPersonalizable) return 'C';  // DirectAddToCartPanel
+  if (!product.isPersonalizable) return 'C';  // DirectAddToCartPanel (via ProductPurchasePanel)
   if (product.customization)     return 'A';  // Customizer flow
   return 'B';                                 // PersonalizationComingSoon
 }
@@ -20,7 +20,7 @@ function detectFlow(product: ProductDto): 'A' | 'B' | 'C' {
 File: `apps/client/src/components/customizer/CustomizerPanel.tsx`
 
 ### Route
-- Inline trên product page (`ProductActions`)
+- Inline trên product page (qua `ProductActions`)
 - Full-screen: `/[locale]/products/[slug]/customize`
 
 ### Steps (via step components)
@@ -49,10 +49,10 @@ interface CustomizerState {
 }
 ```
 
-### Field Renderer (`TextFieldInput.tsx`, `ImageUploadField.tsx`, `StylePickerGrid.tsx`)
+### Field Renderer
 | Field type | Component |
 |---|---|
-| `text` | `TextFieldInput` con `<Input>` + maxLength counter |
+| `text` | `TextFieldInput` với `<Input>` + maxLength counter |
 | `textarea` | `TextFieldInput` với `<Textarea>` |
 | `image` | `ImageUploadField` → upload to R2 → store URL |
 | `select` | `StylePickerGrid` |
@@ -62,7 +62,7 @@ interface CustomizerState {
 
 Files: `Canvas.tsx`, `FabricCanvas.tsx`
 
-- Fabric.js renders `previewLayers` in z-index order
+- Fabric.js renders `previewLayers` theo z-index order
 - `type: 'base'` → static product image
 - `type: 'overlay'` → static overlay image
 - `type: 'text'` → text overlay từ `fieldRef` value
@@ -82,7 +82,7 @@ File: `PreviewModal.tsx`
 
 File: `apps/client/src/components/customizer/BundleCustomizerPanel.tsx`
 
-### When triggered
+### Khi nào trigger
 `product.customization.bundleCount > 1`
 
 ### Tab Structure
@@ -92,7 +92,7 @@ File: `apps/client/src/components/customizer/BundleCustomizerPanel.tsx`
 ```
 
 ### Field ID Convention
-Bundle fields use prefix `item_N_` (1-indexed):
+Bundle fields dùng prefix `item_N_` (1-indexed):
 ```
 item_1_name     → itemIndex=0, field="name"
 item_2_name     → itemIndex=1, field="name"
@@ -108,8 +108,8 @@ getItemData(itemIndex: number): Record<string, FieldValue>;
 ```
 
 ### Completion Check
-Tab badge (✓/✗) based on `isItemComplete(index)`.
-"Add to Cart" disabled until all items complete.
+Tab badge (✓/✗) dựa trên `isItemComplete(index)`.
+"Add to Cart" disabled cho đến khi tất cả items complete.
 
 ### Cart Payload
 ```typescript
@@ -134,17 +134,18 @@ File: `apps/client/src/components/product/PersonalizationComingSoon.tsx`
 
 - Badge: "Coming Soon"
 - Email notify form
-- Submit → `POST /api/v1/notifications/contact` or similar
+- Submit → `POST /notifications/product-ready`
 
-## 6. Flow C — DirectAddToCartPanel
+## 6. Flow C — DirectAddToCartPanel (via ProductPurchasePanel)
 
-File: `apps/client/src/components/product/DirectAddToCartPanel.tsx`
+File: `apps/client/src/components/product/ProductPurchasePanel.tsx`
 
 - Quantity stepper (min: 1, max: 99)
 - **Add to Cart** button → `cartStore.addItem()`
 - **Add to Wishlist** heart icon (requires auth)
 - Product attribute highlights
 - Trust badges: processingDays, "Cancel within 2 hours", secure checkout
+- Hiển thị giá via `useCurrency().format()`
 
 ## 7. SmartVariantPicker
 
@@ -158,28 +159,32 @@ const OPTION_WIDGET_MAP: Record<string, WidgetType> = {
   Model: 'device-model', Device: 'device-model',
   Size: 'size-picker', Capacity: 'size-picker',
 };
-// Default for unknown option names: 'pill'
+// Default cho unknown option names: 'pill'
 ```
 
 Variant pickers: `ColorSwatchPicker`, `SizePicker`, `ShapePicker`, `DeviceModelPicker`
 
 ### Availability Cascade
-When user selects an option, filter available variants and grey out incompatible values.
+Khi user chọn option, filter available variants và grey out incompatible values.
 
 ## 8. AI Features (via Job Polling)
 
 ### Background Removal
+- Provider: **Remove.bg** (`BG_REMOVAL_PROVIDER=remove_bg`, `BG_REMOVAL_API_KEY`)
 1. `customizerStore.removeBackground(fieldId)` → `POST /customization/remove-background`
-2. Poll `GET /customization/jobs/{jobId}` every 2s (timeout: 65s)
-3. On complete: update `fieldValues[fieldId]` with result URL
+2. Poll `GET /customization/jobs/{jobId}` mỗi 2s (timeout: 65s)
+3. On complete: update `fieldValues[fieldId]` với result URL
 
 ### Art Style Transformation
+- Provider: **Replicate img2img** (`REPLICATE_API_KEY`)
+- 5 styles
+- Component: `ArtStylePicker.tsx`
 1. `customizerStore.applyArtStyle(fieldId, style)` → `POST /customization/art-style`
-2. Same polling pattern
+2. Cùng polling pattern
 3. On complete: update field value
 
 ### Revert
-`customizerStore.revertToOriginal(fieldId)` — revert to uploaded image before AI processing
+`customizerStore.revertToOriginal(fieldId)` — revert về uploaded image trước AI processing
 
 ## 9. Undo/Redo
 
@@ -194,7 +199,7 @@ canUndo(): boolean;
 canRedo(): boolean;
 ```
 
-`setFieldValue()` automatically pushes to history.
+`setFieldValue()` tự động push to history.
 
 ## 10. SizeGuideModal
 
@@ -207,8 +212,8 @@ File: `apps/client/src/components/product/SizeGuideModal.tsx`
 | canvas | Size, Dimensions (cm), Best For |
 | drinkware | Size, Height (cm), Diameter (cm), Capacity (ml) |
 
-Custom guide: if `product.sizeGuide` provided, render sanitized HTML.
-`SizePicker` shows "Size Guide" link only when `SIZE_GUIDE_TYPES` includes the product type.
+Custom guide: nếu `product.sizeGuide` được cung cấp, render sanitized HTML.
+`SizePicker` hiển thị "Size Guide" link chỉ khi `SIZE_GUIDE_TYPES` bao gồm product type.
 
 ## 11. Mobile Customizer
 
@@ -216,3 +221,7 @@ File: `MobileCustomizerCanvas.tsx`
 - Mobile-optimized canvas layout
 - Bottom sheet field input
 - Touch-friendly controls
+
+## 12. CustomizationDraft (DB Model)
+
+Lưu draft customization trong DB (Prisma). AutoFillBanner đọc draft khi user quay lại product.

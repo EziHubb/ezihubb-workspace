@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { Camera, Heart, Star, Upload, Check, Loader2, X, Sparkles } from 'lucide-react';
 import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
 interface UgcEntry {
   id:         string;
@@ -102,7 +103,7 @@ export default function HallOfFamePage() {
   const [dragOver,      setDragOver]      = useState(false);
 
   useState(() => {
-    apiClient.get<UgcEntry[]>('/blind-match/hall-of-fame')
+    apiClient.get<UgcEntry[]>(API_ROUTES.BLIND_MATCH.HALL_OF_FAME)
       .then(setEntries)
       .catch(() => setEntries([]))
       .finally(() => setLoading(false));
@@ -124,7 +125,7 @@ export default function HallOfFamePage() {
       if (file) form.append('file', file);
       form.append('caption', caption);
       form.append('rating', String(rating));
-      await fetch('/api/v1/blind-match/ugc', { method: 'POST', body: form });
+      await fetch(`/api/v1${API_ROUTES.BLIND_MATCH.UGC}`, { method: 'POST', body: form });
       setSubmitted(true);
     } catch {
       setSubmitted(true);

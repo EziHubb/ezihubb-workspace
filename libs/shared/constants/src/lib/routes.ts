@@ -197,6 +197,10 @@ export const API_ROUTES = {
     EVENTS:  (orderId: string) => `/orders/${orderId}/tracking/events`,
   },
 
+  CAMPAIGNS: {
+    ACTIVE: '/campaigns/active',
+  },
+
   // BF-03: Flash Deals
   FLASH_DEALS: {
     ACTIVE:       '/flash-deals/active',
@@ -241,10 +245,12 @@ export const API_ROUTES = {
 
   // BF-09: Blind Taste Match
   BLIND_MATCH: {
-    REQUEST:  '/blind-match/request',
-    MYSTERY:  (requestId: string) => `/blind-match/${requestId}/mystery`,
-    RATE:     (requestId: string) => `/blind-match/${requestId}/rate`,
-    HISTORY:  '/blind-match/history',
+    REQUEST:       '/blind-match/request',
+    MYSTERY:       (requestId: string) => `/blind-match/${requestId}/mystery`,
+    RATE:          (requestId: string) => `/blind-match/${requestId}/rate`,
+    HISTORY:       '/blind-match/history',
+    HALL_OF_FAME:  '/blind-match/hall-of-fame',
+    UGC:           '/blind-match/ugc',
   },
 
   NOTIFICATIONS: {
@@ -524,15 +530,29 @@ export const API_ROUTES = {
     FLASH_DEAL:               (id: string) => `/admin/flash-deals/${id}`,
     FLASH_DEAL_CREATE:        '/admin/flash-deals',
     FLASH_DEAL_TOGGLE:        (id: string) => `/admin/flash-deals/${id}/toggle`,
+    FLASH_DEALS_STATS:        '/admin/flash-deals/stats',
 
     // ── BF-06: Gift Pools (admin) ────────────────────────────────────────────
     GIFT_POOLS:               '/admin/gift-pools',
     GIFT_POOL:                (id: string) => `/admin/gift-pools/${id}`,
     GIFT_POOL_REFUND:         (id: string) => `/admin/gift-pools/${id}/refund`,
+    GIFT_POOL_CLOSE:          (id: string) => `/admin/gift-pools/${id}/close`,
+    GIFT_POOLS_STATS:         '/admin/gift-pools/stats',
+
+    // ── BF-08: Gift Chains (admin) ───────────────────────────────────────────
+    GIFT_CHAINS:              '/admin/gift-chains',
+    GIFT_CHAIN:               (id: string) => `/admin/gift-chains/${id}`,
+    GIFT_CHAINS_STATS:        '/admin/gift-chains/stats',
 
     // ── BF-09: Blind Match (admin) ───────────────────────────────────────────
     BLIND_MATCH_REQUESTS:     '/admin/blind-match/requests',
     BLIND_MATCH_REQUEST:      (id: string) => `/admin/blind-match/requests/${id}`,
+    BLIND_MATCH_STATS:        '/admin/blind-match/stats',
+    BLIND_MATCH_REFUNDS:      '/admin/blind-match/refunds',
+    BLIND_MATCH_TOP_PRODUCTS: '/admin/blind-match/top-products',
+    BLIND_MATCH_UGC_PENDING:  '/admin/blind-match/ugc/pending',
+    BLIND_MATCH_UGC_APPROVE:  (id: string) => `/admin/blind-match/ugc/${id}/approve`,
+    BLIND_MATCH_UGC_REJECT:   (id: string) => `/admin/blind-match/ugc/${id}/reject`,
 
     // ── Campaigns (admin) ────────────────────────────────────────────────────
     CAMPAIGNS:                '/admin/campaigns',

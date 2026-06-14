@@ -38,13 +38,17 @@ export class AdminStoresController {
   constructor(private readonly storesService: StoresService) {}
 
   @Get()
-  listStores(@Query() dto: AdminListStoresDto) {
-    return this.storesService.adminListStores(dto);
+  listStores(@Query() dto: AdminListStoresDto, @Req() req: any) {
+    const isShopOwner = req.user?.role === 'ADMIN';
+    const scopedOwnerId = isShopOwner ? (req.user?.sub ?? req.user?.id) : undefined;
+    return this.storesService.adminListStores(dto, scopedOwnerId);
   }
 
   @Get(':id')
-  getStore(@Param('id') id: string) {
-    return this.storesService.adminGetStore(id);
+  getStore(@Param('id') id: string, @Req() req: any) {
+    const isShopOwner = req.user?.role === 'ADMIN';
+    const scopedOwnerId = isShopOwner ? (req.user?.sub ?? req.user?.id) : undefined;
+    return this.storesService.adminGetStore(id, scopedOwnerId);
   }
 
   @Post(':id/approve')

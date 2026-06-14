@@ -8,7 +8,7 @@
 
 ## 2. Standard Response Envelope
 
-Tất cả responses đều bọc trong:
+All responses wrapped in:
 
 ```typescript
 interface ApiResponse<T> {
@@ -16,7 +16,7 @@ interface ApiResponse<T> {
   data: T;
   meta: {
     timestamp: string;    // ISO 8601
-    requestId: string;    // UUID từ X-Request-ID header
+    requestId: string;    // UUID from X-Request-ID header
   };
 }
 ```
@@ -82,21 +82,50 @@ new ValidationPipe({
 })
 ```
 
-**Critical:** `forbidNonWhitelisted: true` means sending ANY property not declared in the DTO causes a 400 error. All admin save payloads must only include fields declared in the corresponding DTO.
+**Critical:** `forbidNonWhitelisted: true` means sending ANY property not declared in the DTO causes a 400 error. All save payloads must only include fields declared in the corresponding DTO.
 
 ## 5. Authentication
 
 ### Guards
 - `JwtAuthGuard` — validates Bearer token, rejects 401
-- `JwtOptionalGuard` — validates if present, passes through if absent (guest)
-- `RolesGuard` — used with `@Roles('ADMIN')` decorator
+- `OptionalAuthGuard` (`JwtOptionalGuard`) — validates if present, passes through if absent (guest)
+- `RolesGuard` — used with `@Roles('ADMIN', 'SUPER_ADMIN')` decorator
+- `PermissionsGuard` — hybrid RBAC+ABAC; used with `@RequirePermission('resource:action')`
+- `StripeWebhookGuard` — verifies `Stripe-Signature` header before controller runs
+
+### Permission System (Hybrid RBAC+ABAC)
+```typescript
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequirePermission('orders:edit')
+async updateOrder(...) {}
+```
+- `SUPER_ADMIN` bypasses all permission checks
+- `ADMIN` checked against their `PermissionDocument` in DB
+- Evaluation order: `overrides.deny` → `overrides.allow` → `roles` → false
+- `request.userPermissions` and `request.permissionConditions` set after guard passes
 
 ### Token Refresh
 - Client apiClient: on 401 → `POST /auth/refresh` → retry original request
 - httpOnly cookie contains refresh token (SameSite=Lax)
-- Admin app: ApiError class carries HTTP status → auto-logout on 401
+- Admin app: `ApiError` class carries HTTP status → auto-logout on 401
 
-## 6. Headers
+## 6. Admin Controller Shorthand
+
+```typescript
+@AdminController('products')
+export class AdminProductsController {}
+```
+
+`@AdminController(path)` composite decorator automatically applies:
+- `@Controller('admin/<path>')`
+- `@UseGuards(JwtAuthGuard, RolesGuard)`
+- `@Roles(Role.ADMIN, Role.SUPER_ADMIN)`
+- `@ApiBearerAuth()`
+- `@ApiTags('Admin — <Path>')`
+
+File: `apps/api/src/common/decorators/admin-controller.decorator.ts`
+
+## 7. Headers
 
 ### Request Headers
 | Header | Mô tả |
@@ -114,13 +143,14 @@ new ValidationPipe({
 | `X-RateLimit-Remaining` | Rate limit remaining |
 | `Retry-After` | Seconds until rate limit resets |
 
-## 7. Rate Limiting
+## 8. Rate Limiting
 
 - Global: 300 requests / 60 seconds / IP (env: `THROTTLE_TTL=60000`, `THROTTLE_LIMIT=300`)
 - Auth endpoints: stricter (5 req/min for login, forgot-password)
 - `@nestjs/throttler` ThrottlerModule
+- Webhooks tagged `@SkipThrottle()` — exempt from global limit
 
-## 8. CORS Configuration
+## 9. CORS Configuration
 
 ```typescript
 app.enableCors({
@@ -137,18 +167,18 @@ app.enableCors({
 
 Env: `CORS_ORIGINS="http://localhost:3000,http://localhost:3001"` (comma-separated)
 
-## 9. Swagger Tags
+## 10. Swagger Tags
 
 `Auth`, `Users`, `Products`, `Admin-Products`, `Catalog`, `Collections`, `Cart`, `Orders`, `Admin-Orders`, `Payments`, `Webhooks`, `Shipping`, `Reviews`, `Promotions`, `Search`, `Customization`, `Admin-Dashboard`, `Assets`, `Notifications`,
 `Messages`, `Loyalty`, `Affiliate`, `Referral`, `Push`, `PDF`, `Labels`, `Currency`, `Creators`, `NFT`, `Bounties`, `Wallet`, `Admin-Settings`, `Admin-Team`, `Admin-Audit`, `Admin-AI`
 
-## 10. Error Code Conventions
+## 11. Error Code Conventions
 
 - `ERR_` prefix for all error codes
 - Format: `ERR_<NOUN>_<VERB>` or `ERR_<DESCRIPTION>`
-- Examples: `ERR_NOT_FOUND`, `ERR_CREDENTIALS_INVALID`, `ERR_EMAIL_ALREADY_EXISTS`, `ERR_TOKEN_EXPIRED`, `ERR_VALIDATION`
+- Examples: `ERR_NOT_FOUND`, `ERR_CREDENTIALS_INVALID`, `ERR_EMAIL_ALREADY_EXISTS`, `ERR_TOKEN_EXPIRED`, `ERR_VALIDATION`, `ERR_FORBIDDEN`, `ERR_PERMISSION_DENIED`, `ERR_PAYPAL_NOT_CONFIGURED`, `ERR_FILE_TOO_LARGE`, `ERR_FILE_TYPE_INVALID`
 
-## 11. apiClient (Client Frontend)
+## 12. apiClient (Client Frontend)
 
 File: `libs/shared/api-client/src/client.ts`
 
@@ -168,7 +198,7 @@ export const apiClient = {
 
 **Important:** `apiClient.get<ProductDto>('/products/my-slug')` returns `ProductDto` directly (not `ApiResponse<ProductDto>`).
 
-## 12. clientFetch (Admin App)
+## 13. clientFetch (Admin App)
 
 File: `apps/admin/src/lib/api.ts`
 
@@ -184,7 +214,20 @@ const res = await clientFetch(`/admin/products/${id}`, {
 });
 ```
 
-## 13. React Query Hooks (Shared)
+## 14. Pagination
+
+Default parameters: `?page=1&limit=20`
+
+```typescript
+interface PaginationDto {
+  page?: number;   // default 1
+  limit?: number;  // default 20
+}
+```
+
+Admin order list supports additional filters via `AdminOrderQueryDto` (status, dateFrom, dateTo, search, etc.).
+
+## 15. React Query Hooks (Shared)
 
 File: `libs/shared/api-client/src/hooks/`
 

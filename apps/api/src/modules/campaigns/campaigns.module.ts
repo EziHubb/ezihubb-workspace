@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { CampaignsService } from './campaigns.service';
-import { CampaignsController } from './campaigns.controller';
+import { CampaignsController, CampaignsPublicController } from './campaigns.controller';
 
 @Module({
   imports:     [PrismaModule],
-  controllers: [CampaignsController],
+  controllers: [CampaignsPublicController, CampaignsController],
   providers:   [CampaignsService],
   exports:     [CampaignsService],
 })

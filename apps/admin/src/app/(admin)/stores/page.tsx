@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Search, Store } from 'lucide-react';
 import { DataTable } from '../../../components/data/DataTable';
@@ -49,6 +51,18 @@ const STATUS_COLORS: Record<string, string> = {
 export default function AdminStoresPage() {
   const { prompt } = useDialog();
   const qc = useQueryClient();
+  const { data: session } = useSession();
+  const router = useRouter();
+  const sessionUser = session?.user as Record<string, unknown> | undefined;
+  const role    = sessionUser?.['role']    as string | undefined;
+  const storeId = sessionUser?.['storeId'] as string | null | undefined;
+
+  // Shop owners should only see their own store — redirect immediately
+  useEffect(() => {
+    if (role === 'ADMIN') {
+      router.replace(storeId ? `/stores/${storeId}` : '/dashboard');
+    }
+  }, [role, storeId, router]);
   const [page,   setPage  ] = useState(1);
   const [status, setStatus] = useState('PENDING');
   const [search, setSearch] = useState('');

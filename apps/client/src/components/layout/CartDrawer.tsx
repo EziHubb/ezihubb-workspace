@@ -159,11 +159,15 @@ export function CartDrawer() {
                       >
                         {item.productName}
                       </Link>
-                      {item.variantName && (
+                      {item.variantOptions && Object.keys(item.variantOptions).length > 0 ? (
                         <p className="text-xs text-muted mt-0.5">
-                          {item.variantName}
+                          {Object.entries(item.variantOptions)
+                            .map(([k, v]) => `${k}: ${v}`)
+                            .join(' · ')}
                         </p>
-                      )}
+                      ) : item.variantName ? (
+                        <p className="text-xs text-muted mt-0.5">{item.variantName}</p>
+                      ) : null}
                       {item.priceChanged && (
                         <p className="text-xs text-warning mt-0.5">
                           ⚠️ Price updated

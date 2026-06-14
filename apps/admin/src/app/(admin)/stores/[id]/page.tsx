@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -409,6 +410,17 @@ export default function AdminStoreDetailPage() {
   const { id }  = useParams<{ id: string }>();
   const router  = useRouter();
   const qc      = useQueryClient();
+  const { data: session } = useSession();
+  const sessionUser = session?.user as Record<string, unknown> | undefined;
+  const role         = sessionUser?.['role']    as string | undefined;
+  const sessionStore = sessionUser?.['storeId'] as string | null | undefined;
+
+  // Shop owners can only view their own store
+  useEffect(() => {
+    if (role === 'ADMIN' && sessionStore && id !== sessionStore) {
+      router.replace(`/stores/${sessionStore}`);
+    }
+  }, [role, sessionStore, id, router]);
 
   const [modal, setModal] = useState<'approve' | 'reject' | 'suspend' | 'edit' | null>(null);
 
@@ -588,7 +600,8 @@ export default function AdminStoreDetailPage() {
               </div>
             </div>
 
-            {/* Action panel */}
+            {/* Action panel — super-admin actions only */}
+            {role !== 'ADMIN' && (
             <div className="bg-background border border-border rounded-card p-4 space-y-3">
               <p className="text-xs font-semibold text-muted uppercase tracking-wide">Actions</p>
               <div className="flex flex-wrap gap-2">
@@ -634,6 +647,7 @@ export default function AdminStoreDetailPage() {
                 </div>
               )}
             </div>
+            )}
           </div>
         </div>
       </div>

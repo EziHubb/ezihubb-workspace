@@ -219,6 +219,10 @@ export class ReviewsService {
 
     // fire-and-forget
     this.moderationService?.queueReviewModeration(review.id).catch((e) => this.logger.error('mod queue failed', e));
+    if ((review.imageUrls as string[])?.length) {
+      this.moderationService?.queueReviewImageModeration(review.id, review.imageUrls as string[], review.storeId ?? null)
+        .catch((e) => this.logger.error('mod img queue failed', e));
+    }
     this.coinService?.earnReviewCoins(userId, review.id, false).catch((e) => this.logger.error('coin review earn failed', e));
 
     return this.mapToDto(review);

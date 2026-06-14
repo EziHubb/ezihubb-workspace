@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { Home, Search, ShoppingBag, User } from 'lucide-react';
 import { useCartStore } from '../../lib/store/cart.store';
+import { CLIENT_ROUTES } from '@mlh/constants';
 
 /**
  * Fixed bottom navigation bar — mobile only (hidden on md+).
@@ -42,7 +43,7 @@ export function MobileBottomNav() {
         </Link>
 
         {/* Search */}
-        <Link href={`/${locale}/search`} aria-label="Search" className={tabCls(isActive('/search'))}>
+        <Link href={`/${locale}${CLIENT_ROUTES.SEARCH}`} aria-label="Search" className={tabCls(isActive(CLIENT_ROUTES.SEARCH))}>
           <Search className="w-5 h-5" />
           <span>Search</span>
         </Link>
@@ -66,7 +67,7 @@ export function MobileBottomNav() {
         </button>
 
         {/* Account */}
-        <Link href={`/${locale}/account`} aria-label="Account" className={tabCls(isActive('/account'))}>
+        <Link href={`/${locale}${CLIENT_ROUTES.ACCOUNT}`} aria-label="Account" className={tabCls(isActive(CLIENT_ROUTES.ACCOUNT))}>
           <User className="w-5 h-5" />
           <span>Account</span>
         </Link>
