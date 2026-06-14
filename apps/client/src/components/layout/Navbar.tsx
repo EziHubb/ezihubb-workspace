@@ -52,6 +52,14 @@ function UserMenu({ locale }: { locale: string }) {
     staleTime: 60_000,
   });
 
+  // Live store status — JWT may be stale (isSeller not updated until re-login)
+  const { data: storeApp } = useQuery<{ status: string }>({
+    queryKey: ['my-store-application'],
+    queryFn:  () => apiClient.get<{ status: string }>(API_ROUTES.SELLER.STORE_APPLICATION, { token: token ?? undefined }),
+    enabled:  !!token,
+    staleTime: 30_000,
+  });
+
   useEffect(() => {
     const fn = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
@@ -82,7 +90,8 @@ function UserMenu({ locale }: { locale: string }) {
 
   const initials = `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`.toUpperCase() || '?';
   const adminUrl = process.env['NEXT_PUBLIC_ADMIN_URL'] ?? 'http://localhost:3001';
-  const isSeller = (profile as unknown as Record<string, unknown>)['isSeller'] === true;
+  const isSeller = (profile as unknown as Record<string, unknown>)['isSeller'] === true
+    || storeApp?.status === 'ACTIVE';
   const shopLink = isSeller ? adminUrl : `/${locale}/open-shop`;
 
   return (
@@ -171,8 +180,19 @@ export function Navbar({ menuData }: NavbarProps = {}) {
 
   const user        = useAuthStore((s) => s.user);
   const isAuthReady = useAuthStore((s) => s.isAuthReady);
+  const token_      = useAuthStore((s) => s.accessToken);
   const adminUrl    = process.env['NEXT_PUBLIC_ADMIN_URL'] ?? 'http://localhost:3001';
-  const isSeller    = (user as unknown as Record<string, unknown> | null)?.['isSeller'] === true;
+
+  // Shared cache key with UserMenu — served from cache after first fetch
+  const { data: storeApp_ } = useQuery<{ status: string }>({
+    queryKey: ['my-store-application'],
+    queryFn:  () => apiClient.get<{ status: string }>(API_ROUTES.SELLER.STORE_APPLICATION, { token: token_ ?? undefined }),
+    enabled:  !!token_ && isAuthReady,
+    staleTime: 30_000,
+  });
+
+  const isSeller    = (user as unknown as Record<string, unknown> | null)?.['isSeller'] === true
+    || storeApp_?.status === 'ACTIVE';
   const shopHref    = isSeller ? adminUrl : `/${locale}/open-shop`;
   const { data: wishlistItems } = useWishlist(isAuthReady && !!user);
   const cart        = useCartStore((s) => s.cart);

@@ -13,6 +13,12 @@ import { UpdateStoreDto } from './dto/update-store.dto';
 export class StoresController {
   constructor(private readonly storesService: StoresService) {}
 
+  /** Public: list active seller plans for open-shop page */
+  @Get('plans')
+  getPublicPlans() {
+    return this.storesService.getSellerPlans();
+  }
+
   /** Public: store page by slug */
   @Get(':slug')
   getStoreBySlug(@Param('slug') slug: string) {

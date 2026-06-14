@@ -568,6 +568,7 @@ export const API_ROUTES = {
     SECTIONS:         (slug: string) => `/stores/${slug}/sections`,
     REVIEWS:          (slug: string) => `/stores/${slug}/reviews`,
     REVIEWS_SUMMARY:  (slug: string) => `/stores/${slug}/reviews/summary`,
+    PLANS_PUBLIC:     '/stores/plans',
   },
 
   // ── Seller (store-owner portal) ─────────────────────────────────────────────

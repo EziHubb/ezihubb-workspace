@@ -165,16 +165,17 @@ export class FlashDealService {
     await this.redis.del(ACTIVE_DEALS_CACHE_KEY);
   }
 
-  async findAdmin(params: { status?: string; page: number; limit: number }) {
-    const { status, page, limit } = params;
+  async findAdmin(params: { status?: string; page: number; limit: number; storeId?: string }) {
+    const { status, page, limit, storeId } = params;
     const statusMap: Partial<Record<string, FlashDealStatus>> = {
       PENDING:  FlashDealStatus.PENDING,
       ACTIVE:   FlashDealStatus.ACTIVE,
       UPCOMING: FlashDealStatus.APPROVED,
       ENDED:    FlashDealStatus.ENDED,
     };
-    const where: { status?: FlashDealStatus } = {};
+    const where: { status?: FlashDealStatus; storeId?: string } = {};
     if (status && statusMap[status]) where.status = statusMap[status];
+    if (storeId) where.storeId = storeId;
 
     const [rows, total] = await Promise.all([
       this.prisma.flashDeal.findMany({

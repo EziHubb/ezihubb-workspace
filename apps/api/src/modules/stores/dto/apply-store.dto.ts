@@ -1,4 +1,4 @@
-import { IsString, IsEnum, IsOptional, MinLength, MaxLength, Matches, ValidateIf } from 'class-validator';
+import { IsString, IsEnum, IsOptional, MinLength, MaxLength, Matches, ValidateIf, IsUUID } from 'class-validator';
 import { StorePlanType } from '@prisma/client';
 
 const RESERVED_SLUGS = ['admin', 'api', 'shops', 'products', 'cart', 'checkout', 'account', 'creators', 'pages'];
@@ -25,6 +25,10 @@ export class ApplyStoreDto {
   @IsEnum(StorePlanType)
   @IsOptional()
   planType?: StorePlanType;
+
+  @IsString()
+  @IsOptional()
+  planId?: string;
 }
 
 export function isReservedSlug(slug: string): boolean {

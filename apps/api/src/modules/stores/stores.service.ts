@@ -65,14 +65,19 @@ export class StoresService {
       throw new ForbiddenException({ code: 'ERR_REGISTRATION_CLOSED', message: 'Store applications are by invitation only' });
     }
 
+    // Resolve planType: if planId provided, treat as SUBSCRIPTION
+    let resolvedPlanType: 'COMMISSION' | 'SUBSCRIPTION' = dto.planType ?? 'COMMISSION';
+    if (dto.planId) resolvedPlanType = 'SUBSCRIPTION';
+
     const store = await this.prisma.store.create({
       data: {
-        slug:        dto.slug,
-        name:        dto.name,
-        description: dto.description,
-        ownerId:     userId,
-        status:      'PENDING',
-        planType:    dto.planType ?? 'COMMISSION',
+        slug:               dto.slug,
+        name:               dto.name,
+        description:        dto.description,
+        ownerId:            userId,
+        status:             'PENDING',
+        planType:           resolvedPlanType,
+        subscriptionPlanId: dto.planId ?? undefined,
       },
     });
 

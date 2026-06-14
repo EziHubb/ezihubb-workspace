@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { FlashDealService } from './flash-deal.service';
 
@@ -32,14 +32,17 @@ export class AdminFlashDealController {
   @UseGuards(JwtAuthGuard)
   @Get()
   listDeals(
+    @Req() req: any,
     @Query('status') status?: string,
     @Query('page')   page?:   string,
     @Query('limit')  limit?:  string,
   ) {
+    const isShopOwner = req.user?.role === 'ADMIN';
     return this.flashDealService.findAdmin({
       status,
-      page:  parseInt(page  ?? '1',  10) || 1,
-      limit: parseInt(limit ?? '20', 10) || 20,
+      page:    parseInt(page  ?? '1',  10) || 1,
+      limit:   parseInt(limit ?? '20', 10) || 20,
+      storeId: isShopOwner ? (req.user?.storeId ?? undefined) : undefined,
     });
   }
 

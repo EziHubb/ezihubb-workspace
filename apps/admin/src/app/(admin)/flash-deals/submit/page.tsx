@@ -383,7 +383,7 @@ function ExistingDealsList({ deals, loading }: { deals: MyFlashDeal[]; loading: 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SellerFlashDealsPage() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const user    = session?.user as Record<string, unknown> | undefined;
   const storeId = (user?.['storeId'] as string) ?? '';
   const qc      = useQueryClient();
@@ -404,16 +404,18 @@ export default function SellerFlashDealsPage() {
   }, [search]);
 
   const productsQuery = useQuery<{ data: AdminProduct[]; pagination: { total: number } }>({
-    queryKey: ['seller-product-picker', debouncedSearch, page],
+    queryKey: ['seller-product-picker', storeId, debouncedSearch, page],
     queryFn:  () => {
       const params = new URLSearchParams({
         limit:  String(PRODUCTS_PER_PAGE),
         page:   String(page),
         status: 'ACTIVE',
+        ...(storeId && { storeId }),
         ...(debouncedSearch && { search: debouncedSearch }),
       });
       return api.get(`${API_ROUTES.ADMIN.PRODUCTS}?${params}`);
     },
+    enabled:  sessionStatus === 'authenticated' && !!storeId,
     staleTime: 60_000,
   });
 
