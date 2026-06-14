@@ -36,6 +36,20 @@ import { ProductListItemDto } from './dto/product-list-item.dto';
 import { ParseCuidPipe } from '../../common/pipes/parse-cuid.pipe';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
 import { AuditLogService } from '../../common/services/audit-log.service';
+
+interface JwtLike { sub?: string; id?: string; role?: string; storeId?: string }
+
+/** Returns the storeId the caller owns, or null for SUPER_ADMIN (no filter). */
+async function resolveSellerStoreId(prisma: PrismaService, user: JwtLike): Promise<string | null> {
+  if (user.role === 'SUPER_ADMIN') return null;
+  if (user.storeId) return user.storeId;
+  const userId = user.sub ?? user.id;
+  if (!userId) return '__no_store__';
+  const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { storeId: true } });
+  // Sentinel value: WHERE storeId = '__no_store__' returns zero rows, which is correct
+  // when a shop owner's store hasn't been approved yet (storeId is null in DB).
+  return dbUser?.storeId ?? '__no_store__';
+}
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
 import {
   IsArray, IsString, ArrayMaxSize, IsOptional, IsBoolean,
@@ -153,8 +167,9 @@ export class AdminProductsController {
   // GET /admin/products/stats — must be declared before :id routes
   @Get('stats')
   @ApiOperation({ summary: '[Admin] Product status counts for sidebar' })
-  getStats() {
-    return this.productsService.getStats();
+  async getStats(@Req() req: Request) {
+    const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
+    return this.productsService.getStats(storeId ?? undefined);
   }
 
   // GET /admin/products/seo-stats — declared before :id routes
@@ -180,9 +195,10 @@ export class AdminProductsController {
 
   // GET /admin/products
   @Get()
-  @ApiOperation({ summary: '[Admin] List products (includes inactive)' })
-  findAll(@Query() query: ProductQueryDto): Promise<PaginatedResult<ProductListItemDto>> {
-    return this.productsService.findAll(Object.assign({}, query, { includeInactive: true }) as any);
+  @ApiOperation({ summary: '[Admin] List products (includes inactive, scoped to own store for shop owners)' })
+  async findAll(@Req() req: Request, @Query() query: ProductQueryDto): Promise<PaginatedResult<ProductListItemDto>> {
+    const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
+    return this.productsService.findAll(Object.assign({}, query, { includeInactive: true }, storeId ? { storeId } : {}) as any);
   }
 
   // GET /admin/products/:id  — full product for the edit form

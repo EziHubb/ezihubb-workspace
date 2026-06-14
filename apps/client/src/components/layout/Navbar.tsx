@@ -89,9 +89,10 @@ function UserMenu({ locale }: { locale: string }) {
   }
 
   const initials = `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`.toUpperCase() || '?';
-  const isSeller = (profile as unknown as Record<string, unknown>)['isSeller'] === true
+  const adminUrl  = process.env['NEXT_PUBLIC_ADMIN_URL'] ?? 'http://localhost:3001';
+  const isSeller  = (profile as unknown as Record<string, unknown>)['isSeller'] === true
     || storeApp?.status === 'ACTIVE';
-  const shopLink = isSeller ? `/${locale}/seller` : `/${locale}/open-shop`;
+  const shopLink  = isSeller ? adminUrl : `/${locale}/open-shop`;
 
   return (
     <div className="relative hidden md:block" ref={menuRef}>
@@ -189,9 +190,10 @@ export function Navbar({ menuData }: NavbarProps = {}) {
     staleTime: 30_000,
   });
 
+  const adminUrl_   = process.env['NEXT_PUBLIC_ADMIN_URL'] ?? 'http://localhost:3001';
   const isSeller    = (user as unknown as Record<string, unknown> | null)?.['isSeller'] === true
     || storeApp_?.status === 'ACTIVE';
-  const shopHref    = isSeller ? `/${locale}/seller` : `/${locale}/open-shop`;
+  const shopHref    = isSeller ? adminUrl_ : `/${locale}/open-shop`;
   const { data: wishlistItems } = useWishlist(isAuthReady && !!user);
   const cart        = useCartStore((s) => s.cart);
   const openDrawer  = useCartStore((s) => s.openDrawer);

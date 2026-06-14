@@ -672,10 +672,11 @@ export class OrdersService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const skip = (page - 1) * limit;
-    const { status, search, startDate, endDate } = query;
+    const { status, search, startDate, endDate, storeId } = query;
 
     const where: Prisma.OrderWhereInput = {};
     if (status) where.status = status;
+    if (storeId) where.storeOrders = { some: { storeId } };
     if (search) {
       where.OR = [
         { orderNumber: { contains: search, mode: 'insensitive' } },
@@ -724,7 +725,7 @@ export class OrdersService {
         take: limit,
       }),
       this.prisma.order.count({ where }),
-      this.prisma.order.groupBy({ by: ['status'], _count: { _all: true } }),
+      this.prisma.order.groupBy({ by: ['status'], _count: { _all: true }, where }),
     ]);
 
     const statusCounts: Record<string, number> = {};
@@ -986,9 +987,10 @@ export class OrdersService {
   }
 
   async exportOrdersCsv(query: AdminOrderQueryDto): Promise<string> {
-    const { status, search, startDate, endDate } = query;
+    const { status, search, startDate, endDate, storeId } = query;
     const where: Prisma.OrderWhereInput = {};
     if (status) where.status = status;
+    if (storeId) where.storeOrders = { some: { storeId } };
     if (search) {
       where.OR = [
         { orderNumber: { contains: search, mode: 'insensitive' } },

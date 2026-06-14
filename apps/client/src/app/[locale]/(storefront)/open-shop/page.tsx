@@ -517,10 +517,10 @@ export default function OpenShopPage() {
     queryFn:  () => apiClient.get<SellerPlan[]>(API_ROUTES.STORES.PLANS_PUBLIC),
   });
 
-  // Redirect active sellers to admin
+  // Active sellers — open admin in a new tab and stay on this page
   if (isReady && user && (user as unknown as Record<string, unknown>)['isSeller'] === true) {
     const adminUrl = process.env['NEXT_PUBLIC_ADMIN_URL'] ?? 'http://localhost:3001';
-    if (typeof window !== 'undefined') window.location.href = adminUrl;
+    if (typeof window !== 'undefined') window.open(adminUrl, '_blank', 'noopener,noreferrer');
     return null;
   }
 
@@ -537,14 +537,16 @@ export default function OpenShopPage() {
 
   const status = application?.status ?? 'NONE';
 
-  // Store already approved — go straight to seller hub
+  // Store already approved — open admin in a new tab
   if (status === 'ACTIVE') {
-    if (typeof window !== 'undefined') window.location.href = `/${locale}/seller`;
+    const adminUrl = process.env['NEXT_PUBLIC_ADMIN_URL'] ?? 'http://localhost:3001';
+    if (typeof window !== 'undefined') window.open(adminUrl, '_blank', 'noopener,noreferrer');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-3">
           <CheckCircle className="w-10 h-10 text-green-500 mx-auto" />
-          <p className="text-sm text-gray-500">Your shop is active. Redirecting to Seller Hub…</p>
+          <p className="font-semibold text-secondary">Your shop is active!</p>
+          <p className="text-sm text-gray-500">Seller Hub has been opened in a new tab.</p>
         </div>
       </div>
     );

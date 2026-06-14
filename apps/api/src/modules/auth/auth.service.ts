@@ -119,7 +119,7 @@ export class AuthService {
       this.logger.error(`Failed to enqueue verification email: ${err.message}`),
     );
 
-    const tokens = await this.generateTokens(user.id, user.email, user.role);
+    const tokens = await this.generateTokens(user.id, user.email, user.role, false, user.storeId);
     this.setRefreshTokenCookie(res, tokens.refreshToken);
 
     return {
@@ -174,7 +174,7 @@ export class AuthService {
       return { requiresTOTP: true, partialToken };
     }
 
-    const tokens = await this.generateTokens(user.id, user.email, user.role, dto.rememberMe);
+    const tokens = await this.generateTokens(user.id, user.email, user.role, dto.rememberMe, user.storeId);
     this.setRefreshTokenCookie(res, tokens.refreshToken, dto.rememberMe);
 
     return {
@@ -233,7 +233,7 @@ export class AuthService {
       throw new UnauthorizedException({ code: 'ERR_TOTP_CODE_INVALID', message: 'Invalid authentication code' });
     }
 
-    const tokens = await this.generateTokens(user.id, user.email, user.role);
+    const tokens = await this.generateTokens(user.id, user.email, user.role, false, user.storeId);
     this.setRefreshTokenCookie(res, tokens.refreshToken);
 
     return {
@@ -317,7 +317,7 @@ export class AuthService {
 
     const stored = await this.prisma.refreshToken.findFirst({
       where: { userId, tokenHash: oldHash, revokedAt: null, expiresAt: { gt: new Date() } },
-      include: { user: { select: { email: true, role: true } } },
+      include: { user: { select: { email: true, role: true, storeId: true } } },
     });
 
     if (!stored) {
@@ -330,7 +330,7 @@ export class AuthService {
       data: { revokedAt: new Date() },
     });
 
-    const tokens = await this.generateTokens(userId, stored.user.email, stored.user.role);
+    const tokens = await this.generateTokens(userId, stored.user.email, stored.user.role, false, stored.user.storeId);
     this.setRefreshTokenCookie(res, tokens.refreshToken);
 
     return { accessToken: tokens.accessToken };
@@ -469,7 +469,7 @@ export class AuthService {
       });
     }
 
-    const tokens = await this.generateTokens(user.id, user.email, user.role);
+    const tokens = await this.generateTokens(user.id, user.email, user.role, false, user.storeId);
     this.setRefreshTokenCookie(res, tokens.refreshToken);
 
     return {
@@ -496,6 +496,7 @@ export class AuthService {
     email: string,
     role: string,
     rememberMe = false,
+    storeId?: string | null,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const secret = this.config.get<string>('jwt.accessSecret');
     if (!secret) {
@@ -503,7 +504,7 @@ export class AuthService {
     }
 
     const accessToken = this.jwtService.sign(
-      { sub: userId, email, role },
+      { sub: userId, email, role, ...(storeId ? { storeId } : {}) },
       {
         secret,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

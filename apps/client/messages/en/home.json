@@ -129,5 +129,19 @@
     "cta": "Subscribe",
     "disclaimer": "We respect your privacy. Unsubscribe at any time.",
     "success": "Thanks! Check your inbox."
+  },
+  "openShopCta": {
+    "title": "Sell Your Handmade Goods Here ✨",
+    "subtitle": "Open your store for free · Reach thousands of customers · 24/7 support",
+    "perk1": "Free store setup",
+    "perk2": "Easy order management",
+    "perk3": "AI-powered personalization",
+    "perk4": "Instant payments",
+    "cta": "Open Your Store Now →"
+  },
+  "blindMatchCta": {
+    "title": "Send a Mystery Gift 🎲",
+    "subtitle": "Perfect for Secret Santa · AI surprises them · $2.99 curation",
+    "cta": "Try Blind Match →"
   }
 }

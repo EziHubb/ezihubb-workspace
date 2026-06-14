@@ -129,5 +129,19 @@
     "cta": "Đăng Ký",
     "disclaimer": "Chúng tôi tôn trọng quyền riêng tư của bạn. Hủy đăng ký bất cứ lúc nào.",
     "success": "Cảm ơn! Vui lòng kiểm tra hộp thư."
+  },
+  "openShopCta": {
+    "title": "Bán Hàng Thủ Công Của Bạn Tại Đây ✨",
+    "subtitle": "Mở gian hàng miễn phí · Tiếp cận hàng nghìn khách hàng · Hỗ trợ 24/7",
+    "perk1": "Miễn phí mở gian hàng",
+    "perk2": "Quản lý đơn hàng dễ dàng",
+    "perk3": "AI hỗ trợ cá nhân hoá sản phẩm",
+    "perk4": "Nhận thanh toán ngay lập tức",
+    "cta": "Mở Gian Hàng Ngay →"
+  },
+  "blindMatchCta": {
+    "title": "Gửi Quà Bí Ẩn 🎲",
+    "subtitle": "Hoàn hảo cho Secret Santa · AI tạo bất ngờ · Phí tuyển chọn $2.99",
+    "cta": "Thử Blind Match →"
   }
 }

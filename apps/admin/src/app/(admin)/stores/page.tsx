@@ -57,12 +57,14 @@ export default function AdminStoresPage() {
   const role    = sessionUser?.['role']    as string | undefined;
   const storeId = sessionUser?.['storeId'] as string | null | undefined;
 
-  // Shop owners should only see their own store — redirect immediately
+  // Shop owners go directly to their own store page — redirect as a fallback
+  // (the sidebar already links them to /stores/[id] directly)
   useEffect(() => {
     if (role === 'ADMIN') {
       router.replace(storeId ? `/stores/${storeId}` : '/dashboard');
     }
   }, [role, storeId, router]);
+
   const [page,   setPage  ] = useState(1);
   const [status, setStatus] = useState('PENDING');
   const [search, setSearch] = useState('');
@@ -83,7 +85,11 @@ export default function AdminStoresPage() {
       if (debSearch) p.set('search', debSearch);
       return api.get<StoresResponse>(`${API_ROUTES.ADMIN.STORES}?${p}`);
     },
+    enabled: role !== 'ADMIN',
   });
+
+  // Render nothing while the redirect is in-flight — prevents stores list from flashing
+  if (role === 'ADMIN') return null;
 
   const approveMutation = useMutation({
     mutationFn: (id: string) => api.post(API_ROUTES.ADMIN.STORE_APPROVE(id), {}),

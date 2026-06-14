@@ -125,7 +125,7 @@ export default async function HomePage({
 
       <BlindMatchCta locale={locale} />
 
-      <OpenShopCta locale={locale} />
+      <OpenShopCta />
 
       <CreatorNetworkCta locale={locale} />
 

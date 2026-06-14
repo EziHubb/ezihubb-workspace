@@ -22,6 +22,17 @@ import { AdminOrderQueryDto } from './dto/order-list-item.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { PrismaService } from '../../prisma/prisma.service';
+
+interface JwtLike { sub?: string; id?: string; role?: string }
+
+async function resolveSellerStoreId(prisma: PrismaService, user: JwtLike): Promise<string | null> {
+  if (user.role === 'SUPER_ADMIN') return null;
+  const userId = user.sub ?? user.id;
+  if (!userId) return null;
+  const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { storeId: true } });
+  return dbUser?.storeId ?? null;
+}
 
 @AdminController('orders')
 export class AdminOrdersController {
@@ -30,12 +41,14 @@ export class AdminOrdersController {
     private readonly pdfService:    PdfService,
     private readonly labelService:  LabelService,
     private readonly auditLog:      AuditLogService,
+    private readonly prisma:        PrismaService,
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'List all orders (filterable)' })
-  async findAll(@Query() query: AdminOrderQueryDto) {
-    return this.ordersService.findAll(query);
+  @ApiOperation({ summary: 'List orders (scoped to own store for shop owners)' })
+  async findAll(@Req() req: Request, @Query() query: AdminOrderQueryDto) {
+    const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
+    return this.ordersService.findAll(storeId ? { ...query, storeId } : query);
   }
 
   // ── PDF endpoints — two-segment routes BEFORE :id to avoid param conflicts ─
@@ -65,8 +78,9 @@ export class AdminOrdersController {
 
   @Get('export')
   @ApiOperation({ summary: 'Export orders as CSV' })
-  async exportCsv(@Query() query: AdminOrderQueryDto, @Res() res: Response) {
-    const csv = await this.ordersService.exportOrdersCsv(query);
+  async exportCsv(@Req() req: Request, @Query() query: AdminOrderQueryDto, @Res() res: Response) {
+    const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
+    const csv = await this.ordersService.exportOrdersCsv(storeId ? { ...query, storeId } : query);
     res.header('Content-Type', 'text/csv; charset=utf-8');
     res.header('Content-Disposition', `attachment; filename="orders-${Date.now()}.csv"`);
     res.send(csv);

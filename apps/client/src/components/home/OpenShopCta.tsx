@@ -1,17 +1,33 @@
+'use client';
+
 import Link from 'next/link';
+import { useTranslations, useLocale } from 'next-intl';
+import { useQuery } from '@tanstack/react-query';
+import { useAuthStore } from '../../lib/store/auth.store';
+import { apiClient } from '@mlh/api-client';
+import { API_ROUTES } from '@mlh/constants';
 
-interface OpenShopCtaProps {
-  locale: string;
-}
+export function OpenShopCta() {
+  const t      = useTranslations('home.openShopCta');
+  const locale = useLocale();
+  const user   = useAuthStore((s) => s.user);
+  const token  = useAuthStore((s) => s.accessToken);
 
-const PERKS = [
-  { emoji: '🛒', label: 'Miễn phí mở gian hàng' },
-  { emoji: '📦', label: 'Quản lý đơn hàng dễ dàng' },
-  { emoji: '🤖', label: 'AI hỗ trợ cá nhân hoá sản phẩm' },
-  { emoji: '💸', label: 'Nhận thanh toán ngay lập tức' },
-];
+  const { data: storeApp } = useQuery<{ status: string }>({
+    queryKey: ['my-store-application'],
+    queryFn:  () => apiClient.get<{ status: string }>(API_ROUTES.SELLER.STORE_APPLICATION, { token: token ?? undefined }),
+    enabled:  !!token,
+    staleTime: 30_000,
+  });
 
-export function OpenShopCta({ locale }: OpenShopCtaProps) {
+  const isSeller = (user as unknown as Record<string, unknown> | null)?.['isSeller'] === true
+    || storeApp?.status === 'ACTIVE';
+
+  if (isSeller) return null;
+
+  const PERKS = [t('perk1'), t('perk2'), t('perk3'), t('perk4')];
+  const EMOJIS = ['🛒', '📦', '🤖', '💸'];
+
   return (
     <section className="py-14 bg-[#111111]">
       <div className="max-w-[1440px] mx-auto px-4 md:px-8">
@@ -25,19 +41,18 @@ export function OpenShopCta({ locale }: OpenShopCtaProps) {
             </div>
             <div>
               <h3 className="font-display text-2xl font-bold text-white">
-                Bán hàng thủ công của bạn tại đây ✨
+                {t('title')}
               </h3>
               <p className="text-white/60 mt-1 text-sm">
-                Mở gian hàng miễn phí · Tiếp cận hàng nghìn khách hàng · Hỗ trợ 24/7
+                {t('subtitle')}
               </p>
-              {/* Perk pills */}
               <div className="flex flex-wrap gap-2 mt-3">
-                {PERKS.map(({ emoji, label }) => (
+                {PERKS.map((label, i) => (
                   <span
                     key={label}
                     className="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 text-white/70 text-xs px-3 py-1 rounded-full"
                   >
-                    {emoji} {label}
+                    {EMOJIS[i]} {label}
                   </span>
                 ))}
               </div>
@@ -49,7 +64,7 @@ export function OpenShopCta({ locale }: OpenShopCtaProps) {
             href={`/${locale}/open-shop`}
             className="shrink-0 bg-primary hover:bg-primary-dark text-white font-bold text-sm uppercase tracking-wide px-8 py-4 rounded-full transition-colors shadow-md hover:shadow-lg whitespace-nowrap"
           >
-            Mở gian hàng ngay →
+            {t('cta')}
           </Link>
         </div>
       </div>

@@ -156,13 +156,14 @@ export class ProductsService {
     return paginatedResponse<ProductListItemDto>(data, page, limit, total);
   }
 
-  async getStats(): Promise<{ all: number; active: number; draft: number; inactive: number; archived: number }> {
+  async getStats(storeId?: string): Promise<{ all: number; active: number; draft: number; inactive: number; archived: number }> {
+    const base = storeId ? { storeId } : {};
     const [all, active, draft, inactive, archived] = await Promise.all([
-      this.prisma.product.count(),
-      this.prisma.product.count({ where: { status: ProductStatus.ACTIVE } }),
-      this.prisma.product.count({ where: { status: ProductStatus.DRAFT } }),
-      this.prisma.product.count({ where: { status: ProductStatus.INACTIVE } }),
-      this.prisma.product.count({ where: { status: ProductStatus.ARCHIVED } }),
+      this.prisma.product.count({ where: base }),
+      this.prisma.product.count({ where: { ...base, status: ProductStatus.ACTIVE } }),
+      this.prisma.product.count({ where: { ...base, status: ProductStatus.DRAFT } }),
+      this.prisma.product.count({ where: { ...base, status: ProductStatus.INACTIVE } }),
+      this.prisma.product.count({ where: { ...base, status: ProductStatus.ARCHIVED } }),
     ]);
     return { all, active, draft, inactive, archived };
   }

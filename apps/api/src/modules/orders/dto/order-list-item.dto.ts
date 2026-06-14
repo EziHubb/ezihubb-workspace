@@ -43,4 +43,7 @@ export class AdminOrderQueryDto extends PaginationDto {
   @ApiPropertyOptional()
   @IsOptional()
   endDate?: string;
+
+  /** Server-set only — scopes results to a specific store (used for shop owner role) */
+  storeId?: string;
 }

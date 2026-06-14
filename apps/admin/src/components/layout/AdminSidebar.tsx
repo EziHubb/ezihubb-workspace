@@ -165,65 +165,62 @@ const NAV_SECTIONS: NavSection[] = [
 // ── Navigation structure — ADMIN (shop owner) ─────────────────────────────────
 // Shop owners use the SAME routes as super admin — the API scopes data to their store.
 
-const SHOP_NAV_SECTIONS: NavSection[] = [
-  {
-    items: [
-      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'Analytics', href: '/stats',     icon: BarChart2       },
-    ],
-  },
-  {
-    title: 'Manage',
-    items: [
-      {
-        label: 'Products', href: '/products', icon: ShoppingBag,
-        children: [
-          { label: 'All Products', href: '/products',                  icon: ShoppingBag },
-          { label: 'Add Product',  href: '/products/new',              icon: ShoppingBag },
-          { label: 'Sections',     href: '/catalog/shop-sections',     icon: Bookmark    },
-        ],
-      },
-      { label: 'Orders',   href: '/orders',   icon: ShoppingCart },
-      { label: 'Reviews',  href: '/reviews',  icon: Star         },
-      { label: 'Messages', href: '/messages', icon: MessageSquare },
-      {
-        label: 'Flash Deals', href: '/flash-deals/submit', icon: Zap,
-        children: [
-          { label: 'My Deals',    href: '/flash-deals/submit', icon: Zap  },
-          { label: 'Submit Deal', href: '/flash-deals/submit', icon: Plus },
-        ],
-      },
-    ],
-  },
-  {
-    title: 'Finance',
-    items: [
-      { label: 'Payouts', href: '/payouts', icon: Wallet },
-    ],
-  },
-  {
-    title: 'Setup',
-    items: [
-      {
-        label: 'Store Settings', href: '/stores', icon: Settings,
-        children: [
-          { label: 'General',    href: '/stores',           icon: Settings     },
-          { label: 'Shipping',   href: '/shipping',         icon: Truck        },
-          { label: 'Promotions', href: '/promotions',       icon: BadgePercent },
-        ],
-      },
-    ],
-  },
-];
+function getShopNavSections(storeId: string): NavSection[] {
+  const storeHref = storeId ? `/stores/${storeId}` : '/dashboard';
+  return [
+    {
+      items: [
+        { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        { label: 'Analytics', href: '/stats',     icon: BarChart2       },
+      ],
+    },
+    {
+      title: 'Manage',
+      items: [
+        { label: 'Products', href: '/products', icon: ShoppingBag },
+        { label: 'Orders',   href: '/orders',   icon: ShoppingCart },
+        { label: 'Reviews',  href: '/reviews',  icon: Star         },
+        { label: 'Messages', href: '/messages', icon: MessageSquare },
+        {
+          label: 'Flash Deals', href: '/flash-deals/my-deals', icon: Zap,
+          children: [
+            { label: 'My Deals',    href: '/flash-deals/my-deals', icon: Zap  },
+            { label: 'Submit Deal', href: '/flash-deals/submit',   icon: Plus },
+          ],
+        },
+      ],
+    },
+    {
+      title: 'Finance',
+      items: [
+        { label: 'Payouts', href: '/payouts', icon: Wallet },
+      ],
+    },
+    {
+      title: 'Setup',
+      items: [
+        {
+          label: 'Store Settings', href: storeHref, icon: Settings,
+          children: [
+            { label: 'General',    href: storeHref,     icon: Settings     },
+            { label: 'Shipping',   href: '/shipping',   icon: Truck        },
+            { label: 'Promotions', href: '/promotions', icon: BadgePercent },
+          ],
+        },
+      ],
+    },
+  ];
+}
 
 // ── Shared data hook ──────────────────────────────────────────────────────────
 
 function useNavData() {
   const { data: session } = useSession();
   const user     = session?.user as Record<string, unknown> | undefined;
-  const name     = (user?.['name']  as string) || 'Admin';
-  const email    = (user?.['email'] as string) || '';
-  const role     = (user?.['role']  as string) || '';
+  const name     = (user?.['name']    as string) || 'Admin';
+  const email    = (user?.['email']   as string) || '';
+  const role     = (user?.['role']    as string) || '';
+  const storeId  = (user?.['storeId'] as string) || '';
   const initials = name.split(' ').map((n) => n[0] ?? '').slice(0, 2).join('').toUpperCase();
 
   const isSuperAdmin = role === 'SUPER_ADMIN';
@@ -262,7 +259,8 @@ function useNavData() {
     })),
   [pendingData, aiTrendPending]);
 
-  const navSections = isSuperAdmin ? superAdminSections : SHOP_NAV_SECTIONS;
+  const shopNavSections = useMemo(() => getShopNavSections(storeId), [storeId]);
+  const navSections = isSuperAdmin ? superAdminSections : shopNavSections;
 
   return { name, email, initials, navSections, role };
 }
