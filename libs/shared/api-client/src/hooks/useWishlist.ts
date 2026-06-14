@@ -8,14 +8,17 @@ export function useWishlist(enabled = false) {
   return useQuery<WishlistItemDto[]>({
     queryKey: queryKeys.wishlist(),
     queryFn: async () => {
-      // Endpoint returns PaginatedResult { data: WishlistItemDto[], pagination: {...} }
-      // after apiFetch unwraps the outer { success, data } envelope.
-      // Extract the items array; fetch with high limit since wishlists are small.
-      const res = await api.get<{ data: WishlistItemDto[] }>(
+      const res = await api.get<unknown>(
         API_ROUTES.USERS.WISHLIST,
         { params: { limit: 200 } },
       );
-      return res.data ?? [];
+      // Flat array (envelope already unwrapped by apiFetch to the items directly)
+      if (Array.isArray(res)) return res as WishlistItemDto[];
+      // Paginated { data: [...] } shape after outer envelope is unwrapped
+      if (res && typeof res === 'object' && Array.isArray((res as { data?: unknown }).data)) {
+        return (res as { data: WishlistItemDto[] }).data;
+      }
+      return [];
     },
     staleTime: 60_000,
     retry:    false,

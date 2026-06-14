@@ -189,39 +189,7 @@ export class UsersController {
     return this.usersService.getWishlist(user.sub, pagination);
   }
 
-  // POST /users/me/wishlist/:productId
-  @Post('me/wishlist/:productId')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Add product to wishlist' })
-  async addToWishlist(
-    @CurrentUser() user: JwtPayload,
-    @Param('productId', ParseCuidPipe) productId: string,
-  ): Promise<{ id: string }> {
-    return this.usersService.addToWishlist(user.sub, productId);
-  }
-
-  // DELETE /users/me/wishlist/:productId
-  @Delete('me/wishlist/:productId')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Remove product from wishlist' })
-  async removeFromWishlist(
-    @CurrentUser() user: JwtPayload,
-    @Param('productId', ParseCuidPipe) productId: string,
-  ): Promise<void> {
-    return this.usersService.removeFromWishlist(user.sub, productId);
-  }
-
-  // GET /users/me/wishlist/:productId
-  @Get('me/wishlist/:productId')
-  @ApiOperation({ summary: 'Check if product is in wishlist' })
-  async isInWishlist(
-    @CurrentUser() user: JwtPayload,
-    @Param('productId', ParseCuidPipe) productId: string,
-  ): Promise<{ inWishlist: boolean }> {
-    return this.usersService.isInWishlist(user.sub, productId);
-  }
-
-  // ─── Wishlist Sharing ──────────────────────────────────────────────────────
+  // ─── Wishlist Sharing — static routes MUST precede dynamic /:productId ───────
 
   // GET /users/me/wishlist/share
   @Get('me/wishlist/share')
@@ -254,6 +222,38 @@ export class UsersController {
   @ApiOperation({ summary: 'Revoke wishlist sharing link' })
   async revokeWishlistShare(@CurrentUser() user: JwtPayload): Promise<void> {
     return this.usersService.revokeWishlistShare(user.sub);
+  }
+
+  // POST /users/me/wishlist/:productId
+  @Post('me/wishlist/:productId')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Add product to wishlist' })
+  async addToWishlist(
+    @CurrentUser() user: JwtPayload,
+    @Param('productId', ParseCuidPipe) productId: string,
+  ): Promise<{ id: string }> {
+    return this.usersService.addToWishlist(user.sub, productId);
+  }
+
+  // DELETE /users/me/wishlist/:productId
+  @Delete('me/wishlist/:productId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove product from wishlist' })
+  async removeFromWishlist(
+    @CurrentUser() user: JwtPayload,
+    @Param('productId', ParseCuidPipe) productId: string,
+  ): Promise<void> {
+    return this.usersService.removeFromWishlist(user.sub, productId);
+  }
+
+  // GET /users/me/wishlist/:productId
+  @Get('me/wishlist/:productId')
+  @ApiOperation({ summary: 'Check if product is in wishlist' })
+  async isInWishlist(
+    @CurrentUser() user: JwtPayload,
+    @Param('productId', ParseCuidPipe) productId: string,
+  ): Promise<{ inWishlist: boolean }> {
+    return this.usersService.isInWishlist(user.sub, productId);
   }
 
   // ─── Push Notifications ────────────────────────────────────────────────────
