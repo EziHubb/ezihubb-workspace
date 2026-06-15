@@ -23,10 +23,10 @@ export class PaginationDto {
   @Transform(({ value }: { value: unknown }) => parseInt(String(value), 10))
   limit?: number = 24;
 
-  @ApiPropertyOptional({ default: 'createdAt' })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  sort?: string = 'createdAt';
+  sort?: string;
 
   @ApiPropertyOptional({ enum: SortOrder, default: SortOrder.DESC })
   @IsOptional()
