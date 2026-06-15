@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
 
@@ -37,28 +38,28 @@ export class ShopStatsService {
 
   // ── Shop overview ──────────────────────────────────────────────────────────
 
-  async getOverview(range: string) {
-    const start = this.rangeStart(range);
-    const days  = Math.round((Date.now() - start.getTime()) / 86_400_000);
+  async getOverview(range: string, storeId?: string | null) {
+    const start       = this.rangeStart(range);
+    const days        = Math.round((Date.now() - start.getTime()) / 86_400_000);
+    const productWhere: Prisma.ProductWhereInput = storeId ? { storeId } : {};
 
-    // Aggregate orders + revenue in the range
-    const [orderAgg, totalVisits, timeSeries] = await Promise.all([
-      this.prisma.order.aggregate({
-        where: { createdAt: { gte: start }, status: { notIn: ['CANCELLED', 'REFUNDED'] } },
-        _count: { _all: true },
-        _sum:   { total: true },
-      }),
+    const orderWhere: Prisma.OrderWhereInput = {
+      createdAt: { gte: start },
+      status:    { notIn: ['CANCELLED', 'REFUNDED'] },
+    };
+    if (storeId) orderWhere.storeOrders = { some: { storeId } };
 
-      // Total product views in range (proxy for visits)
-      this.prisma.product.aggregate({ _sum: { viewCount: true } }),
-
-      // Daily time series from Redis
-      this.getDailyTimeSeries(days),
+    const [totalOrders, orderSum, totalVisits, timeSeries] = await Promise.all([
+      this.prisma.order.count({ where: orderWhere }),
+      this.prisma.order.aggregate({ where: orderWhere, _sum: { total: true } }),
+      this.prisma.product.aggregate({ _sum: { viewCount: true }, where: productWhere }),
+      storeId
+        ? this.getStoreOrderTimeSeries(storeId, start, days)
+        : this.getDailyTimeSeries(days),
     ]);
 
-    const totalOrders  = orderAgg._count._all;
-    const totalRevenue = Number(orderAgg._sum.total ?? 0);
-    const visits       = Number(totalVisits._sum.viewCount ?? 0);
+    const totalRevenue = Number(orderSum._sum?.total ?? 0);
+    const visits       = Number(totalVisits._sum?.viewCount ?? 0);
     const conversion   = visits > 0 ? ((totalOrders / visits) * 100) : 0;
 
     return {
@@ -68,6 +69,28 @@ export class ShopStatsService {
       conversionRate: Math.round(conversion * 10) / 10,
       timeSeries,
     };
+  }
+
+  /** DB-computed daily time series for a specific store (no Redis dependency). */
+  private async getStoreOrderTimeSeries(storeId: string, start: Date, days: number) {
+    const orders = await this.prisma.order.findMany({
+      where: { storeOrders: { some: { storeId } }, createdAt: { gte: start }, status: { notIn: ['CANCELLED', 'REFUNDED'] } },
+      select: { createdAt: true, total: true },
+    });
+
+    const map = new Map<string, { visits: number; orders: number; revenue: number }>();
+    for (let i = days - 1; i >= 0; i--) {
+      map.set(this.dateStr(this.subDays(new Date(), i)), { visits: 0, orders: 0, revenue: 0 });
+    }
+    for (const o of orders) {
+      const d = this.dateStr(new Date(o.createdAt));
+      if (map.has(d)) {
+        const row = map.get(d)!;
+        row.orders  += 1;
+        row.revenue += Number(o.total);
+      }
+    }
+    return [...map.entries()].map(([date, v]) => ({ date, ...v }));
   }
 
   private async getDailyTimeSeries(days: number) {
@@ -99,14 +122,26 @@ export class ShopStatsService {
 
   // ── Shopper stats ──────────────────────────────────────────────────────────
 
-  async getShopperStats(range: string) {
+  async getShopperStats(range: string, storeId?: string | null) {
     const start = this.rangeStart(range);
 
+    const wishWhere: Prisma.WishlistItemWhereInput = { createdAt: { gte: start } };
+    const reviewWhere: Prisma.ReviewWhereInput     = { createdAt: { gte: start } };
+    if (storeId) {
+      wishWhere.product   = { storeId };
+      reviewWhere.product = { storeId };
+    }
+
+    const orderActivityWhere: Prisma.OrderWhereInput = { createdAt: { gte: start } };
+    if (storeId) orderActivityWhere.storeOrders = { some: { storeId } };
+
     const [favCount, reviews, followCount] = await Promise.all([
-      this.prisma.wishlistItem.count({ where: { createdAt: { gte: start } } }),
-      this.prisma.review.findMany({ where: { createdAt: { gte: start } }, select: { rating: true } }),
-      // Use new customer signups as a proxy for shop follows
-      this.prisma.user.count({ where: { createdAt: { gte: start } } }),
+      this.prisma.wishlistItem.count({ where: wishWhere }),
+      this.prisma.review.findMany({ where: reviewWhere, select: { rating: true } }),
+      // Shop owner: count orders as proxy for customer activity; platform: new signups
+      storeId
+        ? this.prisma.order.count({ where: orderActivityWhere })
+        : this.prisma.user.count({ where: { createdAt: { gte: start } } }),
     ]);
 
     const avgRating = reviews.length > 0
@@ -125,10 +160,10 @@ export class ShopStatsService {
 
   // ── Traffic sources (simplified) ────────────────────────────────────────────
 
-  async getTrafficSources(range: string) {
-    const start  = this.rangeStart(range);
-    const visits = await this.prisma.product.aggregate({ _sum: { viewCount: true } });
-    const total  = Number(visits._sum.viewCount ?? 0);
+  async getTrafficSources(range: string, storeId?: string | null) {
+    const storeFilter = storeId ? { storeId } : {};
+    const visits      = await this.prisma.product.aggregate({ _sum: { viewCount: true }, where: storeFilter });
+    const total       = Number(visits._sum.viewCount ?? 0);
 
     // Get top search terms to estimate organic/search traffic
     const searchTerms = await this.getTopSearchTerms(7);

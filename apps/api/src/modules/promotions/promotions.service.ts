@@ -163,17 +163,20 @@ export class PromotionsService {
 
   async findAll(
     query: PaginationDto,
+    storeId?: string,
   ): Promise<PaginatedResult<PromotionResponseDto>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 24;
+    const where = storeId !== undefined ? { storeId } : {};
 
     const [promotions, total] = await Promise.all([
       this.prisma.promotion.findMany({
+        where,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
       }),
-      this.prisma.promotion.count(),
+      this.prisma.promotion.count({ where }),
     ]);
 
     return paginatedResponse(promotions.map(this.mapToDto), page, limit, total);

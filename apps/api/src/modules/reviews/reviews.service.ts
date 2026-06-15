@@ -464,11 +464,12 @@ export class ReviewsService {
 
   // ── Admin ────────────────────────────────────────────────────────────────────
 
-  async findAllAdmin(query: AdminReviewQueryDto): Promise<PaginatedResult<AdminReviewResponseDto>> {
+  async findAllAdmin(query: AdminReviewQueryDto, storeId?: string): Promise<PaginatedResult<AdminReviewResponseDto>> {
     const page  = query.page  ?? 1;
     const limit = query.limit ?? 24;
 
     const where: Record<string, unknown> = {};
+    if (storeId !== undefined)           where['storeId']   = storeId;
     if (query.status    !== undefined) where['status']    = query.status;
     if (query.rating    !== undefined) where['rating']    = query.rating;
     if (query.productId !== undefined) where['productId'] = query.productId;
@@ -519,10 +520,11 @@ export class ReviewsService {
     return paginatedResponse(data, page, limit, total);
   }
 
-  async getAdminCounts(): Promise<Record<string, number>> {
+  async getAdminCounts(storeId?: string): Promise<Record<string, number>> {
     const statuses = ['PENDING', 'APPROVED', 'HIDDEN'];
+    const base = storeId ? { storeId } : {};
     const counts = await Promise.all(
-      statuses.map((status) => this.prisma.review.count({ where: { status: status as ReviewStatus } })),
+      statuses.map((status) => this.prisma.review.count({ where: { ...base, status: status as ReviewStatus } })),
     );
     const total = counts.reduce((sum, n) => sum + n, 0);
     return {

@@ -8,7 +8,9 @@ import {
   Patch,
   Post,
   Put,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { ApiOperation } from '@nestjs/swagger';
 import { ShippingService, ZoneWithMethods } from './shipping.service';
 import {
@@ -21,11 +23,25 @@ import {
 } from './dto/create-shipping-method.dto';
 import { ShippingMethod } from '@prisma/client';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { PrismaService } from '../../prisma/prisma.service';
+
+interface JwtLike { sub?: string; id?: string; role?: string }
+
+async function resolveSellerStoreId(prisma: PrismaService, user: JwtLike): Promise<string | null> {
+  if (user.role === 'SUPER_ADMIN') return null;
+  const userId = user.sub ?? user.id;
+  if (!userId) return null;
+  const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { storeId: true } });
+  return dbUser?.storeId ?? null;
+}
 
 @AdminController('shipping')
 export class AdminShippingController {
 
-  constructor(private readonly shippingService: ShippingService) {}
+  constructor(
+    private readonly shippingService: ShippingService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   // ── Processing profiles ───────────────────────────────────────────────────────
 
@@ -38,8 +54,10 @@ export class AdminShippingController {
   // ── Shipping profiles (product-level) ────────────────────────────────────────
 
   @Get('profiles')
-  @ApiOperation({ summary: 'List all shipping profiles with their methods' })
-  async getShippingProfiles() {
+  @ApiOperation({ summary: 'List all shipping profiles with their methods (scoped to own store for shop owners)' })
+  async getShippingProfiles(@Req() req: Request) {
+    const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
+    if (storeId) return this.shippingService.getShippingProfilesForStore(storeId);
     return this.shippingService.getShippingProfiles();
   }
 

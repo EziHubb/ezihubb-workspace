@@ -78,10 +78,10 @@ export function Footer() {
 
   return (
     <footer className="bg-[#2D2D2D] text-white mt-auto">
-      <div className="max-w-[1280px] mx-auto px-6 py-12">
+      <div className="max-w-[1280px] mx-auto px-4 md:px-6 py-10 md:py-12">
 
         {/* ── Main grid ─────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10">
 
           {/* Brand column — spans 2 on lg */}
           <div className="lg:col-span-2">

@@ -63,9 +63,9 @@ export async function CategoryShowcase({ categories, locale }: CategoryShowcaseP
             <Link
               key={cat.id}
               href={categoryHref(locale, cat.slug)}
-              className="snap-start shrink-0 flex flex-col items-center gap-2.5 group min-w-[72px] md:min-w-0"
+              className="snap-start shrink-0 flex flex-col items-center gap-2.5 group min-w-[80px] md:min-w-0"
             >
-              <div className="relative w-16 h-16 md:w-[72px] md:h-[72px] rounded-full overflow-hidden bg-primary/5 ring-2 ring-transparent group-hover:ring-primary transition-all duration-200 shadow-sm flex-shrink-0">
+              <div className="relative w-[64px] h-[64px] md:w-[72px] md:h-[72px] rounded-full overflow-hidden bg-primary/5 ring-2 ring-transparent group-hover:ring-primary transition-all duration-200 shadow-sm flex-shrink-0">
                 {cat.imageUrl ? (
                   <Image
                     src={cat.imageUrl}
@@ -80,7 +80,7 @@ export async function CategoryShowcase({ categories, locale }: CategoryShowcaseP
                   </div>
                 )}
               </div>
-              <span className="text-xs md:text-sm font-medium text-secondary text-center leading-tight group-hover:text-primary transition-colors line-clamp-2 max-w-[72px]">
+              <span className="text-xs md:text-sm font-medium text-secondary text-center leading-tight group-hover:text-primary transition-colors line-clamp-2 max-w-[80px]">
                 {cat.name}
               </span>
             </Link>

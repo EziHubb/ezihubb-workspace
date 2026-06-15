@@ -42,12 +42,12 @@ export async function TrendingProducts({ products, locale, viewAllLabel }: Trend
         <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 md:pb-0 md:grid md:grid-cols-4 md:overflow-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {products.length === 0
             ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="snap-start shrink-0 w-[200px] sm:w-[220px] md:w-auto">
+                <div key={i} className="snap-start shrink-0 w-[48vw] sm:w-[200px] md:w-auto">
                   <ProductCardSkeleton />
                 </div>
               ))
             : products.map((product) => (
-                <div key={product.id} className="snap-start shrink-0 w-[200px] sm:w-[220px] md:w-auto">
+                <div key={product.id} className="snap-start shrink-0 w-[48vw] sm:w-[200px] md:w-auto">
                   <ProductCard
                     id={product.id}
                     slug={product.slug}

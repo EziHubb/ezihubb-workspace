@@ -10,8 +10,10 @@ import {
   Post,
   Put,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PromotionsService } from './promotions.service';
 import { CreatePromotionDto, UpdatePromotionDto } from './dto/create-promotion.dto';
@@ -30,11 +32,25 @@ import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { Role } from '@mlh/constants';
+import { PrismaService } from '../../prisma/prisma.service';
+
+interface JwtLike { sub?: string; id?: string; role?: string }
+
+async function resolveSellerStoreId(prisma: PrismaService, user: JwtLike): Promise<string | null> {
+  if (user.role === 'SUPER_ADMIN') return null;
+  const userId = user.sub ?? user.id;
+  if (!userId) return null;
+  const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { storeId: true } });
+  return dbUser?.storeId ?? null;
+}
 
 @ApiTags('promotions')
 @Controller('promotions')
 export class PromotionsController {
-  constructor(private readonly promotionsService: PromotionsService) {}
+  constructor(
+    private readonly promotionsService: PromotionsService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   // ── Public ───────────────────────────────────────────────────────────────────
 
@@ -70,8 +86,9 @@ export class PromotionsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'List all promotions (admin)' })
-  async findAll(@Query() query: PaginationDto): Promise<PaginatedResult<PromotionResponseDto>> {
-    return this.promotionsService.findAll(query);
+  async findAll(@Req() req: Request, @Query() query: PaginationDto): Promise<PaginatedResult<PromotionResponseDto>> {
+    const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
+    return this.promotionsService.findAll(query, storeId ?? undefined);
   }
 
   @Get(':id')

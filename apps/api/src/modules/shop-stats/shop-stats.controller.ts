@@ -1,10 +1,20 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@mlh/constants';
 import { ShopStatsService } from './shop-stats.service';
+
+interface JwtLike { role?: string; storeId?: string }
+
+/** Returns storeId only for ADMIN (shop owner). SUPER_ADMIN gets null → no filter. */
+function sellerStoreId(req: Request): string | null {
+  const user = req.user as JwtLike | undefined;
+  if (!user || user.role !== 'ADMIN') return null;
+  return user.storeId ?? null;
+}
 
 @ApiTags('Admin Stats')
 @Controller('admin/stats')
@@ -15,20 +25,20 @@ export class ShopStatsController {
 
   @Get('overview')
   @ApiOperation({ summary: 'Shop traffic overview — visits, orders, revenue, conversion rate + time series' })
-  getOverview(@Query('range') range = '7d') {
-    return this.statsService.getOverview(range);
+  getOverview(@Req() req: Request, @Query('range') range = '7d') {
+    return this.statsService.getOverview(range, sellerStoreId(req));
   }
 
   @Get('shopper-stats')
   @ApiOperation({ summary: 'Shopper stats — item favourites, shop follows, reviews for range' })
-  getShopperStats(@Query('range') range = '30d') {
-    return this.statsService.getShopperStats(range);
+  getShopperStats(@Req() req: Request, @Query('range') range = '30d') {
+    return this.statsService.getShopperStats(range, sellerStoreId(req));
   }
 
   @Get('traffic-sources')
   @ApiOperation({ summary: 'Traffic source breakdown for range' })
-  getTrafficSources(@Query('range') range = '30d') {
-    return this.statsService.getTrafficSources(range);
+  getTrafficSources(@Req() req: Request, @Query('range') range = '30d') {
+    return this.statsService.getTrafficSources(range, sellerStoreId(req));
   }
 
   @Get('listings')

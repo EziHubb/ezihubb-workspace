@@ -289,8 +289,8 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
               )}
             </div>
 
-            {/* Thumbnail grid (right side) */}
-            <div className="w-[300px] flex-shrink-0 overflow-y-auto py-12 pr-4 pl-2">
+            {/* Thumbnail grid (right side, hidden on small screens) */}
+            <div className="hidden md:block md:w-[240px] lg:w-[300px] flex-shrink-0 overflow-y-auto py-12 pr-4 pl-2">
               <div className="grid grid-cols-2 gap-2">
                 {images.map((img, i) => (
                   <button

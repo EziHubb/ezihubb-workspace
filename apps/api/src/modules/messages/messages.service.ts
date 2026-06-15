@@ -195,11 +195,12 @@ export class MessagesService {
     return { success: true };
   }
 
-  async adminListConversations(query: AdminConversationQueryDto) {
+  async adminListConversations(query: AdminConversationQueryDto, storeId?: string) {
     const { status, search, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
     const where = {
+      ...(storeId !== undefined && { storeId }),
       ...(status && { status }),
       ...(search && {
         OR: [

@@ -171,7 +171,13 @@ function getShopNavSections(storeId: string): NavSection[] {
     {
       items: [
         { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-        { label: 'Analytics', href: '/stats',     icon: BarChart2       },
+        {
+          label: 'Stats', href: '/stats', icon: BarChart2,
+          children: [
+            { label: 'Shop Traffic',         href: '/stats',          icon: TrendingUp },
+            { label: 'Marketplace Insights', href: '/stats/listings', icon: BarChart2  },
+          ],
+        },
       ],
     },
     {
@@ -194,6 +200,20 @@ function getShopNavSections(storeId: string): NavSection[] {
       title: 'Finance',
       items: [
         { label: 'Payouts', href: '/payouts', icon: Wallet },
+      ],
+    },
+    {
+      title: 'Growth',
+      items: [
+        {
+          label: 'AI Features', href: '/ai/trends', icon: Sparkles,
+          children: [
+            { label: 'Trend Dashboard',   href: '/ai/trends',      icon: TrendingUp },
+            { label: 'Pricing Optimizer', href: '/ai/pricing',     icon: DollarSign },
+            { label: 'Creator DNA',       href: '/ai/creator-dna', icon: Activity   },
+            { label: 'AI Usage & Cost',   href: '/ai/usage',       icon: BarChart2  },
+          ],
+        },
       ],
     },
     {

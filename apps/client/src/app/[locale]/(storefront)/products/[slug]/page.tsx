@@ -180,7 +180,7 @@ export default async function ProductDetailPage({
         />
       )}
 
-      <div className="max-w-[1280px] mx-auto px-4 py-4">
+      <div className="max-w-[1280px] mx-auto px-3 sm:px-4 md:px-6 py-4">
 
         {/* ── TOP NAV ── */}
         <div className="flex items-center justify-between mb-4">
@@ -189,7 +189,7 @@ export default async function ProductDetailPage({
         </div>
 
         {/* ── MAIN 2-COL ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8 mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-6 lg:gap-8 mb-12">
           <ProductGalleryColumn product={product} />
           <ProductPurchasePanel
             product={product}
