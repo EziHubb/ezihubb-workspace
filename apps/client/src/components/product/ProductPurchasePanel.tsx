@@ -382,10 +382,21 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
 
   const selectedVariant = useMemo(() => {
     if (!product.variants?.length) return null;
+    const lc = (s: unknown) => String(s).toLowerCase();
+    // Exact match first; case-insensitive fallback handles admin-entered options
+    // whose keys/values don't perfectly match VariationGroup casing.
     return (
       product.variants.find((v) =>
         Object.entries(selectedOptions).every(([k, val]) => v.options[k] === val),
-      ) ?? null
+      ) ??
+      product.variants.find((v) =>
+        Object.entries(selectedOptions).every(([k, val]) =>
+          Object.entries(v.options ?? {}).some(
+            ([vk, vv]) => lc(vk) === lc(k) && lc(vv) === lc(val),
+          ),
+        ),
+      ) ??
+      null
     );
   }, [selectedOptions, product.variants]);
 
@@ -397,9 +408,10 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       : null;
 
   const variantCount  = product.variantOptions?.length ?? 0;
+  const allOptionsSelected = Object.keys(selectedOptions).length === variantCount;
   const canAddToCart  =
     variantCount === 0 ||
-    Object.keys(selectedOptions).length === variantCount;
+    (allOptionsSelected && selectedVariant !== null);
 
   const customFields = product.customization?.fields ?? [];
 
@@ -408,16 +420,21 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
   const handleAddToCart = async () => {
     if (!canAddToCart) {
       setHasAttemptedSubmit(true);
-      // Scroll to the first unselected variant dropdown
-      const firstMissing = product.variantOptions?.find(
-        (opt) => !selectedOptions[opt.name],
-      );
-      if (firstMissing) {
-        document.getElementById(`variant-${firstMissing.name}`)?.scrollIntoView({
-          behavior: 'smooth', block: 'center',
-        });
+      if (allOptionsSelected && selectedVariant === null) {
+        // All options chosen but no DB variant matches — data mismatch
+        toast.error('This combination is not available. Please try different options.');
+      } else {
+        // Some options still need to be selected
+        const firstMissing = product.variantOptions?.find(
+          (opt) => !selectedOptions[opt.name],
+        );
+        if (firstMissing) {
+          document.getElementById(`variant-${firstMissing.name}`)?.scrollIntoView({
+            behavior: 'smooth', block: 'center',
+          });
+        }
+        toast.error('Please select all required options before adding to cart.');
       }
-      toast.error('Please select all required options before adding to cart.');
       return;
     }
     if (isAdding) return;
@@ -425,7 +442,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
     try {
       await addItem({
         productId:         product.id,
-        variantId:         selectedVariant?.id ?? selectedVariant?.sku ?? null,
+        variantId:         selectedVariant?.id ?? null,
         quantity,
         customizationData: null,
       });
