@@ -473,10 +473,11 @@ export class CartService {
   private mapToDto(cart: CartWithItems): CartResponseDto {
     const items: CartItemDto[] = cart.items.map((item) => {
       const variantPrice = item.variant ? Number(item.variant.price) : 0;
-      const currentPrice = variantPrice > 0
-        ? variantPrice
-        : Number(item.product.basePrice);
       const unitPrice = Number(item.unitPrice);
+      const livePrice = variantPrice > 0 ? variantPrice : Number(item.product.basePrice);
+      // Fall back to unitPrice when the live price is 0 (e.g. variant was deleted on a
+      // variant-only product whose basePrice is 0).
+      const currentPrice = livePrice > 0 ? livePrice : unitPrice;
       return {
         id: item.id,
         productId: item.productId,

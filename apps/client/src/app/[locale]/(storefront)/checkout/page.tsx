@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import Image from 'next/image';
 import { ChevronDown, ChevronUp, Star } from 'lucide-react';
 import { apiClient } from '@mlh/api-client';
 import { API_ROUTES } from '@mlh/constants';
@@ -73,17 +72,15 @@ function OrderSummarySidebar({
           return (
             <li key={item.id} className="flex gap-3">
               <div className="relative w-14 h-14 shrink-0">
-                <div className="w-full h-full rounded-sm overflow-hidden bg-background border border-border">
-                  {thumb ? (
-                    <Image
+                <div className="w-full h-full rounded-sm overflow-hidden bg-muted/20 border border-border">
+                  {thumb && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
                       src={thumb}
-                      alt={item.productName}
-                      fill
-                      sizes="56px"
-                      className="object-cover"
+                      alt={item.productName || 'Product'}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     />
-                  ) : (
-                    <div className="w-full h-full bg-muted/20" />
                   )}
                 </div>
                 {item.quantity > 1 && (
@@ -96,9 +93,13 @@ function OrderSummarySidebar({
                 <p className="text-sm font-medium text-secondary line-clamp-2 leading-snug">
                   {item.productName}
                 </p>
-                {item.variantName && (
+                {item.variantOptions && Object.keys(item.variantOptions).length > 0 ? (
+                  <p className="text-xs text-muted">
+                    {Object.entries(item.variantOptions).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+                  </p>
+                ) : item.variantName ? (
                   <p className="text-xs text-muted">{item.variantName}</p>
-                )}
+                ) : null}
               </div>
               <p className="text-sm font-semibold text-secondary shrink-0 tabular-nums">
                 ${(item.currentPrice * item.quantity).toFixed(2)}

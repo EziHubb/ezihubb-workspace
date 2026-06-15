@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { X, ShoppingBag, ArrowRight, Trash2 } from 'lucide-react';
 import { useLocale } from 'next-intl';
@@ -138,17 +137,15 @@ export function CartDrawer() {
                 const thumb = item.previewUrl ?? item.productImageUrl;
                 return (
                   <li key={item.id} className="flex gap-3 py-3.5">
-                    <div className="relative w-14 h-14 shrink-0 rounded-sm overflow-hidden bg-background border border-border">
-                      {thumb ? (
-                        <Image
+                    <div className="relative w-14 h-14 shrink-0 rounded-sm overflow-hidden bg-muted/20 border border-border">
+                      {thumb && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
                           src={thumb}
-                          alt={item.productName}
-                          fill
-                          sizes="56px"
-                          className="object-cover"
+                          alt={item.productName || 'Product'}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
-                      ) : (
-                        <div className="w-full h-full bg-muted/20" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
