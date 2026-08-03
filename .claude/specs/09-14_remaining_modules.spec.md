@@ -14,6 +14,17 @@
 | POST | `/api/v1/products/{slug}/reviews/{reviewId}/helpful` | Mark review as helpful (anonymous) | No |
 | POST | `/api/v1/products/{slug}/reviews/{reviewId}/images` | Upload review images (max 5, max 5 MB each) | Bearer |
 
+### Endpoints (Global — `/reviews`, không gắn với 1 product cụ thể)
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/reviews` | List tất cả review đã approve (global, phân trang) | No |
+| GET | `/api/v1/reviews/summary` | Review summary toàn site (avg + distribution) | No |
+| GET | `/api/v1/reviews/me/reviewable-products` | Sản phẩm từ đơn delivered chưa review | Bearer |
+| GET | `/api/v1/reviews/can-review` | Kiểm tra user có được review 1 product không (`?productId=`) | Optional |
+| POST | `/api/v1/reviews/upload-image` | Upload ảnh review độc lập (trả về CDN URL) | Optional |
+
+File: `apps/api/src/modules/reviews/public-reviews.controller.ts`
+
 ### Endpoints (Admin)
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
@@ -348,6 +359,9 @@ model Notification {
 | GET | `/api/v1/admin/dashboard/revenue` | Daily revenue chart (`?days=7-365`, default 30) |
 | GET | `/api/v1/admin/dashboard/orders-by-status` | Order counts by status |
 | GET | `/api/v1/admin/dashboard/top-products` | Top products by revenue (`?limit=1-50`) |
+| GET | `/api/v1/admin/dashboard/platform` | Platform-wide stats (stores, products, revenue) |
+| GET | `/api/v1/admin/dashboard/activity` | Recent platform activity feed |
+| GET | `/api/v1/admin/dashboard/top-stores` | Top stores by revenue (`?limit=`, default 5) |
 | GET | `/api/v1/admin/dashboard/pending-reviews` | Paginated pending reviews |
 
 Dashboard also includes AI Features KPI row (pricing accuracy, trends, DNA profiles) — see `27_nft_features.spec.md`.
@@ -561,3 +575,48 @@ Summary: Full messaging system between customers and admin. 9 endpoints. Custome
 - `/[locale]/shops/[slug]` — Store detail with tabs: Featured / All / Reviews / About
 - `StorePageClient.tsx` — Client component handling tab switching
 - `StoreReviewsClient.tsx` — Handles reviews tab with sort
+
+### Admin Endpoints (Store/Marketplace Management)
+File: `apps/api/src/modules/stores/admin-stores.controller.ts` — ADMIN role scoped to own store (via `scopedOwnerId`), SUPER_ADMIN sees all.
+
+| Method | Path | Mô tả |
+|---|---|---|
+| GET | `/api/v1/admin/stores` | List stores (filterable) |
+| GET | `/api/v1/admin/stores/{id}` | Store detail |
+| POST | `/api/v1/admin/stores/{id}/approve` | Approve store application |
+| POST | `/api/v1/admin/stores/{id}/reject` | Reject application |
+| POST | `/api/v1/admin/stores/{id}/suspend` | Suspend store |
+| PATCH | `/api/v1/admin/stores/{id}` | Update store profile |
+| POST | `/api/v1/admin/stores/{id}/banner` | Upload store banner (multipart) |
+| POST | `/api/v1/admin/stores/{id}/logo` | Upload store logo (multipart) |
+| PATCH | `/api/v1/admin/stores/{id}/plan` | Assign seller plan |
+| GET | `/api/v1/admin/stores/{id}/products` | Store's products (paginated) |
+| GET | `/api/v1/admin/stores/{id}/orders` | Store's orders (paginated) |
+| GET/POST/PATCH/DELETE | `/api/v1/admin/plans` | Seller subscription plans CRUD |
+| GET/PATCH | `/api/v1/admin/platform-settings` | Platform-wide marketplace settings |
+| GET | `/api/v1/admin/seller-payouts` | List payouts (`?status=`) |
+| GET | `/api/v1/admin/seller-payouts/stats` | Payout stats |
+| POST | `/api/v1/admin/seller-payouts/{id}/pay` | Mark payout as paid |
+| GET | `/api/v1/admin/finance/stats` | Marketplace finance stats |
+| GET | `/api/v1/admin/finance/chart` | Revenue chart (`?days=`) |
+| GET | `/api/v1/admin/finance/stores` | Per-store finance breakdown (paginated) |
+
+### Seller Self-Service Endpoints (multi-vendor store owner)
+File: `apps/api/src/modules/stores/seller-orders.controller.ts` — guard `StoreOwnerGuard` (yêu cầu `req.store` gắn với user hiện tại).
+
+| Method | Path | Mô tả |
+|---|---|---|
+| GET | `/api/v1/seller/orders/stats` | Dashboard KPIs |
+| GET | `/api/v1/seller/orders/counts` | Order counts by status |
+| GET | `/api/v1/seller/orders/recent` | Last 5 orders |
+| GET | `/api/v1/seller/orders` | Paginated order list (`?status=`) |
+| GET | `/api/v1/seller/orders/{id}` | Order detail |
+| PATCH | `/api/v1/seller/orders/{id}` | Update status/tracking/notes |
+| POST | `/api/v1/seller/orders/{id}/ship` | Mark shipped + notify buyer |
+| GET | `/api/v1/seller/payouts` | Payout history + available balance |
+| POST | `/api/v1/seller/payouts/request` | Request a payout |
+| GET | `/api/v1/seller/reviews` | Reviews for own store |
+| POST | `/api/v1/seller/reviews/{id}/reply` | Reply to a review as seller |
+| GET | `/api/v1/seller/score` | Own store performance score breakdown |
+
+Xem thêm `/api/v1/seller/products/*` ở `04_product.spec.md` §2.

@@ -11,7 +11,8 @@
 | GET | `/api/v1/products/{slug}/related` | 8 sản phẩm liên quan (same category + tags) | No |
 | POST | `/api/v1/products/{id}/viewed` | Ghi lại lượt xem (HTTP 204) | Bearer |
 | GET | `/api/v1/products/{slug}/questions` | Public Q&A (answered only) | No |
-| POST | `/api/v1/products/{slug}/questions` | Customer submit question | Bearer |
+| POST | `/api/v1/products/{slug}/questions` | Customer submit question (body: `name`, `email?`, `question` — không cần login) | No |
+| POST | `/api/v1/questions/{id}/upvote` | Đánh dấu câu trả lời hữu ích | No |
 
 ## 2. Admin Endpoints
 
@@ -76,26 +77,48 @@
 | PUT | `/api/v1/admin/products/{id}/custom-options/reorder` | ADMIN |
 
 ### Q&A Management
-| Method | Path | Auth |
-|---|---|---|
-| GET | `/api/v1/admin/questions` | ADMIN — all pending questions |
-| POST | `/api/v1/admin/questions/{id}/answer` | ADMIN |
-| PATCH | `/api/v1/admin/questions/{id}/status` | ADMIN |
-| DELETE | `/api/v1/admin/questions/{id}` | ADMIN |
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/admin/questions/unanswered-count` | Đếm câu hỏi chưa trả lời (badge) | ADMIN |
+| GET | `/api/v1/admin/products/{id}/questions` | Câu hỏi của 1 sản phẩm (`?filter=all\|unanswered`) | ADMIN |
+| POST | `/api/v1/admin/products/{id}/questions/{qId}/answer` | Trả lời câu hỏi | ADMIN |
+| PATCH | `/api/v1/admin/products/{id}/questions/{qId}` | Sửa câu trả lời / toggle `isPublished` | ADMIN |
+| DELETE | `/api/v1/admin/products/{id}/questions/{qId}` | Xoá câu hỏi | ADMIN |
+| POST | `/api/v1/admin/products/{id}/questions/{qId}/spam` | Đánh dấu spam | ADMIN |
+
+Endpoint public tương ứng: `POST /api/v1/questions/{id}/upvote` — đánh dấu câu trả lời hữu ích (xem mục 1).
 
 ### CSV Import
 | Method | Path | Auth |
 |---|---|---|
-| POST | `/api/v1/admin/products/csv/validate` | ADMIN |
-| POST | `/api/v1/admin/products/csv/execute` | ADMIN |
-| GET | `/api/v1/admin/products/csv/template` | ADMIN |
+| GET | `/api/v1/admin/products/import/template` | ADMIN |
+| POST | `/api/v1/admin/products/import/validate` | ADMIN — multipart `file` |
+| POST | `/api/v1/admin/products/import/execute` | ADMIN — multipart `file` |
 
 ### Translations
-| Method | Path | Auth |
-|---|---|---|
-| GET | `/api/v1/admin/products/{id}/translations` | ADMIN |
-| PUT | `/api/v1/admin/products/{id}/translations/{locale}` | ADMIN |
-| POST | `/api/v1/admin/products/{id}/translations/{locale}/auto` | ADMIN |
+Dùng chung module `translations` (generic, không chỉ riêng Product — hỗ trợ cả `Category`):
+
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/admin/translations/{entityType}/{entityId}` | Lấy bản dịch tất cả locale | ADMIN |
+| PATCH | `/api/v1/admin/translations/{entityType}/{entityId}` | Lưu bản dịch thủ công cho 1 locale (body: `{ locale, translations }`) | ADMIN |
+| POST | `/api/v1/admin/translations/{entityType}/{entityId}/retranslate` | Queue job auto-translate (force re-translate) | ADMIN |
+
+`entityType`: `Product` \| `Category`. Chi tiết service: `apps/api/src/modules/translations/`.
+
+### Seller Products (self-serve, scoped to own store)
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/seller/products` | Danh sách sản phẩm của store (`?page&limit&search&status`) | Bearer (StoreOwner) |
+| POST | `/api/v1/seller/products/draft` | Tạo draft product cho store | Bearer (StoreOwner) |
+| GET | `/api/v1/seller/products/shipping-profiles` | Shipping profiles của store | Bearer (StoreOwner) |
+| GET | `/api/v1/seller/products/categories` | Danh mục khả dụng cho seller | Bearer (StoreOwner) |
+| GET | `/api/v1/seller/products/{id}` | Chi tiết sản phẩm (scoped store) | Bearer (StoreOwner) |
+| PATCH | `/api/v1/seller/products/{id}` | Cập nhật sản phẩm | Bearer (StoreOwner) |
+| PATCH | `/api/v1/seller/products/{id}/status` | Bật/tắt `isActive` | Bearer (StoreOwner) |
+| DELETE | `/api/v1/seller/products/{id}` | Soft-delete sản phẩm | Bearer (StoreOwner) |
+
+Guard: `StoreOwnerGuard` — yêu cầu user có `storeId` gắn với 1 store. File: `apps/api/src/modules/products/seller-products.controller.ts`.
 
 ## 3. Data Architecture
 

@@ -169,8 +169,11 @@ Env: `CORS_ORIGINS="http://localhost:3000,http://localhost:3001"` (comma-separat
 
 ## 10. Swagger Tags
 
-`Auth`, `Users`, `Products`, `Admin-Products`, `Catalog`, `Collections`, `Cart`, `Orders`, `Admin-Orders`, `Payments`, `Webhooks`, `Shipping`, `Reviews`, `Promotions`, `Search`, `Customization`, `Admin-Dashboard`, `Assets`, `Notifications`,
-`Messages`, `Loyalty`, `Affiliate`, `Referral`, `Push`, `PDF`, `Labels`, `Currency`, `Creators`, `NFT`, `Bounties`, `Wallet`, `Admin-Settings`, `Admin-Team`, `Admin-Audit`, `Admin-AI`, `Stores`, `Blind-Match`
+Most admin controllers get their tag automatically from the `@AdminController(path)` shorthand (`Admin — <Path>`, e.g. `Admin — Orders`, `Admin — Products`). Public/feature controllers set their own literal tag. Observed tags include:
+
+`Auth`, `Users`, `Products`, `Catalog`, `Cart`, `Orders`, `Payments`, `Webhooks`, `Shipping`, `Reviews`, `Promotions`, `Search`, `Customization`, `Wishlist`, `Messages`, `Loyalty`, `Affiliates`, `admin-referrals`/`referrals`, `Currency`, `Coins`, `VIP`, `Stores`, `Campaigns`, `creators`, `Unsubscribe`, `notifications`, `newsletter`, `Admin AI`, `Admin Stats`, `Admin — User Permissions`, plus per-module `Admin — <Path>` tags from `@AdminController`.
+
+**Note:** older versions of this doc listed `NFT`, `Wallet`, `Labels`, `Bounties`, and `PDF` as Swagger tags — those literal tags are no longer present in the codebase (NFT/Wallet features were removed entirely; PDF and label purchase are invoked from the Orders/Admin-Orders controllers rather than having their own tag). Always grep `@ApiTags(` in `apps/api/src` for the current authoritative list rather than trusting this table.
 
 ## 11. Error Code Conventions
 
@@ -216,12 +219,16 @@ const res = await clientFetch(`/admin/products/${id}`, {
 
 ## 14. Pagination
 
-Default parameters: `?page=1&limit=20`
+File: `apps/api/src/common/dto/pagination.dto.ts`
+
+Default parameters: `?page=1&limit=24` (max `limit` is 48; also carries `sort`/`order` fields, `order` defaults to `desc` via a `SortOrder` enum — do NOT send a default `sort` value from the client, an invalid/unexpected value fails enum validation)
 
 ```typescript
-interface PaginationDto {
-  page?: number;   // default 1
-  limit?: number;  // default 20
+class PaginationDto {
+  page?: number = 1;
+  limit?: number = 24;  // max 48
+  sort?: string;
+  order?: SortOrder = SortOrder.DESC;  // 'asc' | 'desc'
 }
 ```
 
@@ -231,18 +238,15 @@ Admin order list supports additional filters via `AdminOrderQueryDto` (status, d
 
 File: `libs/shared/api-client/src/hooks/`
 
-Available hooks:
-- `useProducts()`, `useProduct(slug)`, `useRelatedProducts(id)`
+Available hooks (this lib only covers the storefront's most common data needs — most feature pages, especially admin and the newer marketplace modules like loyalty/affiliates/messages/currency, call `apiClient` directly with raw paths rather than through a shared hook):
+- `useProducts()`, `useProduct(slug)`, `useRelatedProducts(id)`, `usePrefetchProduct()`
 - `useCategories()`, `useCategory(slug)`, `useCollections()`, `useCollection(slug)`
-- `useCart()`, `useMutateCart()`
+- `useCart()`, `useMutateCart()`, `useCheckout()`
 - `useOrders()`, `useOrder(orderNumber)`, `useCancelOrder()`
-- `useWishlist()`, `useMutateWishlist()`
+- `useWishlist()`, `useMutateWishlist()`, `useWishlistToggle()`
 - `useSearch(q, filters)`, `useSearchSuggestions(q)`
 - `useReviews(slug)`, `useReviewSummary(slug)`
 - `useProfile()`, `useMutateProfile()`, `useAddresses()`, `useMutateAddresses()`
 - `useShippingOptions()`, `useNewsletterSubscribe()`
-- `useLoyalty()`, `useLoyaltyPreview()`
-- `useMessages()`, `useMessageThread(threadId)`
-- `useAffiliateMe()`, `useReferralMe()`
-- `useCreators()`, `useCreator(username)`
-- `useCurrencies()`, `useNftDrops()`, `useNftDrop(id)`
+
+**Note:** earlier versions of this doc also listed `useLoyalty`, `useMessages`, `useAffiliateMe`, `useReferralMe`, `useCreators`, `useCurrencies`, and `useNftDrops` — none of these exist in `libs/shared/api-client/src/hooks/`. NFT/drops features were removed from the product entirely; loyalty/messages/affiliates/referrals/currency are fetched via `apiClient` directly in the relevant client pages, not via shared hooks.

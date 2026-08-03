@@ -1,5 +1,7 @@
 # Module 27 — NFT & Web3 Features (NFT-01→11)
 
+> **STATUS CHECK (verified against code this session): IMPLEMENTED.** Đây không phải spec aspirational/chưa làm — mọi controller, route, Prisma model, admin page và client page liệt kê dưới đây đã được đối chiếu trực tiếp với code trong `apps/api/src/modules/{drops,memberships,pricing,design-licensing,bounties,canva,trends,creator-dna}` và tồn tại đúng như mô tả (endpoints khớp chính xác path/method). Cái tên "NFT" chỉ là numbering lịch sử — như mục 8 đã ghi rõ, KHÔNG có blockchain/NFT minting thật, toàn bộ là tính năng web2. Một vài model Prisma có thêm field so với bản rút gọn trong tài liệu này (ví dụ `ABPricingTest.winnerId/storeId`, `DesignBounty.maxSubmissions/winnerId`, `TrendProductDraft.suggestedCategoryId/briefJobId/imageJobId`) — không sai, chỉ là lược bớt cho ngắn gọn.
+
 ## 1. Tổng quan
 
 Tích hợp các tính năng nâng cao: drop culture, fan memberships, AI-powered pricing, design licensing marketplace, creator bounties, Canva integration, trend-to-product pipeline, và Creator DNA. Schema đã được push lên DB. AI features dùng chung BullMQ queue `ai-features` với per-domain processors.

@@ -170,7 +170,7 @@ Khi user chọn option, filter available variants và grey out incompatible valu
 ## 8. AI Features (via Job Polling)
 
 ### Background Removal
-- Provider: **Remove.bg** (`BG_REMOVAL_PROVIDER=remove_bg`, `BG_REMOVAL_API_KEY`)
+- Provider: **Remove.bg** API (hardcoded, gọi trực tiếp `https://api.remove.bg/v1.0/removebg`; chỉ cần env `BG_REMOVAL_API_KEY` — không có provider switch)
 1. `customizerStore.removeBackground(fieldId)` → `POST /customization/remove-background`
 2. Poll `GET /customization/jobs/{jobId}` mỗi 2s (timeout: 65s)
 3. On complete: update `fieldValues[fieldId]` với result URL
@@ -225,3 +225,20 @@ File: `MobileCustomizerCanvas.tsx`
 ## 12. CustomizationDraft (DB Model)
 
 Lưu draft customization trong DB (Prisma). AutoFillBanner đọc draft khi user quay lại product.
+
+## 13. Canva Design Integration (Seller-side, không phải buyer customizer)
+
+Module riêng — cho phép **seller** kết nối tài khoản Canva để publish design trực tiếp thành ảnh sản phẩm (khác với customizer buyer-facing ở các mục trên).
+
+File: `apps/api/src/modules/canva/canva.controller.ts`, `canva.service.ts`
+
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/canva/authorize` | Redirect tới Canva OAuth consent screen | Bearer |
+| GET | `/api/v1/canva/callback` | OAuth callback, lưu token, redirect về `/seller/store?canva=connected` | No |
+| GET | `/api/v1/canva/products` | Danh sách sản phẩm của seller (để publish design vào) | Bearer |
+| POST | `/api/v1/canva/publish` | Publish design (multipart `image` + `productId`) thành ảnh sản phẩm | Bearer |
+| GET | `/api/v1/canva/status` | Trạng thái kết nối Canva của seller hiện tại | Bearer |
+| DELETE | `/api/v1/canva/disconnect` | Ngắt kết nối Canva | Bearer |
+
+Frontend: `apps/client/src/components/seller/CanvaConnectCard.tsx` (trong seller portal `/seller/store`).

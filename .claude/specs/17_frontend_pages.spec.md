@@ -64,7 +64,7 @@ apps/client/src/app/
         hall-of-fame/page.tsx
 
       chain/
-        page.tsx              # Gift chain index
+        start/page.tsx        # Start a new gift chain (?productId=)
         [chainId]/page.tsx    # Gift chain detail
       mystery/[orderId]/page.tsx
       open-shop/page.tsx         # Apply for store; shows pending/rejected states

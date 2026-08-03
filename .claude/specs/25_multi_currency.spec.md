@@ -17,29 +17,27 @@ Codebase hiện chỉ định nghĩa 2 currencies trong `currency-context.tsx`:
 
 ## 3. Exchange Rate Service (Backend)
 
-### Source
-- External API: exchangerate-api.com hoặc Frankfurter
-- Env: `EXCHANGE_RATE_API_KEY`
-- Cache: Redis key `exchange-rates:USD` (TTL: 1 hour)
-- Fallback: last cached rates nếu API unavailable
+> **Lưu ý:** Toàn bộ mục này khác đáng kể so với bản spec trước — controller thực tế là `@Controller('currency')` (số ít, không phải `currencies`), không có admin refresh endpoint, và không dùng API key nào.
 
-### Endpoint
+### Source
+- External API: `https://open.er-api.com/v6/latest/USD` (open.er-api.com — free, không cần API key)
+- **Không có** `EXCHANGE_RATE_API_KEY` env — code không đọc key nào cho việc này
+- Cache: Redis key `exchange-rates:usd-base` (TTL: **24 giờ**, không phải 1 giờ)
+- Fallback: hardcoded `{ USD: 1, VND: 25450 }` nếu fetch lỗi hoặc timeout (5s) — không phải "last cached rates"
+
+### Endpoint (`CurrencyController`, prefix `/api/v1/currency`)
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
-| GET | `/api/v1/currencies` | List supported currencies + current rates | No |
-| POST | `/api/v1/admin/currencies/refresh` | Force refresh rates from API | ADMIN |
+| GET | `/api/v1/currency/rates` | Trả về object rates phẳng: `{ USD: 1, VND: <rate> }` | No (Public) |
+| GET | `/api/v1/currency/supported` | List supported currencies (code/symbol/name/flag) | No (Public) |
 
-### Rate Response
+> Không có endpoint admin force-refresh (`/admin/currencies/refresh` không tồn tại) — rate tự refresh khi cache Redis hết hạn (24h).
+
+### Rate Response (thực tế — không có wrapper `success`/`data`/`updatedAt`)
 ```json
 {
-  "success": true,
-  "data": {
-    "base": "USD",
-    "updatedAt": "2026-06-14T10:00:00Z",
-    "rates": {
-      "VND": 25400
-    }
-  }
+  "USD": 1,
+  "VND": 25450
 }
 ```
 

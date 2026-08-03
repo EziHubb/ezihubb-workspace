@@ -23,7 +23,7 @@ Hệ thống tin nhắn hai chiều giữa customer và admin/shop. Customer g�
 | GET | `/admin/messages/conversations` | List tất cả conversations (phân trang, filter) | ADMIN |
 | GET | `/admin/messages/conversations/{id}` | Chi tiết conversation + toàn bộ messages | ADMIN |
 | POST | `/admin/messages/conversations/{id}/messages` | Admin reply vào conversation | ADMIN |
-| PATCH | `/admin/messages/conversations/{id}/status` | Cập nhật status (OPEN/CLOSED/ARCHIVED) | ADMIN |
+| PATCH | `/admin/messages/conversations/{id}/status` | Cập nhật status (OPEN/PENDING/RESOLVED/SPAM) | ADMIN |
 | POST | `/admin/messages/conversations/{id}/read` | Đánh dấu conversation đã đọc (admin) | ADMIN |
 
 > **Lưu ý:** Admin reply dùng `SenderType.SHOP` (không phải `ADMIN` string).
@@ -31,8 +31,8 @@ Hệ thống tin nhắn hai chiều giữa customer và admin/shop. Customer g�
 ## 3. Prisma Models
 
 ```prisma
-enum ConversationStatus { OPEN CLOSED ARCHIVED }
-enum SenderType         { CUSTOMER SHOP }
+enum ConversationStatus { OPEN PENDING RESOLVED SPAM }
+enum SenderType         { CUSTOMER SHOP SYSTEM }
 
 model Conversation {
   id               String             @id @default(cuid())
@@ -42,44 +42,52 @@ model Conversation {
   subject          String
   status           ConversationStatus @default(OPEN)
   orderId          String?            // optional: linked to order
-  isReadByAdmin    Boolean            @default(false)
-  isReadByCustomer Boolean            @default(true)
+  storeId          String?            // which store this conversation is with
+  lastMessage      String?
+  lastMessageAt    DateTime?
+  unreadByAdmin    Int                @default(0)
+  unreadByCustomer Int                @default(0)
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   messages         Message[]
   user             User?              @relation(fields: [userId], references: [id])
+  store            Store?             @relation(fields: [storeId], references: [id])
 }
 
 model Message {
   id             String       @id @default(cuid())
   conversationId String
-  sender         SenderType
-  senderId       String?      // userId nếu sender=CUSTOMER; adminId nếu sender=SHOP
+  senderType     SenderType
+  senderId       String?      // userId nếu senderType=CUSTOMER; adminId nếu senderType=SHOP
   body           String
-  imageUrls      String[]
+  attachmentUrls String[]     // up to 3 image attachments
+  isRead         Boolean      @default(false)
+  readAt         DateTime?
   createdAt      DateTime     @default(now())
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 }
 ```
+
+> **Lưu ý:** `unreadByAdmin`/`unreadByCustomer` là counter (Int), không phải boolean `isReadByAdmin`/`isReadByCustomer` như phiên bản trước. Conversation cũng lưu `storeId` để scope theo store.
 
 ## 4. DTOs
 
 ### CreateConversationDto (customer)
 ```typescript
 interface CreateConversationDto {
-  subject: string;     // max 200 chars
-  body: string;        // max 5000 chars
+  subject?: string;    // optional, max 200 chars
+  body: string;        // required, 1-5000 chars
   orderId?: string;
-  guestEmail?: string; // required nếu chưa authenticated
-  guestName?: string;
+  guestEmail?: string; // optional (IsEmail); not enforced-required at DTO level even for guests
+  guestName?: string;  // max 100 chars
 }
 ```
 
 ### SendMessageDto
 ```typescript
 interface SendMessageDto {
-  body: string;        // max 5000 chars
-  imageUrls?: string[];
+  body: string;        // 1-5000 chars
+  attachmentUrls?: string[]; // must be valid URLs (IsUrl each); no server-side count limit in DTO
 }
 ```
 
@@ -88,10 +96,11 @@ interface SendMessageDto {
 interface ConversationDto {
   id: string;
   subject: string;
-  status: 'OPEN' | 'CLOSED' | 'ARCHIVED';
+  status: 'OPEN' | 'PENDING' | 'RESOLVED' | 'SPAM';
   orderId?: string;
-  isReadByAdmin: boolean;
-  isReadByCustomer: boolean;
+  storeId?: string;
+  unreadByAdmin: number;
+  unreadByCustomer: number;
   createdAt: string;
   updatedAt: string;
   messages?: MessageDto[];
@@ -99,19 +108,20 @@ interface ConversationDto {
 
 interface MessageDto {
   id: string;
-  sender: 'CUSTOMER' | 'SHOP';
+  senderType: 'CUSTOMER' | 'SHOP' | 'SYSTEM';
   body: string;
-  imageUrls: string[];
+  attachmentUrls: string[];
   createdAt: string;
 }
 ```
 
-## 5. Email Notifications
+## 5. Email & Push Notifications
 
-- **Customer gửi conversation** → email notification đến admin (`ADMIN_NEW_MESSAGE` type)
-- **Admin reply** → email notification đến customer
-- Queue: `email-queue` (BullMQ)
-- Templates Handlebars: `new-message-admin.hbs`, `message-reply-customer.hbs`
+- **Customer gửi conversation / reply** → `notifications.sendNewMessageNotification()` (fire-and-forget) thông báo cho phía shop/admin
+- **Admin/shop reply** → `sendNewMessageNotification()` gửi tới `conversation.user.email` hoặc `guestEmail`
+- **Admin reply + conversation có `userId`** → thêm push notification qua `PushService.notifyNewMessage()` (FCM, fire-and-forget)
+- Gọi qua `NotificationsService`/`PushService` — chi tiết provider/queue implementation nằm trong module `notifications` (xem spec 24)
+- **Message moderation**: mỗi message gửi đi được queue qua `ModerationService.queueMessageModeration()` (optional dependency, fire-and-forget) — xem spec moderation
 
 ## 6. Admin Inbox UI
 
@@ -140,15 +150,15 @@ Admin messages controller uses `resolveSellerStoreId()` — ADMIN role only sees
 
 ## 9. Business Rules
 
-- Guest user có thể gửi conversation (cần email)
+- Guest user có thể gửi conversation (guestEmail optional ở DTO level, không bắt buộc phải có)
 - Authenticated user gửi từ account → linked với `userId`
-- Conversation tự động set `isReadByAdmin: false` khi customer gửi/reply
-- Conversation tự động set `isReadByCustomer: false` khi admin reply
-- Admin inbox badge đếm conversations có `isReadByAdmin: false`
-- Xoá conversation: chỉ ADMIN (archive thay thế cho soft delete)
-- Image upload trong message: max 5 ảnh, 10MB, lưu R2
+- Conversation tăng `unreadByAdmin` khi customer gửi/reply; tăng `unreadByCustomer` khi admin reply
+- Đánh dấu đã đọc: reset counter về 0 + `Message.isRead = true, readAt = now()` cho các message phía ngược lại
+- Admin inbox badge đếm conversations có `unreadByAdmin > 0`
+- Không có xoá/archive cứng — status `SPAM` hoặc `RESOLVED` dùng để dọn dẹp inbox thay vì xoá
+- Image upload trong message: field `attachmentUrls` (URL only, `IsUrl` validation), lưu R2; comment trong schema ghi "up to 3" nhưng không có giới hạn cứng ở DTO/service
 
-## 9. File Structure (API)
+## 10. File Structure (API)
 
 ```
 apps/api/src/modules/messages/

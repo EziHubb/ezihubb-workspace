@@ -32,9 +32,11 @@ dev-admin: ## Start admin only
 
 # ── Docker infra ─────────────────────────────────────────────────────────────
 # docker-compose.yml is the production stack (postgres, redis, api, client,
-# admin, nginx). For local dev, only postgres/redis are started here — storage
-# (AWS_S3_*) and email (SMTP_*) need R2/SendGrid credentials, or point them at
-# your own local MinIO/MailHog if you run those separately.
+# admin — no nginx container; the host's own nginx reverse-proxies subdomains,
+# see scripts/nginx-ezihubb.conf). For local dev, only postgres/redis are
+# started here — storage (AWS_S3_*) and email (SMTP_*) need R2/SendGrid
+# credentials, or point them at your own local MinIO/MailHog if you run those
+# separately.
 docker-up: ## Start local infra (postgres, redis)
 	docker compose up -d postgres redis
 

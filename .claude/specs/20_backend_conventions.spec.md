@@ -17,8 +17,8 @@ apps/api/src/modules/<module>/
     <entity>.schema.ts
 ```
 
-### Modules present in `apps/api/src/modules/`
-`admin`, `admin-users`, `affiliates`, `ai` (admin-ai), `analytics`, `assets`, `auth`, `blind-match`, `bounties`, `bundles`, `campaigns`, `canva`, `cart`, `catalog`, `coins`, `creator-dna`, `currency`, `customization`, `database` (mongodb), `design-licensing`, `drops`, `flash-deals`, `gift-chains`, `gift-finder`, `gift-pools`, `loyalty`, `memberships`, `messages`, `moderation`, `notifications` (includes FcmService + PushService), `order-tracking`, `orders`, `payments`, `pdf`, `pricing`, `products` (includes LowStockService), `promotions`, `referrals`, `reviews`, `search`, `shipping`, `shop-stats`, `store-credits`, `stores`, `tax`, `translations`, `users`, `vip`
+### Modules present in `apps/api/src/modules/` (50 modules)
+`admin`, `admin-users`, `affiliates`, `ai` (admin-ai), `analytics`, `assets`, `auth`, `blind-match`, `bounties`, `bundles`, `campaigns`, `canva`, `cart`, `catalog`, `coins`, `creator-dna`, `currency`, `customization`, `database` (mongodb), `design-licensing`, `drops`, `flash-deals`, `gift-chains`, `gift-finder`, `gift-pools`, `loyalty`, `memberships`, `messages`, `moderation`, `notifications` (includes FcmService + PushService), `order-tracking`, `orders`, `payments`, `pdf`, `pricing`, `products` (includes LowStockService), `promotions`, `referrals`, `reviews`, `search`, `shipping`, `shop-stats`, `store-credits`, `stores`, `tax`, `translations`, `trends`, `unsubscribe`, `users`, `vip`
 
 ## 2. Controller Conventions
 
@@ -282,16 +282,25 @@ const DEFAULT_PERMISSION_DOCUMENT: PermissionDocument = { roles: ['shop_owner'] 
 ## 10. BullMQ Queues
 
 ```typescript
-// Queue names (from queue.constants.ts)
-QUEUES.EMAIL              // 'email-queue'
-QUEUES.IMAGE_PROCESSING   // 'image-processing-queue'
-QUEUES.ORDER_PROCESSING   // 'order-processing-queue'
-QUEUES.LOYALTY_UNLOCK     // 'loyalty-unlock'
-QUEUES.STOCK_ALERT        // 'stock-alert-queue'
-QUEUES.PDF_GENERATION     // 'pdf-generation-queue'
-QUEUES.PUSH_NOTIFICATION  // 'push-notification-queue'
-QUEUES.TRANSLATION        // 'translation-queue'
-QUEUES.AI_FEATURES        // 'ai-features'
+// Queue names (from apps/api/src/queue/queue.constants.ts)
+QUEUES.EMAIL                 // 'email'
+QUEUES.IMAGE_PROCESSING      // 'image-processing'
+QUEUES.ORDER_PROCESSING      // 'order-processing'
+QUEUES.SCHEDULED             // 'scheduled'
+QUEUES.ABANDONED_CART        // 'abandoned-cart'
+QUEUES.AFFILIATE_COMMISSION  // 'affiliate-commission'
+QUEUES.LOYALTY               // 'loyalty'
+QUEUES.LOW_STOCK             // 'low-stock'
+QUEUES.TRANSLATIONS          // 'translations'
+QUEUES.REFERRAL              // 'referral'
+QUEUES.MODERATION            // 'moderation'
+QUEUES.AI_FEATURES           // 'ai-features'
+QUEUES.COINS                 // 'coins'
+QUEUES.ORDER_TRACKING        // 'order-tracking'
+QUEUES.FLASH_DEALS           // 'flash-deals'
+QUEUES.GIFT_POOLS            // 'gift-pools'
+QUEUES.GIFT_CHAINS           // 'gift-chains'
+QUEUES.BLIND_MATCH           // 'blind-match'
 
 // Dev mode (DISABLE_QUEUE=true)
 // DevBullModule provides no-op tokens
@@ -356,10 +365,10 @@ pnpm nx e2e api-e2e        # E2E tests
 
 ## 15. Email Templates (Handlebars)
 
-- Location: `apps/api/src/modules/notifications/templates/`
+- Location: `apps/api/src/assets/email-templates/` (32 templates — NOT under `modules/notifications/`)
 - Format: `.hbs` Handlebars templates
-- Compiled via `@nestjs-modules/mailer` or nodemailer with handlebars
-- Templates: `welcome`, `verify-email`, `reset-password`, `order-confirmation`, `order-shipped`, `order-delivered`, `order-cancelled`
+- Compiled via nodemailer with handlebars
+- Templates span far more than transactional order emails — covers auth (`welcome`, `email-verify`, `reset-password`), orders (`order-confirmation`, `order-shipped`, `order-delivered`, `refund-notification`, `abandoned-cart`, `low-stock-alert`), reviews (`review-reminder`), messages (`new-message`, `contact-message`), affiliates (`affiliate-approved`, `affiliate-rejected`, `commission-confirmed`, `payout-processed`, `buyer-referral-invite`, `buyer-referral-credited`), loyalty (`loyalty-points-earned`), stores/seller onboarding (`application-received`, `new-store-application`, `store-application-received`, `store-approved`, `store-rejected`, `new-store-order`, `team-invite`), moderation (`content-flagged`, `content-warning`, `content-rejected-critical`, `moderation-critical-alert`, `store-strike-warning`, `store-suspended`), and gift cards (`gift-card-delivery`)
 
 ## 16. Key Shared Services
 
@@ -371,7 +380,7 @@ auditLogService.log({ userId, action, entityType, entityId, before?, after?, ip?
 Called in: order status change, order cancel, order ship, product CRUD, user role change, settings update.
 
 ### AutoTranslateService
-File: `apps/api/src/modules/products/auto-translate.service.ts`
+File: `apps/api/src/modules/translations/auto-translate.service.ts` (own `translations` module, not under `products`)
 - Provider priority: Google Cloud → DeepL → LibreTranslate
 - Called via `translation-queue` job (async)
 

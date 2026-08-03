@@ -139,6 +139,7 @@ model Cart {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   expiresAt      DateTime?
+  abandonedEmailSentAt DateTime?   // set when the abandoned-cart reminder email has been sent
 }
 
 model CartItem {
@@ -154,8 +155,19 @@ model CartItem {
   cart              Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
   product           Product  @relation(fields: [productId], references: [id])
   variant           ProductVariant? @relation(fields: [variantId], references: [id])
+  storeId           String?         // multi-vendor: which store this line item belongs to
+  store             Store?   @relation("CartItemStore", fields: [storeId], references: [id])
 }
 ```
+
+## 9. Abandoned Cart Emails
+
+BullMQ processor `apps/api/src/queue/abandoned-cart.processor.ts` (queue `ABANDONED_CART`, job `SCAN_ABANDONED_CARTS`, chạy theo lịch qua `queue-scheduler.service.ts`):
+
+- Quét cart có `userId` (không quét guest cart), `updatedAt` trong khoảng 2h–24h trước, có items, `abandonedEmailSentAt: null`, user chưa `cartEmailOptOut` và đã `isEmailVerified`
+- Gửi email template `abandoned-cart` (tối đa 3 sản phẩm/preview) kèm `unsubscribeUrl` (token `cartEmailToken`, sinh 1 lần/lưu trên `User`)
+- Sau khi gửi: set `abandonedEmailSentAt`; thêm item mới vào cart sẽ reset field này về `null` (cho phép gửi lại lần sau)
+- Unsubscribe: `GET /api/v1/unsubscribe/cart?token=` (xem module `unsubscribe`)
 
 ## 6. AddCartItemDto
 

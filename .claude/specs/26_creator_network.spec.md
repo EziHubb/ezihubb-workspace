@@ -10,9 +10,11 @@ Creator Network là hệ thống multi-level referral cho phép users ("creators
 
 | Old Term | New Term |
 |---|---|
-| Seller/Influencer | Creator |
+| Seller/Influencer (referral context) | Creator |
 | Referral Member | Creator |
-| Seller route `/seller/*` | (deleted — no replacement in this module) |
+| Seller route `/seller/*` (referral/influencer dashboard) | (deleted — no replacement in this module) |
+
+> **Lưu ý:** Route `/[locale]/(seller)/seller/*` (products, orders, payouts, reviews, store) VẪN tồn tại trong client app — đây là dashboard quản lý cửa hàng cho "shop owner", KHÔNG liên quan đến referral/creator terminology. Bảng trên chỉ nói về việc xoá route `/seller` cũ từng dùng cho chức năng referral/influencer (nếu có), không phải toàn bộ `/seller/*`.
 
 ## 3. Creator Tiers (4 levels)
 
@@ -29,31 +31,42 @@ Creator Network là hệ thống multi-level referral cho phép users ("creators
 
 ## 4. API Endpoints
 
-### Creator (authenticated) — via API_ROUTES.CREATORS.*
+> **Quan trọng:** "Creator" chỉ là lớp branding/alias ở tên constant và ở `CreatorController` — path thực tế phía server KHÔNG có prefix `/admin/creators`. Backend admin routes vẫn nằm dưới `/api/v1/admin/referrals/*` (`AdminReferralController`); chỉ tên constant phía FE (`ADMIN_CREATORS_*`) được đặt tên theo "creator" trong khi value trỏ tới `/admin/referrals/...`.
+
+### Creator (authenticated) — `CreatorController`, `@Controller('creators')`, via API_ROUTES.CREATORS.*
 
 | Method | Path | Mô tả |
 |---|---|---|
+| GET | `/api/v1/creators/public-stats` | Public stats cho landing page (No auth) |
+| GET | `/api/v1/creators/resolve?code=` | Resolve buyer discount cho checkout (No auth) |
 | GET | `/api/v1/creators/me` | My creator profile (tier, referralCode, balances) |
-| GET | `/api/v1/creators/me/earnings` | Paginated earnings history (level, status, lockedAt) |
-| GET | `/api/v1/creators/me/payouts` | My payout requests |
-| POST | `/api/v1/creators/me/payouts` | Request payout (paymentMethod, paymentDetail, amount) |
+| GET | `/api/v1/creators/me/earnings` | Paginated earnings history (level, status) |
+| GET | `/api/v1/creators/me/tree` | Direct referrals (L1) |
+| GET | `/api/v1/creators/me/withdrawals` | My payout requests (KHÔNG phải `/me/payouts`) |
+| POST | `/api/v1/creators/me/withdrawals/request` | Request payout (paymentMethod, paymentDetail, amount) — KHÔNG phải `POST /me/payouts` |
 
-### Admin — via API_ROUTES.ADMIN.ADMIN_CREATORS_*
+> `CreatorController` dùng chung `ReferralService` với module Referral (spec 22 Part B) — không có model/service riêng cho "Creator".
 
-| Method | Path | Mô tả |
-|---|---|---|
-| GET | `/api/v1/admin/creators/overview` | KPIs + top creators + recent commissions + payout queue |
-| GET | `/api/v1/admin/creators/members` | Paginated creator list (search, tier filter) |
-| GET | `/api/v1/admin/creators/payouts` | Payout requests (paginated, status filter) |
-| PATCH | `/api/v1/admin/creators/payouts/:id` | Update payout status (PAID/REJECTED) |
-| GET | `/api/v1/admin/creators/settings` | Creator program settings (rates) |
-| PATCH | `/api/v1/admin/creators/settings` | Update commission rates / buyer discount |
+### Admin — path thực tế `/api/v1/admin/referrals/*` (constant tên là `ADMIN_CREATORS_*` nhưng value trỏ referrals)
+
+| Method | Path thực tế | Constant FE | Mô tả |
+|---|---|---|---|
+| GET | `/api/v1/admin/referrals/overview` | `ADMIN_CREATORS_OVERVIEW` | KPIs + top creators + recent commissions + payout queue |
+| GET | `/api/v1/admin/referrals/users` | `ADMIN_CREATORS_MEMBERS` | Paginated creator list (search, tier filter) — path là `/users` không phải `/members` |
+| GET | `/api/v1/admin/referrals/users/:id/tree` | `ADMIN_CREATORS_MEMBER_TREE` | Referral tree của 1 user |
+| GET | `/api/v1/admin/referrals/payouts` | `ADMIN_CREATORS_PAYOUTS` | Payout requests (paginated, status filter) |
+| POST | `/api/v1/admin/referrals/payouts/:id/pay` | `ADMIN_CREATORS_PAYOUT_PAY` | Mark payout PAID — là `POST`, không phải `PATCH` |
+| POST | `/api/v1/admin/referrals/payouts/:id/reject` | `ADMIN_CREATORS_PAYOUT_REJECT` | Reject payout |
+| GET/PATCH | `/api/v1/admin/referrals/settings` | `ADMIN_CREATORS_SETTINGS` | Creator/referral program settings (rates) |
+| GET/POST | `/api/v1/admin/referrals/tiers` | `ADMIN_CREATORS_TIERS` | List/create tier — không có trong spec cũ |
+| PATCH/DELETE | `/api/v1/admin/referrals/tiers/:id` | `ADMIN_CREATORS_TIER` | Update/xoá tier |
 
 ## 5. Data Shape (từ API responses)
 
 ```typescript
 interface CreatorMe {
   referralCode:     string;
+  creatorCode:      string;   // alias of referralCode, added by getCreatorMe()
   tier:             CreatorTier | null;  // null for new creators without tier
   directReferrals:  number;
   level2Referrals:  number;
@@ -61,7 +74,7 @@ interface CreatorMe {
   totalEarned:      number;
   pendingBalance:   number;
   confirmedBalance: number;
-  linkClicks?:      number;
+  // linkClicks: KHÔNG được trả về bởi getCreatorMe() hiện tại — không có tracking click nào cho Creator Network
 }
 
 interface CreatorTier {
@@ -117,7 +130,7 @@ KPI cards on hub:
 - Direct Members (Users icon, purple)
 - Available balance (DollarSign icon, green)
 - Total Earned all time (TrendingUp icon, primary)
-- Link Clicks this month (MousePointer icon, blue)
+- Link Clicks this month (MousePointer icon, blue) — UI đọc `me.linkClicks`, nhưng `GET /creators/me` hiện **không trả field này** (`getCreatorMe()` không có `linkClicks` trong response) → card này luôn hiển thị 0 trên thực tế
 
 ## 7. Admin Pages
 

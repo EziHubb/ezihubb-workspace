@@ -9,7 +9,7 @@
 | Layer | Technology | Version |
 |---|---|---|
 | **Monorepo** | Nx | 22.7.2 |
-| **Package Manager** | pnpm | 11.0.9 |
+| **Package Manager** | pnpm | 11.5.2 |
 | **Language** | TypeScript | ~5.7.2 |
 | **Frontend** | Next.js (Turbopack) | ~16.1.6 |
 | **React** | React | ^19.0.0 |
@@ -36,17 +36,23 @@ ezihubb-workspace/
 ├── apps/
 │   ├── api/          → NestJS backend (port 3002)
 │   ├── client/       → Next.js storefront (port 3000)
-│   └── admin/        → Next.js admin panel
+│   └── admin/        → Next.js admin panel (port 3001)
 ├── libs/
 │   ├── shared/types/     → Shared TypeScript DTOs
 │   ├── shared/api-client/ → React Query hooks + HTTP client
 │   ├── shared/constants/ → API routes, enums, constants
 │   └── ui/               → Shared React component library
 ├── prisma/
-│   ├── schema.prisma     → PostgreSQL schema (21 models)
-│   ├── seed.ts           → Full seed (20 products, categories, MongoDB)
-│   ├── seed-mongo.ts     → Standalone MongoDB-only seed
-│   └── prisma.config.ts  → Prisma 7 adapter config
+│   ├── schema.prisma     → PostgreSQL schema (100+ models — grew far beyond the original
+│   │                        21 as marketplace features were added: stores, affiliates,
+│   │                        loyalty, referrals, moderation, gift chains/pools, flash
+│   │                        deals, blind-match, campaigns, coins, etc.)
+│   ├── seed.ts           → Thin orchestrator — delegates to seeds/pg/ and seeds/mongo/
+│   └── seeds/
+│       ├── pg/           → 21 numbered PostgreSQL seed files + index.ts
+│       ├── mongo/        → MongoDB seed files (product_details, category_menus) + index.ts
+│       └── shared/       → prisma-client.ts, mongo-schemas.ts (shared helpers)
+├── prisma.config.ts      → Prisma 7 adapter config (repo root, not inside prisma/)
 └── .claude/specs/        → Module specifications (this directory)
 ```
 

@@ -8,15 +8,16 @@ Tự động tạo PDF invoice và packing slip cho mỗi đơn hàng. Lưu cach
 
 ### A2. API Endpoints
 
+> **Lưu ý:** Path param thực tế là `{id}` (order's cuid), KHÔNG phải `{orderNumber}`. Customer **không có** route download packing slip riêng — chỉ admin mới tải được packing slip. Cũng không có endpoint "regenerate" — `PdfService.invalidatePdfs()` tồn tại trong service nhưng hiện KHÔNG được gọi từ bất kỳ controller nào (dead code, chưa wire).
+
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
-| GET | `/api/v1/orders/{orderNumber}/invoice` | Download PDF invoice (customer) | Bearer (owner) |
-| GET | `/api/v1/orders/{orderNumber}/packing-slip` | Download PDF packing slip | Bearer (owner) |
-| GET | `/api/v1/admin/orders/{id}/invoice` | Admin download invoice | ADMIN |
+| GET | `/api/v1/orders/{id}/invoice` | Download PDF invoice (customer, tự động ẩn giá nếu là gift receipt) | Bearer (owner, `userId` check trong `generateInvoice`) |
+| GET | `/api/v1/admin/orders/{id}/invoice` | Admin download invoice (luôn full invoice, `isGiftReceipt=false`) | ADMIN |
 | GET | `/api/v1/admin/orders/{id}/packing-slip` | Admin download packing slip | ADMIN |
-| POST | `/api/v1/admin/orders/{id}/invoice/regenerate` | Force regenerate (invalidate cache) | ADMIN |
+| POST | `/api/v1/admin/orders/bulk-packing-slips` | Generate packing slip cho nhiều order cùng lúc (body: `orderIds: string[]`, trả về `{ urls: string[] }`) — tính năng không có trong spec cũ | ADMIN |
 
-Response: redirect to R2 public URL hoặc `Content-Type: application/pdf`.
+Response: `{ url: string }` JSON chứa R2 public URL (không redirect trực tiếp, không trả `Content-Type: application/pdf` trực tiếp từ route này — client tự mở URL).
 
 ### A3. Service: PdfService
 
@@ -118,21 +119,21 @@ Cache keys:
 - Gift receipt: `pdfs/{orderId}/gift-receipt.pdf`
 - Packing slip: `pdfs/{orderId}/packing-slip.pdf`
 
-Generated on first request, cached indefinitely. `invalidatePdfs()` deletes all three variants — call when admin corrects order address or when order data changes significantly.
+Generated on first request, cached indefinitely. `invalidatePdfs()` (xoá cả 3 cache key) tồn tại trong `PdfService` nhưng **hiện không được gọi ở bất kỳ đâu** trong codebase — chưa wire trigger tự động khi admin sửa địa chỉ đơn hàng, và không có endpoint admin nào để invalidate/regenerate thủ công. Đây là gap thực tế so với thiết kế ban đầu.
 
 ### A7. Client UI
 
-- `OrderDetailClient.tsx`: "Download Invoice" button (shown when order CONFIRMED+)
-- Customer account orders page: download invoice button per order
+- File thực tế: `apps/client/src/app/[locale]/(account)/account/orders/[orderNumber]/page.tsx` (KHÔNG phải `OrderDetailClient.tsx`) — nút "Download Invoice" ở header, gọi `GET /orders/{order.id}/invoice`, mở URL trả về bằng `window.open()`
+- Nút hiển thị **không điều kiện theo order status** (luôn hiển thị, không gate theo CONFIRMED+)
+- Không có nút download packing slip ở phía customer (chỉ admin có)
 
 ### A8. Business Rules
 
-- Invoice available after order `CONFIRMED`
-- Packing slip available after `IN_PRODUCTION`
-- Customer can only download their own orders (userId ownership check before cache lookup)
+- **Không có gate theo order status** trong `PdfService`/`OrdersController` — invoice/packing-slip có thể generate ở bất kỳ status nào miễn ownership hợp lệ (khác với claim "available after CONFIRMED/IN_PRODUCTION" ở bản spec trước — đó là behavior mong muốn ban đầu, chưa được implement)
+- Customer can only download their own orders (userId ownership check trong `generateInvoice`, thực hiện trước khi check cache)
 - Gift receipt auto-used when `order.giftReceipt === true`
 - PDF generated server-side using React-PDF renderToBuffer
-- `GIFT_WRAPPING_PRICE = 4.99` (constant in pdf.service.ts)
+- `GIFT_WRAPPING_PRICE = 4.99` (constant, exported từ `pdf.service.ts`)
 
 ---
 
@@ -144,12 +145,14 @@ Admin mua nhãn vận chuyển trực tiếp từ admin panel thông qua EasyPos
 
 ### B2. API Endpoints
 
+> **Lưu ý:** Path thực tế KHÔNG có segment `/shipping/` — routes nằm trực tiếp trên `AdminOrdersController` (`@Controller('admin/orders')`). Lấy rates là `GET` (không phải `POST`). Không có endpoint "get purchased label info" hay "void/cancel label" — cả hai đều chưa implement.
+
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
-| POST | `/api/v1/admin/orders/{id}/shipping/rates` | Get shipping rates từ EasyPost | ADMIN |
-| POST | `/api/v1/admin/orders/{id}/shipping/buy-label` | Purchase label (chọn rate) | ADMIN |
-| GET | `/api/v1/admin/orders/{id}/shipping/label` | Get purchased label info | ADMIN |
-| DELETE | `/api/v1/admin/orders/{id}/shipping/label` | Void/cancel label | ADMIN |
+| GET | `/api/v1/admin/orders/{id}/rates` | Get shipping rates từ EasyPost (an toàn — không charge) | ADMIN |
+| POST | `/api/v1/admin/orders/{id}/buy-label` | Purchase label (body: `{ rateId: string }`) — irreversible, charge ngay | ADMIN |
+
+> Label info sau khi mua nằm sẵn trong response `buy-label` (`LabelResult`) và trong order record (`labelUrl`, `trackingNumber`, ...) — không cần endpoint GET riêng. Void/cancel label **chưa được implement** ở bất kỳ đâu trong code.
 
 ### B3. Service: LabelService
 
@@ -222,23 +225,22 @@ model Order {
 
 ### B6. Admin UI: BuyLabelModal
 
-File: `apps/admin/src/components/orders/BuyLabelModal.tsx`
+File: `apps/admin/src/components/orders/BuyLabelModal.tsx` — dùng chung bởi cả `OrderDrawer.tsx` và `OrderDetailPanel.tsx`
 
 Flow:
-1. Admin clicks "Buy Shipping Label"
-2. Modal opens → auto-calls `GET /rates` endpoint
+1. Admin click nút **"Buy label"** (chữ thường, không phải "Buy Shipping Label")
+2. Modal opens → auto-calls `GET /admin/orders/{id}/rates`
 3. Rate table: carrier, service, price, ETA
-4. Admin selects rate → "Buy Label" button
-5. Success: tracking number + label download link shown in OrderDrawer
+4. Admin chọn rate → xác nhận mua → `POST /admin/orders/{id}/buy-label`
+5. Success: `onLabelPurchased` callback cập nhật UI với tracking number + label URL
 
-### B7. OrderDrawer Integration
+### B7. OrderDrawer / OrderDetailPanel Integration
 
-File: `apps/admin/src/components/orders/OrderDrawer.tsx`
+Files: `apps/admin/src/components/orders/OrderDrawer.tsx`, `apps/admin/src/components/orders/OrderDetailPanel.tsx`
 
-When order status `IN_PRODUCTION` or `SHIPPED`:
-- "Buy Shipping Label" button (opens BuyLabelModal) — shown if `!order.labelUrl`
-- "Print Label" button → open `labelUrl` in new tab — shown if `order.labelUrl` exists
-- "Void Label" button — shown if label exists and not voided
+- **"Buy label"** button (mở `BuyLabelModal`) — hiển thị khi `!order.labelUrl`
+- **"Print label"** link → mở `labelUrl` trong tab mới — hiển thị khi `order.labelUrl` tồn tại
+- **Không có nút "Void Label"** ở bất kỳ đâu trong UI — tính năng void/cancel label chưa được implement (khớp với việc thiếu endpoint void ở B2)
 
 ### B8. Environment Variables
 
@@ -255,8 +257,8 @@ WAREHOUSE_PHONE=...
 ### B9. Business Rules
 
 - getRates: fetches from EasyPost, saves `easypostShipmentId` to Order (reuses on retry)
-- purchaseLabel: one label per order (`labelUrl` already set → throws BadRequestException)
+- purchaseLabel: one label per order (`labelUrl` already set → throws BadRequestException); throws nếu chưa gọi getRates trước (`easypostShipmentId` chưa tồn tại)
 - After purchase: auto-update order status to `SHIPPED` + all tracking fields
 - Carrier detection: uses `TrackingService.detectCarrier(trackingCode)` if EasyPost doesn't return carrier
 - Rates are not cached — always fetched fresh (existing shipment is reused)
-- Void label: EasyPost limitation 28 days, no automatic refund
+- **Void label chưa được implement** — không có service method, endpoint, hay UI nào cho việc void/cancel label (khác với claim "EasyPost limitation 28 days" ở bản spec trước, vốn mô tả một tính năng chưa tồn tại)

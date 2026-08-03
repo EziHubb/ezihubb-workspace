@@ -46,6 +46,24 @@
 
 Valid attribute types: `color`, `material`, `occasion`, `holiday`, `recipient`, `style`, `sustainability`, `hat-type`
 
+### Shop Sections
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/admin/shop-sections` | List (scoped tới store của seller; super-admin thấy tất cả) | ADMIN |
+| POST | `/api/v1/admin/shop-sections` | Tạo shop section | ADMIN |
+| PATCH | `/api/v1/admin/shop-sections/{id}` | Cập nhật | ADMIN |
+| DELETE | `/api/v1/admin/shop-sections/{id}` | Xoá (gỡ `shopSectionId` khỏi products liên quan) | ADMIN |
+
+### Production Partners
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/admin/production-partners` | List | ADMIN |
+| POST | `/api/v1/admin/production-partners` | Tạo | ADMIN |
+| PATCH | `/api/v1/admin/production-partners/{id}` | Cập nhật | ADMIN |
+| DELETE | `/api/v1/admin/production-partners/{id}` | Xoá | ADMIN |
+
+`ShopSection` và `ProductionPartner` Prisma models: xem `04_product.spec.md` §4. Shop sections filter theo `storeId` của user hiện tại (guard nội bộ `resolveStoreId`); production partners không scope theo store.
+
 ## 3. Data Sources
 
 ### Categories — PostgreSQL (Prisma)
@@ -182,6 +200,13 @@ Admin `GET /api/v1/admin/collections` — trả về tất cả kể cả inacti
 - `/[locale]/collections/[slug]` — Collection landing page
 - Mega menu component: `apps/client/src/components/layout/MegaMenu.tsx`
 - Category data fetched server-side for SEO
+
+Admin (`apps/admin/src/app/(admin)/catalog/`):
+- `/catalog/categories` — Category tree management
+- `/catalog/collections` — Collections management
+- `/catalog/tags` — Tags management
+- `/catalog/shop-sections` — Shop sections management
+- `/catalog/production-partners` — Production partners management
 
 ## 9. Business Rules
 

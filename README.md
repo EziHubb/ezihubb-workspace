@@ -18,10 +18,12 @@ A full-stack e-commerce platform for personalized handmade goods. Customers brow
             │  REST + cookies             │  REST + JWT
             ▼                             ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│  NestJS API  (port 3002)                                            │
-│  Auth · Users · Products · Cart · Orders · Payments                │
-│  Shipping · Reviews · Promotions · Notifications · Customization    │
-│  Search · Admin                                                     │
+│  NestJS API  (port 3002) — ~49 feature modules, incl.:              │
+│  Auth · Users · Products · Cart · Orders · Payments · Shipping      │
+│  Reviews · Promotions · Notifications · Customization · Search      │
+│  Affiliates · Referrals · Loyalty · Creator Network (AI) · Flash    │
+│  Deals · Gift Chains/Pools/Finder · Blind Match · Moderation · PDF  │
+│  Multi-currency · Store Credits · Admin                              │
 ├───────────────────────┬─────────────────────────────────────────────┤
 │  PostgreSQL (Prisma)  │  Redis (cache + queues)                    │
 ├───────────────────────┴─────────────────────────────────────────────┤
@@ -38,7 +40,7 @@ A full-stack e-commerce platform for personalized handmade goods. Customers brow
 
 | Tool | Version |
 |------|---------|
-| Node.js | 20.x |
+| Node.js | 22.x |
 | pnpm | 11.0.9 |
 | Docker & Docker Compose | Latest |
 
@@ -48,7 +50,7 @@ A full-stack e-commerce platform for personalized handmade goods. Customers brow
 
 ```bash
 # 1. Clone and enter the repo
-git clone https://github.com/your-org/ezihubb.git
+git clone https://github.com/EziHubb/ezihubb-workspace.git
 cd ezihubb-workspace
 
 # 2. First-time setup (installs deps, starts infra, migrates DB, seeds data)
@@ -70,8 +72,8 @@ The setup command copies `.env.example` → `.env` — fill in blank values befo
 | Admin Panel | http://localhost:3001 | Staff / admin dashboard |
 | API | http://localhost:3002 | NestJS REST API |
 | API Docs | http://localhost:3002/api | Swagger UI |
-| MailHog | http://localhost:8025 | Local email testing |
-| MinIO Console | http://localhost:9001 | Local S3 storage UI |
+| MailHog | http://localhost:8025 | Local email testing (run separately — not part of docker-compose.yml, which is production-only) |
+| MinIO Console | http://localhost:9001 | Local S3 storage UI (run separately, same reason) |
 
 ---
 
@@ -146,9 +148,11 @@ ezihubb-workspace/
 │   └── admin/            # Next.js admin panel
 ├── libs/
 │   ├── ui/               # @ezihubb/ui — shared React components
-│   ├── types/            # @ezihubb/types — shared TypeScript interfaces
-│   ├── constants/        # @ezihubb/constants — enums, magic numbers
-│   └── api-client/       # @ezihubb/api-client — fetch client + React Query hooks
+│   └── shared/
+│       ├── types/        # @ezihubb/types — shared TypeScript interfaces
+│       ├── constants/    # @ezihubb/constants — enums, magic numbers
+│       ├── api-client/   # @ezihubb/api-client — fetch client + React Query hooks
+│       └── utils/        # shared utility functions
 ├── prisma/               # Prisma schema + migrations + seed
 ├── e2e/                  # Playwright end-to-end tests
 ├── docker/               # Dockerfiles (api, client, admin, migrate)
@@ -233,16 +237,9 @@ Deployment to the self-hosted server is not yet automated — trigger it manuall
 
 ## Contributing
 
-1. Branch from `develop`: `git checkout -b feature/my-feature`
+Currently a single `main` branch — no `develop`/staging branch or automated deploy pipeline exists yet (see [Deployment](#deployment) above, which is manual).
+
+1. Branch from `main`: `git checkout -b feature/my-feature`
 2. Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat(cart): add coupon validation`
 3. Run `make lint && make test` before opening a PR
-4. PR targets `develop` → reviewed → merged → auto-deployed to staging
-5. Release: `develop` → `main` → auto-deployed to production
-
-**Branch strategy:**
-```
-main       ← production (protected, requires review)
-develop    ← staging (auto-deploy)
-feature/*  ← feature branches → PR to develop
-hotfix/*   ← urgent fixes → PR to main + back-merge to develop
-```
+4. PR targets `main` → reviewed → merged → deploy manually with `scripts/deploy.sh`

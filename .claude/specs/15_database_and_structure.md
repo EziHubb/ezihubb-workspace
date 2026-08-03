@@ -13,10 +13,13 @@
 
 ### Complete Model List
 
+**Lưu ý:** Schema hiện có **100+ models** (đã lớn hơn nhiều so với con số 21 ban đầu — mỗi feature module mới trong `apps/api/src/modules/` thường thêm 1-10 models riêng: Store/SellerPlan/SellerPayout, AffiliateAccount/AffiliateCommission/AffiliatePayout, LoyaltyAccount/LoyaltyTransaction, ReferralTier/ReferralCommission, ModerationLog/ModerationRule, GiftChain/GiftChainLink, GiftPool/GiftContribution, FlashDeal, BlindMatchRequest, Campaign, BuyerCoinBalance, DesignAsset/DesignLicense, CreatorDNAAnalysis, v.v.). Bảng dưới đây liệt kê các models cốt lõi (transactional core); xem `docs/gap-analysis.md` §1.4 để có danh sách models đầy đủ hơn (không exhaustive — cả hai đều có thể lệch so với schema.prisma tại một thời điểm, luôn grep `prisma/schema.prisma` để chắc chắn).
+
 | Model | Mô tả |
 |---|---|
 | User | Tài khoản người dùng |
 | RefreshToken | JWT refresh tokens (httpOnly cookie) |
+| FcmToken | Token FCM cho push notification |
 | Address | Địa chỉ giao hàng của user |
 | WishlistItem | Sản phẩm yêu thích |
 | Category | Danh mục (tree, self-reference) |
@@ -24,25 +27,27 @@
 | CollectionProduct | M2M: Collection ↔ Product |
 | Product | Sản phẩm |
 | ProductVariant | Biến thể sản phẩm (SKU) |
-| VariantOption | Tên tuỳ chọn biến thể (Color, Size) |
-| VariantOptionValue | Giá trị tuỳ chọn (Red, M) |
+| VariationGroup | Nhóm tuỳ chọn biến thể (Color, Size) |
+| VariationOption | Giá trị tuỳ chọn (Red, M) |
 | Cart | Giỏ hàng (user hoặc guest) |
 | CartItem | Items trong giỏ hàng |
 | Order | Đơn hàng |
 | OrderItem | Items trong đơn hàng |
 | Payment | Thanh toán (Stripe/PayPal) |
 | Review | Đánh giá sản phẩm |
-| PromoCode | Mã giảm giá |
-| PromoUsage | Lịch sử dùng promo code |
+| Promotion | Mã giảm giá / coupon |
+| PromotionUsage | Lịch sử dùng promotion |
+| GiftCard | Thẻ quà tặng |
 | ShippingZone | Khu vực vận chuyển |
 | ShippingMethod | Phương thức vận chuyển |
+| Store | Shop của seller (multi-vendor) |
 
 ### Enums
 ```prisma
 enum Role       { CUSTOMER ADMIN SUPER_ADMIN }
 enum Provider   { EMAIL GOOGLE FACEBOOK }
-enum OrderStatus { PENDING_PAYMENT PAYMENT_CONFIRMED PROCESSING SHIPPED DELIVERED CANCELLED PAYMENT_FAILED }
-enum PaymentStatus { PENDING COMPLETED FAILED REFUNDED }
+enum OrderStatus { PENDING_PAYMENT CONFIRMED IN_PRODUCTION SHIPPED DELIVERED COMPLETED CANCELLED REFUND_REQUESTED REFUNDED DISPUTED }
+enum PaymentStatus { PENDING PAID FAILED REFUNDED PARTIALLY_REFUNDED }
 ```
 
 ### Key Design Decisions
@@ -54,17 +59,18 @@ enum PaymentStatus { PENDING COMPLETED FAILED REFUNDED }
 ## 2. MongoDB (Mongoose)
 
 ### Connection
-- Module: `apps/api/src/mongodb/mongodb.module.ts`
+- Module: `apps/api/src/modules/database/mongodb.module.ts`
+- Schemas: `apps/api/src/modules/catalog/schemas/product-detail.schema.ts`, `category-menu.schema.ts`
 - Env: `MONGODB_URI`
-- SRV resolution: DoH (DNS-over-HTTPS) via `dns.google/resolve` (bypass UDP 53 blocking)
+- SRV resolution: DoH (DNS-over-HTTPS) via `dns.google/resolve` (bypass UDP 53 blocking) — implemented both in `main.ts` and `mongodb.module.ts`
 - Pattern: Resolve `mongodb+srv://` → direct `mongodb://` trước khi connect
 
 ### Collections
 
-| Collection | Schema | Mô tả |
+| Collection | Schema Class | Mô tả |
 |---|---|---|
-| `product_details` | IProductDetail | Chi tiết phong phú, customization config |
-| `mega_menus` | IMegaMenu | Mega menu data (cached) |
+| `product_details` | ProductDetail | Chi tiết phong phú, customization config |
+| `category_menus` | CategoryMenu | Mega menu data (cached) |
 
 ### product_details Schema
 ```typescript
@@ -86,9 +92,9 @@ interface IProductDetail {
 }
 ```
 
-### mega_menus Schema
+### category_menus Schema
 ```typescript
-interface IMegaMenu {
+interface ICategoryMenu {
   _id: ObjectId;
   categories: {
     id: string; name: string; slug: string; imageUrl?: string;
@@ -129,8 +135,9 @@ NestJS API (port 3002)
 
 ## 5. Seed
 
-File: `prisma/seed.ts`
-- Runs: `pnpm prisma db seed` (reads from `.env`)
-- Clears: all tables in order (CartItem, OrderItem, Cart, Order, Payment, Review, WishlistItem, CollectionProduct, ProductVariant, VariantOptionValue, VariantOption, Product, Collection, Category, Address, RefreshToken, User)
-- Seeds: Users, Categories, Products, Variants, MongoDB product_details
-- MongoDB seed helper: `prisma/seed-mongo.ts`
+`prisma/seed.ts` is a thin orchestrator (delegates to `seeds/pg/` and `seeds/mongo/`):
+- Runs: `pnpm db:seed` (= `prisma db seed --schema=prisma/schema.prisma`, reads from `.env`)
+- `prisma/seeds/pg/index.ts` — runs 21 numbered PostgreSQL seed files in dependency order (users → categories → collections → processing/shipping profiles → shop sections → store → products → collection links → promotions → shipping zones → attribute values → affiliates → addresses → orders → conversations → reviews → gift cards → loyalty → wishlists/Q&A)
+- `prisma/seeds/mongo/index.ts` — seeds `category_menus` (derived from PG category tree) and `product_details`; connects with a DNS override (`dns.setServers(['8.8.8.8','1.1.1.1'])`) and retry logic
+- `prisma/seeds/shared/` — `prisma-client.ts` (shared PrismaClient/pool instance), `mongo-schemas.ts`
+- Standalone runs: `pnpm db:seed:pg`, `pnpm db:seed:mongo`, `pnpm db:fresh` (drop → migrate → seed)

@@ -12,8 +12,9 @@ FCM token quản lý qua **users** controller (không phải push controller ri�
 
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
-| POST | `/api/v1/users/me/fcm-token` | Đăng ký FCM token | Bearer |
+| POST | `/api/v1/users/me/fcm-token` | Đăng ký FCM token (upsert theo `token`; auto-trim còn tối đa 5 token/user, giữ token mới nhất theo `lastSeen`) | Bearer |
 | DELETE | `/api/v1/users/me/fcm-token` | Huỷ đăng ký token | Bearer |
+| PATCH | `/api/v1/users/me/push-preferences` | Bật/tắt push (`pushEnabled` trên `User`) | Bearer |
 
 ### A3. Prisma Model
 
@@ -22,11 +23,14 @@ model FcmToken {
   id        String   @id @default(cuid())
   userId    String
   token     String   @unique
-  userAgent String?
+  platform  String   @default("web")  // "web" | "ios" | "android" — KHÔNG có field userAgent
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id])
+  lastSeen  DateTime @default(now())  // updated on each re-register; dùng để LRU-trim quá 5 token
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 ```
+
+`PushService.sendToUser()` kiểm tra `User.pushEnabled` trước khi gửi — nếu `false`, bỏ qua toàn bộ push cho user đó.
 
 ### A4. Firebase Setup
 
@@ -52,13 +56,15 @@ File: `apps/client/src/components/providers/AuthProvider.tsx`
 // On logout: DELETE /users/me/fcm-token
 ```
 
-### A7. Push Notification Events (3 triggers)
+### A7. Push Notification Events (3 triggers — `PushService` methods)
 
-| Event | Title | Body |
-|---|---|---|
-| Order status changed | "Order Update" | "Your order #{orderNumber} is now {status}" |
-| Loyalty points unlocked | "Points Unlocked!" | "You now have X points available" |
-| New admin message reply | "New Message" | "You have a reply on your message" |
+| Event | Method | Title | Body |
+|---|---|---|---|
+| Order shipped (không phải "bất kỳ status change" nào) | `notifyOrderShipped()` | "Your order is on its way! 🚚" | "Order #{orderNumber} shipped via {carrier}" |
+| Loyalty points confirmed (unlocked) | `notifyPointsConfirmed()` | "⭐ {points} points unlocked!" | "Your loyalty points are now available to use at checkout" |
+| New shop reply on message | `notifyNewMessage()` | "EziHubb replied 💬" | "You have a new message from the shop" |
+
+Mỗi hàm nhận `clickAction` deep-link riêng (`/account/orders/{orderNumber}`, `/account/loyalty`, `/account/messages`) và `data` payload có `type`.
 
 ### A8. Environment Variables
 
@@ -95,7 +101,7 @@ apps/api/src/modules/users/dto/
 
 ### B1. Tổng quan
 
-Hệ thống cảnh báo sắp hết hàng. Daily scan qua BullMQ (7am UTC), giảm tồn kho khi order confirmed, Redis dedup để tránh gửi email lặp.
+Hệ thống cảnh báo sắp hết hàng. Daily scan qua BullMQ (7am UTC), giảm tồn kho khi payment thành công (Stripe webhook), Redis dedup để tránh gửi email lặp.
 
 ### B2. Product Schema Additions
 
@@ -103,42 +109,46 @@ Hệ thống cảnh báo sắp hết hàng. Daily scan qua BullMQ (7am UTC), gi�
 model Product {
   // ... existing fields ...
   trackInventory    Boolean @default(false)  // bật/tắt theo dõi tồn kho
-  lowStockThreshold Int     @default(5)      // cảnh báo khi quantity <= threshold
-  // quantity field đã có sẵn
+  lowStockThreshold Int?                     // KHÔNG có default 5 — nullable, phải set thủ công qua update DTO
+  // quantity field đã có sẵn (Int?, nullable)
 }
 ```
+
+> `ProductVariant` cũng có field `lowStockThreshold Int?` riêng trong schema, nhưng `LowStockService` hiện chỉ đọc/ghi ở mức `Product`, không dùng field này ở variant level.
 
 ### B3. Low-Stock Flow
 
 #### Order Trigger (real-time)
-1. Order `CONFIRMED` → decrement `Product.quantity` theo ordered amount
-2. Nếu `trackInventory && quantity <= lowStockThreshold`:
-   - Check Redis dedup key `low-stock:{productId}` (TTL: 24h)
-   - Nếu không tồn tại: gửi admin email + set Redis key
-3. Nếu `quantity <= 0`: `Product.status → INACTIVE` (out of stock)
+1. Stripe payment webhook thành công (`PaymentsService`) → fire-and-forget gọi `LowStockService.checkAfterOrder(orderId)` (không phải hook trực tiếp trên order status `CONFIRMED`)
+2. Với mỗi product trong order có `trackInventory && quantity !== null`: decrement `Product.quantity` theo ordered amount
+3. Sau decrement, phân loại: `isOutOfStock = quantity <= 0`; `isLowStock = !isOutOfStock && lowStockThreshold !== null && quantity <= lowStockThreshold`
+4. Nếu out-of-stock hoặc low-stock: gọi `maybeAlert()` — check Redis dedup key `low_stock_alert:{productId}` (TTL: 24h, KHÔNG phải `low-stock:{productId}`); nếu chưa tồn tại → gửi email admin + set key
+5. **Không có** bước tự động set `Product.status → INACTIVE` khi hết hàng — sản phẩm hết hàng chỉ được cảnh báo qua email, admin phải tự cập nhật status/quantity
 
 #### Daily BullMQ Scan (7am UTC)
-- Queue: `stock-alert-queue`
-- Job: `daily-low-stock-scan`
-- Cron: `0 7 * * *`
-- Tìm tất cả products với `trackInventory: true && quantity <= lowStockThreshold && status: ACTIVE`
-- Gửi admin summary email (batch, không phải per-product)
-- Redis dedup: skip products đã alert trong 24h qua
+- Queue: `low-stock` (`QUEUES.LOW_STOCK`), KHÔNG phải `stock-alert-queue`
+- Job: `daily-low-stock-scan` (`JOBS.DAILY_LOW_STOCK_SCAN`)
+- Cron: `0 7 * * *` — repeatable job registered trong `LowStockProcessor.onModuleInit()`
+- Quét tất cả products với `trackInventory: true && isActive: true && quantity !== null`
+- **Gửi email riêng cho từng product** (một email/product qua cùng `maybeAlert()`), KHÔNG phải một email tổng hợp/batch như spec cũ mô tả
+- Redis dedup (24h) dùng chung với order-trigger path nên tránh gửi trùng nếu đã alert gần đây
 
 ### B4. BullMQ Queue Setup
 
 ```typescript
-// Queue: 'stock-alert-queue'
-// Recurring job scheduled via BullMQ repeatable
+// Queue: QUEUES.LOW_STOCK = 'low-stock'
+// Job: JOBS.DAILY_LOW_STOCK_SCAN = 'daily-low-stock-scan'
+// Recurring job scheduled via BullMQ repeatable, registered on module init
 ```
 
-File processor: `apps/api/src/modules/products/low-stock.service.ts`
+File processor (scheduler + worker): `apps/api/src/queue/low-stock.processor.ts` — gọi `LowStockService.dailyScan()`
+File service (business logic): `apps/api/src/modules/products/low-stock.service.ts`
 
 ### B5. Admin Email Template
 
-Template: `low-stock-alert.hbs`
-- Subject: "Low Stock Alert — {N} products need attention"
-- Lists product name, current qty, threshold, link to admin edit
+Template: `EmailTemplate.LOW_STOCK_ALERT` = `'low-stock-alert'`
+- Subject thực tế theo từng product: `"Out of stock: {productName}"` hoặc `"Low stock alert: {productName} ({qty} remaining)"` — không phải subject tổng hợp "{N} products need attention"
+- Data: productName, sku, quantity, threshold, status, isOutOfStock, adminProductUrl (`{ADMIN_URL}/products/{id}/edit`)
 
 ### B6. Admin UI Integration
 
@@ -149,9 +159,9 @@ Trong Product edit (`PricingShippingTab`):
 
 ### B7. Business Rules
 
-- `trackInventory: false` → không decrement, không alert
-- Redis dedup key TTL: 24h (tránh spam email)
-- Daily scan chạy độc lập với order trigger (không bị bỏ sót)
-- Out-of-stock → set `Product.status = INACTIVE` (không tự reactivate)
-- Admin phải thủ công reactivate sau khi restocked
-- Quantity không bao giờ < 0 (clamp to 0 trước khi save)
+- `trackInventory: false` hoặc `quantity === null` → bỏ qua hoàn toàn (không decrement, không alert)
+- Redis dedup key (`low_stock_alert:{productId}`) TTL: 24h (tránh spam email), dùng chung giữa order-trigger và daily scan
+- Daily scan chạy độc lập với order trigger (không bị bỏ sót nếu miss event)
+- **Out-of-stock KHÔNG tự động set `Product.status = INACTIVE`** — đây là điểm khác biệt so với spec cũ; hiện tại chỉ gửi email cảnh báo, admin phải tự xử lý status/quantity
+- `lowStockThreshold` không có default — nếu admin không set, product sẽ không bao giờ trigger low-stock alert (chỉ out-of-stock ở quantity <= 0 vẫn hoạt động vì không phụ thuộc threshold)
+- Không thấy code clamp `quantity` về 0 một cách tường minh trong `checkAfterOrder()` — decrement dùng Prisma `{ decrement: item.quantity } ` trực tiếp trên `Product.quantity`

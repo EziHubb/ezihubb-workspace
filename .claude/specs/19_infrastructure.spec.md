@@ -15,10 +15,14 @@ ezihubb-workspace/
       constants/   # @ezihubb/constants — shared constants
     ui/            # @ezihubb/ui — shared React component library
   prisma/
-    schema.prisma
-    seed.ts
-    seed-mongo.ts
-    prisma.config.ts
+    schema.prisma      # 100+ models (grew far past the original 21 as
+                        # marketplace features were added)
+    seed.ts             # thin orchestrator → delegates to seeds/pg/ + seeds/mongo/
+    seeds/
+      pg/               # 21 numbered PostgreSQL seed files + index.ts
+      mongo/            # MongoDB seed files (product_details, category_menus) + index.ts
+      shared/           # prisma-client.ts, mongo-schemas.ts
+  prisma.config.ts   # repo root, NOT inside prisma/
   .claude/specs/   # This directory
 ```
 
@@ -26,21 +30,21 @@ ezihubb-workspace/
 
 | Tool | Version |
 |---|---|
-| pnpm | 11.0.9 |
-| Node.js | 20+ |
+| pnpm | 11.5.2 |
+| Node.js | 22.x |
 | Nx | 22.7.2 |
 | TypeScript | ~5.7.2 |
 | Next.js | ~16.1.6 |
 | NestJS | ^11.0.0 |
 | Prisma | ^7.8.0 |
 | Mongoose | ^9.6.3 |
-| React | 18 |
+| React | ^19.0.0 |
 | Tailwind CSS | 3.x |
 | Zustand | ^5.0.5 |
 | TanStack Query | ^5.80.0 |
 | BullMQ | ^5.77.3 |
 | Stripe SDK | ^22.1.1 |
-| Fabric.js | 5.x (customizer canvas) |
+| Fabric.js | ^6.6.1 (customizer canvas) |
 | Zod | ^4.4.3 |
 
 ## 3. Self-hosted Deployment (Docker)
@@ -54,6 +58,8 @@ ezihubb-workspace/
 | PostgreSQL | Self-hosted (own server or managed instance) |
 | Redis | Self-hosted (own server or managed instance) |
 | nginx | Host-level (shared with other projects on the same server), not a container — see `scripts/nginx-ezihubb.conf` |
+
+`docker-compose.yml` (single file, production-only — no separate dev compose, no bundled nginx container) publishes each app to `127.0.0.1` only (never the public interface), via `CLIENT_PORT`/`ADMIN_PORT`/`API_PORT` (default `3010`/`3011`/`3012`). The host-level nginx reverse-proxies public subdomains — `ezihubb.com` (storefront), `admin.ezihubb.com`, `api.ezihubb.com` — to those local ports. No path-based routing.
 
 ### Environment Variables
 - `DATABASE_URL` — PostgreSQL connection string
@@ -84,12 +90,13 @@ let baseUrl = (process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002')
 - UDP port 53 có thể bị block trong cloud/container environments
 - Solution: DNS-over-HTTPS (DoH) via `dns.google/resolve`
 
-### DoH Resolution (in main.ts)
+### DoH Resolution (in main.ts and mongodb.module.ts)
 ```typescript
 async function resolveMongoSrvUri(uri: string): Promise<string> {
   // Resolves _mongodb._tcp.<host> SRV record via HTTPS
   // Rewrites to direct mongodb:// connection string
-  // Used in: main.ts (API), seed.ts, seed-mongo.ts
+  // Used in: main.ts (API), modules/database/mongodb.module.ts
+  // (prisma/seeds/mongo uses a simpler fix: dns.setServers(['8.8.8.8','1.1.1.1']))
 }
 ```
 
@@ -277,19 +284,33 @@ LIBRETRANSLATE_URL=http://localhost:5000  # self-hosted
 
 ## 11. BullMQ Queues
 
+Source of truth: `apps/api/src/queue/queue.constants.ts` (`QUEUES` const).
+
 | Queue Name | Purpose |
 |---|---|
-| `email-queue` | Email sending |
-| `image-processing-queue` | BG removal, art style |
-| `order-processing-queue` | Order post-processing |
-| `loyalty-unlock` | Unlock pending points sau 14 ngày |
-| `stock-alert-queue` | Daily low-stock scan (7am UTC cron) |
-| `pdf-generation-queue` | Async PDF generation (invoices) |
-| `push-notification-queue` | FCM push dispatch |
-| `translation-queue` | AutoTranslate product content |
+| `email` | Email sending |
+| `image-processing` | BG removal, preview generation, art style |
+| `order-processing` | Order post-processing (order-confirmed, auto-complete) |
+| `scheduled` | Cron-triggered jobs (review reminders, daily order auto-complete, weekly cart cleanup) |
+| `abandoned-cart` | Abandoned cart scan + recovery email |
+| `affiliate-commission` | Commission calculation processor |
+| `loyalty` | Points auto-confirm (14-day unlock) |
+| `low-stock` | Daily low-stock scan |
+| `translations` | AutoTranslate product content |
+| `referral` | Referral auto-confirm + tier check |
+| `moderation` | Text/image content moderation checks |
+| `ai-features` | Pricing analysis, trend→product drafts, Creator DNA |
+| `coins` | Daily coin expiry |
+| `order-tracking` | Carrier status polling, tracking stage updates |
+| `flash-deals` | Activate/end/remind flash deals |
+| `gift-pools` | Complete/expire/remind gift pools |
+| `gift-chains` | Nudge/close gift chains |
+| `blind-match` | Blind-match processing + credit |
+
+Note: PDF generation is synchronous (not queued) — see `PdfService` in module 20; there is no dedicated `pdf-generation` or `push-notification` queue — push dispatch happens inline via `PushService`.
 
 ## 12. NestJS Modules
 
-Các modules đã implement trong `apps/api/src/modules/`:
+Các modules đã implement trong `apps/api/src/modules/` (50 modules):
 
-`admin`, `admin-users`, `affiliates`, `ai` (admin-ai), `analytics`, `assets`, `auth`, `blind-match`, `bounties`, `bundles`, `campaigns`, `canva`, `cart`, `catalog`, `coins`, `creator-dna`, `currency`, `customization`, `database` (mongodb), `design-licensing`, `drops`, `flash-deals`, `gift-chains`, `gift-finder`, `gift-pools`, `loyalty`, `memberships`, `messages`, `moderation`, `notifications` (bao gồm FcmService + PushService), `order-tracking`, `orders`, `payments`, `pdf`, `pricing`, `products` (bao gồm LowStockService), `promotions`, `referrals`, `reviews`, `search`, `shipping`, `shop-stats`, `store-credits`, `stores`, `tax`, `translations`, `trends`, `users`, `vip`
+`admin`, `admin-users`, `affiliates`, `ai` (admin-ai), `analytics`, `assets`, `auth`, `blind-match`, `bounties`, `bundles`, `campaigns`, `canva`, `cart`, `catalog`, `coins`, `creator-dna`, `currency`, `customization`, `database` (mongodb), `design-licensing`, `drops`, `flash-deals`, `gift-chains`, `gift-finder`, `gift-pools`, `loyalty`, `memberships`, `messages`, `moderation`, `notifications` (bao gồm FcmService + PushService), `order-tracking`, `orders`, `payments`, `pdf`, `pricing`, `products` (bao gồm LowStockService), `promotions`, `referrals`, `reviews`, `search`, `shipping`, `shop-stats`, `store-credits`, `stores`, `tax`, `translations`, `trends`, `unsubscribe`, `users`, `vip`
