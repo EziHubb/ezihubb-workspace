@@ -8,9 +8,10 @@ version: '3.9'
 #        docker compose run --rm migrate
 #   3. docker compose up -d --build
 #
-# MongoDB, S3 storage (Cloudflare R2) and SMTP (SendGrid) are external managed
-# services in production — configure them via MONGODB_URI / AWS_S3_* / SENDGRID_*
-# in .env. There are no containers for them here.
+# S3 storage (Cloudflare R2) and SMTP (SendGrid) are external managed services
+# in production — configure them via AWS_S3_* / SENDGRID_* in .env. There are
+# no containers for them here. MongoDB runs as its own container below
+# (self-hosted, not Atlas) — set MONGODB_URI to the `mongodb` service.
 #
 # This server hosts other projects too, so client/admin/api are published to
 # 127.0.0.1 only (not the public interface) on CLIENT_PORT/ADMIN_PORT/API_PORT.
@@ -50,6 +51,23 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── MongoDB ─────────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7-jammy
+    container_name: ezihubb_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-ezihubb}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD must be set in .env}
+      MONGO_INITDB_DATABASE: ezihubb
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ── One-off: run pending Prisma migrations ───────────────────────────────────
   migrate:
     build:
@@ -74,6 +92,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
     env_file: .env
     environment:
@@ -133,3 +153,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  mongodb_data:
