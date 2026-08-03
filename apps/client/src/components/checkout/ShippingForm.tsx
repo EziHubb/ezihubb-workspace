@@ -4,8 +4,8 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAddresses, useProfile } from '@mlh/api-client';
-import type { ShippingAddressInput } from '@mlh/api-client';
+import { useAddresses, useProfile } from '@ezihubb/api-client';
+import type { ShippingAddressInput } from '@ezihubb/api-client';
 
 // ── Zod schema ────────────────────────────────────────────────────────────────
 

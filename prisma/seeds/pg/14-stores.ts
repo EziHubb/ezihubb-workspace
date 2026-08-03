@@ -6,13 +6,13 @@ export async function seedStores(prisma: PrismaClient, adminUserId: string): Pro
   // ── PlatformSettings singleton ─────────────────────────────────────────────
   await prisma.platformSettings.upsert({
     where:  { id: 'singleton' },
-    update: { platformName: 'Daily Daisy' },
+    update: { platformName: 'EziHubb' },
     create: {
       id:                      'singleton',
       defaultCommissionRate:   0.15,
       minCommissionRate:       0.05,
       maxCommissionRate:       0.30,
-      platformName:            'Daily Daisy',
+      platformName:            'EziHubb',
       allowPublicRegistration: false,
       minPayoutAmount:         100.00,
       payoutSchedule:          'monthly',
@@ -71,14 +71,14 @@ export async function seedStores(prisma: PrismaClient, adminUserId: string): Pro
   ]);
   console.log(`    ✓ ${plans.length} seller plans`);
 
-  // ── Default store: Daily Daisy (owned by super admin) ────────────────────
+  // ── Default store: EziHubb (owned by super admin) ────────────────────
   const store = await prisma.store.upsert({
-    where:  { slug: 'daily-daisy' },
+    where:  { slug: 'ezihubb' },
     update: {},
     create: {
-      slug:           'daily-daisy',
-      name:           'Daily Daisy',
-      description:    'The official Daily Daisy store — unique personalized gifts and handcrafted keepsakes for every occasion.',
+      slug:           'ezihubb',
+      name:           'EziHubb',
+      description:    'The official EziHubb store — unique personalized gifts and handcrafted keepsakes for every occasion.',
       ownerId:        adminUserId,
       status:         'ACTIVE',
       planType:       'COMMISSION',
@@ -96,7 +96,7 @@ export async function seedStores(prisma: PrismaClient, adminUserId: string): Pro
   });
   console.log('    ✓ Admin user marked as seller');
 
-  // ── Backfill existing products → Daily Daisy ────────────────────────────
+  // ── Backfill existing products → EziHubb ────────────────────────────
   const { count: backfilledProducts } = await prisma.product.updateMany({
     where: { storeId: null },
     data:  { storeId: store.id },
@@ -110,14 +110,14 @@ export async function seedStores(prisma: PrismaClient, adminUserId: string): Pro
   });
   console.log(`    ✓ Confirmed ${backfilledCategories} platform categories`);
 
-  // ── Backfill existing ShopSections → Daily Daisy ────────────────────────
+  // ── Backfill existing ShopSections → EziHubb ────────────────────────
   const { count: backfilledSections } = await prisma.shopSection.updateMany({
     where: { storeId: null },
     data:  { storeId: store.id },
   });
   console.log(`    ✓ Backfilled ${backfilledSections} shop sections → ${store.name}`);
 
-  // ── Backfill ShippingProfiles → Daily Daisy ─────────────────────────────
+  // ── Backfill ShippingProfiles → EziHubb ─────────────────────────────
   const { count: backfilledProfiles } = await prisma.shippingProfile.updateMany({
     where: { storeId: null },
     data:  { storeId: store.id },

@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { api } from '../../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import {
   PERMISSION_RESOURCES,
   RESOURCE_ACTIONS,
@@ -14,7 +14,7 @@ import {
   type PermissionDocument,
   type PermissionResource,
   type BuiltinRole,
-} from '@mlh/constants';
+} from '@ezihubb/constants';
 import { RotateCcw, Save, ArrowLeft, Shield } from 'lucide-react';
 import Link from 'next/link';
 

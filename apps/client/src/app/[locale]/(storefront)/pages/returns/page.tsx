@@ -98,7 +98,7 @@ const RESOLUTION_STEPS = [
   {
     step:  '1',
     title: 'Contact us within 30 days',
-    desc:  'Reach out via our contact page or email support@dailydaisy.com. Include your order number and a brief description of the issue.',
+    desc:  'Reach out via our contact page or email support@ezihubb.com. Include your order number and a brief description of the issue.',
   },
   {
     step:  '2',
@@ -198,7 +198,7 @@ export default function ReturnsPage() {
         </p>
         <p className="text-muted leading-relaxed mb-5">
           To cancel, go to <strong>My Account → Orders</strong> and click &ldquo;Cancel Order&rdquo;
-          on the relevant order, or contact us immediately at support@dailydaisy.com.
+          on the relevant order, or contact us immediately at support@ezihubb.com.
         </p>
         <div className="flex flex-wrap gap-3">
           <Link

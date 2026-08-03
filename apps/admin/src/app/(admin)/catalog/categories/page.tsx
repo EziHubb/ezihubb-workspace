@@ -9,7 +9,7 @@ import {
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { Toggle } from '../../../../components/products/edit/primitives/Toggle';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { useDialog } from '../../../../contexts/DialogContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

@@ -31,7 +31,7 @@ export class StorageService {
       },
     });
 
-    this.bucket = config.get<string>('storage.bucket') ?? 'mlh-assets';
+    this.bucket = config.get<string>('storage.bucket') ?? 'ezihubb-assets';
     this.cdnUrl = config.get<string>('storage.cdnUrl');
   }
 

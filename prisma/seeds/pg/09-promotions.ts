@@ -29,7 +29,7 @@ export async function seedPromotions(prisma: PrismaClient) {
       maxUsesPerUser: 2,
       maxUses:        500,
       isActive:       true,
-      description:    '15% off orders over $75 — Daily Daisy members only',
+      description:    '15% off orders over $75 — EziHubb members only',
     },
     {
       code:           'SAVE20NOW',

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Plus, X, Save } from 'lucide-react';
 import { api } from '../../../../lib/api-client';
 import { fmtDate } from '../../../../lib/fmt';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Search, X, Check, ChevronRight } from 'lucide-react';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtDate, fmtNum, fmtAmount, capitalize, safeArr } from '../../../lib/fmt';
 
 // ── Types ──────────────────────────────────────────────────────────────────────

@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Save, Store } from 'lucide-react';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
-import { useToast } from '@mlh/ui';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
+import { useToast } from '@ezihubb/ui';
 
 interface StoreSettings {
   name:        string;

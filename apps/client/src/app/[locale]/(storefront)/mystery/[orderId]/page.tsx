@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useLocale } from 'next-intl';
 import { Gift, Clock, Copy, Check, Star, Loader2, AlertCircle, Sparkles } from 'lucide-react';
-import { apiClient } from '@mlh/api-client';
+import { apiClient } from '@ezihubb/api-client';
 
 interface MysteryOrder {
   id:           string;

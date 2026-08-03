@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { UserDto } from '@mlh/types';
+import type { UserDto } from '@ezihubb/types';
 import { useAuthStore } from '../../../../../../lib/store/auth.store';
 
 /**

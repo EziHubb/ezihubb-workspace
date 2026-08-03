@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { serverApi } from '../../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { ProductEditShell } from '../../../../../components/products/edit/ProductEditShell';
 import type { AdminProductDto, AdminProductDetailDto } from '../../../../../components/products/edit/types';
 

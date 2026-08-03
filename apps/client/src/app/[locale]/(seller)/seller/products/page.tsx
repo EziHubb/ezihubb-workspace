@@ -6,8 +6,8 @@ import { useLocale } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Package } from 'lucide-react';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 
 interface SellerProduct {
   id:        string;

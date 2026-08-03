@@ -4,7 +4,7 @@ import { Request } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { Role } from '@mlh/constants';
+import { Role } from '@ezihubb/constants';
 import { ShopStatsService } from './shop-stats.service';
 
 interface JwtLike { role?: string; storeId?: string }

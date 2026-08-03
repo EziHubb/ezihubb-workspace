@@ -10,7 +10,7 @@ import {
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { DataTable } from '../../../components/data/DataTable';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtDate, fmtDateTime } from '../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Trash2, Minus, Plus } from 'lucide-react';
-import type { CartItemDto } from '@mlh/types';
+import type { CartItemDto } from '@ezihubb/types';
 
 interface CartItemRowProps {
   item:     CartItemDto;

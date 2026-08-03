@@ -3,17 +3,17 @@
 ## 1. Nx Monorepo Structure
 
 ```
-maple-loom-handmade-workspace/
+ezihubb-workspace/
   apps/
     api/           # NestJS REST API (port 3002)
     client/        # Next.js 16 storefront (port 3000)
     admin/         # Next.js 16 admin panel (port 3001)
   libs/
     shared/
-      types/       # @mlh/types — shared TypeScript types
-      api-client/  # @mlh/api-client — fetch client + React Query hooks
-      constants/   # @mlh/constants — shared constants
-    ui/            # @mlh/ui — shared React component library
+      types/       # @ezihubb/types — shared TypeScript types
+      api-client/  # @ezihubb/api-client — fetch client + React Query hooks
+      constants/   # @ezihubb/constants — shared constants
+    ui/            # @ezihubb/ui — shared React component library
   prisma/
     schema.prisma
     seed.ts
@@ -43,28 +43,29 @@ maple-loom-handmade-workspace/
 | Fabric.js | 5.x (customizer canvas) |
 | Zod | ^4.4.3 |
 
-## 3. Railway Deployment
+## 3. Self-hosted Deployment (Docker)
 
 ### Services
 | Service | Config |
 |---|---|
-| API | NestJS, port 3002, Dockerfile or Nixpacks |
-| Client | Next.js, port 3000, Nixpacks |
-| Admin | Next.js, port 3001, Nixpacks |
-| PostgreSQL | Railway managed |
-| Redis | Railway managed |
+| API | NestJS, port 3002, `docker/Dockerfile.api` |
+| Client | Next.js, port 3000, `docker/Dockerfile.client` |
+| Admin | Next.js, port 3001, `docker/Dockerfile.admin` |
+| PostgreSQL | Self-hosted (own server or managed instance) |
+| Redis | Self-hosted (own server or managed instance) |
+| nginx | Host-level (shared with other projects on the same server), not a container — see `scripts/nginx-ezihubb.conf` |
 
-### Environment Variables (Railway)
-- `DATABASE_URL` — Railway PostgreSQL connection string
+### Environment Variables
+- `DATABASE_URL` — PostgreSQL connection string
 - `MONGODB_URI` — MongoDB Atlas `mongodb+srv://` URI
-- `REDIS_URL` — Railway Redis URL
+- `REDIS_URL` — Redis connection string
 - `NEXT_PUBLIC_API_URL` — API public URL (NO /api/v1 suffix)
 - `CORS_ORIGINS` — comma-separated allowed origins
 - All secret keys (JWT, Stripe, SendGrid, etc.)
 
 ### CORS Fix for Production
 ```
-CORS_ORIGINS="https://dailydaisy.com,https://admin.dailydaisy.com"
+CORS_ORIGINS="https://ezihubb.com,https://admin.ezihubb.com"
 ```
 Không dùng `origin: '*'` với `credentials: true`.
 
@@ -80,7 +81,7 @@ let baseUrl = (process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002')
 
 ### Connection
 - SRV URI: `mongodb+srv://user:pass@cluster0.xxx.mongodb.net/`
-- UDP port 53 có thể bị block trong Railway/cloud environments
+- UDP port 53 có thể bị block trong cloud/container environments
 - Solution: DNS-over-HTTPS (DoH) via `dns.google/resolve`
 
 ### DoH Resolution (in main.ts)
@@ -121,7 +122,7 @@ pnpm nx g @nx/next:page      # Add Next.js page
 ### Required Services (local dev)
 | Service | How | Port |
 |---|---|---|
-| PostgreSQL | Railway or local Docker | 5432 |
+| PostgreSQL | Local Docker (or any remote Postgres) | 5432 |
 | MongoDB | Atlas (cloud) | — |
 | Redis | Optional (DISABLE_QUEUE=true to skip) | 6379 |
 | MinIO (S3) | Docker (`minio/minio`) | 9000 (S3) / 9001 (UI) |
@@ -138,7 +139,7 @@ Khi Redis không available locally:
 ## 7. CI/CD
 
 - Git: GitHub repository
-- Railway auto-deploy on push to `main` branch
+- Deploy: manual/self-hosted server (Docker), no auto-deploy workflow configured yet
 - Build command: `pnpm nx build <app>`
 - Start command: `node dist/apps/<app>/main.js` (API) hoặc `pnpm next start` (Next)
 
@@ -148,7 +149,7 @@ Khi Redis không available locally:
 |---|---|
 | `.env` | Local development (gitignored, contains real creds) |
 | `.env.example` | Template (committed, no real creds) |
-| Railway UI | Production secrets (never in git) |
+| Server env vars | Production secrets, set directly on the host (never in git) |
 
 ### Key ENV Variables
 
@@ -172,9 +173,9 @@ GOOGLE_CLIENT_SECRET=...
 
 # Storage (Cloudflare R2 in prod, MinIO locally)
 AWS_S3_ENDPOINT=http://localhost:9000
-AWS_S3_BUCKET=mlh-assets
-CDN_URL=http://localhost:9000/mlh-assets
-NEXT_PUBLIC_CDN_URL=http://localhost:9000/mlh-assets
+AWS_S3_BUCKET=ezihubb-assets
+CDN_URL=http://localhost:9000/ezihubb-assets
+NEXT_PUBLIC_CDN_URL=http://localhost:9000/ezihubb-assets
 
 # Payment
 STRIPE_SECRET_KEY=...
@@ -185,7 +186,7 @@ PAYPAL_CLIENT_SECRET=...
 
 # Email
 SENDGRID_API_KEY=...
-EMAIL_FROM=noreply@dailydaisy.com
+EMAIL_FROM=noreply@ezihubb.com
 SMTP_HOST=localhost        # dev: MailHog
 SMTP_PORT=1025
 
@@ -213,7 +214,7 @@ NEXT_PUBLIC_HOTJAR_SV=6
 # Monitoring
 SENTRY_DSN=...
 AXIOM_TOKEN=...
-AXIOM_DATASET=dailydaisy-dev
+AXIOM_DATASET=ezihubb-dev
 
 # Rate Limiting
 THROTTLE_TTL=60000
@@ -259,7 +260,7 @@ LIBRETRANSLATE_URL=http://localhost:5000  # self-hosted
 - Dev: MinIO (S3-compatible) tại `http://localhost:9000`
 - Prod: Cloudflare R2
 - Config: AWS SDK với custom endpoint (`AWS_S3_ENDPOINT`)
-- Bucket: `mlh-assets`
+- Bucket: `ezihubb-assets`
 - CDN URL: `CDN_URL` env var
 - Subfolders:
   - `uploads/temp/` — presigned upload staging

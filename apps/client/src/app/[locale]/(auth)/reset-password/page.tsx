@@ -8,8 +8,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, ArrowLeft, AlertTriangle } from 'lucide-react';
-import { API_ROUTES } from '@mlh/constants';
-import { useToast, ToastProvider } from '@mlh/ui';
+import { API_ROUTES } from '@ezihubb/constants';
+import { useToast, ToastProvider } from '@ezihubb/ui';
 import { apiClient } from '../../../../lib/api-client';
 
 // ── Password strength (reused pattern) ────────────────────────────────────────

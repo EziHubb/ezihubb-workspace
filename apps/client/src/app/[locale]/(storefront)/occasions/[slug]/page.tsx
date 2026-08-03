@@ -3,7 +3,7 @@
 // to /collections/[slug] without an extra HTTP redirect.
 export { default, generateMetadata } from '../../collections/[slug]/page';
 
-import type { CollectionDto } from '@mlh/types';
+import type { CollectionDto } from '@ezihubb/types';
 import { fetchList } from '../../../../../components/listing/types';
 import { API_BASE } from '../../../../../lib/api-client';
 

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { useAuthQuery } from '../../lib/hooks/useAuthQuery';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 // ── Social helpers ─────────────────────────────────────────────────────────────
 

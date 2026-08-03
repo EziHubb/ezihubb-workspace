@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { Star, TrendingUp, Clock, Camera, PenLine, ShoppingBag, Tag } from 'lucide-react';
-import { Skeleton, Pagination } from '@mlh/ui';
+import { Skeleton, Pagination } from '@ezihubb/ui';
 import { useTranslations } from 'next-intl';
 import { useAuthQuery } from '../../../../../lib/hooks/useAuthQuery';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

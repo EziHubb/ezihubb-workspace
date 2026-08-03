@@ -3,8 +3,8 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from './roles.decorator';
-import { Role } from '@mlh/constants';
-import { capitalize } from '@mlh/utils';
+import { Role } from '@ezihubb/constants';
+import { capitalize } from '@ezihubb/utils';
 
 /**
  * Shorthand decorator for all admin controllers.

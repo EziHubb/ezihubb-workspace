@@ -65,7 +65,7 @@ export class PushService {
 
   async notifyNewMessage(userId: string, conversationId: string): Promise<void> {
     await this.sendToUser(userId, {
-      title:       'DailyDaisy replied 💬',
+      title:       'EziHubb replied 💬',
       body:        'You have a new message from the shop',
       clickAction: '/account/messages',
       data:        { type: 'new_message', conversationId },

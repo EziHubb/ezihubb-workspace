@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
-import { Modal, ModalHeader, ModalBody, Button } from '@mlh/ui';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { Modal, ModalHeader, ModalBody, Button } from '@ezihubb/ui';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 import { useAuthStore } from '../../lib/store/auth.store';
-import type { ConversationDto } from '@mlh/types';
+import type { ConversationDto } from '@ezihubb/types';
 
 interface Props {
   isOpen:   boolean;
@@ -63,7 +63,7 @@ export function MessageShopModal({ isOpen, onClose, context }: Props) {
   return (
     <Modal isOpen={isOpen} onClose={handleClose} size="md">
       <ModalHeader onClose={handleClose}>
-        {sent ? 'Message sent!' : 'Message DailyDaisy'}
+        {sent ? 'Message sent!' : 'Message EziHubb'}
       </ModalHeader>
       <ModalBody>
         {sent ? (
@@ -98,7 +98,7 @@ export function MessageShopModal({ isOpen, onClose, context }: Props) {
                 ML
               </div>
               <div>
-                <p className="text-sm font-medium">DailyDaisy</p>
+                <p className="text-sm font-medium">EziHubb</p>
                 <p className="text-xs text-muted">Usually responds within 2 hours</p>
               </div>
             </div>

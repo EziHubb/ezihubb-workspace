@@ -143,7 +143,7 @@ export class CommissionService {
     );
 
     // Fire-and-forget: commission confirmed email
-    const shopUrl    = this.config.get<string>('FRONTEND_URL', 'https://dailydaisy.com');
+    const shopUrl    = this.config.get<string>('FRONTEND_URL', 'https://ezihubb.com');
     const amount     = Number(commission.amount);
     const minPayout  = Number(settings?.minPayoutAmount ?? 50);
 

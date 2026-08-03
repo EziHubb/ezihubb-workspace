@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { X, ChevronDown, LogOut, Package, Settings, Store } from 'lucide-react';
 import { signOut } from 'next-auth/react';
-import { queryKeys } from '@mlh/api-client';
+import { queryKeys } from '@ezihubb/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { SearchInput } from '../search/SearchInput';
 import { LocaleSwitcher } from './LocaleSwitcher';
@@ -158,7 +158,7 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold font-display text-base">M</span>
             </div>
-            <span className="font-display font-bold text-lg text-secondary">Daily Daisy</span>
+            <span className="font-display font-bold text-lg text-secondary">EziHubb</span>
           </Link>
           <button
             type="button"
@@ -289,7 +289,7 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
                   className="flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-primary hover:underline transition-colors"
                 >
                   <Store className="w-3.5 h-3.5" />
-                  Sell on Daily Daisy
+                  Sell on EziHubb
                 </Link>
               </div>
             )}

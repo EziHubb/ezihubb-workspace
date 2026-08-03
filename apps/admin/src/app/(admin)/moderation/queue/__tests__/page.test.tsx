@@ -29,8 +29,8 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/admin/moderation/queue',
 }));
 
-// Mock @mlh/constants with values the moderation page uses
-jest.mock('@mlh/constants', () => ({
+// Mock @ezihubb/constants with values the moderation page uses
+jest.mock('@ezihubb/constants', () => ({
   ADMIN_ROUTES: {
     moderation: { queue: '/admin/moderation/queue' },
   },

@@ -1,27 +1,19 @@
 import type { NextAuthOptions } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 // ── NEXTAUTH_URL auto-detection ───────────────────────────────────────────────
 // Mirrors the same pattern used in apps/admin/src/lib/auth.options.ts.
 
 if (!process.env['NEXTAUTH_URL']) {
-  const detected =
-    process.env['NEXT_PUBLIC_NEXTAUTH_URL'] ??
-    process.env['CLIENT_URL'] ??
-    (process.env['RAILWAY_PUBLIC_DOMAIN']
-      ? `https://${process.env['RAILWAY_PUBLIC_DOMAIN']}`
-      : null) ??
-    (process.env['RAILWAY_STATIC_URL']
-      ? `https://${process.env['RAILWAY_STATIC_URL']}`
-      : null);
+  const detected = process.env['NEXT_PUBLIC_NEXTAUTH_URL'] ?? process.env['CLIENT_URL'];
 
   if (detected) {
     process.env['NEXTAUTH_URL'] = detected;
   } else if (process.env['NODE_ENV'] === 'production') {
     console.error(
       '[Client auth] NEXTAUTH_URL is not set and could not be auto-detected. ' +
-        'Set NEXTAUTH_URL=https://<your-client-domain> in Railway Variables.',
+        'Set NEXTAUTH_URL=https://<your-client-domain> in the server environment.',
     );
   }
 }

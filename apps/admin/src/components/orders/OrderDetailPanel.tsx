@@ -11,7 +11,7 @@ import { fmtDate, fmtDateTime } from '../../lib/fmt';
 import { OrderStatusBadge, StatusSelect } from './OrderStatusBadge';
 import { BuyLabelModal, type LabelPurchaseResult } from './BuyLabelModal';
 import { api } from '../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { useDialog } from '../../contexts/DialogContext';
 import type { OrderDetail, OrderItem } from './OrderDrawer';
 

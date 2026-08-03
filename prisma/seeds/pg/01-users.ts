@@ -8,10 +8,10 @@ export async function seedUsers(prisma: PrismaClient) {
   const customerHash = await bcrypt.hash('Customer@123456', 12);
 
   const admin = await prisma.user.upsert({
-    where:  { email: 'admin@dailydaisy.com' },
+    where:  { email: 'admin@ezihubb.com' },
     update: {},
     create: {
-      email:           'admin@dailydaisy.com',
+      email:           'admin@ezihubb.com',
       passwordHash:    adminHash,
       firstName:       'Super',
       lastName:        'Admin',

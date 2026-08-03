@@ -9,7 +9,7 @@ import {
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { StatCard } from '../../../../components/data/StatCard';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtDate, fmtNum, safeArr } from '../../../../lib/fmt';
 import { FilterSelect } from '../../../../components/ui/FilterSelect';
 

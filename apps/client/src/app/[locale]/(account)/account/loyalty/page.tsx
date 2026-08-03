@@ -1,10 +1,10 @@
 'use client';
 
 import { Star, Clock, TrendingUp, Tag, CreditCard } from 'lucide-react';
-import { Skeleton } from '@mlh/ui';
+import { Skeleton } from '@ezihubb/ui';
 import { useTranslations } from 'next-intl';
 import { useAuthQuery } from '../../../../../lib/hooks/useAuthQuery';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount } from '../../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

@@ -9,7 +9,7 @@ import {
 import Image from 'next/image';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtFixed, safeArr } from '../../../../lib/fmt';
 import { useDialog } from '../../../../contexts/DialogContext';
 import { FilterSelect } from '../../../../components/ui/FilterSelect';

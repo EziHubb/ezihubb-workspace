@@ -31,8 +31,12 @@ dev-admin: ## Start admin only
 	pnpm nx serve admin
 
 # ── Docker infra ─────────────────────────────────────────────────────────────
-docker-up: ## Start infrastructure (postgres, redis, minio, mailhog)
-	docker compose up -d postgres redis minio mailhog
+# docker-compose.yml is the production stack (postgres, redis, api, client,
+# admin, nginx). For local dev, only postgres/redis are started here — storage
+# (AWS_S3_*) and email (SMTP_*) need R2/SendGrid credentials, or point them at
+# your own local MinIO/MailHog if you run those separately.
+docker-up: ## Start local infra (postgres, redis)
+	docker compose up -d postgres redis
 
 docker-down: ## Stop all containers
 	docker compose down

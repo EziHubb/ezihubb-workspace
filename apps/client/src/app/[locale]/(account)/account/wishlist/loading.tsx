@@ -1,5 +1,5 @@
 import { ProductGridSkeleton } from '../../../../../components/skeletons/ProductGridSkeleton';
-import { Skeleton } from '@mlh/ui';
+import { Skeleton } from '@ezihubb/ui';
 export default function WishlistLoading() {
   return (
     <div className="space-y-6" aria-busy="true" aria-label="Loading wishlist">

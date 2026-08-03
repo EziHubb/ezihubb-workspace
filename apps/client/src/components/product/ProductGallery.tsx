@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import type { ProductImageDto } from '@mlh/types';
+import type { ProductImageDto } from '@ezihubb/types';
 
 interface ProductGalleryProps {
   images:      ProductImageDto[];

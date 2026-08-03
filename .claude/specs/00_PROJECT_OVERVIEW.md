@@ -1,8 +1,8 @@
-# Daily Daisy — Project Overview
+# EziHubb — Project Overview
 
 ## 1. Mô tả dự án
 
-**Daily Daisy** là nền tảng thương mại điện tử chuyên về quà tặng cá nhân hoá (personalized gifts). Người dùng có thể chọn sản phẩm (cốc, canvas, hoodie, ornament...) và cá nhân hoá trực tiếp bằng công cụ customizer tích hợp Fabric.js trước khi mua hàng.
+**EziHubb** là nền tảng thương mại điện tử chuyên về quà tặng cá nhân hoá (personalized gifts). Người dùng có thể chọn sản phẩm (cốc, canvas, hoodie, ornament...) và cá nhân hoá trực tiếp bằng công cụ customizer tích hợp Fabric.js trước khi mua hàng.
 
 ## 2. Tech Stack
 
@@ -32,7 +32,7 @@
 ## 3. Kiến trúc Monorepo
 
 ```
-daily-daisy-workspace/
+ezihubb-workspace/
 ├── apps/
 │   ├── api/          → NestJS backend (port 3002)
 │   ├── client/       → Next.js storefront (port 3000)
@@ -55,7 +55,7 @@ daily-daisy-workspace/
 ### PostgreSQL — Transactional
 - Users, Auth tokens, Products, Variants, Orders, Cart, Payments, Reviews, Promotions, Shipping
 - Prisma 7 + `@prisma/adapter-pg` (driver adapter — NO url in datasource block)
-- Railway PostgreSQL
+- Self-hosted PostgreSQL (own server)
 
 ### MongoDB — Documents
 - `category_menus` — Mega-menu (L1→L2→L3 hierarchy)
@@ -65,18 +65,18 @@ daily-daisy-workspace/
 ### Redis — Cache & Queue
 - BullMQ: email, image, order, scheduled queues
 - Cache: mega-menu (10min), autocomplete (5min), shipping
-- Railway Redis (khi không có Redis: `DISABLE_QUEUE=true` + ioredis-mock + DevBullModule)
+- Self-hosted Redis (khi không có Redis: `DISABLE_QUEUE=true` + ioredis-mock + DevBullModule)
 
 ### Cloudflare R2 — Storage
 - S3-compatible, CDN public URL
 
-## 5. Services (Railway Production)
+## 5. Services (Self-hosted Production)
 
 | Service | URL |
 |---|---|
-| API | `https://api-production-e6e2.up.railway.app` |
-| Client | `https://client-production-5118.up.railway.app` |
-| Admin | `https://admin-production-7d2f.up.railway.app` |
+| API | TBD — set once the server's domain is configured |
+| Client | TBD — set once the server's domain is configured |
+| Admin | TBD — set once the server's domain is configured |
 
 ## 6. Seeded Data
 
@@ -91,10 +91,10 @@ Sản phẩm theo flow:
 
 ```
 # NEXT_PUBLIC_API_URL — KHÔNG có /api/v1 (apiClient tự thêm)
-NEXT_PUBLIC_API_URL=https://api-xxx.railway.app
+NEXT_PUBLIC_API_URL=https://api.<your-domain>
 
 # CORS_ORIGINS — cần set trong production (API service)
-CORS_ORIGINS=https://client-xxx.railway.app,https://admin-xxx.railway.app
+CORS_ORIGINS=https://<your-domain>,https://admin.<your-domain>
 
 # DISABLE_QUEUE=true — dev không có Redis
 DISABLE_QUEUE=true

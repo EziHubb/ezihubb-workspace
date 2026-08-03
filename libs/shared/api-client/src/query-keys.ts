@@ -2,7 +2,7 @@
  * Canonical React Query key factory.
  *
  * Import directly from this file when you need the new key shapes:
- *   import { queryKeys } from '@mlh/api-client/query-keys'
+ *   import { queryKeys } from '@ezihubb/api-client/query-keys'
  *
  * The legacy key factory in queryKeys.ts is kept for backward compat
  * with existing hooks. New feature hooks should use this file.

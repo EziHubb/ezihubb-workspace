@@ -9,14 +9,14 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/',
 }));
 
-// Mock @mlh/constants
-jest.mock('@mlh/constants', () => ({
+// Mock @ezihubb/constants
+jest.mock('@ezihubb/constants', () => ({
   API_ROUTES: {},
   ADMIN_ROUTES: {},
 }));
 
-// Mock @mlh/api-client hooks to avoid needing QueryClientProvider
-jest.mock('@mlh/api-client', () => ({
+// Mock @ezihubb/api-client hooks to avoid needing QueryClientProvider
+jest.mock('@ezihubb/api-client', () => ({
   useAddresses: () => ({ data: [] }),
   useProfile: () => ({ data: null }),
 }));

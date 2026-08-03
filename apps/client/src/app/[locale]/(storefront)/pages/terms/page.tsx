@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { Scale, Mail } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title:       'Terms of Service — Daily Daisy',
-  description: 'Read our Terms of Service to understand your rights and responsibilities when using the Daily Daisy marketplace.',
+  title:       'Terms of Service — EziHubb',
+  description: 'Read our Terms of Service to understand your rights and responsibilities when using the EziHubb marketplace.',
 };
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ export default function TermsPage() {
             Terms of Service
           </h1>
           <p className="text-muted max-w-xl text-base leading-relaxed mb-6">
-            These Terms govern your use of the Daily Daisy marketplace. Please read them carefully before placing orders or listing products.
+            These Terms govern your use of the EziHubb marketplace. Please read them carefully before placing orders or listing products.
           </p>
           <div className="flex flex-wrap gap-4 text-sm text-muted">
             <span>
@@ -118,10 +118,10 @@ export default function TermsPage() {
 
           <Section id="acceptance" title="1. Acceptance of Terms">
             <P>
-              By accessing or using the Daily Daisy marketplace (&ldquo;Platform&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;), you agree to be bound by these Terms of Service (&ldquo;Terms&rdquo;). If you do not agree to these Terms, you may not use the Platform.
+              By accessing or using the EziHubb marketplace (&ldquo;Platform&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;), you agree to be bound by these Terms of Service (&ldquo;Terms&rdquo;). If you do not agree to these Terms, you may not use the Platform.
             </P>
             <P>
-              These Terms constitute a legally binding agreement between you and Daily Daisy. Your continued use of the Platform following any updates to these Terms constitutes your acceptance of the revised Terms.
+              These Terms constitute a legally binding agreement between you and EziHubb. Your continued use of the Platform following any updates to these Terms constitutes your acceptance of the revised Terms.
             </P>
             <P>
               If you are using the Platform on behalf of an organization, you represent that you have the authority to bind that organization to these Terms.
@@ -130,7 +130,7 @@ export default function TermsPage() {
 
           <Section id="use-of-platform" title="2. Use of the Platform">
             <P>
-              Daily Daisy is a marketplace connecting independent sellers of handmade, personalized, and artisan goods with buyers. We provide the Platform as a venue; we are not a party to transactions between buyers and sellers unless explicitly stated.
+              EziHubb is a marketplace connecting independent sellers of handmade, personalized, and artisan goods with buyers. We provide the Platform as a venue; we are not a party to transactions between buyers and sellers unless explicitly stated.
             </P>
             <P>You must be at least 18 years old to create an account or make purchases. By using the Platform, you represent that you meet this age requirement.</P>
             <P>You agree to use the Platform only for lawful purposes and in accordance with these Terms. You are responsible for ensuring that your use complies with all applicable local, national, and international laws and regulations.</P>
@@ -152,7 +152,7 @@ export default function TermsPage() {
 
           <Section id="buyer-terms" title="4. Buyer Terms">
             <P>
-              When you place an order on Daily Daisy, you enter into a contract directly with the seller. Daily Daisy facilitates the transaction but is not the seller.
+              When you place an order on EziHubb, you enter into a contract directly with the seller. EziHubb facilitates the transaction but is not the seller.
             </P>
             <P><strong>Orders & Payment:</strong> All orders are subject to seller acceptance. By completing checkout, you authorize payment for the order total, including applicable taxes and shipping fees. Prices are displayed in your selected currency but settled in the seller&apos;s base currency.</P>
             <P><strong>Cancellations:</strong> You may request a cancellation within 2 hours of placing an order if the seller has not yet begun processing. After that window, cancellation is at the seller&apos;s discretion.</P>
@@ -162,7 +162,7 @@ export default function TermsPage() {
 
           <Section id="seller-terms" title="5. Seller Terms">
             <P>
-              To sell on Daily Daisy, you must apply for a seller account and be approved. By becoming a seller, you agree to:
+              To sell on EziHubb, you must apply for a seller account and be approved. By becoming a seller, you agree to:
             </P>
             <Ul items={[
               'List only items you are authorized to sell and that you can fulfill.',
@@ -173,16 +173,16 @@ export default function TermsPage() {
               'Not list counterfeit, infringing, or prohibited items.',
             ]} />
             <P>
-              Sellers are independent contractors and not employees, agents, or partners of Daily Daisy. You are solely responsible for your products, customer service, and compliance with applicable laws.
+              Sellers are independent contractors and not employees, agents, or partners of EziHubb. You are solely responsible for your products, customer service, and compliance with applicable laws.
             </P>
             <P>
-              Daily Daisy reserves the right to remove listings, suspend, or permanently ban seller accounts that violate these Terms or receive an unacceptable number of buyer complaints.
+              EziHubb reserves the right to remove listings, suspend, or permanently ban seller accounts that violate these Terms or receive an unacceptable number of buyer complaints.
             </P>
           </Section>
 
           <Section id="fees-payments" title="6. Fees & Payments">
             <P>
-              Daily Daisy charges sellers a commission on each completed sale. The applicable commission rate is displayed in your Seller Hub and may vary by plan type (Commission or Subscription). We may also charge listing fees, payment processing fees, or other fees as described in the Seller Fee Schedule.
+              EziHubb charges sellers a commission on each completed sale. The applicable commission rate is displayed in your Seller Hub and may vary by plan type (Commission or Subscription). We may also charge listing fees, payment processing fees, or other fees as described in the Seller Fee Schedule.
             </P>
             <P>
               Payouts to sellers are processed according to the payout schedule displayed in your Seller Hub, subject to any holds for disputes or compliance reviews. We use industry-standard payment processors and do not store your full card or bank account details.
@@ -194,13 +194,13 @@ export default function TermsPage() {
 
           <Section id="intellectual" title="7. Intellectual Property">
             <P>
-              <strong>Platform IP:</strong> The Daily Daisy name, logo, design, and software are owned by us and protected by intellectual property laws. You may not use them without our prior written consent.
+              <strong>Platform IP:</strong> The EziHubb name, logo, design, and software are owned by us and protected by intellectual property laws. You may not use them without our prior written consent.
             </P>
             <P>
-              <strong>User Content:</strong> By uploading content to the Platform (photos, text, designs), you grant Daily Daisy a non-exclusive, worldwide, royalty-free license to use, display, and reproduce that content solely to operate and promote the Platform. You retain ownership of your content.
+              <strong>User Content:</strong> By uploading content to the Platform (photos, text, designs), you grant EziHubb a non-exclusive, worldwide, royalty-free license to use, display, and reproduce that content solely to operate and promote the Platform. You retain ownership of your content.
             </P>
             <P>
-              <strong>Third-party IP:</strong> You must not upload or sell content that infringes another party&apos;s intellectual property rights. If you believe your IP has been infringed, please contact us via our DMCA notice process at legal@dailydaisy.com.
+              <strong>Third-party IP:</strong> You must not upload or sell content that infringes another party&apos;s intellectual property rights. If you believe your IP has been infringed, please contact us via our DMCA notice process at legal@ezihubb.com.
             </P>
           </Section>
 
@@ -224,7 +224,7 @@ export default function TermsPage() {
               THE PLATFORM IS PROVIDED &ldquo;AS IS&rdquo; WITHOUT WARRANTIES OF ANY KIND. WE DO NOT WARRANT THAT THE PLATFORM WILL BE UNINTERRUPTED, ERROR-FREE, OR FREE OF VIRUSES OR OTHER HARMFUL COMPONENTS.
             </P>
             <P>
-              TO THE MAXIMUM EXTENT PERMITTED BY LAW, DAILY DAISY SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING FROM YOUR USE OF THE PLATFORM OR TRANSACTIONS CONDUCTED THROUGH IT.
+              TO THE MAXIMUM EXTENT PERMITTED BY LAW, EZIHUBB SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING FROM YOUR USE OF THE PLATFORM OR TRANSACTIONS CONDUCTED THROUGH IT.
             </P>
             <P>
               OUR TOTAL LIABILITY TO YOU FOR ANY CLAIMS ARISING FROM OR RELATING TO THESE TERMS OR THE PLATFORM SHALL NOT EXCEED THE GREATER OF (A) $100 USD OR (B) THE TOTAL FEES YOU PAID TO US IN THE 12 MONTHS PRECEDING THE CLAIM.
@@ -257,12 +257,12 @@ export default function TermsPage() {
               If you have questions about these Terms of Service, please reach out to us:
             </P>
             <div className="mt-4 p-5 bg-surface border border-border rounded-card space-y-2 text-sm">
-              <p><span className="font-semibold text-secondary">Daily Daisy, Inc.</span></p>
+              <p><span className="font-semibold text-secondary">EziHubb, Inc.</span></p>
               <p>Legal Department</p>
               <p>
-                <a href="mailto:legal@dailydaisy.com" className="text-primary hover:underline inline-flex items-center gap-1.5">
+                <a href="mailto:legal@ezihubb.com" className="text-primary hover:underline inline-flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5" />
-                  legal@dailydaisy.com
+                  legal@ezihubb.com
                 </a>
               </p>
             </div>
@@ -270,7 +270,7 @@ export default function TermsPage() {
 
           {/* Bottom nav */}
           <div className="pt-6 border-t border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-sm text-muted">
-            <p>© 2026 Daily Daisy, Inc. All rights reserved.</p>
+            <p>© 2026 EziHubb, Inc. All rights reserved.</p>
             <div className="flex gap-4">
               <Link href="/pages/privacy-policy" className="text-primary hover:underline">
                 Privacy Policy

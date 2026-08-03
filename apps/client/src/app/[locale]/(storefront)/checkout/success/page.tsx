@@ -7,10 +7,10 @@ import { useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { Copy, Check, Package, Home, Share2 } from 'lucide-react';
-import { apiClient, queryKeys } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient, queryKeys } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 import { useCartStore } from '../../../../../lib/store/cart.store';
-import type { OrderDto } from '@mlh/types';
+import type { OrderDto } from '@ezihubb/types';
 import { analytics } from '../../../../../lib/analytics';
 
 // ── Animated checkmark ────────────────────────────────────────────────────────
@@ -132,7 +132,7 @@ function BuyerReferralShare({ orderNumber }: { orderNumber: string }) {
   if (loading) return null; // Don't show skeleton — just wait silently
   if (!referral || referral.status === 'CREDITED') return null;
 
-  const referralUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://dailydaisy.com'}?bref=${referral.cookieToken}`;
+  const referralUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://ezihubb.com'}?bref=${referral.cookieToken}`;
   const creditAmt = Number(referral.creditAmount);
   const expiresDate = new Date(referral.expiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
@@ -144,7 +144,7 @@ function BuyerReferralShare({ orderNumber }: { orderNumber: string }) {
     } catch { /* ignore */ }
   };
 
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`I just ordered from Daily Daisy! You can use my link to get 5% off: ${referralUrl}`)}`;
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`I just ordered from EziHubb! You can use my link to get 5% off: ${referralUrl}`)}`;
 
   return (
     <div className="mt-8 rounded-2xl border border-[#FDE68A] bg-[#FFFBEB] overflow-hidden">

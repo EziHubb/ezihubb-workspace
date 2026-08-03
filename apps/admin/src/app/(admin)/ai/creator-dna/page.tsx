@@ -9,7 +9,7 @@ import {
 import type { CSSProperties } from 'react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtDateTime, fmtRelative, capitalize, safeArr } from '../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

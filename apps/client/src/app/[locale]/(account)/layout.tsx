@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
-import { apiClient } from '@mlh/api-client';
+import { apiClient } from '@ezihubb/api-client';
 import { authOptions } from '../../../lib/auth.options';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';

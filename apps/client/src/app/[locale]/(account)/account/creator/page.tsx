@@ -6,9 +6,9 @@ import { useLocale, useTranslations } from 'next-intl';
 import {
   Users, DollarSign, TrendingUp, Copy, Check, Share2, ChevronRight, MousePointer,
 } from 'lucide-react';
-import { Skeleton } from '@mlh/ui';
+import { Skeleton } from '@ezihubb/ui';
 import { useAuthQuery } from '../../../../../lib/hooks/useAuthQuery';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount } from '../../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -114,7 +114,7 @@ export default function CreatorHubPage() {
     : '';
 
   const whatsappUrl = creatorLink
-    ? `https://wa.me/?text=${encodeURIComponent(`Check out Daily Daisy! ${creatorLink}`)}`
+    ? `https://wa.me/?text=${encodeURIComponent(`Check out EziHubb! ${creatorLink}`)}`
     : '#';
   const facebookUrl = creatorLink
     ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(creatorLink)}`
@@ -123,7 +123,7 @@ export default function CreatorHubPage() {
     ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Shop handmade gifts with my link and save! ${creatorLink}`)}`
     : '#';
   const pinterestUrl = creatorLink
-    ? `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(creatorLink)}&description=${encodeURIComponent('Shop Daily Daisy!')}`
+    ? `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(creatorLink)}&description=${encodeURIComponent('Shop EziHubb!')}`
     : '#';
 
   return (

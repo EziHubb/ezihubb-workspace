@@ -10,7 +10,7 @@ import {
 } from '../../../components/reviews/ReviewModerationCard';
 import { ReviewReplyModal } from '../../../components/reviews/ReviewReplyModal';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { useDialog } from '../../../contexts/DialogContext';
 import { FilterSelect } from '../../../components/ui/FilterSelect';
 

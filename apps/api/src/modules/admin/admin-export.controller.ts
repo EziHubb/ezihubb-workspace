@@ -87,7 +87,7 @@ export class AdminExportController {
     }
 
     const csv = lines.join('\n');
-    const filename = `daily-daisy-export-${fmtDateISOVN(new Date())}.csv`;
+    const filename = `ezihubb-export-${fmtDateISOVN(new Date())}.csv`;
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

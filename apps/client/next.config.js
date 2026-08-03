@@ -22,7 +22,7 @@ const withNextIntl = createNextIntlPlugin(intlConfigPath);
 const nextConfig = {
   nx: {},
   compress: true,
-  transpilePackages: ['@mlh/constants', '@mlh/types', '@mlh/ui', '@mlh/api-client'],
+  transpilePackages: ['@ezihubb/constants', '@ezihubb/types', '@ezihubb/ui', '@ezihubb/api-client'],
   images: {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [390, 640, 750, 828, 1080, 1200, 1920],
@@ -30,7 +30,7 @@ const nextConfig = {
     dangerouslyAllowSVG: true,
     contentDispositionType: 'attachment',
     remotePatterns: [
-      { protocol: 'https', hostname: 'cdn.dailydaisy.com' },
+      { protocol: 'https', hostname: 'cdn.ezihubb.com' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'placehold.co' },
       { protocol: 'https', hostname: 's3.amazonaws.com' },
@@ -40,7 +40,7 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: [
-      '@mlh/ui', 'lucide-react', 'recharts', '@tanstack/react-table', 'date-fns',
+      '@ezihubb/ui', 'lucide-react', 'recharts', '@tanstack/react-table', 'date-fns',
     ],
     turbopackUseSystemTlsCerts: true,
   },

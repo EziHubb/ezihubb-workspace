@@ -2,7 +2,7 @@
 
 import { ShoppingCart, Copy, Check } from 'lucide-react';
 import { useState } from 'react';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { useAuthQuery } from '../../lib/hooks/useAuthQuery';
 import { fmtAmount } from '../../lib/fmt';
 

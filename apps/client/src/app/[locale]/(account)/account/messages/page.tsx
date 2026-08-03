@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
-import type { ConversationDto, ConversationWithMessagesDto } from '@mlh/types';
+import type { ConversationDto, ConversationWithMessagesDto } from '@ezihubb/types';
 import { MessageShopModal } from '../../../../../components/messages/MessageShopModal';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ function ConversationListItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <span className={`text-sm text-secondary ${hasUnread ? 'font-semibold' : 'font-medium'}`}>
-              DailyDaisy
+              EziHubb
             </span>
             <span className="text-xs text-muted flex-shrink-0 ml-2">
               {formatRelativeTime(conv.lastMessageAt)}
@@ -236,7 +236,7 @@ function MessageThread({
             ML
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-secondary">DailyDaisy</p>
+            <p className="text-sm font-medium text-secondary">EziHubb</p>
             {conv?.order && (
               <p className="text-xs text-muted">Order #{conv.order.orderNumber}</p>
             )}

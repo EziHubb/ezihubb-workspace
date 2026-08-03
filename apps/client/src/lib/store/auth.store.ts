@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { setTokenGetter, setTokenUpdater, api } from '@mlh/api-client';
-import { apiClient } from '@mlh/api-client';
-import type { UserDto } from '@mlh/types';
-import { API_ROUTES } from '@mlh/constants';
+import { setTokenGetter, setTokenUpdater, api } from '@ezihubb/api-client';
+import { apiClient } from '@ezihubb/api-client';
+import type { UserDto } from '@ezihubb/types';
+import { API_ROUTES } from '@ezihubb/constants';
 
 // ── In-memory access token ────────────────────────────────────────────────────
 // The module-level var keeps the old api client's token getter working.
@@ -214,7 +214,7 @@ export const useAuthStore = create<AuthStore>()(
     }),
 
     {
-      name: 'daisy-auth',
+      name: 'ezihubb-auth',
       // Only persist the user profile. accessToken and isAuthReady reset on every load.
       partialize: (state) => ({ user: state.user }),
     },

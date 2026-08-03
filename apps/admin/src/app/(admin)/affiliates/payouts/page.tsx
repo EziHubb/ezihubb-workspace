@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, DollarSign } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtDate, fmtAmount, capitalize, safeArr } from '../../../../lib/fmt';
 
 // ── Types ──────────────────────────────────────────────────────────────────────

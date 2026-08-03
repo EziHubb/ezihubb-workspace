@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { Button } from '@mlh/ui';
+import { Button } from '@ezihubb/ui';
 
 interface Props {
   confirmedAt: string;

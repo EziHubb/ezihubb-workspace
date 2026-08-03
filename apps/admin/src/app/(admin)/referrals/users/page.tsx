@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Search, X, GitBranch } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtNum, fmtAmount } from '../../../../lib/fmt';
 import { FilterSelect } from '../../../../components/ui/FilterSelect';
 

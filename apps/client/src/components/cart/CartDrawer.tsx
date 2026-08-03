@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { useCart, useMutateCart } from '@mlh/api-client';
+import { useCart, useMutateCart } from '@ezihubb/api-client';
 
 interface CartDrawerProps {
   isOpen:  boolean;

@@ -16,12 +16,14 @@ apps/client/src/app/
       loading.tsx
       page.tsx              # Homepage "/"
 
-      products/[slug]/
-        page.tsx            # Product detail
-        opengraph-image.tsx
-        customize/
-          layout.tsx
-          page.tsx          # Full-screen customizer
+      products/
+        page.tsx            # All products listing (with filters)
+        [slug]/
+          page.tsx          # Product detail
+          opengraph-image.tsx
+          customize/
+            layout.tsx
+            page.tsx        # Full-screen customizer
 
       categories/[slug]/page.tsx
       collections/
@@ -61,7 +63,9 @@ apps/client/src/app/
         page.tsx
         hall-of-fame/page.tsx
 
-      chain/[chainId]/page.tsx
+      chain/
+        page.tsx              # Gift chain index
+        [chainId]/page.tsx    # Gift chain detail
       mystery/[orderId]/page.tsx
       open-shop/page.tsx         # Apply for store; shows pending/rejected states
 
@@ -93,9 +97,11 @@ apps/client/src/app/
         faq/page.tsx
         how-it-works/page.tsx
         our-story/page.tsx
+        privacy-policy/page.tsx
         returns/page.tsx
         reviews/page.tsx
         shipping-info/page.tsx
+        terms/page.tsx
 
     (account)/              # Layout: sidebar nav; all routes protected
       layout.tsx
@@ -126,6 +132,15 @@ apps/client/src/app/
           payouts/page.tsx
         gift-pools/page.tsx
 
+    (seller)/               # Seller portal (shop owner routes within client app)
+      seller/
+        page.tsx            # Seller overview / hub
+        orders/page.tsx
+        payouts/page.tsx
+        products/page.tsx
+        reviews/page.tsx
+        store/page.tsx
+
     (auth)/                 # Auth layout (no nav, noindex)
       layout.tsx
       AuthLayoutClient.tsx
@@ -146,7 +161,7 @@ apps/client/src/app/
   global-error.tsx
 ```
 
-> **Quan trọng:** Không còn route `/seller` hoặc `/my-shop`. Shop owner (ADMIN role) truy cập admin dashboard tại `NEXT_PUBLIC_ADMIN_URL`. Navbar hiển thị link "Sell" → `/open-shop` (buyer) hoặc "My Shop" → admin URL (seller).
+> **Quan trọng:** Route `/my-shop` không tồn tại. Shop owner có 2 routes: `/seller` (seller portal trong client app) và admin dashboard tại `NEXT_PUBLIC_ADMIN_URL`. Navbar hiển thị link "Sell" → `/open-shop` (buyer) hoặc "My Shop" → admin URL (seller). SUPER_ADMIN truy cập full admin panel; ADMIN role truy cập seller-scoped admin panel.
 
 ## 2. Locales
 
@@ -172,7 +187,7 @@ apps/client/messages/
 ### Homepage (`/[locale]`)
 
 - Server Component
-- Sections: `HeroBanner`, `MobileHeroCarousel`, `TrendingProducts`, `CategoryShowcase`, `CollectionsGrid`, `FlashDealsSection`, `GroupGiftingSpotlight`, `BlindMatchCta`, `GiftFinderCta`, `CreatorNetworkCta`, `HowItWorks`, `FeaturedReviews`, `SocialProof`, `NewsletterSection`
+- Sections: `HeroBanner`, `MobileHeroCarousel`, `TrendingProducts`, `CategoryShowcase`, `CollectionsGrid`, `FlashDealsSection`, `GroupGiftingSpotlight`, `BlindMatchCta`, `GiftFinderCta`, `CreatorNetworkCta`, `OpenShopCta`, `HowItWorks`, `FeaturedReviews`, `SocialProof`, `NewsletterSection`
 - `GET /products/trending` (top 12), category data
 
 ### Product Detail (`/[locale]/products/[slug]`)
@@ -314,7 +329,7 @@ apps/client/src/components/
     BundleBanner.tsx, BundleUpsellSection.tsx
 ```
 
-## 6. Shared UI Library (`@mlh/ui`)
+## 6. Shared UI Library (`@ezihubb/ui`)
 
 Nx lib: `libs/ui/src/`
 Components: `Avatar`, `Badge`, `BottomNav`, `Button`, `Input`, `Modal`, `Pagination`, `ProductCard`, `RatingStars`, `Skeleton`, `Textarea`, `Toast`
@@ -324,7 +339,7 @@ Components: `Avatar`, `Badge`, `BottomNav`, `Button`, `Input`, `Modal`, `Paginat
 | Store      | File                            | Persisted                      |
 | ---------- | ------------------------------- | ------------------------------ |
 | auth       | `lib/store/auth.store.ts`       | `user` (mlh-auth key)          |
-| cart       | `lib/store/cart.store.ts`       | `sessionId` (daisy-cart key)   |
+| cart       | `lib/store/cart.store.ts`       | `sessionId` (ezihubb-cart key)   |
 | customizer | `lib/store/customizer.store.ts` | No (volatile)                  |
 | toast      | `lib/store/toast.store.ts`      | No                             |
 

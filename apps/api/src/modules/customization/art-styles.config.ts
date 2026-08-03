@@ -14,7 +14,7 @@ export const ART_STYLES: ArtStyleConfig[] = [
     id: 'watercolor',
     label: 'Watercolor',
     description: 'Soft watercolor painting effect',
-    previewUrl: 'https://cdn.dailydaisy.com/art-styles/watercolor-preview.jpg',
+    previewUrl: 'https://cdn.ezihubb.com/art-styles/watercolor-preview.jpg',
     replicateModel: 'stability-ai/stable-diffusion-img2img',
     replicateVersion: 'a9758cbfbd5f3c2094457d996681af52552901e2b7b774b9f0e7b8e4c0bc0ea7',
     defaultInput: {
@@ -29,7 +29,7 @@ export const ART_STYLES: ArtStyleConfig[] = [
     id: 'van_gogh',
     label: 'Van Gogh',
     description: 'Swirling brushstrokes like Van Gogh',
-    previewUrl: 'https://cdn.dailydaisy.com/art-styles/van-gogh-preview.jpg',
+    previewUrl: 'https://cdn.ezihubb.com/art-styles/van-gogh-preview.jpg',
     replicateModel: 'stability-ai/stable-diffusion-img2img',
     replicateVersion: 'a9758cbfbd5f3c2094457d996681af52552901e2b7b774b9f0e7b8e4c0bc0ea7',
     defaultInput: {
@@ -43,7 +43,7 @@ export const ART_STYLES: ArtStyleConfig[] = [
     id: 'cartoon',
     label: 'Cartoon',
     description: 'Bold outlines, flat colors cartoon style',
-    previewUrl: 'https://cdn.dailydaisy.com/art-styles/cartoon-preview.jpg',
+    previewUrl: 'https://cdn.ezihubb.com/art-styles/cartoon-preview.jpg',
     replicateModel: 'stability-ai/stable-diffusion-img2img',
     replicateVersion: 'a9758cbfbd5f3c2094457d996681af52552901e2b7b774b9f0e7b8e4c0bc0ea7',
     defaultInput: {
@@ -57,7 +57,7 @@ export const ART_STYLES: ArtStyleConfig[] = [
     id: 'realistic',
     label: 'Realistic',
     description: 'Hyper-realistic photo enhancement',
-    previewUrl: 'https://cdn.dailydaisy.com/art-styles/realistic-preview.jpg',
+    previewUrl: 'https://cdn.ezihubb.com/art-styles/realistic-preview.jpg',
     replicateModel: 'stability-ai/stable-diffusion-img2img',
     replicateVersion: 'a9758cbfbd5f3c2094457d996681af52552901e2b7b774b9f0e7b8e4c0bc0ea7',
     defaultInput: {
@@ -72,7 +72,7 @@ export const ART_STYLES: ArtStyleConfig[] = [
     id: 'sketch',
     label: 'Pencil Sketch',
     description: 'Black and white pencil drawing',
-    previewUrl: 'https://cdn.dailydaisy.com/art-styles/sketch-preview.jpg',
+    previewUrl: 'https://cdn.ezihubb.com/art-styles/sketch-preview.jpg',
     replicateModel: 'stability-ai/stable-diffusion-img2img',
     replicateVersion: 'a9758cbfbd5f3c2094457d996681af52552901e2b7b774b9f0e7b8e4c0bc0ea7',
     defaultInput: {

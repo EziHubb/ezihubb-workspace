@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient, queryKeys } from '@mlh/api-client';
-import { ProductCard, ProductCardSkeleton } from '@mlh/ui';
-import type { PaginatedResponse, ProductListItemDto } from '@mlh/types';
+import { apiClient, queryKeys } from '@ezihubb/api-client';
+import { ProductCard, ProductCardSkeleton } from '@ezihubb/ui';
+import type { PaginatedResponse, ProductListItemDto } from '@ezihubb/types';
 
 const FALLBACK_SEARCHES = [
   'custom mug',

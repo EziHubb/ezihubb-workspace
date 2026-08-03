@@ -1,7 +1,7 @@
 ﻿import { Fragment } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import type { ProductDto } from '@mlh/types';
+import type { ProductDto } from '@ezihubb/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -27,7 +27,7 @@ function buildRelatedSearches(product: ProductDto, locale: string): RelatedSearc
   );
 
   const storeSlug = product.store?.slug;
-  const storeName = product.store?.name ?? 'Daily Daisy';
+  const storeName = product.store?.name ?? 'EziHubb';
 
   const featured: FeaturedChip[] = [
     {

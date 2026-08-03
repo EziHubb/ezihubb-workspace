@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Loader2, Check, CreditCard } from 'lucide-react';
 import { api } from '../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 interface ShippingRate {
   id:           string;

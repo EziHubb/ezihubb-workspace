@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../client';
-import { API_ROUTES } from '@mlh/constants';
-import type { ProductDto } from '@mlh/types';
+import { API_ROUTES } from '@ezihubb/constants';
+import type { ProductDto } from '@ezihubb/types';
 
 export function useProduct(slug: string) {
   return useQuery({

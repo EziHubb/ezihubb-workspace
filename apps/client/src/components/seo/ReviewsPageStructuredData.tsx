@@ -8,8 +8,8 @@
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
-    name: 'DailyDaisy',
-    url: 'https://dailydaisy.com',
+    name: 'EziHubb',
+    url: 'https://ezihubb.com',
     aggregateRating: {
       '@type': 'AggregateRating',
       ratingValue: avgRating.toFixed(1),

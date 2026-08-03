@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Star } from 'lucide-react';
-import type { ProductListItemDto } from '@mlh/types';
+import type { ProductListItemDto } from '@ezihubb/types';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

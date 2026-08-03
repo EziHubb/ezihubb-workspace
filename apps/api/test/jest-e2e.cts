@@ -8,8 +8,8 @@ module.exports = {
   },
   moduleFileExtensions: ['ts', 'js', 'json'],
   moduleNameMapper: {
-    '^@mlh/constants(.*)$': '<rootDir>/../../../libs/shared/constants/src/index.ts$1',
-    '^@mlh/types(.*)$':     '<rootDir>/../../../libs/shared/types/src/index.ts$1',
+    '^@ezihubb/constants(.*)$': '<rootDir>/../../../libs/shared/constants/src/index.ts$1',
+    '^@ezihubb/types(.*)$':     '<rootDir>/../../../libs/shared/types/src/index.ts$1',
   },
   globalSetup:    './setup.ts',
   globalTeardown: './teardown.ts',

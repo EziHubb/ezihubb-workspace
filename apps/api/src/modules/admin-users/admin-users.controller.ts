@@ -6,7 +6,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard }   from '../../common/guards/roles.guard';
 import { Roles }        from '../../common/decorators/roles.decorator';
-import { Role }         from '@mlh/constants';
+import { Role }         from '@ezihubb/constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   PermissionDocument,
@@ -15,7 +15,7 @@ import {
   RESOURCE_ACTIONS,
   BUILTIN_ROLE_NAMES,
   resolveEffectivePermissions,
-} from '@mlh/constants';
+} from '@ezihubb/constants';
 
 @ApiTags('Admin — User Permissions')
 @Controller('admin/users')

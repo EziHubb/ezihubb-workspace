@@ -6,6 +6,13 @@
 **/.env
 **/.env.local
 
+# Private keys — never commit these
+*.pem
+*.key
+
+# Deployment secrets (server IP/user, DB passwords) — never commit these
+scripts/.deploy-config
+
 # compiled output
 dist
 tmp

@@ -18,7 +18,7 @@ export function CreatorNetworkCta({ locale }: Props) {
               Creator Network
             </span>
             <h2 className="font-display text-3xl md:text-4xl font-bold text-secondary leading-tight mb-4">
-              Share Daily Daisy.<br />
+              Share EziHubb.<br />
               <span className="text-primary">Earn every time someone shops.</span>
             </h2>
             <p className="text-muted leading-relaxed mb-6 max-w-lg">

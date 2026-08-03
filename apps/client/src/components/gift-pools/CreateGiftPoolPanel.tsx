@@ -9,8 +9,8 @@ import {
   ChevronRight,
   Loader2,
 } from 'lucide-react';
-import { useToast } from '@mlh/ui';
-import { apiClient } from '@mlh/api-client';
+import { useToast } from '@ezihubb/ui';
+import { apiClient } from '@ezihubb/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

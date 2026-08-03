@@ -227,7 +227,7 @@ export function ReviewModerationCard({
         <div className="mx-4 mb-3 pl-3 border-l-2 border-primary/30 bg-primary/3 rounded-r-button p-2.5">
           <p className="text-[11px] font-semibold text-primary mb-1 flex items-center gap-1">
             <MessageSquare className="w-3 h-3" />
-            DailyDaisy replied
+            EziHubb replied
             {review.repliedAt && (
               <span className="font-normal text-muted ml-1">
                 · {fmtDate(review.repliedAt)}

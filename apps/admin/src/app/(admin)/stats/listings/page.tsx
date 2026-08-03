@@ -7,7 +7,7 @@ import { ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES, ADMIN_ROUTES } from '@mlh/constants';
+import { API_ROUTES, ADMIN_ROUTES } from '@ezihubb/constants';
 import { fmtCurrency } from '../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

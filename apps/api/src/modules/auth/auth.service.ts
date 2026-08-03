@@ -134,7 +134,7 @@ export class AuthService {
         isEmailVerified: user.isEmailVerified,
         storeId:     user.storeId ?? null,
         isSeller:    user.isSeller,
-        permissions: (user.permissions ?? null) as import('@mlh/constants').PermissionDocument | null,
+        permissions: (user.permissions ?? null) as import('@ezihubb/constants').PermissionDocument | null,
       },
     };
   }
@@ -189,7 +189,7 @@ export class AuthService {
         isEmailVerified: user.isEmailVerified,
         storeId:     user.storeId ?? null,
         isSeller:    user.isSeller,
-        permissions: (user.permissions ?? null) as import('@mlh/constants').PermissionDocument | null,
+        permissions: (user.permissions ?? null) as import('@ezihubb/constants').PermissionDocument | null,
       },
     };
   }
@@ -248,7 +248,7 @@ export class AuthService {
         isEmailVerified: user.isEmailVerified,
         storeId:     user.storeId ?? null,
         isSeller:    user.isSeller,
-        permissions: (user.permissions ?? null) as import('@mlh/constants').PermissionDocument | null,
+        permissions: (user.permissions ?? null) as import('@ezihubb/constants').PermissionDocument | null,
       },
     };
   }
@@ -387,7 +387,7 @@ export class AuthService {
       {
         to: email,
         template: 'password-reset',
-        subject: 'Reset your Daily Daisy password',
+        subject: 'Reset your EziHubb password',
         data: { firstName: user.firstName, resetUrl: `${frontendUrl}/reset-password?token=${token}` },
       } satisfies SendEmailJobData,
       DEFAULT_JOB_OPTIONS,
@@ -484,7 +484,7 @@ export class AuthService {
         isEmailVerified: user.isEmailVerified,
         storeId:     user.storeId ?? null,
         isSeller:    user.isSeller,
-        permissions: (user.permissions ?? null) as import('@mlh/constants').PermissionDocument | null,
+        permissions: (user.permissions ?? null) as import('@ezihubb/constants').PermissionDocument | null,
       },
     };
   }
@@ -579,7 +579,7 @@ export class AuthService {
       {
         to: email,
         template: 'email-verification',
-        subject: 'Verify your Daily Daisy email',
+        subject: 'Verify your EziHubb email',
         data: { firstName, verifyUrl: `${frontendUrl}/verify-email?token=${token}` },
       } satisfies SendEmailJobData,
       DEFAULT_JOB_OPTIONS,

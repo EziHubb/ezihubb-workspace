@@ -98,13 +98,13 @@ export class PaypalService {
           {
             reference_id: orderId,
             amount: { currency_code: 'USD', value: amount },
-            description: `Daily Daisy order #${order.orderNumber}`,
+            description: `EziHubb order #${order.orderNumber}`,
           },
         ],
         application_context: {
           ...(returnUrl ? { return_url: returnUrl } : {}),
           ...(cancelUrl ? { cancel_url: cancelUrl } : {}),
-          brand_name:          'Daily Daisy',
+          brand_name:          'EziHubb',
           user_action:         'PAY_NOW',
           shipping_preference: 'NO_SHIPPING',
         },

@@ -1,4 +1,4 @@
-import { Skeleton, ProductCardSkeleton } from '@mlh/ui';
+import { Skeleton, ProductCardSkeleton } from '@ezihubb/ui';
 
 export function ListingLoadingSkeleton() {
   return (

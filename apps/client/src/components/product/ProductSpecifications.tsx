@@ -1,4 +1,4 @@
-import type { ProductAttributeDto } from '@mlh/types';
+import type { ProductAttributeDto } from '@ezihubb/types';
 
 // ── Attribute grouping ────────────────────────────────────────────────────────
 

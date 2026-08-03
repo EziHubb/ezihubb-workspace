@@ -90,7 +90,7 @@ Files: `apps/api/src/modules/pdf/templates/`
 - `packing-slip.template.tsx` — `PackingSlipDocument` component
 
 #### Invoice Template Content (full invoice mode)
-- Daily Daisy logo + address
+- EziHubb logo + address
 - Bill to: customer name, shipping address
 - Invoice #: `INV-{orderNumber}`
 - Invoice date, due date: "Due on receipt"

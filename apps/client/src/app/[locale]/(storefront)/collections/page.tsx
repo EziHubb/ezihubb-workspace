@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import type { CollectionDto } from '@mlh/types';
+import type { CollectionDto } from '@ezihubb/types';
 import { fetchList } from '../../../../components/listing/types';
 import { API_BASE } from '../../../../lib/api-client';
 
@@ -19,8 +19,8 @@ export async function generateMetadata({
   const { locale } = await params;
   return {
     title:       locale === 'vi'
-      ? 'Bộ Sưu Tập | Daily Daisy'
-      : 'Collections | Daily Daisy',
+      ? 'Bộ Sưu Tập | EziHubb'
+      : 'Collections | EziHubb',
     description: 'Explore our curated gift collections — seasonal, occasion-based, and themed.',
   };
 }

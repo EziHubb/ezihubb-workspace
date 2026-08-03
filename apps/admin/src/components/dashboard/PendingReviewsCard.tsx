@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Star, Check, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { api } from '../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

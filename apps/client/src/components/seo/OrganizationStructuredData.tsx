@@ -2,18 +2,18 @@
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'DailyDaisy',
-    url: 'https://dailydaisy.com',
-    logo: 'https://dailydaisy.com/logo.png',
+    name: 'EziHubb',
+    url: 'https://ezihubb.com',
+    logo: 'https://ezihubb.com/logo.png',
     sameAs: [
-      'https://instagram.com/dailydaisy',
-      'https://facebook.com/dailydaisy',
-      'https://pinterest.com/dailydaisy',
+      'https://instagram.com/ezihubb',
+      'https://facebook.com/ezihubb',
+      'https://pinterest.com/ezihubb',
     ],
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'customer service',
-      email: 'support@dailydaisy.com',
+      email: 'support@ezihubb.com',
       availableLanguage: ['English', 'Vietnamese'],
     },
   };

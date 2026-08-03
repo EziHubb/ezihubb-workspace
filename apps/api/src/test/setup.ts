@@ -69,7 +69,7 @@ export async function createTestUser(
   const ts = Date.now();
   const user = await prisma.user.create({
     data: {
-      email: `test-${ts}@mlh-test.invalid`,
+      email: `test-${ts}@ezihubb-test.invalid`,
       passwordHash: await bcrypt.hash('TestPass123!', 10),
       firstName: 'Test',
       lastName: 'User',
@@ -84,7 +84,7 @@ export async function createTestUser(
 export async function createTestAdmin(prisma: PrismaService) {
   const ts = Date.now();
   return createTestUser(prisma, {
-    email: `admin-${ts}@mlh-test.invalid`,
+    email: `admin-${ts}@ezihubb-test.invalid`,
     role: 'ADMIN',
   });
 }

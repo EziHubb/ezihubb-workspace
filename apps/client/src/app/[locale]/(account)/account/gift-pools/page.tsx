@@ -15,8 +15,8 @@ import {
   Loader2,
   Plus,
 } from 'lucide-react';
-import { useToast, Modal, ModalHeader, ModalBody, ModalFooter, Button, Skeleton } from '@mlh/ui';
-import { apiClient } from '@mlh/api-client';
+import { useToast, Modal, ModalHeader, ModalBody, ModalFooter, Button, Skeleton } from '@ezihubb/ui';
+import { apiClient } from '@ezihubb/api-client';
 import { useAuthQuery, useAuthMutation } from '../../../../../lib/hooks/useAuthQuery';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -278,7 +278,7 @@ function PoolCard({
   const deadline = getDeadlineLabel(pool.deadline);
   const shareUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/gift-pools/${pool.shareToken}`
-    : `https://mapleloomhandmade.com/gift-pools/${pool.shareToken}`;
+    : `https://ezihubb.com/gift-pools/${pool.shareToken}`;
 
   const copyLink = () => {
     navigator.clipboard.writeText(shareUrl).then(() => {

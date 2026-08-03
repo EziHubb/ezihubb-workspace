@@ -9,7 +9,7 @@ import {
   ArrowRight, AlignLeft, Palette, LayoutGrid,
 } from 'lucide-react';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { InlinePriceInput } from './primitives';
 import { Toggle } from './primitives/Toggle';
 import type { VariationGroup, VariationSettings } from './types';

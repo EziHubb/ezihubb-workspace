@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 
 async function dropMongo() {
   const mongoUrl = process.env['MONGODB_URI'] ?? 'mongodb://localhost:27017';
-  await mongoose.connect(mongoUrl, { dbName: 'dailydaisy', serverSelectionTimeoutMS: 3000 });
+  await mongoose.connect(mongoUrl, { dbName: 'ezihubb', serverSelectionTimeoutMS: 3000 });
   console.log('🗑️  Dropping MongoDB collections...');
 
   const collections = await mongoose.connection.db!.collections();

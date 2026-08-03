@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ShieldCheck, Star, ShoppingBag, Share2 } from 'lucide-react';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 import { StorePageClient } from './StorePageClient';
 
 interface StorePublicDto {
@@ -35,7 +35,7 @@ export async function generateMetadata({
 
   return {
     title:       store.name,
-    description: store.description?.slice(0, 160) ?? `Shop ${store.name} on Daily Daisy.`,
+    description: store.description?.slice(0, 160) ?? `Shop ${store.name} on EziHubb.`,
     openGraph: {
       title:       store.name,
       description: store.description?.slice(0, 160),
@@ -51,9 +51,9 @@ export const dynamic = 'force-dynamic';
 // ── Share buttons ─────────────────────────────────────────────────────────────
 
 function ShareButtons({ name, slug }: { name: string; slug: string }) {
-  const url     = `https://dailydaisy.com/shops/${slug}`;
+  const url     = `https://ezihubb.com/shops/${slug}`;
   const encoded = encodeURIComponent(url);
-  const text    = encodeURIComponent(`Check out ${name} on Daily Daisy!`);
+  const text    = encodeURIComponent(`Check out ${name} on EziHubb!`);
 
   return (
     <div className="flex items-center gap-2 flex-wrap">

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { apiClient, API_BASE } from '../api-client';
 import type {
   ArtStyle,

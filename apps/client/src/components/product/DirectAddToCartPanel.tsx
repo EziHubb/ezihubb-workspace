@@ -6,9 +6,9 @@ import { useLocale } from 'next-intl';
 import { ShoppingCart, Heart, Truck, Clock, ShieldCheck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useCartStore } from '../../lib/store/cart.store';
-import { useWishlist, useWishlistToggle } from '@mlh/api-client';
+import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
-import type { ProductDto, ProductVariantDto, ProductAttributeDto } from '@mlh/types';
+import type { ProductDto, ProductVariantDto, ProductAttributeDto } from '@ezihubb/types';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 

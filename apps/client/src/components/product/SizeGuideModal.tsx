@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Modal, ModalHeader, ModalBody } from '@mlh/ui';
+import { Modal, ModalHeader, ModalBody } from '@ezihubb/ui';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

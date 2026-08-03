@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 import Link from 'next/link';
-import type { ProductDto } from '@mlh/types';
+import type { ProductDto } from '@ezihubb/types';
 import type { BreadcrumbItem } from './ProductBreadcrumb';
 
 // ── Props ─────────────────────────────────────────────────────────────────────

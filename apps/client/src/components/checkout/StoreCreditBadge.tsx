@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { apiClient } from '../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { useAuthStore } from '../../lib/store/auth.store';
 
 interface StoreCreditsMeResponse {

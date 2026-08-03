@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import type { CollectionDto } from '@mlh/types';
+import type { CollectionDto } from '@ezihubb/types';
 
 export interface CollectionHeroProps {
   collection:   CollectionDto & { bannerUrl?: string };

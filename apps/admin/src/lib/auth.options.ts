@@ -1,37 +1,28 @@
 import type { NextAuthOptions } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import axios, { AxiosError } from 'axios';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 // Note: cannot import api-client.ts here — it imports authOptions (circular).
 // Use axios directly for the two unauthenticated login calls.
 
 // ── NEXTAUTH_URL auto-detection ───────────────────────────────────────────────
 // NextAuth v4 REQUIRES NEXTAUTH_URL in production to build callback/redirect URLs.
-// Preferred: set NEXTAUTH_URL explicitly in Railway admin service Variables.
-// Fallbacks try several Railway-injected vars in order.
+// Preferred: set NEXTAUTH_URL explicitly in the server's environment variables.
 
 if (!process.env['NEXTAUTH_URL']) {
   const detected =
     // NEXT_PUBLIC_NEXTAUTH_URL is set by the user as a full URL (with https://) —
-    // use it as-is; baked into bundle via railway.toml buildArgs.
+    // use it as-is; baked into the bundle at build time via NEXT_PUBLIC_* args.
     process.env['NEXT_PUBLIC_NEXTAUTH_URL'] ??
-    // ADMIN_URL — explicit user-set Railway Variable (recommended in production).
-    process.env['ADMIN_URL'] ??
-    // Railway auto-injects RAILWAY_PUBLIC_DOMAIN (hostname only, no protocol).
-    (process.env['RAILWAY_PUBLIC_DOMAIN']
-      ? `https://${process.env['RAILWAY_PUBLIC_DOMAIN']}`
-      : null) ??
-    (process.env['RAILWAY_STATIC_URL']
-      ? `https://${process.env['RAILWAY_STATIC_URL']}`
-      : null);
+    // ADMIN_URL — explicit user-set environment variable (recommended in production).
+    process.env['ADMIN_URL'];
 
   if (detected) {
     process.env['NEXTAUTH_URL'] = detected;
   } else if (process.env['NODE_ENV'] === 'production') {
-    // Log clearly so Railway logs show why auth is broken
     console.error(
       '[Admin auth] NEXTAUTH_URL is not set and could not be auto-detected. ' +
-        'Set NEXTAUTH_URL=https://<your-admin-domain> in Railway Variables.',
+        'Set NEXTAUTH_URL=https://<your-admin-domain> in the server environment.',
     );
   }
 }

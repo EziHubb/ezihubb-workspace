@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import type { CollectionDto } from '@mlh/types';
+import type { CollectionDto } from '@ezihubb/types';
 import { OccasionCard } from '../../../../components/occasions/OccasionCard';
 import { fetchList } from '../../../../components/listing/types';
 import { API_BASE } from '../../../../lib/api-client';

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PermissionDocument } from '@mlh/constants';
+import { PermissionDocument } from '@ezihubb/constants';
 
 export class AuthUserDto {
   @ApiProperty() id: string;

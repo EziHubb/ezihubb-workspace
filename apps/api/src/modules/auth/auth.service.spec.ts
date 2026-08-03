@@ -1,7 +1,7 @@
 ﻿// Mock otplib before any imports — it's an ESM-only package that can't be loaded by Jest/CJS
 jest.mock('otplib', () => ({
   generateSecret: jest.fn(() => 'JBSWY3DPEHPK3PXP'),
-  generateURI:    jest.fn(() => 'otpauth://totp/Daily Daisy%20Admin:admin%40example.com?secret=JBSWY3DPEHPK3PXP&issuer=Daily Daisy%20Admin'),
+  generateURI:    jest.fn(() => 'otpauth://totp/EziHubb%20Admin:admin%40example.com?secret=JBSWY3DPEHPK3PXP&issuer=EziHubb%20Admin'),
   verify:         jest.fn(() => Promise.resolve({ valid: true })),
 }));
 
@@ -59,7 +59,7 @@ const mockRes: any = {
 
 const mockTotpService = {
   newSecret:          jest.fn().mockReturnValue('JBSWY3DPEHPK3PXP'),
-  otpAuthUri:         jest.fn().mockReturnValue('otpauth://totp/Daily Daisy%20Admin:admin%40example.com?secret=JBSWY3DPEHPK3PXP&issuer=Daily Daisy%20Admin'),
+  otpAuthUri:         jest.fn().mockReturnValue('otpauth://totp/EziHubb%20Admin:admin%40example.com?secret=JBSWY3DPEHPK3PXP&issuer=EziHubb%20Admin'),
   qrCodeDataUrl:      jest.fn().mockResolvedValue('data:image/png;base64,fakeqrcode'),
   generateBackupCodes: jest.fn().mockReturnValue(['AABB1122', 'CCDD3344', 'EEFF5566', 'GGHH7788', 'IIJJ9900', 'KKLL1122', 'MMNN3344', 'OOPP5566']),
   verifyToken:        jest.fn().mockResolvedValue(true),

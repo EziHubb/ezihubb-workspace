@@ -31,7 +31,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
-import { Role } from '@mlh/constants';
+import { Role } from '@ezihubb/constants';
 import { PrismaService } from '../../prisma/prisma.service';
 
 interface JwtLike { sub?: string; id?: string; role?: string }

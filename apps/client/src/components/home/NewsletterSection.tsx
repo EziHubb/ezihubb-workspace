@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useNewsletterSubscribe } from '@mlh/api-client';
+import { useNewsletterSubscribe } from '@ezihubb/api-client';
 
 interface NewsletterSectionProps {
   title:       string;

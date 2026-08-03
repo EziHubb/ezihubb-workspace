@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { Gift, Users, Clock, Plus, Loader2, AlertCircle } from 'lucide-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 import { useAuthStore } from '../../../../lib/store/auth.store';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

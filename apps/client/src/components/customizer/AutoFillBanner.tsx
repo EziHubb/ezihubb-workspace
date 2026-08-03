@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useCustomizerStore } from '../../lib/store/customizer.store';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { apiClient } from '../../lib/api-client';
 import type { FieldValue } from '../../lib/customizer/types';
 

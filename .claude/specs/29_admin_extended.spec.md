@@ -228,7 +228,7 @@ model AdminSetting {
 
 | Key | Group | Default |
 |---|---|---|
-| `store.name` | general | "Daily Daisy" |
+| `store.name` | general | "EziHubb" |
 | `store.email` | general | noreply@... |
 | `loyalty.earnRate` | loyalty | 10 (pts/$1) |
 | `loyalty.redeemRate` | loyalty | 100 (pts/$1) |

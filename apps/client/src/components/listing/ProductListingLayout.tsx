@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { SlidersHorizontal, X } from 'lucide-react';
-import { Pagination } from '@mlh/ui';
-import type { CategoryDto, TagDto, ProductListItemDto } from '@mlh/types';
+import { Pagination } from '@ezihubb/ui';
+import type { CategoryDto, TagDto, ProductListItemDto } from '@ezihubb/types';
 import { buildFilterUrl, SORT_OPTIONS } from './types';
 import type { ListingFilters } from './types';
 import { FilterSidebar } from './FilterSidebar';

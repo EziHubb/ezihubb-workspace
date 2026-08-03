@@ -26,7 +26,7 @@ import {
 } from './dto/admin-stores.dto';
 import { paginatedResponse } from '../../common/dto/paginated-response.dto';
 
-const SHOP_URL   = process.env['CLIENT_URL'] ?? 'https://dailydaisy.com';
+const SHOP_URL   = process.env['CLIENT_URL'] ?? 'https://ezihubb.com';
 const ADMIN_URL  = process.env['ADMIN_URL']  ?? 'http://localhost:3001';
 
 @Injectable()
@@ -88,7 +88,7 @@ export class StoresService {
     await this.emailQueue.add(JOBS.SEND_EMAIL, {
       to:       user?.email,
       template: 'store-application-received',
-      subject:  'We received your Daily Daisy store application',
+      subject:  'We received your EziHubb store application',
       data:     { firstName: user?.firstName, storeName: store.name, shopUrl: SHOP_URL },
     }, DEFAULT_JOB_OPTIONS);
 
@@ -377,7 +377,7 @@ export class StoresService {
     await this.emailQueue.add(JOBS.SEND_EMAIL, {
       to:       store.owner.email,
       template: 'store-rejected',
-      subject:  'Update on your Daily Daisy store application',
+      subject:  'Update on your EziHubb store application',
       data: {
         firstName: store.owner.firstName,
         storeName: store.name,
@@ -414,7 +414,7 @@ export class StoresService {
     await this.emailQueue.add(JOBS.SEND_EMAIL, {
       to:       store.owner.email,
       template: 'store-suspended',
-      subject:  'Your Daily Daisy store has been suspended',
+      subject:  'Your EziHubb store has been suspended',
       data: {
         firstName: store.owner.firstName,
         storeName: store.name,

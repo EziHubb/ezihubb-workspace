@@ -31,7 +31,7 @@ export const FAQ_DATA: FaqSection[] = [
       },
       {
         q: 'Can I make changes to my order after placing it?',
-        a: "Yes — but only within 2 hours of ordering. After that, production may have started and changes aren't possible. Contact us immediately at support@dailydaisy.com for changes.",
+        a: "Yes — but only within 2 hours of ordering. After that, production may have started and changes aren't possible. Contact us immediately at support@ezihubb.com for changes.",
       },
       {
         q: 'Do you accept custom orders not shown on the website?',
@@ -71,7 +71,7 @@ export const FAQ_DATA: FaqSection[] = [
       },
       {
         q: 'Can I track my order?',
-        a: "Absolutely. Once your order ships, you'll receive an email with a tracking number. You can also track your order anytime at dailydaisy.com/orders/track.",
+        a: "Absolutely. Once your order ships, you'll receive an email with a tracking number. You can also track your order anytime at ezihubb.com/orders/track.",
       },
       {
         q: 'Do you ship internationally?',

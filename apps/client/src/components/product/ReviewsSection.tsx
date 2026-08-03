@@ -1,4 +1,4 @@
-import type { ReviewSummaryDto } from '@mlh/types';
+import type { ReviewSummaryDto } from '@ezihubb/types';
 import { EtsyReviewsSection } from './EtsyReviewsSection';
 
 interface ReviewsSectionProps {

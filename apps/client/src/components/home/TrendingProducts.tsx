@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
-import { ProductCard, ProductCardSkeleton } from '@mlh/ui';
-import type { ProductListItemDto } from '@mlh/types';
+import { ProductCard, ProductCardSkeleton } from '@ezihubb/ui';
+import type { ProductListItemDto } from '@ezihubb/types';
 
 interface TrendingProductsProps {
   products: ProductListItemDto[];

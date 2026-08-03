@@ -1,4 +1,4 @@
-# DailyDaisy — Feature Gap Analysis & Phase Roadmap
+# EziHubb — Feature Gap Analysis & Phase Roadmap
 
 **Scan date:** 2026-06-10
 **Scanned by:** senior-architect · product-manager · tech-stack-evaluator
@@ -186,10 +186,10 @@ All routes are under `apps/admin/src/app/`.
 
 | Lib | Exports (count) | Used by client | Used by admin | Notes |
 |-----|-----------------|----------------|---------------|-------|
-| @mlh/ui | 13 components (Avatar, Badge, BottomNav, Button, ErrorBoundary, Input, Modal, Pagination, ProductCard, RatingStars, Skeleton, Textarea, Toast) | Yes | Yes | All built, no stubs |
-| @mlh/types | 12 type files (api, cart, catalog, message, order, payment, product, promotion, review, shipping, user + spec) | Yes | Yes | Complete type coverage |
-| @mlh/constants | 6 files (app-routes, order-status, pagination, roles, routes, upload) | Yes | Yes | API_ROUTES constants cover all modules |
-| @mlh/api-client | fetch client + 14 React Query hooks | Yes | Partial (admin uses axios directly) | client.ts + hooks; admin app uses its own axios-based api-client.ts |
+| @ezihubb/ui | 13 components (Avatar, Badge, BottomNav, Button, ErrorBoundary, Input, Modal, Pagination, ProductCard, RatingStars, Skeleton, Textarea, Toast) | Yes | Yes | All built, no stubs |
+| @ezihubb/types | 12 type files (api, cart, catalog, message, order, payment, product, promotion, review, shipping, user + spec) | Yes | Yes | Complete type coverage |
+| @ezihubb/constants | 6 files (app-routes, order-status, pagination, roles, routes, upload) | Yes | Yes | API_ROUTES constants cover all modules |
+| @ezihubb/api-client | fetch client + 14 React Query hooks | Yes | Partial (admin uses axios directly) | client.ts + hooks; admin app uses its own axios-based api-client.ts |
 
 ### 1.6 Test Coverage Estimate
 
@@ -374,7 +374,7 @@ Status legend: ✅ Done · 🟡 Partial · ❌ Missing · ➖ Not applicable
 | Feature | API | Client | Admin | Notes |
 |---------|-----|--------|-------|-------|
 | Affiliate registration | ✅ | ✅ | ➖ | |
-| Referral link + cookie tracking | ✅ | ✅ | ➖ | Middleware sets mlh_affiliate cookie |
+| Referral link + cookie tracking | ✅ | ✅ | ➖ | Middleware sets ezihubb_affiliate cookie |
 | Commission calculation | ✅ | ➖ | ➖ | commission.service.ts, BullMQ processor |
 | Buyer discount at checkout | ✅ | ✅ | ➖ | AffiliateDiscountBanner |
 | Affiliate portal (dashboard) | ✅ | ✅ | ➖ | 3-page portal |

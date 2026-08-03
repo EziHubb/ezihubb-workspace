@@ -36,13 +36,13 @@ jest.mock('../../../lib/currency/currency-context', () => ({
   }),
 }));
 
-// Mock @mlh/ui
-jest.mock('@mlh/ui', () => ({
+// Mock @ezihubb/ui
+jest.mock('@ezihubb/ui', () => ({
   RatingStars: ({ rating }: { rating: number }) => <span data-testid="rating-stars">{rating}</span>,
 }));
 
-// Mock @mlh/constants
-jest.mock('@mlh/constants', () => ({
+// Mock @ezihubb/constants
+jest.mock('@ezihubb/constants', () => ({
   API_ROUTES: { wishlist: { toggle: '/api/v1/wishlist/toggle' } },
 }));
 

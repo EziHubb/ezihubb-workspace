@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, ChevronRight, Check, Search, Tag, AlertCircle } from 'lucide-react';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 interface CategoryL3 {
   id:   string;

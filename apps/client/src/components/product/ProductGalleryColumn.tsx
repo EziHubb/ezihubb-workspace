@@ -1,4 +1,4 @@
-import type { ProductDto } from '@mlh/types';
+import type { ProductDto } from '@ezihubb/types';
 import { EtsyGallery } from './EtsyGallery';
 
 interface ProductGalleryColumnProps {

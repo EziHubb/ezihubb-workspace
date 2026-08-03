@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Palette, ShoppingCart, Bell } from 'lucide-react';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { useCartStore } from '../../lib/store/cart.store';
-import type { ProductDto, ProductVariantDto } from '@mlh/types';
+import type { ProductDto, ProductVariantDto } from '@ezihubb/types';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 

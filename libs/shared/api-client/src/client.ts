@@ -1,4 +1,4 @@
-import { ApiRequestError } from '@mlh/types';
+import { ApiRequestError } from '@ezihubb/types';
 
 export interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>;

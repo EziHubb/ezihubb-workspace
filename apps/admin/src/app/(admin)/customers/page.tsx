@@ -12,7 +12,7 @@ import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { fmtDate, fmtNum, fmtAmount, fmtDateISO } from '../../../lib/fmt';
 import { DataTable } from '../../../components/data/DataTable';
 import { api, adminApi } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { FilterSelect } from '../../../components/ui/FilterSelect';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

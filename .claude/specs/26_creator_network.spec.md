@@ -2,7 +2,7 @@
 
 ## 1. Tổng quan
 
-Creator Network là hệ thống multi-level referral cho phép users ("creators") chia sẻ Daily Daisy và kiếm hoa hồng khi community mua hàng. Bao gồm: landing page `/creators`, Creator Hub account pages, API layer, và admin management. Đây là hệ thống referral/commission thuần túy — không phải design submission system.
+Creator Network là hệ thống multi-level referral cho phép users ("creators") chia sẻ EziHubb và kiếm hoa hồng khi community mua hàng. Bao gồm: landing page `/creators`, Creator Hub account pages, API layer, và admin management. Đây là hệ thống referral/commission thuần túy — không phải design submission system.
 
 **Quan trọng:** Thuật ngữ "seller" đã bị xóa hoàn toàn. Route `/seller` không còn tồn tại. Thay thế: "creator" cho người dùng chia sẻ, "shop owner" cho người bán hàng.
 

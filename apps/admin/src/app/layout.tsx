@@ -5,8 +5,8 @@ import { DialogProvider } from '../contexts/DialogContext';
 import { AdminThemeProvider } from '../components/providers/AdminThemeProvider';
 
 export const metadata = {
-  title:       'Daily Daisy — Admin',
-  description: 'Admin dashboard for Daily Daisy',
+  title:       'EziHubb — Admin',
+  description: 'Admin dashboard for EziHubb',
 };
 
 export default function RootLayout({

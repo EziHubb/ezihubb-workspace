@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
-import type { ProductListItemDto, PaginatedResponse } from '@mlh/types';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
+import type { ProductListItemDto, PaginatedResponse } from '@ezihubb/types';
 import { ReviewsPageStructuredData } from '../../../../../components/seo/ReviewsPageStructuredData';
 
 export const revalidate = 3600;
@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: 'Customer Reviews',
     description:
-      "50,000+ happy customers. Read real reviews from people who've ordered personalized gifts from DailyDaisy.",
+      "50,000+ happy customers. Read real reviews from people who've ordered personalized gifts from EziHubb.",
     robots: { index: true, follow: true },
   };
 }

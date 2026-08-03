@@ -19,7 +19,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { AdminReferralService } from './admin-referral.service';
 import { ReferralPayoutStatus } from '@prisma/client';
-import { Role } from '@mlh/constants';
+import { Role } from '@ezihubb/constants';
 import type {
   AdminBalanceAdjustDto,
   AdminTierOverrideDto,

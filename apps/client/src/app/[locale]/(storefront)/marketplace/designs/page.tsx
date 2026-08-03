@@ -150,7 +150,7 @@ function DesignCard({ design }: { design: DesignAsset }) {
             className="text-[10px] font-medium text-gray-300 rotate-[-30deg] whitespace-nowrap"
             style={{ textShadow: 'none', opacity: 0.5 }}
           >
-            Daily Daisy · Licensed
+            EziHubb · Licensed
           </span>
         </div>
 

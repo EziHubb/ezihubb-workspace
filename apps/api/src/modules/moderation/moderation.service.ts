@@ -620,7 +620,7 @@ export class ModerationService {
 
   private async notifyAdminCritical(entityType: string, entityId: string, result: ModerationResult) {
     try {
-      const adminEmail = process.env['ADMIN_EMAIL'] ?? 'admin@dailydaisy.com';
+      const adminEmail = process.env['ADMIN_EMAIL'] ?? 'admin@ezihubb.com';
       await this.emailQueue.add(JOBS.SEND_EMAIL, {
         to:       adminEmail,
         template: 'moderation-critical-alert',
@@ -642,7 +642,7 @@ export class ModerationService {
       await this.emailQueue.add(JOBS.SEND_EMAIL, {
         to:       store.owner.email,
         template,
-        subject:  `Action required: Your content needs review — Daily Daisy`,
+        subject:  `Action required: Your content needs review — EziHubb`,
         data:     {
           sellerName:     store.owner.firstName ?? 'Seller',
           entityType,

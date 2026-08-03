@@ -37,7 +37,7 @@ export class LabelService {
   private readonly baseUrl = 'https://api.easypost.com/v2';
 
   private readonly fromAddress = {
-    name:    process.env['WAREHOUSE_NAME']   ?? 'DailyDaisy',
+    name:    process.env['WAREHOUSE_NAME']   ?? 'EziHubb',
     street1: process.env['WAREHOUSE_STREET'] ?? '123 Main St',
     city:    process.env['WAREHOUSE_CITY']   ?? 'New York',
     state:   process.env['WAREHOUSE_STATE']  ?? 'NY',

@@ -8,9 +8,9 @@ const intlMiddleware = createMiddleware(routing);
 
 // ── Attribution cookie names ──────────────────────────────────────────────────
 
-const AFFILIATE_COOKIE = 'mlh_affiliate'; // legacy affiliate referralCode
-const REFERRAL_COOKIE  = 'mlh_ref';       // multi-level referral code
-const VISITOR_COOKIE   = 'mlh_visitor';   // anonymous UUID for click dedup
+const AFFILIATE_COOKIE = 'ezihubb_affiliate'; // legacy affiliate referralCode
+const REFERRAL_COOKIE  = 'ezihubb_ref';       // multi-level referral code
+const VISITOR_COOKIE   = 'ezihubb_visitor';   // anonymous UUID for click dedup
 const COOKIE_MAX_AGE   = 30 * 24 * 60 * 60; // 30 days in seconds
 
 function applyAttributionCookies(

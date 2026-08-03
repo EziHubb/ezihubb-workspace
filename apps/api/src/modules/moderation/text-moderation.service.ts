@@ -4,7 +4,7 @@ import type { ModerationResult } from './dto/moderation-result.dto';
 
 const MODEL = 'claude-haiku-4-5';
 
-const SYSTEM_PROMPT = `You are a content moderation AI for Daily Daisy, a handmade goods marketplace.
+const SYSTEM_PROMPT = `You are a content moderation AI for EziHubb, a handmade goods marketplace.
 Analyze the following content and return ONLY a JSON object.
 
 Violation categories to check:

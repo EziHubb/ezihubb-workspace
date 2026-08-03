@@ -21,7 +21,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Role } from '@mlh/constants';
+import { Role } from '@ezihubb/constants';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 
 class PaypalCreateOrderDto {

@@ -84,7 +84,7 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
         JWT_REFRESH_EXPIRES_IN: Joi.string().default('30d'),
         CORS_ORIGINS: Joi.string().default('http://localhost:3000,http://localhost:3001'),
         // Storage — optional during development
-        AWS_S3_BUCKET: Joi.string().default('mlh-assets'),
+        AWS_S3_BUCKET: Joi.string().default('ezihubb-assets'),
         AWS_S3_REGION: Joi.string().default('auto'),
         AWS_ACCESS_KEY_ID: Joi.string().optional(),
         AWS_SECRET_ACCESS_KEY: Joi.string().optional(),
@@ -97,7 +97,7 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
         SMTP_PORT: Joi.number().default(587),
         SMTP_USER: Joi.string().optional(),
         SMTP_PASS: Joi.string().optional(),
-        EMAIL_FROM: Joi.string().email().default('noreply@dailydaisy.com'),
+        EMAIL_FROM: Joi.string().email().default('noreply@ezihubb.com'),
         // Anthropic — optional during development
         ANTHROPIC_API_KEY: Joi.string().optional(),
         // Google OAuth — optional during development

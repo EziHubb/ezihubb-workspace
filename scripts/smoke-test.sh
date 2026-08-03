@@ -60,7 +60,7 @@ check_contains() {
 
 echo ""
 echo "═══════════════════════════════════════════════"
-echo "  DailyDaisy — Smoke Test"
+echo "  EziHubb — Smoke Test"
 echo "  API:    $API"
 echo "  Client: $CLIENT"
 echo "═══════════════════════════════════════════════"

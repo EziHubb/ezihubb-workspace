@@ -409,7 +409,7 @@ const OPTION_WIDGET_MAP: Record<string, WidgetType> = {
 
 File: `apps/admin/src/components/products/edit/ProductEditShell.tsx`
 
-7 tabs (CSS hidden strategy — all components stay mounted to preserve local state):
+9 tabs (CSS hidden strategy — all components stay mounted to preserve local state):
 - **Performance** — view/sold metrics (edit mode only)
 - **Photo & Video** — image upload, reorder, alt texts, video URLs, thumbnail crop
 - **Item Details** — name, category, rich description
@@ -417,6 +417,8 @@ File: `apps/admin/src/components/products/edit/ProductEditShell.tsx`
 - **Pricing & Shipping** — price, SKU, quantity, shipping/processing profiles, variations
 - **How It's Made** — whoMadeIt, tools, production partners, GPSR info
 - **Settings** — shop section, isFeatured, renewalType, isAdsEnabled
+- **Q&A** — manage product questions and answers (`QaTab`)
+- **Translations** — auto-translate product fields via `AutoTranslateService` (`TranslationsTab`)
 
 **Form state:** React Hook Form `FormProvider` — all fields live in parent, preserved across tabs.
 

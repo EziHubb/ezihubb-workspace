@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { ProductCard } from './ProductCard';
-import type { ProductListItemDto } from '@mlh/types';
+import type { ProductListItemDto } from '@ezihubb/types';
 
 interface RelatedProductsProps {
   products: ProductListItemDto[];

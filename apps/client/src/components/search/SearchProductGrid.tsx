@@ -1,6 +1,6 @@
 'use client';
 
-import type { ProductListItemDto } from '@mlh/types';
+import type { ProductListItemDto } from '@ezihubb/types';
 import { SearchProductCard } from './SearchProductCard';
 
 // ── SearchProductGrid ─────────────────────────────────────────────────────────

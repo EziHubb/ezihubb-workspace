@@ -191,7 +191,7 @@ model CustomizationDraft {
 ```
 
 Draft upsert key: `(userId OR sessionId) + productId + templateId`
-Session ID đến từ cookie `cart_session` (không phải localStorage key `daisy-cart`).
+Session ID đến từ cookie `cart_session` (không phải localStorage key `ezihubb-cart`).
 
 ## 11. MongoDB Customization Config Example
 

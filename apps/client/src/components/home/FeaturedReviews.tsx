@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import type { ReviewDto } from '@mlh/types';
+import type { ReviewDto } from '@ezihubb/types';
 
 interface FeaturedReviewsProps {
   reviews: ReviewDto[];

@@ -6,7 +6,7 @@ import { BarChart2, DollarSign, Wallet, Store, Clock, TrendingUp } from 'lucide-
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { StatCard } from '../../../components/data/StatCard';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtDate, unwrapArr } from '../../../lib/fmt';
 import { FilterSelect } from '../../../components/ui/FilterSelect';
 

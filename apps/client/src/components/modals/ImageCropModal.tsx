@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { RotateCcw, RotateCw, ZoomIn, ZoomOut } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@mlh/ui';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@ezihubb/ui';
 import type { Crop, PixelCrop } from 'react-image-crop';
 // CSS must be imported alongside the component (safe in 'use client' — Next.js bundles it)
 import 'react-image-crop/dist/ReactCrop.css';

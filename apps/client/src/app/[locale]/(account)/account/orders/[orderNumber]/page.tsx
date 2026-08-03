@@ -6,10 +6,10 @@ import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { ArrowLeft, Package, MapPin, ExternalLink, AlertTriangle, MessageCircle, Download } from 'lucide-react';
-import { useOrder, useCancelOrder, api } from '@mlh/api-client';
-import { OrderStatusBadge } from '@mlh/ui';
-import { useToast } from '@mlh/ui';
-import type { OrderDto, OrderStatus } from '@mlh/types';
+import { useOrder, useCancelOrder, api } from '@ezihubb/api-client';
+import { OrderStatusBadge } from '@ezihubb/ui';
+import { useToast } from '@ezihubb/ui';
+import type { OrderDto, OrderStatus } from '@ezihubb/types';
 import { MessageShopModal } from '../../../../../../components/messages/MessageShopModal';
 import { ReferralSharePanel } from '../../../../../../components/referral/ReferralSharePanel';
 

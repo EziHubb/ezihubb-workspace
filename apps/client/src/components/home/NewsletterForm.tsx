@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { apiClient } from '../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 interface NewsletterFormProps {
   placeholder: string;

@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 
 // Settings are fetched server-side and cached at the data level.
 // The storefront layout is force-dynamic, but the fetch itself
@@ -172,7 +172,7 @@ export default async function AffiliateLandingPage() {
             Ready to start earning?
           </h2>
           <p className="text-muted mb-8">
-            Join other creators already earning with Daily Daisy.
+            Join other creators already earning with EziHubb.
           </p>
           <Link
             href="./affiliate/register"

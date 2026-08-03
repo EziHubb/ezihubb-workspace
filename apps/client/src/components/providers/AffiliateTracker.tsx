@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { apiClient } from '../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 function getCookie(name: string): string | undefined {
   return document.cookie
@@ -13,8 +13,8 @@ function getCookie(name: string): string | undefined {
 
 export function AffiliateTracker() {
   useEffect(() => {
-    const referralCode = getCookie('mlh_affiliate');
-    const visitorId    = getCookie('mlh_visitor');
+    const referralCode = getCookie('ezihubb_affiliate');
+    const visitorId    = getCookie('ezihubb_visitor');
     if (!referralCode || !visitorId) return;
 
     apiClient

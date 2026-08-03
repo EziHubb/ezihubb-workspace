@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { DollarSign, AlertCircle } from 'lucide-react';
-import { Skeleton } from '@mlh/ui';
+import { Skeleton } from '@ezihubb/ui';
 import { useAuthQuery, useAuthMutation } from '../../../../../../lib/hooks/useAuthQuery';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

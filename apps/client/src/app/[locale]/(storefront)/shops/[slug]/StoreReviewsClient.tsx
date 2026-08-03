@@ -4,9 +4,9 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
 import { Star, MessageSquare, User } from 'lucide-react';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
-import { Pagination, Skeleton } from '@mlh/ui';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
+import { Pagination, Skeleton } from '@ezihubb/ui';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

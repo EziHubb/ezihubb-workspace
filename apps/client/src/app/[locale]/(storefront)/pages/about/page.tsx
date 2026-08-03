@@ -120,7 +120,7 @@ export default function AboutPage() {
           </div>
           <div className="space-y-4 text-secondary text-base leading-relaxed">
             <p>
-              Daily Daisy was born from a simple belief: the most meaningful gifts
+              EziHubb was born from a simple belief: the most meaningful gifts
               are the ones made uniquely for someone. We started in 2019 as a small
               workshop with two people and a single embroidery machine.
             </p>

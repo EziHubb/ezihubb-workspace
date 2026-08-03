@@ -4,9 +4,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { TrendingUp, DollarSign, Clock, CheckCircle2 } from 'lucide-react';
-import { Skeleton } from '@mlh/ui';
+import { Skeleton } from '@ezihubb/ui';
 import { useAuthQuery } from '../../../../../../lib/hooks/useAuthQuery';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount } from '../../../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

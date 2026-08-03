@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { CLIENT_ROUTES } from '@mlh/constants';
+import { CLIENT_ROUTES } from '@ezihubb/constants';
 
 // ── Social icon SVGs ──────────────────────────────────────────────────────────
 
@@ -44,7 +44,7 @@ function BrandLogo() {
       <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
         <span className="text-white font-bold text-xl font-display leading-none">M</span>
       </div>
-      <span className="font-display font-bold text-lg text-white">Daily Daisy</span>
+      <span className="font-display font-bold text-lg text-white">EziHubb</span>
     </div>
   );
 }
@@ -56,10 +56,10 @@ export function Footer() {
   const year = new Date().getFullYear();
 
   const socials = [
-    { Icon: InstagramIcon, href: 'https://instagram.com/dailydaisy', label: 'Instagram' },
-    { Icon: TikTokIcon,    href: 'https://tiktok.com/@dailydaisy',           label: 'TikTok'    },
-    { Icon: PinterestIcon, href: 'https://pinterest.com/dailydaisy',          label: 'Pinterest' },
-    { Icon: FacebookIcon,  href: 'https://facebook.com/dailydaisy',           label: 'Facebook'  },
+    { Icon: InstagramIcon, href: 'https://instagram.com/ezihubb', label: 'Instagram' },
+    { Icon: TikTokIcon,    href: 'https://tiktok.com/@ezihubb',           label: 'TikTok'    },
+    { Icon: PinterestIcon, href: 'https://pinterest.com/ezihubb',          label: 'Pinterest' },
+    { Icon: FacebookIcon,  href: 'https://facebook.com/ezihubb',           label: 'Facebook'  },
   ];
 
   const aboutLinks = [
@@ -148,7 +148,7 @@ export function Footer() {
 
         {/* ── Bottom bar ────────────────────────────────────────────────── */}
         <div className="mt-10 pt-6 border-t border-[#3D3D4E] flex flex-col sm:flex-row items-center justify-between gap-3 text-[#6B7280] text-xs">
-          <p>© {year} DailyDaisy. All rights reserved.</p>
+          <p>© {year} EziHubb. All rights reserved.</p>
           <div className="flex gap-4">
             <Link href={CLIENT_ROUTES.PAGE_PRIVACY_POLICY} className="hover:text-white transition-colors">
               {t('privacyPolicy')}

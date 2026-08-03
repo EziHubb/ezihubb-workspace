@@ -1,6 +1,6 @@
 import React from 'react';
 import { Check } from 'lucide-react';
-import type { OrderStatus, OrderStatusHistoryDto } from '@mlh/types';
+import type { OrderStatus, OrderStatusHistoryDto } from '@ezihubb/types';
 
 // ── Step definitions ──────────────────────────────────────────────────────────
 

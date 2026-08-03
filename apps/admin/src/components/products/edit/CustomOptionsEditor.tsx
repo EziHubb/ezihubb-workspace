@@ -26,7 +26,7 @@ import {
   AlignLeft, List, Paperclip, Check,
 } from 'lucide-react';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { safeArr } from '../../../lib/fmt';
 import { Toggle } from './primitives';
 

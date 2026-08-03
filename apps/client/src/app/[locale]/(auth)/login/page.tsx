@@ -9,7 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff } from 'lucide-react';
 import { signIn } from 'next-auth/react';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { API_BASE } from '../../../../lib/api-client';
 
 // ── Zod schema ────────────────────────────────────────────────────────────────
@@ -196,7 +196,7 @@ export default function LoginPage() {
 
       {/* Register link */}
       <p className="text-center text-sm text-muted mt-6">
-        New to Daily Daisy?{' '}
+        New to EziHubb?{' '}
         <Link
           href={`/${locale}/register`}
           className="text-primary font-medium hover:underline"

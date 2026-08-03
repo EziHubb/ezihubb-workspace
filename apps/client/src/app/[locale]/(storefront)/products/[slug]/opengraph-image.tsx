@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/og';
-import type { ProductDto } from '@mlh/types';
+import type { ProductDto } from '@ezihubb/types';
 
 // ── Route segment config ──────────────────────────────────────────────────────
 
@@ -60,7 +60,7 @@ export default async function OGImage({
           }}
         >
           <div style={{ fontSize: 56, fontWeight: 700, color: CORAL }}>
-            Daily Daisy
+            EziHubb
           </div>
           <div style={{ fontSize: 28, color: MUTED }}>
             Personalized Handmade Gifts
@@ -139,7 +139,7 @@ export default async function OGImage({
               }}
             />
             <span style={{ fontSize: 22, color: MUTED, fontWeight: 600 }}>
-              Daily Daisy
+              EziHubb
             </span>
           </div>
 

@@ -43,17 +43,17 @@ jest.mock('next-intl', () => ({
   },
 }));
 
-// ── Mock @mlh/api-client hooks ────────────────────────────────────────────────
+// ── Mock @ezihubb/api-client hooks ────────────────────────────────────────────────
 const mockUpdateItemMutate = jest.fn();
 const mockRemoveItemMutate = jest.fn();
 
-jest.mock('@mlh/api-client', () => ({
+jest.mock('@ezihubb/api-client', () => ({
   useCart:       jest.fn(),
   useMutateCart: jest.fn(),
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { useCart, useMutateCart } = require('@mlh/api-client');
+const { useCart, useMutateCart } = require('@ezihubb/api-client');
 
 // ── Test data ─────────────────────────────────────────────────────────────────
 const mockCartData = {

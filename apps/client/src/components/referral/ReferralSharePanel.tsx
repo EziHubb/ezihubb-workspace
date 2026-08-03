@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Gift, Copy, Check, Info } from 'lucide-react';
 import { apiClient } from '../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { useAuthStore } from '../../lib/store/auth.store';
 
 interface ReferralSharePanelProps {

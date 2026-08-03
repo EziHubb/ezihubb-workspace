@@ -67,7 +67,7 @@ describe('CommissionService', () => {
       providers: [
         CommissionService,
         { provide: PrismaService, useValue: mockDeep<PrismaService>() },
-        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('https://dailydaisy.com') } },
+        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('https://ezihubb.com') } },
         { provide: getQueueToken(QUEUES.AFFILIATE_COMMISSION), useValue: commissionQueue },
         { provide: getQueueToken(QUEUES.EMAIL), useValue: emailQueue },
       ],

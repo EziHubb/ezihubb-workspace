@@ -11,7 +11,7 @@ import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { DataTable } from '../../../components/data/DataTable';
 import { ProductCard, type AdminProduct } from '../../../components/products/ProductCard';
 import { api, adminApi } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtDate, capitalize, fmtNum } from '../../../lib/fmt';
 import { useDialog } from '../../../contexts/DialogContext';
 import { FilterSelect } from '../../../components/ui/FilterSelect';

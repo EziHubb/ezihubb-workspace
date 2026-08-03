@@ -11,13 +11,13 @@ const COMMON = {
   lastName:    'Doe',
   email:       'jane.doe@example.com',
   year:        new Date().getFullYear(),
-  shopUrl:     'https://dailydaisy.com',
-  unsubscribeUrl: 'https://dailydaisy.com/unsubscribe',
+  shopUrl:     'https://ezihubb.com',
+  unsubscribeUrl: 'https://ezihubb.com/unsubscribe',
 };
 
 const ORDER_SAMPLE = {
   orderNumber:    'DD-2026-00042',
-  orderUrl:       'https://dailydaisy.com/account/orders/ord_example',
+  orderUrl:       'https://ezihubb.com/account/orders/ord_example',
   orderDate:      'Jun 13, 2026',
   subtotal:       '74.98',
   discountAmount: '5.00',
@@ -50,22 +50,22 @@ const SAMPLE_DATA: Record<string, Record<string, unknown>> = {
   'order-delivered': {
     ...COMMON,
     ...ORDER_SAMPLE,
-    reviewUrl: 'https://dailydaisy.com/account/orders/ord_example/review',
+    reviewUrl: 'https://ezihubb.com/account/orders/ord_example/review',
   },
   'review-reminder': {
     ...COMMON,
     ...ORDER_SAMPLE,
     productName: 'Custom Pet Portrait Pillow',
-    reviewUrl:   'https://dailydaisy.com/account/orders/ord_example/review',
+    reviewUrl:   'https://ezihubb.com/account/orders/ord_example/review',
   },
   'reset-password': {
     ...COMMON,
-    resetUrl:  'https://dailydaisy.com/reset-password?token=example_token_abc123',
+    resetUrl:  'https://ezihubb.com/reset-password?token=example_token_abc123',
     expiresIn: '1 hour',
   },
   'email-verify': {
     ...COMMON,
-    verifyUrl: 'https://dailydaisy.com/verify-email?token=example_verify_abc123',
+    verifyUrl: 'https://ezihubb.com/verify-email?token=example_verify_abc123',
   },
   'welcome': {
     ...COMMON,
@@ -81,7 +81,7 @@ const SAMPLE_DATA: Record<string, Record<string, unknown>> = {
   },
   'abandoned-cart': {
     ...COMMON,
-    cartUrl: 'https://dailydaisy.com/cart?token=example',
+    cartUrl: 'https://ezihubb.com/cart?token=example',
     items: [
       { productName: 'Custom Pet Portrait Pillow', quantity: 1, unitPrice: '49.99', imageUrl: '' },
     ],
@@ -92,8 +92,8 @@ const SAMPLE_DATA: Record<string, Record<string, unknown>> = {
     senderName:     'Jane Doe',
     giftCardCode:   'GIFT-ABCD-EFGH-1234',
     giftCardAmount: '50.00',
-    message:        'Happy Birthday! Enjoy shopping at Daily Daisy!',
-    redeemUrl:      'https://dailydaisy.com/gift-cards/redeem',
+    message:        'Happy Birthday! Enjoy shopping at EziHubb!',
+    redeemUrl:      'https://ezihubb.com/gift-cards/redeem',
     expiresAt:      'Jun 13, 2027',
   },
   'loyalty-points-earned': {
@@ -101,19 +101,19 @@ const SAMPLE_DATA: Record<string, Record<string, unknown>> = {
     pointsEarned:  '750',
     totalPoints:   '2400',
     orderNumber:   ORDER_SAMPLE.orderNumber,
-    dashboardUrl:  'https://dailydaisy.com/account/loyalty',
+    dashboardUrl:  'https://ezihubb.com/account/loyalty',
   },
   'new-message': {
     ...COMMON,
-    senderName:  'Daily Daisy Support',
+    senderName:  'EziHubb Support',
     messageBody: 'Hi Jane, your custom order is ready for production. Please confirm the personalization details.',
-    inboxUrl:    'https://dailydaisy.com/account/messages',
+    inboxUrl:    'https://ezihubb.com/account/messages',
   },
   'new-store-order': {
     ...COMMON,
     storeName:   'Jane\'s Crafts',
     ...ORDER_SAMPLE,
-    storeOrderUrl: 'https://dailydaisy.com/sellers/orders/ord_example',
+    storeOrderUrl: 'https://ezihubb.com/sellers/orders/ord_example',
   },
   'payout-processed': {
     ...COMMON,
@@ -121,31 +121,31 @@ const SAMPLE_DATA: Record<string, Record<string, unknown>> = {
     payoutAmount:  '245.00',
     payoutMethod:  'Bank Transfer',
     payoutDate:    'Jun 13, 2026',
-    dashboardUrl:  'https://dailydaisy.com/sellers/payouts',
+    dashboardUrl:  'https://ezihubb.com/sellers/payouts',
   },
   'store-approved': {
     ...COMMON,
     storeName:   'Jane\'s Crafts',
-    storeUrl:    'https://dailydaisy.com/shops/janes-crafts',
-    dashboardUrl:'https://dailydaisy.com/sellers/dashboard',
+    storeUrl:    'https://ezihubb.com/shops/janes-crafts',
+    dashboardUrl:'https://ezihubb.com/sellers/dashboard',
   },
   'store-rejected': {
     ...COMMON,
     storeName:   'Jane\'s Crafts',
     reason:      'Your store application does not meet our quality guidelines at this time.',
-    reapplyUrl:  'https://dailydaisy.com/sellers/apply',
+    reapplyUrl:  'https://ezihubb.com/sellers/apply',
   },
   'store-suspended': {
     ...COMMON,
     storeName:   'Jane\'s Crafts',
     reason:      'Multiple policy violations detected.',
-    appealUrl:   'https://dailydaisy.com/sellers/appeal',
+    appealUrl:   'https://ezihubb.com/sellers/appeal',
   },
   'affiliate-approved': {
     ...COMMON,
     commissionRate: '10',
-    dashboardUrl:   'https://dailydaisy.com/affiliates/dashboard',
-    referralLink:   'https://dailydaisy.com?ref=JANE2026',
+    dashboardUrl:   'https://ezihubb.com/affiliates/dashboard',
+    referralLink:   'https://ezihubb.com?ref=JANE2026',
   },
   'affiliate-rejected': {
     ...COMMON,
@@ -156,14 +156,14 @@ const SAMPLE_DATA: Record<string, Record<string, unknown>> = {
     orderNumber:      ORDER_SAMPLE.orderNumber,
     commissionAmount: '4.99',
     totalEarned:      '142.50',
-    dashboardUrl:     'https://dailydaisy.com/affiliates/dashboard',
+    dashboardUrl:     'https://ezihubb.com/affiliates/dashboard',
   },
   'buyer-referral-invite': {
     ...COMMON,
     referrerName:  'Alex Smith',
     discountCode:  'FRIEND-ALEX-10',
     discountValue: '10%',
-    shopUrl:       'https://dailydaisy.com?ref=ALEX2026',
+    shopUrl:       'https://ezihubb.com?ref=ALEX2026',
   },
   'buyer-referral-credited': {
     ...COMMON,
@@ -174,7 +174,7 @@ const SAMPLE_DATA: Record<string, Record<string, unknown>> = {
     ...COMMON,
     inviterName: 'Super Admin',
     role:        'Manager',
-    acceptUrl:   'https://admin.dailydaisy.com/invite/accept?token=example',
+    acceptUrl:   'https://admin.ezihubb.com/invite/accept?token=example',
     expiresIn:   '7 days',
   },
   'low-stock-alert': {
@@ -183,13 +183,13 @@ const SAMPLE_DATA: Record<string, Record<string, unknown>> = {
     productSku:  'PET-PIL-001',
     quantity:    3,
     threshold:   5,
-    editUrl:     'https://admin.dailydaisy.com/products/prod_example',
+    editUrl:     'https://admin.ezihubb.com/products/prod_example',
   },
   'new-store-application': {
     ...COMMON,
     storeName:      'Jane\'s Crafts',
     applicantEmail: COMMON.email,
-    reviewUrl:      'https://admin.dailydaisy.com/stores?status=PENDING',
+    reviewUrl:      'https://admin.ezihubb.com/stores?status=PENDING',
   },
   'store-application-received': {
     ...COMMON,
@@ -204,20 +204,20 @@ const SAMPLE_DATA: Record<string, Record<string, unknown>> = {
     contentType: 'Review',
     contentId:   'rev_example_123',
     reason:      'Spam or misleading content',
-    reviewUrl:   'https://admin.dailydaisy.com/moderation/queue',
+    reviewUrl:   'https://admin.ezihubb.com/moderation/queue',
   },
   'content-warning': {
     ...COMMON,
     contentType: 'Review',
     warningCount: 1,
     warningReason: 'Your review contained language that violated our community guidelines.',
-    appealUrl:   'https://dailydaisy.com/account/appeal',
+    appealUrl:   'https://ezihubb.com/account/appeal',
   },
   'contact-message': {
     ...COMMON,
     subject:     'Question about custom order',
     messageBody: 'Hi, I would like to know if you can make a custom order with a photo of my dog.',
-    replyUrl:    'https://admin.dailydaisy.com/messages',
+    replyUrl:    'https://admin.ezihubb.com/messages',
   },
 };
 
@@ -228,8 +228,8 @@ function getSampleData(slug: string): Record<string, unknown> {
     ...COMMON,
     ...ORDER_SAMPLE,
     message:     'This is a sample message for preview purposes.',
-    actionUrl:   'https://dailydaisy.com',
-    actionLabel: 'Visit Daily Daisy',
+    actionUrl:   'https://ezihubb.com',
+    actionLabel: 'Visit EziHubb',
   };
 }
 

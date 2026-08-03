@@ -1,7 +1,7 @@
 /**
  * Formatting utilities for the client app.
- * Re-exports from @mlh/utils so existing imports continue to work.
- * Import directly from @mlh/utils in new code.
+ * Re-exports from @ezihubb/utils so existing imports continue to work.
+ * Import directly from @ezihubb/utils in new code.
  */
 
 export {
@@ -21,4 +21,4 @@ export {
   safeStr,
   safeNum,
   unwrapArr,
-} from '@mlh/utils';
+} from '@ezihubb/utils';

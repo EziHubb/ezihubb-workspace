@@ -3,8 +3,8 @@
 import { useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { MessageCircle, ThumbsUp, ChevronDown, ChevronUp, X } from 'lucide-react';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -234,7 +234,7 @@ export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
                     <p className="text-secondary text-sm leading-relaxed">{qa.answer}</p>
                     <div className="flex items-center gap-4 mt-2">
                       <p className="text-xs text-muted">
-                        DailyDaisy
+                        EziHubb
                         {qa.answeredAt && ` · ${formatRelativeTime(qa.answeredAt)}`}
                       </p>
                       <button

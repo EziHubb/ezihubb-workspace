@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useCustomizerStore } from '../../lib/store/customizer.store';
 import { useModal } from '../../lib/hooks/useModal';
-import type { ProductVariantDto } from '@mlh/types';
+import type { ProductVariantDto } from '@ezihubb/types';
 import {
   ColorSwatchPicker,
   ShapePicker,

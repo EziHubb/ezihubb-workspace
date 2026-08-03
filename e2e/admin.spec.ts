@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
 const ADMIN_BASE = process.env['ADMIN_BASE_URL'] ?? 'http://localhost:3001';
-const ADMIN_EMAIL = process.env['ADMIN_EMAIL'] ?? 'admin@dailydaisy.com';
+const ADMIN_EMAIL = process.env['ADMIN_EMAIL'] ?? 'admin@ezihubb.com';
 const ADMIN_PASS  = process.env['ADMIN_PASS']  ?? 'Admin1!';
 
 // ── Helper: log into the admin app ───────────────────────────────────────────

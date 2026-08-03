@@ -9,13 +9,13 @@ import {
   Search, Heart, ShoppingBag, Menu,
   ChevronDown, Package, Settings, LogOut, Star, Store,
 } from 'lucide-react';
-import { useWishlist, queryKeys } from '@mlh/api-client';
+import { useWishlist, queryKeys } from '@ezihubb/api-client';
 import { signOut } from 'next-auth/react';
 import { useCartStore } from '../../lib/store/cart.store';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 import { CartDrawer } from './CartDrawer';
 import { SearchInput } from '../search/SearchInput';
 import { MegaMenu } from './MegaMenu';
@@ -242,7 +242,7 @@ export function Navbar({ menuData }: NavbarProps = {}) {
                   <span className="text-white font-bold text-xl font-display">M</span>
                 </div>
                 <span className="font-display font-bold text-lg md:text-xl text-secondary hidden sm:block">
-                  Daily Daisy
+                  EziHubb
                 </span>
               </Link>
             </div>

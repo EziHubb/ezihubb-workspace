@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Users } from 'lucide-react';
-import { apiClient } from '@mlh/api-client';
+import { apiClient } from '@ezihubb/api-client';
 import { ProgressFill } from '../campaign/ProgressFill';
 
 interface GiftPoolPreview {

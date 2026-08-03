@@ -7,7 +7,7 @@ import { Clock, DollarSign, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { DataTable } from '../../../components/data/DataTable';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtDate } from '../../../lib/fmt';
 import { useDialog } from '../../../contexts/DialogContext';
 import { FilterSelect } from '../../../components/ui/FilterSelect';

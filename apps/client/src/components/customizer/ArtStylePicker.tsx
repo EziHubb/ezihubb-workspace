@@ -6,7 +6,7 @@ import { useCustomizerStore } from '../../lib/store/customizer.store';
 import type { ArtStyle, ImageField } from '../../lib/customizer/types';
 import { hotjarEvent } from '../../lib/analytics/hotjar';
 import { apiClient } from '../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 interface ArtStyleOption {
   id: string;

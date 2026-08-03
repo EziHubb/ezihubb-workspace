@@ -1,4 +1,4 @@
-export const API_BASE = (process.env['API_BASE'] ?? 'https://api-production-e6e2.up.railway.app/api/v1')
+export const API_BASE = (process.env['API_BASE'] ?? 'http://localhost:3002/api/v1')
   .replace(/\/$/, '');
 
 export interface ApiResponse<T = unknown> {

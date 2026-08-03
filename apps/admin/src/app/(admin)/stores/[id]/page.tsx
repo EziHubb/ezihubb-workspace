@@ -15,7 +15,7 @@ import {
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { StatCard } from '../../../../components/data/StatCard';
 import { api, adminApi } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtDate, fmtFixed, safeArr } from '../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -587,7 +587,7 @@ export default function AdminStoreDetailPage() {
                   <User className="w-3 h-3" /> {ownerName} · {store.owner.email}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Globe className="w-3 h-3" /> dailydaisy.com/shops/{store.slug}
+                  <Globe className="w-3 h-3" /> ezihubb.com/shops/{store.slug}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Calendar className="w-3 h-3" /> Applied {fmtDate(store.createdAt)}

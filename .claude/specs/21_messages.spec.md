@@ -134,7 +134,11 @@ Features:
 - Reply form
 - New message modal (contact form)
 
-## 8. Business Rules
+## 8. Admin Store Scoping
+
+Admin messages controller uses `resolveSellerStoreId()` — ADMIN role only sees conversations for their own store; SUPER_ADMIN sees all conversations.
+
+## 9. Business Rules
 
 - Guest user có thể gửi conversation (cần email)
 - Authenticated user gửi từ account → linked với `userId`

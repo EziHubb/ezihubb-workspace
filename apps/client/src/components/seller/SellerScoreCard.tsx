@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { MessageSquare } from 'lucide-react';
-import { apiClient } from '@mlh/api-client';
+import { apiClient } from '@ezihubb/api-client';
 
 interface ScoreBreakdown {
   totalScore:    number;

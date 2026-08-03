@@ -1,4 +1,4 @@
-import { Skeleton } from '@mlh/ui';
+import { Skeleton } from '@ezihubb/ui';
 
 export default function OccasionsLoading() {
   return (

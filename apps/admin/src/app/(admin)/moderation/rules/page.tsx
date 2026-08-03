@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Shield, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, AlertTriangle, Settings2 } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { useDialog } from '../../../../contexts/DialogContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

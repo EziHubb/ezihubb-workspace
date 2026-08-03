@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { X, Shield, Check, Loader2 } from 'lucide-react';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { FormField } from './primitives/FormField';
 import type { GpsrInfo } from './types';
 
@@ -105,7 +105,7 @@ export function GPSRModal({ productId, isOpen, onClose }: Props) {
             >
               <input
                 {...register('manufacturerName', { required: true })}
-                placeholder="e.g. Daily Daisy Ltd"
+                placeholder="e.g. EziHubb Ltd"
                 className={inputCls}
               />
             </FormField>

@@ -29,7 +29,7 @@ export class TotpService {
   }
 
   otpAuthUri(secret: string, email: string): string {
-    return generateURI({ issuer: 'Daily Daisy Admin', label: email, secret });
+    return generateURI({ issuer: 'EziHubb Admin', label: email, secret });
   }
 
   async qrCodeDataUrl(otpauthUri: string): Promise<string> {

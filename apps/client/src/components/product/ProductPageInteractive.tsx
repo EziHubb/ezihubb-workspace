@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { SmartVariantPicker } from './SmartVariantPicker';
 import { ProductActions } from './ProductActions';
 import type { ProductDetailDto } from '../../app/[locale]/(storefront)/products/[slug]/page';
-import type { ProductVariantDto } from '@mlh/types';
+import type { ProductVariantDto } from '@ezihubb/types';
 
 interface ProductPageInteractiveProps {
   product: ProductDetailDto;

@@ -17,8 +17,8 @@ import { useCustomizerValidation } from '../../../../../../lib/hooks/useCustomiz
 import { useBeforeLeave } from '../../../../../../lib/hooks/useBeforeLeave';
 import { DEMO_TEMPLATE } from '../../../../../../lib/customizer/types';
 import type { CustomizationTemplate } from '../../../../../../lib/customizer/types';
-import type { ProductDto } from '@mlh/types';
-import { API_ROUTES } from '@mlh/constants';
+import type { ProductDto } from '@ezihubb/types';
+import { API_ROUTES } from '@ezihubb/constants';
 import { apiClient } from '../../../../../../lib/api-client';
 
 // ── Extended product type ─────────────────────────────────────────────────────

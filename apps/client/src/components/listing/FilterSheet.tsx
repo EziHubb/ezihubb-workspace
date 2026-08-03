@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import type { CategoryDto, TagDto } from '@mlh/types';
+import type { CategoryDto, TagDto } from '@ezihubb/types';
 import type { ListingFilters } from './types';
 
 const MAX_PRICE = 500;

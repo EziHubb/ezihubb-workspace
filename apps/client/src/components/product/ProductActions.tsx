@@ -9,7 +9,7 @@ import { BundleCustomizerPanel } from '../customizer/BundleCustomizerPanel';
 import { DirectAddToCartPanel } from './DirectAddToCartPanel';
 import { PersonalizationComingSoon } from './PersonalizationComingSoon';
 import { DEMO_TEMPLATE } from '../../lib/customizer/types';
-import type { ProductDto, ProductVariantDto } from '@mlh/types';
+import type { ProductDto, ProductVariantDto } from '@ezihubb/types';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 

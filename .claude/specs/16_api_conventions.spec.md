@@ -170,7 +170,7 @@ Env: `CORS_ORIGINS="http://localhost:3000,http://localhost:3001"` (comma-separat
 ## 10. Swagger Tags
 
 `Auth`, `Users`, `Products`, `Admin-Products`, `Catalog`, `Collections`, `Cart`, `Orders`, `Admin-Orders`, `Payments`, `Webhooks`, `Shipping`, `Reviews`, `Promotions`, `Search`, `Customization`, `Admin-Dashboard`, `Assets`, `Notifications`,
-`Messages`, `Loyalty`, `Affiliate`, `Referral`, `Push`, `PDF`, `Labels`, `Currency`, `Creators`, `NFT`, `Bounties`, `Wallet`, `Admin-Settings`, `Admin-Team`, `Admin-Audit`, `Admin-AI`
+`Messages`, `Loyalty`, `Affiliate`, `Referral`, `Push`, `PDF`, `Labels`, `Currency`, `Creators`, `NFT`, `Bounties`, `Wallet`, `Admin-Settings`, `Admin-Team`, `Admin-Audit`, `Admin-AI`, `Stores`, `Blind-Match`
 
 ## 11. Error Code Conventions
 

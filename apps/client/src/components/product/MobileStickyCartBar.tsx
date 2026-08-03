@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import type { ProductDto, ProductVariantDto } from '@mlh/types';
+import type { ProductDto, ProductVariantDto } from '@ezihubb/types';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

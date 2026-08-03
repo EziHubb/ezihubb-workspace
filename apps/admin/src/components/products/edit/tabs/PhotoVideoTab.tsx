@@ -29,7 +29,7 @@ import {
 import type { ProductEditFormValues, AdminProductDto, ProductImage } from '../types';
 import { ThumbnailCropModal } from '../ThumbnailCropModal';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

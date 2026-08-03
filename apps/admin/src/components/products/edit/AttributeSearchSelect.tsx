@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { X, ChevronDown, HelpCircle, Plus } from 'lucide-react';
 import { api } from '../../../lib/api-client';
 import type { ProductEditFormValues } from './types';
-import { safeArr } from '@mlh/utils';
+import { safeArr } from '@ezihubb/utils';
 
 // ─── useDebounce ──────────────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-import { Skeleton } from '@mlh/ui';
+import { Skeleton } from '@ezihubb/ui';
 export default function ProfileLoading() {
   return (
     <div className="space-y-6" aria-busy="true" aria-label="Loading profile">

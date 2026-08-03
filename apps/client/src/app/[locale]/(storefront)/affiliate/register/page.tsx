@@ -4,8 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { CheckCircle, ArrowLeft } from 'lucide-react';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 
 interface FormState {
   firstName:           string;

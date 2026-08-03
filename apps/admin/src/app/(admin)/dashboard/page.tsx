@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../lib/auth.options';
 import { serverApi } from '../../../lib/api-client';
-import { API_ROUTES, ADMIN_ROUTES } from '@mlh/constants';
+import { API_ROUTES, ADMIN_ROUTES } from '@ezihubb/constants';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { StatCard } from '../../../components/data/StatCard';
 import { RevenueChart } from '../../../components/charts/RevenueChart';
@@ -21,7 +21,7 @@ import type { TopProductDto } from '../../../components/dashboard/TopProductsTab
 import type { ReviewDto } from '../../../components/dashboard/PendingReviewsCard';
 import { fmtAmount, fmtRelative, unwrapArr, safeArr, fmtNum } from '../../../lib/fmt';
 
-export const metadata = { title: 'Dashboard — Daily Daisy Admin' };
+export const metadata = { title: 'Dashboard — EziHubb Admin' };
 export const dynamic  = 'force-dynamic';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

@@ -13,7 +13,7 @@ import { OrderDetailPanel } from '../../../components/orders/OrderDetailPanel';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import type { OrderDetail } from '../../../components/orders/OrderDrawer';
 import { api, adminApi } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtDate, unwrapArr } from '../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

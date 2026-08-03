@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: 'Contact Us',
     description:
-      'Get in touch with DailyDaisy. We respond to all messages within 2 hours during business hours.',
+      'Get in touch with EziHubb. We respond to all messages within 2 hours during business hours.',
     robots: { index: true, follow: true },
   };
 }
@@ -36,9 +36,9 @@ const CONTACT_CARDS: {
   {
     Icon:   Mail,
     title:  'Email',
-    desc:   'support@dailydaisy.com',
+    desc:   'support@ezihubb.com',
     action: 'Send email →',
-    href:   'mailto:support@dailydaisy.com',
+    href:   'mailto:support@ezihubb.com',
     accent: 'bg-green-50 text-green-600',
   },
   {

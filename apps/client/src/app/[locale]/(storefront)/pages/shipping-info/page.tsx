@@ -9,7 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: 'Shipping Information',
     description:
-      'Learn about our shipping rates, delivery times, tracking, and international shipping at DailyDaisy.',
+      'Learn about our shipping rates, delivery times, tracking, and international shipping at EziHubb.',
     robots: { index: true, follow: true },
   };
 }

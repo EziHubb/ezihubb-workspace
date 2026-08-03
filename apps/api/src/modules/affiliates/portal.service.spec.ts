@@ -58,7 +58,7 @@ describe('PortalService', () => {
       providers: [
         PortalService,
         { provide: PrismaService, useValue: mockDeep<PrismaService>() },
-        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('https://dailydaisy.com') } },
+        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('https://ezihubb.com') } },
         { provide: getQueueToken(QUEUES.EMAIL), useValue: emailQueue },
       ],
     }).compile();

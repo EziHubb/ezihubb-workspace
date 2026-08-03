@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtDate, safeArr } from '../../../../lib/fmt';
 import { FilterSelect } from '../../../../components/ui/FilterSelect';
 

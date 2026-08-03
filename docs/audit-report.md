@@ -1,4 +1,4 @@
-# Audit Report — DailyDaisy Architecture
+# Audit Report — EziHubb Architecture
 > Generated: ARCH-00 audit pass  
 > Date: 2026-06-10  
 > Status: **READ-ONLY** — no code was modified
@@ -9,9 +9,9 @@
 
 **~420 total occurrences across ~100 files**
 
-### Client app (`apps/client`) — uses `apiClient` / `apiFetch` from `@mlh/api-client`
-~67 fetch calls with hardcoded path strings. The shared `@mlh/api-client` hooks
-(`useCart`, `useProduct`, etc.) use `API_ROUTES` from `@mlh/constants` — but all page
+### Client app (`apps/client`) — uses `apiClient` / `apiFetch` from `@ezihubb/api-client`
+~67 fetch calls with hardcoded path strings. The shared `@ezihubb/api-client` hooks
+(`useCart`, `useProduct`, etc.) use `API_ROUTES` from `@ezihubb/constants` — but all page
 files and most components call `apiClient.get/post/patch/delete()` with raw strings.
 
 Top repeated patterns:
@@ -44,7 +44,7 @@ Top 10 most repeated patterns:
 ### Existing constants (underutilised)
 `libs/shared/constants/src/lib/routes.ts` (105 lines) **already has** `API_ROUTES` with
 AUTH, USERS, PRODUCTS, CATALOG sections — but it is only imported by:
-- `@mlh/api-client` hooks (useCart, useProduct, useCatalog, etc.)
+- `@ezihubb/api-client` hooks (useCart, useProduct, useCatalog, etc.)
 - 8 client auth/customizer files
 
 **It is completely absent from the admin app.**  
@@ -107,7 +107,7 @@ Component-level scan (`apps/client/components`, `apps/admin/components`):
 
 ### Current fetch architecture:
 
-**`apps/client`** → uses `@mlh/api-client`:
+**`apps/client`** → uses `@ezihubb/api-client`:
 - `apiClient.get/post/patch/delete()` — wraps native `fetch()`, has token refresh
 - `apiFetch<T>()` — lower-level wrapper
 - `api.get/post/patch/delete()` — older convenience wrapper (same underlying fetch)
@@ -284,7 +284,7 @@ and needs the same treatment.
 | ARCH-01 | Delete api-e2e, split seed.ts into 12 PG + 3 Mongo files | Medium |
 | ARCH-02 | Create `@AdminController` decorator, apply to 10 controllers | Small |
 | ARCH-03 | Expand `API_PATHS` (add missing 60% of endpoints), add `APP_ROUTES` + `QUERY_KEYS`, replace `clientFetch`/`serverFetch` in admin with axios | Large |
-| ARCH-04 | Build `@mlh/utils` lib (number, date, string, array, null-safety utils) | Medium |
+| ARCH-04 | Build `@ezihubb/utils` lib (number, date, string, array, null-safety utils) | Medium |
 | ARCH-05 | Add `ErrorBoundary` wrappers across client + admin | Medium |
 | ARCH-06 | Delete confirmed dead files, remove unused imports | Small |
 | ARCH-07 | Full verify: build + lint + test | Small |

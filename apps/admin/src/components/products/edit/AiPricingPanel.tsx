@@ -8,7 +8,7 @@ import {
   CheckCircle, AlertCircle,
 } from 'lucide-react';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtDate } from '../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

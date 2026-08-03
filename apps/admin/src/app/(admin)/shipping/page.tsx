@@ -18,7 +18,7 @@ import {
   type ShippingMethodFormData,
 } from '../../../components/shipping/ShippingMethodModal';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { Toggle as PrimitiveToggle } from '../../../components/products/edit/primitives';
 import { fmtAmount } from '../../../lib/fmt';
 import { useDialog } from '../../../contexts/DialogContext';

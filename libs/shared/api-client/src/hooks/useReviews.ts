@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import type { UseQueryOptions } from '@tanstack/react-query';
 import { api } from '../client';
-import { API_ROUTES } from '@mlh/constants';
-import type { ReviewDto, ReviewSummaryDto, PaginatedResponse } from '@mlh/types';
+import { API_ROUTES } from '@ezihubb/constants';
+import type { ReviewDto, ReviewSummaryDto, PaginatedResponse } from '@ezihubb/types';
 import { queryKeys } from '../queryKeys';
 
 // ── Query shapes ──────────────────────────────────────────────────────────────

@@ -47,7 +47,7 @@ export class EmailProcessor extends WorkerHost {
     this.logger.log(`Sending email: template="${template}" to="${to}" subject="${subject}"`);
 
     const html = this.renderTemplate(template, data);
-    const from = `"${this.config.get<string>('email.fromName') ?? 'Daily Daisy'}" <${this.config.get<string>('email.from')}>`;
+    const from = `"${this.config.get<string>('email.fromName') ?? 'EziHubb'}" <${this.config.get<string>('email.from')}>`;
 
     await this.transporter.sendMail({ from, to, subject, html });
 

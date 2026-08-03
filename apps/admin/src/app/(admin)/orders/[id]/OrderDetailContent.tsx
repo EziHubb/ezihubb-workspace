@@ -11,7 +11,7 @@ import {
 import { StatusSelect } from '../../../../components/orders/OrderStatusBadge';
 import { CustomizationPreviewModal } from '../../../../components/orders/CustomizationPreviewModal';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtDateTime } from '../../../../lib/fmt';
 import { useDialog } from '../../../../contexts/DialogContext';
 import type { OrderDetail, OrderItem } from '../../../../components/orders/OrderDrawer';

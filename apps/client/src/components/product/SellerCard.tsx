@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { Star, Heart, MessageCircle, Package } from 'lucide-react';
-import type { ProductDto } from '@mlh/types';
+import type { ProductDto } from '@ezihubb/types';
 import { MessageShopModal } from '../messages/MessageShopModal';
 
 // ── Badge data ────────────────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ export function SellerCard({ product }: SellerCardProps) {
   const [isMessageOpen, setIsMessageOpen] = useState(false);
   const locale = useLocale();
 
-  const storeName = product.store?.name ?? 'Daily Daisy';
+  const storeName = product.store?.name ?? 'EziHubb';
   const storeSlug = product.store?.slug;
   const storeHref = storeSlug ? `/${locale}/shops/${storeSlug}` : null;
 

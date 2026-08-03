@@ -73,11 +73,11 @@ export class PortalService {
     });
 
     // Fire-and-forget: application received confirmation
-    const shopUrl = this.config.get<string>('FRONTEND_URL', 'https://dailydaisy.com');
+    const shopUrl = this.config.get<string>('FRONTEND_URL', 'https://ezihubb.com');
     void this.emailQueue
       .add(JOBS.SEND_EMAIL, {
         to:       dto.email.toLowerCase(),
-        subject:  'We received your Daily Daisy affiliate application 🎉',
+        subject:  'We received your EziHubb affiliate application 🎉',
         template: 'application-received',
         data: {
           firstName: dto.firstName,

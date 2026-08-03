@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import type { ProductListItemDto } from '@mlh/types';
-import { ProductCard } from '@mlh/ui';
+import type { ProductListItemDto } from '@ezihubb/types';
+import { ProductCard } from '@ezihubb/ui';
 import { BackButton } from './BackButton';
 import { API_BASE } from '../../lib/api-client';
 

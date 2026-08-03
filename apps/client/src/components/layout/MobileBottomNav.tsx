@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { Home, Search, ShoppingBag, User } from 'lucide-react';
 import { useCartStore } from '../../lib/store/cart.store';
-import { CLIENT_ROUTES } from '@mlh/constants';
+import { CLIENT_ROUTES } from '@ezihubb/constants';
 
 /**
  * Fixed bottom navigation bar — mobile only (hidden on md+).

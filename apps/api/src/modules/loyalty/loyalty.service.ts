@@ -226,7 +226,7 @@ export class LoyaltyService {
       select: { pointsBalance: true },
     });
 
-    const shopUrl = this.config.get<string>('FRONTEND_URL', 'https://dailydaisy.com');
+    const shopUrl = this.config.get<string>('FRONTEND_URL', 'https://ezihubb.com');
 
     void this.emailQueue
       .add(JOBS.SEND_EMAIL, {

@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { X, Users, DollarSign, TrendingUp, Award } from 'lucide-react';
 import { api } from '../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtNum, fmtAmount, safeArr, fmtDate, capitalize } from '../../lib/fmt';
 import type { Promotion } from './PromotionModal';
 

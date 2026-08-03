@@ -21,7 +21,7 @@ import { toast } from '../../lib/store/toast.store';
 import { useCurrency } from '../../lib/currency/currency-context';
 import { analytics } from '../../lib/analytics';
 import { CreateGiftPoolPanel } from '../gift-pools/CreateGiftPoolPanel';
-import type { ProductDto, ReviewSummaryDto } from '@mlh/types';
+import type { ProductDto, ReviewSummaryDto } from '@ezihubb/types';
 
 // ── Date helpers (no date-fns) ────────────────────────────────────────────────
 
@@ -469,7 +469,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       {product.isFeatured && (
         <div className="inline-flex items-center gap-1.5 bg-[#FFF0EC] text-primary text-xs font-medium px-2.5 py-1 rounded-full">
           <Star className="w-3 h-3 fill-primary" />
-          Daily Daisy&apos;s Pick
+          EziHubb&apos;s Pick
         </div>
       )}
 

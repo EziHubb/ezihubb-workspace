@@ -5,8 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { Zap } from 'lucide-react';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 import { useCountdown } from '../../../../hooks/useCountdown';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

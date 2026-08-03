@@ -12,7 +12,7 @@ import {
   MapPin,
   ShieldCheck,
 } from 'lucide-react';
-import type { ProductDto } from '@mlh/types';
+import type { ProductDto } from '@ezihubb/types';
 
 // ── ProductDescription ────────────────────────────────────────────────────────
 
@@ -101,7 +101,7 @@ export function ItemDetailsAccordion({ product }: { product: ProductDto }) {
           <ul className="space-y-1.5">
             <li className="flex items-center gap-2">
               <User className="w-4 h-4 text-secondary shrink-0" />
-              <span>Made by Daily Daisy</span>
+              <span>Made by EziHubb</span>
             </li>
             {materialAttr && (
               <li className="flex items-center gap-2">
@@ -191,7 +191,7 @@ export function PurchaseProtectionAccordion() {
           <ShieldCheck className="w-5 h-5 text-primary" />
         </div>
         <div className="space-y-1">
-          <p className="font-medium">Daily Daisy Purchase Protection</p>
+          <p className="font-medium">EziHubb Purchase Protection</p>
           <p className="text-muted text-xs">
             Shop confidently knowing that if something goes wrong with an order,
             we&apos;ve got your back for all eligible purchases.
@@ -247,7 +247,7 @@ export function MeetYourSellersAccordion() {
           ML
         </div>
         <div>
-          <p className="font-medium text-sm">DailyDaisy</p>
+          <p className="font-medium text-sm">EziHubb</p>
           <p className="text-xs text-muted">Owner, maker and curator</p>
         </div>
       </div>
@@ -259,7 +259,7 @@ export function MeetYourSellersAccordion() {
         type="button"
         className="mt-3 w-full border border-border rounded-full py-2 text-sm font-medium hover:bg-[#F3F4F6] transition-colors"
       >
-        Message DailyDaisy
+        Message EziHubb
       </button>
     </Accordion>
   );

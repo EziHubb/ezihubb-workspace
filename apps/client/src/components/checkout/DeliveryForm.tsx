@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Truck, Clock } from 'lucide-react';
-import { apiClient } from '@mlh/api-client';
-import type { ShippingOptionDto } from '@mlh/types';
-import { Skeleton } from '@mlh/ui';
+import { apiClient } from '@ezihubb/api-client';
+import type { ShippingOptionDto } from '@ezihubb/types';
+import { Skeleton } from '@ezihubb/ui';
 
 interface DeliveryFormProps {
   countryCode:      string;

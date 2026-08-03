@@ -94,7 +94,7 @@ export class AdminTeamController {
 
     await this.emailQueue.add(JOBS.SEND_EMAIL, {
       to: dto.email,
-      subject: 'You have been invited to DailyDaisy Admin',
+      subject: 'You have been invited to EziHubb Admin',
       template: 'team-invite',
       data: {
         email:        dto.email,

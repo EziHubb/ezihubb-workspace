@@ -14,7 +14,7 @@ export function PackingSlipDocument({ order }: { order: OrderForPdf }) {
         }}>
           <View>
             <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#1A1A1A' }}>
-              DailyDaisy
+              EziHubb
             </Text>
             <Text style={{ fontSize: 9, color: '#6B7280', marginTop: 2 }}>PACKING SLIP</Text>
           </View>

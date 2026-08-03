@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { ShieldCheck, Mail } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title:       'Privacy Policy — Daily Daisy',
-  description: 'Learn how Daily Daisy collects, uses, and protects your personal information.',
+  title:       'Privacy Policy — EziHubb',
+  description: 'Learn how EziHubb collects, uses, and protects your personal information.',
 };
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -176,7 +176,7 @@ export default function PrivacyPolicyPage() {
             <P>We work with trusted third parties to operate the Platform, including payment processors (Stripe), shipping carriers (EasyPost), email delivery (SendGrid), cloud hosting (Cloudflare R2), and analytics. These providers are contractually bound to protect your data.</P>
 
             <p className="font-semibold text-secondary mt-4">For legal reasons:</p>
-            <P>We may disclose information if required by law, court order, or government authority, or if we believe disclosure is necessary to protect the rights, property, or safety of Daily Daisy, our users, or the public.</P>
+            <P>We may disclose information if required by law, court order, or government authority, or if we believe disclosure is necessary to protect the rights, property, or safety of EziHubb, our users, or the public.</P>
 
             <p className="font-semibold text-secondary mt-4">Business transfers:</p>
             <P>In the event of a merger, acquisition, or sale of all or substantially all of our assets, your information may be transferred as part of that transaction. We will notify you before your data becomes subject to a different privacy policy.</P>
@@ -223,7 +223,7 @@ export default function PrivacyPolicyPage() {
               Access to personal data is restricted to employees and contractors who need it to perform their duties, and all such personnel are bound by confidentiality obligations.
             </P>
             <P>
-              Despite our efforts, no security measure is perfect. If you believe your account has been compromised, please contact us immediately at security@dailydaisy.com.
+              Despite our efforts, no security measure is perfect. If you believe your account has been compromised, please contact us immediately at security@ezihubb.com.
             </P>
           </Section>
 
@@ -249,7 +249,7 @@ export default function PrivacyPolicyPage() {
             </div>
 
             <P>
-              To exercise any of these rights, email us at privacy@dailydaisy.com. We will respond within 30 days (or as required by applicable law). We may need to verify your identity before fulfilling your request.
+              To exercise any of these rights, email us at privacy@ezihubb.com. We will respond within 30 days (or as required by applicable law). We may need to verify your identity before fulfilling your request.
             </P>
             <P>
               If you are in the EU/EEA, you also have the right to lodge a complaint with your local data protection authority.
@@ -264,7 +264,7 @@ export default function PrivacyPolicyPage() {
               Specifically: account data is kept for 2 years after account closure; transaction records are kept for 7 years for tax purposes; marketing consent records are kept for 5 years.
             </P>
             <P>
-              You may request deletion of your account and associated data at any time by going to <strong>Account → Settings → Delete Account</strong>, or by emailing privacy@dailydaisy.com.
+              You may request deletion of your account and associated data at any time by going to <strong>Account → Settings → Delete Account</strong>, or by emailing privacy@ezihubb.com.
             </P>
           </Section>
 
@@ -279,7 +279,7 @@ export default function PrivacyPolicyPage() {
 
           <Section id="international" title="9. International Data Transfers">
             <P>
-              Daily Daisy operates from the United States. If you are located outside the US, your information may be transferred to and processed in the US or other countries where our service providers operate.
+              EziHubb operates from the United States. If you are located outside the US, your information may be transferred to and processed in the US or other countries where our service providers operate.
             </P>
             <P>
               For transfers from the European Economic Area (EEA) or United Kingdom, we rely on Standard Contractual Clauses approved by the European Commission to ensure an adequate level of data protection.
@@ -300,23 +300,23 @@ export default function PrivacyPolicyPage() {
               If you have questions about this Privacy Policy or how we handle your data, please contact us:
             </P>
             <div className="mt-4 p-5 bg-surface border border-border rounded-card space-y-2 text-sm">
-              <p><span className="font-semibold text-secondary">Daily Daisy, Inc.</span></p>
+              <p><span className="font-semibold text-secondary">EziHubb, Inc.</span></p>
               <p>Privacy &amp; Data Protection</p>
               <p>
-                <a href="mailto:privacy@dailydaisy.com" className="text-primary hover:underline inline-flex items-center gap-1.5">
+                <a href="mailto:privacy@ezihubb.com" className="text-primary hover:underline inline-flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5" />
-                  privacy@dailydaisy.com
+                  privacy@ezihubb.com
                 </a>
               </p>
               <p className="text-muted text-xs pt-1">
-                EU/UK users may also contact our Data Protection Officer at dpo@dailydaisy.com.
+                EU/UK users may also contact our Data Protection Officer at dpo@ezihubb.com.
               </p>
             </div>
           </Section>
 
           {/* Bottom nav */}
           <div className="pt-6 border-t border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-sm text-muted">
-            <p>© 2026 Daily Daisy, Inc. All rights reserved.</p>
+            <p>© 2026 EziHubb, Inc. All rights reserved.</p>
             <div className="flex gap-4">
               <Link href="/pages/terms" className="text-primary hover:underline">
                 Terms of Service

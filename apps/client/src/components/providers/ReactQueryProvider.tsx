@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider, MutationCache, QueryCache } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ToastProvider, ErrorBoundary } from '@mlh/ui';
+import { ToastProvider, ErrorBoundary } from '@ezihubb/ui';
 import { SessionSyncer } from './SessionSyncer';
 import { AuthProvider } from './AuthProvider';
 

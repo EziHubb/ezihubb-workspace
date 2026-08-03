@@ -2,9 +2,9 @@
  * Auth flow — HTTP integration tests
  *
  * Requirements:
- *  - DATABASE_URL env var pointing to a PostgreSQL instance (Railway or local)
+ *  - DATABASE_URL env var pointing to a PostgreSQL instance (local or remote)
  *  - DISABLE_QUEUE=true is set automatically in ../../../test/setup
- *  - Tests use @mlh-test.invalid email domain and clean up after themselves
+ *  - Tests use @ezihubb-test.invalid email domain and clean up after themselves
  */
 import * as request from 'supertest';
 import { INestApplication } from '@nestjs/common';
@@ -35,7 +35,7 @@ describe('Auth HTTP integration', () => {
 
   describe('POST /api/v1/auth/register', () => {
     it('201 — creates user and returns accessToken', async () => {
-      const email = `reg-${RUN_ID}@mlh-test.invalid`;
+      const email = `reg-${RUN_ID}@ezihubb-test.invalid`;
       createdEmails.push(email);
 
       const res = await request(app.getHttpServer())
@@ -49,7 +49,7 @@ describe('Auth HTTP integration', () => {
     });
 
     it('409 — rejects duplicate email with ERR_EMAIL_TAKEN', async () => {
-      const email = `dup-${RUN_ID}@mlh-test.invalid`;
+      const email = `dup-${RUN_ID}@ezihubb-test.invalid`;
       createdEmails.push(email);
 
       await request(app.getHttpServer())
@@ -64,7 +64,7 @@ describe('Auth HTTP integration', () => {
     });
 
     it('400 — rejects weak password', async () => {
-      const email = `weak-${RUN_ID}@mlh-test.invalid`;
+      const email = `weak-${RUN_ID}@ezihubb-test.invalid`;
 
       const res = await request(app.getHttpServer())
         .post('/api/v1/auth/register')
@@ -76,7 +76,7 @@ describe('Auth HTTP integration', () => {
     it('400 — rejects missing firstName', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/auth/register')
-        .send({ email: `nofirst-${RUN_ID}@mlh-test.invalid`, password: TEST_PASSWORD, lastName: 'B' });
+        .send({ email: `nofirst-${RUN_ID}@ezihubb-test.invalid`, password: TEST_PASSWORD, lastName: 'B' });
 
       expect(res.status).toBe(400);
     });
@@ -88,7 +88,7 @@ describe('Auth HTTP integration', () => {
     let loginEmail: string;
 
     beforeAll(async () => {
-      loginEmail = `login-${RUN_ID}@mlh-test.invalid`;
+      loginEmail = `login-${RUN_ID}@ezihubb-test.invalid`;
       createdEmails.push(loginEmail);
       await createTestUser(prisma, { email: loginEmail });
     });
@@ -116,7 +116,7 @@ describe('Auth HTTP integration', () => {
     it('401 — unknown email returns same error (prevents enumeration)', async () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/auth/login')
-        .send({ email: `nobody-${RUN_ID}@mlh-test.invalid`, password: TEST_PASSWORD });
+        .send({ email: `nobody-${RUN_ID}@ezihubb-test.invalid`, password: TEST_PASSWORD });
 
       expect(res.status).toBe(401);
     });
@@ -128,7 +128,7 @@ describe('Auth HTTP integration', () => {
     let accessToken: string;
 
     beforeAll(async () => {
-      const email = `me-${RUN_ID}@mlh-test.invalid`;
+      const email = `me-${RUN_ID}@ezihubb-test.invalid`;
       createdEmails.push(email);
       await createTestUser(prisma, { email });
 
@@ -144,7 +144,7 @@ describe('Auth HTTP integration', () => {
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.data.email).toContain('@mlh-test.invalid');
+      expect(res.body.data.email).toContain('@ezihubb-test.invalid');
     });
 
     it('401 — no token returns unauthorized', async () => {
@@ -167,7 +167,7 @@ describe('Auth HTTP integration', () => {
     let adminEmail: string;
 
     beforeAll(async () => {
-      adminEmail = `admin2fa-${RUN_ID}@mlh-test.invalid`;
+      adminEmail = `admin2fa-${RUN_ID}@ezihubb-test.invalid`;
       createdEmails.push(adminEmail);
       // Admin without TOTP enabled — should get full access token directly
       await createTestUser(prisma, { email: adminEmail, role: 'ADMIN' });

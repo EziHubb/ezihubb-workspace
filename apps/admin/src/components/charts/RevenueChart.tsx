@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import { api } from '../../lib/api-client';
 import { fmtDate, safeArr } from '../../lib/fmt';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

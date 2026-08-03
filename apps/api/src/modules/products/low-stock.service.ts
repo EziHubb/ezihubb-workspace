@@ -137,7 +137,7 @@ export class LowStockService {
 
     await this.redis.set(dedupKey, '1', DEDUP_TTL);
 
-    const adminEmail  = process.env['ADMIN_EMAIL'] ?? 'admin@dailydaisy.com';
+    const adminEmail  = process.env['ADMIN_EMAIL'] ?? 'admin@ezihubb.com';
     const adminUrl    = process.env['ADMIN_URL']   ?? 'http://localhost:3001';
     const qty         = product.quantity ?? 0;
     const subject     = type === 'out-of-stock'

@@ -2,10 +2,10 @@
 
 import { createContext, useContext, useState, useEffect } from 'react';
 import { apiClient } from '../api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
-const CURRENCY_COOKIE = 'mlh_currency';
-const CURRENCY_LS_KEY = 'mlh_currency';
+const CURRENCY_COOKIE = 'ezihubb_currency';
+const CURRENCY_LS_KEY = 'ezihubb_currency';
 
 const CURRENCIES = {
   USD: { symbol: '$', decimals: 2, flag: '🇺🇸', name: 'US Dollar'       },

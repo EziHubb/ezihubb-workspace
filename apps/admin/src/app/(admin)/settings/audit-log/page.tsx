@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Shield, ChevronLeft, ChevronRight, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { FilterSelect } from '../../../../components/ui/FilterSelect';
 
 interface AuditLogEntry {

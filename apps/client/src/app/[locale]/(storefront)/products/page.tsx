@@ -30,17 +30,17 @@ export async function generateMetadata({
   const seasonLabel = season ? SEASON_LABELS[season] : null;
 
   const title = q
-    ? `"${q}" Products | DailyDaisy`
+    ? `"${q}" Products | EziHubb`
     : seasonLabel
-      ? `${seasonLabel} Gifts & Handmade Goods | DailyDaisy`
+      ? `${seasonLabel} Gifts & Handmade Goods | EziHubb`
       : category
-        ? `${category} Gifts | DailyDaisy`
-        : 'All Handmade Gifts | DailyDaisy';
+        ? `${category} Gifts | EziHubb`
+        : 'All Handmade Gifts | EziHubb';
 
   const description = season && SEASON_DESC[season]
     ? SEASON_DESC[season]
     : category
-      ? `Shop personalized ${category} gifts handmade with love at DailyDaisy.`
+      ? `Shop personalized ${category} gifts handmade with love at EziHubb.`
       : 'Shop 120+ personalized handmade gifts — custom mugs, canvas prints, apparel and more.';
 
   return {

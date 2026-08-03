@@ -22,7 +22,7 @@
 - Cookie: `httpOnly: true`, `secure: true` (production), `sameSite: none` (production) / `lax` (dev), TTL: 30 ngày
 - Cart lưu trong PostgreSQL với `sessionId` (không phải userId)
 - Mỗi GET/POST `/cart` — nếu chưa có cookie, API tạo session mới và set cookie qua `Set-Cookie` header
-- **Lưu ý:** Client store dùng localStorage key `daisy-cart` chỉ để persist `sessionId`, nhưng session thực tế được quản lý bởi cookie phía server
+- **Lưu ý:** Client store dùng localStorage key `ezihubb-cart` chỉ để persist `sessionId`, nhưng session thực tế được quản lý bởi cookie phía server
 
 ### Authenticated Cart
 
@@ -96,7 +96,7 @@ interface CartDto {
 
 File: `apps/client/src/lib/store/cart.store.ts`
 
-**Persisted state** (key: `daisy-cart`):
+**Persisted state** (key: `ezihubb-cart`):
 ```typescript
 {
   sessionId: string | null;

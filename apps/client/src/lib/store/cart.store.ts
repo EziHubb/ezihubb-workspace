@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { apiClient } from '@mlh/api-client';
-import type { CartDto, CartItemDto, CartTotals } from '@mlh/types';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import type { CartDto, CartItemDto, CartTotals } from '@ezihubb/types';
+import { API_ROUTES } from '@ezihubb/constants';
 import { analytics } from '../analytics';
 
 // ── Helper: read auth token without circular import ───────────────────────────
@@ -258,7 +258,7 @@ export const useCartStore = create<CartStore>()(
       clearCart: () => set({ cart: null }),
     }),
     {
-      name: 'daisy-cart',
+      name: 'ezihubb-cart',
       // Only persist sessionId — cart data is always fetched fresh from server
       partialize: (state) => ({ sessionId: state.sessionId }),
     },

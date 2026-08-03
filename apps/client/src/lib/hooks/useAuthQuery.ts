@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@mlh/api-client';
-import type { ApiResponse } from '@mlh/types';
+import { apiClient } from '@ezihubb/api-client';
+import type { ApiResponse } from '@ezihubb/types';
 import { useAuthStore } from '../store/auth.store';
 
 /**

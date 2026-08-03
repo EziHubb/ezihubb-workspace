@@ -6,13 +6,13 @@ import Link from 'next/link';
 import {
   Star, Sparkles, Award, Heart, Truck, Check, ThumbsUp, Camera, X,
 } from 'lucide-react';
-import { useReviews } from '@mlh/api-client';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { useReviews } from '@ezihubb/api-client';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@mlh/api-client';
-import type { ReviewDto, ReviewSummaryDto } from '@mlh/types';
+import { queryKeys } from '@ezihubb/api-client';
+import type { ReviewDto, ReviewSummaryDto } from '@ezihubb/types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -180,7 +180,7 @@ function ReviewCard({ review, onHelpful }: { review: ReviewDto; onHelpful?: (id:
       {review.adminReply && (
         <div className="mt-3 pl-3 border-l-2 border-border">
           <p className="text-xs font-semibold text-secondary">
-            Response from DailyDaisy
+            Response from EziHubb
           </p>
           <p className="text-sm text-muted mt-1">{review.adminReply}</p>
         </div>

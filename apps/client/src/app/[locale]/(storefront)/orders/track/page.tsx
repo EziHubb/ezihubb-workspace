@@ -4,8 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { AlertTriangle, ArrowLeft, Search } from 'lucide-react';
-import { Button, Input } from '@mlh/ui';
-import type { OrderDto } from '@mlh/types';
+import { Button, Input } from '@ezihubb/ui';
+import type { OrderDto } from '@ezihubb/types';
 import { OrderTrackingCard } from '../../../../../components/orders/OrderTrackingCard';
 import { API_BASE } from '../../../../../lib/api-client';
 

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import type { ProductDto, ReviewSummaryDto, ReviewDto } from '@mlh/types';
+import type { ProductDto, ReviewSummaryDto, ReviewDto } from '@ezihubb/types';
 import { ReviewSection } from './ReviewSection';
 import { ProductSpecifications } from './ProductSpecifications';
 import { ShippingReturnsContent } from './ShippingReturnsContent';

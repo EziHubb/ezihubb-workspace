@@ -203,8 +203,8 @@ export class OrdersService {
     // ── Affiliate attribution ────────────────────────────────────────────────
     let affiliateId: string | null = null;
     let affiliateDiscountAmount    = 0;
-    const referralCode = cookies?.['mlh_affiliate'];
-    const visitorId    = cookies?.['mlh_visitor'];
+    const referralCode = cookies?.['ezihubb_affiliate'];
+    const visitorId    = cookies?.['ezihubb_visitor'];
 
     if (referralCode) {
       const resolved = await this.affiliateTrackingService.resolveAffiliate(referralCode);
@@ -218,7 +218,7 @@ export class OrdersService {
     // ── Referral attribution (multi-level) ──────────────────────────────────
     let referralUserId: string | null = null;
     let referralDiscountAmt = 0;
-    const mlhRef = cookies?.['mlh_ref'];
+    const mlhRef = cookies?.['ezihubb_ref'];
 
     if (mlhRef && userId) {
       const resolved = await this.referralService.resolveCode(mlhRef);

@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { queryKeys } from '../queryKeys';
-import type { WishlistItemDto } from '@mlh/types';
+import type { WishlistItemDto } from '@ezihubb/types';
 
 export function useMutateWishlist() {
   const qc  = useQueryClient();

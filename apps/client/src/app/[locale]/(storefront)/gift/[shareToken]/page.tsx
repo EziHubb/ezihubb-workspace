@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { Gift, Users, Clock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { apiClient } from '@mlh/api-client';
+import { apiClient } from '@ezihubb/api-client';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

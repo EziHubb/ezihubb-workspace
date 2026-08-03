@@ -4,8 +4,8 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Heart } from 'lucide-react';
-import { RatingStars } from '@mlh/ui';
-import { API_ROUTES } from '@mlh/constants';
+import { RatingStars } from '@ezihubb/ui';
+import { API_ROUTES } from '@ezihubb/constants';
 import { apiClient } from '../../lib/api-client';
 import { useCurrency } from '../../lib/currency/currency-context';
 

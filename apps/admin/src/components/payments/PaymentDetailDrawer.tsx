@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtFixed, fmtDate, fmtDateTime } from '../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

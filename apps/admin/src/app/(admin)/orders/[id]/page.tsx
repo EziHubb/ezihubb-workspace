@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { serverApi } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { fmtDate, fmtAmount } from '../../../../lib/fmt';
 import { OrderStatusBadge } from '../../../../components/orders/OrderStatusBadge';
@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return { title: `Order ${id} — Daily Daisy Admin` };
+  return { title: `Order ${id} — EziHubb Admin` };
 }
 
 export default async function OrderDetailPage({

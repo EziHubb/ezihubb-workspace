@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Crown, Star, Zap, Clock, ShoppingBag } from 'lucide-react';
-import { Skeleton } from '@mlh/ui';
+import { Skeleton } from '@ezihubb/ui';
 import { useLocale, useTranslations } from 'next-intl';
-import { apiClient } from '@mlh/api-client';
+import { apiClient } from '@ezihubb/api-client';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
 

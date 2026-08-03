@@ -69,7 +69,7 @@ const FAQ_DATA: FaqItem[] = [
   {
     id: 'o5', category: 'Orders',
     question: 'Can I place a bulk order?',
-    answer: 'Absolutely. For orders of 10+ identical or similar items, contact us at bulk@dailydaisy.com for custom pricing and a dedicated account manager.',
+    answer: 'Absolutely. For orders of 10+ identical or similar items, contact us at bulk@ezihubb.com for custom pricing and a dedicated account manager.',
   },
 
   // ── Shipping ───────────────────────────────────────────────────────────────
@@ -108,7 +108,7 @@ const FAQ_DATA: FaqItem[] = [
   {
     id: 'r2', category: 'Returns',
     question: 'What if my item arrives damaged or incorrect?',
-    answer: 'Take a photo of the damage or error and email it to support@dailydaisy.com within 7 days of delivery. We\'ll arrange a free replacement or full refund — whichever you prefer.',
+    answer: 'Take a photo of the damage or error and email it to support@ezihubb.com within 7 days of delivery. We\'ll arrange a free replacement or full refund — whichever you prefer.',
   },
   {
     id: 'r3', category: 'Returns',
@@ -321,7 +321,7 @@ export function FaqClient() {
               Start Live Chat
             </button>
             <a
-              href="mailto:support@dailydaisy.com"
+              href="mailto:support@ezihubb.com"
               className="inline-flex items-center gap-2 border border-border text-secondary font-semibold text-sm px-6 py-3 rounded-button hover:border-primary hover:text-primary transition-colors"
             >
               <Mail className="w-4 h-4" />

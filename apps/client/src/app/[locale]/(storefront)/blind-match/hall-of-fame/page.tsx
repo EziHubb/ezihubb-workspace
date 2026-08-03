@@ -4,8 +4,8 @@ import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { Camera, Heart, Star, Upload, Check, Loader2, X, Sparkles } from 'lucide-react';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 
 interface UgcEntry {
   id:         string;
@@ -273,7 +273,7 @@ export default function HallOfFamePage() {
                   className="mt-0.5 accent-primary w-4 h-4"
                 />
                 <span className="text-xs text-muted leading-relaxed">
-                  I agree to Maple Loom&apos;s community guidelines and allow my submission to be published on this page.
+                  I agree to EziHubb&apos;s community guidelines and allow my submission to be published on this page.
                   I understand my name, city, and photo may be visible publicly.
                 </span>
               </label>

@@ -14,10 +14,10 @@ import {
   Users,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient, queryKeys } from '@mlh/api-client';
-import { API_ROUTES, CLIENT_ROUTES } from '@mlh/constants';
-import type { UserDto } from '@mlh/types';
-import type { ConversationDto } from '@mlh/types';
+import { apiClient, queryKeys } from '@ezihubb/api-client';
+import { API_ROUTES, CLIENT_ROUTES } from '@ezihubb/constants';
+import type { UserDto } from '@ezihubb/types';
+import type { ConversationDto } from '@ezihubb/types';
 import { useAuthStore } from '../../lib/store/auth.store';
 
 interface AccountSidebarProps {

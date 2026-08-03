@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { fmtAmount, fmtDateTime } from '../../../../lib/fmt';
-import { Pagination } from '@mlh/ui';
+import { Pagination } from '@ezihubb/ui';
 
 interface MyFlashDeal {
   id:            string;

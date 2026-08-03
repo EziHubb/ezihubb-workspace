@@ -15,7 +15,7 @@ async function connectMongo(retries = 3, delayMs = 2000): Promise<boolean> {
 
   for (let i = 0; i < retries; i++) {
     try {
-      await mongoose.connect(uri, { dbName: 'dailydaisy', serverSelectionTimeoutMS: 3000 });
+      await mongoose.connect(uri, { dbName: 'ezihubb', serverSelectionTimeoutMS: 3000 });
       console.log('  ✅ MongoDB connected');
       return true;
     } catch (err) {

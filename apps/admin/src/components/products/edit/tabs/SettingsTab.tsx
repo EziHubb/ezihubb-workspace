@@ -6,7 +6,7 @@ import { ExternalLink } from 'lucide-react';
 import { addMonths } from 'date-fns';
 import { fmtDate } from '../../../../lib/fmt';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import type { ProductEditFormValues, RenewalType } from '../types';
 import { RelatedProductsPicker } from '../RelatedProductsPicker';
 import { Toggle } from '../primitives/Toggle';

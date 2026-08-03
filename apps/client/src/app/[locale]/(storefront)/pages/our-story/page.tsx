@@ -8,7 +8,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: 'Our Story',
     description:
-      'Learn how DailyDaisy was founded and our mission to create meaningful personalized gifts that bring people closer together.',
+      'Learn how EziHubb was founded and our mission to create meaningful personalized gifts that bring people closer together.',
     robots: { index: true, follow: true },
   };
 }
@@ -51,7 +51,7 @@ export default function OurStoryPage() {
           Made with Love,<br />Delivered with Care
         </h1>
         <p className="text-lg text-muted max-w-2xl mx-auto leading-relaxed">
-          DailyDaisy was born from a simple belief: the best gifts are the ones
+          EziHubb was born from a simple belief: the best gifts are the ones
           that tell a story — your story.
         </p>
       </div>
@@ -71,7 +71,7 @@ export default function OurStoryPage() {
             special dates. The response was overwhelming.
           </p>
           <p className="text-muted leading-relaxed">
-            What started as a small Etsy shop in a spare bedroom became DailyDaisy —
+            What started as a small Etsy shop in a spare bedroom became EziHubb —
             a platform dedicated entirely to the art of personalized giving.
           </p>
         </div>

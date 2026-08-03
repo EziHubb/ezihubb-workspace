@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { ChevronDown, ChevronUp, Star } from 'lucide-react';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 import { useCartStore } from '../../../../lib/store/cart.store';
-import type { ShippingAddressInput } from '@mlh/api-client';
-import type { ShippingOptionDto, CartDto } from '@mlh/types';
+import type { ShippingAddressInput } from '@ezihubb/api-client';
+import type { ShippingOptionDto, CartDto } from '@ezihubb/types';
 import { StepIndicator }           from '../../../../components/checkout/StepIndicator';
 import { ShippingForm }             from '../../../../components/checkout/ShippingForm';
 import { DeliveryForm }             from '../../../../components/checkout/DeliveryForm';
@@ -254,7 +254,7 @@ export default function CheckoutPage() {
   } | null>(null);
 
   useEffect(() => {
-    const refCode = getCookie('mlh_affiliate');
+    const refCode = getCookie('ezihubb_affiliate');
     if (!refCode) return;
     apiClient
       .get<{ discountRate: number; affiliateName?: string } | null>(API_ROUTES.AFFILIATES.RESOLVE, {

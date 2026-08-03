@@ -16,7 +16,7 @@ import {
   type PaymentMethod,
 } from '../../../components/payments/PaymentDetailDrawer';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { FilterSelect } from '../../../components/ui/FilterSelect';
 import { fmtCurrency, fmtAmount, fmtPercent, fmtDate, fmtDateTime, fmtNum } from '../../../lib/fmt';
 

@@ -1,7 +1,7 @@
-﻿import type { ProductDto } from '@mlh/types';
-import type { ReviewSummaryDto } from '@mlh/types';
+﻿import type { ProductDto } from '@ezihubb/types';
+import type { ReviewSummaryDto } from '@ezihubb/types';
 
-const BASE_URL = 'https://dailydaisy.com';
+const BASE_URL = 'https://ezihubb.com';
 
 export interface ProductStructuredDataProps {
   product:       ProductDto;
@@ -30,7 +30,7 @@ export function ProductStructuredData({
     sku:        product.sku,
     brand: {
       '@type': 'Brand',
-      name:    'Daily Daisy',
+      name:    'EziHubb',
     },
     offers: {
       '@type':        'Offer',

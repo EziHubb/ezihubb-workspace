@@ -165,7 +165,7 @@ export function ReviewReplyModal({
                 <span className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
                   <span className="text-primary font-bold text-xs">M</span>
                 </span>
-                Reply as DailyDaisy
+                Reply as EziHubb
               </h5>
 
               <textarea

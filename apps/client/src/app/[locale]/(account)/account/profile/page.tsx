@@ -7,10 +7,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Camera, Eye, EyeOff } from 'lucide-react';
-import { queryKeys, useMutateProfile, apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
-import { useToast } from '@mlh/ui';
-import type { UserDto } from '@mlh/types';
+import { queryKeys, useMutateProfile, apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
+import { useToast } from '@ezihubb/ui';
+import type { UserDto } from '@ezihubb/types';
 import { useAuthQuery, useAuthMutation } from '../../../../../lib/hooks/useAuthQuery';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
 

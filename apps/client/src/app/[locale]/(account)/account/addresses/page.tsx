@@ -6,11 +6,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Edit2, Trash2, Star, MapPin } from 'lucide-react';
-import { queryKeys } from '@mlh/api-client';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
-import { useToast } from '@mlh/ui';
-import type { AddressDto } from '@mlh/types';
+import { queryKeys } from '@ezihubb/api-client';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
+import { useToast } from '@ezihubb/ui';
+import type { AddressDto } from '@ezihubb/types';
 import { useAuthQuery, useAuthMutation } from '../../../../../lib/hooks/useAuthQuery';
 
 const MAX_ADDRESSES = 10;

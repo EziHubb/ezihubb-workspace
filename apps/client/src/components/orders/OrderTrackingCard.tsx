@@ -4,10 +4,10 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Copy, ExternalLink, Package, Check } from 'lucide-react';
-import { Button, Modal, ModalHeader, ModalBody, ModalFooter, OrderStatusBadge } from '@mlh/ui';
-import type { OrderDto, OrderStatus } from '@mlh/types';
+import { Button, Modal, ModalHeader, ModalBody, ModalFooter, OrderStatusBadge } from '@ezihubb/ui';
+import type { OrderDto, OrderStatus } from '@ezihubb/types';
 import { apiClient } from '../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { OrderStatusTimeline } from './OrderStatusTimeline';
 import { CancelCountdown } from './CancelCountdown';
 

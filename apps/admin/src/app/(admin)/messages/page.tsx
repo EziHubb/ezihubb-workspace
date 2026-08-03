@@ -6,9 +6,9 @@ import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Check, RefreshCw } from 'lucide-react';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
-import type { ConversationDto, ConversationWithMessagesDto } from '@mlh/types';
+import type { ConversationDto, ConversationWithMessagesDto } from '@ezihubb/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -303,7 +303,7 @@ function AdminMessageThread({
           />
           <div className="flex items-center justify-between px-4 py-2.5 bg-[#F9FAFB] border-t">
             <p className="text-xs text-muted">
-              Sending as <span className="font-medium">DailyDaisy</span>
+              Sending as <span className="font-medium">EziHubb</span>
             </p>
             <button
               type="button"

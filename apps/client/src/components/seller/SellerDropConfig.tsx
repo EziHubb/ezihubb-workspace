@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Clock, ChevronDown, ChevronUp } from 'lucide-react';
-import { apiClient } from '@mlh/api-client';
+import { apiClient } from '@ezihubb/api-client';
 
 interface SellerDropConfigProps {
   productId:   string;

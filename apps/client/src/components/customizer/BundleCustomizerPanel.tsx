@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useCartStore } from '../../lib/store/cart.store';
-import type { ProductDto, CustomizationConfigDto } from '@mlh/types';
+import type { ProductDto, CustomizationConfigDto } from '@ezihubb/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

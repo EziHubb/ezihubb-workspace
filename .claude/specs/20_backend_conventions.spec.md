@@ -18,8 +18,7 @@ apps/api/src/modules/<module>/
 ```
 
 ### Modules present in `apps/api/src/modules/`
-`admin`, `analytics`, `assets`, `auth`, `cart`, `catalog`, `customization`, `database`, `notifications`, `orders`, `order-tracking`, `payments`, `products`, `promotions`, `reviews`, `search`, `shipping`, `store-credits`, `tax`, `users`,
-`messages`, `loyalty`, `affiliate`, `referral`, `push`, `pdf`, `label`, `currency`, `creator`, `nft`, `bounty`, `wallet`, `audit-log`, `coins`
+`admin`, `admin-users`, `affiliates`, `ai` (admin-ai), `analytics`, `assets`, `auth`, `blind-match`, `bounties`, `bundles`, `campaigns`, `canva`, `cart`, `catalog`, `coins`, `creator-dna`, `currency`, `customization`, `database` (mongodb), `design-licensing`, `drops`, `flash-deals`, `gift-chains`, `gift-finder`, `gift-pools`, `loyalty`, `memberships`, `messages`, `moderation`, `notifications` (includes FcmService + PushService), `order-tracking`, `orders`, `payments`, `pdf`, `pricing`, `products` (includes LowStockService), `promotions`, `referrals`, `reviews`, `search`, `shipping`, `shop-stats`, `store-credits`, `stores`, `tax`, `translations`, `users`, `vip`
 
 ## 2. Controller Conventions
 
@@ -395,10 +394,11 @@ File: `apps/api/src/modules/shipping/tracking.service.ts`
 
 ### PdfService
 File: `apps/api/src/modules/pdf/pdf.service.ts`
-- `puppeteer` / `@sparticuz/chromium` for PDF generation
+- `@react-pdf/renderer` for PDF generation (React-based, no headless browser)
 - `pdfService.generateInvoice(orderId, giftReceipt?, userId?)` — auto-detects giftReceipt flag, verifies ownership when userId provided
 - `pdfService.generatePackingSlip(orderId)`
 - PDFs cached in R2
+- Templates: `InvoiceDocument.tsx`, `PackingSlipDocument.tsx` (React components rendered to PDF)
 
 ### OrderTrackingService
 File: `apps/api/src/modules/order-tracking/order-tracking.service.ts`

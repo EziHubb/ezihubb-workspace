@@ -1,6 +1,6 @@
 ﻿import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import type { OrderForPdf } from '../pdf.service';
-import { fmtDate } from '@mlh/utils';
+import { fmtDate } from '@ezihubb/utils';
 
 const GIFT_WRAPPING_PRICE = 4.99;
 
@@ -94,7 +94,7 @@ export function InvoiceDocument({ order, shopUrl, isGiftReceipt = false }: Props
         {/* ── Header ─────────────────────────────────────────────── */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.brandName}>DailyDaisy</Text>
+            <Text style={styles.brandName}>EziHubb</Text>
             <Text style={styles.brandSub}>{shopUrl.replace(/^https?:\/\//, '')}</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
@@ -124,8 +124,8 @@ export function InvoiceDocument({ order, shopUrl, isGiftReceipt = false }: Props
           {/* From */}
           <View style={{ flex: 1 }}>
             <Text style={styles.sectionTitle}>From</Text>
-            <Text style={styles.addressLine}>DailyDaisy</Text>
-            <Text style={styles.addressLine}>support@dailydaisy.com</Text>
+            <Text style={styles.addressLine}>EziHubb</Text>
+            <Text style={styles.addressLine}>support@ezihubb.com</Text>
             <Text style={styles.addressLine}>{shopUrl}</Text>
           </View>
         </View>
@@ -253,7 +253,7 @@ export function InvoiceDocument({ order, shopUrl, isGiftReceipt = false }: Props
         {/* ── Footer ─────────────────────────────────────────────── */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Thank you for your order!  Questions? support@dailydaisy.com
+            Thank you for your order!  Questions? support@ezihubb.com
           </Text>
           <Text style={styles.footerText}>Page 1 of 1</Text>
         </View>

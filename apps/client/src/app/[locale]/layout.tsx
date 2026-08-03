@@ -47,7 +47,7 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: 'site' });
   const isVi = locale === 'vi';
   return {
-    metadataBase: new URL('https://dailydaisy.com'),
+    metadataBase: new URL('https://ezihubb.com'),
     title: {
       template: `%s | ${t('name')}`,
       default:  t('defaultTitle'),
@@ -55,22 +55,22 @@ export async function generateMetadata({
     description: t('defaultDescription'),
     keywords: [
       'personalized gifts', 'custom gifts', 'photo gifts',
-      'handmade gifts', 'custom mugs', 'canvas prints', 'daily daisy',
+      'handmade gifts', 'custom mugs', 'canvas prints', 'ezihubb',
     ],
-    authors:   [{ name: 'DailyDaisy' }],
-    creator:   'DailyDaisy',
-    publisher: 'DailyDaisy',
+    authors:   [{ name: 'EziHubb' }],
+    creator:   'EziHubb',
+    publisher: 'EziHubb',
     openGraph: {
       siteName: t('name'),
       locale:   isVi ? 'vi_VN' : 'en_US',
       type:     'website',
       images:   [{ url: '/og-default.jpg', width: 1200, height: 630,
-                   alt: 'DailyDaisy — Personalized Gifts' }],
+                   alt: 'EziHubb — Personalized Gifts' }],
     },
     twitter: {
       card:    'summary_large_image',
-      site:    '@dailydaisy',
-      creator: '@dailydaisy',
+      site:    '@ezihubb',
+      creator: '@ezihubb',
     },
     robots: {
       index:  true,
@@ -84,11 +84,11 @@ export async function generateMetadata({
       google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
     },
     alternates: {
-      canonical: isVi ? 'https://dailydaisy.com/vi' : 'https://dailydaisy.com',
+      canonical: isVi ? 'https://ezihubb.com/vi' : 'https://ezihubb.com',
       languages: {
-        'en':        'https://dailydaisy.com',
-        'vi':        'https://dailydaisy.com/vi',
-        'x-default': 'https://dailydaisy.com',
+        'en':        'https://ezihubb.com',
+        'vi':        'https://ezihubb.com/vi',
+        'x-default': 'https://ezihubb.com',
       },
     },
   };

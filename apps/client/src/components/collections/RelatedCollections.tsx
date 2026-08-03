@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import type { CollectionDto } from '@mlh/types';
+import type { CollectionDto } from '@ezihubb/types';
 
 export interface RelatedCollectionsProps {
   collections:  CollectionDto[];

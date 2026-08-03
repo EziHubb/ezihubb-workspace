@@ -1,4 +1,4 @@
-import type { ProductDto, ReviewSummaryDto } from '@mlh/types';
+import type { ProductDto, ReviewSummaryDto } from '@ezihubb/types';
 
 interface ProductInfoProps {
   product:       ProductDto;

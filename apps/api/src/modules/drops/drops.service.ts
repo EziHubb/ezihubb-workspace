@@ -107,7 +107,7 @@ export class DropsService {
       });
 
       // Notify waitlist
-      const baseUrl = this.config.get('NEXT_PUBLIC_URL') ?? 'https://dailydaisy.com';
+      const baseUrl = this.config.get('NEXT_PUBLIC_URL') ?? 'https://ezihubb.com';
       for (const entry of product.dropWaitlists) {
         await this.emailQueue.add(
           JOBS.SEND_EMAIL,

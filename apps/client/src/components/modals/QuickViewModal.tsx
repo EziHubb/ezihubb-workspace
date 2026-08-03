@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { Star, ExternalLink } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, Button, Skeleton } from '@mlh/ui';
+import { Modal, ModalHeader, ModalBody, Button, Skeleton } from '@ezihubb/ui';
 import { ProductGallery } from '../product/ProductGallery';
 import { VariantPicker } from '../product/VariantPicker';
 import type { FlexVariant, VariantOption } from '../product/VariantPicker';
-import type { ProductDto } from '@mlh/types';
+import type { ProductDto } from '@ezihubb/types';
 import { apiClient } from '../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 // ── Loading skeleton ──────────────────────────────────────────────────────────
 

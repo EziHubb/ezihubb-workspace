@@ -65,7 +65,7 @@ interface CurrencyContextType {
 }
 ```
 
-**Persistence:** Selected currency stored in localStorage (key: `mlh_currency`) VÀ cookie `mlh_currency` (max-age: 1 year)
+**Persistence:** Selected currency stored in localStorage (key: `ezihubb_currency`) VÀ cookie `ezihubb_currency` (max-age: 1 year)
 **Initial currency:** Restore từ localStorage, fallback USD
 
 `CurrencyProvider` wrap toàn app trong `apps/client/src/app/[locale]/layout.tsx`.

@@ -12,7 +12,7 @@ const SETTINGS_TTL = 300; // 5 minutes
 
 const DEFAULTS: Record<string, Record<string, unknown>> = {
   store: {
-    name: 'DailyDaisy',
+    name: 'EziHubb',
     description: '',
     contactEmail: '',
     supportPhone: '',
@@ -33,7 +33,7 @@ const DEFAULTS: Record<string, Record<string, unknown>> = {
     port: '587',
     user: '',
     password: '',
-    fromName: 'DailyDaisy',
+    fromName: 'EziHubb',
     fromEmail: '',
   },
   notifications: {
@@ -112,7 +112,7 @@ export class SettingsService {
   async sendTestEmail(to: string): Promise<void> {
     await this.emailQueue.add(JOBS.SEND_EMAIL, {
       to,
-      subject: 'Test Email from DailyDaisy',
+      subject: 'Test Email from EziHubb',
       template: 'welcome',
       data: { firstName: 'Admin' },
     } satisfies SendEmailJobData);

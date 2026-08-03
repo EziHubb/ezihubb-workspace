@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { ChevronLeft, ChevronRight, Heart, Flag, X } from 'lucide-react';
-import { useWishlist, useWishlistToggle } from '@mlh/api-client';
+import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
-import type { ProductDto } from '@mlh/types';
+import type { ProductDto } from '@ezihubb/types';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -223,7 +223,7 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
             className="mt-3 text-xs text-muted hover:underline flex items-center gap-1"
           >
             <Flag className="w-3 h-3" />
-            Report this item to DailyDaisy
+            Report this item to EziHubb
           </button>
         </div>
       </div>

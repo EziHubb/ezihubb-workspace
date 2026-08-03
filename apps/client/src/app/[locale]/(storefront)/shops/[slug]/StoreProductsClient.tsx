@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter, usePathname } from 'next/navigation';
 import { ChevronDown, PackageOpen, X } from 'lucide-react';
-import { apiClient, useWishlist, useWishlistToggle } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
-import { ProductCard, Pagination, Skeleton } from '@mlh/ui';
+import { apiClient, useWishlist, useWishlistToggle } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
+import { ProductCard, Pagination, Skeleton } from '@ezihubb/ui';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
-import type { ProductListItemDto } from '@mlh/types';
+import type { ProductListItemDto } from '@ezihubb/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

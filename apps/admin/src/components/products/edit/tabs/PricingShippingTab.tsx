@@ -7,7 +7,7 @@ import {
   ChevronRight, X, ExternalLink, Lightbulb, Truck,
 } from 'lucide-react';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import type { ProductEditFormValues, AdminProductDto, ReturnPolicy } from '../types';
 import { EstimatedEarningsRow }    from '../EstimatedEarningsRow';
 import { ProcessingProfileCard }   from '../ProcessingProfileCard';

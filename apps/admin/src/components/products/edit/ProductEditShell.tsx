@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { ArrowLeft, ExternalLink, Copy, MoreHorizontal, Archive, Trash2, Check, AlertCircle } from 'lucide-react';
 import { fmtDate } from '../../../lib/fmt';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import {
   buildDefaultValues,
   buildCopyDefaultValues,

@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../prisma/prisma.service';
-import { can, getConditions, PermissionDocument } from '@mlh/constants';
+import { can, getConditions, PermissionDocument } from '@ezihubb/constants';
 import { PERMISSION_KEY } from '../decorators/require-permission.decorator';
 
 @Injectable()

@@ -55,7 +55,7 @@ export class PdfService {
     private readonly storage:  StorageService,
     private readonly config:   ConfigService,
   ) {
-    this.shopUrl = this.config.get<string>('FRONTEND_URL', 'https://dailydaisy.com');
+    this.shopUrl = this.config.get<string>('FRONTEND_URL', 'https://ezihubb.com');
   }
 
   // ── Public generators ───────────────────────────────────────────────────────

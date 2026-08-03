@@ -1,5 +1,5 @@
 {
-  "name": "@mlh/types",
+  "name": "@ezihubb/types",
   "version": "0.0.1",
   "private": true,
   "main": "./src/index.ts",

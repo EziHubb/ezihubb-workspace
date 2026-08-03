@@ -12,12 +12,12 @@ export async function generateMetadata({
   const q = params.q?.trim();
   const category = params.category?.trim();
   const title = q
-    ? `"${q}" — Personalized Gifts | DailyDaisy`
+    ? `"${q}" — Personalized Gifts | EziHubb`
     : category
-      ? `${category} Gifts | DailyDaisy`
-      : 'All Personalized Gifts | DailyDaisy';
+      ? `${category} Gifts | EziHubb`
+      : 'All Personalized Gifts | EziHubb';
   const description = q
-    ? `Find the perfect personalized "${q}" gift. Custom-made with love at DailyDaisy.`
+    ? `Find the perfect personalized "${q}" gift. Custom-made with love at EziHubb.`
     : 'Shop 120+ personalized gift ideas — custom mugs, canvas prints, apparel and more.';
   return {
     title,

@@ -5,8 +5,8 @@ import { Heart, Star } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import type { ProductListItemDto } from '@mlh/types';
-import { useWishlist, useWishlistToggle } from '@mlh/api-client';
+import type { ProductListItemDto } from '@ezihubb/types';
+import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { useCartStore } from '../../lib/store/cart.store';
 import { useAuthStore } from '../../lib/store/auth.store';
 
@@ -190,7 +190,7 @@ export function SearchProductCard({ product, priority = false }: Props) {
             {product.store.name}
           </Link>
         ) : (
-          <p className="text-xs text-muted truncate">{product.store?.name ?? 'Daily Daisy'}</p>
+          <p className="text-xs text-muted truncate">{product.store?.name ?? 'EziHubb'}</p>
         )}
 
         <Link href={`/${locale}/products/${product.slug}`}>

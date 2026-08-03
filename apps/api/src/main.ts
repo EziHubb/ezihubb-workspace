@@ -145,9 +145,9 @@ async function bootstrap() {
   // ── Swagger (disabled in production) ──────────────────────────────────────
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()
-      .setTitle('DailyDaisy API')
+      .setTitle('EziHubb API')
       .setDescription(
-        'REST API for DailyDaisy — personalized gifts e-commerce',
+        'REST API for EziHubb — personalized gifts e-commerce',
       )
       .setVersion('1.0')
       .addBearerAuth(

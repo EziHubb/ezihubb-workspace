@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { Gift, Loader2, AlertCircle, ArrowRight, Link2 } from 'lucide-react';
-import { apiClient } from '@mlh/api-client';
+import { apiClient } from '@ezihubb/api-client';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
 
 interface ProductSnippet {

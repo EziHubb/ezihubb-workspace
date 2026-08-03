@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { TrendingUp, Users, DollarSign, Clock } from 'lucide-react';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtDate, fmtNum, fmtAmount, capitalize } from '../../../lib/fmt';
 
 // ── Types ──────────────────────────────────────────────────────────────────────

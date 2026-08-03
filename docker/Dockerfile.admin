@@ -1,8 +1,25 @@
 FROM node:22-alpine AS base
-RUN apk add --no-cache libc6-compat
+# python3/make/g++/pkgconf + cairo/pango/jpeg/gif libs: required to compile
+# canvas (pulled in by jsdom → vitest; no pre-built musl binary for Node 22)
+RUN apk add --no-cache \
+    libc6-compat \
+    python3 \
+    make \
+    g++ \
+    pkgconf \
+    cairo-dev \
+    pango-dev \
+    libjpeg-turbo-dev \
+    giflib-dev \
+    pixman-dev \
+    fontconfig-dev
 WORKDIR /app
 RUN npm install -g pnpm
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# scripts/ and prisma/ must be present before pnpm install so the lifecycle
+# hooks (postinstall: patch-next-build.cjs, prepare: prisma generate) work.
+COPY scripts/ ./scripts/
+COPY prisma/ ./prisma/
 RUN pnpm install --frozen-lockfile
 
 FROM base AS development
@@ -11,6 +28,16 @@ EXPOSE 3001
 CMD ["pnpm", "nx", "serve", "admin"]
 
 FROM base AS builder
+# Next.js bakes NEXT_PUBLIC_* into the client bundle at build time.
+# These are public values — safe to pass as ARG. Secrets must never appear here.
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_NEXTAUTH_URL
+ARG NEXT_PUBLIC_CDN_URL
+ARG NEXT_PUBLIC_SENTRY_DSN
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_NEXTAUTH_URL=$NEXT_PUBLIC_NEXTAUTH_URL \
+    NEXT_PUBLIC_CDN_URL=$NEXT_PUBLIC_CDN_URL \
+    NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 COPY . .
 RUN pnpm nx build admin --configuration=production
 
@@ -19,11 +46,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
-COPY --from=builder --chown=nextjs:nodejs /app/apps/admin/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/admin/.next/static ./apps/admin/.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/apps/admin/public ./apps/admin/public
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/dist/apps/admin ./dist/apps/admin
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 USER nextjs
 EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
   CMD wget -qO- http://localhost:3001/api/health || exit 1
-CMD ["node", "apps/admin/server.js"]
+CMD ["node_modules/.bin/next", "start", "dist/apps/admin", "--port", "3001"]

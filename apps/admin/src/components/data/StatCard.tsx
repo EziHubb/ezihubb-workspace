@@ -1,6 +1,6 @@
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { fmtNum } from '@mlh/utils';
+import { fmtNum } from '@ezihubb/utils';
 
 type ColorKey = 'coral' | 'amber' | 'blue' | 'green';
 

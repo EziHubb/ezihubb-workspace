@@ -12,7 +12,7 @@ import { DataTable } from '../../../components/data/DataTable';
 import { PromotionModal, type Promotion, type PromotionFormData } from '../../../components/promotions/PromotionModal';
 import { PromotionStatsDrawer } from '../../../components/promotions/PromotionStatsDrawer';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtDate, fmtNum } from '../../../lib/fmt';
 import { useDialog } from '../../../contexts/DialogContext';
 import { FilterSelect } from '../../../components/ui/FilterSelect';

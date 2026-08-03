@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { Toggle } from '../../../../components/products/edit/primitives/Toggle';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

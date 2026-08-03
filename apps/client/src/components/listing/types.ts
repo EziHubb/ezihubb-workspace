@@ -1,4 +1,4 @@
-import type { PaginatedResponse } from '@mlh/types';
+import type { PaginatedResponse } from '@ezihubb/types';
 
 // ── Filter state (lives in URL, not Zustand) ────────────────────────────────
 

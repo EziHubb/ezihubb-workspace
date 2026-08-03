@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { Tag, X, ChevronRight, ShieldCheck, Truck, RotateCcw } from 'lucide-react';
 import { useCartStore } from '../../lib/store/cart.store';
-import type { CartDto } from '@mlh/types';
+import type { CartDto } from '@ezihubb/types';
 
 interface OrderSummaryProps {
   cart: CartDto;

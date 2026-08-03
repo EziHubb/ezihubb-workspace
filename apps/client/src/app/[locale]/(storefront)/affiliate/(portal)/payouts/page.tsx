@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../../../../../lib/store/auth.store';
-import { apiClient } from '@mlh/api-client';
+import { apiClient } from '@ezihubb/api-client';
 import { useAuthQuery } from '../../../../../../lib/hooks/useAuthQuery';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 interface DashboardData {
   balance:     number;

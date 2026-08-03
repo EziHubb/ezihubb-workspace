@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, X, Link2, Check } from 'lucide-react';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 interface RelatedProduct {
   id:        string;

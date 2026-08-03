@@ -20,7 +20,7 @@ export async function seedGiftCards(prisma: PrismaClient): Promise<void> {
       isActive:       true,
       recipientEmail: 'bob@test.com',
       recipientName:  'Bob Smith',
-      personalMessage: 'Thanks for being an amazing friend! Enjoy shopping at Daily Daisy 🛍️',
+      personalMessage: 'Thanks for being an amazing friend! Enjoy shopping at EziHubb 🛍️',
     },
     {
       code:           'DAISY-GC-0100',

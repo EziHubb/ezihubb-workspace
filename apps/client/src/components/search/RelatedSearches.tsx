@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 
 interface RelatedSearchesProps {
   query?: string;

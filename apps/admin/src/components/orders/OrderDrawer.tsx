@@ -13,7 +13,7 @@ import { OrderStatusBadge, ALL_STATUSES, StatusSelect } from './OrderStatusBadge
 import { CustomizationPreviewModal } from './CustomizationPreviewModal';
 import { BuyLabelModal, type LabelPurchaseResult } from './BuyLabelModal';
 import { api } from '../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { useDialog } from '../../contexts/DialogContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

@@ -10,7 +10,7 @@ import {
 import Image from 'next/image';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api, adminApi } from '../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { Toggle as PrimitiveToggle } from '../../../components/products/edit/primitives';
 import { fmtDate, fmtDateTime, safeStr } from '../../../lib/fmt';
 import { useDialog } from '../../../contexts/DialogContext';
@@ -276,7 +276,7 @@ function StoreTab() {
           <div className="col-span-2">
             <FieldLabel required>Store Name</FieldLabel>
             <input value={g('name')} onChange={(e) => setGeneral((s) => ({ ...s, name: e.target.value }))}
-              className={inputCls} placeholder="DailyDaisy" />
+              className={inputCls} placeholder="EziHubb" />
           </div>
           <div className="col-span-2">
             <FieldLabel>Store Description</FieldLabel>
@@ -286,7 +286,7 @@ function StoreTab() {
           <div>
             <FieldLabel>Contact Email</FieldLabel>
             <input type="email" value={g('contactEmail')} onChange={(e) => setGeneral((s) => ({ ...s, contactEmail: e.target.value }))}
-              className={inputCls} placeholder="hello@dailydaisy.com" />
+              className={inputCls} placeholder="hello@ezihubb.com" />
           </div>
           <div>
             <FieldLabel>Support Phone</FieldLabel>
@@ -429,7 +429,7 @@ function EmailTemplateEditor({
     .replace(/\{\{trackingUrl\}\}/g, '#')
     .replace(/\{\{resetLink\}\}/g, '#')
     .replace(/\{\{reviewLink\}\}/g, '#')
-    .replace(/\{\{storeUrl\}\}/g, 'https://dailydaisy.com')
+    .replace(/\{\{storeUrl\}\}/g, 'https://ezihubb.com')
     .replace(/\{\{refundAmount\}\}/g, '$12.00')
     .replace(/\{\{reason\}\}/g, 'Customer request')
     .replace(/\{\{[\w]+\}\}/g, '<span style="background:#fef3c7;padding:1px 4px;border-radius:3px;font-size:12px">[var]</span>');
@@ -533,7 +533,7 @@ function EmailTab() {
   const { preview } = useDialog();
   const [smtp, setSmtp] = useState({
     host: '', port: '587', user: '', password: '',
-    fromName: 'DailyDaisy', fromEmail: '',
+    fromName: 'EziHubb', fromEmail: '',
   });
   const [showPwd,     setShowPwd]     = useState(false);
   const [smtpSaving,  setSmtpSaving]  = useState(false);
@@ -631,7 +631,7 @@ function EmailTab() {
           <div>
             <FieldLabel>From Email</FieldLabel>
             <input type="email" value={smtp.fromEmail} onChange={(e) => setSmtp((s) => ({ ...s, fromEmail: e.target.value }))}
-              className={inputCls} placeholder="noreply@dailydaisy.com" autoComplete="off" />
+              className={inputCls} placeholder="noreply@ezihubb.com" autoComplete="off" />
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -1053,7 +1053,7 @@ function DangerZoneTab() {
     const url  = URL.createObjectURL(blob);
     const a    = Object.assign(document.createElement('a'), {
       href:     url,
-      download: `daily-daisy-export-${new Date().toISOString().slice(0, 10)}.csv`,
+      download: `ezihubb-export-${new Date().toISOString().slice(0, 10)}.csv`,
     });
     a.click();
     URL.revokeObjectURL(url);

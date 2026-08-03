@@ -1,4 +1,4 @@
-import { Skeleton } from '@mlh/ui';
+import { Skeleton } from '@ezihubb/ui';
 const S = 'animate-shimmer bg-gradient-to-r from-border/60 via-background to-border/60 bg-[length:400%_100%] rounded-sm';
 export default function AddressesLoading() {
   return (

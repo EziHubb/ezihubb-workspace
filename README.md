@@ -1,4 +1,4 @@
-# DailyDaisy — Handcrafted Goods Platform
+# EziHubb — Handcrafted Goods Platform
 
 A full-stack e-commerce platform for personalized handmade goods. Customers browse products, customize them in a live canvas editor (Fabric.js), and check out via Stripe or PayPal. Artisans and admins manage inventory, orders, and promotions through a separate admin panel.
 
@@ -48,8 +48,8 @@ A full-stack e-commerce platform for personalized handmade goods. Customers brow
 
 ```bash
 # 1. Clone and enter the repo
-git clone https://github.com/your-org/daily-daisy.git
-cd daily-daisy-workspace
+git clone https://github.com/your-org/ezihubb.git
+cd ezihubb-workspace
 
 # 2. First-time setup (installs deps, starts infra, migrates DB, seeds data)
 make setup
@@ -127,7 +127,7 @@ pnpm nx run-many -t build --parallel=3 # Build all in parallel
 ## Project Structure
 
 ```
-daily-daisy-workspace/
+ezihubb-workspace/
 ├── apps/
 │   ├── api/              # NestJS REST API
 │   │   └── src/
@@ -145,16 +145,16 @@ daily-daisy-workspace/
 │   │       └── messages/ # next-intl translations (en.json, vi.json)
 │   └── admin/            # Next.js admin panel
 ├── libs/
-│   ├── ui/               # @mlh/ui — shared React components
-│   ├── types/            # @mlh/types — shared TypeScript interfaces
-│   ├── constants/        # @mlh/constants — enums, magic numbers
-│   └── api-client/       # @mlh/api-client — fetch client + React Query hooks
+│   ├── ui/               # @ezihubb/ui — shared React components
+│   ├── types/            # @ezihubb/types — shared TypeScript interfaces
+│   ├── constants/        # @ezihubb/constants — enums, magic numbers
+│   └── api-client/       # @ezihubb/api-client — fetch client + React Query hooks
 ├── prisma/               # Prisma schema + migrations + seed
 ├── e2e/                  # Playwright end-to-end tests
-├── docker/               # Dockerfiles (api, client, admin, migrate, nginx)
+├── docker/               # Dockerfiles (api, client, admin, migrate)
 ├── scripts/              # smoke-test.sh and other utilities
-├── .github/workflows/    # CI + deploy GitHub Actions
-├── docker-compose.yml    # Local development infrastructure
+├── .github/workflows/    # CI GitHub Actions
+├── docker-compose.yml    # Self-hosted production stack
 ├── Makefile              # Developer shortcuts
 └── .env.example          # All environment variable defaults
 ```
@@ -189,13 +189,20 @@ SENTRY_DSN             # https://...@sentry.io/...
 
 ## Deployment
 
-### API → Railway
+### Self-hosted (Docker)
 
-1. Create a Railway project, link this GitHub repo, select `docker/Dockerfile.api`.
-2. Set all `apps/api/.env.example` variables as Railway environment variables.
-3. Migrations run automatically via the `deploy.yml` GitHub Actions workflow.
+The stack (API + storefront + admin + Postgres + Redis) runs via [docker-compose.yml](docker-compose.yml) using the per-service Dockerfiles in [docker/](docker/). This compose file targets production only — for local development, run each app directly with `pnpm nx serve <app>`.
 
-### Storefront & Admin → Vercel
+The server (163.44.192.61) hosts other projects too, each on its own subdomain via a shared host-level nginx (not a container). This stack follows the same pattern: `client`/`admin`/`api` are published to `127.0.0.1` only (`CLIENT_PORT`/`ADMIN_PORT`/`API_PORT` in `.env`, defaults 3010/3011/3012), and the host's nginx reverse-proxies `ezihubb.com` / `admin.ezihubb.com` / `api.ezihubb.com` to those ports.
+
+1. Copy `.env.example` to `.env` on the server and fill in real values, including `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB`, a `DATABASE_URL` pointing at `postgres:5432` with matching credentials, and the production `NEXT_PUBLIC_API_URL`/`NEXTAUTH_URL`/`CORS_ORIGINS` values (see comments in `.env.example`).
+2. One-time host nginx setup — see [scripts/nginx-ezihubb.conf](scripts/nginx-ezihubb.conf) for the DNS records to create, installing the site, and running certbot.
+3. Run migrations once: `docker compose run --rm migrate`
+4. Start the stack: `docker compose up -d --build`, or use [scripts/deploy.sh](scripts/deploy.sh) to do all of the above remotely from your machine (config in `scripts/.deploy-config`, gitignored).
+
+MongoDB (Atlas), Cloudflare R2, and SendGrid remain external managed services — only `MONGODB_URI` / `AWS_S3_*` / `SENDGRID_*` need to be set in `.env`.
+
+### Storefront & Admin → Vercel (alternative)
 
 1. Import `apps/client` and `apps/admin` as separate Vercel projects.
 2. Build command: `pnpm nx build client --configuration=production`
@@ -207,7 +214,8 @@ SENTRY_DSN             # https://...@sentry.io/...
 | Trigger | Workflow | Steps |
 |---------|----------|-------|
 | PR to main/develop | `ci.yml` | lint → type-check → unit tests → build → audit |
-| Push to main | `deploy.yml` | build Docker → push GHCR → migrate DB → deploy API + client + admin |
+
+Deployment to the self-hosted server is not yet automated — trigger it manually (or add a new workflow once the server's access method, e.g. SSH, is decided).
 
 ---
 
@@ -218,7 +226,7 @@ SENTRY_DSN             # https://...@sentry.io/...
 ./scripts/smoke-test.sh
 
 # Test a deployed environment
-./scripts/smoke-test.sh https://api.dailydaisy.com https://dailydaisy.com
+./scripts/smoke-test.sh https://api.ezihubb.com https://ezihubb.com
 ```
 
 ---

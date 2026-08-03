@@ -41,8 +41,8 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/admin/stores',
 }));
 
-// Mock @mlh/constants with the values the page actually uses
-jest.mock('@mlh/constants', () => ({
+// Mock @ezihubb/constants with the values the page actually uses
+jest.mock('@ezihubb/constants', () => ({
   ADMIN_ROUTES: {
     stores: { root: '/admin/stores', detail: (id: string) => `/admin/stores/${id}` },
   },

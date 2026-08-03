@@ -10,8 +10,8 @@ import {
   Check, Zap, Crown, Sparkles,
 } from 'lucide-react';
 import { useAuthStore } from '../../../../lib/store/auth.store';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -87,7 +87,7 @@ function PendingState({ name, createdAt }: { name?: string; createdAt?: string }
         </div>
 
         <p className="text-xs text-gray-400">
-          Questions? <a href="mailto:support@dailydaisy.com" className="text-primary underline">Contact support</a>
+          Questions? <a href="mailto:support@ezihubb.com" className="text-primary underline">Contact support</a>
         </p>
       </div>
     </div>
@@ -124,7 +124,7 @@ function RejectedState({ reason, onReapply }: { reason?: string; onReapply: () =
         </button>
 
         <p className="text-xs text-gray-400">
-          Questions? <a href="mailto:support@dailydaisy.com" className="text-primary underline">Contact support</a>
+          Questions? <a href="mailto:support@ezihubb.com" className="text-primary underline">Contact support</a>
         </p>
       </div>
     </div>
@@ -360,7 +360,7 @@ function ApplicationForm({
         </label>
         <div className="flex rounded-xl border border-gray-200 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10 overflow-hidden transition-all">
           <span className="px-3 py-3 bg-gray-50 text-gray-400 text-sm border-r border-gray-200 select-none shrink-0">
-            dailydaisy.com/shop/
+            ezihubb.com/shop/
           </span>
           <input
             value={form.slug}
@@ -431,7 +431,7 @@ function LandingPage({ locale }: { locale: string }) {
           Turn your craft into a <span className="text-primary">business</span>
         </h1>
         <p className="text-lg text-gray-500 max-w-xl mx-auto">
-          Join thousands of independent makers selling on Daily Daisy. Apply in minutes — your first shop is free.
+          Join thousands of independent makers selling on EziHubb. Apply in minutes — your first shop is free.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <Link

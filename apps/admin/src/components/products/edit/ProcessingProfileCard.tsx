@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { api } from '../../../lib/api-client';
-import { API_ROUTES, ADMIN_ROUTES } from '@mlh/constants';
+import { API_ROUTES, ADMIN_ROUTES } from '@ezihubb/constants';
 
 interface ProcessingProfile {
   id:      string;

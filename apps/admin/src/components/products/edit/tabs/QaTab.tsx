@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useDialog } from '../../../../contexts/DialogContext';
 import { MessageCircle, Check, Trash2, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtDate, safeArr } from '../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

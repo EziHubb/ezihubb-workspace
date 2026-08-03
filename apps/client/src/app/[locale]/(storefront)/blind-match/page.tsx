@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { Loader2, Star, Gift, ChevronRight, ChevronLeft } from 'lucide-react';
-import { apiClient } from '@mlh/api-client';
+import { apiClient } from '@ezihubb/api-client';
 import { useAuthStore } from '../../../../lib/store/auth.store';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

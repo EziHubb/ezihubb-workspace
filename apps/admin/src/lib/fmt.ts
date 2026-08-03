@@ -1,7 +1,7 @@
 /**
  * Formatting utilities for the admin UI.
- * Re-exports the shared @mlh/utils library so existing imports continue to work.
- * Import directly from @mlh/utils in new code.
+ * Re-exports the shared @ezihubb/utils library so existing imports continue to work.
+ * Import directly from @ezihubb/utils in new code.
  */
 
 export {
@@ -50,4 +50,4 @@ export {
   isNil,
   notNil,
   toBool,
-} from '@mlh/utils';
+} from '@ezihubb/utils';

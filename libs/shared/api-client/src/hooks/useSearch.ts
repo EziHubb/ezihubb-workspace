@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../client';
-import { API_ROUTES } from '@mlh/constants';
-import type { ProductListItemDto, PaginatedResponse } from '@mlh/types';
+import { API_ROUTES } from '@ezihubb/constants';
+import type { ProductListItemDto, PaginatedResponse } from '@ezihubb/types';
 import { queryKeys } from '../queryKeys';
 
 export interface SearchQuery {

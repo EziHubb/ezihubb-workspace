@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
-import type { CollectionDto, ProductListItemDto } from '@mlh/types';
-import type { PaginatedResponse } from '@mlh/types';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
+import type { CollectionDto, ProductListItemDto } from '@ezihubb/types';
+import type { PaginatedResponse } from '@ezihubb/types';
 import { buildAlternates } from '../../../../../lib/seo';
 import { ProductListingLayout } from '../../../../../components/listing/ProductListingLayout';
 import { CollectionHero } from '../../../../../components/collections/CollectionHero';

@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { buildAlternates } from '../../../lib/seo';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
-import type { CollectionDto, CategoryDto, ProductListItemDto, ReviewDto } from '@mlh/types';
-import type { PaginatedResponse } from '@mlh/types';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
+import type { CollectionDto, CategoryDto, ProductListItemDto, ReviewDto } from '@ezihubb/types';
+import type { PaginatedResponse } from '@ezihubb/types';
 import { HeroBanner } from '../../../components/home/HeroBanner';
 import { CollectionsGrid } from '../../../components/home/CollectionsGrid';
 import { HowItWorks } from '../../../components/home/HowItWorks';

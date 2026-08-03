@@ -49,6 +49,22 @@ model Review {
 File: `apps/admin/src/app/(admin)/reviews/page.tsx`
 Components: `ReviewModerationCard.tsx`, `ReviewReplyModal.tsx`
 
+### Admin Store Scoping (`resolveSellerStoreId`)
+Admin review endpoints use `resolveSellerStoreId()` to scope data:
+- `SUPER_ADMIN` → `storeId = null` (sees all stores)
+- `ADMIN` role → looks up `user.storeId` from DB → only sees own store's data
+
+```typescript
+async function resolveSellerStoreId(prisma: PrismaService, user: JwtLike): Promise<string | null> {
+  if (user.role === 'SUPER_ADMIN') return null;
+  const userId = user.sub ?? user.id;
+  if (!userId) return null;
+  const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { storeId: true } });
+  return dbUser?.storeId ?? null;
+}
+```
+Same pattern applied to: admin-messages, admin-promotions, admin-shipping controllers.
+
 ### Business Rules
 - Review cần `APPROVED` trước khi hiển thị public
 - User chỉ review 1 lần/product (verified via delivered/completed `orderId`)
@@ -68,7 +84,8 @@ Components: `ReviewModerationCard.tsx`, `ReviewReplyModal.tsx`
 | GET | `/api/v1/search` | Full-text search với filters/facets/sort | No |
 | GET | `/api/v1/search/autocomplete` | Product name autocomplete (top 8, cached 5 min) | No |
 | GET | `/api/v1/search/trending` | Top 10 searched keywords (last 7 days, Redis) | No |
-| GET | `/api/v1/search/related` | Related search suggestions | No |
+| GET | `/api/v1/search/related` | Related search suggestions based on trending data | No |
+| GET | `/api/v1/search/suggestions` | Combined autocomplete + related (deduped, max 10) | No |
 
 ### Query Parameters (GET /search)
 | Param | Type | Mô tả |
@@ -164,6 +181,9 @@ model PromotionUsage {
 File: `apps/admin/src/app/(admin)/promotions/page.tsx`
 Components: `PromotionModal.tsx`, `PromotionStatsDrawer.tsx`
 
+### Admin Store Scoping
+Promotions admin controller uses `resolveSellerStoreId()` — ADMIN role only sees own store's promotions; SUPER_ADMIN sees all.
+
 ### Business Rules
 - Code case-insensitive
 - Validate: active + date range + usage limit + per-user limit + min order
@@ -246,6 +266,9 @@ File: `apps/api/src/modules/shipping/tracking-webhook.controller.ts`
 - HMAC-SHA256 via `X-Hmac-Signature` (key: `EASYPOST_WEBHOOK_SECRET`)
 - On `delivered` event: auto-updates order to `DELIVERED`, sends delivery email
 - `TrackingService` also detects carrier from tracking number pattern (USPS/UPS/FedEx/DHL)
+
+### Admin Store Scoping
+Admin shipping controller uses `resolveSellerStoreId()` — ADMIN role only sees shipping settings for their own store; SUPER_ADMIN sees all.
 
 ### Admin UI
 File: `apps/admin/src/app/(admin)/shipping/page.tsx`
@@ -482,3 +505,59 @@ interface TaxCalculation {
 **See dedicated spec: `21_messages.spec.md`**
 
 Summary: Full messaging system between customers and admin. 9 endpoints. Customer inbox at `/account/messages`, admin inbox at `/messages`. Email notifications on both sides.
+
+---
+
+## Module 18 — Blind Match
+
+### Public Endpoints (no auth)
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/blind-match/hall-of-fame` | Top-rated blind matches (rating ≥ 4, `?limit=10`) | No |
+| GET | `/api/v1/blind-match/ugc` | User-generated content from ratings with feedback (`?limit=12`) | No |
+
+### Customer Endpoints (auth required)
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| POST | `/api/v1/blind-match/request` | Create a blind match request | Bearer |
+| GET | `/api/v1/blind-match/history` | User's blind match history | Bearer |
+| GET | `/api/v1/blind-match/{requestId}/mystery` | Get mystery product reveal status | Bearer |
+| POST | `/api/v1/blind-match/{requestId}/reveal` | Reveal the matched product | Bearer |
+| POST | `/api/v1/blind-match/{requestId}/rate` | Rate the matched product | Bearer |
+
+### Frontend
+- `/[locale]/blind-match` — Blind Match landing page
+- `/[locale]/blind-match/hall-of-fame` — Hall of Fame page (uses `GET /blind-match/hall-of-fame`)
+
+---
+
+## Module 19 — Stores
+
+### Public Endpoints
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/api/v1/stores` | Paginated list of active stores (sorted by rating, `?page=&limit=12`) | No |
+| GET | `/api/v1/stores/plans` | Active seller subscription plans | No |
+| GET | `/api/v1/stores/{slug}` | Store detail page data by slug | No |
+| GET | `/api/v1/stores/{slug}/sections` | Product category sections with product counts | No |
+| GET | `/api/v1/stores/{slug}/score` | Store performance score / metrics | No |
+| GET | `/api/v1/stores/{slug}/reviews/summary` | Store reviews aggregate (avg + distribution) | No |
+| GET | `/api/v1/stores/{slug}/reviews` | Paginated store reviews (sort: newest/price_asc/price_desc/popular) | No |
+
+### Seller Endpoints
+| Method | Path | Mô tả | Auth |
+|---|---|---|---|
+| POST | `/api/v1/stores/apply` | Apply to open a new store | Bearer |
+| GET | `/api/v1/stores/me` | Seller's own store info | Bearer |
+| GET | `/api/v1/stores/me/application` | Get own store application status | Bearer |
+| PATCH | `/api/v1/stores/me` | Update own store profile (ACTIVE stores only) | Bearer |
+
+### Business Rules
+- `GET /stores` returns only `status: ACTIVE` stores, paginated (max 50 per page), ordered by rating desc
+- Store reviews sort enum: `newest` | `price_asc` | `price_desc` | `popular` (all lowercase)
+- File: `apps/api/src/modules/stores/`
+
+### Frontend
+- `/[locale]/shops/[slug]` — Store detail with tabs: Featured / All / Reviews / About
+- `StorePageClient.tsx` — Client component handling tab switching
+- `StoreReviewsClient.tsx` — Handles reviews tab with sort

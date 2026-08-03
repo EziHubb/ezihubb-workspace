@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtDateTime } from '../../../../lib/fmt';
 import { type AdminProduct } from '../../../../components/products/ProductCard';
 

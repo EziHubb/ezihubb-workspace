@@ -6,8 +6,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { LayoutDashboard, Link2, Banknote, LogOut } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
 
 interface AffiliateProfile {

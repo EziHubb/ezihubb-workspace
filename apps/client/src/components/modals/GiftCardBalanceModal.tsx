@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { CreditCard, Check, X } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@mlh/ui';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@ezihubb/ui';
 import { apiClient } from '../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 // ── Gift card visual ──────────────────────────────────────────────────────────
 

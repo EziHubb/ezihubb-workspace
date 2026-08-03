@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import type { CategoryDto } from '@mlh/types';
+import type { CategoryDto } from '@ezihubb/types';
 
 interface CategoryShowcaseProps {
   categories: CategoryDto[];

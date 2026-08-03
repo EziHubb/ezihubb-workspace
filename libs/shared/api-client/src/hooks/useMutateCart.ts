@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../client';
-import { API_ROUTES } from '@mlh/constants';
-import type { CartDto } from '@mlh/types';
+import { API_ROUTES } from '@ezihubb/constants';
+import type { CartDto } from '@ezihubb/types';
 import { queryKeys } from '../queryKeys';
 
 // ── Input types ───────────────────────────────────────────────────────────────

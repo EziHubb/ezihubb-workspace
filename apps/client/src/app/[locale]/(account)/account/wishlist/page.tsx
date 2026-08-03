@@ -5,12 +5,12 @@ import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { useState, useRef } from 'react';
 import { Heart, ShoppingCart, HeartOff, Share2, Copy, Check, X, Globe } from 'lucide-react';
-import { queryKeys, useMutateCart } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
-import { useToast } from '@mlh/ui';
-import type { WishlistItemDto } from '@mlh/types';
+import { queryKeys, useMutateCart } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
+import { useToast } from '@ezihubb/ui';
+import type { WishlistItemDto } from '@ezihubb/types';
 import { useAuthQuery, useAuthMutation } from '../../../../../lib/hooks/useAuthQuery';
-import { apiClient } from '@mlh/api-client';
+import { apiClient } from '@ezihubb/api-client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

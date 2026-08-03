@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { AlertTriangle, Trash2 } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@mlh/ui';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@ezihubb/ui';
 
 export interface ConfirmModalProps {
   isOpen:        boolean;

@@ -4,9 +4,9 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@mlh/ui';
-import { useMutateAddresses } from '@mlh/api-client';
-import type { AddressDto } from '@mlh/types';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@ezihubb/ui';
+import { useMutateAddresses } from '@ezihubb/api-client';
+import type { AddressDto } from '@ezihubb/types';
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 

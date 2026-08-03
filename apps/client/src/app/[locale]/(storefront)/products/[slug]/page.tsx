@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { apiClient } from '@mlh/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 import { buildAlternates } from '../../../../../lib/seo';
-import type { ProductDto, ProductListItemDto, ReviewSummaryDto } from '@mlh/types';
-import type { PaginatedResponse } from '@mlh/types';
+import type { ProductDto, ProductListItemDto, ReviewSummaryDto } from '@ezihubb/types';
+import type { PaginatedResponse } from '@ezihubb/types';
 import { ProductBreadcrumb } from '../../../../../components/product/ProductBreadcrumb';
 import type { BreadcrumbItem } from '../../../../../components/product/ProductBreadcrumb';
 import { ProductStructuredData } from '../../../../../components/seo/ProductStructuredData';
@@ -32,7 +32,7 @@ export interface ProductDetailDto extends ProductDto {
 
 // ── Breadcrumbs ───────────────────────────────────────────────────────────────
 
-const BASE = 'https://dailydaisy.com';
+const BASE = 'https://ezihubb.com';
 
 function buildBreadcrumbs(product: ProductDetailDto, locale: string): BreadcrumbItem[] {
   const prefix = locale !== 'en' ? `/${locale}` : '';
@@ -79,7 +79,7 @@ export async function generateMetadata({
   const description =
     product.shortDescription ??
     product.description?.slice(0, 160) ??
-    `Shop ${product.name} — personalized and custom-made at DailyDaisy.`;
+    `Shop ${product.name} — personalized and custom-made at EziHubb.`;
   const primaryImage = product.images?.[0];
 
   return {

@@ -17,7 +17,7 @@ export class CanvaService {
   ) {
     this.clientKey    = this.config.get<string>('CANVA_CLIENT_KEY')    ?? '';
     this.clientSecret = this.config.get<string>('CANVA_CLIENT_SECRET') ?? '';
-    this.baseUrl      = this.config.get<string>('NEXT_PUBLIC_URL')     ?? 'https://dailydaisy.com';
+    this.baseUrl      = this.config.get<string>('NEXT_PUBLIC_URL')     ?? 'https://ezihubb.com';
   }
 
   // ── OAuth: get authorization URL ─────────────────────────────────────────

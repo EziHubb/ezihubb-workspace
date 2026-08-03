@@ -12,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: 'FAQ',
     description:
-      'Frequently asked questions about ordering, personalization, shipping, and returns at DailyDaisy.',
+      'Frequently asked questions about ordering, personalization, shipping, and returns at EziHubb.',
     robots: { index: true, follow: true },
   };
 }

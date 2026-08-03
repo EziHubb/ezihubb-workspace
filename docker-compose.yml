@@ -1,21 +1,38 @@
 version: '3.9'
 
+# Production stack for a self-hosted server.
+# Usage:
+#   1. Copy .env.example to .env and fill in real values (including POSTGRES_*
+#      below and a DATABASE_URL that points at the `postgres` service).
+#   2. One-off: run migrations before first start:
+#        docker compose run --rm migrate
+#   3. docker compose up -d --build
+#
+# MongoDB, S3 storage (Cloudflare R2) and SMTP (SendGrid) are external managed
+# services in production — configure them via MONGODB_URI / AWS_S3_* / SENDGRID_*
+# in .env. There are no containers for them here.
+#
+# This server hosts other projects too, so client/admin/api are published to
+# 127.0.0.1 only (not the public interface) on CLIENT_PORT/ADMIN_PORT/API_PORT.
+# There is no nginx container here — the host's own nginx (shared across all
+# projects on this server) reverse-proxies each subdomain
+# (ezihubb.com / admin.ezihubb.com / api.ezihubb.com) to these loopback ports.
+# See scripts/nginx-ezihubb.conf for that host-level config.
+
 services:
   # ── PostgreSQL ──────────────────────────────────────────────────────────────
   postgres:
     image: postgres:15-alpine
-    container_name: dailydaisy_postgres
+    container_name: ezihubb_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: dailydaisy
-      POSTGRES_PASSWORD: dailydaisy_dev_pass
-      POSTGRES_DB: dailydaisy_dev
-    ports:
-      - '5432:5432'
+      POSTGRES_USER: ${POSTGRES_USER:-ezihubb}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-ezihubb}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U dailydaisy']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-ezihubb}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -23,10 +40,8 @@ services:
   # ── Redis ───────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: dailydaisy_redis
+    container_name: ezihubb_redis
     restart: unless-stopped
-    ports:
-      - '6379:6379'
     volumes:
       - redis_data:/data
     healthcheck:
@@ -35,124 +50,86 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── MinIO (local S3-compatible storage) ────────────────────────────────────
-  minio:
-    image: minio/minio:latest
-    container_name: dailydaisy_minio
-    restart: unless-stopped
-    command: server /data --console-address ':9001'
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin123
-    ports:
-      - '9000:9000'
-      - '9001:9001'
-    volumes:
-      - minio_data:/data
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
-      interval: 30s
-      timeout: 20s
-      retries: 3
-
-  # ── MongoDB ─────────────────────────────────────────────────────────────────
-  mongodb:
-    image: mongo:7-jammy
-    container_name: dailydaisy_mongodb
-    restart: unless-stopped
-    ports:
-      - '27017:27017'
-    volumes:
-      - mongodb_data:/data/db
-    environment:
-      MONGO_INITDB_DATABASE: dailydaisy
-    healthcheck:
-      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # ── MailHog (local email testing) ──────────────────────────────────────────
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: dailydaisy_mailhog
-    restart: unless-stopped
-    ports:
-      - '1025:1025'
-      - '8025:8025'
+  # ── One-off: run pending Prisma migrations ───────────────────────────────────
+  migrate:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.migrate
+    container_name: ezihubb_migrate
+    profiles: ['tools']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: .env
 
   # ── NestJS API ─────────────────────────────────────────────────────────────
   api:
     build:
       context: .
       dockerfile: docker/Dockerfile.api
-      target: development
-    container_name: dailydaisy_api
+      target: production
+    container_name: ezihubb_api
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    env_file: .env
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3002
-      DATABASE_URL: postgresql://dailydaisy:dailydaisy_dev_pass@postgres:5432/dailydaisy_dev
-      REDIS_URL: redis://redis:6379
-      AWS_S3_ENDPOINT: http://minio:9000
-      AWS_S3_BUCKET: mlh-assets
-      AWS_S3_REGION: us-east-1
-      AWS_ACCESS_KEY_ID: minioadmin
-      AWS_SECRET_ACCESS_KEY: minioadmin123
-      SMTP_HOST: mailhog
-      SMTP_PORT: 1025
-      CORS_ORIGINS: 'http://localhost:3000,http://localhost:3001'
-      MONGODB_URI: mongodb://mongodb:27017
-      JWT_ACCESS_SECRET: change_me_in_production_access_secret_64chars
-      JWT_REFRESH_SECRET: change_me_in_production_refresh_secret_64chars
     ports:
-      - '3002:3002'
-    volumes:
-      - ./apps/api/src:/app/apps/api/src
+      - '127.0.0.1:${API_PORT:-3012}:3002'
 
   # ── Next.js Storefront (client) ────────────────────────────────────────────
   client:
     build:
       context: .
       dockerfile: docker/Dockerfile.client
-      target: development
-    container_name: dailydaisy_client
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_NEXTAUTH_URL: ${NEXT_PUBLIC_NEXTAUTH_URL}
+        NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL}
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_PAYPAL_CLIENT_ID: ${NEXT_PUBLIC_PAYPAL_CLIENT_ID}
+        NEXT_PUBLIC_GA_ID: ${NEXT_PUBLIC_GA_ID}
+        NEXT_PUBLIC_GTM_ID: ${NEXT_PUBLIC_GTM_ID}
+        NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID}
+        NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN}
+    container_name: ezihubb_client
     restart: unless-stopped
     depends_on:
       - api
+    env_file: .env
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:3002/api/v1
-      NODE_ENV: development
+      NODE_ENV: production
     ports:
-      - '3000:3000'
-    volumes:
-      - ./apps/client/src:/app/apps/client/src
+      - '127.0.0.1:${CLIENT_PORT:-3010}:3000'
 
   # ── Next.js Admin Dashboard ────────────────────────────────────────────────
   admin:
     build:
       context: .
       dockerfile: docker/Dockerfile.admin
-      target: development
-    container_name: dailydaisy_admin
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_NEXTAUTH_URL: ${NEXT_PUBLIC_NEXTAUTH_URL}
+        NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN}
+    container_name: ezihubb_admin
     restart: unless-stopped
     depends_on:
       - api
+    env_file: .env
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:3002/api/v1
-      NODE_ENV: development
+      NODE_ENV: production
     ports:
-      - '3001:3001'
-    volumes:
-      - ./apps/admin/src:/app/apps/admin/src
+      - '127.0.0.1:${ADMIN_PORT:-3011}:3001'
 
 volumes:
   postgres_data:
   redis_data:
-  minio_data:
-  mongodb_data:

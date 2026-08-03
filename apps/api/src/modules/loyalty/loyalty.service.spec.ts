@@ -46,7 +46,7 @@ describe('LoyaltyService', () => {
       providers: [
         LoyaltyService,
         { provide: PrismaService, useValue: mockDeep<PrismaService>() },
-        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('https://dailydaisy.com') } },
+        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('https://ezihubb.com') } },
         { provide: PushService, useValue: pushService },
         { provide: getQueueToken(QUEUES.LOYALTY), useValue: loyaltyQueue },
         { provide: getQueueToken(QUEUES.EMAIL), useValue: emailQueue },

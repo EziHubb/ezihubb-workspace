@@ -10,7 +10,7 @@ import {
   Trash2, Check,
 } from 'lucide-react';
 import { fmtAmount } from '../../lib/fmt';
-import { ADMIN_ROUTES } from '@mlh/constants';
+import { ADMIN_ROUTES } from '@ezihubb/constants';
 
 export interface AdminProduct {
   id:              string;

@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../client';
-import { API_ROUTES } from '@mlh/constants';
-import type { PaginatedResponse, ProductListItemDto, ProductDto } from '@mlh/types';
+import { API_ROUTES } from '@ezihubb/constants';
+import type { PaginatedResponse, ProductListItemDto, ProductDto } from '@ezihubb/types';
 import { queryKeys } from '../queryKeys';
 
 // ── Query shapes ──────────────────────────────────────────────────────────────

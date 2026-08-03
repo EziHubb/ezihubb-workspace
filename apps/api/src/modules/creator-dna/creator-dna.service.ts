@@ -25,7 +25,7 @@ export class CreatorDnaService {
     this.tiktokClientSecret = this.config.get<string>('TIKTOK_CLIENT_SECRET')    ?? '';
     this.instagramAppId     = this.config.get<string>('INSTAGRAM_APP_ID')        ?? '';
     this.instagramSecret    = this.config.get<string>('INSTAGRAM_APP_SECRET')    ?? '';
-    this.baseUrl            = this.config.get<string>('NEXT_PUBLIC_URL')         ?? 'https://dailydaisy.com';
+    this.baseUrl            = this.config.get<string>('NEXT_PUBLIC_URL')         ?? 'https://ezihubb.com';
   }
 
   // ── OAuth URLs ────────────────────────────────────────────────────────────

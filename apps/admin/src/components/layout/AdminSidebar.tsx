@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import {
   LayoutDashboard, ShoppingCart, ShoppingBag, FolderOpen,
   Tag, Layers, Users, BadgePercent, Star, Truck,
@@ -435,7 +435,7 @@ function LogoMark({ role }: { role?: string }) {
         </span>
       </div>
       <div>
-        <p className="text-white font-bold text-sm leading-tight tracking-tight">Daily Daisy</p>
+        <p className="text-white font-bold text-sm leading-tight tracking-tight">EziHubb</p>
         <p className="text-[10px] font-medium leading-tight mt-0.5 tracking-wide" style={{ color: isShopOwner ? '#6EE7B7' : '#6366F1' }}>
           {isShopOwner ? 'Seller Hub' : 'Admin Panel'}
         </p>

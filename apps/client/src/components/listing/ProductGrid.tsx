@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { PackageOpen } from 'lucide-react';
-import { ProductCard, ProductCardSkeleton } from '@mlh/ui';
-import { useWishlist, useWishlistToggle } from '@mlh/api-client';
+import { ProductCard, ProductCardSkeleton } from '@ezihubb/ui';
+import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
-import type { ProductListItemDto } from '@mlh/types';
+import type { ProductListItemDto } from '@ezihubb/types';
 
 interface ProductGridProps {
   products:   ProductListItemDto[];

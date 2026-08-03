@@ -11,7 +11,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { Search, X, TrendingUp } from 'lucide-react';
-import { apiClient, queryKeys } from '@mlh/api-client';
+import { apiClient, queryKeys } from '@ezihubb/api-client';
 import { useDebounce } from '../../lib/hooks/useDebounce';
 
 // ── Fallback popular searches (shown when trending API isn't available) ────────

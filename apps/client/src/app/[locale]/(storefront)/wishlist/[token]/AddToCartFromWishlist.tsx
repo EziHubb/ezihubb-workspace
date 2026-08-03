@@ -1,8 +1,8 @@
 'use client';
 
 import { ShoppingCart } from 'lucide-react';
-import { useMutateCart } from '@mlh/api-client';
-import { useToast } from '@mlh/ui';
+import { useMutateCart } from '@ezihubb/api-client';
+import { useToast } from '@ezihubb/ui';
 
 // Only active products are returned by the public wishlist endpoint
 export function AddToCartFromWishlist({ productId }: { productId: string }) {

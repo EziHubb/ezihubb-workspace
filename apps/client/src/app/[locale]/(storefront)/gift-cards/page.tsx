@@ -12,9 +12,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useLocale } from 'next-intl';
 import { Check, Gift, Search, AlertCircle, Tag } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, ModalFooter } from '@mlh/ui';
+import { Modal, ModalHeader, ModalBody, ModalFooter } from '@ezihubb/ui';
 import { apiClient } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -42,7 +42,7 @@ function GiftCardVisual({ amount }: { amount: number | null }) {
         <div className="flex items-start justify-between">
           <div className="text-white">
             <p className="font-display font-bold text-lg md:text-xl leading-none">
-              Daily Daisy
+              EziHubb
             </p>
             <p className="text-white/70 text-xs mt-0.5">Handmade</p>
           </div>
@@ -434,7 +434,7 @@ export default function GiftCardsPage() {
           Give the Gift of Choice
         </span>
         <h1 className="font-display text-3xl md:text-4xl font-bold text-secondary mb-3">
-          Daily Daisy Gift Cards
+          EziHubb Gift Cards
         </h1>
         <p className="text-muted max-w-md mx-auto text-base">
           The perfect gift for any occasion — let them choose their favorite personalized creation.

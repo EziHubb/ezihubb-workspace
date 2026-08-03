@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuthQuery } from '../../../../../../lib/hooks/useAuthQuery';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 const BASE_URL =
   typeof window !== 'undefined'
     ? window.location.origin
-    : process.env['NEXT_PUBLIC_SITE_URL'] ?? 'https://dailydaisy.com';
+    : process.env['NEXT_PUBLIC_SITE_URL'] ?? 'https://ezihubb.com';
 
 interface ClickRow {
   id:          string;

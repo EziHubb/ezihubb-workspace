@@ -5,9 +5,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
 import { Package, ShoppingBag, ChevronRight, Truck, MapPin } from 'lucide-react';
-import { queryKeys } from '@mlh/api-client';
-import { OrderStatusBadge, Pagination, Skeleton } from '@mlh/ui';
-import type { OrderListItemDto } from '@mlh/types';
+import { queryKeys } from '@ezihubb/api-client';
+import { OrderStatusBadge, Pagination, Skeleton } from '@ezihubb/ui';
+import type { OrderListItemDto } from '@ezihubb/types';
 import { useAuthQuery } from '../../../../../lib/hooks/useAuthQuery';
 
 // ── Filter tabs ───────────────────────────────────────────────────────────────

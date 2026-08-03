@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { useReviews } from '@mlh/api-client';
-import type { ReviewDto, ReviewSummaryDto } from '@mlh/types';
+import { useReviews } from '@ezihubb/api-client';
+import type { ReviewDto, ReviewSummaryDto } from '@ezihubb/types';
 
 interface ReviewSectionProps {
   productSlug:     string;

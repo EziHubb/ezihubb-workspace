@@ -6,7 +6,7 @@ import { DollarSign, FlaskConical, StopCircle, RotateCcw, Loader2, TrendingUp, T
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { StatCard } from '../../../../components/data/StatCard';
 import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtDate, fmtPercentRaw, safeArr } from '../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

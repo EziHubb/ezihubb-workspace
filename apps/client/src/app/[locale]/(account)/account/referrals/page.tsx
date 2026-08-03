@@ -12,9 +12,9 @@ import {
   Share2,
   ChevronRight,
 } from 'lucide-react';
-import { Skeleton } from '@mlh/ui';
+import { Skeleton } from '@ezihubb/ui';
 import { useAuthQuery } from '../../../../../lib/hooks/useAuthQuery';
-import { API_ROUTES } from '@mlh/constants';
+import { API_ROUTES } from '@ezihubb/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -181,7 +181,7 @@ export default function ReferralsPage() {
       : '';
 
   const whatsappUrl = referralLink
-    ? `https://wa.me/?text=${encodeURIComponent(`Check out Daily Daisy! Use my referral link: ${referralLink}`)}`
+    ? `https://wa.me/?text=${encodeURIComponent(`Check out EziHubb! Use my referral link: ${referralLink}`)}`
     : '#';
   const facebookUrl = referralLink
     ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`

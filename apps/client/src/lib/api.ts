@@ -1,7 +1,7 @@
 /**
  * API client for apps/client.
  *
- * This module re-exports the shared `@mlh/api-client` so every file in the
+ * This module re-exports the shared `@ezihubb/api-client` so every file in the
  * client app imports from one place. It also ensures the correct API base URL
  * is set for server-side rendering (SSR / RSC) environments where the env var
  * may need to be explicitly applied.
@@ -13,7 +13,7 @@
  *   (RSC, server actions) do not attach bearer tokens — they rely on cookies.
  */
 
-import { setBaseUrl } from '@mlh/api-client';
+import { setBaseUrl } from '@ezihubb/api-client';
 
 // Ensure the base URL is always correct, even in environments where the env
 // var is read after the shared library's module-level initialiser ran.
@@ -31,6 +31,6 @@ export {
   setBaseUrl,
   setTokenGetter,
   setTokenUpdater,
-} from '@mlh/api-client';
+} from '@ezihubb/api-client';
 
-export type { RequestOptions } from '@mlh/api-client';
+export type { RequestOptions } from '@ezihubb/api-client';
