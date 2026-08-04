@@ -38,7 +38,13 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_NEXTAUTH_URL=$NEXT_PUBLIC_NEXTAUTH_URL \
     NEXT_PUBLIC_CDN_URL=$NEXT_PUBLIC_CDN_URL \
     NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
-COPY . .
+# Scoped copy (not `COPY . .`) so editing apps/api or apps/client doesn't
+# invalidate this layer and force admin to rebuild too — only what `nx
+# build admin` actually reads: its own app folder, shared libs, and root
+# Nx config.
+COPY nx.json tsconfig.base.json tsconfig.json ./
+COPY libs/ ./libs/
+COPY apps/admin/ ./apps/admin/
 RUN pnpm nx build admin --configuration=production
 
 FROM node:22-alpine AS production

@@ -28,7 +28,12 @@ EXPOSE 3002
 CMD ["pnpm", "nx", "serve", "api"]
 
 FROM base AS builder
-COPY . .
+# Scoped copy (not `COPY . .`) so editing apps/client or apps/admin doesn't
+# invalidate this layer and force api to rebuild too — only what `nx build
+# api` actually reads: its own app folder, shared libs, and root Nx config.
+COPY nx.json tsconfig.base.json tsconfig.json ./
+COPY libs/ ./libs/
+COPY apps/api/ ./apps/api/
 RUN pnpm exec prisma generate --schema=prisma/schema.prisma
 RUN pnpm nx build api --configuration=production
 

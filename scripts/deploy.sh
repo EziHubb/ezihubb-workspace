@@ -87,19 +87,62 @@ echo -e "${GREEN}✓ .env exists${NC}"
 
 echo ""
 echo -e "${YELLOW}Pulling latest code ($GIT_BRANCH)...${NC}"
+OLD_HEAD="$($SSH "cd '$DEPLOY_PATH' && git rev-parse HEAD" 2>/dev/null || true)"
 $SSH "cd '$DEPLOY_PATH' && git fetch origin && git checkout '$GIT_BRANCH' && git pull origin '$GIT_BRANCH'"
+NEW_HEAD="$($SSH "cd '$DEPLOY_PATH' && git rev-parse HEAD" 2>/dev/null || true)"
+
+# This server's Docker (20.10) predates the `docker compose` (v2) plugin —
+# only the standalone `docker-compose` (v1) binary is installed. Detect
+# whichever works so this script isn't tied to one server's Docker version.
+DC="$($SSH "command -v docker-compose >/dev/null 2>&1 && echo 'docker-compose' || echo 'docker compose'" 2>/dev/null)"
+DC="${DC:-docker compose}"
+echo "(using '$DC' on the server)"
+
+# Only build the app image(s) whose own files (or a shared dependency)
+# actually changed — Dockerfile.api/client/admin now COPY just their own
+# apps/<app>/ + libs/, so an unrelated app's change no longer invalidates
+# their build cache anyway, but skipping the build call entirely for
+# untouched services saves even the no-op "check every layer" pass.
+BUILD_TARGETS="api client admin migrate"
+if [ -n "$OLD_HEAD" ] && [ "$OLD_HEAD" != "$NEW_HEAD" ]; then
+    CHANGED="$($SSH "cd '$DEPLOY_PATH' && git diff --name-only '$OLD_HEAD' '$NEW_HEAD'" 2>/dev/null || true)"
+    if [ -n "$CHANGED" ]; then
+        # Any of these touch every image (shared deps, root Nx config, base
+        # Dockerfile layers) — rebuild everything to be safe.
+        if echo "$CHANGED" | grep -qE '^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|nx\.json|tsconfig(\.base)?\.json|libs/|scripts/|prisma/schema\.prisma|prisma\.config\.ts)'; then
+            BUILD_TARGETS="api client admin migrate"
+        else
+            BUILD_TARGETS=""
+            echo "$CHANGED" | grep -q '^apps/api/'                        && BUILD_TARGETS="$BUILD_TARGETS api"
+            echo "$CHANGED" | grep -q '^apps/client/'                     && BUILD_TARGETS="$BUILD_TARGETS client"
+            echo "$CHANGED" | grep -q '^apps/admin/'                      && BUILD_TARGETS="$BUILD_TARGETS admin"
+            echo "$CHANGED" | grep -q '^prisma/migrations/'                && BUILD_TARGETS="$BUILD_TARGETS migrate"
+            echo "$CHANGED" | grep -q '^docker/Dockerfile\.api$'          && BUILD_TARGETS="$BUILD_TARGETS api"
+            echo "$CHANGED" | grep -q '^docker/Dockerfile\.client$'       && BUILD_TARGETS="$BUILD_TARGETS client"
+            echo "$CHANGED" | grep -q '^docker/Dockerfile\.admin$'        && BUILD_TARGETS="$BUILD_TARGETS admin"
+            echo "$CHANGED" | grep -q '^docker/Dockerfile\.migrate$'      && BUILD_TARGETS="$BUILD_TARGETS migrate"
+            BUILD_TARGETS="$(echo "$BUILD_TARGETS" | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/^ *//;s/ *$//')"
+        fi
+    else
+        BUILD_TARGETS=""
+    fi
+fi
 
 echo ""
-echo -e "${YELLOW}Building Docker images...${NC}"
-$SSH "cd '$DEPLOY_PATH' && docker compose build"
+if [ -z "$BUILD_TARGETS" ]; then
+    echo -e "${YELLOW}No app-relevant files changed since last deploy — skipping build.${NC}"
+else
+    echo -e "${YELLOW}Building Docker images: $BUILD_TARGETS...${NC}"
+    $SSH "cd '$DEPLOY_PATH' && $DC build $BUILD_TARGETS"
+fi
 
 echo ""
 echo -e "${YELLOW}Running pending database migrations...${NC}"
-$SSH "cd '$DEPLOY_PATH' && docker compose run --rm migrate" || echo -e "${YELLOW}⚠ Migration step failed or had nothing to apply — check logs above.${NC}"
+$SSH "cd '$DEPLOY_PATH' && $DC run --rm migrate" || echo -e "${YELLOW}⚠ Migration step failed or had nothing to apply — check logs above.${NC}"
 
 echo ""
 echo -e "${YELLOW}Starting services...${NC}"
-$SSH "cd '$DEPLOY_PATH' && docker compose up -d"
+$SSH "cd '$DEPLOY_PATH' && $DC up -d"
 
 echo ""
 echo -e "${YELLOW}Waiting for services to be ready...${NC}"
@@ -107,7 +150,7 @@ sleep 10
 
 echo ""
 echo -e "${YELLOW}Service status:${NC}"
-$SSH "cd '$DEPLOY_PATH' && docker compose ps"
+$SSH "cd '$DEPLOY_PATH' && $DC ps"
 
 echo ""
 echo -e "${GREEN}=============================="
@@ -130,6 +173,6 @@ echo "If the host nginx site isn't set up yet, see scripts/nginx-ezihubb.conf"
 echo "for the one-time steps (DNS records, install the site, certbot)."
 echo ""
 echo "Useful commands (run on the server, from $DEPLOY_PATH):"
-echo "  - View logs:  docker compose logs -f"
-echo "  - Stop:       docker compose stop"
-echo "  - Restart:    docker compose restart"
+echo "  - View logs:  $DC logs -f"
+echo "  - Stop:       $DC stop"
+echo "  - Restart:    $DC restart"
