@@ -21,5 +21,10 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY scripts/ ./scripts/
 COPY prisma/ ./prisma/
 RUN pnpm install --frozen-lockfile
+# prisma.config.ts lives at the repo root (sibling to prisma/), NOT inside
+# prisma/ — required for `migrate deploy` to resolve datasource.url from
+# DATABASE_URL via the driver adapter. Without it: "the datasource.url
+# property is required in your Prisma config file".
+COPY prisma.config.ts ./
 
 CMD ["pnpm", "exec", "prisma", "migrate", "deploy", "--schema=prisma/schema.prisma"]
