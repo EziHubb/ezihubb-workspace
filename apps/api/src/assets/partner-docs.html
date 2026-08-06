@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EziHubb Partner API — Developer Docs</title>
+<style>
+  :root {
+    --accent: #E85D3F;
+    --accent-dark: #C44A2E;
+    --accent-light: #FFF0EC;
+    --text: #1F2328;
+    --text-muted: #6B7280;
+    --border: #E5E7EB;
+    --bg: #FAFAFA;
+    --code-bg: #1E2430;
+    --code-header: #151A22;
+    --sidebar-w: 260px;
+    --toc-w: 220px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--text);
+    background: #fff;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  a { color: inherit; text-decoration: none; }
+  code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+
+  /* ── Top bar ─────────────────────────────────────────────────────────── */
+  .topbar {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 20;
+  }
+  .topbar .logo-mark {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; font-size: 14px;
+    flex-shrink: 0;
+  }
+  .topbar .brand { font-weight: 800; font-size: 16px; }
+  .topbar .brand span { color: var(--accent); font-weight: 600; }
+
+  /* ── Layout ──────────────────────────────────────────────────────────── */
+  .layout {
+    display: flex;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* Left nav */
+  .sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    padding: 24px 12px;
+    position: sticky;
+    top: 56px;
+    align-self: flex-start;
+    height: calc(100vh - 56px);
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+  }
+  .sidebar .group-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    padding: 16px 12px 6px;
+  }
+  .sidebar .group-title:first-child { padding-top: 4px; }
+  .sidebar a.nav-item {
+    display: block;
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-size: 13.5px;
+    color: #4B5563;
+    margin-bottom: 1px;
+  }
+  .sidebar a.nav-item:hover { background: var(--bg); color: var(--text); }
+  .sidebar a.nav-item.active {
+    background: var(--accent-light);
+    color: var(--accent-dark);
+    font-weight: 600;
+  }
+  .sidebar a.nav-item .method-tag {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-right: 7px;
+    letter-spacing: 0.02em;
+    vertical-align: middle;
+  }
+  .m-get    { background: #E3F2FD; color: #1565C0; }
+  .m-post   { background: #E8F5E9; color: #2E7D32; }
+  .m-patch  { background: #FFF3E0; color: #E65100; }
+  .m-delete { background: #FFEBEE; color: #C62828; }
+
+  /* Main content */
+  .content {
+    flex: 1;
+    min-width: 0;
+    padding: 32px 40px 120px;
+  }
+  .content h1 {
+    font-size: 15px;
+    color: var(--text-muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 4px;
+  }
+
+  section.endpoint {
+    padding-bottom: 56px;
+    margin-bottom: 56px;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: 72px;
+  }
+  section.endpoint:last-child { border-bottom: none; }
+  section.endpoint h2.title {
+    font-size: 26px;
+    font-weight: 700;
+    margin: 4px 0 14px;
+  }
+  .meta-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+  .meta-row .label { color: var(--text-muted); min-width: 70px; }
+  .method-badge {
+    display: inline-block;
+    font-weight: 800;
+    font-size: 12px;
+    padding: 2px 9px;
+    border-radius: 5px;
+    letter-spacing: 0.03em;
+  }
+  .endpoint-path {
+    font-family: "SFMono-Regular", Consolas, monospace;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 5px;
+    font-size: 13.5px;
+  }
+  .desc { color: #374151; margin: 16px 0 28px; max-width: 720px; }
+  .desc code { background: var(--bg); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; border: 1px solid var(--border); }
+
+  h3.subhead {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 32px 0 12px;
+  }
+
+  table.props {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    margin-bottom: 8px;
+  }
+  table.props th {
+    text-align: left;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 9px 12px;
+    font-weight: 700;
+    color: #374151;
+  }
+  table.props td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  table.props td.prop-name { font-family: monospace; font-size: 13px; white-space: nowrap; color: #B93815; }
+  table.props td.prop-type { color: var(--text-muted); white-space: nowrap; }
+  table.props td.prop-req { color: #2E7D32; font-weight: 700; text-align: center; }
+  table.props td.prop-desc { color: #4B5563; }
+
+  .code-block {
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .code-block .code-header {
+    background: var(--code-header);
+    color: #9CA3AF;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .code-block .copy-btn {
+    background: none; border: none; color: #9CA3AF; cursor: pointer;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.03em;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .code-block .copy-btn:hover { color: #fff; background: rgba(255,255,255,0.08); }
+  .code-block pre {
+    margin: 0;
+    background: var(--code-bg);
+    color: #D4D8DE;
+    padding: 16px;
+    overflow-x: auto;
+    font-size: 12.8px;
+    line-height: 1.65;
+  }
+  .code-block .tok-key    { color: #7DD3FC; }
+  .code-block .tok-str    { color: #A3E635; }
+  .code-block .tok-num    { color: #FBBF24; }
+  .code-block .tok-bool   { color: #F472B6; }
+  .code-block .tok-punct  { color: #6B7280; }
+  .code-block .tok-method { color: #A3E635; font-weight: 700; }
+  .code-block .tok-header { color: #9CA3AF; }
+
+  .section-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin: 24px 0 10px; }
+
+  /* Right ToC */
+  .toc {
+    width: var(--toc-w);
+    flex-shrink: 0;
+    padding: 32px 16px;
+    position: sticky;
+    top: 56px;
+    align-self: flex-start;
+    height: calc(100vh - 56px);
+    overflow-y: auto;
+  }
+  .toc .toc-block { margin-bottom: 28px; }
+  .toc .toc-block-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.05em; }
+  .toc a.toc-link {
+    display: block;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    padding: 4px 0 4px 10px;
+    border-left: 2px solid var(--border);
+  }
+  .toc a.toc-link:hover { color: var(--text); }
+  .toc a.toc-link.active { color: var(--accent-dark); border-left-color: var(--accent); font-weight: 600; }
+
+  @media (max-width: 1100px) {
+    .toc { display: none; }
+  }
+  @media (max-width: 800px) {
+    .sidebar { display: none; }
+    .content { padding: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo-mark">E</div>
+  <div class="brand">EziHubb <span>Developers</span></div>
+</div>
+
+<div class="layout">
+
+  <!-- ── Left nav ─────────────────────────────────────────────────────── -->
+  <nav class="sidebar" id="sidebar">
+    <div class="group-title">Overview</div>
+    <a class="nav-item" data-target="introduction" href="#introduction">Introduction</a>
+    <a class="nav-item" data-target="authentication" href="#authentication">Authentication</a>
+    <a class="nav-item" data-target="errors" href="#errors">Errors &amp; Rate Limits</a>
+
+    <div class="group-title">Products</div>
+    <a class="nav-item" data-target="list-products" href="#list-products"><span class="method-tag m-get">GET</span>List products</a>
+    <a class="nav-item" data-target="get-product" href="#get-product"><span class="method-tag m-get">GET</span>Get a product</a>
+    <a class="nav-item" data-target="create-product" href="#create-product"><span class="method-tag m-post">POST</span>Create a product</a>
+    <a class="nav-item" data-target="update-product" href="#update-product"><span class="method-tag m-patch">PATCH</span>Update a product</a>
+    <a class="nav-item" data-target="delete-product" href="#delete-product"><span class="method-tag m-delete">DEL</span>Delete a product</a>
+
+    <div class="group-title">Search</div>
+    <a class="nav-item" data-target="search-products" href="#search-products"><span class="method-tag m-get">GET</span>Search products</a>
+  </nav>
+
+  <!-- ── Main content ─────────────────────────────────────────────────── -->
+  <main class="content">
+    <h1>EziHubb Partner API</h1>
+
+    <section class="endpoint" id="introduction">
+      <h2 class="title">Introduction</h2>
+      <p class="desc">
+        The EziHubb Partner API lets 3rd-party tools — listing automation, bulk-management apps, custom integrations —
+        manage a seller's own product catalog directly, the same way Shopify's Admin API or Etsy's Open API work.
+        The API is organized around REST. It accepts JSON request payloads and returns JSON-encoded responses, and uses
+        standard HTTP response codes and verbs.
+      </p>
+      <div class="code-block">
+        <div class="code-header"><span>BASE URL</span></div>
+        <pre>https://api.ezihubb.com/api/v1</pre>
+      </div>
+    </section>
+
+    <section class="endpoint" id="authentication">
+      <h2 class="title">Authentication</h2>
+      <p class="desc">
+        The API authenticates requests using an API key. Generate one from your Seller Hub under
+        <code>Settings → API Keys</code> — each key is scoped to exactly one store, so a key can never see or modify
+        another seller's catalog. The full key is shown <strong>once</strong>, at creation time; store it securely.
+      </p>
+      <p class="desc">Send it on every request as the <code>X-Api-Key</code> header.</p>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre><span class="tok-method">GET</span> /partner/products
+<span class="tok-header">X-Api-Key</span>: ezhb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</pre>
+      </div>
+    </section>
+
+    <section class="endpoint" id="errors">
+      <h2 class="title">Errors &amp; Rate Limits</h2>
+      <p class="desc">Errors are returned with a standard HTTP status code and a JSON body describing what went wrong.</p>
+      <table class="props">
+        <tr><th>Status</th><th>Meaning</th></tr>
+        <tr><td class="prop-name">401</td><td class="prop-desc">Missing, invalid, or revoked API key</td></tr>
+        <tr><td class="prop-name">404</td><td class="prop-desc">Resource not found, or belongs to a different store</td></tr>
+        <tr><td class="prop-name">422</td><td class="prop-desc">Validation failed — see <code>message</code> for details</td></tr>
+        <tr><td class="prop-name">429</td><td class="prop-desc">Rate limit exceeded for this key — see <code>Retry-After</code> header</td></tr>
+      </table>
+      <p class="desc">
+        Rate limits are tracked per API key (not per IP), so automated traffic from one key never affects another key's quota.
+      </p>
+    </section>
+
+    <!-- ── List products ─────────────────────────────────────────────── -->
+    <section class="endpoint" id="list-products">
+      <h2 class="title">List products</h2>
+      <div class="meta-row"><span class="label">Method:</span><span class="method-badge m-get">GET</span></div>
+      <div class="meta-row"><span class="label">Endpoint:</span><span class="endpoint-path">/partner/products</span></div>
+      <p class="desc">Returns a paginated list of products belonging to your store.</p>
+
+      <div class="section-label">Query Parameters</div>
+      <table class="props">
+        <tr><th>Property</th><th>Type</th><th>Description</th></tr>
+        <tr><td class="prop-name">page</td><td class="prop-type">number</td><td class="prop-desc">Page number. Default 1.</td></tr>
+        <tr><td class="prop-name">limit</td><td class="prop-type">number</td><td class="prop-desc">Results per page (max 48). Default 24.</td></tr>
+        <tr><td class="prop-name">q</td><td class="prop-type">string</td><td class="prop-desc">Search by product name.</td></tr>
+        <tr><td class="prop-name">categoryId</td><td class="prop-type">string</td><td class="prop-desc">Filter by category ID.</td></tr>
+        <tr><td class="prop-name">minPrice / maxPrice</td><td class="prop-type">number</td><td class="prop-desc">Filter by base price range.</td></tr>
+        <tr><td class="prop-name">isActive</td><td class="prop-type">boolean</td><td class="prop-desc">Filter by active status.</td></tr>
+        <tr><td class="prop-name">sort</td><td class="prop-type">string</td><td class="prop-desc"><code>newest</code>, <code>price_asc</code>, <code>price_desc</code>, <code>bestseller</code>, <code>rating</code>, <code>featured</code>.</td></tr>
+      </table>
+
+      <div class="section-label">Request Example</div>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre><span class="tok-method">GET</span> /partner/products?page=1&amp;limit=24&amp;sort=newest
+<span class="tok-header">X-Api-Key</span>: ezhb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</pre>
+      </div>
+
+      <div class="section-label">Response</div>
+      <table class="props">
+        <tr><th>Property</th><th>Type</th><th>Description</th></tr>
+        <tr><td class="prop-name">data</td><td class="prop-type">array</td><td class="prop-desc">Array of product summaries.</td></tr>
+        <tr><td class="prop-name">data[].id</td><td class="prop-type">string</td><td class="prop-desc">Product ID.</td></tr>
+        <tr><td class="prop-name">data[].name</td><td class="prop-type">string</td><td class="prop-desc">Product name.</td></tr>
+        <tr><td class="prop-name">data[].sku</td><td class="prop-type">string</td><td class="prop-desc">SKU.</td></tr>
+        <tr><td class="prop-name">data[].basePrice</td><td class="prop-type">number</td><td class="prop-desc">Base price.</td></tr>
+        <tr><td class="prop-name">data[].primaryImageUrl</td><td class="prop-type">string</td><td class="prop-desc">Primary image URL, if any.</td></tr>
+        <tr><td class="prop-name">data[].isActive</td><td class="prop-type">boolean</td><td class="prop-desc">Whether the product is published.</td></tr>
+        <tr><td class="prop-name">pagination</td><td class="prop-type">object</td><td class="prop-desc"><code>{ page, limit, total, totalPages, hasNext, hasPrev }</code></td></tr>
+      </table>
+
+      <div class="section-label">Response Example</div>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre>{
+  <span class="tok-key">"data"</span>: [
+    {
+      <span class="tok-key">"id"</span>: <span class="tok-str">"cljk2p9x40001abcd"</span>,
+      <span class="tok-key">"name"</span>: <span class="tok-str">"Custom Name Mug"</span>,
+      <span class="tok-key">"slug"</span>: <span class="tok-str">"custom-name-mug"</span>,
+      <span class="tok-key">"sku"</span>: <span class="tok-str">"MLH-MUG-001"</span>,
+      <span class="tok-key">"basePrice"</span>: <span class="tok-num">24.99</span>,
+      <span class="tok-key">"primaryImageUrl"</span>: <span class="tok-str">"https://cdn.ezihubb.com/products/mug.jpg"</span>,
+      <span class="tok-key">"categoryName"</span>: <span class="tok-str">"Mugs"</span>,
+      <span class="tok-key">"isActive"</span>: <span class="tok-bool">true</span>,
+      <span class="tok-key">"createdAt"</span>: <span class="tok-str">"2026-07-01T10:00:00.000Z"</span>
+    }
+  ],
+  <span class="tok-key">"pagination"</span>: {
+    <span class="tok-key">"page"</span>: <span class="tok-num">1</span>,
+    <span class="tok-key">"limit"</span>: <span class="tok-num">24</span>,
+    <span class="tok-key">"total"</span>: <span class="tok-num">1</span>,
+    <span class="tok-key">"totalPages"</span>: <span class="tok-num">1</span>,
+    <span class="tok-key">"hasNext"</span>: <span class="tok-bool">false</span>,
+    <span class="tok-key">"hasPrev"</span>: <span class="tok-bool">false</span>
+  }
+}</pre>
+      </div>
+    </section>
+
+    <!-- ── Get product ──────────────────────────────────────────────── -->
+    <section class="endpoint" id="get-product">
+      <h2 class="title">Get a product</h2>
+      <div class="meta-row"><span class="label">Method:</span><span class="method-badge m-get">GET</span></div>
+      <div class="meta-row"><span class="label">Endpoint:</span><span class="endpoint-path">/partner/products/{id}</span></div>
+      <p class="desc">Returns the full details of one product. Returns <code>404</code> if the product doesn't exist or belongs to another store.</p>
+
+      <div class="section-label">Request Example</div>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre><span class="tok-method">GET</span> /partner/products/cljk2p9x40001abcd
+<span class="tok-header">X-Api-Key</span>: ezhb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</pre>
+      </div>
+
+      <div class="section-label">Response</div>
+      <table class="props">
+        <tr><th>Property</th><th>Type</th><th>Description</th></tr>
+        <tr><td class="prop-name">id</td><td class="prop-type">string</td><td class="prop-desc">Product ID.</td></tr>
+        <tr><td class="prop-name">name</td><td class="prop-type">string</td><td class="prop-desc">Product name.</td></tr>
+        <tr><td class="prop-name">description</td><td class="prop-type">string</td><td class="prop-desc">Full description.</td></tr>
+        <tr><td class="prop-name">basePrice</td><td class="prop-type">number</td><td class="prop-desc">Base price.</td></tr>
+        <tr><td class="prop-name">compareAtPrice</td><td class="prop-type">number</td><td class="prop-desc">Original price, shown as a strikethrough sale price when higher than <code>basePrice</code>.</td></tr>
+        <tr><td class="prop-name">category</td><td class="prop-type">object</td><td class="prop-desc"><code>{ id, name, slug }</code></td></tr>
+        <tr><td class="prop-name">variants</td><td class="prop-type">array</td><td class="prop-desc">Each: <code>{ id, name, options, price, sku, isDefault, sortOrder }</code></td></tr>
+        <tr><td class="prop-name">images</td><td class="prop-type">array</td><td class="prop-desc">Each: <code>{ id, url, altText, isPrimary, sortOrder }</code></td></tr>
+        <tr><td class="prop-name">tags</td><td class="prop-type">array</td><td class="prop-desc">Each: <code>{ id, name, slug }</code></td></tr>
+        <tr><td class="prop-name">isActive</td><td class="prop-type">boolean</td><td class="prop-desc">Whether the product is published.</td></tr>
+        <tr><td class="prop-name">createdAt / updatedAt</td><td class="prop-type">string</td><td class="prop-desc">ISO 8601 timestamps.</td></tr>
+      </table>
+
+      <div class="section-label">Response Example</div>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre>{
+  <span class="tok-key">"id"</span>: <span class="tok-str">"cljk2p9x40001abcd"</span>,
+  <span class="tok-key">"name"</span>: <span class="tok-str">"Custom Name Mug"</span>,
+  <span class="tok-key">"slug"</span>: <span class="tok-str">"custom-name-mug"</span>,
+  <span class="tok-key">"sku"</span>: <span class="tok-str">"MLH-MUG-001"</span>,
+  <span class="tok-key">"description"</span>: <span class="tok-str">"A ceramic mug personalized with any name."</span>,
+  <span class="tok-key">"basePrice"</span>: <span class="tok-num">24.99</span>,
+  <span class="tok-key">"compareAtPrice"</span>: <span class="tok-bool">null</span>,
+  <span class="tok-key">"isActive"</span>: <span class="tok-bool">true</span>,
+  <span class="tok-key">"category"</span>: { <span class="tok-key">"id"</span>: <span class="tok-str">"cat_mugs"</span>, <span class="tok-key">"name"</span>: <span class="tok-str">"Mugs"</span>, <span class="tok-key">"slug"</span>: <span class="tok-str">"mugs"</span> },
+  <span class="tok-key">"variants"</span>: [
+    { <span class="tok-key">"id"</span>: <span class="tok-str">"var_1"</span>, <span class="tok-key">"name"</span>: <span class="tok-str">"11oz"</span>, <span class="tok-key">"price"</span>: <span class="tok-num">24.99</span>, <span class="tok-key">"isDefault"</span>: <span class="tok-bool">true</span> }
+  ],
+  <span class="tok-key">"images"</span>: [
+    { <span class="tok-key">"id"</span>: <span class="tok-str">"img_1"</span>, <span class="tok-key">"url"</span>: <span class="tok-str">"https://cdn.ezihubb.com/products/mug.jpg"</span>, <span class="tok-key">"isPrimary"</span>: <span class="tok-bool">true</span> }
+  ],
+  <span class="tok-key">"createdAt"</span>: <span class="tok-str">"2026-07-01T10:00:00.000Z"</span>,
+  <span class="tok-key">"updatedAt"</span>: <span class="tok-str">"2026-07-01T10:00:00.000Z"</span>
+}</pre>
+      </div>
+    </section>
+
+    <!-- ── Create product ───────────────────────────────────────────── -->
+    <section class="endpoint" id="create-product">
+      <h2 class="title">Create a product</h2>
+      <div class="meta-row"><span class="label">Method:</span><span class="method-badge m-post">POST</span></div>
+      <div class="meta-row"><span class="label">Endpoint:</span><span class="endpoint-path">/partner/products</span></div>
+      <p class="desc">Creates a new product in your store. Use the API to generate product information — title, price, category, variants, and images.</p>
+
+      <div class="section-label">Request Body</div>
+      <table class="props">
+        <tr><th>Property</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td class="prop-name">name</td><td class="prop-type">string</td><td class="prop-req">Y</td><td class="prop-desc">Product name.</td></tr>
+        <tr><td class="prop-name">sku</td><td class="prop-type">string</td><td class="prop-req">Y</td><td class="prop-desc">Unique SKU.</td></tr>
+        <tr><td class="prop-name">description</td><td class="prop-type">string</td><td class="prop-req">Y</td><td class="prop-desc">Full description.</td></tr>
+        <tr><td class="prop-name">basePrice</td><td class="prop-type">number</td><td class="prop-req">Y</td><td class="prop-desc">Base price.</td></tr>
+        <tr><td class="prop-name">categoryId</td><td class="prop-type">string</td><td class="prop-req">Y</td><td class="prop-desc">Category ID.</td></tr>
+        <tr><td class="prop-name">slug</td><td class="prop-type">string</td><td></td><td class="prop-desc">Auto-generated from name + SKU if omitted.</td></tr>
+        <tr><td class="prop-name">shortDescription</td><td class="prop-type">string</td><td></td><td class="prop-desc">Short summary, max 500 chars.</td></tr>
+        <tr><td class="prop-name">compareAtPrice</td><td class="prop-type">number</td><td></td><td class="prop-desc">Original price, must be greater than <code>basePrice</code>.</td></tr>
+        <tr><td class="prop-name">isActive</td><td class="prop-type">boolean</td><td></td><td class="prop-desc">Publish immediately. Default <code>true</code>.</td></tr>
+        <tr><td class="prop-name">tagIds / tags</td><td class="prop-type">string[]</td><td></td><td class="prop-desc">Existing tag IDs, or tag names to auto-create.</td></tr>
+        <tr><td class="prop-name">collectionIds</td><td class="prop-type">string[]</td><td></td><td class="prop-desc">Collection IDs to add this product to.</td></tr>
+        <tr><td class="prop-name">variants</td><td class="prop-type">array</td><td></td><td class="prop-desc">Each: <code>{ name, options, price, sku?, isDefault?, sortOrder? }</code></td></tr>
+      </table>
+
+      <div class="section-label">Request Example</div>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre><span class="tok-method">POST</span> /partner/products
+<span class="tok-header">Content-Type</span>: application/json
+<span class="tok-header">X-Api-Key</span>: ezhb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+{
+  <span class="tok-key">"name"</span>: <span class="tok-str">"Custom Name Mug"</span>,
+  <span class="tok-key">"sku"</span>: <span class="tok-str">"MLH-MUG-001"</span>,
+  <span class="tok-key">"description"</span>: <span class="tok-str">"A ceramic mug personalized with any name."</span>,
+  <span class="tok-key">"basePrice"</span>: <span class="tok-num">24.99</span>,
+  <span class="tok-key">"categoryId"</span>: <span class="tok-str">"cat_mugs"</span>,
+  <span class="tok-key">"variants"</span>: [
+    { <span class="tok-key">"name"</span>: <span class="tok-str">"11oz"</span>, <span class="tok-key">"options"</span>: { <span class="tok-key">"size"</span>: <span class="tok-str">"11oz"</span> }, <span class="tok-key">"price"</span>: <span class="tok-num">24.99</span>, <span class="tok-key">"isDefault"</span>: <span class="tok-bool">true</span> }
+  ]
+}</pre>
+      </div>
+
+      <div class="section-label">Response</div>
+      <p class="desc">Returns <code>201 Created</code> with the full product object — same shape as <a href="#get-product">Get a product</a>.</p>
+    </section>
+
+    <!-- ── Update product ───────────────────────────────────────────── -->
+    <section class="endpoint" id="update-product">
+      <h2 class="title">Update a product</h2>
+      <div class="meta-row"><span class="label">Method:</span><span class="method-badge m-patch">PATCH</span></div>
+      <div class="meta-row"><span class="label">Endpoint:</span><span class="endpoint-path">/partner/products/{id}</span></div>
+      <p class="desc">
+        Updates an existing product. Accepts any subset of the fields from
+        <a href="#create-product">Create a product</a> — only the fields you send are changed.
+        Returns <code>404</code> if the product doesn't belong to your store.
+      </p>
+
+      <div class="section-label">Request Example</div>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre><span class="tok-method">PATCH</span> /partner/products/cljk2p9x40001abcd
+<span class="tok-header">Content-Type</span>: application/json
+<span class="tok-header">X-Api-Key</span>: ezhb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+{
+  <span class="tok-key">"basePrice"</span>: <span class="tok-num">22.99</span>,
+  <span class="tok-key">"isActive"</span>: <span class="tok-bool">false</span>
+}</pre>
+      </div>
+
+      <div class="section-label">Response</div>
+      <p class="desc">Returns <code>200 OK</code> with the updated product object — same shape as <a href="#get-product">Get a product</a>.</p>
+    </section>
+
+    <!-- ── Delete product ───────────────────────────────────────────── -->
+    <section class="endpoint" id="delete-product">
+      <h2 class="title">Delete a product</h2>
+      <div class="meta-row"><span class="label">Method:</span><span class="method-badge m-delete">DELETE</span></div>
+      <div class="meta-row"><span class="label">Endpoint:</span><span class="endpoint-path">/partner/products/{id}</span></div>
+      <p class="desc">Soft-deletes a product (deactivates and hides it from your storefront). Returns <code>404</code> if the product doesn't belong to your store.</p>
+
+      <div class="section-label">Request Example</div>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre><span class="tok-method">DELETE</span> /partner/products/cljk2p9x40001abcd
+<span class="tok-header">X-Api-Key</span>: ezhb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</pre>
+      </div>
+
+      <div class="section-label">Response</div>
+      <p class="desc">Returns <code>204 No Content</code> on success.</p>
+    </section>
+
+    <!-- ── Search products ──────────────────────────────────────────── -->
+    <section class="endpoint" id="search-products">
+      <h2 class="title">Search products</h2>
+      <div class="meta-row"><span class="label">Method:</span><span class="method-badge m-get">GET</span></div>
+      <div class="meta-row"><span class="label">Endpoint:</span><span class="endpoint-path">/partner/search</span></div>
+      <p class="desc">
+        Full-text search with filters and facets — always scoped to your own store. Any <code>storeId</code> passed
+        in the query string is ignored server-side, so a key can never search another seller's catalog.
+      </p>
+
+      <div class="section-label">Query Parameters</div>
+      <table class="props">
+        <tr><th>Property</th><th>Type</th><th>Description</th></tr>
+        <tr><td class="prop-name">q</td><td class="prop-type">string</td><td class="prop-desc">Search term.</td></tr>
+        <tr><td class="prop-name">category</td><td class="prop-type">string</td><td class="prop-desc">Category slug.</td></tr>
+        <tr><td class="prop-name">minPrice / maxPrice</td><td class="prop-type">number</td><td class="prop-desc">Price range.</td></tr>
+        <tr><td class="prop-name">minRating</td><td class="prop-type">number</td><td class="prop-desc">Minimum average rating, 1–5.</td></tr>
+        <tr><td class="prop-name">sort</td><td class="prop-type">string</td><td class="prop-desc"><code>relevance</code>, <code>newest</code>, <code>price_asc</code>, <code>price_desc</code>, <code>bestseller</code>, <code>rating</code>, <code>featured</code>.</td></tr>
+        <tr><td class="prop-name">page / limit</td><td class="prop-type">number</td><td class="prop-desc">Pagination. Default limit 48.</td></tr>
+      </table>
+
+      <div class="section-label">Request Example</div>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre><span class="tok-method">GET</span> /partner/search?q=mug&amp;sort=bestseller
+<span class="tok-header">X-Api-Key</span>: ezhb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</pre>
+      </div>
+
+      <div class="section-label">Response</div>
+      <table class="props">
+        <tr><th>Property</th><th>Type</th><th>Description</th></tr>
+        <tr><td class="prop-name">data</td><td class="prop-type">array</td><td class="prop-desc">Matching products — same shape as <a href="#list-products">List products</a>.</td></tr>
+        <tr><td class="prop-name">pagination</td><td class="prop-type">object</td><td class="prop-desc"><code>{ page, limit, total, totalPages, hasNext, hasPrev }</code></td></tr>
+        <tr><td class="prop-name">facets</td><td class="prop-type">object</td><td class="prop-desc">Aggregate counts: <code>freeShipping</code>, <code>onSale</code>, <code>colors</code>, <code>materials</code>, <code>styles</code>, <code>occasion</code>, <code>holiday</code>, <code>recipient</code>.</td></tr>
+        <tr><td class="prop-name">appliedFilters</td><td class="prop-type">object</td><td class="prop-desc">Echoes back the filters that were actually applied.</td></tr>
+      </table>
+
+      <div class="section-label">Response Example</div>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre>{
+  <span class="tok-key">"data"</span>: [
+    { <span class="tok-key">"id"</span>: <span class="tok-str">"cljk2p9x40001abcd"</span>, <span class="tok-key">"name"</span>: <span class="tok-str">"Custom Name Mug"</span>, <span class="tok-key">"basePrice"</span>: <span class="tok-num">24.99</span> }
+  ],
+  <span class="tok-key">"pagination"</span>: { <span class="tok-key">"page"</span>: <span class="tok-num">1</span>, <span class="tok-key">"limit"</span>: <span class="tok-num">48</span>, <span class="tok-key">"total"</span>: <span class="tok-num">1</span>, <span class="tok-key">"totalPages"</span>: <span class="tok-num">1</span>, <span class="tok-key">"hasNext"</span>: <span class="tok-bool">false</span>, <span class="tok-key">"hasPrev"</span>: <span class="tok-bool">false</span> },
+  <span class="tok-key">"facets"</span>: { <span class="tok-key">"freeShipping"</span>: <span class="tok-num">0</span>, <span class="tok-key">"onSale"</span>: <span class="tok-num">0</span>, <span class="tok-key">"colors"</span>: [], <span class="tok-key">"materials"</span>: [] },
+  <span class="tok-key">"appliedFilters"</span>: { <span class="tok-key">"q"</span>: <span class="tok-str">"mug"</span> }
+}</pre>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Right ToC ────────────────────────────────────────────────────── -->
+  <aside class="toc" id="toc"></aside>
+
+</div>
+
+<script>
+  var sections = Array.prototype.slice.call(document.querySelectorAll('section.endpoint'));
+
+  // Build right-hand "on this page" ToC from the section-labels inside the CURRENT section only,
+  // rebuilt on scroll to always reflect the endpoint currently in view.
+  function buildToc(section) {
+    var toc = document.getElementById('toc');
+    var labels = section.querySelectorAll('.section-label');
+    if (labels.length === 0) { toc.innerHTML = ''; return; }
+    var html = '<div class="toc-block"><div class="toc-block-title">On this page</div>';
+    labels.forEach(function (label, i) {
+      var id = section.id + '-toc-' + i;
+      label.id = id;
+      html += '<a class="toc-link" href="#' + id + '">' + label.textContent + '</a>';
+    });
+    html += '</div>';
+    toc.innerHTML = html;
+  }
+
+  function setActive(id) {
+    document.querySelectorAll('.sidebar a.nav-item').forEach(function (a) {
+      a.classList.toggle('active', a.dataset.target === id);
+    });
+  }
+
+  var currentSection = null;
+  function onScroll() {
+    var scrollPos = window.scrollY + 90;
+    var active = sections[0];
+    for (var i = 0; i < sections.length; i++) {
+      if (sections[i].offsetTop <= scrollPos) active = sections[i];
+    }
+    if (active !== currentSection) {
+      currentSection = active;
+      setActive(active.id);
+      buildToc(active);
+    }
+
+    var tocLinks = document.querySelectorAll('.toc a.toc-link');
+    var activeToc = null;
+    tocLinks.forEach(function (link) {
+      var target = document.getElementById(link.getAttribute('href').slice(1));
+      if (target && target.getBoundingClientRect().top - 100 <= 0) activeToc = link;
+    });
+    tocLinks.forEach(function (link) { link.classList.toggle('active', link === activeToc); });
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  function copyBlock(btn) {
+    var pre = btn.closest('.code-block').querySelector('pre');
+    navigator.clipboard.writeText(pre.textContent).then(function () {
+      var original = btn.textContent;
+      btn.textContent = 'Copied';
+      setTimeout(function () { btn.textContent = original; }, 1500);
+    });
+  }
+</script>
+
+</body>
+</html>

@@ -3,6 +3,8 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import * as https from 'https';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 const cookieParser = require('cookie-parser');
 
 import { AppModule } from './app/app.module';
@@ -200,8 +202,16 @@ async function bootstrap() {
   const partnerDocument = SwaggerModule.createDocument(app, partnerConfig, {
     include: [PartnerCatalogModule],
   });
-  SwaggerModule.setup('partner/docs', app, partnerDocument, {
-    swaggerOptions: { persistAuthorization: true },
+
+  // Machine-readable spec stays available for codegen/tooling; humans get the
+  // custom-styled reference page below instead of the default Swagger UI.
+  app.getHttpAdapter().get('/partner/openapi.json', (_req: unknown, res: { json: (body: unknown) => void }) => {
+    res.json(partnerDocument);
+  });
+
+  const partnerDocsHtml = readFileSync(join(__dirname, 'assets', 'partner-docs.html'), 'utf8');
+  app.getHttpAdapter().get('/partner/docs', (_req: unknown, res: { type: (t: string) => { send: (body: string) => void } }) => {
+    res.type('html').send(partnerDocsHtml);
   });
 
   Logger.log(`Partner API docs → http://localhost:${process.env.PORT ?? '3002'}/partner/docs`, 'Bootstrap');

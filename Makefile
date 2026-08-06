@@ -1,6 +1,6 @@
 .PHONY: help setup dev stop build test test-api test-client test-e2e \
         db-migrate db-seed db-reset db-studio lint type-check clean \
-        docker-build docker-up docker-down logs shell-api
+        logs shell-api
 
 # Default target
 help: ## Show this help
@@ -8,11 +8,11 @@ help: ## Show this help
 		/^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
 # ── First-time setup ─────────────────────────────────────────────────────────
-setup: ## Install deps, start infra, run migrations, seed DB
+# Assumes DATABASE_URL/REDIS_URL in .env already point at a reachable
+# Postgres/Redis (local or remote) — no bundled local infra to start here.
+setup: ## Install deps, run migrations, seed DB
 	cp -n .env.example .env || true
 	pnpm install
-	$(MAKE) docker-up
-	sleep 5
 	$(MAKE) db-migrate
 	$(MAKE) db-seed
 	@echo "\n✅  Setup complete. Run 'make dev' to start."
@@ -31,24 +31,14 @@ dev-admin: ## Start admin only
 	pnpm nx serve admin
 
 # ── Docker infra ─────────────────────────────────────────────────────────────
-# docker-compose.yml is the production stack (postgres, redis, api, client,
-# admin — no nginx container; the host's own nginx reverse-proxies subdomains,
-# see scripts/nginx-ezihubb.conf). For local dev, only postgres/redis are
-# started here — storage (AWS_S3_*) and email (SMTP_*) need R2/SendGrid
-# credentials, or point them at your own local MinIO/MailHog if you run those
-# separately.
-docker-up: ## Start local infra (postgres, redis)
-	docker compose up -d postgres redis
-
-docker-down: ## Stop all containers
+# docker-compose.yml is the production stack for the dedicated AWS EC2
+# instance — pulls prebuilt images from GHCR (built by
+# .github/workflows/docker-publish.yml); Postgres runs on RDS instead of in
+# a container. Only relevant when running/debugging that stack directly.
+stop: ## Stop all containers (docker-compose.yml)
 	docker compose down
 
-docker-build: ## Build all Docker images
-	docker compose build
-
-stop: docker-down ## Alias for docker-down
-
-logs: ## Tail logs from all containers
+logs: ## Tail logs from all containers (docker-compose.yml)
 	docker compose logs -f
 
 # ── Database ──────────────────────────────────────────────────────────────────

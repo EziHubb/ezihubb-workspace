@@ -1,43 +1,33 @@
 version: '3.9'
 
-# Production stack for a self-hosted server.
+# Production stack for the dedicated AWS EC2 instance (free-tier t2/t3.micro
+# or t3.small). Images are prebuilt by .github/workflows/docker-publish.yml
+# and pushed to GitHub Container Registry — this file only PULLS them, it
+# never builds anything on the instance itself (a small instance can't
+# reliably survive a `next build`, which needs 2-4GB RAM).
+#
+# Postgres runs on AWS RDS Free Tier instead of in a container here (frees
+# up RAM on the instance) — set DATABASE_URL in .env to the RDS endpoint.
+# Redis and MongoDB stay self-hosted in Docker (lightweight enough even on a
+# 1GB instance; switch MONGODB_URI to a MongoDB Atlas free-tier cluster
+# instead if RAM ever gets tight — no code change needed, just the
+# connection string).
+#
 # Usage:
-#   1. Copy .env.example to .env and fill in real values (including POSTGRES_*
-#      below and a DATABASE_URL that points at the `postgres` service).
-#   2. One-off: run migrations before first start:
-#        docker compose run --rm migrate
-#   3. docker compose up -d --build
+#   1. Copy .env.example to .env and fill in real values — including
+#      DOCKER_IMAGE_BASE (e.g. ghcr.io/your-github-username/ezihubb) and a
+#      DATABASE_URL pointing at your RDS endpoint.
+#   2. docker login ghcr.io -u <github-username> --password-stdin (a PAT
+#      with read:packages scope — only needed if the GHCR packages are
+#      private; public packages need no login to pull).
+#   3. One-off: docker compose run --rm migrate
+#   4. docker compose up -d
 #
-# S3 storage (Cloudflare R2) and SMTP (SendGrid) are external managed services
-# in production — configure them via AWS_S3_* / SENDGRID_* in .env. There are
-# no containers for them here. MongoDB runs as its own container below
-# (self-hosted, not Atlas) — set MONGODB_URI to the `mongodb` service.
-#
-# This server hosts other projects too, so client/admin/api are published to
-# 127.0.0.1 only (not the public interface) on CLIENT_PORT/ADMIN_PORT/API_PORT.
-# There is no nginx container here — the host's own nginx (shared across all
-# projects on this server) reverse-proxies each subdomain
-# (ezihubb.com / admin.ezihubb.com / api.ezihubb.com) to these loopback ports.
-# See scripts/nginx-ezihubb.conf for that host-level config.
+# No nginx container here — the host's own nginx reverse-proxies
+# ezihubb.com / admin.ezihubb.com / api.ezihubb.com to the loopback ports
+# below. See scripts/nginx-ezihubb.conf for that one-time host setup.
 
 services:
-  # ── PostgreSQL ──────────────────────────────────────────────────────────────
-  postgres:
-    image: postgres:15-alpine
-    container_name: ezihubb_postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-ezihubb}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
-      POSTGRES_DB: ${POSTGRES_DB:-ezihubb}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-ezihubb}']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # ── Redis ───────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
@@ -68,29 +58,19 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── One-off: run pending Prisma migrations ───────────────────────────────────
+  # ── One-off: run pending Prisma migrations against RDS ───────────────────────
   migrate:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.migrate
+    image: ${DOCKER_IMAGE_BASE:?DOCKER_IMAGE_BASE must be set in .env}-migrate:latest
     container_name: ezihubb_migrate
     profiles: ['tools']
-    depends_on:
-      postgres:
-        condition: service_healthy
     env_file: .env
 
   # ── NestJS API ─────────────────────────────────────────────────────────────
   api:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.api
-      target: production
+    image: ${DOCKER_IMAGE_BASE:?DOCKER_IMAGE_BASE must be set in .env}-api:latest
     container_name: ezihubb_api
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
       mongodb:
@@ -104,21 +84,7 @@ services:
 
   # ── Next.js Storefront (client) ────────────────────────────────────────────
   client:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.client
-      target: production
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-        NEXT_PUBLIC_NEXTAUTH_URL: ${NEXT_PUBLIC_NEXTAUTH_URL}
-        NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL}
-        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
-        NEXT_PUBLIC_PAYPAL_CLIENT_ID: ${NEXT_PUBLIC_PAYPAL_CLIENT_ID}
-        NEXT_PUBLIC_GA_ID: ${NEXT_PUBLIC_GA_ID}
-        NEXT_PUBLIC_GTM_ID: ${NEXT_PUBLIC_GTM_ID}
-        NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID}
-        NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION}
-        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN}
+    image: ${DOCKER_IMAGE_BASE:?DOCKER_IMAGE_BASE must be set in .env}-client:latest
     container_name: ezihubb_client
     restart: unless-stopped
     depends_on:
@@ -131,15 +97,7 @@ services:
 
   # ── Next.js Admin Dashboard ────────────────────────────────────────────────
   admin:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.admin
-      target: production
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-        NEXT_PUBLIC_NEXTAUTH_URL: ${NEXT_PUBLIC_NEXTAUTH_URL}
-        NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL}
-        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN}
+    image: ${DOCKER_IMAGE_BASE:?DOCKER_IMAGE_BASE must be set in .env}-admin:latest
     container_name: ezihubb_admin
     restart: unless-stopped
     depends_on:
@@ -151,6 +109,5 @@ services:
       - '127.0.0.1:${ADMIN_PORT:-3011}:3001'
 
 volumes:
-  postgres_data:
   redis_data:
   mongodb_data:
