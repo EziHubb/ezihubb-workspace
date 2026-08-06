@@ -58,8 +58,19 @@ SSH="ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new $SERVER_USER@$SERVER_IP
 
 # Safe minimum before touching the Docker builder at all — a `next build`'s
 # own transient memory spike can push this into swap thrashing otherwise.
-MIN_RAM_MB=400
+# (per .claude/specs/30_aws_deploy.spec.md §5)
+MIN_RAM_MB=800
 MIN_DISK_GB=3
+
+# Refuse to start if a docker compose build is already running — ours or,
+# on a shared box, another project's. Two concurrent builds is exactly what
+# exhausts RAM/swap and can take the whole server down (this happened once
+# already on this project: an ad-hoc `docker compose up -d --build` ran all
+# 3 app builds in parallel instead of one at a time).
+if $SSH "pgrep -f '[d]ocker compose build' >/dev/null" 2>/dev/null; then
+    echo -e "${RED}✗ A docker compose build is already running on $SERVER_IP. Refusing to start a second one.${NC}"
+    exit 1
+fi
 
 check_resources() {
     local avail_ram avail_disk

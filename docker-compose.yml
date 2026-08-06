@@ -1,9 +1,11 @@
 version: '3.9'
 
 # Production stack for the dedicated AWS EC2 instance. Builds images
-# directly on the instance via the Dockerfiles in docker/ — the instance has
-# enough RAM/swap for this (see scripts/deploy.sh, which also provisions a
-# swap file). GitHub Actions CI-build (.github/workflows/docker-publish.yml,
+# directly on the instance from the single docker/Dockerfile (one `base` +
+# `source` stage shared by every service, then a per-service builder +
+# production stage selected via `target:` below) — the instance has enough
+# RAM/swap for this (see scripts/deploy.sh, which also provisions a swap
+# file). GitHub Actions CI-build (.github/workflows/docker-publish.yml,
 # pushing to GHCR) is on hold for now — this file can switch back to
 # `image: ${DOCKER_IMAGE_BASE}-...` pulls later without any other changes.
 #
@@ -58,7 +60,8 @@ services:
   migrate:
     build:
       context: .
-      dockerfile: docker/Dockerfile.migrate
+      dockerfile: docker/Dockerfile
+      target: migrate
     container_name: ezihubb_migrate
     profiles: ['tools']
     env_file: .env
@@ -67,8 +70,8 @@ services:
   api:
     build:
       context: .
-      dockerfile: docker/Dockerfile.api
-      target: production
+      dockerfile: docker/Dockerfile
+      target: api
     container_name: ezihubb_api
     restart: unless-stopped
     depends_on:
@@ -87,8 +90,8 @@ services:
   client:
     build:
       context: .
-      dockerfile: docker/Dockerfile.client
-      target: production
+      dockerfile: docker/Dockerfile
+      target: client
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_NEXTAUTH_URL: ${NEXT_PUBLIC_NEXTAUTH_URL}
@@ -114,8 +117,8 @@ services:
   admin:
     build:
       context: .
-      dockerfile: docker/Dockerfile.admin
-      target: production
+      dockerfile: docker/Dockerfile
+      target: admin
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_NEXTAUTH_URL: ${NEXT_PUBLIC_ADMIN_NEXTAUTH_URL}
