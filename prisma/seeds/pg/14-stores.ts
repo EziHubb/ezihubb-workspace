@@ -1,90 +1,41 @@
 import { PrismaClient } from '@prisma/client';
 
 export async function seedStores(prisma: PrismaClient, adminUserId: string): Promise<{ storeId: string }> {
-  console.log('  🏪 Seeding stores & seller plans...');
+  console.log('  🏪 Seeding stores & platform settings...');
 
-  // ── PlatformSettings singleton ─────────────────────────────────────────────
+  // ── PlatformSettings singleton (Etsy-style seller fees) ────────────────────
   await prisma.platformSettings.upsert({
     where:  { id: 'singleton' },
     update: { platformName: 'EziHubb' },
     create: {
-      id:                      'singleton',
-      defaultCommissionRate:   0.15,
-      minCommissionRate:       0.05,
-      maxCommissionRate:       0.30,
-      platformName:            'EziHubb',
-      allowPublicRegistration: false,
-      minPayoutAmount:         100.00,
-      payoutSchedule:          'monthly',
-      maintenanceMode:         false,
+      id:                        'singleton',
+      transactionFeeRate:        0.065,
+      paymentProcessingFeeRate:  0.05,
+      paymentProcessingFixedFee: 0.25,
+      listingFee:                0.20,
+      regulatoryFeeRate:         0.0124,
+      regulatoryFeeCountries:    [],
+      platformName:              'EziHubb',
+      allowPublicRegistration:   false,
+      minPayoutAmount:           100.00,
+      payoutSchedule:            'monthly',
+      maintenanceMode:           false,
     },
   });
   console.log('    ✓ PlatformSettings');
-
-  // ── SellerPlans ────────────────────────────────────────────────────────────
-  const plans = await Promise.all([
-    prisma.sellerPlan.upsert({
-      where:  { id: 'plan-starter' },
-      update: {},
-      create: {
-        id:             'plan-starter',
-        name:           'Starter',
-        monthlyPrice:   0,
-        maxProducts:    50,
-        maxOrders:      null,
-        commissionRate: 0.15,
-        features:       ['Basic analytics', 'Standard support', 'Store page'],
-        isActive:       true,
-        sortOrder:      0,
-      },
-    }),
-    prisma.sellerPlan.upsert({
-      where:  { id: 'plan-pro' },
-      update: {},
-      create: {
-        id:             'plan-pro',
-        name:           'Pro',
-        monthlyPrice:   29,
-        maxProducts:    200,
-        maxOrders:      null,
-        commissionRate: 0.10,
-        features:       ['Advanced analytics', 'Priority support', 'Featured listing', 'Promotional tools'],
-        isActive:       true,
-        sortOrder:      1,
-      },
-    }),
-    prisma.sellerPlan.upsert({
-      where:  { id: 'plan-elite' },
-      update: {},
-      create: {
-        id:             'plan-elite',
-        name:           'Elite',
-        monthlyPrice:   79,
-        maxProducts:    null,
-        maxOrders:      null,
-        commissionRate: 0.07,
-        features:       ['Full analytics suite', 'Dedicated support', 'Featured listing', 'Promotional tools', 'API access'],
-        isActive:       true,
-        sortOrder:      2,
-      },
-    }),
-  ]);
-  console.log(`    ✓ ${plans.length} seller plans`);
 
   // ── Default store: EziHubb (owned by super admin) ────────────────────
   const store = await prisma.store.upsert({
     where:  { slug: 'ezihubb' },
     update: {},
     create: {
-      slug:           'ezihubb',
-      name:           'EziHubb',
-      description:    'The official EziHubb store — unique personalized gifts and handcrafted keepsakes for every occasion.',
-      ownerId:        adminUserId,
-      status:         'ACTIVE',
-      planType:       'COMMISSION',
-      commissionRate: 0,
-      verifiedAt:     new Date(),
-      approvedById:   adminUserId,
+      slug:         'ezihubb',
+      name:         'EziHubb',
+      description:  'The official EziHubb store — unique personalized gifts and handcrafted keepsakes for every occasion.',
+      ownerId:      adminUserId,
+      status:       'ACTIVE',
+      verifiedAt:   new Date(),
+      approvedById: adminUserId,
     },
   });
   console.log(`    ✓ Default store: ${store.name} (slug: ${store.slug})`);

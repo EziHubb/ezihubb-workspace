@@ -78,7 +78,6 @@ const NAV_SECTIONS: NavSection[] = [
         label: 'Stores', href: '/stores', icon: Store,
         children: [
           { label: 'All Stores',        href: '/stores',          icon: Store    },
-          { label: 'Seller Plans',      href: '/stores/plans',    icon: Layers   },
           { label: 'Platform Settings', href: '/stores/settings', icon: Settings },
         ],
       },

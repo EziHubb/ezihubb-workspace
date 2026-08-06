@@ -330,7 +330,7 @@ All pages: `apps/admin/src/app/(admin)/`
 
 | Section | Routes |
 |---|---|
-| Core | dashboard, orders/[id], products/new|[id]/edit|copy|import|seo, stores/[id]|[id]/permissions, stores/plans|settings |
+| Core | dashboard, orders/[id], products/new|[id]/edit|copy|import|seo, stores/[id]|[id]/permissions, stores/settings, settings/fulfillment, settings/api-keys |
 | Catalog (SUPER_ADMIN only) | catalog/categories|collections|tags|shop-sections|production-partners |
 | Customers (SUPER_ADMIN only) | customers/[id] |
 | Finance | payments, payouts, finance |

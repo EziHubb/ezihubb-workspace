@@ -17,8 +17,8 @@ apps/api/src/modules/<module>/
     <entity>.schema.ts
 ```
 
-### Modules present in `apps/api/src/modules/` (32 modules)
-`admin`, `admin-users`, `affiliates`, `analytics`, `assets`, `auth`, `campaigns`, `cart`, `catalog`, `currency`, `customization`, `database` (mongodb), `fulfillment` (provider-agnostic POD integration — Printify first; see below), `messages`, `moderation`, `notifications` (includes FcmService + PushService), `order-tracking`, `orders`, `payments`, `pdf`, `products` (includes LowStockService), `promotions`, `referrals`, `reviews`, `search`, `shipping`, `shop-stats`, `stores`, `tax`, `translations`, `unsubscribe`, `users`
+### Modules present in `apps/api/src/modules/` (33 modules)
+`admin`, `admin-users`, `affiliates`, `analytics`, `assets`, `auth`, `campaigns`, `cart`, `catalog`, `currency`, `customization`, `database` (mongodb), `fulfillment` (provider-agnostic POD integration — `PrintifyProvider` + `MerchizeProvider`; see §18), `messages`, `moderation`, `notifications` (includes FcmService + PushService), `order-tracking`, `orders`, `partner-api` (API-key-authenticated public API for 3rd-party tools; see §19), `payments`, `pdf`, `products` (includes LowStockService), `promotions`, `referrals`, `reviews`, `search`, `shipping`, `shop-stats`, `stores`, `tax`, `translations`, `unsubscribe`, `users`
 
 ## 2. Controller Conventions
 
@@ -294,7 +294,7 @@ QUEUES.TRANSLATIONS          // 'translations'
 QUEUES.REFERRAL              // 'referral'
 QUEUES.MODERATION            // 'moderation'
 QUEUES.ORDER_TRACKING        // 'order-tracking' (constant defined but not registered — dead, pre-existing)
-QUEUES.FULFILLMENT           // 'fulfillment' — pushes confirmed StoreOrders to a connected POD provider (Printify)
+QUEUES.FULFILLMENT           // 'fulfillment' — pushes confirmed StoreOrders to a connected POD provider (Printify or Merchize)
 
 // Dev mode (DISABLE_QUEUE=true)
 // DevBullModule provides no-op tokens
@@ -408,7 +408,7 @@ File: `apps/api/src/modules/order-tracking/order-tracking.service.ts`
 - Manages `OrderTracking` + `TrackingEvent` records (Prisma)
 - `getTracking(orderId)` — auto-creates record if order exists but no tracking yet
 - `updateStage(orderId, stage, title, source, carrierName?, trackingNumber?)` — upserts + creates event
-- Printify (and future POD provider) webhooks live in `apps/api/src/modules/fulfillment/` (`FulfillmentWebhookController`/`.Service`), which calls back into `updateStage()` here — not handled directly by `OrderTrackingService` anymore
+- POD provider webhooks (Printify, Merchize) live in `apps/api/src/modules/fulfillment/` (`FulfillmentWebhookController`/`.Service`), which calls back into `updateStage()` here — not handled directly by `OrderTrackingService` anymore
 
 ## 17. Presigned Upload Flow (Assets)
 
@@ -423,3 +423,42 @@ Steps:
 1. Admin client: `POST /admin/assets/presign` → `{ urls: [{ uploadUrl, publicUrl, key }] }`
 2. Browser: `PUT uploadUrl` with file (direct to R2)
 3. Admin client: `POST /admin/products/:id/images/from-urls { urls: [publicUrl] }`
+
+## 18. Fulfillment Providers (POD)
+
+Provider-agnostic print-on-demand integration — adding a new provider is: implement `FulfillmentProvider`, add it to the `useFactory` array in `fulfillment.module.ts`, add the enum value. No other code changes needed.
+
+### Architecture
+- `interfaces/fulfillment-provider.interface.ts` — the `FulfillmentProvider` contract (`verifyConnection`, `listShopProducts`, `createOrder`, `getOrderStatus`, `cancelOrder`, `getShippingRateCents`, `registerWebhooks`/`unregisterWebhooks`, `parseWebhookPayload`)
+- `FulfillmentRegistryService` — resolves a provider impl by `FulfillmentProviderType` (`PRINTIFY` | `MERCHIZE`)
+- `FulfillmentConnectionsService` — per-store `StoreFulfillmentConnection` CRUD (encrypted API key via `EncryptionService`, opaque `webhookToken`)
+- `printify/printify.provider.ts`, `merchize/merchize.provider.ts` — concrete implementations; `docs/merchize-api.md` at the repo root documents every real Merchize endpoint used (verified against the seller's own dashboard docs, not guessed)
+- `ProductFulfillmentMapping` — maps an internal Product/variant → a provider's external product/variant id
+- `StoreOrderFulfillment` — one row per (StoreOrder, connection) push attempt; `externalOrderId` is the provider's own order id (Printify) or the caller's own reference id (Merchize — it supports lookup-by-`external_number` everywhere, unlike Printify)
+
+### Webhooks
+- Single route for every provider: `POST /webhooks/:provider/:token` — `:provider` is cosmetic only, `FulfillmentWebhookGuard` resolves the connection purely from the opaque `:token`
+- Printify has no signing mechanism at all (verified against its OpenAPI spec) — security is the unguessable token alone
+- Merchize additionally sends a `merchize-webhook-key` header (shared secret, direct string compare) — configured manually in the seller's Merchize dashboard (no webhook-registration API exists), so `MerchizeProvider.registerWebhooks()` is a no-op and the seller pastes the callback URL themselves (surfaced via `connect()`'s `webhookCallbackUrl` + a "Save secret" endpoint, `PUT /admin/fulfillment/connections/:id/webhook-secret`)
+- `FulfillmentWebhookService.handlePrintifyEvent()` / `.handleMerchizeEvent()` — provider-specific payload parsing, both call into `OrderTrackingService.updateStage()`
+
+### Admin UI
+`apps/admin/src/app/(admin)/settings/fulfillment/page.tsx` — provider selector (Printify default), connect form, and (for Merchize) a webhook-setup panel. `FulfillmentTab.tsx` in the product editor — per-product/variant mapping picker (`listShopProducts()` backs the picker for both providers — Merchize's is its global blank-product catalog via `GET /product/catalog`, not a per-seller published list like Printify).
+
+## 19. Partner API
+
+API-key-authenticated public REST API so a seller's own 3rd-party tools (listing automation, etc.) can manage their store's catalog directly — analogous to Shopify's Admin API. Distinct from the fulfillment connections above: that's *us* calling a provider; this is a 3rd party calling *us*.
+
+### Key management (seller self-service, JWT-gated)
+- `ApiKeysService`/`AdminApiKeysController` (`@AdminController('api-keys')`) — `GET/POST/DELETE /admin/api-keys`
+- Hash-and-lookup like `RefreshToken.tokenHash` — SHA-256, not reversible encryption (the raw key is shown once at creation, never again)
+- Admin UI: `apps/admin/src/app/(admin)/settings/api-keys/page.tsx`
+
+### Public endpoints (API-key-gated)
+- `ApiKeyGuard` (`common/guards/api-key.guard.ts`) — reads `X-Api-Key` header, hashes + looks up `ApiKey`, sets `request.store`/`request.apiKey`; `ApiKeyThrottlerGuard` rate-limits per-key (`req.apiKey.id`) instead of per-IP
+- `PartnerProductsController` (`/partner/products`) — full CRUD, always scoped to the key's own store; reuses `ProductsService`/`CreateProductDto`/`UpdateProductDto`
+- `PartnerSearchController` (`/partner/search`) — reuses `SearchService`, force-injects the key's `storeId` server-side (never client-suppliable) — including in the raw-SQL full-text-search path, which doesn't automatically inherit Prisma `where` filters
+- Both controllers live in `PartnerCatalogModule` (`modules/partner-api/partner-catalog.module.ts`), kept separate from `PartnerApiModule` (which owns the JWT-gated key-management controller) so the public Swagger doc below never leaks internal admin routes
+
+### Public Swagger docs
+Separate `SwaggerModule.createDocument()` call in `main.ts` (`include: [PartnerCatalogModule]`), mounted at `/partner/docs`, enabled in **every** environment including production (unlike the internal `/api/docs`, which is dev-only) — 3rd-party integrators need real docs.

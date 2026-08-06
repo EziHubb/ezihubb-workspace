@@ -37,8 +37,19 @@ export class FulfillmentProcessor extends WorkerHost {
     const storeOrder = await this.prisma.storeOrder.findUniqueOrThrow({
       where: { id: storeOrderId },
       include: {
-        order: { select: { id: true, orderNumber: true, shippingName: true, shippingPhone: true, shippingAddress: true, shippingCity: true, shippingState: true, shippingZip: true, shippingCountry: true } },
-        items: { select: { productId: true, variantId: true, quantity: true } },
+        order: {
+          select: {
+            id: true, orderNumber: true, shippingName: true, shippingPhone: true, shippingAddress: true,
+            shippingCity: true, shippingState: true, shippingZip: true, shippingCountry: true,
+            guestEmail: true, user: { select: { email: true } },
+          },
+        },
+        items: {
+          select: {
+            productId: true, variantId: true, quantity: true,
+            product: { select: { name: true, images: { where: { isPrimary: true }, take: 1, select: { url: true } } } },
+          },
+        },
         store: { select: { id: true, name: true, owner: { select: { email: true, firstName: true } } } },
       },
     });
@@ -88,6 +99,7 @@ export class FulfillmentProcessor extends WorkerHost {
       state:        storeOrder.order.shippingState ?? undefined,
       postalCode:   storeOrder.order.shippingZip,
       country:      storeOrder.order.shippingCountry,
+      email:        storeOrder.order.user?.email ?? storeOrder.order.guestEmail ?? undefined,
     };
 
     for (const [connectionId, entries] of byConnection) {
@@ -105,6 +117,8 @@ export class FulfillmentProcessor extends WorkerHost {
           externalProductId: mapping.externalProductId,
           externalVariantId: mapping.externalVariantId,
           quantity:           item.quantity,
+          title:              item.product?.name,
+          imageUrl:           item.product?.images[0]?.url,
         }));
 
         const result = await providerImpl.createOrder(conn, fulfillment.id, lineItems, shipTo);

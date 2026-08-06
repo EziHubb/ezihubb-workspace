@@ -35,6 +35,13 @@ class ConnectProviderDto {
   externalShopId: string;
 }
 
+class SetWebhookSecretDto {
+  @ApiProperty({ description: "The secret key generated in the provider's own dashboard (e.g. Merchize's Settings → Webhook → Add secret Key)" })
+  @IsString()
+  @MaxLength(500)
+  secret: string;
+}
+
 class SaveMappingDto {
   @ApiProperty()
   @IsString()
@@ -92,6 +99,14 @@ export class AdminFulfillmentController {
   async disconnect(@Req() req: Request, @Param('id') id: string) {
     const storeId = await this.requireStoreId(req);
     await this.connections.disconnect(storeId, id);
+    return { success: true };
+  }
+
+  @Put('connections/:id/webhook-secret')
+  @ApiOperation({ summary: "Save the webhook verification secret generated in the provider's own dashboard (e.g. Merchize)" })
+  async setWebhookSecret(@Req() req: Request, @Param('id') id: string, @Body() dto: SetWebhookSecretDto) {
+    const storeId = await this.requireStoreId(req);
+    await this.connections.setWebhookSecret(storeId, id, dto.secret);
     return { success: true };
   }
 

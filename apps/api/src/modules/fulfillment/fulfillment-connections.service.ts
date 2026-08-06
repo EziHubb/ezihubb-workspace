@@ -17,7 +17,9 @@ const CONNECTION_LIST_SELECT = {
   lastErrorMessage: true,
   createdAt:        true,
   updatedAt:        true,
-  // encryptedApiKey / webhookToken / externalWebhookIds intentionally excluded
+  webhookToken:     true, // used to derive webhookCallbackUrl below — never returned raw
+  encryptedWebhookSecret: true, // used to derive hasWebhookSecret below — never returned raw
+  // encryptedApiKey / externalWebhookIds intentionally excluded
 } as const;
 
 @Injectable()
@@ -30,17 +32,23 @@ export class FulfillmentConnectionsService {
     private readonly registry:   FulfillmentRegistryService,
   ) {}
 
-  private webhookBaseUrl(): string {
+  private webhookBaseUrl(provider: FulfillmentProviderType): string {
     const apiUrl = process.env.API_URL ?? 'http://localhost:3002';
-    return `${apiUrl}/api/v1/webhooks/printify`;
+    return `${apiUrl}/api/v1/webhooks/${provider.toLowerCase()}`;
   }
 
   async listForStore(storeId: string) {
-    return this.prisma.storeFulfillmentConnection.findMany({
+    const connections = await this.prisma.storeFulfillmentConnection.findMany({
       where:  { storeId },
       select: CONNECTION_LIST_SELECT,
       orderBy: { createdAt: 'desc' },
     });
+
+    return connections.map(({ webhookToken, encryptedWebhookSecret, ...rest }) => ({
+      ...rest,
+      webhookCallbackUrl: webhookToken ? `${this.webhookBaseUrl(rest.provider)}/${webhookToken}` : null,
+      hasWebhookSecret:   !!encryptedWebhookSecret,
+    }));
   }
 
   async connect(storeId: string, provider: FulfillmentProviderType, apiKey: string, externalShopId: string) {
@@ -55,7 +63,7 @@ export class FulfillmentConnectionsService {
     const { shopName } = await providerImpl.verifyConnection(apiKey, externalShopId);
 
     const webhookToken = randomBytes(32).toString('hex');
-    const callbackUrl  = `${this.webhookBaseUrl()}/${webhookToken}`;
+    const callbackUrl  = `${this.webhookBaseUrl(provider)}/${webhookToken}`;
 
     let externalWebhookIds: string[] = [];
     try {
@@ -65,7 +73,7 @@ export class FulfillmentConnectionsService {
       );
       externalWebhookIds = registration.externalWebhookIds;
     } catch (err) {
-      this.logger.error(`Failed to register Printify webhooks for shop ${externalShopId}: ${(err as Error).message}`);
+      this.logger.error(`Failed to register ${provider} webhooks for shop ${externalShopId}: ${(err as Error).message}`);
       throw new BadRequestException('Connected, but failed to register status webhooks — please try again');
     }
 
@@ -87,7 +95,31 @@ export class FulfillmentConnectionsService {
       ? await this.prisma.storeFulfillmentConnection.update({ where: { id: existing.id }, data })
       : await this.prisma.storeFulfillmentConnection.create({ data });
 
-    return { id: connection.id, provider: connection.provider, externalShopId, externalShopName: shopName };
+    return {
+      id:                connection.id,
+      provider:          connection.provider,
+      externalShopId,
+      externalShopName:  shopName,
+      webhookCallbackUrl: callbackUrl,
+    };
+  }
+
+  /**
+   * For providers with no webhook-registration API (e.g. Merchize) — the
+   * seller pastes `connect()`'s `webhookCallbackUrl` into their own dashboard
+   * manually, then generates a secret there and pastes it back here so we can
+   * verify inbound webhooks against it (see FulfillmentWebhookGuard).
+   */
+  async setWebhookSecret(storeId: string, connectionId: string, secret: string): Promise<void> {
+    const connection = await this.prisma.storeFulfillmentConnection.findFirst({
+      where: { id: connectionId, storeId },
+    });
+    if (!connection) throw new NotFoundException('Connection not found');
+
+    await this.prisma.storeFulfillmentConnection.update({
+      where: { id: connectionId },
+      data:  { encryptedWebhookSecret: this.encryption.encrypt(secret) },
+    });
   }
 
   async disconnect(storeId: string, connectionId: string): Promise<void> {

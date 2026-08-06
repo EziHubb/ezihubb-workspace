@@ -288,7 +288,7 @@ Client routes:
 - Admin buys label via EasyPost → auto-updates `trackingNumber`, `trackingUrl`, `carrier`, `easypostShipmentId`
 - `PATCH /admin/orders/{id}/ship` → sets SHIPPED, emails customer, registers EasyPost tracker
 - EasyPost webhook (`POST /webhooks/easypost`) → auto-updates order to `DELIVERED`
-- Printify webhook (`POST /webhooks/printify/:token`, `:token` = per-connection secret embedded in the URL — Printify's API has no payload signature/secret mechanism) → handled by `FulfillmentWebhookController`/`FulfillmentWebhookService` in `apps/api/src/modules/fulfillment/`, which also updates `OrderTrackingService` for the customer-facing timeline
+- POD provider webhook (`POST /webhooks/:provider/:token` — one route for every provider, `:provider` is cosmetic, `:token` is the real per-connection secret embedded in the URL) → handled by `FulfillmentWebhookController`/`FulfillmentWebhookService` in `apps/api/src/modules/fulfillment/`, which also updates `OrderTrackingService` for the customer-facing timeline. Printify has no payload signature at all (verified against its OpenAPI spec — the URL token is the only security); Merchize additionally sends a `merchize-webhook-key` header checked against a seller-configured secret. See `20_backend_conventions.spec.md` §18 for the full provider architecture.
 
 ### OrderItem Snapshot
 - At order creation: `productSnapshot` + `variantSnapshot` captured on each `OrderItem`

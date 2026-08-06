@@ -1,13 +1,29 @@
 'use client';
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
+import { api } from '../../../lib/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 
-// ── Fee constants ─────────────────────────────────────────────────────────────
+// ── Fee rates — fetched live from Platform Settings so this preview never
+// drifts out of sync with what's actually charged (see fees.util.ts on the
+// API side for the real calculation this mirrors). Defaults below only cover
+// the brief window before the settings request resolves. ───────────────────
 
-const PLATFORM_FEE_RATE = 0.065; // 6.5% transaction fee
-const PAYMENT_FEE_RATE  = 0.03;  // 3% payment processing
-const LISTING_FEE       = 0.20;  // $0.20 per listing renewal
+interface FeeRates {
+  transactionFeeRate:        number;
+  paymentProcessingFeeRate:  number;
+  paymentProcessingFixedFee: number;
+  listingFee:                number;
+}
+
+const DEFAULT_RATES: FeeRates = {
+  transactionFeeRate:        0.065,
+  paymentProcessingFeeRate:  0.05,
+  paymentProcessingFixedFee: 0.25,
+  listingFee:                0.20,
+};
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -22,15 +38,17 @@ interface EstimatedEarningsRowProps {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function calcEarnings(price: number): {
+function calcEarnings(price: number, rates: FeeRates): {
   platformFee: number;
   paymentFee:  number;
+  listingFee:  number;
   net:         number;
 } {
-  const platformFee = price * PLATFORM_FEE_RATE;
-  const paymentFee  = price * PAYMENT_FEE_RATE;
-  const net         = Math.max(0, price - platformFee - paymentFee - LISTING_FEE);
-  return { platformFee, paymentFee, net };
+  const platformFee = price * rates.transactionFeeRate;
+  const paymentFee  = price * rates.paymentProcessingFeeRate + rates.paymentProcessingFixedFee;
+  const listingFee  = rates.listingFee;
+  const net         = Math.max(0, price - platformFee - paymentFee - listingFee);
+  return { platformFee, paymentFee, listingFee, net };
 }
 
 function fmt(n: number, decimals = 2): string {
@@ -67,6 +85,13 @@ export function EstimatedEarningsRow({
 }: EstimatedEarningsRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const { data: settings } = useQuery({
+    queryKey:  ['admin-platform-settings'],
+    queryFn:   () => api.get<FeeRates>(API_ROUTES.ADMIN.PLATFORM_SETTINGS),
+    staleTime: 5 * 60_000,
+  });
+  const rates = settings ?? DEFAULT_RATES;
+
   const price = Number(basePrice) || 0;
   if (price <= 0) return null;
 
@@ -74,8 +99,8 @@ export function EstimatedEarningsRow({
   const minPrice = hasVariations ? (minVariantPrice ?? price) : price;
   const maxPrice = hasVariations ? (maxVariantPrice ?? price) : price;
 
-  const minEarnings = calcEarnings(minPrice);
-  const maxEarnings = calcEarnings(maxPrice);
+  const minEarnings = calcEarnings(minPrice, rates);
+  const maxEarnings = calcEarnings(maxPrice, rates);
 
   // Earnings label: single value or range
   const earningsRange =
@@ -84,7 +109,7 @@ export function EstimatedEarningsRow({
       : `$${fmt(minEarnings.net)} to $${fmt(maxEarnings.net)}`;
 
   // Fee breakdown uses basePrice (most common price)
-  const breakdown = calcEarnings(price);
+  const breakdown = calcEarnings(price, rates);
 
   return (
     <div className="mt-3">
@@ -116,18 +141,18 @@ export function EstimatedEarningsRow({
             value={`$${fmt(price)}`}
           />
           <FeeRow
-            label={`Transaction fee (${fmt(PLATFORM_FEE_RATE * 100, 1)}%)`}
+            label={`Transaction fee (${fmt(rates.transactionFeeRate * 100, 1)}%)`}
             value={`−$${fmt(breakdown.platformFee)}`}
             negative
           />
           <FeeRow
-            label={`Payment processing (${fmt(PAYMENT_FEE_RATE * 100, 1)}%)`}
+            label={`Payment processing (${fmt(rates.paymentProcessingFeeRate * 100, 1)}% + $${fmt(rates.paymentProcessingFixedFee)})`}
             value={`−$${fmt(breakdown.paymentFee)}`}
             negative
           />
           <FeeRow
             label="Listing fee"
-            value={`−$${fmt(LISTING_FEE)}`}
+            value={`−$${fmt(breakdown.listingFee)}`}
             negative
           />
 

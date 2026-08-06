@@ -25,12 +25,6 @@ export class StoresController {
     );
   }
 
-  /** Public: list active seller plans for open-shop page */
-  @Get('plans')
-  getPublicPlans() {
-    return this.storesService.getSellerPlans();
-  }
-
   /** Public: store page by slug */
   @Get(':slug')
   getStoreBySlug(@Param('slug') slug: string) {

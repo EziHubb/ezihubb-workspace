@@ -662,8 +662,7 @@ apps/admin/src/app/(admin)/
   stores/
     [id]/
       permissions/        # Permission matrix editor
-    plans/
-    settings/
+    settings/             # Platform-wide seller fees, payouts, registration, maintenance
   catalog/
     categories/
     collections/
@@ -686,6 +685,37 @@ apps/admin/src/app/(admin)/
     page.tsx              # General settings — route trực tiếp tại /settings, KHÔNG có subfolder /settings/index
     affiliates/
     audit-log/            # Audit log viewer
+    fulfillment/          # POD provider connections (Printify/Merchize)
+    api-keys/             # Partner API key management
 ```
+
+## 13. Marketplace Seller Fees (Etsy-style)
+
+Sellers cannot negotiate or choose their fee rate — one platform-wide fee schedule applies to everyone (Etsy doesn't offer this either; there is no "Seller Plans" tier system, which was fully removed — `SellerPlan`/`SubscriptionBilling` models and their admin/UI no longer exist).
+
+### Fee types (`PlatformSettings`, admin-editable at `/admin/platform-settings`)
+| Field | Default | Applies to |
+|---|---|---|
+| `transactionFeeRate` | 6.5% | `subtotal + shippingCost` per `StoreOrder`, every sale |
+| `paymentProcessingFeeRate` + `paymentProcessingFixedFee` | 5% + $0.25 | same base, every sale |
+| `listingFee` | $0.20 | charged once per product created (no 4-month renewal cycle, unlike real Etsy) |
+| `regulatoryFeeRate` + `regulatoryFeeCountries` | 1.24%, `[]` | only if the seller's `Store.country` is in the configured list |
+
+Calculation: `apps/api/src/modules/stores/fees.util.ts` (`calculateOrderFees`) — pure function, called from `orders.service.ts` at checkout. Per-store tax isn't tracked (`Order.taxAmount` is order-level only), so fees apply to `subtotal + shippingCost`, not tax.
+
+### `SellerLedgerEntry` — itemized statement (source of truth for payouts)
+```prisma
+enum SellerLedgerEntryType { SALE TRANSACTION_FEE PAYMENT_PROCESSING_FEE REGULATORY_FEE LISTING_FEE ADJUSTMENT }
+
+model SellerLedgerEntry {
+  storeId, storeOrderId?, type, amount (signed — positive for SALE, negative for fees), description, payoutId?, createdAt
+}
+```
+- One row per fee type per order (mirrors Etsy's real itemized "Payment account" statement) — created inside the same transaction as the `StoreOrder` in `orders.service.ts`
+- One `LISTING_FEE` row per product creation — `ProductsService.chargeListingFee()`, called from both `create()` (when `storeId` is set) and `createDraftForStore()`
+- `StoreOrder.platformFee`/`.sellerEarnings` are kept as denormalized per-order display totals only — `SellerLedgerEntry` is authoritative for **payouts**, since listing fees aren't tied to any order
+
+### Payouts
+`StoreOrdersService.requestPayout()` (`/seller/payouts/request`) sums every unpaid (`payoutId: null`) `SellerLedgerEntry` for the store — not `StoreOrder.sellerEarnings` — so listing fees are correctly netted out. Creates one `SellerPayout`, stamps `payoutId` onto every included ledger entry and `StoreOrder`.
 
 > **Đã xoá khỏi list:** `flash-deals/`, `gift-chains/`, `gift-pools/`, `blind-match/`, `ai/` (creator-dna/pricing/trends/usage/settings) — toàn bộ các tính năng này đã bị xoá khỏi codebase để đưa site về đúng nghĩa bán hàng thuần tuý (cùng đợt với loyalty/coins/vip/store-credits/flash-deals ở batch 1, và bounties/design-licensing/canva/memberships/creator-dna/trends/pricing/drops/bundles ở batch 2-3).

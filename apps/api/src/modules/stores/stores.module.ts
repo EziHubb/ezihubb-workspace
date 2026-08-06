@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import { StoresController } from './stores.controller';
-import { AdminStoresController, AdminPlansController, AdminPlatformSettingsController, AdminSellerPayoutsController, AdminFinanceController } from './admin-stores.controller';
+import { AdminStoresController, AdminPlatformSettingsController, AdminSellerPayoutsController, AdminFinanceController } from './admin-stores.controller';
 import { SellerOrdersController, SellerPayoutsController, SellerReviewsController, SellerScoreController } from './seller-orders.controller';
 import { StoresService } from './stores.service';
 import { StoreOrdersService } from './store-orders.service';
@@ -27,7 +27,6 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
   controllers: [
     StoresController,
     AdminStoresController,
-    AdminPlansController,
     AdminPlatformSettingsController,
     AdminSellerPayoutsController,
     AdminFinanceController,

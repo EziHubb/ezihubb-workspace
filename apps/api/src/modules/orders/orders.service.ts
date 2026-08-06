@@ -20,6 +20,7 @@ import { FulfillmentConnectionStatus } from '@prisma/client';
 import { FulfillmentRegistryService } from '../fulfillment/fulfillment-registry.service';
 import { FulfillmentConnectionsService } from '../fulfillment/fulfillment-connections.service';
 import { FulfillmentAddress, FulfillmentLineItem } from '../fulfillment/interfaces/fulfillment-provider.interface';
+import { calculateOrderFees, OrderFeeSettings } from '../stores/fees.util';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
@@ -434,13 +435,19 @@ export class OrdersService {
 
       if (storeGroups.size > 0) {
         const platformSettings = await tx.platformSettings.findUnique({ where: { id: 'singleton' } });
-        const defaultRate = Number(platformSettings?.defaultCommissionRate ?? 0.15);
+        const feeSettings: OrderFeeSettings = {
+          transactionFeeRate:        Number(platformSettings?.transactionFeeRate ?? 0.065),
+          paymentProcessingFeeRate:  Number(platformSettings?.paymentProcessingFeeRate ?? 0.05),
+          paymentProcessingFixedFee: Number(platformSettings?.paymentProcessingFixedFee ?? 0.25),
+          regulatoryFeeRate:         Number(platformSettings?.regulatoryFeeRate ?? 0.0124),
+          regulatoryFeeCountries:    platformSettings?.regulatoryFeeCountries ?? [],
+        };
 
         const storeRecords = await tx.store.findMany({
           where:  { id: { in: [...storeGroups.keys()] } },
-          select: { id: true, commissionRate: true },
+          select: { id: true, country: true },
         });
-        const storeRateMap = new Map(storeRecords.map(s => [s.id, s.commissionRate]));
+        const storeCountryMap = new Map(storeRecords.map(s => [s.id, s.country]));
 
         for (const [storeId, items] of storeGroups) {
           const storeSubtotal = items.reduce((sum, item) => {
@@ -448,23 +455,48 @@ export class OrdersService {
             const price = vp > 0 ? vp : Number(item.product.basePrice);
             return sum + price * item.quantity;
           }, 0);
+          const roundedSubtotal = Math.round(storeSubtotal * 100) / 100;
+          const storeShippingCost = freeShipping ? 0 : (providerShippingCost?.get(storeId) ?? 0);
 
-          const rateRaw      = storeRateMap.get(storeId);
-          const feeRate      = rateRaw != null ? Number(rateRaw) : defaultRate;
-          const platformFee  = Math.round(storeSubtotal * feeRate * 100) / 100;
-          const sellerEarnings = Math.round((storeSubtotal - platformFee) * 100) / 100;
+          const fees = calculateOrderFees(roundedSubtotal, storeShippingCost, storeCountryMap.get(storeId), feeSettings);
 
           const storeOrder = await tx.storeOrder.create({
             data: {
               orderId:        newOrder.id,
               storeId,
               status:         OrderStatus.PENDING_PAYMENT,
-              subtotal:       Math.round(storeSubtotal * 100) / 100,
-              platformFee,
-              sellerEarnings,
-              shippingCost:   freeShipping ? 0 : (providerShippingCost?.get(storeId) ?? 0),
+              subtotal:       roundedSubtotal,
+              platformFee:    fees.totalFees,
+              sellerEarnings: fees.sellerEarnings,
+              shippingCost:   storeShippingCost,
             },
           });
+
+          const ledgerEntries: Prisma.SellerLedgerEntryCreateManyInput[] = [
+            {
+              storeId, storeOrderId: storeOrder.id, type: 'SALE',
+              amount: roundedSubtotal + storeShippingCost,
+              description: `Sale — order ${newOrder.orderNumber}`,
+            },
+            {
+              storeId, storeOrderId: storeOrder.id, type: 'TRANSACTION_FEE',
+              amount: -fees.transactionFee,
+              description: `Transaction fee — order ${newOrder.orderNumber}`,
+            },
+            {
+              storeId, storeOrderId: storeOrder.id, type: 'PAYMENT_PROCESSING_FEE',
+              amount: -fees.paymentProcessingFee,
+              description: `Payment processing fee — order ${newOrder.orderNumber}`,
+            },
+          ];
+          if (fees.regulatoryFee > 0) {
+            ledgerEntries.push({
+              storeId, storeOrderId: storeOrder.id, type: 'REGULATORY_FEE',
+              amount: -fees.regulatoryFee,
+              description: `Regulatory operating fee — order ${newOrder.orderNumber}`,
+            });
+          }
+          await tx.sellerLedgerEntry.createMany({ data: ledgerEntries });
 
           await tx.orderItem.updateMany({
             where: {

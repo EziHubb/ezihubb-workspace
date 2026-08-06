@@ -5,26 +5,14 @@ import { useLocale } from 'next-intl';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import Link from 'next/link';
 import {
-  Store, Clock, CheckCircle, XCircle, ArrowRight, ArrowLeft,
+  Store, Clock, CheckCircle, XCircle, ArrowRight,
   Package, TrendingUp, Palette, Globe, ChevronRight, AlertCircle,
-  Check, Zap, Crown, Sparkles,
 } from 'lucide-react';
 import { useAuthStore } from '../../../../lib/store/auth.store';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-
-interface SellerPlan {
-  id:             string;
-  name:           string;
-  monthlyPrice:   number;
-  maxProducts:    number | null;
-  commissionRate: number;
-  features:       string[];
-  isActive:       boolean;
-  sortOrder:      number;
-}
 
 interface StoreApplication {
   status:          'NONE' | 'PENDING' | 'ACTIVE' | 'REJECTED' | 'SUSPENDED';
@@ -37,8 +25,6 @@ interface ApplyPayload {
   name:         string;
   slug:         string;
   description?: string;
-  planType?:    'COMMISSION' | 'SUBSCRIPTION';
-  planId?:      string;
 }
 
 // ── Benefits grid ──────────────────────────────────────────────────────────────
@@ -131,162 +117,14 @@ function RejectedState({ reason, onReapply }: { reason?: string; onReapply: () =
   );
 }
 
-// ── Plan picker ────────────────────────────────────────────────────────────────
-
-const PLAN_ICONS = [Zap, Crown, Sparkles];
-
-function PlanPicker({
-  plans,
-  selectedId,
-  onSelect,
-  onNext,
-}: {
-  plans:      SellerPlan[];
-  selectedId: string | null;  // null = commission (free)
-  onSelect:   (id: string | null) => void;
-  onNext:     () => void;
-}) {
-  function fmt(price: number) {
-    if (price === 0) return 'Free';
-    return `$${Number(price).toFixed(0)}/mo`;
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="text-center space-y-1">
-        <h2 className="text-xl font-bold text-gray-900">Choose your plan</h2>
-        <p className="text-sm text-gray-400">You can upgrade anytime after your shop opens.</p>
-      </div>
-
-      <div className="space-y-3">
-        {/* Free / Commission option */}
-        <button
-          type="button"
-          onClick={() => onSelect(null)}
-          className={[
-            'w-full text-left rounded-2xl border-2 p-4 transition-all',
-            selectedId === null
-              ? 'border-primary bg-primary/5 shadow-sm'
-              : 'border-gray-100 bg-white hover:border-gray-200',
-          ].join(' ')}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className={[
-                'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
-                selectedId === null ? 'bg-primary/15 text-primary' : 'bg-gray-100 text-gray-400',
-              ].join(' ')}>
-                <Zap className="w-4.5 h-4.5" />
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900 text-sm">Commission — Free to start</p>
-                <p className="text-xs text-gray-400 mt-0.5">No monthly fee · We take a % on each sale</p>
-              </div>
-            </div>
-            <div className="shrink-0 text-right">
-              <p className="text-lg font-bold text-gray-900">Free</p>
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide">forever</p>
-            </div>
-          </div>
-          <ul className="mt-3 grid grid-cols-1 gap-1">
-            {['List unlimited products', 'No upfront cost', 'Pay only when you sell'].map((f) => (
-              <li key={f} className="flex items-center gap-2 text-xs text-gray-500">
-                <Check className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                {f}
-              </li>
-            ))}
-          </ul>
-          {selectedId === null && (
-            <div className="mt-3 flex items-center gap-1.5 text-xs text-primary font-semibold">
-              <CheckCircle className="w-3.5 h-3.5" /> Selected
-            </div>
-          )}
-        </button>
-
-        {/* Dynamic subscription plans */}
-        {plans.map((plan, idx) => {
-          const Icon = PLAN_ICONS[idx % PLAN_ICONS.length] ?? Crown;
-          const isSelected = selectedId === plan.id;
-          return (
-            <button
-              key={plan.id}
-              type="button"
-              onClick={() => onSelect(plan.id)}
-              className={[
-                'w-full text-left rounded-2xl border-2 p-4 transition-all',
-                isSelected
-                  ? 'border-primary bg-primary/5 shadow-sm'
-                  : 'border-gray-100 bg-white hover:border-gray-200',
-              ].join(' ')}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className={[
-                    'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
-                    isSelected ? 'bg-primary/15 text-primary' : 'bg-gray-100 text-gray-400',
-                  ].join(' ')}>
-                    <Icon className="w-4.5 h-4.5" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900 text-sm">{plan.name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {(Number(plan.commissionRate) * 100).toFixed(0)}% commission
-                      {plan.maxProducts ? ` · up to ${plan.maxProducts} products` : ' · unlimited products'}
-                    </p>
-                  </div>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-lg font-bold text-gray-900">{fmt(plan.monthlyPrice)}</p>
-                  {plan.monthlyPrice > 0 && <p className="text-[10px] text-gray-400 uppercase tracking-wide">per month</p>}
-                </div>
-              </div>
-
-              {plan.features.length > 0 && (
-                <ul className="mt-3 grid grid-cols-1 gap-1">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-xs text-gray-500">
-                      <Check className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {isSelected && (
-                <div className="mt-3 flex items-center gap-1.5 text-xs text-primary font-semibold">
-                  <CheckCircle className="w-3.5 h-3.5" /> Selected
-                </div>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      <button
-        type="button"
-        onClick={onNext}
-        className="w-full py-3.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
-      >
-        Continue <ArrowRight className="w-4 h-4" />
-      </button>
-    </div>
-  );
-}
-
 // ── Application form ───────────────────────────────────────────────────────────
 
 function ApplicationForm({
   token,
-  planId,
-  planName,
   onSuccess,
-  onBack,
 }: {
   token:     string;
-  planId:    string | null;
-  planName:  string;
   onSuccess: () => void;
-  onBack:    () => void;
 }) {
   const [form, setForm]   = useState({ name: '', slug: '', description: '' });
   const [error, setError] = useState<string | null>(null);
@@ -312,35 +150,15 @@ function ApplicationForm({
     evt.preventDefault();
     setError(null);
     if (!form.name.trim() || !form.slug.trim()) return;
-    const payload: ApplyPayload = {
+    mutation.mutate({
       name:        form.name.trim(),
       slug:        form.slug.trim(),
       description: form.description.trim() || undefined,
-    };
-    if (planId) {
-      payload.planType = 'SUBSCRIPTION';
-      payload.planId   = planId;
-    } else {
-      payload.planType = 'COMMISSION';
-    }
-    mutation.mutate(payload);
+    });
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* Selected plan badge */}
-      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/8 border border-primary/20">
-        <CheckCircle className="w-4 h-4 text-primary shrink-0" />
-        <span className="text-xs font-semibold text-primary">Plan: {planName}</span>
-        <button
-          type="button"
-          onClick={onBack}
-          className="ml-auto text-xs text-gray-400 hover:text-gray-600 underline transition-colors"
-        >
-          Change
-        </button>
-      </div>
-
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">Shop name *</label>
         <input
@@ -465,33 +283,6 @@ function LandingPage({ locale }: { locale: string }) {
   );
 }
 
-// ── Step indicator ─────────────────────────────────────────────────────────────
-
-function StepIndicator({ step }: { step: 1 | 2 }) {
-  return (
-    <div className="flex items-center justify-center gap-2 mb-6">
-      {[1, 2].map((s) => (
-        <div key={s} className="flex items-center gap-2">
-          <div className={[
-            'w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center transition-all',
-            step === s
-              ? 'bg-primary text-white'
-              : step > s
-              ? 'bg-green-500 text-white'
-              : 'bg-gray-100 text-gray-400',
-          ].join(' ')}>
-            {step > s ? <Check className="w-3.5 h-3.5" /> : s}
-          </div>
-          <span className={`text-xs font-medium ${step === s ? 'text-gray-900' : 'text-gray-400'}`}>
-            {s === 1 ? 'Choose plan' : 'Shop details'}
-          </span>
-          {s < 2 && <div className="w-8 h-px bg-gray-200 mx-1" />}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function OpenShopPage() {
@@ -500,21 +291,13 @@ export default function OpenShopPage() {
   const token     = useAuthStore((s) => s.accessToken);
   const isReady   = useAuthStore((s) => s.isAuthReady);
 
-  const [submitted,   setSubmitted]   = useState(false);
-  const [showForm,    setShowForm]    = useState(false);
-  const [step,        setStep]        = useState<1 | 2>(1);
-  // null = commission (free), string = subscription plan ID
-  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [showForm,  setShowForm]  = useState(false);
 
   const { data: application, isLoading: appLoading, refetch } = useQuery<StoreApplication>({
     queryKey: ['my-store-application'],
     queryFn:  () => apiClient.get<StoreApplication>(API_ROUTES.SELLER.STORE_APPLICATION, { token: token ?? undefined }),
     enabled:  !!token && isReady,
-  });
-
-  const { data: plans = [], isLoading: plansLoading } = useQuery<SellerPlan[]>({
-    queryKey: ['public-seller-plans'],
-    queryFn:  () => apiClient.get<SellerPlan[]>(API_ROUTES.STORES.PLANS_PUBLIC),
   });
 
   // Active sellers — open admin in a new tab and stay on this page
@@ -527,7 +310,7 @@ export default function OpenShopPage() {
   // Not logged in
   if (!user) return <LandingPage locale={locale} />;
 
-  if (appLoading || plansLoading) {
+  if (appLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
@@ -557,12 +340,8 @@ export default function OpenShopPage() {
   }
 
   if (status === 'REJECTED' && !showForm) {
-    return <RejectedState reason={application?.rejectedReason} onReapply={() => { setShowForm(true); setStep(1); }} />;
+    return <RejectedState reason={application?.rejectedReason} onReapply={() => setShowForm(true)} />;
   }
-
-  // Resolve selected plan display name
-  const selectedPlan    = plans.find((p) => p.id === selectedPlanId);
-  const selectedPlanName = selectedPlan ? selectedPlan.name : 'Commission (Free)';
 
   return (
     <div className="min-h-screen bg-[#FAFAF8]">
@@ -578,39 +357,15 @@ export default function OpenShopPage() {
           </p>
         </div>
 
-        {/* Step indicator */}
-        <StepIndicator step={step} />
-
         {/* Card */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 lg:p-8">
-          {step === 1 ? (
-            <PlanPicker
-              plans={plans}
-              selectedId={selectedPlanId}
-              onSelect={setSelectedPlanId}
-              onNext={() => setStep(2)}
-            />
-          ) : (
-            <div className="space-y-1">
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 mb-4 transition-colors"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" /> Back to plan selection
-              </button>
-              <ApplicationForm
-                token={token ?? ''}
-                planId={selectedPlanId}
-                planName={selectedPlanName}
-                onSuccess={() => {
-                  setSubmitted(true);
-                  refetch();
-                }}
-                onBack={() => setStep(1)}
-              />
-            </div>
-          )}
+          <ApplicationForm
+            token={token ?? ''}
+            onSuccess={() => {
+              setSubmitted(true);
+              refetch();
+            }}
+          />
         </div>
 
         {/* Steps */}

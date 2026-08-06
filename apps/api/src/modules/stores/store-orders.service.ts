@@ -299,22 +299,52 @@ export class StoreOrdersService {
     return counts;
   }
 
-  async requestPayout(storeId: string, body: { amount?: number; notes?: string }) {
-    const available = await this.prisma.storeOrder.aggregate({
-      where: { storeId, status: { in: ['CONFIRMED', 'IN_PRODUCTION', 'SHIPPED', 'DELIVERED', 'COMPLETED'] as OrderStatus[] }, payoutId: null },
-      _sum: { sellerEarnings: true },
+  /**
+   * Etsy-style payout: pays out the seller's net ledger balance (sales minus
+   * every itemized fee, including listing fees which aren't tied to any
+   * order) rather than just summing StoreOrder.sellerEarnings — that field
+   * only ever reflects order-linked fees, not listing fees. SellerLedgerEntry
+   * is the source of truth here; StoreOrder.sellerEarnings stays as a
+   * per-order display total only.
+   */
+  async requestPayout(storeId: string, body: { notes?: string }) {
+    const unpaidEntries = await this.prisma.sellerLedgerEntry.findMany({
+      where: { storeId, payoutId: null },
+      select: { id: true, amount: true, storeOrderId: true },
     });
-    const balance = Number(available._sum?.sellerEarnings ?? 0);
-    const amount  = body.amount ?? balance;
+    if (unpaidEntries.length === 0) throw new Error('Nothing to pay out');
+
+    const amount      = unpaidEntries.reduce((sum, e) => sum + Number(e.amount), 0);
+    const platformFee = unpaidEntries.reduce((sum, e) => sum + Math.min(0, Number(e.amount)), 0) * -1;
     if (amount <= 0) throw new Error('Nothing to pay out');
-    return this.prisma.sellerPayout.create({
-      data: {
-        storeId,
-        amount,
-        status: 'PENDING',
-        period: new Date().toISOString().slice(0, 7),
-        platformFee: Math.round(Number(amount) * 0.05 * 100) / 100,
-      },
+
+    const storeOrderIds = [...new Set(unpaidEntries.map((e) => e.storeOrderId).filter((id): id is string => !!id))];
+
+    return this.prisma.$transaction(async (tx) => {
+      const payout = await tx.sellerPayout.create({
+        data: {
+          storeId,
+          amount:      Math.round(amount * 100) / 100,
+          platformFee: Math.round(platformFee * 100) / 100,
+          orderCount:  storeOrderIds.length,
+          status:      'PENDING',
+          period:      new Date().toISOString().slice(0, 7),
+          adminNotes:  body.notes,
+        },
+      });
+
+      await tx.sellerLedgerEntry.updateMany({
+        where: { id: { in: unpaidEntries.map((e) => e.id) } },
+        data:  { payoutId: payout.id },
+      });
+      if (storeOrderIds.length > 0) {
+        await tx.storeOrder.updateMany({
+          where: { id: { in: storeOrderIds } },
+          data:  { payoutId: payout.id },
+        });
+      }
+
+      return payout;
     });
   }
 }

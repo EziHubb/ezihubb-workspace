@@ -11,12 +11,18 @@ export interface FulfillmentAddress {
   state?:        string;
   postalCode:    string;
   country:       string;
+  /** Required by some providers' order-create payload (e.g. Merchize); Printify ignores it. */
+  email?:        string;
 }
 
 export interface FulfillmentLineItem {
   externalProductId: string;
   externalVariantId: string;
   quantity:           number;
+  /** Product display name — required by some providers' order-create payload (e.g. Merchize); Printify ignores it. */
+  title?:             string;
+  /** Preview/print image URL — required by some providers' order-create payload (e.g. Merchize); Printify ignores it. */
+  imageUrl?:          string;
 }
 
 export interface ShopProductVariantSummary {

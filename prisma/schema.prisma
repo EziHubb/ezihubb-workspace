@@ -146,16 +146,13 @@ enum StoreStatus {
   REJECTED
 }
 
-enum StorePlanType {
-  COMMISSION
-  SUBSCRIPTION
-}
-
-enum SubscriptionStatus {
-  ACTIVE
-  CANCELLED
-  PAST_DUE
-  TRIALING
+enum SellerLedgerEntryType {
+  SALE
+  TRANSACTION_FEE
+  PAYMENT_PROCESSING_FEE
+  REGULATORY_FEE
+  LISTING_FEE
+  ADJUSTMENT
 }
 
 enum SellerPayoutStatus {
@@ -339,10 +336,10 @@ model Store {
   ownerId            String        @unique
   owner              User          @relation("StoreOwner", fields: [ownerId], references: [id])
   status             StoreStatus   @default(PENDING)
-  planType           StorePlanType @default(COMMISSION)
-  commissionRate     Decimal?      @db.Decimal(5, 4)
-  subscriptionPlanId String?
-  subscriptionPlan   SellerPlan?   @relation(fields: [subscriptionPlanId], references: [id])
+  // ISO 3166-1 alpha-2 country code — used to determine regulatory operating
+  // fee eligibility (see PlatformSettings.regulatoryFeeCountries). Nullable
+  // for existing stores that predate this field; no fee applies until set.
+  country            String?       @db.VarChar(2)
   adminNotes         String?       @db.Text
   rejectedReason     String?
   verifiedAt         DateTime?
@@ -365,7 +362,7 @@ model Store {
   products            Product[]
   categories          Category[]
   storeOrders         StoreOrder[]
-  subscriptions       SubscriptionBilling[]
+  ledgerEntries       SellerLedgerEntry[]
   payouts             SellerPayout[]
   shopSections        ShopSection[]
   shippingProfiles    ShippingProfile[]
@@ -392,40 +389,6 @@ model Store {
   @@index([ownerId])
 }
 
-model SellerPlan {
-  id             String   @id @default(cuid())
-  name           String
-  monthlyPrice   Decimal  @db.Decimal(10, 2)
-  maxProducts    Int?
-  maxOrders      Int?
-  commissionRate Decimal  @db.Decimal(5, 4)
-  features       String[]
-  isActive       Boolean  @default(true)
-  sortOrder      Int      @default(0)
-  createdAt      DateTime @default(now())
-
-  stores        Store[]
-  subscriptions SubscriptionBilling[]
-}
-
-model SubscriptionBilling {
-  id                   String             @id @default(cuid())
-  storeId              String
-  store                Store              @relation(fields: [storeId], references: [id])
-  planId               String
-  plan                 SellerPlan         @relation(fields: [planId], references: [id])
-  status               SubscriptionStatus @default(ACTIVE)
-  currentPeriodStart   DateTime
-  currentPeriodEnd     DateTime
-  cancelledAt          DateTime?
-  stripeSubscriptionId String?
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
-
-  @@index([storeId])
-  @@index([status])
-}
-
 model StoreOrder {
   id             String        @id @default(cuid())
   orderId        String
@@ -447,6 +410,7 @@ model StoreOrder {
   payout         SellerPayout? @relation(fields: [payoutId], references: [id])
   items          OrderItem[]
   fulfillments   StoreOrderFulfillment[]
+  ledgerEntries  SellerLedgerEntry[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -457,33 +421,59 @@ model StoreOrder {
 }
 
 model SellerPayout {
-  id            String             @id @default(cuid())
+  id            String              @id @default(cuid())
   storeId       String
-  store         Store              @relation(fields: [storeId], references: [id])
+  store         Store               @relation(fields: [storeId], references: [id])
   period        String
-  amount        Decimal            @db.Decimal(10, 2)
-  platformFee   Decimal            @db.Decimal(10, 2)
-  orderCount    Int                @default(0)
-  status        SellerPayoutStatus @default(PENDING)
+  amount        Decimal             @db.Decimal(10, 2)
+  platformFee   Decimal             @db.Decimal(10, 2)
+  orderCount    Int                 @default(0)
+  status        SellerPayoutStatus  @default(PENDING)
   paidAt        DateTime?
   processedById String?
   paymentMethod String?
   paymentDetail String?
   adminNotes    String?
   storeOrders   StoreOrder[]
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  ledgerEntries SellerLedgerEntry[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
 
   @@index([storeId])
   @@index([status])
   @@index([period])
 }
 
+model SellerLedgerEntry {
+  id           String                @id @default(cuid())
+  storeId      String
+  store        Store                 @relation(fields: [storeId], references: [id])
+  storeOrderId String?
+  storeOrder   StoreOrder?           @relation(fields: [storeOrderId], references: [id])
+  type         SellerLedgerEntryType
+  // Signed: positive for SALE, negative for every fee type (TRANSACTION_FEE,
+  // PAYMENT_PROCESSING_FEE, REGULATORY_FEE, LISTING_FEE). Summing a store's
+  // unpaid (payoutId: null) rows gives the exact amount owed on next payout —
+  // this table is the source of truth for payout batching, mirroring Etsy's
+  // itemized "Payment account" statement.
+  amount       Decimal               @db.Decimal(10, 2)
+  description  String
+  payoutId     String?
+  payout       SellerPayout?         @relation(fields: [payoutId], references: [id])
+  createdAt    DateTime              @default(now())
+
+  @@index([storeId, payoutId])
+}
+
 model PlatformSettings {
-  id                      String   @id @default("singleton")
-  defaultCommissionRate   Decimal  @default(0.15) @db.Decimal(5, 4)
-  minCommissionRate       Decimal  @default(0.05) @db.Decimal(5, 4)
-  maxCommissionRate       Decimal  @default(0.30) @db.Decimal(5, 4)
+  id                        String   @id @default("singleton")
+  // ── Seller fees (modeled on Etsy's published fee schedule) ────────────────
+  transactionFeeRate        Decimal  @default(0.065)  @db.Decimal(5, 4) // 6.5% of subtotal + shipping
+  paymentProcessingFeeRate  Decimal  @default(0.05)   @db.Decimal(5, 4) // 5% of subtotal + shipping
+  paymentProcessingFixedFee Decimal  @default(0.25)   @db.Decimal(10, 2)
+  listingFee                Decimal  @default(0.20)   @db.Decimal(10, 2) // charged once per product created
+  regulatoryFeeRate         Decimal  @default(0.0124) @db.Decimal(5, 4)
+  regulatoryFeeCountries    String[] @default([]) // ISO 3166-1 alpha-2 codes; empty = applies to nobody
   platformName            String   @default("EziHubb")
   allowPublicRegistration Boolean  @default(false)
   minPayoutAmount         Decimal  @default(100.00) @db.Decimal(10, 2)
@@ -1753,6 +1743,7 @@ model TrackingEvent {
 
 enum FulfillmentProviderType {
   PRINTIFY
+  MERCHIZE
 }
 
 enum FulfillmentConnectionStatus {
@@ -1785,6 +1776,10 @@ model StoreFulfillmentConnection {
   // POST /webhooks/printify/{webhookToken}.
   webhookToken       String?                     @unique
   externalWebhookIds String[]                    @default([])
+  // Provider-specific webhook verification secret (e.g. Merchize's
+  // merchize-webhook-key value) — null for providers with no such concept
+  // (Printify relies solely on the opaque webhookToken above).
+  encryptedWebhookSecret String?                 @db.Text
   lastVerifiedAt     DateTime?
   lastErrorMessage   String?
   createdAt          DateTime                    @default(now())

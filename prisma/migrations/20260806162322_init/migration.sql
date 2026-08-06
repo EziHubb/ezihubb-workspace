@@ -59,10 +59,7 @@ CREATE TYPE "ReferralPayoutStatus" AS ENUM ('REQUESTED', 'PROCESSING', 'PAID', '
 CREATE TYPE "StoreStatus" AS ENUM ('PENDING', 'ACTIVE', 'SUSPENDED', 'REJECTED');
 
 -- CreateEnum
-CREATE TYPE "StorePlanType" AS ENUM ('COMMISSION', 'SUBSCRIPTION');
-
--- CreateEnum
-CREATE TYPE "SubscriptionStatus" AS ENUM ('ACTIVE', 'CANCELLED', 'PAST_DUE', 'TRIALING');
+CREATE TYPE "SellerLedgerEntryType" AS ENUM ('SALE', 'TRANSACTION_FEE', 'PAYMENT_PROCESSING_FEE', 'REGULATORY_FEE', 'LISTING_FEE', 'ADJUSTMENT');
 
 -- CreateEnum
 CREATE TYPE "SellerPayoutStatus" AS ENUM ('PENDING', 'PROCESSING', 'PAID', 'FAILED');
@@ -83,7 +80,7 @@ CREATE TYPE "ModerationStatus" AS ENUM ('PENDING', 'CLEAN', 'FLAGGED', 'REJECTED
 CREATE TYPE "TrackingStage" AS ENUM ('ORDER_CONFIRMED', 'SENT_TO_FULFILLMENT', 'IN_PRODUCTION', 'QUALITY_CHECK', 'PACKAGED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED');
 
 -- CreateEnum
-CREATE TYPE "FulfillmentProviderType" AS ENUM ('PRINTIFY');
+CREATE TYPE "FulfillmentProviderType" AS ENUM ('PRINTIFY', 'MERCHIZE');
 
 -- CreateEnum
 CREATE TYPE "FulfillmentConnectionStatus" AS ENUM ('ACTIVE', 'INVALID', 'DISCONNECTED');
@@ -224,9 +221,7 @@ CREATE TABLE "Store" (
     "bannerUrl" TEXT,
     "ownerId" TEXT NOT NULL,
     "status" "StoreStatus" NOT NULL DEFAULT 'PENDING',
-    "planType" "StorePlanType" NOT NULL DEFAULT 'COMMISSION',
-    "commissionRate" DECIMAL(5,4),
-    "subscriptionPlanId" TEXT,
+    "country" VARCHAR(2),
     "adminNotes" TEXT,
     "rejectedReason" TEXT,
     "verifiedAt" TIMESTAMP(3),
@@ -249,38 +244,6 @@ CREATE TABLE "Store" (
     "scoreLastCalculatedAt" TIMESTAMP(3),
 
     CONSTRAINT "Store_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "SellerPlan" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "monthlyPrice" DECIMAL(10,2) NOT NULL,
-    "maxProducts" INTEGER,
-    "maxOrders" INTEGER,
-    "commissionRate" DECIMAL(5,4) NOT NULL,
-    "features" TEXT[],
-    "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "sortOrder" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "SellerPlan_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "SubscriptionBilling" (
-    "id" TEXT NOT NULL,
-    "storeId" TEXT NOT NULL,
-    "planId" TEXT NOT NULL,
-    "status" "SubscriptionStatus" NOT NULL DEFAULT 'ACTIVE',
-    "currentPeriodStart" TIMESTAMP(3) NOT NULL,
-    "currentPeriodEnd" TIMESTAMP(3) NOT NULL,
-    "cancelledAt" TIMESTAMP(3),
-    "stripeSubscriptionId" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "SubscriptionBilling_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -327,11 +290,28 @@ CREATE TABLE "SellerPayout" (
 );
 
 -- CreateTable
+CREATE TABLE "SellerLedgerEntry" (
+    "id" TEXT NOT NULL,
+    "storeId" TEXT NOT NULL,
+    "storeOrderId" TEXT,
+    "type" "SellerLedgerEntryType" NOT NULL,
+    "amount" DECIMAL(10,2) NOT NULL,
+    "description" TEXT NOT NULL,
+    "payoutId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "SellerLedgerEntry_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "PlatformSettings" (
     "id" TEXT NOT NULL DEFAULT 'singleton',
-    "defaultCommissionRate" DECIMAL(5,4) NOT NULL DEFAULT 0.15,
-    "minCommissionRate" DECIMAL(5,4) NOT NULL DEFAULT 0.05,
-    "maxCommissionRate" DECIMAL(5,4) NOT NULL DEFAULT 0.30,
+    "transactionFeeRate" DECIMAL(5,4) NOT NULL DEFAULT 0.065,
+    "paymentProcessingFeeRate" DECIMAL(5,4) NOT NULL DEFAULT 0.05,
+    "paymentProcessingFixedFee" DECIMAL(10,2) NOT NULL DEFAULT 0.25,
+    "listingFee" DECIMAL(10,2) NOT NULL DEFAULT 0.20,
+    "regulatoryFeeRate" DECIMAL(5,4) NOT NULL DEFAULT 0.0124,
+    "regulatoryFeeCountries" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "platformName" TEXT NOT NULL DEFAULT 'EziHubb',
     "allowPublicRegistration" BOOLEAN NOT NULL DEFAULT false,
     "minPayoutAmount" DECIMAL(10,2) NOT NULL DEFAULT 100.00,
@@ -1283,6 +1263,7 @@ CREATE TABLE "StoreFulfillmentConnection" (
     "encryptedApiKey" TEXT NOT NULL,
     "webhookToken" TEXT,
     "externalWebhookIds" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "encryptedWebhookSecret" TEXT,
     "lastVerifiedAt" TIMESTAMP(3),
     "lastErrorMessage" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1423,12 +1404,6 @@ CREATE INDEX "Store_status_idx" ON "Store"("status");
 CREATE INDEX "Store_ownerId_idx" ON "Store"("ownerId");
 
 -- CreateIndex
-CREATE INDEX "SubscriptionBilling_storeId_idx" ON "SubscriptionBilling"("storeId");
-
--- CreateIndex
-CREATE INDEX "SubscriptionBilling_status_idx" ON "SubscriptionBilling"("status");
-
--- CreateIndex
 CREATE INDEX "StoreOrder_orderId_idx" ON "StoreOrder"("orderId");
 
 -- CreateIndex
@@ -1448,6 +1423,9 @@ CREATE INDEX "SellerPayout_status_idx" ON "SellerPayout"("status");
 
 -- CreateIndex
 CREATE INDEX "SellerPayout_period_idx" ON "SellerPayout"("period");
+
+-- CreateIndex
+CREATE INDEX "SellerLedgerEntry_storeId_payoutId_idx" ON "SellerLedgerEntry"("storeId", "payoutId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Category_slug_key" ON "Category"("slug");
@@ -1879,15 +1857,6 @@ ALTER TABLE "WishlistItem" ADD CONSTRAINT "WishlistItem_productId_fkey" FOREIGN 
 ALTER TABLE "Store" ADD CONSTRAINT "Store_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Store" ADD CONSTRAINT "Store_subscriptionPlanId_fkey" FOREIGN KEY ("subscriptionPlanId") REFERENCES "SellerPlan"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "SubscriptionBilling" ADD CONSTRAINT "SubscriptionBilling_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "SubscriptionBilling" ADD CONSTRAINT "SubscriptionBilling_planId_fkey" FOREIGN KEY ("planId") REFERENCES "SellerPlan"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "StoreOrder" ADD CONSTRAINT "StoreOrder_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -1898,6 +1867,15 @@ ALTER TABLE "StoreOrder" ADD CONSTRAINT "StoreOrder_payoutId_fkey" FOREIGN KEY (
 
 -- AddForeignKey
 ALTER TABLE "SellerPayout" ADD CONSTRAINT "SellerPayout_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SellerLedgerEntry" ADD CONSTRAINT "SellerLedgerEntry_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SellerLedgerEntry" ADD CONSTRAINT "SellerLedgerEntry_storeOrderId_fkey" FOREIGN KEY ("storeOrderId") REFERENCES "StoreOrder"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SellerLedgerEntry" ADD CONSTRAINT "SellerLedgerEntry_payoutId_fkey" FOREIGN KEY ("payoutId") REFERENCES "SellerPayout"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Category" ADD CONSTRAINT "Category_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;

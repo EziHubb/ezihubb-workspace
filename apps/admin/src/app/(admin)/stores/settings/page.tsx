@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save, Settings } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -11,12 +11,17 @@ import { Toggle as PrimitiveToggle } from '../../../../components/products/edit/
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface PlatformSettings {
-  id:                       string;
-  defaultCommissionRate:    number;
-  minPayoutAmount:          number;
-  payoutSchedule:           string;
-  allowPublicRegistration:  boolean;
-  maintenanceMode:          boolean;
+  id:                         string;
+  transactionFeeRate:         number;
+  paymentProcessingFeeRate:   number;
+  paymentProcessingFixedFee:  number;
+  listingFee:                 number;
+  regulatoryFeeRate:          number;
+  regulatoryFeeCountries:     string[];
+  minPayoutAmount:            number;
+  payoutSchedule:             string;
+  allowPublicRegistration:    boolean;
+  maintenanceMode:            boolean;
 }
 
 // ── Section card ──────────────────────────────────────────────────────────────
@@ -69,6 +74,19 @@ function Toggle({ checked, onChange, label, description }: {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+const DEFAULTS: Omit<PlatformSettings, 'id'> = {
+  transactionFeeRate:        0.065,
+  paymentProcessingFeeRate:  0.05,
+  paymentProcessingFixedFee: 0.25,
+  listingFee:                0.20,
+  regulatoryFeeRate:         0.0124,
+  regulatoryFeeCountries:    [],
+  minPayoutAmount:           50,
+  payoutSchedule:            'WEEKLY',
+  allowPublicRegistration:   true,
+  maintenanceMode:           false,
+};
+
 export default function PlatformSettingsPage() {
   const qc = useQueryClient();
 
@@ -80,26 +98,27 @@ export default function PlatformSettingsPage() {
 
   const [form,   setForm  ] = useState<Omit<PlatformSettings, 'id'> | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
+  const [countriesInput, setCountriesInput] = useState('');
 
   useEffect(() => {
     if (data && !form) {
       setForm({
-        defaultCommissionRate:   data.defaultCommissionRate,
-        minPayoutAmount:         data.minPayoutAmount,
-        payoutSchedule:          data.payoutSchedule ?? 'WEEKLY',
-        allowPublicRegistration: data.allowPublicRegistration,
-        maintenanceMode:         data.maintenanceMode,
+        transactionFeeRate:        data.transactionFeeRate,
+        paymentProcessingFeeRate:  data.paymentProcessingFeeRate,
+        paymentProcessingFixedFee: data.paymentProcessingFixedFee,
+        listingFee:                data.listingFee,
+        regulatoryFeeRate:         data.regulatoryFeeRate,
+        regulatoryFeeCountries:    data.regulatoryFeeCountries ?? [],
+        minPayoutAmount:           data.minPayoutAmount,
+        payoutSchedule:            data.payoutSchedule ?? 'WEEKLY',
+        allowPublicRegistration:   data.allowPublicRegistration,
+        maintenanceMode:           data.maintenanceMode,
       });
+      setCountriesInput((data.regulatoryFeeCountries ?? []).join(', '));
     }
   }, [data, form]);
 
-  const s: Omit<PlatformSettings, 'id'> = form ?? {
-    defaultCommissionRate:   0.1,
-    minPayoutAmount:         50,
-    payoutSchedule:          'WEEKLY',
-    allowPublicRegistration: true,
-    maintenanceMode:         false,
-  };
+  const s: Omit<PlatformSettings, 'id'> = form ?? DEFAULTS;
 
   const setS = (patch: Partial<typeof s>) => setForm((f) => ({ ...(f ?? s), ...patch }));
 
@@ -132,39 +151,131 @@ export default function PlatformSettingsPage() {
     <>
       <AdminPageHeader
         title="Platform Settings"
-        subtitle="Configure global commission rates, payouts, and marketplace behaviour"
+        subtitle="Configure seller fees, payouts, and marketplace behaviour"
         queryKey={['admin-platform-settings']}
       />
 
       <div className="space-y-4 max-w-2xl">
 
-        {/* Commission & Payouts */}
+        {/* Seller Fees */}
         <SectionCard
-          title="💰 Commission & Payouts"
-          onSave={() => save('commission')}
-          saving={saving === 'commission'}
+          title="💰 Seller Fees (Etsy-style — same for every seller)"
+          onSave={() => save('fees')}
+          saving={saving === 'fees'}
         >
           <div>
             <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
-              Default Commission Rate
+              Transaction Fee
             </label>
             <div className="relative">
               <input
                 type="number"
-                min={0.01}
+                min={0}
                 max={0.5}
-                step={0.01}
-                value={s.defaultCommissionRate}
-                onChange={(e) => setS({ defaultCommissionRate: Number(e.target.value) })}
+                step={0.001}
+                value={s.transactionFeeRate}
+                onChange={(e) => setS({ transactionFeeRate: Number(e.target.value) })}
                 className={`${inputCls} pr-10`}
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted text-sm">
-                {(Number(s.defaultCommissionRate) * 100).toFixed(0)}%
+                {(Number(s.transactionFeeRate) * 100).toFixed(2)}%
               </span>
             </div>
-            <p className="text-xs text-muted/70 mt-1">Applied to stores not on a specific plan (0.01–0.50).</p>
+            <p className="text-xs text-muted/70 mt-1">Charged on every sale (subtotal + shipping).</p>
           </div>
 
+          <div>
+            <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
+              Payment Processing Fee
+            </label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="number"
+                  min={0}
+                  max={0.5}
+                  step={0.001}
+                  value={s.paymentProcessingFeeRate}
+                  onChange={(e) => setS({ paymentProcessingFeeRate: Number(e.target.value) })}
+                  className={`${inputCls} pr-10`}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted text-sm">
+                  {(Number(s.paymentProcessingFeeRate) * 100).toFixed(2)}%
+                </span>
+              </div>
+              <div className="relative w-32">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={s.paymentProcessingFixedFee}
+                  onChange={(e) => setS({ paymentProcessingFixedFee: Number(e.target.value) })}
+                  className={`${inputCls} pl-7`}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted/70 mt-1">Percentage + fixed fee, charged on every sale.</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
+              Listing Fee
+            </label>
+            <div className="relative w-32">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                value={s.listingFee}
+                onChange={(e) => setS({ listingFee: Number(e.target.value) })}
+                className={`${inputCls} pl-7`}
+              />
+            </div>
+            <p className="text-xs text-muted/70 mt-1">Charged once when a seller creates a new product listing.</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
+              Regulatory Operating Fee
+            </label>
+            <div className="relative w-40 mb-2">
+              <input
+                type="number"
+                min={0}
+                max={0.5}
+                step={0.001}
+                value={s.regulatoryFeeRate}
+                onChange={(e) => setS({ regulatoryFeeRate: Number(e.target.value) })}
+                className={`${inputCls} pr-10`}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted text-sm">
+                {(Number(s.regulatoryFeeRate) * 100).toFixed(2)}%
+              </span>
+            </div>
+            <input
+              type="text"
+              value={countriesInput}
+              onChange={(e) => {
+                setCountriesInput(e.target.value);
+                setS({ regulatoryFeeCountries: e.target.value.split(',').map((c) => c.trim().toUpperCase()).filter(Boolean) });
+              }}
+              placeholder="e.g. FR, IT, TR, VN"
+              className={inputCls}
+            />
+            <p className="text-xs text-muted/70 mt-1">
+              Comma-separated ISO country codes where this fee applies (based on the store's country). Leave empty to disable.
+            </p>
+          </div>
+        </SectionCard>
+
+        {/* Payouts */}
+        <SectionCard
+          title="🏦 Payouts"
+          onSave={() => save('payouts')}
+          saving={saving === 'payouts'}
+        >
           <div>
             <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
               Minimum Payout Amount ($)

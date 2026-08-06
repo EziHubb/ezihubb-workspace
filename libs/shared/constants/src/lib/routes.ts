@@ -431,6 +431,7 @@ export const API_ROUTES = {
     FULFILLMENT_SHOP_PRODUCTS:     (connectionId: string) => `/admin/fulfillment/connections/${connectionId}/shop-products`,
     FULFILLMENT_MAPPINGS:          '/admin/fulfillment/mappings',
     FULFILLMENT_MAPPING_DELETE:    (id: string) => `/admin/fulfillment/mappings/${id}`,
+    FULFILLMENT_WEBHOOK_SECRET:    (connectionId: string) => `/admin/fulfillment/connections/${connectionId}/webhook-secret`,
 
     // ── Partner API keys (3rd-party integrations) ─────────────────────────────
     API_KEYS:        '/admin/api-keys',
@@ -443,7 +444,6 @@ export const API_ROUTES = {
     SECTIONS:         (slug: string) => `/stores/${slug}/sections`,
     REVIEWS:          (slug: string) => `/stores/${slug}/reviews`,
     REVIEWS_SUMMARY:  (slug: string) => `/stores/${slug}/reviews/summary`,
-    PLANS_PUBLIC:     '/stores/plans',
   },
 
   // ── Seller (store-owner portal) ─────────────────────────────────────────────

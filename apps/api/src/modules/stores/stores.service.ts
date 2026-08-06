@@ -20,8 +20,6 @@ import {
   RejectStoreDto,
   SuspendStoreDto,
   AdminListStoresDto,
-  CreateSellerPlanDto,
-  UpdateSellerPlanDto,
   UpdatePlatformSettingsDto,
 } from './dto/admin-stores.dto';
 import { paginatedResponse } from '../../common/dto/paginated-response.dto';
@@ -65,19 +63,13 @@ export class StoresService {
       throw new ForbiddenException({ code: 'ERR_REGISTRATION_CLOSED', message: 'Store applications are by invitation only' });
     }
 
-    // Resolve planType: if planId provided, treat as SUBSCRIPTION
-    let resolvedPlanType: 'COMMISSION' | 'SUBSCRIPTION' = dto.planType ?? 'COMMISSION';
-    if (dto.planId) resolvedPlanType = 'SUBSCRIPTION';
-
     const store = await this.prisma.store.create({
       data: {
-        slug:               dto.slug,
-        name:               dto.name,
-        description:        dto.description,
-        ownerId:            userId,
-        status:             'PENDING',
-        planType:           resolvedPlanType,
-        subscriptionPlanId: dto.planId ?? undefined,
+        slug:        dto.slug,
+        name:        dto.name,
+        description: dto.description,
+        ownerId:     userId,
+        status:      'PENDING',
       },
     });
 
@@ -113,8 +105,7 @@ export class StoresService {
 
   async getMyStore(userId: string) {
     return this.prisma.store.findUnique({
-      where:   { ownerId: userId },
-      include: { subscriptionPlan: true },
+      where: { ownerId: userId },
     });
   }
 
@@ -284,10 +275,8 @@ export class StoresService {
     const store = await this.prisma.store.findUnique({
       where:   { id: storeId },
       include: {
-        owner:        { select: { id: true, email: true, firstName: true, lastName: true } },
-        subscriptionPlan: true,
-        subscriptions:    true,
-        payouts:          { orderBy: { createdAt: 'desc' }, take: 5 },
+        owner:   { select: { id: true, email: true, firstName: true, lastName: true } },
+        payouts: { orderBy: { createdAt: 'desc' }, take: 5 },
       },
     });
     if (!store) throw new NotFoundException('Store not found');
@@ -310,20 +299,13 @@ export class StoresService {
       throw new BadRequestException('Only pending stores can be approved');
     }
 
-    const settings = await this.prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
-    const commissionRate = dto.commissionRate
-      ? dto.commissionRate
-      : Number(settings?.defaultCommissionRate ?? 0.15);
-
     const updatedStore = await this.prisma.$transaction(async (tx) => {
       const s = await tx.store.update({
         where: { id: storeId },
         data: {
-          status:         'ACTIVE',
-          commissionRate,
-          verifiedAt:     new Date(),
-          approvedById:   adminId,
-          subscriptionPlanId: dto.planId ?? null,
+          status:       'ACTIVE',
+          verifiedAt:   new Date(),
+          approvedById: adminId,
         },
       });
 
@@ -424,74 +406,6 @@ export class StoresService {
     }, DEFAULT_JOB_OPTIONS);
 
     return updated;
-  }
-
-  // ─── Admin: Assign plan ───────────────────────────────────────────────────
-
-  async adminAssignPlan(storeId: string, planId: string) {
-    const [store, plan] = await Promise.all([
-      this.prisma.store.findUnique({ where: { id: storeId } }),
-      this.prisma.sellerPlan.findUnique({ where: { id: planId } }),
-    ]);
-    if (!store) throw new NotFoundException('Store not found');
-    if (!plan)  throw new NotFoundException('Plan not found');
-
-    const now = new Date();
-    const periodEnd = new Date(now);
-    periodEnd.setMonth(periodEnd.getMonth() + 1);
-
-    return this.prisma.$transaction(async (tx) => {
-      await tx.subscriptionBilling.updateMany({
-        where: { storeId, status: 'ACTIVE' },
-        data:  { status: 'CANCELLED', cancelledAt: now },
-      });
-
-      const billing = await tx.subscriptionBilling.create({
-        data: {
-          storeId,
-          planId,
-          status:             'ACTIVE',
-          currentPeriodStart: now,
-          currentPeriodEnd:   periodEnd,
-        },
-      });
-
-      await tx.store.update({
-        where: { id: storeId },
-        data:  { subscriptionPlanId: planId, planType: 'SUBSCRIPTION' },
-      });
-
-      return billing;
-    });
-  }
-
-  // ─── Seller Plans ─────────────────────────────────────────────────────────
-
-  async getSellerPlans() {
-    return this.prisma.sellerPlan.findMany({
-      where:   { isActive: true },
-      orderBy: { sortOrder: 'asc' },
-    });
-  }
-
-  async createSellerPlan(dto: CreateSellerPlanDto) {
-    return this.prisma.sellerPlan.create({ data: dto as any });
-  }
-
-  async updateSellerPlan(planId: string, dto: UpdateSellerPlanDto) {
-    const plan = await this.prisma.sellerPlan.findUnique({ where: { id: planId } });
-    if (!plan) throw new NotFoundException('Plan not found');
-    return this.prisma.sellerPlan.update({ where: { id: planId }, data: dto as any });
-  }
-
-  async deleteSellerPlan(planId: string) {
-    const activeSubscribers = await this.prisma.subscriptionBilling.count({
-      where: { planId, status: 'ACTIVE' },
-    });
-    if (activeSubscribers > 0) {
-      throw new BadRequestException('Cannot delete a plan with active subscribers');
-    }
-    return this.prisma.sellerPlan.delete({ where: { id: planId } });
   }
 
   // ─── Platform Settings ────────────────────────────────────────────────────

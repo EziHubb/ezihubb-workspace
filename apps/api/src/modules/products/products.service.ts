@@ -370,6 +370,26 @@ export class ProductsService {
     return this.findByIdAdmin(product.id);
   }
 
+  /** Etsy-style listing fee — charged once per product created, mirrored as a SellerLedgerEntry. */
+  private async chargeListingFee(storeId: string, productId: string): Promise<void> {
+    try {
+      const settings = await this.prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
+      const listingFee = Number(settings?.listingFee ?? 0.20);
+      if (listingFee <= 0) return;
+
+      await this.prisma.sellerLedgerEntry.create({
+        data: {
+          storeId,
+          type:        'LISTING_FEE',
+          amount:      -listingFee,
+          description: `Listing fee — product ${productId}`,
+        },
+      });
+    } catch (err) {
+      this.logger.error(`Failed to charge listing fee for product ${productId}: ${(err as Error).message}`);
+    }
+  }
+
   private async resolveTagNames(names: string[]): Promise<string[]> {
     const ids: string[] = [];
     for (const name of names) {
@@ -467,6 +487,10 @@ export class ProductsService {
     });
 
     await this.redis.invalidatePattern('products:list:*');
+
+    if (storeId) {
+      await this.chargeListingFee(storeId, product.id);
+    }
 
     // fire-and-forget
     this.moderationService?.queueProductModeration(product.id).catch((e) => this.logger.error('mod queue failed', e));
@@ -1530,6 +1554,7 @@ export class ProductsService {
         storeId,
       },
     });
+    await this.chargeListingFee(storeId, product.id);
     return this.findByIdAdmin(product.id);
   }
 

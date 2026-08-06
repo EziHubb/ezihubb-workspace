@@ -28,7 +28,6 @@ interface StoreDetail {
   logoUrl:      string | null;
   bannerUrl:    string | null;
   status:       string;
-  planType:     string;
   rating:       number;
   totalOrders:  number;
   totalRevenue: number;
@@ -570,9 +569,6 @@ export default function AdminStoreDetailPage() {
                     Verified seller
                   </span>
                 )}
-                <span className="text-xs text-muted bg-background border border-border px-2 py-0.5 rounded-full">
-                  {store.planType}
-                </span>
               </div>
             </div>
           </div>

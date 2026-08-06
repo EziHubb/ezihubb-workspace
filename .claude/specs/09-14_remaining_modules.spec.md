@@ -505,7 +505,6 @@ Summary: Full messaging system between customers and admin. 9 endpoints. Custome
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
 | GET | `/api/v1/stores` | Paginated list of active stores (sorted by rating, `?page=&limit=12`) | No |
-| GET | `/api/v1/stores/plans` | Active seller subscription plans | No |
 | GET | `/api/v1/stores/{slug}` | Store detail page data by slug | No |
 | GET | `/api/v1/stores/{slug}/sections` | Product category sections with product counts | No |
 | GET | `/api/v1/stores/{slug}/score` | Store performance score / metrics | No |
@@ -543,11 +542,9 @@ File: `apps/api/src/modules/stores/admin-stores.controller.ts` — ADMIN role sc
 | PATCH | `/api/v1/admin/stores/{id}` | Update store profile |
 | POST | `/api/v1/admin/stores/{id}/banner` | Upload store banner (multipart) |
 | POST | `/api/v1/admin/stores/{id}/logo` | Upload store logo (multipart) |
-| PATCH | `/api/v1/admin/stores/{id}/plan` | Assign seller plan |
 | GET | `/api/v1/admin/stores/{id}/products` | Store's products (paginated) |
 | GET | `/api/v1/admin/stores/{id}/orders` | Store's orders (paginated) |
-| GET/POST/PATCH/DELETE | `/api/v1/admin/plans` | Seller subscription plans CRUD |
-| GET/PATCH | `/api/v1/admin/platform-settings` | Platform-wide marketplace settings |
+| GET/PATCH | `/api/v1/admin/platform-settings` | Platform-wide seller fees + marketplace settings — see `29_admin_extended.spec.md` §13 |
 | GET | `/api/v1/admin/seller-payouts` | List payouts (`?status=`) |
 | GET | `/api/v1/admin/seller-payouts/stats` | Payout stats |
 | POST | `/api/v1/admin/seller-payouts/{id}/pay` | Mark payout as paid |

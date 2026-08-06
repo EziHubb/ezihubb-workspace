@@ -90,7 +90,7 @@ export class SellerPayoutsController {
   }
 
   @Post('request')
-  requestPayout(@Req() req: any, @Body() body: { amount?: number; notes?: string }) {
+  requestPayout(@Req() req: any, @Body() body: { notes?: string }) {
     return this.storeOrdersService.requestPayout(req.store.id, body);
   }
 }

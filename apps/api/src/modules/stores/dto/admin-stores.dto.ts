@@ -1,22 +1,11 @@
 import {
   IsString, IsOptional, IsNumber, IsBoolean, IsEnum,
-  Min, Max, MaxLength, IsArray, IsInt,
+  Min, Max, MaxLength, IsArray,
 } from 'class-validator';
-import { Type } from 'class-transformer';
-import { StoreStatus, StorePlanType } from '@prisma/client';
+import { StoreStatus } from '@prisma/client';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 export class ApproveStoreDto {
-  @IsNumber()
-  @IsOptional()
-  @Min(0.01)
-  @Max(0.5)
-  commissionRate?: number;
-
-  @IsString()
-  @IsOptional()
-  planId?: string;
-
   @IsString()
   @IsOptional()
   @MaxLength(500)
@@ -35,11 +24,6 @@ export class SuspendStoreDto {
   reason: string;
 }
 
-export class AssignPlanDto {
-  @IsString()
-  planId: string;
-}
-
 export class AdminListStoresDto extends PaginationDto {
   @IsEnum(StoreStatus)
   @IsOptional()
@@ -50,78 +34,40 @@ export class AdminListStoresDto extends PaginationDto {
   search?: string;
 }
 
-export class CreateSellerPlanDto {
-  @IsString()
-  name: string;
-
-  @IsNumber()
-  @Min(0)
-  monthlyPrice: number;
-
-  @IsInt()
-  @IsOptional()
-  @Min(1)
-  maxProducts?: number;
-
-  @IsNumber()
-  @Min(0)
-  @Max(1)
-  commissionRate: number;
-
-  @IsArray()
-  @IsString({ each: true })
-  features: string[];
-
-  @IsBoolean()
-  @IsOptional()
-  isActive?: boolean;
-
-  @IsInt()
-  @IsOptional()
-  sortOrder?: number;
-}
-
-export class UpdateSellerPlanDto {
-  @IsString()
-  @IsOptional()
-  name?: string;
-
-  @IsNumber()
-  @IsOptional()
-  @Min(0)
-  monthlyPrice?: number;
-
-  @IsInt()
-  @IsOptional()
-  @Min(1)
-  maxProducts?: number;
-
-  @IsNumber()
-  @IsOptional()
-  @Min(0)
-  @Max(1)
-  commissionRate?: number;
-
-  @IsArray()
-  @IsOptional()
-  @IsString({ each: true })
-  features?: string[];
-
-  @IsBoolean()
-  @IsOptional()
-  isActive?: boolean;
-
-  @IsInt()
-  @IsOptional()
-  sortOrder?: number;
-}
-
 export class UpdatePlatformSettingsDto {
+  // ── Seller fees (Etsy-style — platform-wide, not negotiable per seller) ───
   @IsNumber()
   @IsOptional()
-  @Min(0.01)
+  @Min(0)
   @Max(0.5)
-  defaultCommissionRate?: number;
+  transactionFeeRate?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  @Max(0.5)
+  paymentProcessingFeeRate?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  paymentProcessingFixedFee?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  listingFee?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  @Max(0.5)
+  regulatoryFeeRate?: number;
+
+  @IsArray()
+  @IsOptional()
+  @IsString({ each: true })
+  regulatoryFeeCountries?: string[];
 
   @IsNumber()
   @IsOptional()

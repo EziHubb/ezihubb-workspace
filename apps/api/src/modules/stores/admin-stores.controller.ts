@@ -28,9 +28,8 @@ export class MarkPayoutPaidDto {
   @IsOptional() @IsString() adminNotes?: string;
 }
 import {
-  ApproveStoreDto, RejectStoreDto, SuspendStoreDto, AssignPlanDto,
-  AdminListStoresDto, CreateSellerPlanDto, UpdateSellerPlanDto,
-  UpdatePlatformSettingsDto,
+  ApproveStoreDto, RejectStoreDto, SuspendStoreDto,
+  AdminListStoresDto, UpdatePlatformSettingsDto,
 } from './dto/admin-stores.dto';
 
 @AdminController('stores')
@@ -91,11 +90,6 @@ export class AdminStoresController {
     return this.storesService.adminUploadStoreLogo(id, file);
   }
 
-  @Patch(':id/plan')
-  assignPlan(@Param('id') id: string, @Body() dto: AssignPlanDto) {
-    return this.storesService.adminAssignPlan(id, dto.planId);
-  }
-
   @Get(':id/products')
   getStoreProducts(
     @Param('id') id: string,
@@ -112,33 +106,6 @@ export class AdminStoresController {
     @Query('limit') limit?: string,
   ) {
     return this.storesService.adminGetStoreOrders(id, { page: page ? +page : 1, limit: limit ? +limit : 20 });
-  }
-}
-
-// ─── Seller Plans sub-controller (re-uses AdminController pattern) ────────────
-
-@AdminController('plans')
-export class AdminPlansController {
-  constructor(private readonly storesService: StoresService) {}
-
-  @Get()
-  listPlans() {
-    return this.storesService.getSellerPlans();
-  }
-
-  @Post()
-  createPlan(@Body() dto: CreateSellerPlanDto) {
-    return this.storesService.createSellerPlan(dto);
-  }
-
-  @Patch(':id')
-  updatePlan(@Param('id') id: string, @Body() dto: UpdateSellerPlanDto) {
-    return this.storesService.updateSellerPlan(id, dto);
-  }
-
-  @Delete(':id')
-  deletePlan(@Param('id') id: string) {
-    return this.storesService.deleteSellerPlan(id);
   }
 }
 

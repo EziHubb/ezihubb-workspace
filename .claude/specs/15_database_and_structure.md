@@ -13,7 +13,7 @@
 
 ### Complete Model List
 
-**Lưu ý:** Schema hiện có nhiều models hơn con số 21 ban đầu — mỗi feature module mới trong `apps/api/src/modules/` thường thêm 1-10 models riêng: Store/SellerPlan/SellerPayout, AffiliateAccount/AffiliateCommission/AffiliatePayout, ReferralTier/ReferralCommission, ModerationLog/ModerationRule, Campaign, GiftCard/GiftCardUsage, v.v. Một loạt models thuộc các tính năng đã bị xoá (loyalty/coins/VIP/store-credits/flash-deals/gift-pools/gift-chains/gift-finder/blind-match, và riêng biệt bounties/design-licensing/canva/memberships/creator-dna/trends/pricing/drops/bundles) không còn tồn tại — luôn grep `prisma/schema.prisma` để chắc chắn thay vì tin theo danh sách cũ trong `docs/gap-analysis.md`.
+**Lưu ý:** Schema hiện có nhiều models hơn con số 21 ban đầu — mỗi feature module mới trong `apps/api/src/modules/` thường thêm 1-10 models riêng: Store/SellerPayout/SellerLedgerEntry, StoreFulfillmentConnection/ProductFulfillmentMapping/StoreOrderFulfillment (Printify/Merchize), ApiKey (Partner API), AffiliateAccount/AffiliateCommission/AffiliatePayout, ReferralTier/ReferralCommission, ModerationLog/ModerationRule, Campaign, GiftCard/GiftCardUsage, v.v. Một loạt models thuộc các tính năng đã bị xoá (loyalty/coins/VIP/store-credits/flash-deals/gift-pools/gift-chains/gift-finder/blind-match, riêng biệt bounties/design-licensing/canva/memberships/creator-dna/trends/pricing/drops/bundles, và Seller Plans/SubscriptionBilling — Etsy không cho seller tự chọn mức phí nên đã bỏ hẳn tính năng này, xem `29_admin_extended.spec.md` §13 cho mô hình phí hiện tại) không còn tồn tại — luôn grep `prisma/schema.prisma` để chắc chắn thay vì tin theo danh sách cũ trong `docs/gap-analysis.md`.
 
 | Model | Mô tả |
 |---|---|
