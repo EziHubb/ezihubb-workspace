@@ -8,6 +8,11 @@ const { composePlugins, withNx } = require('@nx/next');
  **/
 const nextConfig = {
   nx: {},
+  // Traces the actual import graph and copies only the node_modules this
+  // app really uses into .next/standalone — instead of shipping the whole
+  // pnpm-workspace node_modules (which also carries client's and api's
+  // deps) into the production Docker image. See docker/Dockerfile.
+  output: 'standalone',
   transpilePackages: ['@ezihubb/constants', '@ezihubb/types', '@ezihubb/ui', '@ezihubb/api-client'],
   experimental: {
     optimizePackageImports: ['recharts', '@tanstack/react-table'],

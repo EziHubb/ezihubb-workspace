@@ -21,6 +21,11 @@ const withNextIntl = createNextIntlPlugin(intlConfigPath);
  **/
 const nextConfig = {
   nx: {},
+  // Traces the actual import graph and copies only the node_modules this
+  // app really uses into .next/standalone — instead of shipping the whole
+  // pnpm-workspace node_modules (which also carries admin's and api's
+  // deps) into the production Docker image. See docker/Dockerfile.
+  output: 'standalone',
   compress: true,
   transpilePackages: ['@ezihubb/constants', '@ezihubb/types', '@ezihubb/ui', '@ezihubb/api-client'],
   images: {
