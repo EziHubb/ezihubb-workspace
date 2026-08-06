@@ -89,12 +89,16 @@ check_resources() {
 }
 
 # How many past builds to keep per image (as timestamped tags), so old
-# layers aren't kept forever on the instance's small disk. Docker's build
-# cache (BuildKit layer cache) is untouched by this — it's keyed by layer
-# digest, not by tag, so pruning old tags here does not slow down future
-# builds; only `docker builder prune`/`docker system prune -a` would do
-# that, and this script never calls those.
+# layers aren't kept forever on the instance's small disk.
 KEEP_BUILDS=7
+
+# BuildKit's own cache mounts (pnpm-store, nx-cache — see docker/Dockerfile)
+# grow unbounded otherwise and filled the disk to 0 bytes free once already
+# (a `docker compose build` failed mid-COPY with "no space left on device",
+# which also took mongodb down since it couldn't write to its volume
+# either). Capping it still keeps the cache that makes rebuilds fast — it
+# evicts least-recently-used entries first, not everything.
+BUILD_CACHE_CAP_GB=6
 
 # Snapshot the freshly-built image under a timestamped tag, then drop
 # older timestamped tags for the same image beyond $KEEP_BUILDS. Untagged
@@ -107,6 +111,7 @@ prune_old_builds() {
     $SSH "docker tag '${image}:latest' '${image}:${ts}' 2>/dev/null || true"
     $SSH "docker images '${image}' --format '{{.Tag}}' | grep -E '^[0-9]{14}\$' | sort -r | tail -n +$((KEEP_BUILDS + 1)) | xargs -r -I{} docker rmi '${image}:{}' 2>/dev/null || true"
     $SSH "docker image prune -f >/dev/null 2>&1 || true"
+    $SSH "docker builder prune -f --keep-storage ${BUILD_CACHE_CAP_GB}GB >/dev/null 2>&1 || true"
 }
 
 echo -e "${YELLOW}Checking SSH connection to $SERVER_USER@$SERVER_IP...${NC}"
