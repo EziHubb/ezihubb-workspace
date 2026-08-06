@@ -8,17 +8,16 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title:       'About Us',
-    description: 'Learn about our mission to create meaningful, personalized handmade gifts crafted with love for every occasion.',
+    description: 'Learn about our mission to create meaningful, personalized gifts — designed by us and printed on demand for every occasion.',
   };
 }
 
 // ── Static data ───────────────────────────────────────────────────────────────
 
 const STATS = [
-  { value: '50K+',   label: 'Happy Customers'  },
-  { value: '2M+',    label: 'Orders Delivered'  },
-  { value: '4.9 ★',  label: 'Average Rating'   },
-  { value: '500+',   label: 'Products'          },
+  { value: 'Made to Order',   label: 'Every item personalized'  },
+  { value: 'USA Printed',     label: 'On-demand production'     },
+  { value: 'No Inventory',    label: 'Nothing pre-made or stored' },
 ];
 
 const PROCESS_STEPS = [
@@ -31,9 +30,9 @@ const PROCESS_STEPS = [
   },
   {
     step: '02',
-    title: 'We Craft',
+    title: 'We Print',
     description:
-      'Our skilled artisans print and assemble each item by hand using premium materials and professional-grade equipment.',
+      'Each item is printed on demand using premium materials and professional-grade equipment — made only after you order it.',
     emoji: '🛠️',
   },
   {
@@ -86,7 +85,7 @@ export default function AboutPage() {
       <section className="relative h-[52vh] md:h-[65vh] overflow-hidden">
         <Image
           src="https://images.unsplash.com/photo-1615529328331-f8917597711f?w=1600&q=80"
-          alt="Artisan crafting a personalized gift"
+          alt="Personalized gift being printed"
           fill
           sizes="100vw"
           className="object-cover"
@@ -114,20 +113,17 @@ export default function AboutPage() {
             <blockquote className="font-display text-2xl md:text-3xl font-bold text-primary italic leading-relaxed">
               &ldquo;The best gifts aren&apos;t bought — they&apos;re created with intention, love, and a personal touch.&rdquo;
             </blockquote>
-            <p className="text-muted text-sm mt-4">
-              — Sarah Mitchell, Founder &amp; Head Artisan
-            </p>
           </div>
           <div className="space-y-4 text-secondary text-base leading-relaxed">
             <p>
               EziHubb was born from a simple belief: the most meaningful gifts
-              are the ones made uniquely for someone. We started in 2019 as a small
-              workshop with two people and a single embroidery machine.
+              are the ones made uniquely for someone. We design every product
+              ourselves and print it on demand — nothing sits pre-made in a warehouse.
             </p>
             <p>
-              Today, we&apos;re a team of 40+ artisans and designers serving customers in
-              30+ countries — but our commitment to handcrafted quality has never changed.
-              Every mug, canvas print, and tumbler still goes through the same careful process.
+              Every order goes through the same careful process, from design to
+              production to shipping, so the mug, canvas print, or tumbler you
+              receive was made specifically for you.
             </p>
             <p>
               We believe personalization is more than printing a name. It&apos;s capturing a
@@ -141,10 +137,10 @@ export default function AboutPage() {
       {/* ── Stats banner ── */}
       <section className="bg-primary py-12 md:py-16">
         <div className="max-w-[1440px] mx-auto px-4 md:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center divide-x divide-white/20">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center divide-x-0 md:divide-x divide-white/20">
             {STATS.map(({ value, label }) => (
               <div key={label} className="px-4">
-                <p className="font-display text-4xl md:text-5xl font-bold text-white mb-1">
+                <p className="font-display text-2xl md:text-3xl font-bold text-white mb-1">
                   {value}
                 </p>
                 <p className="text-white/70 text-sm">{label}</p>

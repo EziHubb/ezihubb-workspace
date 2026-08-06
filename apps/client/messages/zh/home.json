@@ -1,54 +1,4 @@
 {
-  "heroTitle": "讲述故事的礼物",
-  "heroSubtitle": "用心手工打造的个性化礼品 — 从定制马克杯到照片帆布画。",
-  "heroCta": "选购个性化礼品",
-  "heroSecondary": "浏览系列",
-  "heroTrustReviews": "50,000+ 满意顾客",
-  "heroTrustHandmade": "用爱手工制作",
-  "heroTrustShipping": "满$50免运费",
-  "categoriesTitle": "按场合选购",
-  "categoriesSubtitle": "为每一个特别时刻找到完美的个性化礼品",
-  "featuredTitle": "热销商品",
-  "featuredSubtitle": "我们最受欢迎的个性化作品",
-  "viewAll": "查看全部",
-  "howItWorksTitle": "如何购买",
-  "howItWorksSubtitle": "三个简单步骤获得您的完美个性化礼品",
-  "step1Title": "选择您的礼品",
-  "step1Desc": "浏览我们精心策划的马克杯、装饰画等个性化商品系列。",
-  "step2Title": "添加您的个性化内容",
-  "step2Desc": "上传照片，添加姓名，定制每个细节，使其独一无二。",
-  "step3Title": "我们制作并配送",
-  "step3Desc": "我们的工匠手工制作您的订单，直接送达您的家门。",
-  "statsCustomersValue": "50,000+",
-  "statsCustomersLabel": "满意顾客",
-  "statsRatingValue": "4.9★",
-  "statsRatingLabel": "平均评分",
-  "statsProductsValue": "500+",
-  "statsProductsLabel": "商品种类",
-  "statsProcessingValue": "24小时",
-  "statsProcessingLabel": "处理时间",
-  "testimonialsTitle": "顾客评价",
-  "testimonialsSubtitle": "来自那些让他人感到特别的真实故事",
-  "testimonialsT1Text": "为妈妈的生日定制了一个马克杯，她收到后感动地流下了幸福的泪水。质量非常好，4天就到货了！",
-  "testimonialsT1Author": "Sarah J.",
-  "testimonialsT1Product": "定制照片马克杯",
-  "testimonialsT2Text": "为新家定制了个性化帆布画，实物比图片还漂亮。整个过程非常简单，团队也非常热情。",
-  "testimonialsT2Author": "Michael R.",
-  "testimonialsT2Product": "个性化帆布画",
-  "testimonialsT3Text": "我已经订购了5次，每件商品都非常完美。这是我购买有意义礼物的首选店铺。",
-  "testimonialsT3Author": "Emily T.",
-  "testimonialsT3Product": "字母保温杯",
-  "testimonialsPurchased": "购买商品：{product}",
-  "newsletterTitle": "保持灵感",
-  "newsletterSubtitle": "获取个性化创意、专属优惠及新品上线通知，直接发送至您的邮箱。",
-  "newsletterPlaceholder": "输入您的邮箱地址",
-  "newsletterCta": "订阅",
-  "newsletterDisclaimer": "我们尊重您的隐私。随时可以取消订阅。",
-  "trustSecureCheckout": "100% 安全结账",
-  "trustReturns": "30天退换",
-  "trustFreeShipping": "满$50免运费",
-  "trustQuality": "手工制作品质",
-  "newsletterSuccess": "感谢您的订阅！",
   "categories": {
     "title": "按场合选购",
     "subtitle": "为每一个特别时刻找到完美的个性化礼品",
@@ -71,11 +21,11 @@
   },
   "hero": {
     "headline": "讲述故事的礼物",
-    "subheadline": "用心手工打造的个性化礼品 — 从定制马克杯到照片帆布画。",
+    "subheadline": "由我们设计、按需印刷的个性化礼品 — 从定制马克杯到照片帆布画。",
     "ctaPrimary": "选购个性化礼品",
     "ctaSecondary": "浏览系列",
-    "trust1": "50,000+ 满意顾客",
-    "trust2": "用爱手工制作",
+    "trust1": "按需定制",
+    "trust2": "自主设计",
     "trust3": "满$50免运费"
   },
   "collections": {
@@ -100,8 +50,8 @@
       "description": "在下单前确认个性化礼品的实际效果。"
     },
     "step4": {
-      "title": "我们制作并配送",
-      "description": "我们的工匠手工制作您的订单，直接送达您的家门。"
+      "title": "印刷并配送",
+      "description": "我们按需印刷您的订单，直接送达您的家门。"
     }
   },
   "trending": {
@@ -111,12 +61,9 @@
     "empty": "暂无商品。"
   },
   "socialProof": {
-    "orders": "200万+",
-    "ordersLabel": "已完成订单",
-    "rating": "4.8★",
-    "ratingLabel": "平均评分",
-    "customers": "5万+",
-    "customersLabel": "满意顾客"
+    "madeToOrderLabel": "按需定制",
+    "designedInHouseLabel": "自主设计",
+    "usShippingLabel": "美国印刷发货"
   },
   "reviews": {
     "title": "顾客评价",

@@ -13,6 +13,7 @@ import { ToastContainer } from '../../components/ui/ToastContainer';
 import { WebVitals } from '../../components/providers/WebVitals';
 import { CookieConsentBanner } from '../../components/analytics/CookieConsentBanner';
 import { MetaPixel } from '../../components/analytics/MetaPixel';
+import { PinterestTag } from '../../components/analytics/PinterestTag';
 import { OrganizationStructuredData } from '../../components/seo/OrganizationStructuredData';
 import { WebsiteStructuredData } from '../../components/seo/WebsiteStructuredData';
 import { AffiliateTracker } from '../../components/providers/AffiliateTracker';
@@ -169,6 +170,7 @@ export default async function LocaleLayout({
             <WebVitals />
             <CookieConsentBanner />
             <Suspense fallback={null}><MetaPixel /></Suspense>
+            <Suspense fallback={null}><PinterestTag /></Suspense>
           </NextIntlClientProvider>
           </CurrencyProvider>
         </ReactQueryProvider>

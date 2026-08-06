@@ -86,7 +86,6 @@ function UserMenu({ locale }: { locale: string }) {
   const adminUrl  = process.env['NEXT_PUBLIC_ADMIN_URL'] ?? 'http://localhost:3001';
   const isSeller  = (profile as unknown as Record<string, unknown>)['isSeller'] === true
     || storeApp?.status === 'ACTIVE';
-  const shopLink  = isSeller ? adminUrl : `/${locale}/open-shop`;
 
   return (
     <div className="relative hidden md:block" ref={menuRef}>
@@ -122,9 +121,12 @@ function UserMenu({ locale }: { locale: string }) {
             <p className="text-xs text-muted truncate">{profile.email}</p>
           </div>
           {[
-            { icon: Package,  label: 'My Orders',                             href: `/${locale}/account/orders`,  newTab: false },
-            { icon: Settings, label: 'Profile',                               href: `/${locale}/account/profile`, newTab: false },
-            { icon: Store,    label: isSeller ? 'Seller Hub' : 'Open a Shop', href: shopLink,                     newTab: isSeller },
+            { icon: Package,  label: 'My Orders', href: `/${locale}/account/orders`,  newTab: false },
+            { icon: Settings, label: 'Profile',   href: `/${locale}/account/profile`, newTab: false },
+            // "Open a Shop" is intentionally not offered here — the storefront
+            // must not present as a multi-seller marketplace (Pinterest merchant
+            // policy). Existing sellers still get a link to their own Seller Hub.
+            ...(isSeller ? [{ icon: Store, label: 'Seller Hub', href: adminUrl, newTab: true }] : []),
           ].map(({ icon: Icon, label, href, newTab }) => (
             <Link
               key={label}
@@ -181,7 +183,6 @@ export function Navbar({ menuData }: NavbarProps = {}) {
   const adminUrl_   = process.env['NEXT_PUBLIC_ADMIN_URL'] ?? 'http://localhost:3001';
   const isSeller    = (user as unknown as Record<string, unknown> | null)?.['isSeller'] === true
     || storeApp_?.status === 'ACTIVE';
-  const shopHref    = isSeller ? adminUrl_ : `/${locale}/open-shop`;
   const { data: wishlistItems } = useWishlist(isAuthReady && !!user);
   const cart        = useCartStore((s) => s.cart);
   const openDrawer  = useCartStore((s) => s.openDrawer);
@@ -287,15 +288,20 @@ export function Navbar({ menuData }: NavbarProps = {}) {
                 <Badge count={cartCount} />
               </Link>
 
-              {/* Shop icon — desktop only */}
+              {/* Shop icon — only shown to existing sellers (their own Seller
+                  Hub), never as a public "open a shop" invite — see the
+                  matching note in UserMenu above. */}
+              {isSeller && (
               <Link
-                href={shopHref}
-                aria-label={isSeller ? 'My Shop' : 'Open a Shop'}
-                {...(isSeller ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                href={adminUrl_}
+                aria-label="My Shop"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="hidden md:flex relative p-2 hover:bg-muted/10 rounded-full transition-colors"
               >
                 <Store className="w-5 h-5 text-secondary" />
               </Link>
+              )}
 
               <UserMenu locale={locale} />
             </div>

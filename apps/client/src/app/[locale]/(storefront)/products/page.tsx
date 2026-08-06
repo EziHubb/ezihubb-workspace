@@ -11,10 +11,10 @@ const SEASON_LABELS: Record<string, string> = {
 };
 
 const SEASON_DESC: Record<string, string> = {
-  spring: 'Fresh spring gift ideas — personalized blooms, pastels, and garden-inspired handmade goods.',
+  spring: 'Fresh spring gift ideas — personalized blooms, pastels, and garden-inspired designs.',
   summer: 'Sun-filled summer gifts — custom beach bags, personalized drinkware, and outdoor essentials.',
   fall:   'Cozy fall gifts — personalized harvest decor, warm knits, and pumpkin-spice favorites.',
-  winter: 'Warm winter gifts — custom holiday ornaments, personalized candles, and cozy handmade goods.',
+  winter: 'Warm winter gifts — custom holiday ornaments, personalized candles, and cozy printed goods.',
 };
 
 export async function generateMetadata({
@@ -32,16 +32,16 @@ export async function generateMetadata({
   const title = q
     ? `"${q}" Products | EziHubb`
     : seasonLabel
-      ? `${seasonLabel} Gifts & Handmade Goods | EziHubb`
+      ? `${seasonLabel} Personalized Gifts | EziHubb`
       : category
         ? `${category} Gifts | EziHubb`
-        : 'All Handmade Gifts | EziHubb';
+        : 'All Personalized Gifts | EziHubb';
 
   const description = season && SEASON_DESC[season]
     ? SEASON_DESC[season]
     : category
-      ? `Shop personalized ${category} gifts handmade with love at EziHubb.`
-      : 'Shop 120+ personalized handmade gifts — custom mugs, canvas prints, apparel and more.';
+      ? `Shop personalized ${category} gifts, designed by us and printed on demand at EziHubb.`
+      : 'Shop personalized gifts designed by us and printed on demand — custom mugs, canvas prints, apparel and more.';
 
   return {
     title,

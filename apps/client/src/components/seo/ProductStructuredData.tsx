@@ -36,7 +36,12 @@ export function ProductStructuredData({
       '@type':        'Offer',
       price:          product.basePrice,
       priceCurrency:  'USD',
-      availability:   'https://schema.org/InStock',
+      // Real per-variant availability, not a hardcoded claim — Pinterest and
+      // Google both penalize/reject listings whose structured data doesn't
+      // match actual stock status.
+      availability:   product.variants?.some((v) => v.isAvailable)
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
       url:            `${BASE_URL}/${locale}/products/${product.slug}`,
       priceValidUntil: `${new Date().getFullYear() + 1}-12-31`,
     },

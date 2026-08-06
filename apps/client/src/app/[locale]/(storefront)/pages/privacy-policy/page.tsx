@@ -133,8 +133,7 @@ export default function PrivacyPolicyPage() {
               'Payment information: billing address and payment method details (processed securely by our payment partners — we do not store card numbers).',
               'Shipping information: delivery addresses for orders.',
               'Content you upload: product photos, personalization files, review text, and messages.',
-              'Communications: messages you send to sellers, buyers, or our support team.',
-              'Seller information: store name, business details, bank account for payouts (processed by our payment partners).',
+              'Communications: messages you send to our support team.',
             ]} />
 
             <p className="font-semibold text-secondary mt-4">Information collected automatically:</p>
@@ -151,7 +150,7 @@ export default function PrivacyPolicyPage() {
             <P>We use the information we collect to:</P>
             <Ul items={[
               'Create and manage your account.',
-              'Process transactions and facilitate payments between buyers and sellers.',
+              'Process transactions and payments for your orders.',
               'Send order confirmations, shipping updates, and receipts.',
               'Respond to your questions and provide customer support.',
               'Personalize your experience and surface relevant products.',
@@ -168,9 +167,6 @@ export default function PrivacyPolicyPage() {
 
           <Section id="sharing" title="3. Information Sharing & Disclosure">
             <P>We do not sell your personal information. We share it only in the following circumstances:</P>
-
-            <p className="font-semibold text-secondary mt-4">With sellers and buyers:</p>
-            <P>When you place an order, we share your name, shipping address, and order details with the seller. Sellers agree to use this information solely to fulfill your order.</P>
 
             <p className="font-semibold text-secondary mt-4">With service providers:</p>
             <P>We work with trusted third parties to operate the Platform, including payment processors (Stripe), shipping carriers (EasyPost), email delivery (SendGrid), cloud hosting (Cloudflare R2), and analytics. These providers are contractually bound to protect your data.</P>
@@ -201,7 +197,7 @@ export default function PrivacyPolicyPage() {
                     ['Essential',     'Session management, security, checkout',           'No'],
                     ['Functional',    'Language, currency, and display preferences',       'No'],
                     ['Analytics',     'Page views, usage patterns (Google Analytics)',     'Yes'],
-                    ['Marketing',     'Personalised ads and retargeting (Meta Pixel)',     'Yes'],
+                    ['Marketing',     'Personalised ads and retargeting (Meta Pixel, Pinterest Tag)', 'Yes'],
                   ].map(([cat, purpose, opt]) => (
                     <tr key={cat} className="hover:bg-surface/50">
                       <td className="px-4 py-2.5 font-medium text-secondary">{cat}</td>

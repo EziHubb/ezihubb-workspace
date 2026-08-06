@@ -75,7 +75,7 @@ const STAGE_LABELS: Record<TrackingStage, string> = {
 const STAGE_DESCRIPTIONS: Record<TrackingStage, string> = {
   ORDER_CONFIRMED:     'We received your order and are preparing it.',
   PAYMENT_VERIFIED:    'Your payment has been confirmed.',
-  IN_PRODUCTION:       'Your item is being crafted by our artisans.',
+  IN_PRODUCTION:       'Your item is being printed.',
   PRODUCTION_COMPLETE: 'Production is finished and your order is being packed.',
   SHIPPED:             'Your order has been handed to the carrier.',
   SENT_TO_FULFILLMENT: 'Your order has been sent to our fulfillment partner.',

@@ -161,7 +161,7 @@ function RegisterForm() {
         Create account
       </h1>
       <p className="text-muted text-sm mb-8">
-        Join 50,000+ people who love personalized gifts
+        Create your account to start personalizing gifts
       </p>
 
       {/* Google OAuth */}

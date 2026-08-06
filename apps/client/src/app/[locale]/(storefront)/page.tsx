@@ -14,7 +14,6 @@ import { SocialProof } from '../../../components/home/SocialProof';
 import { FeaturedReviews } from '../../../components/home/FeaturedReviews';
 import { NewsletterSection } from '../../../components/home/NewsletterSection';
 import { CreatorNetworkCta } from '../../../components/home/CreatorNetworkCta';
-import { OpenShopCta } from '../../../components/home/OpenShopCta';
 import { MobileHeroCarousel } from '../../../components/home/MobileHeroCarousel';
 
 export const dynamic = 'force-dynamic';
@@ -27,7 +26,7 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'site' });
   const title = 'Personalized Gifts Made with Love';
-  const description = 'Create meaningful personalized gifts with photos, names & messages. 50,000+ happy customers. Free shipping on $50+.';
+  const description = 'Create meaningful personalized gifts with photos, names & messages. Made to order, printed in the USA. Free shipping on $50+.';
   return {
     title,
     description,
@@ -112,8 +111,6 @@ export default async function HomePage({
       {featuredReviews.length > 0 && (
         <FeaturedReviews reviews={featuredReviews} locale={locale} />
       )}
-
-      <OpenShopCta />
 
       <CreatorNetworkCta locale={locale} />
 

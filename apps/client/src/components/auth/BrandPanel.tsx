@@ -2,16 +2,10 @@
 import Image from 'next/image';
 import { Star } from 'lucide-react';
 
-const TESTIMONIALS = [
-  { text: 'Amazing quality and arrived so fast!', author: 'Sarah J.' },
-  { text: 'Perfect anniversary gift. She cried!',  author: 'Michael R.' },
-  { text: 'Best personalized gifts I\'ve found.',  author: 'Emily T.' },
-];
-
-const STATS = [
-  { value: '50K+',  label: 'Happy Customers' },
-  { value: '4.9★',  label: 'Average Rating'  },
-  { value: '24hr',  label: 'Processing Time' },
+const HIGHLIGHTS = [
+  'Custom-designed by us, not resold',
+  'Printed to order in the USA',
+  'Free shipping over $50',
 ];
 
 export function BrandPanel() {
@@ -36,35 +30,21 @@ export function BrandPanel() {
           Gifts That Tell<br />Their Story
         </h2>
         <p className="text-white/80 text-base leading-relaxed max-w-sm">
-          Personalized handmade gifts crafted with love — from custom mugs
+          Personalized gifts designed by us and printed on demand — from custom mugs
           to photo canvas prints for every occasion.
         </p>
 
-        {/* Stats */}
-        <div className="flex gap-6 mt-8">
-          {STATS.map((s) => (
-            <div key={s.label}>
-              <p className="font-display text-2xl font-bold text-white">{s.value}</p>
-              <p className="text-white/70 text-xs mt-0.5">{s.label}</p>
-            </div>
-          ))}
-        </div>
       </div>
 
-      {/* Middle: testimonials */}
+      {/* Middle: highlights */}
       <div className="relative z-10 space-y-3 my-8">
-        {TESTIMONIALS.map((t, i) => (
+        {HIGHLIGHTS.map((text) => (
           <div
-            key={i}
-            className="bg-white/12 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3"
+            key={text}
+            className="flex items-center gap-2.5 bg-white/12 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3"
           >
-            <div className="flex gap-0.5 mb-1.5">
-              {Array.from({ length: 5 }).map((_, j) => (
-                <Star key={j} className="w-3 h-3 text-yellow-300 fill-current" />
-              ))}
-            </div>
-            <p className="text-white text-sm leading-snug">&ldquo;{t.text}&rdquo;</p>
-            <p className="text-white/60 text-xs mt-1">— {t.author}</p>
+            <Star className="w-4 h-4 text-yellow-300 fill-current shrink-0" />
+            <p className="text-white text-sm leading-snug">{text}</p>
           </div>
         ))}
       </div>

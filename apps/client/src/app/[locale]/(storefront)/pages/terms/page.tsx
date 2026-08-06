@@ -4,7 +4,7 @@ import { Scale, Mail } from 'lucide-react';
 
 export const metadata: Metadata = {
   title:       'Terms of Service — EziHubb',
-  description: 'Read our Terms of Service to understand your rights and responsibilities when using the EziHubb marketplace.',
+  description: 'Read our Terms of Service to understand your rights and responsibilities when shopping with EziHubb.',
 };
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -16,15 +16,14 @@ const TOC = [
   { id: 'acceptance',        label: '1. Acceptance of Terms' },
   { id: 'use-of-platform',   label: '2. Use of the Platform' },
   { id: 'accounts',          label: '3. Account Registration' },
-  { id: 'buyer-terms',       label: '4. Buyer Terms' },
-  { id: 'seller-terms',      label: '5. Seller Terms' },
-  { id: 'fees-payments',     label: '6. Fees & Payments' },
-  { id: 'intellectual',      label: '7. Intellectual Property' },
-  { id: 'prohibited',        label: '8. Prohibited Activities' },
-  { id: 'disclaimers',       label: '9. Disclaimers & Liability' },
-  { id: 'governing-law',     label: '10. Governing Law' },
-  { id: 'changes',           label: '11. Changes to Terms' },
-  { id: 'contact',           label: '12. Contact Us' },
+  { id: 'buyer-terms',       label: '4. Orders & Purchases' },
+  { id: 'fees-payments',     label: '5. Fees & Payments' },
+  { id: 'intellectual',      label: '6. Intellectual Property' },
+  { id: 'prohibited',        label: '7. Prohibited Activities' },
+  { id: 'disclaimers',       label: '8. Disclaimers & Liability' },
+  { id: 'governing-law',     label: '9. Governing Law' },
+  { id: 'changes',           label: '10. Changes to Terms' },
+  { id: 'contact',           label: '11. Contact Us' },
 ];
 
 // ── Components ────────────────────────────────────────────────────────────────
@@ -74,7 +73,7 @@ export default function TermsPage() {
             Terms of Service
           </h1>
           <p className="text-muted max-w-xl text-base leading-relaxed mb-6">
-            These Terms govern your use of the EziHubb marketplace. Please read them carefully before placing orders or listing products.
+            These Terms govern your use of EziHubb. Please read them carefully before placing an order.
           </p>
           <div className="flex flex-wrap gap-4 text-sm text-muted">
             <span>
@@ -118,7 +117,7 @@ export default function TermsPage() {
 
           <Section id="acceptance" title="1. Acceptance of Terms">
             <P>
-              By accessing or using the EziHubb marketplace (&ldquo;Platform&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;), you agree to be bound by these Terms of Service (&ldquo;Terms&rdquo;). If you do not agree to these Terms, you may not use the Platform.
+              By accessing or using EziHubb (&ldquo;Platform&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;), you agree to be bound by these Terms of Service (&ldquo;Terms&rdquo;). If you do not agree to these Terms, you may not use the Platform.
             </P>
             <P>
               These Terms constitute a legally binding agreement between you and EziHubb. Your continued use of the Platform following any updates to these Terms constitutes your acceptance of the revised Terms.
@@ -130,7 +129,7 @@ export default function TermsPage() {
 
           <Section id="use-of-platform" title="2. Use of the Platform">
             <P>
-              EziHubb is a marketplace connecting independent sellers of handmade, personalized, and artisan goods with buyers. We provide the Platform as a venue; we are not a party to transactions between buyers and sellers unless explicitly stated.
+              EziHubb designs and sells personalized, print-on-demand gifts directly to you. Every product on the Platform is our own — we are the seller of record for every order.
             </P>
             <P>You must be at least 18 years old to create an account or make purchases. By using the Platform, you represent that you meet this age requirement.</P>
             <P>You agree to use the Platform only for lawful purposes and in accordance with these Terms. You are responsible for ensuring that your use complies with all applicable local, national, and international laws and regulations.</P>
@@ -150,49 +149,26 @@ export default function TermsPage() {
             </P>
           </Section>
 
-          <Section id="buyer-terms" title="4. Buyer Terms">
+          <Section id="buyer-terms" title="4. Orders & Purchases">
             <P>
-              When you place an order on EziHubb, you enter into a contract directly with the seller. EziHubb facilitates the transaction but is not the seller.
+              When you place an order on EziHubb, you enter into a contract directly with us. Every product is designed by EziHubb and printed to order — we are the seller of record for every item on the Platform.
             </P>
-            <P><strong>Orders & Payment:</strong> All orders are subject to seller acceptance. By completing checkout, you authorize payment for the order total, including applicable taxes and shipping fees. Prices are displayed in your selected currency but settled in the seller&apos;s base currency.</P>
-            <P><strong>Cancellations:</strong> You may request a cancellation within 2 hours of placing an order if the seller has not yet begun processing. After that window, cancellation is at the seller&apos;s discretion.</P>
-            <P><strong>Returns & Refunds:</strong> Personalized and custom-made items may not be eligible for return unless they arrive damaged, defective, or materially different from the listing description. Each seller&apos;s return policy is displayed on their store page.</P>
-            <P><strong>Disputes:</strong> If you have a problem with an order, contact the seller directly first. If unresolved within 48 hours, you may open a dispute through our Resolution Center.</P>
+            <P><strong>Orders & Payment:</strong> By completing checkout, you authorize payment for the order total, including applicable taxes and shipping fees.</P>
+            <P><strong>Cancellations:</strong> You may request a cancellation within 2 hours of placing an order, before production begins. After that window, cancellation is at our discretion since production has already started.</P>
+            <P><strong>Returns & Refunds:</strong> Personalized and custom-made items may not be eligible for return unless they arrive damaged, defective, or materially different from the listing description. See our full <Link href="../returns" className="text-primary hover:underline">Returns Policy</Link> for details.</P>
+            <P><strong>Disputes:</strong> If you have a problem with an order, contact us directly and we&apos;ll work to resolve it.</P>
           </Section>
 
-          <Section id="seller-terms" title="5. Seller Terms">
+          <Section id="fees-payments" title="5. Fees & Payments">
             <P>
-              To sell on EziHubb, you must apply for a seller account and be approved. By becoming a seller, you agree to:
-            </P>
-            <Ul items={[
-              'List only items you are authorized to sell and that you can fulfill.',
-              'Accurately describe your products, including materials, dimensions, and processing times.',
-              'Fulfill orders within your stated processing time or notify buyers promptly of any delays.',
-              'Respond to buyer messages within 24 hours on business days.',
-              'Comply with all applicable laws regarding your products, including intellectual property, consumer safety, and export regulations.',
-              'Not list counterfeit, infringing, or prohibited items.',
-            ]} />
-            <P>
-              Sellers are independent contractors and not employees, agents, or partners of EziHubb. You are solely responsible for your products, customer service, and compliance with applicable laws.
+              Prices on the Platform are displayed inclusive or exclusive of taxes depending on your location. You are responsible for any applicable sales tax, VAT, or customs duties related to your purchase.
             </P>
             <P>
-              EziHubb reserves the right to remove listings, suspend, or permanently ban seller accounts that violate these Terms or receive an unacceptable number of buyer complaints.
+              We use industry-standard payment processors and do not store your full card details.
             </P>
           </Section>
 
-          <Section id="fees-payments" title="6. Fees & Payments">
-            <P>
-              EziHubb charges sellers a commission on each completed sale. The applicable commission rate is displayed in your Seller Hub and may vary by plan type (Commission or Subscription). We may also charge listing fees, payment processing fees, or other fees as described in the Seller Fee Schedule.
-            </P>
-            <P>
-              Payouts to sellers are processed according to the payout schedule displayed in your Seller Hub, subject to any holds for disputes or compliance reviews. We use industry-standard payment processors and do not store your full card or bank account details.
-            </P>
-            <P>
-              Prices on the Platform are displayed inclusive or exclusive of taxes depending on your location. You are responsible for any applicable sales tax, VAT, or customs duties related to your purchases or sales.
-            </P>
-          </Section>
-
-          <Section id="intellectual" title="7. Intellectual Property">
+          <Section id="intellectual" title="6. Intellectual Property">
             <P>
               <strong>Platform IP:</strong> The EziHubb name, logo, design, and software are owned by us and protected by intellectual property laws. You may not use them without our prior written consent.
             </P>
@@ -204,7 +180,7 @@ export default function TermsPage() {
             </P>
           </Section>
 
-          <Section id="prohibited" title="8. Prohibited Activities">
+          <Section id="prohibited" title="7. Prohibited Activities">
             <P>You agree not to:</P>
             <Ul items={[
               'Use the Platform for any unlawful purpose or to promote illegal activities.',
@@ -214,12 +190,11 @@ export default function TermsPage() {
               'Use automated bots, scrapers, or crawlers without our express written permission.',
               'Circumvent, disable, or interfere with security or authentication features.',
               'Engage in market manipulation, fake reviews, or coordinated inauthentic behavior.',
-              'Sell products that are illegal, dangerous, or violate third-party rights.',
-              'Conduct transactions off-platform to avoid fees.',
+              'Resell items purchased from EziHubb in a way that misrepresents them as your own designs.',
             ]} />
           </Section>
 
-          <Section id="disclaimers" title="9. Disclaimers & Limitation of Liability">
+          <Section id="disclaimers" title="8. Disclaimers & Limitation of Liability">
             <P>
               THE PLATFORM IS PROVIDED &ldquo;AS IS&rdquo; WITHOUT WARRANTIES OF ANY KIND. WE DO NOT WARRANT THAT THE PLATFORM WILL BE UNINTERRUPTED, ERROR-FREE, OR FREE OF VIRUSES OR OTHER HARMFUL COMPONENTS.
             </P>
@@ -234,7 +209,7 @@ export default function TermsPage() {
             </P>
           </Section>
 
-          <Section id="governing-law" title="10. Governing Law">
+          <Section id="governing-law" title="9. Governing Law">
             <P>
               These Terms shall be governed by and construed in accordance with the laws of the State of Delaware, United States, without regard to its conflict of law principles.
             </P>
@@ -243,7 +218,7 @@ export default function TermsPage() {
             </P>
           </Section>
 
-          <Section id="changes" title="11. Changes to Terms">
+          <Section id="changes" title="10. Changes to Terms">
             <P>
               We may modify these Terms from time to time. When we make material changes, we will notify you via email or a prominent notice on the Platform at least 30 days before the changes take effect.
             </P>
@@ -252,7 +227,7 @@ export default function TermsPage() {
             </P>
           </Section>
 
-          <Section id="contact" title="12. Contact Us">
+          <Section id="contact" title="11. Contact Us">
             <P>
               If you have questions about these Terms of Service, please reach out to us:
             </P>

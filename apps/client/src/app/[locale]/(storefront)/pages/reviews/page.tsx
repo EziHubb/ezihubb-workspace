@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: 'Customer Reviews',
     description:
-      "50,000+ happy customers. Read real reviews from people who've ordered personalized gifts from EziHubb.",
+      "Read real reviews from people who've ordered personalized gifts from EziHubb.",
     robots: { index: true, follow: true },
   };
 }

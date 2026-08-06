@@ -31,11 +31,10 @@ const values = [
   },
 ];
 
-const stats = [
-  { number: '50,000+', label: 'Orders fulfilled' },
-  { number: '4.9★',   label: 'Average review rating' },
-  { number: '120+',   label: 'Product designs' },
-  { number: '30+',    label: 'Countries shipped to' },
+const highlights = [
+  { title: 'Designed In-House',   desc: 'Every design starts with us, not a catalog.' },
+  { title: 'Printed On Demand',   desc: 'Nothing is pre-made — made only after you order.' },
+  { title: 'Shipped from the USA', desc: 'Produced and shipped domestically.' },
 ];
 
 export default function OurStoryPage() {
@@ -59,20 +58,18 @@ export default function OurStoryPage() {
       {/* ── Founding story ────────────────────────────────────────────────── */}
       <section className="grid md:grid-cols-2 gap-12 items-center mb-20">
         <div>
-          <h2 className="text-2xl font-bold text-secondary mb-4">How It All Started</h2>
+          <h2 className="text-2xl font-bold text-secondary mb-4">What We're About</h2>
           <p className="text-muted leading-relaxed mb-4">
-            In 2019, our founder — a passionate crafter and gift-giver — got tired of
-            searching for meaningful presents and coming up empty. Everything on the market
-            felt generic, mass-produced, and forgettable.
-          </p>
-          <p className="text-muted leading-relaxed mb-4">
-            So she started making personalized gifts for friends and family: custom mugs with
-            inside jokes, canvas prints of meaningful places, ornaments engraved with
-            special dates. The response was overwhelming.
+            EziHubb exists because too many gifts on the market feel generic,
+            mass-produced, and forgettable. We wanted to make it easy to give
+            something that actually feels personal — a custom mug with an
+            inside joke, a canvas print of a meaningful place, an ornament
+            engraved with a special date.
           </p>
           <p className="text-muted leading-relaxed">
-            What started as a small Etsy shop in a spare bedroom became EziHubb —
-            a platform dedicated entirely to the art of personalized giving.
+            Every design is created in-house and printed to order — nothing
+            sits pre-made in a warehouse waiting to be sold. That's what lets
+            us keep every item personal to the person receiving it.
           </p>
         </div>
 
@@ -81,14 +78,9 @@ export default function OurStoryPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?w=600&q=80"
-              alt="Our founder at work"
+              alt="Personalized gift production"
               className="w-full h-full object-cover"
             />
-          </div>
-          {/* Floating stat card */}
-          <div className="absolute -bottom-5 -left-5 bg-white rounded-2xl shadow-lg p-4 w-40">
-            <p className="text-3xl font-bold text-primary">50K+</p>
-            <p className="text-xs text-muted mt-0.5">Happy customers worldwide</p>
           </div>
         </div>
       </section>
@@ -111,14 +103,14 @@ export default function OurStoryPage() {
         </div>
       </section>
 
-      {/* ── By the Numbers ────────────────────────────────────────────────── */}
+      {/* ── How We Work ───────────────────────────────────────────────────── */}
       <section className="text-center mb-20">
-        <h2 className="text-2xl font-bold text-secondary mb-10">By the Numbers</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          {stats.map(({ number, label }) => (
-            <div key={label}>
-              <p className="text-4xl font-bold text-primary">{number}</p>
-              <p className="text-sm text-muted mt-1">{label}</p>
+        <h2 className="text-2xl font-bold text-secondary mb-10">How We Work</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {highlights.map(({ title, desc }) => (
+            <div key={title}>
+              <p className="text-xl font-bold text-primary">{title}</p>
+              <p className="text-sm text-muted mt-1">{desc}</p>
             </div>
           ))}
         </div>

@@ -112,12 +112,12 @@ export function HeroBanner({
                 />
               </div>
 
-              {/* Floating rating pill */}
+              {/* Floating badge — no fabricated rating/review counts */}
               <div className="absolute -bottom-3 -left-3 bg-white rounded-xl shadow-floating px-3 py-2 flex items-center gap-2.5">
-                <span className="text-lg" aria-hidden="true">⭐</span>
+                <ShieldCheck className="w-4 h-4 text-success flex-shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-secondary leading-none">4.9 / 5</p>
-                  <p className="text-xs text-muted">50K+ Reviews</p>
+                  <p className="text-xs font-bold text-secondary leading-none">Made to Order</p>
+                  <p className="text-xs text-muted">Printed in the USA</p>
                 </div>
               </div>
             </div>
