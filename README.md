@@ -193,17 +193,16 @@ SENTRY_DSN             # https://...@sentry.io/...
 
 ## Deployment
 
-### AWS EC2 (Docker, pull-only)
+### AWS EC2 (Docker, built on the instance)
 
-Runs on a dedicated AWS EC2 instance (free-tier `t2.micro`/`t3.micro`, or `t3.small` for more headroom). Images are **built by CI, not on the instance** — [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml) builds api/client/admin/migrate on every push to `main` and pushes them to GitHub Container Registry (ghcr.io); a free-tier instance's 1GB RAM can't reliably survive a `next build` (needs 2-4GB). [docker-compose.yml](docker-compose.yml) only `pull`s those images and runs them.
+Runs on a dedicated AWS EC2 instance. Images are **built directly on the instance** via the Dockerfiles in [docker/](docker/) — [docker-compose.yml](docker-compose.yml)'s `build:` blocks. (A CI-build path exists too — [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml) builds api/client/admin/migrate to GitHub Container Registry — but it's on hold; switching back just means changing the `build:` blocks to `image: ${DOCKER_IMAGE_BASE}-...` pulls.) [scripts/deploy.sh](scripts/deploy.sh) provisions a swap file and only rebuilds images whose own files changed, one at a time, to stay within a small instance's RAM.
 
 Postgres runs on AWS RDS Free Tier (not a container) — set `DATABASE_URL` in `.env` to the RDS endpoint. Redis and MongoDB stay self-hosted in Docker (switch `MONGODB_URI` to a MongoDB Atlas free-tier cluster instead if the instance's RAM gets tight — no code change needed). `client`/`admin`/`api` are published to `127.0.0.1` only (`CLIENT_PORT`/`ADMIN_PORT`/`API_PORT` in `.env`, defaults 3010/3011/3012); the host's own nginx reverse-proxies `ezihubb.com` / `admin.ezihubb.com` / `api.ezihubb.com` (via Cloudflare, Full-strict SSL with an Origin Certificate) to those ports.
 
-1. Add the GitHub Actions repo secrets/variables the workflow needs (`NEXT_PUBLIC_*` build args — see the workflow file for the full list), then push to `main` to build the first images.
-2. Copy `.env.example` to `.env` on the instance and fill in real values, including `DOCKER_IMAGE_BASE` (e.g. `ghcr.io/your-github-username/ezihubb`), `DATABASE_URL` (RDS endpoint), and `MONGO_ROOT_USER`/`MONGO_ROOT_PASSWORD`/`MONGODB_URI`.
-3. One-time host nginx setup — see [scripts/nginx-ezihubb.conf](scripts/nginx-ezihubb.conf) for the Cloudflare DNS records and Origin Certificate to create, then installing the site.
-4. Run migrations once: `docker compose run --rm migrate`
-5. Start the stack: `docker compose up -d`, or use [scripts/deploy.sh](scripts/deploy.sh) to do all of the above remotely from your machine (config in `scripts/.deploy-config`, gitignored).
+1. Copy `.env.example` to `.env` on the instance and fill in real values, including `DATABASE_URL` (RDS endpoint) and `MONGO_ROOT_USER`/`MONGO_ROOT_PASSWORD`/`MONGODB_URI`.
+2. One-time host nginx setup — see [scripts/nginx-ezihubb.conf](scripts/nginx-ezihubb.conf) for the Cloudflare DNS records and Origin Certificate to create, then installing the site.
+3. Run migrations once: `docker compose run --rm migrate`
+4. Start the stack: `docker compose up -d --build`, or use [scripts/deploy.sh](scripts/deploy.sh) to do all of the above remotely from your machine (config in `scripts/.deploy-config`, gitignored).
 
 Cloudflare R2 and SendGrid remain external managed services — only `AWS_S3_*` / `SENDGRID_*` need to be set in `.env`.
 

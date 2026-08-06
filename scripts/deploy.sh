@@ -77,6 +77,27 @@ check_resources() {
     fi
 }
 
+# How many past builds to keep per image (as timestamped tags), so old
+# layers aren't kept forever on the instance's small disk. Docker's build
+# cache (BuildKit layer cache) is untouched by this — it's keyed by layer
+# digest, not by tag, so pruning old tags here does not slow down future
+# builds; only `docker builder prune`/`docker system prune -a` would do
+# that, and this script never calls those.
+KEEP_BUILDS=7
+
+# Snapshot the freshly-built image under a timestamped tag, then drop
+# older timestamped tags for the same image beyond $KEEP_BUILDS. Untagged
+# (dangling) layers left behind are cleaned up too — safe, since BuildKit's
+# cache store is independent of image tags.
+prune_old_builds() {
+    local image="ezihubb-workspace-$1"
+    local ts
+    ts="$(date +%Y%m%d%H%M%S)"
+    $SSH "docker tag '${image}:latest' '${image}:${ts}' 2>/dev/null || true"
+    $SSH "docker images '${image}' --format '{{.Tag}}' | grep -E '^[0-9]{14}\$' | sort -r | tail -n +$((KEEP_BUILDS + 1)) | xargs -r -I{} docker rmi '${image}:{}' 2>/dev/null || true"
+    $SSH "docker image prune -f >/dev/null 2>&1 || true"
+}
+
 echo -e "${YELLOW}Checking SSH connection to $SERVER_USER@$SERVER_IP...${NC}"
 if ! $SSH "echo ok" >/dev/null 2>&1; then
     echo -e "${RED}✗ Could not connect. Check SERVER_IP/SERVER_USER/SSH_KEY in $CONFIG_FILE.${NC}"
@@ -119,12 +140,12 @@ DC="docker compose"
 # apps/<app>/ + libs/, so an unrelated app's change doesn't invalidate
 # their build cache anyway, but skipping the build call entirely for
 # untouched services saves even the no-op "check every layer" pass.
-BUILD_TARGETS="api client admin migrate"
+BUILD_TARGETS="migrate api client admin"
 if [ -n "$OLD_HEAD" ] && [ "$OLD_HEAD" != "$NEW_HEAD" ]; then
     CHANGED="$($SSH "cd '$DEPLOY_PATH' && git diff --name-only '$OLD_HEAD' '$NEW_HEAD'" 2>/dev/null || true)"
     if [ -n "$CHANGED" ]; then
         if echo "$CHANGED" | grep -qE '^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|nx\.json|tsconfig(\.base)?\.json|libs/|scripts/|prisma/schema\.prisma|prisma\.config\.ts)'; then
-            BUILD_TARGETS="api client admin migrate"
+            BUILD_TARGETS="migrate api client admin"
         else
             BUILD_TARGETS=""
             echo "$CHANGED" | grep -q '^apps/api/'                 && BUILD_TARGETS="$BUILD_TARGETS api"
@@ -157,6 +178,7 @@ else
         echo -e "${YELLOW}--- $TARGET ---${NC}"
         check_resources
         $SSH "cd '$DEPLOY_PATH' && $DC build $TARGET"
+        prune_old_builds "$TARGET"
 
         if [ "$TARGET" = "migrate" ]; then
             echo -e "${YELLOW}Running pending database migrations (against RDS)...${NC}"
