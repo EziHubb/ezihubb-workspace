@@ -6,6 +6,7 @@ import * as https from 'https';
 const cookieParser = require('cookie-parser');
 
 import { AppModule } from './app/app.module';
+import { PartnerCatalogModule } from './modules/partner-api/partner-catalog.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { RequestIdInterceptor } from './common/interceptors/request-id.interceptor';
@@ -177,6 +178,33 @@ async function bootstrap() {
 
     Logger.log('Swagger docs → http://localhost:3002/api/docs', 'Bootstrap');
   }
+
+  // ── Partner API docs (public, enabled in every environment) ───────────────
+  // Separate document from the internal one above — 3rd-party integrators need
+  // real production docs, not just dev-only internal API docs.
+  const partnerConfig = new DocumentBuilder()
+    .setTitle('EziHubb Partner API')
+    .setDescription(
+      'Public REST API for 3rd-party tools to manage a seller\'s own product catalog. ' +
+      'Authenticate with an API key issued from Settings → API Keys, sent in the X-Api-Key header.',
+    )
+    .setVersion('1.0')
+    .addApiKey(
+      { type: 'apiKey', name: 'X-Api-Key', in: 'header' },
+      'apiKey',
+    )
+    .addTag('Partner API - Products', 'Create, update, list, and delete products in your store')
+    .addTag('Partner API - Search', 'Search products in your store')
+    .build();
+
+  const partnerDocument = SwaggerModule.createDocument(app, partnerConfig, {
+    include: [PartnerCatalogModule],
+  });
+  SwaggerModule.setup('partner/docs', app, partnerDocument, {
+    swaggerOptions: { persistAuthorization: true },
+  });
+
+  Logger.log(`Partner API docs → http://localhost:${process.env.PORT ?? '3002'}/partner/docs`, 'Bootstrap');
 
   // ── Graceful shutdown ─────────────────────────────────────────────────────
   app.enableShutdownHooks();

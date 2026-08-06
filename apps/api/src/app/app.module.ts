@@ -12,6 +12,7 @@ import jwtConfig from '../config/jwt.config';
 import redisConfig from '../config/redis.config';
 import storageConfig from '../config/storage.config';
 import emailConfig from '../config/email.config';
+import secretsConfig from '../config/secrets.config';
 import { PrismaModule } from '../prisma/prisma.module';
 import { CommonModule } from '../common/common.module';
 import { QueueModule } from '../queue/queue.module';
@@ -44,6 +45,9 @@ import { StoresModule } from '../modules/stores/stores.module';
 import { ModerationModule } from '../modules/moderation/moderation.module';
 import { ShopStatsModule } from '../modules/shop-stats/shop-stats.module';
 import { OrderTrackingModule } from '../modules/order-tracking/order-tracking.module';
+import { FulfillmentModule } from '../modules/fulfillment/fulfillment.module';
+import { PartnerApiModule } from '../modules/partner-api/partner-api.module';
+import { PartnerCatalogModule } from '../modules/partner-api/partner-catalog.module';
 import { CampaignsModule } from '../modules/campaigns/campaigns.module';
 import { AdminUsersModule } from '../modules/admin-users/admin-users.module';
 import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
@@ -53,7 +57,7 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
     // ── Config (global, validated) ───────────────────────────────────────────
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig, redisConfig, storageConfig, emailConfig],
+      load: [appConfig, databaseConfig, jwtConfig, redisConfig, storageConfig, emailConfig, secretsConfig],
       validationSchema: Joi.object({
         NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
         PORT: Joi.number().default(3002),
@@ -88,6 +92,10 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
         FRONTEND_URL: Joi.string().default('http://localhost:3000'),
         // MongoDB — optional (falls back to localhost in development)
         MONGODB_URI: Joi.string().default('mongodb://localhost:27017'),
+        // Secrets encryption — base64-encoded 32-byte key (openssl rand -base64 32),
+        // required in every env since a missing key must fail boot loudly rather
+        // than silently storing third-party credentials (e.g. Printify API keys) as plaintext.
+        SECRETS_ENCRYPTION_KEY: Joi.string().length(44).required(),
       }),
       validationOptions: { abortEarly: false },
     }),
@@ -151,6 +159,9 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
     ModerationModule,
     ShopStatsModule,
     OrderTrackingModule,
+    FulfillmentModule,
+    PartnerApiModule,
+    PartnerCatalogModule,
     CampaignsModule,
     AdminUsersModule,
     HealthModule,

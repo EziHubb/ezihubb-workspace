@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { OrderTrackingService } from './order-tracking.service';
-import { OrderTrackingController, PrintifyWebhookController } from './order-tracking.controller';
+import { OrderTrackingController } from './order-tracking.controller';
 
 @Module({
   imports: [PrismaModule],
-  controllers: [OrderTrackingController, PrintifyWebhookController],
+  controllers: [OrderTrackingController],
   providers: [OrderTrackingService],
   exports: [OrderTrackingService],
 })

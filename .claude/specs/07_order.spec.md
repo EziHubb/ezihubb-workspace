@@ -288,7 +288,7 @@ Client routes:
 - Admin buys label via EasyPost → auto-updates `trackingNumber`, `trackingUrl`, `carrier`, `easypostShipmentId`
 - `PATCH /admin/orders/{id}/ship` → sets SHIPPED, emails customer, registers EasyPost tracker
 - EasyPost webhook (`POST /webhooks/easypost`) → auto-updates order to `DELIVERED`
-- Printify webhook (`POST /webhooks/printify`) → handled by `OrderTrackingService`
+- Printify webhook (`POST /webhooks/printify/:token`, `:token` = per-connection secret embedded in the URL — Printify's API has no payload signature/secret mechanism) → handled by `FulfillmentWebhookController`/`FulfillmentWebhookService` in `apps/api/src/modules/fulfillment/`, which also updates `OrderTrackingService` for the customer-facing timeline
 
 ### OrderItem Snapshot
 - At order creation: `productSnapshot` + `variantSnapshot` captured on each `OrderItem`

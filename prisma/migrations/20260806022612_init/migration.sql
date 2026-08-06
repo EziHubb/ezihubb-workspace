@@ -83,6 +83,15 @@ CREATE TYPE "ModerationStatus" AS ENUM ('PENDING', 'CLEAN', 'FLAGGED', 'REJECTED
 CREATE TYPE "TrackingStage" AS ENUM ('ORDER_CONFIRMED', 'SENT_TO_FULFILLMENT', 'IN_PRODUCTION', 'QUALITY_CHECK', 'PACKAGED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED');
 
 -- CreateEnum
+CREATE TYPE "FulfillmentProviderType" AS ENUM ('PRINTIFY');
+
+-- CreateEnum
+CREATE TYPE "FulfillmentConnectionStatus" AS ENUM ('ACTIVE', 'INVALID', 'DISCONNECTED');
+
+-- CreateEnum
+CREATE TYPE "FulfillmentStatus" AS ENUM ('PENDING', 'SUBMITTED', 'IN_PRODUCTION', 'FULFILLED', 'FAILED', 'NOT_APPLICABLE');
+
+-- CreateEnum
 CREATE TYPE "CampaignSeason" AS ENUM ('spring', 'summer', 'autumn', 'winter');
 
 -- CreateTable
@@ -1240,7 +1249,6 @@ CREATE TABLE "OrderTracking" (
     "carrierName" TEXT,
     "estimatedDeliveryMin" TIMESTAMP(3),
     "estimatedDeliveryMax" TIMESTAMP(3),
-    "printifyOrderId" TEXT,
     "lastPolledAt" TIMESTAMP(3),
     "rawCarrierData" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1262,6 +1270,68 @@ CREATE TABLE "TrackingEvent" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "TrackingEvent_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StoreFulfillmentConnection" (
+    "id" TEXT NOT NULL,
+    "storeId" TEXT NOT NULL,
+    "provider" "FulfillmentProviderType" NOT NULL,
+    "status" "FulfillmentConnectionStatus" NOT NULL DEFAULT 'ACTIVE',
+    "externalShopId" TEXT NOT NULL,
+    "externalShopName" TEXT,
+    "encryptedApiKey" TEXT NOT NULL,
+    "webhookToken" TEXT,
+    "externalWebhookIds" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "lastVerifiedAt" TIMESTAMP(3),
+    "lastErrorMessage" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "StoreFulfillmentConnection_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ProductFulfillmentMapping" (
+    "id" TEXT NOT NULL,
+    "connectionId" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "variantId" TEXT,
+    "externalProductId" TEXT NOT NULL,
+    "externalVariantId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ProductFulfillmentMapping_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StoreOrderFulfillment" (
+    "id" TEXT NOT NULL,
+    "storeOrderId" TEXT NOT NULL,
+    "connectionId" TEXT NOT NULL,
+    "externalOrderId" TEXT,
+    "status" "FulfillmentStatus" NOT NULL DEFAULT 'PENDING',
+    "errorMessage" TEXT,
+    "pushedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "StoreOrderFulfillment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ApiKey" (
+    "id" TEXT NOT NULL,
+    "storeId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "keyPrefix" TEXT NOT NULL,
+    "keyHash" TEXT NOT NULL,
+    "lastUsedAt" TIMESTAMP(3),
+    "revokedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ApiKey_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -1746,6 +1816,33 @@ CREATE UNIQUE INDEX "OrderTracking_orderId_key" ON "OrderTracking"("orderId");
 CREATE INDEX "TrackingEvent_trackingId_idx" ON "TrackingEvent"("trackingId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "StoreFulfillmentConnection_webhookToken_key" ON "StoreFulfillmentConnection"("webhookToken");
+
+-- CreateIndex
+CREATE INDEX "StoreFulfillmentConnection_storeId_idx" ON "StoreFulfillmentConnection"("storeId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StoreFulfillmentConnection_storeId_provider_key" ON "StoreFulfillmentConnection"("storeId", "provider");
+
+-- CreateIndex
+CREATE INDEX "ProductFulfillmentMapping_connectionId_idx" ON "ProductFulfillmentMapping"("connectionId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ProductFulfillmentMapping_productId_variantId_key" ON "ProductFulfillmentMapping"("productId", "variantId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StoreOrderFulfillment_storeOrderId_connectionId_key" ON "StoreOrderFulfillment"("storeOrderId", "connectionId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StoreOrderFulfillment_connectionId_externalOrderId_key" ON "StoreOrderFulfillment"("connectionId", "externalOrderId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ApiKey_keyHash_key" ON "ApiKey"("keyHash");
+
+-- CreateIndex
+CREATE INDEX "ApiKey_storeId_idx" ON "ApiKey"("storeId");
+
+-- CreateIndex
 CREATE INDEX "Campaign_isActive_idx" ON "Campaign"("isActive");
 
 -- CreateIndex
@@ -1996,4 +2093,25 @@ ALTER TABLE "OrderTracking" ADD CONSTRAINT "OrderTracking_orderId_fkey" FOREIGN 
 
 -- AddForeignKey
 ALTER TABLE "TrackingEvent" ADD CONSTRAINT "TrackingEvent_trackingId_fkey" FOREIGN KEY ("trackingId") REFERENCES "OrderTracking"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoreFulfillmentConnection" ADD CONSTRAINT "StoreFulfillmentConnection_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductFulfillmentMapping" ADD CONSTRAINT "ProductFulfillmentMapping_connectionId_fkey" FOREIGN KEY ("connectionId") REFERENCES "StoreFulfillmentConnection"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductFulfillmentMapping" ADD CONSTRAINT "ProductFulfillmentMapping_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductFulfillmentMapping" ADD CONSTRAINT "ProductFulfillmentMapping_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "ProductVariant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoreOrderFulfillment" ADD CONSTRAINT "StoreOrderFulfillment_storeOrderId_fkey" FOREIGN KEY ("storeOrderId") REFERENCES "StoreOrder"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoreOrderFulfillment" ADD CONSTRAINT "StoreOrderFulfillment_connectionId_fkey" FOREIGN KEY ("connectionId") REFERENCES "StoreFulfillmentConnection"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ApiKey" ADD CONSTRAINT "ApiKey_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 

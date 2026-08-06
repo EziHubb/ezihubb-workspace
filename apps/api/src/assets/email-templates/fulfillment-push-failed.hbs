@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Action needed: fulfillment provider error</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; background: #faf9f7; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .header { background: #7a2b1f; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #f5e6d3; margin: 0; font-size: 24px; letter-spacing: 1px; }
+    .header p { color: #e0b8a8; margin: 8px 0 0; font-size: 14px; }
+    .body { padding: 40px; color: #3d2b1f; line-height: 1.7; }
+    .body h2 { font-size: 20px; margin-top: 0; }
+    .info-box { background: #f5e6d3; border-radius: 4px; padding: 16px 20px; margin: 20px 0; }
+    .footer { background: #f5e6d3; padding: 20px 40px; text-align: center; font-size: 12px; color: #7a5c45; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>⚠ EziHubb</h1>
+      <p>Fulfillment provider error — {{storeName}}</p>
+    </div>
+    <div class="body">
+      <h2>Hi {{firstName}},</h2>
+      <p>
+        We tried to automatically send a recent order for <strong>{{storeName}}</strong> to your
+        connected fulfillment provider, but it failed after several attempts.
+      </p>
+      <div class="info-box">
+        <p>This order has <strong>not</strong> been sent for production and needs your attention.</p>
+      </div>
+      <p>
+        Please check your fulfillment connection (API key still valid? provider account in good standing?)
+        in your store settings, then fulfill this order manually if needed.
+      </p>
+    </div>
+    <div class="footer">
+      &copy; {{year}} EziHubb. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>

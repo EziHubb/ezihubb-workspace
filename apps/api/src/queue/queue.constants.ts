@@ -10,6 +10,7 @@ export const QUEUES = {
   REFERRAL:             'referral',
   MODERATION:           'moderation',
   ORDER_TRACKING:       'order-tracking',
+  FULFILLMENT:          'fulfillment',
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
@@ -53,6 +54,9 @@ export const JOBS = {
   // Order Tracking
   POLL_CARRIER_STATUS:    'poll-carrier-status',
   TRACKING_STAGE_UPDATE:  'tracking-stage-update',
+
+  // Fulfillment (POD providers — Printify, etc.)
+  PUSH_STORE_ORDER: 'push-store-order',
 } as const;
 
 export type JobName = (typeof JOBS)[keyof typeof JOBS];
@@ -63,6 +67,15 @@ export const DEFAULT_JOB_OPTIONS = {
   backoff: { type: 'exponential', delay: 2_000 },
   removeOnComplete: { count: 100 },
   removeOnFail:     { count: 50 },
+} as const;
+
+/** Fulfillment provider APIs (Printify, etc.) are less reliable than our own
+ *  infra — more attempts, longer backoff than DEFAULT_JOB_OPTIONS. */
+export const FULFILLMENT_JOB_OPTIONS = {
+  attempts: 5,
+  backoff: { type: 'exponential', delay: 5_000 },
+  removeOnComplete: { count: 100 },
+  removeOnFail:     { count: 100 },
 } as const;
 
 // ── Job data interfaces ───────────────────────────────────────────────────────
@@ -115,4 +128,8 @@ export interface CheckImageJobData {
   entityId:   string;
   imageUrl:   string;
   storeId?:   string;
+}
+
+export interface PushStoreOrderJobData {
+  storeOrderId: string;
 }

@@ -58,11 +58,16 @@ export class SearchService {
 
   // ─── Full-text search ──────────────────────────────────────────────────────
 
-  async search(query: SearchQueryDto): Promise<SearchResultDto> {
+  /**
+   * `storeId` is never taken from the client-facing query — it's force-injected by
+   * store-scoped callers (e.g. the Partner API) so a caller can never see another
+   * store's catalog, even via the raw-SQL full-text search path.
+   */
+  async search(query: SearchQueryDto, storeId?: string): Promise<SearchResultDto> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 48;
 
-    const where = await this.buildWhereClause(query);
+    const where = await this.buildWhereClause(query, storeId);
 
     let paginatedResult: PaginatedResult<ProductListItemDto>;
 
@@ -214,6 +219,10 @@ export class SearchService {
 
     if (typeof (baseWhere.soldCount as { gte?: number } | undefined)?.gte === 'number') {
       whereParts.push(`p."soldCount" >= ${(baseWhere.soldCount as { gte: number }).gte}`);
+    }
+
+    if (baseWhere.storeId && typeof baseWhere.storeId === 'string') {
+      whereParts.push(`p."storeId" = '${baseWhere.storeId}'`);
     }
 
     // Use COALESCE so ORDER BY works even when search_vector is NULL
@@ -390,9 +399,12 @@ export class SearchService {
 
   private async buildWhereClause(
     query: SearchQueryDto,
+    storeId?: string,
   ): Promise<Prisma.ProductWhereInput> {
     const where: Prisma.ProductWhereInput = { isActive: true };
     const andConditions: Prisma.ProductWhereInput[] = [];
+
+    if (storeId) where.storeId = storeId;
 
     if (query.category) {
       const cat = await this.prisma.category.findUnique({

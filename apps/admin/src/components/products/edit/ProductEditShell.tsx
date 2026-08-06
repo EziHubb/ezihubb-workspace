@@ -24,6 +24,7 @@ import { ItemOptionsTab }     from './tabs/ItemOptionsTab';
 import { PricingShippingTab } from './tabs/PricingShippingTab';
 import { HowItsMadeTab }      from './tabs/HowItsMadeTab';
 import { SettingsTab }        from './tabs/SettingsTab';
+import { FulfillmentTab }     from './tabs/FulfillmentTab';
 
 // ── Tab config ────────────────────────────────────────────────────────────────
 
@@ -33,13 +34,15 @@ const ALL_TABS = [
   { id: 'item-options',     label: 'Item Options'       },
   { id: 'pricing-shipping', label: 'Pricing & Shipping' },
   { id: 'how-its-made',     label: "How It's Made"      },
+  { id: 'fulfillment',      label: 'Fulfillment'        },
   { id: 'settings',         label: 'Settings'           },
 ] as const;
 
 type TabId = (typeof ALL_TABS)[number]['id'];
 
+// Fulfillment mapping needs a real product id — hide it until the listing is saved once.
 const EDIT_TABS   = ALL_TABS;
-const CREATE_TABS = ALL_TABS;
+const CREATE_TABS = ALL_TABS.filter((t) => t.id !== 'fulfillment');
 
 // ── MoreMenu ─────────────────────────────────────────────────────────────────
 
@@ -465,6 +468,16 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
             <HowItsMadeTab productId={tabProduct?.id ?? product?.id} />
           </div>
           <div className="h-px bg-border" />
+
+          {/* Fulfillment */}
+          {mode === 'edit' && (
+            <>
+              <div ref={(el) => { sectionRefs.current['fulfillment'] = el; }}>
+                <FulfillmentTab productId={tabProduct?.id ?? product?.id} />
+              </div>
+              <div className="h-px bg-border" />
+            </>
+          )}
 
           {/* Settings */}
           <div ref={(el) => { sectionRefs.current['settings'] = el; }}>

@@ -60,28 +60,4 @@ export class OrderTrackingService {
       },
     });
   }
-
-  async handlePrintifyWebhook(payload: any): Promise<void> {
-    // Map Printify statuses to our TrackingStage
-    const statusMap: Record<string, TrackingStage> = {
-      in_production: TrackingStage.IN_PRODUCTION,
-      fulfilled:     TrackingStage.IN_TRANSIT,
-      sent_to_production: TrackingStage.SENT_TO_FULFILLMENT,
-    };
-
-    const externalOrderId = payload?.data?.order?.external_id as string | undefined;
-    if (!externalOrderId) return;
-
-    const stage = statusMap[payload?.type as string] ?? TrackingStage.SENT_TO_FULFILLMENT;
-    const title = `Printify: ${payload?.type ?? 'update'}`;
-
-    await this.updateStage(
-      externalOrderId,
-      stage,
-      title,
-      'printify',
-      payload?.data?.order?.carrier as string | undefined,
-      payload?.data?.order?.tracking_number as string | undefined,
-    );
-  }
 }

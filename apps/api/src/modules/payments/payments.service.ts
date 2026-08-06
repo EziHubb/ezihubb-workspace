@@ -23,6 +23,7 @@ import {
   SendEmailJobData,
   OrderConfirmedJobData,
   DEFAULT_JOB_OPTIONS,
+  FULFILLMENT_JOB_OPTIONS,
 } from '../../queue/queue.constants';
 import {
   CreatePaymentIntentDto,
@@ -56,6 +57,7 @@ export class PaymentsService {
     private readonly referralService: ReferralService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
     @InjectQueue(QUEUES.ORDER_PROCESSING) private readonly orderQueue: Queue,
+    @InjectQueue(QUEUES.FULFILLMENT) private readonly fulfillmentQueue: Queue,
   ) {
     const secretKey = config.get<string>('STRIPE_SECRET_KEY') ?? '';
     this.stripe = new Stripe(secretKey, {
@@ -418,6 +420,14 @@ export class PaymentsService {
           },
         }, DEFAULT_JOB_OPTIONS);
       }
+
+      // Push to a connected fulfillment provider (e.g. Printify) if any of this
+      // store's items are mapped — no-op inside the job if none are.
+      await this.fulfillmentQueue.add(
+        JOBS.PUSH_STORE_ORDER,
+        { storeOrderId: so.id },
+        FULFILLMENT_JOB_OPTIONS,
+      );
     }
   }
 

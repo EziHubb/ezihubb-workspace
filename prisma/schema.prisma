@@ -384,6 +384,9 @@ model Store {
 
   cartItems      CartItem[]           @relation("CartItemStore")
 
+  fulfillmentConnections StoreFulfillmentConnection[]
+  apiKeys                ApiKey[]
+
   @@index([slug])
   @@index([status])
   @@index([ownerId])
@@ -443,6 +446,7 @@ model StoreOrder {
   payoutId       String?
   payout         SellerPayout? @relation(fields: [payoutId], references: [id])
   items          OrderItem[]
+  fulfillments   StoreOrderFulfillment[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -680,6 +684,7 @@ model Product {
   productCategories   ProductCategory[]
   variationGroups     VariationGroup[]
   variationSettings   VariationSettings?
+  fulfillmentMappings ProductFulfillmentMapping[]
 
   @@unique([slug, storeId])
   @@index([categoryId])
@@ -706,6 +711,7 @@ model ProductVariant {
   cartItems           CartItem[]
   orderItems          OrderItem[]
   customizationDrafts CustomizationDraft[]
+  fulfillmentMappings ProductFulfillmentMapping[]
 
   @@index([productId])
 }
@@ -1717,7 +1723,6 @@ model OrderTracking {
   carrierName           String?
   estimatedDeliveryMin  DateTime?
   estimatedDeliveryMax  DateTime?
-  printifyOrderId       String?
   lastPolledAt          DateTime?
   rawCarrierData        Json?
   createdAt             DateTime      @default(now())
@@ -1739,6 +1744,111 @@ model TrackingEvent {
   createdAt   DateTime      @default(now())
 
   @@index([trackingId])
+}
+
+// ─── Fulfillment Providers (POD — Printify, and any future provider) ──────────
+// Provider-agnostic: a new provider is a new FulfillmentProviderType value +
+// a new class implementing FulfillmentProvider (apps/api/src/modules/fulfillment/)
+// — no schema changes needed to add one.
+
+enum FulfillmentProviderType {
+  PRINTIFY
+}
+
+enum FulfillmentConnectionStatus {
+  ACTIVE
+  INVALID
+  DISCONNECTED
+}
+
+enum FulfillmentStatus {
+  PENDING
+  SUBMITTED
+  IN_PRODUCTION
+  FULFILLED
+  FAILED
+  NOT_APPLICABLE
+}
+
+model StoreFulfillmentConnection {
+  id                 String                      @id @default(cuid())
+  storeId            String
+  store              Store                       @relation(fields: [storeId], references: [id])
+  provider           FulfillmentProviderType
+  status             FulfillmentConnectionStatus @default(ACTIVE)
+  externalShopId     String
+  externalShopName   String?
+  encryptedApiKey    String                      @db.Text
+  // Printify has no webhook-signing mechanism (verified against their OpenAPI
+  // spec — no secret/signature concept exists). Security instead relies on an
+  // opaque per-connection token embedded in the registered callback URL itself:
+  // POST /webhooks/printify/{webhookToken}.
+  webhookToken       String?                     @unique
+  externalWebhookIds String[]                    @default([])
+  lastVerifiedAt     DateTime?
+  lastErrorMessage   String?
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+
+  productMappings ProductFulfillmentMapping[]
+  fulfillments    StoreOrderFulfillment[]
+
+  @@unique([storeId, provider])
+  @@index([storeId])
+}
+
+model ProductFulfillmentMapping {
+  id                String                     @id @default(cuid())
+  connectionId      String
+  connection        StoreFulfillmentConnection @relation(fields: [connectionId], references: [id])
+  productId         String
+  product           Product                    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId         String?
+  variant           ProductVariant?            @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  externalProductId String // Printify product id within the seller's shop
+  externalVariantId String // Printify variant id within that product
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  @@unique([productId, variantId])
+  @@index([connectionId])
+}
+
+model StoreOrderFulfillment {
+  id              String                     @id @default(cuid())
+  storeOrderId    String
+  storeOrder      StoreOrder                 @relation(fields: [storeOrderId], references: [id])
+  connectionId    String
+  connection      StoreFulfillmentConnection @relation(fields: [connectionId], references: [id])
+  externalOrderId String?
+  status          FulfillmentStatus          @default(PENDING)
+  errorMessage    String?                    @db.Text
+  pushedAt        DateTime?
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+
+  @@unique([storeOrderId, connectionId])
+  @@unique([connectionId, externalOrderId])
+}
+
+// ─── Partner API (inbound — 3rd-party tools integrating INTO a seller's store) ─
+// Opposite direction from the fulfillment connections above: a seller issues
+// one of these to a 3rd-party tool (listing automation, etc.) so it can call
+// our API on their behalf. Hash-and-lookup like RefreshToken — the raw key is
+// shown once at creation and never stored/retrievable again.
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  storeId    String
+  store      Store     @relation(fields: [storeId], references: [id])
+  name       String
+  keyPrefix  String
+  keyHash    String    @unique
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([storeId])
 }
 
 // ─── Campaigns ────────────────────────────────────────────────────────────────

@@ -17,8 +17,8 @@ apps/api/src/modules/<module>/
     <entity>.schema.ts
 ```
 
-### Modules present in `apps/api/src/modules/` (31 modules)
-`admin`, `admin-users`, `affiliates`, `analytics`, `assets`, `auth`, `campaigns`, `cart`, `catalog`, `currency`, `customization`, `database` (mongodb), `messages`, `moderation`, `notifications` (includes FcmService + PushService), `order-tracking`, `orders`, `payments`, `pdf`, `products` (includes LowStockService), `promotions`, `referrals`, `reviews`, `search`, `shipping`, `shop-stats`, `stores`, `tax`, `translations`, `unsubscribe`, `users`
+### Modules present in `apps/api/src/modules/` (32 modules)
+`admin`, `admin-users`, `affiliates`, `analytics`, `assets`, `auth`, `campaigns`, `cart`, `catalog`, `currency`, `customization`, `database` (mongodb), `fulfillment` (provider-agnostic POD integration — Printify first; see below), `messages`, `moderation`, `notifications` (includes FcmService + PushService), `order-tracking`, `orders`, `payments`, `pdf`, `products` (includes LowStockService), `promotions`, `referrals`, `reviews`, `search`, `shipping`, `shop-stats`, `stores`, `tax`, `translations`, `unsubscribe`, `users`
 
 ## 2. Controller Conventions
 
@@ -293,7 +293,8 @@ QUEUES.LOW_STOCK             // 'low-stock'
 QUEUES.TRANSLATIONS          // 'translations'
 QUEUES.REFERRAL              // 'referral'
 QUEUES.MODERATION            // 'moderation'
-QUEUES.ORDER_TRACKING        // 'order-tracking'
+QUEUES.ORDER_TRACKING        // 'order-tracking' (constant defined but not registered — dead, pre-existing)
+QUEUES.FULFILLMENT           // 'fulfillment' — pushes confirmed StoreOrders to a connected POD provider (Printify)
 
 // Dev mode (DISABLE_QUEUE=true)
 // DevBullModule provides no-op tokens
@@ -407,7 +408,7 @@ File: `apps/api/src/modules/order-tracking/order-tracking.service.ts`
 - Manages `OrderTracking` + `TrackingEvent` records (Prisma)
 - `getTracking(orderId)` — auto-creates record if order exists but no tracking yet
 - `updateStage(orderId, stage, title, source, carrierName?, trackingNumber?)` — upserts + creates event
-- Also handles Printify webhooks via `handlePrintifyWebhook(payload)`
+- Printify (and future POD provider) webhooks live in `apps/api/src/modules/fulfillment/` (`FulfillmentWebhookController`/`.Service`), which calls back into `updateStage()` here — not handled directly by `OrderTrackingService` anymore
 
 ## 17. Presigned Upload Flow (Assets)
 

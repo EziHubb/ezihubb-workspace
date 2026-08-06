@@ -143,7 +143,6 @@ export class AdminCustomersController {
       where: { id },
       include: {
         addresses: true,
-        loyaltyAccount: true,
         affiliateAccount: {
           select: { id: true, referralCode: true, status: true, balance: true },
         },

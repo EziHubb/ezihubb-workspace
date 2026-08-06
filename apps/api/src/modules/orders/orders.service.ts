@@ -16,6 +16,10 @@ import { fmtDateTimeVN } from '../../common/utils/date';
 import { CommissionService } from '../affiliates/commission.service';
 import { PushService } from '../notifications/push.service';
 import { ReferralService } from '../referrals/referral.service';
+import { FulfillmentConnectionStatus } from '@prisma/client';
+import { FulfillmentRegistryService } from '../fulfillment/fulfillment-registry.service';
+import { FulfillmentConnectionsService } from '../fulfillment/fulfillment-connections.service';
+import { FulfillmentAddress, FulfillmentLineItem } from '../fulfillment/interfaces/fulfillment-provider.interface';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
@@ -89,7 +93,80 @@ export class OrdersService {
     private readonly commissionService: CommissionService,
     private readonly pushService: PushService,
     private readonly referralService: ReferralService,
+    private readonly fulfillmentRegistry: FulfillmentRegistryService,
+    private readonly fulfillmentConnections: FulfillmentConnectionsService,
   ) {}
+
+  // ─── Provider (Printify, etc.) shipping ─────────────────────────────────────
+
+  /**
+   * Returns a per-store shipping cost (in dollars) ONLY if every single item
+   * in the cart is fulfilled by an active provider connection — i.e. the
+   * customer's whole order can be quoted for real. Any gap at all (an
+   * unmapped item, a disconnected connection, a provider API error/timeout)
+   * returns null and the caller falls back entirely to the existing flat
+   * ShippingMethod behavior, unchanged. Deliberately all-or-nothing: splitting
+   * a single flat rate across a partially-covered cart has no principled
+   * allocation and isn't worth the complexity for phase 1.
+   */
+  private async computeProviderShippingCost(
+    items: Array<{
+      productId: string;
+      variantId: string | null;
+      quantity:  number;
+      product:   { storeId: string | null };
+    }>,
+    address: FulfillmentAddress,
+  ): Promise<Map<string, number> | null> {
+    const storeGroups = new Map<string, typeof items>();
+    for (const item of items) {
+      const sid = item.product.storeId;
+      if (!sid) return null; // no store → definitely not provider-fulfilled
+      if (!storeGroups.has(sid)) storeGroups.set(sid, []);
+      storeGroups.get(sid)!.push(item);
+    }
+
+    const mappings = await this.prisma.productFulfillmentMapping.findMany({
+      where: { OR: items.map((i) => ({ productId: i.productId, variantId: i.variantId })) },
+      include: { connection: { select: { id: true, provider: true, status: true } } },
+    });
+    const mappingFor = (productId: string, variantId: string | null) =>
+      mappings.find((m) => m.productId === productId && m.variantId === variantId);
+
+    const result = new Map<string, number>();
+
+    for (const [storeId, groupItems] of storeGroups) {
+      const resolved = groupItems.map((i) => mappingFor(i.productId, i.variantId));
+      if (resolved.some((m) => !m || m.connection.status !== FulfillmentConnectionStatus.ACTIVE)) {
+        return null; // this store group has at least one unmapped/disconnected item
+      }
+
+      const connectionId = resolved[0]!.connection.id;
+      if (resolved.some((m) => m!.connection.id !== connectionId)) {
+        // Items in this store map to >1 provider connection — no single rate
+        // quote covers the whole group; fall back rather than guess.
+        return null;
+      }
+
+      const lineItems: FulfillmentLineItem[] = resolved.map((m, idx) => ({
+        externalProductId: m!.externalProductId,
+        externalVariantId: m!.externalVariantId,
+        quantity:           groupItems[idx]!.quantity,
+      }));
+
+      try {
+        const conn        = await this.fulfillmentConnections.getDecryptedConnection(connectionId);
+        const providerImpl = this.fulfillmentRegistry.resolve(conn.provider);
+        const cents        = await providerImpl.getShippingRateCents(conn, lineItems, address);
+        result.set(storeId, cents / 100);
+      } catch (err) {
+        this.logger.warn(`Provider shipping rate failed for store ${storeId}, falling back to flat rate: ${(err as Error).message}`);
+        return null; // a provider outage must never block checkout
+      }
+    }
+
+    return result;
+  }
 
   // ─── Checkout ─────────────────────────────────────────────────────────────
 
@@ -137,6 +214,11 @@ export class OrdersService {
         });
       }
     }
+
+    // ── Provider (Printify, etc.) shipping — computed up-front, before the total
+    // is frozen, since a per-store StoreOrder isn't built until inside the
+    // $transaction below (too late to still be charging the customer for it). ──
+    const providerShippingCost = await this.computeProviderShippingCost(cart.items, dto.shippingAddress);
 
     // Recalculate subtotal from current prices (server-side, never trust client)
     const subtotal = cart.items.reduce((sum, item) => {
@@ -228,13 +310,24 @@ export class OrdersService {
       }
     }
 
-    // Calculate shipping (waived if FREE_SHIPPING coupon applied)
-    const shippingCalc = await this.shippingService.calculateShipping(
-      dto.shippingMethodId,
-      subtotalAfterDiscount,
-    );
-    const shippingCost = freeShipping ? 0 : shippingCalc.cost;
-    const shippingMethodName = shippingCalc.name;
+    // Calculate shipping (waived if FREE_SHIPPING coupon applied).
+    // If every item in the cart is fulfilled by a connected provider (e.g.
+    // Printify), providerShippingCost holds a real per-store quote and we skip
+    // the flat ShippingMethod entirely — otherwise (the common case today)
+    // fall back to the existing flat-rate behavior unchanged.
+    let shippingCost: number;
+    let shippingMethodName: string;
+    if (providerShippingCost) {
+      shippingCost = freeShipping ? 0 : [...providerShippingCost.values()].reduce((s, c) => s + c, 0);
+      shippingMethodName = 'Standard Shipping';
+    } else {
+      const shippingCalc = await this.shippingService.calculateShipping(
+        dto.shippingMethodId,
+        subtotalAfterDiscount,
+      );
+      shippingCost = freeShipping ? 0 : shippingCalc.cost;
+      shippingMethodName = shippingCalc.name;
+    }
 
     const giftWrappingCost = dto.giftWrapping ? GIFT_WRAPPING_PRICE : 0;
 
@@ -369,7 +462,7 @@ export class OrdersService {
               subtotal:       Math.round(storeSubtotal * 100) / 100,
               platformFee,
               sellerEarnings,
-              shippingCost:   0,
+              shippingCost:   freeShipping ? 0 : (providerShippingCost?.get(storeId) ?? 0),
             },
           });
 

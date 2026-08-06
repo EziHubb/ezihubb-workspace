@@ -13,7 +13,7 @@ import {
   CreditCard, Settings, ChevronDown, LogOut, Globe, MessageSquare, Link2,
   Bookmark, Factory, Shield, GitBranch, Store, BarChart2, Wallet, ShieldAlert, History,
   SlidersHorizontal, ScanSearch, TrendingUp,
-  Menu, X, Megaphone,
+  Menu, X, Megaphone, Plug, KeyRound,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -136,8 +136,10 @@ const NAV_SECTIONS: NavSection[] = [
       {
         label: 'Settings', href: '/settings', icon: Settings,
         children: [
-          { label: 'General',   href: '/settings',           icon: Settings },
-          { label: 'Audit Log', href: '/settings/audit-log', icon: Shield   },
+          { label: 'General',     href: '/settings',              icon: Settings },
+          { label: 'Fulfillment', href: '/settings/fulfillment',  icon: Plug     },
+          { label: 'API Keys',    href: '/settings/api-keys',     icon: KeyRound },
+          { label: 'Audit Log',   href: '/settings/audit-log',    icon: Shield   },
         ],
       },
     ],
@@ -183,9 +185,11 @@ function getShopNavSections(storeId: string): NavSection[] {
         {
           label: 'Store Settings', href: storeHref, icon: Settings,
           children: [
-            { label: 'General',    href: storeHref,     icon: Settings     },
-            { label: 'Shipping',   href: '/shipping',   icon: Truck        },
-            { label: 'Promotions', href: '/promotions', icon: BadgePercent },
+            { label: 'General',     href: storeHref,               icon: Settings     },
+            { label: 'Shipping',    href: '/shipping',              icon: Truck        },
+            { label: 'Promotions',  href: '/promotions',            icon: BadgePercent },
+            { label: 'Fulfillment', href: '/settings/fulfillment',  icon: Plug         },
+            { label: 'API Keys',    href: '/settings/api-keys',     icon: KeyRound     },
           ],
         },
       ],

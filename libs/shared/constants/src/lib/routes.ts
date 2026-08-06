@@ -424,6 +424,17 @@ export const API_ROUTES = {
     CAMPAIGN_ACTIVATE:        (id: string) => `/admin/campaigns/${id}/activate`,
     CAMPAIGN_DEACTIVATE:      (id: string) => `/admin/campaigns/${id}/deactivate`,
     CAMPAIGN_STATS:           '/admin/campaigns/stats',
+
+    // ── Fulfillment providers (Printify, etc.) ────────────────────────────────
+    FULFILLMENT_CONNECTIONS:       '/admin/fulfillment/connections',
+    FULFILLMENT_CONNECTION_DELETE: (id: string) => `/admin/fulfillment/connections/${id}`,
+    FULFILLMENT_SHOP_PRODUCTS:     (connectionId: string) => `/admin/fulfillment/connections/${connectionId}/shop-products`,
+    FULFILLMENT_MAPPINGS:          '/admin/fulfillment/mappings',
+    FULFILLMENT_MAPPING_DELETE:    (id: string) => `/admin/fulfillment/mappings/${id}`,
+
+    // ── Partner API keys (3rd-party integrations) ─────────────────────────────
+    API_KEYS:        '/admin/api-keys',
+    API_KEY_DELETE:  (id: string) => `/admin/api-keys/${id}`,
   },
 
   STORES: {

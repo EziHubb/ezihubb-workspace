@@ -385,7 +385,7 @@ export class ProductsService {
     return ids;
   }
 
-  async create(dto: CreateProductDto): Promise<ProductResponseDto> {
+  async create(dto: CreateProductDto, storeId?: string): Promise<ProductResponseDto> {
     if (
       dto.compareAtPrice !== undefined &&
       dto.compareAtPrice <= dto.basePrice
@@ -416,6 +416,8 @@ export class ProductsService {
 
     const slug = await this.resolveUniqueProductSlug(
       dto.slug ?? `${dto.name}-${dto.sku}`,
+      undefined,
+      storeId,
     );
 
     const product = await this.prisma.product.create({
@@ -432,6 +434,7 @@ export class ProductsService {
         isFeatured: dto.isFeatured ?? false,
         processingDays: dto.processingDays ?? 3,
         categoryId: dto.categoryId,
+        storeId,
         customizationConfig:
           (dto.customizationConfig as Prisma.InputJsonValue) ?? Prisma.JsonNull,
         variants: dto.variants?.length
