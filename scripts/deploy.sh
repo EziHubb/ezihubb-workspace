@@ -152,10 +152,10 @@ NEW_HEAD="$($SSH "cd '$DEPLOY_PATH' && git rev-parse HEAD" 2>/dev/null || true)"
 DC="docker compose"
 
 # Only build the app image(s) whose own files (or a shared dependency)
-# actually changed — Dockerfile.api/client/admin COPY just their own
-# apps/<app>/ + libs/, so an unrelated app's change doesn't invalidate
-# their build cache anyway, but skipping the build call entirely for
-# untouched services saves even the no-op "check every layer" pass.
+# actually changed — each builder-<app> stage in docker/Dockerfile COPYs
+# just its own apps/<app>/ + libs/, so an unrelated app's change doesn't
+# invalidate their build cache anyway, but skipping the build call entirely
+# for untouched services saves even the no-op "check every layer" pass.
 BUILD_TARGETS="migrate api client admin"
 if [ -n "$OLD_HEAD" ] && [ "$OLD_HEAD" != "$NEW_HEAD" ]; then
     CHANGED="$($SSH "cd '$DEPLOY_PATH' && git diff --name-only '$OLD_HEAD' '$NEW_HEAD'" 2>/dev/null || true)"

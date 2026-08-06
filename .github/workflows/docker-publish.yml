@@ -46,18 +46,18 @@ jobs:
             api:
               - *shared
               - 'apps/api/**'
-              - 'docker/Dockerfile.api'
+              - 'docker/Dockerfile'
             client:
               - *shared
               - 'apps/client/**'
-              - 'docker/Dockerfile.client'
+              - 'docker/Dockerfile'
             admin:
               - *shared
               - 'apps/admin/**'
-              - 'docker/Dockerfile.admin'
+              - 'docker/Dockerfile'
             migrate:
               - 'prisma/**'
-              - 'docker/Dockerfile.migrate'
+              - 'docker/Dockerfile'
 
   # ── API (no build args — all config is runtime env, not baked in) ───────
   build-api:
@@ -78,8 +78,8 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          file: docker/Dockerfile.api
-          target: production
+          file: docker/Dockerfile
+          target: api
           push: true
           tags: |
             ${{ env.IMAGE_BASE }}-api:latest
@@ -106,7 +106,8 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          file: docker/Dockerfile.migrate
+          file: docker/Dockerfile
+          target: migrate
           push: true
           tags: |
             ${{ env.IMAGE_BASE }}-migrate:latest
@@ -133,8 +134,8 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          file: docker/Dockerfile.client
-          target: production
+          file: docker/Dockerfile
+          target: client
           push: true
           tags: |
             ${{ env.IMAGE_BASE }}-client:latest
@@ -172,8 +173,8 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          file: docker/Dockerfile.admin
-          target: production
+          file: docker/Dockerfile
+          target: admin
           push: true
           tags: |
             ${{ env.IMAGE_BASE }}-admin:latest

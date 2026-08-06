@@ -52,9 +52,9 @@ ezihubb-workspace/
 ### Services
 | Service | Config |
 |---|---|
-| API | NestJS, port 3002, `docker/Dockerfile.api` |
-| Client | Next.js, port 3000, `docker/Dockerfile.client` |
-| Admin | Next.js, port 3001, `docker/Dockerfile.admin` |
+| API | NestJS, port 3002, `docker/Dockerfile` (target `api`) |
+| Client | Next.js, port 3000, `docker/Dockerfile` (target `client`) |
+| Admin | Next.js, port 3001, `docker/Dockerfile` (target `admin`) |
 | PostgreSQL | Self-hosted (own server or managed instance) |
 | Redis | Self-hosted (own server or managed instance) |
 | nginx | Host-level (shared with other projects on the same server), not a container — see `scripts/nginx-ezihubb.conf` |
