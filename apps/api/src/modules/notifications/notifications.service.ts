@@ -23,8 +23,6 @@ export const EmailTemplate = {
   CONTENT_WARNING:            'content-warning',
   MODERATION_CRITICAL_ALERT:  'moderation-critical-alert',
   STORE_STRIKE_WARNING:       'store-strike-warning',
-  BUYER_REFERRAL_INVITE:      'buyer-referral-invite',
-  BUYER_REFERRAL_CREDITED:    'buyer-referral-credited',
 } as const;
 
 export type EmailTemplateName = (typeof EmailTemplate)[keyof typeof EmailTemplate];
@@ -252,40 +250,6 @@ export class NotificationsService {
     return this.queueEmail({ to, subject: 'Warning: Your store has received multiple content violations', template: EmailTemplate.STORE_STRIKE_WARNING, data });
   }
 
-  async sendBuyerReferralInvite(data: {
-    email: string; firstName: string; creditAmount: number;
-    cookieToken: string; expiresAt: Date;
-  }) {
-    const baseUrl = this.config.get<string>('CLIENT_URL', 'https://ezihubb.com');
-    return this.queueEmail({
-      to:       data.email,
-      subject:  `Share your order & earn $${data.creditAmount} store credit`,
-      template: EmailTemplate.BUYER_REFERRAL_INVITE,
-      data: {
-        firstName:    data.firstName,
-        creditAmount: data.creditAmount,
-        referralUrl:  `${baseUrl}?bref=${data.cookieToken}`,
-        expiresAt:    fmtDate(data.expiresAt),
-        year:         new Date().getFullYear(),
-      },
-    });
-  }
-
-  async sendBuyerReferralCredited(data: {
-    email: string; firstName: string; creditAmount: number; expiresAt: Date;
-  }) {
-    return this.queueEmail({
-      to:       data.email,
-      subject:  `Your friend just bought! You earned $${data.creditAmount} credit 🎉`,
-      template: EmailTemplate.BUYER_REFERRAL_CREDITED,
-      data: {
-        firstName:    data.firstName,
-        creditAmount: data.creditAmount,
-        expiresAt:    fmtDate(data.expiresAt),
-        year:         new Date().getFullYear(),
-      },
-    });
-  }
 
   async subscribeNewsletter(email: string, firstName?: string): Promise<void> {
     return this.queueEmail({

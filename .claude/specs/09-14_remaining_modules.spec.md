@@ -364,8 +364,6 @@ model Notification {
 | GET | `/api/v1/admin/dashboard/top-stores` | Top stores by revenue (`?limit=`, default 5) |
 | GET | `/api/v1/admin/dashboard/pending-reviews` | Paginated pending reviews |
 
-Dashboard also includes AI Features KPI row (pricing accuracy, trends, DNA profiles) — see `27_nft_features.spec.md`.
-
 ### Assets / Presign
 | Method | Path | Mô tả |
 |---|---|---|
@@ -407,20 +405,13 @@ See full list in `29_admin_extended.spec.md`. Core pages:
 | Affiliates | `/affiliates` |
 | Creators | `/creators` |
 | Referrals | `/referrals` |
-| Loyalty stats | `/loyalty` |
-| NFT drops | `/nft/drops` |
-| NFT memberships | `/nft/memberships` |
 | Catalog: Categories | `/catalog/categories` |
 | Catalog: Collections | `/catalog/collections` |
 | Settings: General | `/settings` |
 | Settings: Team | `/settings/team` |
 | Settings: Email Templates | `/settings/email-templates` |
 | Settings: Audit Log | `/settings/audit-log` |
-| AI Features | `/ai-features` |
-| AI: Pricing | `/ai-features/pricing` |
-| AI: Trends | `/ai-features/trends` |
-| AI: Creator DNA | `/ai-features/dna` |
-| AI: Moderation | `/ai-features/moderation` |
+| Moderation | `/moderation` |
 
 ### Key Admin Components
 ```
@@ -456,20 +447,6 @@ apps/admin/src/components/
   creators/
     CreatorTable.tsx, CreatorApplicationModal.tsx
 ```
-
----
-
-## Module 15 — Store Credits
-
-### Endpoints
-| Method | Path | Mô tả | Auth |
-|---|---|---|---|
-| GET | `/api/v1/store-credits/me` | Get current user's store credit balance | Bearer |
-| GET | `/api/v1/orders/{orderNumber}/buyer-referral` | Get buyer referral store credit for order | Bearer |
-
-File: `apps/api/src/modules/store-credits/store-credits.controller.ts`
-
-Store credits are applied at checkout via `useStoreCredit: true` in `CheckoutDto`. The `StoreCreditsService` is injected `@Optional()` into `OrdersService`.
 
 ---
 
@@ -519,29 +496,6 @@ interface TaxCalculation {
 **See dedicated spec: `21_messages.spec.md`**
 
 Summary: Full messaging system between customers and admin. 9 endpoints. Customer inbox at `/account/messages`, admin inbox at `/messages`. Email notifications on both sides.
-
----
-
-## Module 18 — Blind Match
-
-### Public Endpoints (no auth)
-| Method | Path | Mô tả | Auth |
-|---|---|---|---|
-| GET | `/api/v1/blind-match/hall-of-fame` | Top-rated blind matches (rating ≥ 4, `?limit=10`) | No |
-| GET | `/api/v1/blind-match/ugc` | User-generated content from ratings with feedback (`?limit=12`) | No |
-
-### Customer Endpoints (auth required)
-| Method | Path | Mô tả | Auth |
-|---|---|---|---|
-| POST | `/api/v1/blind-match/request` | Create a blind match request | Bearer |
-| GET | `/api/v1/blind-match/history` | User's blind match history | Bearer |
-| GET | `/api/v1/blind-match/{requestId}/mystery` | Get mystery product reveal status | Bearer |
-| POST | `/api/v1/blind-match/{requestId}/reveal` | Reveal the matched product | Bearer |
-| POST | `/api/v1/blind-match/{requestId}/rate` | Rate the matched product | Bearer |
-
-### Frontend
-- `/[locale]/blind-match` — Blind Match landing page
-- `/[locale]/blind-match/hall-of-fame` — Hall of Fame page (uses `GET /blind-match/hall-of-fame`)
 
 ---
 

@@ -72,12 +72,4 @@ export class PushService {
     });
   }
 
-  async notifyPointsConfirmed(userId: string, points: number): Promise<void> {
-    await this.sendToUser(userId, {
-      title:       `⭐ ${points.toLocaleString()} points unlocked!`,
-      body:        'Your loyalty points are now available to use at checkout',
-      clickAction: '/account/loyalty',
-      data:        { type: 'points_confirmed', points: String(points) },
-    });
-  }
 }

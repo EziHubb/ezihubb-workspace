@@ -1,5 +1,5 @@
 /**
- * Integration tests — Misc public endpoints (currency, loyalty config, shipping, etc.)
+ * Integration tests — Misc public endpoints (currency, affiliates config, shipping, etc.)
  */
 import { api, expectAlive } from '../helpers';
 
@@ -7,11 +7,6 @@ describe('Misc public', () => {
   it('GET /currency/rates', async () => {
     const res = await api('/currency/rates');
     expectAlive(res, 'GET /currency/rates');
-  });
-
-  it('GET /loyalty/config', async () => {
-    const res = await api('/loyalty/config');
-    expectAlive(res, 'GET /loyalty/config');
   });
 
   it('GET /affiliates/settings/public', async () => {

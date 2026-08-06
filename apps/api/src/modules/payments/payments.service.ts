@@ -35,7 +35,6 @@ import {
 } from './dto/payment-response.dto';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { CommissionService } from '../affiliates/commission.service';
-import { LoyaltyService } from '../loyalty/loyalty.service';
 import { LowStockService } from '../products/low-stock.service';
 import { ReferralService } from '../referrals/referral.service';
 
@@ -53,7 +52,6 @@ export class PaymentsService {
     private readonly config: ConfigService,
     private readonly analyticsService: AnalyticsService,
     private readonly commissionService: CommissionService,
-    private readonly loyaltyService: LoyaltyService,
     private readonly lowStockService: LowStockService,
     private readonly referralService: ReferralService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
@@ -333,22 +331,6 @@ export class PaymentsService {
         this.logger.error(`Referral commission creation failed for order ${payment.orderId}: ${err.message}`),
       );
 
-    // Fire-and-forget loyalty points earn — must not throw or block the webhook response
-    if (payment.order.userId) {
-      const userId = payment.order.userId;
-      const orderId = payment.orderId;
-      const orderTotal = Number(payment.order.total);
-      this.prisma.order
-        .findUnique({ where: { id: orderId }, select: { pointsDiscount: true } })
-        .then((o) => {
-          const earnableTotal = Math.max(0, orderTotal - Number(o?.pointsDiscount ?? 0));
-          return this.loyaltyService.earnPoints(userId, orderId, earnableTotal);
-        })
-        .catch((err: Error) =>
-          this.logger.error(`Loyalty earn failed for order ${orderId}: ${err.message}`),
-        );
-    }
-
     // Fire-and-forget low-stock inventory check
     this.lowStockService
       .checkAfterOrder(payment.orderId)
@@ -594,12 +576,6 @@ export class PaymentsService {
           this.logger.error(`Referral commission cancel failed for order ${payment.orderId}: ${err.message}`),
         );
 
-      // Cancel loyalty points (cancel earned, restore redeemed) — fire-and-forget
-      this.loyaltyService
-        .cancelPoints(payment.orderId)
-        .catch((err: Error) =>
-          this.logger.error(`Loyalty cancel failed for order ${payment.orderId}: ${err.message}`),
-        );
     }
 
     this.logger.log(
@@ -893,19 +869,6 @@ export class PaymentsService {
         this.logger.error(`Referral commission creation failed for gift-card order ${orderId}: ${err.message}`),
       );
 
-    // Earn loyalty points for gift-card orders
-    const giftOrder = await this.prisma.order.findUnique({
-      where:  { id: orderId },
-      select: { userId: true, total: true, pointsDiscount: true },
-    });
-    if (giftOrder?.userId) {
-      const earnableTotal = Math.max(0, Number(giftOrder.total) - Number(giftOrder.pointsDiscount ?? 0));
-      this.loyaltyService
-        .earnPoints(giftOrder.userId, orderId, earnableTotal)
-        .catch((err: Error) =>
-          this.logger.error(`Loyalty earn failed for gift-card order ${orderId}: ${err.message}`),
-        );
-    }
   }
 
   private async deductGiftCard(
@@ -1090,22 +1053,6 @@ export class PaymentsService {
           .catch((err: Error) =>
             this.logger.error(`PayPal referral commission failed for order ${payment.orderId}: ${err.message}`),
           );
-
-        // ── Fire-and-forget: loyalty points ─────────────────────────────────
-        if (payment.order.userId) {
-          const userId    = payment.order.userId;
-          const orderId   = payment.orderId;
-          const orderTotal = Number(payment.order.total);
-          this.prisma.order
-            .findUnique({ where: { id: orderId }, select: { pointsDiscount: true } })
-            .then((o) => {
-              const earnableTotal = Math.max(0, orderTotal - Number(o?.pointsDiscount ?? 0));
-              return this.loyaltyService.earnPoints(userId, orderId, earnableTotal);
-            })
-            .catch((err: Error) =>
-              this.logger.error(`PayPal loyalty earn failed for order ${orderId}: ${err.message}`),
-            );
-        }
 
         this.logger.log(`PayPal CAPTURE.COMPLETED: order ${payment.orderId} CONFIRMED`);
         break;

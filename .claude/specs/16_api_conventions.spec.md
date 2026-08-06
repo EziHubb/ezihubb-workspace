@@ -171,9 +171,9 @@ Env: `CORS_ORIGINS="http://localhost:3000,http://localhost:3001"` (comma-separat
 
 Most admin controllers get their tag automatically from the `@AdminController(path)` shorthand (`Admin — <Path>`, e.g. `Admin — Orders`, `Admin — Products`). Public/feature controllers set their own literal tag. Observed tags include:
 
-`Auth`, `Users`, `Products`, `Catalog`, `Cart`, `Orders`, `Payments`, `Webhooks`, `Shipping`, `Reviews`, `Promotions`, `Search`, `Customization`, `Wishlist`, `Messages`, `Loyalty`, `Affiliates`, `admin-referrals`/`referrals`, `Currency`, `Coins`, `VIP`, `Stores`, `Campaigns`, `creators`, `Unsubscribe`, `notifications`, `newsletter`, `Admin AI`, `Admin Stats`, `Admin — User Permissions`, plus per-module `Admin — <Path>` tags from `@AdminController`.
+`Auth`, `Users`, `Products`, `Catalog`, `Cart`, `Orders`, `Payments`, `Webhooks`, `Shipping`, `Reviews`, `Promotions`, `Search`, `customization`, `Wishlist`, `Messages`, `Affiliates`, `admin-referrals`/`referrals`, `Currency`, `Stores`, `Campaigns`, `creators`, `Unsubscribe`, `notifications`, `newsletter`, `Config`, `Seller - Orders`/`Payouts`/`Products`/`Reviews`/`Score`, `Admin Stats`, `Admin – Campaigns`, `Admin — User Permissions`, plus per-module `Admin — <Path>` tags from `@AdminController`.
 
-**Note:** older versions of this doc listed `NFT`, `Wallet`, `Labels`, `Bounties`, and `PDF` as Swagger tags — those literal tags are no longer present in the codebase (NFT/Wallet features were removed entirely; PDF and label purchase are invoked from the Orders/Admin-Orders controllers rather than having their own tag). Always grep `@ApiTags(` in `apps/api/src` for the current authoritative list rather than trusting this table.
+**Note:** older versions of this doc listed `NFT`, `Wallet`, `Labels`, `Bounties`, `PDF`, `Loyalty`, `Coins`, `VIP`, and `Admin AI` as Swagger tags — those literal tags are no longer present in the codebase (the corresponding modules were removed entirely; PDF and label purchase are invoked from the Orders/Admin-Orders controllers rather than having their own tag). Always grep `@ApiTags(` in `apps/api/src` for the current authoritative list rather than trusting this table.
 
 ## 11. Error Code Conventions
 
@@ -238,7 +238,7 @@ Admin order list supports additional filters via `AdminOrderQueryDto` (status, d
 
 File: `libs/shared/api-client/src/hooks/`
 
-Available hooks (this lib only covers the storefront's most common data needs — most feature pages, especially admin and the newer marketplace modules like loyalty/affiliates/messages/currency, call `apiClient` directly with raw paths rather than through a shared hook):
+Available hooks (this lib only covers the storefront's most common data needs — most feature pages, especially admin and modules like affiliates/messages/currency, call `apiClient` directly with raw paths rather than through a shared hook):
 - `useProducts()`, `useProduct(slug)`, `useRelatedProducts(id)`, `usePrefetchProduct()`
 - `useCategories()`, `useCategory(slug)`, `useCollections()`, `useCollection(slug)`
 - `useCart()`, `useMutateCart()`, `useCheckout()`
@@ -249,4 +249,4 @@ Available hooks (this lib only covers the storefront's most common data needs �
 - `useProfile()`, `useMutateProfile()`, `useAddresses()`, `useMutateAddresses()`
 - `useShippingOptions()`, `useNewsletterSubscribe()`
 
-**Note:** earlier versions of this doc also listed `useLoyalty`, `useMessages`, `useAffiliateMe`, `useReferralMe`, `useCreators`, `useCurrencies`, and `useNftDrops` — none of these exist in `libs/shared/api-client/src/hooks/`. NFT/drops features were removed from the product entirely; loyalty/messages/affiliates/referrals/currency are fetched via `apiClient` directly in the relevant client pages, not via shared hooks.
+**Note:** earlier versions of this doc also listed `useLoyalty`, `useMessages`, `useAffiliateMe`, `useReferralMe`, `useCreators`, `useCurrencies`, and `useNftDrops` — none of these exist in `libs/shared/api-client/src/hooks/`. The loyalty feature and the NFT/drops-numbered batch of features (bounties/design-licensing/canva/memberships/creator-dna/trends/pricing/drops/bundles) were removed from the product entirely; messages/affiliates/referrals/currency are fetched via `apiClient` directly in the relevant client pages, not via shared hooks.

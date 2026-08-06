@@ -96,13 +96,6 @@ const SAMPLE_DATA: Record<string, Record<string, unknown>> = {
     redeemUrl:      'https://ezihubb.com/gift-cards/redeem',
     expiresAt:      'Jun 13, 2027',
   },
-  'loyalty-points-earned': {
-    ...COMMON,
-    pointsEarned:  '750',
-    totalPoints:   '2400',
-    orderNumber:   ORDER_SAMPLE.orderNumber,
-    dashboardUrl:  'https://ezihubb.com/account/loyalty',
-  },
   'new-message': {
     ...COMMON,
     senderName:  'EziHubb Support',
@@ -157,18 +150,6 @@ const SAMPLE_DATA: Record<string, Record<string, unknown>> = {
     commissionAmount: '4.99',
     totalEarned:      '142.50',
     dashboardUrl:     'https://ezihubb.com/affiliates/dashboard',
-  },
-  'buyer-referral-invite': {
-    ...COMMON,
-    referrerName:  'Alex Smith',
-    discountCode:  'FRIEND-ALEX-10',
-    discountValue: '10%',
-    shopUrl:       'https://ezihubb.com?ref=ALEX2026',
-  },
-  'buyer-referral-credited': {
-    ...COMMON,
-    discountApplied: '$5.00',
-    orderNumber:     ORDER_SAMPLE.orderNumber,
   },
   'team-invite': {
     ...COMMON,

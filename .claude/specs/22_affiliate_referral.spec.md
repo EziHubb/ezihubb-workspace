@@ -112,7 +112,7 @@ model AffiliatePayout {           // separate model — spec cũ không có
   affiliateId   String
   amount        Decimal
   status        PayoutStatus @default(REQUESTED)
-  paymentMethod String       // "paypal" | "bank_transfer" | "store_credit"
+  paymentMethod String       // "paypal" | "bank_transfer"
   paymentDetail String
   processedAt   DateTime?
   processedById String?

@@ -1,7 +1,7 @@
 /**
- * Integration tests — Gift pools, chains, blind match, affiliates (auth required)
+ * Integration tests — Affiliates, referrals, creators, seller onboarding (auth required)
  */
-import { api, login, expectAlive } from '../helpers';
+import { api, login } from '../helpers';
 
 const EMAIL    = process.env['TEST_USER_EMAIL']    ?? '';
 const PASSWORD = process.env['TEST_USER_PASSWORD'] ?? '';
@@ -11,26 +11,6 @@ beforeAll(async () => {
   if (EMAIL && PASSWORD) token = await login(EMAIL, PASSWORD);
 });
 const skip = () => !token;
-
-describe('Gift features', () => {
-  it('GET /gift-pools/my', async () => {
-    if (skip()) return;
-    const res = await api('/gift-pools/my', { token });
-    expectAlive(res, 'GET /gift-pools/my');
-  });
-
-  it('GET /gift-chains/my', async () => {
-    if (skip()) return;
-    const res = await api('/gift-chains/my', { token });
-    expectAlive(res, 'GET /gift-chains/my');
-  });
-
-  it('GET /blind-match/history', async () => {
-    if (skip()) return;
-    const res = await api('/blind-match/history', { token });
-    expectAlive(res, 'GET /blind-match/history');
-  });
-});
 
 describe('Affiliates & Referrals', () => {
   it('GET /affiliates/me', async () => {

@@ -226,19 +226,6 @@ File: `MobileCustomizerCanvas.tsx`
 
 Lưu draft customization trong DB (Prisma). AutoFillBanner đọc draft khi user quay lại product.
 
-## 13. Canva Design Integration (Seller-side, không phải buyer customizer)
+## 13. (removed) Canva Design Integration
 
-Module riêng — cho phép **seller** kết nối tài khoản Canva để publish design trực tiếp thành ảnh sản phẩm (khác với customizer buyer-facing ở các mục trên).
-
-File: `apps/api/src/modules/canva/canva.controller.ts`, `canva.service.ts`
-
-| Method | Path | Mô tả | Auth |
-|---|---|---|---|
-| GET | `/api/v1/canva/authorize` | Redirect tới Canva OAuth consent screen | Bearer |
-| GET | `/api/v1/canva/callback` | OAuth callback, lưu token, redirect về `/seller/store?canva=connected` | No |
-| GET | `/api/v1/canva/products` | Danh sách sản phẩm của seller (để publish design vào) | Bearer |
-| POST | `/api/v1/canva/publish` | Publish design (multipart `image` + `productId`) thành ảnh sản phẩm | Bearer |
-| GET | `/api/v1/canva/status` | Trạng thái kết nối Canva của seller hiện tại | Bearer |
-| DELETE | `/api/v1/canva/disconnect` | Ngắt kết nối Canva | Bearer |
-
-Frontend: `apps/client/src/components/seller/CanvaConnectCard.tsx` (trong seller portal `/seller/store`).
+The seller-side Canva integration (`apps/api/src/modules/canva/`, `CanvaConnectCard.tsx`) has been removed from the codebase.

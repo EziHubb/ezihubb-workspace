@@ -14,18 +14,10 @@ function getShopOwnerRedirect(pathname: string, storeId: string | null): string 
   // Strictly super-admin-only prefixes — always redirect to /dashboard
   const superAdminOnly = [
     '/catalog', '/customers', '/payments', '/campaigns', '/affiliates',
-    '/creators', '/ai', '/moderation', '/settings', '/referrals', '/finance',
+    '/creators', '/moderation', '/settings', '/referrals', '/finance',
     '/stores/plans', '/stores/settings',
   ];
   if (superAdminOnly.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
-    return '/dashboard';
-  }
-
-  // Flash deals review queue is super-admin only; /submit is fine for sellers
-  if (
-    pathname === '/flash-deals' ||
-    (pathname.startsWith('/flash-deals/') && !pathname.startsWith('/flash-deals/submit'))
-  ) {
     return '/dashboard';
   }
 

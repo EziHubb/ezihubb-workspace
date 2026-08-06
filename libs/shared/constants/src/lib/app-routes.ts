@@ -57,12 +57,6 @@ export const ADMIN_ROUTES = {
 
   PAYOUTS:       '/payouts',
   CAMPAIGNS:     '/campaigns',
-  GIFT_POOLS:    '/gift-pools',
-  GIFT_CHAINS:   '/gift-chains',
-  BLIND_MATCH:   '/blind-match',
-
-  FLASH_DEALS:        '/flash-deals',
-  FLASH_DEALS_SUBMIT: '/flash-deals/submit',
 
   REFERRALS:          '/referrals',
   REFERRALS_USERS:    '/referrals/users',
@@ -71,14 +65,6 @@ export const ADMIN_ROUTES = {
 
   SETTINGS:           '/settings',
   SETTINGS_AUDIT_LOG: '/settings/audit-log',
-
-  ai: {
-    trends:      '/ai/trends',
-    pricing:     '/ai/pricing',
-    creatorDna:  '/ai/creator-dna',
-    usage:       '/ai/usage',
-    settings:    '/ai/settings',
-  },
 
   STATS:          '/stats',
   STATS_LISTINGS: '/stats/listings',
@@ -128,7 +114,6 @@ export const CLIENT_ROUTES = {
   ACCOUNT_ORDER:   (orderNumber: string) => `/account/orders/${orderNumber}`,
   ACCOUNT_WISHLIST: '/account/wishlist',
   ACCOUNT_ADDRESSES: '/account/addresses',
-  ACCOUNT_LOYALTY: '/account/loyalty',
   ACCOUNT_MESSAGES: '/account/messages',
   ACCOUNT_CREATOR:         '/account/creator',
   ACCOUNT_CREATOR_EARNINGS: '/account/creator/earnings',
@@ -144,14 +129,6 @@ export const CLIENT_ROUTES = {
   AFFILIATE_PAYOUTS:   '/affiliate/payouts',
 
   OPEN_SHOP:     '/open-shop',
-  FLASH_DEALS:   '/flash-deals',
-  GIFT_POOLS:    '/gift-pools',
-  GIFT_CHAINS:   '/gift-chains',
-  BLIND_MATCH:   '/blind-match',
-  BLIND_MATCH_HALL_OF_FAME: '/blind-match/hall-of-fame',
-
-  MARKETPLACE_BOUNTIES: '/marketplace/bounties',
-  MARKETPLACE_DESIGNS:  '/marketplace/designs',
 
   PAGE_CONTACT:       '/pages/contact',
   PAGE_REVIEWS:       '/pages/reviews',

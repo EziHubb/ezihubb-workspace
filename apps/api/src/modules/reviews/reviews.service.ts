@@ -30,7 +30,6 @@ import {
 import { ReviewQueryDto, AdminReviewQueryDto } from './dto/review-query.dto';
 import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
 import { OrderStatus, Review, ReviewStatus } from '@prisma/client';
-import { CoinService } from '../coins/coin.service';
 
 const REVIEW_INCLUDE = {
   user: {
@@ -63,7 +62,6 @@ export class ReviewsService {
     private readonly redis: RedisService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
     @Optional() private readonly moderationService?: ModerationService,
-    @Optional() private readonly coinService?: CoinService,
   ) {}
 
   // ── Public ───────────────────────────────────────────────────────────────────
@@ -223,8 +221,6 @@ export class ReviewsService {
       this.moderationService?.queueReviewImageModeration(review.id, review.imageUrls as string[], review.storeId ?? null)
         .catch((e) => this.logger.error('mod img queue failed', e));
     }
-    this.coinService?.earnReviewCoins(userId, review.id, false).catch((e) => this.logger.error('coin review earn failed', e));
-
     return this.mapToDto(review);
   }
 

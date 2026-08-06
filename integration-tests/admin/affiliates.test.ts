@@ -1,5 +1,5 @@
 /**
- * Integration tests — Admin affiliates, referrals, creators, loyalty, messages
+ * Integration tests — Admin affiliates, referrals, creators, messages
  */
 import { api, login, expectAlive } from '../helpers';
 
@@ -29,14 +29,6 @@ describe('Admin — Affiliates & Referrals', () => {
     if (skip()) return;
     const res = await api('/admin/creators?limit=5', { token });
     expectAlive(res, 'GET /admin/creators');
-  });
-});
-
-describe('Admin — Loyalty', () => {
-  it('GET /admin/loyalty', async () => {
-    if (skip()) return;
-    const res = await api('/admin/loyalty?limit=5', { token });
-    expectAlive(res, 'GET /admin/loyalty');
   });
 });
 

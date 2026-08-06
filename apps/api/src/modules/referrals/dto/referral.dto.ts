@@ -5,7 +5,7 @@ import { ReferralCommissionStatus, ReferralPayoutStatus } from '@prisma/client';
 export class ReferralRequestPayoutDto {
   @ApiProperty({ example: 'paypal' })
   @IsString()
-  @IsIn(['paypal', 'bank_transfer', 'store_credit'])
+  @IsIn(['paypal', 'bank_transfer'])
   paymentMethod: string;
 
   @ApiProperty({ example: 'john@paypal.com' })

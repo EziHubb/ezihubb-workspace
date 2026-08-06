@@ -11,7 +11,7 @@ import { useAuthStore } from '../../../../../../lib/store/auth.store';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type PayoutStatus  = 'PENDING' | 'PROCESSING' | 'PAID' | 'REJECTED';
-type PayoutMethod  = 'paypal' | 'bank_transfer' | 'store_credit';
+type PayoutMethod  = 'paypal' | 'bank_transfer';
 
 interface ReferralMe {
   referralCode:      string;
@@ -62,13 +62,11 @@ const PAYOUT_STATUS_BADGE: Record<PayoutStatus, { label: string; className: stri
 const METHOD_LABELS: Record<PayoutMethod, string> = {
   paypal:        'PayPal',
   bank_transfer: 'Bank Transfer',
-  store_credit:  'Store Credit',
 };
 
 const METHOD_DETAIL_PLACEHOLDER: Record<PayoutMethod, string> = {
   paypal:        'Enter your PayPal email address',
   bank_transfer: 'Enter account number / IBAN',
-  store_credit:  'Will be added to your store account',
 };
 
 const DEFAULT_MIN_PAYOUT = 20;
@@ -167,7 +165,7 @@ function PayoutRequestForm({
       setError(`Amount exceeds your confirmed balance of $${confirmedBalance.toFixed(2)}.`);
       return;
     }
-    if (method !== 'store_credit' && !detail.trim()) {
+    if (!detail.trim()) {
       setError('Please enter your payout details.');
       return;
     }
@@ -200,33 +198,27 @@ function PayoutRequestForm({
         <label className="block text-xs font-medium text-secondary mb-1.5">Payout method</label>
         <select
           value={method}
-          onChange={(e) => {
-            setMethod(e.target.value as PayoutMethod);
-            if (e.target.value === 'store_credit') setDetail('');
-          }}
+          onChange={(e) => setMethod(e.target.value as PayoutMethod)}
           className="w-full bg-[#FAFAF8] border border-border rounded-button px-3 py-2.5 text-sm text-secondary focus:outline-none focus:border-primary"
         >
           <option value="paypal">PayPal</option>
           <option value="bank_transfer">Bank Transfer</option>
-          <option value="store_credit">Store Credit</option>
         </select>
       </div>
 
       {/* Detail input */}
-      {method !== 'store_credit' && (
-        <div>
-          <label className="block text-xs font-medium text-secondary mb-1.5">
-            {method === 'paypal' ? 'PayPal email' : 'Bank account details'}
-          </label>
-          <input
-            type="text"
-            value={detail}
-            onChange={(e) => setDetail(e.target.value)}
-            placeholder={METHOD_DETAIL_PLACEHOLDER[method]}
-            className="w-full bg-[#FAFAF8] border border-border rounded-button px-3 py-2.5 text-sm text-secondary focus:outline-none focus:border-primary placeholder:text-muted"
-          />
-        </div>
-      )}
+      <div>
+        <label className="block text-xs font-medium text-secondary mb-1.5">
+          {method === 'paypal' ? 'PayPal email' : 'Bank account details'}
+        </label>
+        <input
+          type="text"
+          value={detail}
+          onChange={(e) => setDetail(e.target.value)}
+          placeholder={METHOD_DETAIL_PLACEHOLDER[method]}
+          className="w-full bg-[#FAFAF8] border border-border rounded-button px-3 py-2.5 text-sm text-secondary focus:outline-none focus:border-primary placeholder:text-muted"
+        />
+      </div>
 
       {/* Amount */}
       <div>

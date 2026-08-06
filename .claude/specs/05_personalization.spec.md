@@ -6,8 +6,6 @@ Hệ thống customizer cho phép user điền thông tin cá nhân hoá sản p
 - **Single-item customizer** (`CustomizerPanel`) — 1 sản phẩm với N fields
 - **Bundle customizer** (`BundleCustomizerPanel`) — N items (ví dụ: Couples Mug Set, 2 items)
 
-Ngoài customizer buyer-facing ở trên, module `canva/` cung cấp tích hợp **seller-side** (kết nối Canva để publish design thành ảnh sản phẩm) — xem `18_customizer_design.spec.md` §13.
-
 ## 2. API Endpoints
 
 | Method | Path | Mô tả | Auth |

@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
-import { Copy, Check, Package, Home, Share2 } from 'lucide-react';
+import { Copy, Check, Package, Home } from 'lucide-react';
 import { apiClient, queryKeys } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { useCartStore } from '../../../../../lib/store/cart.store';
@@ -82,112 +82,6 @@ function CopyOrderNumber({ orderNumber }: { orderNumber: string }) {
         <Copy className="w-4 h-4 text-muted group-hover:text-primary transition-colors" />
       )}
     </button>
-  );
-}
-
-// ── Buyer referral share ──────────────────────────────────────────────────────
-
-interface BuyerReferral {
-  cookieToken:  string;
-  creditAmount: number;
-  expiresAt:    string;
-  status:       string;
-}
-
-function BuyerReferralShare({ orderNumber }: { orderNumber: string }) {
-  const [referral, setReferral] = useState<BuyerReferral | null>(null);
-  const [copied,   setCopied  ] = useState(false);
-  const [loading,  setLoading ] = useState(true);
-
-  useEffect(() => {
-    if (!orderNumber) return;
-    // Poll until the referral record is created (it's async after order confirm)
-    let attempts = 0;
-    const maxAttempts = 10;
-    const interval = setInterval(async () => {
-      attempts++;
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL ?? ''}${API_ROUTES.STORE_CREDITS.BUYER_REFERRAL_LINK(orderNumber)}`,
-          { credentials: 'include' },
-        );
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.cookieToken) {
-            setReferral(data);
-            setLoading(false);
-            clearInterval(interval);
-            return;
-          }
-        }
-      } catch { /* ignore */ }
-      if (attempts >= maxAttempts) {
-        setLoading(false);
-        clearInterval(interval);
-      }
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [orderNumber]);
-
-  if (loading) return null; // Don't show skeleton — just wait silently
-  if (!referral || referral.status === 'CREDITED') return null;
-
-  const referralUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://ezihubb.com'}?bref=${referral.cookieToken}`;
-  const creditAmt = Number(referral.creditAmount);
-  const expiresDate = new Date(referral.expiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(referralUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    } catch { /* ignore */ }
-  };
-
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`I just ordered from EziHubb! You can use my link to get 5% off: ${referralUrl}`)}`;
-
-  return (
-    <div className="mt-8 rounded-2xl border border-[#FDE68A] bg-[#FFFBEB] overflow-hidden">
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-[#FDE68A]">
-        <div className="w-9 h-9 rounded-full bg-amber-400 flex items-center justify-center shrink-0">
-          <Share2 className="w-4 h-4 text-white" />
-        </div>
-        <div>
-          <p className="font-semibold text-sm text-secondary">Share &amp; earn store credit</p>
-          <p className="text-xs text-muted mt-0.5">When a friend buys through your link, you get ${creditAmt} credit for your next order</p>
-        </div>
-      </div>
-      <div className="px-5 py-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="flex-1 min-w-0 bg-white border border-[#FDE68A] rounded-lg px-3 py-2">
-            <p className="text-xs font-mono text-secondary truncate">{referralUrl}</p>
-          </div>
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3 py-2 bg-amber-400 text-white text-xs font-semibold rounded-lg hover:bg-amber-500 transition-colors shrink-0">
-            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366]/10 text-[#16A34A] text-xs font-medium rounded-lg hover:bg-[#25D366]/20 transition-colors">
-            WhatsApp
-          </a>
-          <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Shop handmade gifts with my link and get 5% off! ${referralUrl}`)}`}
-            target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1DA1F2]/10 text-[#1DA1F2] text-xs font-medium rounded-lg hover:bg-[#1DA1F2]/20 transition-colors">
-            Twitter/X
-          </a>
-          <button type="button" onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary/10 text-secondary text-xs font-medium rounded-lg hover:bg-secondary/20 transition-colors">
-            Copy link
-          </button>
-        </div>
-        <p className="text-[11px] text-muted">Offer expires {expiresDate} · Your friend gets 5% off automatically</p>
-      </div>
-    </div>
   );
 }
 
@@ -443,11 +337,6 @@ export default function CheckoutSuccessPage() {
             </p>
           </div>
         </div>
-      )}
-
-      {/* Share & Earn referral */}
-      {order && order.orderNumber && (
-        <BuyerReferralShare orderNumber={order.orderNumber} />
       )}
 
       {/* Guest: create account CTA */}

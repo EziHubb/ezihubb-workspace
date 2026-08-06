@@ -204,9 +204,6 @@ BG_REMOVAL_API_KEY=...
 # AI — Art Style (Replicate)
 REPLICATE_API_KEY=r8_...
 
-# AI / OpenAI (NFT Pricing, Creator DNA)
-OPENAI_API_KEY=sk-...
-
 # Analytics
 NEXT_PUBLIC_GA_ID=G-...
 NEXT_PUBLIC_GTM_ID=GTM-...
@@ -245,11 +242,6 @@ NEXT_PUBLIC_FIREBASE_VAPID_KEY=...
 
 # Multi-Currency
 EXCHANGE_RATE_API_KEY=...
-
-# Canva Integration
-CANVA_CLIENT_ID=...
-CANVA_CLIENT_SECRET=...
-CANVA_REDIRECT_URI=...
 
 # Web3 / NFT
 ALCHEMY_API_KEY=...
@@ -294,23 +286,18 @@ Source of truth: `apps/api/src/queue/queue.constants.ts` (`QUEUES` const).
 | `scheduled` | Cron-triggered jobs (review reminders, daily order auto-complete, weekly cart cleanup) |
 | `abandoned-cart` | Abandoned cart scan + recovery email |
 | `affiliate-commission` | Commission calculation processor |
-| `loyalty` | Points auto-confirm (14-day unlock) |
 | `low-stock` | Daily low-stock scan |
 | `translations` | AutoTranslate product content |
 | `referral` | Referral auto-confirm + tier check |
 | `moderation` | Text/image content moderation checks |
-| `ai-features` | Pricing analysis, trend→product drafts, Creator DNA |
-| `coins` | Daily coin expiry |
 | `order-tracking` | Carrier status polling, tracking stage updates |
-| `flash-deals` | Activate/end/remind flash deals |
-| `gift-pools` | Complete/expire/remind gift pools |
-| `gift-chains` | Nudge/close gift chains |
-| `blind-match` | Blind-match processing + credit |
 
 Note: PDF generation is synchronous (not queued) — see `PdfService` in module 20; there is no dedicated `pdf-generation` or `push-notification` queue — push dispatch happens inline via `PushService`.
 
 ## 12. NestJS Modules
 
-Các modules đã implement trong `apps/api/src/modules/` (50 modules):
+Các modules đã implement trong `apps/api/src/modules/` (31 modules):
 
-`admin`, `admin-users`, `affiliates`, `ai` (admin-ai), `analytics`, `assets`, `auth`, `blind-match`, `bounties`, `bundles`, `campaigns`, `canva`, `cart`, `catalog`, `coins`, `creator-dna`, `currency`, `customization`, `database` (mongodb), `design-licensing`, `drops`, `flash-deals`, `gift-chains`, `gift-finder`, `gift-pools`, `loyalty`, `memberships`, `messages`, `moderation`, `notifications` (bao gồm FcmService + PushService), `order-tracking`, `orders`, `payments`, `pdf`, `pricing`, `products` (bao gồm LowStockService), `promotions`, `referrals`, `reviews`, `search`, `shipping`, `shop-stats`, `store-credits`, `stores`, `tax`, `translations`, `trends`, `unsubscribe`, `users`, `vip`
+`admin`, `admin-users`, `affiliates`, `analytics`, `assets`, `auth`, `campaigns`, `cart`, `catalog`, `currency`, `customization`, `database` (mongodb), `messages`, `moderation`, `notifications` (bao gồm FcmService + PushService), `order-tracking`, `orders`, `payments`, `pdf`, `products` (bao gồm LowStockService), `promotions`, `referrals`, `reviews`, `search`, `shipping`, `shop-stats`, `stores`, `tax`, `translations`, `unsubscribe`, `users`
+
+> Một loạt module đã bị xoá để đưa site về đúng nghĩa bán hàng thuần tuý: `loyalty`, `coins`, `vip`, `store-credits`, `flash-deals`, `gift-pools`, `gift-chains`, `gift-finder`, `blind-match` (social gifting/gamification), và riêng biệt `bounties`, `design-licensing`, `canva`, `memberships`, `creator-dna`, `trends`, `pricing`, `ai` (admin-ai), `drops`, `bundles` (creator-tooling/AI/merchandising add-ons).

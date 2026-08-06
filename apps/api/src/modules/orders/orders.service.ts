@@ -3,7 +3,6 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  Optional,
 } from '@nestjs/common';
 import { OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -15,11 +14,8 @@ import { TaxService } from '../tax/tax.service';
 import { AffiliateTrackingService } from '../affiliates/affiliate-tracking.service';
 import { fmtDateTimeVN } from '../../common/utils/date';
 import { CommissionService } from '../affiliates/commission.service';
-import { LoyaltyService } from '../loyalty/loyalty.service';
 import { PushService } from '../notifications/push.service';
 import { ReferralService } from '../referrals/referral.service';
-import { StoreCreditsService } from '../store-credits/store-credits.service';
-import { CoinService } from '../coins/coin.service';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
@@ -91,11 +87,8 @@ export class OrdersService {
     private readonly taxService: TaxService,
     private readonly affiliateTrackingService: AffiliateTrackingService,
     private readonly commissionService: CommissionService,
-    private readonly loyaltyService: LoyaltyService,
     private readonly pushService: PushService,
     private readonly referralService: ReferralService,
-    @Optional() private readonly storeCreditsService?: StoreCreditsService,
-    @Optional() private readonly coinService?: CoinService,
   ) {}
 
   // ─── Checkout ─────────────────────────────────────────────────────────────
@@ -235,42 +228,6 @@ export class OrdersService {
       }
     }
 
-    // ── Buyer referral token ─────────────────────────────────────────────────
-    const buyerRefToken = dto.buyerRefToken ?? cookies?.['mlh_buyer_ref'] ?? null;
-
-    // ── Loyalty points redemption ────────────────────────────────────────────
-    let pointsDiscount  = 0;
-    let pointsToRedeem  = 0;
-
-    if (userId && dto.pointsToRedeem && dto.pointsToRedeem >= 100) {
-      // Pre-validate before computing total (total not yet known, use subtotal as proxy)
-      // Full validation runs inside the transaction against the real total
-      const validation = await this.loyaltyService.validateRedemption(
-        userId,
-        dto.pointsToRedeem,
-        subtotalAfterDiscount, // conservative — real total (with shipping) is higher
-      );
-      pointsToRedeem = dto.pointsToRedeem;
-      pointsDiscount = validation.pointsDiscount;
-    }
-
-    // ── Store credit pre-calculation ─────────────────────────────────────────
-    // Determine the primary store for this order (first store in cart)
-    const primaryStoreId = cart.items.find(i => i.product.storeId)?.product.storeId ?? null;
-
-    let storeCreditUsed = new Prisma.Decimal(0);
-    if (dto.useStoreCredit && userId && primaryStoreId) {
-      const available = await this.storeCreditsService?.getUserStoreCredits(userId);
-      const availableForStore = available?.credits
-        .filter((c: { storeId: string; amount: { toString(): string } }) => c.storeId === primaryStoreId)
-        .reduce(
-          (s: Prisma.Decimal, c: { amount: { toString(): string } }) => s.plus(new Prisma.Decimal(c.amount.toString())),
-          new Prisma.Decimal(0),
-        ) ?? new Prisma.Decimal(0);
-      const subtotalDecimal = new Prisma.Decimal(subtotalAfterDiscount);
-      storeCreditUsed = availableForStore.gt(subtotalDecimal) ? subtotalDecimal : availableForStore;
-    }
-
     // Calculate shipping (waived if FREE_SHIPPING coupon applied)
     const shippingCalc = await this.shippingService.calculateShipping(
       dto.shippingMethodId,
@@ -298,11 +255,11 @@ export class OrdersService {
         };
       }),
     });
-    // Affiliate + referral + loyalty + store-credit discounts — applied AFTER coupon, BEFORE payment
+    // Affiliate + referral discounts — applied AFTER coupon, BEFORE payment
     const total = Math.max(
       0,
       Math.round(
-        (subtotalAfterDiscount + shippingCost + taxResult.taxAmount + giftWrappingCost - affiliateDiscountAmount - referralDiscountAmt - pointsDiscount - storeCreditUsed.toNumber()) * 100,
+        (subtotalAfterDiscount + shippingCost + taxResult.taxAmount + giftWrappingCost - affiliateDiscountAmount - referralDiscountAmt) * 100,
       ) / 100,
     );
 
@@ -344,10 +301,6 @@ export class OrdersService {
           affiliateDiscountAmount:  affiliateDiscountAmount > 0 ? affiliateDiscountAmount : undefined,
           referralUserId:           referralUserId ?? undefined,
           referralDiscountAmount:   referralDiscountAmt > 0 ? referralDiscountAmt : undefined,
-          pointsRedeemed:          pointsToRedeem > 0 ? pointsToRedeem : undefined,
-          pointsDiscount:          pointsDiscount > 0 ? pointsDiscount : undefined,
-          storeCreditUsed:         new Prisma.Decimal(0), // updated after credit is consumed below
-          buyerRefToken:           buyerRefToken ?? null,
         },
       });
 
@@ -463,22 +416,6 @@ export class OrdersService {
             data: { promotionId: promo.id, userId, orderId: newOrder.id },
           });
         }
-      }
-
-      // Deduct loyalty points inside transaction (atomic: if order fails, points are not deducted)
-      if (userId && pointsToRedeem > 0) {
-        await this.loyaltyService.redeemPoints(userId, newOrder.id, pointsToRedeem, tx);
-      }
-
-      // Consume store credit inside transaction (atomic with order creation)
-      if (storeCreditUsed.gt(0) && userId && primaryStoreId) {
-        await this.storeCreditsService?.consumeStoreCredit(
-          tx, userId, primaryStoreId, storeCreditUsed, newOrder.id,
-        );
-        await tx.order.update({
-          where: { id: newOrder.id },
-          data:  { storeCreditUsed },
-        });
       }
 
       return newOrder;
@@ -806,23 +743,6 @@ export class OrdersService {
       return o;
     });
 
-    if (dto.status === OrderStatus.CONFIRMED) {
-      // Create buyer referral record for the orderer (so their link can be shared)
-      this.storeCreditsService?.createBuyerReferralForOrder(id).catch((e) =>
-        this.logger.error('createBuyerReferralForOrder failed', e),
-      );
-      // Process incoming buyer referral: credit the person who shared their link
-      const orderWithRef = await this.prisma.order.findUnique({
-        where: { id },
-        select: { buyerRefToken: true },
-      });
-      if (orderWithRef?.buyerRefToken) {
-        this.storeCreditsService?.processBuyerReferral(id, orderWithRef.buyerRefToken).catch((e) =>
-          this.logger.error('processBuyerReferral failed', e),
-        );
-      }
-    }
-
     if (dto.status === OrderStatus.DELIVERED) {
       // Affiliate commission lock period
       if (order.affiliateId) {
@@ -838,22 +758,6 @@ export class OrdersService {
           .scheduleAutoConfirm(id)
           .catch((err: Error) =>
             this.logger.error(`Failed to schedule referral auto-confirm for order ${id}: ${err.message}`),
-          );
-      }
-      // Loyalty points lock period (14d after delivery → pending → balance)
-      if (order.userId) {
-        this.loyaltyService
-          .schedulePointsConfirm(id, order.userId)
-          .catch((err: Error) =>
-            this.logger.error(`Failed to schedule loyalty confirm for order ${id}: ${err.message}`),
-          );
-      }
-      // BuyCoins: earn coins immediately on delivery
-      if (order.userId && this.coinService) {
-        this.coinService
-          .earnCoins(order.userId, id, Number(order.total))
-          .catch((err: Error) =>
-            this.logger.error(`Failed to earn coins for order ${id}: ${err.message}`),
           );
       }
     }
@@ -1116,7 +1020,6 @@ export class OrdersService {
     const taxAmount        = Number(order.taxAmount);
     const affiliateDisc    = Number(order.affiliateDiscountAmount ?? 0);
     const referralDisc     = Number(order.referralDiscountAmount ?? 0);
-    const pointsDisc       = Number(order.pointsDiscount ?? 0);
     const total            = Number(order.total);
 
     // Platform fees (5% transaction + 3%+$0.25 payment processing)
@@ -1131,7 +1034,6 @@ export class OrdersService {
       couponDiscount:    discountAmount,
       affiliateDiscount: affiliateDisc,
       referralDiscount:  referralDisc,
-      pointsDiscount:    pointsDisc,
       taxAmount,
       transactionFee,
       processingFee,

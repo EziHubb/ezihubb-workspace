@@ -43,13 +43,18 @@ ezihubb-workspace/
 │   ├── shared/constants/ → API routes, enums, constants
 │   └── ui/               → Shared React component library
 ├── prisma/
-│   ├── schema.prisma     → PostgreSQL schema (100+ models — grew far beyond the original
+│   ├── schema.prisma     → PostgreSQL schema (models grew far beyond the original
 │   │                        21 as marketplace features were added: stores, affiliates,
-│   │                        loyalty, referrals, moderation, gift chains/pools, flash
-│   │                        deals, blind-match, campaigns, coins, etc.)
+│   │                        referrals, moderation, campaigns, gift cards, etc. A batch
+│   │                        of social-gifting/gamification/creator-tooling features
+│   │                        — loyalty/coins/VIP/store-credits/flash-deals/gift-pools/
+│   │                        gift-chains/gift-finder/blind-match, and separately bounties/
+│   │                        canva/memberships/creator-dna/trends/pricing/design-licensing/
+│   │                        drops/bundles — was later removed to keep the site a pure
+│   │                        e-commerce platform. No spec docs remain for these.)
 │   ├── seed.ts           → Thin orchestrator — delegates to seeds/pg/ and seeds/mongo/
 │   └── seeds/
-│       ├── pg/           → 21 numbered PostgreSQL seed files + index.ts
+│       ├── pg/           → 20 numbered PostgreSQL seed files + index.ts
 │       ├── mongo/        → MongoDB seed files (product_details, category_menus) + index.ts
 │       └── shared/       → prisma-client.ts, mongo-schemas.ts (shared helpers)
 ├── prisma.config.ts      → Prisma 7 adapter config (repo root, not inside prisma/)

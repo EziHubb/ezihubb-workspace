@@ -13,7 +13,7 @@
 
 ### Complete Model List
 
-**Lưu ý:** Schema hiện có **100+ models** (đã lớn hơn nhiều so với con số 21 ban đầu — mỗi feature module mới trong `apps/api/src/modules/` thường thêm 1-10 models riêng: Store/SellerPlan/SellerPayout, AffiliateAccount/AffiliateCommission/AffiliatePayout, LoyaltyAccount/LoyaltyTransaction, ReferralTier/ReferralCommission, ModerationLog/ModerationRule, GiftChain/GiftChainLink, GiftPool/GiftContribution, FlashDeal, BlindMatchRequest, Campaign, BuyerCoinBalance, DesignAsset/DesignLicense, CreatorDNAAnalysis, v.v.). Bảng dưới đây liệt kê các models cốt lõi (transactional core); xem `docs/gap-analysis.md` §1.4 để có danh sách models đầy đủ hơn (không exhaustive — cả hai đều có thể lệch so với schema.prisma tại một thời điểm, luôn grep `prisma/schema.prisma` để chắc chắn).
+**Lưu ý:** Schema hiện có nhiều models hơn con số 21 ban đầu — mỗi feature module mới trong `apps/api/src/modules/` thường thêm 1-10 models riêng: Store/SellerPlan/SellerPayout, AffiliateAccount/AffiliateCommission/AffiliatePayout, ReferralTier/ReferralCommission, ModerationLog/ModerationRule, Campaign, GiftCard/GiftCardUsage, v.v. Một loạt models thuộc các tính năng đã bị xoá (loyalty/coins/VIP/store-credits/flash-deals/gift-pools/gift-chains/gift-finder/blind-match, và riêng biệt bounties/design-licensing/canva/memberships/creator-dna/trends/pricing/drops/bundles) không còn tồn tại — luôn grep `prisma/schema.prisma` để chắc chắn thay vì tin theo danh sách cũ trong `docs/gap-analysis.md`.
 
 | Model | Mô tả |
 |---|---|
@@ -137,7 +137,7 @@ NestJS API (port 3002)
 
 `prisma/seed.ts` is a thin orchestrator (delegates to `seeds/pg/` and `seeds/mongo/`):
 - Runs: `pnpm db:seed` (= `prisma db seed --schema=prisma/schema.prisma`, reads from `.env`)
-- `prisma/seeds/pg/index.ts` — runs 21 numbered PostgreSQL seed files in dependency order (users → categories → collections → processing/shipping profiles → shop sections → store → products → collection links → promotions → shipping zones → attribute values → affiliates → addresses → orders → conversations → reviews → gift cards → loyalty → wishlists/Q&A)
+- `prisma/seeds/pg/index.ts` — runs 20 numbered PostgreSQL seed files in dependency order (users → categories → collections → processing/shipping profiles → shop sections → store → products → collection links → promotions → shipping zones → attribute values → affiliates → addresses → orders → conversations → reviews → gift cards → wishlists/Q&A)
 - `prisma/seeds/mongo/index.ts` — seeds `category_menus` (derived from PG category tree) and `product_details`; connects with a DNS override (`dns.setServers(['8.8.8.8','1.1.1.1'])`) and retry logic
 - `prisma/seeds/shared/` — `prisma-client.ts` (shared PrismaClient/pool instance), `mongo-schemas.ts`
 - Standalone runs: `pnpm db:seed:pg`, `pnpm db:seed:mongo`, `pnpm db:fresh` (drop → migrate → seed)

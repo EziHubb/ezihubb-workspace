@@ -222,7 +222,7 @@ Added `https://static.hotjar.com` and `https://vars.hotjar.com` to Content-Secur
 
 ## 5. Admin Settings API (GAP-P2-01)
 
-> **Thiết kế thực tế khác hẳn spec cũ:** không có generic key-value `AdminSetting` model hay endpoint `/admin/settings/{key}`. Settings được chia theo **5 category cố định** (`store`, `email`, `notifications`, `seo`, `theme`), mỗi category là 1 route GET/PATCH riêng, lưu trong model `AppSettings` (key/value Json), cache Redis 5 phút (`settings:{key}`). Các con số như loyalty/referral/affiliate rate **không nằm trong hệ thống settings này** — chúng có bảng singleton riêng (`LoyaltyAccount`/config code cho loyalty, `ReferralSettings`, `AffiliateSettings` — xem spec 22, 23).
+> **Thiết kế thực tế khác hẳn spec cũ:** không có generic key-value `AdminSetting` model hay endpoint `/admin/settings/{key}`. Settings được chia theo **5 category cố định** (`store`, `email`, `notifications`, `seo`, `theme`), mỗi category là 1 route GET/PATCH riêng, lưu trong model `AppSettings` (key/value Json), cache Redis 5 phút (`settings:{key}`). Các con số như referral/affiliate rate **không nằm trong hệ thống settings này** — chúng có bảng singleton riêng (`ReferralSettings`, `AffiliateSettings` — xem spec 22).
 
 ### Endpoints (`AdminSettingsController`, prefix `/api/v1/admin/settings`)
 | Method | Path | Mô tả | Auth |
@@ -671,12 +671,6 @@ apps/admin/src/app/(admin)/
     shop-sections/
     production-partners/
   campaigns/
-  flash-deals/
-    my-deals/             # không có trong bản spec trước
-    submit/
-  gift-chains/
-  gift-pools/
-  blind-match/
   moderation/
     queue/
     rules/
@@ -688,16 +682,10 @@ apps/admin/src/app/(admin)/
   stats/
     listings/
       [id]/
-  ai/                     # AI Features section
-    creator-dna/
-    pricing/
-    trends/
-    usage/
-    settings/
   settings/
     page.tsx              # General settings — route trực tiếp tại /settings, KHÔNG có subfolder /settings/index
     affiliates/
     audit-log/            # Audit log viewer
 ```
 
-> **Đã xoá khỏi list:** `loyalty/` — không tồn tại bất kỳ trang admin loyalty nào trong `apps/admin/src` (không có route, không có link từ dashboard). Khớp với việc module Loyalty (spec 23) không có admin endpoint nào ở backend.
+> **Đã xoá khỏi list:** `flash-deals/`, `gift-chains/`, `gift-pools/`, `blind-match/`, `ai/` (creator-dna/pricing/trends/usage/settings) — toàn bộ các tính năng này đã bị xoá khỏi codebase để đưa site về đúng nghĩa bán hàng thuần tuý (cùng đợt với loyalty/coins/vip/store-credits/flash-deals ở batch 1, và bounties/design-licensing/canva/memberships/creator-dna/trends/pricing/drops/bundles ở batch 2-3).

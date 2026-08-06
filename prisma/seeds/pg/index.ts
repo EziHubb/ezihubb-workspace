@@ -16,7 +16,6 @@ import { seedStores }             from './14-stores';
 import { seedOrders }             from './16-orders';
 import { seedReviews }            from './17-reviews';
 import { seedGiftCards }          from './18-gift-cards';
-import { seedLoyalty }            from './19-loyalty';
 import { seedWishlists, seedProductQandA } from './20-wishlists-qanda';
 import { seedAddresses }          from './21-addresses';
 
@@ -50,9 +49,8 @@ export async function runPgSeeds(): Promise<Record<string, string>> {
   // Reviews depend on orders
   await seedReviews(prisma, storeId);
 
-  // Loyalty, wishlists, Q&A
+  // Gift cards, wishlists, Q&A
   await seedGiftCards(prisma);
-  await seedLoyalty(prisma);
   await seedWishlists(prisma);
   await seedProductQandA(prisma);
 

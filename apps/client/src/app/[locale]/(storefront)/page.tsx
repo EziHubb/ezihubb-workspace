@@ -15,10 +15,6 @@ import { FeaturedReviews } from '../../../components/home/FeaturedReviews';
 import { NewsletterSection } from '../../../components/home/NewsletterSection';
 import { CreatorNetworkCta } from '../../../components/home/CreatorNetworkCta';
 import { OpenShopCta } from '../../../components/home/OpenShopCta';
-import { FlashDealsSection } from '../../../components/flash-deals/FlashDealsSection';
-import { GiftFinderCta } from '../../../components/home/GiftFinderCta';
-import { BlindMatchCta } from '../../../components/home/BlindMatchCta';
-import { GroupGiftingSpotlight } from '../../../components/home/GroupGiftingSpotlight';
 import { MobileHeroCarousel } from '../../../components/home/MobileHeroCarousel';
 
 export const dynamic = 'force-dynamic';
@@ -103,27 +99,19 @@ export default async function HomePage({
 
       <HowItWorks locale={locale} />
 
-      <FlashDealsSection locale={locale} />
-
       <TrendingProducts
         products={trendingProducts}
         locale={locale}
         viewAllLabel={t('trending.viewAll')}
       />
 
-      <GiftFinderCta locale={locale} />
-
       <CategoryShowcase categories={rootCategories} locale={locale} />
-
-      <GroupGiftingSpotlight locale={locale} />
 
       <SocialProof locale={locale} />
 
       {featuredReviews.length > 0 && (
         <FeaturedReviews reviews={featuredReviews} locale={locale} />
       )}
-
-      <BlindMatchCta locale={locale} />
 
       <OpenShopCta />
 

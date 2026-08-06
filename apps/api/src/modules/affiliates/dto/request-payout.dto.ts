@@ -2,8 +2,8 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsIn, IsNumber, IsPositive, IsString, Length } from 'class-validator';
 
 export class RequestPayoutDto {
-  @ApiProperty({ enum: ['paypal', 'bank_transfer', 'store_credit'] })
-  @IsIn(['paypal', 'bank_transfer', 'store_credit'])
+  @ApiProperty({ enum: ['paypal', 'bank_transfer'] })
+  @IsIn(['paypal', 'bank_transfer'])
   paymentMethod!: string;
 
   @ApiProperty({ description: 'PayPal email, bank account number, etc.' })

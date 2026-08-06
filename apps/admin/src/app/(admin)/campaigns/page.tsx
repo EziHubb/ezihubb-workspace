@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Megaphone, Sun, Snowflake, Leaf, CloudRain,
   CheckCircle, Circle, Settings, ChevronDown, ChevronUp,
-  Zap, Target, TrendingUp, Plus, Trash2, X, Palette,
+  Target, TrendingUp, Plus, Trash2, X, Palette,
 } from 'lucide-react';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
@@ -29,7 +29,6 @@ interface Campaign {
   primaryColor: string;
   accentColor:  string;
   bgColor:      string;
-  flashDeals:   number;
   startDate:    string | null;
   endDate:      string | null;
   updatedAt:    string;
@@ -37,7 +36,6 @@ interface Campaign {
 
 interface CampaignStats {
   activeCampaigns:  number;
-  totalFlashDeals:  number;
   totalCampaigns:   number;
   campaignRevenue:  number;
   avgOrderLift:     number;
@@ -381,7 +379,6 @@ function CampaignCard({ campaign, onActivate, onDeactivate, onSaveSettings, onDe
         </div>
 
         <div className="mt-3 flex items-center gap-3 text-xs text-muted">
-          <span className="flex items-center gap-1"><Zap className="w-3 h-3" />{campaign.flashDeals} flash deals</span>
           {campaign.startDate && (
             <span>{new Date(campaign.startDate).toLocaleDateString()} – {campaign.endDate ? new Date(campaign.endDate).toLocaleDateString() : '∞'}</span>
           )}
@@ -476,9 +473,8 @@ export default function CampaignsPage() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
         <MiniStat label="Active Campaigns"  value={stats?.activeCampaigns ?? '—'} icon={Megaphone}   color="coral"  />
-        <MiniStat label="Total Flash Deals"  value={stats?.totalFlashDeals ?? '—'} icon={Zap}          color="amber"  />
         <MiniStat label="Total Campaigns"    value={stats?.totalCampaigns  ?? '—'} icon={TrendingUp}   color="green"  />
         <MiniStat label="Avg Order Lift"     value={stats ? `+${stats.avgOrderLift}%` : '—'} icon={Target} color="blue" />
       </div>

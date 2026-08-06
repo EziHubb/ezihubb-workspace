@@ -27,7 +27,7 @@ Creator Network là hệ thống multi-level referral cho phép users ("creators
 
 - Tiered commission: Direct referral (Level 1) = 10%, Level 2 = 5%, Level 3 = 1%
 - Buyer discount: 5% for anyone shopping through a creator link
-- Lock period: 14 days before earnings confirmed (same as loyalty system)
+- Lock period: 14 days before earnings confirmed
 
 ## 4. API Endpoints
 

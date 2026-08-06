@@ -4,6 +4,8 @@
 **Scanned by:** senior-architect · product-manager · tech-stack-evaluator
 **Project:** Nx monorepo — NestJS API + Next.js client + Next.js admin
 
+> **⚠ STALE — point-in-time snapshot from the scan date above.** After this scan, a full batch of social-gifting/gamification/creator-tooling features was removed from the codebase to keep the site a pure e-commerce platform: `loyalty`, `coins`, `vip`, `store-credits`, `flash-deals`, `gift-pools`, `gift-chains`, `gift-finder`, `blind-match`, `bounties`, `design-licensing`, `canva`, `memberships`, `creator-dna`, `trends`, `pricing`, `drops`, `bundles`. Any row/mention of these below (module status, DB models, page routes, roadmap items) describes code that no longer exists — do not act on it without re-verifying against the current codebase.
+
 ---
 
 ## 1. Codebase Inventory

@@ -139,8 +139,6 @@ model Payment {
   paypalCaptureId       String?
   giftCardCode          String?
   giftCardAmount        Decimal?
-  storeCreditAmount     Decimal?
-  loyaltyPointsAmount   Decimal?
   refundedAmount        Decimal       @default(0)
   refundedAt            DateTime?
   refundReason          String?
@@ -173,9 +171,8 @@ model Payment {
 2. API calls Stripe/PayPal refund API
 3. Webhook confirms refund → update `Payment.refundedAmount`, `refundedAt`, `status`
 4. Order status → `REFUNDED`
-5. Loyalty points earned on this order deducted
-6. Email notification sent to user
-7. Refund window: 60 days (`REFUND_WINDOW_DAYS = 60`)
+5. Email notification sent to user
+6. Refund window: 60 days (`REFUND_WINDOW_DAYS = 60`)
 
 ## 8. Business Rules
 
@@ -186,5 +183,4 @@ model Payment {
 - Failed payment: order stays `PENDING_PAYMENT`; user can retry
 - `PARTIALLY_REFUNDED`: `refundedAmount < amount`
 - `MIXED` method: gift card + Stripe (both amounts tracked)
-- Store credit and loyalty points reductions also recorded on Payment
 - PayPal access token cached in Redis with 90% TTL padding

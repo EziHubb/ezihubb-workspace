@@ -11,7 +11,6 @@ import { OrderStatusBadge } from '@ezihubb/ui';
 import { useToast } from '@ezihubb/ui';
 import type { OrderDto, OrderStatus } from '@ezihubb/types';
 import { MessageShopModal } from '../../../../../../components/messages/MessageShopModal';
-import { ReferralSharePanel } from '../../../../../../components/referral/ReferralSharePanel';
 
 // ── Status timeline config ────────────────────────────────────────────────────
 
@@ -339,9 +338,6 @@ export default function OrderDetailPage() {
 
       {/* Cancel section */}
       <CancelSection order={order} onCancel={handleCancel} />
-
-      {/* Referral share — encourage sharing after placing an order */}
-      <ReferralSharePanel orderId={order.id} />
 
       {/* Items */}
       <section>

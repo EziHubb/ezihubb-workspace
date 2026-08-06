@@ -32,7 +32,6 @@ const PAYOUT_STATUS_COLORS: Record<string, string> = {
 const METHODS = [
   { value: 'paypal',         label: 'PayPal',         placeholder: 'your@paypal.com' },
   { value: 'bank_transfer',  label: 'Bank transfer',  placeholder: 'Account number / routing / IBAN' },
-  { value: 'store_credit',   label: 'Store credit',   placeholder: 'Email for store credit code' },
 ] as const;
 
 const fmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });

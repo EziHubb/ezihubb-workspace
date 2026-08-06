@@ -17,8 +17,8 @@ apps/api/src/modules/<module>/
     <entity>.schema.ts
 ```
 
-### Modules present in `apps/api/src/modules/` (50 modules)
-`admin`, `admin-users`, `affiliates`, `ai` (admin-ai), `analytics`, `assets`, `auth`, `blind-match`, `bounties`, `bundles`, `campaigns`, `canva`, `cart`, `catalog`, `coins`, `creator-dna`, `currency`, `customization`, `database` (mongodb), `design-licensing`, `drops`, `flash-deals`, `gift-chains`, `gift-finder`, `gift-pools`, `loyalty`, `memberships`, `messages`, `moderation`, `notifications` (includes FcmService + PushService), `order-tracking`, `orders`, `payments`, `pdf`, `pricing`, `products` (includes LowStockService), `promotions`, `referrals`, `reviews`, `search`, `shipping`, `shop-stats`, `store-credits`, `stores`, `tax`, `translations`, `trends`, `unsubscribe`, `users`, `vip`
+### Modules present in `apps/api/src/modules/` (31 modules)
+`admin`, `admin-users`, `affiliates`, `analytics`, `assets`, `auth`, `campaigns`, `cart`, `catalog`, `currency`, `customization`, `database` (mongodb), `messages`, `moderation`, `notifications` (includes FcmService + PushService), `order-tracking`, `orders`, `payments`, `pdf`, `products` (includes LowStockService), `promotions`, `referrals`, `reviews`, `search`, `shipping`, `shop-stats`, `stores`, `tax`, `translations`, `unsubscribe`, `users`
 
 ## 2. Controller Conventions
 
@@ -289,18 +289,11 @@ QUEUES.ORDER_PROCESSING      // 'order-processing'
 QUEUES.SCHEDULED             // 'scheduled'
 QUEUES.ABANDONED_CART        // 'abandoned-cart'
 QUEUES.AFFILIATE_COMMISSION  // 'affiliate-commission'
-QUEUES.LOYALTY               // 'loyalty'
 QUEUES.LOW_STOCK             // 'low-stock'
 QUEUES.TRANSLATIONS          // 'translations'
 QUEUES.REFERRAL              // 'referral'
 QUEUES.MODERATION            // 'moderation'
-QUEUES.AI_FEATURES           // 'ai-features'
-QUEUES.COINS                 // 'coins'
 QUEUES.ORDER_TRACKING        // 'order-tracking'
-QUEUES.FLASH_DEALS           // 'flash-deals'
-QUEUES.GIFT_POOLS            // 'gift-pools'
-QUEUES.GIFT_CHAINS           // 'gift-chains'
-QUEUES.BLIND_MATCH           // 'blind-match'
 
 // Dev mode (DISABLE_QUEUE=true)
 // DevBullModule provides no-op tokens
@@ -368,7 +361,7 @@ pnpm nx e2e api-e2e        # E2E tests
 - Location: `apps/api/src/assets/email-templates/` (32 templates — NOT under `modules/notifications/`)
 - Format: `.hbs` Handlebars templates
 - Compiled via nodemailer with handlebars
-- Templates span far more than transactional order emails — covers auth (`welcome`, `email-verify`, `reset-password`), orders (`order-confirmation`, `order-shipped`, `order-delivered`, `refund-notification`, `abandoned-cart`, `low-stock-alert`), reviews (`review-reminder`), messages (`new-message`, `contact-message`), affiliates (`affiliate-approved`, `affiliate-rejected`, `commission-confirmed`, `payout-processed`, `buyer-referral-invite`, `buyer-referral-credited`), loyalty (`loyalty-points-earned`), stores/seller onboarding (`application-received`, `new-store-application`, `store-application-received`, `store-approved`, `store-rejected`, `new-store-order`, `team-invite`), moderation (`content-flagged`, `content-warning`, `content-rejected-critical`, `moderation-critical-alert`, `store-strike-warning`, `store-suspended`), and gift cards (`gift-card-delivery`)
+- Templates span far more than transactional order emails — covers auth (`welcome`, `email-verify`, `reset-password`), orders (`order-confirmation`, `order-shipped`, `order-delivered`, `refund-notification`, `abandoned-cart`, `low-stock-alert`), reviews (`review-reminder`), messages (`new-message`, `contact-message`), affiliates (`affiliate-approved`, `affiliate-rejected`, `commission-confirmed`, `payout-processed`), stores/seller onboarding (`application-received`, `new-store-application`, `store-application-received`, `store-approved`, `store-rejected`, `new-store-order`, `team-invite`), moderation (`content-flagged`, `content-warning`, `content-rejected-critical`, `moderation-critical-alert`, `store-strike-warning`, `store-suspended`), and gift cards (`gift-card-delivery`)
 
 ## 16. Key Shared Services
 

@@ -54,30 +54,9 @@ apps/client/src/app/
       shops/[slug]/page.tsx      # Store detail (Featured/All/Reviews/About tabs)
 
       gift-cards/page.tsx
-      gift-finder/page.tsx
-      gift-pools/page.tsx
-      gift/[shareToken]/page.tsx
-
-      flash-deals/page.tsx
-      blind-match/
-        page.tsx
-        hall-of-fame/page.tsx
-
-      chain/
-        start/page.tsx        # Start a new gift chain (?productId=)
-        [chainId]/page.tsx    # Gift chain detail
-      mystery/[orderId]/page.tsx
       open-shop/page.tsx         # Apply for store; shows pending/rejected states
 
       creators/page.tsx          # Creator network landing
-
-      marketplace/
-        bounties/
-          page.tsx
-          [id]/page.tsx
-        designs/
-          page.tsx
-          [id]/page.tsx
 
       affiliate/
         page.tsx                 # Affiliate landing
@@ -119,9 +98,6 @@ apps/client/src/app/
             tracking/page.tsx
         wishlist/page.tsx
         messages/page.tsx
-        loyalty/page.tsx
-        vip/page.tsx
-        coins/page.tsx
         referrals/
           page.tsx
           earnings/page.tsx
@@ -130,7 +106,6 @@ apps/client/src/app/
           page.tsx
           earnings/page.tsx
           payouts/page.tsx
-        gift-pools/page.tsx
 
     (seller)/               # Seller portal (shop owner routes within client app)
       seller/
@@ -171,15 +146,17 @@ Library: `next-intl`
 
 Messages location:
 
+Namespaces are loaded and merged in `apps/client/src/i18n/request.ts` — one JSON file per namespace per locale.
+
 ```
 apps/client/messages/
   en/
-    common.json, product.json, cart.json, checkout.json,
-    account.json, auth.json, customizer.json,
-    loyalty.json, referral.json, messages.json,
-    creators.json, nft.json
-  vi/
-    (cùng cấu trúc — toàn bộ keys đã dịch)
+    site.json, nav.json, footer.json, home.json, customizer.json,
+    orderTracking.json, common.json, errors.json, collections.json,
+    occasions.json, product.json, cart.json, checkout.json,
+    account.json, creator.json
+  vi/, zh/
+    (cùng cấu trúc — vi đã dịch đầy đủ, zh dịch một phần)
 ```
 
 ## 3. Key Pages
@@ -187,7 +164,7 @@ apps/client/messages/
 ### Homepage (`/[locale]`)
 
 - Server Component
-- Sections: `HeroBanner`, `MobileHeroCarousel`, `TrendingProducts`, `CategoryShowcase`, `CollectionsGrid`, `FlashDealsSection`, `GroupGiftingSpotlight`, `BlindMatchCta`, `GiftFinderCta`, `CreatorNetworkCta`, `OpenShopCta`, `HowItWorks`, `FeaturedReviews`, `SocialProof`, `NewsletterSection`
+- Sections: `HeroBanner`, `MobileHeroCarousel`, `TrendingProducts`, `CategoryShowcase`, `CollectionsGrid`, `CreatorNetworkCta`, `OpenShopCta`, `HowItWorks`, `FeaturedReviews`, `SocialProof`, `NewsletterSection`
 - `GET /products/trending` (top 12), category data
 
 ### Product Detail (`/[locale]/products/[slug]`)
@@ -219,7 +196,7 @@ apps/client/messages/
 
 - Client Component (auth required)
 - Steps: `DeliveryForm` → `ShippingForm` → `PaymentForm`
-- Panels: `AffiliateDiscountBanner`, `CoinsCheckoutPanel`, `GiftOptionsSection`, `ExpressPayStrip`, `StoreCreditBadge`
+- Panels: `AffiliateDiscountBanner`, `GiftOptionsSection`, `ExpressPayStrip`
 - **Không có Apple Pay**
 
 ### Account Pages
@@ -236,7 +213,7 @@ File: `apps/client/src/components/layout/Navbar.tsx`
 - **CurrencyPicker KHÔNG còn trong Navbar** (component vẫn tồn tại nhưng không được mount trong Navbar/MobileNavDrawer)
 - `CurrencyProvider` vẫn wrap toàn app trong `[locale]/layout.tsx`
 - Mobile: hamburger → `MobileNavDrawer` (có LocaleSwitcher, không có CurrencyPicker)
-- Category nav fallback links: Search, Collections, Occasions, Gift Cards, Flash Deals, Group Gift, Blind Match
+- Category nav fallback links: Search, Collections, Occasions, Gift Cards
 
 ## 5. Component Library
 
@@ -268,8 +245,7 @@ apps/client/src/components/
     CartDrawer.tsx, CartItemRow.tsx, OrderSummary.tsx
   checkout/
     DeliveryForm.tsx, ShippingForm.tsx, PaymentForm.tsx, StepIndicator.tsx,
-    AffiliateDiscountBanner.tsx, CoinsCheckoutPanel.tsx, ExpressPayStrip.tsx,
-    GiftOptionsSection.tsx, StoreCreditBadge.tsx
+    AffiliateDiscountBanner.tsx, ExpressPayStrip.tsx, GiftOptionsSection.tsx
   listing/
     ProductListingLayout.tsx, ProductGrid.tsx, FilterSidebar.tsx,
     FilterSheet.tsx, SortDropdown.tsx, ListingLoadingSkeleton.tsx
@@ -277,35 +253,23 @@ apps/client/src/components/
     HeroBanner.tsx, MobileHeroCarousel.tsx, TrendingProducts.tsx,
     CategoryShowcase.tsx, CollectionsGrid.tsx, HowItWorks.tsx,
     FeaturedReviews.tsx, SocialProof.tsx, NewsletterSection.tsx,
-    NewsletterForm.tsx, BlindMatchCta.tsx, GiftFinderCta.tsx,
-    CreatorNetworkCta.tsx, GroupGiftingSpotlight.tsx
-  flash-deals/
-    FlashDealBanner.tsx, FlashDealsSection.tsx
-  gift-pools/
-    CreateGiftPoolPanel.tsx
+    NewsletterForm.tsx, CreatorNetworkCta.tsx, OpenShopCta.tsx
   orders/
     OrderDetailClient.tsx (trong account pages)
   campaign/
-    CountdownTimer.tsx, UrgencyBadge.tsx, SeasonalBanner.tsx,
-    CoinEarnToast.tsx, OneClickCTA.tsx, ProgressFill.tsx
+    CampaignBannerBar.tsx, CountdownTimer.tsx, UrgencyBadge.tsx,
+    SeasonalBanner.tsx, OneClickCTA.tsx, ProgressFill.tsx
   search/
     SearchInput.tsx, SearchResults.tsx, NoResults.tsx, SearchNoResults.tsx,
     SearchFilterSidebar.tsx, SearchProductCard.tsx, SearchProductGrid.tsx,
     SearchTopBar.tsx, MobileFilterSheet.tsx, RecentlyViewedPanel.tsx,
     RelatedSearches.tsx, ShopCustomizableIdeas.tsx
-  referral/
-    ReferralSharePanel.tsx
-  drops/
-    DropBadge.tsx, DropCountdown.tsx
   seller/
-    CanvaConnectCard.tsx, PricingInsightPanel.tsx, SellerDropConfig.tsx,
-    SellerMembershipCard.tsx, SellerScoreCard.tsx, SellerSidebar.tsx
+    SellerScoreCard.tsx, SellerSidebar.tsx
   stores/
-    StoreMembershipPanel.tsx, StoreScorePopover.tsx
+    StoreScorePopover.tsx
   account/
-    AccountSidebar.tsx, StoreCreditWidget.tsx
-  vip/
-    VipGate.tsx
+    AccountSidebar.tsx
   seo/
     BreadcrumbStructuredData.tsx, ProductStructuredData.tsx,
     FAQStructuredData.tsx, OrganizationStructuredData.tsx,
@@ -325,8 +289,6 @@ apps/client/src/components/
     FAQAccordionList.tsx, FAQSearchBar.tsx
   collections/
     CollectionHero.tsx, RelatedCollections.tsx
-  bundles/
-    BundleBanner.tsx, BundleUpsellSection.tsx
 ```
 
 ## 6. Shared UI Library (`@ezihubb/ui`)
@@ -375,16 +337,14 @@ All pages: `apps/admin/src/app/(admin)/`
 | Affiliates (SUPER_ADMIN only) | affiliates/[id]|payouts, settings/affiliates |
 | Referrals (SUPER_ADMIN only) | referrals/users|payouts|settings |
 | Creators (SUPER_ADMIN only) | creators/members|payouts|settings |
-| AI (SUPER_ADMIN only) | ai/pricing|trends|usage|creator-dna|settings |
 | Campaigns (SUPER_ADMIN only) | campaigns |
 | Moderation (SUPER_ADMIN only) | moderation/queue|rules|history|ip-scan|settings |
 | Settings (SUPER_ADMIN only) | settings/audit-log |
-| Features | flash-deals/submit, gift-chains, gift-pools, blind-match |
 | Promotions | promotions, reviews, shipping |
 | Stats | stats/listings/[id] |
 | Messages | messages/conversations |
 
-**Permission scoping:** Shop owner (ADMIN role) dùng cùng admin routes; API scope data bằng `storeId`. `SUPER_ADMIN_ONLY_PREFIXES`: `/catalog`, `/customers`, `/payments`, `/campaigns`, `/affiliates`, `/creators`, `/ai`, `/moderation`, `/settings`, `/referrals`, `/finance`.
+**Permission scoping:** Shop owner (ADMIN role) dùng cùng admin routes; API scope data bằng `storeId`. `SUPER_ADMIN_ONLY_PREFIXES`: `/catalog`, `/customers`, `/payments`, `/campaigns`, `/affiliates`, `/creators`, `/moderation`, `/settings`, `/referrals`, `/finance`.
 
 ## 10. SEO & Analytics
 

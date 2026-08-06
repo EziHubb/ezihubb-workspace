@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import {
   Search, Heart, ShoppingBag, Menu,
-  ChevronDown, Package, Settings, LogOut, Star, Store,
+  ChevronDown, Package, Settings, LogOut, Store,
 } from 'lucide-react';
 import { useWishlist, queryKeys } from '@ezihubb/api-client';
 import { signOut } from 'next-auth/react';
@@ -45,12 +45,6 @@ function UserMenu({ locale }: { locale: string }) {
   const authLogout       = useAuthStore((s) => s.logout);
   const token            = useAuthStore((s) => s.accessToken);
 
-  const { data: coinData } = useQuery<{ balance: number }>({
-    queryKey: ['coins', 'me'],
-    queryFn:  () => apiClient.get<{ balance: number }>(API_ROUTES.COINS.ME, { token: token ?? undefined }),
-    enabled:  !!token,
-    staleTime: 60_000,
-  });
 
   // Live store status — JWT may be stale (isSeller not updated until re-login)
   const { data: storeApp } = useQuery<{ status: string }>({
@@ -126,12 +120,6 @@ function UserMenu({ locale }: { locale: string }) {
               {profile.firstName} {profile.lastName}
             </p>
             <p className="text-xs text-muted truncate">{profile.email}</p>
-            {coinData !== undefined && (
-              <div className="mt-1.5 inline-flex items-center gap-1 bg-primary/8 text-primary text-xs font-semibold px-2 py-0.5 rounded-full">
-                <Star className="w-3 h-3" />
-                {coinData.balance.toLocaleString()} coins
-              </div>
-            )}
           </div>
           {[
             { icon: Package,  label: 'My Orders',                             href: `/${locale}/account/orders`,  newTab: false },
@@ -326,9 +314,6 @@ export function Navbar({ menuData }: NavbarProps = {}) {
                   { href: `/${locale}/collections`,  label: t('collections') },
                   { href: `/${locale}/occasions`,    label: t('occasions')   },
                   { href: `/${locale}/gift-cards`,   label: t('giftCards')   },
-                  { href: `/${locale}/flash-deals`,  label: 'Flash Deals'    },
-                  { href: `/${locale}/gift-pools`,   label: 'Group Gift'     },
-                  { href: `/${locale}/blind-match`,  label: 'Blind Match'    },
                 ].map(({ href, label }) => (
                   <Link
                     key={href}

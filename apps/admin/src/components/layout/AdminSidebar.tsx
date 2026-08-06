@@ -12,8 +12,8 @@ import {
   Tag, Layers, Users, BadgePercent, Star, Truck,
   CreditCard, Settings, ChevronDown, LogOut, Globe, MessageSquare, Link2,
   Bookmark, Factory, Shield, GitBranch, Store, BarChart2, Wallet, ShieldAlert, History,
-  SlidersHorizontal, ScanSearch, Sparkles, TrendingUp, DollarSign, Activity,
-  Menu, X, Megaphone, Zap, Gift, Plus,
+  SlidersHorizontal, ScanSearch, TrendingUp,
+  Menu, X, Megaphone,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -82,13 +82,6 @@ const NAV_SECTIONS: NavSection[] = [
           { label: 'Platform Settings', href: '/stores/settings', icon: Settings },
         ],
       },
-      {
-        label: 'Flash Deals', href: '/flash-deals', icon: Zap,
-        children: [
-          { label: 'Review Queue', href: '/flash-deals',        icon: Zap   },
-          { label: 'Submit Deal',  href: '/flash-deals/submit', icon: Plus  },
-        ],
-      },
       { label: 'Finance',  href: '/finance',  icon: BarChart2  },
       { label: 'Payouts',  href: '/payouts',  icon: Wallet     },
       { label: 'Shipping', href: '/shipping', icon: Truck      },
@@ -101,7 +94,6 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Customers',  href: '/customers',  icon: Users         },
       { label: 'Messages',   href: '/messages',   icon: MessageSquare },
       { label: 'Reviews',    href: '/reviews',    icon: Star          },
-      { label: 'Gift Pools', href: '/gift-pools', icon: Gift          },
       { label: 'Promotions', href: '/promotions', icon: BadgePercent  },
       { label: 'Campaigns',  href: '/campaigns',  icon: Megaphone     },
     ],
@@ -124,16 +116,6 @@ const NAV_SECTIONS: NavSection[] = [
           { label: 'Members',  href: '/creators/members',  icon: Users      },
           { label: 'Payouts',  href: '/creators/payouts',  icon: CreditCard },
           { label: 'Settings', href: '/creators/settings', icon: Settings   },
-        ],
-      },
-      {
-        label: 'AI Features', href: '/ai/trends', icon: Sparkles,
-        children: [
-          { label: 'Trend Dashboard',   href: '/ai/trends',      icon: TrendingUp, badge: 0 },
-          { label: 'Pricing Optimizer', href: '/ai/pricing',     icon: DollarSign           },
-          { label: 'Creator DNA',       href: '/ai/creator-dna', icon: Activity             },
-          { label: 'AI Usage & Cost',   href: '/ai/usage',       icon: BarChart2            },
-          { label: 'AI Settings',       href: '/ai/settings',    icon: Settings             },
         ],
       },
     ],
@@ -187,33 +169,12 @@ function getShopNavSections(storeId: string): NavSection[] {
         { label: 'Orders',   href: '/orders',   icon: ShoppingCart },
         { label: 'Reviews',  href: '/reviews',  icon: Star         },
         { label: 'Messages', href: '/messages', icon: MessageSquare },
-        {
-          label: 'Flash Deals', href: '/flash-deals/my-deals', icon: Zap,
-          children: [
-            { label: 'My Deals',    href: '/flash-deals/my-deals', icon: Zap  },
-            { label: 'Submit Deal', href: '/flash-deals/submit',   icon: Plus },
-          ],
-        },
       ],
     },
     {
       title: 'Finance',
       items: [
         { label: 'Payouts', href: '/payouts', icon: Wallet },
-      ],
-    },
-    {
-      title: 'Growth',
-      items: [
-        {
-          label: 'AI Features', href: '/ai/trends', icon: Sparkles,
-          children: [
-            { label: 'Trend Dashboard',   href: '/ai/trends',      icon: TrendingUp },
-            { label: 'Pricing Optimizer', href: '/ai/pricing',     icon: DollarSign },
-            { label: 'Creator DNA',       href: '/ai/creator-dna', icon: Activity   },
-            { label: 'AI Usage & Cost',   href: '/ai/usage',       icon: BarChart2  },
-          ],
-        },
       ],
     },
     {
@@ -253,31 +214,15 @@ function useNavData() {
     refetchInterval: 120_000,
   });
 
-  const { data: aiTrendPending } = useQuery<{ count: number }>({
-    queryKey: ['sidebar-ai-trend-pending'],
-    queryFn:  () => api.get<{ count: number }>(API_ROUTES.ADMIN.AI_TREND_PENDING_COUNT),
-    enabled:  isSuperAdmin,
-    staleTime:       60_000,
-    refetchInterval: 120_000,
-  });
-
   const superAdminSections = useMemo<NavSection[]>(() =>
     NAV_SECTIONS.map((section) => ({
       ...section,
       items: section.items.map((item) => {
         if (item.href === '/affiliates') return { ...item, badge: pendingData?.count ?? 0 };
-        if (item.label === 'AI Features') {
-          return {
-            ...item,
-            children: item.children?.map((c) =>
-              c.href === '/ai/trends' ? { ...c, badge: aiTrendPending?.count ?? 0 } : c,
-            ),
-          };
-        }
         return item;
       }),
     })),
-  [pendingData, aiTrendPending]);
+  [pendingData]);
 
   const shopNavSections = useMemo(() => getShopNavSections(storeId), [storeId]);
   const navSections = isSuperAdmin ? superAdminSections : shopNavSections;

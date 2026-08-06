@@ -14,6 +14,12 @@
 #
 # Config (server IP/user, SSH key path, deploy path, branch) lives in
 # scripts/.deploy-config — gitignored, never commit real values.
+#
+# Safety: this server is shared with other projects (silver14, ces_production)
+# that build independently. Running two docker-compose builds at once has
+# already exhausted RAM/swap and taken the whole server down once — every
+# build step below checks available RAM/disk first and refuses to start if
+# another build is already running anywhere on the box.
 
 set -e
 
@@ -56,6 +62,43 @@ fi
 chmod 600 "$SSH_KEY" 2>/dev/null || true
 
 SSH="ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new $SERVER_USER@$SERVER_IP"
+
+# Safe minimums before touching the Docker builder at all. Below either of
+# these, a build's own transient memory/CPU spike (webpack, next build,
+# native module compilation) can push the whole shared box into swap
+# thrashing and OOM-kill unrelated processes — including other projects'.
+MIN_RAM_MB=800
+MIN_DISK_GB=3
+
+# Checks RAM/disk on the server right now and aborts the whole script if
+# either is below the safe threshold. Called before every build/migrate
+# step, not just once at the start — resources can drop mid-deploy too.
+check_resources() {
+    local avail_ram avail_disk
+    avail_ram="$($SSH "free -m | awk '/^Mem:/{print \$7}'" 2>/dev/null)"
+    avail_disk="$($SSH "df --output=avail -BG / | tail -1 | tr -dc '0-9'" 2>/dev/null)"
+    echo "  RAM available: ${avail_ram:-?}MB | Disk available: ${avail_disk:-?}GB"
+    if [ -z "$avail_ram" ] || [ "$avail_ram" -lt "$MIN_RAM_MB" ]; then
+        echo -e "${RED}✗ RAM available (${avail_ram:-unknown}MB) is below the safe threshold (${MIN_RAM_MB}MB).${NC}"
+        echo "Refusing to build — this is exactly what crashed the shared server before."
+        exit 1
+    fi
+    if [ -z "$avail_disk" ] || [ "$avail_disk" -lt "$MIN_DISK_GB" ]; then
+        echo -e "${RED}✗ Disk available (${avail_disk:-unknown}GB) is below the safe threshold (${MIN_DISK_GB}GB).${NC}"
+        exit 1
+    fi
+}
+
+# Refuses to proceed if ANY docker-compose/docker compose build is already
+# running on the server — ours or another project's. Two concurrent builds
+# is exactly what exhausted RAM/swap and took the whole server down before.
+check_no_concurrent_build() {
+    if $SSH "pgrep -f 'docker-compose build|docker compose build' >/dev/null 2>&1"; then
+        echo -e "${RED}✗ Another docker-compose build is already running on the server (ours or another project's).${NC}"
+        echo "Refusing to start a second one — wait for it to finish, then re-run this script."
+        exit 1
+    fi
+}
 
 echo -e "${YELLOW}Checking SSH connection to $SERVER_USER@$SERVER_IP...${NC}"
 if ! $SSH "echo ok" >/dev/null 2>&1; then
@@ -132,16 +175,33 @@ echo ""
 if [ -z "$BUILD_TARGETS" ]; then
     echo -e "${YELLOW}No app-relevant files changed since last deploy — skipping build.${NC}"
 else
-    echo -e "${YELLOW}Building Docker images: $BUILD_TARGETS...${NC}"
-    $SSH "cd '$DEPLOY_PATH' && $DC build $BUILD_TARGETS"
+    echo -e "${YELLOW}Building: $BUILD_TARGETS${NC}"
+    check_no_concurrent_build
+
+    # One image at a time, never in parallel — a shared box with only a few
+    # GB of RAM can't absorb several webpack/native-module builds running
+    # concurrently (this is what crashed it before). Deploying each service
+    # right after its own build (rather than building everything first, then
+    # restarting everything) also means the live site never goes down for
+    # the full build duration — only for the brief container swap per service.
+    for TARGET in $BUILD_TARGETS; do
+        echo ""
+        echo -e "${YELLOW}--- $TARGET ---${NC}"
+        check_resources
+        $SSH "cd '$DEPLOY_PATH' && $DC build $TARGET"
+
+        if [ "$TARGET" = "migrate" ]; then
+            echo -e "${YELLOW}Running pending database migrations...${NC}"
+            check_resources
+            $SSH "cd '$DEPLOY_PATH' && $DC run --rm migrate" || echo -e "${YELLOW}⚠ Migration step failed or had nothing to apply — check logs above.${NC}"
+        else
+            $SSH "cd '$DEPLOY_PATH' && $DC up -d $TARGET"
+        fi
+    done
 fi
 
 echo ""
-echo -e "${YELLOW}Running pending database migrations...${NC}"
-$SSH "cd '$DEPLOY_PATH' && $DC run --rm migrate" || echo -e "${YELLOW}⚠ Migration step failed or had nothing to apply — check logs above.${NC}"
-
-echo ""
-echo -e "${YELLOW}Starting services...${NC}"
+echo -e "${YELLOW}Starting remaining services (postgres, redis, anything not rebuilt above)...${NC}"
 $SSH "cd '$DEPLOY_PATH' && $DC up -d"
 
 echo ""

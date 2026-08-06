@@ -40,13 +40,12 @@ export class CampaignsService {
     }
   }
 
-  private mapRow(c: any, flashDeals = 0) {
+  private mapRow(c: any) {
     return {
       id: c.id, name: c.name, season: c.season ?? null, isActive: c.isActive,
       bannerText: c.bannerText, ctaLabel: c.ctaLabel, ctaHref: c.ctaHref,
       countdownEnd: c.countdownEnd?.toISOString() ?? null,
       gradient: c.gradient, primaryColor: c.primaryColor, accentColor: c.accentColor, bgColor: c.bgColor,
-      flashDeals,
       startDate: c.startDate?.toISOString() ?? null,
       endDate:   c.endDate?.toISOString()   ?? null,
       updatedAt: c.updatedAt.toISOString(),
@@ -58,9 +57,7 @@ export class CampaignsService {
     const where = season && Object.values(CampaignSeason).includes(season as CampaignSeason)
       ? { season: season as CampaignSeason } : {};
     const campaigns = await this.prisma.campaign.findMany({ where, orderBy: [{ isActive: 'desc' }, { createdAt: 'asc' }] });
-    const now = new Date();
-    const flashDealsCount = await this.prisma.flashDeal.count({ where: { status: 'ACTIVE', startsAt: { lte: now }, endsAt: { gte: now } } });
-    return campaigns.map((c) => this.mapRow(c, c.isActive ? flashDealsCount : 0));
+    return campaigns.map((c) => this.mapRow(c));
   }
 
   async getActive() {
@@ -70,13 +67,11 @@ export class CampaignsService {
 
   async getStats() {
     await this.ensureSeeded();
-    const now = new Date();
-    const [activeCampaigns, totalFlashDeals, totalCampaigns] = await Promise.all([
+    const [activeCampaigns, totalCampaigns] = await Promise.all([
       this.prisma.campaign.count({ where: { isActive: true } }),
-      this.prisma.flashDeal.count({ where: { status: 'ACTIVE', startsAt: { lte: now }, endsAt: { gte: now } } }),
       this.prisma.campaign.count(),
     ]);
-    return { activeCampaigns, totalFlashDeals, totalCampaigns, campaignRevenue: 0, avgOrderLift: 0 };
+    return { activeCampaigns, totalCampaigns, campaignRevenue: 0, avgOrderLift: 0 };
   }
 
   async create(dto: CreateCampaignDto) {

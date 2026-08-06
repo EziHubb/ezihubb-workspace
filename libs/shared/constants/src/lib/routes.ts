@@ -29,7 +29,6 @@ export const API_ROUTES = {
     WISHLIST_SHARE:  '/users/me/wishlist/share',
     ORDERS:          '/users/me/orders',
     FCM_TOKEN:       '/users/me/fcm-token',
-    LOYALTY:         '/users/me/loyalty',
   },
 
   PRODUCTS: {
@@ -75,11 +74,6 @@ export const API_ROUTES = {
     CANCEL:      (orderNumber: string) => `/orders/${orderNumber}/cancel`,
     TRACK:       '/orders/track',
     TAX_PREVIEW: '/orders/tax-preview',
-  },
-
-  STORE_CREDITS: {
-    STORE_CREDITS_ME:    '/store-credits/me',
-    BUYER_REFERRAL_LINK: (orderNumber: string) => `/orders/${orderNumber}/buyer-referral`,
   },
 
   PAYMENTS: {
@@ -141,12 +135,6 @@ export const API_ROUTES = {
     CONVERSATION_READ:     (id: string) => `/messages/conversations/${id}/read`,
   },
 
-  LOYALTY: {
-    ME:      '/loyalty/me',
-    PREVIEW: '/loyalty/preview',
-    CONFIG:  '/loyalty/config',
-  },
-
   AFFILIATES: {
     TRACK:           '/affiliates/track',
     APPLY:           '/affiliates/apply',
@@ -183,14 +171,6 @@ export const API_ROUTES = {
     RATES: '/currency/rates',
   },
 
-  // BF-01: BuyCoins
-  COINS: {
-    ME:        '/coins/me',
-    HISTORY:   '/coins/me/history',
-    REDEEM:    '/coins/me/redeem',
-    ESTIMATE:  '/coins/me/estimate',
-  },
-
   // BF-02: Live Order Tracking
   ORDER_TRACKING: {
     DETAIL:  (orderId: string) => `/orders/${orderId}/tracking`,
@@ -199,58 +179,6 @@ export const API_ROUTES = {
 
   CAMPAIGNS: {
     ACTIVE: '/campaigns/active',
-  },
-
-  // BF-03: Flash Deals
-  FLASH_DEALS: {
-    ACTIVE:       '/flash-deals/active',
-    DETAIL:       (id: string) => `/flash-deals/${id}`,
-    PURCHASE:     (id: string) => `/flash-deals/${id}/purchase`,
-  },
-
-  // BF-04: Bundle Builder
-  BUNDLES: {
-    STORE_SETTINGS: (storeId: string) => `/bundles/${storeId}/settings`,
-    UPSELL:         (storeId: string) => `/bundles/${storeId}/upsell`,
-  },
-
-  // BF-05: VIP Early Access
-  VIP: {
-    ME:            '/vip/me',
-    PREVIEW_DEALS: '/vip/flash-deals/preview',
-  },
-
-  // BF-06: Group Gifting
-  GIFT_POOLS: {
-    CREATE:      '/gift-pools',
-    DETAIL:      (token: string) => `/gift-pools/${token}`,
-    CONTRIBUTE:  (token: string) => `/gift-pools/${token}/contribute`,
-    MY_POOLS:    '/gift-pools/my',
-  },
-
-  // BF-07: AI Gift Finder
-  GIFT_FINDER: {
-    START:    '/gift-finder/session',
-    STEP:     (sessionId: string) => `/gift-finder/session/${sessionId}/step`,
-    RESULTS:  (sessionId: string) => `/gift-finder/session/${sessionId}/results`,
-  },
-
-  // BF-08: Gift Chain Relay
-  GIFT_CHAINS: {
-    INITIATE:  '/gift-chains',
-    DETAIL:    (chainId: string) => `/gift-chains/${chainId}`,
-    FORWARD:   (chainId: string) => `/gift-chains/${chainId}/forward`,
-    MY_CHAINS: '/gift-chains/my',
-  },
-
-  // BF-09: Blind Taste Match
-  BLIND_MATCH: {
-    REQUEST:       '/blind-match/request',
-    MYSTERY:       (requestId: string) => `/blind-match/${requestId}/mystery`,
-    RATE:          (requestId: string) => `/blind-match/${requestId}/rate`,
-    HISTORY:       '/blind-match/history',
-    HALL_OF_FAME:  '/blind-match/hall-of-fame',
-    UGC:           '/blind-match/ugc',
   },
 
   NOTIFICATIONS: {
@@ -489,70 +417,6 @@ export const API_ROUTES = {
     MODERATION_SETTINGS:     '/admin/moderation/settings',
     MODERATION_STORE_VIOLATIONS: (storeId: string) => `/admin/stores/${storeId}/violations`,
     MODERATION_STORE_CLEAR_STRIKES: (storeId: string) => `/admin/stores/${storeId}/clear-strikes`,
-
-    // ── Store Credits ────────────────────────────────────────────────────────
-    STORE_CREDITS:         '/admin/store-credits',
-    STORE_CREDITS_STATS:   '/admin/store-credits/stats',
-
-    // ── AI Features ──────────────────────────────────────────────────────────
-    AI_STATS:                    '/admin/ai/stats',
-    AI_TREND_DRAFTS:             '/admin/ai/trend-drafts',
-    AI_TREND_DRAFT:              (id: string) => `/admin/ai/trend-drafts/${id}`,
-    AI_TREND_DRAFT_APPROVE:        (id: string) => `/admin/ai/trend-drafts/${id}/approve`,
-    AI_TREND_DRAFT_REJECT:         (id: string) => `/admin/ai/trend-drafts/${id}/reject`,
-    AI_TREND_DRAFT_CREATE_PRODUCT: (id: string) => `/admin/ai/trend-drafts/${id}/create-product`,
-    AI_TREND_SCAN:                 '/admin/ai/trends/trigger-scan',
-    AI_TREND_PENDING_COUNT:      '/admin/ai/trend-drafts/pending-count',
-    AI_PRICING_STATS:                '/admin/ai/pricing/stats',
-    AI_PRICING_TESTS:                '/admin/ai/pricing/tests',
-    AI_PRICING_TEST_END:             (id: string) => `/admin/ai/pricing/tests/${id}/end`,
-    AI_PRICING_TEST_REVERT:          (id: string) => `/admin/ai/pricing/tests/${id}/revert`,
-    AI_PRICING_RECOMMENDATION:       (productId: string) => `/admin/ai/pricing/products/${productId}/recommendation`,
-    AI_PRICING_START_AB_TEST:        (productId: string) => `/admin/ai/pricing/products/${productId}/ab-test`,
-    AI_PRICING_TEST_STATUS:          (productId: string) => `/admin/ai/pricing/products/${productId}/ab-test`,
-    AI_CREATOR_DNA_LIST:         '/admin/ai/creator-dna',
-    AI_CREATOR_DNA_REANALYZE:    (id: string) => `/admin/ai/creator-dna/${id}/reanalyze`,
-    AI_CREATOR_DNA_PLATFORMS:    '/admin/ai/creator-dna/platforms',
-    AI_CREATOR_DNA_PLATFORM:     (platform: string) => `/admin/ai/creator-dna/platforms/${platform}`,
-    AI_CREATOR_DNA_FETCH:        '/admin/ai/creator-dna/fetch',
-    AI_USAGE:                    '/admin/ai/usage',
-    AI_SETTINGS:                 '/admin/ai/settings',
-    AI_SOURCES:                  '/admin/ai/sources',
-
-    // ── BF-01: Coins (admin) ─────────────────────────────────────────────────
-    COINS_CONFIG:             '/admin/coins/config',
-    COINS_USER_BALANCE:       (userId: string) => `/admin/coins/users/${userId}`,
-    COINS_USER_ADJUST:        (userId: string) => `/admin/coins/users/${userId}/adjust`,
-    COINS_STATS:              '/admin/coins/stats',
-
-    // ── BF-03: Flash Deals (admin) ───────────────────────────────────────────
-    FLASH_DEALS:              '/admin/flash-deals',
-    FLASH_DEAL:               (id: string) => `/admin/flash-deals/${id}`,
-    FLASH_DEAL_CREATE:        '/admin/flash-deals',
-    FLASH_DEAL_TOGGLE:        (id: string) => `/admin/flash-deals/${id}/toggle`,
-    FLASH_DEALS_STATS:        '/admin/flash-deals/stats',
-
-    // ── BF-06: Gift Pools (admin) ────────────────────────────────────────────
-    GIFT_POOLS:               '/admin/gift-pools',
-    GIFT_POOL:                (id: string) => `/admin/gift-pools/${id}`,
-    GIFT_POOL_REFUND:         (id: string) => `/admin/gift-pools/${id}/refund`,
-    GIFT_POOL_CLOSE:          (id: string) => `/admin/gift-pools/${id}/close`,
-    GIFT_POOLS_STATS:         '/admin/gift-pools/stats',
-
-    // ── BF-08: Gift Chains (admin) ───────────────────────────────────────────
-    GIFT_CHAINS:              '/admin/gift-chains',
-    GIFT_CHAIN:               (id: string) => `/admin/gift-chains/${id}`,
-    GIFT_CHAINS_STATS:        '/admin/gift-chains/stats',
-
-    // ── BF-09: Blind Match (admin) ───────────────────────────────────────────
-    BLIND_MATCH_REQUESTS:     '/admin/blind-match/requests',
-    BLIND_MATCH_REQUEST:      (id: string) => `/admin/blind-match/requests/${id}`,
-    BLIND_MATCH_STATS:        '/admin/blind-match/stats',
-    BLIND_MATCH_REFUNDS:      '/admin/blind-match/refunds',
-    BLIND_MATCH_TOP_PRODUCTS: '/admin/blind-match/top-products',
-    BLIND_MATCH_UGC_PENDING:  '/admin/blind-match/ugc/pending',
-    BLIND_MATCH_UGC_APPROVE:  (id: string) => `/admin/blind-match/ugc/${id}/approve`,
-    BLIND_MATCH_UGC_REJECT:   (id: string) => `/admin/blind-match/ugc/${id}/reject`,
 
     // ── Campaigns (admin) ────────────────────────────────────────────────────
     CAMPAIGNS:                '/admin/campaigns',

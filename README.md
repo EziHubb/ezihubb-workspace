@@ -18,12 +18,11 @@ A full-stack e-commerce platform for personalized handmade goods. Customers brow
             │  REST + cookies             │  REST + JWT
             ▼                             ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│  NestJS API  (port 3002) — ~49 feature modules, incl.:              │
+│  NestJS API  (port 3002) — 31 feature modules, incl.:                │
 │  Auth · Users · Products · Cart · Orders · Payments · Shipping      │
 │  Reviews · Promotions · Notifications · Customization · Search      │
-│  Affiliates · Referrals · Loyalty · Creator Network (AI) · Flash    │
-│  Deals · Gift Chains/Pools/Finder · Blind Match · Moderation · PDF  │
-│  Multi-currency · Store Credits · Admin                              │
+│  Affiliates · Referrals · Campaigns · Order Tracking · Moderation   │
+│  PDF · Multi-currency · Shop Stats · Admin                           │
 ├───────────────────────┬─────────────────────────────────────────────┤
 │  PostgreSQL (Prisma)  │  Redis (cache + queues)                    │
 ├───────────────────────┴─────────────────────────────────────────────┤

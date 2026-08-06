@@ -4,7 +4,7 @@
 
 ### A1. Tổng quan
 
-Firebase Cloud Messaging (FCM) cho push notifications trên browser/PWA. Khách hàng opt-in, nhận thông báo order status, loyalty points, messages.
+Firebase Cloud Messaging (FCM) cho push notifications trên browser/PWA. Khách hàng opt-in, nhận thông báo order status, messages.
 
 ### A2. API Endpoints
 
@@ -56,15 +56,16 @@ File: `apps/client/src/components/providers/AuthProvider.tsx`
 // On logout: DELETE /users/me/fcm-token
 ```
 
-### A7. Push Notification Events (3 triggers — `PushService` methods)
+### A7. Push Notification Events (2 triggers — `PushService` methods)
 
 | Event | Method | Title | Body |
 |---|---|---|---|
 | Order shipped (không phải "bất kỳ status change" nào) | `notifyOrderShipped()` | "Your order is on its way! 🚚" | "Order #{orderNumber} shipped via {carrier}" |
-| Loyalty points confirmed (unlocked) | `notifyPointsConfirmed()` | "⭐ {points} points unlocked!" | "Your loyalty points are now available to use at checkout" |
 | New shop reply on message | `notifyNewMessage()` | "EziHubb replied 💬" | "You have a new message from the shop" |
 
-Mỗi hàm nhận `clickAction` deep-link riêng (`/account/orders/{orderNumber}`, `/account/loyalty`, `/account/messages`) và `data` payload có `type`.
+Mỗi hàm nhận `clickAction` deep-link riêng (`/account/orders/{orderNumber}`, `/account/messages`) và `data` payload có `type`.
+
+> **Đã xoá:** `notifyPointsConfirmed()` — dùng cho loyalty points, module Loyalty đã bị xoá khỏi codebase.
 
 ### A8. Environment Variables
 

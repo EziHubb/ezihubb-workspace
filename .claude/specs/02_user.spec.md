@@ -190,7 +190,6 @@ Route group `(account)` dùng layout riêng với sidebar navigation.
 - `/[locale]/account/orders/{orderNumber}` — Chi tiết đơn hàng
 - `/[locale]/account/wishlist` — Danh sách yêu thích
 - `/[locale]/account/messages` — Message inbox (xem 21_messages.spec.md)
-- `/[locale]/account/loyalty` — Loyalty points dashboard (xem 23_loyalty_points.spec.md)
 - `/[locale]/account/referrals` — Referral hub + tree (xem 22_affiliate_referral.spec.md)
 - `/[locale]/account/affiliate` — Affiliate self-serve portal (xem 22_affiliate_referral.spec.md)
 - `/[locale]/account/creator` — Creator Hub (xem 26_creator_network.spec.md)
@@ -205,10 +204,4 @@ Public wishlist share: `/[locale]/wishlists/shared/{token}`
 
 ## 8. Additional Endpoints
 
-### Loyalty
-| Method | Path | Mô tả | Auth |
-|---|---|---|---|
-| GET | `/api/v1/loyalty/me` | Points balance + history | Bearer |
-| GET | `/api/v1/loyalty/preview` | Preview points earn from cart | Bearer |
-
-Xem full spec: `23_loyalty_points.spec.md`, `24_fcm_low_stock.spec.md`, `22_affiliate_referral.spec.md`
+Xem full spec: `24_fcm_low_stock.spec.md`, `22_affiliate_referral.spec.md`

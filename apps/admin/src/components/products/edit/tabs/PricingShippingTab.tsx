@@ -14,7 +14,6 @@ import { ProcessingProfileCard }   from '../ProcessingProfileCard';
 import { ShippingCostPreview }     from '../ShippingCostPreview';
 import { ReturnPolicyCard }        from '../ReturnPolicyCard';
 import { Toggle as PrimitiveToggle } from '../primitives/Toggle';
-import { AiPricingPanel }          from '../AiPricingPanel';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -454,11 +453,6 @@ export function PricingShippingTab({ product, onSwitchTab }: PricingShippingTabP
                 />
               </FormField>
             )}
-          </div>
-
-          {/* AI Pricing Optimizer */}
-          <div className="mt-6 pt-6 border-t border-border">
-            <AiPricingPanel productId={product.id} />
           </div>
         </TabSection>
 

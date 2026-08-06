@@ -2,10 +2,10 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import {
   Star, CheckCircle2, Clock, ShoppingCart,
-  Loader2, Plus, ChevronDown, Users, Link2, Dices,
+  Loader2, Plus, ChevronDown,
 } from 'lucide-react';
 import { ShareButton } from './ShareButton';
 import {
@@ -20,7 +20,6 @@ import { MobileStickyCartBar } from './MobileStickyCartBar';
 import { toast } from '../../lib/store/toast.store';
 import { useCurrency } from '../../lib/currency/currency-context';
 import { analytics } from '../../lib/analytics';
-import { CreateGiftPoolPanel } from '../gift-pools/CreateGiftPoolPanel';
 import type { ProductDto, ReviewSummaryDto } from '@ezihubb/types';
 
 // ── Date helpers (no date-fns) ────────────────────────────────────────────────
@@ -355,14 +354,11 @@ interface Props {
 
 export function ProductPurchasePanel({ product, reviewSummary }: Props) {
   const t      = useTranslations('product');
-  const locale = useLocale();
   const [selectedOptions,       setSelectedOptions]       = useState<Record<string, string>>({});
   const [isPersonalizationOpen, setIsPersonalizationOpen] = useState(false);
   const [isAdding,              setIsAdding]              = useState(false);
   const [quantity,              setQuantity]              = useState(1);
   const [hasAttemptedSubmit,    setHasAttemptedSubmit]    = useState(false);
-  const [giftPoolOpen,          setGiftPoolOpen]          = useState(false);
-  const [giftPoolShareUrl,      setGiftPoolShareUrl]      = useState<string | null>(null);
 
   const addItem    = useCartStore((s) => s.addItem);
   const openDrawer = useCartStore((s) => s.openDrawer);
@@ -556,85 +552,6 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
           </>
         )}
       </button>
-
-      {/* ── GROUP GIFT / GIFT POOL ── */}
-      <div className="border border-border rounded-xl overflow-hidden">
-        {giftPoolShareUrl ? (
-          <div className="p-4 bg-green-50 border-green-200 space-y-2">
-            <p className="text-sm font-semibold text-green-800">Gift pool created!</p>
-            <p className="text-xs text-green-600">Share this link with contributors:</p>
-            <div className="flex gap-2">
-              <code className="flex-1 bg-white border border-green-200 rounded-lg px-3 py-1.5 text-xs font-mono text-green-800 truncate">
-                {giftPoolShareUrl}
-              </code>
-              <button
-                type="button"
-                onClick={() => navigator.clipboard.writeText(giftPoolShareUrl)}
-                className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg transition-colors"
-              >
-                Copy
-              </button>
-            </div>
-          </div>
-        ) : giftPoolOpen ? (
-          <CreateGiftPoolPanel
-            product={{ id: product.id, name: product.name, basePrice: Number(product.basePrice), imageUrl: product.images?.[0]?.url ?? null }}
-            onClose={() => setGiftPoolOpen(false)}
-            onCreated={(url) => { setGiftPoolShareUrl(url); setGiftPoolOpen(false); }}
-          />
-        ) : (
-          <button
-            type="button"
-            onClick={() => setGiftPoolOpen(true)}
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-background transition-colors text-left"
-          >
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <Users className="w-4 h-4 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-secondary">Gift this together</p>
-              <p className="text-xs text-muted">Pool money with friends or family</p>
-            </div>
-            <ChevronDown className="w-4 h-4 text-muted rotate-[-90deg]" />
-          </button>
-        )}
-      </div>
-
-      {/* ── GIFT CHAIN ENTRY ── */}
-      <Link
-        href={`/${locale}/chain/start?productId=${product.id}`}
-        className="flex items-center gap-3 px-4 py-3 border border-border rounded-xl hover:border-primary/40 hover:bg-background transition-colors group"
-      >
-        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-          <Link2 className="w-4 h-4 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-secondary group-hover:text-primary transition-colors">
-            Start a gift chain
-          </p>
-          <p className="text-xs text-muted">Gift it → pay it forward → repeat</p>
-        </div>
-        <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-          10% off each link
-        </span>
-      </Link>
-
-      {/* ── BLIND MATCH ENTRY ── */}
-      <Link
-        href={`/${locale}/blind-match`}
-        className="flex items-center gap-3 px-4 py-3 bg-[#1A1A1A] rounded-xl hover:bg-[#2D2D2D] transition-colors group"
-      >
-        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-          <Dices className="w-4 h-4 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white">Send as a mystery gift</p>
-          <p className="text-xs text-white/50">Recipient won&apos;t know what it is until it arrives</p>
-        </div>
-        <span className="text-xs font-semibold text-white/70 bg-white/10 px-2 py-0.5 rounded-full">
-          🎲 Blind
-        </span>
-      </Link>
 
       {/* ── STAR SELLER BADGE ── */}
       <StarSellerBadge title={t('starSeller.title')} description={t('starSeller.description')} />

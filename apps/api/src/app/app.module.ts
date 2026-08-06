@@ -36,33 +36,14 @@ import { AnalyticsModule } from '../modules/analytics/analytics.module';
 import { MessagesModule } from '../modules/messages/messages.module';
 import { TaxModule } from '../modules/tax/tax.module';
 import { AffiliatesModule } from '../modules/affiliates/affiliates.module';
-import { LoyaltyModule } from '../modules/loyalty/loyalty.module';
 import { CurrencyModule } from '../modules/currency/currency.module';
 import { UnsubscribeController } from '../modules/unsubscribe/unsubscribe.controller';
 import { TranslationsModule } from '../modules/translations/translations.module';
 import { ReferralModule } from '../modules/referrals/referral.module';
 import { StoresModule } from '../modules/stores/stores.module';
 import { ModerationModule } from '../modules/moderation/moderation.module';
-import { StoreCreditsModule } from '../modules/store-credits/store-credits.module';
-import { DropsModule } from '../modules/drops/drops.module';
-import { PricingModule } from '../modules/pricing/pricing.module';
-import { MembershipsModule } from '../modules/memberships/memberships.module';
-import { DesignLicensingModule } from '../modules/design-licensing/design-licensing.module';
-import { BountiesModule } from '../modules/bounties/bounties.module';
-import { CanvaModule } from '../modules/canva/canva.module';
-import { TrendsModule } from '../modules/trends/trends.module';
-import { CreatorDnaModule } from '../modules/creator-dna/creator-dna.module';
-import { AdminAiModule } from '../modules/ai/admin-ai.module';
 import { ShopStatsModule } from '../modules/shop-stats/shop-stats.module';
-import { CoinModule } from '../modules/coins/coin.module';
-import { VipModule } from '../modules/vip/vip.module';
 import { OrderTrackingModule } from '../modules/order-tracking/order-tracking.module';
-import { FlashDealModule } from '../modules/flash-deals/flash-deal.module';
-import { BundleModule } from '../modules/bundles/bundle.module';
-import { GiftPoolModule } from '../modules/gift-pools/gift-pool.module';
-import { GiftFinderModule } from '../modules/gift-finder/gift-finder.module';
-import { GiftChainModule } from '../modules/gift-chains/gift-chain.module';
-import { BlindMatchModule } from '../modules/blind-match/blind-match.module';
 import { CampaignsModule } from '../modules/campaigns/campaigns.module';
 import { AdminUsersModule } from '../modules/admin-users/admin-users.module';
 import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
@@ -163,33 +144,13 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
     MessagesModule,
     TaxModule,
     AffiliatesModule,
-    LoyaltyModule,
     CurrencyModule,
     TranslationsModule,
     ReferralModule,
     StoresModule,
     ModerationModule,
-    StoreCreditsModule,
-    DropsModule,
-    PricingModule,
-    MembershipsModule,
-    DesignLicensingModule,
-    BountiesModule,
-    CanvaModule,
-    TrendsModule,
-    CreatorDnaModule,
-    AdminAiModule,
     ShopStatsModule,
-    // ── BF-01–BF-09: Buyer Features ──────────────────────────────────────────
-    CoinModule,
-    VipModule,
     OrderTrackingModule,
-    FlashDealModule,
-    BundleModule,
-    GiftPoolModule,
-    GiftFinderModule,
-    GiftChainModule,
-    BlindMatchModule,
     CampaignsModule,
     AdminUsersModule,
     HealthModule,

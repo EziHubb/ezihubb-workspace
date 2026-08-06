@@ -14,7 +14,6 @@
 | POST | `/api/v1/orders/{orderNumber}/cancel` | Huỷ đơn (2h window, guest allowed) | Optional |
 | GET | `/api/v1/orders/{id}/invoice` | Download own invoice PDF | Bearer |
 | GET | `/api/v1/orders/{orderId}/tracking` | Get order tracking stages + events | Bearer |
-| GET | `/api/v1/orders/{orderNumber}/buyer-referral` | Get buyer referral info for order | Bearer |
 
 ### Admin
 | Method | Path | Mô tả | Auth |
@@ -95,10 +94,6 @@ model Order {
   giftFrom        String?
   giftReceipt     Boolean       @default(false)
   giftWrapping    Boolean       @default(false)
-  // Loyalty & credits
-  loyaltyPointsEarned   Int?
-  loyaltyPointsRedeemed Int?
-  storeCreditUsed Decimal?
   // Meta
   note            String?
   adminNote       String?
@@ -197,9 +192,6 @@ interface CheckoutDto {
   giftFrom?: string;
   giftReceipt?: boolean;
   giftWrapping?: boolean;
-  pointsToRedeem?: number;
-  useStoreCredit?: boolean;
-  buyerRefToken?: string;   // referral tracking cookie
 }
 
 // Response
@@ -257,8 +249,6 @@ Client files: `apps/client/src/components/checkout/`
 - `DeliveryForm.tsx`, `ShippingForm.tsx`, `PaymentForm.tsx`
 - `ExpressPayStrip.tsx` — PayPal express button (full-width, no Apple Pay)
 - `GiftOptionsSection.tsx` — gift wrap / message / receipt
-- `StoreCreditBadge.tsx` — shows available store credit
-- `CoinsCheckoutPanel.tsx` — loyalty points redemption
 - `AffiliateDiscountBanner.tsx` — shows affiliate discount if applicable
 
 Client routes:
@@ -288,16 +278,6 @@ Client routes:
 - `GET /orders/track?orderNumber=&email=` là alias cho guest tracking
 
 ## 8. Order Integration Points
-
-### Loyalty Points
-- Order `CONFIRMED` → `LoyaltyAccount` earns `total * 10` points (locked 14 days)
-- Order `COMPLETED` → points unlocked via BullMQ `loyalty-unlock` queue
-- Order `CANCELLED`/`REFUNDED` → earned points deducted
-- Checkout: `pointsToRedeem` field in `CheckoutDto`
-
-### Store Credits
-- Checkout: `useStoreCredit: true` → applies available balance
-- `storeCreditsService.getBuyerReferralForOrder(orderNumber, userId)` — referral store credit info
 
 ### Affiliate / Referral Commission
 - Order `CONFIRMED` → check affiliate cookie → create `AffiliateCommission`

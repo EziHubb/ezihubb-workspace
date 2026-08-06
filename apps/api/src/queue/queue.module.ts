@@ -15,7 +15,6 @@ const ALL_QUEUES = [
   QUEUES.SCHEDULED,
   QUEUES.ABANDONED_CART,
   QUEUES.MODERATION,
-  QUEUES.AI_FEATURES,
 ];
 const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
 
@@ -30,7 +29,6 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
           { name: QUEUES.SCHEDULED },
           { name: QUEUES.ABANDONED_CART },
           { name: QUEUES.MODERATION },
-          { name: QUEUES.AI_FEATURES },
         )]),
   ],
   providers: disableQueue
