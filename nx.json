@@ -31,9 +31,7 @@
       "inputs": ["default", "{workspaceRoot}/.eslintrc.json"],
       "cache": true
     },
-    "typecheck": {
-      "cache": true
-    },
+    "typecheck": { "cache": true },
     "@nx/js:tsc": {
       "cache": true,
       "dependsOn": ["^build"],
@@ -55,18 +53,8 @@
         "watchDepsTargetName": "watch-deps"
       }
     },
-    {
-      "plugin": "@nx/eslint/plugin",
-      "options": {
-        "targetName": "lint"
-      }
-    },
-    {
-      "plugin": "@nx/jest/plugin",
-      "options": {
-        "targetName": "test"
-      }
-    },
+    { "plugin": "@nx/eslint/plugin", "options": { "targetName": "lint" } },
+    { "plugin": "@nx/jest/plugin", "options": { "targetName": "test" } },
     {
       "plugin": "@nx/webpack/plugin",
       "options": {
@@ -80,17 +68,9 @@
     }
   ],
   "generators": {
-    "@nx/next": {
-      "application": {
-        "style": "css",
-        "linter": "eslint"
-      }
-    },
-    "@nx/react": {
-      "library": {
-        "unitTestRunner": "jest"
-      }
-    }
+    "@nx/next": { "application": { "style": "css", "linter": "eslint" } },
+    "@nx/react": { "library": { "unitTestRunner": "jest" } }
   },
-  "analytics": true
+  "analytics": true,
+  "nxCloudId": "6a751b7ddde6de79ef65f9f3"
 }
