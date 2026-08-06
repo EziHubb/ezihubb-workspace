@@ -1,27 +1,23 @@
 version: '3.9'
 
-# Production stack for the dedicated AWS EC2 instance (free-tier t2/t3.micro
-# or t3.small). Images are prebuilt by .github/workflows/docker-publish.yml
-# and pushed to GitHub Container Registry — this file only PULLS them, it
-# never builds anything on the instance itself (a small instance can't
-# reliably survive a `next build`, which needs 2-4GB RAM).
+# Production stack for the dedicated AWS EC2 instance. Builds images
+# directly on the instance via the Dockerfiles in docker/ — the instance has
+# enough RAM/swap for this (see scripts/deploy.sh, which also provisions a
+# swap file). GitHub Actions CI-build (.github/workflows/docker-publish.yml,
+# pushing to GHCR) is on hold for now — this file can switch back to
+# `image: ${DOCKER_IMAGE_BASE}-...` pulls later without any other changes.
 #
-# Postgres runs on AWS RDS Free Tier instead of in a container here (frees
-# up RAM on the instance) — set DATABASE_URL in .env to the RDS endpoint.
-# Redis and MongoDB stay self-hosted in Docker (lightweight enough even on a
-# 1GB instance; switch MONGODB_URI to a MongoDB Atlas free-tier cluster
-# instead if RAM ever gets tight — no code change needed, just the
+# Postgres runs on AWS RDS Free Tier instead of in a container here — set
+# DATABASE_URL in .env to the RDS endpoint. Redis and MongoDB stay
+# self-hosted in Docker (switch MONGODB_URI to a MongoDB Atlas free-tier
+# cluster instead if RAM ever gets tight — no code change needed, just the
 # connection string).
 #
 # Usage:
-#   1. Copy .env.example to .env and fill in real values — including
-#      DOCKER_IMAGE_BASE (e.g. ghcr.io/your-github-username/ezihubb) and a
+#   1. Copy .env.example to .env and fill in real values, including
 #      DATABASE_URL pointing at your RDS endpoint.
-#   2. docker login ghcr.io -u <github-username> --password-stdin (a PAT
-#      with read:packages scope — only needed if the GHCR packages are
-#      private; public packages need no login to pull).
-#   3. One-off: docker compose run --rm migrate
-#   4. docker compose up -d
+#   2. One-off: docker compose run --rm migrate
+#   3. docker compose up -d --build
 #
 # No nginx container here — the host's own nginx reverse-proxies
 # ezihubb.com / admin.ezihubb.com / api.ezihubb.com to the loopback ports
@@ -60,14 +56,19 @@ services:
 
   # ── One-off: run pending Prisma migrations against RDS ───────────────────────
   migrate:
-    image: ${DOCKER_IMAGE_BASE:?DOCKER_IMAGE_BASE must be set in .env}-migrate:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.migrate
     container_name: ezihubb_migrate
     profiles: ['tools']
     env_file: .env
 
   # ── NestJS API ─────────────────────────────────────────────────────────────
   api:
-    image: ${DOCKER_IMAGE_BASE:?DOCKER_IMAGE_BASE must be set in .env}-api:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+      target: production
     container_name: ezihubb_api
     restart: unless-stopped
     depends_on:
@@ -84,7 +85,21 @@ services:
 
   # ── Next.js Storefront (client) ────────────────────────────────────────────
   client:
-    image: ${DOCKER_IMAGE_BASE:?DOCKER_IMAGE_BASE must be set in .env}-client:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.client
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_NEXTAUTH_URL: ${NEXT_PUBLIC_NEXTAUTH_URL}
+        NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL}
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_PAYPAL_CLIENT_ID: ${NEXT_PUBLIC_PAYPAL_CLIENT_ID}
+        NEXT_PUBLIC_GA_ID: ${NEXT_PUBLIC_GA_ID}
+        NEXT_PUBLIC_GTM_ID: ${NEXT_PUBLIC_GTM_ID}
+        NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID}
+        NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN}
     container_name: ezihubb_client
     restart: unless-stopped
     depends_on:
@@ -97,7 +112,15 @@ services:
 
   # ── Next.js Admin Dashboard ────────────────────────────────────────────────
   admin:
-    image: ${DOCKER_IMAGE_BASE:?DOCKER_IMAGE_BASE must be set in .env}-admin:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.admin
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_NEXTAUTH_URL: ${NEXT_PUBLIC_ADMIN_NEXTAUTH_URL}
+        NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN}
     container_name: ezihubb_admin
     restart: unless-stopped
     depends_on:
