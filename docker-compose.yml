@@ -4,10 +4,14 @@ version: '3.9'
 # directly on the instance from the single docker/Dockerfile (one `base` +
 # `source` stage shared by every service, then a per-service builder +
 # production stage selected via `target:` below) — the instance has enough
-# RAM/swap for this (see scripts/deploy.sh, which also provisions a swap
-# file). GitHub Actions CI-build (.github/workflows/docker-publish.yml,
-# pushing to GHCR) is on hold for now — this file can switch back to
-# `image: ${DOCKER_IMAGE_BASE}-...` pulls later without any other changes.
+# RAM/swap for this. scripts/deploy.sh tries a GHCR pull first (pre-built
+# images from GitHub Actions CI, .github/workflows/docker-publish.yml,
+# tagged by git SHA) and, on success, `docker tag`s the pulled image under
+# this same project's auto-generated local name/tag (e.g.
+# `ezihubb-workspace-api:latest`) — so this file needs no `image:` key or
+# env-var plumbing of its own; `docker compose build`/`up -d` just see an
+# image that's already present under the name they'd have produced anyway,
+# whether it got there via pull or a local build.
 #
 # Postgres runs on AWS RDS Free Tier instead of in a container here — set
 # DATABASE_URL in .env to the RDS endpoint. Redis and MongoDB stay

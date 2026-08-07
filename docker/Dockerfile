@@ -34,7 +34,7 @@ WORKDIR /app
 # matches package.json's "packageManager" field exactly — faster than an npm
 # global install, and avoids a cache miss the moment pnpm ships an update.
 RUN corepack enable && corepack prepare pnpm@11.5.2 --activate
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 # scripts/ must be present before pnpm install: postinstall runs
 # patch-next-build.cjs, and prepare runs prisma-generate-if-present.cjs
 # (a no-op here since prisma/ isn't copied yet — see the `source` stage

@@ -1,21 +1,25 @@
 #!/bin/bash
 
-# EziHubb — Deploy to AWS EC2 (builds directly on the instance)
+# EziHubb — Deploy to AWS EC2 (pulls pre-built images from GHCR, falls back
+# to building directly on the instance)
 #
 # Runs from your local machine: SSHes into the EC2 instance, pulls the
-# latest code, rebuilds only the Docker images whose own files (or a shared
-# dependency) changed, runs pending Prisma migrations against RDS, and
-# restarts the stack (docker-compose.yml: redis, mongodb, api, client,
-# admin — Postgres runs on RDS, not a container).
-#
-# GitHub Actions CI-build (.github/workflows/docker-publish.yml, pushing to
-# GHCR) is on hold for now — building happens here instead. Switching back
-# later just means changing docker-compose.yml's `build:` blocks to
-# `image: ${DOCKER_IMAGE_BASE}-...` pulls; this script would need the pull
-# variant back too.
+# latest code, and for each Docker image whose own files (or a shared
+# dependency) changed, first tries a plain `docker pull` (the image GitHub
+# Actions CI already built for this exact commit — .github/workflows/
+# docker-publish.yml, tagged by git SHA and pushed to GHCR), re-tagged
+# locally to the name docker-compose.yml expects, and only falls back to
+# building directly on the instance if that pull fails (CI hasn't built
+# this commit yet, is down, or DOCKER_IMAGE_BASE is unset/disabled). Then
+# it runs pending Prisma migrations against RDS and restarts the stack
+# (docker-compose.yml: redis, mongodb, api, client, admin — Postgres runs
+# on RDS, not a container).
 #
 # Config (server IP/user, SSH key path, deploy path) lives in
 # scripts/.deploy-config — gitignored, never commit real values.
+# DOCKER_IMAGE_BASE can also be set there — defaults to the GHCR path CI
+# pushes to; set it to an empty string to disable pulling entirely (a
+# kill switch that forces every deploy through the local-build path).
 
 set -e
 
@@ -44,6 +48,10 @@ source "$CONFIG_FILE"
 : "${SSH_KEY:?SSH_KEY not set in $CONFIG_FILE}"
 : "${DEPLOY_PATH:?DEPLOY_PATH not set in $CONFIG_FILE}"
 GIT_BRANCH="${GIT_BRANCH:-main}"
+# `-` (not `:-`) so an explicit DOCKER_IMAGE_BASE="" in .deploy-config is
+# preserved as empty (pull disabled, kill switch) — only *unset* gets the
+# default. Must match docker-publish.yml's lowercased-owner GHCR path.
+DOCKER_IMAGE_BASE="${DOCKER_IMAGE_BASE-ghcr.io/ezihubb/ezihubb}"
 if [ -z "$GIT_REPO" ]; then
     GIT_REPO="$(git -C "$SCRIPT_DIR/.." remote get-url origin 2>/dev/null || true)"
 fi
@@ -149,6 +157,11 @@ OLD_HEAD="$($SSH "cd '$DEPLOY_PATH' && git rev-parse HEAD" 2>/dev/null || true)"
 $SSH "cd '$DEPLOY_PATH' && git fetch origin && git checkout '$GIT_BRANCH' && git pull origin '$GIT_BRANCH'"
 NEW_HEAD="$($SSH "cd '$DEPLOY_PATH' && git rev-parse HEAD" 2>/dev/null || true)"
 
+# Tag by git SHA, not `:latest` — guarantees a pulled image matches the
+# exact commit just checked out above, rather than racing a `:latest` that
+# CI may not have finished pushing yet for this push.
+IMAGE_TAG="${NEW_HEAD:-latest}"
+
 DC="docker compose"
 
 # Only build the app image(s) whose own files (or a shared dependency)
@@ -160,18 +173,14 @@ BUILD_TARGETS="migrate api client admin"
 if [ -n "$OLD_HEAD" ] && [ "$OLD_HEAD" != "$NEW_HEAD" ]; then
     CHANGED="$($SSH "cd '$DEPLOY_PATH' && git diff --name-only '$OLD_HEAD' '$NEW_HEAD'" 2>/dev/null || true)"
     if [ -n "$CHANGED" ]; then
-        if echo "$CHANGED" | grep -qE '^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|nx\.json|tsconfig(\.base)?\.json|libs/|scripts/|prisma/schema\.prisma|prisma\.config\.ts)'; then
+        if echo "$CHANGED" | grep -qE '^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|nx\.json|tsconfig(\.base)?\.json|libs/|scripts/|prisma/schema\.prisma|prisma\.config\.ts|docker/Dockerfile$|\.npmrc$)'; then
             BUILD_TARGETS="migrate api client admin"
         else
             BUILD_TARGETS=""
-            echo "$CHANGED" | grep -q '^apps/api/'                 && BUILD_TARGETS="$BUILD_TARGETS api"
-            echo "$CHANGED" | grep -q '^apps/client/'               && BUILD_TARGETS="$BUILD_TARGETS client"
-            echo "$CHANGED" | grep -q '^apps/admin/'                && BUILD_TARGETS="$BUILD_TARGETS admin"
-            echo "$CHANGED" | grep -q '^prisma/migrations/'          && BUILD_TARGETS="$BUILD_TARGETS migrate"
-            echo "$CHANGED" | grep -q '^docker/Dockerfile\.api$'    && BUILD_TARGETS="$BUILD_TARGETS api"
-            echo "$CHANGED" | grep -q '^docker/Dockerfile\.client$' && BUILD_TARGETS="$BUILD_TARGETS client"
-            echo "$CHANGED" | grep -q '^docker/Dockerfile\.admin$'  && BUILD_TARGETS="$BUILD_TARGETS admin"
-            echo "$CHANGED" | grep -q '^docker/Dockerfile\.migrate$' && BUILD_TARGETS="$BUILD_TARGETS migrate"
+            echo "$CHANGED" | grep -q '^apps/api/'        && BUILD_TARGETS="$BUILD_TARGETS api"
+            echo "$CHANGED" | grep -q '^apps/client/'      && BUILD_TARGETS="$BUILD_TARGETS client"
+            echo "$CHANGED" | grep -q '^apps/admin/'       && BUILD_TARGETS="$BUILD_TARGETS admin"
+            echo "$CHANGED" | grep -q '^prisma/migrations/' && BUILD_TARGETS="$BUILD_TARGETS migrate"
             BUILD_TARGETS="$(echo "$BUILD_TARGETS" | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/^ *//;s/ *$//')"
         fi
     else
@@ -193,12 +202,34 @@ else
         echo ""
         echo -e "${YELLOW}--- $TARGET ---${NC}"
         check_resources
-        $SSH "cd '$DEPLOY_PATH' && $DC build $TARGET"
+
+        # Pull-then-build-fallback: a plain `docker pull` + `docker tag`
+        # (not `docker compose pull`) so the pulled image lands under the
+        # exact same local name Compose would auto-generate for a build
+        # (`ezihubb-workspace-<target>:latest`) — this way an untouched
+        # service (not in $BUILD_TARGETS this run) is never affected by
+        # which path a *different* service took, and docker-compose.yml
+        # itself needs no `image:`/env-var changes at all.
+        PULLED=false
+        if [ -n "$DOCKER_IMAGE_BASE" ]; then
+            REMOTE_IMAGE="${DOCKER_IMAGE_BASE}-${TARGET}:${IMAGE_TAG}"
+            LOCAL_IMAGE="ezihubb-workspace-${TARGET}:latest"
+            echo -e "${YELLOW}Trying GHCR pull: ${REMOTE_IMAGE}${NC}"
+            if $SSH "docker pull '$REMOTE_IMAGE' && docker tag '$REMOTE_IMAGE' '$LOCAL_IMAGE'"; then
+                PULLED=true
+                echo -e "${GREEN}✓ Pulled $REMOTE_IMAGE, tagged as $LOCAL_IMAGE${NC}"
+            else
+                echo -e "${YELLOW}⚠ Pull failed (tag not pushed for this commit yet, or network error) — falling back to local build${NC}"
+            fi
+        fi
+
+        if [ "$PULLED" = false ]; then
+            $SSH "cd '$DEPLOY_PATH' && $DC build $TARGET"
+        fi
         prune_old_builds "$TARGET"
 
         if [ "$TARGET" = "migrate" ]; then
             echo -e "${YELLOW}Running pending database migrations (against RDS)...${NC}"
-            check_resources
             $SSH "cd '$DEPLOY_PATH' && $DC run --rm migrate" || echo -e "${YELLOW}⚠ Migration step failed or had nothing to apply — check logs above.${NC}"
         else
             $SSH "cd '$DEPLOY_PATH' && $DC up -d $TARGET"
