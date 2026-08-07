@@ -58,7 +58,9 @@ COPY . .
 # Explicit generate call — prisma/ wasn't present during `pnpm install`
 # above, so the prepare hook no-op'd. This is the one place it actually runs
 # for the Docker build, shared by every stage below via `FROM source`.
-RUN pnpm exec prisma generate --schema=prisma/schema.prisma
+# Direct binary path (not `pnpm exec`, which re-runs postinstall/prepare as
+# part of its own install-consistency check — generating twice for nothing).
+RUN ./node_modules/.bin/prisma generate --schema=prisma/schema.prisma
 
 # ============================================
 # One builder stage per deployable app

@@ -7,7 +7,6 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 const cookieParser = require('cookie-parser');
 
-// cache-layer test comment — no functional change
 import { AppModule } from './app/app.module';
 import { PartnerCatalogModule } from './modules/partner-api/partner-catalog.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
