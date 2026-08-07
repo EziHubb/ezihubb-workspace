@@ -5,7 +5,7 @@ module.exports = {
   rootDir: '.',
   transform: {
     '^.+\\.ts$': ['ts-jest', {
-      tsconfig: '../tsconfig.spec.json',
+      tsconfig: '<rootDir>/../tsconfig.spec.json',
       diagnostics: { warnOnly: true },
     }],
   },
