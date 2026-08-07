@@ -90,14 +90,7 @@ make dev-admin        # Start admin only
 
 ### Testing
 
-```bash
-make test             # All unit tests
-make test-api         # API unit tests only
-make test-client      # Client unit tests only
-make test-api-e2e     # API E2E tests (needs DB + Redis running)
-make test-e2e         # Playwright browser tests
-make test-e2e-ui      # Playwright in UI mode
-```
+Temporarily removed — no unit, integration, or E2E tests/config currently in the repo.
 
 ### Database
 
@@ -154,7 +147,6 @@ ezihubb-workspace/
 │       ├── api-client/   # @ezihubb/api-client — fetch client + React Query hooks
 │       └── utils/        # shared utility functions
 ├── prisma/               # Prisma schema + migrations + seed
-├── e2e/                  # Playwright end-to-end tests
 ├── docker/               # Dockerfiles (api, client, admin, migrate)
 ├── scripts/              # smoke-test.sh and other utilities
 ├── .github/workflows/    # CI GitHub Actions
@@ -219,7 +211,7 @@ Cloudflare R2 and SendGrid remain external managed services — only `AWS_S3_*` 
 
 | Trigger | Workflow | Steps |
 |---------|----------|-------|
-| PR to main/develop | `ci.yml` | lint → type-check → unit tests → build → audit |
+| PR to main/develop | `ci.yml` | lint → type-check → build → audit |
 
 Deployment to the self-hosted server is not yet automated — trigger it manually (or add a new workflow once the server's access method, e.g. SSH, is decided).
 

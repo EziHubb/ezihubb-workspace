@@ -347,15 +347,9 @@ this.logger.debug('EasyPost webhook: no order found for trackerId=...');
 
 ## 14. Testing
 
-```bash
-pnpm nx test api           # Unit tests (Jest)
-pnpm nx e2e api-e2e        # E2E tests
-```
-
-- Unit tests: `*.spec.ts` next to source files
-- E2E tests: `apps/api-e2e/`
-- Test database: separate `DATABASE_URL` in `.env.test`
-- No mocking database — use real test DB (integration tests)
+**Temporarily removed** (all of it — unit, integration, and E2E) — no Jest/Playwright
+config, no `*.spec.ts`/`*.test.ts` files, no test-related CI jobs. Do not generate new
+test files or reference these commands until testing is reinstated.
 
 ## 15. Email Templates (Handlebars)
 

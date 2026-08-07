@@ -1,4 +1,4 @@
-.PHONY: help setup dev stop build test test-api test-client test-e2e \
+.PHONY: help setup dev stop build \
         db-migrate db-seed db-reset db-studio lint type-check clean \
         logs shell-api
 
@@ -59,28 +59,6 @@ db-studio: ## Open Prisma Studio
 
 db-generate: ## Re-generate Prisma client after schema changes
 	pnpm exec prisma generate --schema=prisma/schema.prisma
-
-# ── Testing ───────────────────────────────────────────────────────────────────
-test: ## Run all unit tests
-	pnpm nx run-many -t test --parallel=2
-
-test-api: ## Run API unit tests
-	pnpm nx test api
-
-test-client: ## Run client unit tests
-	pnpm nx test client
-
-test-api-e2e: ## Run API E2E tests (requires running DB + Redis)
-	pnpm test:api:e2e
-
-test-e2e: ## Run Playwright E2E tests
-	pnpm test:e2e
-
-test-e2e-ui: ## Open Playwright UI mode
-	pnpm test:e2e:ui
-
-test-affected: ## Run tests for affected projects only
-	pnpm nx affected -t test
 
 # ── Code Quality ──────────────────────────────────────────────────────────────
 lint: ## Lint all projects
