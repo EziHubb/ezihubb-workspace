@@ -10,6 +10,13 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Read by the nx CLI automatically. Without it, Nx Cloud can still read
+  # the remote cache but fails to write new results back — which made
+  # `nx build` exit non-zero (Cache Miss tasks) even though every actual
+  # build task succeeded, and killed the build job's later steps.
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+
 jobs:
   # ── Lint & Type-check ───────────────────────────────────────────────────────
   lint:
