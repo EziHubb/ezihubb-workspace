@@ -12,8 +12,12 @@
 # ============================================
 FROM node:22-alpine AS base
 # python3/make/g++/pkgconf + cairo/pango/jpeg/gif libs: required to compile
-# canvas (pulled in by jsdom → vitest; no pre-built musl binary for Node 22)
-RUN apk add --no-cache \
+# canvas (pulled in by jest-environment-jsdom, test-only — not a runtime or
+# build dependency, but pnpm install still builds it since it's a regular
+# devDependency; see package.json). Cache-mounted so a cache miss elsewhere
+# doesn't force re-downloading every Alpine package from the network.
+RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
+    apk add \
     libc6-compat \
     python3 \
     make \
@@ -26,14 +30,20 @@ RUN apk add --no-cache \
     pixman-dev \
     fontconfig-dev
 WORKDIR /app
-RUN npm install -g pnpm
+# Pinned via corepack (not `npm install -g pnpm`) so the version always
+# matches package.json's "packageManager" field exactly — faster than an npm
+# global install, and avoids a cache miss the moment pnpm ships an update.
+RUN corepack enable && corepack prepare pnpm@11.5.2 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-# scripts/, prisma/ and prisma.config.ts must be present before pnpm install
-# so the lifecycle hooks (postinstall: patch-next-build.cjs, prepare: prisma
-# generate) work.
+# scripts/ must be present before pnpm install: postinstall runs
+# patch-next-build.cjs, and prepare runs prisma-generate-if-present.cjs
+# (a no-op here since prisma/ isn't copied yet — see the `source` stage
+# below for the actual generate call). Deliberately NOT copying prisma/ or
+# prisma.config.ts here: this layer must only invalidate when
+# package.json/pnpm-lock.yaml actually change, not on every prisma schema
+# edit, since installing deps (incl. compiling canvas above) is the
+# heaviest, slowest step in the whole build.
 COPY scripts/ ./scripts/
-COPY prisma/ ./prisma/
-COPY prisma.config.ts ./
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 
@@ -45,12 +55,15 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
 # ============================================
 FROM base AS source
 COPY . .
+# Explicit generate call — prisma/ wasn't present during `pnpm install`
+# above, so the prepare hook no-op'd. This is the one place it actually runs
+# for the Docker build, shared by every stage below via `FROM source`.
+RUN pnpm exec prisma generate --schema=prisma/schema.prisma
 
 # ============================================
 # One builder stage per deployable app
 # ============================================
 FROM source AS builder-api
-RUN pnpm exec prisma generate --schema=prisma/schema.prisma
 RUN --mount=type=cache,id=nx-cache,target=/app/.nx/cache \
     pnpm nx build api --configuration=production
 

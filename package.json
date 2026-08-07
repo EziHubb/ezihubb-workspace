@@ -6,7 +6,7 @@
   "packageManager": "pnpm@11.5.2",
   "scripts": {
     "postinstall": "node scripts/patch-next-build.cjs",
-    "prepare": "prisma generate --schema=prisma/schema.prisma",
+    "prepare": "node scripts/prisma-generate-if-present.cjs",
     "dev": "pnpm nx run-many -t serve -p client admin api --parallel=3",
     "build": "pnpm nx run-many -t build && node scripts/postbuild.mjs",
     "lint": "pnpm nx affected -t lint",
