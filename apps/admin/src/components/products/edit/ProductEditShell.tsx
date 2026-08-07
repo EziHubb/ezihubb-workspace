@@ -251,10 +251,12 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
       isActive:    isCopy ? false : true,
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-empty-function -- best-effort; publish navigation below proceeds regardless
     await api.put(API_ROUTES.ADMIN.PRODUCT_DETAIL(draftId), { ...extractMongoFields(data), productId: draftId }).catch(() => {});
 
     const pendingUrls = data.pendingImageUrls ?? [];
     if (pendingUrls.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-empty-function -- best-effort; publish navigation below proceeds regardless
       await api.post(API_ROUTES.ADMIN.PRODUCT_IMAGES_FROM_URLS(draftId), { urls: pendingUrls }).catch(() => {});
     }
 
@@ -558,6 +560,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
                 <button
                   type="button"
                   onClick={async () => {
+                    // eslint-disable-next-line @typescript-eslint/no-empty-function -- best-effort cleanup; navigation below proceeds regardless
                     if (draftId) await api.delete(API_ROUTES.ADMIN.PRODUCT(draftId)).catch(() => {});
                     publishedRef.current = true;
                     setShowLeaveDialog(false);

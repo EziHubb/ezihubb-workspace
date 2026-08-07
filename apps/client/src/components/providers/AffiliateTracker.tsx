@@ -23,6 +23,7 @@ export function AffiliateTracker() {
         visitorId,
         landingPage: window.location.href,
       })
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       .catch(() => {}); // non-critical — tracking failure never blocks UX
   }, []);
 

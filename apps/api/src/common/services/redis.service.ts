@@ -36,6 +36,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-empty-function -- shutting down anyway, nothing to do on failure
     if (this.client) await this.client.quit().catch(() => {});
   }
 

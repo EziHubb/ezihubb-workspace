@@ -487,6 +487,7 @@ export default function OrdersPage() {
           disabled={exporting}
           onClick={async () => {
             setExporting(true);
+            // eslint-disable-next-line @typescript-eslint/no-empty-function -- swallow so setExporting(false) below still runs
             await exportCSV(buildParams()).catch(() => {});
             setExporting(false);
           }}

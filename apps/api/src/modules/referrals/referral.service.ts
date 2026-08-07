@@ -204,6 +204,7 @@ export class ReferralService {
         data: { status: ReferralCommissionStatus.CONFIRMED, confirmedAt: new Date() },
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-empty-function -- tier recompute is best-effort, doesn't block commission confirmation
       await this.checkAndUpdateTier(commission.earnerId).catch(() => {});
     }
   }

@@ -163,8 +163,9 @@ export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
     if (upvoted.has(qaId)) return;
     const next = new Set([...upvoted, qaId]);
     setUpvoted(next);
-    try { localStorage.setItem('qa_upvoted', JSON.stringify([...next])); } catch {}
+    try { localStorage.setItem('qa_upvoted', JSON.stringify([...next])); } catch { /* storage unavailable (private mode/quota) — upvote still applies in-memory */ }
     setQas((prev) => prev.map((q) => q.id === qaId ? { ...q, upvotes: q.upvotes + 1 } : q));
+    // eslint-disable-next-line @typescript-eslint/no-empty-function -- optimistic UI update above already applied
     apiClient.post(API_ROUTES.PRODUCTS.QUESTION_UPVOTE(qaId)).catch(() => {});
   }, [upvoted]);
 

@@ -4,7 +4,11 @@ import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from './roles.decorator';
 import { Role } from '@ezihubb/constants';
-import { capitalize } from '@ezihubb/utils';
+
+/** `"hello world"` → `"Hello world"` */
+function capitalize(val: string): string {
+  return val.charAt(0).toUpperCase() + val.slice(1).toLowerCase();
+}
 
 /**
  * Shorthand decorator for all admin controllers.

@@ -79,6 +79,7 @@ export class AffiliatesController {
         landingPage:  dto.landingPage,
         referrer:     req.headers['referer'],
       })
+      // eslint-disable-next-line @typescript-eslint/no-empty-function -- fire-and-forget tracking, response below doesn't depend on it
       .catch(() => {});
 
     return { received: true };

@@ -247,6 +247,7 @@ export default function CheckoutPage() {
           discountAmount: 0, // recomputed once cart subtotal is known
         });
       })
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       .catch(() => {}); // non-critical
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

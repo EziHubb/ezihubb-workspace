@@ -99,7 +99,7 @@ export default async function StorePublicPage({
     year:  'numeric',
   }).format(new Date(store.verifiedAt ?? store.createdAt));
 
-  const rating = Number(store.rating) ?? 0;
+  const rating = Number(store.rating ?? 0);
 
   return (
     <div className="bg-background pb-16">

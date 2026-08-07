@@ -8,6 +8,7 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { getQueueToken } from '@nestjs/bullmq';
 
+/* eslint-disable @typescript-eslint/no-empty-function -- stub queue, all methods are intentional no-ops */
 function noopQueue(name: string) {
   return {
     name,
@@ -25,6 +26,7 @@ function noopQueue(name: string) {
     drain:      async () => {},
   };
 }
+/* eslint-enable @typescript-eslint/no-empty-function */
 
 @Module({})
 export class DevBullModule {

@@ -490,6 +490,7 @@ function EmailTemplateEditor({
             </p>
             <div
               className="flex-1 overflow-y-auto p-4 text-sm leading-relaxed"
+              // eslint-disable-next-line react/no-danger -- admin-authored email template preview
               dangerouslySetInnerHTML={{ __html: previewHtml }}
             />
           </div>

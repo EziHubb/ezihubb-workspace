@@ -1,8 +1,19 @@
 ﻿import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import type { OrderForPdf } from '../pdf.service';
-import { fmtDate } from '@ezihubb/utils';
 
 const GIFT_WRAPPING_PRICE = 4.99;
+
+/** ISO string or Date → `"Jan 5, 2025"` */
+function fmtDate(val: string | Date | null | undefined): string {
+  if (!val) return '—';
+  try {
+    return new Date(val).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+    });
+  } catch {
+    return '—';
+  }
+}
 
 const styles = StyleSheet.create({
   page: {

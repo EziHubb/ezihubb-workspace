@@ -59,6 +59,7 @@ export function SellerScoreCard() {
   useEffect(() => {
     apiClient.get<ScoreBreakdown>('/seller/score/breakdown')
       .then(setData)
+      // eslint-disable-next-line @typescript-eslint/no-empty-function -- swallow so .finally still clears loading state
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);

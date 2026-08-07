@@ -38,6 +38,7 @@ function EarningsTab({ orderId }: { orderId: string }) {
   useEffect(() => {
     api.get<EarningsData>(API_ROUTES.ADMIN.ORDER_EARNINGS(orderId))
       .then(setEarnings)
+      // eslint-disable-next-line @typescript-eslint/no-empty-function -- swallow so .finally still clears loading state
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [orderId]);

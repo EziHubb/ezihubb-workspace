@@ -22,6 +22,7 @@ export function MetaPixel() {
       <Script
         id="meta-pixel"
         strategy="afterInteractive"
+        // eslint-disable-next-line react/no-danger -- static inline analytics snippet, not user input
         dangerouslySetInnerHTML={{
           __html: `
             !function(f,b,e,v,n,t,s)

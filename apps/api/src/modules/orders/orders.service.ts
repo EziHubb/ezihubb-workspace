@@ -550,6 +550,7 @@ export class OrdersService {
     if (affiliateId && visitorId) {
       this.affiliateTrackingService
         .markClickConverted(visitorId, affiliateId, order.id)
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
         .catch(() => {}); // non-critical; never blocks checkout
     }
 

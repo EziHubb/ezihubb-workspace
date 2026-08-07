@@ -144,7 +144,10 @@ export default async function LocaleLayout({
       {isProd && gtmId && <GoogleTagManager gtmId={gtmId} />}
       <body className="font-sans bg-background text-secondary antialiased">
         {/* Site theme CSS vars — placed inside body so it comes after <link> stylesheets in cascade */}
-        {themeStyle && <style dangerouslySetInnerHTML={{ __html: themeStyle }} />}
+        {themeStyle && (
+          // eslint-disable-next-line react/no-danger -- server-generated CSS vars, not user input
+          <style dangerouslySetInnerHTML={{ __html: themeStyle }} />
+        )}
         {/* GTM noscript fallback */}
         {isProd && gtmId && (
           <noscript>
@@ -184,6 +187,7 @@ export default async function LocaleLayout({
             <Script
               id="hotjar"
               strategy="afterInteractive"
+              // eslint-disable-next-line react/no-danger -- static inline analytics snippet, not user input
               dangerouslySetInnerHTML={{
                 __html: `(function(h,o,t,j,a,r){
                   h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};

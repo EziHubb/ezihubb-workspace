@@ -36,6 +36,7 @@ export function RelatedProductsPicker({ productId, initialIds = [] }: RelatedPro
     const ids = initialIds.join(',');
     api.get<{ data: RelatedProduct[] }>(`${API_ROUTES.ADMIN.PRODUCTS}?ids=${ids}&limit=4`)
       .then((res) => setSelected(res.data ?? []))
+      // eslint-disable-next-line @typescript-eslint/no-empty-function -- best-effort prefill; picker still usable if it fails
       .catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

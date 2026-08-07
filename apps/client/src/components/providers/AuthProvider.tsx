@@ -28,8 +28,10 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
     initPushNotifications()
       .then((token) => {
         if (!token) return;
+        // eslint-disable-next-line @typescript-eslint/no-empty-function -- best-effort; push notifications are optional
         api.post(API_ROUTES.USERS.FCM_TOKEN, { token, platform: 'web' }).catch(() => {});
       })
+      // eslint-disable-next-line @typescript-eslint/no-empty-function -- push notifications are optional, never blocks auth
       .catch(() => {});
 
     const unsubscribe = setupForegroundMessages(({ title, body }) => {

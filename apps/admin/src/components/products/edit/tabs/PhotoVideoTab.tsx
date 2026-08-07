@@ -628,6 +628,7 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
     setValue('imageIds', ids, { shouldDirty: true });
     // Persist the new order to the DB immediately (edit mode only — create mode has no real IDs yet)
     if (product.id) {
+      // eslint-disable-next-line @typescript-eslint/no-empty-function -- best-effort persist; local reorder above already applied
       api.patch(API_ROUTES.ADMIN.PRODUCT_IMAGES_REORDER(product.id), { orderedIds: ids }).catch(() => {});
     }
   };

@@ -60,8 +60,6 @@ export class CartService {
     userId?: string,
     sessionId?: string,
   ): Promise<{ cart: CartResponseDto; newSessionId?: string }> {
-    let newSessionId: string | undefined;
-
     if (userId) {
       let cart = await this.prisma.cart.findUnique({
         where: { userId },
@@ -85,7 +83,7 @@ export class CartService {
     }
 
     // New guest cart
-    newSessionId = randomBytes(20).toString('hex');
+    const newSessionId = randomBytes(20).toString('hex');
     const expiresAt = new Date(Date.now() + GUEST_CART_TTL_MS);
     const cart = await this.prisma.cart.create({
       data: { sessionId: newSessionId, expiresAt },

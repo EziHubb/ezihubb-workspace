@@ -118,6 +118,7 @@ export class IPScanService {
           latencyMs:   Date.now() - start,
           triggeredBy: 'ip-scan',
         },
+      // eslint-disable-next-line @typescript-eslint/no-empty-function -- audit log write shouldn't block the scan result
       }).catch(() => {});
 
       // 8. Cache SAFE results for 7 days

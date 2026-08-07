@@ -976,7 +976,7 @@ export class ProductsService {
   // ─── Variation Settings ──────────────────────────────────────────────────────
 
   async getVariationSettings(productId: string) {
-    let settings = await this.prisma.variationSettings.findUnique({ where: { productId } });
+    const settings = await this.prisma.variationSettings.findUnique({ where: { productId } });
     if (!settings) {
       // Return default without creating
       return { productId, enableVariations: false, variesBy: [], skuPrefix: null };

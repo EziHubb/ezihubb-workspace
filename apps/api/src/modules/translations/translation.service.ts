@@ -133,6 +133,7 @@ export class TranslationService {
     await this.prisma.translation.deleteMany({ where: { entityType, entityId } });
     // Best-effort cache eviction for all locales
     for (const locale of ['vi', 'zh']) {
+      // eslint-disable-next-line @typescript-eslint/no-empty-function -- best-effort cache eviction, stale cache just expires on TTL
       this.redis.del(`translations:${entityType}:${entityId}:${locale}`).catch(() => {});
     }
   }

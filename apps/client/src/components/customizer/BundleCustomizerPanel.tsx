@@ -74,9 +74,6 @@ export function BundleCustomizerPanel({
   const [isAdding,    setIsAdding]    = useState(false);
   const [addError,    setAddError]    = useState('');
 
-  const config = product.customization as CustomizationConfigDto | null;
-  if (!config) return null;
-
   const setFieldValue = useCallback(
     (fieldId: string, value: Partial<FieldValue>) => {
       const parsed = parseFieldId(fieldId);
@@ -91,6 +88,9 @@ export function BundleCustomizerPanel({
     },
     [activeItem],
   );
+
+  const config = product.customization as CustomizationConfigDto | null;
+  if (!config) return null;
 
   const items = Array.from({ length: bundleCount }, (_, i) => i);
   const allComplete = items.every((i) =>

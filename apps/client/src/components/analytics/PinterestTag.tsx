@@ -32,6 +32,7 @@ export function PinterestTag() {
       <Script
         id="pinterest-tag"
         strategy="afterInteractive"
+        // eslint-disable-next-line react/no-danger -- static inline analytics snippet, not user input
         dangerouslySetInnerHTML={{
           __html: `
             !function(e){if(!window.pintrk){window.pintrk = function () {

@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
-import { fmtDate } from '@ezihubb/utils';
 
 export const EmailTemplate = {
   WELCOME:             'welcome',

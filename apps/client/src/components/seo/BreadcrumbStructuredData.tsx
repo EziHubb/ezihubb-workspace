@@ -35,6 +35,7 @@ export function BreadcrumbStructuredData({ items }: BreadcrumbStructuredDataProp
   return (
     <script
       type="application/ld+json"
+      // eslint-disable-next-line react/no-danger -- static JSON.stringify output, not user input
       dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
     />
   );

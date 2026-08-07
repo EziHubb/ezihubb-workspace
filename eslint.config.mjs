@@ -5,7 +5,11 @@ export default [
   ...nx.configs['flat/typescript'],
   ...nx.configs['flat/javascript'],
   {
-    ignores: ['**/dist', '**/out-tsc', '**/node_modules', '**/.next'],
+    // next-env.d.ts is Next.js-generated boilerplate (regenerated on every
+    // build, "should not be edited" per its own header comment) that
+    // imports its own dist output via a relative path — not a real
+    // cross-project dependency.
+    ignores: ['**/dist', '**/out-tsc', '**/node_modules', '**/.next', '**/next-env.d.ts'],
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
@@ -14,7 +18,13 @@ export default [
         'error',
         {
           enforceBuildableLibDependency: true,
-          allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$'],
+          // eslint/tailwind configs are build-tool wiring, not application
+          // source — their cross-project requires are intentional, not
+          // architecture debt.
+          allow: [
+            '^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$',
+            '^.*/tailwind\\.config(\\.[cm]?js)?$',
+          ],
           depConstraints: [
             // client app: can only import from shared libs (not other apps)
             {

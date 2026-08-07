@@ -88,9 +88,6 @@ export default function AdminStoresPage() {
     enabled: role !== 'ADMIN',
   });
 
-  // Render nothing while the redirect is in-flight — prevents stores list from flashing
-  if (role === 'ADMIN') return null;
-
   const approveMutation = useMutation({
     mutationFn: (id: string) => api.post(API_ROUTES.ADMIN.STORE_APPROVE(id), {}),
     onSuccess:  () => qc.invalidateQueries({ queryKey: ['admin-stores'] }),
@@ -107,6 +104,9 @@ export default function AdminStoresPage() {
       api.post(API_ROUTES.ADMIN.STORE_SUSPEND(id), { reason }),
     onSuccess:  () => qc.invalidateQueries({ queryKey: ['admin-stores'] }),
   });
+
+  // Render nothing while the redirect is in-flight — prevents stores list from flashing
+  if (role === 'ADMIN') return null;
 
   const stores     = safeArr(data?.data);
   const pagination = data?.pagination;
