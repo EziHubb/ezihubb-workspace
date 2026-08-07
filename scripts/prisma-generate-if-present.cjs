@@ -11,8 +11,9 @@ const fs = require('fs');
 const { execSync } = require('child_process');
 
 if (fs.existsSync('prisma/schema.prisma')) {
-  // `pnpm exec` (not a bare `prisma` call) so this resolves node_modules/.bin
-  // correctly whether pnpm invokes it as a lifecycle script or it's run
-  // directly (e.g. `node scripts/prisma-generate-if-present.cjs`).
+  // `pnpm exec` (not a bare `prisma` call, and not a raw node_modules/.bin
+  // path — that doesn't resolve the Windows .cmd shim correctly) so this
+  // works cross-platform whether pnpm invokes it as a lifecycle script or
+  // it's run directly (e.g. `node scripts/prisma-generate-if-present.cjs`).
   execSync('pnpm exec prisma generate --schema=prisma/schema.prisma', { stdio: 'inherit' });
 }
