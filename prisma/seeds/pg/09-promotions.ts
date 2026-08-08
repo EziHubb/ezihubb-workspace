@@ -73,14 +73,6 @@ export async function seedPromotions(prisma: PrismaClient) {
       startsAt:       new Date('2026-05-01'),
       expiresAt:      new Date('2026-05-12'),
     },
-    {
-      code:           'VIPFREE',
-      type:           'FREE_SHIPPING' as const,
-      value:          0,
-      maxUsesPerUser: 10,
-      isActive:       true,
-      description:    'VIP members: free shipping on every order',
-    },
   ];
 
   for (const promo of promos) {

@@ -26,7 +26,7 @@ async function main() {
   }
 
   // Summary
-  const [users, categories, collections, products, promotions, zones, orders, reviews, giftCards, loyaltyAccounts, wishlistItems, qanda] = await Promise.all([
+  const [users, categories, collections, products, promotions, zones, orders, reviews, giftCards, wishlistItems, qanda] = await Promise.all([
     prisma.user.count(),
     prisma.category.count(),
     prisma.collection.count(),
@@ -36,7 +36,6 @@ async function main() {
     prisma.order.count(),
     prisma.review.count(),
     prisma.giftCard.count(),
-    prisma.loyaltyAccount.count(),
     prisma.wishlistItem.count(),
     prisma.productQuestion.count(),
   ]);
@@ -48,7 +47,6 @@ async function main() {
   console.log(`  Orders:           ${orders}`);
   console.log(`  Reviews:          ${reviews}`);
   console.log(`  Gift Cards:       ${giftCards}`);
-  console.log(`  Loyalty Accounts: ${loyaltyAccounts}`);
   console.log(`  Wishlist Items:   ${wishlistItems}`);
   console.log(`  Product Q&A:      ${qanda}`);
   console.log(`  Promotions:       ${promotions}`);
