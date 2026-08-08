@@ -203,7 +203,7 @@ export const authOptions: NextAuthOptions = {
   },
 
   pages: { signIn: '/login', error: '/login' },
-  session: { strategy: 'jwt', maxAge: 8 * 60 * 60 },
+  session: { strategy: 'jwt', maxAge: 24 * 60 * 60 },
 
   // Use an explicit secret — never rely on the default in production.
   // Prefer NEXTAUTH_SECRET (server-only); fall back to NEXT_PUBLIC_NEXTAUTH_SECRET

@@ -65,8 +65,8 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
         REDIS_URL: Joi.string().default('redis://localhost:6379'),
         JWT_ACCESS_SECRET: Joi.string().required(),
         JWT_REFRESH_SECRET: Joi.string().required(),
-        JWT_ACCESS_EXPIRES_IN: Joi.string().default('15m'),
-        JWT_REFRESH_EXPIRES_IN: Joi.string().default('30d'),
+        JWT_ACCESS_EXPIRES_IN: Joi.string().default('1d'),
+        JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
         CORS_ORIGINS: Joi.string().default('http://localhost:3000,http://localhost:3001'),
         // Storage — optional during development
         AWS_S3_BUCKET: Joi.string().default('ezihubb-assets'),

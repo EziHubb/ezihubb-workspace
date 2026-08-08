@@ -8,9 +8,13 @@ import { ApiKeysService } from './api-keys.service';
 
 interface JwtLike { sub?: string; id?: string; role?: string; storeId?: string }
 
-/** Returns the storeId the caller owns, or null for SUPER_ADMIN (no store selected). */
+/**
+ * Returns the storeId the caller owns, or null if they don't have one.
+ * SUPER_ADMIN is not special-cased here — per the seed data (14-stores.ts),
+ * the platform's admin account owns the default "EziHubb" store, same as
+ * any other seller.
+ */
 async function resolveSellerStoreId(prisma: PrismaService, user: JwtLike): Promise<string | null> {
-  if (user.role === 'SUPER_ADMIN') return null;
   if (user.storeId) return user.storeId;
   const userId = user.sub ?? user.id;
   if (!userId) return null;

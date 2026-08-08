@@ -130,8 +130,8 @@ export const authOptions: NextAuthOptions = {
   },
 
   // JWT strategy — no database required; session survives across deploys.
-  // maxAge matches the NestJS refresh-token lifetime (30 days by default).
-  session: { strategy: 'jwt', maxAge: 30 * 24 * 60 * 60 },
+  // maxAge matches the NestJS refresh-token lifetime (7 days).
+  session: { strategy: 'jwt', maxAge: 7 * 24 * 60 * 60 },
 
   secret:
     process.env['NEXTAUTH_SECRET'] ??
