@@ -35,12 +35,21 @@ export default function AccountLayoutClient({
   }, [status, router, locale, pathname]);
 
   // ── Auth guard: profile fetch failed ──────────────────────────────────────
+  // Gated on `status` (not `canFetch`) — a failed refresh clears the Zustand
+  // token, which flips `canFetch` to false on the very next render. Gating
+  // on `canFetch` here meant that exact failure made this effect return
+  // early forever, leaving the page stuck on the loading spinner below
+  // instead of ever redirecting. `useAuthStore`'s setTokenUpdater also signs
+  // next-auth out on a failed refresh, which flips `status` to
+  // 'unauthenticated' and lets the guard above handle it — this one is a
+  // fallback for the brief window before that propagates, or if `canFetch`
+  // was already true and the fetch simply erred out for another reason.
   useEffect(() => {
-    if (!canFetch || isLoading) return;
-    if (isError || !profile) {
+    if (status !== 'authenticated' || isLoading) return;
+    if (isError || (!canFetch && !profile)) {
       router.replace(`/${locale}/login?redirect=${encodeURIComponent(pathname)}`);
     }
-  }, [canFetch, isLoading, isError, profile, router, locale, pathname]);
+  }, [status, canFetch, isLoading, isError, profile, router, locale, pathname]);
 
   // Show spinner while session loading, token syncing, or profile fetching
   if (!profile) {

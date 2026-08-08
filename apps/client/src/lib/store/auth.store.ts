@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { signOut } from 'next-auth/react';
 import { setTokenGetter, setTokenUpdater, api } from '@ezihubb/api-client';
 import { apiClient } from '@ezihubb/api-client';
 import type { UserDto } from '@ezihubb/types';
@@ -17,9 +18,17 @@ if (typeof window !== 'undefined') {
   setTokenGetter(() => _accessToken);
   setTokenUpdater((token) => {
     _accessToken = token ?? null;
-    // Refresh failed — session expired; sign the user out in UI too
+    // Refresh failed — the backend session is dead. Clearing the Zustand
+    // store alone isn't enough: next-auth's own session cookie has no idea
+    // and still reports "authenticated" (its maxAge is independent of the
+    // backend token's real lifetime), so SessionSyncer would just read the
+    // same stale session.user.accessToken back into the store on its next
+    // effect run, undoing this clear. Sign next-auth out too so status
+    // actually flips to "unauthenticated" and account pages' auth guards
+    // can redirect to /login instead of spinning forever.
     if (!token) {
       useAuthStore.setState({ user: null, accessToken: null });
+      void signOut({ redirect: false });
     }
   });
 }
