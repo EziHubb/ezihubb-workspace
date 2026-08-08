@@ -1,11 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
-export async function seedUsers(prisma: PrismaClient) {
-  console.log('  👤 Seeding users...');
+/** Real admin account only — safe to run against production. */
+export async function seedAdminUser(prisma: PrismaClient) {
+  console.log('  👤 Seeding admin user...');
 
-  const adminHash    = await bcrypt.hash(process.env['SEED_ADMIN_PASSWORD'] ?? 'Admin@123456', 12);
-  const customerHash = await bcrypt.hash('Customer@123456', 12);
+  const adminHash = await bcrypt.hash(process.env['SEED_ADMIN_PASSWORD'] ?? 'Admin@123456', 12);
 
   const admin = await prisma.user.upsert({
     where:  { email: 'admin@ezihubb.com' },
@@ -22,6 +22,14 @@ export async function seedUsers(prisma: PrismaClient) {
     },
   });
   console.log(`    ✓ Admin: ${admin.email}`);
+
+  return { admin };
+}
+
+/** Demo data (fake customers/seller with known passwords) — dev/staging only, never production. */
+export async function seedUsers(prisma: PrismaClient) {
+  const { admin } = await seedAdminUser(prisma);
+  const customerHash = await bcrypt.hash('Customer@123456', 12);
 
   // ── Test customers ────────────────────────────────────────────────────────
   const customerDefs = [

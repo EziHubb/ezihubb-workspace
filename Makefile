@@ -1,5 +1,5 @@
 .PHONY: help setup dev stop build \
-        db-migrate db-seed db-reset db-studio lint type-check clean \
+        db-migrate db-seed db-seed-baseline db-reset db-studio lint type-check clean \
         logs shell-api
 
 # Default target
@@ -48,8 +48,11 @@ db-migrate: ## Run pending migrations
 db-migrate-deploy: ## Apply migrations (production-safe, no interactive prompts)
 	pnpm exec prisma migrate deploy --schema=prisma/schema.prisma
 
-db-seed: ## Seed database with default data
+db-seed: ## Seed database with full demo data (dev/staging only — fake products, orders, reviews, test users)
 	pnpm exec ts-node prisma/seed.ts
+
+db-seed-baseline: ## Seed only production-safe baseline data (admin user, categories, shipping zones)
+	pnpm exec ts-node prisma/seed-baseline.ts
 
 db-reset: ## Drop all tables and re-run migrations + seed
 	pnpm exec prisma migrate reset --force --schema=prisma/schema.prisma
