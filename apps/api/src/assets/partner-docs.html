@@ -294,6 +294,12 @@
     <a class="nav-item" data-target="update-product" href="#update-product"><span class="method-tag m-patch">PATCH</span>Update a product</a>
     <a class="nav-item" data-target="delete-product" href="#delete-product"><span class="method-tag m-delete">DEL</span>Delete a product</a>
 
+    <div class="group-title">Product Images</div>
+    <a class="nav-item" data-target="upload-images" href="#upload-images"><span class="method-tag m-post">POST</span>Upload images</a>
+    <a class="nav-item" data-target="attach-images" href="#attach-images"><span class="method-tag m-post">POST</span>Attach image URLs</a>
+    <a class="nav-item" data-target="reorder-images" href="#reorder-images"><span class="method-tag m-patch">PATCH</span>Reorder images</a>
+    <a class="nav-item" data-target="delete-image" href="#delete-image"><span class="method-tag m-delete">DEL</span>Delete an image</a>
+
     <div class="group-title">Search</div>
     <a class="nav-item" data-target="search-products" href="#search-products"><span class="method-tag m-get">GET</span>Search products</a>
   </nav>
@@ -488,10 +494,20 @@
         <tr><td class="prop-name">shortDescription</td><td class="prop-type">string</td><td></td><td class="prop-desc">Short summary, max 500 chars.</td></tr>
         <tr><td class="prop-name">compareAtPrice</td><td class="prop-type">number</td><td></td><td class="prop-desc">Original price, must be greater than <code>basePrice</code>.</td></tr>
         <tr><td class="prop-name">isActive</td><td class="prop-type">boolean</td><td></td><td class="prop-desc">Publish immediately. Default <code>true</code>.</td></tr>
+        <tr><td class="prop-name">isPersonalizable</td><td class="prop-type">boolean</td><td></td><td class="prop-desc">Whether buyers can customize this product before ordering. Default <code>true</code>.</td></tr>
+        <tr><td class="prop-name">isFeatured</td><td class="prop-type">boolean</td><td></td><td class="prop-desc">Show in featured/highlighted product lists. Default <code>false</code>.</td></tr>
+        <tr><td class="prop-name">processingDays</td><td class="prop-type">number</td><td></td><td class="prop-desc">Production time in days before shipment. Default <code>3</code>.</td></tr>
         <tr><td class="prop-name">tagIds / tags</td><td class="prop-type">string[]</td><td></td><td class="prop-desc">Existing tag IDs, or tag names to auto-create.</td></tr>
         <tr><td class="prop-name">collectionIds</td><td class="prop-type">string[]</td><td></td><td class="prop-desc">Collection IDs to add this product to.</td></tr>
+        <tr><td class="prop-name">customizationConfig</td><td class="prop-type">object</td><td></td><td class="prop-desc">Personalizer field config (JSON) — same shape used by the storefront customizer.</td></tr>
         <tr><td class="prop-name">variants</td><td class="prop-type">array</td><td></td><td class="prop-desc">Each: <code>{ name, options, price, sku?, isDefault?, sortOrder? }</code></td></tr>
       </table>
+      <p class="desc" style="margin-top:12px">
+        Images aren't set here — create the product first, then use
+        <a href="#upload-images">Upload images</a> or <a href="#attach-images">Attach image URLs</a>.
+        Extended fields (shipping profile, materials, occasions, return policy, etc.) can be set afterward via
+        <a href="#update-product">Update a product</a>.
+      </p>
 
       <div class="section-label">Request Example</div>
       <div class="code-block">
@@ -555,6 +571,116 @@
       <div class="code-block">
         <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
         <pre><span class="tok-method">DELETE</span> /partner/products/cljk2p9x40001abcd
+<span class="tok-header">X-Api-Key</span>: ezhb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</pre>
+      </div>
+
+      <div class="section-label">Response</div>
+      <p class="desc">Returns <code>204 No Content</code> on success.</p>
+    </section>
+
+    <!-- ── Upload images ────────────────────────────────────────────── -->
+    <section class="endpoint" id="upload-images">
+      <h2 class="title">Upload images</h2>
+      <div class="meta-row"><span class="label">Method:</span><span class="method-badge m-post">POST</span></div>
+      <div class="meta-row"><span class="label">Endpoint:</span><span class="endpoint-path">/partner/products/{id}/images</span></div>
+      <p class="desc">
+        Uploads image files directly (<code>multipart/form-data</code>) and attaches them to the product.
+        JPEG/PNG/WebP only, max 10 MB each, up to 10 files per request. The first image uploaded becomes the
+        primary image if the product has none yet.
+      </p>
+
+      <div class="section-label">Request Example</div>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre><span class="tok-method">POST</span> /partner/products/cljk2p9x40001abcd/images
+<span class="tok-header">Content-Type</span>: multipart/form-data
+<span class="tok-header">X-Api-Key</span>: ezhb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+images: [file1.jpg, file2.png]</pre>
+      </div>
+
+      <div class="section-label">Response</div>
+      <p class="desc">Returns <code>201 Created</code> with the created image records:</p>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre>[
+  { <span class="tok-key">"id"</span>: <span class="tok-str">"img_1"</span>, <span class="tok-key">"url"</span>: <span class="tok-str">"https://cdn.ezihubb.com/products/.../file1.jpg"</span>, <span class="tok-key">"altText"</span>: <span class="tok-bool">null</span>, <span class="tok-key">"isPrimary"</span>: <span class="tok-bool">true</span>, <span class="tok-key">"sortOrder"</span>: <span class="tok-num">0</span> }
+]</pre>
+      </div>
+    </section>
+
+    <!-- ── Attach image URLs ────────────────────────────────────────── -->
+    <section class="endpoint" id="attach-images">
+      <h2 class="title">Attach image URLs</h2>
+      <div class="meta-row"><span class="label">Method:</span><span class="method-badge m-post">POST</span></div>
+      <div class="meta-row"><span class="label">Endpoint:</span><span class="endpoint-path">/partner/products/{id}/images/from-urls</span></div>
+      <p class="desc">
+        Attaches images you've already uploaded elsewhere (your own CDN, S3 bucket, etc.) by URL — no file transfer
+        needed. Useful when your catalog images already live outside EziHubb.
+      </p>
+
+      <div class="section-label">Request Body</div>
+      <table class="props">
+        <tr><th>Property</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td class="prop-name">urls</td><td class="prop-type">string[]</td><td class="prop-req">Y</td><td class="prop-desc">Image URLs to attach, max 20 per request.</td></tr>
+      </table>
+
+      <div class="section-label">Request Example</div>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre><span class="tok-method">POST</span> /partner/products/cljk2p9x40001abcd/images/from-urls
+<span class="tok-header">Content-Type</span>: application/json
+<span class="tok-header">X-Api-Key</span>: ezhb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+{
+  <span class="tok-key">"urls"</span>: [<span class="tok-str">"https://example.com/mug-front.jpg"</span>, <span class="tok-str">"https://example.com/mug-back.jpg"</span>]
+}</pre>
+      </div>
+
+      <div class="section-label">Response</div>
+      <p class="desc">Returns <code>201 Created</code> with the created image records — same shape as <a href="#upload-images">Upload images</a>.</p>
+    </section>
+
+    <!-- ── Reorder images ───────────────────────────────────────────── -->
+    <section class="endpoint" id="reorder-images">
+      <h2 class="title">Reorder images</h2>
+      <div class="meta-row"><span class="label">Method:</span><span class="method-badge m-patch">PATCH</span></div>
+      <div class="meta-row"><span class="label">Endpoint:</span><span class="endpoint-path">/partner/products/{id}/images/reorder</span></div>
+      <p class="desc">Sets the display order of a product's images. The first ID becomes the primary image.</p>
+
+      <div class="section-label">Request Body</div>
+      <table class="props">
+        <tr><th>Property</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td class="prop-name">orderedIds</td><td class="prop-type">string[]</td><td class="prop-req">Y</td><td class="prop-desc">All image IDs for this product, in the desired order.</td></tr>
+      </table>
+
+      <div class="section-label">Request Example</div>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre><span class="tok-method">PATCH</span> /partner/products/cljk2p9x40001abcd/images/reorder
+<span class="tok-header">Content-Type</span>: application/json
+<span class="tok-header">X-Api-Key</span>: ezhb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+{
+  <span class="tok-key">"orderedIds"</span>: [<span class="tok-str">"img_2"</span>, <span class="tok-str">"img_1"</span>]
+}</pre>
+      </div>
+
+      <div class="section-label">Response</div>
+      <p class="desc">Returns <code>204 No Content</code> on success.</p>
+    </section>
+
+    <!-- ── Delete an image ──────────────────────────────────────────── -->
+    <section class="endpoint" id="delete-image">
+      <h2 class="title">Delete an image</h2>
+      <div class="meta-row"><span class="label">Method:</span><span class="method-badge m-delete">DELETE</span></div>
+      <div class="meta-row"><span class="label">Endpoint:</span><span class="endpoint-path">/partner/products/{id}/images/{imgId}</span></div>
+      <p class="desc">Removes a single image from a product.</p>
+
+      <div class="section-label">Request Example</div>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre><span class="tok-method">DELETE</span> /partner/products/cljk2p9x40001abcd/images/img_1
 <span class="tok-header">X-Api-Key</span>: ezhb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</pre>
       </div>
 

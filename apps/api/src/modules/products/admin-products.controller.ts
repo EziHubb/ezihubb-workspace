@@ -55,7 +55,6 @@ import {
   IsArray, IsString, ArrayMaxSize, IsOptional, IsBoolean,
   IsNumber, IsEnum, MaxLength, ValidateNested, IsIn,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   CreateProductDetailDto,
@@ -64,21 +63,7 @@ import {
   CustomizationTemplateDto,
   SetAttributesDto,
 } from './dto/create-product-detail.dto';
-
-class ReorderImagesDto {
-  @ApiProperty({ type: [String] })
-  @IsArray()
-  @IsString({ each: true })
-  orderedIds: string[];
-}
-
-class AttachImagesDto {
-  @ApiProperty({ type: [String] })
-  @IsArray()
-  @IsString({ each: true })
-  @ArrayMaxSize(20)
-  urls: string[];
-}
+import { ReorderImagesDto, AttachImagesDto } from './dto/product-image.dto';
 
 // ── Variation DTOs ────────────────────────────────────────────────────────────
 
