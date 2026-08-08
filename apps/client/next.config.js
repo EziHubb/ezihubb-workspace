@@ -21,11 +21,16 @@ const withNextIntl = createNextIntlPlugin(intlConfigPath);
  **/
 const nextConfig = {
   nx: {},
-  // Traces the actual import graph and copies only the node_modules this
-  // app really uses into .next/standalone — instead of shipping the whole
-  // pnpm-workspace node_modules (which also carries admin's and api's
-  // deps) into the production Docker image. See docker/Dockerfile.
-  output: 'standalone',
+  // NOT using output: 'standalone' — docker/Dockerfile's production stage
+  // copies the full node_modules and runs `next start` (never got updated
+  // to copy .next/standalone + run `node server.js`, the only way
+  // standalone's node_modules pruning actually pays off). Running
+  // `next start` against a `standalone`-configured build silently breaks
+  // things `next start` doesn't expect from that mode — reproduced as
+  // fetch() calls with `next: { revalidate }` in force-dynamic routes
+  // (e.g. the mega-menu nav) silently returning nothing in production
+  // while working fine in dev — so keep this off until the Dockerfile is
+  // actually rewritten to run the standalone server.
   compress: true,
   transpilePackages: ['@ezihubb/constants', '@ezihubb/types', '@ezihubb/ui', '@ezihubb/api-client'],
   images: {

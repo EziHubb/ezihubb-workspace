@@ -8,11 +8,11 @@ const { composePlugins, withNx } = require('@nx/next');
  **/
 const nextConfig = {
   nx: {},
-  // Traces the actual import graph and copies only the node_modules this
-  // app really uses into .next/standalone — instead of shipping the whole
-  // pnpm-workspace node_modules (which also carries client's and api's
-  // deps) into the production Docker image. See docker/Dockerfile.
-  output: 'standalone',
+  // NOT using output: 'standalone' — see apps/client/next.config.js for
+  // why: docker/Dockerfile's production stage runs `next start` against
+  // the full build output, never updated to run the standalone server,
+  // and that mismatch silently breaks fetch() + { next: { revalidate } }
+  // in force-dynamic routes in production (confirmed on the client app).
   transpilePackages: ['@ezihubb/constants', '@ezihubb/types', '@ezihubb/ui', '@ezihubb/api-client'],
   experimental: {
     optimizePackageImports: ['recharts', '@tanstack/react-table'],
