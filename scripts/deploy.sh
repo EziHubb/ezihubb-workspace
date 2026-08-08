@@ -102,7 +102,7 @@ check_resources() {
 
 # How many past builds to keep per image (as timestamped tags), so old
 # layers aren't kept forever on the instance's small disk.
-KEEP_BUILDS=7
+KEEP_BUILDS=2
 
 # Snapshot the freshly-built/pulled image under a timestamped tag, then drop
 # older timestamped tags for the same image beyond $KEEP_BUILDS. Untagged
