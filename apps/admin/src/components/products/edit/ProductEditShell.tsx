@@ -398,7 +398,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
 
             {mode === 'edit' && product && (
               <div className="flex items-center gap-2 shrink-0">
-                <a href={`/en/products/${product.slug}`} target="_blank" rel="noopener noreferrer"
+                <a href={`${process.env.NEXT_PUBLIC_CLIENT_URL ?? 'http://localhost:3000'}/products/${product.slug}`} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-1.5 text-xs font-medium text-muted border border-border rounded-button px-3 py-2 hover:border-primary/40 hover:text-primary transition-colors">
                   <ExternalLink className="w-3.5 h-3.5" /> View
                 </a>
@@ -524,7 +524,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
             )}
 
             {mode === 'edit' && product && (
-              <a href={`/en/products/${product.slug}`} target="_blank" rel="noopener noreferrer"
+              <a href={`${process.env.NEXT_PUBLIC_CLIENT_URL ?? 'http://localhost:3000'}/products/${product.slug}`} target="_blank" rel="noopener noreferrer"
                 className="px-3 py-2 text-sm font-medium text-secondary border border-border rounded-button hover:border-primary/40 transition-colors">
                 Preview
               </a>

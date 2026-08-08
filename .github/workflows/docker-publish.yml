@@ -227,6 +227,7 @@ jobs:
             NEXT_PUBLIC_NEXTAUTH_URL=${{ vars.NEXT_PUBLIC_ADMIN_NEXTAUTH_URL }}
             NEXT_PUBLIC_CDN_URL=${{ vars.NEXT_PUBLIC_CDN_URL }}
             NEXT_PUBLIC_SENTRY_DSN=${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+            NEXT_PUBLIC_CLIENT_URL=${{ vars.NEXT_PUBLIC_CLIENT_URL }}
 
   # ── Keep only the 3 most recent versions of each image (private-repo storage is limited) ─
   cleanup:

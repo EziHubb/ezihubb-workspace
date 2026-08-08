@@ -39,6 +39,7 @@ const SORT_OPTIONS = [
 
 const STATUS_FILTER_OPTIONS = [
   { value: '',         label: 'All listings', statsKey: 'all'      },
+  { value: 'DRAFT',    label: 'Draft',        statsKey: 'draft'    },
   { value: 'ACTIVE',   label: 'Active',       statsKey: 'active'   },
   { value: 'INACTIVE', label: 'Inactive',     statsKey: 'inactive' },
   { value: 'ARCHIVED', label: 'Archived',     statsKey: 'archived' },

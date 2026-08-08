@@ -137,7 +137,6 @@ const NAV_SECTIONS: NavSection[] = [
         children: [
           { label: 'General',     href: '/settings',              icon: Settings },
           { label: 'Fulfillment', href: '/settings/fulfillment',  icon: Plug     },
-          { label: 'API Keys',    href: '/settings/api-keys',     icon: KeyRound },
           { label: 'Audit Log',   href: '/settings/audit-log',    icon: Shield   },
         ],
       },
@@ -147,6 +146,9 @@ const NAV_SECTIONS: NavSection[] = [
 
 // ── Navigation structure — ADMIN (shop owner) ─────────────────────────────────
 // Shop owners use the SAME routes as super admin — the API scopes data to their store.
+// (API Keys is intentionally seller-only — resolveSellerStoreId() in
+// admin-api-keys.controller.ts always returns null for SUPER_ADMIN, since
+// keys are issued per-store and platform staff never own one.)
 
 function getShopNavSections(storeId: string): NavSection[] {
   const storeHref = storeId ? `/stores/${storeId}` : '/dashboard';

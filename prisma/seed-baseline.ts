@@ -4,7 +4,9 @@
  * Unlike prisma/seed.ts (full demo dataset: fake products, orders, reviews,
  * test customers with published passwords), this only creates the reference
  * data a freshly-migrated database needs to function: the admin account,
- * catalog categories, and shipping zones.
+ * catalog categories, collection shells (occasion-based, no products
+ * attached — that link-up only happens via the demo seed), and shipping
+ * zones.
  *
  * Run:  pnpm db:seed:baseline
  */
@@ -12,6 +14,7 @@
 import { prisma, pool } from './seeds/shared/prisma-client';
 import { seedAdminUser }    from './seeds/pg/01-users';
 import { seedCategories }   from './seeds/pg/02-categories';
+import { seedCollections }  from './seeds/pg/03-collections';
 import { seedShippingZones } from './seeds/pg/10-shipping-zones';
 
 async function main() {
@@ -19,6 +22,7 @@ async function main() {
 
   await seedAdminUser(prisma);
   await seedCategories(prisma);
+  await seedCollections(prisma);
   await seedShippingZones(prisma);
 
   console.log('\n✅ Baseline seed complete!');

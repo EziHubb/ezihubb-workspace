@@ -351,7 +351,7 @@ export class ProductsService {
       skuConflict = !!(await this.prisma.product.findUnique({ where: { sku } }));
     } while (skuConflict);
 
-    const slug = await this.resolveUniqueProductSlug(`draft-${sku.toLowerCase()}`);
+    const slug = await this.resolveUniqueProductSlug(sku.toLowerCase());
 
     const product = await this.prisma.product.create({
       data: {
@@ -1540,7 +1540,7 @@ export class ProductsService {
       skuConflict = !!(await this.prisma.product.findUnique({ where: { sku } }));
     } while (skuConflict);
 
-    const slug = await this.resolveUniqueProductSlug(`draft-${sku.toLowerCase()}`, undefined, storeId);
+    const slug = await this.resolveUniqueProductSlug(sku.toLowerCase(), undefined, storeId);
 
     const product = await this.prisma.product.create({
       data: {
