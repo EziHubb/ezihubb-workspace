@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES, ADMIN_ROUTES } from '@ezihubb/constants';
-import { fmtCurrency } from '../../../../lib/fmt';
+import { fmtCurrency, fmtNum } from '../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -154,9 +154,9 @@ export default function ListingsStatsPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right text-secondary">{row.views.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right text-secondary">{row.favourites.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right text-secondary">{row.orders.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right text-secondary">{fmtNum(row.views)}</td>
+                    <td className="px-4 py-3 text-right text-secondary">{fmtNum(row.favourites)}</td>
+                    <td className="px-4 py-3 text-right text-secondary">{fmtNum(row.orders)}</td>
                     <td className="px-4 py-3 text-right font-medium text-secondary">{fmtCurrency(row.revenue)}</td>
                   </tr>
                 ))
@@ -168,7 +168,7 @@ export default function ListingsStatsPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/5">
             <p className="text-xs text-muted">
-              Page {page} of {totalPages} · {data?.pagination.total.toLocaleString()} listings
+              Page {page} of {totalPages} · {fmtNum(data?.pagination?.total)} listings
             </p>
             <div className="flex gap-2">
               <button

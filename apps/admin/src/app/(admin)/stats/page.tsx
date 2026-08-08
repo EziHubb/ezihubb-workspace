@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES, ADMIN_ROUTES } from '@ezihubb/constants';
-import { fmtCurrency } from '../../../lib/fmt';
+import { fmtCurrency, fmtNum, fmtPercentRaw, fmtRating, safeNum } from '../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -189,21 +189,21 @@ export default function StatsPage() {
             <KpiCard
               icon={TrendingUp}
               label="Visits"
-              value={(overview?.visits ?? 0).toLocaleString()}
+              value={fmtNum(overview?.visits)}
               delta={overview?.visitsDelta}
               color="text-blue-500"
             />
             <KpiCard
               icon={ShoppingBag}
               label="Orders"
-              value={(overview?.orders ?? 0).toLocaleString()}
+              value={fmtNum(overview?.orders)}
               delta={overview?.ordersDelta}
               color="text-green-500"
             />
             <KpiCard
               icon={PercentIcon}
               label="Conversion Rate"
-              value={`${(overview?.conversionRate ?? 0).toFixed(1)}%`}
+              value={fmtPercentRaw(overview?.conversionRate)}
               color="text-violet-500"
             />
             <KpiCard
@@ -240,7 +240,7 @@ export default function StatsPage() {
               <div className="bg-surface border border-border rounded-card p-5 flex items-center gap-4">
                 <Heart className="w-8 h-8 text-red-400 shrink-0" />
                 <div>
-                  <p className="text-2xl font-bold text-secondary">{(shopper?.itemFavourites ?? 0).toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-secondary">{fmtNum(shopper?.itemFavourites)}</p>
                   <p className="text-xs text-muted mt-0.5">Item favourites</p>
                   <div className="mt-0.5">{shopper?.favouritesDelta !== undefined && delta(shopper.favouritesDelta)}</div>
                 </div>
@@ -248,7 +248,7 @@ export default function StatsPage() {
               <div className="bg-surface border border-border rounded-card p-5 flex items-center gap-4">
                 <UserPlus className="w-8 h-8 text-blue-400 shrink-0" />
                 <div>
-                  <p className="text-2xl font-bold text-secondary">{(shopper?.shopFollows ?? 0).toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-secondary">{fmtNum(shopper?.shopFollows)}</p>
                   <p className="text-xs text-muted mt-0.5">Shop follows</p>
                   <div className="mt-0.5">{shopper?.followsDelta !== undefined && delta(shopper.followsDelta)}</div>
                 </div>
@@ -257,9 +257,9 @@ export default function StatsPage() {
                 <Star className="w-8 h-8 text-amber-400 shrink-0" />
                 <div>
                   <div className="flex items-baseline gap-1.5">
-                    <p className="text-2xl font-bold text-secondary">{(shopper?.reviewCount ?? 0).toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-secondary">{fmtNum(shopper?.reviewCount)}</p>
                     {shopper?.avgRating && (
-                      <span className="text-sm font-medium text-amber-500">({shopper.avgRating.toFixed(1)} ★)</span>
+                      <span className="text-sm font-medium text-amber-500">({fmtRating(shopper.avgRating)} ★)</span>
                     )}
                   </div>
                   <p className="text-xs text-muted mt-0.5">Reviews</p>
@@ -288,11 +288,11 @@ export default function StatsPage() {
                 <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
                   <div
                     className="h-full bg-primary rounded-full"
-                    style={{ width: `${Math.min(100, s.percentage)}%` }}
+                    style={{ width: `${Math.min(100, safeNum(s.percentage))}%` }}
                   />
                 </div>
-                <span className="text-sm text-muted w-20 text-right">{s.visits.toLocaleString()} visits</span>
-                <span className="text-sm font-medium text-secondary w-12 text-right">{s.percentage.toFixed(0)}%</span>
+                <span className="text-sm text-muted w-20 text-right">{fmtNum(s.visits)} visits</span>
+                <span className="text-sm font-medium text-secondary w-12 text-right">{fmtPercentRaw(s.percentage, 0)}</span>
               </div>
             ))
           )}
@@ -338,9 +338,9 @@ export default function StatsPage() {
                       <span className="text-secondary line-clamp-2 text-xs font-medium max-w-[220px] group-hover:text-primary transition-colors">{row.title}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right text-secondary">{row.views.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-right text-secondary">{row.favourites.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-right text-secondary">{row.orders.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right text-secondary">{fmtNum(row.views)}</td>
+                  <td className="px-4 py-3 text-right text-secondary">{fmtNum(row.favourites)}</td>
+                  <td className="px-4 py-3 text-right text-secondary">{fmtNum(row.orders)}</td>
                   <td className="px-4 py-3 text-right font-medium text-secondary">{fmtCurrency(row.revenue)}</td>
                 </tr>
               ))}

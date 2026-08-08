@@ -7,6 +7,7 @@ import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { FilterSelect } from '../../../../components/ui/FilterSelect';
+import { fmtNum, fmtAmount } from '../../../../lib/fmt';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -179,7 +180,7 @@ export default function CreatorMembersPage() {
         />
 
         {data && (
-          <span className="text-sm text-muted ml-auto">{data.meta.total.toLocaleString()} creator{data.meta.total !== 1 ? 's' : ''}</span>
+          <span className="text-sm text-muted ml-auto">{fmtNum(data.meta?.total)} creator{data.meta?.total !== 1 ? 's' : ''}</span>
         )}
       </div>
 
@@ -217,8 +218,8 @@ export default function CreatorMembersPage() {
                           <code className="font-mono text-xs bg-muted/10 px-2 py-0.5 rounded">{u.referralCode}</code>
                         </td>
                         <td className="px-4 py-3 text-secondary tabular-nums text-xs">{u.totalReferrals}</td>
-                        <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${u.referralEarned.toFixed(2)}</td>
-                        <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">${u.referralBalance.toFixed(2)}</td>
+                        <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">{fmtAmount(u.referralEarned)}</td>
+                        <td className="px-4 py-3 font-semibold text-secondary tabular-nums text-xs">{fmtAmount(u.referralBalance)}</td>
                         <td className="px-4 py-3">
                           <button
                             type="button"
@@ -236,15 +237,15 @@ export default function CreatorMembersPage() {
           </table>
         </div>
 
-        {data && data.meta.totalPages > 1 && (
+        {data && (data.meta?.totalPages ?? 0) > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-            <p className="text-sm text-muted">Page {data.meta.page} of {data.meta.totalPages}</p>
+            <p className="text-sm text-muted">Page {data.meta?.page ?? page} of {data.meta?.totalPages ?? 0}</p>
             <div className="flex gap-2">
               <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}
                 className="px-3 py-1.5 text-xs font-medium border border-border rounded-button text-secondary hover:border-primary/40 disabled:opacity-40 transition-colors">
                 Previous
               </button>
-              <button type="button" onClick={() => setPage((p) => Math.min(data.meta.totalPages, p + 1))} disabled={page >= data.meta.totalPages}
+              <button type="button" onClick={() => setPage((p) => Math.min(data.meta?.totalPages ?? p, p + 1))} disabled={page >= (data.meta?.totalPages ?? 0)}
                 className="px-3 py-1.5 text-xs font-medium border border-border rounded-button text-secondary hover:border-primary/40 disabled:opacity-40 transition-colors">
                 Next
               </button>

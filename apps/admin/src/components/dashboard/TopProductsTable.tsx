@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Star } from 'lucide-react';
+import { fmtNum, fmtCurrency, fmtRating } from '../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -97,15 +98,15 @@ export function TopProductsTable({ products }: TopProductsTableProps) {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-muted text-xs whitespace-nowrap">{p.categoryName}</td>
-                  <td className="px-4 py-3 text-secondary tabular-nums">{(p.unitsSold ?? 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-secondary tabular-nums">{fmtNum(p.unitsSold)}</td>
                   <td className="px-4 py-3 font-semibold text-secondary tabular-nums">
-                    ${(p.revenue ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                    {fmtCurrency(p.revenue)}
                   </td>
                   <td className="px-4 py-3">
                     {p.rating != null ? (
                       <span className="flex items-center gap-1 text-xs text-secondary">
                         <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                        {p.rating.toFixed(1)}
+                        {fmtRating(p.rating)}
                       </span>
                     ) : (
                       <span className="text-xs text-muted">—</span>

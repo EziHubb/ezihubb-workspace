@@ -273,6 +273,7 @@ export default function FulfillmentSettingsPage() {
               onChange={(e) => setExternalShopId(e.target.value)}
               placeholder={fields.idPlaceholder}
               className={inputCls}
+              autoComplete="off"
             />
           </div>
 

@@ -7,6 +7,7 @@ import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { FilterSelect } from '../../../../components/ui/FilterSelect';
+import { fmtNum, safeNum } from '../../../../lib/fmt';
 
 interface AuditLogEntry {
   id:         string;
@@ -118,7 +119,7 @@ export default function AuditLogPage() {
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <h4 className="font-semibold text-secondary text-sm">
             Events
-            {data && <span className="text-muted font-normal ml-1">({data.total.toLocaleString()} total)</span>}
+            {data && <span className="text-muted font-normal ml-1">({fmtNum(data.total)} total)</span>}
           </h4>
           {data && data.pages > 1 && (
             <p className="text-xs text-muted">Page {page} of {data.pages}</p>
@@ -204,7 +205,7 @@ export default function AuditLogPage() {
         {data && data.pages > 1 && (
           <div className="px-5 py-3 border-t border-border flex items-center justify-between">
             <p className="text-xs text-muted">
-              Showing {(page - 1) * 25 + 1}–{Math.min(page * 25, data.total)} of {data.total.toLocaleString()}
+              Showing {(page - 1) * 25 + 1}–{Math.min(page * 25, safeNum(data.total))} of {fmtNum(data.total)}
             </p>
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => setPage((p) => p - 1)} disabled={page === 1}

@@ -6,7 +6,7 @@ import {
   Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { api } from '../../lib/api-client';
-import { fmtDate, safeArr } from '../../lib/fmt';
+import { fmtDate, safeArr, fmtCurrency } from '../../lib/fmt';
 import { API_ROUTES } from '@ezihubb/constants';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -38,7 +38,7 @@ function CustomTooltip({
     <div className="bg-surface border border-border rounded-card px-3 py-2 shadow-floating text-sm">
       <p className="text-muted mb-0.5">{date}</p>
       <p className="font-bold text-secondary">
-        ${payload[0].value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        {fmtCurrency(payload[0].value, 2)}
       </p>
     </div>
   );
@@ -102,7 +102,7 @@ export function RevenueChart({ initialData, initialTotal }: RevenueChartProps) {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-primary font-bold text-sm">
-            ${(total ?? 0).toLocaleString('en-US', { minimumFractionDigits: 0 })} total
+            {fmtCurrency(total)} total
           </span>
           {/* Range selector */}
           <div className="flex bg-background rounded-button p-0.5 gap-0.5">

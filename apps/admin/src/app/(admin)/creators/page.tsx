@@ -9,7 +9,7 @@ import {
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES, ADMIN_ROUTES } from '@ezihubb/constants';
-import { fmtAmount } from '../../../lib/fmt';
+import { fmtAmount, fmtNum } from '../../../lib/fmt';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -205,8 +205,8 @@ export default function CreatorNetworkOverviewPage() {
       {/* ── KPI cards ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         {[
-          { icon: Users,      label: 'Total Creators',    value: String((kpis?.totalReferringUsers ?? 0).toLocaleString()), sub: 'registered',      color: 'bg-blue-500'  },
-          { icon: TrendingUp, label: 'Active This Month', value: String((kpis?.activeThisMonth    ?? 0).toLocaleString()), sub: 'earned or referred',color: 'bg-green-500' },
+          { icon: Users,      label: 'Total Creators',    value: fmtNum(kpis?.totalReferringUsers), sub: 'registered',      color: 'bg-blue-500'  },
+          { icon: TrendingUp, label: 'Active This Month', value: fmtNum(kpis?.activeThisMonth),     sub: 'earned or referred',color: 'bg-green-500' },
           { icon: DollarSign, label: 'Total Paid Out',    value: fmtAmount(kpis?.totalPaidOut     ?? 0),                   sub: 'all time',          color: 'bg-primary'   },
           { icon: Clock,      label: 'Pending Earnings',  value: fmtAmount(kpis?.pendingAmount    ?? 0),                   sub: 'unlocking soon',    color: 'bg-amber-500' },
         ].map(({ icon: Icon, label, value, sub, color }) => (
