@@ -109,6 +109,11 @@ jobs:
           file: docker/Dockerfile
           target: api
           push: true
+          # Worked around a 403 Forbidden on the manifest HEAD check during
+          # push (client/admin/migrate pushed fine in the same run with the
+          # same token — a known flaky interaction between buildx's default
+          # OCI provenance attestation push and GHCR).
+          provenance: false
           tags: |
             ${{ needs.changes.outputs.image_base }}-api:latest
             ${{ needs.changes.outputs.image_base }}-api:${{ github.sha }}

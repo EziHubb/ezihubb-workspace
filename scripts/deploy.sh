@@ -20,6 +20,10 @@
 # DOCKER_IMAGE_BASE can also be set there — defaults to the GHCR path CI
 # pushes to; set it to an empty string to disable pulling entirely (a
 # kill switch that forces every deploy through the local-build path).
+# GHCR_USERNAME/GHCR_TOKEN (optional) — a classic PAT with `read:packages`
+# scope, so the instance can pull private GHCR images. Without them, pulls
+# are attempted unauthenticated (only succeeds if the packages are public)
+# and fall back to a local build exactly as before.
 
 set -e
 
@@ -128,6 +132,19 @@ if ! $SSH "echo ok" >/dev/null 2>&1; then
     exit 1
 fi
 echo -e "${GREEN}✓ Connected${NC}"
+
+if [ -n "$GHCR_USERNAME" ] && [ -n "$GHCR_TOKEN" ]; then
+    echo ""
+    echo -e "${YELLOW}Logging in to ghcr.io on the server...${NC}"
+    # Piped through SSH's stdin (not a CLI arg) so the token never appears
+    # in `ps` output on either end; --password-stdin keeps docker from
+    # writing it to shell history on the remote side either.
+    if printf '%s' "$GHCR_TOKEN" | $SSH "docker login ghcr.io -u '$GHCR_USERNAME' --password-stdin" >/dev/null 2>&1; then
+        echo -e "${GREEN}✓ Logged in${NC}"
+    else
+        echo -e "${YELLOW}⚠ ghcr.io login failed — pulls below will be unauthenticated (only works for public packages)${NC}"
+    fi
+fi
 
 echo ""
 echo -e "${YELLOW}Checking $DEPLOY_PATH on the server...${NC}"
