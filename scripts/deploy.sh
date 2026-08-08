@@ -104,18 +104,9 @@ check_resources() {
 # layers aren't kept forever on the instance's small disk.
 KEEP_BUILDS=7
 
-# BuildKit's own cache mounts (pnpm-store, nx-cache — see docker/Dockerfile)
-# grow unbounded otherwise and filled the disk to 0 bytes free once already
-# (a `docker compose build` failed mid-COPY with "no space left on device",
-# which also took mongodb down since it couldn't write to its volume
-# either). Capping it still keeps the cache that makes rebuilds fast — it
-# evicts least-recently-used entries first, not everything.
-BUILD_CACHE_CAP_GB=6
-
-# Snapshot the freshly-built image under a timestamped tag, then drop
+# Snapshot the freshly-built/pulled image under a timestamped tag, then drop
 # older timestamped tags for the same image beyond $KEEP_BUILDS. Untagged
-# (dangling) layers left behind are cleaned up too — safe, since BuildKit's
-# cache store is independent of image tags.
+# (dangling) layers left behind are cleaned up too.
 prune_old_builds() {
     local image="ezihubb-workspace-$1"
     local ts
@@ -123,7 +114,6 @@ prune_old_builds() {
     $SSH "docker tag '${image}:latest' '${image}:${ts}' 2>/dev/null || true"
     $SSH "docker images '${image}' --format '{{.Tag}}' | grep -E '^[0-9]{14}\$' | sort -r | tail -n +$((KEEP_BUILDS + 1)) | xargs -r -I{} docker rmi '${image}:{}' 2>/dev/null || true"
     $SSH "docker image prune -f >/dev/null 2>&1 || true"
-    $SSH "docker builder prune -f --keep-storage ${BUILD_CACHE_CAP_GB}GB >/dev/null 2>&1 || true"
 }
 
 echo -e "${YELLOW}Checking SSH connection to $SERVER_USER@$SERVER_IP...${NC}"
@@ -190,7 +180,10 @@ BUILD_TARGETS="migrate api client admin"
 if [ -n "$OLD_HEAD" ] && [ "$OLD_HEAD" != "$NEW_HEAD" ]; then
     CHANGED="$($SSH "cd '$DEPLOY_PATH' && git diff --name-only '$OLD_HEAD' '$NEW_HEAD'" 2>/dev/null || true)"
     if [ -n "$CHANGED" ]; then
-        if echo "$CHANGED" | grep -qE '^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|nx\.json|tsconfig(\.base)?\.json|libs/|scripts/|prisma/schema\.prisma|prisma\.config\.ts|docker/Dockerfile$|\.npmrc$)'; then
+        # Only the 3 scripts actually COPYed into docker/Dockerfile's base
+        # stage matter here — deploy.sh itself, smoke-test.sh, etc. never
+        # run inside the image, so editing them shouldn't force a rebuild.
+        if echo "$CHANGED" | grep -qE '^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|nx\.json|tsconfig(\.base)?\.json|libs/|scripts/(patch-next-build\.cjs|prisma-generate-if-present\.cjs|postbuild\.mjs)|prisma/schema\.prisma|prisma\.config\.ts|docker/Dockerfile$|\.npmrc$)'; then
             BUILD_TARGETS="migrate api client admin"
         else
             BUILD_TARGETS=""
@@ -210,6 +203,10 @@ if [ -z "$BUILD_TARGETS" ]; then
     echo -e "${YELLOW}No app-relevant files changed since last deploy — skipping build.${NC}"
 else
     echo -e "${YELLOW}Building: $BUILD_TARGETS${NC}"
+
+    # Tracks whether any target actually fell back to a local build this
+    # run, so the one-time builder-cache wipe below only runs when needed.
+    LOCAL_BUILD_USED=false
 
     # One image at a time — a 2GB instance can't absorb several
     # webpack/`next build` runs at once. Deploying each service right after
@@ -242,6 +239,7 @@ else
 
         if [ "$PULLED" = false ]; then
             $SSH "cd '$DEPLOY_PATH' && $DC build $TARGET"
+            LOCAL_BUILD_USED=true
         fi
         prune_old_builds "$TARGET"
 
@@ -252,6 +250,19 @@ else
             $SSH "cd '$DEPLOY_PATH' && $DC up -d $TARGET"
         fi
     done
+
+    # CI (docker-publish.yml) is now the source of truth for build caching
+    # (its own type=gha cache scopes) — a local build here only ever
+    # happens as a fallback (e.g. migrate, when CI skipped it for having no
+    # migration changes). So there's no reason to keep BuildKit's local
+    # cache mounts (pnpm-store, nx-cache) around between deploys: wipe them
+    # completely rather than capping/tuning a size limit, which once grew
+    # unbounded and filled the disk to 0 bytes free.
+    if [ "$LOCAL_BUILD_USED" = true ]; then
+        echo ""
+        echo -e "${YELLOW}Clearing local BuildKit cache (only used as a pull-fallback)...${NC}"
+        $SSH "docker builder prune -af >/dev/null 2>&1 || true"
+    fi
 fi
 
 echo ""

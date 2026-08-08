@@ -35,15 +35,16 @@ WORKDIR /app
 # global install, and avoids a cache miss the moment pnpm ships an update.
 RUN corepack enable && corepack prepare pnpm@11.5.2 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
-# scripts/ must be present before pnpm install: postinstall runs
-# patch-next-build.cjs, and prepare runs prisma-generate-if-present.cjs
-# (a no-op here since prisma/ isn't copied yet — see the `source` stage
-# below for the actual generate call). Deliberately NOT copying prisma/ or
-# prisma.config.ts here: this layer must only invalidate when
+# Only the 3 scripts actually invoked by package.json's install lifecycle
+# (postinstall/prepare/build) — NOT the whole scripts/ dir. deploy.sh,
+# smoke-test.sh, nginx-ezihubb.conf, etc. never run inside the image, so
+# copying them here would invalidate this layer (and every downstream
+# build stage) on unrelated local-tooling edits. Deliberately NOT copying
+# prisma/ or prisma.config.ts here: this layer must only invalidate when
 # package.json/pnpm-lock.yaml actually change, not on every prisma schema
 # edit, since installing deps (incl. compiling canvas above) is the
 # heaviest, slowest step in the whole build.
-COPY scripts/ ./scripts/
+COPY scripts/patch-next-build.cjs scripts/prisma-generate-if-present.cjs scripts/postbuild.mjs ./scripts/
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 
