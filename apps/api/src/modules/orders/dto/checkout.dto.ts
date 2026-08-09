@@ -128,5 +128,4 @@ export class CheckoutResponseDto {
   @ApiProperty() orderNumber:  string;
   @ApiProperty() clientSecret: string;
   @ApiProperty() total:        number;
-  @ApiProperty() taxAmount:    number;
 }

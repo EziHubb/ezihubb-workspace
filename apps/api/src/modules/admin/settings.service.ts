@@ -25,8 +25,6 @@ const DEFAULTS: Record<string, Record<string, unknown>> = {
     postalCode: '',
     country: 'United States',
     currency: 'USD',
-    taxRate: 0,
-    taxIncluded: false,
   },
   email: {
     host: '',

@@ -75,11 +75,6 @@ export class OrderResponseDto {
   @ApiPropertyOptional() carrier: string | null;
   @ApiPropertyOptional() trackerId: string | null;
 
-  @ApiProperty() taxAmount:       number;
-  @ApiProperty() taxRate:         number;
-  @ApiPropertyOptional() taxJurisdiction: string | null;
-  @ApiProperty() taxExempt:       boolean;
-
   @ApiProperty()         isGift:          boolean;
   @ApiPropertyOptional() giftMessage:     string | null;
   @ApiPropertyOptional() giftFrom:        string | null;

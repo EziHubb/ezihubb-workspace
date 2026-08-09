@@ -120,7 +120,7 @@ export const analytics = {
 
   purchase(order: {
     orderNumber: string; total: number; subtotal: number;
-    shipping: number; tax: number; coupon?: string;
+    shipping: number; coupon?: string;
     items: {
       id: string; name: string; category: string;
       price: number; quantity: number; variantId?: string;
@@ -131,7 +131,6 @@ export const analytics = {
       currency:       'USD',
       value:          order.total,
       shipping:       order.shipping,
-      tax:            order.tax,
       coupon:         order.coupon,
       items: order.items.map((item) => ({
         item_id:       item.id,

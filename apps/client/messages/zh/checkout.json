@@ -25,8 +25,6 @@
     "referralDiscount": "推荐折扣",
     "loyaltyPoints": "积分兑换",
     "giftWrapping": "礼品包装",
-    "tax": "税费",
-    "taxWithJurisdiction": "税费（{jurisdiction}）",
     "total": "合计"
   },
 

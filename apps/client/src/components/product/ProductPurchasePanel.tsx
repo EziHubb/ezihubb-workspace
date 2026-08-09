@@ -93,7 +93,6 @@ function PriceBlock({
       {discountPercent !== null && discountPercent > 0 && (
         <p className="text-xs text-muted mt-0.5">Limited time sale</p>
       )}
-      <p className="text-xs text-muted mt-1">Local taxes included (where applicable)</p>
     </div>
   );
 }

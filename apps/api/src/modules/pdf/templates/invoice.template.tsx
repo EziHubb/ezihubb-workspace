@@ -222,15 +222,6 @@ export function InvoiceDocument({ order, shopUrl, isGiftReceipt = false }: Props
                 </Text>
               </View>
 
-              {order.taxAmount > 0 && (
-                <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>
-                    Tax{order.taxJurisdiction ? ` (${order.taxJurisdiction})` : ''}
-                  </Text>
-                  <Text style={styles.totalValue}>{fmt(order.taxAmount)}</Text>
-                </View>
-              )}
-
               {order.giftWrapping && (
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel}>Gift wrapping</Text>

@@ -23,8 +23,6 @@ export interface OrderForPdf {
   discountAmount: number;
   affiliateDiscountAmount: number;
   shippingCost: number;
-  taxAmount: number;
-  taxJurisdiction: string | null;
   total: number;
   couponCode: string | null;
   isGift: boolean;
@@ -142,8 +140,6 @@ export class PdfService {
       discountAmount:         Number(raw.discountAmount),
       affiliateDiscountAmount: Number(raw.affiliateDiscountAmount ?? 0),
       shippingCost:           Number(raw.shippingCost),
-      taxAmount:              Number(raw.taxAmount ?? 0),
-      taxJurisdiction:        raw.taxJurisdiction,
       total:                  Number(raw.total),
       couponCode:             raw.couponCode,
       isGift:                 raw.isGift,
@@ -184,8 +180,6 @@ export class PdfService {
         discountAmount:          true,
         affiliateDiscountAmount: true,
         shippingCost:            true,
-        taxAmount:               true,
-        taxJurisdiction:         true,
         total:                   true,
         couponCode:              true,
         isGift:                  true,

@@ -219,15 +219,13 @@ interface StoreSettings {
   postalCode:     string;
   country:        string;
   currency:       string;
-  taxRate:        number;
-  taxIncluded:    boolean;
 }
 
 function StoreTab() {
-  const [general, setGeneral] = useState<Partial<StoreSettings>>({});
-  const [address, setAddress] = useState<Partial<StoreSettings>>({});
-  const [tax,     setTax]     = useState<Partial<StoreSettings>>({});
-  const [saving,  setSaving]  = useState('');
+  const [general,  setGeneral]  = useState<Partial<StoreSettings>>({});
+  const [address,  setAddress]  = useState<Partial<StoreSettings>>({});
+  const [currency, setCurrency] = useState<Partial<StoreSettings>>({});
+  const [saving,   setSaving]   = useState('');
 
   const { data, isLoading } = useQuery<StoreSettings>({
     queryKey: ['store-settings'],
@@ -247,7 +245,7 @@ function StoreTab() {
       addressLine1: data.addressLine1, addressLine2: data.addressLine2,
       city: data.city, state: data.state, postalCode: data.postalCode, country: data.country,
     });
-    setTax({ currency: data.currency, taxRate: data.taxRate, taxIncluded: data.taxIncluded });
+    setCurrency({ currency: data.currency });
   }, [data]);
 
   const save = async (section: string, payload: Partial<StoreSettings>) => {
@@ -263,8 +261,8 @@ function StoreTab() {
   const a = (k: keyof StoreSettings) =>
     (address[k] ?? data?.[k] ?? '') as string;
 
-  const t = (k: keyof StoreSettings, fallback: string | number | boolean = '') =>
-    (tax[k] ?? data?.[k] ?? fallback);
+  const c = (k: keyof StoreSettings, fallback: string | number | boolean = '') =>
+    (currency[k] ?? data?.[k] ?? fallback);
 
   if (isLoading) return <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-48 bg-surface border border-border rounded-card animate-pulse" />)}</div>;
 
@@ -347,35 +345,19 @@ function StoreTab() {
         <SaveButton label="Save Address" saving={saving === 'address'} onClick={() => save('address', address)} />
       </SectionCard>
 
-      {/* Currency & Tax */}
-      <SectionCard title="Currency & Tax">
+      {/* Currency */}
+      <SectionCard title="Currency">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <FieldLabel>Currency</FieldLabel>
-            <select value={t('currency', 'USD') as string} onChange={(e) => setTax((s) => ({ ...s, currency: e.target.value }))}
+            <select value={c('currency', 'USD') as string} onChange={(e) => setCurrency((s) => ({ ...s, currency: e.target.value }))}
               className={inputCls}>
               <option value="USD">USD — US Dollar</option>
               <option value="VND">VND — Vietnamese Dong</option>
             </select>
           </div>
-          <div>
-            <FieldLabel>Tax Rate %</FieldLabel>
-            <div className="relative">
-              <input type="number" min={0} max={100} step={0.01}
-                value={t('taxRate', 0) as number}
-                onChange={(e) => setTax((s) => ({ ...s, taxRate: Number(e.target.value) }))}
-                className={`${inputCls} pr-7`} />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted text-sm">%</span>
-            </div>
-          </div>
         </div>
-        <Toggle
-          checked={t('taxIncluded', false) as boolean}
-          onChange={(v) => setTax((s) => ({ ...s, taxIncluded: v }))}
-          label="Include tax in displayed prices"
-          sub="Prices shown to customers will include tax."
-        />
-        <SaveButton saving={saving === 'tax'} onClick={() => save('tax', tax)} />
+        <SaveButton saving={saving === 'currency'} onClick={() => save('currency', currency)} />
       </SectionCard>
     </div>
   );

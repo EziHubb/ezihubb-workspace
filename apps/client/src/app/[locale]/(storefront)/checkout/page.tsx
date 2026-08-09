@@ -34,15 +34,11 @@ function getCookie(name: string): string | undefined {
 function OrderSummarySidebar({
   cart,
   shippingCost,
-  taxAmount,
-  taxJurisdiction,
   giftWrapping,
   affiliateDiscountAmount,
 }: {
   cart:                     CartDto;
   shippingCost:             number;
-  taxAmount?:               number;
-  taxJurisdiction?:         string;
   giftWrapping?:            boolean;
   affiliateDiscountAmount?: number;
 }) {
@@ -51,10 +47,9 @@ function OrderSummarySidebar({
 
   const discount          = cart.discountAmount ?? 0;
   const subtotal          = cart.totals.subtotal;
-  const tax               = taxAmount ?? 0;
   const giftWrappingCost  = giftWrapping ? 4.99 : 0;
   const affiliateDiscount = affiliateDiscountAmount ?? 0;
-  const total             = subtotal + shippingCost - discount + tax + giftWrappingCost - affiliateDiscount;
+  const total             = subtotal + shippingCost - discount + giftWrappingCost - affiliateDiscount;
 
   const content = (
     <div className="space-y-4">
@@ -138,12 +133,6 @@ function OrderSummarySidebar({
             <span className="tabular-nums">+$4.99</span>
           </div>
         )}
-        {tax > 0 && (
-          <div className="flex justify-between text-muted">
-            <span>{taxJurisdiction ? t('orderSummary.taxWithJurisdiction', { jurisdiction: taxJurisdiction }) : t('orderSummary.tax')}</span>
-            <span className="tabular-nums">${tax.toFixed(2)}</span>
-          </div>
-        )}
         <div className="flex justify-between font-bold text-secondary border-t border-border pt-2">
           <span>{t('orderSummary.total')}</span>
           <span className="tabular-nums">${total.toFixed(2)}</span>
@@ -218,10 +207,6 @@ export default function CheckoutPage() {
   const [giftOptions, setGiftOptions] = useState<GiftOptions>({
     isGift: false, giftMessage: '', giftReceipt: false, giftWrapping: false, giftFrom: '',
   });
-
-  // ── Tax preview (fetched after step 1 when address is known) ─────────────
-  const [taxAmount,       setTaxAmount]       = useState(0);
-  const [taxJurisdiction, setTaxJurisdiction] = useState('');
 
   // ── Affiliate discount (resolved from cookie on mount) ─────────────────────
   const [affiliateInfo, setAffiliateInfo] = useState<{
@@ -298,22 +283,6 @@ export default function CheckoutPage() {
       coupon:    cart.couponCode ?? undefined,
     });
     hotjarEvent('checkout_step_shipping');
-    // Fetch tax estimate early (no shipping cost yet — will be refined on order creation)
-    if (addr.country === 'US' && addr.postalCode) {
-      apiClient
-        .post<{ taxAmount: number; taxRate: number; jurisdiction: string }>(API_ROUTES.ORDERS.TAX_PREVIEW, {
-          postalCode:   addr.postalCode,
-          state:        addr.state,
-          country:      addr.country,
-          subtotal:     cart.totals.subtotal - (cart.discountAmount ?? 0),
-          shippingCost: 0,
-        })
-        .then((res) => {
-          setTaxAmount(res.taxAmount ?? 0);
-          setTaxJurisdiction(res.jurisdiction ?? '');
-        })
-        .catch(() => { /* non-blocking */ });
-    }
     setStep(2);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -337,7 +306,6 @@ export default function CheckoutPage() {
         orderNumber:  string;
         clientSecret: string;
         total:        number;
-        taxAmount:    number;
       }>(API_ROUTES.ORDERS.CREATE, {
         shippingAddress: {
           fullName:     `${shippingAddress.firstName} ${shippingAddress.lastName}`.trim(),
@@ -365,7 +333,6 @@ export default function CheckoutPage() {
       setOrderNumber(res.orderNumber);
       setClientSecret(res.clientSecret);
       setOrderTotal(res.total);
-      if (res.taxAmount != null) setTaxAmount(res.taxAmount);
       hotjarEvent('checkout_step_payment');
       setStep(3);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -392,8 +359,6 @@ export default function CheckoutPage() {
       <OrderSummarySidebar
         cart={cart}
         shippingCost={shippingCost}
-        taxAmount={taxAmount}
-        taxJurisdiction={taxJurisdiction}
         giftWrapping={giftOptions.giftWrapping}
         affiliateDiscountAmount={affiliateInfo?.discountAmount}
       />
@@ -512,8 +477,6 @@ export default function CheckoutPage() {
             <OrderSummarySidebar
               cart={cart}
               shippingCost={shippingCost}
-              taxAmount={taxAmount}
-              taxJurisdiction={taxJurisdiction}
               giftWrapping={giftOptions.giftWrapping}
               affiliateDiscountAmount={affiliateInfo?.discountAmount}
             />

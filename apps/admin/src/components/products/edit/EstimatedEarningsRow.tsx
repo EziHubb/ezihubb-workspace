@@ -172,7 +172,7 @@ export function EstimatedEarningsRow({
           )}
 
           <p className="text-xs text-muted/70 pt-1">
-            Actual earnings may vary based on promotions, refunds, and taxes.
+            Actual earnings may vary based on promotions and refunds.
             Does not include shipping fees.
           </p>
         </div>

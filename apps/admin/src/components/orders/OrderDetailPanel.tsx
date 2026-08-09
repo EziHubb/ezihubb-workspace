@@ -25,7 +25,6 @@ interface EarningsData {
   affiliateDiscount: number;
   referralDiscount: number;
   pointsDiscount: number;
-  taxAmount: number;
   transactionFee: number;
   processingFee: number;
   netEarnings: number;
@@ -65,7 +64,6 @@ function EarningsTab({ orderId }: { orderId: string }) {
         <p className="text-xs font-semibold text-muted uppercase tracking-wider">Revenue</p>
         <Row label="Item revenue"    value={fmt(earnings.itemRevenue)} />
         <Row label="Shipping collected" value={fmt(earnings.shippingRevenue)} />
-        {earnings.taxAmount > 0 && <Row label="Tax collected" value={fmt(earnings.taxAmount)} muted />}
       </div>
 
       {/* Discounts */}

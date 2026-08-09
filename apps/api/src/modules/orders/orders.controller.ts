@@ -15,7 +15,6 @@ import { Request } from 'express';
 import { OrdersService } from './orders.service';
 import { PdfService } from '../pdf/pdf.service';
 import { CheckoutDto, CancelOrderDto } from './dto/checkout.dto';
-import { TaxPreviewDto } from '../tax/dto/tax-preview.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
@@ -29,19 +28,6 @@ export class OrdersController {
     private readonly ordersService: OrdersService,
     private readonly pdfService:    PdfService,
   ) {}
-
-  @Post('tax-preview')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Preview tax for a shipping address + cart total (US only)' })
-  async previewTax(@Body() dto: TaxPreviewDto) {
-    return this.ordersService.previewTax({
-      postalCode:   dto.postalCode,
-      state:        dto.state,
-      country:      dto.country,
-      subtotal:     dto.subtotal,
-      shippingCost: dto.shippingCost,
-    });
-  }
 
   @Post()
   @UseGuards(OptionalAuthGuard)

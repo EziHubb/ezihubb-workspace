@@ -10,7 +10,6 @@ import { ShippingService } from '../shipping/shipping.service';
 import { TrackingService } from '../shipping/tracking.service';
 import { PaymentsService } from '../payments/payments.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { TaxService } from '../tax/tax.service';
 import { AffiliateTrackingService } from '../affiliates/affiliate-tracking.service';
 import { fmtDateTimeVN } from '../../common/utils/date';
 import { CommissionService } from '../affiliates/commission.service';
@@ -89,7 +88,6 @@ export class OrdersService {
     private readonly trackingService: TrackingService,
     private readonly paymentsService: PaymentsService,
     private readonly notificationsService: NotificationsService,
-    private readonly taxService: TaxService,
     private readonly affiliateTrackingService: AffiliateTrackingService,
     private readonly commissionService: CommissionService,
     private readonly pushService: PushService,
@@ -331,29 +329,13 @@ export class OrdersService {
     }
 
     const giftWrappingCost = dto.giftWrapping ? GIFT_WRAPPING_PRICE : 0;
-
-    // ── Tax calculation (US only, never blocks checkout) ──────────────────────
     const { shippingAddress: addr } = dto;
-    const taxResult = await this.taxService.calculateTax({
-      toZip:     addr.postalCode,
-      toState:   addr.state ?? '',
-      toCountry: addr.country,
-      subtotal:  subtotalAfterDiscount + giftWrappingCost,
-      shipping:  shippingCost,
-      lineItems: cart.items.map((item) => {
-        const vp = item.variant ? Number(item.variant.price) : 0;
-        return {
-          id:        item.productId,
-          quantity:  item.quantity,
-          unitPrice: vp > 0 ? vp : Number(item.product.basePrice),
-        };
-      }),
-    });
+
     // Affiliate + referral discounts — applied AFTER coupon, BEFORE payment
     const total = Math.max(
       0,
       Math.round(
-        (subtotalAfterDiscount + shippingCost + taxResult.taxAmount + giftWrappingCost - affiliateDiscountAmount - referralDiscountAmt) * 100,
+        (subtotalAfterDiscount + shippingCost + giftWrappingCost - affiliateDiscountAmount - referralDiscountAmt) * 100,
       ) / 100,
     );
 
@@ -380,9 +362,6 @@ export class OrdersService {
           shippingCost,
           subtotal:       Math.round(subtotal * 100) / 100,
           discountAmount: Math.round(discount * 100) / 100,
-          taxAmount:      taxResult.taxAmount,
-          taxRate:        taxResult.taxRate,
-          taxJurisdiction: taxResult.jurisdiction ?? null,
           total,
           couponCode:     couponCode ?? null,
           isGift:         dto.isGift ?? false,
@@ -566,7 +545,6 @@ export class OrdersService {
       orderNumber:  order.orderNumber,
       clientSecret: paymentResponse.clientSecret,
       total,
-      taxAmount:    taxResult.taxAmount,
     };
   }
 
@@ -919,22 +897,6 @@ export class OrdersService {
     return this.mapToDto(updated);
   }
 
-  async previewTax(dto: {
-    postalCode:   string;
-    state?:       string;
-    country:      string;
-    subtotal:     number;
-    shippingCost: number;
-  }) {
-    return this.taxService.calculateTax({
-      toZip:     dto.postalCode,
-      toState:   dto.state ?? '',
-      toCountry: dto.country,
-      subtotal:  dto.subtotal,
-      shipping:  dto.shippingCost,
-    });
-  }
-
   async markShipped(
     id: string,
     dto: MarkShippedDto,
@@ -1143,7 +1105,6 @@ export class OrdersService {
     const subtotal         = Number(order.subtotal);
     const shippingCost     = Number(order.shippingCost);
     const discountAmount   = Number(order.discountAmount);
-    const taxAmount        = Number(order.taxAmount);
     const affiliateDisc    = Number(order.affiliateDiscountAmount ?? 0);
     const referralDisc     = Number(order.referralDiscountAmount ?? 0);
     const total            = Number(order.total);
@@ -1160,7 +1121,6 @@ export class OrdersService {
       couponDiscount:    discountAmount,
       affiliateDiscount: affiliateDisc,
       referralDiscount:  referralDisc,
-      taxAmount,
       transactionFee,
       processingFee,
       netEarnings,
@@ -1249,10 +1209,6 @@ export class OrdersService {
       trackingUrl:    order.trackingUrl,
       carrier:        order.carrier,
       trackerId:      order.trackerId,
-      taxAmount:      Number(order.taxAmount),
-      taxRate:        Number(order.taxRate),
-      taxJurisdiction: order.taxJurisdiction,
-      taxExempt:      order.taxExempt,
       isGift:         order.isGift,
       giftMessage:    order.giftMessage,
       giftFrom:       order.giftFrom,

@@ -5,14 +5,13 @@ import { OrdersService } from './orders.service';
 import { ShippingModule } from '../shipping/shipping.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { NotificationsModule } from '../notifications/notifications.module';
-import { TaxModule } from '../tax/tax.module';
 import { AffiliatesModule } from '../affiliates/affiliates.module';
 import { PdfModule } from '../pdf/pdf.module';
 import { ReferralModule } from '../referrals/referral.module';
 import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 
 @Module({
-  imports: [ShippingModule, PaymentsModule, NotificationsModule, TaxModule, AffiliatesModule, PdfModule, ReferralModule, FulfillmentModule],
+  imports: [ShippingModule, PaymentsModule, NotificationsModule, AffiliatesModule, PdfModule, ReferralModule, FulfillmentModule],
   controllers: [OrdersController, AdminOrdersController],
   providers: [OrdersService],
   exports: [OrdersService],

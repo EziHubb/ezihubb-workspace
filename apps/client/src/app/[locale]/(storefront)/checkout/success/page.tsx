@@ -139,7 +139,6 @@ export default function CheckoutSuccessPage() {
       total:       order.total,
       subtotal:    order.subtotal,
       shipping:    order.shippingCost,
-      tax:         0,
       coupon:      order.couponCode,
       items: order.items.map((item) => ({
         id:       item.productId,

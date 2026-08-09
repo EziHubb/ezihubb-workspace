@@ -6,9 +6,7 @@
  * from the single platform-wide PlatformSettings row.
  *
  * Applied to `subtotal + shippingCost` for both transaction and payment
- * processing fees — tax isn't split per-store today (Order.taxAmount is
- * order-level only), matching the simplification the old single-commission
- * calculation already made.
+ * processing fees (no sales tax is calculated or charged on this platform).
  */
 
 export interface OrderFeeSettings {
