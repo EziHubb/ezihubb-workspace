@@ -16,7 +16,7 @@ import { ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { CustomizationService } from './customization.service';
 import { ArtStyleService } from './art-style.service';
-import { GeneratePreviewDto } from './dto/generate-preview.dto';
+import { GenerateFieldsPreviewDto } from './dto/generate-fields-preview.dto';
 import { SaveDraftDto } from './dto/save-draft.dto';
 import { UploadedImageDto } from './dto/upload-result.dto';
 import { ApplyArtStyleDto } from './dto/apply-art-style.dto';
@@ -82,16 +82,16 @@ export class CustomizationController {
   }
 
   @Post('preview')
-  @ApiOperation({ summary: 'Queue preview generation for a customization draft' })
-  async generatePreview(@Body() dto: GeneratePreviewDto): Promise<{ jobId: string }> {
-    return this.customizationService.generatePreview(dto);
+  @ApiOperation({ summary: 'Render a live preview for a template + field values (synchronous)' })
+  async generatePreview(@Body() dto: GenerateFieldsPreviewDto): Promise<{ previewUrl: string }> {
+    return this.customizationService.generateFieldsPreview(dto);
   }
 
   // Alias used by the client store (generate-preview → preview)
   @Post('generate-preview')
-  @ApiOperation({ summary: 'Alias: queue preview generation for a customization draft' })
-  async generatePreviewAlias(@Body() dto: GeneratePreviewDto): Promise<{ jobId: string }> {
-    return this.customizationService.generatePreview(dto);
+  @ApiOperation({ summary: 'Alias: render a live preview for a template + field values' })
+  async generatePreviewAlias(@Body() dto: GenerateFieldsPreviewDto): Promise<{ previewUrl: string }> {
+    return this.customizationService.generateFieldsPreview(dto);
   }
 
   @Get('art-styles')

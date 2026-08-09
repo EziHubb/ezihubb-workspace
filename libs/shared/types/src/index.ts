@@ -9,3 +9,4 @@ export * from './lib/review.types';
 export * from './lib/shipping.types';
 export * from './lib/user.types';
 export * from './lib/message.types';
+export * from './lib/customization.types';

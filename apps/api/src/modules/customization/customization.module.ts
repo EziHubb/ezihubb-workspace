@@ -4,6 +4,7 @@ import { DevBullModule } from '../../queue/dev-bull.module';
 import { CustomizationController } from './customization.controller';
 import { CustomizationService } from './customization.service';
 import { ArtStyleService } from './art-style.service';
+import { TemplateCompositorService } from './template-compositor.service';
 import { QUEUES } from '../../queue/queue.constants';
 
 @Module({
@@ -11,7 +12,7 @@ import { QUEUES } from '../../queue/queue.constants';
       ? [BullModule.registerQueue({ name: QUEUES.IMAGE_PROCESSING })]
       : [DevBullModule.forQueues([QUEUES.IMAGE_PROCESSING])])],
   controllers: [CustomizationController],
-  providers: [CustomizationService, ArtStyleService],
+  providers: [CustomizationService, ArtStyleService, TemplateCompositorService],
   exports: [CustomizationService, ArtStyleService],
 })
 export class CustomizationModule {}

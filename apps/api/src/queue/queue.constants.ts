@@ -21,7 +21,6 @@ export const JOBS = {
 
   // Image processing
   REMOVE_BACKGROUND:  'remove-background',
-  GENERATE_PREVIEW:   'generate-preview',
   APPLY_ART_STYLE:    'apply-art-style',
   CLEANUP_TEMP_IMAGES:'cleanup-temp-images',
 
@@ -91,12 +90,6 @@ export interface RemoveBackgroundJobData {
   uploadKey:  string;
   outputKey:  string;
   draftId:    string;
-}
-
-export interface GeneratePreviewJobData {
-  draftId:    string;
-  canvasData: Record<string, unknown>;
-  outputKey:  string;
 }
 
 export interface ApplyArtStyleJobData {

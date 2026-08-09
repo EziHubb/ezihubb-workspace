@@ -1,7 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-const sharp = require('sharp');
 import axios from 'axios';
 
 import { ConfigService } from '@nestjs/config';
@@ -15,7 +14,6 @@ import {
   QUEUES,
   JOBS,
   RemoveBackgroundJobData,
-  GeneratePreviewJobData,
   ApplyArtStyleJobData,
 } from './queue.constants';
 
@@ -42,8 +40,6 @@ export class ImageProcessor extends WorkerHost {
     switch (job.name) {
       case JOBS.REMOVE_BACKGROUND:
         return this.handleRemoveBackground(job as Job<RemoveBackgroundJobData>);
-      case JOBS.GENERATE_PREVIEW:
-        return this.handleGeneratePreview(job as Job<GeneratePreviewJobData>);
       case JOBS.APPLY_ART_STYLE:
         await this.handleApplyArtStyle(job as Job<ApplyArtStyleJobData>);
         return undefined;
@@ -118,29 +114,6 @@ export class ImageProcessor extends WorkerHost {
       // Graceful fallback — caller gets original image URL, job still completes
       return originalUrl;
     }
-  }
-
-  private async handleGeneratePreview(
-    job: Job<GeneratePreviewJobData>,
-  ): Promise<string> {
-    const { draftId, outputKey } = job.data;
-    this.logger.log(`Generate preview: draftId=${draftId} → ${outputKey}`);
-
-    // Placeholder: composite canvas data onto a blank image using Sharp
-    const placeholder = await sharp({
-      create: {
-        width: 800,
-        height: 800,
-        channels: 4,
-        background: { r: 255, g: 255, b: 255, alpha: 1 },
-      },
-    })
-      .png()
-      .toBuffer();
-
-    const resultUrl = await this.storage.uploadFile(placeholder, outputKey, 'image/png');
-    this.logger.log(`Preview generated: ${outputKey}`);
-    return resultUrl;
   }
 
   private async handleApplyArtStyle(job: Job<ApplyArtStyleJobData>): Promise<void> {

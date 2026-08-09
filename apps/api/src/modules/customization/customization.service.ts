@@ -17,12 +17,13 @@ import {
   JOBS,
   DEFAULT_JOB_OPTIONS,
   RemoveBackgroundJobData,
-  GeneratePreviewJobData,
 } from '../../queue/queue.constants';
 import { UploadedImageDto } from './dto/upload-result.dto';
-import { GeneratePreviewDto } from './dto/generate-preview.dto';
+import { GenerateFieldsPreviewDto } from './dto/generate-fields-preview.dto';
 import { SaveDraftDto } from './dto/save-draft.dto';
 import { CustomizationDraft } from '@prisma/client';
+import { TemplateCompositorService } from './template-compositor.service';
+import { DEMO_TEMPLATE, PreviewFieldValue } from '@ezihubb/types';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 const MAX_DIMENSION = 3000;
@@ -40,9 +41,10 @@ export class CustomizationService {
   private readonly logger = new Logger(CustomizationService.name);
 
   constructor(
-    private readonly prisma:   PrismaService,
-    private readonly storage:  StorageService,
-    private readonly redis:    RedisService,
+    private readonly prisma:     PrismaService,
+    private readonly storage:    StorageService,
+    private readonly redis:      RedisService,
+    private readonly compositor: TemplateCompositorService,
     @InjectQueue(QUEUES.IMAGE_PROCESSING) private readonly imageQueue: Queue,
   ) {}
 
@@ -166,32 +168,31 @@ export class CustomizationService {
   }
 
   // ── Preview generation ────────────────────────────────────────────────────────
+  // Fast (Sharp compositing only, no external AI call) so this runs synchronously
+  // rather than through the job queue used for background-removal/art-style.
+  //
+  // TODO: only DEMO_TEMPLATE can be rendered today — there's no admin UI yet to
+  // author a real per-product template, and Product/ProductDetail don't expose
+  // one in the shape TemplateCompositorService expects. Tracked as follow-up work.
 
-  async generatePreview(dto: GeneratePreviewDto): Promise<{ jobId: string }> {
-    const draft = await this.prisma.customizationDraft.findUnique({
-      where: { id: dto.draftId },
-      select: { id: true },
-    });
-    if (!draft) {
+  async generateFieldsPreview(dto: GenerateFieldsPreviewDto): Promise<{ previewUrl: string }> {
+    if (dto.templateId !== DEMO_TEMPLATE.id) {
       throw new NotFoundException({
-        code: 'ERR_NOT_FOUND',
-        message: 'Draft not found',
+        code: 'ERR_TEMPLATE_NOT_FOUND',
+        message: `Template "${dto.templateId}" is not available for preview yet`,
       });
     }
 
-    const outputKey = `previews/customization/${dto.draftId}/${Date.now()}.png`;
-
-    const job = await this.imageQueue.add(
-      JOBS.GENERATE_PREVIEW,
-      {
-        draftId: dto.draftId,
-        canvasData: dto.canvasData,
-        outputKey,
-      } satisfies GeneratePreviewJobData,
-      DEFAULT_JOB_OPTIONS,
+    const buffer = await this.compositor.composite(
+      DEMO_TEMPLATE,
+      dto.fields as Record<string, PreviewFieldValue | undefined>,
+      (key) => this.storage.getPublicUrl(key),
     );
 
-    return { jobId: job.id as string };
+    const outputKey = this.storage.generateKey('previews/customization', 'preview.png');
+    await this.storage.uploadFile(buffer, outputKey, 'image/png');
+
+    return { previewUrl: this.storage.getPublicUrl(outputKey) };
   }
 
   // ── Art style ─────────────────────────────────────────────────────────────────
