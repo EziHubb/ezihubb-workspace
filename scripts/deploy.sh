@@ -105,15 +105,20 @@ check_resources() {
 KEEP_BUILDS=2
 
 # Snapshot the freshly-built/pulled image under a timestamped tag, then drop
-# older timestamped tags for the same image beyond $KEEP_BUILDS. Untagged
-# (dangling) layers left behind are cleaned up too.
-prune_old_builds() {
-    local image="ezihubb-workspace-$1"
-    local ts
+# older timestamped tags for the same image beyond $KEEP_BUILDS. Runs for all
+# targets in a single SSH round-trip (called once at the end, not per-target)
+# — the dangling-layer sweep (`docker image prune -f`) is one shared pass too.
+snapshot_and_prune_builds() {
+    local ts cmd image
     ts="$(date +%Y%m%d%H%M%S)"
-    $SSH "docker tag '${image}:latest' '${image}:${ts}' 2>/dev/null || true"
-    $SSH "docker images '${image}' --format '{{.Tag}}' | grep -E '^[0-9]{14}\$' | sort -r | tail -n +$((KEEP_BUILDS + 1)) | xargs -r -I{} docker rmi '${image}:{}' 2>/dev/null || true"
-    $SSH "docker image prune -f >/dev/null 2>&1 || true"
+    cmd=""
+    for image in "$@"; do
+        image="ezihubb-workspace-${image}"
+        cmd="$cmd docker tag '${image}:latest' '${image}:${ts}' 2>/dev/null || true;"
+        cmd="$cmd docker images '${image}' --format '{{.Tag}}' | grep -E '^[0-9]{14}\$' | sort -r | tail -n +$((KEEP_BUILDS + 1)) | xargs -r -I{} docker rmi '${image}:{}' 2>/dev/null || true;"
+    done
+    cmd="$cmd docker image prune -f >/dev/null 2>&1 || true"
+    $SSH "$cmd"
 }
 
 echo -e "${YELLOW}Checking SSH connection to $SERVER_USER@$SERVER_IP...${NC}"
@@ -203,53 +208,83 @@ if [ -z "$BUILD_TARGETS" ]; then
     echo -e "${YELLOW}No app-relevant files changed since last deploy — skipping build.${NC}"
 else
     echo -e "${YELLOW}Building: $BUILD_TARGETS${NC}"
+    check_resources
 
     # Tracks whether any target actually fell back to a local build this
     # run, so the one-time builder-cache wipe below only runs when needed.
     LOCAL_BUILD_USED=false
 
-    # One image at a time — a 2GB instance can't absorb several
-    # webpack/`next build` runs at once. Deploying each service right after
-    # its own build (rather than building everything first) also means the
-    # live site never goes down for the full build duration.
-    for TARGET in $BUILD_TARGETS; do
+    # ── Phase 1: pull every target from GHCR in parallel ───────────────────
+    # A `docker pull` is network I/O, not CPU/RAM — unlike a local build, there's
+    # no reason to serialize these. Each pull runs as a background SSH command;
+    # output is captured per-target and printed after `wait` so the log still
+    # reads top-to-bottom instead of interleaving 4 pulls' output at once.
+    declare -A PULLED_OK
+    if [ -n "$DOCKER_IMAGE_BASE" ]; then
         echo ""
-        echo -e "${YELLOW}--- $TARGET ---${NC}"
-        check_resources
-
-        # Pull-then-build-fallback: a plain `docker pull` + `docker tag`
-        # (not `docker compose pull`) so the pulled image lands under the
-        # exact same local name Compose would auto-generate for a build
-        # (`ezihubb-workspace-<target>:latest`) — this way an untouched
-        # service (not in $BUILD_TARGETS this run) is never affected by
-        # which path a *different* service took, and docker-compose.yml
-        # itself needs no `image:`/env-var changes at all.
-        PULLED=false
-        if [ -n "$DOCKER_IMAGE_BASE" ]; then
+        echo -e "${YELLOW}Pulling pre-built images from GHCR (in parallel)...${NC}"
+        PULL_TMPDIR="$(mktemp -d)"
+        declare -A PULL_PID
+        for TARGET in $BUILD_TARGETS; do
             REMOTE_IMAGE="${DOCKER_IMAGE_BASE}-${TARGET}:${IMAGE_TAG}"
             LOCAL_IMAGE="ezihubb-workspace-${TARGET}:latest"
-            echo -e "${YELLOW}Trying GHCR pull: ${REMOTE_IMAGE}${NC}"
-            if $SSH "docker pull '$REMOTE_IMAGE' && docker tag '$REMOTE_IMAGE' '$LOCAL_IMAGE'"; then
-                PULLED=true
-                echo -e "${GREEN}✓ Pulled $REMOTE_IMAGE, tagged as $LOCAL_IMAGE${NC}"
+            ( $SSH "docker pull '$REMOTE_IMAGE' && docker tag '$REMOTE_IMAGE' '$LOCAL_IMAGE'" \
+                > "$PULL_TMPDIR/$TARGET.log" 2>&1 ) &
+            PULL_PID[$TARGET]=$!
+        done
+        for TARGET in $BUILD_TARGETS; do
+            echo ""
+            echo -e "${YELLOW}--- $TARGET (pull) ---${NC}"
+            cat "$PULL_TMPDIR/$TARGET.log"
+            if wait "${PULL_PID[$TARGET]}"; then
+                PULLED_OK[$TARGET]=true
+                echo -e "${GREEN}✓ Pulled ${DOCKER_IMAGE_BASE}-${TARGET}:${IMAGE_TAG}, tagged as ezihubb-workspace-${TARGET}:latest${NC}"
             else
+                PULLED_OK[$TARGET]=false
                 echo -e "${YELLOW}⚠ Pull failed (tag not pushed for this commit yet, or network error) — falling back to local build${NC}"
             fi
-        fi
+        done
+        rm -rf "$PULL_TMPDIR"
+    fi
 
-        if [ "$PULLED" = false ]; then
+    # ── Phase 2: local build fallback — still one at a time ────────────────
+    # Only reached for a target GHCR didn't have yet (or DOCKER_IMAGE_BASE
+    # disabled). Kept strictly sequential: a 2GB instance can't absorb several
+    # webpack/`next build` runs concurrently.
+    for TARGET in $BUILD_TARGETS; do
+        if [ "${PULLED_OK[$TARGET]:-false}" != true ]; then
+            echo ""
+            echo -e "${YELLOW}--- $TARGET (local build) ---${NC}"
+            check_resources
             $SSH "cd '$DEPLOY_PATH' && $DC build $TARGET"
             LOCAL_BUILD_USED=true
         fi
-        prune_old_builds "$TARGET"
-
-        if [ "$TARGET" = "migrate" ]; then
-            echo -e "${YELLOW}Running pending database migrations (against RDS)...${NC}"
-            $SSH "cd '$DEPLOY_PATH' && $DC run --rm migrate" || echo -e "${YELLOW}⚠ Migration step failed or had nothing to apply — check logs above.${NC}"
-        else
-            $SSH "cd '$DEPLOY_PATH' && $DC up -d $TARGET"
-        fi
     done
+
+    # ── Phase 3: migrations before any app restarts ─────────────────────────
+    if echo "$BUILD_TARGETS" | grep -qw migrate; then
+        echo ""
+        echo -e "${YELLOW}Running pending database migrations (against RDS)...${NC}"
+        $SSH "cd '$DEPLOY_PATH' && $DC run --rm migrate" || echo -e "${YELLOW}⚠ Migration step failed or had nothing to apply — check logs above.${NC}"
+    fi
+
+    # ── Phase 4: restart every changed app service in one compose call ─────
+    # Previously one `up -d` per target — each call re-evaluates the whole
+    # dependency graph and re-waits on redis/mongodb's health check even
+    # though they were already healthy from the call before. Batching this
+    # into a single call removes that repeated wait entirely.
+    APP_TARGETS="$(echo "$BUILD_TARGETS" | tr ' ' '\n' | grep -vx 'migrate' | tr '\n' ' ')"
+    if [ -n "$(echo "$APP_TARGETS" | tr -d '[:space:]')" ]; then
+        echo ""
+        echo -e "${YELLOW}Restarting: $APP_TARGETS${NC}"
+        $SSH "cd '$DEPLOY_PATH' && $DC up -d $APP_TARGETS"
+    fi
+
+    # ── Phase 5: one combined snapshot+prune pass instead of one per target ─
+    echo ""
+    echo -e "${YELLOW}Tagging builds + pruning old images...${NC}"
+    # shellcheck disable=SC2086
+    snapshot_and_prune_builds $BUILD_TARGETS
 
     # CI (docker-publish.yml) is now the source of truth for build caching
     # (its own type=gha cache scopes) — a local build here only ever
