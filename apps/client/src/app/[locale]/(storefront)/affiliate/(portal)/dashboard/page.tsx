@@ -6,6 +6,7 @@ import { useLocale } from 'next-intl';
 import { Copy, Check, ExternalLink } from 'lucide-react';
 import { useAuthQuery } from '../../../../../../lib/hooks/useAuthQuery';
 import { API_ROUTES } from '@ezihubb/constants';
+import { fmtAmount, safeArr, safeNum, safeStr } from '@ezihubb/utils';
 
 const BASE_URL =
   typeof window !== 'undefined'
@@ -87,34 +88,34 @@ export default function AffiliateDashboardPage() {
       <div className="bg-surface border border-border rounded-card p-6">
         <p className="text-sm text-muted mb-1">Available balance</p>
         <p className="font-display text-4xl font-bold text-secondary">
-          ${data.balance.toFixed(2)}
+          {fmtAmount(data.balance)}
         </p>
         <p className="text-xs text-muted mt-1">
-          All-time earned: ${data.totalEarned.toFixed(2)}
+          All-time earned: {fmtAmount(data.totalEarned)}
         </p>
         <Link
           href={`/${locale}/affiliate/payouts`}
           className={[
             'mt-4 inline-flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-button transition-colors uppercase tracking-wide',
-            data.balance >= minPayout
+            safeNum(data.balance) >= minPayout
               ? 'bg-primary hover:bg-primary/90 text-white'
               : 'bg-muted/10 text-muted cursor-not-allowed pointer-events-none',
           ].join(' ')}
-          aria-disabled={data.balance < minPayout}
+          aria-disabled={safeNum(data.balance) < minPayout}
         >
-          {data.balance >= minPayout
+          {safeNum(data.balance) >= minPayout
             ? 'Request payout'
-            : `$${(minPayout - data.balance).toFixed(2)} until minimum`}
+            : `${fmtAmount(minPayout - safeNum(data.balance))} until minimum`}
         </Link>
       </div>
 
       {/* ── KPI row ──────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total clicks',      value: data.totalClicks.toLocaleString()            },
-          { label: 'Conversions',       value: data.totalConversions.toLocaleString()        },
-          { label: 'Total earned',      value: `$${data.totalEarned.toFixed(2)}`             },
-          { label: 'Conversion rate',   value: `${(data.conversionRate * 100).toFixed(1)}%`  },
+          { label: 'Total clicks',      value: safeNum(data.totalClicks).toLocaleString()      },
+          { label: 'Conversions',       value: safeNum(data.totalConversions).toLocaleString() },
+          { label: 'Total earned',      value: fmtAmount(data.totalEarned)                     },
+          { label: 'Conversion rate',   value: `${(safeNum(data.conversionRate) * 100).toFixed(1)}%` },
         ].map(({ label, value }) => (
           <div key={label} className="bg-surface border border-border rounded-card p-4 text-center">
             <p className="font-display text-2xl font-bold text-secondary tabular-nums">{value}</p>
@@ -185,7 +186,7 @@ export default function AffiliateDashboardPage() {
           </Link>
         </div>
 
-        {data.recentCommissions.length === 0 ? (
+        {safeArr(data.recentCommissions).length === 0 ? (
           <p className="px-5 py-10 text-sm text-muted text-center">
             No commissions yet. Start sharing your link!
           </p>
@@ -201,16 +202,16 @@ export default function AffiliateDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.recentCommissions.map((c) => (
+                {safeArr(data.recentCommissions).map((c) => (
                   <tr key={c.id} className="border-b border-border last:border-0 hover:bg-background transition-colors">
                     <td className="px-5 py-3 text-muted whitespace-nowrap">{fmtDate(c.createdAt)}</td>
                     <td className="px-5 py-3 font-mono text-secondary whitespace-nowrap">{c.orderNumber}</td>
                     <td className="px-5 py-3 text-right font-semibold text-secondary tabular-nums">
-                      ${c.amount.toFixed(2)}
+                      {fmtAmount(c.amount)}
                     </td>
                     <td className="px-5 py-3 text-right">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[c.status] ?? 'bg-muted/10 text-muted'}`}>
-                        {c.status.charAt(0) + c.status.slice(1).toLowerCase()}
+                        {safeStr(c.status).charAt(0) + safeStr(c.status).slice(1).toLowerCase()}
                       </span>
                     </td>
                   </tr>

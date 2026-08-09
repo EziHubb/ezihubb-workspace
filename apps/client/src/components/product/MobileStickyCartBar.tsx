@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import type { ProductDto, ProductVariantDto } from '@ezihubb/types';
+import { fmtAmount } from '@ezihubb/utils';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -62,7 +63,7 @@ export function MobileStickyCartBar({
         {/* Name + price */}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-secondary tabular-nums">
-            ${price.toFixed(2)}
+            {fmtAmount(price)}
           </p>
           <p className="text-xs text-muted truncate">{product.name}</p>
         </div>

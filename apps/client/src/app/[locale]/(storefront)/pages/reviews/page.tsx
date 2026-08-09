@@ -4,6 +4,7 @@ import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import type { ProductListItemDto, PaginatedResponse } from '@ezihubb/types';
 import { ReviewsPageStructuredData } from '../../../../../components/seo/ReviewsPageStructuredData';
+import { fmtRating, safeArr, safeNum } from '@ezihubb/utils';
 
 export const revalidate = 3600;
 
@@ -94,8 +95,8 @@ export default async function ReviewsPage() {
   ]);
 
   const summary     = summaryRes.status     === 'fulfilled' ? summaryRes.value           : null;
-  const reviews     = reviewsRes.status     === 'fulfilled' ? (reviewsRes.value.data     ?? []) : [];
-  const topProducts = topProductsRes.status === 'fulfilled' ? (topProductsRes.value.data ?? []) : [];
+  const reviews     = reviewsRes.status     === 'fulfilled' ? safeArr(reviewsRes.value.data)     : [];
+  const topProducts = topProductsRes.status === 'fulfilled' ? safeArr(topProductsRes.value.data) : [];
 
   return (
     <div className="max-w-[1100px] mx-auto px-4 py-16">
@@ -123,7 +124,7 @@ export default async function ReviewsPage() {
           <div className="inline-flex items-center gap-4 bg-white border border-border rounded-2xl px-8 py-5 shadow-sm">
             <div className="text-center">
               <p className="text-5xl font-bold text-secondary">
-                {summary.averageRating.toFixed(1)}
+                {fmtRating(summary.averageRating)}
               </p>
               <div className="flex gap-0.5 justify-center mt-1">
                 <StarRow rating={5} size="lg" />
@@ -131,11 +132,11 @@ export default async function ReviewsPage() {
             </div>
             <div className="text-left border-l border-border pl-4">
               <p className="font-semibold text-secondary">
-                {summary.totalReviews.toLocaleString()} reviews
+                {safeNum(summary.totalReviews).toLocaleString()} reviews
               </p>
               {summary.totalReviews > 0 && (
                 <p className="text-sm text-muted">
-                  {Math.round((summary.distribution[5] / summary.totalReviews) * 100)}% gave 5 stars
+                  {Math.round((safeNum(summary.distribution?.[5]) / summary.totalReviews) * 100)}% gave 5 stars
                 </p>
               )}
               <p className="text-sm text-green-600 mt-0.5">Verified purchases only</p>
@@ -148,7 +149,7 @@ export default async function ReviewsPage() {
       {summary && (
         <div className="max-w-sm mx-auto mb-14">
           {([5, 4, 3, 2, 1] as const).map((star) => {
-            const count = summary.distribution[star] ?? 0;
+            const count = safeNum(summary.distribution?.[star]);
             const pct   = summary.totalReviews > 0 ? (count / summary.totalReviews) * 100 : 0;
             return (
               <div key={star} className="flex items-center gap-3 mb-2">
@@ -183,10 +184,10 @@ export default async function ReviewsPage() {
               <p className="text-sm text-muted leading-relaxed line-clamp-4">{review.body}</p>
 
               {/* Customer photo */}
-              {review.imageUrls[0] && (
+              {safeArr(review.imageUrls)[0] && (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
-                  src={review.imageUrls[0]}
+                  src={safeArr(review.imageUrls)[0]}
                   alt="Customer photo"
                   className="w-full h-32 object-cover rounded-xl mt-4"
                 />
@@ -246,7 +247,7 @@ export default async function ReviewsPage() {
                 <p className="text-xs text-secondary line-clamp-2 leading-snug">{product.name}</p>
                 {product.rating && (
                   <p className="text-xs font-bold text-primary mt-0.5">
-                    {product.rating.avg.toFixed(1)} ★
+                    {fmtRating(product.rating.avg)} ★
                   </p>
                 )}
               </Link>

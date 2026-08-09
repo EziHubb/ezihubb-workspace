@@ -20,6 +20,7 @@ import type { CustomizationTemplate } from '../../../../../../lib/customizer/typ
 import type { ProductDto } from '@ezihubb/types';
 import { API_ROUTES } from '@ezihubb/constants';
 import { apiClient } from '../../../../../../lib/api-client';
+import { fmtAmount } from '@ezihubb/utils';
 
 // ── Extended product type ─────────────────────────────────────────────────────
 
@@ -314,7 +315,7 @@ function InnerPage({ slug, product, locale }: InnerPageProps) {
                   {/* Price block */}
                   <div className="shrink-0">
                     <p className="text-lg font-bold text-primary leading-none">
-                      ${product.basePrice.toFixed(2)}
+                      {fmtAmount(product.basePrice)}
                     </p>
                     {product.variants?.[0] && (
                       <p className="text-xs text-muted leading-none mt-0.5">

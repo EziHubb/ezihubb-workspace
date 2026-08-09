@@ -9,6 +9,7 @@ import type { ProductListItemDto } from '@ezihubb/types';
 import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { useCartStore } from '../../lib/store/cart.store';
 import { useAuthStore } from '../../lib/store/auth.store';
+import { fmtAmount, safeArr, safeNum } from '@ezihubb/utils';
 
 // ── Badge logic ───────────────────────────────────────────────────────────────
 
@@ -57,12 +58,12 @@ export function SearchProductCard({ product, priority = false }: Props) {
 
   // Cycle through up to 4 images while hovering
   useEffect(() => {
-    if (!isHovered || product.images.length <= 1) return;
+    if (!isHovered || safeArr(product.images).length <= 1) return;
     const timer = setInterval(() => {
-      setActiveImageIndex((i) => (i + 1) % Math.min(product.images.length, 4));
+      setActiveImageIndex((i) => (i + 1) % Math.min(safeArr(product.images).length, 4));
     }, 1200);
     return () => clearInterval(timer);
-  }, [isHovered, product.images.length]);
+  }, [isHovered, safeArr(product.images).length]);
 
   const handleMouseLeave = () => {
     setIsHovered(false);
@@ -85,13 +86,13 @@ export function SearchProductCard({ product, priority = false }: Props) {
   };
 
   const activeImage =
-    product.images[activeImageIndex]?.url ?? product.images[0]?.url ?? '';
+    safeArr(product.images)[activeImageIndex]?.url ?? safeArr(product.images)[0]?.url ?? '';
   const badge = getProductBadge(product);
   const avg = product.rating?.avg ?? 0;
   const ratingCount = product.rating?.count ?? 0;
   const discount =
     product.compareAtPrice
-      ? Math.round((1 - Number(product.basePrice) / Number(product.compareAtPrice)) * 100)
+      ? Math.round((1 - safeNum(product.basePrice) / safeNum(product.compareAtPrice)) * 100)
       : 0;
 
   return (
@@ -112,9 +113,9 @@ export function SearchProductCard({ product, priority = false }: Props) {
         </Link>
 
         {/* Image dot indicators */}
-        {product.images.length > 1 && isHovered && (
+        {safeArr(product.images).length > 1 && isHovered && (
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10 pointer-events-none">
-            {product.images.slice(0, 4).map((_, i) => (
+            {safeArr(product.images).slice(0, 4).map((_, i) => (
               <div
                 key={i}
                 className={`w-1.5 h-1.5 rounded-full transition-colors ${
@@ -202,12 +203,12 @@ export function SearchProductCard({ product, priority = false }: Props) {
         {/* Price */}
         <div className="flex items-baseline gap-1.5 flex-wrap">
           <span className="text-sm font-bold text-secondary">
-            ${Number(product.basePrice).toFixed(2)}
+            {fmtAmount(product.basePrice)}
           </span>
           {product.compareAtPrice && (
             <>
               <span className="text-xs text-muted line-through">
-                ${Number(product.compareAtPrice).toFixed(2)}
+                {fmtAmount(product.compareAtPrice)}
               </span>
               <span className="text-xs text-green-700 font-medium">
                 ({discount}% off)

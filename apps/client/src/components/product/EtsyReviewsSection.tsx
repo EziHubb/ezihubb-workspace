@@ -13,6 +13,7 @@ import { useAuthStore } from '../../lib/store/auth.store';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@ezihubb/api-client';
 import type { ReviewDto, ReviewSummaryDto } from '@ezihubb/types';
+import { fmtRating, safeNum } from '@ezihubb/utils';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -567,7 +568,7 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
           {starFilter !== null ? `${starFilter}-star reviews` : 'Reviews for this item'}
         </h2>
         <span className="text-sm text-muted">
-          {totalReviews.toLocaleString()} total
+          {safeNum(totalReviews).toLocaleString()} total
         </span>
       </div>
 
@@ -581,13 +582,13 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
         <div className="flex items-center gap-4 shrink-0">
           <div className="text-center">
             <div className="text-5xl font-bold text-secondary">
-              {averageRating.toFixed(1)}
+              {fmtRating(averageRating)}
             </div>
             <div className="flex justify-center mt-1">
               <Stars rating={averageRating} />
             </div>
             <p className="text-xs text-muted mt-1">
-              {totalReviews.toLocaleString()} reviews
+              {safeNum(totalReviews).toLocaleString()} reviews
             </p>
           </div>
         </div>
@@ -636,7 +637,7 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
               <div className="flex items-center gap-1.5">
                 <Stars rating={cat.score} size="xs" />
                 <span className="text-xs font-medium tabular-nums">
-                  {cat.score.toFixed(1)}
+                  {fmtRating(cat.score)}
                 </span>
               </div>
             </div>

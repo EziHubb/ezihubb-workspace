@@ -3,6 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { useCustomizerStore } from '../../lib/store/customizer.store';
+import { fmtAmount } from '@ezihubb/utils';
 
 interface PreviewModalProps {
   basePrice:   number;
@@ -108,7 +109,7 @@ export function PreviewModal({ basePrice, onAddToCart }: PreviewModalProps) {
               onClick={() => { closePreview(); onAddToCart(); }}
               className="flex-1 h-10 rounded-button bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-colors"
             >
-              Add to Cart — ${basePrice.toFixed(2)}
+              Add to Cart — {fmtAmount(basePrice)}
             </button>
           </div>
         )}

@@ -7,6 +7,7 @@ import { useAuthQuery, useAuthMutation } from '../../../../../../lib/hooks/useAu
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { useAuthStore } from '../../../../../../lib/store/auth.store';
+import { fmtAmount, safeArr, safeNum } from '@ezihubb/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -124,7 +125,7 @@ function PayoutsSkeleton() {
 // ── Payout request form ───────────────────────────────────────────────────────
 
 function PayoutRequestForm({
-  confirmedBalance,
+  confirmedBalance: rawConfirmedBalance,
   minPayout,
   onSuccess,
 }: {
@@ -132,6 +133,7 @@ function PayoutRequestForm({
   minPayout:        number;
   onSuccess:        () => void;
 }) {
+  const confirmedBalance = safeNum(rawConfirmedBalance);
   const token = useAuthStore((s) => s.accessToken);
 
   const [method, setMethod]   = useState<PayoutMethod>('paypal');
@@ -158,11 +160,11 @@ function PayoutRequestForm({
 
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount < minPayout) {
-      setError(`Minimum payout amount is $${minPayout.toFixed(2)}.`);
+      setError(`Minimum payout amount is ${fmtAmount(minPayout)}.`);
       return;
     }
     if (numAmount > confirmedBalance) {
-      setError(`Amount exceeds your confirmed balance of $${confirmedBalance.toFixed(2)}.`);
+      setError(`Amount exceeds your confirmed balance of ${fmtAmount(confirmedBalance)}.`);
       return;
     }
     if (!detail.trim()) {
@@ -189,7 +191,7 @@ function PayoutRequestForm({
       <div>
         <p className="text-sm font-semibold text-secondary">Request a Payout</p>
         <p className="text-xs text-muted mt-0.5">
-          Minimum payout: ${minPayout.toFixed(2)} &nbsp;·&nbsp; Available: ${confirmedBalance.toFixed(2)}
+          Minimum payout: {fmtAmount(minPayout)} &nbsp;·&nbsp; Available: {fmtAmount(confirmedBalance)}
         </p>
       </div>
 
@@ -312,20 +314,20 @@ export default function ReferralPayoutsPage() {
             <StatCard
               icon={DollarSign}
               label="Confirmed balance"
-              value={`$${me.confirmedBalance.toFixed(2)}`}
-              sub={canRequest ? 'Available to withdraw' : `Min $${minPayout.toFixed(2)} to withdraw`}
+              value={fmtAmount(me.confirmedBalance)}
+              sub={canRequest ? 'Available to withdraw' : `Min ${fmtAmount(minPayout)} to withdraw`}
               color="text-green-700"
             />
             <StatCard
               icon={Clock}
               label="Pending earnings"
-              value={`$${me.pendingBalance.toFixed(2)}`}
+              value={fmtAmount(me.pendingBalance)}
               sub="Locks after order fulfillment"
             />
             <StatCard
               icon={TrendingUp}
               label="All-time earned"
-              value={`$${me.totalEarned.toFixed(2)}`}
+              value={fmtAmount(me.totalEarned)}
             />
           </div>
 
@@ -340,7 +342,7 @@ export default function ReferralPayoutsPage() {
             <div className="bg-[#FAFAF8] border border-border rounded-card p-5 text-center space-y-2">
               <p className="text-sm font-semibold text-secondary">Not enough balance yet</p>
               <p className="text-xs text-muted">
-                You need at least ${minPayout.toFixed(2)} in confirmed balance to request a payout.
+                You need at least {fmtAmount(minPayout)} in confirmed balance to request a payout.
                 Keep sharing your referral link to earn more!
               </p>
             </div>
@@ -365,7 +367,7 @@ export default function ReferralPayoutsPage() {
             )}
 
             {!payoutsLoading && payoutsPage && (
-              payoutsPage.data.length === 0 ? (
+              safeArr(payoutsPage.data).length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
                   <Banknote className="w-10 h-10 text-muted/30" />
                   <p className="text-sm text-muted">No payout requests yet.</p>
@@ -384,7 +386,7 @@ export default function ReferralPayoutsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {payoutsPage.data.map((p) => {
+                        {safeArr(payoutsPage.data).map((p) => {
                           const badge = PAYOUT_STATUS_BADGE[p.status];
                           return (
                             <tr
@@ -403,7 +405,7 @@ export default function ReferralPayoutsPage() {
                                 </div>
                               </td>
                               <td className="px-5 py-4 text-right font-bold tabular-nums text-secondary">
-                                ${p.amount.toFixed(2)}
+                                {fmtAmount(p.amount)}
                               </td>
                               <td className="px-5 py-4 text-secondary">
                                 {METHOD_LABELS[p.method]}
@@ -425,14 +427,14 @@ export default function ReferralPayoutsPage() {
 
                   {/* Mobile card list */}
                   <div className="sm:hidden border border-border rounded-card overflow-hidden divide-y divide-border">
-                    {payoutsPage.data.map((p) => {
+                    {safeArr(payoutsPage.data).map((p) => {
                       const badge = PAYOUT_STATUS_BADGE[p.status];
                       return (
                         <div key={p.id} className="px-4 py-4 space-y-1.5">
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <p className="text-sm font-semibold text-secondary">
-                                ${p.amount.toFixed(2)}
+                                {fmtAmount(p.amount)}
                               </p>
                               <p className="text-xs text-muted">{formatDate(p.createdAt)}</p>
                             </div>

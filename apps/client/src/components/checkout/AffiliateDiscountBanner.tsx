@@ -1,5 +1,7 @@
 'use client';
 
+import { fmtAmount, safeNum } from '@ezihubb/utils';
+
 interface Props {
   discountRate:   number;       // 0.05 = 5%
   affiliateName?: string;       // shown as "thanks to Sarah!"
@@ -16,16 +18,16 @@ export function AffiliateDiscountBanner({ discountRate, affiliateName, discountA
       </div>
       <div>
         <p className="text-sm font-semibold text-green-800">
-          You&apos;re saving {Math.round(discountRate * 100)}%
+          You&apos;re saving {Math.round(safeNum(discountRate) * 100)}%
           {affiliateName ? ` — thanks to ${affiliateName}!` : '!'}
         </p>
         <p className="text-xs text-green-600 mt-0.5">
-          Referral discount of ${discountAmount.toFixed(2)} applied automatically.
+          Referral discount of {fmtAmount(discountAmount)} applied automatically.
         </p>
       </div>
       <div className="ml-auto">
         <span className="text-sm font-bold text-green-700">
-          −${discountAmount.toFixed(2)}
+          −{fmtAmount(discountAmount)}
         </span>
       </div>
     </div>

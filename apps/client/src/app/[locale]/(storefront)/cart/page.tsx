@@ -7,6 +7,7 @@ import { ShoppingBag, ArrowRight, RefreshCw } from 'lucide-react';
 import { useCartStore } from '../../../../lib/store/cart.store';
 import { CartItemRow } from '../../../../components/cart/CartItemRow';
 import { OrderSummary } from '../../../../components/cart/OrderSummary';
+import { fmtAmount, safeArr } from '@ezihubb/utils';
 
 export default function CartPage() {
   const locale = useLocale();
@@ -33,7 +34,7 @@ export default function CartPage() {
 
   // ── Empty state ────────────────────────────────────────────────────────────
 
-  if (!cart || cart.items.length === 0) {
+  if (!cart || safeArr(cart.items).length === 0) {
     return (
       <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-16 flex flex-col items-center justify-center min-h-[60vh] text-center">
         <div className="w-24 h-24 rounded-full bg-primary/5 flex items-center justify-center mb-6">
@@ -69,7 +70,7 @@ export default function CartPage() {
 
   // ── Price mismatch banner ──────────────────────────────────────────────────
 
-  const priceMismatches = cart.items.filter(
+  const priceMismatches = safeArr(cart.items).filter(
     (item) => item.currentPrice !== item.unitPrice,
   );
 
@@ -95,8 +96,8 @@ export default function CartPage() {
               <li key={item.id} className="text-sm text-secondary">
                 <span className="font-medium">{item.productName}</span>:{' '}
                 {t('priceChanged.detail', {
-                  oldPrice: `$${item.unitPrice.toFixed(2)}`,
-                  newPrice: `$${item.currentPrice.toFixed(2)}`,
+                  oldPrice: fmtAmount(item.unitPrice),
+                  newPrice: fmtAmount(item.currentPrice),
                 })}
               </li>
             ))}
@@ -108,7 +109,7 @@ export default function CartPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[65fr_35fr] gap-8 lg:gap-12 items-start">
         <section aria-label="Cart items">
           <ul aria-label="Items in your cart">
-            {cart.items.map((item) => (
+            {safeArr(cart.items).map((item) => (
               <CartItemRow
                 key={item.id}
                 item={item}

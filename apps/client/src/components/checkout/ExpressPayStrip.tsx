@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { fmtAmount } from '@ezihubb/utils';
 
 interface ExpressPayStripProps {
   total:     number;
@@ -56,7 +57,7 @@ export function ExpressPayStrip({ total, onSelect }: ExpressPayStripProps) {
       </div>
 
       <p className="text-center text-[10px] text-muted tabular-nums">
-        Total: ${total.toFixed(2)} USD
+        Total: {fmtAmount(total)} USD
       </p>
     </div>
   );

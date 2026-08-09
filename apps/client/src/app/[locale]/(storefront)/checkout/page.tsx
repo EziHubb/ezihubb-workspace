@@ -20,6 +20,7 @@ import { ExpressPayStrip }          from '../../../../components/checkout/Expres
 import { analytics }                from '../../../../lib/analytics';
 import { hotjarEvent }              from '../../../../lib/analytics/hotjar';
 import { useCurrency }              from '../../../../lib/currency/currency-context';
+import { fmtAmount, safeNum, safeArr } from '@ezihubb/utils';
 
 function getCookie(name: string): string | undefined {
   if (typeof document === 'undefined') return undefined;
@@ -45,17 +46,17 @@ function OrderSummarySidebar({
   const t = useTranslations('checkout');
   const [expanded, setExpanded] = useState(false);
 
-  const discount          = cart.discountAmount ?? 0;
-  const subtotal          = cart.totals.subtotal;
+  const discount          = safeNum(cart.discountAmount);
+  const subtotal          = safeNum(cart.totals?.subtotal);
   const giftWrappingCost  = giftWrapping ? 4.99 : 0;
-  const affiliateDiscount = affiliateDiscountAmount ?? 0;
-  const total             = subtotal + shippingCost - discount + giftWrappingCost - affiliateDiscount;
+  const affiliateDiscount = safeNum(affiliateDiscountAmount);
+  const total             = subtotal + safeNum(shippingCost) - discount + giftWrappingCost - affiliateDiscount;
 
   const content = (
     <div className="space-y-4">
       {/* Items */}
       <ul className="space-y-3">
-        {cart.items.map((item) => {
+        {safeArr(cart.items).map((item) => {
           const thumb = item.previewUrl ?? item.productImageUrl;
           return (
             <li key={item.id} className="flex gap-3">
@@ -90,7 +91,7 @@ function OrderSummarySidebar({
                 ) : null}
               </div>
               <p className="text-sm font-semibold text-secondary shrink-0 tabular-nums">
-                ${(item.currentPrice * item.quantity).toFixed(2)}
+                {fmtAmount(safeNum(item.currentPrice) * safeNum(item.quantity))}
               </p>
             </li>
           );
@@ -100,7 +101,7 @@ function OrderSummarySidebar({
       <div className="border-t border-border pt-4 space-y-2 text-sm">
         <div className="flex justify-between text-muted">
           <span>{t('orderSummary.subtotal')}</span>
-          <span className="tabular-nums">${subtotal.toFixed(2)}</span>
+          <span className="tabular-nums">{fmtAmount(subtotal)}</span>
         </div>
         <div className="flex justify-between text-muted">
           <span>{t('orderSummary.shipping')}</span>
@@ -108,14 +109,14 @@ function OrderSummarySidebar({
             {shippingCost === 0 ? (
               <span className="text-success">{t('orderSummary.free')}</span>
             ) : (
-              `$${shippingCost.toFixed(2)}`
+              fmtAmount(shippingCost)
             )}
           </span>
         </div>
         {discount > 0 && cart.couponCode && (
           <div className="flex justify-between text-success">
             <span>{t('orderSummary.discount', { couponCode: cart.couponCode })}</span>
-            <span className="tabular-nums">−${discount.toFixed(2)}</span>
+            <span className="tabular-nums">−{fmtAmount(discount)}</span>
           </div>
         )}
         {affiliateDiscount > 0.01 && (
@@ -124,7 +125,7 @@ function OrderSummarySidebar({
               <i className="ti ti-gift text-xs" />
               {t('orderSummary.referralDiscount')}
             </span>
-            <span className="font-medium tabular-nums">−${affiliateDiscount.toFixed(2)}</span>
+            <span className="font-medium tabular-nums">−{fmtAmount(affiliateDiscount)}</span>
           </div>
         )}
         {giftWrappingCost > 0 && (
@@ -135,7 +136,7 @@ function OrderSummarySidebar({
         )}
         <div className="flex justify-between font-bold text-secondary border-t border-border pt-2">
           <span>{t('orderSummary.total')}</span>
-          <span className="tabular-nums">${total.toFixed(2)}</span>
+          <span className="tabular-nums">{fmtAmount(total)}</span>
         </div>
       </div>
     </div>
@@ -155,7 +156,7 @@ function OrderSummarySidebar({
             {expanded ? t('orderSummary.hide') : t('orderSummary.show')}
           </span>
           <span className="font-bold text-secondary tabular-nums">
-            ${total.toFixed(2)}
+            {fmtAmount(total)}
           </span>
         </button>
         {expanded && <div className="px-4 pb-4 border-t border-border">{content}</div>}
@@ -255,12 +256,12 @@ export default function CheckoutPage() {
 
   // ── Cart empty guard ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isLoading && cart && cart.items.length === 0) {
+    if (!isLoading && cart && safeArr(cart.items).length === 0) {
       router.replace(`/${locale}/cart`);
     }
   }, [cart, isLoading, router, locale]);
 
-  if (isLoading || !cart || cart.items.length === 0) {
+  if (isLoading || !cart || safeArr(cart.items).length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -269,7 +270,7 @@ export default function CheckoutPage() {
   }
 
   // ── Price change banner ────────────────────────────────────────────────────
-  const priceChangedItems = cart.items.filter((i) => i.priceChanged);
+  const priceChangedItems = safeArr(cart.items).filter((i) => i.priceChanged);
 
   // ── Step handlers ──────────────────────────────────────────────────────────
 
@@ -332,7 +333,7 @@ export default function CheckoutPage() {
       setOrderId(res.orderId);
       setOrderNumber(res.orderNumber);
       setClientSecret(res.clientSecret);
-      setOrderTotal(res.total);
+      setOrderTotal(safeNum(res.total));
       hotjarEvent('checkout_step_payment');
       setStep(3);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -392,9 +393,9 @@ export default function CheckoutPage() {
                 {priceChangedItems.map((item) => (
                   <p key={item.id} className="text-sm text-secondary">
                     <span className="font-medium">{item.productName}</span>:{' '}
-                    <span className="line-through text-muted">${item.unitPrice.toFixed(2)}</span>{' '}
+                    <span className="line-through text-muted">{fmtAmount(item.unitPrice)}</span>{' '}
                     →{' '}
-                    <span className="font-semibold">${item.currentPrice.toFixed(2)}</span>
+                    <span className="font-semibold">{fmtAmount(item.currentPrice)}</span>
                   </p>
                 ))}
               </div>
@@ -404,7 +405,7 @@ export default function CheckoutPage() {
             {step === 1 && (
               <section aria-labelledby="step1-heading">
                 {/* Express pay shortcut */}
-                <ExpressPayStrip total={cart.totals.subtotal} />
+                <ExpressPayStrip total={safeNum(cart.totals?.subtotal)} />
 
                 <h2 id="step1-heading" className="text-base font-semibold text-secondary mb-5">
                   {t('stepHeadings.shippingInformation')}
@@ -438,7 +439,7 @@ export default function CheckoutPage() {
 
                 <DeliveryForm
                   countryCode={shippingAddress.country}
-                  orderTotal={cart.totals.subtotal}
+                  orderTotal={safeNum(cart.totals?.subtotal)}
                   onComplete={handleProceedToPayment}
                   onBack={() => setStep(1)}
                   isCreatingOrder={isCreatingOrder}

@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Star } from 'lucide-react';
 import { useCartStore } from '../../lib/store/cart.store';
 import type { ProductListItemDto } from '@ezihubb/types';
+import { fmtAmount, safeArr, safeNum } from '@ezihubb/utils';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -75,7 +76,7 @@ function RelatedProductCard({
 
         {/* Price */}
         <p className="text-sm font-bold text-secondary mt-0.5">
-          ${product.basePrice.toFixed(2)}
+          {fmtAmount(product.basePrice)}
         </p>
 
         {/* Stars + count */}
@@ -83,7 +84,7 @@ function RelatedProductCard({
           <div className="flex items-center gap-0.5 mt-0.5">
             <MiniStars rating={product.rating.avg} size="xs" />
             <span className="text-[10px] text-muted ml-0.5">
-              ({product.rating.count.toLocaleString()})
+              ({safeNum(product.rating.count).toLocaleString()})
             </span>
           </div>
         )}
@@ -91,7 +92,7 @@ function RelatedProductCard({
         {/* Sales count */}
         {product.soldCount > 0 && (
           <p className="text-[10px] text-muted">
-            {product.soldCount.toLocaleString()} sales
+            {safeNum(product.soldCount).toLocaleString()} sales
           </p>
         )}
       </Link>
@@ -120,9 +121,9 @@ interface YouMayAlsoLikeProps {
 export function YouMayAlsoLike({ products, locale }: YouMayAlsoLikeProps) {
   const [showAll, setShowAll] = useState(false);
 
-  if (products.length === 0) return null;
+  if (safeArr(products).length === 0) return null;
 
-  const displayed = showAll ? products : products.slice(0, GRID_THRESHOLD);
+  const displayed = showAll ? safeArr(products) : safeArr(products).slice(0, GRID_THRESHOLD);
 
   return (
     <section className="mt-10 pt-8 border-t border-border">
@@ -131,7 +132,7 @@ export function YouMayAlsoLike({ products, locale }: YouMayAlsoLikeProps) {
           <h2 className="text-lg font-semibold text-secondary">You may also like</h2>
           <p className="text-xs text-muted">Including ads</p>
         </div>
-        {products.length > GRID_THRESHOLD && (
+        {safeArr(products).length > GRID_THRESHOLD && (
           <button
             type="button"
             onClick={() => setShowAll((v) => !v)}

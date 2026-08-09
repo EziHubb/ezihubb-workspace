@@ -9,6 +9,7 @@ import { useCartStore } from '../../lib/store/cart.store';
 import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
 import type { ProductDto, ProductVariantDto, ProductAttributeDto } from '@ezihubb/types';
+import { fmtAmount, safeNum } from '@ezihubb/utils';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -158,7 +159,7 @@ export function DirectAddToCartPanel({
         ) : (
           <>
             <ShoppingCart className="w-4 h-4" />
-            {t('actions.addToCart')} — ${(effectivePrice * quantity).toFixed(2)}
+            {t('actions.addToCart')} — {fmtAmount(safeNum(effectivePrice) * safeNum(quantity))}
           </>
         )}
       </button>

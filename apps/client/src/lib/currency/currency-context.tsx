@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { apiClient } from '../api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { safeNum } from '@ezihubb/utils';
 
 const CURRENCY_COOKIE = 'ezihubb_currency';
 const CURRENCY_LS_KEY = 'ezihubb_currency';
@@ -35,7 +36,7 @@ const CurrencyContext = createContext<CurrencyContextType>({
   symbol:      '$',
   rates:       { USD: 1 },
   setCurrency: () => undefined,
-  format:      (n) => `$${n.toFixed(2)}`,
+  format:      (n) => `$${safeNum(n).toFixed(2)}`,
   isLoading:   false,
 });
 
@@ -66,8 +67,8 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 
   const format = (usdAmount: number): string => {
     const cfg      = CURRENCIES[currency] ?? CURRENCIES.USD;
-    const rate     = rates[currency] ?? 1;
-    const converted = usdAmount * rate;
+    const rate     = safeNum(rates[currency], 1);
+    const converted = safeNum(usdAmount) * rate;
     const tilde    = currency !== 'USD' ? '~' : '';
 
     if (currency === 'VND') {

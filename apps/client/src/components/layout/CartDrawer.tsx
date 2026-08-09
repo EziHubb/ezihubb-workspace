@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { X, ShoppingBag, ArrowRight, Trash2 } from 'lucide-react';
 import { useLocale } from 'next-intl';
 import { useCartStore } from '../../lib/store/cart.store';
+import { fmtAmount, safeNum, safeArr } from '@ezihubb/utils';
 
 /**
  * Mini cart drawer — triggered by the cart icon in Navbar.
@@ -117,7 +118,7 @@ export function CartDrawer() {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-3">
-          {!cart || cart.items.length === 0 ? (
+          {!cart || safeArr(cart.items).length === 0 ? (
             <div className="flex flex-col items-center justify-center py-14 text-center gap-3">
               <ShoppingBag className="w-12 h-12 text-muted/25" aria-hidden />
               <p className="text-sm font-semibold text-secondary">
@@ -133,7 +134,7 @@ export function CartDrawer() {
             </div>
           ) : (
             <ul className="divide-y divide-border">
-              {cart.items.map((item) => {
+              {safeArr(cart.items).map((item) => {
                 const thumb = item.previewUrl ?? item.productImageUrl;
                 return (
                   <li key={item.id} className="flex gap-3 py-3.5">
@@ -199,7 +200,7 @@ export function CartDrawer() {
                           </button>
                         </div>
                         <span className="text-sm font-semibold text-secondary tabular-nums">
-                          ${(item.currentPrice * item.quantity).toFixed(2)}
+                          {fmtAmount(safeNum(item.currentPrice) * safeNum(item.quantity))}
                         </span>
                       </div>
                     </div>
@@ -211,20 +212,20 @@ export function CartDrawer() {
         </div>
 
         {/* Footer */}
-        {cart && cart.items.length > 0 && (
+        {cart && safeArr(cart.items).length > 0 && (
           <div className="shrink-0 border-t border-border px-5 py-4 space-y-3 bg-surface">
             {cart.discountAmount !== null && cart.discountAmount > 0 && (
               <div className="flex justify-between text-sm text-success font-medium">
                 <span>Discount ({cart.couponCode})</span>
                 <span className="tabular-nums">
-                  −${cart.discountAmount.toFixed(2)}
+                  −{fmtAmount(cart.discountAmount)}
                 </span>
               </div>
             )}
             <div className="flex justify-between items-baseline">
               <span className="font-semibold text-secondary">Subtotal</span>
               <span className="font-bold text-lg text-secondary tabular-nums">
-                ${cart.totals.subtotal.toFixed(2)}
+                {fmtAmount(cart.totals?.subtotal)}
               </span>
             </div>
             <p className="text-xs text-muted">Shipping calculated at checkout</p>
@@ -233,7 +234,7 @@ export function CartDrawer() {
               onClick={closeDrawer}
               className="block w-full text-center py-3 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors uppercase tracking-wide"
             >
-              Checkout — ${cart.totals.subtotal.toFixed(2)}
+              Checkout — {fmtAmount(cart.totals?.subtotal)}
             </Link>
             <Link
               href={`/${locale}/cart`}

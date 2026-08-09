@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Star } from 'lucide-react';
 import type { ProductListItemDto } from '@ezihubb/types';
+import { fmtAmount, safeArr, safeNum } from '@ezihubb/utils';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -52,13 +53,13 @@ function MiniProductCard({
       </div>
       <p className="text-sm text-secondary line-clamp-2 leading-snug">{product.name}</p>
       <p className="text-sm font-semibold text-secondary mt-0.5">
-        ${product.basePrice.toFixed(2)}
+        {fmtAmount(product.basePrice)}
       </p>
       {product.rating && (
         <div className="flex items-center gap-1 mt-0.5">
           <MiniStars rating={product.rating.avg} />
           <span className="text-xs text-muted">
-            ({product.rating.count.toLocaleString()})
+            ({safeNum(product.rating.count).toLocaleString()})
           </span>
         </div>
       )}
@@ -74,7 +75,7 @@ interface MoreFromShopProps {
 }
 
 export function MoreFromShop({ products, locale }: MoreFromShopProps) {
-  if (products.length === 0) return null;
+  if (safeArr(products).length === 0) return null;
 
   return (
     <section className="mt-10 pt-8 border-t border-border">
@@ -89,7 +90,7 @@ export function MoreFromShop({ products, locale }: MoreFromShopProps) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {products.slice(0, 4).map((p) => (
+        {safeArr(products).slice(0, 4).map((p) => (
           <MiniProductCard key={p.id} product={p} locale={locale} />
         ))}
       </div>

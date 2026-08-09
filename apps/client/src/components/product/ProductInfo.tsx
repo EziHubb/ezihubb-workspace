@@ -1,4 +1,5 @@
 import type { ProductDto, ReviewSummaryDto } from '@ezihubb/types';
+import { fmtAmount, fmtRating, safeNum } from '@ezihubb/utils';
 
 interface ProductInfoProps {
   product:       ProductDto;
@@ -8,11 +9,11 @@ interface ProductInfoProps {
 function StarRow({ rating, count }: { rating: number; count?: number }) {
   return (
     <div className="flex items-center gap-1.5">
-      <div className="flex gap-0.5" aria-label={`${rating.toFixed(1)} out of 5 stars`}>
+      <div className="flex gap-0.5" aria-label={`${fmtRating(rating)} out of 5 stars`}>
         {Array.from({ length: 5 }).map((_, i) => (
           <svg
             key={i}
-            className={`w-4 h-4 ${i < Math.round(rating) ? 'text-warning' : 'text-border'}`}
+            className={`w-4 h-4 ${i < Math.round(safeNum(rating)) ? 'text-warning' : 'text-border'}`}
             fill="currentColor"
             viewBox="0 0 20 20"
             aria-hidden="true"
@@ -21,7 +22,7 @@ function StarRow({ rating, count }: { rating: number; count?: number }) {
           </svg>
         ))}
       </div>
-      <span className="text-sm font-semibold text-secondary">{rating.toFixed(1)}</span>
+      <span className="text-sm font-semibold text-secondary">{fmtRating(rating)}</span>
       {count !== undefined && (
         <span className="text-sm text-muted">({count} {count === 1 ? 'review' : 'reviews'})</span>
       )}
@@ -43,11 +44,11 @@ function PriceDisplay({
 
   return (
     <div className="flex items-baseline flex-wrap gap-3">
-      <span className="text-3xl font-bold text-primary">${price.toFixed(2)}</span>
+      <span className="text-3xl font-bold text-primary">{fmtAmount(price)}</span>
 
       {compareAtPrice && compareAtPrice > price && (
         <>
-          <span className="text-base text-muted line-through">${compareAtPrice.toFixed(2)}</span>
+          <span className="text-base text-muted line-through">{fmtAmount(compareAtPrice)}</span>
           <span className="text-sm font-semibold text-error bg-error/8 rounded-pill px-2 py-0.5">
             Save {discount}%
           </span>

@@ -15,6 +15,7 @@ import { Check, Gift, Search, AlertCircle, Tag } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@ezihubb/ui';
 import { apiClient } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { fmtAmount } from '@ezihubb/utils';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -371,7 +372,7 @@ function BalanceChecker() {
             <p className="font-mono text-xs text-muted mt-0.5">{result.code ?? code}</p>
           </div>
           <p className="font-display text-2xl font-bold text-success">
-            ${result.balance?.toFixed(2)}
+            {fmtAmount(result.balance)}
           </p>
         </div>
       )}

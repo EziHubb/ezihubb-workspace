@@ -6,6 +6,7 @@ import { useLocale } from 'next-intl';
 import { Tag, X, ChevronRight, ShieldCheck, Truck, RotateCcw } from 'lucide-react';
 import { useCartStore } from '../../lib/store/cart.store';
 import type { CartDto } from '@ezihubb/types';
+import { fmtAmount } from '@ezihubb/utils';
 
 interface OrderSummaryProps {
   cart: CartDto;
@@ -36,10 +37,10 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
       } else if (apiErr.code === 'ERR_COUPON_MAX_USES_PER_USER') {
         setCouponError('You have already used this coupon.');
       } else if (apiErr.code === 'ERR_COUPON_MIN_ORDER') {
-        const minAmount = (apiErr.details?.['minAmount'] as number | undefined)?.toFixed(2);
+        const minAmount = apiErr.details?.['minAmount'] as number | undefined;
         setCouponError(
-          minAmount
-            ? `Minimum order of $${minAmount} required.`
+          minAmount != null
+            ? `Minimum order of ${fmtAmount(minAmount)} required.`
             : 'Order does not meet the minimum amount for this coupon.',
         );
       } else {
@@ -69,7 +70,7 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
             {totals.itemCount === 1 ? 'item' : 'items'})
           </span>
           <span className="font-medium text-secondary tabular-nums">
-            ${totals.subtotal.toFixed(2)}
+            {fmtAmount(totals?.subtotal)}
           </span>
         </div>
         <div className="flex justify-between">
@@ -80,7 +81,7 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
           <div className="flex justify-between text-success font-medium">
             <span>Discount</span>
             <span className="tabular-nums">
-              −${cart.discountAmount.toFixed(2)}
+              −{fmtAmount(cart.discountAmount)}
             </span>
           </div>
         )}
@@ -92,7 +93,7 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
       <div className="flex justify-between items-baseline">
         <span className="font-semibold text-secondary">Estimated Total</span>
         <span className="font-bold text-xl text-secondary tabular-nums">
-          ${totals.total.toFixed(2)}
+          {fmtAmount(totals?.total)}
         </span>
       </div>
 
@@ -108,7 +109,7 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
                 </p>
                 {cart.discountAmount !== null && cart.discountAmount > 0 && (
                   <p className="text-xs text-success/80">
-                    −${cart.discountAmount.toFixed(2)} applied
+                    −{fmtAmount(cart.discountAmount)} applied
                   </p>
                 )}
               </div>

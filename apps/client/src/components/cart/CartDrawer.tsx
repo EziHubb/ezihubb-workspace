@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useCart, useMutateCart } from '@ezihubb/api-client';
+import { fmtAmount, fmtFixed, safeNum, safeArr } from '@ezihubb/utils';
 
 interface CartDrawerProps {
   isOpen:  boolean;
@@ -67,7 +68,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             </div>
           )}
 
-          {!isLoading && (!cart || cart.items.length === 0) && (
+          {!isLoading && (!cart || safeArr(cart.items).length === 0) && (
             <div className="flex flex-col items-center gap-4 py-16 text-center" data-testid="cart-empty">
               <svg className="w-16 h-16 text-muted/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -80,9 +81,9 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             </div>
           )}
 
-          {!isLoading && cart && cart.items.length > 0 && (
+          {!isLoading && cart && safeArr(cart.items).length > 0 && (
             <ul className="divide-y divide-border" data-testid="cart-items">
-              {cart.items.map((item) => (
+              {safeArr(cart.items).map((item) => (
                 <li key={item.id} className="flex gap-3 py-4" data-testid={`cart-item-${item.id}`}>
                   <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-sm bg-background">
                     {(item.previewUrl ?? item.productImageUrl) ? (
@@ -144,7 +145,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-medium text-secondary">
-                          ${(item.currentPrice * item.quantity).toFixed(2)}
+                          {fmtAmount(safeNum(item.currentPrice) * safeNum(item.quantity))}
                         </span>
                         <button
                           aria-label={t('item.remove', { name: item.productName })}
@@ -167,17 +168,17 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         </div>
 
         {/* Footer */}
-        {cart && cart.items.length > 0 && (
+        {cart && safeArr(cart.items).length > 0 && (
           <div className="sticky bottom-0 bg-background border-t border-border px-6 py-4 space-y-3" data-testid="cart-footer">
             {cart.discountAmount && cart.discountAmount > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted">{t('drawer.discount', { couponCode: cart.couponCode ?? '' })}</span>
-                <span className="text-success">−${cart.discountAmount.toFixed(2)}</span>
+                <span className="text-success">−{fmtAmount(cart.discountAmount)}</span>
               </div>
             )}
             <div className="flex justify-between text-base font-semibold text-secondary">
               <span>{t('drawer.subtotal')}</span>
-              <span>${cart.totals.subtotal.toFixed(2)}</span>
+              <span>{fmtAmount(cart.totals?.subtotal)}</span>
             </div>
             <p className="text-xs text-muted">{t('drawer.shippingNote')}</p>
             <Link
@@ -186,7 +187,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               className="block w-full rounded-button bg-primary py-3 text-center text-sm font-semibold text-white hover:bg-primary-dark transition-colors"
               data-testid="checkout-button"
             >
-              {t('drawer.checkout', { amount: cart.totals.subtotal.toFixed(2) })}
+              {t('drawer.checkout', { amount: fmtFixed(cart.totals?.subtotal) })}
             </Link>
           </div>
         )}

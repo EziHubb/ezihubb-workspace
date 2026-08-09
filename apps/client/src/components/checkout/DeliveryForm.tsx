@@ -5,6 +5,7 @@ import { Truck, Clock } from 'lucide-react';
 import { apiClient } from '@ezihubb/api-client';
 import type { ShippingOptionDto } from '@ezihubb/types';
 import { Skeleton } from '@ezihubb/ui';
+import { fmtAmount, safeArr } from '@ezihubb/utils';
 
 interface DeliveryFormProps {
   countryCode:      string;
@@ -108,7 +109,7 @@ export function DeliveryForm({
   }
 
   // ── No options available ───────────────────────────────────────────────────
-  if (options.length === 0) {
+  if (safeArr(options).length === 0) {
     return (
       <div className="py-8 text-center space-y-3">
         <Truck className="w-10 h-10 text-muted mx-auto" />
@@ -135,7 +136,7 @@ export function DeliveryForm({
         </legend>
 
         <div className="space-y-3" role="radiogroup" aria-label="Shipping methods">
-          {options.map((opt) => {
+          {safeArr(options).map((opt) => {
             const isActive = selected === opt.methodId;
             const estDelivery = formatDelivery(opt);
 
@@ -181,15 +182,15 @@ export function DeliveryForm({
                       ) : opt.freeShippingOver !== undefined ? (
                         <div className="text-right">
                           <p className="text-sm font-bold text-secondary">
-                            ${opt.price.toFixed(2)}
+                            {fmtAmount(opt.price)}
                           </p>
                           <p className="text-[10px] text-muted">
-                            Free over ${opt.freeShippingOver}
+                            Free over {fmtAmount(opt.freeShippingOver)}
                           </p>
                         </div>
                       ) : (
                         <span className="text-sm font-bold text-secondary">
-                          ${opt.price.toFixed(2)}
+                          {fmtAmount(opt.price)}
                         </span>
                       )}
                     </div>

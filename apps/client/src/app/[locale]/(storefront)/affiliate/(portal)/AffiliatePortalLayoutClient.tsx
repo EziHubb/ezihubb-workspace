@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
+import { fmtAmount } from '@ezihubb/utils';
 
 interface AffiliateProfile {
   id:          string;
@@ -115,7 +116,7 @@ export default function AffiliatePortalLayoutClient({
               </p>
               <p className="text-xs text-muted truncate">{affiliate.referralCode}</p>
               <p className="text-xs font-medium text-green-600 mt-0.5">
-                ${Number(affiliate.balance).toFixed(2)} available
+                {fmtAmount(affiliate.balance)} available
               </p>
             </div>
 

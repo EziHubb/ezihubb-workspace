@@ -9,6 +9,7 @@ import { queryKeys } from '@ezihubb/api-client';
 import { OrderStatusBadge, Pagination, Skeleton } from '@ezihubb/ui';
 import type { OrderListItemDto } from '@ezihubb/types';
 import { useAuthQuery } from '../../../../../lib/hooks/useAuthQuery';
+import { fmtAmount, safeArr, safeNum } from '@ezihubb/utils';
 
 // ── Filter tabs ───────────────────────────────────────────────────────────────
 
@@ -28,10 +29,6 @@ const fmt = new Intl.DateTimeFormat('en-US', {
   day:   'numeric',
   year:  'numeric',
 });
-
-function fmtMoney(v: unknown) {
-  return `$${Number(v ?? 0).toFixed(2)}`;
-}
 
 const STATUS_ACCENT: Record<string, string> = {
   CONFIRMED:        'border-l-blue-400',
@@ -91,7 +88,7 @@ function OrderCard({ order, locale }: { order: OrderListItemDto; locale: string 
   const t      = useTranslations('account');
   const thumb  = order.previewUrl ?? order.imageUrl ?? null;
   const accent = STATUS_ACCENT[order.status] ?? 'border-l-border';
-  const extra  = Math.max(0, order.itemCount - 1);
+  const extra  = Math.max(0, safeNum(order.itemCount) - 1);
 
   return (
     <article
@@ -140,7 +137,7 @@ function OrderCard({ order, locale }: { order: OrderListItemDto; locale: string 
               status={order.status as Parameters<typeof OrderStatusBadge>[0]['status']}
             />
             <span className="text-sm font-bold text-secondary tabular-nums">
-              {fmtMoney(order.total)}
+              {fmtAmount(order.total)}
             </span>
           </div>
         </div>
@@ -200,7 +197,7 @@ export default function OrdersPage() {
     { status: activeStatus || undefined, limit: 10, page },
   );
 
-  const orders     = pagedData?.data                  ?? [];
+  const orders     = safeArr(pagedData?.data);
   const totalPages = pagedData?.pagination?.totalPages ?? 1;
   const total      = pagedData?.pagination?.total      ?? 0;
 

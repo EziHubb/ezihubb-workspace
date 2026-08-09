@@ -6,6 +6,7 @@ import { useAuthStore } from '../../../../../../lib/store/auth.store';
 import { apiClient } from '@ezihubb/api-client';
 import { useAuthQuery } from '../../../../../../lib/hooks/useAuthQuery';
 import { API_ROUTES } from '@ezihubb/constants';
+import { fmtAmount, safeArr, safeStr } from '@ezihubb/utils';
 
 interface DashboardData {
   balance:     number;
@@ -116,9 +117,9 @@ export default function AffiliatePayoutsPage() {
       {/* ── Balance summary ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Confirmed balance', value: `$${balance.toFixed(2)}`,      note: 'Ready to withdraw'          },
-          { label: 'Pending (locked)',  value: `$${pendingLocked.toFixed(2)}`, note: `${14}-day lock after delivery` },
-          { label: 'All-time earned',   value: `$${totalEarned.toFixed(2)}`,   note: 'Paid + confirmed'           },
+          { label: 'Confirmed balance', value: fmtAmount(balance),      note: 'Ready to withdraw'          },
+          { label: 'Pending (locked)',  value: fmtAmount(pendingLocked), note: `${14}-day lock after delivery` },
+          { label: 'All-time earned',   value: fmtAmount(totalEarned),   note: 'Paid + confirmed'           },
         ].map(({ label, value, note }) => (
           <div key={label} className="bg-surface border border-border rounded-card p-4 text-center">
             <p className="text-xs text-muted mb-1">{label}</p>
@@ -188,7 +189,7 @@ export default function AffiliatePayoutsPage() {
             {/* Amount */}
             <div>
               <label className="block text-sm font-medium text-secondary mb-1.5">
-                Amount (max ${balance.toFixed(2)})
+                Amount (max {fmtAmount(balance)})
               </label>
               <div className="flex items-center gap-2">
                 <span className="text-muted text-sm font-medium">$</span>
@@ -224,7 +225,7 @@ export default function AffiliatePayoutsPage() {
       ) : (
         <div className="bg-surface border border-border rounded-card p-6 text-center">
           <p className="text-secondary font-medium mb-1">
-            ${(MIN_PAYOUT - balance).toFixed(2)} more to reach the payout minimum
+            {fmtAmount(MIN_PAYOUT - balance)} more to reach the payout minimum
           </p>
           <p className="text-sm text-muted">
             Payouts are processed manually once your balance reaches ${MIN_PAYOUT}.
@@ -238,7 +239,7 @@ export default function AffiliatePayoutsPage() {
           <h2 className="font-semibold text-secondary text-sm">Payout history</h2>
         </div>
 
-        {!payouts || payouts.length === 0 ? (
+        {!payouts || safeArr(payouts).length === 0 ? (
           <p className="px-5 py-10 text-sm text-muted text-center">No payouts yet.</p>
         ) : (
           <div className="overflow-x-auto">
@@ -252,18 +253,18 @@ export default function AffiliatePayoutsPage() {
                 </tr>
               </thead>
               <tbody>
-                {payouts.map((p) => (
+                {safeArr(payouts).map((p) => (
                   <tr key={p.id} className="border-b border-border last:border-0 hover:bg-background transition-colors">
                     <td className="px-5 py-3 text-muted whitespace-nowrap">{fmtDate(p.createdAt)}</td>
                     <td className="px-5 py-3 text-secondary capitalize whitespace-nowrap">
-                      {p.paymentMethod.replace(/_/g, ' ')}
+                      {safeStr(p.paymentMethod).replace(/_/g, ' ')}
                     </td>
                     <td className="px-5 py-3 text-right font-semibold text-secondary tabular-nums">
-                      ${Number(p.amount).toFixed(2)}
+                      {fmtAmount(p.amount)}
                     </td>
                     <td className="px-5 py-3 text-right">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${PAYOUT_STATUS_COLORS[p.status] ?? 'bg-muted/10 text-muted'}`}>
-                        {p.status.charAt(0) + p.status.slice(1).toLowerCase()}
+                        {safeStr(p.status).charAt(0) + safeStr(p.status).slice(1).toLowerCase()}
                       </span>
                     </td>
                   </tr>

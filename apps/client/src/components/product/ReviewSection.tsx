@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useReviews } from '@ezihubb/api-client';
 import type { ReviewDto, ReviewSummaryDto } from '@ezihubb/types';
+import { fmtRating } from '@ezihubb/utils';
 
 interface ReviewSectionProps {
   productSlug:     string;
@@ -141,7 +142,7 @@ export function ReviewSection({ productSlug, reviewSummary, initialReviews }: Re
           <div className="flex flex-col sm:flex-row gap-6 p-5 bg-surface border border-border rounded-card">
             <div className="flex flex-col items-center justify-center shrink-0">
               <p className="text-5xl font-bold text-secondary">
-                {reviewSummary.averageRating.toFixed(1)}
+                {fmtRating(reviewSummary.averageRating)}
               </p>
               <div className="flex gap-0.5 my-1">
                 {Array.from({ length: 5 }).map((_, i) => (

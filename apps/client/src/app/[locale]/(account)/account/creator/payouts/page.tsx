@@ -6,6 +6,7 @@ import { Skeleton } from '@ezihubb/ui';
 import { useAuthQuery, useAuthMutation } from '../../../../../../lib/hooks/useAuthQuery';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { fmtAmount, safeArr, safeNum, safeStr } from '@ezihubb/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -60,7 +61,8 @@ const PAYMENT_METHODS = [
 
 // ── Withdrawal form ───────────────────────────────────────────────────────────
 
-function WithdrawalForm({ balance, onSuccess }: { balance: number; onSuccess: () => void }) {
+function WithdrawalForm({ balance: rawBalance, onSuccess }: { balance: number; onSuccess: () => void }) {
+  const balance = safeNum(rawBalance);
   const [amount,  setAmount]  = useState('');
   const [method,  setMethod]  = useState(PAYMENT_METHODS[0].value);
   const [detail,  setDetail]  = useState('');
@@ -79,8 +81,8 @@ function WithdrawalForm({ balance, onSuccess }: { balance: number; onSuccess: ()
     e.preventDefault();
     setError('');
     if (!numAmount || numAmount <= 0) { setError('Please enter a valid amount.'); return; }
-    if (numAmount > balance) { setError(`Amount cannot exceed your available balance ($${balance.toFixed(2)}).`); return; }
-    if (numAmount < MINIMUM_PAYOUT) { setError(`Minimum withdrawal is $${MINIMUM_PAYOUT.toFixed(2)}.`); return; }
+    if (numAmount > balance) { setError(`Amount cannot exceed your available balance (${fmtAmount(balance)}).`); return; }
+    if (numAmount < MINIMUM_PAYOUT) { setError(`Minimum withdrawal is ${fmtAmount(MINIMUM_PAYOUT)}.`); return; }
     if (!detail.trim()) { setError('Please enter your payment details.'); return; }
     try {
       await mutateAsync({ amount: numAmount, paymentMethod: method, paymentDetail: detail.trim() });
@@ -103,7 +105,7 @@ function WithdrawalForm({ balance, onSuccess }: { balance: number; onSuccess: ()
         <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-card">
           <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <p className="text-sm text-amber-700">
-            Minimum withdrawal is <strong>${MINIMUM_PAYOUT.toFixed(2)}</strong>. Your available balance is <strong>${balance.toFixed(2)}</strong>.
+            Minimum withdrawal is <strong>{fmtAmount(MINIMUM_PAYOUT)}</strong>. Your available balance is <strong>{fmtAmount(balance)}</strong>.
             Keep earning and come back when you hit the threshold!
           </p>
         </div>
@@ -111,7 +113,7 @@ function WithdrawalForm({ balance, onSuccess }: { balance: number; onSuccess: ()
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="p-4 bg-green-50 border border-green-200 rounded-card">
             <p className="text-sm text-green-700">
-              Available to withdraw: <strong className="text-green-800">${balance.toFixed(2)}</strong>
+              Available to withdraw: <strong className="text-green-800">{fmtAmount(balance)}</strong>
             </p>
           </div>
 
@@ -262,7 +264,7 @@ export default function CreatorPayoutsPage() {
               </div>
             ))}
           </div>
-        ) : !withdrawals || withdrawals.data.length === 0 ? (
+        ) : !withdrawals || safeArr(withdrawals.data).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
             <DollarSign className="w-10 h-10 text-muted/30" />
             <p className="text-sm text-muted">No withdrawal requests yet.</p>
@@ -280,16 +282,16 @@ export default function CreatorPayoutsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {withdrawals.data.map((w) => (
+                    {safeArr(withdrawals.data).map((w) => (
                       <tr key={w.id} className="hover:bg-surface transition-colors">
                         <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">{formatDate(w.createdAt)}</td>
-                        <td className="px-4 py-3 font-bold tabular-nums text-secondary">${Number(w.amount).toFixed(2)}</td>
-                        <td className="px-4 py-3 text-xs text-secondary capitalize">{w.paymentMethod.replace(/_/g, ' ')}</td>
+                        <td className="px-4 py-3 font-bold tabular-nums text-secondary">{fmtAmount(w.amount)}</td>
+                        <td className="px-4 py-3 text-xs text-secondary capitalize">{safeStr(w.paymentMethod).replace(/_/g, ' ')}</td>
                         <td className="px-4 py-3 text-xs text-muted font-mono truncate max-w-[160px]">{w.paymentDetail}</td>
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-1">
                             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit ${STATUS_COLORS[w.status]}`}>
-                              {w.status.charAt(0) + w.status.slice(1).toLowerCase()}
+                              {safeStr(w.status).charAt(0) + safeStr(w.status).slice(1).toLowerCase()}
                             </span>
                             {w.adminNotes && (
                               <p className="text-[11px] text-muted truncate max-w-[160px]" title={w.adminNotes}>{w.adminNotes}</p>
@@ -314,7 +316,7 @@ export default function CreatorPayoutsPage() {
                     className="px-3 py-1.5 text-xs font-medium border border-border rounded-button text-secondary hover:border-primary/40 disabled:opacity-40 transition-colors">
                     Previous
                   </button>
-                  <button type="button" onClick={() => setPage((p) => p + 1)} disabled={withdrawals.data.length < 10}
+                  <button type="button" onClick={() => setPage((p) => p + 1)} disabled={safeArr(withdrawals.data).length < 10}
                     className="px-3 py-1.5 text-xs font-medium border border-border rounded-button text-secondary hover:border-primary/40 disabled:opacity-40 transition-colors">
                     Next
                   </button>

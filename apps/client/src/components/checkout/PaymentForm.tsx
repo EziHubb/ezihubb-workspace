@@ -12,6 +12,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { fmtAmount } from '@ezihubb/utils';
 
 // ── Stripe promise (singleton per app session) ─────────────────────────────────
 const stripePromise = loadStripe(
@@ -99,7 +100,7 @@ function StripeInnerForm({
           disabled={!stripe || !elements || isProcessing}
           className="flex-1 py-3.5 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wide"
         >
-          {isProcessing ? 'Processing…' : `Place Order — $${totalAmount.toFixed(2)}`}
+          {isProcessing ? 'Processing…' : `Place Order — ${fmtAmount(totalAmount)}`}
         </button>
       </div>
 
@@ -119,7 +120,7 @@ function StripeInnerForm({
           disabled={!stripe || !elements || isProcessing}
           className="flex-1 py-3.5 bg-primary text-white font-bold text-sm rounded-button disabled:opacity-50 uppercase tracking-wide"
         >
-          {isProcessing ? 'Processing…' : `Place Order — $${totalAmount.toFixed(2)}`}
+          {isProcessing ? 'Processing…' : `Place Order — ${fmtAmount(totalAmount)}`}
         </button>
       </div>
     </form>

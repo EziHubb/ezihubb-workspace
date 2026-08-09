@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import type { ProductDto } from '@ezihubb/types';
+import { fmtAmount } from '@ezihubb/utils';
 
 // ── Route segment config ──────────────────────────────────────────────────────
 
@@ -72,7 +73,7 @@ export default async function OGImage({
   }
 
   const primaryImage = product.images?.[0]?.url;
-  const price        = `$${product.basePrice.toFixed(2)}`;
+  const price        = fmtAmount(product.basePrice);
 
   return new ImageResponse(
     (

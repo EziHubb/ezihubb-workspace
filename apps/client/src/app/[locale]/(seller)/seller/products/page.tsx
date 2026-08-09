@@ -8,6 +8,7 @@ import { Plus, Package } from 'lucide-react';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { fmtAmount } from '@ezihubb/utils';
 
 interface SellerProduct {
   id:        string;
@@ -93,7 +94,7 @@ export default function SellerProductsPage() {
                       <span className="font-medium text-secondary truncate max-w-[200px]">{p.name}</span>
                     </div>
                   </td>
-                  <td className="px-5 py-3 font-semibold">${Number(p.basePrice).toFixed(2)}</td>
+                  <td className="px-5 py-3 font-semibold">{fmtAmount(p.basePrice)}</td>
                   <td className="px-5 py-3">
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[p.status] ?? 'bg-border/30 text-muted'}`}>
                       {p.status}

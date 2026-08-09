@@ -12,6 +12,7 @@ import { API_ROUTES } from '@ezihubb/constants';
 import { useCartStore } from '../../../../../lib/store/cart.store';
 import type { OrderDto } from '@ezihubb/types';
 import { analytics } from '../../../../../lib/analytics';
+import { fmtAmount, safeArr } from '@ezihubb/utils';
 
 // ── Animated checkmark ────────────────────────────────────────────────────────
 
@@ -246,7 +247,7 @@ export default function CheckoutSuccessPage() {
           {/* Items */}
           <div className="p-5 space-y-3">
             <h2 className="font-semibold text-secondary text-sm">Order items</h2>
-            {order.items.map((item) => (
+            {safeArr(order.items).map((item) => (
               <div key={item.id} className="flex gap-3">
                 <div className="relative w-12 h-12 shrink-0 rounded-sm overflow-hidden bg-background border border-border">
                   {item.product?.imageUrl ? (
@@ -268,7 +269,7 @@ export default function CheckoutSuccessPage() {
                   <p className="text-xs text-muted">Qty {item.quantity}</p>
                 </div>
                 <p className="text-sm font-semibold text-secondary tabular-nums shrink-0">
-                  ${item.totalPrice.toFixed(2)}
+                  {fmtAmount(item.totalPrice)}
                 </p>
               </div>
             ))}
@@ -278,7 +279,7 @@ export default function CheckoutSuccessPage() {
           <div className="border-t border-border px-5 py-4 space-y-2 text-sm">
             <div className="flex justify-between text-muted">
               <span>Subtotal</span>
-              <span>${order.subtotal.toFixed(2)}</span>
+              <span>{fmtAmount(order.subtotal)}</span>
             </div>
             <div className="flex justify-between text-muted">
               <span>Shipping</span>
@@ -286,25 +287,25 @@ export default function CheckoutSuccessPage() {
                 {order.shippingCost === 0 ? (
                   <span className="text-success">FREE</span>
                 ) : (
-                  `$${order.shippingCost.toFixed(2)}`
+                  fmtAmount(order.shippingCost)
                 )}
               </span>
             </div>
             {order.discount > 0 && (
               <div className="flex justify-between text-success">
                 <span>Discount</span>
-                <span>−${order.discount.toFixed(2)}</span>
+                <span>−{fmtAmount(order.discount)}</span>
               </div>
             )}
             {order.giftCardDiscount > 0 && (
               <div className="flex justify-between text-success">
                 <span>Gift card</span>
-                <span>−${order.giftCardDiscount.toFixed(2)}</span>
+                <span>−{fmtAmount(order.giftCardDiscount)}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-secondary border-t border-border pt-2">
               <span>Total paid</span>
-              <span>${order.total.toFixed(2)}</span>
+              <span>{fmtAmount(order.total)}</span>
             </div>
           </div>
 

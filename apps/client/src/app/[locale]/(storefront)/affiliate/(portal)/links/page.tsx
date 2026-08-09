@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuthQuery } from '../../../../../../lib/hooks/useAuthQuery';
 import { API_ROUTES } from '@ezihubb/constants';
+import { safeArr, safeNum } from '@ezihubb/utils';
 
 const BASE_URL =
   typeof window !== 'undefined'
@@ -126,7 +127,7 @@ export default function AffiliateLinksPage() {
           <h2 className="font-semibold text-secondary text-sm">Click history</h2>
           {clicks && (
             <span className="text-xs text-muted">
-              {clicks.total.toLocaleString()} total clicks
+              {safeNum(clicks.total).toLocaleString()} total clicks
             </span>
           )}
         </div>
@@ -135,7 +136,7 @@ export default function AffiliateLinksPage() {
           <div className="flex items-center justify-center py-16">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : clicks?.data.length === 0 ? (
+        ) : safeArr(clicks?.data).length === 0 ? (
           <p className="px-5 py-10 text-sm text-muted text-center">
             No clicks yet. Share your referral link to start tracking!
           </p>
@@ -151,7 +152,7 @@ export default function AffiliateLinksPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {clicks?.data.map((row) => (
+                  {safeArr(clicks?.data).map((row) => (
                     <tr key={row.id} className="border-b border-border last:border-0 hover:bg-background transition-colors">
                       <td className="px-5 py-3 text-muted whitespace-nowrap">
                         {fmtDate(row.createdAt)}

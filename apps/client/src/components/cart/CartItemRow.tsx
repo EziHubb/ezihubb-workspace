@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Trash2, Minus, Plus } from 'lucide-react';
 import type { CartItemDto } from '@ezihubb/types';
+import { fmtAmount, safeNum } from '@ezihubb/utils';
 
 interface CartItemRowProps {
   item:     CartItemDto;
@@ -71,7 +72,7 @@ export function CartItemRow({ item, locale, onUpdate, onRemove }: CartItemRowPro
   };
 
   const thumbUrl      = item.previewUrl ?? item.productImageUrl;
-  const lineTotal     = item.currentPrice * localQty;
+  const lineTotal     = safeNum(item.currentPrice) * localQty;
   const bundleSummary = getBundleSummary(item.customizationData);
   const custSummary   = bundleSummary ? null : getCustSummary(item.customizationData);
 
@@ -128,7 +129,7 @@ export function CartItemRow({ item, locale, onUpdate, onRemove }: CartItemRowPro
         )}
         {item.priceChanged && (
           <p className="text-xs text-warning font-medium">
-            ⚠️ Price updated to ${item.currentPrice.toFixed(2)}
+            ⚠️ Price updated to {fmtAmount(item.currentPrice)}
           </p>
         )}
 
@@ -164,11 +165,11 @@ export function CartItemRow({ item, locale, onUpdate, onRemove }: CartItemRowPro
 
           <div className="text-right">
             <p className="text-sm font-bold text-secondary tabular-nums">
-              ${lineTotal.toFixed(2)}
+              {fmtAmount(lineTotal)}
             </p>
             {localQty > 1 && (
               <p className="text-xs text-muted tabular-nums">
-                ${item.currentPrice.toFixed(2)} each
+                {fmtAmount(item.currentPrice)} each
               </p>
             )}
           </div>

@@ -5,6 +5,7 @@ import { DollarSign } from 'lucide-react';
 import { Skeleton } from '@ezihubb/ui';
 import { useAuthQuery } from '../../../../../../lib/hooks/useAuthQuery';
 import { API_ROUTES } from '@ezihubb/constants';
+import { fmtAmount, safeArr } from '@ezihubb/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -142,7 +143,7 @@ export default function ReferralEarningsPage() {
       {isLoading && <TableSkeleton />}
 
       {!isLoading && data && (
-        data.data.length === 0 ? (
+        safeArr(data.data).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
             <DollarSign className="w-10 h-10 text-muted/30" />
             <p className="text-sm text-muted">
@@ -167,7 +168,7 @@ export default function ReferralEarningsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.data.map((c) => {
+                  {safeArr(data.data).map((c) => {
                     const lockDays   = c.status === 'PENDING' ? daysUntilLock(c.lockedAt) : null;
                     const badge      = STATUS_BADGE[c.status];
                     return (
@@ -194,7 +195,7 @@ export default function ReferralEarningsPage() {
                           </span>
                         </td>
                         <td className="px-5 py-4 text-right font-bold tabular-nums text-green-700">
-                          +${c.amount.toFixed(2)}
+                          +{fmtAmount(c.amount)}
                         </td>
                         <td className="px-5 py-4 text-right">
                           <div className="flex flex-col items-end gap-0.5">
@@ -217,7 +218,7 @@ export default function ReferralEarningsPage() {
 
             {/* Mobile card list */}
             <div className="sm:hidden border border-border rounded-card overflow-hidden divide-y divide-border">
-              {data.data.map((c) => {
+              {safeArr(data.data).map((c) => {
                 const lockDays = c.status === 'PENDING' ? daysUntilLock(c.lockedAt) : null;
                 const badge    = STATUS_BADGE[c.status];
                 return (
@@ -232,7 +233,7 @@ export default function ReferralEarningsPage() {
                         <p className="text-xs text-muted">{formatDate(c.createdAt)}</p>
                       </div>
                       <span className="text-base font-bold tabular-nums text-green-700 shrink-0">
-                        +${c.amount.toFixed(2)}
+                        +{fmtAmount(c.amount)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">

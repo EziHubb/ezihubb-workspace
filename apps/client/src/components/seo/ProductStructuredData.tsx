@@ -1,5 +1,6 @@
 ﻿import type { ProductDto } from '@ezihubb/types';
 import type { ReviewSummaryDto } from '@ezihubb/types';
+import { fmtRating } from '@ezihubb/utils';
 
 const BASE_URL = 'https://ezihubb.com';
 
@@ -50,7 +51,7 @@ export function ProductStructuredData({
   if (reviewSummary && reviewSummary.totalReviews > 0) {
     data['aggregateRating'] = {
       '@type':       'AggregateRating',
-      ratingValue:   reviewSummary.averageRating.toFixed(1),
+      ratingValue:   fmtRating(reviewSummary.averageRating),
       reviewCount:   reviewSummary.totalReviews,
       bestRating:    '5',
       worstRating:   '1',

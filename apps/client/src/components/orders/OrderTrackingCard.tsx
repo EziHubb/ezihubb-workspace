@@ -10,6 +10,7 @@ import { apiClient } from '../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { OrderStatusTimeline } from './OrderStatusTimeline';
 import { CancelCountdown } from './CancelCountdown';
+import { fmtAmount, safeArr } from '@ezihubb/utils';
 
 // ── Status rank ───────────────────────────────────────────────────────────────
 
@@ -204,7 +205,7 @@ export function OrderTrackingCard({ order, guestEmail, onCancel }: OrderTracking
             Items in this order
           </h5>
           <ul className="space-y-3">
-            {order.items.map((item) => {
+            {safeArr(order.items).map((item) => {
               const previewUrl =
                 (item.customization?.['previewUrl'] as string | undefined) ??
                 item.product?.imageUrl;
@@ -240,7 +241,7 @@ export function OrderTrackingCard({ order, guestEmail, onCancel }: OrderTracking
 
                   {/* Qty × Price */}
                   <p className="text-sm font-semibold text-secondary tabular-nums shrink-0">
-                    {item.quantity} × ${item.unitPrice.toFixed(2)}
+                    {item.quantity} × {fmtAmount(item.unitPrice)}
                   </p>
                 </li>
               );

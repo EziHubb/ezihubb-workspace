@@ -5,6 +5,7 @@ import { CreditCard, Check, X } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@ezihubb/ui';
 import { apiClient } from '../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { fmtAmount } from '@ezihubb/utils';
 
 // ── Gift card visual ──────────────────────────────────────────────────────────
 
@@ -27,7 +28,7 @@ function GiftCardVisual({
       <p className="text-[9px] font-mono tracking-wider opacity-80 mt-1 relative z-10 truncate">
         {code.toUpperCase()}
       </p>
-      <p className="text-sm font-bold relative z-10">${balance.toFixed(2)}</p>
+      <p className="text-sm font-bold relative z-10">{fmtAmount(balance)}</p>
     </div>
   );
 }
@@ -182,11 +183,11 @@ export function GiftCardBalanceModal({
                   />
                   <div className="space-y-1">
                     <p className="text-2xl font-bold text-primary">
-                      ${validResult.balance.toFixed(2)}
+                      {fmtAmount(validResult.balance)}
                     </p>
                     {validResult.originalBalance && (
                       <p className="text-xs text-muted">
-                        of ${validResult.originalBalance.toFixed(2)} original
+                        of {fmtAmount(validResult.originalBalance)} original
                       </p>
                     )}
                     <p className="text-xs text-muted">Never expires</p>

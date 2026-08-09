@@ -8,6 +8,7 @@ import { X, Clock } from 'lucide-react';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import type { ProductListItemDto } from '@ezihubb/types';
+import { fmtAmount } from '@ezihubb/utils';
 
 export function RecentlyViewedPanel() {
   const locale = useLocale();
@@ -62,7 +63,7 @@ export function RecentlyViewedPanel() {
                 <div className="min-w-0">
                   <p className="text-xs text-secondary line-clamp-2 leading-snug">{product.name}</p>
                   <p className="text-xs font-bold text-secondary mt-0.5">
-                    ${Number(product.basePrice).toFixed(2)}
+                    {fmtAmount(product.basePrice)}
                   </p>
                 </div>
               </Link>

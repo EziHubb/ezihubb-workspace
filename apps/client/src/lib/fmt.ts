@@ -5,20 +5,42 @@
  */
 
 export {
+  // numbers
   fmtFixed,
   fmtCurrency,
   fmtAmount,
   fmtPercent,
+  fmtPercentRaw,
   fmtNum,
   fmtRating,
+  parseAmount,
+  clamp,
+  // dates
   fmtDate,
   fmtDateTime,
+  fmtTime,
+  fmtDateISO,
   fmtRelative,
+  isToday,
+  // strings
   truncate,
   slugify,
   capitalize,
+  titleCase,
+  initials,
+  isBlank,
+  // arrays
   safeArr,
-  safeStr,
-  safeNum,
   unwrapArr,
+  compact,
+  unique,
+  uniqueBy,
+  sortBy,
+  // null-safety
+  safeNum,
+  safeStr,
+  safeGet,
+  isNil,
+  notNil,
+  toBool,
 } from '@ezihubb/utils';

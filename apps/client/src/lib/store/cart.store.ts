@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { apiClient } from '@ezihubb/api-client';
 import type { CartDto, CartItemDto, CartTotals } from '@ezihubb/types';
 import { API_ROUTES } from '@ezihubb/constants';
+import { safeNum, safeArr } from '@ezihubb/utils';
 import { analytics } from '../analytics';
 
 // ── Helper: read auth token without circular import ───────────────────────────
@@ -53,16 +54,16 @@ function normalizeItem(item: CartItemDto): CartItemDto {
       item.priceChanged !== undefined
         ? item.priceChanged
         : item.unitPrice !== item.currentPrice,
-    totalPrice: item.totalPrice ?? item.currentPrice * item.quantity,
+    totalPrice: item.totalPrice ?? safeNum(item.currentPrice) * safeNum(item.quantity),
   };
 }
 
 function normalizeCart(cart: CartDto): CartDto {
-  const items = cart.items.map(normalizeItem);
-  const itemCount = cart.itemCount ?? items.reduce((s, i) => s + i.quantity, 0);
+  const items = safeArr(cart.items).map(normalizeItem);
+  const itemCount = cart.itemCount ?? items.reduce((s, i) => s + safeNum(i.quantity), 0);
   const subtotal =
-    cart.subtotal ?? items.reduce((s, i) => s + i.currentPrice * i.quantity, 0);
-  const discount = cart.discountAmount ?? 0;
+    cart.subtotal ?? items.reduce((s, i) => s + safeNum(i.currentPrice) * safeNum(i.quantity), 0);
+  const discount = safeNum(cart.discountAmount);
 
   const totals: CartTotals = cart.totals ?? {
     subtotal,

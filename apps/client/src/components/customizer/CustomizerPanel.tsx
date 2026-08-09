@@ -12,6 +12,7 @@ import { StylePickerGrid } from './StylePickerGrid';
 import { PreviewModal } from './PreviewModal';
 import { useCustomizerStore } from '../../lib/store/customizer.store';
 import { apiClient } from '../../lib/api-client';
+import { fmtAmount } from '@ezihubb/utils';
 import type {
   CustomizationTemplate,
   TextField,
@@ -162,7 +163,7 @@ function CustomizerPanelInner({
       >
         {isAddingToCart
           ? 'Adding to Cart…'
-          : `Add to Cart — $${basePrice.toFixed(2)}`}
+          : `Add to Cart — ${fmtAmount(basePrice)}`}
       </button>
 
       {/* Completion hint */}

@@ -15,6 +15,7 @@ import type { ListingFilters } from '../listing/types';
 import { FilterSidebar } from '../listing/FilterSidebar';
 import { FilterSheet }   from '../listing/FilterSheet';
 import { SortDropdown }  from '../listing/SortDropdown';
+import { fmtAmount } from '@ezihubb/utils';
 
 // ── Keyword highlighting ──────────────────────────────────────────────────────
 
@@ -160,12 +161,12 @@ function SearchProductCard({
 
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-bold text-secondary tabular-nums">
-            ${product.basePrice.toFixed(2)}
+            {fmtAmount(product.basePrice)}
           </span>
           {product.compareAtPrice && product.compareAtPrice > product.basePrice && (
             <>
               <span className="text-xs text-muted line-through tabular-nums">
-                ${product.compareAtPrice.toFixed(2)}
+                {fmtAmount(product.compareAtPrice)}
               </span>
               {discount > 0 && (
                 <span className="text-xs font-semibold text-error">

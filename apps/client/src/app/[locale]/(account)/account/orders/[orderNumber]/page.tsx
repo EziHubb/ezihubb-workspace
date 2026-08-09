@@ -11,6 +11,7 @@ import { OrderStatusBadge } from '@ezihubb/ui';
 import { useToast } from '@ezihubb/ui';
 import type { OrderDto, OrderStatus } from '@ezihubb/types';
 import { MessageShopModal } from '../../../../../../components/messages/MessageShopModal';
+import { fmtAmount, safeArr, safeStr } from '@ezihubb/utils';
 
 // ── Status timeline config ────────────────────────────────────────────────────
 
@@ -42,7 +43,7 @@ function StatusTimeline({ order }: { order: OrderDto }) {
       <div className="flex items-center gap-2 p-4 bg-error/5 border border-error/20 rounded-card">
         <AlertTriangle className="w-4 h-4 text-error shrink-0" />
         <p className="text-sm font-medium text-error">
-          This order has been {order.status.toLowerCase().replace('_', ' ')}.
+          This order has been {safeStr(order.status).toLowerCase().replace('_', ' ')}.
         </p>
       </div>
     );
@@ -342,10 +343,10 @@ export default function OrderDetailPage() {
       {/* Items */}
       <section>
         <h2 className="font-semibold text-secondary text-base mb-4">
-          Items ({order.items.length})
+          Items ({safeArr(order.items).length})
         </h2>
         <div className="space-y-3">
-          {order.items.map((item) => {
+          {safeArr(order.items).map((item) => {
             const thumb = item.previewUrl ?? item.product?.imageUrl;
 
             return (
@@ -372,7 +373,7 @@ export default function OrderDetailPage() {
                   <p className="text-xs text-muted mt-0.5">Qty {item.quantity}</p>
                 </div>
                 <p className="text-sm font-bold text-secondary tabular-nums shrink-0">
-                  ${Number(item.totalPrice ?? 0).toFixed(2)}
+                  {fmtAmount(item.totalPrice)}
                 </p>
               </div>
             );
@@ -406,7 +407,7 @@ export default function OrderDetailPage() {
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-muted">
               <span>Subtotal</span>
-              <span>${Number(order.subtotal ?? 0).toFixed(2)}</span>
+              <span>{fmtAmount(order.subtotal)}</span>
             </div>
             <div className="flex justify-between text-muted">
               <span>Shipping</span>
@@ -414,19 +415,19 @@ export default function OrderDetailPage() {
                 {order.shippingCost === 0 ? (
                   <span className="text-success">FREE</span>
                 ) : (
-                  `$${Number(order.shippingCost ?? 0).toFixed(2)}`
+                  fmtAmount(order.shippingCost)
                 )}
               </span>
             </div>
             {order.discount > 0 && (
               <div className="flex justify-between text-success">
                 <span>Discount</span>
-                <span>−${Number(order.discount ?? 0).toFixed(2)}</span>
+                <span>−{fmtAmount(order.discount)}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-secondary border-t border-border pt-2">
               <span>Total</span>
-              <span>${Number(order.total ?? 0).toFixed(2)}</span>
+              <span>{fmtAmount(order.total)}</span>
             </div>
           </div>
 

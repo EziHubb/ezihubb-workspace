@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useCartStore } from '../../lib/store/cart.store';
 import type { ProductDto, CustomizationConfigDto } from '@ezihubb/types';
+import { fmtAmount } from '@ezihubb/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -280,7 +281,7 @@ export function BundleCustomizerPanel({
 
       {/* ── Price note ────────────────────────────────────────────────────────── */}
       <p className="text-xs text-muted text-center">
-        💰 {t('bundle.priceNote')} — ${product.basePrice.toFixed(2)}
+        💰 {t('bundle.priceNote')} — {fmtAmount(product.basePrice)}
       </p>
 
       {/* ── Error ────────────────────────────────────────────────────────────── */}
@@ -298,7 +299,7 @@ export function BundleCustomizerPanel({
         {isAdding
           ? 'Adding to Cart…'
           : allComplete
-          ? `Add Set to Cart — $${product.basePrice.toFixed(2)}`
+          ? `Add Set to Cart — ${fmtAmount(product.basePrice)}`
           : `Personalize all ${bundleCount} items to continue`}
       </button>
 

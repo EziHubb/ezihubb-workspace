@@ -1,4 +1,6 @@
-﻿export function ReviewsPageStructuredData({
+﻿import { fmtRating } from '@ezihubb/utils';
+
+export function ReviewsPageStructuredData({
   avgRating,
   totalCount,
 }: {
@@ -12,7 +14,7 @@
     url: 'https://ezihubb.com',
     aggregateRating: {
       '@type': 'AggregateRating',
-      ratingValue: avgRating.toFixed(1),
+      ratingValue: fmtRating(avgRating),
       reviewCount: totalCount,
       bestRating: '5',
       worstRating: '1',

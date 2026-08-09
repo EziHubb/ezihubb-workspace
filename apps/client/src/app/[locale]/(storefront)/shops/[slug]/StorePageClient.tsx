@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Search } from 'lucide-react';
 import { StoreProductsClient } from './StoreProductsClient';
 import { StoreReviewsClient } from './StoreReviewsClient';
+import { safeNum } from '@ezihubb/utils';
 
 type Tab = 'items' | 'reviews' | 'about';
 
@@ -32,11 +33,11 @@ function AboutSection({ store }: { store: StoreDto }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-surface border border-border rounded-card p-5">
           <h3 className="font-semibold text-secondary text-sm mb-1">Total Sales</h3>
-          <p className="text-2xl font-bold text-secondary">{store.totalOrders.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-secondary">{safeNum(store.totalOrders).toLocaleString()}</p>
         </div>
         <div className="bg-surface border border-border rounded-card p-5">
           <h3 className="font-semibold text-secondary text-sm mb-1">Active Listings</h3>
-          <p className="text-2xl font-bold text-secondary">{store.totalProducts.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-secondary">{safeNum(store.totalProducts).toLocaleString()}</p>
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import { ShieldCheck, Star, ShoppingBag, Share2 } from 'lucide-react';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { StorePageClient } from './StorePageClient';
+import { fmtRating, safeNum } from '@ezihubb/utils';
 
 interface StorePublicDto {
   id:            string;
@@ -156,15 +157,15 @@ export default async function StorePublicPage({
               {rating > 0 && (
                 <span className="flex items-center gap-1">
                   <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                  <span className="font-semibold text-secondary">{rating.toFixed(1)}</span>
+                  <span className="font-semibold text-secondary">{fmtRating(rating)}</span>
                   <span>rating</span>
                 </span>
               )}
               <span className="flex items-center gap-1">
                 <ShoppingBag className="w-3.5 h-3.5" />
-                {store.totalOrders.toLocaleString()} sales
+                {safeNum(store.totalOrders).toLocaleString()} sales
               </span>
-              <span>{store.totalProducts.toLocaleString()} listings</span>
+              <span>{safeNum(store.totalProducts).toLocaleString()} listings</span>
               <span>Member since {memberSince}</span>
             </div>
           </div>

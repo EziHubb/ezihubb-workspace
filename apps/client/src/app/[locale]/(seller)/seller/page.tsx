@@ -5,6 +5,7 @@ import { ShoppingBag, DollarSign, Star, Package, TrendingUp, Clock } from 'lucid
 import { useAuthStore } from '../../../../lib/store/auth.store';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { fmtAmount, fmtRating } from '@ezihubb/utils';
 
 interface DashboardStats {
   totalOrders:   number;
@@ -49,11 +50,11 @@ export default function SellerDashboard() {
 
   const STAT_CARDS = [
     { label: 'Total Orders',    value: stats?.totalOrders   ?? 0,      icon: ShoppingBag, color: 'text-blue-600',   bg: 'bg-blue-50'   },
-    { label: 'Revenue',         value: `$${(stats?.totalRevenue ?? 0).toFixed(2)}`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Avg Rating',      value: stats?.avgRating != null ? stats.avgRating.toFixed(1) : '—', icon: Star, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: 'Revenue',         value: fmtAmount(stats?.totalRevenue), icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
+    { label: 'Avg Rating',      value: stats?.avgRating != null ? fmtRating(stats.avgRating) : '—', icon: Star, color: 'text-amber-600', bg: 'bg-amber-50' },
     { label: 'Active Products', value: stats?.totalProducts ?? 0,      icon: Package,    color: 'text-purple-600', bg: 'bg-purple-50' },
     { label: 'Pending Orders',  value: stats?.pendingOrders ?? 0,      icon: Clock,      color: 'text-orange-600', bg: 'bg-orange-50' },
-    { label: 'Pending Payout',  value: `$${(stats?.pendingPayout ?? 0).toFixed(2)}`, icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/5' },
+    { label: 'Pending Payout',  value: fmtAmount(stats?.pendingPayout), icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/5' },
   ];
 
   return (
@@ -107,7 +108,7 @@ export default function SellerDashboard() {
                 <tr key={o.id} className="hover:bg-background/40 transition-colors">
                   <td className="px-5 py-3 font-medium text-secondary">{o.orderNumber}</td>
                   <td className="px-5 py-3 text-muted">{o.itemCount}</td>
-                  <td className="px-5 py-3 font-semibold">${Number(o.total).toFixed(2)}</td>
+                  <td className="px-5 py-3 font-semibold">{fmtAmount(o.total)}</td>
                   <td className="px-5 py-3">
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[o.status] ?? 'bg-border/30 text-muted'}`}>
                       {o.status}

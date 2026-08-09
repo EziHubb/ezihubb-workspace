@@ -11,6 +11,7 @@ import { useToast } from '@ezihubb/ui';
 import type { WishlistItemDto } from '@ezihubb/types';
 import { useAuthQuery, useAuthMutation } from '../../../../../lib/hooks/useAuthQuery';
 import { apiClient } from '@ezihubb/api-client';
+import { fmtAmount } from '@ezihubb/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -71,7 +72,7 @@ function WishlistCard({
           </h3>
         </Link>
         <p className="text-sm font-bold text-secondary tabular-nums">
-          ${p.basePrice.toFixed(2)}
+          {fmtAmount(p.basePrice)}
         </p>
 
         {/* Add to Cart */}

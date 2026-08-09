@@ -1,6 +1,7 @@
 'use client';
 
 import { SlidersHorizontal, ChevronDown, X } from 'lucide-react';
+import { safeNum } from '@ezihubb/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -116,7 +117,7 @@ export function SearchTopBar({
                 <span className="text-muted">Searching…</span>
               ) : (
                 <>
-                  <span className="font-semibold text-secondary">{totalCount.toLocaleString()}</span>{' '}
+                  <span className="font-semibold text-secondary">{safeNum(totalCount).toLocaleString()}</span>{' '}
                   {totalCount === 1 ? 'result' : 'results'}
                   {query && (
                     <> for <span className="font-semibold text-secondary">&ldquo;{query}&rdquo;</span></>

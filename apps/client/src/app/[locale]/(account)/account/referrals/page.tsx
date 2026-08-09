@@ -15,6 +15,7 @@ import {
 import { Skeleton } from '@ezihubb/ui';
 import { useAuthQuery } from '../../../../../lib/hooks/useAuthQuery';
 import { API_ROUTES } from '@ezihubb/constants';
+import { fmtAmount, safeArr, safeNum, safeStr } from '@ezihubb/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -205,47 +206,49 @@ export default function ReferralsPage() {
       {me && (
         <>
           {/* ── Tier badge ─────────────────────────────────────────────────── */}
-          <div className="bg-surface border border-border rounded-card p-5 flex items-start gap-4">
-            <div
-              className="w-14 h-14 rounded-full flex items-center justify-center text-2xl shrink-0"
-              style={{ backgroundColor: me.tier.badgeColor + '20', border: `2px solid ${me.tier.badgeColor}` }}
-            >
-              {me.tier.badgeIcon}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span
-                  className="text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
-                  style={{ backgroundColor: me.tier.badgeColor + '20', color: me.tier.badgeColor }}
-                >
-                  {me.tier.name}
-                </span>
-                <span className="text-xs text-muted">
-                  {(me.tier.commissionRate * 100).toFixed(0)}% commission rate
-                </span>
+          {me.tier && (
+            <div className="bg-surface border border-border rounded-card p-5 flex items-start gap-4">
+              <div
+                className="w-14 h-14 rounded-full flex items-center justify-center text-2xl shrink-0"
+                style={{ backgroundColor: me.tier.badgeColor + '20', border: `2px solid ${me.tier.badgeColor}` }}
+              >
+                {me.tier.badgeIcon}
               </div>
-              <p className="text-sm text-secondary mt-1">
-                {me.directReferrals} direct referral{me.directReferrals !== 1 ? 's' : ''}
-              </p>
-              {me.tier.nextTier && (
-                <div className="mt-2">
-                  <div className="flex items-center justify-between text-xs text-muted mb-1">
-                    <span>Progress to {me.tier.nextTier.name}</span>
-                    <span>{me.directReferrals} / {me.tier.nextTier.minReferrals}</span>
-                  </div>
-                  <div className="h-1.5 bg-border rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${Math.min(100, (me.directReferrals / me.tier.nextTier.minReferrals) * 100)}%`,
-                        backgroundColor: me.tier.badgeColor,
-                      }}
-                    />
-                  </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span
+                    className="text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: me.tier.badgeColor + '20', color: me.tier.badgeColor }}
+                  >
+                    {me.tier.name}
+                  </span>
+                  <span className="text-xs text-muted">
+                    {Math.round(safeNum(me.tier.commissionRate) * 100)}% commission rate
+                  </span>
                 </div>
-              )}
+                <p className="text-sm text-secondary mt-1">
+                  {me.directReferrals} direct referral{me.directReferrals !== 1 ? 's' : ''}
+                </p>
+                {me.tier.nextTier && (
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between text-xs text-muted mb-1">
+                      <span>Progress to {me.tier.nextTier.name}</span>
+                      <span>{me.directReferrals} / {me.tier.nextTier.minReferrals}</span>
+                    </div>
+                    <div className="h-1.5 bg-border rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${Math.min(100, (safeNum(me.directReferrals) / safeNum(me.tier.nextTier.minReferrals || 1)) * 100)}%`,
+                          backgroundColor: me.tier.badgeColor,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* ── Referral link ──────────────────────────────────────────────── */}
           <div className="bg-surface border border-border rounded-card p-5 space-y-3">
@@ -346,13 +349,13 @@ export default function ReferralsPage() {
             <StatCard
               icon={TrendingUp}
               label="All-time earned"
-              value={`$${me.totalEarned.toFixed(2)}`}
+              value={fmtAmount(me.totalEarned)}
             />
             <StatCard
               icon={DollarSign}
               label="Balance"
-              value={`$${me.confirmedBalance.toFixed(2)}`}
-              sub={me.pendingBalance > 0 ? `+$${me.pendingBalance.toFixed(2)} pending` : undefined}
+              value={fmtAmount(me.confirmedBalance)}
+              sub={me.pendingBalance > 0 ? `+${fmtAmount(me.pendingBalance)} pending` : undefined}
               color="text-green-700"
             />
           </div>
@@ -412,14 +415,14 @@ export default function ReferralsPage() {
             )}
 
             {!commissionsLoading && commissionsPage && (
-              commissionsPage.data.length === 0 ? (
+              safeArr(commissionsPage.data).length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
                   <Users className="w-10 h-10 text-muted/30" />
                   <p className="text-sm text-muted">No commissions yet. Share your link to start earning!</p>
                 </div>
               ) : (
                 <div className="border border-border rounded-card overflow-hidden">
-                  {commissionsPage.data.map((c) => (
+                  {safeArr(commissionsPage.data).map((c) => (
                     <div
                       key={c.id}
                       className="flex items-center justify-between px-5 py-4 border-b border-border last:border-0 hover:bg-surface transition-colors"
@@ -439,10 +442,10 @@ export default function ReferralsPage() {
                         <span
                           className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[c.status]}`}
                         >
-                          {c.status.charAt(0) + c.status.slice(1).toLowerCase()}
+                          {safeStr(c.status).charAt(0) + safeStr(c.status).slice(1).toLowerCase()}
                         </span>
                         <span className="text-sm font-bold tabular-nums text-green-700">
-                          +${c.amount.toFixed(2)}
+                          +{fmtAmount(c.amount)}
                         </span>
                       </div>
                     </div>

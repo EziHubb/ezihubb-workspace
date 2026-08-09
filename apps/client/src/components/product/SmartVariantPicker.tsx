@@ -12,6 +12,7 @@ import {
   SizePicker,
 } from './variant-pickers';
 import { SizeGuideModal } from './SizeGuideModal';
+import { fmtAmount, safeNum } from '@ezihubb/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -263,16 +264,16 @@ export function SmartVariantPicker({
             <p className="text-sm font-medium text-error">✗ {t('variants.outOfStock')}</p>
           ) : (activeVariant.compareAtPrice ?? 0) > activeVariant.price ? (
             <p className="flex items-baseline gap-2 text-sm">
-              <span className="font-bold text-primary">${activeVariant.price.toFixed(2)}</span>
+              <span className="font-bold text-primary">{fmtAmount(activeVariant.price)}</span>
               <span className="line-through text-muted text-xs">
-                ${activeVariant.compareAtPrice!.toFixed(2)}
+                {fmtAmount(activeVariant.compareAtPrice)}
               </span>
               <span className="text-xs font-semibold text-success">
-                Save ${(activeVariant.compareAtPrice! - activeVariant.price).toFixed(2)}
+                Save {fmtAmount(safeNum(activeVariant.compareAtPrice) - safeNum(activeVariant.price))}
               </span>
             </p>
           ) : activeVariant.price > 0 ? (
-            <p className="text-sm font-semibold text-primary">${activeVariant.price.toFixed(2)}</p>
+            <p className="text-sm font-semibold text-primary">{fmtAmount(activeVariant.price)}</p>
           ) : null}
         </div>
       )}

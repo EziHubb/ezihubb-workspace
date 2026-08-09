@@ -21,6 +21,7 @@ import { toast } from '../../lib/store/toast.store';
 import { useCurrency } from '../../lib/currency/currency-context';
 import { analytics } from '../../lib/analytics';
 import type { ProductDto, ReviewSummaryDto } from '@ezihubb/types';
+import { fmtRating, safeNum } from '@ezihubb/utils';
 
 // ── Date helpers (no date-fns) ────────────────────────────────────────────────
 
@@ -135,10 +136,10 @@ function RatingRow({
   averageRating: number;
   totalReviews:  number;
 }) {
-  const rounded = Math.round(averageRating);
+  const rounded = Math.round(safeNum(averageRating));
   return (
     <a href="#reviews" className="flex items-center gap-1.5 text-sm hover:underline w-fit">
-      <span className="font-semibold">{averageRating.toFixed(1)}</span>
+      <span className="font-semibold">{fmtRating(averageRating)}</span>
       <div className="flex gap-0.5">
         {[1, 2, 3, 4, 5].map((s) => (
           <Star
@@ -151,7 +152,7 @@ function RatingRow({
           />
         ))}
       </div>
-      <span className="text-muted">({totalReviews.toLocaleString()} reviews)</span>
+      <span className="text-muted">({safeNum(totalReviews).toLocaleString()} reviews)</span>
     </a>
   );
 }

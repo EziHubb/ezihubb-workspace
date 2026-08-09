@@ -9,7 +9,7 @@ import {
 import { Skeleton } from '@ezihubb/ui';
 import { useAuthQuery } from '../../../../../lib/hooks/useAuthQuery';
 import { API_ROUTES } from '@ezihubb/constants';
-import { fmtAmount } from '../../../../../lib/fmt';
+import { fmtAmount, safeArr, safeNum } from '../../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -175,7 +175,7 @@ export default function CreatorHubPage() {
                       {me.tier.name}
                     </span>
                     <span className="text-xs text-muted">
-                      {t('hub.earningsRate', { rate: (me.tier.commissionRate * 100).toFixed(0) })}
+                      {t('hub.earningsRate', { rate: Math.round(safeNum(me.tier.commissionRate) * 100) })}
                     </span>
                   </div>
                   <p className="text-sm font-semibold text-secondary mt-1">
@@ -190,7 +190,7 @@ export default function CreatorHubPage() {
                       <div className="h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: me.tier.badgeColor + '30' }}>
                         <div className="h-full rounded-full transition-all duration-700"
                           style={{
-                            width: `${Math.min(100, (me.directReferrals / me.tier.nextTier.minReferrals) * 100)}%`,
+                            width: `${Math.min(100, (safeNum(me.directReferrals) / safeNum(me.tier.nextTier.minReferrals || 1)) * 100)}%`,
                             backgroundColor: me.tier.badgeColor,
                           }}
                         />
@@ -308,14 +308,14 @@ export default function CreatorHubPage() {
             )}
 
             {!earningsLoading && earningsPage && (
-              earningsPage.data.length === 0 ? (
+              safeArr(earningsPage.data).length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center gap-3 border border-dashed border-border rounded-card">
                   <Users className="w-10 h-10 text-muted/30" />
                   <p className="text-sm text-muted">{t('hub.noEarnings')}</p>
                 </div>
               ) : (
                 <div className="border border-border rounded-card overflow-hidden">
-                  {earningsPage.data.map((c) => {
+                  {safeArr(earningsPage.data).map((c) => {
                     const lockDays = c.status === 'PENDING' ? daysUntil(c.lockedAt) : null;
                     return (
                       <div key={c.id}

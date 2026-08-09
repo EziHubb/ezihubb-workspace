@@ -11,6 +11,7 @@ import type { FlexVariant, VariantOption } from '../product/VariantPicker';
 import type { ProductDto } from '@ezihubb/types';
 import { apiClient } from '../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { fmtAmount, fmtRating } from '@ezihubb/utils';
 
 // ── Loading skeleton ──────────────────────────────────────────────────────────
 
@@ -118,7 +119,7 @@ export function QuickViewModal({
                 <div className="flex items-center gap-1.5">
                   <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
                   <span className="text-sm font-semibold text-secondary">
-                    {product.rating.avg.toFixed(1)}
+                    {fmtRating(product.rating.avg)}
                   </span>
                   <span className="text-xs text-muted">
                     ({product.rating.count} review{product.rating.count !== 1 ? 's' : ''})
@@ -129,11 +130,11 @@ export function QuickViewModal({
               {/* Price */}
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-bold text-primary">
-                  ${price.toFixed(2)}
+                  {fmtAmount(price)}
                 </span>
                 {product.compareAtPrice && product.compareAtPrice > price && (
                   <span className="text-sm text-muted line-through">
-                    ${product.compareAtPrice.toFixed(2)}
+                    {fmtAmount(product.compareAtPrice)}
                   </span>
                 )}
               </div>

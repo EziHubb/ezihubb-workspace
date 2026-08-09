@@ -5,6 +5,7 @@ import { Wallet, TrendingUp, Clock, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { fmtAmount } from '@ezihubb/utils';
 
 interface PayoutStats { available: number; pending: number; totalPaid: number }
 interface Payout { id: string; amount: number; status: string; requestedAt: string; paidAt: string | null }
@@ -38,7 +39,7 @@ export default function SellerPayoutsPage() {
             <div className={`w-9 h-9 rounded-lg ${bg} flex items-center justify-center`}>
               <Icon className={`w-4 h-4 ${color}`} />
             </div>
-            <p className="text-xl font-bold text-secondary">${Number(value).toFixed(2)}</p>
+            <p className="text-xl font-bold text-secondary">{fmtAmount(value)}</p>
             <p className="text-xs text-muted">{label}</p>
           </div>
         ))}
@@ -65,7 +66,7 @@ export default function SellerPayoutsPage() {
             <tbody className="divide-y divide-border">
               {payouts.map((p) => (
                 <tr key={p.id} className="hover:bg-background/40 transition-colors">
-                  <td className="px-5 py-3 font-bold text-secondary">${Number(p.amount).toFixed(2)}</td>
+                  <td className="px-5 py-3 font-bold text-secondary">{fmtAmount(p.amount)}</td>
                   <td className="px-5 py-3">
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${
                       p.status === 'PAID' ? 'bg-green-100 text-green-700' :

@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { HeartOff, Heart, Share2 } from 'lucide-react';
 import { AddToCartFromWishlist } from './AddToCartFromWishlist';
 import { API_BASE } from '../../../../../lib/api-client';
+import { fmtAmount, safeArr } from '@ezihubb/utils';
 
 // Never indexed — prevent crawling of share tokens
 export const metadata: Metadata = {
@@ -103,7 +104,7 @@ function SharedWishlistCard({
           </h3>
         </Link>
         <p className="text-sm font-bold text-secondary tabular-nums">
-          ${item.productBasePrice.toFixed(2)}
+          {fmtAmount(item.productBasePrice)}
         </p>
         <AddToCartFromWishlist productId={item.productId} />
       </div>
@@ -123,7 +124,8 @@ export default async function SharedWishlistPage({
 
   if (!data) notFound();
 
-  const { wishlistName, ownerName, shareToken, items } = data;
+  const { wishlistName, ownerName, shareToken } = data;
+  const items = safeArr(data.items);
 
   const heading = wishlistName
     ? wishlistName
