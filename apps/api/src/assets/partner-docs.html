@@ -500,13 +500,21 @@
         <tr><td class="prop-name">tagIds / tags</td><td class="prop-type">string[]</td><td></td><td class="prop-desc">Existing tag IDs, or tag names to auto-create.</td></tr>
         <tr><td class="prop-name">collectionIds</td><td class="prop-type">string[]</td><td></td><td class="prop-desc">Collection IDs to add this product to.</td></tr>
         <tr><td class="prop-name">customizationConfig</td><td class="prop-type">object</td><td></td><td class="prop-desc">Personalizer field config (JSON) — same shape used by the storefront customizer.</td></tr>
-        <tr><td class="prop-name">variants</td><td class="prop-type">array</td><td></td><td class="prop-desc">Each: <code>{ name, options, price, sku?, isDefault?, sortOrder? }</code></td></tr>
+        <tr><td class="prop-name">variants</td><td class="prop-type">array</td><td></td><td class="prop-desc">Each: <code>{ name, options, price, sku?, isDefault?, sortOrder? }</code> — one entry per real, priced combination (e.g. one row for "Blonde / S", one for "Blonde / M", etc). If you have 13 colors × 8 sizes, send 104 rows.</td></tr>
+        <tr><td class="prop-name">etsyInventory</td><td class="prop-type">object</td><td></td><td class="prop-desc">Alternative to <code>variants</code> — pass Etsy's own <a href="https://developers.etsy.com/documentation/reference/#operation/getListingInventory" target="_blank" rel="noopener">Listing Inventory</a> response (<code>GET /v3/application/listings/{listing_id}/inventory</code>) as-is and it's converted to <code>variants</code> for you. Ignored if <code>variants</code> is also sent.</td></tr>
       </table>
       <p class="desc" style="margin-top:12px">
         Images aren't set here — create the product first, then use
         <a href="#upload-images">Upload images</a> or <a href="#attach-images">Attach image URLs</a>.
         Extended fields (shipping profile, materials, occasions, return policy, etc.) can be set afterward via
         <a href="#update-product">Update a product</a>.
+      </p>
+      <p class="desc" style="margin-top:8px">
+        <strong>Note on Etsy data:</strong> only Etsy's actual Listing Inventory endpoint carries a real price
+        per combination. Etsy's own listing-page UI also exposes a <em>different</em>, lossy summary — a
+        min/max price range per single property value (e.g. "Color: Blonde ($34–$47)") — used to hint at a
+        range before a full combination is picked. That summary form cannot be reconstructed into per-combination
+        prices and is not accepted here; if you only have that shape, fetch the real inventory endpoint instead.
       </p>
 
       <div class="section-label">Request Example</div>
@@ -527,6 +535,41 @@
   ]
 }</pre>
       </div>
+
+      <div class="section-label">Request Example — from Etsy's Listing Inventory</div>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre><span class="tok-method">POST</span> /partner/products
+<span class="tok-header">Content-Type</span>: application/json
+<span class="tok-header">X-Api-Key</span>: ezhb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+{
+  <span class="tok-key">"name"</span>: <span class="tok-str">"Sanderson Sisters Halloween Shirt"</span>,
+  <span class="tok-key">"sku"</span>: <span class="tok-str">"HLW-SHIRT-001"</span>,
+  <span class="tok-key">"description"</span>: <span class="tok-str">"Hocus Pocus inspired vintage Halloween tee."</span>,
+  <span class="tok-key">"basePrice"</span>: <span class="tok-num">30.48</span>,
+  <span class="tok-key">"categoryId"</span>: <span class="tok-str">"cat_apparel"</span>,
+  <span class="tok-key">"etsyInventory"</span>: {
+    <span class="tok-key">"products"</span>: [
+      {
+        <span class="tok-key">"sku"</span>: <span class="tok-str">"HLW-SHIRT-001-BLONDE-S"</span>,
+        <span class="tok-key">"property_values"</span>: [
+          { <span class="tok-key">"property_name"</span>: <span class="tok-str">"Colors"</span>, <span class="tok-key">"values"</span>: [<span class="tok-str">"Blonde"</span>] },
+          { <span class="tok-key">"property_name"</span>: <span class="tok-str">"Sizes"</span>, <span class="tok-key">"values"</span>: [<span class="tok-str">"S"</span>] }
+        ],
+        <span class="tok-key">"offerings"</span>: [
+          { <span class="tok-key">"price"</span>: { <span class="tok-key">"amount"</span>: <span class="tok-num">3417</span>, <span class="tok-key">"divisor"</span>: <span class="tok-num">100</span>, <span class="tok-key">"currency_code"</span>: <span class="tok-str">"USD"</span> }, <span class="tok-key">"is_enabled"</span>: <span class="tok-bool">true</span> }
+        ]
+      }
+      <span class="tok-comment">// ...one entry per real combination (e.g. 104 for 13 colors × 8 sizes)</span>
+    ]
+  }
+}</pre>
+      </div>
+      <p class="desc" style="margin-top:8px">
+        This is a straight pass-through of Etsy's own response shape — copy <code>products</code> directly from
+        Etsy's inventory endpoint into <code>etsyInventory.products</code> with no reshaping needed.
+      </p>
 
       <div class="section-label">Response</div>
       <p class="desc">Returns <code>201 Created</code> with the full product object — same shape as <a href="#get-product">Get a product</a>.</p>

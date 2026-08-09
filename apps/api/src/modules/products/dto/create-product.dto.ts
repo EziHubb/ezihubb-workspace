@@ -13,6 +13,7 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
+import { EtsyInventoryDto } from './etsy-inventory.dto';
 
 export class CreateVariantDto {
   @ApiProperty({ example: 'Size M - White' })
@@ -145,4 +146,16 @@ export class CreateProductDto {
   @ValidateNested({ each: true })
   @Type(() => CreateVariantDto)
   variants?: CreateVariantDto[];
+
+  @ApiPropertyOptional({
+    type: EtsyInventoryDto,
+    description:
+      "Alternative to `variants` — pass Etsy's own Listing Inventory API response " +
+      '(GET /v3/application/listings/{id}/inventory) directly and it will be converted ' +
+      'to `variants` automatically. Ignored if `variants` is also provided.',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => EtsyInventoryDto)
+  etsyInventory?: EtsyInventoryDto;
 }

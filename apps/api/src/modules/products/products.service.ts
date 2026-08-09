@@ -27,6 +27,7 @@ import type {
 } from './dto/create-product-detail.dto';
 import { ProductQueryDto, ProductSortBy } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
+import { mapEtsyInventoryToVariants } from './etsy-inventory.mapper';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductListItemDto } from './dto/product-list-item.dto';
 import {
@@ -416,6 +417,15 @@ export class ProductsService {
       });
     }
 
+    // Accept Etsy's real inventory export as an alternative to `variants` —
+    // `variants` (if provided) always wins, so a caller migrating gradually
+    // can't have a stray etsyInventory silently override an explicit list.
+    const variants = dto.variants?.length
+      ? dto.variants
+      : dto.etsyInventory
+        ? mapEtsyInventoryToVariants(dto.etsyInventory)
+        : undefined;
+
     const skuExists = await this.prisma.product.findUnique({
       where: { sku: dto.sku },
     });
@@ -457,9 +467,9 @@ export class ProductsService {
         storeId,
         customizationConfig:
           (dto.customizationConfig as Prisma.InputJsonValue) ?? Prisma.JsonNull,
-        variants: dto.variants?.length
+        variants: variants?.length
           ? {
-              create: dto.variants.map((v, i) => ({
+              create: variants.map((v, i) => ({
                 name: v.name,
                 options: v.options as Prisma.InputJsonValue,
                 price: v.price,
