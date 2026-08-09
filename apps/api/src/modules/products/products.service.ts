@@ -1093,7 +1093,20 @@ export class ProductsService {
   // cleans up completely on the Postgres side. Confirmed via schema read —
   // see the "Delete" gap-analysis/redesign discussion.
   async delete(id: string): Promise<void> {
-    await this.requireProduct(id);
+    const product = await this.prisma.product.findUnique({ where: { id }, select: { status: true } });
+    if (!product) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+    }
+    // Force Archive-first: a hard delete is irreversible, so require the
+    // seller/admin to have already reviewed and archived the listing before
+    // it can be permanently removed — no deleting a live/draft product in
+    // one click. Enforced server-side, not just by hiding the UI button.
+    if (product.status !== ProductStatus.ARCHIVED) {
+      throw new BadRequestException({
+        code: 'ERR_MUST_ARCHIVE_FIRST',
+        message: 'Archive this product before deleting it permanently.',
+      });
+    }
 
     const images = await this.prisma.productImage.findMany({
       where: { productId: id },

@@ -208,8 +208,9 @@ function GearMenu({
             Archive
           </button>
 
-          {/* Delete */}
-          {onDelete && (
+          {/* Delete — only once the product is already Archived (hard-delete is
+              irreversible; archive first is the review step before that) */}
+          {onDelete && product.status === 'ARCHIVED' && (
             <button
               type="button"
               className={dangerItemCls}

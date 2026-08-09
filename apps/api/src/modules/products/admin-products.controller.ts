@@ -11,6 +11,7 @@ import {
   Res,
   UploadedFiles,
   UseInterceptors,
+  UseGuards,
   HttpCode,
   HttpStatus,
   BadRequestException,
@@ -27,6 +28,7 @@ import { memoryStorage } from 'multer';
 import { ProductsService } from './products.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProductStatus } from '@prisma/client';
+import { RequireArchivedGuard } from './guards/require-archived.guard';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -329,8 +331,9 @@ export class AdminProductsController {
 
   // DELETE /admin/products/:id
   @Delete(':id')
+  @UseGuards(RequireArchivedGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: '[Admin] Soft-delete product (sets isActive=false)' })
+  @ApiOperation({ summary: '[Admin] Permanently delete a product — must already be Archived' })
   async delete(@Req() req: Request, @Param('id', ParseCuidPipe) id: string): Promise<void> {
     await this.productsService.delete(id);
     const userId = (req.user as { sub: string }).sub;
