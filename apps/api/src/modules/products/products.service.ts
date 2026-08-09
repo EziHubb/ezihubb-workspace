@@ -1073,21 +1073,38 @@ export class ProductsService {
     await this.productDetailModel.updateOne({ productId }, { $set: { customOptions: reordered } });
   }
 
+  // True hard delete, not a soft-archive — this is deliberately safe on this
+  // schema: OrderItem.product uses onDelete:SetNull (not Cascade) and OrderItem
+  // already snapshots productName/slug/imageUrl/sku/unitPrice/variantSnapshot
+  // at purchase time, so past order history stays fully intact and displayable
+  // even after the live Product row is gone. Every other relation (images,
+  // variants, tags, wishlist items, cart items, reviews, questions,
+  // customization drafts, fulfillment mappings) is onDelete:Cascade, so this
+  // cleans up completely on the Postgres side. Confirmed via schema read —
+  // see the "Delete" gap-analysis/redesign discussion.
   async delete(id: string): Promise<void> {
     await this.requireProduct(id);
-    // ProductStatus.ARCHIVED is this schema's only soft-delete state (see the
-    // enum's own comment — there's no separate DELETED status). Must set both
-    // fields together, same as the bulk 'archive' action in
-    // admin-products.controller.ts — setting isActive alone (as this used to)
-    // left `status` untouched, so a deleted DRAFT/ACTIVE product kept showing
-    // up under its old status filter tab even though the DELETE call succeeded.
-    const p = await this.prisma.product.update({
+
+    const images = await this.prisma.productImage.findMany({
+      where: { productId: id },
+      select: { url: true },
+    });
+
+    const p = await this.prisma.product.delete({
       where: { id },
-      data: { isActive: false, status: ProductStatus.ARCHIVED },
       select: { slug: true },
     });
+
     await this.redis.invalidatePattern('products:list:*');
     await this.redis.del(CacheKeys.product(p.slug));
+    // MongoDB doesn't know about Postgres FKs — clean up the flexible detail
+    // doc explicitly or it's orphaned forever.
+    await this.productDetailModel.deleteOne({ productId: id }).catch(() => undefined);
+
+    // Best-effort storage cleanup — never blocks the response on a slow/failed delete.
+    for (const img of images) {
+      this.storage.deleteFile(this.storage.extractKey(img.url)).catch(() => undefined);
+    }
   }
 
   async duplicate(id: string): Promise<ProductResponseDto> {

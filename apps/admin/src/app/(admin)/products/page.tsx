@@ -38,7 +38,7 @@ const SORT_OPTIONS = [
 ] as const;
 
 const STATUS_FILTER_OPTIONS = [
-  { value: '',         label: 'All listings', statsKey: 'all'      },
+  { value: 'ALL',      label: 'All listings', statsKey: 'all'      },
   { value: 'DRAFT',    label: 'Draft',        statsKey: 'draft'    },
   { value: 'ACTIVE',   label: 'Active',       statsKey: 'active'   },
   { value: 'INACTIVE', label: 'Inactive',     statsKey: 'inactive' },
@@ -54,7 +54,10 @@ function ProductsPageInner() {
   const { confirm, alert } = useDialog();
 
   const VALID_SORTS = new Set(SORT_OPTIONS.map((o) => o.value));
-  const urlStatus = searchParams.get('status') ?? '';
+  // Default to Active (not All) when the URL has no explicit ?status — "All
+  // listings" is now its own real value ('ALL', set explicitly in the URL when
+  // chosen) so it's distinguishable from "no filter chosen yet".
+  const urlStatus = searchParams.get('status') ?? 'ACTIVE';
   const rawSort   = searchParams.get('sort') ?? '';
   const urlSort   = VALID_SORTS.has(rawSort as typeof SORT_OPTIONS[number]['value']) ? rawSort : 'newest';
 
@@ -111,7 +114,10 @@ function ProductsPageInner() {
     queryFn:  async () => {
       const p = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE), sort: urlSort });
       if (debouncedQ) p.set('q',      debouncedQ);
-      if (urlStatus)  p.set('status', urlStatus);
+      // 'ALL' is a UI-only sentinel — omitting the param lets the API's own
+      // default (everything except Draft) apply, same as before this default
+      // changed from '' to 'ACTIVE'.
+      if (urlStatus && urlStatus !== 'ALL') p.set('status', urlStatus);
       return api.get<{ data: AdminProduct[]; pagination: { total: number } }>(`${API_ROUTES.ADMIN.PRODUCTS}?${p}`);
     },
   });
@@ -490,7 +496,7 @@ function ProductsPageInner() {
                 <Package className="w-12 h-12 text-muted/30 mb-4" />
                 <p className="text-base font-semibold text-secondary mb-1">No products found</p>
                 <p className="text-sm text-muted mb-6">
-                  {urlStatus ? `No ${urlStatus.toLowerCase()} listings yet.` : 'Create your first product to get started.'}
+                  {urlStatus && urlStatus !== 'ALL' ? `No ${urlStatus.toLowerCase()} listings yet.` : 'Create your first product to get started.'}
                 </p>
                 <Link
                   href="/products/new"
