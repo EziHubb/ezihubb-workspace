@@ -104,7 +104,10 @@ function GearMenu({
       </button>
 
       {open && (
-        <div className="absolute right-0 bottom-full mb-1 z-50 w-48 bg-background border border-border rounded-xl shadow-xl overflow-hidden py-1">
+        <div
+          className="absolute right-0 bottom-full mb-1 z-50 w-48 bg-background border border-border rounded-xl shadow-xl overflow-hidden py-1"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* View on site */}
           <a
             href={`${clientBaseUrl ?? ''}/products/${product.slug}`}
