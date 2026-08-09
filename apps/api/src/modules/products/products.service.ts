@@ -1075,9 +1075,15 @@ export class ProductsService {
 
   async delete(id: string): Promise<void> {
     await this.requireProduct(id);
+    // ProductStatus.ARCHIVED is this schema's only soft-delete state (see the
+    // enum's own comment — there's no separate DELETED status). Must set both
+    // fields together, same as the bulk 'archive' action in
+    // admin-products.controller.ts — setting isActive alone (as this used to)
+    // left `status` untouched, so a deleted DRAFT/ACTIVE product kept showing
+    // up under its old status filter tab even though the DELETE call succeeded.
     const p = await this.prisma.product.update({
       where: { id },
-      data: { isActive: false },
+      data: { isActive: false, status: ProductStatus.ARCHIVED },
       select: { slug: true },
     });
     await this.redis.invalidatePattern('products:list:*');
@@ -1599,9 +1605,12 @@ export class ProductsService {
   async deleteForStore(id: string, storeId: string): Promise<void> {
     const product = await this.prisma.product.findFirst({ where: { id, storeId } });
     if (!product) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+    // status must move to ARCHIVED (not just isActive/deletedAt) — buildWhereClause,
+    // the query every seller/admin/storefront list goes through, filters on `status`
+    // and never checks `deletedAt`. Same fix as ProductsService.delete() above.
     await this.prisma.product.update({
       where: { id },
-      data:  { isActive: false, deletedAt: new Date() },
+      data:  { isActive: false, deletedAt: new Date(), status: ProductStatus.ARCHIVED },
     });
     await this.redis.invalidatePattern('products:list:*');
   }
