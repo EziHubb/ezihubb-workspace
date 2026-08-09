@@ -7,6 +7,8 @@ import {
   Body,
   Param,
   Query,
+  Req,
+  Res,
   UploadedFile,
   UseInterceptors,
   HttpCode,
@@ -22,11 +24,13 @@ import {
   ApiConsumes,
   ApiBody,
 } from '@nestjs/swagger';
+import { Request, Response } from 'express';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
 import { UpdateWishlistShareDto } from './dto/update-wishlist-share.dto';
+import { DeleteAccountDto } from './dto/delete-account.dto';
 import { RegisterFcmTokenDto, UnregisterFcmTokenDto, UpdatePushPreferencesDto } from './dto/fcm-token.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { AddressResponseDto } from './dto/address-response.dto';
@@ -40,6 +44,7 @@ import { PaginatedResult } from '../../common/dto/paginated-response.dto';
 import { ParseCuidPipe } from '../../common/pipes/parse-cuid.pipe';
 import { memoryStorage } from 'multer';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditLogService } from '../../common/services/audit-log.service';
 
 @ApiTags('Users')
 @ApiBearerAuth('access-token')
@@ -48,7 +53,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class UsersController {
   constructor(
     private readonly usersService: UsersService,
-    private readonly prisma: PrismaService,
+    private readonly prisma:       PrismaService,
+    private readonly auditLog:     AuditLogService,
   ) {}
 
   // ─── Profile ───────────────────────────────────────────────────────────────
@@ -70,6 +76,35 @@ export class UsersController {
     @Body() dto: UpdateProfileDto,
   ): Promise<UserResponseDto> {
     return this.usersService.updateProfile(user.sub, dto);
+  }
+
+  // GET /users/me/export
+  @Get('me/export')
+  @ApiOperation({ summary: 'Export all of your own account data (GDPR data portability)' })
+  async exportOwnData(@CurrentUser() user: JwtPayload): Promise<Record<string, unknown>> {
+    return this.usersService.exportOwnData(user.sub);
+  }
+
+  // DELETE /users/me
+  @Delete('me')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete your own account (GDPR right to erasure) — anonymizes PII, revokes all sessions' })
+  async deleteAccount(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: DeleteAccountDto,
+  ): Promise<void> {
+    await this.usersService.deleteAccount(user.sub, dto.password);
+    res.clearCookie('refresh_token', { path: '/api/v1/auth' });
+    this.auditLog.log({
+      userId:     user.sub,
+      action:     'DELETE_ACCOUNT',
+      entityType: 'User',
+      entityId:   user.sub,
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
   }
 
   // POST /users/me/avatar

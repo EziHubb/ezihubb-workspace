@@ -7,6 +7,7 @@ import { memoryStorage } from 'multer';
 import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
 import { StoresService } from './stores.service';
+import { AuditLogService } from '../../common/services/audit-log.service';
 
 class AdminUpdateStoreDto {
   @IsOptional() @IsString() @MaxLength(100)
@@ -34,7 +35,22 @@ import {
 
 @AdminController('stores')
 export class AdminStoresController {
-  constructor(private readonly storesService: StoresService) {}
+  constructor(
+    private readonly storesService: StoresService,
+    private readonly auditLog:      AuditLogService,
+  ) {}
+
+  private logStoreDecision(req: any, id: string, action: string, dto?: Record<string, unknown>): void {
+    this.auditLog.log({
+      userId:     req.user.sub ?? req.user.id,
+      action,
+      entityType: 'Store',
+      entityId:   id,
+      after:      dto,
+      ip:         req.ip,
+      userAgent:  req.headers?.['user-agent'],
+    });
+  }
 
   @Get()
   listStores(@Query() dto: AdminListStoresDto, @Req() req: any) {
@@ -51,18 +67,24 @@ export class AdminStoresController {
   }
 
   @Post(':id/approve')
-  approveStore(@Param('id') id: string, @Req() req: any, @Body() dto: ApproveStoreDto) {
-    return this.storesService.adminApproveStore(id, req.user.sub ?? req.user.id, dto);
+  async approveStore(@Param('id') id: string, @Req() req: any, @Body() dto: ApproveStoreDto) {
+    const result = await this.storesService.adminApproveStore(id, req.user.sub ?? req.user.id, dto);
+    this.logStoreDecision(req, id, 'APPROVE', dto as unknown as Record<string, unknown>);
+    return result;
   }
 
   @Post(':id/reject')
-  rejectStore(@Param('id') id: string, @Req() req: any, @Body() dto: RejectStoreDto) {
-    return this.storesService.adminRejectStore(id, req.user.sub ?? req.user.id, dto);
+  async rejectStore(@Param('id') id: string, @Req() req: any, @Body() dto: RejectStoreDto) {
+    const result = await this.storesService.adminRejectStore(id, req.user.sub ?? req.user.id, dto);
+    this.logStoreDecision(req, id, 'REJECT', dto as unknown as Record<string, unknown>);
+    return result;
   }
 
   @Post(':id/suspend')
-  suspendStore(@Param('id') id: string, @Req() req: any, @Body() dto: SuspendStoreDto) {
-    return this.storesService.adminSuspendStore(id, req.user.sub ?? req.user.id, dto);
+  async suspendStore(@Param('id') id: string, @Req() req: any, @Body() dto: SuspendStoreDto) {
+    const result = await this.storesService.adminSuspendStore(id, req.user.sub ?? req.user.id, dto);
+    this.logStoreDecision(req, id, 'SUSPEND', dto as unknown as Record<string, unknown>);
+    return result;
   }
 
   @Patch(':id')

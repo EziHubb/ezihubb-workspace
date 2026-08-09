@@ -7,10 +7,12 @@ import {
   Param,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
+import { Request } from 'express';
 import { PaymentsService } from './payments.service';
 import { PaypalService } from './paypal.service';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
@@ -23,6 +25,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Role } from '@ezihubb/constants';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
+import { AuditLogService } from '../../common/services/audit-log.service';
 
 class PaypalCreateOrderDto {
   @IsString() @IsNotEmpty()
@@ -46,6 +49,7 @@ export class PaymentsController {
   constructor(
     private readonly paymentsService: PaymentsService,
     private readonly paypalService:   PaypalService,
+    private readonly auditLog:        AuditLogService,
   ) {}
 
   @Post('create-intent')
@@ -139,7 +143,22 @@ export class PaymentsController {
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Issue a refund (admin)' })
-  async createRefund(@Param('id') id: string, @Body() dto: CreateRefundDto) {
-    return this.paymentsService.createRefund(id, dto);
+  async createRefund(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body() dto: CreateRefundDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const result = await this.paymentsService.createRefund(id, dto);
+    this.auditLog.log({
+      userId:     user.sub,
+      action:     'REFUND',
+      entityType: 'Payment',
+      entityId:   id,
+      after:      dto as unknown as Record<string, unknown>,
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
+    return result;
   }
 }

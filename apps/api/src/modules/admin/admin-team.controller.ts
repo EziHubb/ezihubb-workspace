@@ -5,6 +5,7 @@
   Delete,
   Param,
   Body,
+  Req,
   BadRequestException,
   NotFoundException,
   ForbiddenException,
@@ -12,6 +13,7 @@
   HttpStatus,
 } from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
+import { Request } from 'express';
 import { IsEmail, IsIn, IsNotEmpty } from 'class-validator';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -22,6 +24,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { QUEUES, JOBS, SendEmailJobData } from '../../queue/queue.constants';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
+import { AuditLogService } from '../../common/services/audit-log.service';
 
 const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN'] as const;
 type AdminRole = (typeof ADMIN_ROLES)[number];
@@ -42,7 +45,8 @@ class UpdateRoleDto {
 @AdminController('team')
 export class AdminTeamController {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma:   PrismaService,
+    private readonly auditLog: AuditLogService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
   ) {}
 
@@ -73,7 +77,7 @@ export class AdminTeamController {
 
   @Post('invite')
   @ApiOperation({ summary: 'Invite a new admin (creates account + sends temp-password email)' })
-  async invite(@Body() dto: InviteAdminDto, @CurrentUser() caller: JwtPayload) {
+  async invite(@Req() req: Request, @Body() dto: InviteAdminDto, @CurrentUser() caller: JwtPayload) {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) {
       throw new BadRequestException(`A user with email ${dto.email} already exists`);
@@ -104,6 +108,16 @@ export class AdminTeamController {
       },
     } satisfies SendEmailJobData);
 
+    this.auditLog.log({
+      userId:     caller.sub,
+      action:     'INVITE_ADMIN',
+      entityType: 'User',
+      entityId:   user.id,
+      after:      { email: dto.email, role: dto.role },
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
+
     return {
       id:    user.id,
       email: user.email,
@@ -114,6 +128,7 @@ export class AdminTeamController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update admin role' })
   async updateRole(
+    @Req() req: Request,
     @Param('id') id: string,
     @Body() dto: UpdateRoleDto,
     @CurrentUser() caller: JwtPayload,
@@ -132,13 +147,24 @@ export class AdminTeamController {
       data: { role: dto.role },
     });
 
+    this.auditLog.log({
+      userId:     caller.sub,
+      action:     'UPDATE_ROLE',
+      entityType: 'User',
+      entityId:   id,
+      before:     { role: member.role },
+      after:      { role: dto.role },
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
+
     return { id, role: dto.role };
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Revoke admin access (demote to CUSTOMER)' })
-  async revoke(@Param('id') id: string, @CurrentUser() caller: JwtPayload) {
+  async revoke(@Req() req: Request, @Param('id') id: string, @CurrentUser() caller: JwtPayload) {
     if (id === caller.sub) {
       throw new ForbiddenException('Cannot revoke your own admin access');
     }
@@ -151,6 +177,17 @@ export class AdminTeamController {
     await this.prisma.user.update({
       where: { id },
       data: { role: 'CUSTOMER' },
+    });
+
+    this.auditLog.log({
+      userId:     caller.sub,
+      action:     'REVOKE_ADMIN',
+      entityType: 'User',
+      entityId:   id,
+      before:     { role: member.role },
+      after:      { role: 'CUSTOMER' },
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
     });
   }
 }

@@ -8,16 +8,11 @@ import {
 } from '@nestjs/common';
 import { ThrottlerException } from '@nestjs/throttler';
 import { Request, Response } from 'express';
+import * as Sentry from '@sentry/node';
 
-// Conditionally import Sentry so the API works without it configured
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let Sentry: any = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  Sentry = require('@sentry/node');
-} catch {
-  // @sentry/node not installed — monitoring disabled
-}
+// Sentry.captureException() is a documented no-op when Sentry.init() was never
+// called (see main.ts — only initialised when SENTRY_DSN is set), so this is
+// safe to call unconditionally.
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -92,17 +87,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
       (exception as Error)?.stack,
     );
 
-    if (Sentry && process.env['SENTRY_DSN']) {
-      Sentry.withScope((scope: any) => {
-        scope.setTag('requestId', request.requestId ?? 'unknown');
-        scope.setTag('path', request.path);
-        scope.setTag('method', request.method);
-        if (request.user?.id) {
-          scope.setUser({ id: request.user.id });
-        }
-        Sentry!.captureException(exception);
-      });
-    }
+    Sentry.withScope((scope) => {
+      scope.setTag('requestId', request.requestId ?? 'unknown');
+      scope.setTag('path', request.path);
+      scope.setTag('method', request.method);
+      if (request.user?.id) {
+        scope.setUser({ id: request.user.id });
+      }
+      Sentry.captureException(exception);
+    });
 
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       success: false,

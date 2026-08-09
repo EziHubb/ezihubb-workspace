@@ -194,40 +194,40 @@ export class SearchService {
   ): Promise<PaginatedResult<ProductListItemDto>> {
     const offset = (page - 1) * limit;
 
-    const whereParts: string[] = [
-      `p."isActive" = true`,
-      `p."deletedAt" IS NULL`,
+    const whereParts: Prisma.Sql[] = [
+      Prisma.sql`p."isActive" = true`,
+      Prisma.sql`p."deletedAt" IS NULL`,
     ];
 
     if (baseWhere.categoryId && typeof baseWhere.categoryId === 'string') {
-      whereParts.push(`p."categoryId" = '${baseWhere.categoryId}'`);
+      whereParts.push(Prisma.sql`p."categoryId" = ${baseWhere.categoryId}`);
     }
 
     if (baseWhere.basePrice) {
       const priceFilter = baseWhere.basePrice as { gte?: number; lte?: number };
       if (priceFilter.gte !== undefined) {
-        whereParts.push(`p."basePrice" >= ${priceFilter.gte}`);
+        whereParts.push(Prisma.sql`p."basePrice" >= ${priceFilter.gte}`);
       }
       if (priceFilter.lte !== undefined) {
-        whereParts.push(`p."basePrice" <= ${priceFilter.lte}`);
+        whereParts.push(Prisma.sql`p."basePrice" <= ${priceFilter.lte}`);
       }
     }
 
     if (baseWhere.compareAtPrice && (baseWhere.compareAtPrice as { not?: null }).not === null) {
-      whereParts.push(`p."compareAtPrice" IS NOT NULL`);
+      whereParts.push(Prisma.sql`p."compareAtPrice" IS NOT NULL`);
     }
 
     if (typeof (baseWhere.soldCount as { gte?: number } | undefined)?.gte === 'number') {
-      whereParts.push(`p."soldCount" >= ${(baseWhere.soldCount as { gte: number }).gte}`);
+      whereParts.push(Prisma.sql`p."soldCount" >= ${(baseWhere.soldCount as { gte: number }).gte}`);
     }
 
     if (baseWhere.storeId && typeof baseWhere.storeId === 'string') {
-      whereParts.push(`p."storeId" = '${baseWhere.storeId}'`);
+      whereParts.push(Prisma.sql`p."storeId" = ${baseWhere.storeId}`);
     }
 
     // Use COALESCE so ORDER BY works even when search_vector is NULL
     const orderSql = this.buildRawOrderBy(sort, 'COALESCE(ts_rank(p.search_vector, query), 0)');
-    const whereStr = whereParts.length ? whereParts.join(' AND ') + ' AND ' : '';
+    const whereSql = Prisma.join(whereParts, ' AND ');
     const likeQ = `%${q.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`;
 
     // Hybrid: prefer FTS relevance but also match via ILIKE so NULL search_vector rows are found
@@ -235,7 +235,7 @@ export class SearchService {
       SELECT p.id
       FROM "Product" p,
            plainto_tsquery('english', ${q}) query
-      WHERE ${Prisma.raw(whereStr)}
+      WHERE ${whereSql} AND
             (
               (p.search_vector IS NOT NULL AND p.search_vector @@ query)
               OR p.name ILIKE ${likeQ}
@@ -249,7 +249,7 @@ export class SearchService {
       SELECT COUNT(*) AS total
       FROM "Product" p,
            plainto_tsquery('english', ${q}) query
-      WHERE ${Prisma.raw(whereStr)}
+      WHERE ${whereSql} AND
             (
               (p.search_vector IS NOT NULL AND p.search_vector @@ query)
               OR p.name ILIKE ${likeQ}
@@ -548,6 +548,22 @@ export class SearchService {
       createdAt: Date;
     }[],
   ): Promise<ProductListItemDto[]> {
+    const productIds = products.map((p) => p.id);
+    const ratingRows = productIds.length
+      ? await this.prisma.review.groupBy({
+          by: ['productId'],
+          where: { productId: { in: productIds }, status: 'APPROVED' },
+          _avg: { rating: true },
+          _count: { rating: true },
+        })
+      : [];
+    const ratingMap = new Map(
+      ratingRows.map((r) => [
+        r.productId,
+        r._count.rating ? Math.round((r._avg.rating ?? 0) * 10) / 10 : null,
+      ]),
+    );
+
     return Promise.all(
       products.map(async (p) => ({
         id: p.id,
@@ -568,7 +584,7 @@ export class SearchService {
         quantity: p.quantity,
         viewCount: p.viewCount,
         soldCount: p.soldCount,
-        averageRating: null,
+        averageRating: ratingMap.get(p.id) ?? null,
         reviewCount: p._count.reviews,
         inDemandCount: (await this.redis.get<number>(IN_DEMAND_KEY(p.id))) ?? 0,
         createdAt: p.createdAt,

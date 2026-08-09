@@ -3,10 +3,12 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  UnauthorizedException,
   Logger,
   Optional,
 } from '@nestjs/common';
 import { randomBytes } from 'crypto';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services/storage.service';
 import { RedisService } from '../../common/services/redis.service';
@@ -61,6 +63,105 @@ export class UsersService {
       },
     });
     return UserResponseDto.fromPrisma(user);
+  }
+
+  // ─── GDPR: data export ───────────────────────────────────────────────────────
+
+  /** Everything the account holder itself has a right to see about their own data. */
+  async exportOwnData(userId: string): Promise<Record<string, unknown>> {
+    const [user, addresses, wishlistItems, orders, reviews] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: userId } }),
+      this.prisma.address.findMany({ where: { userId } }),
+      this.prisma.wishlistItem.findMany({ where: { userId } }),
+      this.prisma.order.findMany({
+        where: { userId },
+        select: {
+          id: true, orderNumber: true, status: true, total: true, createdAt: true,
+          shippingName: true, shippingAddress: true, shippingCity: true, shippingState: true,
+          shippingZip: true, shippingCountry: true,
+        },
+      }),
+      this.prisma.review.findMany({ where: { userId } }),
+    ]);
+    if (!user) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'User not found' });
+
+    return {
+      exportedAt: new Date().toISOString(),
+      profile: {
+        id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName,
+        role: user.role, isEmailVerified: user.isEmailVerified, provider: user.provider,
+        createdAt: user.createdAt,
+      },
+      addresses,
+      wishlistItems,
+      orders,
+      reviews,
+    };
+  }
+
+  // ─── GDPR: account deletion (right to erasure) ────────────────────────────────
+  // Soft-delete + anonymize PII rather than a hard delete: Order/Payment rows must
+  // survive for accounting/tax retention obligations (a recognised GDPR erasure
+  // exception), and Order stores its own shipping snapshot independent of User —
+  // anonymizing User doesn't touch that historical record.
+
+  async deleteAccount(userId: string, password?: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.deletedAt) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'User not found' });
+    }
+
+    const ownedStore = await this.prisma.store.findUnique({ where: { ownerId: userId }, select: { id: true } });
+    if (ownedStore) {
+      throw new BadRequestException({
+        code: 'ERR_OWNS_STORE',
+        message: 'This account owns a store. Transfer or close the store before deleting your account — contact support for help.',
+      });
+    }
+
+    if (user.passwordHash) {
+      if (!password) {
+        throw new BadRequestException({ code: 'ERR_PASSWORD_REQUIRED', message: 'Password confirmation is required to delete your account' });
+      }
+      const match = await bcrypt.compare(password, user.passwordHash);
+      if (!match) {
+        throw new UnauthorizedException({ code: 'ERR_CREDENTIALS_INVALID', message: 'Password is incorrect' });
+      }
+    }
+
+    const anonymizedEmail = `deleted-${userId}@deleted.ezihubb.invalid`;
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          email: anonymizedEmail,
+          passwordHash: null,
+          firstName: null,
+          lastName: null,
+          avatarUrl: null,
+          providerId: null,
+          totpSecret: null,
+          totpEnabled: false,
+          backupCodes: [],
+          deletedAt: new Date(),
+        },
+      }),
+      this.prisma.address.deleteMany({ where: { userId } }),
+      this.prisma.wishlistItem.deleteMany({ where: { userId } }),
+      this.prisma.cart.deleteMany({ where: { userId } }),
+      this.prisma.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+
+    if (user.avatarUrl) {
+      await this.storage.deleteFile(this.storage.extractKey(user.avatarUrl)).catch((err) =>
+        this.logger.warn(`Failed to delete avatar on account deletion: ${err.message}`),
+      );
+    }
+    await this.redis.del(`user:${userId}`);
   }
 
   async uploadAvatar(

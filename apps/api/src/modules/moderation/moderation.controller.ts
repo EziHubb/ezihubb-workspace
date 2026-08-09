@@ -9,6 +9,9 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@ezihubb/constants';
+import { AuditLogService } from '../../common/services/audit-log.service';
+
+type ModerationRequest = { user: { sub: string }; ip: string; headers: { 'user-agent'?: string } };
 
 @Controller('admin/moderation')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -17,6 +20,7 @@ export class ModerationController {
   constructor(
     private readonly svc:        ModerationService,
     private readonly ipScanSvc:  IPScanService,
+    private readonly auditLog:   AuditLogService,
   ) {}
 
   @Get('queue')
@@ -41,19 +45,37 @@ export class ModerationController {
   }
 
   @Post('flags/:id/approve')
-  approveFlag(@Param('id') id: string, @Body() body: { notes?: string }, @Request() req: { user: { sub: string } }) {
-    return this.svc.adminApprove(id, req.user.sub, body.notes ?? '');
+  async approveFlag(@Param('id') id: string, @Body() body: { notes?: string }, @Request() req: ModerationRequest) {
+    const result = await this.svc.adminApprove(id, req.user.sub, body.notes ?? '');
+    this.logModerationDecision(req, id, 'APPROVE', body.notes);
+    return result;
   }
 
   @Post('flags/:id/reject')
-  rejectFlag(@Param('id') id: string, @Body() body: { notes?: string }, @Request() req: { user: { sub: string } }) {
-    return this.svc.adminReject(id, req.user.sub, body.notes ?? '');
+  async rejectFlag(@Param('id') id: string, @Body() body: { notes?: string }, @Request() req: ModerationRequest) {
+    const result = await this.svc.adminReject(id, req.user.sub, body.notes ?? '');
+    this.logModerationDecision(req, id, 'REJECT', body.notes);
+    return result;
   }
 
   @Post('flags/:id/escalate')
-  escalateFlag(@Param('id') id: string, @Body() body: { notes?: string }, @Request() req: { user: { sub: string } }) {
+  async escalateFlag(@Param('id') id: string, @Body() body: { notes?: string }, @Request() req: ModerationRequest) {
     // Escalation marks as needing senior review — treat as a special reject with escalation note
-    return this.svc.adminReject(id, req.user.sub, `[ESCALATED] ${body.notes ?? ''}`);
+    const result = await this.svc.adminReject(id, req.user.sub, `[ESCALATED] ${body.notes ?? ''}`);
+    this.logModerationDecision(req, id, 'ESCALATE', body.notes);
+    return result;
+  }
+
+  private logModerationDecision(req: ModerationRequest, entityId: string, action: string, notes?: string): void {
+    this.auditLog.log({
+      userId:     req.user.sub,
+      action,
+      entityType: 'ModerationFlag',
+      entityId,
+      after:      notes ? { notes } : undefined,
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
   }
 
   @Get('logs')
@@ -67,13 +89,17 @@ export class ModerationController {
   }
 
   @Post('logs/:id/approve')
-  approve(@Param('id') id: string, @Body() body: { notes?: string }, @Request() req: { user: { sub: string } }) {
-    return this.svc.adminApprove(id, req.user.sub, body.notes ?? '');
+  async approve(@Param('id') id: string, @Body() body: { notes?: string }, @Request() req: ModerationRequest) {
+    const result = await this.svc.adminApprove(id, req.user.sub, body.notes ?? '');
+    this.logModerationDecision(req, id, 'APPROVE', body.notes);
+    return result;
   }
 
   @Post('logs/:id/reject')
-  reject(@Param('id') id: string, @Body() body: { notes?: string }, @Request() req: { user: { sub: string } }) {
-    return this.svc.adminReject(id, req.user.sub, body.notes ?? '');
+  async reject(@Param('id') id: string, @Body() body: { notes?: string }, @Request() req: ModerationRequest) {
+    const result = await this.svc.adminReject(id, req.user.sub, body.notes ?? '');
+    this.logModerationDecision(req, id, 'REJECT', body.notes);
+    return result;
   }
 
   @Post('recheck')
@@ -116,11 +142,25 @@ export class ModerationController {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN, Role.SUPER_ADMIN)
 export class StoreViolationsController {
-  constructor(private readonly svc: ModerationService) {}
+  constructor(
+    private readonly svc:      ModerationService,
+    private readonly auditLog: AuditLogService,
+  ) {}
 
   @Get(':id/violations')
   getViolations(@Param('id') id: string) { return this.svc.getStoreViolations(id); }
 
   @Post(':id/clear-strikes')
-  clearStrikes(@Param('id') id: string) { return this.svc.clearStrikes(id); }
+  async clearStrikes(@Param('id') id: string, @Request() req: ModerationRequest) {
+    const result = await this.svc.clearStrikes(id);
+    this.auditLog.log({
+      userId:     req.user.sub,
+      action:     'CLEAR_STRIKES',
+      entityType: 'Store',
+      entityId:   id,
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
+    return result;
+  }
 }

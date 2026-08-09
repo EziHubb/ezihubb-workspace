@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import * as https from 'https';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import * as Sentry from '@sentry/node';
 const cookieParser = require('cookie-parser');
 
 import { AppModule } from './app/app.module';
@@ -13,6 +14,8 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { RequestIdInterceptor } from './common/interceptors/request-id.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { getConfiguredOrigins, isWildcardOrigin, getAllowedOrigins } from './common/utils/allowed-origins.util';
+import { AxiomLoggerService } from './common/services/axiom-logger.service';
 
 // ── MongoDB SRV resolution via DNS-over-HTTPS ─────────────────────────────────
 // UDP port 53 (regular DNS) may be blocked; DoH uses HTTPS (port 443) instead.
@@ -69,6 +72,17 @@ async function resolveMongoSrvUri(originalUri: string): Promise<string> {
 }
 
 async function bootstrap() {
+  // ── Error monitoring ───────────────────────────────────────────────────────
+  // Must run before anything else can throw, so early bootstrap errors are captured too.
+  if (process.env['SENTRY_DSN']) {
+    Sentry.init({
+      dsn: process.env['SENTRY_DSN'],
+      environment: process.env['NODE_ENV'] ?? 'development',
+      tracesSampleRate: process.env['NODE_ENV'] === 'production' ? 0.1 : 0,
+    });
+    Logger.log('Sentry error monitoring enabled', 'Bootstrap');
+  }
+
   // Pre-resolve MongoDB SRV before NestJS initialises (avoids OS DNS failure)
   const rawMongoUri = process.env['MONGODB_URI'] ?? 'mongodb://localhost:27017';
   process.env['MONGODB_URI'] = await resolveMongoSrvUri(rawMongoUri);
@@ -77,6 +91,10 @@ async function bootstrap() {
     bufferLogs: true,
     rawBody: true, // needed for Stripe webhook signature verification
   });
+  app.useLogger(new AxiomLoggerService());
+  if (process.env['AXIOM_TOKEN']) {
+    Logger.log(`Axiom log shipping enabled (dataset: ${process.env['AXIOM_DATASET'] || 'ezihubb-dev'})`, 'Bootstrap');
+  }
 
   // ── Security headers ──────────────────────────────────────────────────────
   app.use(helmet({
@@ -100,12 +118,33 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // ── CORS ───────────────────────────────────────────────────────────────────
-  // origin: true reflects the incoming Origin header back — required when
-  // credentials:true because browsers reject "Access-Control-Allow-Origin: *"
-  // combined with credentials. Reflecting the origin is functionally equivalent
-  // to allowing all origins while staying spec-compliant.
+  // CORS_ORIGINS is a comma-separated whitelist (see .env.example). APP_URL and
+  // ADMIN_URL are always included since they're this deployment's own first-party
+  // frontends. "*" disables the whitelist and reflects any origin — combined with
+  // credentials:true that is equivalent to no CORS protection at all, so it's only
+  // tolerated outside production (and logged loudly either way).
+  const allowAllOrigins = isWildcardOrigin(getConfiguredOrigins());
+  const nodeEnv = process.env.NODE_ENV ?? 'development';
+
+  if (allowAllOrigins && nodeEnv === 'production') {
+    throw new Error(
+      'CORS_ORIGINS="*" is not allowed in production — set it to an explicit comma-separated whitelist (see .env.example).',
+    );
+  }
+
+  const allowedOrigins = getAllowedOrigins();
+
   app.enableCors({
-    origin: true,
+    origin: allowAllOrigins
+      ? true
+      : (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+          // No Origin header (server-to-server, curl, same-origin) — allow.
+          if (!origin || allowedOrigins.has(origin)) {
+            callback(null, true);
+          } else {
+            callback(new Error(`Origin ${origin} not allowed by CORS`), false);
+          }
+        },
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Session-ID'],
     exposedHeaders: [
@@ -120,7 +159,12 @@ async function bootstrap() {
     maxAge: 86400,
   });
 
-  Logger.log('CORS: all origins allowed (reflect mode)', 'Bootstrap');
+  Logger.log(
+    allowAllOrigins
+      ? 'CORS: all origins allowed (reflect mode) — CORS_ORIGINS="*", non-production only'
+      : `CORS: restricted to [${[...allowedOrigins].join(', ')}]`,
+    'Bootstrap',
+  );
 
   // ── Global prefix ──────────────────────────────────────────────────────────
   app.setGlobalPrefix('api/v1');

@@ -31,9 +31,11 @@ import { JwtPayload } from './strategies/jwt.strategy';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtRefreshGuard } from '../../common/guards/jwt-refresh.guard';
+import { OriginCheckGuard } from '../../common/guards/origin-check.guard';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
+import { AuditLogService } from '../../common/services/audit-log.service';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -41,6 +43,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly config: ConfigService,
+    private readonly auditLog: AuditLogService,
   ) {}
 
   // POST /auth/register
@@ -62,6 +65,7 @@ export class AuthController {
   @ApiResponse({ status: 200, type: AuthResponseDto })
   @ApiResponse({ status: 202, type: TotpRequiredResponseDto, description: 'TOTP required — use partialToken with POST /auth/totp/verify' })
   async login(
+    @Req() req: Request,
     @Body() dto: LoginDto,
     @Res() res: Response,
   ): Promise<void> {
@@ -70,6 +74,16 @@ export class AuthController {
     const status = 'requiresTOTP' in result && result.requiresTOTP
       ? HttpStatus.ACCEPTED
       : HttpStatus.OK;
+    if ('accessToken' in result) {
+      this.auditLog.log({
+        userId:     result.user.id,
+        action:     'LOGIN',
+        entityType: 'User',
+        entityId:   result.user.id,
+        ip:         req.ip,
+        userAgent:  req.headers['user-agent'],
+      });
+    }
     // Manually wrap in the standard API envelope since @Res() bypasses TransformInterceptor
     res.status(status).json({ success: true, data: result, meta: null });
   }
@@ -82,10 +96,21 @@ export class AuthController {
   @ApiOperation({ summary: 'Complete admin login with TOTP code' })
   @ApiResponse({ status: 200, type: AuthResponseDto })
   async totpVerify(
+    @Req() req: Request,
     @Body() dto: TotpVerifyDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponseDto> {
-    return this.authService.verifyTotp(dto.partialToken, dto.code, res);
+    const result = await this.authService.verifyTotp(dto.partialToken, dto.code, res);
+    this.auditLog.log({
+      userId:     result.user.id,
+      action:     'LOGIN',
+      entityType: 'User',
+      entityId:   result.user.id,
+      after:      { via: 'totp' },
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
+    return result;
   }
 
   // GET /auth/totp/setup
@@ -137,11 +162,19 @@ export class AuthController {
       await this.authService.logout(user.sub, refreshToken);
     }
     this.authService.clearRefreshTokenCookie(res);
+    this.auditLog.log({
+      userId:     user.sub,
+      action:     'LOGOUT',
+      entityType: 'User',
+      entityId:   user.sub,
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
   }
 
   // POST /auth/refresh
   @Public()
-  @UseGuards(JwtRefreshGuard)
+  @UseGuards(OriginCheckGuard, JwtRefreshGuard)
   @Post('refresh')
   @Throttle({ default: { ttl: 60_000, limit: 30 } })
   @HttpCode(HttpStatus.OK)

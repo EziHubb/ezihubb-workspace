@@ -29,6 +29,8 @@ export const API_ROUTES = {
     WISHLIST_SHARE:  '/users/me/wishlist/share',
     ORDERS:          '/users/me/orders',
     FCM_TOKEN:       '/users/me/fcm-token',
+    EXPORT:          '/users/me/export',
+    DELETE_ACCOUNT:  '/users/me',
   },
 
   PRODUCTS: {
@@ -73,7 +75,6 @@ export const API_ROUTES = {
     CREATE:      '/orders',
     CANCEL:      (orderNumber: string) => `/orders/${orderNumber}/cancel`,
     TRACK:       '/orders/track',
-    TAX_PREVIEW: '/orders/tax-preview',
   },
 
   PAYMENTS: {

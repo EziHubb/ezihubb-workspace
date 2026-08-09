@@ -22,6 +22,7 @@ export const EmailTemplate = {
   CONTENT_WARNING:            'content-warning',
   MODERATION_CRITICAL_ALERT:  'moderation-critical-alert',
   STORE_STRIKE_WARNING:       'store-strike-warning',
+  NEWSLETTER_WELCOME:         'newsletter-welcome',
 } as const;
 
 export type EmailTemplateName = (typeof EmailTemplate)[keyof typeof EmailTemplate];
@@ -50,11 +51,12 @@ export class NotificationsService {
   // ── Specific email helpers ────────────────────────────────────────────────────
 
   async sendWelcomeEmail(to: string, firstName?: string): Promise<void> {
+    const shopUrl = process.env['NEXT_PUBLIC_URL'] ?? 'http://localhost:3000';
     return this.queueEmail({
       to,
       subject: 'Welcome to EziHubb!',
       template: EmailTemplate.WELCOME,
-      data: { firstName: firstName ?? 'Valued Customer' },
+      data: { firstName: firstName ?? 'Valued Customer', shopUrl, year: new Date().getFullYear() },
     });
   }
 
@@ -251,11 +253,12 @@ export class NotificationsService {
 
 
   async subscribeNewsletter(email: string, firstName?: string): Promise<void> {
+    const shopUrl = process.env['NEXT_PUBLIC_URL'] ?? 'http://localhost:3000';
     return this.queueEmail({
       to:       email,
       subject:  'Welcome to the EziHubb newsletter!',
-      template: 'newsletter-welcome' as any,
-      data:     { firstName: firstName ?? 'Friend', year: new Date().getFullYear() },
+      template: EmailTemplate.NEWSLETTER_WELCOME,
+      data:     { firstName: firstName ?? 'Friend', shopUrl, year: new Date().getFullYear() },
     });
   }
 }
