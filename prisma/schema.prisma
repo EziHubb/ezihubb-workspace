@@ -886,7 +886,7 @@ model CartItem {
   cartId            String
   cart              Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
   productId         String
-  product           Product         @relation(fields: [productId], references: [id])
+  product           Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   variantId         String?
   variant           ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
   quantity          Int             @default(1)
