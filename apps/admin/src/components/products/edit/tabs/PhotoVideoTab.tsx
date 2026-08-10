@@ -333,7 +333,6 @@ function VideoSlot({
       <div className="flex-1 space-y-1.5 overflow-y-auto">
         {videoUrls.map((url) => (
           <div key={url} className="relative rounded-lg overflow-hidden border border-border bg-black aspect-video group">
-            {/* eslint-disable-next-line jsx-a11y/media-has-caption -- product demo clips, no dialogue */}
             <video src={url} className="w-full h-full object-cover" muted playsInline preload="metadata" />
             <button
               type="button"

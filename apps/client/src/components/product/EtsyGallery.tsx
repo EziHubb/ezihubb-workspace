@@ -87,7 +87,6 @@ function VideoSlide({
 
   return (
     <div className={`relative ${className}`}>
-      {/* eslint-disable-next-line jsx-a11y/media-has-caption -- silent product demo clip */}
       <video
         ref={videoRef}
         src={url}
@@ -132,7 +131,6 @@ function MediaThumbnail({ item, className }: { item: MediaItem; className: strin
   if (item.type === 'video') {
     return (
       <div className={`relative bg-black ${className}`}>
-        {/* eslint-disable-next-line jsx-a11y/media-has-caption -- thumbnail only shows first frame, never plays */}
         <video src={item.url} className="absolute inset-0 w-full h-full object-cover" muted preload="metadata" />
         <span className="absolute inset-0 flex items-center justify-center bg-black/25">
           <VideoIcon className="w-4 h-4 text-white drop-shadow" />
