@@ -235,6 +235,7 @@ export const API_ROUTES = {
     PRODUCT_IMAGE:        (id: string, imgId: string) => `/admin/products/${id}/images/${imgId}`,
     PRODUCT_IMAGES_REORDER: (id: string) => `/admin/products/${id}/images/reorder`,
     PRODUCT_IMAGES_FROM_URLS: (id: string) => `/admin/products/${id}/images/from-urls`,
+    PRODUCT_VIDEOS:       (id: string) => `/admin/products/${id}/videos`,
     PRODUCT_DETAIL:       (id: string) => `/admin/products/${id}/detail`,
     PRODUCT_VARIANTS:     (id: string) => `/admin/products/${id}/variants`,
     PRODUCT_VARIANTS_REORDER: (id: string) => `/admin/products/${id}/variants/reorder`,
@@ -427,6 +428,7 @@ export const API_ROUTES = {
     CAMPAIGN_STATS:           '/admin/campaigns/stats',
 
     // ── Fulfillment providers (Printify, etc.) ────────────────────────────────
+    FULFILLMENT_MODE:              '/admin/fulfillment/mode',
     FULFILLMENT_CONNECTIONS:       '/admin/fulfillment/connections',
     FULFILLMENT_CONNECTION_DELETE: (id: string) => `/admin/fulfillment/connections/${id}`,
     FULFILLMENT_SHOP_PRODUCTS:     (connectionId: string) => `/admin/fulfillment/connections/${connectionId}/shop-products`,

@@ -344,6 +344,7 @@ model Store {
   rejectedReason     String?
   verifiedAt         DateTime?
   approvedById       String?
+  fulfillmentMode    StoreFulfillmentMode @default(AUTOMATIC)
 
   // Denormalized stats
   totalProducts Int     @default(0)
@@ -1740,6 +1741,16 @@ model TrackingEvent {
 enum FulfillmentProviderType {
   PRINTIFY
   MERCHIZE
+}
+
+// A store's top-level choice of how orders get fulfilled. MANUAL is not a
+// "provider" in the StoreFulfillmentConnection sense — it needs no external
+// account/API key — it's a declarative opt-out that tells the fulfillment
+// queue to never auto-push orders, leaving the seller to ship them by hand
+// via the existing order "mark shipped" / tracking flows.
+enum StoreFulfillmentMode {
+  AUTOMATIC
+  MANUAL
 }
 
 enum FulfillmentConnectionStatus {

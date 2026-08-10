@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plug, Trash2, CheckCircle2, Copy, Check, Webhook } from 'lucide-react';
+import { Plug, Trash2, CheckCircle2, Copy, Check, Webhook, PackageCheck } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -124,6 +124,92 @@ function MerchizeWebhookPanel({ connection }: { connection: FulfillmentConnectio
 
 // ─── Main page ──────────────────────────────────────────────────────────────
 
+type FulfillmentMode = 'AUTOMATIC' | 'MANUAL';
+const MODE_QUERY_KEY = ['admin-fulfillment-mode'];
+
+function FulfillmentModeCard() {
+  const qc = useQueryClient();
+  const [saving, setSaving] = useState(false);
+
+  const { data, isLoading } = useQuery<{ fulfillmentMode: FulfillmentMode }>({
+    queryKey: MODE_QUERY_KEY,
+    queryFn:  () => api.get<{ fulfillmentMode: FulfillmentMode }>(API_ROUTES.ADMIN.FULFILLMENT_MODE),
+    staleTime: 30_000,
+  });
+
+  const mode = data?.fulfillmentMode ?? 'AUTOMATIC';
+
+  const handleSetMode = async (next: FulfillmentMode) => {
+    if (next === mode || saving) return;
+    setSaving(true);
+    try {
+      await api.put(API_ROUTES.ADMIN.FULFILLMENT_MODE, { mode: next });
+      qc.setQueryData(MODE_QUERY_KEY, { fulfillmentMode: next });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-surface rounded-card border border-border shadow-card p-6 space-y-4">
+      <div>
+        <h4 className="font-semibold text-secondary">How do you fulfill orders?</h4>
+        <p className="text-xs text-muted mt-0.5">
+          Choose whether orders are pushed automatically to a connected print-on-demand provider, or shipped by you.
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="h-16 bg-background border border-border rounded-button animate-pulse" />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => handleSetMode('AUTOMATIC')}
+            disabled={saving}
+            className={[
+              'text-left p-4 rounded-button border-2 transition-colors disabled:opacity-60',
+              mode === 'AUTOMATIC' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40',
+            ].join(' ')}
+          >
+            <div className="flex items-center gap-2">
+              <Plug className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold text-secondary">Use a fulfillment provider</span>
+            </div>
+            <p className="text-xs text-muted mt-1">
+              Orders for mapped products are pushed automatically to Printify or Merchize.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSetMode('MANUAL')}
+            disabled={saving}
+            className={[
+              'text-left p-4 rounded-button border-2 transition-colors disabled:opacity-60',
+              mode === 'MANUAL' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40',
+            ].join(' ')}
+          >
+            <div className="flex items-center gap-2">
+              <PackageCheck className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold text-secondary">I'll fulfill orders myself</span>
+            </div>
+            <p className="text-xs text-muted mt-1">
+              Nothing is auto-pushed anywhere. Ship orders yourself from the Orders page — mark shipped and add tracking there.
+            </p>
+          </button>
+        </div>
+      )}
+
+      {mode === 'MANUAL' && (
+        <p className="text-xs text-secondary bg-primary/5 border border-primary/20 rounded-button px-3 py-2">
+          Manual fulfillment is on — the sections below are optional. Connecting a provider still works, but no orders will be auto-pushed until you switch back to "Use a fulfillment provider".
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function FulfillmentSettingsPage() {
   const qc = useQueryClient();
 
@@ -175,11 +261,13 @@ export default function FulfillmentSettingsPage() {
     <>
       <AdminPageHeader
         title="Fulfillment Providers"
-        subtitle="Connect a print-on-demand provider (e.g. Printify, Merchize) to auto-fulfill mapped products"
+        subtitle="Auto-fulfill via a print-on-demand provider, or manage every order yourself"
         queryKey={QUERY_KEY}
       />
 
       <div className="max-w-[640px] space-y-6">
+
+        <FulfillmentModeCard />
 
         {/* Existing connections */}
         <div className="bg-surface rounded-card border border-border shadow-card p-6 space-y-4">

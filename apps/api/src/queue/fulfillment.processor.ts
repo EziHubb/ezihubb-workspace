@@ -50,9 +50,14 @@ export class FulfillmentProcessor extends WorkerHost {
             product: { select: { name: true, images: { where: { isPrimary: true }, take: 1, select: { url: true } } } },
           },
         },
-        store: { select: { id: true, name: true, owner: { select: { email: true, firstName: true } } } },
+        store: { select: { id: true, name: true, fulfillmentMode: true, owner: { select: { email: true, firstName: true } } } },
       },
     });
+
+    if (storeOrder.store.fulfillmentMode === 'MANUAL') {
+      this.logger.debug(`StoreOrder ${storeOrderId}: store is on manual fulfillment — skipping auto-push`);
+      return;
+    }
 
     // productId can be null if the underlying Product was since deleted
     // (OrderItem.product uses onDelete: SetNull) — nothing to map/fulfill then.
