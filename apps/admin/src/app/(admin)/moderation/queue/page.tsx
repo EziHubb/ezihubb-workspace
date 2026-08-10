@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Shield, AlertTriangle, CheckCircle2, XCircle, Clock,
@@ -9,7 +9,7 @@ import {
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
-import { fmtDate, safeArr } from '../../../../lib/fmt';
+import { fmtDate, safeArr, capitalize } from '../../../../lib/fmt';
 import { FilterSelect } from '../../../../components/ui/FilterSelect';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -80,6 +80,14 @@ const TYPE_ICONS: Record<FlagType, string> = {
 const TYPE_OPTIONS:     string[] = ['', 'PRODUCT', 'REVIEW', 'STORE', 'USER'];
 const SEVERITY_OPTIONS: string[] = ['', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 const STATUS_OPTIONS:   string[] = ['', 'PENDING', 'APPROVED', 'REJECTED', 'ESCALATED'];
+
+// Matches this page's own STATUS_COLORS badge palette above.
+const STATUS_FILTER_ICONS: Record<string, ReactNode> = {
+  PENDING:   <Clock className="w-3.5 h-3.5 text-blue-500" />,
+  APPROVED:  <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />,
+  REJECTED:  <XCircle className="w-3.5 h-3.5 text-red-500" />,
+  ESCALATED: <AlertTriangle className="w-3.5 h-3.5 text-purple-500" />,
+};
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 
@@ -304,17 +312,17 @@ export default function TrustSafetyQueuePage() {
         <FilterSelect
           value={type}
           onChange={(v) => { setType(v); setPage(1); }}
-          options={TYPE_OPTIONS.map((o) => ({ value: o, label: o || 'All Types' }))}
+          options={TYPE_OPTIONS.map((o) => ({ value: o, label: o ? capitalize(o) : 'All Types' }))}
         />
         <FilterSelect
           value={severity}
           onChange={(v) => { setSeverity(v); setPage(1); }}
-          options={SEVERITY_OPTIONS.map((o) => ({ value: o, label: o || 'All Severities' }))}
+          options={SEVERITY_OPTIONS.map((o) => ({ value: o, label: o ? capitalize(o) : 'All Severities' }))}
         />
         <FilterSelect
           value={status}
           onChange={(v) => { setStatus(v); setPage(1); }}
-          options={STATUS_OPTIONS.map((o) => ({ value: o, label: o || 'All Statuses' }))}
+          options={STATUS_OPTIONS.map((o) => ({ value: o, label: o ? capitalize(o) : 'All Statuses', icon: o ? STATUS_FILTER_ICONS[o] : undefined }))}
         />
       </div>
 

@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 
 export interface FilterOption {
   value: string;
   label: string;
+  /** Small (w-3.5 h-3.5) icon shown before the label, both in the trigger and the option row. */
+  icon?: ReactNode;
 }
 
 interface FilterSelectProps {
@@ -52,13 +54,16 @@ export function FilterSelect({
         onClick={() => setOpen((v) => !v)}
         className={[
           triggerCls,
-          'flex items-center gap-2 font-medium border rounded-button transition-colors',
+          'w-full flex items-center justify-between gap-2 font-medium border rounded-button transition-colors',
           'bg-surface border-border text-secondary',
           'hover:border-primary/50 hover:text-secondary',
           open ? 'border-primary/60 text-primary' : '',
         ].join(' ')}
       >
-        <span className="whitespace-nowrap">{selected?.label}</span>
+        <span className="flex items-center gap-2 min-w-0">
+          {selected?.icon}
+          <span className="whitespace-nowrap">{selected?.label}</span>
+        </span>
         <ChevronDown
           className={[
             'w-3.5 h-3.5 text-muted transition-transform shrink-0',
@@ -72,8 +77,9 @@ export function FilterSelect({
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
           <div
             className={[
-              'absolute top-full mt-1.5 z-40 min-w-[160px] bg-surface',
-              'border border-border rounded-card shadow-lg py-1 overflow-hidden',
+              'absolute top-full mt-2 z-40 min-w-[180px] bg-surface',
+              'border border-border/60 rounded-card shadow-floating p-1.5',
+              'animate-fadeIn origin-top',
               dropdownAlign,
             ].join(' ')}
           >
@@ -85,13 +91,16 @@ export function FilterSelect({
                   type="button"
                   onClick={() => { onChange(opt.value); setOpen(false); }}
                   className={[
-                    'w-full flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-left transition-colors',
+                    'w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-left rounded-button transition-colors',
                     active
-                      ? 'bg-primary/6 text-primary font-semibold'
-                      : 'text-secondary hover:bg-muted/6',
+                      ? 'bg-primary/8 text-primary font-semibold'
+                      : 'text-secondary hover:bg-muted/8',
                   ].join(' ')}
                 >
-                  <span>{opt.label}</span>
+                  <span className="flex items-center gap-2 min-w-0">
+                    {opt.icon}
+                    <span className="truncate">{opt.label}</span>
+                  </span>
                   {active && <Check className="w-3.5 h-3.5 shrink-0" />}
                 </button>
               );

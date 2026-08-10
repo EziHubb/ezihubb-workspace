@@ -61,15 +61,15 @@ export function StatusSelect({ value, onChange }: { value: string; onChange: (s:
       </button>
 
       {open && (
-        <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-background border border-border rounded-xl shadow-lg py-1 max-h-64 overflow-y-auto">
+        <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-background border border-border/60 rounded-card shadow-floating p-1.5 animate-fadeIn origin-top max-h-64 overflow-y-auto">
           {ALL_STATUSES.map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => { onChange(s); setOpen(false); }}
               className={[
-                'w-full flex items-center gap-2.5 px-3 py-2 transition-colors',
-                s === value ? 'bg-primary/5' : 'hover:bg-muted/8',
+                'w-full flex items-center gap-2.5 px-3 py-2 rounded-button transition-colors',
+                s === value ? 'bg-primary/8' : 'hover:bg-muted/8',
               ].join(' ')}
             >
               <OrderStatusBadge status={s} />

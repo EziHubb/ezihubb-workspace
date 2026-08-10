@@ -200,13 +200,13 @@ export function AttributeSearchSelect({
 
           {/* Dropdown */}
           {isOpen && (filteredSuggestions.length > 0 || isCustom) && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-card shadow-lg z-20 max-h-52 overflow-y-auto">
+            <div className="absolute top-full left-0 right-0 mt-2 bg-surface border border-border/60 rounded-card shadow-floating p-1.5 animate-fadeIn origin-top z-20 max-h-52 overflow-y-auto">
               {filteredSuggestions.slice(0, 20).map((suggestion) => (
                 <button
                   key={suggestion}
                   type="button"
                   onMouseDown={(e) => { e.preventDefault(); addValue(suggestion); }}
-                  className="w-full text-left px-4 py-2.5 text-sm text-secondary hover:bg-muted/5 transition-colors border-b border-border last:border-0"
+                  className="w-full text-left px-3 py-2 text-sm text-secondary rounded-button hover:bg-muted/8 transition-colors"
                 >
                   {suggestion}
                 </button>
@@ -217,7 +217,7 @@ export function AttributeSearchSelect({
                 <button
                   type="button"
                   onMouseDown={(e) => { e.preventDefault(); addValue(trimmed); }}
-                  className="w-full text-left px-4 py-2.5 text-sm text-primary hover:bg-primary/5 transition-colors flex items-center gap-2 border-t border-border"
+                  className="w-full text-left px-3 py-2 text-sm text-primary rounded-button hover:bg-primary/8 transition-colors flex items-center gap-2"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Add <span className="font-semibold">"{trimmed}"</span>
@@ -228,7 +228,7 @@ export function AttributeSearchSelect({
 
           {/* No results message */}
           {isOpen && filteredSuggestions.length === 0 && !isCustom && debouncedInput.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-card shadow-lg z-20 px-4 py-3">
+            <div className="absolute top-full left-0 right-0 mt-2 bg-surface border border-border/60 rounded-card shadow-floating animate-fadeIn origin-top z-20 px-3 py-2.5">
               <p className="text-sm text-muted">No results for "{debouncedInput}"</p>
             </div>
           )}

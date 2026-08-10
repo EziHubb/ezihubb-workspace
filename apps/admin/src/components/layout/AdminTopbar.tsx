@@ -76,17 +76,17 @@ function DateRangePicker() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-44 bg-surface border border-border rounded-card shadow-floating z-30 py-1 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-44 bg-surface border border-border/60 rounded-card shadow-floating animate-fadeIn origin-top z-30 p-1.5">
           {buildPresets().map((preset) => (
             <button
               key={preset.label}
               type="button"
               onClick={() => { setSelected(preset); setOpen(false); }}
               className={[
-                'w-full text-left px-4 py-2 text-sm transition-colors',
+                'w-full text-left px-3 py-2 text-sm rounded-button transition-colors',
                 selected.label === preset.label
-                  ? 'bg-primary/5 text-primary font-medium'
-                  : 'text-secondary hover:bg-muted/5',
+                  ? 'bg-primary/8 text-primary font-semibold'
+                  : 'text-secondary hover:bg-muted/8',
               ].join(' ')}
             >
               {preset.label}
@@ -137,18 +137,18 @@ function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-80 bg-surface border border-border rounded-card shadow-floating z-30 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-surface border border-border/60 rounded-card shadow-floating animate-fadeIn origin-top z-30 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
             <h3 className="font-semibold text-sm text-secondary">Notifications</h3>
             <button type="button" onClick={() => setOpen(false)} className="text-muted hover:text-secondary">
               <X className="w-4 h-4" />
             </button>
           </div>
-          <ul className="divide-y divide-border max-h-72 overflow-y-auto">
+          <ul className="p-1.5 space-y-0.5 max-h-72 overflow-y-auto">
             {MOCK_NOTIFICATIONS.map((n) => (
               <li
                 key={n.id}
-                className={`px-4 py-3 text-sm hover:bg-muted/5 transition-colors ${n.unread ? 'bg-primary/3' : ''}`}
+                className={`px-3 py-2 text-sm rounded-button transition-colors ${n.unread ? 'bg-primary/8 hover:bg-primary/10' : 'hover:bg-muted/8'}`}
               >
                 <p className={`leading-snug ${n.unread ? 'text-secondary font-medium' : 'text-muted'}`}>
                   {n.text}

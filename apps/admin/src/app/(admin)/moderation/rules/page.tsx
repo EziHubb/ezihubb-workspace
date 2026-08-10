@@ -7,6 +7,7 @@ import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { useDialog } from '../../../../contexts/DialogContext';
+import { FilterSelect } from '../../../../components/ui/FilterSelect';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -55,6 +56,21 @@ const ACTION_LABELS: Record<RuleAction, string> = {
   AUTO_REJECT:     'Auto-reject',
   NOTIFY_SELLER:   'Notify seller',
   ESCALATE:        'Escalate',
+};
+
+const TARGET_LABELS: Record<RuleTarget, string> = {
+  ALL:     'All content',
+  PRODUCT: 'Product',
+  REVIEW:  'Review',
+  STORE:   'Store',
+  USER:    'User',
+};
+
+const TRIGGER_LABELS: Record<RuleTrigger, string> = {
+  KEYWORD:      'Keyword',
+  AI_SCORE:     'AI score',
+  REPORT_COUNT: 'Report count',
+  PATTERN:      'Pattern',
 };
 
 const EMPTY_FORM: RuleFormState = {
@@ -106,16 +122,19 @@ function RuleFormModal({
         {/* Target / Trigger / Action row */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
-            { label: 'Target',  key: 'target'  as const, options: ['ALL', 'PRODUCT', 'REVIEW', 'STORE', 'USER'] },
-            { label: 'Trigger', key: 'trigger' as const, options: ['KEYWORD', 'AI_SCORE', 'REPORT_COUNT', 'PATTERN'] },
-            { label: 'Action',  key: 'action'  as const, options: ['FLAG', 'AUTO_REJECT', 'NOTIFY_SELLER', 'ESCALATE'] },
+            { label: 'Target',  key: 'target'  as const, options: (['ALL', 'PRODUCT', 'REVIEW', 'STORE', 'USER'] as RuleTarget[]).map((o) => ({ value: o, label: TARGET_LABELS[o] })) },
+            { label: 'Trigger', key: 'trigger' as const, options: (['KEYWORD', 'AI_SCORE', 'REPORT_COUNT', 'PATTERN'] as RuleTrigger[]).map((o) => ({ value: o, label: TRIGGER_LABELS[o] })) },
+            { label: 'Action',  key: 'action'  as const, options: (['FLAG', 'AUTO_REJECT', 'NOTIFY_SELLER', 'ESCALATE'] as RuleAction[]).map((o) => ({ value: o, label: ACTION_LABELS[o] })) },
           ].map(({ label, key, options }) => (
             <div key={key}>
               <label className="block text-xs font-medium text-secondary mb-1">{label}</label>
-              <select value={form[key]} onChange={(e) => set(key, e.target.value as never)}
-                className="w-full text-sm border border-border rounded-button px-2 py-2 focus:outline-none focus:border-primary">
-                {options.map((o) => <option key={o} value={o}>{o}</option>)}
-              </select>
+              <FilterSelect
+                value={form[key]}
+                onChange={(v) => set(key, v as never)}
+                options={options}
+                size="sm"
+                className="w-full"
+              />
             </div>
           ))}
         </div>

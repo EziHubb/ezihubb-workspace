@@ -1,16 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Clock, DollarSign, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Clock, DollarSign, CheckCircle2, AlertTriangle, RefreshCw, XCircle } from 'lucide-react';
 import { DataTable } from '../../../components/data/DataTable';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
-import { fmtAmount, fmtDate } from '../../../lib/fmt';
+import { fmtAmount, fmtDate, capitalize } from '../../../lib/fmt';
 import { useDialog } from '../../../contexts/DialogContext';
-import { FilterSelect } from '../../../components/ui/FilterSelect';
+import { FilterSelect, type FilterOption } from '../../../components/ui/FilterSelect';
 
 interface PayoutStats {
   pendingCount:      number;
@@ -51,15 +52,33 @@ const STATUS_COLORS: Record<string, string> = {
   FAILED:     'bg-red-100 text-red-700',
 };
 
-const STATUS_OPTIONS = ['', 'PENDING', 'PROCESSING', 'PAID', 'FAILED'];
+const STATUS_FILTER_OPTIONS: FilterOption[] = [
+  { value: '',           label: 'All Statuses' },
+  { value: 'PENDING',    label: capitalize('PENDING'),    icon: <Clock className="w-3.5 h-3.5 text-amber-500" /> },
+  { value: 'PROCESSING', label: capitalize('PROCESSING'), icon: <RefreshCw className="w-3.5 h-3.5 text-blue-500" /> },
+  { value: 'PAID',       label: capitalize('PAID'),       icon: <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> },
+  { value: 'FAILED',     label: capitalize('FAILED'),     icon: <XCircle className="w-3.5 h-3.5 text-red-500" /> },
+];
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Inner page (needs useSearchParams) ───────────────────────────────────────
 
-export default function AdminPayoutsPage() {
+function AdminPayoutsPageInner() {
   const qc = useQueryClient();
   const { prompt } = useDialog();
-  const [page,   setPage  ] = useState(1);
-  const [status, setStatus] = useState('PENDING');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Filter lives on the URL (?status=), not local state — shareable/bookmarkable
+  // and survives a refresh. Defaults to Pending, matching prior behavior.
+  const status = searchParams.get('status') ?? 'PENDING';
+  const setStatus = (v: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (v) params.set('status', v);
+    else params.delete('status');
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
+  const [page, setPage] = useState(1);
 
   const { data: payoutStats } = useQuery<PayoutStats>({
     queryKey: ['admin-payout-stats'],
@@ -168,12 +187,6 @@ export default function AdminPayoutsPage() {
 
   return (
     <div>
-      <AdminPageHeader
-        title="Seller Payouts"
-        subtitle="Manage and process seller payout disbursements"
-        queryKey={['admin-seller-payouts']}
-      />
-
       {/* ── Stats row ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
@@ -200,7 +213,7 @@ export default function AdminPayoutsPage() {
         <FilterSelect
           value={status}
           onChange={(v) => { setStatus(v); setPage(1); }}
-          options={STATUS_OPTIONS.map((s) => ({ value: s, label: s || 'All Statuses' }))}
+          options={STATUS_FILTER_OPTIONS}
         />
       </div>
 
@@ -218,5 +231,22 @@ export default function AdminPayoutsPage() {
         emptyDesc="Seller payouts will appear here once generated."
       />
     </div>
+  );
+}
+
+// ── Page wrapper (Suspense boundary for useSearchParams) ─────────────────────
+
+export default function AdminPayoutsPage() {
+  return (
+    <>
+      <AdminPageHeader
+        title="Seller Payouts"
+        subtitle="Manage and process seller payout disbursements"
+        queryKey={['admin-seller-payouts']}
+      />
+      <Suspense fallback={<div className="animate-pulse h-96 bg-muted/5 rounded-xl" />}>
+        <AdminPayoutsPageInner />
+      </Suspense>
+    </>
   );
 }

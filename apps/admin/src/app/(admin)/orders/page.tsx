@@ -145,13 +145,13 @@ function BulkStatusDropdown({ selectedIds, onDone }: { selectedIds: string[]; on
         <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute z-50 top-full mt-1 left-0 min-w-[200px] bg-surface border border-border rounded-xl shadow-xl py-1">
+        <div className="absolute z-50 top-full mt-2 left-0 min-w-[200px] bg-surface border border-border/60 rounded-card shadow-floating p-1.5 animate-fadeIn origin-top">
           {STATUSES.map((s) => (
             <button
               key={s.status}
               type="button"
               onClick={() => updateAll(s.status)}
-              className="w-full text-left px-4 py-2.5 text-sm text-secondary hover:bg-muted/8 transition-colors"
+              className="w-full text-left px-3 py-2 text-sm text-secondary rounded-button hover:bg-muted/8 transition-colors"
             >
               {s.label}
             </button>

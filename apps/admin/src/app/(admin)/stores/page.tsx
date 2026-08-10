@@ -1,18 +1,18 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Search, Store } from 'lucide-react';
+import { Search, Store, Clock, CheckCircle2, PauseCircle, XCircle } from 'lucide-react';
 import { DataTable } from '../../../components/data/DataTable';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
-import { fmtDate, safeArr } from '../../../lib/fmt';
+import { fmtDate, safeArr, capitalize } from '../../../lib/fmt';
 import { useDialog } from '../../../contexts/DialogContext';
-import { FilterSelect } from '../../../components/ui/FilterSelect';
+import { FilterSelect, type FilterOption } from '../../../components/ui/FilterSelect';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -37,7 +37,13 @@ interface StoresResponse {
   pagination: { total: number; page: number; totalPages: number };
 }
 
-const STATUS_OPTIONS = ['', 'PENDING', 'ACTIVE', 'SUSPENDED', 'REJECTED'];
+const STATUS_FILTER_OPTIONS: FilterOption[] = [
+  { value: '',          label: 'All Statuses' },
+  { value: 'PENDING',   label: capitalize('PENDING'),   icon: <Clock className="w-3.5 h-3.5 text-amber-500" /> },
+  { value: 'ACTIVE',    label: capitalize('ACTIVE'),    icon: <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> },
+  { value: 'SUSPENDED', label: capitalize('SUSPENDED'), icon: <PauseCircle className="w-3.5 h-3.5 text-orange-500" /> },
+  { value: 'REJECTED',  label: capitalize('REJECTED'),  icon: <XCircle className="w-3.5 h-3.5 text-red-500" /> },
+];
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING:   'bg-amber-100 text-amber-700',
@@ -46,13 +52,14 @@ const STATUS_COLORS: Record<string, string> = {
   REJECTED:  'bg-red-100 text-red-700',
 };
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Inner page (needs useSearchParams) ───────────────────────────────────────
 
-export default function AdminStoresPage() {
+function AdminStoresPageInner() {
   const { prompt } = useDialog();
   const qc = useQueryClient();
   const { data: session } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const sessionUser = session?.user as Record<string, unknown> | undefined;
   const role    = sessionUser?.['role']    as string | undefined;
   const storeId = sessionUser?.['storeId'] as string | null | undefined;
@@ -65,8 +72,17 @@ export default function AdminStoresPage() {
     }
   }, [role, storeId, router]);
 
+  // Filter lives on the URL (?status=), not local state — shareable/bookmarkable
+  // and survives a refresh. No ?status param = "All Statuses" (default).
+  const status = searchParams.get('status') ?? '';
+  const setStatus = (v: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (v) params.set('status', v);
+    else params.delete('status');
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
   const [page,   setPage  ] = useState(1);
-  const [status, setStatus] = useState('PENDING');
   const [search, setSearch] = useState('');
   const [debSearch, setDebSearch] = useState('');
   const debRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -217,12 +233,6 @@ export default function AdminStoresPage() {
 
   return (
     <div>
-      <AdminPageHeader
-        title="Stores"
-        subtitle="Manage seller stores and applications"
-        queryKey={['admin-stores']}
-      />
-
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6">
         <div className="relative">
@@ -238,7 +248,7 @@ export default function AdminStoresPage() {
         <FilterSelect
           value={status}
           onChange={(v) => { setStatus(v); setPage(1); }}
-          options={STATUS_OPTIONS.map((s) => ({ value: s, label: s || 'All Statuses' }))}
+          options={STATUS_FILTER_OPTIONS}
         />
       </div>
 
@@ -256,5 +266,22 @@ export default function AdminStoresPage() {
         emptyDesc="Stores will appear here once sellers apply."
       />
     </div>
+  );
+}
+
+// ── Page wrapper (Suspense boundary for useSearchParams) ─────────────────────
+
+export default function AdminStoresPage() {
+  return (
+    <>
+      <AdminPageHeader
+        title="Stores"
+        subtitle="Manage seller stores and applications"
+        queryKey={['admin-stores']}
+      />
+      <Suspense fallback={<div className="animate-pulse h-96 bg-muted/5 rounded-xl" />}>
+        <AdminStoresPageInner />
+      </Suspense>
+    </>
   );
 }

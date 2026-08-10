@@ -102,9 +102,9 @@ function CountryMultiSelect({
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-surface border border-border rounded-card shadow-lg overflow-hidden">
+        <div className="absolute top-full left-0 right-0 z-20 mt-2 bg-surface border border-border/60 rounded-card shadow-floating animate-fadeIn origin-top overflow-hidden">
           {/* Search */}
-          <div className="p-2 border-b border-border">
+          <div className="p-2 border-b border-border/60">
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
               <input
@@ -117,7 +117,7 @@ function CountryMultiSelect({
           </div>
 
           {/* Select all / clear */}
-          <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-background">
+          <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/60 bg-background">
             <button type="button" onClick={() => onChange(COUNTRIES.map((c) => c.code))}
               className="text-[11px] text-primary hover:underline">Select all</button>
             <button type="button" onClick={() => onChange([])}
@@ -125,11 +125,11 @@ function CountryMultiSelect({
           </div>
 
           {/* Country list */}
-          <div className="max-h-52 overflow-y-auto">
+          <div className="max-h-52 overflow-y-auto p-1.5 space-y-0.5">
             {filtered.map((c) => (
               <label
                 key={c.code}
-                className="flex items-center gap-3 px-3 py-2 hover:bg-muted/5 cursor-pointer"
+                className="flex items-center gap-3 px-3 py-2 rounded-button hover:bg-muted/8 cursor-pointer transition-colors"
               >
                 <input
                   type="checkbox"
@@ -145,7 +145,7 @@ function CountryMultiSelect({
           </div>
 
           {value.length > 0 && (
-            <div className="px-3 py-2 border-t border-border bg-background">
+            <div className="px-3 py-2 border-t border-border/60 bg-background">
               <p className="text-xs text-muted">{value.length} countr{value.length !== 1 ? 'ies' : 'y'} selected</p>
             </div>
           )}

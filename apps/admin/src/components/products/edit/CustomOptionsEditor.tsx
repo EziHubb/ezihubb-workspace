@@ -562,7 +562,7 @@ export function CustomOptionsEditor({ productId }: CustomOptionsEditorProps) {
             </button>
 
             {dropdownOpen && (
-              <div className="absolute top-full left-0 mt-1 z-20 w-60 bg-surface border border-border rounded-card shadow-lg overflow-hidden">
+              <div className="absolute top-full left-0 mt-2 z-20 w-60 bg-surface border border-border/60 rounded-card shadow-floating p-1.5 animate-fadeIn origin-top">
                 {FIELD_TYPES.map(({ type, icon: Icon, label, desc }) => (
                   <button
                     key={type}
@@ -572,7 +572,7 @@ export function CustomOptionsEditor({ productId }: CustomOptionsEditorProps) {
                       setEditingOption(null);
                       setDropdownOpen(false);
                     }}
-                    className="w-full flex items-start gap-3 px-4 py-3.5 text-left hover:bg-muted/5 transition-colors border-b border-border last:border-0"
+                    className="w-full flex items-start gap-3 px-3 py-2.5 text-left rounded-button hover:bg-muted/8 transition-colors"
                   >
                     <Icon className="w-4 h-4 text-muted shrink-0 mt-0.5" />
                     <div>
