@@ -2,6 +2,7 @@ import axios, { AxiosRequestConfig, AxiosError } from 'axios';
 import { getSession } from 'next-auth/react';
 import { getServerSession } from 'next-auth';
 import { authOptions } from './auth.options';
+import { getStoreContext, STORE_CONTEXT_HEADER, STORE_CONTEXT_COOKIE } from './store-context';
 
 // ── Base URL ──────────────────────────────────────────────────────────────────
 
@@ -45,6 +46,8 @@ adminApi.interceptors.request.use(async (config) => {
   const session = await getSession();
   const token = (session?.user as Record<string, unknown> | undefined)?.['accessToken'] as string | undefined;
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  const storeContext = getStoreContext();
+  if (storeContext) config.headers[STORE_CONTEXT_HEADER] = storeContext;
   return config;
 });
 
@@ -104,6 +107,14 @@ export async function serverApi<T>(
   const session = await getServerSession(authOptions);
   const token = (session?.user as Record<string, unknown> | undefined)?.['accessToken'] as string | undefined;
 
+  // Dynamic import — `next/headers` must never be a static import in a module
+  // also pulled into client components (that's a Next.js build error). Reads
+  // the same cookie the sidebar's store-context switcher writes client-side
+  // (apps/admin/src/lib/store-context.ts), so a SUPER_ADMIN's "My Store" mode
+  // also scopes server-rendered pages, not just client-fetched ones.
+  const { cookies } = await import('next/headers');
+  const storeContext = (await cookies()).get(STORE_CONTEXT_COOKIE)?.value;
+
   const res = await serverAxios.request<{ data?: T } | T>({
     method,
     url: p(path),
@@ -111,6 +122,7 @@ export async function serverApi<T>(
     ...config,
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(storeContext ? { [STORE_CONTEXT_HEADER]: storeContext } : {}),
       ...(config?.headers as Record<string, string> | undefined),
     },
   });

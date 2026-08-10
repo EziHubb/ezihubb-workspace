@@ -23,24 +23,14 @@ import {
 } from './dto/create-shipping-method.dto';
 import { ShippingMethod } from '@prisma/client';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
-import { PrismaService } from '../../prisma/prisma.service';
-
-interface JwtLike { sub?: string; id?: string; role?: string }
-
-async function resolveSellerStoreId(prisma: PrismaService, user: JwtLike): Promise<string | null> {
-  if (user.role === 'SUPER_ADMIN') return null;
-  const userId = user.sub ?? user.id;
-  if (!userId) return null;
-  const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { storeId: true } });
-  return dbUser?.storeId ?? null;
-}
+import { StoreContextService } from '../../common/services/store-context.service';
 
 @AdminController('shipping')
 export class AdminShippingController {
 
   constructor(
     private readonly shippingService: ShippingService,
-    private readonly prisma: PrismaService,
+    private readonly storeContext: StoreContextService,
   ) {}
 
   // ── Processing profiles ───────────────────────────────────────────────────────
@@ -56,8 +46,8 @@ export class AdminShippingController {
   @Get('profiles')
   @ApiOperation({ summary: 'List all shipping profiles with their methods (scoped to own store for shop owners)' })
   async getShippingProfiles(@Req() req: Request) {
-    const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
-    if (storeId) return this.shippingService.getShippingProfilesForStore(storeId);
+    const context = await this.storeContext.resolve(req);
+    if (context.storeId) return this.shippingService.getShippingProfilesForStore(context.storeId);
     return this.shippingService.getShippingProfiles();
   }
 

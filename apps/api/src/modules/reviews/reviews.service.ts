@@ -531,14 +531,14 @@ export class ReviewsService {
     };
   }
 
-  async adminDeleteReview(reviewId: string): Promise<void> {
-    const review = await this.findReviewOrThrow(reviewId);
+  async adminDeleteReview(reviewId: string, storeId?: string): Promise<void> {
+    const review = await this.findReviewOrThrow(reviewId, storeId);
     await this.prisma.review.delete({ where: { id: reviewId } });
     await this.redis.del(CacheKeys.reviewsSummary(review.productId));
   }
 
-  async approveReview(reviewId: string): Promise<ReviewResponseDto> {
-    const review = await this.findReviewOrThrow(reviewId);
+  async approveReview(reviewId: string, storeId?: string): Promise<ReviewResponseDto> {
+    const review = await this.findReviewOrThrow(reviewId, storeId);
     const updated = await this.prisma.review.update({
       where: { id: reviewId },
       data: { status: ReviewStatus.APPROVED },
@@ -611,8 +611,8 @@ export class ReviewsService {
     return this.mapToDto(updated);
   }
 
-  async hideReview(reviewId: string): Promise<ReviewResponseDto> {
-    const review = await this.findReviewOrThrow(reviewId);
+  async hideReview(reviewId: string, storeId?: string): Promise<ReviewResponseDto> {
+    const review = await this.findReviewOrThrow(reviewId, storeId);
     const updated = await this.prisma.review.update({
       where: { id: reviewId },
       data: { status: ReviewStatus.HIDDEN },
@@ -625,8 +625,9 @@ export class ReviewsService {
   async replyToReview(
     reviewId: string,
     reply: string,
+    storeId?: string,
   ): Promise<ReviewResponseDto> {
-    await this.findReviewOrThrow(reviewId);
+    await this.findReviewOrThrow(reviewId, storeId);
     const updated = await this.prisma.review.update({
       where: { id: reviewId },
       data: { adminReply: reply, repliedAt: new Date() },
@@ -692,9 +693,10 @@ export class ReviewsService {
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
-  private async findReviewOrThrow(id: string) {
+  /** storeId undefined = platform context (no ownership check); set = must match exactly. */
+  private async findReviewOrThrow(id: string, storeId?: string) {
     const review = await this.prisma.review.findUnique({ where: { id } });
-    if (!review)
+    if (!review || (storeId !== undefined && review.storeId !== storeId))
       throw new NotFoundException({
         code: 'ERR_NOT_FOUND',
         message: 'Review not found',

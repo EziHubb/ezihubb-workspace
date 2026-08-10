@@ -144,7 +144,14 @@ export default async function DashboardPage() {
   const session    = await getServerSession(authOptions);
   const sessionUser = session?.user as Record<string, unknown> | undefined;
   const role        = sessionUser?.['role'] as string | undefined;
-  const isShopOwner = role === 'ADMIN';
+  // A SUPER_ADMIN switched into "My Store" mode (see AdminSidebar's store-context
+  // toggle) sends the same X-Store-Context cookie serverApi() forwards as a
+  // header — the backend then scopes/rejects requests exactly like it does for
+  // a plain ADMIN, so this page must treat that case as a shop owner too,
+  // or it'll call the platform-only endpoints and get a 403 from the API.
+  const { cookies } = await import('next/headers');
+  const inStoreMode = !!(await cookies()).get('ezihubb-store-context')?.value;
+  const isShopOwner = role === 'ADMIN' || inStoreMode;
 
   const [
     kpis, revenueRaw, ordersByStatus, topProducts, pendingRaw, seoStats,

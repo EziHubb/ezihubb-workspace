@@ -88,11 +88,13 @@ export class MessagesService {
     return conversation;
   }
 
+  /** storeId only supplied for the admin/shop-reply path — undefined for customer-facing calls (no store ownership concept there). */
   async sendMessage(
     conversationId: string,
     senderType: SenderType,
     senderId: string | null,
     dto: SendMessageDto,
+    storeId?: string,
   ) {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
@@ -101,7 +103,9 @@ export class MessagesService {
         order: { select: { orderNumber: true } },
       },
     });
-    if (!conversation) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
+    if (!conversation || (storeId !== undefined && conversation.storeId !== storeId)) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
+    }
 
     const isCustomer = senderType === SenderType.CUSTOMER;
 
@@ -232,18 +236,22 @@ export class MessagesService {
     };
   }
 
-  async adminGetConversation(conversationId: string) {
+  async adminGetConversation(conversationId: string, storeId?: string) {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: CONVERSATION_INCLUDE,
     });
-    if (!conversation) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
+    if (!conversation || (storeId !== undefined && conversation.storeId !== storeId)) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
+    }
     return conversation;
   }
 
-  async adminUpdateStatus(conversationId: string, status: ConversationStatus) {
-    const exists = await this.prisma.conversation.findUnique({ where: { id: conversationId }, select: { id: true } });
-    if (!exists) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
+  async adminUpdateStatus(conversationId: string, status: ConversationStatus, storeId?: string) {
+    const exists = await this.prisma.conversation.findUnique({ where: { id: conversationId }, select: { id: true, storeId: true } });
+    if (!exists || (storeId !== undefined && exists.storeId !== storeId)) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
+    }
 
     return this.prisma.conversation.update({
       where: { id: conversationId },
@@ -251,7 +259,13 @@ export class MessagesService {
     });
   }
 
-  async markAdminRead(conversationId: string) {
+  async markAdminRead(conversationId: string, storeId?: string) {
+    if (storeId !== undefined) {
+      const exists = await this.prisma.conversation.findUnique({ where: { id: conversationId }, select: { storeId: true } });
+      if (!exists || exists.storeId !== storeId) {
+        throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
+      }
+    }
     await this.prisma.conversation.update({
       where: { id: conversationId },
       data: { unreadByAdmin: 0 },

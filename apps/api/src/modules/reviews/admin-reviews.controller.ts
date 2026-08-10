@@ -17,17 +17,7 @@ import { AdminReviewResponseDto, ReviewResponseDto } from './dto/review-response
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
 import { IsString, MinLength } from 'class-validator';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
-import { PrismaService } from '../../prisma/prisma.service';
-
-interface JwtLike { sub?: string; id?: string; role?: string }
-
-async function resolveSellerStoreId(prisma: PrismaService, user: JwtLike): Promise<string | null> {
-  if (user.role === 'SUPER_ADMIN') return null;
-  const userId = user.sub ?? user.id;
-  if (!userId) return null;
-  const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { storeId: true } });
-  return dbUser?.storeId ?? null;
-}
+import { StoreContextService } from '../../common/services/store-context.service';
 
 class ReplyDto {
   @IsString()
@@ -39,14 +29,14 @@ class ReplyDto {
 export class AdminReviewsController {
   constructor(
     private readonly reviewsService: ReviewsService,
-    private readonly prisma: PrismaService,
+    private readonly storeContext: StoreContextService,
   ) {}
 
   @Get('counts')
   @ApiOperation({ summary: 'Count reviews grouped by status (for tab badges)' })
   async getCounts(@Req() req: Request): Promise<Record<string, number>> {
-    const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
-    return this.reviewsService.getAdminCounts(storeId ?? undefined);
+    const context = await this.storeContext.resolve(req);
+    return this.reviewsService.getAdminCounts(context.storeId ?? undefined);
   }
 
   @Get()
@@ -55,35 +45,40 @@ export class AdminReviewsController {
     @Req() req: Request,
     @Query() query: AdminReviewQueryDto,
   ): Promise<PaginatedResult<AdminReviewResponseDto>> {
-    const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
-    return this.reviewsService.findAllAdmin(query, storeId ?? undefined);
+    const context = await this.storeContext.resolve(req);
+    return this.reviewsService.findAllAdmin(query, context.storeId ?? undefined);
   }
 
   @Delete(':reviewId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: '[Admin] Permanently delete a review' })
-  async remove(@Param('reviewId') reviewId: string): Promise<void> {
-    return this.reviewsService.adminDeleteReview(reviewId);
+  async remove(@Req() req: Request, @Param('reviewId') reviewId: string): Promise<void> {
+    const context = await this.storeContext.resolve(req);
+    return this.reviewsService.adminDeleteReview(reviewId, context.storeId ?? undefined);
   }
 
   @Post(':reviewId/approve')
   @ApiOperation({ summary: 'Approve a pending review' })
-  async approve(@Param('reviewId') reviewId: string): Promise<ReviewResponseDto> {
-    return this.reviewsService.approveReview(reviewId);
+  async approve(@Req() req: Request, @Param('reviewId') reviewId: string): Promise<ReviewResponseDto> {
+    const context = await this.storeContext.resolve(req);
+    return this.reviewsService.approveReview(reviewId, context.storeId ?? undefined);
   }
 
   @Post(':reviewId/hide')
   @ApiOperation({ summary: 'Hide a review' })
-  async hide(@Param('reviewId') reviewId: string): Promise<ReviewResponseDto> {
-    return this.reviewsService.hideReview(reviewId);
+  async hide(@Req() req: Request, @Param('reviewId') reviewId: string): Promise<ReviewResponseDto> {
+    const context = await this.storeContext.resolve(req);
+    return this.reviewsService.hideReview(reviewId, context.storeId ?? undefined);
   }
 
   @Post(':reviewId/reply')
   @ApiOperation({ summary: 'Add or update admin reply on a review' })
   async reply(
+    @Req() req: Request,
     @Param('reviewId') reviewId: string,
     @Body() dto: ReplyDto,
   ): Promise<ReviewResponseDto> {
-    return this.reviewsService.replyToReview(reviewId, dto.reply);
+    const context = await this.storeContext.resolve(req);
+    return this.reviewsService.replyToReview(reviewId, dto.reply, context.storeId ?? undefined);
   }
 }

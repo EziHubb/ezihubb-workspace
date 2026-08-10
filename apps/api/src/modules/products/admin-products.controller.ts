@@ -9,6 +9,7 @@ import {
   Query,
   Req,
   Res,
+  UploadedFile,
   UploadedFiles,
   UseInterceptors,
   UseGuards,
@@ -17,7 +18,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiOperation,
   ApiResponse,
@@ -38,20 +39,8 @@ import { ProductListItemDto } from './dto/product-list-item.dto';
 import { ParseCuidPipe } from '../../common/pipes/parse-cuid.pipe';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
 import { AuditLogService } from '../../common/services/audit-log.service';
-
-interface JwtLike { sub?: string; id?: string; role?: string; storeId?: string }
-
-/** Returns the storeId the caller owns, or null for SUPER_ADMIN (no filter). */
-async function resolveSellerStoreId(prisma: PrismaService, user: JwtLike): Promise<string | null> {
-  if (user.role === 'SUPER_ADMIN') return null;
-  if (user.storeId) return user.storeId;
-  const userId = user.sub ?? user.id;
-  if (!userId) return '__no_store__';
-  const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { storeId: true } });
-  // Sentinel value: WHERE storeId = '__no_store__' returns zero rows, which is correct
-  // when a shop owner's store hasn't been approved yet (storeId is null in DB).
-  return dbUser?.storeId ?? '__no_store__';
-}
+import { StoreContextService } from '../../common/services/store-context.service';
+import { ProductOwnershipGuard } from '../../common/guards/product-ownership.guard';
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
 import {
   IsArray, IsString, ArrayMaxSize, IsOptional, IsBoolean,
@@ -65,7 +54,7 @@ import {
   CustomizationTemplateDto,
   SetAttributesDto,
 } from './dto/create-product-detail.dto';
-import { ReorderImagesDto, AttachImagesDto } from './dto/product-image.dto';
+import { ReorderImagesDto, AttachImagesDto, DeleteVideoDto } from './dto/product-image.dto';
 
 // ── Variation DTOs ────────────────────────────────────────────────────────────
 
@@ -144,19 +133,21 @@ class BulkExportDto {
 }
 
 @AdminController('products')
+@UseGuards(ProductOwnershipGuard)
 export class AdminProductsController {
   constructor(
     private readonly productsService: ProductsService,
     private readonly prisma: PrismaService,
     private readonly auditLog: AuditLogService,
+    private readonly storeContext: StoreContextService,
   ) {}
 
   // GET /admin/products/stats — must be declared before :id routes
   @Get('stats')
   @ApiOperation({ summary: '[Admin] Product status counts for sidebar' })
   async getStats(@Req() req: Request) {
-    const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
-    return this.productsService.getStats(storeId ?? undefined);
+    const context = await this.storeContext.resolve(req);
+    return this.productsService.getStats(context.storeId ?? undefined);
   }
 
   // GET /admin/products/seo-stats — declared before :id routes
@@ -184,8 +175,8 @@ export class AdminProductsController {
   @Get()
   @ApiOperation({ summary: '[Admin] List products (includes inactive, scoped to own store for shop owners)' })
   async findAll(@Req() req: Request, @Query() query: ProductQueryDto): Promise<PaginatedResult<ProductListItemDto>> {
-    const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
-    return this.productsService.findAll(Object.assign({}, query, { includeInactive: true }, storeId ? { storeId } : {}) as any);
+    const context = await this.storeContext.resolve(req);
+    return this.productsService.findAll(Object.assign({}, query, { includeInactive: true }, context.storeId ? { storeId: context.storeId } : {}) as any);
   }
 
   // GET /admin/products/:id  — full product for the edit form
@@ -210,8 +201,15 @@ export class AdminProductsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: '[Admin] Auto-create a draft product to obtain a productId before form submission' })
   @ApiResponse({ status: 201, type: ProductResponseDto })
-  createDraft(): Promise<ProductResponseDto> {
-    return this.productsService.createDraft();
+  async createDraft(@Req() req: Request): Promise<ProductResponseDto> {
+    const context = await this.storeContext.resolve(req);
+    // Without this, every draft (and therefore every product created through
+    // the shared admin UI) was silently created with storeId=null — orphaned
+    // from the creating shop owner's store, and immediately inaccessible to
+    // them once ProductOwnershipGuard started enforcing ownership.
+    return context.storeId
+      ? this.productsService.createDraftForStore(context.storeId)
+      : this.productsService.createDraft();
   }
 
   // POST /admin/products
@@ -220,7 +218,8 @@ export class AdminProductsController {
   @ApiOperation({ summary: '[Admin] Create product with variants' })
   @ApiResponse({ status: 201, type: ProductResponseDto })
   async create(@Req() req: Request, @Body() dto: CreateProductDto): Promise<ProductResponseDto> {
-    const product = await this.productsService.create(dto);
+    const context = await this.storeContext.resolve(req);
+    const product = await this.productsService.create(dto, context.storeId ?? undefined);
     const userId = (req.user as { sub: string }).sub;
     this.auditLog.log({
       userId,
@@ -240,6 +239,20 @@ export class AdminProductsController {
   async bulkUpdate(@Req() req: Request, @Body() dto: BulkProductActionDto) {
     if (!dto.ids || dto.ids.length === 0) throw new BadRequestException('No products selected');
     if (dto.ids.length > 200) throw new BadRequestException('Max 200 products per bulk action');
+
+    // Silently drop any id the caller doesn't own — prevents a scoped store
+    // owner from bulk-publishing/archiving/pricing another store's products
+    // by passing arbitrary ids in the body (ProductOwnershipGuard only checks
+    // a single :id route param, not an array inside the body).
+    const context = await this.storeContext.resolve(req);
+    if (!context.isPlatformContext) {
+      const owned = await this.prisma.product.findMany({
+        where: { id: { in: dto.ids }, storeId: context.storeId },
+        select: { id: true },
+      });
+      dto.ids = owned.map((p) => p.id);
+      if (dto.ids.length === 0) throw new BadRequestException('No products selected');
+    }
 
     let result: Record<string, unknown>;
 
@@ -403,6 +416,31 @@ export class AdminProductsController {
     @Body() dto: ReorderImagesDto,
   ): Promise<void> {
     return this.productsService.reorderImages(id, dto.orderedIds);
+  }
+
+  // POST /admin/products/:id/videos
+  @Post(':id/videos')
+  @UseInterceptors(FileInterceptor('video', { storage: memoryStorage() }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { video: { type: 'string', format: 'binary' } } } })
+  @ApiOperation({ summary: '[Admin] Upload a product video (MP4/WebM/MOV, max 10s, max 20 MB, max 2 per product)' })
+  @HttpCode(HttpStatus.CREATED)
+  uploadVideo(
+    @Param('id', ParseCuidPipe) id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<{ url: string; videoUrls: string[] }> {
+    return this.productsService.uploadVideo(id, file);
+  }
+
+  // DELETE /admin/products/:id/videos
+  @Delete(':id/videos')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: '[Admin] Delete a product video' })
+  deleteVideo(
+    @Param('id', ParseCuidPipe) id: string,
+    @Body() dto: DeleteVideoDto,
+  ): Promise<void> {
+    return this.productsService.deleteVideo(id, dto.url);
   }
 
   // ─── MongoDB detail endpoints ────────────────────────────────────────────────
@@ -648,10 +686,12 @@ export class AdminProductsController {
 
   // POST /admin/products/export
   @Post('export')
-  @ApiOperation({ summary: '[Admin] Export products to CSV' })
-  async exportCsv(@Body() dto: BulkExportDto, @Res() res: Response): Promise<void> {
+  @ApiOperation({ summary: '[Admin] Export products to CSV (scoped to own store for shop owners)' })
+  async exportCsv(@Req() req: Request, @Body() dto: BulkExportDto, @Res() res: Response): Promise<void> {
+    const context = await this.storeContext.resolve(req);
+    const storeFilter = context.isPlatformContext ? {} : { storeId: context.storeId };
     const products = await this.prisma.product.findMany({
-      where:   dto.ids?.length ? { id: { in: dto.ids } } : {},
+      where:   { ...storeFilter, ...(dto.ids?.length ? { id: { in: dto.ids } } : {}) },
       include: {
         category: { select: { slug: true } },
         tags:     { include: { tag: { select: { name: true } } } },

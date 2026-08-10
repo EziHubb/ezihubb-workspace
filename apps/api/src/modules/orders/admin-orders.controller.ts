@@ -8,6 +8,7 @@ import {
   Query,
   Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
@@ -22,33 +23,27 @@ import { AdminOrderQueryDto } from './dto/order-list-item.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { StoreContextService } from '../../common/services/store-context.service';
+import { OrderOwnershipGuard } from '../../common/guards/order-ownership.guard';
 import { PrismaService } from '../../prisma/prisma.service';
 
-interface JwtLike { sub?: string; id?: string; role?: string }
-
-async function resolveSellerStoreId(prisma: PrismaService, user: JwtLike): Promise<string | null> {
-  if (user.role === 'SUPER_ADMIN') return null;
-  const userId = user.sub ?? user.id;
-  if (!userId) return null;
-  const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { storeId: true } });
-  return dbUser?.storeId ?? null;
-}
-
 @AdminController('orders')
+@UseGuards(OrderOwnershipGuard)
 export class AdminOrdersController {
   constructor(
     private readonly ordersService: OrdersService,
     private readonly pdfService:    PdfService,
     private readonly labelService:  LabelService,
     private readonly auditLog:      AuditLogService,
+    private readonly storeContext:  StoreContextService,
     private readonly prisma:        PrismaService,
   ) {}
 
   @Get()
   @ApiOperation({ summary: 'List orders (scoped to own store for shop owners)' })
   async findAll(@Req() req: Request, @Query() query: AdminOrderQueryDto) {
-    const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
-    if (storeId) query.storeId = storeId;
+    const context = await this.storeContext.resolve(req);
+    if (context.storeId) query.storeId = context.storeId;
     return this.ordersService.findAll(query);
   }
 
@@ -70,8 +65,18 @@ export class AdminOrdersController {
 
   @Post('bulk-packing-slips')
   @ApiOperation({ summary: 'Generate packing slips for multiple orders — returns array of URLs' })
-  async bulkPackingSlips(@Body('orderIds') orderIds: string[]) {
-    const urls = await Promise.all(orderIds.map((id) => this.pdfService.generatePackingSlip(id)));
+  async bulkPackingSlips(@Req() req: Request, @Body('orderIds') orderIds: string[]) {
+    // Silently drop any order the caller isn't a vendor on — OrderOwnershipGuard
+    // only checks the single :id route param, not an array inside the body.
+    const context = await this.storeContext.resolve(req);
+    const allowedIds = context.isPlatformContext
+      ? orderIds
+      : (await this.prisma.storeOrder.findMany({
+          where: { orderId: { in: orderIds }, storeId: context.storeId! },
+          select: { orderId: true },
+        })).map((so) => so.orderId);
+
+    const urls = await Promise.all(allowedIds.map((id) => this.pdfService.generatePackingSlip(id)));
     return { urls };
   }
 
@@ -80,8 +85,8 @@ export class AdminOrdersController {
   @Get('export')
   @ApiOperation({ summary: 'Export orders as CSV' })
   async exportCsv(@Req() req: Request, @Query() query: AdminOrderQueryDto, @Res() res: Response) {
-    const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
-    if (storeId) query.storeId = storeId;
+    const context = await this.storeContext.resolve(req);
+    if (context.storeId) query.storeId = context.storeId;
     const csv = await this.ordersService.exportOrdersCsv(query);
     res.header('Content-Type', 'text/csv; charset=utf-8');
     res.header('Content-Disposition', `attachment; filename="orders-${Date.now()}.csv"`);

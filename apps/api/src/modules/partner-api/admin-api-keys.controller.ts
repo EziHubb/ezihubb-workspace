@@ -1,26 +1,10 @@
-import { Body, Delete, Get, Param, Post, Req, BadRequestException } from '@nestjs/common';
+import { Body, Delete, Get, Param, Post, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { ApiOperation, ApiProperty } from '@nestjs/swagger';
 import { IsString, MaxLength, MinLength } from 'class-validator';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
-import { PrismaService } from '../../prisma/prisma.service';
+import { StoreContextService } from '../../common/services/store-context.service';
 import { ApiKeysService } from './api-keys.service';
-
-interface JwtLike { sub?: string; id?: string; role?: string; storeId?: string }
-
-/**
- * Returns the storeId the caller owns, or null if they don't have one.
- * SUPER_ADMIN is not special-cased here — per the seed data (14-stores.ts),
- * the platform's admin account owns the default "EziHubb" store, same as
- * any other seller.
- */
-async function resolveSellerStoreId(prisma: PrismaService, user: JwtLike): Promise<string | null> {
-  if (user.storeId) return user.storeId;
-  const userId = user.sub ?? user.id;
-  if (!userId) return null;
-  const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { storeId: true } });
-  return dbUser?.storeId ?? null;
-}
 
 class CreateApiKeyDto {
   @ApiProperty({ example: 'Zapier integration' })
@@ -33,16 +17,13 @@ class CreateApiKeyDto {
 @AdminController('api-keys')
 export class AdminApiKeysController {
   constructor(
-    private readonly apiKeys: ApiKeysService,
-    private readonly prisma:  PrismaService,
+    private readonly apiKeys:      ApiKeysService,
+    private readonly storeContext: StoreContextService,
   ) {}
 
   private async requireStoreId(req: Request): Promise<string> {
-    const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
-    if (!storeId) {
-      throw new BadRequestException('API keys are issued per-store — select a store first');
-    }
-    return storeId;
+    const context = await this.storeContext.resolve(req);
+    return this.storeContext.requireStoreId(context);
   }
 
   @Get()

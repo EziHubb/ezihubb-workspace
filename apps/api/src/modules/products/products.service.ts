@@ -41,6 +41,14 @@ import {
   paginatedResponse,
 } from '../../common/dto/paginated-response.dto';
 import { AutoTranslateService } from '../translations/auto-translate.service';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+import { writeFile, unlink } from 'fs/promises';
+import { tmpdir } from 'os';
+import { join, extname } from 'path';
+import { randomUUID } from 'crypto';
+
+const execFileAsync = promisify(execFile);
 
 const IN_DEMAND_KEY = (productId: string) => `product:demand:${productId}`;
 const VIEW_LOCK_KEY = (slug: string, lockId: string) =>
@@ -51,6 +59,15 @@ const ALLOWED_IMAGE_MIMETYPES = new Set([
   'image/webp',
 ]);
 const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+const ALLOWED_VIDEO_MIMETYPES = new Set([
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+]);
+const VIDEO_MAX_BYTES = 20 * 1024 * 1024; // generous ceiling — a compliant ~10s clip is normally a few MB
+const VIDEO_MAX_DURATION_SECONDS = 10;
+const VIDEO_DURATION_TOLERANCE_SECONDS = 0.5; // encoder/container rounding
+const MAX_VIDEOS_PER_PRODUCT = 2;
 
 @Injectable()
 export class ProductsService {
@@ -496,11 +513,7 @@ export class ProductsService {
         basePrice: dto.basePrice,
         compareAtPrice: dto.compareAtPrice,
         isPersonalizable: dto.isPersonalizable ?? true,
-        // Estimated-price products (see variationSummary above) can never go
-        // live with a guessed price — force DRAFT/inactive no matter what the
-        // caller asked for, until a human reviews the generated prices.
-        isActive: variationSummary ? false : (dto.isActive ?? true),
-        status: variationSummary ? 'DRAFT' : undefined,
+        isActive: dto.isActive ?? true,
         isFeatured: dto.isFeatured ?? false,
         processingDays: dto.processingDays ?? 3,
         categoryId: dto.categoryId,
@@ -1207,6 +1220,7 @@ export class ProductsService {
         isFeatured: false,
         processingDays: source.processingDays,
         categoryId: source.categoryId,
+        storeId: source.storeId,
         customizationConfig: source.customizationConfig ?? Prisma.JsonNull,
         variants: {
           create: source.variants.map((v) => ({
@@ -1395,6 +1409,111 @@ export class ProductsService {
     );
   }
 
+  // ─── Product videos ─────────────────────────────────────────────────────────
+
+  /**
+   * Reads a video's real duration via ffprobe (metadata-only inspection — no
+   * decoding/transcoding, so this stays fast and cheap even on a shared,
+   * unthrottled host). A client-declared duration can't be trusted, so this
+   * is the only source of truth for enforcing the length cap.
+   */
+  private async getVideoDurationSeconds(buffer: Buffer, originalName: string): Promise<number> {
+    const tmpPath = join(tmpdir(), `video-check-${randomUUID()}${extname(originalName)}`);
+    await writeFile(tmpPath, buffer);
+    try {
+      const { stdout } = await execFileAsync('ffprobe', [
+        '-v', 'error',
+        '-show_entries', 'format=duration',
+        '-of', 'json',
+        tmpPath,
+      ]);
+      const parsed = JSON.parse(stdout) as { format?: { duration?: string } };
+      const duration = Number(parsed.format?.duration);
+      if (!Number.isFinite(duration)) throw new Error('unreadable duration');
+      return duration;
+    } catch {
+      throw new BadRequestException({
+        code: 'ERR_INVALID_VIDEO',
+        message: `${originalName}: could not read this file as a video — is it a valid MP4, WebM, or MOV?`,
+      });
+    } finally {
+      await unlink(tmpPath).catch(() => undefined);
+    }
+  }
+
+  async uploadVideo(
+    productId: string,
+    file: Express.Multer.File,
+  ): Promise<{ url: string; videoUrls: string[] }> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { videoUrls: true },
+    });
+    if (!product)
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+
+    if (!ALLOWED_VIDEO_MIMETYPES.has(file.mimetype))
+      throw new BadRequestException({
+        code: 'ERR_INVALID_FILE_TYPE',
+        message: `${file.originalname}: only MP4, WebM, or MOV allowed`,
+      });
+    if (file.size > VIDEO_MAX_BYTES)
+      throw new BadRequestException({
+        code: 'ERR_FILE_TOO_LARGE',
+        message: `${file.originalname}: max ${VIDEO_MAX_BYTES / (1024 * 1024)} MB per video`,
+      });
+
+    const existingUrls = product.videoUrls ?? [];
+    if (existingUrls.length >= MAX_VIDEOS_PER_PRODUCT)
+      throw new BadRequestException({
+        code: 'ERR_TOO_MANY_VIDEOS',
+        message: `Only ${MAX_VIDEOS_PER_PRODUCT} videos allowed per product — remove one first.`,
+      });
+
+    const duration = await this.getVideoDurationSeconds(file.buffer, file.originalname);
+    if (duration > VIDEO_MAX_DURATION_SECONDS + VIDEO_DURATION_TOLERANCE_SECONDS)
+      throw new BadRequestException({
+        code: 'ERR_VIDEO_TOO_LONG',
+        message: `${file.originalname}: video is ${duration.toFixed(1)}s — max ${VIDEO_MAX_DURATION_SECONDS}s allowed.`,
+      });
+
+    const key = this.storage.generateKey(`products/${productId}/videos`, file.originalname);
+    const url = await this.storage.uploadFile(file.buffer, key, file.mimetype);
+
+    const updated = await this.prisma.product.update({
+      where: { id: productId },
+      data: { videoUrls: { push: url } },
+      select: { videoUrls: true, slug: true },
+    });
+    await this.redis.del(CacheKeys.product(updated.slug));
+
+    return { url, videoUrls: updated.videoUrls };
+  }
+
+  async deleteVideo(productId: string, url: string): Promise<void> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { videoUrls: true },
+    });
+    if (!product)
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+    const remaining = (product.videoUrls ?? []).filter((u) => u !== url);
+
+    const updated = await this.prisma.product.update({
+      where: { id: productId },
+      data: { videoUrls: { set: remaining } },
+      select: { slug: true },
+    });
+    await this.redis.del(CacheKeys.product(updated.slug));
+
+    const key = this.storage.extractKey(url);
+    await this.storage
+      .deleteFile(key)
+      .catch((e: Error) =>
+        this.logger.warn(`R2 delete failed for video key "${key}": ${e.message}`),
+      );
+  }
+
   // ─── MongoDB product detail CRUD ──────────────────────────────────────────
 
   async getProductDetail(productId: string): Promise<ProductDetail | null> {
@@ -1521,7 +1640,12 @@ export class ProductsService {
     if (query.isFeatured !== undefined) where.isFeatured = query.isFeatured;
     if (query.status) {
       where.status = query.status;
-    } else {
+    } else if (!query.includeInactive) {
+      // Public storefront (includeInactive not set): never surface drafts by
+      // default. Admin's "All listings" (includeInactive: true, no status
+      // filter) means literally everything, drafts included — the stats
+      // sidebar already counts drafts in its "all" total, so the list must
+      // match or it silently looks like products are missing.
       where.status = { not: ProductStatus.DRAFT };
     }
 
@@ -1866,6 +1990,7 @@ export class ProductsService {
         isPrimary: boolean;
         sortOrder: number;
       }[];
+      videoUrls?: string[];
       tags: { tag: { id: string; name: string; slug: string } }[];
       _count: { reviews: number };
     },
@@ -1907,6 +2032,7 @@ export class ProductsService {
         isPrimary: img.isPrimary,
         sortOrder: img.sortOrder,
       })),
+      videoUrls: product.videoUrls ?? [],
       tags: product.tags.map((pt) => ({
         id: pt.tag.id,
         name: pt.tag.name,

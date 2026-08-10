@@ -7,13 +7,14 @@ import { signOut, useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { useStoreContext, setStoreContext } from '../../lib/store-context';
 import {
   LayoutDashboard, ShoppingCart, ShoppingBag, FolderOpen,
   Tag, Layers, Users, BadgePercent, Star, Truck,
   CreditCard, Settings, ChevronDown, LogOut, Globe, MessageSquare, Link2,
   Bookmark, Factory, Shield, GitBranch, Store, BarChart2, Wallet, ShieldAlert, History,
   SlidersHorizontal, ScanSearch, TrendingUp,
-  Menu, X, Megaphone, Plug, KeyRound,
+  Menu, X, Megaphone, Plug, KeyRound, ArrowLeftRight,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -204,15 +205,21 @@ function useNavData() {
   const name     = (user?.['name']    as string) || 'Admin';
   const email    = (user?.['email']   as string) || '';
   const role     = (user?.['role']    as string) || '';
-  const storeId  = (user?.['storeId'] as string) || '';
+  const ownStoreId = (user?.['storeId'] as string) || '';
   const initials = name.split(' ').map((n) => n[0] ?? '').slice(0, 2).join('').toUpperCase();
 
   const isSuperAdmin = role === 'SUPER_ADMIN';
+  const activeStoreContext = useStoreContext();
+  // A SUPER_ADMIN who also owns a store (e.g. the platform's own shop) can
+  // switch into it and get the exact same scoped view a regular shop-owner
+  // ADMIN gets — see apps/api's StoreContextService for the server-side half.
+  const canSwitchToOwnStore = isSuperAdmin && !!ownStoreId;
+  const inStoreMode = canSwitchToOwnStore && activeStoreContext === ownStoreId;
 
   const { data: pendingData } = useQuery<{ count: number }>({
     queryKey: ['sidebar-affiliate-pending'],
     queryFn:  () => api.get<{ count: number }>(API_ROUTES.ADMIN.AFFILIATES_PENDING_COUNT),
-    enabled:  isSuperAdmin,
+    enabled:  isSuperAdmin && !inStoreMode,
     staleTime:       60_000,
     refetchInterval: 120_000,
   });
@@ -227,10 +234,15 @@ function useNavData() {
     })),
   [pendingData]);
 
-  const shopNavSections = useMemo(() => getShopNavSections(storeId), [storeId]);
-  const navSections = isSuperAdmin ? superAdminSections : shopNavSections;
+  const shopNavSections = useMemo(() => getShopNavSections(ownStoreId), [ownStoreId]);
+  const navSections = isSuperAdmin && !inStoreMode ? superAdminSections : shopNavSections;
 
-  return { name, email, initials, navSections, role };
+  const toggleStoreMode = () => {
+    setStoreContext(inStoreMode ? null : ownStoreId);
+    window.location.reload();
+  };
+
+  return { name, email, initials, navSections, role, canSwitchToOwnStore, inStoreMode, toggleStoreMode };
 }
 
 // ── Child nav row ─────────────────────────────────────────────────────────────
@@ -368,8 +380,8 @@ function NavSectionGroup({ section }: { section: NavSection }) {
 
 // ── Logo mark ─────────────────────────────────────────────────────────────────
 
-function LogoMark({ role }: { role?: string }) {
-  const isShopOwner = role === 'ADMIN';
+function LogoMark({ role, inStoreMode }: { role?: string; inStoreMode?: boolean }) {
+  const isShopOwner = role === 'ADMIN' || !!inStoreMode;
   return (
     <div className="flex items-center gap-3">
       <div
@@ -400,15 +412,39 @@ function SidebarBody({
   email,
   initials,
   role,
+  canSwitchToOwnStore,
+  inStoreMode,
+  toggleStoreMode,
 }: {
   navSections: NavSection[];
   name:        string;
   email:       string;
   initials:    string;
   role?:       string;
+  canSwitchToOwnStore?: boolean;
+  inStoreMode?:         boolean;
+  toggleStoreMode?:     () => void;
 }) {
   return (
     <>
+      {/* Store-context switcher — only for a SUPER_ADMIN who also owns a store */}
+      {canSwitchToOwnStore && (
+        <div className="px-3 pb-2">
+          <button
+            type="button"
+            onClick={toggleStoreMode}
+            className="w-full flex items-center gap-2 px-3 h-9 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-[#D1D5DB] transition-colors"
+            title={inStoreMode ? 'Switch back to the platform-wide view' : 'Switch into your own store, scoped exactly like a shop owner'}
+          >
+            <ArrowLeftRight className="w-3.5 h-3.5 shrink-0" />
+            <span className="flex-1 text-left truncate">
+              {inStoreMode ? 'Viewing: My Store' : 'Viewing: Platform'}
+            </span>
+            <span className="text-[10px] font-medium text-[#6B7280]">Switch</span>
+          </button>
+        </div>
+      )}
+
       {/* Nav */}
       <nav className="flex-1 px-2 pb-2 space-y-0.5 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {navSections.map((section, i) => (
@@ -430,9 +466,9 @@ function SidebarBody({
             <p className="text-[11px] truncate leading-tight mt-0.5" style={{ color: '#6B7280' }}>{email}</p>
             <span className={[
               'inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded mt-0.5',
-              role === 'SUPER_ADMIN' ? 'bg-[#7C3AED]/20 text-[#A78BFA]' : 'bg-emerald-500/20 text-emerald-400',
+              role === 'SUPER_ADMIN' && !inStoreMode ? 'bg-[#7C3AED]/20 text-[#A78BFA]' : 'bg-emerald-500/20 text-emerald-400',
             ].join(' ')}>
-              {role === 'SUPER_ADMIN' ? 'Super Admin' : 'Shop Owner'}
+              {inStoreMode ? 'Super Admin · My Store' : role === 'SUPER_ADMIN' ? 'Super Admin' : 'Shop Owner'}
             </span>
           </div>
           <button
@@ -452,7 +488,7 @@ function SidebarBody({
 // ── Desktop sidebar ───────────────────────────────────────────────────────────
 
 export function AdminSidebar() {
-  const { name, email, initials, navSections, role } = useNavData();
+  const { name, email, initials, navSections, role, canSwitchToOwnStore, inStoreMode, toggleStoreMode } = useNavData();
 
   return (
     <aside
@@ -460,10 +496,19 @@ export function AdminSidebar() {
       style={{ background: 'linear-gradient(180deg, #16161F 0%, #1A1A26 100%)' }}
     >
       <div className="px-4 pt-5 pb-3">
-        <LogoMark role={role} />
+        <LogoMark role={role} inStoreMode={inStoreMode} />
       </div>
       <div className="mx-4 mb-2 border-t border-white/5" />
-      <SidebarBody navSections={navSections} name={name} email={email} initials={initials} role={role} />
+      <SidebarBody
+        navSections={navSections}
+        name={name}
+        email={email}
+        initials={initials}
+        role={role}
+        canSwitchToOwnStore={canSwitchToOwnStore}
+        inStoreMode={inStoreMode}
+        toggleStoreMode={toggleStoreMode}
+      />
     </aside>
   );
 }
@@ -473,7 +518,7 @@ export function AdminSidebar() {
 export function AdminMobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const { name, email, initials, navSections, role } = useNavData();
+  const { name, email, initials, navSections, role, canSwitchToOwnStore, inStoreMode, toggleStoreMode } = useNavData();
 
   // Close drawer on route change
   useEffect(() => { setOpen(false); }, [pathname]);
@@ -491,7 +536,7 @@ export function AdminMobileNav() {
         className="lg:hidden flex items-center justify-between px-4 h-14 shrink-0 border-b border-white/5"
         style={{ background: '#16161F' }}
       >
-        <LogoMark role={role} />
+        <LogoMark role={role} inStoreMode={inStoreMode} />
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -521,7 +566,7 @@ export function AdminMobileNav() {
       >
         {/* Drawer header */}
         <div className="flex items-center justify-between px-4 h-14 border-b border-white/5 shrink-0">
-          <LogoMark role={role} />
+          <LogoMark role={role} inStoreMode={inStoreMode} />
           <button
             type="button"
             onClick={() => setOpen(false)}
@@ -533,7 +578,16 @@ export function AdminMobileNav() {
         </div>
 
         {/* Drawer body — same nav content */}
-        <SidebarBody navSections={navSections} name={name} email={email} initials={initials} role={role} />
+        <SidebarBody
+          navSections={navSections}
+          name={name}
+          email={email}
+          initials={initials}
+          role={role}
+          canSwitchToOwnStore={canSwitchToOwnStore}
+          inStoreMode={inStoreMode}
+          toggleStoreMode={toggleStoreMode}
+        />
       </div>
     </>
   );

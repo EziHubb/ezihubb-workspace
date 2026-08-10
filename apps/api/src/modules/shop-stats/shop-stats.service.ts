@@ -185,13 +185,14 @@ export class ShopStatsService {
 
   // ── Listings performance table ─────────────────────────────────────────────
 
-  async getListings(page: number, limit: number, sort: string) {
+  async getListings(page: number, limit: number, sort: string, storeId?: string) {
     const skip   = (page - 1) * limit;
     const sortBy = this.resolveListingSort(sort);
+    const where: Prisma.ProductWhereInput = { deletedAt: null, ...(storeId !== undefined && { storeId }) };
 
     const [products, total] = await Promise.all([
       this.prisma.product.findMany({
-        where: { deletedAt: null },
+        where,
         select: {
           id: true,
           name: true,
@@ -213,7 +214,7 @@ export class ShopStatsService {
         skip,
         take: limit,
       }),
-      this.prisma.product.count({ where: { deletedAt: null } }),
+      this.prisma.product.count({ where }),
     ]);
 
     // Aggregate revenue per product from orders

@@ -309,13 +309,17 @@ export class StoresService {
         },
       });
 
-      // Promote owner to ADMIN role and set default shop_owner permissions
+      // Link the store to its owner. Only promote role to ADMIN when the
+      // applicant is a plain CUSTOMER — a SUPER_ADMIN who applies for their
+      // own store (e.g. platform staff running a personal shop) keeps full
+      // platform privileges; approval must never silently demote them.
+      const owner = await tx.user.findUniqueOrThrow({ where: { id: store.ownerId }, select: { role: true } });
       await tx.user.update({
         where: { id: store.ownerId },
         data:  {
           isSeller:    true,
           storeId:     store.id,
-          role:        'ADMIN',
+          ...(owner.role === 'CUSTOMER' ? { role: 'ADMIN' as const } : {}),
           permissions: { roles: ['shop_owner'] },
         },
       });

@@ -17,60 +17,56 @@ import { AdminConversationQueryDto } from './dto/admin-conversation-query.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { UpdateConversationStatusDto } from './dto/update-conversation-status.dto';
 import { MessagesService } from './messages.service';
-import { PrismaService } from '../../prisma/prisma.service';
-
-interface JwtLike { sub?: string; id?: string; role?: string }
-
-async function resolveSellerStoreId(prisma: PrismaService, user: JwtLike): Promise<string | null> {
-  if (user.role === 'SUPER_ADMIN') return null;
-  const userId = user.sub ?? user.id;
-  if (!userId) return null;
-  const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { storeId: true } });
-  return dbUser?.storeId ?? null;
-}
+import { StoreContextService } from '../../common/services/store-context.service';
 
 @AdminController('messages')
 export class AdminMessagesController {
   constructor(
     private readonly messagesService: MessagesService,
-    private readonly prisma: PrismaService,
+    private readonly storeContext: StoreContextService,
   ) {}
 
   @Get('conversations')
   @ApiOperation({ summary: 'List all conversations' })
   async listConversations(@Req() req: Request, @Query() query: AdminConversationQueryDto) {
-    const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
-    return this.messagesService.adminListConversations(query, storeId ?? undefined);
+    const context = await this.storeContext.resolve(req);
+    return this.messagesService.adminListConversations(query, context.storeId ?? undefined);
   }
 
   @Get('conversations/:id')
   @ApiOperation({ summary: 'Get conversation with messages' })
-  async getConversation(@Param('id') id: string) {
-    return this.messagesService.adminGetConversation(id);
+  async getConversation(@Req() req: Request, @Param('id') id: string) {
+    const context = await this.storeContext.resolve(req);
+    return this.messagesService.adminGetConversation(id, context.storeId ?? undefined);
   }
 
   @Post('conversations/:id/messages')
   @ApiOperation({ summary: 'Send a reply from the shop' })
   async sendReply(
+    @Req() req: Request,
     @Param('id') id: string,
     @Body() dto: SendMessageDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.messagesService.sendMessage(id, SenderType.SHOP, user.sub, dto);
+    const context = await this.storeContext.resolve(req);
+    return this.messagesService.sendMessage(id, SenderType.SHOP, user.sub, dto, context.storeId ?? undefined);
   }
 
   @Patch('conversations/:id/status')
   @ApiOperation({ summary: 'Update conversation status' })
   async updateStatus(
+    @Req() req: Request,
     @Param('id') id: string,
     @Body() dto: UpdateConversationStatusDto,
   ) {
-    return this.messagesService.adminUpdateStatus(id, dto.status);
+    const context = await this.storeContext.resolve(req);
+    return this.messagesService.adminUpdateStatus(id, dto.status, context.storeId ?? undefined);
   }
 
   @Post('conversations/:id/read')
   @ApiOperation({ summary: 'Mark conversation as read (admin)' })
-  async markRead(@Param('id') id: string) {
-    return this.messagesService.markAdminRead(id);
+  async markRead(@Req() req: Request, @Param('id') id: string) {
+    const context = await this.storeContext.resolve(req);
+    return this.messagesService.markAdminRead(id, context.storeId ?? undefined);
   }
 }

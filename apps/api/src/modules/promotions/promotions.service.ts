@@ -132,7 +132,7 @@ export class PromotionsService {
 
   // ── Admin CRUD ───────────────────────────────────────────────────────────────
 
-  async create(dto: CreatePromotionDto): Promise<PromotionResponseDto> {
+  async create(dto: CreatePromotionDto, storeId?: string): Promise<PromotionResponseDto> {
     const code = dto.code.toUpperCase();
     const existing = await this.prisma.promotion.findUnique({
       where: { code },
@@ -155,6 +155,9 @@ export class PromotionsService {
         startsAt: dto.startsAt ?? null,
         expiresAt: dto.expiresAt ?? null,
         description: dto.description ?? null,
+        // storeId undefined (platform context) → a platform-wide coupon, same as before.
+        // storeId set (a store owner, or SUPER_ADMIN in their own store context) → scoped to that store.
+        storeId: storeId ?? null,
       },
     });
 
@@ -182,9 +185,10 @@ export class PromotionsService {
     return paginatedResponse(promotions.map(this.mapToDto), page, limit, total);
   }
 
-  async findOne(id: string): Promise<PromotionResponseDto> {
+  /** storeId undefined = platform context (no ownership check); set = must match exactly. */
+  async findOne(id: string, storeId?: string): Promise<PromotionResponseDto> {
     const promotion = await this.prisma.promotion.findUnique({ where: { id } });
-    if (!promotion)
+    if (!promotion || (storeId !== undefined && promotion.storeId !== storeId))
       throw new NotFoundException({
         code: 'ERR_NOT_FOUND',
         message: 'Promotion not found',
@@ -195,8 +199,9 @@ export class PromotionsService {
   async update(
     id: string,
     dto: UpdatePromotionDto,
+    storeId?: string,
   ): Promise<PromotionResponseDto> {
-    await this.findOne(id);
+    await this.findOne(id, storeId);
 
     if (dto.code) {
       const code = dto.code.toUpperCase();
@@ -237,8 +242,9 @@ export class PromotionsService {
   async patch(
     id: string,
     dto: UpdatePromotionDto & { isActive?: boolean },
+    storeId?: string,
   ): Promise<PromotionResponseDto> {
-    await this.findOne(id);
+    await this.findOne(id, storeId);
 
     if (dto.code) {
       const code = dto.code.toUpperCase();
@@ -273,12 +279,12 @@ export class PromotionsService {
     return this.mapToDto(promotion);
   }
 
-  async remove(id: string): Promise<void> {
-    await this.findOne(id);
+  async remove(id: string, storeId?: string): Promise<void> {
+    await this.findOne(id, storeId);
     await this.prisma.promotion.delete({ where: { id } });
   }
 
-  async getPageStats(): Promise<{
+  async getPageStats(storeId?: string): Promise<{
     activeCoupons: number;
     usedToday: number;
     revenueDiscounted: number;
@@ -286,11 +292,13 @@ export class PromotionsService {
   }> {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
+    const promotionFilter = storeId !== undefined ? { storeId } : {};
 
     const [activeCoupons, usedToday, usages] = await Promise.all([
-      this.prisma.promotion.count({ where: { isActive: true } }),
-      this.prisma.promotionUsage.count({ where: { usedAt: { gte: todayStart } } }),
+      this.prisma.promotion.count({ where: { isActive: true, ...promotionFilter } }),
+      this.prisma.promotionUsage.count({ where: { usedAt: { gte: todayStart }, promotion: promotionFilter } }),
       this.prisma.promotionUsage.findMany({
+        where: { promotion: promotionFilter },
         include: { order: { select: { discountAmount: true } } },
         orderBy: { usedAt: 'desc' },
         take: 5000,
@@ -306,8 +314,8 @@ export class PromotionsService {
     return { activeCoupons, usedToday, revenueDiscounted, avgDiscountValue };
   }
 
-  async deactivate(id: string): Promise<PromotionResponseDto> {
-    await this.findOne(id);
+  async deactivate(id: string, storeId?: string): Promise<PromotionResponseDto> {
+    await this.findOne(id, storeId);
     const promotion = await this.prisma.promotion.update({
       where: { id },
       data: { isActive: false },
@@ -315,7 +323,7 @@ export class PromotionsService {
     return this.mapToDto(promotion);
   }
 
-  async getStats(id: string): Promise<PromotionStatsDto> {
+  async getStats(id: string, storeId?: string): Promise<PromotionStatsDto> {
     const promotion = await this.prisma.promotion.findUnique({
       where: { id },
       include: {
@@ -328,7 +336,7 @@ export class PromotionsService {
         },
       },
     });
-    if (!promotion)
+    if (!promotion || (storeId !== undefined && promotion.storeId !== storeId))
       throw new NotFoundException({
         code: 'ERR_NOT_FOUND',
         message: 'Promotion not found',

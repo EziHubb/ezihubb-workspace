@@ -1,12 +1,14 @@
 import {
   Body,
+  Controller,
   Get,
   Param,
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminAffiliatesService } from './admin-affiliates.service';
 import {
   ApproveAffiliateDto,
@@ -18,9 +20,21 @@ import {
 } from './dto/admin-affiliate.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
-import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '@ezihubb/constants';
 
-@AdminController('affiliates')
+// Affiliates are a platform-wide program with no per-store concept at all
+// (unlike Reviews/Messages/Promotions) — a store-owner ADMIN has no
+// legitimate reason to view or act on ANY affiliate's application/payout,
+// so this whole controller is SUPER_ADMIN-only, not the usual
+// @AdminController('affiliates') which also admits ADMIN.
+@Controller('admin/affiliates')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.SUPER_ADMIN)
+@ApiBearerAuth()
+@ApiTags('Admin — Affiliates')
 export class AdminAffiliatesController {
   constructor(private readonly adminAffiliatesService: AdminAffiliatesService) {}
 

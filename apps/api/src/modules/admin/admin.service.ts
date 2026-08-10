@@ -18,7 +18,9 @@ import { OrderStatus, ReviewStatus } from '@prisma/client';
 export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getDashboardKPIs(): Promise<DashboardKPIsDto> {
+  async getDashboardKPIs(storeId?: string): Promise<DashboardKPIsDto> {
+    if (storeId) return this.getStoreDashboardKPIs(storeId);
+
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -76,8 +78,86 @@ export class AdminService {
     };
   }
 
-  async getRevenueChart(days: number): Promise<RevenueChartPointDto[]> {
+  /**
+   * Same DTO shape as the platform-wide KPIs, but scoped to one store — a
+   * plain shop-owner ADMIN was previously seeing raw platform-wide numbers
+   * here (mislabeled as "their store"), since this endpoint had no store
+   * filter at all. Uses StoreOrder (the per-seller order split) instead of
+   * the platform-level Order/Payment tables.
+   */
+  private async getStoreDashboardKPIs(storeId: string): Promise<DashboardKPIsDto> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const PAID_STATUSES = ['CONFIRMED', 'IN_PRODUCTION', 'SHIPPED', 'DELIVERED', 'COMPLETED'] as OrderStatus[];
+
+    const [
+      store,
+      pendingOrders,
+      ordersInProduction,
+      pendingReviews,
+      monthlyRevenue,
+      ordersThisMonth,
+      customerRows,
+    ] = await Promise.all([
+      this.prisma.store.findUniqueOrThrow({ where: { id: storeId }, select: { totalOrders: true, totalRevenue: true } }),
+      this.prisma.storeOrder.count({ where: { storeId, status: OrderStatus.PENDING_PAYMENT } }),
+      this.prisma.storeOrder.count({ where: { storeId, status: OrderStatus.IN_PRODUCTION } }),
+      this.prisma.review.count({ where: { storeId, status: ReviewStatus.PENDING } }),
+      this.prisma.storeOrder.aggregate({
+        where: { storeId, status: { in: PAID_STATUSES }, createdAt: { gte: startOfMonth } },
+        _sum:  { sellerEarnings: true },
+      }),
+      this.prisma.storeOrder.count({ where: { storeId, createdAt: { gte: startOfMonth } } }),
+      this.prisma.storeOrder.findMany({
+        where:  { storeId },
+        select: { createdAt: true, order: { select: { userId: true, guestEmail: true } } },
+      }),
+    ]);
+
+    const totalRevenue = Number(store.totalRevenue);
+    const totalOrders = store.totalOrders;
+    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const customerKey = (r: (typeof customerRows)[number]) => r.order.userId ?? r.order.guestEmail;
+    const totalCustomers = new Set(customerRows.map(customerKey)).size;
+    // Approximated as "distinct customers who ordered this month" — computing
+    // true first-ever-purchase "new" status per store is a heavier query
+    // not worth it for a dashboard tile.
+    const newCustomersThisMonth = new Set(
+      customerRows.filter((r) => r.createdAt >= startOfMonth).map(customerKey),
+    ).size;
+
+    return {
+      totalRevenue,
+      totalOrders,
+      totalCustomers,
+      averageOrderValue: Math.round(averageOrderValue * 100) / 100,
+      pendingOrders,
+      ordersInProduction,
+      pendingReviews,
+      revenueThisMonth: Number(monthlyRevenue._sum.sellerEarnings ?? 0),
+      ordersThisMonth,
+      newCustomersThisMonth,
+    };
+  }
+
+  async getRevenueChart(days: number, storeId?: string): Promise<RevenueChartPointDto[]> {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1_000);
+
+    if (storeId) {
+      const rows = await this.prisma.$queryRaw<
+        { date: string; revenue: number; orders: bigint }[]
+      >`
+        SELECT
+          TO_CHAR(so."createdAt", 'YYYY-MM-DD') AS date,
+          COALESCE(SUM(so."sellerEarnings"), 0)::float AS revenue,
+          COUNT(so.id)                                 AS orders
+        FROM "StoreOrder" so
+        WHERE so."createdAt" >= ${since} AND so."storeId" = ${storeId}
+        GROUP BY date
+        ORDER BY date ASC
+      `;
+      return rows.map((r) => ({ date: r.date, revenue: Number(r.revenue), orders: Number(r.orders) }));
+    }
 
     const rows = await this.prisma.$queryRaw<
       { date: string; revenue: number; orders: bigint }[]
@@ -101,11 +181,10 @@ export class AdminService {
     }));
   }
 
-  async getOrdersByStatus(): Promise<OrdersByStatusDto[]> {
-    const groups = await this.prisma.order.groupBy({
-      by: ['status'],
-      _count: { id: true },
-    });
+  async getOrdersByStatus(storeId?: string): Promise<OrdersByStatusDto[]> {
+    const groups = storeId
+      ? await this.prisma.storeOrder.groupBy({ by: ['status'], where: { storeId }, _count: { id: true } })
+      : await this.prisma.order.groupBy({ by: ['status'], _count: { id: true } });
 
     const total = groups.reduce((sum, g) => sum + g._count.id, 0);
     if (total === 0) return [];
@@ -119,7 +198,7 @@ export class AdminService {
       }));
   }
 
-  async getTopProducts(limit = 10): Promise<TopProductDto[]> {
+  async getTopProducts(limit = 10, storeId?: string): Promise<TopProductDto[]> {
     const rows = await this.prisma.$queryRaw<
       {
         productId: string;
@@ -146,6 +225,7 @@ export class AdminService {
       LEFT JOIN "Order" o      ON o.id = oi."orderId"
         AND o.status NOT IN ('CANCELLED', 'PENDING_PAYMENT')
       WHERE p."deletedAt" IS NULL
+        AND (${storeId ?? null}::text IS NULL OR p."storeId" = ${storeId ?? null})
       GROUP BY p.id, p.name, p.slug, p."soldCount"
       ORDER BY revenue DESC
       LIMIT ${limit}
@@ -230,13 +310,15 @@ export class AdminService {
 
   async getPendingReviews(
     query: PaginationDto,
+    storeId?: string,
   ): Promise<PaginatedResult<ReviewResponseDto>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 24;
+    const where = { status: ReviewStatus.PENDING, ...(storeId !== undefined && { storeId }) };
 
     const [reviews, total] = await Promise.all([
       this.prisma.review.findMany({
-        where: { status: ReviewStatus.PENDING },
+        where,
         include: {
           user: {
             select: {
@@ -252,7 +334,7 @@ export class AdminService {
         skip: (page - 1) * limit,
         take: limit,
       }),
-      this.prisma.review.count({ where: { status: ReviewStatus.PENDING } }),
+      this.prisma.review.count({ where }),
     ]);
 
     const data: ReviewResponseDto[] = reviews.map((r) => ({

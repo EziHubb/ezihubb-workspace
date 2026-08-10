@@ -2,22 +2,11 @@ import { Body, Delete, Get, Param, Post, Put, Req, BadRequestException } from '@
 import type { Request } from 'express';
 import { ApiOperation, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
-import { FulfillmentProviderType } from '@prisma/client';
+import { FulfillmentProviderType, StoreFulfillmentMode } from '@prisma/client';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
+import { StoreContextService } from '../../common/services/store-context.service';
 import { FulfillmentConnectionsService } from './fulfillment-connections.service';
-
-interface JwtLike { sub?: string; id?: string; role?: string; storeId?: string }
-
-/** Returns the storeId the caller owns, or null for SUPER_ADMIN (no store selected). */
-async function resolveSellerStoreId(prisma: PrismaService, user: JwtLike): Promise<string | null> {
-  if (user.role === 'SUPER_ADMIN') return null;
-  if (user.storeId) return user.storeId;
-  const userId = user.sub ?? user.id;
-  if (!userId) return null;
-  const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { storeId: true } });
-  return dbUser?.storeId ?? null;
-}
 
 class ConnectProviderDto {
   @ApiProperty({ enum: FulfillmentProviderType })
@@ -40,6 +29,15 @@ class SetWebhookSecretDto {
   @IsString()
   @MaxLength(500)
   secret: string;
+}
+
+class SetFulfillmentModeDto {
+  @ApiProperty({
+    enum: StoreFulfillmentMode,
+    description: 'AUTOMATIC pushes mapped products to a connected provider (Printify/Merchize). MANUAL means the store ships every order itself — the queue never auto-pushes, regardless of any existing mappings.',
+  })
+  @IsIn(Object.values(StoreFulfillmentMode))
+  mode: StoreFulfillmentMode;
 }
 
 class SaveMappingDto {
@@ -68,16 +66,36 @@ class SaveMappingDto {
 @AdminController('fulfillment')
 export class AdminFulfillmentController {
   constructor(
-    private readonly connections: FulfillmentConnectionsService,
-    private readonly prisma:      PrismaService,
+    private readonly connections:  FulfillmentConnectionsService,
+    private readonly prisma:       PrismaService,
+    private readonly storeContext: StoreContextService,
   ) {}
 
   private async requireStoreId(req: Request): Promise<string> {
-    const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
-    if (!storeId) {
-      throw new BadRequestException('Fulfillment connections are managed per-store — select a store first');
-    }
-    return storeId;
+    const context = await this.storeContext.resolve(req);
+    return this.storeContext.requireStoreId(context);
+  }
+
+  @Get('mode')
+  @ApiOperation({ summary: "Get the current store's fulfillment mode (AUTOMATIC via a connected provider, or MANUAL self-fulfillment)" })
+  async getMode(@Req() req: Request) {
+    const storeId = await this.requireStoreId(req);
+    const store = await this.prisma.store.findUniqueOrThrow({
+      where: { id: storeId },
+      select: { fulfillmentMode: true },
+    });
+    return store;
+  }
+
+  @Put('mode')
+  @ApiOperation({ summary: 'Set the fulfillment mode — switching to MANUAL stops all auto-push to Printify/Merchize for this store' })
+  async setMode(@Req() req: Request, @Body() dto: SetFulfillmentModeDto) {
+    const storeId = await this.requireStoreId(req);
+    await this.prisma.store.update({
+      where: { id: storeId },
+      data:  { fulfillmentMode: dto.mode },
+    });
+    return { success: true, mode: dto.mode };
   }
 
   @Get('connections')

@@ -9,6 +9,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { StoreContextService } from '../../common/services/store-context.service';
 
 class CreateShopSectionDto {
   @ApiProperty()
@@ -30,34 +31,19 @@ class UpdateShopSectionDto {
   sortOrder?: number;
 }
 
-/** Returns the storeId the caller owns, or null if they are a super-admin. */
-async function resolveStoreId(
-  prisma: PrismaService,
-  user: { sub?: string; id?: string; role?: string },
-): Promise<string | null> {
-  if (user.role === 'SUPER_ADMIN') return null;
-
-  const userId = user.sub ?? user.id;
-  const dbUser = await prisma.user.findUnique({
-    where:  { id: userId },
-    select: { storeId: true },
-  });
-  if (!dbUser?.storeId) {
-    throw new ForbiddenException('No store associated with your account');
-  }
-  return dbUser.storeId;
-}
-
 @AdminController('shop-sections')
 export class AdminShopSectionsController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storeContext: StoreContextService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List shop sections (scoped to own store for shop owners)' })
   async findAll(@Request() req: any) {
-    const storeId = await resolveStoreId(this.prisma, req.user);
+    const context = await this.storeContext.resolve(req);
     return this.prisma.shopSection.findMany({
-      where:   storeId ? { storeId } : undefined,
+      where:   context.storeId ? { storeId: context.storeId } : undefined,
       orderBy: { sortOrder: 'asc' },
       include: { _count: { select: { products: true } } },
     });
@@ -67,17 +53,17 @@ export class AdminShopSectionsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a shop section' })
   async create(@Request() req: any, @Body() dto: CreateShopSectionDto) {
-    const storeId = await resolveStoreId(this.prisma, req.user);
+    const context = await this.storeContext.resolve(req);
     return this.prisma.shopSection.create({
-      data: { ...dto, ...(storeId ? { storeId } : {}) },
+      data: { ...dto, ...(context.storeId ? { storeId: context.storeId } : {}) },
     });
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a shop section' })
   async update(@Request() req: any, @Param('id') id: string, @Body() dto: UpdateShopSectionDto) {
-    const storeId = await resolveStoreId(this.prisma, req.user);
-    await this.assertOwnership(id, storeId);
+    const context = await this.storeContext.resolve(req);
+    await this.assertOwnership(id, context.storeId);
     return this.prisma.shopSection.update({ where: { id }, data: dto });
   }
 
@@ -85,8 +71,8 @@ export class AdminShopSectionsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a shop section (detaches its products)' })
   async delete(@Request() req: any, @Param('id') id: string) {
-    const storeId = await resolveStoreId(this.prisma, req.user);
-    await this.assertOwnership(id, storeId);
+    const context = await this.storeContext.resolve(req);
+    await this.assertOwnership(id, context.storeId);
     await this.prisma.product.updateMany({
       where: { shopSectionId: id },
       data:  { shopSectionId: null },
@@ -95,7 +81,7 @@ export class AdminShopSectionsController {
   }
 
   private async assertOwnership(id: string, storeId: string | null) {
-    if (!storeId) return; // super-admin: no ownership check
+    if (!storeId) return; // platform context: no ownership check
     const section = await this.prisma.shopSection.findUnique({
       where:  { id },
       select: { storeId: true },

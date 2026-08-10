@@ -32,24 +32,14 @@ import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { Role } from '@ezihubb/constants';
-import { PrismaService } from '../../prisma/prisma.service';
-
-interface JwtLike { sub?: string; id?: string; role?: string }
-
-async function resolveSellerStoreId(prisma: PrismaService, user: JwtLike): Promise<string | null> {
-  if (user.role === 'SUPER_ADMIN') return null;
-  const userId = user.sub ?? user.id;
-  if (!userId) return null;
-  const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { storeId: true } });
-  return dbUser?.storeId ?? null;
-}
+import { StoreContextService } from '../../common/services/store-context.service';
 
 @ApiTags('promotions')
 @Controller('promotions')
 export class PromotionsController {
   constructor(
     private readonly promotionsService: PromotionsService,
-    private readonly prisma: PrismaService,
+    private readonly storeContext: StoreContextService,
   ) {}
 
   // ── Public ───────────────────────────────────────────────────────────────────
@@ -70,16 +60,18 @@ export class PromotionsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create a promotion/coupon' })
-  async create(@Body() dto: CreatePromotionDto): Promise<PromotionResponseDto> {
-    return this.promotionsService.create(dto);
+  async create(@Req() req: Request, @Body() dto: CreatePromotionDto): Promise<PromotionResponseDto> {
+    const context = await this.storeContext.resolve(req);
+    return this.promotionsService.create(dto, context.storeId ?? undefined);
   }
 
   @Get('page-stats')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get aggregate stats for the promotions dashboard page' })
-  async getPageStats() {
-    return this.promotionsService.getPageStats();
+  async getPageStats(@Req() req: Request) {
+    const context = await this.storeContext.resolve(req);
+    return this.promotionsService.getPageStats(context.storeId ?? undefined);
   }
 
   @Get()
@@ -87,16 +79,17 @@ export class PromotionsController {
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'List all promotions (admin)' })
   async findAll(@Req() req: Request, @Query() query: PaginationDto): Promise<PaginatedResult<PromotionResponseDto>> {
-    const storeId = await resolveSellerStoreId(this.prisma, req.user as JwtLike);
-    return this.promotionsService.findAll(query, storeId ?? undefined);
+    const context = await this.storeContext.resolve(req);
+    return this.promotionsService.findAll(query, context.storeId ?? undefined);
   }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get a promotion by ID' })
-  async findOne(@Param('id') id: string): Promise<PromotionResponseDto> {
-    return this.promotionsService.findOne(id);
+  async findOne(@Req() req: Request, @Param('id') id: string): Promise<PromotionResponseDto> {
+    const context = await this.storeContext.resolve(req);
+    return this.promotionsService.findOne(id, context.storeId ?? undefined);
   }
 
   @Put(':id')
@@ -104,10 +97,12 @@ export class PromotionsController {
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update a promotion' })
   async update(
+    @Req() req: Request,
     @Param('id') id: string,
     @Body() dto: UpdatePromotionDto,
   ): Promise<PromotionResponseDto> {
-    return this.promotionsService.update(id, dto);
+    const context = await this.storeContext.resolve(req);
+    return this.promotionsService.update(id, dto, context.storeId ?? undefined);
   }
 
   @Patch(':id')
@@ -115,10 +110,12 @@ export class PromotionsController {
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Partially update a promotion (including isActive toggle)' })
   async patch(
+    @Req() req: Request,
     @Param('id') id: string,
     @Body() dto: UpdatePromotionDto & { isActive?: boolean },
   ): Promise<PromotionResponseDto> {
-    return this.promotionsService.patch(id, dto);
+    const context = await this.storeContext.resolve(req);
+    return this.promotionsService.patch(id, dto, context.storeId ?? undefined);
   }
 
   @Delete(':id')
@@ -126,23 +123,26 @@ export class PromotionsController {
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a promotion' })
-  async remove(@Param('id') id: string): Promise<void> {
-    return this.promotionsService.remove(id);
+  async remove(@Req() req: Request, @Param('id') id: string): Promise<void> {
+    const context = await this.storeContext.resolve(req);
+    return this.promotionsService.remove(id, context.storeId ?? undefined);
   }
 
   @Patch(':id/deactivate')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Deactivate a promotion' })
-  async deactivate(@Param('id') id: string): Promise<PromotionResponseDto> {
-    return this.promotionsService.deactivate(id);
+  async deactivate(@Req() req: Request, @Param('id') id: string): Promise<PromotionResponseDto> {
+    const context = await this.storeContext.resolve(req);
+    return this.promotionsService.deactivate(id, context.storeId ?? undefined);
   }
 
   @Get(':id/stats')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get usage statistics for a promotion' })
-  async getStats(@Param('id') id: string): Promise<PromotionStatsDto> {
-    return this.promotionsService.getStats(id);
+  async getStats(@Req() req: Request, @Param('id') id: string): Promise<PromotionStatsDto> {
+    const context = await this.storeContext.resolve(req);
+    return this.promotionsService.getStats(id, context.storeId ?? undefined);
   }
 }
