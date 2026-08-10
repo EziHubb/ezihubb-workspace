@@ -13,6 +13,8 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
+import { IsEnum } from 'class-validator';
+import { ProductType } from '@prisma/client';
 import { EtsyVariationPropertyDto } from './etsy-variation-summary.dto';
 
 export class CreateVariantDto {
@@ -101,6 +103,11 @@ export class CreateProductDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ enum: ProductType, default: ProductType.PHYSICAL, description: 'PHYSICAL (shippable) or DIGITAL (downloadable file)' })
+  @IsOptional()
+  @IsEnum(ProductType)
+  productType?: ProductType;
 
   @ApiPropertyOptional({ default: false })
   @IsOptional()

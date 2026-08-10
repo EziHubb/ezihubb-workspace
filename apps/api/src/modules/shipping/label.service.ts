@@ -86,10 +86,12 @@ export class LabelService {
       return this.formatRates(existing.rates ?? []);
     }
 
-    // shippingAddress may be a JSON blob; extract street1 from it
-    let street1 = order.shippingAddress;
+    // shippingAddress may be a JSON blob; extract street1 from it. Label
+    // purchasing is a physical-shipping-only feature — a digital order (whose
+    // shipping columns are null) would never reach this code path.
+    let street1 = order.shippingAddress ?? '';
     try {
-      const parsed = JSON.parse(order.shippingAddress) as { addressLine1?: string };
+      const parsed = JSON.parse(street1) as { addressLine1?: string };
       if (parsed.addressLine1) street1 = parsed.addressLine1;
     } catch { /* use raw string as street1 */ }
 

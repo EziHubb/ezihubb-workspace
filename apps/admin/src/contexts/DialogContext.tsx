@@ -13,12 +13,12 @@ import { X, AlertTriangle, Info, CheckCircle, Loader2 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export interface AlertOptions   { title?: string }
+export interface AlertOptions   { title?: string; variant?: 'info' | 'error' }
 export interface ConfirmOptions { title?: string; confirmLabel?: string; destructive?: boolean }
 export interface PromptOptions  { title?: string; placeholder?: string; defaultValue?: string }
 
 type DialogState =
-  | { type: 'alert';   title: string; message: string;                                           resolve: () => void }
+  | { type: 'alert';   title: string; message: string; variant: 'info' | 'error';                resolve: () => void }
   | { type: 'confirm'; title: string; message: string; confirmLabel: string; destructive: boolean; resolve: (ok: boolean) => void }
   | { type: 'prompt';  title: string; message: string; placeholder: string; defaultValue: string; resolve: (val: string | null) => void }
   | { type: 'preview'; title: string; url: string;                                               resolve: () => void }
@@ -50,7 +50,8 @@ export function DialogProvider({ children }: { children: ReactNode }) {
     return new Promise((resolve) => {
       setState({
         type: 'alert',
-        title:   opts.title ?? 'Notice',
+        title:   opts.title ?? (opts.variant === 'error' ? 'Error' : 'Notice'),
+        variant: opts.variant ?? 'info',
         message,
         resolve: () => { setState(null); resolve(); },
       });
@@ -274,19 +275,18 @@ function AppDialog({ state }: { state: NonNullable<DialogState> }) {
 
 function DialogIconBadge({ state }: { state: NonNullable<DialogState> }) {
   const isDestructive = state.type === 'confirm' && state.destructive;
+  const isErrorAlert  = state.type === 'alert' && state.variant === 'error';
 
   const bg =
-    isDestructive                ? 'bg-red-500/10'
-    : state.type === 'confirm'   ? 'bg-amber-500/10'
-    : state.type === 'alert'     ? 'bg-primary/10'
-    :                              'bg-primary/10';
+    isDestructive || isErrorAlert ? 'bg-red-500/10'
+    : state.type === 'confirm'    ? 'bg-amber-500/10'
+    :                                'bg-primary/10';
 
   return (
     <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${bg}`}>
-      {isDestructive       ? <AlertTriangle className="w-6 h-6 text-red-500" />    :
-       state.type === 'confirm' ? <AlertTriangle className="w-6 h-6 text-amber-500" /> :
-       state.type === 'alert'   ? <Info           className="w-6 h-6 text-primary"   /> :
-                                  <Info           className="w-6 h-6 text-primary"   />
+      {isDestructive || isErrorAlert ? <AlertTriangle className="w-6 h-6 text-red-500" />    :
+       state.type === 'confirm'      ? <AlertTriangle className="w-6 h-6 text-amber-500" /> :
+                                        <Info           className="w-6 h-6 text-primary"   />
       }
     </div>
   );

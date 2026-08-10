@@ -12,6 +12,7 @@ const EMPTY_DEFAULTS: ProductEditFormValues = {
   name:                 '',
   description:          '',
   primaryCategoryId:    '',
+  productType:          'PHYSICAL',
   tags:                 [],
   materials:            [],
   primaryColors:        [],
@@ -55,7 +56,9 @@ export function buildDefaultValues(
 
   return {
     // Photo & Video
-    imageIds:          safeArr(product.images).sort((a, b) => a.sortOrder - b.sortOrder).map((i) => i.id),
+    // Print files travel with the product but are never part of the shopper
+    // gallery — only MOCKUP rows belong in imageIds.
+    imageIds:          safeArr(product.images).filter((i) => i.type !== 'PRINT_FILE').sort((a, b) => a.sortOrder - b.sortOrder).map((i) => i.id),
     videoUrls:         safeArr(product.videoUrls),
     thumbnailCropData: product.thumbnailCropData ?? null,
     imageAltTexts:     detail?.imageAltTexts     ?? {},
@@ -65,6 +68,7 @@ export function buildDefaultValues(
     name:              product.name,
     description:       safeStr(detail?.richDescription ?? product.description),
     primaryCategoryId: safeStr(product.primaryCategoryId ?? product.categoryId),
+    productType:       product.productType ?? 'PHYSICAL',
 
     // Item Options
     tags:            safeArr(product.productTags).map((pt) => pt.tag.name),

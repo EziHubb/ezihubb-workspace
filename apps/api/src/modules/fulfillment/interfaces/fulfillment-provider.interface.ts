@@ -21,8 +21,10 @@ export interface FulfillmentLineItem {
   quantity:           number;
   /** Product display name — required by some providers' order-create payload (e.g. Merchize); Printify ignores it. */
   title?:             string;
-  /** Preview/print image URL — required by some providers' order-create payload (e.g. Merchize); Printify ignores it. */
+  /** Preview/mockup image URL — required by some providers' order-create payload (e.g. Merchize); Printify ignores it. This is a photo of the finished product, NOT print-ready artwork — see printFiles below. */
   imageUrl?:          string;
+  /** Isolated, print-ready design artwork per side — required by Merchize's design_front/back/sleeve/hood fields; Printify ignores this entirely (Printify sellers configure print areas on Printify's own dashboard). */
+  printFiles?:        Partial<Record<'FRONT' | 'BACK' | 'SLEEVE' | 'HOOD', string>>;
 }
 
 export interface ShopProductVariantSummary {

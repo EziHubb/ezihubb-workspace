@@ -28,13 +28,13 @@ import {
 import { memoryStorage } from 'multer';
 import { ProductsService } from './products.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ProductStatus } from '@prisma/client';
+import { ProductStatus, PrintSide } from '@prisma/client';
 import { RequireArchivedGuard } from './guards/require-archived.guard';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductResponseDto } from './dto/product-response.dto';
-import { ProductImageResponseDto } from './dto/product-response.dto';
+import { ProductImageResponseDto, DigitalFileResponseDto } from './dto/product-response.dto';
 import { ProductListItemDto } from './dto/product-list-item.dto';
 import { ParseCuidPipe } from '../../common/pipes/parse-cuid.pipe';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
@@ -54,7 +54,7 @@ import {
   CustomizationTemplateDto,
   SetAttributesDto,
 } from './dto/create-product-detail.dto';
-import { ReorderImagesDto, AttachImagesDto, DeleteVideoDto } from './dto/product-image.dto';
+import { ReorderImagesDto, AttachImagesDto, DeleteVideoDto, GeneratePrintFileDto, ApprovePrintFileDto, AttachPrintFileDto, UploadDigitalFilesDto, ReorderDigitalFilesDto } from './dto/product-image.dto';
 
 // ── Variation DTOs ────────────────────────────────────────────────────────────
 
@@ -132,8 +132,13 @@ class BulkExportDto {
   @IsOptional() @IsArray() @IsString({ each: true }) @ArrayMaxSize(2000) ids?: string[];
 }
 
-@AdminController('products')
+// Order matters: NestJS merges class-level @UseGuards() calls in the order
+// the decorators execute (bottom-up), so ProductOwnershipGuard must be
+// declared ABOVE @AdminController — otherwise it runs before JwtAuthGuard
+// populates req.user, and every request (even a SUPER_ADMIN's) 403s with
+// "Not authenticated" before RolesGuard/JwtAuthGuard ever get to run.
 @UseGuards(ProductOwnershipGuard)
+@AdminController('products')
 export class AdminProductsController {
   constructor(
     private readonly productsService: ProductsService,
@@ -348,13 +353,14 @@ export class AdminProductsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: '[Admin] Permanently delete a product — must already be Archived' })
   async delete(@Req() req: Request, @Param('id', ParseCuidPipe) id: string): Promise<void> {
-    await this.productsService.delete(id);
+    const deleted = await this.productsService.delete(id);
     const userId = (req.user as { sub: string }).sub;
     this.auditLog.log({
       userId,
       action:     'DELETE',
       entityType: 'Product',
       entityId:   id,
+      before:     deleted,
       ip:         req.ip,
       userAgent:  req.headers['user-agent'],
     });
@@ -416,6 +422,98 @@ export class AdminProductsController {
     @Body() dto: ReorderImagesDto,
   ): Promise<void> {
     return this.productsService.reorderImages(id, dto.orderedIds);
+  }
+
+  // ─── Print files (isolated design artwork for POD fulfillment) ───────────
+
+  // POST /admin/products/:id/print-files/generate
+  @Post(':id/print-files/generate')
+  @ApiOperation({ summary: '[Admin] Generate a print file by removing the background from one of this product\'s own mockup photos' })
+  generatePrintFile(
+    @Param('id', ParseCuidPipe) id: string,
+    @Body() dto: GeneratePrintFileDto,
+  ): Promise<{ jobId: string }> {
+    return this.productsService.generatePrintFileFromImage(id, dto.sourceImageId, dto.printSide);
+  }
+
+  // GET /admin/products/:id/print-files/generate/:jobId
+  @Get(':id/print-files/generate/:jobId')
+  @ApiOperation({ summary: '[Admin] Poll a print-file generation job' })
+  getPrintFileJobStatus(@Param('jobId') jobId: string) {
+    return this.productsService.getPrintFileJobStatus(jobId);
+  }
+
+  // POST /admin/products/:id/print-files/:printSide/approve
+  @Post(':id/print-files/:printSide/approve')
+  @ApiOperation({ summary: '[Admin] Approve a generated print-file preview, saving it as the active print file for that side' })
+  approvePrintFile(
+    @Param('id', ParseCuidPipe) id: string,
+    @Param('printSide') printSide: PrintSide,
+    @Body() dto: ApprovePrintFileDto,
+  ): Promise<ProductImageResponseDto> {
+    return this.productsService.approvePrintFile(id, dto.processedKey, printSide);
+  }
+
+  // POST /admin/products/:id/print-files — manual upload/replace fallback
+  @Post(':id/print-files')
+  @ApiOperation({ summary: '[Admin] Manually attach a real print file (for sellers who already have one)' })
+  attachPrintFile(
+    @Param('id', ParseCuidPipe) id: string,
+    @Body() dto: AttachPrintFileDto,
+  ): Promise<ProductImageResponseDto> {
+    return this.productsService.attachPrintFile(id, dto.url, dto.printSide);
+  }
+
+  // DELETE /admin/products/:id/print-files/:printSide
+  @Delete(':id/print-files/:printSide')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: '[Admin] Remove the print file for one side' })
+  deletePrintFile(
+    @Param('id', ParseCuidPipe) id: string,
+    @Param('printSide') printSide: PrintSide,
+  ): Promise<void> {
+    return this.productsService.deletePrintFile(id, printSide);
+  }
+
+  // ─── Digital files (the sold deliverable for DIGITAL products) ───────────
+
+  // POST /admin/products/:id/digital-files
+  @Post(':id/digital-files')
+  @UseInterceptors(FilesInterceptor('files', 20, { storage: memoryStorage() }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { files: { type: 'array', items: { type: 'string', format: 'binary' } }, variantId: { type: 'string' } } } })
+  @ApiOperation({ summary: '[Admin] Upload digital deliverable files (max 50 MB each, up to 20 at once)' })
+  @ApiResponse({ status: 201, type: [DigitalFileResponseDto] })
+  @HttpCode(HttpStatus.CREATED)
+  uploadDigitalFiles(
+    @Param('id', ParseCuidPipe) id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() dto: UploadDigitalFilesDto,
+  ): Promise<DigitalFileResponseDto[]> {
+    return this.productsService.uploadDigitalFiles(id, files, dto.variantId);
+  }
+
+  // DELETE /admin/products/:id/digital-files/:fileId
+  @Delete(':id/digital-files/:fileId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: '[Admin] Delete a digital deliverable file. Returns 409 ERR_HAS_PURCHASES if buyers already own it — pass ?force=true to delete anyway.' })
+  deleteDigitalFile(
+    @Param('id', ParseCuidPipe) id: string,
+    @Param('fileId', ParseCuidPipe) fileId: string,
+    @Query('force') force?: string,
+  ): Promise<void> {
+    return this.productsService.deleteDigitalFile(id, fileId, { force: force === 'true' });
+  }
+
+  // PATCH /admin/products/:id/digital-files/reorder
+  @Patch(':id/digital-files/reorder')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: '[Admin] Reorder digital deliverable files' })
+  reorderDigitalFiles(
+    @Param('id', ParseCuidPipe) id: string,
+    @Body() dto: ReorderDigitalFilesDto,
+  ): Promise<void> {
+    return this.productsService.reorderDigitalFiles(id, dto.orderedIds);
   }
 
   // POST /admin/products/:id/videos

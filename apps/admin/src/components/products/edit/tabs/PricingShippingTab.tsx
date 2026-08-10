@@ -357,9 +357,10 @@ type AnyTabId = 'photo-video' | 'item-details' | 'item-options' | 'pricing-shipp
 interface PricingShippingTabProps {
   product:      AdminProductDto;
   onSwitchTab?: (tab: AnyTabId) => void;
+  isDigital?:   boolean;
 }
 
-export function PricingShippingTab({ product, onSwitchTab }: PricingShippingTabProps) {
+export function PricingShippingTab({ product, onSwitchTab, isDigital }: PricingShippingTabProps) {
   const { register, watch, setValue } = useFormContext<ProductEditFormValues>();
 
   const basePrice        = watch('basePrice');
@@ -457,37 +458,41 @@ export function PricingShippingTab({ product, onSwitchTab }: PricingShippingTabP
         </TabSection>
 
         {/* ── Shipping, Processing & Returns (Images 11-12) ────────────── */}
-        <TabSection
-          title="Shipping, processing, and returns"
-          description="Give clear expectations about delivery time and cost."
-          link={{ label: 'Shipping settings', href: '/shipping' }}
-        >
-          <div className="space-y-7">
-            {/* Processing profile */}
-            <FormField label="Processing profile" required hint="How long does it take to make and pack your item?">
-              <ProcessingProfileCard
-                profileId={profileId}
-                onChange={(id) => setValue('processingProfileId', id, { shouldDirty: true })}
-              />
-            </FormField>
+        {/* Digital downloads have no physical shipping/fulfillment — this
+            entire section only applies to physical products. */}
+        {!isDigital && (
+          <TabSection
+            title="Shipping, processing, and returns"
+            description="Give clear expectations about delivery time and cost."
+            link={{ label: 'Shipping settings', href: '/shipping' }}
+          >
+            <div className="space-y-7">
+              {/* Processing profile */}
+              <FormField label="Processing profile" required hint="How long does it take to make and pack your item?">
+                <ProcessingProfileCard
+                  profileId={profileId}
+                  onChange={(id) => setValue('processingProfileId', id, { shouldDirty: true })}
+                />
+              </FormField>
 
-            {/* Shipping option */}
-            <FormField label="Shipping option" required hint="Which shipping profile should apply to this listing?">
-              <ShippingProfileCard
-                profileId={shippingId}
-                onChange={(id) => setValue('shippingProfileId', id, { shouldDirty: true })}
-              />
-            </FormField>
+              {/* Shipping option */}
+              <FormField label="Shipping option" required hint="Which shipping profile should apply to this listing?">
+                <ShippingProfileCard
+                  profileId={shippingId}
+                  onChange={(id) => setValue('shippingProfileId', id, { shouldDirty: true })}
+                />
+              </FormField>
 
-            {/* Returns */}
-            <FormField label="Returns and exchanges" required>
-              <ReturnPolicyCard
-                policy={returnPolicy as ReturnPolicy}
-                onChange={(p) => setValue('returnPolicy', p, { shouldDirty: true })}
-              />
-            </FormField>
-          </div>
-        </TabSection>
+              {/* Returns */}
+              <FormField label="Returns and exchanges" required>
+                <ReturnPolicyCard
+                  policy={returnPolicy as ReturnPolicy}
+                  onChange={(p) => setValue('returnPolicy', p, { shouldDirty: true })}
+                />
+              </FormField>
+            </div>
+          </TabSection>
+        )}
       </div>
     </div>
   );

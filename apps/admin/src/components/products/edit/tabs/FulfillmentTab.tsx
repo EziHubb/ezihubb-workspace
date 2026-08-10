@@ -5,6 +5,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ExternalLink, Package, X, Trash2, Plug } from 'lucide-react';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { PrintFilesSection } from './PrintFilesSection';
+import type { ProductImage } from '../types';
 
 // ─── Layout primitives (mirrors PricingShippingTab.tsx's conventions) ─────────
 
@@ -120,7 +122,7 @@ function ShopProductPickerModal({ connectionId, onSelect, onClose }: {
 
 // ─── Main tab ─────────────────────────────────────────────────────────────────
 
-export function FulfillmentTab({ productId }: { productId?: string }) {
+export function FulfillmentTab({ productId, images = [] }: { productId?: string; images?: ProductImage[] }) {
   const qc = useQueryClient();
   const [pickerConnectionId, setPickerConnectionId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -140,6 +142,7 @@ export function FulfillmentTab({ productId }: { productId?: string }) {
     select:   (all) => all.filter((m) => m.productId === productId),
   });
   const mapping = mappings[0]; // whole-product mapping (single variant flows) for phase 1
+  const mappedConnection = connections.find((c) => c.id === mapping?.connectionId);
 
   const handleSelect = async (connectionId: string, product: ShopProduct, variant: ShopProductVariant) => {
     if (!productId) return;
@@ -225,6 +228,15 @@ export function FulfillmentTab({ productId }: { productId?: string }) {
             </div>
           )}
         </TabSection>
+
+        {mapping && mappedConnection?.provider === 'MERCHIZE' && (
+          <TabSection
+            title="Print files"
+            description="Merchize prints from an isolated design file, not your catalog photos — set one up here so orders push automatically."
+          >
+            <PrintFilesSection productId={productId} images={images} />
+          </TabSection>
+        )}
       </div>
 
       {pickerConnectionId && (

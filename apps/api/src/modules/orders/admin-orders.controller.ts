@@ -27,8 +27,10 @@ import { StoreContextService } from '../../common/services/store-context.service
 import { OrderOwnershipGuard } from '../../common/guards/order-ownership.guard';
 import { PrismaService } from '../../prisma/prisma.service';
 
-@AdminController('orders')
+// See the matching comment in admin-products.controller.ts — must stay
+// above @AdminController so JwtAuthGuard/RolesGuard run before this guard.
 @UseGuards(OrderOwnershipGuard)
+@AdminController('orders')
 export class AdminOrdersController {
   constructor(
     private readonly ordersService: OrdersService,

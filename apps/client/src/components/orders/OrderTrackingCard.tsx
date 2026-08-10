@@ -10,6 +10,7 @@ import { apiClient } from '../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { OrderStatusTimeline } from './OrderStatusTimeline';
 import { CancelCountdown } from './CancelCountdown';
+import { DigitalDownloadsPanel } from './DigitalDownloadsPanel';
 import { fmtAmount, safeArr } from '@ezihubb/utils';
 
 // ── Status rank ───────────────────────────────────────────────────────────────
@@ -159,8 +160,13 @@ export function OrderTrackingCard({ order, guestEmail, onCancel }: OrderTracking
           orientation="vertical"
         />
 
+        {/* ── Digital downloads — replaces the shipment tracker entirely ── */}
+        {order.isDigital && (
+          <DigitalDownloadsPanel items={order.items} guestEmail={guestEmail} />
+        )}
+
         {/* ── Shipping info ── */}
-        {showShipping && (
+        {!order.isDigital && showShipping && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-sm px-4 py-3">
               <Package className="w-4 h-4 text-emerald-600 shrink-0" />

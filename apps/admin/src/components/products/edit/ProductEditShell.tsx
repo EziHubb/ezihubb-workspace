@@ -25,6 +25,7 @@ import { PricingShippingTab } from './tabs/PricingShippingTab';
 import { HowItsMadeTab }      from './tabs/HowItsMadeTab';
 import { SettingsTab }        from './tabs/SettingsTab';
 import { FulfillmentTab }     from './tabs/FulfillmentTab';
+import { DigitalFilesTab }    from './tabs/DigitalFilesTab';
 
 // ── Tab config ────────────────────────────────────────────────────────────────
 
@@ -35,14 +36,23 @@ const ALL_TABS = [
   { id: 'pricing-shipping', label: 'Pricing & Shipping' },
   { id: 'how-its-made',     label: "How It's Made"      },
   { id: 'fulfillment',      label: 'Fulfillment'        },
+  { id: 'digital-files',    label: 'Digital Files'      },
   { id: 'settings',         label: 'Settings'           },
 ] as const;
 
 type TabId = (typeof ALL_TABS)[number]['id'];
 
-// Fulfillment mapping needs a real product id — hide it until the listing is saved once.
-const EDIT_TABS   = ALL_TABS;
-const CREATE_TABS = ALL_TABS.filter((t) => t.id !== 'fulfillment');
+// Fulfillment mapping and digital-files upload both need a real product id —
+// hidden until the listing is saved once. how-its-made/fulfillment are
+// physical-only; digital-files is digital-only — filtered per productType below.
+function tabsFor(mode: 'create' | 'edit', productType: 'PHYSICAL' | 'DIGITAL'): typeof ALL_TABS[number][] {
+  return ALL_TABS.filter((t) => {
+    if (mode === 'create' && (t.id === 'fulfillment' || t.id === 'digital-files')) return false;
+    if (productType === 'DIGITAL' && (t.id === 'how-its-made' || t.id === 'fulfillment')) return false;
+    if (productType === 'PHYSICAL' && t.id === 'digital-files') return false;
+    return true;
+  });
+}
 
 // ── MoreMenu ─────────────────────────────────────────────────────────────────
 
@@ -106,9 +116,15 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
   const mode   = product?.id ? 'edit' : 'create';
   const isCopy = !product?.id && !!copyFrom?.id;
 
-  const TABS = mode === 'create' ? CREATE_TABS : EDIT_TABS;
+  const form = useForm<ProductEditFormValues>({
+    defaultValues: isCopy
+      ? buildCopyDefaultValues(copyFrom!, copyFromDetail)
+      : buildDefaultValues(product, detail),
+  });
+  const productType = form.watch('productType') ?? 'PHYSICAL';
+  const TABS = tabsFor(mode, productType);
 
-  const [activeTab,  setActiveTab]  = useState<TabId>(TABS[0].id);
+  const [activeTab,  setActiveTab]  = useState<TabId>(ALL_TABS[0].id);
   const [isDirty,    setIsDirty]    = useState(false);
   const [saved,      setSaved]      = useState(false);
   const [saveError,  setSaveError]  = useState<string | null>(null);
@@ -199,12 +215,6 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
   }, [mode, draftId]);
 
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
-
-  const form = useForm<ProductEditFormValues>({
-    defaultValues: isCopy
-      ? buildCopyDefaultValues(copyFrom!, copyFromDetail)
-      : buildDefaultValues(product, detail),
-  });
 
   useEffect(() => {
     const sub = form.watch(() => { setIsDirty(true); setSaved(false); setSaveError(null); });
@@ -461,21 +471,36 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
             <PricingShippingTab
               product={tabProduct ?? { id: '' } as unknown as AdminProductDto}
               onSwitchTab={scrollToSection}
+              isDigital={productType === 'DIGITAL'}
             />
           </div>
           <div className="h-px bg-border" />
 
-          {/* How It's Made */}
-          <div ref={(el) => { sectionRefs.current['how-its-made'] = el; }}>
-            <HowItsMadeTab productId={tabProduct?.id ?? product?.id} />
-          </div>
-          <div className="h-px bg-border" />
+          {/* How It's Made — physical-only */}
+          {productType === 'PHYSICAL' && (
+            <>
+              <div ref={(el) => { sectionRefs.current['how-its-made'] = el; }}>
+                <HowItsMadeTab productId={tabProduct?.id ?? product?.id} />
+              </div>
+              <div className="h-px bg-border" />
+            </>
+          )}
 
-          {/* Fulfillment */}
-          {mode === 'edit' && (
+          {/* Fulfillment — physical-only, needs a real product id */}
+          {mode === 'edit' && productType === 'PHYSICAL' && (
             <>
               <div ref={(el) => { sectionRefs.current['fulfillment'] = el; }}>
-                <FulfillmentTab productId={tabProduct?.id ?? product?.id} />
+                <FulfillmentTab productId={tabProduct?.id ?? product?.id} images={tabProduct?.images ?? []} />
+              </div>
+              <div className="h-px bg-border" />
+            </>
+          )}
+
+          {/* Digital Files — digital-only, needs a real product id */}
+          {mode === 'edit' && productType === 'DIGITAL' && (
+            <>
+              <div ref={(el) => { sectionRefs.current['digital-files'] = el; }}>
+                <DigitalFilesTab productId={tabProduct?.id ?? product?.id} digitalFiles={tabProduct?.digitalFiles ?? []} />
               </div>
               <div className="h-px bg-border" />
             </>

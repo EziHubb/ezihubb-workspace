@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ProductImageType, PrintSide, ProductType } from '@prisma/client';
 
 export class VariantResponseDto {
   @ApiProperty() id: string;
@@ -16,6 +17,19 @@ export class ProductImageResponseDto {
   @ApiPropertyOptional() altText: string | null;
   @ApiProperty() isPrimary: boolean;
   @ApiProperty() sortOrder: number;
+  @ApiProperty({ enum: ProductImageType }) type: ProductImageType;
+  @ApiPropertyOptional({ enum: PrintSide }) printSide: PrintSide | null;
+}
+
+// Deliberately no storageKey/URL — the raw deliverable is never exposed to
+// any client, only fetched server-side by the download endpoint.
+export class DigitalFileResponseDto {
+  @ApiProperty() id: string;
+  @ApiProperty() filename: string;
+  @ApiProperty() mimeType: string;
+  @ApiProperty() sizeBytes: number;
+  @ApiProperty() sortOrder: number;
+  @ApiPropertyOptional() variantId: string | null;
 }
 
 export class ProductTagResponseDto {
@@ -52,6 +66,7 @@ export class ProductResponseDto {
   @ApiPropertyOptional() compareAtPrice: number | null;
   @ApiProperty() isPersonalizable: boolean;
   @ApiProperty() isActive: boolean;
+  @ApiProperty({ enum: ProductType }) productType: ProductType;
   @ApiProperty() isFeatured: boolean;
   @ApiProperty() viewCount: number;
   @ApiProperty() soldCount: number;
@@ -61,6 +76,7 @@ export class ProductResponseDto {
   @ApiProperty({ type: [VariantResponseDto] }) variants: VariantResponseDto[];
   @ApiProperty({ type: [VariantOptionDto] }) variantOptions: VariantOptionDto[];
   @ApiProperty({ type: [ProductImageResponseDto] }) images: ProductImageResponseDto[];
+  @ApiPropertyOptional({ type: [DigitalFileResponseDto] }) digitalFiles?: DigitalFileResponseDto[];
   @ApiPropertyOptional({ type: [String] }) videoUrls?: string[];
   @ApiProperty({ type: [ProductTagResponseDto] }) tags: ProductTagResponseDto[];
   @ApiPropertyOptional() customizationConfig: Record<string, unknown> | null;

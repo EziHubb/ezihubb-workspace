@@ -60,11 +60,11 @@ export class AdminExportController {
         o.shippingCost.toString(),
         o.user?.email ?? '',
         csvEscape(customerName),
-        csvEscape(o.shippingName),
-        csvEscape(o.shippingAddress),
-        csvEscape(o.shippingCity),
+        csvEscape(o.shippingName ?? ''),
+        csvEscape(o.shippingAddress ?? ''),
+        csvEscape(o.shippingCity ?? ''),
         csvEscape(o.shippingState ?? ''),
-        csvEscape(o.shippingCountry),
+        csvEscape(o.shippingCountry ?? ''),
         fmtDateTimeVN(o.createdAt),
       ].join(','));
     }

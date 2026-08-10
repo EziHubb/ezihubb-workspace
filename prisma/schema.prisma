@@ -195,7 +195,7 @@ model User {
   // ── Seller fields ──────────────────────────────────────────────────────────
   isSeller    Boolean @default(false)
   storeId     String? // denormalized store id (set when approved); no FK to avoid circular ref
-  permissions Json?   // per-user granular permissions (ADMIN role only); null = use role defaults
+  permissions Json? // per-user granular permissions (ADMIN role only); null = use role defaults
 
   refreshTokens       RefreshToken[]
   emailVerifications  EmailVerification[]
@@ -327,24 +327,24 @@ model WishlistItem {
 // ─── Multi-vendor: Store & Plans ─────────────────────────────────────────────
 
 model Store {
-  id                 String        @id @default(cuid())
-  slug               String        @unique
-  name               String
-  description        String?       @db.Text
-  logoUrl            String?
-  bannerUrl          String?
-  ownerId            String        @unique
-  owner              User          @relation("StoreOwner", fields: [ownerId], references: [id])
-  status             StoreStatus   @default(PENDING)
+  id              String               @id @default(cuid())
+  slug            String               @unique
+  name            String
+  description     String?              @db.Text
+  logoUrl         String?
+  bannerUrl       String?
+  ownerId         String               @unique
+  owner           User                 @relation("StoreOwner", fields: [ownerId], references: [id])
+  status          StoreStatus          @default(PENDING)
   // ISO 3166-1 alpha-2 country code — used to determine regulatory operating
   // fee eligibility (see PlatformSettings.regulatoryFeeCountries). Nullable
   // for existing stores that predate this field; no fee applies until set.
-  country            String?       @db.VarChar(2)
-  adminNotes         String?       @db.Text
-  rejectedReason     String?
-  verifiedAt         DateTime?
-  approvedById       String?
-  fulfillmentMode    StoreFulfillmentMode @default(AUTOMATIC)
+  country         String?              @db.VarChar(2)
+  adminNotes      String?              @db.Text
+  rejectedReason  String?
+  verifiedAt      DateTime?
+  approvedById    String?
+  fulfillmentMode StoreFulfillmentMode @default(AUTOMATIC)
 
   // Denormalized stats
   totalProducts Int     @default(0)
@@ -360,16 +360,16 @@ model Store {
   strikeCount      Int              @default(0)
   strikeRecords    StrikeRecord[]
 
-  products            Product[]
-  categories          Category[]
-  storeOrders         StoreOrder[]
-  ledgerEntries       SellerLedgerEntry[]
-  payouts             SellerPayout[]
-  shopSections        ShopSection[]
-  shippingProfiles    ShippingProfile[]
-  promotions          Promotion[]
-  reviews             Review[]              @relation("StoreReviews")
-  conversations       Conversation[]
+  products         Product[]
+  categories       Category[]
+  storeOrders      StoreOrder[]
+  ledgerEntries    SellerLedgerEntry[]
+  payouts          SellerPayout[]
+  shopSections     ShopSection[]
+  shippingProfiles ShippingProfile[]
+  promotions       Promotion[]
+  reviews          Review[]            @relation("StoreReviews")
+  conversations    Conversation[]
 
   // ── Performance Score (NFT-03) ────────────────────────────────────────────
   performanceScore      Int?
@@ -380,7 +380,7 @@ model Store {
   scoreBadge            String?
   scoreLastCalculatedAt DateTime?
 
-  cartItems      CartItem[]           @relation("CartItemStore")
+  cartItems CartItem[] @relation("CartItemStore")
 
   fulfillmentConnections StoreFulfillmentConnection[]
   apiKeys                ApiKey[]
@@ -391,16 +391,16 @@ model Store {
 }
 
 model StoreOrder {
-  id             String        @id @default(cuid())
+  id             String                  @id @default(cuid())
   orderId        String
-  order          Order         @relation(fields: [orderId], references: [id])
+  order          Order                   @relation(fields: [orderId], references: [id])
   storeId        String
-  store          Store         @relation(fields: [storeId], references: [id])
-  status         OrderStatus   @default(PENDING_PAYMENT)
-  subtotal       Decimal       @db.Decimal(10, 2)
-  shippingCost   Decimal       @default(0) @db.Decimal(10, 2)
-  platformFee    Decimal       @db.Decimal(10, 2)
-  sellerEarnings Decimal       @db.Decimal(10, 2)
+  store          Store                   @relation(fields: [storeId], references: [id])
+  status         OrderStatus             @default(PENDING_PAYMENT)
+  subtotal       Decimal                 @db.Decimal(10, 2)
+  shippingCost   Decimal                 @default(0) @db.Decimal(10, 2)
+  platformFee    Decimal                 @db.Decimal(10, 2)
+  sellerEarnings Decimal                 @db.Decimal(10, 2)
   trackingNumber String?
   trackingUrl    String?
   carrier        String?
@@ -408,12 +408,12 @@ model StoreOrder {
   deliveredAt    DateTime?
   sellerNotes    String?
   payoutId       String?
-  payout         SellerPayout? @relation(fields: [payoutId], references: [id])
+  payout         SellerPayout?           @relation(fields: [payoutId], references: [id])
   items          OrderItem[]
   fulfillments   StoreOrderFulfillment[]
   ledgerEntries  SellerLedgerEntry[]
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
 
   @@unique([orderId, storeId])
   @@index([orderId])
@@ -469,25 +469,25 @@ model SellerLedgerEntry {
 model PlatformSettings {
   id                        String   @id @default("singleton")
   // ── Seller fees (modeled on Etsy's published fee schedule) ────────────────
-  transactionFeeRate        Decimal  @default(0.065)  @db.Decimal(5, 4) // 6.5% of subtotal + shipping
-  paymentProcessingFeeRate  Decimal  @default(0.05)   @db.Decimal(5, 4) // 5% of subtotal + shipping
-  paymentProcessingFixedFee Decimal  @default(0.25)   @db.Decimal(10, 2)
-  listingFee                Decimal  @default(0.20)   @db.Decimal(10, 2) // charged once per product created
+  transactionFeeRate        Decimal  @default(0.065) @db.Decimal(5, 4) // 6.5% of subtotal + shipping
+  paymentProcessingFeeRate  Decimal  @default(0.05) @db.Decimal(5, 4) // 5% of subtotal + shipping
+  paymentProcessingFixedFee Decimal  @default(0.25) @db.Decimal(10, 2)
+  listingFee                Decimal  @default(0.20) @db.Decimal(10, 2) // charged once per product created
   regulatoryFeeRate         Decimal  @default(0.0124) @db.Decimal(5, 4)
   regulatoryFeeCountries    String[] @default([]) // ISO 3166-1 alpha-2 codes; empty = applies to nobody
-  platformName            String   @default("EziHubb")
-  allowPublicRegistration Boolean  @default(false)
-  minPayoutAmount         Decimal  @default(100.00) @db.Decimal(10, 2)
-  payoutSchedule          String   @default("monthly")
-  maintenanceMode         Boolean  @default(false)
+  platformName              String   @default("EziHubb")
+  allowPublicRegistration   Boolean  @default(false)
+  minPayoutAmount           Decimal  @default(100.00) @db.Decimal(10, 2)
+  payoutSchedule            String   @default("monthly")
+  maintenanceMode           Boolean  @default(false)
   // Shipping settings
-  freeShippingEnabled     Boolean  @default(false)
-  freeShippingMinAmount   Decimal  @default(50.00) @db.Decimal(10, 2)
-  freeShippingZoneIds     String[] @default([])
-  defaultProcessingDays   Int      @default(2)
-  showEstimatedDelivery   Boolean  @default(true)
-  showCarrierInCheckout   Boolean  @default(true)
-  updatedAt               DateTime @updatedAt
+  freeShippingEnabled       Boolean  @default(false)
+  freeShippingMinAmount     Decimal  @default(50.00) @db.Decimal(10, 2)
+  freeShippingZoneIds       String[] @default([])
+  defaultProcessingDays     Int      @default(2)
+  showEstimatedDelivery     Boolean  @default(true)
+  showCarrierInCheckout     Boolean  @default(true)
+  updatedAt                 DateTime @updatedAt
 }
 
 // ─── Catalog ─────────────────────────────────────────────────────────────────
@@ -598,6 +598,7 @@ model Product {
   isPersonalizable    Boolean       @default(true)
   isActive            Boolean       @default(true)
   status              ProductStatus @default(ACTIVE)
+  productType         ProductType   @default(PHYSICAL)
   isFeatured          Boolean       @default(false)
   viewCount           Int           @default(0)
   soldCount           Int           @default(0)
@@ -676,6 +677,7 @@ model Product {
   variationGroups     VariationGroup[]
   variationSettings   VariationSettings?
   fulfillmentMappings ProductFulfillmentMapping[]
+  digitalFiles        DigitalFile[]
 
   @@unique([slug, storeId])
   @@index([categoryId])
@@ -703,18 +705,63 @@ model ProductVariant {
   orderItems          OrderItem[]
   customizationDrafts CustomizationDraft[]
   fulfillmentMappings ProductFulfillmentMapping[]
+  digitalFiles        DigitalFile[]
 
   @@index([productId])
 }
 
+// MOCKUP = a normal catalog/display photo, shown to shoppers.
+// PRINT_FILE = an isolated, background-removed design asset for one print
+// area — never shown to shoppers, only used when pushing a fulfillment
+// order to a POD provider (see FulfillmentLineItem.printFiles).
+enum ProductImageType {
+  MOCKUP
+  PRINT_FILE
+}
+
+enum PrintSide {
+  FRONT
+  BACK
+  SLEEVE
+  HOOD
+}
+
+enum ProductType {
+  PHYSICAL
+  DIGITAL
+}
+
 model ProductImage {
-  id        String  @id @default(cuid())
+  id        String           @id @default(cuid())
   productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
   url       String
   altText   String?
-  isPrimary Boolean @default(false)
-  sortOrder Int     @default(0)
+  isPrimary Boolean          @default(false)
+  sortOrder Int              @default(0)
+  type      ProductImageType @default(MOCKUP)
+  printSide PrintSide?
+
+  @@index([productId])
+  @@index([productId, type, printSide])
+}
+
+// A digital product's deliverable file (design file, PNG/SVG/PDF/etc — never
+// a physical item). storageKey is never surfaced in any API response; the raw
+// object is fetched server-side only, by the download endpoint, and stamped
+// per-buyer before streaming — see order-downloads.controller.ts.
+model DigitalFile {
+  id         String          @id @default(cuid())
+  productId  String
+  product    Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId  String? // null = applies to all variants
+  variant    ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  filename   String
+  storageKey String
+  mimeType   String
+  sizeBytes  Int
+  sortOrder  Int             @default(0)
+  createdAt  DateTime        @default(now())
 
   @@index([productId])
 }
@@ -896,8 +943,8 @@ model CartItem {
   previewUrl        String?
   createdAt         DateTime        @default(now())
 
-  storeId   String?
-  store     Store?  @relation("CartItemStore", fields: [storeId], references: [id])
+  storeId String?
+  store   Store?  @relation("CartItemStore", fields: [storeId], references: [id])
 
   @@index([cartId])
   @@index([productId])
@@ -912,14 +959,15 @@ model Order {
   user            User?       @relation("UserOrders", fields: [userId], references: [id], onDelete: SetNull)
   guestEmail      String?
   status          OrderStatus @default(PENDING_PAYMENT)
-  shippingName    String
-  shippingPhone   String
-  shippingAddress String
-  shippingCity    String
+  isDigital       Boolean     @default(false)
+  shippingName    String?
+  shippingPhone   String?
+  shippingAddress String?
+  shippingCity    String?
   shippingState   String?
-  shippingZip     String
-  shippingCountry String      @default("US")
-  shippingMethod  String
+  shippingZip     String?
+  shippingCountry String?     @default("US")
+  shippingMethod  String?
   shippingCost    Decimal     @db.Decimal(10, 2)
   subtotal        Decimal     @db.Decimal(10, 2)
   discountAmount  Decimal     @default(0) @db.Decimal(10, 2)
@@ -971,15 +1019,14 @@ model Order {
   easypostShipmentId String?
   labelUrl           String?
   labelPurchasedAt   DateTime?
-  labelCost          Decimal?  @db.Decimal(10, 2)
+  labelCost          Decimal?       @db.Decimal(10, 2)
   shippingRateId     String?
+  tracking           OrderTracking?
 
   @@index([userId])
   @@index([status])
   @@index([orderNumber])
   @@index([createdAt])
-  tracking        OrderTracking?
-
   @@index([affiliateId])
   @@index([referralUserId])
 }
@@ -1010,10 +1057,26 @@ model OrderItem {
   storeOrderId String?
   storeOrder   StoreOrder? @relation(fields: [storeOrderId], references: [id])
 
+  digitalDownloadLogs DigitalDownloadLog[]
+
   @@index([orderId])
   @@index([productId])
   @@index([storeOrderId])
   @@index([storeId])
+}
+
+// One row per digital-file download attempt — the audit trail backing
+// per-buyer traceability (see DigitalFile / order-downloads.controller.ts).
+model DigitalDownloadLog {
+  id           String    @id @default(cuid())
+  orderItemId  String
+  orderItem    OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  fileId       String
+  ip           String?
+  userAgent    String?
+  downloadedAt DateTime  @default(now())
+
+  @@index([orderItemId])
 }
 
 model OrderStatusHistory {
@@ -1769,28 +1832,28 @@ enum FulfillmentStatus {
 }
 
 model StoreFulfillmentConnection {
-  id                 String                      @id @default(cuid())
-  storeId            String
-  store              Store                       @relation(fields: [storeId], references: [id])
-  provider           FulfillmentProviderType
-  status             FulfillmentConnectionStatus @default(ACTIVE)
-  externalShopId     String
-  externalShopName   String?
-  encryptedApiKey    String                      @db.Text
+  id                     String                      @id @default(cuid())
+  storeId                String
+  store                  Store                       @relation(fields: [storeId], references: [id])
+  provider               FulfillmentProviderType
+  status                 FulfillmentConnectionStatus @default(ACTIVE)
+  externalShopId         String
+  externalShopName       String?
+  encryptedApiKey        String                      @db.Text
   // Printify has no webhook-signing mechanism (verified against their OpenAPI
   // spec — no secret/signature concept exists). Security instead relies on an
   // opaque per-connection token embedded in the registered callback URL itself:
   // POST /webhooks/printify/{webhookToken}.
-  webhookToken       String?                     @unique
-  externalWebhookIds String[]                    @default([])
+  webhookToken           String?                     @unique
+  externalWebhookIds     String[]                    @default([])
   // Provider-specific webhook verification secret (e.g. Merchize's
   // merchize-webhook-key value) — null for providers with no such concept
   // (Printify relies solely on the opaque webhookToken above).
-  encryptedWebhookSecret String?                 @db.Text
-  lastVerifiedAt     DateTime?
-  lastErrorMessage   String?
-  createdAt          DateTime                    @default(now())
-  updatedAt          DateTime                    @updatedAt
+  encryptedWebhookSecret String?                     @db.Text
+  lastVerifiedAt         DateTime?
+  lastErrorMessage       String?
+  createdAt              DateTime                    @default(now())
+  updatedAt              DateTime                    @updatedAt
 
   productMappings ProductFulfillmentMapping[]
   fulfillments    StoreOrderFulfillment[]

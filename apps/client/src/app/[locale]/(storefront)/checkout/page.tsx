@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { ChevronDown, ChevronUp } from 'lucide-react';
@@ -12,6 +12,7 @@ import type { ShippingOptionDto, CartDto } from '@ezihubb/types';
 import { StepIndicator }           from '../../../../components/checkout/StepIndicator';
 import { ShippingForm }             from '../../../../components/checkout/ShippingForm';
 import { DeliveryForm }             from '../../../../components/checkout/DeliveryForm';
+import { DigitalContactForm }       from '../../../../components/checkout/DigitalContactForm';
 import { PaymentForm }              from '../../../../components/checkout/PaymentForm';
 import { GiftOptionsSection }       from '../../../../components/checkout/GiftOptionsSection';
 import type { GiftOptions }         from '../../../../components/checkout/GiftOptionsSection';
@@ -261,6 +262,61 @@ export default function CheckoutPage() {
     }
   }, [cart, isLoading, router, locale]);
 
+  // ── Digital-only cart: no shipping address/method needed at all ───────────
+  // (mixed carts are rejected by checkout() server-side and warned about on
+  // the cart page — by the time a shopper reaches here the cart is uniform).
+  // Declared before the loading early-return since a hook below depends on it.
+  const isDigitalOnly =
+    !!cart &&
+    safeArr(cart.items).length > 0 &&
+    safeArr(cart.items).every((i) => (i.productType ?? 'PHYSICAL') === 'DIGITAL');
+
+  /** Creates the order directly, skipping the shipping-address/delivery-method
+   *  steps entirely — used for a digital-only cart. Guests still supply an
+   *  email (needed to look the order up later); logged-in users need nothing
+   *  at all, so this fires automatically for them (see effect below). */
+  const handleCreateDigitalOrder = useCallback(async (email?: string) => {
+    if (!cart) return;
+    setCompletedSteps((prev) => [...new Set([...prev, 1, 2])]);
+    setIsCreatingOrder(true);
+    setOrderError('');
+    try {
+      const res = await apiClient.post<{
+        orderId:      string;
+        orderNumber:  string;
+        clientSecret: string;
+        total:        number;
+      }>(API_ROUTES.ORDERS.CREATE, {
+        couponCode:    cart.couponCode ?? undefined,
+        guestEmail:    !isLoggedIn ? email : undefined,
+        affiliateCode: affiliateInfo?.code,
+      });
+      if (email) setGuestEmail(email);
+      setOrderId(res.orderId);
+      setOrderNumber(res.orderNumber);
+      setClientSecret(res.clientSecret);
+      setOrderTotal(safeNum(res.total));
+      hotjarEvent('checkout_step_payment');
+      setStep(3);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      setOrderError(err instanceof Error ? err.message : t('errors.createOrderFailed'));
+    } finally {
+      setIsCreatingOrder(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart, isLoggedIn, affiliateInfo?.code]);
+
+  // Logged-in + digital-only needs no user input at all — fire immediately.
+  // If the order was already created (e.g. shopper hit "back" from payment),
+  // there's nothing to edit here — just return to payment instead of getting
+  // stuck on a spinner with no way forward.
+  useEffect(() => {
+    if (!isDigitalOnly || !isLoggedIn || step !== 1) return;
+    if (clientSecret) { setStep(3); return; }
+    if (!isCreatingOrder) void handleCreateDigitalOrder();
+  }, [isDigitalOnly, isLoggedIn, step, clientSecret, isCreatingOrder, handleCreateDigitalOrder]);
+
   if (isLoading || !cart || safeArr(cart.items).length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -379,7 +435,11 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            <StepIndicator currentStep={step} completedSteps={completedSteps} />
+            <StepIndicator
+              currentStep={step}
+              completedSteps={completedSteps}
+              labels={isDigitalOnly ? ['Contact', 'Review', 'Payment'] : undefined}
+            />
 
             {/* Price changed banner (shown before step 3) */}
             {step === 3 && priceChangedItems.length > 0 && (
@@ -401,29 +461,52 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            {/* Step 1: Shipping address */}
+            {/* Step 1: Shipping address (physical) / Contact email (digital-only) */}
             {step === 1 && (
               <section aria-labelledby="step1-heading">
-                {/* Express pay shortcut */}
-                <ExpressPayStrip total={safeNum(cart.totals?.subtotal)} />
+                {isDigitalOnly ? (
+                  isLoggedIn ? (
+                    <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted">
+                      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      <p className="text-sm">Preparing your order…</p>
+                    </div>
+                  ) : (
+                    <>
+                      <h2 id="step1-heading" className="text-base font-semibold text-secondary mb-5">
+                        Contact information
+                      </h2>
+                      <DigitalContactForm
+                        initialEmail={guestEmail}
+                        isSubmitting={isCreatingOrder}
+                        error={orderError}
+                        onSubmit={(email) => handleCreateDigitalOrder(email)}
+                      />
+                    </>
+                  )
+                ) : (
+                  <>
+                    {/* Express pay shortcut */}
+                    <ExpressPayStrip total={safeNum(cart.totals?.subtotal)} />
 
-                <h2 id="step1-heading" className="text-base font-semibold text-secondary mb-5">
-                  {t('stepHeadings.shippingInformation')}
-                </h2>
-                <ShippingForm
-                  initialValues={
-                    shippingAddress
-                      ? { ...shippingAddress, email: guestEmail }
-                      : undefined
-                  }
-                  isLoggedIn={isLoggedIn}
-                  onComplete={completeStep1}
-                />
+                    <h2 id="step1-heading" className="text-base font-semibold text-secondary mb-5">
+                      {t('stepHeadings.shippingInformation')}
+                    </h2>
+                    <ShippingForm
+                      initialValues={
+                        shippingAddress
+                          ? { ...shippingAddress, email: guestEmail }
+                          : undefined
+                      }
+                      isLoggedIn={isLoggedIn}
+                      onComplete={completeStep1}
+                    />
+                  </>
+                )}
               </section>
             )}
 
-            {/* Step 2: Delivery method */}
-            {step === 2 && shippingAddress && (
+            {/* Step 2: Delivery method — physical only, digital skips straight to payment */}
+            {step === 2 && shippingAddress && !isDigitalOnly && (
               <section aria-labelledby="step2-heading">
                 <h2 id="step2-heading" className="text-base font-semibold text-secondary mb-5">
                   {t('stepHeadings.deliveryMethod')}
@@ -448,7 +531,7 @@ export default function CheckoutPage() {
             )}
 
             {/* Step 3: Payment — data-hj-suppress prevents Hotjar from recording card fields */}
-            {step === 3 && shippingAddress && shippingMethod && clientSecret && (
+            {step === 3 && clientSecret && (isDigitalOnly || (shippingAddress && shippingMethod)) && (
               <section aria-labelledby="step3-heading" data-hj-suppress>
                 <h2 id="step3-heading" className="text-base font-semibold text-secondary mb-5">
                   {t('stepHeadings.payment')}
@@ -460,7 +543,7 @@ export default function CheckoutPage() {
                   totalAmount={orderTotal}
                   locale={locale}
                   onSuccess={handlePaymentSuccess}
-                  onBack={() => setStep(2)}
+                  onBack={() => setStep(isDigitalOnly ? 1 : 2)}
                 />
               </section>
             )}

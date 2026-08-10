@@ -489,8 +489,8 @@ export default function AdminStoreDetailPage() {
   return (
     <>
       {/* ── Back + Header ─────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/stores" className="p-2 rounded-button border border-border text-muted hover:text-secondary hover:border-muted transition-colors">
+      <div className="flex items-start gap-3">
+        <Link href="/stores" className="p-2 rounded-button border border-border text-muted hover:text-secondary hover:border-muted transition-colors shrink-0">
           <ArrowLeft className="w-4 h-4" />
         </Link>
         <div className="flex-1 min-w-0">
@@ -498,22 +498,24 @@ export default function AdminStoreDetailPage() {
             title={store.name}
             subtitle={`/shops/${store.slug}`}
             queryKey={['admin-store', id]}
+            actions={
+              <>
+                <button
+                  type="button"
+                  onClick={() => setModal('edit')}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-border text-secondary rounded-button hover:border-primary hover:text-primary transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  Edit
+                </button>
+                <a href={`/shops/${store.slug}`} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-sm text-primary hover:underline">
+                  <ExternalLink className="w-4 h-4" />
+                  View store
+                </a>
+              </>
+            }
           />
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setModal('edit')}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-border text-secondary rounded-button hover:border-primary hover:text-primary transition-colors"
-          >
-            <Pencil className="w-3.5 h-3.5" />
-            Edit
-          </button>
-          <a href={`/shops/${store.slug}`} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-sm text-primary hover:underline">
-            <ExternalLink className="w-4 h-4" />
-            View store
-          </a>
         </div>
       </div>
 

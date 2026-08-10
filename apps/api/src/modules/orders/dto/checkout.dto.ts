@@ -48,14 +48,19 @@ export class ShippingAddressDto {
 }
 
 export class CheckoutDto {
-  @ApiProperty({ type: ShippingAddressDto })
+  // Optional: an all-digital cart never collects a shipping address or method
+  // — orders.service.ts checkout() enforces both as required when the cart
+  // isn't 100% digital, since a DTO decorator alone can't express that.
+  @ApiPropertyOptional({ type: ShippingAddressDto })
+  @IsOptional()
   @ValidateNested()
   @Type(() => ShippingAddressDto)
-  shippingAddress: ShippingAddressDto;
+  shippingAddress?: ShippingAddressDto;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
-  shippingMethodId: string;
+  shippingMethodId?: string;
 
   @ApiPropertyOptional({ description: 'Required for guest checkout' })
   @IsOptional()

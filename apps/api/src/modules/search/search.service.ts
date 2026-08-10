@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Prisma } from '@prisma/client';
+import { Prisma, ProductType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   RedisService,
@@ -449,6 +449,8 @@ export class SearchService {
       where.quantity = { gt: 0 };
     } else if (query.itemType === ItemType.TO_ORDER) {
       where.quantity = { equals: null };
+    } else if (query.itemType === ItemType.DIGITAL) {
+      where.productType = ProductType.DIGITAL;
     }
 
     if (query.colors) {

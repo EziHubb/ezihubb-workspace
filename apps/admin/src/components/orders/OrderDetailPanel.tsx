@@ -407,7 +407,13 @@ function ThreeDotMenu({ order, onCancel, onUpdate }: { order: OrderDetail; onCan
 
   const handleRefund = async () => {
     setOpen(false);
-    if (!await confirm('Issue a full refund for this order?', { title: 'Issue Refund', confirmLabel: 'Issue Refund', destructive: true })) return;
+    // Soft warning only — digital orders aren't hard-blocked from refunding,
+    // but a refund immediately revokes the buyer's download access (order
+    // leaves COMPLETED), so make sure that's intentional before confirming.
+    const message = order.isDigital
+      ? 'This order contains non-refundable digital downloads. Refunding will immediately revoke the buyer\'s access to their files. Continue?'
+      : 'Issue a full refund for this order?';
+    if (!await confirm(message, { title: 'Issue Refund', confirmLabel: 'Issue Refund', destructive: true })) return;
     try {
       await api.post(API_ROUTES.ADMIN.ORDER_REFUND(order.id), { reason: 'Admin initiated' });
       onUpdate();

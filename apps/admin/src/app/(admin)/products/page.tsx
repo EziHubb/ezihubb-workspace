@@ -134,30 +134,46 @@ function ProductsPageInner() {
     // Use bulk endpoint so both `isActive` AND `status` are synced atomically
     // (publish → status=ACTIVE; unpublish → status=INACTIVE)
     const action = p.isActive ? 'unpublish' : 'publish';
-    await api.patch(API_ROUTES.ADMIN.PRODUCTS_BULK, { ids: [p.id], action });
-    await Promise.all([
-      qc.invalidateQueries({ queryKey: ['admin-products'] }),
-      qc.invalidateQueries({ queryKey: ['admin-products-stats'] }),
-    ]);
+    try {
+      await api.patch(API_ROUTES.ADMIN.PRODUCTS_BULK, { ids: [p.id], action });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['admin-products'] }),
+        qc.invalidateQueries({ queryKey: ['admin-products-stats'] }),
+      ]);
+    } catch (err) {
+      await alert((err as Error).message || 'Could not update this product. Please try again.', { variant: 'error' });
+    }
   }, [qc]);
 
   const handleArchive = useCallback(async (p: AdminProduct) => {
     if (!await confirm(`Archive "${p.name}"? It will be hidden from the store.`, { confirmLabel: 'Archive', destructive: true })) return;
-    await api.patch(API_ROUTES.ADMIN.PRODUCTS_BULK, { ids: [p.id], action: 'archive' });
-    qc.invalidateQueries({ queryKey: ['admin-products'] });
-    qc.invalidateQueries({ queryKey: ['admin-products-stats'] });
+    try {
+      await api.patch(API_ROUTES.ADMIN.PRODUCTS_BULK, { ids: [p.id], action: 'archive' });
+      qc.invalidateQueries({ queryKey: ['admin-products'] });
+      qc.invalidateQueries({ queryKey: ['admin-products-stats'] });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not archive this product. Please try again.', { variant: 'error' });
+    }
   }, [qc]);
 
   const handleToggleFeatured = useCallback(async (p: AdminProduct, newValue: boolean) => {
-    await api.patch(API_ROUTES.ADMIN.PRODUCT(p.id), { isFeatured: newValue });
-    qc.invalidateQueries({ queryKey: ['admin-products'] });
+    try {
+      await api.patch(API_ROUTES.ADMIN.PRODUCT(p.id), { isFeatured: newValue });
+      qc.invalidateQueries({ queryKey: ['admin-products'] });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not update this product. Please try again.', { variant: 'error' });
+    }
   }, [qc]);
 
   const handleDelete = useCallback(async (p: AdminProduct) => {
     if (!await confirm(`Permanently delete "${p.name}"? This cannot be undone.`, { confirmLabel: 'Delete', destructive: true })) return;
-    await api.delete(API_ROUTES.ADMIN.PRODUCT(p.id));
-    qc.invalidateQueries({ queryKey: ['admin-products'] });
-    qc.invalidateQueries({ queryKey: ['admin-products-stats'] });
+    try {
+      await api.delete(API_ROUTES.ADMIN.PRODUCT(p.id));
+      qc.invalidateQueries({ queryKey: ['admin-products'] });
+      qc.invalidateQueries({ queryKey: ['admin-products-stats'] });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not delete this product. Please try again.', { variant: 'error' });
+    }
   }, [qc]);
 
   const executeBulk = async (action: string, payload?: Record<string, unknown>) => {
@@ -170,25 +186,29 @@ function ProductsPageInner() {
       setSelectedIds([]);
       qc.invalidateQueries({ queryKey: ['admin-products'] });
       qc.invalidateQueries({ queryKey: ['admin-products-stats'] });
-    } catch {
-      await alert('Bulk action failed. Please try again.');
+    } catch (err) {
+      await alert((err as Error).message || 'Bulk action failed. Please try again.', { variant: 'error' });
     } finally {
       setIsBulkLoading(false);
     }
   };
 
   const handleExport = async () => {
-    const res = await adminApi.post<Blob>(
-      API_ROUTES.ADMIN.PRODUCTS_EXPORT,
-      { ids: selectedIds },
-      { responseType: 'blob' },
-    );
-    const url = URL.createObjectURL(res.data);
-    const a   = document.createElement('a');
-    a.href    = url;
-    a.download = `products-${Date.now()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const res = await adminApi.post<Blob>(
+        API_ROUTES.ADMIN.PRODUCTS_EXPORT,
+        { ids: selectedIds },
+        { responseType: 'blob' },
+      );
+      const url = URL.createObjectURL(res.data);
+      const a   = document.createElement('a');
+      a.href    = url;
+      a.download = `products-${Date.now()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      await alert((err as Error).message || 'Export failed. Please try again.', { variant: 'error' });
+    }
   };
 
   const handleToggleSelect = useCallback((id: string) => {

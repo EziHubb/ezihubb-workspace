@@ -8,8 +8,11 @@ import {
 } from '@nestjs/common';
 import { ModerationService } from '../moderation/moderation.service';
 import { InjectModel } from '@nestjs/mongoose';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { Model } from 'mongoose';
-import { Prisma, OrderStatus, ProductStatus } from '@prisma/client';
+import { Prisma, OrderStatus, ProductStatus, ProductImageType, PrintSide, ProductType } from '@prisma/client';
+import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS, RemoveBackgroundJobData } from '../../queue/queue.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   RedisService,
@@ -35,6 +38,7 @@ import {
   VariantResponseDto,
   ProductImageResponseDto,
   ProductTagResponseDto,
+  DigitalFileResponseDto,
 } from './dto/product-response.dto';
 import {
   PaginatedResult,
@@ -68,6 +72,22 @@ const VIDEO_MAX_BYTES = 20 * 1024 * 1024; // generous ceiling — a compliant ~1
 const VIDEO_MAX_DURATION_SECONDS = 10;
 const VIDEO_DURATION_TOLERANCE_SECONDS = 0.5; // encoder/container rounding
 const MAX_VIDEOS_PER_PRODUCT = 2;
+const ALLOWED_DIGITAL_FILE_MIMETYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/svg+xml',
+  'application/pdf',
+  'application/zip',
+  'application/x-zip-compressed',
+  'application/postscript', // .ai/.eps
+  'application/illustrator',
+  'font/ttf',
+  'font/otf',
+  'font/woff',
+  'font/woff2',
+]);
+const DIGITAL_FILE_MAX_BYTES = 50 * 1024 * 1024;
 
 @Injectable()
 export class ProductsService {
@@ -81,6 +101,7 @@ export class ProductsService {
     @InjectModel(ProductDetail.name)
     private readonly productDetailModel: Model<ProductDetail>,
     private readonly autoTranslate: AutoTranslateService,
+    @InjectQueue(QUEUES.IMAGE_PROCESSING) private readonly imageQueue: Queue,
     @Optional() private readonly moderationService?: ModerationService,
   ) {}
 
@@ -203,7 +224,15 @@ export class ProductsService {
           orderBy: { sortOrder: 'asc' },
           include: { options: { orderBy: { sortOrder: 'asc' } } },
         },
-        images: { orderBy: { sortOrder: 'asc' } },
+        // Print files are never shown to shoppers — only MOCKUP rows belong
+        // on the public PDP.
+        images: { where: { type: ProductImageType.MOCKUP }, orderBy: { sortOrder: 'asc' } },
+        // Metadata only (filename/mimeType/size) — storageKey is never selected
+        // here, so it can never leak into the public product response.
+        digitalFiles: {
+          orderBy: { sortOrder: 'asc' },
+          select: { id: true, filename: true, mimeType: true, sizeBytes: true, sortOrder: true, variantId: true },
+        },
         tags: {
           include: { tag: { select: { id: true, name: true, slug: true } } },
         },
@@ -514,6 +543,7 @@ export class ProductsService {
         compareAtPrice: dto.compareAtPrice,
         isPersonalizable: dto.isPersonalizable ?? true,
         isActive: dto.isActive ?? true,
+        productType: dto.productType ?? ProductType.PHYSICAL,
         isFeatured: dto.isFeatured ?? false,
         processingDays: dto.processingDays ?? 3,
         categoryId: dto.categoryId,
@@ -620,7 +650,7 @@ export class ProductsService {
     const fields: (keyof UpdateProductDto)[] = [
       'name', 'description', 'shortDescription',
       'basePrice', 'compareAtPrice',
-      'isPersonalizable', 'isActive', 'isFeatured',
+      'isPersonalizable', 'isActive', 'isFeatured', 'productType',
       'processingDays',
       // ── New scalar fields from product-edit schema ──
       'domesticGlobalPricing', 'quantity', 'trackInventory', 'lowStockThreshold', 'isAdsEnabled', 'hsCode',
@@ -1153,8 +1183,24 @@ export class ProductsService {
   // customization drafts, fulfillment mappings) is onDelete:Cascade, so this
   // cleans up completely on the Postgres side. Confirmed via schema read —
   // see the "Delete" gap-analysis/redesign discussion.
-  async delete(id: string): Promise<void> {
-    const product = await this.prisma.product.findUnique({ where: { id }, select: { status: true } });
+  /**
+   * Returns a full snapshot of everything this call is about to permanently
+   * remove (the product row plus its cascade-deleted variants/images/reviews/
+   * variation groups) — this is the ONLY record of that data afterward, since
+   * it's a true hard delete and the audit log previously only stored
+   * `{id, name}`. Not a substitute for a real DB backup, but it means an
+   * accidental delete's data isn't unrecoverable from the app's own history.
+   */
+  async delete(id: string): Promise<Record<string, unknown>> {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: {
+        variants:         true,
+        images:           true,
+        reviews:          { select: { id: true, userId: true, rating: true, title: true, body: true, createdAt: true } },
+        variationGroups:  { include: { options: true } },
+      },
+    });
     if (!product) {
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
     }
@@ -1169,10 +1215,7 @@ export class ProductsService {
       });
     }
 
-    const images = await this.prisma.productImage.findMany({
-      where: { productId: id },
-      select: { url: true },
-    });
+    const images = product.images;
 
     const p = await this.prisma.product.delete({
       where: { id },
@@ -1189,6 +1232,10 @@ export class ProductsService {
     for (const img of images) {
       this.storage.deleteFile(this.storage.extractKey(img.url)).catch(() => undefined);
     }
+
+    return JSON.parse(JSON.stringify(product, (_key, value) =>
+      typeof value === 'object' && value !== null && 'toNumber' in value ? Number(value) : value,
+    ));
   }
 
   async duplicate(id: string): Promise<ProductResponseDto> {
@@ -1249,8 +1296,10 @@ export class ProductsService {
   async uploadImages(
     productId: string,
     files: Express.Multer.File[],
+    opts?: { type?: ProductImageType; printSide?: PrintSide },
   ): Promise<ProductImageResponseDto[]> {
     await this.requireProduct(productId);
+    const type = opts?.type ?? ProductImageType.MOCKUP;
 
     for (const file of files) {
       if (!ALLOWED_IMAGE_MIMETYPES.has(file.mimetype))
@@ -1265,12 +1314,14 @@ export class ProductsService {
         });
     }
 
-    const existingCount = await this.prisma.productImage.count({
-      where: { productId },
-    });
-    const hasPrimary = await this.prisma.productImage.count({
-      where: { productId, isPrimary: true },
-    });
+    // Gallery bookkeeping (primary/sortOrder) only ever applies to MOCKUP rows
+    // — a print file must never become the primary display image.
+    const existingCount = type === ProductImageType.MOCKUP
+      ? await this.prisma.productImage.count({ where: { productId, type: ProductImageType.MOCKUP } })
+      : 0;
+    const hasPrimary = type === ProductImageType.MOCKUP
+      ? await this.prisma.productImage.count({ where: { productId, type: ProductImageType.MOCKUP, isPrimary: true } })
+      : 1; // pretend "already has a primary" so print files never get isPrimary:true below
     let primarySet = hasPrimary > 0;
 
     const created: ProductImageResponseDto[] = [];
@@ -1278,7 +1329,7 @@ export class ProductsService {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const key = this.storage.generateKey(
-        `products/${productId}/images`,
+        type === ProductImageType.MOCKUP ? `products/${productId}/images` : 'print-files',
         file.originalname,
       );
       await this.storage.uploadFile(file.buffer, key, file.mimetype);
@@ -1290,7 +1341,9 @@ export class ProductsService {
           productId,
           url,
           isPrimary: isFirst,
-          sortOrder: existingCount + i,
+          sortOrder: type === ProductImageType.MOCKUP ? existingCount + i : 0,
+          type,
+          printSide: opts?.printSide,
         },
       });
       if (isFirst) primarySet = true;
@@ -1301,6 +1354,8 @@ export class ProductsService {
         altText: image.altText,
         isPrimary: image.isPrimary,
         sortOrder: image.sortOrder,
+        type: image.type,
+        printSide: image.printSide,
       });
     }
 
@@ -1320,11 +1375,17 @@ export class ProductsService {
   async attachImageUrls(
     productId: string,
     urls: string[],
+    opts?: { type?: ProductImageType; printSide?: PrintSide },
   ): Promise<ProductImageResponseDto[]> {
     await this.requireProduct(productId);
+    const type = opts?.type ?? ProductImageType.MOCKUP;
 
-    const existingCount = await this.prisma.productImage.count({ where: { productId } });
-    const hasPrimary    = await this.prisma.productImage.count({ where: { productId, isPrimary: true } });
+    const existingCount = type === ProductImageType.MOCKUP
+      ? await this.prisma.productImage.count({ where: { productId, type: ProductImageType.MOCKUP } })
+      : 0;
+    const hasPrimary = type === ProductImageType.MOCKUP
+      ? await this.prisma.productImage.count({ where: { productId, type: ProductImageType.MOCKUP, isPrimary: true } })
+      : 1;
     let primarySet = hasPrimary > 0;
 
     const created: ProductImageResponseDto[] = [];
@@ -1338,7 +1399,9 @@ export class ProductsService {
           productId,
           url,
           isPrimary:  isFirst,
-          sortOrder:  existingCount + i,
+          sortOrder:  type === ProductImageType.MOCKUP ? existingCount + i : 0,
+          type,
+          printSide:  opts?.printSide,
         },
       });
       if (isFirst) primarySet = true;
@@ -1349,6 +1412,8 @@ export class ProductsService {
         altText:   image.altText,
         isPrimary: image.isPrimary,
         sortOrder: image.sortOrder,
+        type:      image.type,
+        printSide: image.printSide,
       });
     }
 
@@ -1359,6 +1424,100 @@ export class ProductsService {
     await this.redis.del(CacheKeys.product(slug));
 
     return created;
+  }
+
+  // ─── Print files (isolated design artwork for POD fulfillment) ───────────
+  //
+  // A print file is generated FROM one of the product's own existing MOCKUP
+  // photos (the seller picks which one — see admin-products.controller.ts),
+  // via the same background-removal job used for customer personalization
+  // (apps/api/src/queue/image.processor.ts's REMOVE_BACKGROUND handler is
+  // fully generic — it just takes an input/output storage key, no
+  // CustomizationDraft-specific behavior). The output key is a random token
+  // under `print-files/`, deliberately NOT under `products/{id}/...`, so it
+  // can't be guessed from the product's own public asset paths — this is the
+  // only protection against a competitor scraping a seller's print-ready
+  // design (accepted as sufficient for now; see the plan for the tradeoff).
+
+  async generatePrintFileFromImage(
+    productId: string,
+    sourceImageId: string,
+    printSide: PrintSide,
+  ): Promise<{ jobId: string }> {
+    const source = await this.prisma.productImage.findUnique({ where: { id: sourceImageId } });
+    if (!source || source.productId !== productId || source.type !== ProductImageType.MOCKUP) {
+      throw new BadRequestException({
+        code: 'ERR_INVALID_SOURCE_IMAGE',
+        message: 'sourceImageId must be one of this product\'s own mockup images',
+      });
+    }
+
+    const uploadKey = this.storage.extractKey(source.url);
+    const outputKey = `print-files/${randomUUID()}.png`;
+
+    const job = await this.imageQueue.add(
+      JOBS.REMOVE_BACKGROUND,
+      { uploadKey, outputKey } satisfies RemoveBackgroundJobData,
+      DEFAULT_JOB_OPTIONS,
+    );
+
+    return { jobId: job.id as string };
+  }
+
+  /** Polls a print-file generation job. Mirrors CustomizationService.getJobStatus()'s plain-BullMQ branch (no artstyle_ jobs here). */
+  async getPrintFileJobStatus(jobId: string): Promise<{ status: string; processedKey?: string; processedUrl?: string; error?: string }> {
+    const job = await this.imageQueue.getJob(jobId);
+    if (!job) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Job not found' });
+
+    const state = await job.getState();
+    const returnValue = job.returnvalue as string | undefined;
+    const status = state === 'completed' ? 'done' : state === 'failed' ? 'failed' : 'processing';
+
+    return {
+      status,
+      processedUrl: returnValue,
+      processedKey: returnValue ? this.storage.extractKey(returnValue) : undefined,
+      ...(job.failedReason && { error: job.failedReason }),
+    };
+  }
+
+  /** Called after the seller reviews the generated preview and approves it. */
+  async approvePrintFile(productId: string, processedKey: string, printSide: PrintSide): Promise<ProductImageResponseDto> {
+    await this.requireProduct(productId);
+    await this.deletePrintFile(productId, printSide, { silent: true });
+
+    const url = this.storage.getPublicUrl(processedKey);
+    const image = await this.prisma.productImage.create({
+      data: { productId, url, isPrimary: false, sortOrder: 0, type: ProductImageType.PRINT_FILE, printSide },
+    });
+
+    return {
+      id: image.id, url: image.url, altText: image.altText,
+      isPrimary: image.isPrimary, sortOrder: image.sortOrder,
+      type: image.type, printSide: image.printSide,
+    };
+  }
+
+  /** Manual fallback for sellers who already have a real, separate design file. */
+  async attachPrintFile(productId: string, url: string, printSide: PrintSide): Promise<ProductImageResponseDto> {
+    await this.deletePrintFile(productId, printSide, { silent: true });
+    const [created] = await this.attachImageUrls(productId, [url], { type: ProductImageType.PRINT_FILE, printSide });
+    return created;
+  }
+
+  async deletePrintFile(productId: string, printSide: PrintSide, opts?: { silent?: boolean }): Promise<void> {
+    const image = await this.prisma.productImage.findFirst({
+      where: { productId, type: ProductImageType.PRINT_FILE, printSide },
+    });
+    if (!image) {
+      if (opts?.silent) return;
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: `No ${printSide} print file uploaded for this product` });
+    }
+
+    await this.prisma.productImage.delete({ where: { id: image.id } });
+    await this.storage
+      .deleteFile(this.storage.extractKey(image.url))
+      .catch((e: Error) => this.logger.warn(`S3 delete failed for print file "${image.url}": ${e.message}`));
   }
 
   async deleteImage(productId: string, imageId: string): Promise<void> {
@@ -1379,7 +1538,7 @@ export class ProductsService {
       await tx.productImage.delete({ where: { id: imageId } });
       if (image.isPrimary) {
         const next = await tx.productImage.findFirst({
-          where: { productId },
+          where: { productId, type: ProductImageType.MOCKUP },
           orderBy: { sortOrder: 'asc' },
         });
         if (next)
@@ -1403,6 +1562,118 @@ export class ProductsService {
       orderedIds.map((imgId, idx) =>
         this.prisma.productImage.update({
           where: { id: imgId },
+          data: { sortOrder: idx },
+        }),
+      ),
+    );
+  }
+
+  // ─── Digital files (the sold deliverable for DIGITAL products) ────────────
+  //
+  // storageKey is deliberately never returned to any caller — see
+  // DigitalFileResponseDto. The uploaded object lives under a random,
+  // unguessable key (not under products/{id}/...), uploaded with
+  // isPublic:false, mirroring the print-files "obscure key" tradeoff. Real
+  // access control happens at download time in order-downloads.controller.ts,
+  // which fetches the bytes server-side and streams them — the key/URL is
+  // never handed to a client.
+
+  async uploadDigitalFiles(
+    productId: string,
+    files: Express.Multer.File[],
+    variantId?: string,
+  ): Promise<DigitalFileResponseDto[]> {
+    await this.requireProduct(productId);
+    if (variantId) {
+      const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
+      if (!variant || variant.productId !== productId)
+        throw new BadRequestException({ code: 'ERR_INVALID_VARIANT', message: 'variantId must belong to this product' });
+    }
+
+    for (const file of files) {
+      if (!ALLOWED_DIGITAL_FILE_MIMETYPES.has(file.mimetype))
+        throw new BadRequestException({
+          code: 'ERR_INVALID_FILE_TYPE',
+          message: `${file.originalname}: unsupported file type`,
+        });
+      if (file.size > DIGITAL_FILE_MAX_BYTES)
+        throw new BadRequestException({
+          code: 'ERR_FILE_TOO_LARGE',
+          message: `${file.originalname}: max 50 MB per file`,
+        });
+    }
+
+    const existingCount = await this.prisma.digitalFile.count({ where: { productId } });
+    const created: DigitalFileResponseDto[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const key = this.storage.generateKey(`digital-files/${randomUUID()}`, file.originalname);
+      await this.storage.uploadFile(file.buffer, key, file.mimetype, { isPublic: false });
+
+      const record = await this.prisma.digitalFile.create({
+        data: {
+          productId,
+          variantId: variantId ?? null,
+          filename: file.originalname,
+          storageKey: key,
+          mimeType: file.mimetype,
+          sizeBytes: file.size,
+          sortOrder: existingCount + i,
+        },
+      });
+
+      created.push({
+        id: record.id,
+        filename: record.filename,
+        mimeType: record.mimeType,
+        sizeBytes: record.sizeBytes,
+        sortOrder: record.sortOrder,
+        variantId: record.variantId,
+      });
+    }
+
+    return created;
+  }
+
+  async deleteDigitalFile(productId: string, fileId: string, opts?: { force?: boolean }): Promise<void> {
+    const file = await this.prisma.digitalFile.findUnique({ where: { id: fileId } });
+    if (!file || file.productId !== productId)
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Digital file not found' });
+
+    // Entitlement is derived live from COMPLETED orders (see
+    // order-downloads.controller.ts) — deleting a file that buyers already
+    // paid for permanently breaks their download with no snapshot to fall
+    // back to. Require an explicit second confirmation rather than silently
+    // cutting off paying customers.
+    if (!opts?.force) {
+      const purchaseCount = await this.prisma.orderItem.count({
+        where: {
+          productId: file.productId,
+          order: { status: OrderStatus.COMPLETED },
+        },
+      });
+      if (purchaseCount > 0) {
+        throw new ConflictException({
+          code: 'ERR_HAS_PURCHASES',
+          message: `${purchaseCount} completed order${purchaseCount === 1 ? ' has' : 's have'} already purchased this product — deleting this file will break their download. Confirm again to proceed anyway.`,
+          purchaseCount,
+        });
+      }
+    }
+
+    await this.prisma.digitalFile.delete({ where: { id: fileId } });
+    await this.storage
+      .deleteFile(file.storageKey)
+      .catch((e: Error) => this.logger.warn(`S3 delete failed for digital file "${file.storageKey}": ${e.message}`));
+  }
+
+  async reorderDigitalFiles(productId: string, orderedIds: string[]): Promise<void> {
+    await this.requireProduct(productId);
+    await this.prisma.$transaction(
+      orderedIds.map((fileId, idx) =>
+        this.prisma.digitalFile.update({
+          where: { id: fileId },
           data: { sortOrder: idx },
         }),
       ),
@@ -1873,6 +2144,7 @@ export class ProductsService {
       category: { select: { id: true, name: true, slug: true } },
       variants: { orderBy: { sortOrder: 'asc' as const } },
       images: { orderBy: { sortOrder: 'asc' as const } },
+      digitalFiles: { orderBy: { sortOrder: 'asc' as const } },
       tags: {
         include: { tag: { select: { id: true, name: true, slug: true } } },
       },
@@ -1965,6 +2237,7 @@ export class ProductsService {
       compareAtPrice: unknown;
       isPersonalizable: boolean;
       isActive: boolean;
+      productType?: ProductType;
       isFeatured: boolean;
       viewCount: number;
       soldCount: number;
@@ -1989,6 +2262,16 @@ export class ProductsService {
         altText: string | null;
         isPrimary: boolean;
         sortOrder: number;
+        type: ProductImageType;
+        printSide: PrintSide | null;
+      }[];
+      digitalFiles?: {
+        id: string;
+        filename: string;
+        mimeType: string;
+        sizeBytes: number;
+        sortOrder: number;
+        variantId: string | null;
       }[];
       videoUrls?: string[];
       tags: { tag: { id: string; name: string; slug: string } }[];
@@ -2010,6 +2293,7 @@ export class ProductsService {
         : null,
       isPersonalizable: product.isPersonalizable,
       isActive: product.isActive,
+      productType: product.productType ?? ProductType.PHYSICAL,
       isFeatured: product.isFeatured,
       viewCount: product.viewCount,
       soldCount: product.soldCount,
@@ -2031,7 +2315,17 @@ export class ProductsService {
         altText: img.altText,
         isPrimary: img.isPrimary,
         sortOrder: img.sortOrder,
+        type: img.type,
+        printSide: img.printSide,
       })),
+      digitalFiles: product.digitalFiles?.map((f) => ({
+        id: f.id,
+        filename: f.filename,
+        mimeType: f.mimeType,
+        sizeBytes: f.sizeBytes,
+        sortOrder: f.sortOrder,
+        variantId: f.variantId,
+      })) ?? [],
       videoUrls: product.videoUrls ?? [],
       tags: product.tags.map((pt) => ({
         id: pt.tag.id,

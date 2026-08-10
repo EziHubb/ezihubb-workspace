@@ -18,6 +18,11 @@ export class PaymentResponseDto {
   @ApiPropertyOptional() refundReason: string | null;
   @ApiPropertyOptional() paidAt: Date | null;
   @ApiProperty() createdAt: Date;
+  // Surfaced so the admin refund UI can show a soft "non-refundable digital
+  // item" warning before confirming — refunds aren't hard-blocked, this is
+  // advisory only. See order-downloads.controller.ts for how a refund
+  // (order.status leaving COMPLETED) revokes download access for free.
+  @ApiPropertyOptional() orderIsDigital?: boolean;
 }
 
 export class GiftCardResponseDto {

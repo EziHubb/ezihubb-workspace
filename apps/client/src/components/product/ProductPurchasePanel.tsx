@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import {
   Star, CheckCircle2, Clock, ShoppingCart,
-  Loader2, Plus, ChevronDown,
+  Loader2, Plus, ChevronDown, Download, FileText,
 } from 'lucide-react';
 import { ShareButton } from './ShareButton';
 import {
@@ -123,6 +123,38 @@ function DeliveryInfo({ processingDays }: { processingDays: number }) {
         <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
         <span>Returns &amp; exchanges accepted</span>
       </div>
+    </div>
+  );
+}
+
+// ── DigitalDownloadInfo (Etsy-style "Digital download" info card) ────────────
+
+function DigitalDownloadInfo({ files }: { files: { mimeType: string }[] }) {
+  const extOf = (mime: string) => mime.split('/').pop()?.split('+')[0]?.toUpperCase() ?? 'FILE';
+  const typeSummary = files.length
+    ? [...new Set(files.map((f) => extOf(f.mimeType)))].join(', ')
+    : null;
+
+  return (
+    <div className="space-y-1.5 text-sm">
+      <div className="flex items-center gap-2 text-secondary">
+        <Download className="w-4 h-4 text-primary flex-shrink-0" />
+        <span className="font-medium">Digital download</span>
+      </div>
+      {typeSummary && (
+        <div className="flex items-center gap-2 text-secondary">
+          <FileText className="w-4 h-4 flex-shrink-0" />
+          <span>
+            Digital file type{files.length > 1 ? 's' : ''}: {typeSummary}
+            {files.length > 1 && ` (${files.length} files)`}
+          </span>
+        </div>
+      )}
+      <div className="flex items-center gap-2 text-secondary">
+        <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+        <span>Instant download after purchase — no shipping</span>
+      </div>
+      <p className="text-xs text-muted pl-6">This item is non-refundable once downloaded.</p>
     </div>
   );
 }
@@ -482,7 +514,11 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       />
 
       {/* ── DELIVERY INFO ── */}
-      <DeliveryInfo processingDays={product.processingDays ?? 3} />
+      {product.productType === 'DIGITAL' ? (
+        <DigitalDownloadInfo files={product.digitalFiles ?? []} />
+      ) : (
+        <DeliveryInfo processingDays={product.processingDays ?? 3} />
+      )}
 
       {/* ── RATING + SHARE ROW ── */}
       <div className="flex items-center justify-between gap-3">
@@ -559,7 +595,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       {/* ── ACCORDIONS ── */}
       <div className="border border-border rounded-2xl overflow-hidden divide-y divide-border">
         <ItemDetailsAccordion product={product} />
-        <ShippingReturnsAccordion product={product} />
+        {product.productType !== 'DIGITAL' && <ShippingReturnsAccordion product={product} />}
         <PurchaseProtectionAccordion />
         <FAQsAccordion />
         <MeetYourSellersAccordion />

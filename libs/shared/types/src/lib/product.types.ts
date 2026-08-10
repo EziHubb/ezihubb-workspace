@@ -84,6 +84,14 @@ export interface ProductListItemDto {
   store?: { id: string; name: string; slug: string } | null;
 }
 
+export interface DigitalFileDto {
+  id: string;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  sortOrder: number;
+}
+
 export interface ProductDto extends ProductListItemDto {
   sku: string;
   description: string;
@@ -97,6 +105,8 @@ export interface ProductDto extends ProductListItemDto {
   sizeGuide?: string;
   collections?: { id: string; name: string; slug: string }[];
   videoUrls?: string[];
+  productType?: 'PHYSICAL' | 'DIGITAL';
+  digitalFiles?: DigitalFileDto[];
 }
 
 // ── Backward-compat legacy types ───────────────────────────────────────────────

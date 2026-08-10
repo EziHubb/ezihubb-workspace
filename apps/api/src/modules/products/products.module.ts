@@ -40,8 +40,11 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
     ShippingModule,
     ModerationModule,
     ...(disableQueue
-      ? [DevBullModule.forQueues([QUEUES.LOW_STOCK])]
-      : [BullModule.registerQueue({ name: QUEUES.LOW_STOCK })]),
+      ? [DevBullModule.forQueues([QUEUES.LOW_STOCK, QUEUES.IMAGE_PROCESSING])]
+      : [BullModule.registerQueue(
+          { name: QUEUES.LOW_STOCK },
+          { name: QUEUES.IMAGE_PROCESSING },
+        )]),
   ],
   controllers: [
     ProductsController,

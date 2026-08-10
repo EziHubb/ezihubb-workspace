@@ -299,6 +299,8 @@
     <a class="nav-item" data-target="attach-images" href="#attach-images"><span class="method-tag m-post">POST</span>Attach image URLs</a>
     <a class="nav-item" data-target="reorder-images" href="#reorder-images"><span class="method-tag m-patch">PATCH</span>Reorder images</a>
     <a class="nav-item" data-target="delete-image" href="#delete-image"><span class="method-tag m-delete">DEL</span>Delete an image</a>
+    <a class="nav-item" data-target="attach-print-file" href="#attach-print-file"><span class="method-tag m-post">POST</span>Attach a print file</a>
+    <a class="nav-item" data-target="delete-print-file" href="#delete-print-file"><span class="method-tag m-delete">DEL</span>Delete a print file</a>
 
     <div class="group-title">Search</div>
     <a class="nav-item" data-target="search-products" href="#search-products"><span class="method-tag m-get">GET</span>Search products</a>
@@ -505,7 +507,9 @@
       </table>
       <p class="desc" style="margin-top:12px">
         Images aren't set here — create the product first, then use
-        <a href="#upload-images">Upload images</a> or <a href="#attach-images">Attach image URLs</a>.
+        <a href="#upload-images">Upload images</a> or <a href="#attach-images">Attach image URLs</a>. If you want
+        orders for this product to auto-fulfill through a POD provider, also see
+        <a href="#attach-print-file">Attach a print file</a>.
         Extended fields (shipping profile, materials, occasions, return policy, etc.) can be set afterward via
         <a href="#update-product">Update a product</a>.
       </p>
@@ -733,6 +737,62 @@ images: [file1.jpg, file2.png]</pre>
         <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
         <pre><span class="tok-method">DELETE</span> /partner/products/cljk2p9x40001abcd/images/img_1
 <span class="tok-header">X-Api-Key</span>: ezhb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</pre>
+      </div>
+
+      <div class="section-label">Response</div>
+      <p class="desc">Returns <code>204 No Content</code> on success.</p>
+    </section>
+
+    <!-- ── Attach a print file ─────────────────────────────────────── -->
+    <section class="endpoint" id="attach-print-file">
+      <h2 class="title">Attach a print file</h2>
+      <div class="meta-row"><span class="label">Method:</span><span class="method-badge m-post">POST</span></div>
+      <div class="meta-row"><span class="label">Endpoint:</span><span class="endpoint-path">/partner/products/{id}/print-files</span></div>
+      <p class="desc">
+        A print file is the isolated, background-removed design artwork for one print area (front/back/sleeve/hood) —
+        not a photo of the finished product. If this product is mapped to a Merchize connection, Merchize needs a
+        print file for the <code>FRONT</code> side before orders for it can be pushed; without one, order pushes to
+        Merchize will fail immediately with a "missing print file" error rather than silently sending your mockup
+        photo as the artwork. Print files are separate from catalog <a href="#upload-images">images</a> and are
+        never shown to shoppers.
+      </p>
+
+      <div class="section-label">Request Body</div>
+      <table class="props">
+        <tr><th>Property</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        <tr><td class="prop-name">url</td><td class="prop-type">string</td><td class="prop-req">Y</td><td class="prop-desc">Already-hosted URL of the isolated design file.</td></tr>
+        <tr><td class="prop-name">printSide</td><td class="prop-type">string</td><td class="prop-req">Y</td><td class="prop-desc">One of <code>FRONT</code>, <code>BACK</code>, <code>SLEEVE</code>, <code>HOOD</code>.</td></tr>
+      </table>
+
+      <div class="section-label">Request Example</div>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre><span class="tok-method">POST</span> /partner/products/cljk2p9x40001abcd/print-files
+<span class="tok-header">Content-Type<\span>: application/json
+<span class="tok-header">X-Api-Key<\span>: ezhb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+{
+  <span class="tok-key">"url"<\span>: <span class="tok-str">"https://example.com/mug-design-front.png"</span>,
+  <span class="tok-key">"printSide"<\span>: <span class="tok-str">"FRONT"</span>
+}</pre>
+      </div>
+
+      <div class="section-label">Response</div>
+      <p class="desc">Returns <code>201 Created</code> with the created print-file record. Attaching a new file for a side that already has one replaces it.</p>
+    </section>
+
+    <!-- ── Delete a print file ─────────────────────────────────────── -->
+    <section class="endpoint" id="delete-print-file">
+      <h2 class="title">Delete a print file</h2>
+      <div class="meta-row"><span class="label">Method:</span><span class="method-badge m-delete">DELETE</span></div>
+      <div class="meta-row"><span class="label">Endpoint:</span><span class="endpoint-path">/partner/products/{id}/print-files/{printSide}</span></div>
+      <p class="desc">Removes the print file for one side.</p>
+
+      <div class="section-label">Request Example</div>
+      <div class="code-block">
+        <div class="code-header"><span>Example code</span><button class="copy-btn" onclick="copyBlock(this)">Copy</button></div>
+        <pre><span class="tok-method">DELETE</span> /partner/products/cljk2p9x40001abcd/print-files/FRONT
+<span class="tok-header">X-Api-Key<\span>: ezhb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</pre>
       </div>
 
       <div class="section-label">Response</div>

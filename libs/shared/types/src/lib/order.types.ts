@@ -28,6 +28,13 @@ export interface OrderItemDto {
     slug: string;
     imageUrl?: string;
   };
+  digitalFiles?: {
+    id: string;
+    filename: string;
+    mimeType: string;
+    sizeBytes: number;
+    downloadUrl: string;
+  }[];
 }
 
 export interface OrderStatusHistoryDto {
@@ -54,6 +61,7 @@ export interface OrderDto {
   id: string;
   orderNumber: string;
   status: OrderStatus;
+  isDigital?: boolean;
   guestEmail?: string;
   // New flat shipping fields
   shippingName: string;

@@ -74,6 +74,12 @@ export default function CartPage() {
     (item) => item.currentPrice !== item.unitPrice,
   );
 
+  // ── Mixed physical/digital cart warning ─────────────────────────────────────
+  // Checkout rejects a mixed cart outright (see orders.service.ts checkout()) —
+  // this just warns the shopper before they hit that error at checkout.
+  const cartProductTypes = new Set(safeArr(cart.items).map((item) => item.productType ?? 'PHYSICAL'));
+  const isMixedCart = cartProductTypes.size > 1;
+
   return (
     <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
       <h1 className="font-display text-2xl md:text-3xl font-bold text-secondary mb-6 md:mb-8">
@@ -82,6 +88,21 @@ export default function CartPage() {
           ({t('itemCount', { count: cart.totals.itemCount })})
         </span>
       </h1>
+
+      {isMixedCart && (
+        <div
+          role="alert"
+          className="mb-6 p-4 bg-warning/8 border border-warning/25 rounded-card"
+        >
+          <p className="text-sm font-semibold text-warning">
+            ⚠️ Your cart has both physical items and digital downloads.
+          </p>
+          <p className="text-sm text-secondary mt-1">
+            You&apos;ll need to check out one type at a time — remove either the physical items
+            or the digital downloads to continue.
+          </p>
+        </div>
+      )}
 
       {priceMismatches.length > 0 && (
         <div

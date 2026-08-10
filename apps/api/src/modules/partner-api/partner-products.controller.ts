@@ -19,14 +19,15 @@ import { ApiBody, ApiConsumes, ApiOperation, ApiResponse, ApiSecurity, ApiTags }
 import { memoryStorage } from 'multer';
 import type { Request } from 'express';
 import type { Store } from '@prisma/client';
+import { PrintSide } from '@prisma/client';
 import { ApiKeyGuard } from '../../common/guards/api-key.guard';
 import { ApiKeyThrottlerGuard } from '../../common/guards/api-key-throttler.guard';
 import { ProductsService } from '../products/products.service';
 import { ProductQueryDto } from '../products/dto/product-query.dto';
 import { CreateProductDto } from '../products/dto/create-product.dto';
 import { UpdateProductDto } from '../products/dto/update-product.dto';
-import { ProductImageResponseDto } from '../products/dto/product-response.dto';
-import { AttachImagesDto, ReorderImagesDto } from '../products/dto/product-image.dto';
+import { ProductImageResponseDto, DigitalFileResponseDto } from '../products/dto/product-response.dto';
+import { AttachImagesDto, ReorderImagesDto, AttachPrintFileDto, UploadDigitalFilesDto, ReorderDigitalFilesDto } from '../products/dto/product-image.dto';
 
 @Controller('partner/products')
 @UseGuards(ApiKeyGuard, ApiKeyThrottlerGuard)
@@ -139,5 +140,80 @@ export class PartnerProductsController {
   ) {
     await this.productsService.findByIdForStore(id, req.store.id);
     return this.productsService.reorderImages(id, dto.orderedIds);
+  }
+
+  // ─── Print files ────────────────────────────────────────────────────────
+  // A print file is an isolated, background-removed design asset for one
+  // print area — never shown to shoppers, only used when this product's
+  // orders are pushed to a POD fulfillment provider (e.g. Merchize). If you
+  // already have a real design file for this product, attach it here; the
+  // admin UI also supports generating one from an existing catalog photo.
+
+  @Post(':id/print-files')
+  @ApiOperation({ summary: 'Attach a print file (isolated design artwork) for one print side — separate from catalog images' })
+  @ApiResponse({ status: 201, type: ProductImageResponseDto })
+  @HttpCode(HttpStatus.CREATED)
+  async attachPrintFile(
+    @Req() req: Request & { store: Store },
+    @Param('id') id: string,
+    @Body() dto: AttachPrintFileDto,
+  ): Promise<ProductImageResponseDto> {
+    await this.productsService.findByIdForStore(id, req.store.id);
+    return this.productsService.attachPrintFile(id, dto.url, dto.printSide);
+  }
+
+  @Delete(':id/print-files/:printSide')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove the print file for one side' })
+  async deletePrintFile(
+    @Req() req: Request & { store: Store },
+    @Param('id') id: string,
+    @Param('printSide') printSide: PrintSide,
+  ) {
+    await this.productsService.findByIdForStore(id, req.store.id);
+    return this.productsService.deletePrintFile(id, printSide);
+  }
+
+  // ─── Digital files (the sold deliverable for DIGITAL products) ───────────
+
+  @Post(':id/digital-files')
+  @UseInterceptors(FilesInterceptor('files', 20, { storage: memoryStorage() }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { files: { type: 'array', items: { type: 'string', format: 'binary' } }, variantId: { type: 'string' } } } })
+  @ApiOperation({ summary: 'Upload digital deliverable files (max 50 MB each, up to 20 at once)' })
+  @ApiResponse({ status: 201, type: [DigitalFileResponseDto] })
+  @HttpCode(HttpStatus.CREATED)
+  async uploadDigitalFiles(
+    @Req() req: Request & { store: Store },
+    @Param('id') id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() dto: UploadDigitalFilesDto,
+  ): Promise<DigitalFileResponseDto[]> {
+    await this.productsService.findByIdForStore(id, req.store.id);
+    return this.productsService.uploadDigitalFiles(id, files, dto.variantId);
+  }
+
+  @Delete(':id/digital-files/:fileId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a digital deliverable file' })
+  async deleteDigitalFile(
+    @Req() req: Request & { store: Store },
+    @Param('id') id: string,
+    @Param('fileId') fileId: string,
+  ) {
+    await this.productsService.findByIdForStore(id, req.store.id);
+    return this.productsService.deleteDigitalFile(id, fileId);
+  }
+
+  @Patch(':id/digital-files/reorder')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Reorder digital deliverable files' })
+  async reorderDigitalFiles(
+    @Req() req: Request & { store: Store },
+    @Param('id') id: string,
+    @Body() dto: ReorderDigitalFilesDto,
+  ) {
+    await this.productsService.findByIdForStore(id, req.store.id);
+    return this.productsService.reorderDigitalFiles(id, dto.orderedIds);
   }
 }

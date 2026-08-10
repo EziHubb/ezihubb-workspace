@@ -26,14 +26,17 @@
       <h2>Hi {{firstName}},</h2>
       <p>
         We tried to automatically send a recent order for <strong>{{storeName}}</strong> to your
-        connected fulfillment provider, but it failed after several attempts.
+        connected fulfillment provider, but it could not be sent.
       </p>
       <div class="info-box">
         <p>This order has <strong>not</strong> been sent for production and needs your attention.</p>
+        {{#if errorMessage}}
+        <p style="margin-bottom: 0;"><strong>Reason:</strong> {{errorMessage}}</p>
+        {{/if}}
       </div>
       <p>
         Please check your fulfillment connection (API key still valid? provider account in good standing?)
-        in your store settings, then fulfill this order manually if needed.
+        and this product's print files in your store settings, then fulfill this order manually if needed.
       </p>
     </div>
     <div class="footer">

@@ -4,9 +4,9 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useFormContext } from 'react-hook-form';
 import {
   Smile, Lightbulb,
-  AlertCircle,
+  AlertCircle, Package, Download,
 } from 'lucide-react';
-import type { ProductEditFormValues } from '../types';
+import type { ProductEditFormValues, ProductType } from '../types';
 import { CategoryPickerCard } from '../CategoryPickerModal';
 
 // ─── Emoji picker data ────────────────────────────────────────────────────────
@@ -225,6 +225,7 @@ export function ItemDetailsTab() {
   const title       = watch('name')               ?? '';
   const description = watch('description')        ?? '';
   const categoryId  = watch('primaryCategoryId')  ?? '';
+  const productType = watch('productType')        ?? 'PHYSICAL';
 
   const wordCount = title.trim() ? title.trim().split(/\s+/).length : 0;
 
@@ -240,6 +241,35 @@ export function ItemDetailsTab() {
         </div>
 
         <div className="px-6 py-5 space-y-7">
+          {/* ── Product type ─────────────────────────────────────────────── */}
+          <FormField
+            label="Product type"
+            hint="Digital products are delivered as instant downloads — no shipping, no fulfillment pipeline."
+          >
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                { value: 'PHYSICAL', label: 'Physical product', sub: 'Shipped to the buyer', icon: Package },
+                { value: 'DIGITAL',  label: 'Digital download',  sub: 'Instant file delivery', icon: Download },
+              ] as { value: ProductType; label: string; sub: string; icon: typeof Package }[]).map(({ value, label, sub, icon: Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setValue('productType', value, { shouldDirty: true })}
+                  className={[
+                    'flex items-start gap-3 px-4 py-3.5 rounded-lg border-2 text-left transition-colors',
+                    productType === value ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40',
+                  ].join(' ')}
+                >
+                  <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${productType === value ? 'text-primary' : 'text-muted'}`} />
+                  <div>
+                    <p className="text-sm font-semibold text-secondary">{label}</p>
+                    <p className="text-xs text-muted mt-0.5">{sub}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </FormField>
+
           {/* ── Category ─────────────────────────────────────────────────── */}
           <FormField
             label="Selected category"

@@ -1,10 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ProductType } from '@prisma/client';
 
 export class CartItemDto {
   @ApiProperty() id: string;
   @ApiProperty() productId: string;
   @ApiProperty() productName: string;
   @ApiProperty() productSlug: string;
+  @ApiProperty({ enum: ProductType }) productType: ProductType;
   @ApiPropertyOptional() productImageUrl: string | null;
   @ApiPropertyOptional() variantId: string | null;
   @ApiPropertyOptional() variantName: string | null;

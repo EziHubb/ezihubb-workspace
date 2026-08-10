@@ -31,7 +31,9 @@ const CART_INCLUDE = {
           slug: true,
           basePrice: true,
           isActive: true,
+          productType: true,
           images: {
+            where: { type: 'MOCKUP' as const },
             orderBy: { isPrimary: 'desc' as const },
             select: { url: true },
             take: 1,
@@ -481,6 +483,7 @@ export class CartService {
         productId: item.productId,
         productName: item.product.name,
         productSlug: item.product.slug,
+        productType: item.product.productType,
         productImageUrl: item.product.images[0]?.url ?? null,
         variantId: item.variantId,
         variantName: item.variant?.name ?? null,

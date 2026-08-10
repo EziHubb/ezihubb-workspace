@@ -146,7 +146,7 @@ async function bootstrap() {
           }
         },
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Session-ID'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Session-ID', 'X-Store-Context'],
     exposedHeaders: [
       'X-Request-ID',
       'X-RateLimit-Limit',

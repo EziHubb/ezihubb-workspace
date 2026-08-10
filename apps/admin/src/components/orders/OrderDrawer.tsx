@@ -35,6 +35,7 @@ export interface OrderDetail {
   id:             string;
   orderNumber:    string;
   status:         string;
+  isDigital?:     boolean;
   total:          number;
   subtotal?:      number;
   shippingAmount?: number;

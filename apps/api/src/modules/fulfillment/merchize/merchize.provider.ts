@@ -125,6 +125,13 @@ export class MerchizeProvider implements FulfillmentProvider {
         if (!item.imageUrl) {
           throw new Error(`Merchize requires a preview image per item — "${item.title ?? item.externalProductId}" has none`);
         }
+        // Defensive second line of defense — FulfillmentProcessor already
+        // blocks a push upstream when FRONT is missing, but guard here too
+        // in case createOrder is ever invoked directly (e.g. a future
+        // admin-triggered retry) without going through that check.
+        if (!item.printFiles?.FRONT) {
+          throw new Error(`Merchize requires a FRONT print file per item — "${item.title ?? item.externalProductId}" has none. Generate or upload one before pushing this order.`);
+        }
 
         let attributes: MerchizeCreateOrderItem['attributes'] = [];
         try {
@@ -138,13 +145,16 @@ export class MerchizeProvider implements FulfillmentProvider {
         }
 
         return {
-          name:         item.title,
-          product_id:   item.externalProductId,
-          sku:          item.externalVariantId,
-          merchize_sku: item.externalVariantId,
-          quantity:     item.quantity,
-          image:        item.imageUrl,
-          design_front: item.imageUrl,
+          name:          item.title,
+          product_id:    item.externalProductId,
+          sku:           item.externalVariantId,
+          merchize_sku:  item.externalVariantId,
+          quantity:      item.quantity,
+          image:         item.imageUrl,
+          design_front:  item.printFiles.FRONT,
+          design_back:   item.printFiles.BACK,
+          design_sleeve: item.printFiles.SLEEVE,
+          design_hood:   item.printFiles.HOOD,
           attributes,
         } satisfies MerchizeCreateOrderItem;
       }),

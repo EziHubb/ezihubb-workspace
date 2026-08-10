@@ -11,6 +11,7 @@ import { OrderStatusBadge } from '@ezihubb/ui';
 import { useToast } from '@ezihubb/ui';
 import type { OrderDto, OrderStatus } from '@ezihubb/types';
 import { MessageShopModal } from '../../../../../../components/messages/MessageShopModal';
+import { DigitalDownloadsPanel } from '../../../../../../components/orders/DigitalDownloadsPanel';
 import { fmtAmount, safeArr, safeStr } from '@ezihubb/utils';
 
 // ── Status timeline config ────────────────────────────────────────────────────
@@ -340,6 +341,14 @@ export default function OrderDetailPage() {
       {/* Cancel section */}
       <CancelSection order={order} onCancel={handleCancel} />
 
+      {/* Digital downloads — replaces the shipment tracker entirely */}
+      {order.isDigital && (
+        <section>
+          <h2 className="font-semibold text-secondary text-base mb-4">Your files</h2>
+          <DigitalDownloadsPanel items={order.items} />
+        </section>
+      )}
+
       {/* Items */}
       <section>
         <h2 className="font-semibold text-secondary text-base mb-4">
@@ -383,21 +392,23 @@ export default function OrderDetailPage() {
 
       {/* Bottom: order info sidebar */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* Shipping address */}
-        <section className="border border-border rounded-card p-4 space-y-2">
-          <h3 className="text-xs font-semibold text-muted uppercase tracking-wide flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5" />
-            Shipping Address
-          </h3>
-          <address className="not-italic text-sm text-secondary leading-relaxed">
-            {order.shippingName}<br />
-            {addr.addressLine1}
-            {addr.addressLine2 && <>, {addr.addressLine2}</>}<br />
-            {addr.city}, {addr.state} {addr.postalCode}<br />
-            {addr.country}
-          </address>
-          {addr.phone && <p className="text-xs text-muted">{addr.phone}</p>}
-        </section>
+        {/* Shipping address — physical orders only */}
+        {!order.isDigital && (
+          <section className="border border-border rounded-card p-4 space-y-2">
+            <h3 className="text-xs font-semibold text-muted uppercase tracking-wide flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5" />
+              Shipping Address
+            </h3>
+            <address className="not-italic text-sm text-secondary leading-relaxed">
+              {order.shippingName}<br />
+              {addr.addressLine1}
+              {addr.addressLine2 && <>, {addr.addressLine2}</>}<br />
+              {addr.city}, {addr.state} {addr.postalCode}<br />
+              {addr.country}
+            </address>
+            {addr.phone && <p className="text-xs text-muted">{addr.phone}</p>}
+          </section>
+        )}
 
         {/* Order totals + tracking */}
         <section className="border border-border rounded-card p-4 space-y-3">

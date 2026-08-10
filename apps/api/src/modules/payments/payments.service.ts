@@ -260,17 +260,21 @@ export class PaymentsService {
         );
       }
 
-      // Confirm order
+      // Confirm order. A digital order has no shipping/tracking stages — payment
+      // success IS delivery, so it goes straight to COMPLETED (which also
+      // immediately satisfies the review-eligibility check and unlocks downloads,
+      // since access is derived live from Order.status, not a separate grant).
+      const confirmedStatus = payment.order.isDigital ? OrderStatus.COMPLETED : OrderStatus.CONFIRMED;
       await tx.order.update({
         where: { id: payment.orderId },
-        data: { status: OrderStatus.CONFIRMED, confirmedAt: now },
+        data: { status: confirmedStatus, confirmedAt: now },
       });
 
       // Record status history
       await tx.orderStatusHistory.create({
         data: {
           orderId: payment.orderId,
-          status: OrderStatus.CONFIRMED,
+          status: confirmedStatus,
           note: 'Payment confirmed',
         },
       });
@@ -307,6 +311,24 @@ export class PaymentsService {
         } satisfies SendEmailJobData,
         DEFAULT_JOB_OPTIONS,
       );
+
+      if (payment.order.isDigital) {
+        const shopUrl = this.config.get<string>('NEXT_PUBLIC_URL') ?? 'https://ezihubb.com';
+        await this.emailQueue.add(
+          JOBS.SEND_EMAIL,
+          {
+            to: customerEmail,
+            template: 'digital-download-ready',
+            subject: `Your files are ready — Order ${payment.order.orderNumber}`,
+            data: {
+              orderNumber: payment.order.orderNumber,
+              downloadUrl: `${shopUrl.replace(/\/$/, '')}/orders/${payment.order.orderNumber}`,
+              year: new Date().getFullYear(),
+            },
+          } satisfies SendEmailJobData,
+          DEFAULT_JOB_OPTIONS,
+        );
+      }
     }
 
     await this.orderQueue.add(
@@ -392,19 +414,21 @@ export class PaymentsService {
     });
 
     for (const so of storeOrders) {
-      await this.prisma.storeOrder.update({
-        where: { id: so.id },
-        data:  { status: 'CONFIRMED' },
-      });
-
-      // Increment denormalized store stats
-      await this.prisma.store.update({
-        where: { id: so.storeId },
-        data:  {
-          totalOrders:   { increment: 1 },
-          totalRevenue:  { increment: Number(so.sellerEarnings) },
-        },
-      });
+      // Both writes must land together — a crash between them would confirm
+      // the order without crediting the store's stats, or vice versa.
+      await this.prisma.$transaction([
+        this.prisma.storeOrder.update({
+          where: { id: so.id },
+          data:  { status: 'CONFIRMED' },
+        }),
+        this.prisma.store.update({
+          where: { id: so.storeId },
+          data:  {
+            totalOrders:   { increment: 1 },
+            totalRevenue:  { increment: Number(so.sellerEarnings) },
+          },
+        }),
+      ]);
 
       // Notify seller of new order
       if (so.store.owner?.email) {
@@ -480,7 +504,7 @@ export class PaymentsService {
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
       include: {
-        order: { select: { id: true, createdAt: true, orderNumber: true } },
+        order: { select: { id: true, createdAt: true, orderNumber: true, isDigital: true } },
       },
     });
 
@@ -547,31 +571,41 @@ export class PaymentsService {
     const newRefundedTotal = alreadyRefunded + refundAmount;
     const isFullRefund = newRefundedTotal >= Number(payment.amount) - 0.01;
 
-    const updated = await this.prisma.payment.update({
-      where: { id: paymentId },
-      data: {
-        refundedAmount: newRefundedTotal,
-        status: isFullRefund
-          ? PaymentStatus.REFUNDED
-          : PaymentStatus.PARTIALLY_REFUNDED,
-        refundedAt: new Date(),
-        refundReason: dto.reason ?? null,
-      },
-    });
-
-    if (isFullRefund) {
-      await this.prisma.order.update({
-        where: { id: payment.orderId },
-        data: { status: OrderStatus.REFUNDED },
-      });
-      await this.prisma.orderStatusHistory.create({
+    // The Stripe call above can't be inside a DB transaction (external API),
+    // but everything after it — Payment + Order + OrderStatusHistory — must
+    // land together or not at all, otherwise a crash between them leaves a
+    // payment marked REFUNDED with the order stuck in its pre-refund status.
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const paymentUpdate = await tx.payment.update({
+        where: { id: paymentId },
         data: {
-          orderId: payment.orderId,
-          status: OrderStatus.REFUNDED,
-          note: `Refunded $${refundAmount.toFixed(2)} — ${dto.reason ?? 'admin initiated'}`,
+          refundedAmount: newRefundedTotal,
+          status: isFullRefund
+            ? PaymentStatus.REFUNDED
+            : PaymentStatus.PARTIALLY_REFUNDED,
+          refundedAt: new Date(),
+          refundReason: dto.reason ?? null,
         },
       });
 
+      if (isFullRefund) {
+        await tx.order.update({
+          where: { id: payment.orderId },
+          data: { status: OrderStatus.REFUNDED },
+        });
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId: payment.orderId,
+            status: OrderStatus.REFUNDED,
+            note: `Refunded $${refundAmount.toFixed(2)} — ${dto.reason ?? 'admin initiated'}`,
+          },
+        });
+      }
+
+      return paymentUpdate;
+    });
+
+    if (isFullRefund) {
       // Cancel any affiliate commission — fire-and-forget
       this.commissionService
         .cancelCommission(payment.orderId, `Order refunded — ${dto.reason ?? 'admin initiated'}`)
@@ -592,7 +626,7 @@ export class PaymentsService {
       `Refund ${refund.id} created for payment ${paymentId}, amount $${refundAmount}`,
     );
 
-    return this.mapPaymentToDto(updated);
+    return this.mapPaymentToDto(updated, payment.order.isDigital);
   }
 
   // ─── Gift Card Purchase ───────────────────────────────────────────────────
@@ -775,7 +809,7 @@ export class PaymentsService {
       take: limit,
       orderBy: { createdAt: 'desc' },
     });
-    return payments.map(this.mapPaymentToDto);
+    return payments.map((p) => this.mapPaymentToDto(p));
   }
 
   async getStats(): Promise<{
@@ -838,6 +872,16 @@ export class PaymentsService {
     giftCardAmount: number,
     total: number,
   ): Promise<void> {
+    // A 100%-gift-card order never touches onPaymentIntentSucceeded (Stripe) or
+    // the PayPal capture handler — it's a third, independent completion path,
+    // so digital orders need the exact same isDigital branch here or they get
+    // stuck at CONFIRMED forever (no download access, no delivery email).
+    const order = await this.prisma.order.findUniqueOrThrow({
+      where: { id: orderId },
+      select: { orderNumber: true, isDigital: true, userId: true, guestEmail: true },
+    });
+    const confirmedStatus = order.isDigital ? OrderStatus.COMPLETED : OrderStatus.CONFIRMED;
+
     await this.prisma.$transaction(async (tx) => {
       await this.deductGiftCard(tx, giftCardCode, giftCardAmount, orderId);
       await tx.payment.create({
@@ -854,12 +898,12 @@ export class PaymentsService {
       });
       await tx.order.update({
         where: { id: orderId },
-        data: { status: OrderStatus.CONFIRMED, confirmedAt: new Date() },
+        data: { status: confirmedStatus, confirmedAt: new Date() },
       });
       await tx.orderStatusHistory.create({
         data: {
           orderId,
-          status: OrderStatus.CONFIRMED,
+          status: confirmedStatus,
           note: 'Paid in full with gift card',
         },
       });
@@ -879,6 +923,26 @@ export class PaymentsService {
         this.logger.error(`Referral commission creation failed for gift-card order ${orderId}: ${err.message}`),
       );
 
+    if (order.isDigital) {
+      const customerEmail = order.guestEmail ?? (await this.getUserEmail(order.userId));
+      if (customerEmail) {
+        const shopUrl = this.config.get<string>('NEXT_PUBLIC_URL') ?? 'https://ezihubb.com';
+        await this.emailQueue.add(
+          JOBS.SEND_EMAIL,
+          {
+            to: customerEmail,
+            template: 'digital-download-ready',
+            subject: `Your files are ready — Order ${order.orderNumber}`,
+            data: {
+              orderNumber: order.orderNumber,
+              downloadUrl: `${shopUrl.replace(/\/$/, '')}/orders/${order.orderNumber}`,
+              year: new Date().getFullYear(),
+            },
+          } satisfies SendEmailJobData,
+          DEFAULT_JOB_OPTIONS,
+        );
+      }
+    }
   }
 
   private async deductGiftCard(
@@ -919,9 +983,10 @@ export class PaymentsService {
     return user?.email ?? null;
   }
 
-  private mapPaymentToDto(payment: Payment): PaymentResponseDto {
+  private mapPaymentToDto(payment: Payment, orderIsDigital?: boolean): PaymentResponseDto {
     return {
       id: payment.id,
+      orderIsDigital,
       orderId: payment.orderId,
       method: payment.method,
       status: payment.status,
@@ -1014,13 +1079,14 @@ export class PaymentsService {
             },
           });
 
-          if (payment.order.status !== OrderStatus.CONFIRMED) {
+          const confirmedStatus = payment.order.isDigital ? OrderStatus.COMPLETED : OrderStatus.CONFIRMED;
+          if (payment.order.status !== confirmedStatus) {
             await tx.order.update({
               where: { id: payment.orderId },
-              data:  { status: OrderStatus.CONFIRMED, confirmedAt: now },
+              data:  { status: confirmedStatus, confirmedAt: now },
             });
             await tx.orderStatusHistory.create({
-              data: { orderId: payment.orderId, status: OrderStatus.CONFIRMED, note: 'PayPal payment captured' },
+              data: { orderId: payment.orderId, status: confirmedStatus, note: 'PayPal payment captured' },
             });
           }
         });
@@ -1044,6 +1110,24 @@ export class PaymentsService {
             } satisfies SendEmailJobData,
             DEFAULT_JOB_OPTIONS,
           );
+
+          if (payment.order.isDigital) {
+            const shopUrl = process.env['NEXT_PUBLIC_URL'] ?? 'https://ezihubb.com';
+            await this.emailQueue.add(
+              JOBS.SEND_EMAIL,
+              {
+                to: customerEmail,
+                template: 'digital-download-ready',
+                subject: `Your files are ready — Order ${payment.order.orderNumber}`,
+                data: {
+                  orderNumber: payment.order.orderNumber,
+                  downloadUrl: `${shopUrl.replace(/\/$/, '')}/orders/${payment.order.orderNumber}`,
+                  year: new Date().getFullYear(),
+                },
+              } satisfies SendEmailJobData,
+              DEFAULT_JOB_OPTIONS,
+            );
+          }
         }
         await this.orderQueue.add(
           JOBS.ORDER_CONFIRMED,

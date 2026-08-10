@@ -1,6 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 
+export class OrderDigitalFileDto {
+  @ApiProperty() id: string;
+  @ApiProperty() filename: string;
+  @ApiProperty() mimeType: string;
+  @ApiProperty() sizeBytes: number;
+  @ApiProperty() downloadUrl: string;
+}
+
 export class OrderItemDto {
   @ApiProperty() id: string;
   @ApiPropertyOptional() productId: string | null;
@@ -17,6 +25,7 @@ export class OrderItemDto {
   @ApiPropertyOptional() previewUrl: string | null;
   @ApiPropertyOptional() imageUrl: string | null;
   @ApiPropertyOptional() product?: { name: string; slug: string | null; imageUrl?: string | null };
+  @ApiPropertyOptional({ type: [OrderDigitalFileDto] }) digitalFiles?: OrderDigitalFileDto[];
 }
 
 export class OrderPaymentDto {
@@ -54,15 +63,17 @@ export class OrderResponseDto {
   @ApiPropertyOptional() userId: string | null;
   @ApiPropertyOptional() guestEmail: string | null;
   @ApiProperty({ enum: OrderStatus }) status: OrderStatus;
+  @ApiProperty() isDigital: boolean;
 
-  @ApiProperty() shippingName: string;
-  @ApiProperty() shippingPhone: string;
-  @ApiProperty() shippingAddress: string;
-  @ApiProperty() shippingCity: string;
+  // Null for an all-digital order — see Order.isDigital.
+  @ApiPropertyOptional() shippingName: string | null;
+  @ApiPropertyOptional() shippingPhone: string | null;
+  @ApiPropertyOptional() shippingAddress: string | null;
+  @ApiPropertyOptional() shippingCity: string | null;
   @ApiPropertyOptional() shippingState: string | null;
-  @ApiProperty() shippingZip: string;
-  @ApiProperty() shippingCountry: string;
-  @ApiProperty() shippingMethod: string;
+  @ApiPropertyOptional() shippingZip: string | null;
+  @ApiPropertyOptional() shippingCountry: string | null;
+  @ApiPropertyOptional() shippingMethod: string | null;
   @ApiProperty() shippingCost: number;
 
   @ApiProperty() subtotal: number;

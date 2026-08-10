@@ -97,6 +97,28 @@ export class StorageService {
   }
 
   /**
+   * Fetch a file's raw bytes server-side (never redirects/signs a URL to the client).
+   * Used by the digital-download endpoint, which stamps the buffer per-buyer
+   * before streaming it — the raw object itself is never linked anywhere.
+   */
+  async getFileBuffer(key: string): Promise<Buffer> {
+    try {
+      const res = await this.s3.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+      const chunks: Buffer[] = [];
+      for await (const chunk of res.Body as AsyncIterable<Buffer>) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks);
+    } catch (err) {
+      this.logger.error(`Fetch failed for key "${key}": ${(err as Error).message}`);
+      throw new InternalServerErrorException({
+        code: 'ERR_FILE_FETCH_FAILED',
+        message: 'Could not retrieve the file. Please try again.',
+      });
+    }
+  }
+
+  /**
    * Build a deterministic storage key.
    * Example: generateKey('uploads/temp', 'photo.jpg') → 'uploads/temp/uuid.jpg'
    */

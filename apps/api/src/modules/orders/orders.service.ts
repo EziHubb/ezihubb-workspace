@@ -4,7 +4,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { OrderStatus, Prisma } from '@prisma/client';
+import { OrderStatus, Prisma, ProductType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { TrackingService } from '../shipping/tracking.service';
@@ -30,6 +30,7 @@ import {
   OrderPaymentDto,
   OrderStatusHistoryDto,
   OrderCustomerDto,
+  OrderDigitalFileDto,
 } from './dto/order-response.dto';
 import {
   OrderListItemDto,
@@ -52,9 +53,11 @@ const CART_INCLUDE_FOR_CHECKOUT = {
           sku: true,
           basePrice: true,
           isActive: true,
+          productType: true,
           deletedAt: true,
           storeId: true,
           images: {
+            where: { type: 'MOCKUP' as const },
             orderBy: { isPrimary: 'desc' as const },
             select: { url: true },
             take: 1,
@@ -214,10 +217,38 @@ export class OrdersService {
       }
     }
 
+    // A cart must be 100% physical or 100% digital — mixing the two would need
+    // per-item shipping/fulfillment splitting with no principled allocation.
+    // See dto/checkout.dto.ts for why shippingAddress/shippingMethodId are
+    // optional at the DTO level: only the physical path requires them.
+    const productTypes = new Set(cart.items.map((i) => i.product.productType));
+    if (productTypes.size > 1) {
+      throw new BadRequestException({
+        code: 'ERR_MIXED_CART',
+        message: 'Your cart has both physical and digital items — check out one type at a time.',
+      });
+    }
+    const isDigitalOnly = productTypes.has(ProductType.DIGITAL);
+
+    if (!isDigitalOnly && !dto.shippingAddress) {
+      throw new BadRequestException({
+        code: 'ERR_VALIDATION',
+        message: 'shippingAddress is required',
+      });
+    }
+    if (!isDigitalOnly && !dto.shippingMethodId) {
+      throw new BadRequestException({
+        code: 'ERR_VALIDATION',
+        message: 'shippingMethodId is required',
+      });
+    }
+
     // ── Provider (Printify, etc.) shipping — computed up-front, before the total
     // is frozen, since a per-store StoreOrder isn't built until inside the
     // $transaction below (too late to still be charging the customer for it). ──
-    const providerShippingCost = await this.computeProviderShippingCost(cart.items, dto.shippingAddress);
+    const providerShippingCost = isDigitalOnly
+      ? null
+      : await this.computeProviderShippingCost(cart.items, dto.shippingAddress!);
 
     // Recalculate subtotal from current prices (server-side, never trust client)
     const subtotal = cart.items.reduce((sum, item) => {
@@ -313,23 +344,30 @@ export class OrdersService {
     // If every item in the cart is fulfilled by a connected provider (e.g.
     // Printify), providerShippingCost holds a real per-store quote and we skip
     // the flat ShippingMethod entirely — otherwise (the common case today)
-    // fall back to the existing flat-rate behavior unchanged.
+    // fall back to the existing flat-rate behavior unchanged. A digital-only
+    // order never has shipping at all.
     let shippingCost: number;
-    let shippingMethodName: string;
-    if (providerShippingCost) {
+    let shippingMethodName: string | null;
+    if (isDigitalOnly) {
+      shippingCost = 0;
+      shippingMethodName = null;
+    } else if (providerShippingCost) {
       shippingCost = freeShipping ? 0 : [...providerShippingCost.values()].reduce((s, c) => s + c, 0);
       shippingMethodName = 'Standard Shipping';
     } else {
       const shippingCalc = await this.shippingService.calculateShipping(
-        dto.shippingMethodId,
+        dto.shippingMethodId!,
         subtotalAfterDiscount,
       );
       shippingCost = freeShipping ? 0 : shippingCalc.cost;
       shippingMethodName = shippingCalc.name;
     }
 
-    const giftWrappingCost = dto.giftWrapping ? GIFT_WRAPPING_PRICE : 0;
-    const { shippingAddress: addr } = dto;
+    // Gift wrapping is a physical concept — a digital order has nothing to wrap.
+    const giftWrappingCost = !isDigitalOnly && dto.giftWrapping ? GIFT_WRAPPING_PRICE : 0;
+    // Never persist a shipping address on a digital-only order, even if the
+    // client sent one — isDigitalOnly is the single source of truth here.
+    const addr = isDigitalOnly ? undefined : dto.shippingAddress;
 
     // Affiliate + referral discounts — applied AFTER coupon, BEFORE payment
     const total = Math.max(
@@ -349,15 +387,16 @@ export class OrdersService {
           userId: userId ?? null,
           guestEmail: dto.guestEmail ?? null,
           status: OrderStatus.PENDING_PAYMENT,
-          shippingName: addr.fullName,
-          shippingPhone: addr.phone,
-          shippingAddress: [addr.addressLine1, addr.addressLine2]
-            .filter(Boolean)
-            .join(', '),
-          shippingCity: addr.city,
-          shippingState: addr.state ?? null,
-          shippingZip: addr.postalCode,
-          shippingCountry: addr.country,
+          isDigital: isDigitalOnly,
+          shippingName: addr ? addr.fullName : null,
+          shippingPhone: addr ? addr.phone : null,
+          shippingAddress: addr
+            ? [addr.addressLine1, addr.addressLine2].filter(Boolean).join(', ')
+            : null,
+          shippingCity: addr ? addr.city : null,
+          shippingState: addr?.state ?? null,
+          shippingZip: addr ? addr.postalCode : null,
+          shippingCountry: addr ? addr.country : null,
           shippingMethod: shippingMethodName,
           shippingCost,
           subtotal:       Math.round(subtotal * 100) / 100,
@@ -368,7 +407,7 @@ export class OrdersService {
           giftMessage:    dto.isGift ? (dto.giftMessage ?? null) : null,
           giftFrom:       dto.isGift ? (dto.giftFrom ?? null) : null,
           giftReceipt:    dto.isGift ? (dto.giftReceipt ?? false) : false,
-          giftWrapping:            dto.giftWrapping ?? false,
+          giftWrapping:            !isDigitalOnly && (dto.giftWrapping ?? false),
           note:                    dto.note ?? null,
           affiliateId:              affiliateId,
           affiliateDiscountAmount:  affiliateDiscountAmount > 0 ? affiliateDiscountAmount : undefined,
@@ -782,10 +821,10 @@ export class OrdersService {
       itemCount: o.items.reduce((s, i) => s + i.quantity, 0),
       previewUrl: o.items[0]?.previewUrl ?? null,
       imageUrl: o.items[0]?.previewUrl ?? o.items[0]?.productImageUrl ?? null,
-      shippingName: o.shippingName,
-      shippingCity: o.shippingCity,
-      shippingCountry: o.shippingCountry,
-      shippingMethod: o.shippingMethod,
+      shippingName: o.shippingName ?? undefined,
+      shippingCity: o.shippingCity ?? undefined,
+      shippingCountry: o.shippingCountry ?? undefined,
+      shippingMethod: o.shippingMethod ?? undefined,
       shippingCost: Number(o.shippingCost),
       createdAt: o.createdAt,
       customer: o.user
@@ -1127,9 +1166,34 @@ export class OrdersService {
     };
   }
 
-  private mapToDto(
+  private async mapToDto(
     order: Prisma.OrderGetPayload<{ include: typeof ORDER_INCLUDE }>,
-  ): OrderResponseDto {
+  ): Promise<OrderResponseDto> {
+    // Digital deliverables only ever surface once the order is COMPLETED —
+    // mirrors the download endpoint's own access gate (order-downloads.controller.ts)
+    // so the UI never shows a download link that would 403.
+    const digitalFilesByProduct = new Map<string, OrderDigitalFileDto[]>();
+    if (order.isDigital && order.status === OrderStatus.COMPLETED) {
+      const productIds = [...new Set(order.items.map((i) => i.productId).filter((id): id is string => !!id))];
+      if (productIds.length > 0) {
+        const files = await this.prisma.digitalFile.findMany({
+          where: { productId: { in: productIds } },
+          orderBy: { sortOrder: 'asc' },
+        });
+        for (const f of files) {
+          const entry: OrderDigitalFileDto = {
+            id: f.id,
+            filename: f.filename,
+            mimeType: f.mimeType,
+            sizeBytes: f.sizeBytes,
+            downloadUrl: `/orders/${order.orderNumber}/downloads/${f.id}`,
+          };
+          if (!digitalFilesByProduct.has(f.productId)) digitalFilesByProduct.set(f.productId, []);
+          digitalFilesByProduct.get(f.productId)!.push(entry);
+        }
+      }
+    }
+
     const items: OrderItemDto[] = order.items.map((i) => ({
       id: i.id,
       productId: i.productId,
@@ -1150,6 +1214,7 @@ export class OrdersService {
         slug: i.productSlug,
         imageUrl: i.productImageUrl ?? undefined,
       },
+      digitalFiles: i.productId ? digitalFilesByProduct.get(i.productId) : undefined,
     }));
 
     const payment: OrderPaymentDto | null = order.payment
@@ -1185,6 +1250,7 @@ export class OrdersService {
       userId: order.userId,
       guestEmail: order.guestEmail,
       status: order.status,
+      isDigital: order.isDigital,
       shippingName: order.shippingName,
       shippingPhone: order.shippingPhone,
       shippingAddress: {

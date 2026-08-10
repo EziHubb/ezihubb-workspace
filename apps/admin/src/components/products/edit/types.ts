@@ -4,6 +4,7 @@ export type WhoMadeIt     = 'I_DID' | 'SHOP_MEMBER' | 'ANOTHER_COMPANY';
 export type HowItWasMade  = 'MADE_TO_ORDER' | 'HANDMADE' | 'ASSEMBLED' | 'ALTERED' | 'CURATED_SET' | 'NATURAL_MATERIAL';
 export type ReturnPolicy  = 'NO_RETURNS' | 'RETURNS_ACCEPTED' | 'EXCHANGES_ONLY';
 export type RenewalType   = 'AUTOMATIC' | 'MANUAL';
+export type ProductType   = 'PHYSICAL' | 'DIGITAL';
 
 // ── GPSR manufacturer / responsible-person info ───────────────────────────────
 
@@ -29,6 +30,7 @@ export interface ProductEditFormValues {
   name:              string;
   description:       string;
   primaryCategoryId: string;
+  productType:       ProductType;
 
   // Item Options tab
   tags:            string[];
@@ -103,16 +105,29 @@ export interface VariationGroup {
 
 // ── API shapes (what we receive from the server) ──────────────────────────────
 
+export type PrintSide = 'FRONT' | 'BACK' | 'SLEEVE' | 'HOOD';
+
 export interface ProductImage {
   id:        string;
   url:       string;
   altText?:  string;
   isPrimary: boolean;
   sortOrder: number;
+  type:      'MOCKUP' | 'PRINT_FILE';
+  printSide: PrintSide | null;
 }
 
 export interface ProductTag {
   tag: { id: string; name: string; slug: string };
+}
+
+export interface DigitalFile {
+  id:        string;
+  filename:  string;
+  mimeType:  string;
+  sizeBytes: number;
+  sortOrder: number;
+  variantId: string | null;
 }
 
 export interface AdminProductDto {
@@ -127,6 +142,7 @@ export interface AdminProductDto {
   isPersonalizable:     boolean;
   isActive:             boolean;
   status?:              'DRAFT' | 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
+  productType?:         ProductType;
   isFeatured:           boolean;
   isAdsEnabled?:        boolean;
   viewCount:            number;
@@ -137,6 +153,7 @@ export interface AdminProductDto {
   publishedAt?:         string;
   createdAt:            string;
   images:               ProductImage[];
+  digitalFiles?:        DigitalFile[];
   productTags?:         ProductTag[];
   videoUrls?:           string[];
   thumbnailCropData?:   Record<string, number> | null;

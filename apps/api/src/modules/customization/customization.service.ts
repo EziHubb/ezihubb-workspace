@@ -163,6 +163,10 @@ export class CustomizationService {
     return {
       status:       clientStatus,
       processedUrl: returnValue,
+      // Previously omitted — the client's pollJob() waits for BOTH
+      // processedKey and processedUrl before resolving, so background-removal
+      // jobs (which only ever returned a URL) always timed out after 65s.
+      processedKey: returnValue ? this.storage.extractKey(returnValue) : undefined,
       ...(job.failedReason && { error: job.failedReason }),
     };
   }

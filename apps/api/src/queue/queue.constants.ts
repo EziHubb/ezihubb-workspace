@@ -89,7 +89,8 @@ export interface SendEmailJobData {
 export interface RemoveBackgroundJobData {
   uploadKey:  string;
   outputKey:  string;
-  draftId:    string;
+  /** Unused by the processor itself (kept for caller bookkeeping/logging only) — optional so non-draft callers (e.g. product print-file generation) don't need one. */
+  draftId?:   string;
 }
 
 export interface ApplyArtStyleJobData {

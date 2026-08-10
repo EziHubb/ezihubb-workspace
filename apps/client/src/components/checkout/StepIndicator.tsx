@@ -3,15 +3,21 @@ import { Check, ShoppingCart } from 'lucide-react';
 interface StepIndicatorProps {
   currentStep:    1 | 2 | 3;
   completedSteps: number[];
+  /** Override the default Shipping/Delivery/Payment labels — used for the
+   *  digital-only flow, which bundles "shipping+delivery" into one contact step. */
+  labels?: [string, string, string];
 }
 
-const STEPS = [
-  { id: 1, label: 'Shipping' },
-  { id: 2, label: 'Delivery' },
-  { id: 3, label: 'Payment' },
-] as const;
+const DEFAULT_LABELS: [string, string, string] = ['Shipping', 'Delivery', 'Payment'];
 
-export function StepIndicator({ currentStep, completedSteps }: StepIndicatorProps) {
+export function StepIndicator({ currentStep, completedSteps, labels }: StepIndicatorProps) {
+  const stepLabels = labels ?? DEFAULT_LABELS;
+  const STEPS = [
+    { id: 1, label: stepLabels[0] },
+    { id: 2, label: stepLabels[1] },
+    { id: 3, label: stepLabels[2] },
+  ] as const;
+
   return (
     <nav aria-label="Checkout steps" className="flex items-center gap-0 w-full mb-8">
       {/* Cart — always completed */}

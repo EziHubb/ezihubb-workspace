@@ -3,6 +3,7 @@ import type { ProductImageDto } from './product.types';
 export interface CartItemDto {
   id: string;
   productId: string;
+  productType?: 'PHYSICAL' | 'DIGITAL';
   product: {
     name: string;
     slug: string;

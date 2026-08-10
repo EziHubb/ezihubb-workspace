@@ -725,6 +725,8 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
         isPrimary: imageIds.length === 0 && i === 0,
         sortOrder: imageIds.length + i,
         altText:   '',
+        type:      'MOCKUP' as const,
+        printSide: null,
       } satisfies ProductImage)),
     ]);
     setValue('imageIds', [...imageIds, ...images.map((img) => img.id)], { shouldDirty: true });
