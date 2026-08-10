@@ -119,6 +119,11 @@ RUN --mount=type=cache,id=nx-cache,target=/app/.nx/cache \
 FROM node:22-alpine AS api
 WORKDIR /app
 ENV NODE_ENV=production
+# ffprobe (bundled with the ffmpeg package) reads a video's real duration
+# server-side before it's accepted — needed to enforce the product-video
+# length cap, since a client-declared duration can't be trusted.
+RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
+    apk add ffmpeg
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nestjs
 COPY --from=builder-api --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder-api --chown=nestjs:nodejs /app/dist/apps/api ./dist

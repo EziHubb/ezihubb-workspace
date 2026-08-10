@@ -61,6 +61,7 @@ export class ProductResponseDto {
   @ApiProperty({ type: [VariantResponseDto] }) variants: VariantResponseDto[];
   @ApiProperty({ type: [VariantOptionDto] }) variantOptions: VariantOptionDto[];
   @ApiProperty({ type: [ProductImageResponseDto] }) images: ProductImageResponseDto[];
+  @ApiPropertyOptional({ type: [String] }) videoUrls?: string[];
   @ApiProperty({ type: [ProductTagResponseDto] }) tags: ProductTagResponseDto[];
   @ApiPropertyOptional() customizationConfig: Record<string, unknown> | null;
   @ApiPropertyOptional() averageRating: number | null;

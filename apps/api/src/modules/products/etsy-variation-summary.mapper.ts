@@ -23,8 +23,9 @@ export interface EtsyVariationSummaryResult {
  * cheapest as the "base" axis, treat every other property's own price as a
  * delta over ITS cheapest option, and sum deltas onto the base. This exactly
  * reproduces each option's own price_min at that axis's cheapest combination,
- * but is only an estimate elsewhere — callers must keep the resulting
- * product out of `isActive` until a human reviews the generated prices.
+ * but is only an estimate elsewhere (see `priceEstimated`) when more than one
+ * property genuinely affects price — sellers should spot-check those variant
+ * prices in admin after import.
  */
 export function mapEtsyVariationSummaryToVariants(
   properties: EtsyVariationPropertyDto[],

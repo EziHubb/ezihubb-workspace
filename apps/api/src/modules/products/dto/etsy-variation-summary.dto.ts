@@ -21,9 +21,10 @@ import { Type } from 'class-transformer';
 // `price` yet have different `price_max`, which is only possible if some
 // combinations were priced individually rather than by a formula — so exact
 // per-combination prices CANNOT be derived from this shape. Accepted anyway
-// (per explicit product decision) as a best-effort import: the resulting
-// product is forced to DRAFT/inactive so estimated prices can't be charged
-// to a real customer before a human reviews them.
+// (per explicit product decision) as a best-effort import — the product goes
+// live immediately like any other create call, so sellers/admins should
+// spot-check generated variant prices afterward when more than one property
+// affects price (see EtsyVariationSummaryResult.priceEstimated).
 
 export class EtsyVariationOptionDto {
   @ApiPropertyOptional({ example: '6954580708' })

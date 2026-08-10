@@ -501,7 +501,7 @@
         <tr><td class="prop-name">collectionIds</td><td class="prop-type">string[]</td><td></td><td class="prop-desc">Collection IDs to add this product to.</td></tr>
         <tr><td class="prop-name">customizationConfig</td><td class="prop-type">object</td><td></td><td class="prop-desc">Personalizer field config (JSON) — same shape used by the storefront customizer.</td></tr>
         <tr><td class="prop-name">variants</td><td class="prop-type">array</td><td></td><td class="prop-desc">Each: <code>{ name, options, price, sku?, isDefault?, sortOrder? }</code> — one entry per real, priced combination (e.g. one row for "Blonde / S", one for "Blonde / M", etc). If you have 13 colors × 8 sizes, send 104 rows.</td></tr>
-        <tr><td class="prop-name">etsyVariationSummary</td><td class="prop-type">array</td><td></td><td class="prop-desc">Alternative to <code>variants</code> — pass Etsy's listing-page price-range summary (one entry per variation property, e.g. "Colors" / "Sizes", each option carrying a <code>price_min</code>/<code>price_max</code> range) and it's converted to <code>variants</code> for you. Prices are reconstructed with a best-effort formula and are <em>estimates</em>, not exact — the created product is always forced inactive/draft until reviewed. Ignored if <code>variants</code> is also sent.</td></tr>
+        <tr><td class="prop-name">etsyVariationSummary</td><td class="prop-type">array</td><td></td><td class="prop-desc">Alternative to <code>variants</code> — pass Etsy's listing-page price-range summary (one entry per variation property, e.g. "Colors" / "Sizes", each option carrying a <code>price_min</code>/<code>price_max</code> range) and it's converted to <code>variants</code> for you. Prices are reconstructed with a best-effort formula and are <em>estimates</em>, not exact for combinations where more than one property affects price. Ignored if <code>variants</code> is also sent.</td></tr>
       </table>
       <p class="desc" style="margin-top:12px">
         Images aren't set here — create the product first, then use
@@ -516,8 +516,8 @@
         the min/max price range per property value shown on Etsy's public listing page (e.g. "Color: Blonde
         ($34–$47)") — the only shape realistically available without seller-level API access. Because that
         summary can't be reconstructed into exact per-combination prices (two values can share the same base
-        price yet have different maximums), products created this way are always created as a draft
-        (<code>isActive: false</code>) — review and adjust prices before activating.
+        price yet have different maximums), so double-check the generated variant prices in admin after import
+        if the listing has more than one price-affecting property.
       </p>
 
       <div class="section-label">Request Example</div>
@@ -575,8 +575,8 @@
       <p class="desc" style="margin-top:8px">
         This is a straight pass-through of the price-range data shown on Etsy's public listing page — copy the
         <code>variations</code> array directly into <code>etsyVariationSummary</code> with no reshaping needed.
-        The product is created as a draft; open it in admin to review the estimated per-combination prices before
-        activating.
+        The product goes live immediately like any other create call; review the generated variant prices in
+        admin afterward if the listing has more than one price-affecting property.
       </p>
 
       <div class="section-label">Response</div>

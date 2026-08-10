@@ -24,7 +24,7 @@ import { type Crop } from 'react-image-crop';
 import {
   GripVertical, Trash2, Pencil, X,
   HelpCircle, Film, ImagePlus, Crop as CropIcon,
-  Check,
+  Check, VideoOff,
 } from 'lucide-react';
 import type { ProductEditFormValues, AdminProductDto, ProductImage } from '../types';
 import { ThumbnailCropModal } from '../ThumbnailCropModal';
@@ -35,6 +35,48 @@ import { API_ROUTES } from '@ezihubb/constants';
 
 const MAX_PHOTOS = 20;
 const MAX_VIDEOS = 2;
+const VIDEO_MAX_DURATION_SECONDS = 10;
+const VIDEO_MAX_BYTES = 20 * 1024 * 1024;
+const VIDEO_ACCEPT = 'video/mp4,video/webm,video/quicktime';
+
+// ── Video upload helpers ──────────────────────────────────────────────────────
+
+/** Fast, non-authoritative check so a shopper gets instant feedback before
+ *  the file even leaves the browser — the server re-checks with ffprobe
+ *  since this is trivially spoofable (it's just what the browser's own
+ *  decoder reports). */
+function readVideoDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const videoEl = document.createElement('video');
+    videoEl.preload = 'metadata';
+    videoEl.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      resolve(videoEl.duration);
+    };
+    videoEl.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Could not read this file as a video.'));
+    };
+    videoEl.src = url;
+  });
+}
+
+async function uploadVideoFile(
+  productId: string,
+  file: File,
+): Promise<{ url: string; videoUrls: string[] }> {
+  const formData = new FormData();
+  formData.append('video', file);
+  return api.post<{ url: string; videoUrls: string[] }>(
+    API_ROUTES.ADMIN.PRODUCT_VIDEOS(productId),
+    formData,
+  );
+}
+
+async function deleteVideoFile(productId: string, url: string): Promise<void> {
+  await api.delete(API_ROUTES.ADMIN.PRODUCT_VIDEOS(productId), { data: { url } });
+}
 
 // ── Upload helpers (presigned URL flow) ───────────────────────────────────────
 
@@ -228,80 +270,117 @@ function SortableImageSlot({
   );
 }
 
-// ─── Static video slot ────────────────────────────────────────────────────────
+// ─── Video slot (direct file upload, ≤10s clips) ──────────────────────────────
 
 function VideoSlot({
+  productId,
   videoUrls,
   onChange,
 }: {
+  productId: string;
   videoUrls: string[];
   onChange:  (urls: string[]) => void;
 }) {
-  const [expanded, setExpanded] = useState(videoUrls.length > 0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const remaining = MAX_VIDEOS - videoUrls.length;
 
-  const handleAdd = () => {
-    if (videoUrls.length < MAX_VIDEOS) {
-      onChange([...videoUrls, '']);
-      setExpanded(true);
+  const handleFileSelected = async (file: File) => {
+    setError(null);
+
+    if (file.size > VIDEO_MAX_BYTES) {
+      setError(`Max ${VIDEO_MAX_BYTES / (1024 * 1024)} MB per video.`);
+      return;
+    }
+
+    try {
+      const duration = await readVideoDuration(file);
+      if (duration > VIDEO_MAX_DURATION_SECONDS + 0.5) {
+        setError(`Video is ${duration.toFixed(1)}s — max ${VIDEO_MAX_DURATION_SECONDS}s allowed.`);
+        return;
+      }
+    } catch {
+      setError('Could not read this file as a video.');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const result = await uploadVideoFile(productId, file);
+      onChange(result.videoUrls);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
     }
   };
 
-  const handleRemove = (idx: number) => {
-    onChange(videoUrls.filter((_, i) => i !== idx));
+  const handleRemove = async (url: string) => {
+    onChange(videoUrls.filter((u) => u !== url));
+    await deleteVideoFile(productId, url).catch(() => undefined);
   };
-
-  const handleChange = (idx: number, val: string) => {
-    const u = [...videoUrls];
-    u[idx] = val;
-    onChange(u);
-  };
-
-  if (!expanded || videoUrls.length === 0) {
-    return (
-      <button
-        type="button"
-        onClick={handleAdd}
-        className="aspect-square rounded-xl border-2 border-dashed border-border bg-background/80 flex flex-col items-center justify-center gap-2 text-muted hover:border-primary/50 hover:text-primary hover:bg-primary/3 transition-all group"
-      >
-        <div className="w-8 h-8 rounded-full bg-muted/10 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
-          <Film className="w-4 h-4" />
-        </div>
-        <div className="text-center">
-          <p className="text-xs font-semibold">Add videos</p>
-          <p className="text-[11px] text-muted/60">{remaining} remaining</p>
-        </div>
-      </button>
-    );
-  }
 
   return (
-    <div className="aspect-square rounded-xl border-2 border-border bg-background/80 flex flex-col p-3 gap-2">
-      <div className="flex items-center justify-between">
+    <div className="aspect-square rounded-xl border-2 border-border bg-background/80 flex flex-col p-2.5 gap-2 overflow-hidden">
+      <div className="flex items-center justify-between shrink-0">
         <span className="text-xs font-semibold text-secondary flex items-center gap-1">
           <Film className="w-3.5 h-3.5 text-primary" /> Videos
         </span>
-        {remaining > 0 && (
-          <button type="button" onClick={handleAdd} className="text-[10px] text-primary hover:underline">
-            + Add
-          </button>
-        )}
+        <span className="text-[10px] text-muted">{videoUrls.length}/{MAX_VIDEOS}</span>
       </div>
-      <div className="flex-1 space-y-1.5 overflow-hidden">
-        {videoUrls.map((url, idx) => (
-          <div key={idx} className="flex items-center gap-1.5">
-            <input
-              value={url}
-              onChange={(e) => handleChange(idx, e.target.value)}
-              placeholder="YouTube or Vimeo URL"
-              className="flex-1 min-w-0 px-2 py-1 text-[11px] border border-border rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary/20 font-mono placeholder:font-sans placeholder:text-muted"
-            />
-            <button type="button" onClick={() => handleRemove(idx)} className="text-muted hover:text-red-500 shrink-0">
-              <X className="w-3 h-3" />
+
+      <div className="flex-1 space-y-1.5 overflow-y-auto">
+        {videoUrls.map((url) => (
+          <div key={url} className="relative rounded-lg overflow-hidden border border-border bg-black aspect-video group">
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption -- product demo clips, no dialogue */}
+            <video src={url} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+            <button
+              type="button"
+              onClick={() => handleRemove(url)}
+              className="absolute top-1 right-1 p-1 bg-black/60 rounded text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              title="Remove"
+            >
+              <Trash2 className="w-3 h-3" />
             </button>
           </div>
         ))}
+
+        {remaining > 0 && (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className="w-full py-2 rounded-lg border-2 border-dashed border-border text-muted hover:border-primary/50 hover:text-primary hover:bg-primary/3 disabled:opacity-40 transition-all flex items-center justify-center gap-1.5 text-[11px] font-semibold"
+          >
+            {uploading ? (
+              <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Film className="w-3.5 h-3.5" />
+            )}
+            {uploading ? 'Checking & uploading…' : `Add video (${remaining} left)`}
+          </button>
+        )}
       </div>
+
+      {error && (
+        <p className="text-[10px] text-red-600 flex items-start gap-1 shrink-0">
+          <VideoOff className="w-3 h-3 shrink-0 mt-0.5" />
+          {error}
+        </p>
+      )}
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept={VIDEO_ACCEPT}
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleFileSelected(file);
+          e.target.value = '';
+        }}
+      />
     </div>
   );
 }
@@ -459,7 +538,7 @@ function DraggablePhotoGrid({
             )}
 
             {/* Fixed slot 1: Video */}
-            <VideoSlot videoUrls={videoUrls} onChange={onVideosChange} />
+            <VideoSlot productId={productId} videoUrls={videoUrls} onChange={onVideosChange} />
 
             {/* Slots 2..n: remaining photos */}
             {imageIds.slice(1).map((id) => {
@@ -697,7 +776,9 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
 
       {/* File format hint */}
       <p className="text-xs text-muted -mt-4">
-        Supported: JPEG, PNG, WebP · Max 20 MB per image · Minimum 800×800 px recommended for best quality
+        Photos: JPEG, PNG, WebP · Max 10 MB each · Minimum 800×800 px recommended for best quality
+        <br />
+        Videos: MP4, WebM, MOV · Max {VIDEO_MAX_DURATION_SECONDS}s · Max {VIDEO_MAX_BYTES / (1024 * 1024)} MB
       </p>
 
       {/* ── Thumbnails section ────────────────────────────────────────────── */}

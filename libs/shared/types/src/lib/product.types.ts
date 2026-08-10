@@ -96,6 +96,7 @@ export interface ProductDto extends ProductListItemDto {
   customization?: CustomizationConfigDto | null;
   sizeGuide?: string;
   collections?: { id: string; name: string; slug: string }[];
+  videoUrls?: string[];
 }
 
 // ── Backward-compat legacy types ───────────────────────────────────────────────

@@ -154,9 +154,9 @@ export class CreateProductDto {
       '(one entry per variation property, each option carrying a price_min/price_max ' +
       'range rather than an exact combination price) and it will be converted to ' +
       'variants automatically. Prices are reconstructed with a best-effort formula and ' +
-      'are NOT exact, so a product created this way is always forced inactive/draft ' +
-      'regardless of `isActive` until a human reviews the generated prices. Ignored if ' +
-      '`variants` is also provided.',
+      'are estimates, not exact — review generated variant prices before relying on them ' +
+      'for combinations where more than one property affects price. Ignored if `variants` ' +
+      'is also provided.',
   })
   @IsOptional()
   @IsArray()

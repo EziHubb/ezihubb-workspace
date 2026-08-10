@@ -3,14 +3,152 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { ChevronLeft, ChevronRight, Heart, Flag, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, Flag, X, Play, Volume2, VolumeX, Video as VideoIcon } from 'lucide-react';
 import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
+import { safeArr } from '@ezihubb/utils';
 import type { ProductDto } from '@ezihubb/types';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const PLACEHOLDER = 'https://placehold.co/600x600/FFF5F0/E85D3F.png?text=No+Image';
+
+// ── Unified media item (photo or short clip) ───────────────────────────────────
+
+interface MediaItem {
+  id:      string;
+  type:    'image' | 'video';
+  url:     string;
+  altText?: string;
+}
+
+function buildMediaItems(product: ProductDto): MediaItem[] {
+  const images = product.images?.length
+    ? product.images.map((img) => ({ id: img.id, type: 'image' as const, url: img.url, altText: img.altText ?? undefined }))
+    : [{ id: 'ph', type: 'image' as const, url: PLACEHOLDER, altText: product.name }];
+
+  const videos = safeArr(product.videoUrls).map((url, i) => ({
+    id:   `video-${i}`,
+    type: 'video' as const,
+    url,
+  }));
+
+  // Video slotted right after the primary (first) photo — engaging, but
+  // doesn't disturb the seller's chosen primary image as the default slide
+  // (that image is reused elsewhere: share links, search thumbnails, OG tags).
+  return images.length > 0 ? [images[0], ...videos, ...images.slice(1)] : videos;
+}
+
+// ── Hooks ─────────────────────────────────────────────────────────────────────
+
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduced(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setReduced(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return reduced;
+}
+
+// ── Video slide — autoplay muted+loop when active (clips are ≤10s, so this
+//    stays lightweight); a tap unmutes, and reduced-motion users get a
+//    static poster + explicit play button instead of autoplay. ────────────────
+
+function VideoSlide({
+  url,
+  active,
+  className,
+}: {
+  url:       string;
+  active:    boolean;
+  className: string;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const reducedMotion = usePrefersReducedMotion();
+  const [muted, setMuted] = useState(true);
+  const [playingManually, setPlayingManually] = useState(false);
+
+  const shouldPlay = active && (!reducedMotion || playingManually);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    if (shouldPlay) el.play().catch(() => undefined);
+    else el.pause();
+  }, [shouldPlay]);
+
+  // Reset the manual-play override once the slide goes out of view.
+  useEffect(() => {
+    if (!active) setPlayingManually(false);
+  }, [active]);
+
+  return (
+    <div className={`relative ${className}`}>
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption -- silent product demo clip */}
+      <video
+        ref={videoRef}
+        src={url}
+        className="absolute inset-0 w-full h-full object-cover"
+        muted={muted}
+        loop
+        playsInline
+        preload="metadata"
+        onClick={(e) => e.stopPropagation()}
+      />
+
+      {reducedMotion && !playingManually && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setPlayingManually(true); }}
+          aria-label="Play video"
+          className="absolute inset-0 flex items-center justify-center bg-black/20"
+        >
+          <span className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+            <Play className="w-6 h-6 text-secondary ml-0.5" fill="currentColor" />
+          </span>
+        </button>
+      )}
+
+      {shouldPlay && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
+          aria-label={muted ? 'Unmute video' : 'Mute video'}
+          className="absolute bottom-3 right-3 z-10 w-8 h-8 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+        >
+          {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Thumbnail (photo or video-with-badge, lightweight preview only) ────────────
+
+function MediaThumbnail({ item, className }: { item: MediaItem; className: string }) {
+  if (item.type === 'video') {
+    return (
+      <div className={`relative bg-black ${className}`}>
+        {/* eslint-disable-next-line jsx-a11y/media-has-caption -- thumbnail only shows first frame, never plays */}
+        <video src={item.url} className="absolute inset-0 w-full h-full object-cover" muted preload="metadata" />
+        <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+          <VideoIcon className="w-4 h-4 text-white drop-shadow" />
+        </span>
+      </div>
+    );
+  }
+  return (
+    <img
+      src={item.url}
+      alt={item.altText ?? ''}
+      loading="lazy"
+      className={`absolute inset-0 w-full h-full object-cover ${className}`}
+    />
+  );
+}
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -21,9 +159,7 @@ interface EtsyGalleryProps {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function EtsyGallery({ product }: EtsyGalleryProps) {
-  const images = product.images?.length
-    ? product.images
-    : [{ id: 'ph', url: PLACEHOLDER, altText: product.name, isPrimary: true, sortOrder: 0 }];
+  const media = buildMediaItems(product);
 
   const [activeIndex,  setActiveIndex]  = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -49,8 +185,8 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
 
   // ── Navigation ────────────────────────────────────────────────────────────────
   const goNext = useCallback(
-    () => setActiveIndex((i) => Math.min(i + 1, images.length - 1)),
-    [images.length],
+    () => setActiveIndex((i) => Math.min(i + 1, media.length - 1)),
+    [media.length],
   );
   const goPrev = useCallback(
     () => setActiveIndex((i) => Math.max(i - 1, 0)),
@@ -85,7 +221,7 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
     if (Math.abs(diff) > 50) { if (diff > 0) goNext(); else goPrev(); }
   };
 
-  const mainImage = images[activeIndex] ?? images[0];
+  const activeItem = media[activeIndex] ?? media[0];
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
@@ -95,12 +231,12 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
 
         {/* Vertical thumbnail strip (desktop only) */}
         <div className="hidden lg:flex flex-col gap-2 w-[76px] flex-shrink-0 overflow-y-auto max-h-[640px] [&::-webkit-scrollbar]:hidden">
-          {images.map((img, i) => (
+          {media.map((item, i) => (
             <button
-              key={img.id ?? i}
+              key={item.id}
               type="button"
               onClick={() => setActiveIndex(i)}
-              aria-label={`View image ${i + 1}`}
+              aria-label={item.type === 'video' ? `View video ${i + 1}` : `View image ${i + 1}`}
               className={[
                 'relative flex-shrink-0 aspect-square rounded-md overflow-hidden border-2 transition-colors',
                 i === activeIndex
@@ -108,12 +244,7 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
                   : 'border-transparent hover:border-[#CCC]',
               ].join(' ')}
             >
-              <img
-                src={img.url}
-                alt={img.altText ?? `${product.name} photo ${i + 1}`}
-                loading="lazy"
-                className="absolute inset-0 w-full h-full object-cover"
-              />
+              <MediaThumbnail item={item} className="" />
             </button>
           ))}
         </div>
@@ -121,10 +252,10 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
         {/* Main image area */}
         <div className="flex-1 min-w-0">
 
-          {/* Main image — click to open lightbox */}
+          {/* Main media — click to open lightbox */}
           <div
-            className="relative aspect-square rounded-2xl overflow-hidden bg-[#F5F1EB] cursor-zoom-in"
-            onClick={() => setLightboxOpen(true)}
+            className={`relative aspect-square rounded-2xl overflow-hidden bg-[#F5F1EB] ${activeItem.type === 'image' ? 'cursor-zoom-in' : ''}`}
+            onClick={() => { if (activeItem.type === 'image') setLightboxOpen(true); }}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >
@@ -143,21 +274,25 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
               />
             </button>
 
-            <img
-              src={mainImage.url}
-              alt={mainImage.altText ?? product.name}
-              loading="eager"
-              className="absolute inset-0 w-full h-full object-cover"
-            />
+            {activeItem.type === 'video' ? (
+              <VideoSlide url={activeItem.url} active className="absolute inset-0 w-full h-full" />
+            ) : (
+              <img
+                src={activeItem.url}
+                alt={activeItem.altText ?? product.name}
+                loading="eager"
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            )}
 
             {/* ◀ ▶ arrows */}
-            {images.length > 1 && (
+            {media.length > 1 && (
               <>
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); goPrev(); }}
                   disabled={activeIndex === 0}
-                  aria-label="Previous photo"
+                  aria-label="Previous"
                   className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 bg-white rounded-full shadow flex items-center justify-center disabled:opacity-30 hover:bg-gray-100 transition-colors"
                 >
                   <ChevronLeft className="w-5 h-5 text-secondary" />
@@ -165,8 +300,8 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); goNext(); }}
-                  disabled={activeIndex === images.length - 1}
-                  aria-label="Next photo"
+                  disabled={activeIndex === media.length - 1}
+                  aria-label="Next"
                   className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 bg-white rounded-full shadow flex items-center justify-center disabled:opacity-30 hover:bg-gray-100 transition-colors"
                 >
                   <ChevronRight className="w-5 h-5 text-secondary" />
@@ -175,14 +310,14 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
             )}
 
             {/* Mobile dot indicators */}
-            {images.length > 1 && (
+            {media.length > 1 && (
               <div className="lg:hidden absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                {images.map((_, i) => (
+                {media.map((_, i) => (
                   <button
                     key={i}
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setActiveIndex(i); }}
-                    aria-label={`View image ${i + 1}`}
+                    aria-label={`View item ${i + 1}`}
                     className={`rounded-full transition-all ${
                       i === activeIndex ? 'w-3 h-1.5 bg-secondary' : 'w-1.5 h-1.5 bg-white/70'
                     }`}
@@ -193,25 +328,20 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
           </div>
 
           {/* Mobile horizontal thumbnail strip */}
-          {images.length > 1 && (
+          {media.length > 1 && (
             <div className="lg:hidden flex gap-2 mt-3 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              {images.map((img, i) => (
+              {media.map((item, i) => (
                 <button
-                  key={img.id ?? i}
+                  key={item.id}
                   type="button"
                   onClick={() => setActiveIndex(i)}
-                  aria-label={`View image ${i + 1}`}
+                  aria-label={item.type === 'video' ? `View video ${i + 1}` : `View image ${i + 1}`}
                   className={[
                     'relative flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-colors',
                     i === activeIndex ? 'border-secondary' : 'border-transparent',
                   ].join(' ')}
                 >
-                  <img
-                    src={img.url}
-                    alt={img.altText ?? ''}
-                    loading="lazy"
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
+                  <MediaThumbnail item={item} className="" />
                 </button>
               ))}
             </div>
@@ -228,8 +358,8 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
         </div>
       </div>
 
-      {/* ── LIGHTBOX ─────────────────────────────────────────────────────────────── */}
-      {lightboxOpen && (
+      {/* ── LIGHTBOX (photos only — a video's own controls already give the full-attention view) ── */}
+      {lightboxOpen && activeItem.type === 'image' && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-stretch"
           onClick={() => setLightboxOpen(false)}
@@ -257,21 +387,21 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
             >
               <div className="relative w-full max-h-[80vh] aspect-square">
                 <img
-                  src={mainImage.url}
-                  alt={mainImage.altText ?? product.name}
+                  src={activeItem.url}
+                  alt={activeItem.altText ?? product.name}
                   loading="eager"
                   className="absolute inset-0 w-full h-full object-contain"
                 />
               </div>
 
               {/* Arrows */}
-              {images.length > 1 && (
+              {media.length > 1 && (
                 <>
                   <button
                     type="button"
                     onClick={goPrev}
                     disabled={activeIndex === 0}
-                    aria-label="Previous photo"
+                    aria-label="Previous"
                     className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow flex items-center justify-center disabled:opacity-30 hover:bg-gray-100 transition-colors"
                   >
                     <ChevronLeft className="w-6 h-6 text-secondary" />
@@ -279,8 +409,8 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
                   <button
                     type="button"
                     onClick={goNext}
-                    disabled={activeIndex === images.length - 1}
-                    aria-label="Next photo"
+                    disabled={activeIndex === media.length - 1}
+                    aria-label="Next"
                     className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow flex items-center justify-center disabled:opacity-30 hover:bg-gray-100 transition-colors"
                   >
                     <ChevronRight className="w-6 h-6 text-secondary" />
@@ -292,12 +422,12 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
             {/* Thumbnail grid (right side, hidden on small screens) */}
             <div className="hidden md:block md:w-[240px] lg:w-[300px] flex-shrink-0 overflow-y-auto py-12 pr-4 pl-2">
               <div className="grid grid-cols-2 gap-2">
-                {images.map((img, i) => (
+                {media.map((item, i) => (
                   <button
-                    key={img.id ?? i}
+                    key={item.id}
                     type="button"
                     onClick={() => setActiveIndex(i)}
-                    aria-label={`View image ${i + 1}`}
+                    aria-label={item.type === 'video' ? `View video ${i + 1}` : `View image ${i + 1}`}
                     className={[
                       'relative aspect-square rounded-lg overflow-hidden border-2 transition-all',
                       i === activeIndex
@@ -305,12 +435,7 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
                         : 'border-transparent opacity-60 hover:opacity-90',
                     ].join(' ')}
                   >
-                    <img
-                      src={img.url}
-                      alt={img.altText ?? `${product.name} photo ${i + 1}`}
-                      loading="lazy"
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
+                    <MediaThumbnail item={item} className="" />
                   </button>
                 ))}
               </div>

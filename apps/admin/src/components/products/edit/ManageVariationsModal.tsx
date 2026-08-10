@@ -12,20 +12,25 @@ import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { InlinePriceInput } from './primitives';
 import { Toggle } from './primitives/Toggle';
+import { FilterSelect } from '../../ui/FilterSelect';
 import type { VariationGroup, VariationSettings } from './types';
 
 // ─── Settings helpers ─────────────────────────────────────────────────────────
 // Settings are encoded in `variesBy: string[]` to avoid a new migration.
-// Encoding: 'price' | 'processing' | 'quantity' | 'sku'
-// Legacy 'price:<groupId>' entries are treated as 'price' (prices-on for all groups).
+// Encoding: 'price:<groupId>' | 'processing' | 'quantity' | 'sku'
+// Bare legacy 'price' (no groupId, from before per-group pricing existed) means
+// "all groups" — matches Etsy's own "Prices vary for each: Shape and Option"
+// vs "Shape" vs "Option" distinction (a seller picks which specific
+// property/properties actually change the price, not an all-or-nothing toggle).
 
-function hasPricing(variesBy: string[]): boolean {
-  return variesBy.some((v) => v === 'price' || v.startsWith('price:'));
+function pricedGroupIds(variesBy: string[], allGroupIds: string[]): string[] {
+  if (variesBy.includes('price')) return allGroupIds;
+  return allGroupIds.filter((id) => variesBy.includes(`price:${id}`));
 }
 
-function togglePricing(variesBy: string[], on: boolean): string[] {
+function setPricedGroups(variesBy: string[], groupIds: string[]): string[] {
   const without = variesBy.filter((v) => v !== 'price' && !v.startsWith('price:'));
-  return on ? [...without, 'price'] : without;
+  return [...without, ...groupIds.map((id) => `price:${id}`)];
 }
 
 function hasSetting(variesBy: string[], key: string): boolean {
@@ -202,22 +207,48 @@ function VariationGroupCard({
 // ─── VariationSettingsToggles ─────────────────────────────────────────────────
 
 function VariationSettingsToggles({
-  settings, onChange,
+  settings, groups, onChange,
 }: {
   settings: VariationSettings | undefined;
+  groups:   VariationGroup[];
   onChange: (variesBy: string[]) => void;
 }) {
-  const variesBy = settings?.variesBy ?? [];
+  const variesBy  = settings?.variesBy ?? [];
+  const allIds    = groups.map((g) => g.id);
+  const pricedIds = pricedGroupIds(variesBy, allIds);
+  const pricingOn = pricedIds.length > 0;
+
+  // Etsy-style: when there are two variation groups, a seller picks exactly
+  // which one(s) actually change the price — "Shape and Option" (both),
+  // "Shape" only, or "Option" only — instead of an all-or-nothing toggle.
+  const showGroupPicker = pricingOn && groups.length === 2;
+  const bothValue = 'both';
+  const pickerValue = pricedIds.length === groups.length ? bothValue : (pricedIds[0] ?? bothValue);
+  const pickerOptions = groups.length === 2
+    ? [
+        { value: bothValue,     label: `${groups[0].name} and ${groups[1].name}` },
+        { value: groups[0].id,  label: groups[0].name },
+        { value: groups[1].id,  label: groups[1].name },
+      ]
+    : [];
 
   return (
     <div className="space-y-4">
       {/* Prices vary */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <Toggle
-          checked={hasPricing(variesBy)}
-          onChange={(on) => onChange(togglePricing(variesBy, on))}
+          checked={pricingOn}
+          onChange={(on) => onChange(setPricedGroups(variesBy, on ? allIds : []))}
         />
         <span className="text-sm font-medium text-secondary">Prices vary for each</span>
+        {showGroupPicker && (
+          <FilterSelect
+            value={pickerValue}
+            onChange={(v) => onChange(setPricedGroups(variesBy, v === bothValue ? allIds : [v]))}
+            options={pickerOptions}
+            size="sm"
+          />
+        )}
       </div>
 
       {[
@@ -799,15 +830,16 @@ export function ManageVariationsModal({
 
                   <VariationSettingsToggles
                     settings={settings}
+                    groups={groups}
                     onChange={saveSettings}
                   />
                 </div>
 
-                {/* Price matrix — shown for all groups when pricing is enabled */}
-                {settings && hasPricing(settings.variesBy) && groups.length > 0 && (
+                {/* Price matrix — only for the group(s) picked above */}
+                {settings && groups.length > 0 && (
                   <VariantPriceMatrix
                     productId={productId}
-                    groups={groups}
+                    groups={groups.filter((g) => pricedGroupIds(settings.variesBy, groups.map((gg) => gg.id)).includes(g.id))}
                   />
                 )}
               </>

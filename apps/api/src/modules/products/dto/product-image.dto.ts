@@ -15,3 +15,9 @@ export class AttachImagesDto {
   @ArrayMaxSize(20)
   urls: string[];
 }
+
+export class DeleteVideoDto {
+  @ApiProperty()
+  @IsString()
+  url: string;
+}
