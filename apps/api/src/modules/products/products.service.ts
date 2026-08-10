@@ -27,7 +27,7 @@ import type {
 } from './dto/create-product-detail.dto';
 import { ProductQueryDto, ProductSortBy } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
-import { mapEtsyInventoryToVariants } from './etsy-inventory.mapper';
+import { mapEtsyVariationSummaryToVariants } from './etsy-variation-summary.mapper';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductListItemDto } from './dto/product-list-item.dto';
 import {
@@ -406,6 +406,39 @@ export class ProductsService {
     return ids;
   }
 
+  // etsyVariationSummary arrives with no admin in the loop to separately set
+  // up the "Manage Variations" picker (VariationGroup/Settings) the way the
+  // manual create-product UI does — derive it here so the priced SKUs
+  // created alongside the product are actually selectable on the storefront
+  // and in admin.
+  private async createVariationGroupsFor(
+    productId: string,
+    groups: { name: string; options: string[] }[],
+  ): Promise<void> {
+    if (!groups.length) return;
+    await this.prisma.$transaction([
+      ...groups.map((g, gi) =>
+        this.prisma.variationGroup.create({
+          data: {
+            productId,
+            name: g.name,
+            sortOrder: gi,
+            options: {
+              create: g.options.map((name, oi) => ({
+                name,
+                value: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `option-${oi}`,
+                sortOrder: oi,
+              })),
+            },
+          },
+        }),
+      ),
+      this.prisma.variationSettings.create({
+        data: { productId, enableVariations: true, variesBy: ['price'] },
+      }),
+    ]);
+  }
+
   async create(dto: CreateProductDto, storeId?: string): Promise<ProductResponseDto> {
     if (
       dto.compareAtPrice !== undefined &&
@@ -417,14 +450,17 @@ export class ProductsService {
       });
     }
 
-    // Accept Etsy's real inventory export as an alternative to `variants` —
-    // `variants` (if provided) always wins, so a caller migrating gradually
-    // can't have a stray etsyInventory silently override an explicit list.
-    const variants = dto.variants?.length
-      ? dto.variants
-      : dto.etsyInventory
-        ? mapEtsyInventoryToVariants(dto.etsyInventory)
+    // Accept Etsy's listing-page price-range summary as an alternative to
+    // `variants` — `variants` (if provided) always wins, so a caller
+    // migrating gradually can't have a stray etsyVariationSummary silently
+    // override an explicit list. Resulting prices are estimates, not exact
+    // (see the mapper for why), so this always forces the product to DRAFT.
+    const variationSummary =
+      !dto.variants?.length && dto.etsyVariationSummary?.length
+        ? mapEtsyVariationSummaryToVariants(dto.etsyVariationSummary)
         : undefined;
+
+    const variants = dto.variants?.length ? dto.variants : variationSummary?.variants;
 
     const skuExists = await this.prisma.product.findUnique({
       where: { sku: dto.sku },
@@ -460,7 +496,11 @@ export class ProductsService {
         basePrice: dto.basePrice,
         compareAtPrice: dto.compareAtPrice,
         isPersonalizable: dto.isPersonalizable ?? true,
-        isActive: dto.isActive ?? true,
+        // Estimated-price products (see variationSummary above) can never go
+        // live with a guessed price — force DRAFT/inactive no matter what the
+        // caller asked for, until a human reviews the generated prices.
+        isActive: variationSummary ? false : (dto.isActive ?? true),
+        status: variationSummary ? 'DRAFT' : undefined,
         isFeatured: dto.isFeatured ?? false,
         processingDays: dto.processingDays ?? 3,
         categoryId: dto.categoryId,
@@ -495,6 +535,14 @@ export class ProductsService {
       },
       include: this.fullProductInclude(),
     });
+
+    // etsyVariationSummary arrives with no admin in the loop to separately set
+    // up the "Manage Variations" picker (VariationGroup/Settings) the way the
+    // manual create-product UI does — derive it here so the priced SKUs just
+    // created above are actually selectable on the storefront and in admin.
+    if (variationSummary) {
+      await this.createVariationGroupsFor(product.id, variationSummary.groups);
+    }
 
     await this.redis.invalidatePattern('products:list:*');
 

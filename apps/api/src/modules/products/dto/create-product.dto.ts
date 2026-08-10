@@ -13,7 +13,7 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { EtsyInventoryDto } from './etsy-inventory.dto';
+import { EtsyVariationPropertyDto } from './etsy-variation-summary.dto';
 
 export class CreateVariantDto {
   @ApiProperty({ example: 'Size M - White' })
@@ -148,14 +148,19 @@ export class CreateProductDto {
   variants?: CreateVariantDto[];
 
   @ApiPropertyOptional({
-    type: EtsyInventoryDto,
+    type: [EtsyVariationPropertyDto],
     description:
-      "Alternative to `variants` — pass Etsy's own Listing Inventory API response " +
-      '(GET /v3/application/listings/{id}/inventory) directly and it will be converted ' +
-      'to `variants` automatically. Ignored if `variants` is also provided.',
+      "Alternative to `variants` — pass Etsy's own listing-page price-range summary " +
+      '(one entry per variation property, each option carrying a price_min/price_max ' +
+      'range rather than an exact combination price) and it will be converted to ' +
+      'variants automatically. Prices are reconstructed with a best-effort formula and ' +
+      'are NOT exact, so a product created this way is always forced inactive/draft ' +
+      'regardless of `isActive` until a human reviews the generated prices. Ignored if ' +
+      '`variants` is also provided.',
   })
   @IsOptional()
-  @ValidateNested()
-  @Type(() => EtsyInventoryDto)
-  etsyInventory?: EtsyInventoryDto;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => EtsyVariationPropertyDto)
+  etsyVariationSummary?: EtsyVariationPropertyDto[];
 }
