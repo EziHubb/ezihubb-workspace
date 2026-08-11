@@ -14,7 +14,12 @@ export default withAuth({
   },
 });
 
-// Protect everything except login, NextAuth API routes, Next.js internals
+// Protect everything except login, NextAuth API routes, Next.js internals,
+// and the static brand/favicon assets served from public/ (logo, icons,
+// manifest) — these must load unauthenticated since the login page itself
+// renders the logo and browser tabs fetch favicons before any session exists.
 export const config = {
-  matcher: ['/((?!login|api/auth|_next/static|_next/image|favicon.ico|public).*)'],
+  matcher: [
+    '/((?!login|api/auth|_next/static|_next/image|favicon.ico|public|logo\\.jpg|site\\.webmanifest|favicon-16x16\\.png|favicon-32x32\\.png|apple-touch-icon\\.png|android-chrome-192x192\\.png|android-chrome-512x512\\.png).*)',
+  ],
 };
