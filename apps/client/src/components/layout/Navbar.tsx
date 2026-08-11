@@ -227,13 +227,15 @@ export function Navbar({ menuData }: NavbarProps = {}) {
                 <Menu className="w-6 h-6 text-secondary" />
               </button>
 
-              <Link href={`/${locale}`} className="flex items-center gap-2">
-                <div className="w-8 h-8 md:w-9 md:h-9 bg-primary rounded-lg flex items-center justify-center shrink-0">
-                  <span className="text-white font-bold text-xl font-display">M</span>
-                </div>
-                <span className="font-display font-bold text-lg md:text-xl text-secondary hidden sm:block">
-                  EziHubb
-                </span>
+              <Link href={`/${locale}`} className="flex items-center shrink-0">
+                <Image
+                  src="/logo.jpg"
+                  alt="EziHubb"
+                  width={160}
+                  height={40}
+                  priority
+                  className="h-8 md:h-9 w-auto object-contain"
+                />
               </Link>
             </div>
 

@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { signIn, getSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
@@ -49,11 +50,8 @@ export default function AdminLoginPage() {
         style={{ background: 'linear-gradient(135deg, #E85D3F 0%, #C44A2E 100%)' }}
       >
         {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-            <span className="text-white font-bold text-xl">M</span>
-          </div>
-          <span className="text-white font-bold text-xl">EziHubb</span>
+        <div className="inline-flex items-center bg-white rounded-lg px-3 py-2 self-start">
+          <Image src="/logo.jpg" alt="EziHubb" width={160} height={40} priority className="h-8 w-auto object-contain" />
         </div>
 
         {/* Center copy */}
@@ -91,11 +89,8 @@ export default function AdminLoginPage() {
       <div className="flex-1 flex items-center justify-center bg-background px-4 py-12">
         <div className="w-full max-w-[400px]">
           {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold">M</span>
-            </div>
-            <span className="font-bold text-xl text-secondary">EziHubb</span>
+          <div className="lg:hidden flex items-center mb-8">
+            <Image src="/logo.jpg" alt="EziHubb" width={150} height={38} priority className="h-8 w-auto object-contain" />
           </div>
 
           <h2 className="text-2xl font-bold text-secondary mb-1">Sign in to Admin</h2>

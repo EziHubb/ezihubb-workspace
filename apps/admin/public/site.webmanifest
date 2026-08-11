@@ -1,0 +1,11 @@
+{
+  "name": "EziHubb — Admin",
+  "short_name": "EziHubb Admin",
+  "icons": [
+    { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "theme_color": "#E85D3F",
+  "background_color": "#ffffff",
+  "display": "standalone"
+}

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { CLIENT_ROUTES } from '@ezihubb/constants';
 
@@ -40,11 +41,14 @@ function FacebookIcon() {
 
 function BrandLogo() {
   return (
-    <div className="flex items-center gap-2.5">
-      <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
-        <span className="text-white font-bold text-xl font-display leading-none">M</span>
-      </div>
-      <span className="font-display font-bold text-lg text-white">EziHubb</span>
+    <div className="inline-flex items-center bg-white rounded-lg px-2.5 py-1.5">
+      <Image
+        src="/logo.jpg"
+        alt="EziHubb"
+        width={140}
+        height={36}
+        className="h-7 w-auto object-contain"
+      />
     </div>
   );
 }
