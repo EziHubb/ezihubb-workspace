@@ -68,6 +68,15 @@ CREATE TYPE "SellerPayoutStatus" AS ENUM ('PENDING', 'PROCESSING', 'PAID', 'FAIL
 CREATE TYPE "CategoryScope" AS ENUM ('PLATFORM', 'STORE');
 
 -- CreateEnum
+CREATE TYPE "ProductImageType" AS ENUM ('MOCKUP', 'PRINT_FILE');
+
+-- CreateEnum
+CREATE TYPE "PrintSide" AS ENUM ('FRONT', 'BACK', 'SLEEVE', 'HOOD');
+
+-- CreateEnum
+CREATE TYPE "ProductType" AS ENUM ('PHYSICAL', 'DIGITAL');
+
+-- CreateEnum
 CREATE TYPE "ConversationStatus" AS ENUM ('OPEN', 'PENDING', 'RESOLVED', 'SPAM');
 
 -- CreateEnum
@@ -81,6 +90,9 @@ CREATE TYPE "TrackingStage" AS ENUM ('ORDER_CONFIRMED', 'SENT_TO_FULFILLMENT', '
 
 -- CreateEnum
 CREATE TYPE "FulfillmentProviderType" AS ENUM ('PRINTIFY', 'MERCHIZE');
+
+-- CreateEnum
+CREATE TYPE "StoreFulfillmentMode" AS ENUM ('AUTOMATIC', 'MANUAL');
 
 -- CreateEnum
 CREATE TYPE "FulfillmentConnectionStatus" AS ENUM ('ACTIVE', 'INVALID', 'DISCONNECTED');
@@ -226,6 +238,7 @@ CREATE TABLE "Store" (
     "rejectedReason" TEXT,
     "verifiedAt" TIMESTAMP(3),
     "approvedById" TEXT,
+    "fulfillmentMode" "StoreFulfillmentMode" NOT NULL DEFAULT 'AUTOMATIC',
     "totalProducts" INTEGER NOT NULL DEFAULT 0,
     "totalOrders" INTEGER NOT NULL DEFAULT 0,
     "totalRevenue" DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -412,6 +425,7 @@ CREATE TABLE "Product" (
     "isPersonalizable" BOOLEAN NOT NULL DEFAULT true,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "status" "ProductStatus" NOT NULL DEFAULT 'ACTIVE',
+    "productType" "ProductType" NOT NULL DEFAULT 'PHYSICAL',
     "isFeatured" BOOLEAN NOT NULL DEFAULT false,
     "viewCount" INTEGER NOT NULL DEFAULT 0,
     "soldCount" INTEGER NOT NULL DEFAULT 0,
@@ -479,8 +493,25 @@ CREATE TABLE "ProductImage" (
     "altText" TEXT,
     "isPrimary" BOOLEAN NOT NULL DEFAULT false,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "type" "ProductImageType" NOT NULL DEFAULT 'MOCKUP',
+    "printSide" "PrintSide",
 
     CONSTRAINT "ProductImage_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "DigitalFile" (
+    "id" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "variantId" TEXT,
+    "filename" TEXT NOT NULL,
+    "storageKey" TEXT NOT NULL,
+    "mimeType" TEXT NOT NULL,
+    "sizeBytes" INTEGER NOT NULL,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "DigitalFile_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -640,14 +671,15 @@ CREATE TABLE "Order" (
     "userId" TEXT,
     "guestEmail" TEXT,
     "status" "OrderStatus" NOT NULL DEFAULT 'PENDING_PAYMENT',
-    "shippingName" TEXT NOT NULL,
-    "shippingPhone" TEXT NOT NULL,
-    "shippingAddress" TEXT NOT NULL,
-    "shippingCity" TEXT NOT NULL,
+    "isDigital" BOOLEAN NOT NULL DEFAULT false,
+    "shippingName" TEXT,
+    "shippingPhone" TEXT,
+    "shippingAddress" TEXT,
+    "shippingCity" TEXT,
     "shippingState" TEXT,
-    "shippingZip" TEXT NOT NULL,
-    "shippingCountry" TEXT NOT NULL DEFAULT 'US',
-    "shippingMethod" TEXT NOT NULL,
+    "shippingZip" TEXT,
+    "shippingCountry" TEXT DEFAULT 'US',
+    "shippingMethod" TEXT,
     "shippingCost" DECIMAL(10,2) NOT NULL,
     "subtotal" DECIMAL(10,2) NOT NULL,
     "discountAmount" DECIMAL(10,2) NOT NULL DEFAULT 0,
@@ -657,10 +689,6 @@ CREATE TABLE "Order" (
     "trackingUrl" TEXT,
     "carrier" TEXT,
     "trackerId" TEXT,
-    "taxAmount" DECIMAL(10,2) NOT NULL DEFAULT 0,
-    "taxRate" DECIMAL(5,4) NOT NULL DEFAULT 0,
-    "taxJurisdiction" TEXT,
-    "taxExempt" BOOLEAN NOT NULL DEFAULT false,
     "isGift" BOOLEAN NOT NULL DEFAULT false,
     "giftMessage" VARCHAR(500),
     "giftReceipt" BOOLEAN NOT NULL DEFAULT false,
@@ -708,6 +736,18 @@ CREATE TABLE "OrderItem" (
     "storeOrderId" TEXT,
 
     CONSTRAINT "OrderItem_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "DigitalDownloadLog" (
+    "id" TEXT NOT NULL,
+    "orderItemId" TEXT NOT NULL,
+    "fileId" TEXT NOT NULL,
+    "ip" TEXT,
+    "userAgent" TEXT,
+    "downloadedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "DigitalDownloadLog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -1509,6 +1549,12 @@ CREATE INDEX "ProductVariant_productId_idx" ON "ProductVariant"("productId");
 CREATE INDEX "ProductImage_productId_idx" ON "ProductImage"("productId");
 
 -- CreateIndex
+CREATE INDEX "ProductImage_productId_type_printSide_idx" ON "ProductImage"("productId", "type", "printSide");
+
+-- CreateIndex
+CREATE INDEX "DigitalFile_productId_idx" ON "DigitalFile"("productId");
+
+-- CreateIndex
 CREATE INDEX "VariationGroup_productId_idx" ON "VariationGroup"("productId");
 
 -- CreateIndex
@@ -1576,6 +1622,9 @@ CREATE INDEX "OrderItem_storeOrderId_idx" ON "OrderItem"("storeOrderId");
 
 -- CreateIndex
 CREATE INDEX "OrderItem_storeId_idx" ON "OrderItem"("storeId");
+
+-- CreateIndex
+CREATE INDEX "DigitalDownloadLog_orderItemId_idx" ON "DigitalDownloadLog"("orderItemId");
 
 -- CreateIndex
 CREATE INDEX "OrderStatusHistory_orderId_idx" ON "OrderStatusHistory"("orderId");
@@ -1923,6 +1972,12 @@ ALTER TABLE "ProductVariant" ADD CONSTRAINT "ProductVariant_productId_fkey" FORE
 ALTER TABLE "ProductImage" ADD CONSTRAINT "ProductImage_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "DigitalFile" ADD CONSTRAINT "DigitalFile_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "DigitalFile" ADD CONSTRAINT "DigitalFile_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "ProductVariant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "VariationGroup" ADD CONSTRAINT "VariationGroup_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -1956,7 +2011,7 @@ ALTER TABLE "Cart" ADD CONSTRAINT "Cart_userId_fkey" FOREIGN KEY ("userId") REFE
 ALTER TABLE "CartItem" ADD CONSTRAINT "CartItem_cartId_fkey" FOREIGN KEY ("cartId") REFERENCES "Cart"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "CartItem" ADD CONSTRAINT "CartItem_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "CartItem" ADD CONSTRAINT "CartItem_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "CartItem" ADD CONSTRAINT "CartItem_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "ProductVariant"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -1984,6 +2039,9 @@ ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_variantId_fkey" FOREIGN KEY ("
 
 -- AddForeignKey
 ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_storeOrderId_fkey" FOREIGN KEY ("storeOrderId") REFERENCES "StoreOrder"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "DigitalDownloadLog" ADD CONSTRAINT "DigitalDownloadLog_orderItemId_fkey" FOREIGN KEY ("orderItemId") REFERENCES "OrderItem"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "OrderStatusHistory" ADD CONSTRAINT "OrderStatusHistory_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;
