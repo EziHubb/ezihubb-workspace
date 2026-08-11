@@ -9,6 +9,7 @@ import { queryKeys } from '@ezihubb/api-client';
 import { OrderStatusBadge, Pagination, Skeleton } from '@ezihubb/ui';
 import type { OrderListItemDto } from '@ezihubb/types';
 import { useAuthQuery } from '../../../../../lib/hooks/useAuthQuery';
+import { usePaginationLabels } from '../../../../../lib/hooks/usePaginationLabels';
 import { fmtAmount, safeArr, safeNum } from '@ezihubb/utils';
 
 // ── Filter tabs ───────────────────────────────────────────────────────────────
@@ -21,14 +22,6 @@ const STATUS_TABS: { key: string; value: string }[] = [
   { key: 'delivered',    value: 'DELIVERED'     },
   { key: 'cancelled',    value: 'CANCELLED'     },
 ];
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const fmt = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day:   'numeric',
-  year:  'numeric',
-});
 
 const STATUS_ACCENT: Record<string, string> = {
   CONFIRMED:        'border-l-blue-400',
@@ -86,6 +79,12 @@ function OrderCardSkeleton() {
 
 function OrderCard({ order, locale }: { order: OrderListItemDto; locale: string }) {
   const t      = useTranslations('account');
+  const tStatus = useTranslations('orderTracking.orderStatusBadge');
+  const fmt = new Intl.DateTimeFormat(locale, {
+    month: 'short',
+    day:   'numeric',
+    year:  'numeric',
+  });
   const thumb  = order.previewUrl ?? order.imageUrl ?? null;
   const accent = STATUS_ACCENT[order.status] ?? 'border-l-border';
   const extra  = Math.max(0, safeNum(order.itemCount) - 1);
@@ -128,13 +127,14 @@ function OrderCard({ order, locale }: { order: OrderListItemDto; locale: string 
             {fmt.format(new Date(order.createdAt as string))}
             {' · '}
             <span className="font-medium text-secondary">
-              {order.itemCount} item{order.itemCount !== 1 ? 's' : ''}
+              {t('orders.itemCount', { count: order.itemCount })}
             </span>
           </p>
           {/* Status + total on same row for desktop */}
           <div className="flex flex-wrap items-center gap-2 mt-1">
             <OrderStatusBadge
               status={order.status as Parameters<typeof OrderStatusBadge>[0]['status']}
+              label={tStatus(order.status as Parameters<typeof tStatus>[0])}
             />
             <span className="text-sm font-bold text-secondary tabular-nums">
               {fmtAmount(order.total)}
@@ -146,7 +146,7 @@ function OrderCard({ order, locale }: { order: OrderListItemDto; locale: string 
         <Link
           href={`/${locale}/account/orders/${order.orderNumber}`}
           className="self-center shrink-0 text-muted hover:text-primary transition-colors"
-          aria-label="View order details"
+          aria-label={t('orders.viewOrderDetailsAria')}
         >
           <ChevronRight className="w-5 h-5" />
         </Link>
@@ -166,7 +166,7 @@ function OrderCard({ order, locale }: { order: OrderListItemDto; locale: string 
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary border border-primary/40 rounded-button px-3 py-1.5 hover:bg-primary/5 transition-colors"
           >
             <Truck className="w-3.5 h-3.5" />
-            Track Package
+            {t('orders.detail.trackPackage')}
           </Link>
         )}
         {order.status === 'DELIVERED' && (
@@ -175,7 +175,7 @@ function OrderCard({ order, locale }: { order: OrderListItemDto; locale: string 
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary border border-primary/40 rounded-button px-3 py-1.5 hover:bg-primary/5 transition-colors"
           >
             <MapPin className="w-3.5 h-3.5" />
-            Write a Review
+            {t('orders.actions.writeReview')}
           </Link>
         )}
       </div>
@@ -188,6 +188,7 @@ function OrderCard({ order, locale }: { order: OrderListItemDto; locale: string 
 export default function OrdersPage() {
   const locale = useLocale();
   const t = useTranslations('account');
+  const paginationLabels = usePaginationLabels();
   const [activeStatus, setActiveStatus] = useState('');
   const [page,         setPage]         = useState(1);
 
@@ -286,6 +287,7 @@ export default function OrdersPage() {
               page={page}
               totalPages={totalPages}
               onPageChange={handlePageChange}
+              labels={paginationLabels}
             />
           )}
         </>

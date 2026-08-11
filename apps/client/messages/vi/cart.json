@@ -1,6 +1,15 @@
 {
   "title": "Giỏ hàng",
   "itemCount": "{count, plural, one {# sản phẩm} other {# sản phẩm}}",
+  "loadingCart": "Đang tải giỏ hàng",
+  "itemsSectionAria": "Sản phẩm trong giỏ hàng",
+  "itemsListAria": "Danh sách sản phẩm trong giỏ hàng",
+  "orderSummaryAria": "Tóm tắt đơn hàng",
+
+  "mixedCart": {
+    "title": "Giỏ hàng của bạn có cả sản phẩm vật lý và sản phẩm số.",
+    "detail": "Bạn cần thanh toán riêng từng loại — hãy xóa bớt sản phẩm vật lý hoặc sản phẩm số để tiếp tục."
+  },
 
   "empty": {
     "heading": "Giỏ hàng của bạn đang trống",
@@ -16,15 +25,21 @@
     "browseProducts": "Xem sản phẩm →",
     "subtotal": "Tạm tính",
     "shippingNote": "Phí vận chuyển được tính khi thanh toán",
-    "checkout": "Thanh toán — ${amount}",
-    "discount": "Giảm giá ({couponCode})"
+    "checkout": "Thanh toán — {amount}",
+    "discount": "Giảm giá ({couponCode})",
+    "viewFullCart": "Xem toàn bộ giỏ hàng"
   },
 
   "item": {
     "remove": "Xóa {name}",
     "decreaseQty": "Giảm số lượng",
     "increaseQty": "Tăng số lượng",
-    "priceUpdated": "Giá đã được cập nhật"
+    "priceUpdated": "Giá đã được cập nhật",
+    "quantityFor": "Số lượng cho {name}",
+    "decrease": "Giảm",
+    "increase": "Tăng",
+    "priceUpdatedTo": "⚠️ Giá đã cập nhật thành {amount}",
+    "each": "{price} mỗi sản phẩm"
   },
 
   "summary": {
@@ -37,7 +52,8 @@
     "couponPlaceholder": "Mã giảm giá",
     "applyCoupon": "Áp dụng",
     "removeCoupon": "Xóa mã giảm giá",
-    "proceedToCheckout": "Tiến hành thanh toán"
+    "proceedToCheckout": "Tiến hành thanh toán",
+    "couponApplied": "−{amount} đã áp dụng"
   },
 
   "trust": {
@@ -56,7 +72,21 @@
   "errors": {
     "couponInvalid": "Mã giảm giá không hợp lệ hoặc đã hết hạn.",
     "couponAlreadyUsed": "Bạn đã sử dụng mã giảm giá này.",
-    "couponMinOrder": "Đơn hàng tối thiểu ${amount} để áp dụng mã này.",
+    "couponMinOrder": "Đơn hàng tối thiểu {amount} để áp dụng mã này.",
     "couponGeneric": "Không thể áp dụng mã giảm giá. Vui lòng thử lại."
+  },
+
+  "giftCard": {
+    "title": "Thẻ quà tặng",
+    "enterCode": "Vui lòng nhập mã thẻ quà tặng.",
+    "noBalance": "Thẻ quà tặng này không còn số dư.",
+    "validateError": "Không thể xác thực thẻ quà tặng. Vui lòng thử lại.",
+    "applied": "Đã áp dụng thẻ quà tặng",
+    "remove": "Xóa",
+    "codePlaceholder": "GIFT-XXXX-XXXX",
+    "check": "Kiểm tra",
+    "ofOriginal": "trong tổng {amount}",
+    "neverExpires": "Không hết hạn",
+    "applyToOrder": "Áp dụng vào đơn hàng"
   }
 }

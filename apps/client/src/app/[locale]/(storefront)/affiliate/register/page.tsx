@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { CheckCircle, ArrowLeft } from 'lucide-react';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -91,6 +91,7 @@ function Field({
 
 export default function AffiliateRegisterPage() {
   const locale = useLocale();
+  const t      = useTranslations('affiliate.register');
 
   const [form,      setForm]      = useState<FormState>(INITIAL);
   const [isLoading, setIsLoading] = useState(false);
@@ -115,7 +116,7 @@ export default function AffiliateRegisterPage() {
       });
       setSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setError(err instanceof Error ? err.message : t('genericError'));
     } finally {
       setIsLoading(false);
     }
@@ -128,21 +129,23 @@ export default function AffiliateRegisterPage() {
           <CheckCircle className="w-8 h-8 text-green-600" />
         </div>
         <h1 className="font-display text-3xl font-bold text-secondary mb-3">
-          Application submitted!
+          {t('successTitle')}
         </h1>
         <p className="text-muted mb-2">
-          We&apos;ll review your application and email you at{' '}
-          <strong className="text-secondary">{form.email}</strong> within 24 hours.
+          {t.rich('successBody', {
+            email: form.email,
+            strong: (chunks) => <strong className="text-secondary">{chunks}</strong>,
+          })}
         </p>
         <p className="text-sm text-muted mb-8">
-          In the meantime, explore what you can earn.
+          {t('successNote')}
         </p>
         <Link
           href={`/${locale}/affiliate`}
           className="inline-flex items-center gap-2 text-primary font-medium text-sm hover:underline"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Affiliate Program
+          {t('backToProgram')}
         </Link>
       </div>
     );
@@ -157,15 +160,15 @@ export default function AffiliateRegisterPage() {
         className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-primary transition-colors mb-8"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to Affiliate Program
+        {t('backToProgram')}
       </Link>
 
       {/* Header */}
       <h1 className="font-display text-3xl font-bold text-secondary mb-2">
-        Join the program
+        {t('title')}
       </h1>
       <p className="text-muted text-sm mb-8">
-        Tell us a little about yourself. We review every application personally.
+        {t('subtitle')}
       </p>
 
       {error && (
@@ -177,14 +180,14 @@ export default function AffiliateRegisterPage() {
       <form onSubmit={onSubmit} className="space-y-5">
         <div className="grid grid-cols-2 gap-4">
           <Field
-            label="First name"
+            label={t('firstName')}
             name="firstName"
             value={form.firstName}
             onChange={set('firstName')}
             required
           />
           <Field
-            label="Last name"
+            label={t('lastName')}
             name="lastName"
             value={form.lastName}
             onChange={set('lastName')}
@@ -193,28 +196,28 @@ export default function AffiliateRegisterPage() {
         </div>
 
         <Field
-          label="Email address"
+          label={t('email')}
           name="email"
           type="email"
           value={form.email}
           onChange={set('email')}
           required
-          placeholder="you@example.com"
+          placeholder={t('emailPlaceholder')}
         />
 
         <Field
-          label="Website or social profile URL"
+          label={t('website')}
           name="website"
           type="url"
           value={form.website}
           onChange={set('website')}
           required
-          placeholder="https://yourwebsite.com"
-          description="Your blog, YouTube channel, Instagram, TikTok, etc."
+          placeholder={t('websitePlaceholder')}
+          description={t('websiteDescription')}
         />
 
         <Field
-          label="How do you plan to promote us?"
+          label={t('promo')}
           name="promoDescription"
           value={form.promoDescription}
           onChange={set('promoDescription')}
@@ -222,17 +225,17 @@ export default function AffiliateRegisterPage() {
           textarea
           rows={4}
           maxLength={500}
-          placeholder="Tell us about your audience, content style, and how you'd feature our products..."
-          description={`${form.promoDescription.length}/500`}
+          placeholder={t('promoPlaceholder')}
+          description={t('promoCount', { count: form.promoDescription.length })}
         />
 
         <Field
-          label="Desired referral code (optional)"
+          label={t('referralCode')}
           name="desiredReferralCode"
           value={form.desiredReferralCode}
           onChange={(v) => set('desiredReferralCode')(v.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-          placeholder="e.g. SARAH2024 — uppercase, 4–20 characters"
-          description="We'll try to reserve this for you if it's available."
+          placeholder={t('referralCodePlaceholder')}
+          description={t('referralCodeDescription')}
           maxLength={20}
         />
 
@@ -241,14 +244,14 @@ export default function AffiliateRegisterPage() {
           disabled={isLoading}
           className="w-full bg-primary hover:bg-primary/90 disabled:opacity-60 text-white font-bold text-sm px-6 py-3.5 rounded-button transition-colors uppercase tracking-wide"
         >
-          {isLoading ? 'Submitting…' : 'Submit Application'}
+          {isLoading ? t('submitting') : t('submit')}
         </button>
       </form>
 
       <p className="mt-6 text-center text-xs text-muted">
-        Already approved?{' '}
+        {t('alreadyApproved')}{' '}
         <Link href={`/${locale}/affiliate/dashboard`} className="text-primary hover:underline">
-          Go to your dashboard
+          {t('goToDashboard')}
         </Link>
       </p>
     </div>

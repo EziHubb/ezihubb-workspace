@@ -131,7 +131,7 @@ export function BundleCustomizerPanel({
       openDrawer();
       onCartSuccess();
     } catch (err) {
-      setAddError(err instanceof Error ? err.message : 'Failed to add to cart');
+      setAddError(err instanceof Error ? err.message : t('bundle.failedToAdd'));
     } finally {
       setIsAdding(false);
     }
@@ -145,10 +145,10 @@ export function BundleCustomizerPanel({
       {/* Header */}
       <div>
         <h3 className="font-semibold text-secondary text-base mb-1">
-          🎁 Personalize Your Set
+          {t('bundle.title')}
         </h3>
         <p className="text-xs text-muted">
-          Customize each item in the set individually
+          {t('bundle.subtitle')}
         </p>
       </div>
 
@@ -182,7 +182,7 @@ export function BundleCustomizerPanel({
 
               <span className="truncate">
                 {name
-                  ? `${t('bundle.itemTab', { n: i + 1 })} for ${name}`
+                  ? t('bundle.itemFor', { item: t('bundle.itemTab', { n: i + 1 }), name })
                   : t('bundle.itemTab', { n: i + 1 })}
               </span>
 
@@ -199,7 +199,7 @@ export function BundleCustomizerPanel({
       <div className="space-y-4">
         {activeFields.length === 0 ? (
           <p className="text-sm text-muted text-center py-4">
-            No fields for this item.
+            {t('bundle.noFields')}
           </p>
         ) : (
           activeFields.map((field) => {
@@ -219,7 +219,7 @@ export function BundleCustomizerPanel({
                     type="text"
                     value={val.text ?? ''}
                     maxLength={field.maxLength}
-                    placeholder={`Enter ${field.label.toLowerCase()}…`}
+                    placeholder={t('bundle.enterPlaceholder', { label: field.label.toLowerCase() })}
                     onChange={(e) =>
                       setFieldValue(field.id, { text: e.target.value })
                     }
@@ -269,13 +269,15 @@ export function BundleCustomizerPanel({
               key={i}
               className={complete ? 'text-success font-medium' : 'text-muted'}
             >
-              {complete ? '✓' : '○'} Item {i + 1}
+              {complete ? '✓' : '○'} {t('bundle.itemN', { n: i + 1 })}
             </span>
           );
         })}
         <span className="ml-auto">
-          {items.filter((i) => isItemComplete(config.fields, allFields[i] ?? {}, i)).length}
-          /{bundleCount} complete
+          {t('bundle.itemsComplete', {
+            count: items.filter((i) => isItemComplete(config.fields, allFields[i] ?? {}, i)).length,
+            total: bundleCount,
+          })}
         </span>
       </div>
 
@@ -297,17 +299,17 @@ export function BundleCustomizerPanel({
         className="w-full py-3.5 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wide"
       >
         {isAdding
-          ? 'Adding to Cart…'
+          ? t('bundle.addingToCart')
           : allComplete
-          ? `Add Set to Cart — ${fmtAmount(product.basePrice)}`
-          : `Personalize all ${bundleCount} items to continue`}
+          ? t('bundle.addSetToCart', { amount: fmtAmount(product.basePrice) })
+          : t('bundle.personalizeAllToContinue', { count: bundleCount })}
       </button>
 
       {/* ── Trust strip ───────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 pt-1 border-t border-primary/10 text-xs text-muted">
-        <span>🚚 Ships in 3–5 days</span>
-        <span>✅ Cancel within 2h</span>
-        <span>🔒 Secure checkout</span>
+        <span>{t('panel.trust.shipping')}</span>
+        <span>{t('panel.trust.cancel')}</span>
+        <span>{t('panel.trust.secure')}</span>
       </div>
     </div>
   );

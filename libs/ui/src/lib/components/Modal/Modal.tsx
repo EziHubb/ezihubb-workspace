@@ -18,6 +18,8 @@ export interface ModalHeaderProps {
   children:  React.ReactNode;
   onClose?:  () => void;
   className?: string;
+  /** aria-label for the close button. Default: "Close" */
+  closeLabel?: string;
 }
 
 export interface ModalBodyProps {
@@ -36,13 +38,13 @@ const panelSizeClasses: Record<Exclude<ModalSize, 'fullscreen'>, string> = {
   lg: 'md:max-w-2xl',
 };
 
-export const ModalHeader: React.FC<ModalHeaderProps> = ({ children, onClose, className = '' }) => (
+export const ModalHeader: React.FC<ModalHeaderProps> = ({ children, onClose, className = '', closeLabel = 'Close' }) => (
   <div className={`flex items-center justify-between px-6 py-4 border-b border-border shrink-0 ${className}`}>
     <div className="text-base font-semibold text-secondary">{children}</div>
     {onClose && (
       <button
         onClick={onClose}
-        aria-label="Close"
+        aria-label={closeLabel}
         className="ml-4 p-1 rounded-sm text-muted hover:text-secondary hover:bg-background transition-colors"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

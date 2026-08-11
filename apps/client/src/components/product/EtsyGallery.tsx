@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ChevronLeft, ChevronRight, Heart, Flag, X, Play, Volume2, VolumeX, Video as VideoIcon } from 'lucide-react';
 import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
@@ -66,6 +66,7 @@ function VideoSlide({
   active:    boolean;
   className: string;
 }) {
+  const t = useTranslations('product.gallery');
   const videoRef = useRef<HTMLVideoElement>(null);
   const reducedMotion = usePrefersReducedMotion();
   const [muted, setMuted] = useState(true);
@@ -102,7 +103,7 @@ function VideoSlide({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); setPlayingManually(true); }}
-          aria-label="Play video"
+          aria-label={t('playVideo')}
           className="absolute inset-0 flex items-center justify-center bg-black/20"
         >
           <span className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
@@ -162,6 +163,7 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
   const [activeIndex,  setActiveIndex]  = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
+  const t        = useTranslations('product.gallery');
   const locale   = useLocale();
   const router   = useRouter();
   const pathname = usePathname();
@@ -290,7 +292,7 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
                   type="button"
                   onClick={(e) => { e.stopPropagation(); goPrev(); }}
                   disabled={activeIndex === 0}
-                  aria-label="Previous"
+                  aria-label={t('previous')}
                   className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 bg-white rounded-full shadow flex items-center justify-center disabled:opacity-30 hover:bg-gray-100 transition-colors"
                 >
                   <ChevronLeft className="w-5 h-5 text-secondary" />
@@ -299,7 +301,7 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
                   type="button"
                   onClick={(e) => { e.stopPropagation(); goNext(); }}
                   disabled={activeIndex === media.length - 1}
-                  aria-label="Next"
+                  aria-label={t('next')}
                   className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 bg-white rounded-full shadow flex items-center justify-center disabled:opacity-30 hover:bg-gray-100 transition-colors"
                 >
                   <ChevronRight className="w-5 h-5 text-secondary" />
@@ -366,7 +368,7 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
           <button
             type="button"
             onClick={() => setLightboxOpen(false)}
-            aria-label="Close"
+            aria-label={t('close')}
             className="absolute top-4 right-4 z-10 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow hover:bg-gray-100 transition-colors"
           >
             <X className="w-5 h-5 text-secondary" />
@@ -399,7 +401,7 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
                     type="button"
                     onClick={goPrev}
                     disabled={activeIndex === 0}
-                    aria-label="Previous"
+                    aria-label={t('previous')}
                     className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow flex items-center justify-center disabled:opacity-30 hover:bg-gray-100 transition-colors"
                   >
                     <ChevronLeft className="w-6 h-6 text-secondary" />
@@ -408,7 +410,7 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
                     type="button"
                     onClick={goNext}
                     disabled={activeIndex === media.length - 1}
-                    aria-label="Next"
+                    aria-label={t('next')}
                     className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow flex items-center justify-center disabled:opacity-30 hover:bg-gray-100 transition-colors"
                   >
                     <ChevronRight className="w-6 h-6 text-secondary" />

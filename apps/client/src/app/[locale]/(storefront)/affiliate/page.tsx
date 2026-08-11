@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import { getTranslations, getLocale } from 'next-intl/server';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { fmtAmount } from '@ezihubb/utils';
 
 // Settings are fetched server-side and cached at the data level.
 // The storefront layout is force-dynamic, but the fetch itself
@@ -15,26 +17,17 @@ interface AffiliateSettings {
   isEnabled:        boolean;
 }
 
-const FAQ = [
-  {
-    q: 'When do I get paid?',
-    a: 'Commissions are locked for 14 days after the order is delivered (to cover the return window), then moved to your available balance. You can request a payout any time once your balance reaches the minimum threshold.',
-  },
-  {
-    q: 'How long does the referral cookie last?',
-    a: 'The cookie is set for 30 days from the visitor\'s first click. If they return and click another affiliate link, the most recent click gets credit.',
-  },
-  {
-    q: 'Can buyers also use a coupon code?',
-    a: 'Yes — coupon codes stack with the referral discount. Buyers get both savings; your commission is calculated on the subtotal after coupon discounts only.',
-  },
-  {
-    q: 'What counts as a valid sale?',
-    a: 'Any paid order placed within the cookie window counts. Refunded or chargebacked orders will have their commission cancelled automatically.',
-  },
-];
-
 export default async function AffiliateLandingPage() {
+  const locale = await getLocale();
+  const t = await getTranslations({ locale, namespace: 'affiliate' });
+
+  const FAQ = [
+    { q: t('landing.faqQ1'), a: t('landing.faqA1') },
+    { q: t('landing.faqQ2'), a: t('landing.faqA2') },
+    { q: t('landing.faqQ3'), a: t('landing.faqA3') },
+    { q: t('landing.faqQ4'), a: t('landing.faqA4') },
+  ];
+
   const settings = await apiClient
     .get<AffiliateSettings>(API_ROUTES.AFFILIATES.SETTINGS_PUBLIC, {
       next: { revalidate: 3600 },
@@ -54,26 +47,25 @@ export default async function AffiliateLandingPage() {
       <section className="bg-surface border-b border-border">
         <div className="max-w-4xl mx-auto px-4 md:px-8 py-20 md:py-28 text-center">
           <span className="inline-block bg-primary/10 text-primary text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full mb-6">
-            Affiliate Program
+            {t('landing.badge')}
           </span>
           <h1 className="font-display text-4xl md:text-6xl font-bold text-secondary leading-tight mb-6">
-            Earn {commissionPct}% on every sale<br className="hidden md:block" /> you refer
+            {t('landing.heroTitleLine1', { percent: commissionPct })}<br className="hidden md:block" /> {t('landing.heroTitleLine2')}
           </h1>
           <p className="text-lg text-muted max-w-xl mx-auto mb-3">
-            Share your unique link. Your audience saves {discountPct}% on every order.
-            You earn commission. Everyone wins.
+            {t('landing.heroSubtitle', { percent: discountPct })}
           </p>
           <p className="text-sm text-muted mb-10">
-            No monthly fees · No minimums to join · Paid manually
+            {t('landing.heroNote')}
           </p>
           <Link
             href="./affiliate/register"
             className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white font-bold text-base px-8 py-4 rounded-button transition-colors uppercase tracking-wide"
           >
-            Apply Now — it&apos;s free
+            {t('landing.applyNow')}
           </Link>
           <p className="mt-4 text-xs text-muted">
-            Usually approved within 24 hours
+            {t('landing.approvedWithin')}
           </p>
         </div>
       </section>
@@ -81,24 +73,24 @@ export default async function AffiliateLandingPage() {
       {/* ── HOW IT WORKS ──────────────────────────────────────────────────────── */}
       <section className="max-w-4xl mx-auto px-4 md:px-8 py-16 md:py-20">
         <h2 className="font-display text-3xl font-bold text-secondary text-center mb-12">
-          How it works
+          {t('landing.howItWorksTitle')}
         </h2>
         <div className="grid md:grid-cols-3 gap-8">
           {[
             {
               step: '01',
-              title: 'Apply',
-              body:  'Fill out a short form. Tell us about your audience and content style. We\'ll review and respond within 24 hours.',
+              title: t('landing.step1Title'),
+              body:  t('landing.step1Body'),
             },
             {
               step: '02',
-              title: 'Share your link',
-              body:  `You get a unique referral URL that tracks clicks for ${cookieDays} days. Drop it anywhere — social, blog, email, video description.`,
+              title: t('landing.step2Title'),
+              body:  t('landing.step2Body', { days: cookieDays }),
             },
             {
               step: '03',
-              title: 'Earn commission',
-              body:  `Commission is locked for ${lockDays} days after delivery. Once confirmed, it moves to your balance and you can request a payout.`,
+              title: t('landing.step3Title'),
+              body:  t('landing.step3Body', { days: lockDays }),
             },
           ].map(({ step, title, body }) => (
             <div key={step} className="relative">
@@ -119,10 +111,10 @@ export default async function AffiliateLandingPage() {
         <div className="max-w-4xl mx-auto px-4 md:px-8 py-12">
           <dl className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
-              { value: `${commissionPct}%`,        label: 'Your commission' },
-              { value: `${discountPct}% off`,      label: 'Buyer discount' },
-              { value: `${cookieDays}-day cookie`, label: 'Attribution window' },
-              { value: `$${minPayout} min`,        label: 'Payout threshold' },
+              { value: `${commissionPct}%`,                                 label: t('landing.statCommissionLabel') },
+              { value: t('landing.statDiscountValue', { percent: discountPct }), label: t('landing.statDiscountLabel') },
+              { value: t('landing.statCookieValue', { days: cookieDays }),   label: t('landing.statCookieLabel') },
+              { value: t('landing.statPayoutValue', { amount: fmtAmount(minPayout) }), label: t('landing.statPayoutLabel') },
             ].map(({ value, label }) => (
               <div key={label}>
                 <dt className="font-display text-3xl font-bold text-primary">{value}</dt>
@@ -136,7 +128,7 @@ export default async function AffiliateLandingPage() {
       {/* ── FAQ ───────────────────────────────────────────────────────────────── */}
       <section className="max-w-3xl mx-auto px-4 md:px-8 py-16 md:py-20">
         <h2 className="font-display text-3xl font-bold text-secondary text-center mb-10">
-          Frequently asked questions
+          {t('landing.faqTitle')}
         </h2>
         <div className="space-y-3">
           {FAQ.map(({ q, a }) => (
@@ -169,16 +161,16 @@ export default async function AffiliateLandingPage() {
       <section className="bg-primary/5 border-t border-border">
         <div className="max-w-4xl mx-auto px-4 md:px-8 py-16 text-center">
           <h2 className="font-display text-3xl font-bold text-secondary mb-4">
-            Ready to start earning?
+            {t('landing.ctaTitle')}
           </h2>
           <p className="text-muted mb-8">
-            Join other creators already earning with EziHubb.
+            {t('landing.ctaBody')}
           </p>
           <Link
             href="./affiliate/register"
             className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white font-bold text-base px-8 py-4 rounded-button transition-colors uppercase tracking-wide"
           >
-            Apply Now
+            {t('landing.applyNowShort')}
           </Link>
         </div>
       </section>

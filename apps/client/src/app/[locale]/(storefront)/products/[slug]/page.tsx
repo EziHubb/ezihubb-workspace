@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { buildAlternates } from '../../../../../lib/seo';
@@ -34,10 +35,10 @@ export interface ProductDetailDto extends ProductDto {
 
 const BASE = 'https://ezihubb.com';
 
-function buildBreadcrumbs(product: ProductDetailDto, locale: string): BreadcrumbItem[] {
+function buildBreadcrumbs(product: ProductDetailDto, locale: string, homeLabel: string): BreadcrumbItem[] {
   const prefix = locale !== 'en' ? `/${locale}` : '';
   return [
-    { name: 'Home', href: `${prefix}/` },
+    { name: homeLabel, href: `${prefix}/` },
     ...(product.primaryCategory
       ? [{ name: product.primaryCategory.name, href: `${prefix}/search?category=${product.primaryCategory.slug}` }]
       : []),
@@ -111,21 +112,25 @@ export default async function ProductDetailPage({
   params: Promise<{ locale: string; slug: string }>;
 }) {
   const { locale, slug } = await params;
+  const localeHeaders = { 'X-Locale': locale };
 
   const [productRes, reviewSummaryRes, relatedRes, moreFromShopRes, qaRes] =
     await Promise.allSettled([
       apiClient.get<ProductDetailDto>(API_ROUTES.PRODUCTS.DETAIL(slug), {
         next: { revalidate: 30 },
+        headers: localeHeaders,
       }),
       apiClient.get<ReviewSummaryDto>(API_ROUTES.PRODUCTS.REVIEW_SUMMARY(slug), {
         next: { revalidate: 60 },
       }),
       apiClient.get<ProductListItemDto[]>(API_ROUTES.PRODUCTS.RELATED(slug), {
         next: { revalidate: 300 },
+        headers: localeHeaders,
       }),
       apiClient.get<PaginatedResponse<ProductListItemDto>>(API_ROUTES.PRODUCTS.LIST, {
         params: { sort: 'bestseller', limit: 4 },
         next: { revalidate: 300 },
+        headers: localeHeaders,
       }),
       apiClient.get<QAItem[]>(API_ROUTES.PRODUCTS.QA(slug), {
         next: { revalidate: 60 },
@@ -159,7 +164,8 @@ export default async function ProductDetailPage({
       })),
   } : null;
 
-  const breadcrumbs = buildBreadcrumbs(product, locale);
+  const tNav = await getTranslations({ locale, namespace: 'nav' });
+  const breadcrumbs = buildBreadcrumbs(product, locale, tNav('home'));
   const absoluteCrumbs = breadcrumbs.map((b) => ({
     name: b.name,
     url:  b.href.startsWith('http') ? b.href : `${BASE}${b.href}`,

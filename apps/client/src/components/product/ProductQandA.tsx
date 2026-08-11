@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { MessageCircle, ThumbsUp, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -20,15 +21,17 @@ export interface QAItem {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatRelativeTime(dateStr: string): string {
+type Translator = ReturnType<typeof useTranslations>;
+
+function formatRelativeTime(t: Translator, dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const days = Math.floor(diff / 86_400_000);
-  if (days === 0) return 'today';
-  if (days === 1) return 'yesterday';
-  if (days < 30) return `${days}d ago`;
+  if (days === 0) return t('today');
+  if (days === 1) return t('yesterday');
+  if (days < 30) return t('daysAgo', { days });
   const months = Math.floor(days / 30);
-  if (months < 12) return `${months}mo ago`;
-  return `${Math.floor(months / 12)}yr ago`;
+  if (months < 12) return t('monthsAgo', { months });
+  return t('yearsAgo', { years: Math.floor(months / 12) });
 }
 
 // ── Ask question modal ────────────────────────────────────────────────────────
@@ -42,6 +45,7 @@ interface AskModalProps {
 interface FormValues { name: string; email: string; question: string }
 
 function AskQuestionModal({ productSlug, onClose, onSubmitted }: AskModalProps) {
+  const t = useTranslations('product.qanda');
   const { register, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<FormValues>();
   const [submitError, setSubmitError] = useState('');
 
@@ -56,7 +60,7 @@ function AskQuestionModal({ productSlug, onClose, onSubmitted }: AskModalProps) 
       reset();
       onSubmitted();
     } catch {
-      setSubmitError('Failed to submit. Please try again.');
+      setSubmitError(t('failedSubmit'));
     }
   };
 
@@ -67,7 +71,7 @@ function AskQuestionModal({ productSlug, onClose, onSubmitted }: AskModalProps) 
     >
       <div className="w-full max-w-sm bg-background rounded-2xl shadow-2xl p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-secondary">Ask a question</h3>
+          <h3 className="text-base font-bold text-secondary">{t('askAQuestion')}</h3>
           <button type="button" onClick={onClose} className="p-1 text-muted hover:text-secondary rounded-lg transition-colors">
             <X className="w-4 h-4" />
           </button>
@@ -75,10 +79,10 @@ function AskQuestionModal({ productSlug, onClose, onSubmitted }: AskModalProps) 
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-secondary block mb-1">Your name *</label>
+            <label className="text-xs font-medium text-secondary block mb-1">{t('yourName')}</label>
             <input
-              {...register('name', { required: 'Name is required' })}
-              placeholder="Jane Smith"
+              {...register('name', { required: t('nameRequired') })}
+              placeholder={t('namePlaceholder')}
               className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
             {errors.name && <p className="text-xs text-error mt-0.5">{errors.name.message}</p>}
@@ -86,30 +90,30 @@ function AskQuestionModal({ productSlug, onClose, onSubmitted }: AskModalProps) 
 
           <div>
             <label className="text-xs font-medium text-secondary block mb-1">
-              Email <span className="text-muted font-normal">(optional — for notification)</span>
+              {t('email')} <span className="text-muted font-normal">{t('emailOptional')}</span>
             </label>
             <input
-              {...register('email', { pattern: { value: /^\S+@\S+\.\S+$/, message: 'Invalid email' } })}
+              {...register('email', { pattern: { value: /^\S+@\S+\.\S+$/, message: t('invalidEmail') } })}
               type="email"
-              placeholder="jane@email.com"
+              placeholder={t('emailPlaceholder')}
               className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
             {errors.email && <p className="text-xs text-error mt-0.5">{errors.email.message}</p>}
           </div>
 
           <div>
-            <label className="text-xs font-medium text-secondary block mb-1">Your question *</label>
+            <label className="text-xs font-medium text-secondary block mb-1">{t('yourQuestion')}</label>
             <textarea
               {...register('question', {
-                required:  'Question is required',
-                maxLength: { value: 500, message: 'Max 500 characters' },
+                required:  t('questionRequired'),
+                maxLength: { value: 500, message: t('maxCharsError') },
               })}
               rows={3}
-              placeholder="e.g. Can I use my own photo?"
+              placeholder={t('questionPlaceholder')}
               className="w-full border border-border rounded-xl px-3 py-2 text-sm resize-none bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
             {errors.question && <p className="text-xs text-error mt-0.5">{errors.question.message}</p>}
-            <p className="text-xs text-muted text-right mt-0.5">Max 500 chars</p>
+            <p className="text-xs text-muted text-right mt-0.5">{t('maxChars')}</p>
           </div>
 
           {submitError && <p className="text-xs text-error">{submitError}</p>}
@@ -120,14 +124,14 @@ function AskQuestionModal({ productSlug, onClose, onSubmitted }: AskModalProps) 
               onClick={onClose}
               className="px-4 py-2 text-sm text-muted hover:text-secondary rounded-xl transition-colors"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="px-5 py-2 text-sm font-semibold bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-60"
             >
-              {isSubmitting ? 'Submitting…' : 'Submit question'}
+              {isSubmitting ? t('submitting') : t('submitQuestion')}
             </button>
           </div>
         </form>
@@ -146,6 +150,7 @@ interface ProductQandAProps {
 const VISIBLE_DEFAULT = 5;
 
 export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
+  const t = useTranslations('product.qanda');
   const [qas,       setQas]       = useState<QAItem[]>(initialQAs);
   const [isAskOpen, setIsAskOpen] = useState(false);
   const [showAll,   setShowAll]   = useState(false);
@@ -182,7 +187,7 @@ export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-bold text-secondary">
-          Questions &amp; Answers
+          {t('questionsAndAnswers')}
           {qas.length > 0 && (
             <span className="text-sm font-normal text-muted ml-2">({qas.length})</span>
           )}
@@ -193,20 +198,20 @@ export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
           className="flex items-center gap-1.5 px-4 py-2 border border-border rounded-full text-sm font-medium text-secondary hover:border-primary hover:text-primary transition-colors"
         >
           <MessageCircle className="w-3.5 h-3.5" />
-          Ask a question
+          {t('askAQuestion')}
         </button>
       </div>
 
       {submitted && (
         <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
-          Question submitted! We&apos;ll answer it soon.
+          {t('questionSubmitted')}
         </div>
       )}
 
       {qas.length === 0 ? (
         <div className="text-center py-8 text-muted">
           <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-40" />
-          <p className="text-sm">No questions yet. Be the first to ask!</p>
+          <p className="text-sm">{t('noQuestions')}</p>
         </div>
       ) : (
         <div className="space-y-5">
@@ -220,7 +225,7 @@ export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-secondary leading-snug">{qa.question}</p>
                   <p className="text-xs text-muted mt-1">
-                    Asked by {qa.askedByName} · {formatRelativeTime(qa.createdAt)}
+                    {t('askedBy', { name: qa.askedByName, time: formatRelativeTime(t, qa.createdAt) })}
                   </p>
                 </div>
               </div>
@@ -236,7 +241,7 @@ export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
                     <div className="flex items-center gap-4 mt-2">
                       <p className="text-xs text-muted">
                         EziHubb
-                        {qa.answeredAt && ` · ${formatRelativeTime(qa.answeredAt)}`}
+                        {qa.answeredAt && ` · ${formatRelativeTime(t, qa.answeredAt)}`}
                       </p>
                       <button
                         type="button"
@@ -246,10 +251,10 @@ export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
                             ? 'text-primary cursor-default'
                             : 'text-muted hover:text-primary'
                         }`}
-                        title="Mark as helpful"
+                        title={t('markHelpful')}
                       >
                         <ThumbsUp className="w-3 h-3" />
-                        Helpful{qa.upvotes > 0 ? ` (${qa.upvotes})` : ''}
+                        {t('helpful')}{qa.upvotes > 0 ? ` (${qa.upvotes})` : ''}
                       </button>
                     </div>
                   </div>
@@ -257,7 +262,7 @@ export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
               )}
 
               {!qa.answer && (
-                <p className="mt-3 pl-10 text-xs text-muted italic">Answer pending</p>
+                <p className="mt-3 pl-10 text-xs text-muted italic">{t('answerPending')}</p>
               )}
             </div>
           ))}
@@ -269,9 +274,9 @@ export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
               className="flex items-center gap-1.5 text-sm text-primary font-medium hover:underline mx-auto"
             >
               {showAll ? (
-                <><ChevronUp className="w-4 h-4" /> Show less</>
+                <><ChevronUp className="w-4 h-4" /> {t('showLess')}</>
               ) : (
-                <><ChevronDown className="w-4 h-4" /> Show all {qas.length} questions</>
+                <><ChevronDown className="w-4 h-4" /> {t('showAllQuestions', { count: qas.length })}</>
               )}
             </button>
           )}

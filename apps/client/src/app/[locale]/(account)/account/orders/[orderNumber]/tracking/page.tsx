@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -59,41 +59,37 @@ const MAIN_STAGES: TrackingStage[] = [
   'DELIVERED',
 ];
 
-const STAGE_LABELS: Record<TrackingStage, string> = {
-  ORDER_CONFIRMED:     'Order Confirmed',
-  PAYMENT_VERIFIED:    'Payment Verified',
-  IN_PRODUCTION:       'In Production',
-  PRODUCTION_COMPLETE: 'Production Complete',
-  SHIPPED:             'Shipped',
-  SENT_TO_FULFILLMENT: 'Sent to Fulfillment',
-  IN_TRANSIT:          'In Transit',
-  OUT_FOR_DELIVERY:    'Out for Delivery',
-  DELIVERED:           'Delivered',
-  FAILED_DELIVERY:     'Delivery Attempted',
-};
+function useStageLabels(t: ReturnType<typeof useTranslations>): Record<TrackingStage, string> {
+  return {
+    ORDER_CONFIRMED:     t('stages.ORDER_CONFIRMED.label'),
+    PAYMENT_VERIFIED:    t('stages.PAYMENT_VERIFIED.label'),
+    IN_PRODUCTION:       t('stages.IN_PRODUCTION.label'),
+    PRODUCTION_COMPLETE: t('stages.PRODUCTION_COMPLETE.label'),
+    SHIPPED:             t('stages.SHIPPED.label'),
+    SENT_TO_FULFILLMENT: t('stages.SENT_TO_FULFILLMENT.label'),
+    IN_TRANSIT:          t('stages.IN_TRANSIT.label'),
+    OUT_FOR_DELIVERY:    t('stages.OUT_FOR_DELIVERY.label'),
+    DELIVERED:           t('stages.DELIVERED.label'),
+    FAILED_DELIVERY:     t('stages.FAILED_DELIVERY.label'),
+  };
+}
 
-const STAGE_DESCRIPTIONS: Record<TrackingStage, string> = {
-  ORDER_CONFIRMED:     'We received your order and are preparing it.',
-  PAYMENT_VERIFIED:    'Your payment has been confirmed.',
-  IN_PRODUCTION:       'Your item is being printed.',
-  PRODUCTION_COMPLETE: 'Production is finished and your order is being packed.',
-  SHIPPED:             'Your order has been handed to the carrier.',
-  SENT_TO_FULFILLMENT: 'Your order has been sent to our fulfillment partner.',
-  IN_TRANSIT:          'Your package is on its way.',
-  OUT_FOR_DELIVERY:    'Your package is out for delivery today.',
-  DELIVERED:           'Your order has been delivered.',
-  FAILED_DELIVERY:     'A delivery attempt was made. Check with your carrier.',
-};
+function useStageDescriptions(t: ReturnType<typeof useTranslations>): Record<TrackingStage, string> {
+  return {
+    ORDER_CONFIRMED:     t('stages.ORDER_CONFIRMED.description'),
+    PAYMENT_VERIFIED:    t('stages.PAYMENT_VERIFIED.description'),
+    IN_PRODUCTION:       t('stages.IN_PRODUCTION.description'),
+    PRODUCTION_COMPLETE: t('stages.PRODUCTION_COMPLETE.description'),
+    SHIPPED:             t('stages.SHIPPED.description'),
+    SENT_TO_FULFILLMENT: t('stages.SENT_TO_FULFILLMENT.description'),
+    IN_TRANSIT:          t('stages.IN_TRANSIT.description'),
+    OUT_FOR_DELIVERY:    t('stages.OUT_FOR_DELIVERY.description'),
+    DELIVERED:           t('stages.DELIVERED.description'),
+    FAILED_DELIVERY:     t('stages.FAILED_DELIVERY.description'),
+  };
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-const fmtDate = new Intl.DateTimeFormat('en-US', {
-  month:   'short',
-  day:     'numeric',
-  year:    'numeric',
-  hour:    'numeric',
-  minute:  '2-digit',
-});
 
 function stageIndex(stage: TrackingStage | null, stages: TrackingStage[]) {
   if (!stage) return -1;
@@ -145,6 +141,17 @@ function TrackingSkeleton() {
 export default function OrderTrackingPage() {
   const { orderNumber } = useParams<{ orderNumber: string }>();
   const locale          = useLocale();
+  const t               = useTranslations('orderTracking.detailedTracking');
+  const stageLabels       = useStageLabels(t);
+  const stageDescriptions = useStageDescriptions(t);
+
+  const fmtDate = new Intl.DateTimeFormat(locale, {
+    month:   'short',
+    day:     'numeric',
+    year:    'numeric',
+    hour:    'numeric',
+    minute:  '2-digit',
+  });
 
   const { data: tracking, isLoading, isError } = useAuthQuery<TrackingDetail>(
     ['order-tracking', orderNumber],
@@ -172,22 +179,22 @@ export default function OrderTrackingPage() {
         className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-primary transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to Orders
+        {t('backToOrders')}
       </Link>
 
-      <h1 className="font-display text-2xl font-bold text-secondary">Order Tracking</h1>
+      <h1 className="font-display text-2xl font-bold text-secondary">{t('pageTitle')}</h1>
 
       {isLoading && <TrackingSkeleton />}
 
       {isError && (
         <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
           <Package className="w-12 h-12 text-muted/30" />
-          <p className="text-sm text-muted">Tracking information not available for this order yet.</p>
+          <p className="text-sm text-muted">{t('notAvailable')}</p>
           <Link
             href={`/${locale}/account/orders`}
             className="text-sm font-medium text-primary hover:underline"
           >
-            Go back to orders
+            {t('goBackToOrders')}
           </Link>
         </div>
       )}
@@ -212,13 +219,13 @@ export default function OrderTrackingPage() {
                   rel="noopener noreferrer"
                   className="text-xs font-semibold text-primary hover:underline shrink-0"
                 >
-                  Track on carrier site
+                  {t('trackOnCarrierSite')}
                 </a>
               )}
             </div>
           )}
 
-          <div role="list" aria-label="Order tracking timeline" className="relative">
+          <div role="list" aria-label={t('ariaLabel')} className="relative">
             {stagesToRender.map((stage, i) => {
               const idx       = MAIN_STAGES.indexOf(stage);
               const isFailed  = stage === 'FAILED_DELIVERY';
@@ -260,18 +267,18 @@ export default function OrderTrackingPage() {
                         isDone    ? 'text-secondary' : 'text-muted',
                       ].join(' ')}
                     >
-                      {STAGE_LABELS[stage]}
+                      {stageLabels[stage]}
                     </p>
 
                     {(isCurrent || isDone || isFailed) && (
                       <p className="text-xs text-muted mt-0.5">
-                        {event?.description ?? STAGE_DESCRIPTIONS[stage]}
+                        {event?.description ?? stageDescriptions[stage]}
                       </p>
                     )}
 
                     {isPending && !isFailed && (
                       <p className="text-xs text-muted/60 mt-0.5">
-                        {STAGE_DESCRIPTIONS[stage]}
+                        {stageDescriptions[stage]}
                       </p>
                     )}
 

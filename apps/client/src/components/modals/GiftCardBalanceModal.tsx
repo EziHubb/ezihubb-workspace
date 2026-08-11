@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { CreditCard, Check, X } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@ezihubb/ui';
 import { apiClient } from '../../lib/api-client';
@@ -59,6 +60,8 @@ export function GiftCardBalanceModal({
   alreadyAppliedCode,
   onRemove,
 }: GiftCardBalanceModalProps) {
+  const t = useTranslations('cart.giftCard');
+  const tCommon = useTranslations('common');
   const [code,        setCode]        = useState('');
   const [checking,    setChecking]    = useState(false);
   const [validResult, setValidResult] = useState<ValidResult | null>(null);
@@ -72,7 +75,7 @@ export function GiftCardBalanceModal({
 
   const handleCheck = async () => {
     const trimmed = code.trim().toUpperCase();
-    if (!trimmed) { setError('Please enter a gift card code.'); return; }
+    if (!trimmed) { setError(t('enterCode')); return; }
 
     setChecking(true);
     setError('');
@@ -84,13 +87,13 @@ export function GiftCardBalanceModal({
       );
 
       if (!data?.balance || data.balance <= 0) {
-        setError('This gift card has no remaining balance.');
+        setError(t('noBalance'));
         return;
       }
 
       setValidResult(data);
     } catch {
-      setError('Could not validate gift card. Please try again.');
+      setError(t('validateError'));
     } finally {
       setChecking(false);
     }
@@ -102,7 +105,7 @@ export function GiftCardBalanceModal({
       onClose={onClose}
       size="sm"
     >
-      <ModalHeader onClose={onClose}>Gift Card</ModalHeader>
+      <ModalHeader onClose={onClose} closeLabel={tCommon('close')}>{t('title')}</ModalHeader>
 
       <ModalBody>
         <div className="space-y-5">
@@ -113,7 +116,7 @@ export function GiftCardBalanceModal({
                 <Check className="w-4 h-4 text-success shrink-0" />
                 <div>
                   <p className="text-sm font-medium text-secondary">
-                    Gift card applied
+                    {t('applied')}
                   </p>
                   <p className="text-xs font-mono text-muted">
                     {alreadyAppliedCode}
@@ -126,7 +129,7 @@ export function GiftCardBalanceModal({
                   onClick={onRemove}
                   className="text-xs text-error hover:underline font-medium"
                 >
-                  Remove
+                  {t('remove')}
                 </button>
               )}
             </div>
@@ -145,7 +148,7 @@ export function GiftCardBalanceModal({
                     if (validResult) setValidResult(null);
                   }}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleCheck(); }}
-                  placeholder="GIFT-XXXX-XXXX"
+                  placeholder={t('codePlaceholder')}
                   maxLength={24}
                   spellCheck={false}
                   className={[
@@ -161,7 +164,7 @@ export function GiftCardBalanceModal({
                   loading={checking}
                   disabled={!code.trim()}
                 >
-                  Check
+                  {t('check')}
                 </Button>
               </div>
 
@@ -187,10 +190,10 @@ export function GiftCardBalanceModal({
                     </p>
                     {validResult.originalBalance && (
                       <p className="text-xs text-muted">
-                        of {fmtAmount(validResult.originalBalance)} original
+                        {t('ofOriginal', { amount: fmtAmount(validResult.originalBalance) })}
                       </p>
                     )}
-                    <p className="text-xs text-muted">Never expires</p>
+                    <p className="text-xs text-muted">{t('neverExpires')}</p>
                   </div>
                 </div>
               )}
@@ -201,7 +204,7 @@ export function GiftCardBalanceModal({
 
       <ModalFooter>
         <Button variant="ghost" onClick={() => { reset(); onClose(); }}>
-          Cancel
+          {tCommon('cancel')}
         </Button>
         {validResult && (
           <Button
@@ -212,7 +215,7 @@ export function GiftCardBalanceModal({
               onClose();
             }}
           >
-            Apply to Order
+            {t('applyToOrder')}
           </Button>
         )}
       </ModalFooter>

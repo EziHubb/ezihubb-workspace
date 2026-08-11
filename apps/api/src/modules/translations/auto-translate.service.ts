@@ -129,11 +129,12 @@ export class AutoTranslateService {
     sourceLang: string,
     targetLang: string,
   ): Promise<string[] | null> {
-    const provider = this.config.get<string>('TRANSLATE_PROVIDER', 'google');
+    const provider = this.config.get<string>('TRANSLATE_PROVIDER', 'mymemory');
 
-    if (provider === 'google') return this.translateWithGoogle(texts, sourceLang, targetLang);
-    if (provider === 'deepl')  return this.translateWithDeepL(texts, sourceLang, targetLang);
-    if (provider === 'libre')  return this.translateWithLibre(texts, sourceLang, targetLang);
+    if (provider === 'google')   return this.translateWithGoogle(texts, sourceLang, targetLang);
+    if (provider === 'deepl')    return this.translateWithDeepL(texts, sourceLang, targetLang);
+    if (provider === 'libre')    return this.translateWithLibre(texts, sourceLang, targetLang);
+    if (provider === 'mymemory') return this.translateWithMyMemory(texts, sourceLang, targetLang);
 
     this.logger.warn(`Unknown TRANSLATE_PROVIDER: ${provider} — skipping auto-translation`);
     return null;
@@ -227,6 +228,47 @@ export class AutoTranslateService {
       return results;
 
     } catch {
+      return null;
+    }
+  }
+
+  /**
+   * MyMemory public API — free, no API key required.
+   * Rate limit: ~1,000 words/day anonymous, ~5,000 words/day with MYMEMORY_EMAIL set.
+   * No batch endpoint, so each text is translated with its own request.
+   */
+  private async translateWithMyMemory(
+    texts:  string[],
+    source: string,
+    target: string,
+  ): Promise<string[] | null> {
+    const email = this.config.get<string>('MYMEMORY_EMAIL', '');
+
+    try {
+      const results: string[] = [];
+      for (const text of texts) {
+        const url = new URL('https://api.mymemory.translated.net/get');
+        url.searchParams.set('q', text);
+        url.searchParams.set('langpair', `${source}|${target}`);
+        if (email) url.searchParams.set('de', email);
+
+        const response = await fetch(url.toString(), { signal: AbortSignal.timeout(10_000) });
+        if (!response.ok) { results.push(text); continue; }
+
+        const data = await response.json() as {
+          responseStatus: number;
+          responseData?: { translatedText?: string };
+        };
+        results.push(
+          data.responseStatus === 200 && data.responseData?.translatedText
+            ? data.responseData.translatedText
+            : text,
+        );
+      }
+      return results;
+
+    } catch (err: unknown) {
+      this.logger.error(`MyMemory request failed: ${(err as Error).message}`);
       return null;
     }
   }

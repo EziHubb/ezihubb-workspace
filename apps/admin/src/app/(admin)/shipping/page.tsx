@@ -249,7 +249,7 @@ function ZoneCard({
 
 export default function ShippingPage() {
   const qc = useQueryClient();
-  const { confirm } = useDialog();
+  const { confirm, alert } = useDialog();
 
   // ── Zones ─────────────────────────────────────────────────────────────────
 
@@ -289,6 +289,8 @@ export default function ShippingPage() {
     try {
       await api.patch(API_ROUTES.ADMIN.SHIPPING_SETTINGS, s);
       qc.invalidateQueries({ queryKey: ['admin-shipping-settings'] });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save shipping settings.', { variant: 'error' });
     } finally { setSettingsSaving(null); }
   };
 
@@ -300,35 +302,51 @@ export default function ShippingPage() {
   const invalidateZones = () => qc.invalidateQueries({ queryKey: ['admin-shipping-zones'] });
 
   const handleSaveZone = async (data: ShippingZoneFormData, id?: string) => {
-    if (id) {
-      await api.patch(API_ROUTES.ADMIN.SHIPPING_ZONE(id), data);
-    } else {
-      await api.post(API_ROUTES.ADMIN.SHIPPING_ZONES, data);
+    try {
+      if (id) {
+        await api.patch(API_ROUTES.ADMIN.SHIPPING_ZONE(id), data);
+      } else {
+        await api.post(API_ROUTES.ADMIN.SHIPPING_ZONES, data);
+      }
+      invalidateZones();
+      setZoneModal(null);
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save this shipping zone.', { variant: 'error' });
     }
-    invalidateZones();
-    setZoneModal(null);
   };
 
   const handleDeleteZone = async (id: string) => {
     if (!await confirm('Delete this shipping zone and all its methods?', { confirmLabel: 'Delete zone', destructive: true })) return;
-    await api.delete(API_ROUTES.ADMIN.SHIPPING_ZONE(id));
-    invalidateZones();
+    try {
+      await api.delete(API_ROUTES.ADMIN.SHIPPING_ZONE(id));
+      invalidateZones();
+    } catch (err) {
+      await alert((err as Error).message || 'Could not delete this shipping zone.', { variant: 'error' });
+    }
   };
 
   const handleSaveMethod = async (data: ShippingMethodFormData, zoneId: string, methodId?: string) => {
-    if (methodId) {
-      await api.patch(`${API_ROUTES.ADMIN.SHIPPING_ZONE_METHODS(zoneId)}/${methodId}`, data);
-    } else {
-      await api.post(API_ROUTES.ADMIN.SHIPPING_ZONE_METHODS(zoneId), data);
+    try {
+      if (methodId) {
+        await api.patch(`${API_ROUTES.ADMIN.SHIPPING_ZONE_METHODS(zoneId)}/${methodId}`, data);
+      } else {
+        await api.post(API_ROUTES.ADMIN.SHIPPING_ZONE_METHODS(zoneId), data);
+      }
+      invalidateZones();
+      setMethodModal(null);
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save this shipping method.', { variant: 'error' });
     }
-    invalidateZones();
-    setMethodModal(null);
   };
 
   const handleDeleteMethod = async (zoneId: string, methodId: string) => {
     if (!await confirm('Delete this shipping method?', { confirmLabel: 'Delete method', destructive: true })) return;
-    await api.delete(`${API_ROUTES.ADMIN.SHIPPING_ZONE_METHODS(zoneId)}/${methodId}`);
-    invalidateZones();
+    try {
+      await api.delete(`${API_ROUTES.ADMIN.SHIPPING_ZONE_METHODS(zoneId)}/${methodId}`);
+      invalidateZones();
+    } catch (err) {
+      await alert((err as Error).message || 'Could not delete this shipping method.', { variant: 'error' });
+    }
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────

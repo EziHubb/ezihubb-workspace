@@ -1,0 +1,75 @@
+{
+  "storePage": {
+    "storeNotFoundTitle": "Store not found",
+    "metaDescriptionFallback": "Shop {name} on EziHubb.",
+    "bannerAlt": "{name} banner",
+    "logoAlt": "{name} logo",
+    "verifiedSeller": "Verified Seller",
+    "rating": "rating",
+    "sales": "{count, plural, one {# sale} other {# sales}}",
+    "listings": "{count, plural, one {# listing} other {# listings}}",
+    "memberSince": "Member since {date}",
+    "share": "Share:",
+    "shareCheckOut": "Check out {name} on EziHubb!",
+    "sectionsAriaLabel": "Store sections",
+    "tabItems": "Items ({count})",
+    "tabReviews": "Reviews",
+    "tabAbout": "About",
+    "searchPlaceholder": "Search all {count} items",
+    "about": {
+      "title": "About this shop",
+      "totalSales": "Total Sales",
+      "activeListings": "Active Listings",
+      "noDescription": "No shop description provided yet."
+    }
+  },
+  "products": {
+    "sortLabel": "Sort: {label}",
+    "sortOptions": {
+      "newest": "Most Recent",
+      "bestseller": "Best Selling",
+      "rating": "Top Rated",
+      "priceAsc": "Price: Low → High",
+      "priceDesc": "Price: High → Low"
+    },
+    "sectionsAriaLabel": "Shop sections",
+    "all": "All",
+    "onSale": "On sale",
+    "featuredItems": "Featured items",
+    "onSaleHeading": "On Sale",
+    "sectionItemsHeading": "Section Items",
+    "allItemsHeading": "All items",
+    "clearSearchAria": "Clear search",
+    "results": "{count, plural, one {# result} other {# results}}",
+    "emptyTitle": "No products found",
+    "emptyDesc": "Try a different filter or check back soon."
+  },
+  "reviews": {
+    "starsOutOf5": "{rating} out of 5 stars",
+    "reviewsCount": "{count, plural, one {# review} other {# reviews}}",
+    "starReviews": "{star}-star reviews",
+    "allReviews": "All reviews",
+    "noReviewsYet": "No reviews yet",
+    "beFirstToReview": "Be the first to purchase and leave a review!",
+    "noStarReviews": "No {star}-star reviews yet",
+    "showAllReviews": "Show all reviews",
+    "forProduct": "for <b>{product}</b>",
+    "sellerReply": "Seller's reply",
+    "customerFallback": "Customer",
+    "reviewPhotoAlt": "Review photo {n}",
+    "authorPhotoAlt": "{name}"
+  },
+  "sharedWishlist": {
+    "defaultHeading": "Shared Wishlist",
+    "ownerHeading": "{name}'s Wishlist",
+    "curatedBy": "Curated by <b>{name}</b>",
+    "itemsCount": "{count, plural, one {# item} other {# items}}",
+    "shareThisList": "Share this list:",
+    "shareCheckOut": "Check out this wishlist on EziHubb: \"{title}\"",
+    "emptyTitle": "This wishlist is empty",
+    "emptyDesc": "Nothing here yet — but there's plenty to love in the store.",
+    "exploreGifts": "Explore Gifts",
+    "ctaText": "Love what you see? Create your own wishlist on EziHubb.",
+    "startOwnWishlist": "Start your own wishlist"
+  }
+}

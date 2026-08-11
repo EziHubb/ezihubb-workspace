@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import {
   Home, Clock, Heart, TrendingUp, Gift, Users,
   Briefcase, Mail, Lightbulb, Target, Handshake,
@@ -16,52 +17,56 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-// ── Data ──────────────────────────────────────────────────────────────────────
-
-const perks: { Icon: LucideIcon; text: string }[] = [
-  { Icon: Home,       text: 'Remote-first culture — work from anywhere' },
-  { Icon: Clock,      text: 'Flexible hours — we care about output, not hours' },
-  { Icon: Heart,      text: 'Mission-driven work that makes people smile' },
-  { Icon: TrendingUp, text: 'Growth opportunities in a fast-moving startup' },
-  { Icon: Gift,       text: 'Employee discounts on all our products' },
-  { Icon: Users,      text: 'Small team = real ownership and impact' },
-];
-
-const values: { Icon: LucideIcon; title: string; desc: string }[] = [
-  {
-    Icon:  Lightbulb,
-    title: 'Creative thinkers',
-    desc:  'We value people who see problems as puzzles to be solved creatively.',
-  },
-  {
-    Icon:  Target,
-    title: 'Ownership mindset',
-    desc:  'Small team means you own your work end-to-end. We trust you to run with it.',
-  },
-  {
-    Icon:  Handshake,
-    title: 'Customer obsession',
-    desc:  `Everything we do starts with "how does this make our customer's day better?"`,
-  },
-];
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function CareersPage() {
+export default async function CareersPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'pages.careers' });
+
+  const perks: { Icon: LucideIcon; text: string }[] = [
+    { Icon: Home,       text: t('perks.remote')     },
+    { Icon: Clock,      text: t('perks.flexible')   },
+    { Icon: Heart,      text: t('perks.mission')    },
+    { Icon: TrendingUp, text: t('perks.growth')     },
+    { Icon: Gift,       text: t('perks.discounts')  },
+    { Icon: Users,      text: t('perks.ownership')  },
+  ];
+
+  const values: { Icon: LucideIcon; title: string; desc: string }[] = [
+    {
+      Icon:  Lightbulb,
+      title: t('values.items.creative.title'),
+      desc:  t('values.items.creative.desc'),
+    },
+    {
+      Icon:  Target,
+      title: t('values.items.ownership.title'),
+      desc:  t('values.items.ownership.desc'),
+    },
+    {
+      Icon:  Handshake,
+      title: t('values.items.customer.title'),
+      desc:  t('values.items.customer.desc'),
+    },
+  ];
+
   return (
     <div className="max-w-[900px] mx-auto px-4 py-16">
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div className="text-center mb-16">
         <p className="text-primary font-medium text-sm mb-3 uppercase tracking-wide">
-          Careers
+          {t('eyebrow')}
         </p>
         <h1 className="font-display text-4xl md:text-5xl font-bold text-secondary mb-4">
-          Work at EziHubb
+          {t('title')}
         </h1>
         <p className="text-lg text-muted max-w-xl mx-auto">
-          We&apos;re a small team with big ambitions. If you love craftsmanship, creativity,
-          and making people happy — we want to hear from you.
+          {t('subtitle')}
         </p>
       </div>
 
@@ -71,12 +76,12 @@ export default function CareersPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&q=80"
-            alt="Team at work"
+            alt={t('cultureImageAlt')}
             className="w-full h-full object-cover"
           />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-secondary mb-4">Life at EziHubb</h2>
+          <h2 className="text-2xl font-bold text-secondary mb-4">{t('cultureTitle')}</h2>
           <div className="space-y-4">
             {perks.map(({ Icon, text }) => (
               <div key={text} className="flex items-center gap-3 text-sm text-secondary">
@@ -90,23 +95,22 @@ export default function CareersPage() {
 
       {/* ── Open Roles ────────────────────────────────────────────────────── */}
       <section className="mb-16">
-        <h2 className="text-2xl font-bold text-secondary mb-6">Open Positions</h2>
+        <h2 className="text-2xl font-bold text-secondary mb-6">{t('openPositions.title')}</h2>
 
         <div className="text-center py-16 border-2 border-dashed border-border rounded-2xl">
           <Briefcase className="w-10 h-10 text-muted mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-secondary mb-2">
-            No open positions right now
+            {t('openPositions.emptyTitle')}
           </h3>
           <p className="text-muted text-sm max-w-sm mx-auto mb-6">
-            We don&apos;t have any open roles at the moment, but we&apos;re always growing.
-            Send us your resume and we&apos;ll keep you in mind for future opportunities.
+            {t('openPositions.emptyDesc')}
           </p>
           <a
             href="mailto:careers@ezihubb.com"
             className="inline-flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-primary-dark transition-colors"
           >
             <Mail className="w-4 h-4" />
-            Send Your Resume
+            {t('openPositions.resumeButton')}
           </a>
         </div>
       </section>
@@ -114,7 +118,7 @@ export default function CareersPage() {
       {/* ── Values ────────────────────────────────────────────────────────── */}
       <section className="bg-[#FAFAF8] rounded-3xl p-10">
         <h2 className="text-2xl font-bold text-secondary text-center mb-8">
-          What We Look For
+          {t('values.title')}
         </h2>
         <div className="grid sm:grid-cols-3 gap-6">
           {values.map(({ Icon, title, desc }) => (

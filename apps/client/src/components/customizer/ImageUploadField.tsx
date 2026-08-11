@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { Upload, X, Wand2, RotateCcw, ImageIcon } from 'lucide-react';
 import { useCustomizerStore } from '../../lib/store/customizer.store';
 import type { ImageField } from '../../lib/customizer/types';
@@ -14,6 +15,7 @@ interface ImageUploadFieldProps {
 }
 
 export function ImageUploadField({ field }: ImageUploadFieldProps) {
+  const t               = useTranslations('customizer.desktopImageUpload');
   const fieldValue      = useCustomizerStore((s) => s.fieldValues[field.id]);
   const uploadImage     = useCustomizerStore((s) => s.uploadImage);
   const removeBackground = useCustomizerStore((s) => s.removeBackground);
@@ -36,11 +38,11 @@ export function ImageUploadField({ field }: ImageUploadFieldProps) {
 
     // Client-side validation
     if (!file.type.match(/^image\/(jpeg|png|webp|heic|heif)$/)) {
-      setSizeError('Unsupported file type. Use JPG, PNG, WebP, or HEIC.');
+      setSizeError(t('unsupportedType'));
       return;
     }
     if (file.size > MAX_MB * 1024 * 1024) {
-      setSizeError(`Image must be under ${MAX_MB}MB.`);
+      setSizeError(t('sizeError', { max: MAX_MB }));
       return;
     }
 
@@ -75,7 +77,7 @@ export function ImageUploadField({ field }: ImageUploadFieldProps) {
             onClick={() => inputRef.current?.click()}
             className="text-xs text-primary hover:underline"
           >
-            🔄 Replace
+            {t('replace')}
           </button>
         )}
       </div>
@@ -87,7 +89,7 @@ export function ImageUploadField({ field }: ImageUploadFieldProps) {
         accept={ACCEPT}
         onChange={handleInputChange}
         className="sr-only"
-        aria-label={`Upload ${field.label}`}
+        aria-label={t('uploadLabel', { label: field.label })}
       />
 
       {/* ── Upload zone (shown when no image) ──────────────────────────────── */}
@@ -100,7 +102,7 @@ export function ImageUploadField({ field }: ImageUploadFieldProps) {
           role="button"
           tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click(); }}
-          aria-label="Upload image"
+          aria-label={t('uploadImage')}
           className={[
             'flex flex-col items-center justify-center gap-2 w-full py-8 px-4',
             'border-2 border-dashed rounded-sm cursor-pointer transition-colors text-center',
@@ -114,10 +116,12 @@ export function ImageUploadField({ field }: ImageUploadFieldProps) {
           </div>
           <div>
             <p className="text-sm font-medium text-secondary">
-              Drop photo here or <span className="text-primary underline">browse</span>
+              {t.rich('dropOrBrowse', {
+                browse: (chunks) => <span className="text-primary underline">{chunks}</span>,
+              })}
             </p>
             <p className="text-xs text-muted mt-0.5">
-              JPG, PNG, WebP, HEIC — max {MAX_MB}MB
+              {t('sizeHint', { max: MAX_MB })}
             </p>
           </div>
         </div>
@@ -134,10 +138,10 @@ export function ImageUploadField({ field }: ImageUploadFieldProps) {
           </div>
           <p className="text-xs text-muted text-center">
             {progress < 100
-              ? `Uploading… ${progress}%`
+              ? t('uploading', { progress })
               : bgRemoved === false && fieldValue?.processedImageUrl === undefined
-              ? 'Removing background… (~10s)'
-              : 'Processing…'}
+              ? t('removingBg')
+              : t('processing')}
           </p>
         </div>
       )}
@@ -148,14 +152,14 @@ export function ImageUploadField({ field }: ImageUploadFieldProps) {
           <div className="relative w-full aspect-square max-w-[240px] rounded-sm overflow-hidden bg-background border border-border">
             <Image
               src={displayUrl}
-              alt="Uploaded photo"
+              alt={t('uploadedAlt')}
               fill
               sizes="240px"
               className="object-cover"
             />
             {bgRemoved && (
               <div className="absolute top-1.5 left-1.5 text-[10px] font-semibold bg-success text-white px-1.5 py-0.5 rounded-pill">
-                BG removed
+                {t('bgRemoved')}
               </div>
             )}
 
@@ -163,7 +167,7 @@ export function ImageUploadField({ field }: ImageUploadFieldProps) {
             <button
               type="button"
               onClick={() => revertToOriginal(field.id)}
-              aria-label="Remove image"
+              aria-label={t('removeImage')}
               className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors"
             >
               <X className="w-3.5 h-3.5" />
@@ -180,7 +184,7 @@ export function ImageUploadField({ field }: ImageUploadFieldProps) {
                   className="flex items-center gap-1.5 text-xs font-medium text-secondary border border-border rounded-button px-3 py-1.5 hover:border-primary hover:text-primary transition-colors"
                 >
                   <Wand2 className="w-3.5 h-3.5" />
-                  Remove Background
+                  {t('removeBackground')}
                 </button>
               ) : (
                 <button
@@ -189,7 +193,7 @@ export function ImageUploadField({ field }: ImageUploadFieldProps) {
                   className="flex items-center gap-1.5 text-xs font-medium text-secondary border border-border rounded-button px-3 py-1.5 hover:border-primary hover:text-primary transition-colors"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  Revert to Original
+                  {t('revertToOriginal')}
                 </button>
               )}
             </div>
@@ -201,7 +205,7 @@ export function ImageUploadField({ field }: ImageUploadFieldProps) {
       {!field.required && !imageUrl && !isUploading && (
         <p className="text-xs text-muted flex items-center gap-1">
           <ImageIcon className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-          Upload a photo for best results
+          {t('bestResultsHint')}
         </p>
       )}
 

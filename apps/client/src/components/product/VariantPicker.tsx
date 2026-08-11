@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useCustomizerStore } from '../../lib/store/customizer.store';
 import { fmtAmount, safeNum } from '@ezihubb/utils';
 
@@ -63,6 +64,7 @@ function isValueAvailable(
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function VariantPicker({ variantOptions, variants, onVariantChange }: VariantPickerProps) {
+  const t = useTranslations('product.variants');
   const setVariantInStore = useCustomizerStore((s) => s.setVariant);
   const dimNames          = variantOptions.map((o) => o.name);
 
@@ -98,7 +100,7 @@ export function VariantPicker({ variantOptions, variants, onVariantChange }: Var
             )}
           </p>
 
-          <div className="flex flex-wrap gap-2" role="group" aria-label={`Select ${opt.name}`}>
+          <div className="flex flex-wrap gap-2" role="group" aria-label={t('selectOption', { name: opt.name })}>
             {opt.values.map((val) => {
               const isActive = selected[opt.name] === val;
               const isAvail  = isValueAvailable(variants, selected, opt.name, val, dimNames);
@@ -108,7 +110,7 @@ export function VariantPicker({ variantOptions, variants, onVariantChange }: Var
                   key={val}
                   type="button"
                   aria-pressed={isActive}
-                  title={!isAvail ? 'Not available in this combination' : undefined}
+                  title={!isAvail ? t('notAvailableInCombination') : undefined}
                   onClick={() =>
                     setSelected((prev) => ({ ...prev, [opt.name]: isActive ? '' : val }))
                   }
@@ -142,13 +144,13 @@ export function VariantPicker({ variantOptions, variants, onVariantChange }: Var
       {activeVariant && (
         <div>
           {isOutOfStock ? (
-            <p className="text-sm font-medium text-error">✗ Out of stock in this combination</p>
+            <p className="text-sm font-medium text-error">✗ {t('outOfStock')}</p>
           ) : (activeVariant.compareAtPrice ?? 0) > activeVariant.price ? (
             <p className="flex items-baseline gap-2 text-sm">
               <span className="font-bold text-primary">{fmtAmount(activeVariant.price)}</span>
               <span className="line-through text-muted text-xs">{fmtAmount(activeVariant.compareAtPrice)}</span>
               <span className="text-xs font-semibold text-success">
-                Save {fmtAmount(safeNum(activeVariant.compareAtPrice) - safeNum(activeVariant.price))}
+                {t('save', { amount: fmtAmount(safeNum(activeVariant.compareAtPrice) - safeNum(activeVariant.price)) })}
               </span>
             </p>
           ) : activeVariant.price > 0 ? (

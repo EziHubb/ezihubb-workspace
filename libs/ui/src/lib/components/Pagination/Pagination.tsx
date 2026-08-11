@@ -1,11 +1,40 @@
 import React from 'react';
 
+export interface PaginationLabels {
+  /** aria-label on the <nav>. Default: "Pagination" */
+  navAria?:         string;
+  /** aria-label on the previous-page button. Default: "Previous page" */
+  previousAria?:    string;
+  /** aria-label on the next-page button. Default: "Next page" */
+  nextAria?:        string;
+  /** Mobile "Prev" button text. Default: "Prev" */
+  prev?:            string;
+  /** Mobile "Next" button text. Default: "Next" */
+  next?:            string;
+  /** Mobile page indicator, e.g. "Page {page} of {total}". Default English template. */
+  pageOf?:          (page: number, total: number) => string;
+  /** Desktop numbered-page aria-label, e.g. "Page {n}". Default English template. */
+  pageAria?:        (page: number) => string;
+}
+
 export interface PaginationProps {
   page:         number;
   totalPages:   number;
   onPageChange: (page: number) => void;
   className?:   string;
+  /** Translated labels — every field falls back to its English default. */
+  labels?:      PaginationLabels;
 }
+
+const defaultLabels: Required<PaginationLabels> = {
+  navAria:      'Pagination',
+  previousAria: 'Previous page',
+  nextAria:     'Next page',
+  prev:         'Prev',
+  next:         'Next',
+  pageOf:       (page, total) => `Page ${page} of ${total}`,
+  pageAria:     (page) => `Page ${page}`,
+};
 
 function buildPageList(current: number, total: number): (number | '...')[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -39,9 +68,11 @@ export const Pagination: React.FC<PaginationProps> = ({
   totalPages,
   onPageChange,
   className = '',
+  labels,
 }) => {
   if (totalPages <= 1) return null;
 
+  const L = { ...defaultLabels, ...labels };
   const pages = buildPageList(page, totalPages);
 
   const btnBase =
@@ -50,30 +81,30 @@ export const Pagination: React.FC<PaginationProps> = ({
     'w-9 h-9 rounded-sm border border-border text-sm text-secondary hover:border-primary hover:text-primary';
 
   return (
-    <nav aria-label="Pagination" className={`flex items-center justify-center ${className}`}>
+    <nav aria-label={L.navAria} className={`flex items-center justify-center ${className}`}>
 
       {/* ── Mobile: prev / page-indicator / next ─────────────────────────── */}
       <div className="flex items-center gap-3 md:hidden">
         <button
           onClick={() => onPageChange(page - 1)}
           disabled={page === 1}
-          aria-label="Previous page"
+          aria-label={L.previousAria}
           className={`${btnBase} gap-1 px-3 py-2 text-sm font-medium text-secondary disabled:opacity-40 hover:text-primary`}
         >
-          <ChevronLeft /> Prev
+          <ChevronLeft /> {L.prev}
         </button>
 
         <span className="text-sm text-muted whitespace-nowrap">
-          Page {page} of {totalPages}
+          {L.pageOf(page, totalPages)}
         </span>
 
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={page === totalPages}
-          aria-label="Next page"
+          aria-label={L.nextAria}
           className={`${btnBase} gap-1 px-3 py-2 text-sm font-medium text-secondary disabled:opacity-40 hover:text-primary`}
         >
-          Next <ChevronRight />
+          {L.next} <ChevronRight />
         </button>
       </div>
 
@@ -82,7 +113,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         <button
           onClick={() => onPageChange(page - 1)}
           disabled={page === 1}
-          aria-label="Previous page"
+          aria-label={L.previousAria}
           className={`${btnBase} ${squareBtn}`}
         >
           <ChevronLeft />
@@ -100,7 +131,7 @@ export const Pagination: React.FC<PaginationProps> = ({
             <button
               key={p}
               onClick={() => onPageChange(p as number)}
-              aria-label={`Page ${p}`}
+              aria-label={L.pageAria(p)}
               aria-current={p === page ? 'page' : undefined}
               className={[
                 btnBase,
@@ -118,7 +149,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={page === totalPages}
-          aria-label="Next page"
+          aria-label={L.nextAria}
           className={`${btnBase} ${squareBtn}`}
         >
           <ChevronRight />

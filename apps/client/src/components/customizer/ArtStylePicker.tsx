@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { useCustomizerStore } from '../../lib/store/customizer.store';
 import type { ArtStyle, ImageField } from '../../lib/customizer/types';
@@ -21,6 +22,7 @@ interface ArtStylePickerProps {
 }
 
 export function ArtStylePicker({ fieldId, field }: ArtStylePickerProps) {
+  const t               = useTranslations('customizer.artStyle');
   const fieldValue      = useCustomizerStore((s) => s.fieldValues[fieldId]);
   const applyArtStyle   = useCustomizerStore((s) => s.applyArtStyle);
   const revertToOriginal = useCustomizerStore((s) => s.revertToOriginal);
@@ -48,11 +50,11 @@ export function ArtStylePicker({ fieldId, field }: ArtStylePickerProps) {
   return (
     <div className="mt-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-medium text-secondary">Art Style</span>
+        <span className="text-xs font-medium text-secondary">{t('label')}</span>
         {isProcessing && (
           <span className="flex items-center gap-1 text-xs text-primary animate-pulse">
             <Loader2 className="w-3 h-3 animate-spin" />
-            Processing...
+            {t('processing')}
           </span>
         )}
       </div>
@@ -73,10 +75,10 @@ export function ArtStylePicker({ fieldId, field }: ArtStylePickerProps) {
         >
           <div className="w-12 h-12 rounded-md bg-background border border-border flex items-center justify-center">
             <span className="text-[9px] font-medium text-muted text-center leading-tight">
-              None
+              {t('none')}
             </span>
           </div>
-          <span className="text-[10px] text-muted">Original</span>
+          <span className="text-[10px] text-muted">{t('original')}</span>
         </button>
 
         {styles.map((style) => {

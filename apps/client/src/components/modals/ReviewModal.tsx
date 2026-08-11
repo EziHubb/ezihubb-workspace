@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { Star, X, Upload, CheckCircle } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@ezihubb/ui';
 import { apiClient, apiFetch } from '../../lib/api-client';
@@ -18,6 +19,7 @@ function StarSelector({
   onChange: (v: number) => void;
   error?:   string;
 }) {
+  const t = useTranslations('review');
   const [hovered, setHovered] = useState(0);
 
   return (
@@ -25,7 +27,7 @@ function StarSelector({
       <div
         className="flex gap-1"
         role="radiogroup"
-        aria-label="Rating"
+        aria-label={t('rating')}
         onMouseLeave={() => setHovered(0)}
       >
         {[1, 2, 3, 4, 5].map((star) => {
@@ -36,7 +38,7 @@ function StarSelector({
               type="button"
               role="radio"
               aria-checked={value === star}
-              aria-label={`${star} star${star > 1 ? 's' : ''}`}
+              aria-label={t('starLabel', { star })}
               onClick={() => onChange(star)}
               onMouseEnter={() => setHovered(star)}
               className="w-10 h-10 flex items-center justify-center transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded"
@@ -74,6 +76,7 @@ function PhotoUpload({
   onAdd:    (file: File) => void;
   onRemove: (idx: number) => void;
 }) {
+  const t = useTranslations('review');
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -96,8 +99,8 @@ function PhotoUpload({
           className="w-full h-[60px] flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-sm text-sm text-muted hover:border-primary/50 hover:text-primary transition-colors"
         >
           <Upload className="w-4 h-4" />
-          📷 Add photos (optional)
-          <span className="text-xs opacity-70">Up to 5 photos</span>
+          {t('addPhotos')}
+          <span className="text-xs opacity-70">{t('upToPhotos')}</span>
         </button>
       ) : (
         <div className="flex items-center gap-2 flex-wrap">
@@ -114,7 +117,7 @@ function PhotoUpload({
                     type="button"
                     onClick={() => onRemove(i)}
                     className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 rounded-full flex items-center justify-center text-white"
-                    aria-label="Remove photo"
+                    aria-label={t('removePhoto')}
                   >
                     <X className="w-2.5 h-2.5" />
                   </button>
@@ -127,7 +130,7 @@ function PhotoUpload({
               type="button"
               onClick={() => inputRef.current?.click()}
               className="w-14 h-14 flex items-center justify-center border-2 border-dashed border-border rounded-sm text-muted hover:border-primary/50 hover:text-primary transition-colors"
-              aria-label="Add another photo"
+              aria-label={t('addAnotherPhoto')}
             >
               <Upload className="w-4 h-4" />
             </button>
@@ -167,6 +170,7 @@ export function ReviewModal({
   onSuccess,
   onClose,
 }: ReviewModalProps) {
+  const t = useTranslations('review');
   const [guardState,  setGuardState]  = useState<'loading' | GuardResult>('loading');
   const [rating,      setRating]      = useState(0);
   const [ratingError, setRatingError] = useState('');
@@ -226,11 +230,11 @@ export function ReviewModal({
   const handleSubmit = async () => {
     let valid = true;
 
-    if (rating === 0) { setRatingError('Please select a rating'); valid = false; }
+    if (rating === 0) { setRatingError(t('errors.selectRating')); valid = false; }
     else setRatingError('');
 
     if (!body.trim() || body.trim().length < 20) {
-      setBodyError('Review must be at least 20 characters'); valid = false;
+      setBodyError(t('errors.minLength')); valid = false;
     } else setBodyError('');
 
     if (!valid) return;
@@ -251,7 +255,7 @@ export function ReviewModal({
       setSubmitted(true);
       onSuccess();
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Something went wrong.');
+      setSubmitError(err instanceof Error ? err.message : t('errors.generic'));
     } finally {
       setSubmitting(false);
     }
@@ -263,8 +267,8 @@ export function ReviewModal({
 
   return (
     <Modal isOpen={isOpen} onClose={submitting ? () => undefined : onClose} size="md">
-      <ModalHeader onClose={submitting ? undefined : onClose}>
-        Write a Review
+      <ModalHeader onClose={submitting ? undefined : onClose} closeLabel={t('close')}>
+        {t('writeReview')}
       </ModalHeader>
 
       <ModalBody>
@@ -281,8 +285,8 @@ export function ReviewModal({
             <p className="text-2xl">ℹ️</p>
             <p className="text-sm font-medium text-secondary">
               {guardState.reason === 'already_reviewed'
-                ? "You've already reviewed this product."
-                : 'You can only review products you\'ve purchased.'}
+                ? t('alreadyReviewed')
+                : t('mustPurchase')}
             </p>
           </div>
         )}
@@ -291,9 +295,9 @@ export function ReviewModal({
         {submitted && (
           <div className="py-8 text-center space-y-3">
             <CheckCircle className="w-12 h-12 text-success mx-auto" />
-            <p className="text-base font-semibold text-secondary">Review submitted!</p>
+            <p className="text-base font-semibold text-secondary">{t('submitted')}</p>
             <p className="text-sm text-muted">
-              Your review will appear after approval (usually within 24 hours).
+              {t('submittedDetail')}
             </p>
           </div>
         )}
@@ -314,7 +318,7 @@ export function ReviewModal({
             {/* Star rating */}
             <div className="space-y-1.5">
               <p className="text-sm font-medium text-secondary">
-                Your Rating <span className="text-error">*</span>
+                {t('yourRating')} <span className="text-error">*</span>
               </p>
               <StarSelector
                 value={rating}
@@ -326,7 +330,7 @@ export function ReviewModal({
             {/* Title */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-secondary" htmlFor="review-title">
-                Review Title <span className="text-muted font-normal">(optional)</span>
+                {t('titleLabel')} <span className="text-muted font-normal">{t('optional')}</span>
               </label>
               <input
                 id="review-title"
@@ -334,7 +338,7 @@ export function ReviewModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={80}
-                placeholder="Summarize your experience…"
+                placeholder={t('titlePlaceholder')}
                 className="w-full px-3 py-2.5 text-sm border border-border rounded-sm bg-surface text-secondary placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
               />
             </div>
@@ -343,7 +347,7 @@ export function ReviewModal({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-secondary" htmlFor="review-body">
-                  Your Review <span className="text-error">*</span>
+                  {t('yourReview')} <span className="text-error">*</span>
                 </label>
                 <span className={`text-xs tabular-nums ${body.length > BODY_MAX ? 'text-error' : 'text-muted'}`}>
                   {body.length} / {BODY_MAX}
@@ -355,7 +359,7 @@ export function ReviewModal({
                 onChange={(e) => { setBody(e.target.value); if (bodyError) setBodyError(''); }}
                 maxLength={BODY_MAX}
                 rows={4}
-                placeholder="What did you love about this product? (at least 20 characters)"
+                placeholder={t('bodyPlaceholder')}
                 className={[
                   'w-full px-3 py-2.5 text-sm border rounded-sm bg-surface text-secondary',
                   'placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-primary/20',
@@ -368,7 +372,7 @@ export function ReviewModal({
 
             {/* Photos */}
             <div className="space-y-1.5">
-              <p className="text-sm font-medium text-secondary">Photos (optional)</p>
+              <p className="text-sm font-medium text-secondary">{t('photosLabel')}</p>
               <PhotoUpload
                 photos={photos}
                 onAdd={handlePhotoAdd}
@@ -386,16 +390,16 @@ export function ReviewModal({
       <ModalFooter>
         {submitted ? (
           <Button variant="primary" onClick={onClose} fullWidth>
-            Close
+            {t('close')}
           </Button>
         ) : guardState !== 'loading' && !guardState.allowed ? (
           <Button variant="ghost" onClick={onClose}>
-            Close
+            {t('close')}
           </Button>
         ) : guardState !== 'loading' && guardState.allowed && (
           <>
             <p className="text-xs text-muted flex-1">
-              Reviews are publicly visible after approval.
+              {t('publiclyVisible')}
             </p>
             <Button
               variant="primary"
@@ -403,7 +407,7 @@ export function ReviewModal({
               onClick={handleSubmit}
               loading={submitting}
             >
-              Submit Review
+              {t('submitReview')}
             </Button>
           </>
         )}

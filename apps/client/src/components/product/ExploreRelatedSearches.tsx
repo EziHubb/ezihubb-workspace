@@ -1,6 +1,7 @@
 ﻿import { Fragment } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import type { ProductDto } from '@ezihubb/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -61,6 +62,7 @@ interface ExploreRelatedSearchesProps {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function ExploreRelatedSearches({ product, locale }: ExploreRelatedSearchesProps) {
+  const t = useTranslations('product.pdp');
   const { featured, keywords } = buildRelatedSearches(product, locale);
 
   if (featured.length === 0 && keywords.length === 0) return null;
@@ -68,7 +70,7 @@ export function ExploreRelatedSearches({ product, locale }: ExploreRelatedSearch
   return (
     <section className="mt-12 pt-8 border-t border-border">
       <h2 className="text-lg font-semibold text-secondary mb-4">
-        Explore related searches
+        {t('exploreRelatedSearches')}
       </h2>
 
       {/* ── FEATURED CHIPS — seller / topic with optional thumbnail ── */}
@@ -105,7 +107,7 @@ export function ExploreRelatedSearches({ product, locale }: ExploreRelatedSearch
       {keywords.length > 0 && (
         <div>
           <p className="text-sm font-medium text-secondary mb-3">
-            Explore more related searches
+            {t('exploreMoreRelatedSearches')}
           </p>
           <div className="flex flex-wrap gap-2">
             {keywords.map((kw) => (

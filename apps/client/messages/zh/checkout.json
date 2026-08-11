@@ -3,15 +3,21 @@
   "currencyNote": "显示的价格为参考换算价格，您的银行卡将以 {currency} 结算。",
 
   "steps": {
+    "cart": "购物车",
     "shipping": "配送信息",
     "delivery": "配送方式",
-    "payment": "支付"
+    "payment": "支付",
+    "contact": "联系方式",
+    "review": "确认",
+    "aria": "结账步骤"
   },
 
   "stepHeadings": {
     "shippingInformation": "配送信息",
     "deliveryMethod": "配送方式",
-    "payment": "支付"
+    "payment": "支付",
+    "contactInformation": "联系方式",
+    "preparingOrder": "正在准备您的订单…"
   },
 
   "orderSummary": {
@@ -41,5 +47,132 @@
 
   "errors": {
     "createOrderFailed": "创建订单失败，请重试。"
+  },
+
+  "shippingForm": {
+    "savedAddress": "使用已保存的地址",
+    "selectSavedAddress": "— 选择已保存的地址 —",
+    "email": "邮箱",
+    "emailPlaceholder": "your@email.com",
+    "emailHint": "订单确认将发送至此邮箱",
+    "firstName": "名",
+    "lastName": "姓",
+    "phone": "电话",
+    "phonePlaceholder": "+1 555 000 0000",
+    "address": "地址",
+    "addressPlaceholder": "123 Main St",
+    "addressLine2": "公寓、套房等（选填）",
+    "city": "城市",
+    "state": "省/州",
+    "statePlaceholder": "CA",
+    "zip": "邮政编码",
+    "country": "国家/地区",
+    "saveAddress": "保存此地址以便下次使用",
+    "continueToDelivery": "继续配送 →",
+    "validation": {
+      "validEmail": "请输入有效邮箱",
+      "required": "必填",
+      "invalidPhone": "电话号码无效",
+      "fullAddress": "请输入完整街道地址",
+      "selectCountry": "请选择国家/地区"
+    }
+  },
+
+  "deliveryForm": {
+    "calculating": "正在计算 <b>{country}</b> 的运费…",
+    "failedToLoad": "加载配送方式失败。",
+    "tryAgain": "重试",
+    "noShipTo": "暂不支持配送至 {country}。",
+    "changeCountry": "← 更改国家/地区",
+    "selectMethod": "选择配送方式",
+    "methodsAria": "配送方式",
+    "via": "通过 {carrier}",
+    "businessDays": "{min}–{max} 个工作日 · 预计到达 {date}",
+    "free": "免费",
+    "freeOver": "满 {amount} 免运费",
+    "back": "← 返回",
+    "backAria": "返回",
+    "continueToPayment": "继续支付 →",
+    "creatingOrder": "正在创建订单…",
+    "creating": "创建中…"
+  },
+
+  "paymentForm": {
+    "cardTab": "信用卡 / 借记卡",
+    "paypalTab": "PayPal",
+    "securePayments": "支付已加密，安全可靠",
+    "back": "← 返回",
+    "backAria": "返回",
+    "placeOrder": "下单 — {amount}",
+    "processing": "处理中…",
+    "paymentFailed": "支付失败，请重试。",
+    "paypalFailed": "PayPal 支付失败，请重试或使用银行卡。"
+  },
+
+  "giftOptions": {
+    "isGift": "此订单是礼物",
+    "addOptionsHint": "添加留言和礼品选项",
+    "from": "赠送人（选填）",
+    "fromPlaceholder": "例如：爸爸妈妈",
+    "message": "礼品留言",
+    "optional": "（选填）",
+    "messagePlaceholder": "给收件人写一段留言……",
+    "sendReceipt": "发送礼品收据",
+    "receiptNote": "装箱单将不显示价格",
+    "addWrapping": "添加礼品包装",
+    "wrappingNote": "薄纸、丝带和礼品袋",
+    "wrappingPrice": "+$4.99"
+  },
+
+  "expressPay": {
+    "expressCheckout": "快速结账",
+    "payWithPaypal": "使用 PayPal 支付",
+    "orPayWithCard": "或使用银行卡支付",
+    "total": "总计：{amount} USD"
+  },
+
+  "affiliateBanner": {
+    "savingPercent": "您节省了 {percent}%",
+    "thanksTo": " — 感谢 {name}！",
+    "referralApplied": "已自动应用推荐折扣 {amount}。"
+  },
+
+  "digitalContact": {
+    "digitalOnlyNote": "此订单仅包含数字商品 — 无需配送。我们会将下载链接和收据发送到此邮箱。",
+    "emailAddress": "电子邮箱",
+    "emailPlaceholder": "you@example.com",
+    "invalidEmail": "请输入有效的电子邮箱地址",
+    "continueToPayment": "继续支付",
+    "preparingOrder": "正在准备您的订单…"
+  },
+
+  "success": {
+    "paymentProcessing": "正在处理支付…",
+    "orderConfirmed": "订单已确认！🎉",
+    "confirmingPayment": "我们正在确认您的付款，通常只需几秒钟。",
+    "yourOrderNumber": "您的订单号",
+    "clickToCopy": "（点击复制）",
+    "copyOrderNumber": "复制订单号 {orderNumber}",
+    "confirmationSentTo": "确认邮件已发送至",
+    "inbox": "{name} 的邮箱",
+    "orderItems": "订单商品",
+    "qty": "数量 {count}",
+    "subtotal": "小计",
+    "shipping": "运费",
+    "free": "免费",
+    "discount": "优惠",
+    "giftCard": "礼品卡",
+    "totalPaid": "实付总额",
+    "shippingTo": "收货地址",
+    "estimatedDelivery": "预计送达",
+    "deliveryEstimate": "生产完成后 5–10 个工作日",
+    "orderNumberNotFound": "未找到订单号。",
+    "continueShopping": "继续购物",
+    "couldNotLoad": "无法加载订单详情。",
+    "orderNumberIs": "您的订单号是 <b>{orderNumber}</b>。请查收邮件以确认。",
+    "saveOrderHistory": "保存您的订单记录",
+    "createAccountHint": "创建免费账户以追踪此订单、查看历史购买记录，并在下次结账时更快捷。",
+    "createAccount": "创建账户 →",
+    "trackMyOrder": "追踪我的订单"
   }
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { AlertTriangle, ArrowLeft, Search } from 'lucide-react';
 import { Button, Input } from '@ezihubb/ui';
 import type { OrderDto } from '@ezihubb/types';
@@ -37,6 +37,7 @@ interface SearchFormProps {
 }
 
 function SearchForm({ onSuccess, locale }: SearchFormProps) {
+  const t = useTranslations('orderTracking');
   const [orderNumber, setOrderNumber] = useState('');
   const [email,       setEmail]       = useState('');
   const [loading,     setLoading]     = useState(false);
@@ -51,9 +52,9 @@ function SearchForm({ onSuccess, locale }: SearchFormProps) {
 
   const validate = (): boolean => {
     const errs: typeof fieldErrors = {};
-    if (!orderNumber.trim()) errs.orderNumber = 'Order number is required.';
-    if (!email.trim())       errs.email = 'Email address is required.';
-    else if (!isValidEmail(email)) errs.email = 'Please enter a valid email address.';
+    if (!orderNumber.trim()) errs.orderNumber = t('orderNumberRequired');
+    if (!email.trim())       errs.email = t('emailRequired');
+    else if (!isValidEmail(email)) errs.email = t('invalidEmail');
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -79,7 +80,7 @@ function SearchForm({ onSuccess, locale }: SearchFormProps) {
       });
 
       if (res.status === 404 || res.status === 401) {
-        setError('Order not found. Please check your order number and email.');
+        setError(t('notFound'));
         return;
       }
 
@@ -91,7 +92,7 @@ function SearchForm({ onSuccess, locale }: SearchFormProps) {
       const order: OrderDto = json?.data ?? json;
       onSuccess(order, email.trim());
     } catch {
-      setError('Something went wrong. Please try again.');
+      setError(t('genericError'));
     } finally {
       setLoading(false);
     }

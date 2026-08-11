@@ -19,7 +19,44 @@
     "count": "{total, plural, one {# 个订单} other {# 个订单}}",
     "actions": {
       "viewDetails": "查看详情",
-      "trackOrder": "追踪订单"
+      "trackOrder": "追踪订单",
+      "writeReview": "写评价"
+    },
+    "itemCount": "{count, plural, other {# 件商品}}",
+    "viewOrderDetailsAria": "查看订单详情",
+    "detail": {
+      "backToOrders": "我的订单",
+      "placed": "下单时间 {date}",
+      "downloadInvoice": "下载发票",
+      "yourFiles": "您的文件",
+      "items": "商品（{count}）",
+      "qty": "数量 {count}",
+      "shippingAddress": "收货地址",
+      "orderSummaryTitle": "订单摘要",
+      "subtotal": "小计",
+      "shipping": "运费",
+      "free": "免费",
+      "discount": "折扣",
+      "total": "总计",
+      "trackingNumber": "运单号",
+      "trackPackage": "追踪包裹",
+      "orderNotFound": "未找到该订单。",
+      "needToCancel": "需要取消订单吗？",
+      "availableToCancelFor": "可取消剩余时间",
+      "cancelOrderTitle": "取消订单 {orderNumber}？",
+      "cancelOrderBody": "此操作无法撤销，系统将为您全额退款。",
+      "yesCancel": "确认取消",
+      "cancelledMessage": "此订单已{status}。",
+      "statusWords": {
+        "CANCELLED": "取消",
+        "REFUNDED": "退款",
+        "REFUND_REQUESTED": "申请退款",
+        "DISPUTED": "争议处理"
+      },
+      "timelineAriaLabel": "订单状态时间线",
+      "current": "当前",
+      "cancelSuccessToast": "订单已取消，退款将在5-7个工作日内退回。",
+      "cancelErrorToast": "取消订单失败"
     }
   },
 
@@ -105,6 +142,13 @@
       "cancel": "取消",
       "save": "保存地址",
       "saving": "保存中…"
+    },
+    "errors": {
+      "required": "必填",
+      "invalidPhone": "手机号无效",
+      "enterFullAddress": "请输入完整的街道地址",
+      "selectCountry": "请选择国家/地区",
+      "failedToSave": "地址保存失败"
     }
   },
 
@@ -185,5 +229,176 @@
     "signIn": "登录查看您的 VIP 状态",
     "signInSub": "购物即可解锁专属权益。",
     "signInBtn": "登录"
+  },
+
+  "sidebar": {
+    "aria": "账户导航",
+    "myOrders": "我的订单",
+    "wishlist": "心愿单",
+    "messages": "消息",
+    "creatorHub": "创作者中心",
+    "addressBook": "地址簿",
+    "profilePassword": "个人资料与密码",
+    "signOut": "退出登录"
+  },
+
+  "messages": {
+    "title": "消息",
+    "noMessages": "暂无消息",
+    "questionsHint": "对订单或商品有疑问？",
+    "messageUs": "联系我们",
+    "selectConversation": "选择一个对话以查看消息",
+    "backToConversations": "返回对话列表",
+    "orderNumber": "订单 #{number}",
+    "sendMessage": "发送消息",
+    "typePlaceholder": "输入消息…（按 Enter 发送）",
+    "shiftEnterHint": "Shift+Enter 换行",
+    "resolvedNotice": "此对话已解决。",
+    "reopen": "重新打开",
+    "justNow": "刚刚",
+    "minutesAgo": "{count} 分钟前",
+    "hoursAgo": "{count} 小时前",
+    "daysAgo": "{count} 天前",
+    "status": {
+      "pending": "待处理",
+      "resolved": "已解决",
+      "spam": "垃圾信息"
+    }
+  },
+
+  "wishlist": {
+    "pageTitle": "心愿单",
+    "removeAria": "从心愿单中移除",
+    "adding": "添加中…",
+    "addToCart": "加入购物车",
+    "outOfStock": "缺货",
+    "shareTitle": "分享心愿单",
+    "revokeLink": "撤销链接",
+    "createLinkHint": "创建可分享的链接，让亲友查看您的心愿单并为您购买礼物。",
+    "creating": "创建中…",
+    "createShareLink": "创建分享链接",
+    "nameLabel": "心愿单名称",
+    "optional": "（选填）",
+    "namePlaceholder": "例如：我的生日心愿单",
+    "visiblePublic": "拥有链接的任何人均可查看",
+    "hiddenInactive": "已隐藏（链接未激活）",
+    "copied": "已复制！",
+    "copy": "复制",
+    "shareOn": "分享至：",
+    "shareCheckOut": "看看我的心愿单！",
+    "linkRevoked": "心愿单链接已撤销",
+    "removedFromWishlist": "已从心愿单移除",
+    "addedToCart": "已加入购物车！",
+    "failedToAddToCart": "加入购物车失败",
+    "nothingSaved": "暂无收藏",
+    "nothingSavedHint": "收藏您喜欢的商品，方便以后查看。",
+    "exploreGifts": "探索礼品",
+    "savedItems": "件收藏商品"
+  },
+
+  "referrals": {
+    "title": "推荐奖励",
+    "subtitle": "分享您的链接，好友购物即可赚取佣金。",
+    "commissionRate": "{rate}% 佣金比例",
+    "directReferralCount": "{count, plural, one {# 位直接推荐} other {# 位直接推荐}}",
+    "progressTo": "到 {tier} 的进度",
+    "yourReferralLink": "您的推荐链接",
+    "shareVia": "通过以下方式分享：",
+    "howItWorks": {
+      "title": "使用方法",
+      "step1Title": "分享您的链接",
+      "step1Body": "复制您专属的推荐链接，分享给亲友。",
+      "step2Title": "好友购物",
+      "step2Body": "当有人通过您的链接下单，系统会自动追踪。",
+      "step3Title": "赚取佣金",
+      "step3Body": "订单完成并锁定期结束后，佣金将被确认。"
+    },
+    "stats": {
+      "directRefs": "直接推荐",
+      "level2": "二级",
+      "level3": "三级",
+      "allTimeEarned": "累计收益",
+      "balance": "余额",
+      "pendingSuffix": "另有 {amount} 待确认"
+    },
+    "quickLinks": {
+      "commissionHistory": "佣金记录",
+      "commissionHistoryDesc": "按订单查看您的所有收益",
+      "payouts": "提现",
+      "payoutsDesc": "申请提取您的余额"
+    },
+    "recentEarnings": "近期收益",
+    "noCommissions": "暂无佣金。分享您的链接开始赚钱吧！",
+    "levelCommission": "{level} 级佣金",
+    "orderRef": "订单 #{id}",
+    "commissionStatus": {
+      "pending": "待确认",
+      "confirmed": "已确认",
+      "paid": "已支付",
+      "cancelled": "已取消"
+    },
+    "earnings": {
+      "title": "佣金记录",
+      "subtitle": "您的推荐网络中获得的所有佣金。",
+      "tabAll": "全部",
+      "emptyAll": "暂无佣金记录。分享推荐链接开始赚钱吧！",
+      "emptyFiltered": "暂无{status}的佣金。",
+      "tableDate": "日期",
+      "tableFrom": "来源",
+      "tableOrder": "订单",
+      "tableLevel": "级别",
+      "tableAmount": "金额",
+      "tableStatus": "状态",
+      "levelDirect": "直接（一级）",
+      "levelN": "{level} 级",
+      "locksInDays": "{days} 天后解锁",
+      "pageOf": "第 {page} / {totalPages} 页",
+      "totalCount": "共 {count} 条"
+    },
+    "payouts": {
+      "title": "提现",
+      "subtitle": "申请提取您已确认的推荐余额。",
+      "confirmedBalance": "已确认余额",
+      "availableToWithdraw": "可提现",
+      "minToWithdraw": "最低 {amount} 方可提现",
+      "pendingEarnings": "待确认收益",
+      "locksAfterFulfillment": "订单完成后解锁",
+      "allTimeEarned": "累计收益",
+      "notEnoughTitle": "余额不足",
+      "notEnoughBody": "您需要至少 {amount} 的已确认余额才能申请提现。继续分享您的推荐链接以赚取更多！",
+      "requestTitle": "申请提现",
+      "minAndAvailable": "最低提现：{min} · 可用余额：{available}",
+      "methodLabel": "提现方式",
+      "methodPaypal": "PayPal",
+      "methodBank": "银行转账",
+      "detailLabelPaypal": "PayPal 邮箱",
+      "detailLabelBank": "银行账户信息",
+      "detailPlaceholderPaypal": "请输入您的 PayPal 邮箱地址",
+      "detailPlaceholderBank": "请输入账号 / IBAN",
+      "amountLabel": "金额（$）",
+      "useFullBalance": "使用全部余额",
+      "submitting": "提交中…",
+      "requestButton": "申请提现",
+      "successTitle": "提现申请已提交！",
+      "successBody": "我们将在 3–5 个工作日内处理您的申请。",
+      "errorMinAmount": "最低提现金额为 {amount}。",
+      "errorExceedsBalance": "金额超过您已确认的余额 {amount}。",
+      "errorDetailRequired": "请输入您的提现信息。",
+      "historyTitle": "提现记录",
+      "noPayouts": "暂无提现申请。",
+      "tableDate": "日期",
+      "tableAmount": "金额",
+      "tableMethod": "方式",
+      "tableStatus": "状态",
+      "paidOn": "已支付 {date}",
+      "status": {
+        "pending": "待处理",
+        "processing": "处理中",
+        "paid": "已支付",
+        "rejected": "已拒绝"
+      },
+      "pageOf": "第 {page} / {totalPages} 页",
+      "totalCount": "共 {count} 条"
+    }
   }
 }

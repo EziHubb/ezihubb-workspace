@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { useCustomizerStore } from '../../lib/store/customizer.store';
 import type { TextField, DateField } from '../../lib/customizer/types';
 
@@ -9,6 +10,7 @@ interface TextFieldInputProps {
 }
 
 export function TextFieldInput({ field }: TextFieldInputProps) {
+  const t           = useTranslations('customizer.step1');
   const fieldValue  = useCustomizerStore((s) => s.fieldValues[field.id]);
   const setField    = useCustomizerStore((s) => s.setFieldValue);
   const setActive   = useCustomizerStore((s) => s.setActiveField);
@@ -55,7 +57,7 @@ export function TextFieldInput({ field }: TextFieldInputProps) {
       )}
       {isOver && (
         <p className="text-xs text-error" role="alert">
-          Maximum {maxLen} characters
+          {t('maxCharacters', { max: maxLen })}
         </p>
       )}
     </div>

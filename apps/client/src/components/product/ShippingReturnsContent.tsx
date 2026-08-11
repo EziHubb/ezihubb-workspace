@@ -1,4 +1,8 @@
-﻿// ── Props ─────────────────────────────────────────────────────────────────────
+'use client';
+
+import { useTranslations } from 'next-intl';
+
+// ── Props ─────────────────────────────────────────────────────────────────────
 
 type ProductType = 'apparel' | 'canvas' | 'drinkware' | 'other';
 
@@ -19,35 +23,36 @@ export function ShippingReturnsContent({
   processingDays,
   productType,
 }: ShippingReturnsContentProps) {
+  const t = useTranslations('product.shippingReturns');
   const stdMin = processingDays + 5;
   const stdMax = processingDays + 10;
   const expMin = processingDays + 2;
   const expMax = processingDays + 3;
 
   const shippingRows = [
-    row('⏱', `Production time: ${processingDays} business days`, 'Your item is made to order after purchase'),
-    row('🚚', 'Standard (US): 5–10 business days', 'FREE on orders over $50'),
-    row('⚡', 'Express (US): 2–3 business days', '$14.99'),
-    row('🌍', 'International: 14–21 business days', 'From $19.99'),
-    row('📅', `Standard total: ${stdMin}–${stdMax} business days`),
-    row('📅', `Express total: ${expMin}–${expMax} business days`),
+    row('⏱', t('productionTime', { days: processingDays }), t('productionSub')),
+    row('🚚', t('standard'), t('standardSub')),
+    row('⚡', t('express'), t('expressSub')),
+    row('🌍', t('international'), t('internationalSub')),
+    row('📅', t('standardTotal', { min: stdMin, max: stdMax })),
+    row('📅', t('expressTotal', { min: expMin, max: expMax })),
   ];
 
   const returnRows = [
-    row('↩', 'Cancel within 2 hours of ordering'),
-    row('🎁', 'Personalized items cannot be returned unless defective'),
-    row('🛡', 'Defective items: contact us within 30 days for replacement'),
-    row('📧', 'Issues? Email support@ezihubb.com'),
+    row('↩', t('cancelWithin2h')),
+    row('🎁', t('personalizedNoReturn')),
+    row('🛡', t('defectiveReplacement')),
+    row('📧', t('emailSupport')),
   ];
 
   // Product-type-specific notes
   const extraReturns: string[] = [];
   if (productType === 'apparel') {
-    extraReturns.push('Size exchanges: if unworn and unwashed, within 14 days');
+    extraReturns.push(t('sizeExchanges'));
   } else if (productType === 'canvas') {
-    extraReturns.push('Damaged in shipping: photo required within 72 hours');
+    extraReturns.push(t('damagedShipping'));
   } else if (productType === 'drinkware') {
-    extraReturns.push('Dishwasher safe — top rack recommended for longevity');
+    extraReturns.push(t('dishwasherSafe'));
   }
 
   return (
@@ -56,7 +61,7 @@ export function ShippingReturnsContent({
       {/* Production & Shipping */}
       <div>
         <h4 className="font-semibold text-secondary text-xs uppercase tracking-widest mb-3 border-b border-border pb-2">
-          Production &amp; Shipping
+          {t('productionAndShipping')}
         </h4>
         <ul className="space-y-2.5">
           {shippingRows.map((r, i) => (
@@ -76,10 +81,10 @@ export function ShippingReturnsContent({
       {/* Returns & Cancellations */}
       <div>
         <h4 className="font-semibold text-secondary text-xs uppercase tracking-widest mb-3 border-b border-border pb-2">
-          Returns &amp; Cancellations
+          {t('returnsAndCancellations')}
         </h4>
         <ul className="space-y-2.5">
-          {[...returnRows, ...extraReturns.map((t) => row('ℹ️', t))].map((r, i) => (
+          {[...returnRows, ...extraReturns.map((text) => row('ℹ️', text))].map((r, i) => (
             <li key={i} className="flex items-start gap-3">
               <span className="text-base leading-5 shrink-0" aria-hidden="true">
                 {r.icon}

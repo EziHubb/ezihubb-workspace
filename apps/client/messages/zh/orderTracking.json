@@ -11,9 +11,9 @@
   "notFound": "未找到该订单。请检查您的订单号和邮箱。",
   "trackAnother": "追踪其他订单",
   "needHelp": "需要帮助？",
-  "confirmationSentTo": "确认邮件已发送至 {email}",
+  "confirmationSentTo": "确认邮件已发送至 <b>{email}</b>",
   "verifyTitle": "验证您的邮箱",
-  "verifySubtitle": "输入结账时使用的邮箱以查看订单 #{orderNumber}。",
+  "verifySubtitle": "输入结账时使用的邮箱以查看订单 <b>#{orderNumber}</b>。",
   "viewOrderButton": "查看订单",
   "trackDifferent": "追踪其他订单",
   "cancelTitle": "取消订单",
@@ -21,7 +21,7 @@
   "keepOrder": "保留订单",
   "cancelButton": "取消订单",
   "yesCancelButton": "确认取消",
-  "cancelAvailable": "剩余取消时间 {time}",
+  "cancelAvailable": "剩余取消时间 <b>{time}</b>",
   "contactSupport": "联系客服",
   "itemsTitle": "订单商品",
   "orderOnItsWay": "您的订单正在路上！",
@@ -33,5 +33,50 @@
     "delivered": "已签收",
     "completed": "已完成",
     "inProgress": "进行中"
+  },
+
+  "orderNumberRequired": "请输入订单号。",
+  "emailRequired": "请输入邮箱地址。",
+  "invalidEmail": "请输入有效的邮箱地址。",
+  "genericError": "出错了，请重试。",
+  "copyTrackingNumberAria": "复制运单号",
+  "placedLabel": "下单时间：{date}",
+  "orderNumberHeading": "订单 #{orderNumber}",
+  "productFallback": "商品",
+  "orderItemFallback": "订单商品",
+  "carrierFallback": "快递公司",
+
+  "detailedTracking": {
+    "backToOrders": "返回订单",
+    "pageTitle": "追踪订单",
+    "notAvailable": "该订单暂无追踪信息。",
+    "goBackToOrders": "返回订单列表",
+    "trackOnCarrierSite": "前往快递官网追踪",
+    "ariaLabel": "订单追踪时间线",
+    "stages": {
+      "ORDER_CONFIRMED": { "label": "订单已确认", "description": "我们已收到您的订单，正在准备中。" },
+      "PAYMENT_VERIFIED": { "label": "付款已验证", "description": "您的付款已确认。" },
+      "IN_PRODUCTION": { "label": "制作中", "description": "您的商品正在印制中。" },
+      "PRODUCTION_COMPLETE": { "label": "制作完成", "description": "制作已完成，订单正在打包。" },
+      "SHIPPED": { "label": "已发货", "description": "您的订单已交由快递公司处理。" },
+      "SENT_TO_FULFILLMENT": { "label": "已转交履约合作方", "description": "您的订单已发送至我们的履约合作方。" },
+      "IN_TRANSIT": { "label": "运输中", "description": "您的包裹正在运送途中。" },
+      "OUT_FOR_DELIVERY": { "label": "派送中", "description": "您的包裹今天将送达。" },
+      "DELIVERED": { "label": "已签收", "description": "您的订单已送达。" },
+      "FAILED_DELIVERY": { "label": "派送失败", "description": "曾尝试派送但未成功，请联系快递公司确认。" }
+    }
+  },
+
+  "orderStatusBadge": {
+    "PENDING_PAYMENT": "待付款",
+    "CONFIRMED": "已确认",
+    "IN_PRODUCTION": "制作中",
+    "SHIPPED": "已发货",
+    "DELIVERED": "已送达",
+    "COMPLETED": "已完成",
+    "CANCELLED": "已取消",
+    "REFUND_REQUESTED": "已申请退款",
+    "REFUNDED": "已退款",
+    "DISPUTED": "争议中"
   }
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Lock } from 'lucide-react';
 import {
   Elements,
@@ -36,6 +37,7 @@ function StripeInnerForm({
   onSuccess:    (orderNumber: string) => void;
   onBack:       () => void;
 }) {
+  const t = useTranslations('checkout.paymentForm');
   const stripe   = useStripe();
   const elements = useElements();
 
@@ -58,7 +60,7 @@ function StripeInnerForm({
     });
 
     if (error) {
-      setPaymentError(error.message ?? 'Payment failed. Please try again.');
+      setPaymentError(error.message ?? t('paymentFailed'));
       setIsProcessing(false);
     } else {
       onSuccess(orderNumber);
@@ -82,7 +84,7 @@ function StripeInnerForm({
 
       <p className="flex items-center justify-center gap-1.5 text-xs text-muted">
         <Lock className="w-3.5 h-3.5 text-success" />
-        Payments are encrypted and secure
+        {t('securePayments')}
       </p>
 
       {/* Navigation — desktop */}
@@ -93,14 +95,14 @@ function StripeInnerForm({
           disabled={isProcessing}
           className="px-6 py-3 border border-border text-secondary text-sm font-medium rounded-button hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
         >
-          ← Back
+          {t('back')}
         </button>
         <button
           type="submit"
           disabled={!stripe || !elements || isProcessing}
           className="flex-1 py-3.5 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wide"
         >
-          {isProcessing ? 'Processing…' : `Place Order — ${fmtAmount(totalAmount)}`}
+          {isProcessing ? t('processing') : t('placeOrder', { amount: fmtAmount(totalAmount) })}
         </button>
       </div>
 
@@ -111,7 +113,7 @@ function StripeInnerForm({
           onClick={onBack}
           disabled={isProcessing}
           className="w-12 h-12 border border-border rounded-button flex items-center justify-center text-secondary shrink-0 disabled:opacity-50"
-          aria-label="Back"
+          aria-label={t('backAria')}
         >
           ←
         </button>
@@ -120,7 +122,7 @@ function StripeInnerForm({
           disabled={!stripe || !elements || isProcessing}
           className="flex-1 py-3.5 bg-primary text-white font-bold text-sm rounded-button disabled:opacity-50 uppercase tracking-wide"
         >
-          {isProcessing ? 'Processing…' : `Place Order — ${fmtAmount(totalAmount)}`}
+          {isProcessing ? t('processing') : t('placeOrder', { amount: fmtAmount(totalAmount) })}
         </button>
       </div>
     </form>
@@ -140,6 +142,7 @@ function PaypalPanel({
   onSuccess:   (orderNumber: string) => void;
   onBack:      () => void;
 }) {
+  const t = useTranslations('checkout.paymentForm');
   const [paypalError, setPaypalError] = useState('');
 
   return (
@@ -176,15 +179,13 @@ function PaypalPanel({
             onSuccess(orderNumber);
           }}
           onError={() => {
-            setPaypalError(
-              'PayPal payment failed. Please try again or use a card.',
-            );
+            setPaypalError(t('paypalFailed'));
           }}
         />
 
         <p className="flex items-center justify-center gap-1.5 text-xs text-muted">
           <Lock className="w-3.5 h-3.5 text-success" />
-          Payments are encrypted and secure
+          {t('securePayments')}
         </p>
 
         <button
@@ -192,7 +193,7 @@ function PaypalPanel({
           onClick={onBack}
           className="w-full px-6 py-3 border border-border text-secondary text-sm font-medium rounded-button hover:border-primary hover:text-primary transition-colors"
         >
-          ← Back
+          {t('back')}
         </button>
       </div>
     </PayPalScriptProvider>
@@ -222,6 +223,7 @@ export function PaymentForm({
   onSuccess,
   onBack,
 }: PaymentFormProps) {
+  const t = useTranslations('checkout.paymentForm');
   const [method, setMethod] = useState<'card' | 'paypal'>('card');
 
   return (
@@ -237,7 +239,7 @@ export function PaymentForm({
               : 'bg-surface text-muted hover:text-secondary'
           }`}
         >
-          Credit / Debit Card
+          {t('cardTab')}
         </button>
         {PAYPAL_CLIENT_ID && (
           <button
@@ -249,7 +251,7 @@ export function PaymentForm({
                 : 'bg-surface text-muted hover:text-secondary'
             }`}
           >
-            PayPal
+            {t('paypalTab')}
           </button>
         )}
       </div>

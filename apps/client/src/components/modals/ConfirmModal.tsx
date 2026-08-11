@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { AlertTriangle, Trash2 } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@ezihubb/ui';
 
@@ -22,12 +23,15 @@ export function ConfirmModal({
   onConfirm,
   title,
   description,
-  confirmLabel = 'Confirm',
-  cancelLabel  = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   variant      = 'default',
   isLoading    = false,
 }: ConfirmModalProps) {
+  const t = useTranslations('common');
   const isDestructive = variant === 'destructive';
+  const resolvedConfirmLabel = confirmLabel ?? t('confirm');
+  const resolvedCancelLabel  = cancelLabel ?? t('cancel');
 
   return (
     <Modal
@@ -36,7 +40,7 @@ export function ConfirmModal({
       closeOnOverlayClick={!isLoading}
       size="sm"
     >
-      <ModalHeader onClose={isLoading ? undefined : onClose}>
+      <ModalHeader onClose={isLoading ? undefined : onClose} closeLabel={t('close')}>
         <div className="flex items-center gap-2.5">
           {isDestructive ? (
             <span className="w-8 h-8 flex items-center justify-center rounded-full bg-red-50 shrink-0">
@@ -61,14 +65,14 @@ export function ConfirmModal({
           onClick={onClose}
           disabled={isLoading}
         >
-          {cancelLabel}
+          {resolvedCancelLabel}
         </Button>
         <Button
           variant={isDestructive ? 'destructive' : 'primary'}
           onClick={onConfirm}
           loading={isLoading}
         >
-          {confirmLabel}
+          {resolvedConfirmLabel}
         </Button>
       </ModalFooter>
     </Modal>

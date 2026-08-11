@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -24,6 +24,7 @@ interface SellerSidebarProps {
 }
 
 export function SellerSidebar({ store, onNavigate }: SellerSidebarProps) {
+  const t        = useTranslations('seller.sidebar');
   const locale   = useLocale();
   const pathname = usePathname();
   const router   = useRouter();
@@ -38,20 +39,20 @@ export function SellerSidebar({ store, onNavigate }: SellerSidebarProps) {
   };
 
   const NAV_LINKS = [
-    { href: '/seller',          icon: LayoutDashboard, label: 'Dashboard'   },
-    { href: '/seller/orders',   icon: ShoppingBag,     label: 'Orders'      },
-    { href: '/seller/products', icon: Package,         label: 'Products'    },
-    { href: '/seller/analytics', icon: BarChart2, label: 'Analytics'      },
-    { href: '/seller/reviews',   icon: Star,     label: 'Reviews'        },
-    { href: '/seller/payouts',   icon: Wallet,   label: 'Payouts'        },
-    { href: '/seller/store',     icon: Store,    label: 'Store Settings' },
+    { href: '/seller',          icon: LayoutDashboard, label: t('nav.dashboard')     },
+    { href: '/seller/orders',   icon: ShoppingBag,     label: t('nav.orders')        },
+    { href: '/seller/products', icon: Package,         label: t('nav.products')      },
+    { href: '/seller/analytics', icon: BarChart2, label: t('nav.analytics')       },
+    { href: '/seller/reviews',   icon: Star,     label: t('nav.reviews')         },
+    { href: '/seller/payouts',   icon: Wallet,   label: t('nav.payouts')         },
+    { href: '/seller/store',     icon: Store,    label: t('nav.storeSettings')   },
   ] as const;
 
   return (
-    <nav aria-label="Seller navigation" className="space-y-1">
+    <nav aria-label={t('aria')} className="space-y-1">
       {/* Store badge */}
       <div className="px-3 py-4 mb-2">
-        <p className="text-xs font-semibold uppercase tracking-widest text-muted mb-1">Your Store</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted mb-1">{t('yourStore')}</p>
         <p className="font-semibold text-secondary text-sm truncate">{store.name}</p>
         <a
           href={`/${locale}/shops/${store.slug}`}
@@ -59,7 +60,7 @@ export function SellerSidebar({ store, onNavigate }: SellerSidebarProps) {
           rel="noopener noreferrer"
           className="text-xs text-primary hover:underline"
         >
-          View public page →
+          {t('viewPublicPage')} →
         </a>
       </div>
 
@@ -95,7 +96,7 @@ export function SellerSidebar({ store, onNavigate }: SellerSidebarProps) {
         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-button text-sm font-medium text-secondary hover:bg-error/8 hover:text-error transition-colors mt-2"
       >
         <LogOut className="w-4 h-4 shrink-0 text-muted" />
-        Sign Out
+        {t('signOut')}
       </button>
     </nav>
   );

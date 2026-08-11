@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { Heart, Leaf, Shield, Users } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -12,72 +13,70 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-// ── Static data ───────────────────────────────────────────────────────────────
-
-const STATS = [
-  { value: 'Made to Order',   label: 'Every item personalized'  },
-  { value: 'USA Printed',     label: 'On-demand production'     },
-  { value: 'No Inventory',    label: 'Nothing pre-made or stored' },
-];
-
-const PROCESS_STEPS = [
-  {
-    step: '01',
-    title: 'You Personalize',
-    description:
-      'Choose from hundreds of products, upload your photos, add names and messages, then preview your creation before ordering.',
-    emoji: '✏️',
-  },
-  {
-    step: '02',
-    title: 'We Print',
-    description:
-      'Each item is printed on demand using premium materials and professional-grade equipment — made only after you order it.',
-    emoji: '🛠️',
-  },
-  {
-    step: '03',
-    title: 'We Deliver',
-    description:
-      'Your creation is safely packaged and shipped to your door — or directly to the lucky recipient as a surprise gift.',
-    emoji: '📦',
-  },
-];
-
-const VALUES = [
-  {
-    icon:  Heart,
-    title: 'Made with Love',
-    description:
-      'Every order is a personal expression of care. We treat each item with the attention it deserves.',
-    accent: 'text-error bg-error/8',
-  },
-  {
-    icon:  Shield,
-    title: 'Quality First',
-    description:
-      'We use only premium substrates and professional printing technology to ensure lasting results.',
-    accent: 'text-primary bg-primary/8',
-  },
-  {
-    icon:  Leaf,
-    title: 'Sustainable',
-    description:
-      'We use eco-friendly inks, recycled packaging, and carbon-neutral shipping options wherever possible.',
-    accent: 'text-success bg-success/8',
-  },
-  {
-    icon:  Users,
-    title: 'Customer First',
-    description:
-      'From personalization to delivery, we\'re with you every step. Our team responds within 2 hours.',
-    accent: 'text-warning bg-warning/8',
-  },
-];
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function AboutPage() {
+export default async function AboutPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'pages.about' });
+
+  const STATS = [
+    { value: t('stats.madeToOrder.value'), label: t('stats.madeToOrder.label') },
+    { value: t('stats.usaPrinted.value'),  label: t('stats.usaPrinted.label')  },
+    { value: t('stats.noInventory.value'), label: t('stats.noInventory.label') },
+  ];
+
+  const PROCESS_STEPS = [
+    {
+      step:        '01',
+      title:       t('process.steps.personalize.title'),
+      description: t('process.steps.personalize.description'),
+      emoji:       '✏️',
+    },
+    {
+      step:        '02',
+      title:       t('process.steps.print.title'),
+      description: t('process.steps.print.description'),
+      emoji:       '🛠️',
+    },
+    {
+      step:        '03',
+      title:       t('process.steps.deliver.title'),
+      description: t('process.steps.deliver.description'),
+      emoji:       '📦',
+    },
+  ];
+
+  const VALUES = [
+    {
+      icon:  Heart,
+      title: t('values.items.love.title'),
+      description: t('values.items.love.description'),
+      accent: 'text-error bg-error/8',
+    },
+    {
+      icon:  Shield,
+      title: t('values.items.quality.title'),
+      description: t('values.items.quality.description'),
+      accent: 'text-primary bg-primary/8',
+    },
+    {
+      icon:  Leaf,
+      title: t('values.items.sustainable.title'),
+      description: t('values.items.sustainable.description'),
+      accent: 'text-success bg-success/8',
+    },
+    {
+      icon:  Users,
+      title: t('values.items.customer.title'),
+      description: t('values.items.customer.description'),
+      accent: 'text-warning bg-warning/8',
+    },
+  ];
+
   return (
     <div className="bg-background">
 
@@ -85,7 +84,7 @@ export default function AboutPage() {
       <section className="relative h-[52vh] md:h-[65vh] overflow-hidden">
         <Image
           src="https://images.unsplash.com/photo-1615529328331-f8917597711f?w=1600&q=80"
-          alt="Personalized gift being printed"
+          alt={t('heroImageAlt')}
           fill
           sizes="100vw"
           className="object-cover"
@@ -97,10 +96,10 @@ export default function AboutPage() {
         <div className="absolute inset-0 flex items-end">
           <div className="max-w-[1440px] w-full mx-auto px-4 md:px-8 pb-10 md:pb-16">
             <p className="text-white/80 text-sm font-semibold uppercase tracking-widest mb-3">
-              Our Story
+              {t('eyebrow')}
             </p>
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight max-w-2xl">
-              Crafting Memories,<br />One Gift at a Time
+              {t('heroTitleLine1')}<br />{t('heroTitleLine2')}
             </h1>
           </div>
         </div>
@@ -111,25 +110,13 @@ export default function AboutPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 items-center">
           <div>
             <blockquote className="font-display text-2xl md:text-3xl font-bold text-primary italic leading-relaxed">
-              &ldquo;The best gifts aren&apos;t bought — they&apos;re created with intention, love, and a personal touch.&rdquo;
+              &ldquo;{t('quote')}&rdquo;
             </blockquote>
           </div>
           <div className="space-y-4 text-secondary text-base leading-relaxed">
-            <p>
-              EziHubb was born from a simple belief: the most meaningful gifts
-              are the ones made uniquely for someone. We design every product
-              ourselves and print it on demand — nothing sits pre-made in a warehouse.
-            </p>
-            <p>
-              Every order goes through the same careful process, from design to
-              production to shipping, so the mug, canvas print, or tumbler you
-              receive was made specifically for you.
-            </p>
-            <p>
-              We believe personalization is more than printing a name. It&apos;s capturing a
-              moment, honoring a relationship, and creating something that will be treasured
-              for years to come.
-            </p>
+            <p>{t('missionP1')}</p>
+            <p>{t('missionP2')}</p>
+            <p>{t('missionP3')}</p>
           </div>
         </div>
       </section>
@@ -154,10 +141,10 @@ export default function AboutPage() {
       <section className="max-w-[1440px] mx-auto px-4 md:px-8 py-16 md:py-20">
         <div className="text-center mb-12">
           <h2 className="font-display text-3xl md:text-4xl font-bold text-secondary mb-3">
-            From Your Vision to Their Hands
+            {t('process.title')}
           </h2>
           <p className="text-muted max-w-xl mx-auto">
-            Our process is simple and joyful — here&apos;s how your gift goes from idea to delivered.
+            {t('process.subtitle')}
           </p>
         </div>
 
@@ -182,7 +169,7 @@ export default function AboutPage() {
         <div className="max-w-[1440px] mx-auto px-4 md:px-8">
           <div className="text-center mb-12">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-secondary mb-3">
-              What We Stand For
+              {t('values.title')}
             </h2>
           </div>
 
@@ -206,16 +193,16 @@ export default function AboutPage() {
       {/* ── CTA ── */}
       <section className="max-w-[1440px] mx-auto px-4 md:px-8 py-16 md:py-20 text-center">
         <h2 className="font-display text-2xl md:text-3xl font-bold text-secondary mb-4">
-          Ready to Create Something Special?
+          {t('cta.title')}
         </h2>
         <p className="text-muted mb-8 max-w-sm mx-auto">
-          Browse our collection and create a personalized gift they&apos;ll never forget.
+          {t('cta.subtitle')}
         </p>
         <Link
           href="/search"
           className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-bold px-8 py-3.5 rounded-button transition-colors text-sm uppercase tracking-wide"
         >
-          Shop Personalized Gifts
+          {t('cta.button')}
         </Link>
       </section>
     </div>

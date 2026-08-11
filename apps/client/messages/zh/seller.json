@@ -1,0 +1,138 @@
+{
+  "layout": {
+    "hubLabel": "卖家中心"
+  },
+  "sidebar": {
+    "aria": "卖家导航",
+    "yourStore": "您的店铺",
+    "viewPublicPage": "查看公开页面",
+    "nav": {
+      "dashboard": "仪表盘",
+      "orders": "订单",
+      "products": "商品",
+      "analytics": "数据分析",
+      "reviews": "评价",
+      "payouts": "结算",
+      "storeSettings": "店铺设置"
+    },
+    "signOut": "退出登录"
+  },
+  "dashboard": {
+    "title": "仪表盘",
+    "stats": {
+      "totalOrders": "订单总数",
+      "revenue": "总收入",
+      "avgRating": "平均评分",
+      "activeProducts": "上架商品数",
+      "pendingOrders": "待处理订单",
+      "pendingPayout": "待结算金额"
+    },
+    "recentOrders": "近期订单",
+    "noOrders": "暂无订单",
+    "table": {
+      "order": "订单",
+      "items": "件数",
+      "total": "总计",
+      "status": "状态",
+      "date": "日期"
+    }
+  },
+  "orders": {
+    "title": "订单",
+    "all": "全部",
+    "noOrders": "未找到订单",
+    "table": {
+      "order": "订单",
+      "customer": "客户",
+      "items": "件数",
+      "total": "总计",
+      "status": "状态",
+      "date": "日期"
+    }
+  },
+  "payouts": {
+    "title": "结算",
+    "stats": {
+      "available": "可提现余额",
+      "pending": "待结算",
+      "totalPaid": "累计已结算"
+    },
+    "history": "结算记录",
+    "noPayouts": "暂无结算记录",
+    "table": {
+      "amount": "金额",
+      "status": "状态",
+      "requested": "申请日期",
+      "paid": "支付日期"
+    }
+  },
+  "products": {
+    "title": "商品",
+    "addProduct": "添加商品",
+    "noProducts": "暂无商品",
+    "table": {
+      "product": "商品",
+      "price": "价格",
+      "status": "状态",
+      "stock": "库存",
+      "actions": "操作"
+    },
+    "edit": "编辑",
+    "publish": "上架",
+    "unpublish": "下架"
+  },
+  "reviews": {
+    "title": "评价",
+    "noReviews": "暂无评价"
+  },
+  "store": {
+    "title": "店铺设置",
+    "storeNameLabel": "店铺名称",
+    "storeNamePlaceholder": "您的店铺名称",
+    "emailLabel": "联系邮箱",
+    "emailPlaceholder": "store@example.com",
+    "websiteLabel": "网站",
+    "websitePlaceholder": "https://yoursite.com",
+    "descriptionLabel": "店铺简介",
+    "descriptionPlaceholder": "向买家介绍您的店铺…",
+    "saving": "保存中…",
+    "saveChanges": "保存更改",
+    "saveSuccess": "店铺设置已保存",
+    "saveError": "保存设置失败"
+  },
+  "scoreCard": {
+    "title": "您的绩效评分",
+    "history": "历史记录",
+    "tier": {
+      "topSeller": "优质卖家",
+      "trusted": "信誉良好",
+      "rising": "成长中"
+    },
+    "shippingAccuracy": "发货准确率",
+    "refundRate": "退款率",
+    "reviewRating": "评价评分",
+    "responseTime": "响应时间",
+    "lowScoreAlert": "响应时间偏低。请在 24 小时内回复消息以提升评分。",
+    "viewMessages": "查看消息",
+    "hideDetails": "收起详情",
+    "seeFullBreakdown": "查看完整明细",
+    "updatedDaily": "每日更新",
+    "lastUpdated": "最近一次：{date}"
+  },
+  "pagination": {
+    "prev": "上一页",
+    "next": "下一页",
+    "page": "第 {current} / {total} 页"
+  },
+  "status": {
+    "PENDING": "待处理",
+    "PROCESSING": "处理中",
+    "SHIPPED": "已发货",
+    "DELIVERED": "已送达",
+    "CANCELLED": "已取消",
+    "PAID": "已支付",
+    "ACTIVE": "已上架",
+    "DRAFT": "草稿",
+    "ARCHIVED": "已归档"
+  }
+}

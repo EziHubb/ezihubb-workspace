@@ -15,5 +15,6 @@
     "returns": "退换货政策"
   },
   "privacyPolicy": "隐私政策",
-  "termsOfService": "服务条款"
+  "termsOfService": "服务条款",
+  "copyright": "© {year} EziHubb. 保留所有权利。"
 }

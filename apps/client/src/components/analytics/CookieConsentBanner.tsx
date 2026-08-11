@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 
 export function CookieConsentBanner() {
+  const t = useTranslations('common');
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -34,11 +36,13 @@ export function CookieConsentBanner() {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-border shadow-lg px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <p className="text-sm text-secondary max-w-2xl">
-        We use cookies to improve your experience and analyze site traffic.
-        By continuing, you agree to our{' '}
-        <a href="/pages/privacy-policy" className="text-primary hover:underline">
-          Privacy Policy
-        </a>.
+        {t.rich('cookieConsent.message', {
+          link: (chunks) => (
+            <a href="/pages/privacy-policy" className="text-primary hover:underline">
+              {chunks}
+            </a>
+          ),
+        })}
       </p>
       <div className="flex gap-3 flex-shrink-0">
         <button
@@ -46,14 +50,14 @@ export function CookieConsentBanner() {
           onClick={reject}
           className="px-4 py-2 border border-border rounded-full text-sm text-muted hover:border-secondary transition-colors"
         >
-          Reject
+          {t('cookieConsent.reject')}
         </button>
         <button
           type="button"
           onClick={accept}
           className="px-4 py-2 bg-primary text-white rounded-full text-sm hover:bg-primary-dark transition-colors"
         >
-          Accept all
+          {t('cookieConsent.acceptAll')}
         </button>
       </div>
     </div>

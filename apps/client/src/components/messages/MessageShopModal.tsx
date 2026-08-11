@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { Modal, ModalHeader, ModalBody, Button } from '@ezihubb/ui';
 import { apiClient } from '@ezihubb/api-client';
@@ -27,6 +28,7 @@ interface FormValues {
 }
 
 export function MessageShopModal({ isOpen, onClose, context }: Props) {
+  const tCommon = useTranslations('common');
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.accessToken);
 
@@ -62,7 +64,7 @@ export function MessageShopModal({ isOpen, onClose, context }: Props) {
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} size="md">
-      <ModalHeader onClose={handleClose}>
+      <ModalHeader onClose={handleClose} closeLabel={tCommon('close')}>
         {sent ? 'Message sent!' : 'Message EziHubb'}
       </ModalHeader>
       <ModalBody>

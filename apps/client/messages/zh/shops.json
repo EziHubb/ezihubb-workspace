@@ -1,0 +1,75 @@
+{
+  "storePage": {
+    "storeNotFoundTitle": "未找到店铺",
+    "metaDescriptionFallback": "在 EziHubb 上逛逛 {name}。",
+    "bannerAlt": "{name} 的横幅图片",
+    "logoAlt": "{name} 的标志",
+    "verifiedSeller": "认证卖家",
+    "rating": "评分",
+    "sales": "{count, plural, other {# 笔销售}}",
+    "listings": "{count, plural, other {# 件商品}}",
+    "memberSince": "加入于 {date}",
+    "share": "分享：",
+    "shareCheckOut": "快来看看 EziHubb 上的 {name}！",
+    "sectionsAriaLabel": "店铺分类",
+    "tabItems": "商品（{count}）",
+    "tabReviews": "评价",
+    "tabAbout": "关于",
+    "searchPlaceholder": "在全部 {count} 件商品中搜索",
+    "about": {
+      "title": "关于本店",
+      "totalSales": "总销量",
+      "activeListings": "在售商品",
+      "noDescription": "该店铺暂未提供简介。"
+    }
+  },
+  "products": {
+    "sortLabel": "排序：{label}",
+    "sortOptions": {
+      "newest": "最新",
+      "bestseller": "最畅销",
+      "rating": "评分最高",
+      "priceAsc": "价格：从低到高",
+      "priceDesc": "价格：从高到低"
+    },
+    "sectionsAriaLabel": "店铺分类",
+    "all": "全部",
+    "onSale": "促销中",
+    "featuredItems": "精选商品",
+    "onSaleHeading": "促销中",
+    "sectionItemsHeading": "分类商品",
+    "allItemsHeading": "全部商品",
+    "clearSearchAria": "清除搜索",
+    "results": "{count, plural, other {# 个结果}}",
+    "emptyTitle": "未找到相关商品",
+    "emptyDesc": "试试其他筛选条件，或稍后再来看看。"
+  },
+  "reviews": {
+    "starsOutOf5": "{rating} 分（满分5分）",
+    "reviewsCount": "{count, plural, other {# 条评价}}",
+    "starReviews": "{star} 星评价",
+    "allReviews": "全部评价",
+    "noReviewsYet": "暂无评价",
+    "beFirstToReview": "快来成为第一个购买并评价的人吧！",
+    "noStarReviews": "暂无 {star} 星评价",
+    "showAllReviews": "查看全部评价",
+    "forProduct": "针对 <b>{product}</b>",
+    "sellerReply": "卖家回复",
+    "customerFallback": "顾客",
+    "reviewPhotoAlt": "评价图片 {n}",
+    "authorPhotoAlt": "{name}"
+  },
+  "sharedWishlist": {
+    "defaultHeading": "共享心愿单",
+    "ownerHeading": "{name} 的心愿单",
+    "curatedBy": "由 <b>{name}</b> 整理",
+    "itemsCount": "{count, plural, other {# 件商品}}",
+    "shareThisList": "分享这份心愿单：",
+    "shareCheckOut": "快来看看 EziHubb 上的这份心愿单：“{title}”",
+    "emptyTitle": "这份心愿单还是空的",
+    "emptyDesc": "这里暂时还没有内容——不过店里有很多值得心动的好物。",
+    "exploreGifts": "探索礼物",
+    "ctaText": "喜欢这些商品？在 EziHubb 上创建属于你自己的心愿单吧。",
+    "startOwnWishlist": "创建你的心愿单"
+  }
+}

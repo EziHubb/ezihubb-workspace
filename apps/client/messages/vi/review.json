@@ -1,0 +1,28 @@
+{
+  "rating": "Đánh giá",
+  "starLabel": "{star} sao",
+  "addPhotos": "📷 Thêm ảnh (tùy chọn)",
+  "upToPhotos": "Tối đa 5 ảnh",
+  "removePhoto": "Xóa ảnh",
+  "addAnotherPhoto": "Thêm ảnh khác",
+  "writeReview": "Viết đánh giá",
+  "alreadyReviewed": "Bạn đã đánh giá sản phẩm này rồi.",
+  "mustPurchase": "Bạn chỉ có thể đánh giá sản phẩm đã mua.",
+  "submitted": "Đã gửi đánh giá!",
+  "submittedDetail": "Đánh giá của bạn sẽ hiển thị sau khi được duyệt (thường trong vòng 24 giờ).",
+  "yourRating": "Đánh giá của bạn",
+  "titleLabel": "Tiêu đề đánh giá",
+  "optional": "(tùy chọn)",
+  "titlePlaceholder": "Tóm tắt trải nghiệm của bạn…",
+  "yourReview": "Nội dung đánh giá",
+  "bodyPlaceholder": "Bạn thích điều gì ở sản phẩm này? (tối thiểu 20 ký tự)",
+  "photosLabel": "Ảnh (tùy chọn)",
+  "close": "Đóng",
+  "publiclyVisible": "Đánh giá sẽ hiển thị công khai sau khi được duyệt.",
+  "submitReview": "Gửi đánh giá",
+  "errors": {
+    "selectRating": "Vui lòng chọn số sao đánh giá",
+    "minLength": "Đánh giá phải có ít nhất 20 ký tự",
+    "generic": "Đã có lỗi xảy ra."
+  }
+}

@@ -9,6 +9,7 @@ import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import type { ConversationDto, ConversationWithMessagesDto } from '@ezihubb/types';
+import { useDialog } from '../../../contexts/DialogContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -169,6 +170,7 @@ function AdminMessageThread({
   const [statusMsg,   setStatusMsg]   = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+  const { alert } = useDialog();
 
   const { data: conv, isLoading } = useQuery<ConversationWithMessagesDto>({
     queryKey: ['admin-conversation', conversationId],
@@ -190,17 +192,23 @@ function AdminMessageThread({
       setReplyText('');
       queryClient.invalidateQueries({ queryKey: ['admin-conversation', conversationId] });
       queryClient.invalidateQueries({ queryKey: ['admin-conversations'] });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not send the message.', { variant: 'error' });
     } finally {
       setIsSending(false);
     }
   };
 
   const updateStatus = async (status: string) => {
-    await api.patch(API_ROUTES.ADMIN.CONVERSATION_STATUS(conversationId), { status });
-    queryClient.invalidateQueries({ queryKey: ['admin-conversation', conversationId] });
-    onStatusChange();
-    setStatusMsg(`Marked as ${status.toLowerCase()}`);
-    setTimeout(() => setStatusMsg(''), 2500);
+    try {
+      await api.patch(API_ROUTES.ADMIN.CONVERSATION_STATUS(conversationId), { status });
+      queryClient.invalidateQueries({ queryKey: ['admin-conversation', conversationId] });
+      onStatusChange();
+      setStatusMsg(`Marked as ${status.toLowerCase()}`);
+      setTimeout(() => setStatusMsg(''), 2500);
+    } catch (err) {
+      await alert((err as Error).message || 'Could not update conversation status.', { variant: 'error' });
+    }
   };
 
   if (isLoading) {

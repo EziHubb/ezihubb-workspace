@@ -1,13 +1,15 @@
+import { getTranslations } from 'next-intl/server';
 import { CartItemSkeleton } from '../../../../components/skeletons/CartItemSkeleton';
 
 const S = 'animate-shimmer bg-gradient-to-r from-border/60 via-background to-border/60 bg-[length:400%_100%] rounded-sm';
 
-export default function CartLoading() {
+export default async function CartLoading() {
+  const t = await getTranslations('common');
   return (
     <div
       className="max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12"
       aria-busy="true"
-      aria-label="Loading cart"
+      aria-label={t('loadingCart')}
     >
       {/* Header */}
       <div className={`h-8 w-32 mb-8 ${S}`} />

@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider, MutationCache, QueryCache } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ToastProvider, ErrorBoundary } from '@ezihubb/ui';
 import { SessionSyncer } from './SessionSyncer';
 import { AuthProvider } from './AuthProvider';
@@ -97,12 +98,13 @@ export function ReactQueryProvider({ children }: { children: React.ReactNode }) 
   // Create QueryClient once per component lifetime.
   // Using useState(factory) prevents re-creation on re-renders.
   const [queryClient] = useState(makeQueryClient);
+  const t = useTranslations('common');
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary fallbackMessage={t('error')} retryLabel={t('retry')}>
       <QueryClientProvider client={queryClient}>
         {/* ToastProvider is globally available — no need to wrap per-page */}
-        <ToastProvider>
+        <ToastProvider dismissLabel={t('dismissNotification')}>
           {children}
         </ToastProvider>
         {/* Syncs next-auth session token → shared apiClient module variable */}

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { Star } from 'lucide-react';
 import { useCartStore } from '../../lib/store/cart.store';
 import type { ProductListItemDto } from '@ezihubb/types';
@@ -43,6 +44,8 @@ function RelatedProductCard({
   product: ProductListItemDto;
   locale:  string;
 }) {
+  const t          = useTranslations('product.pdp');
+  const tSearch    = useTranslations('search');
   const addItem    = useCartStore((s) => s.addItem);
   const openDrawer = useCartStore((s) => s.openDrawer);
 
@@ -92,7 +95,7 @@ function RelatedProductCard({
         {/* Sales count */}
         {product.soldCount > 0 && (
           <p className="text-[10px] text-muted">
-            {safeNum(product.soldCount).toLocaleString()} sales
+            {t('sales', { count: safeNum(product.soldCount).toLocaleString() })}
           </p>
         )}
       </Link>
@@ -104,7 +107,7 @@ function RelatedProductCard({
           onClick={handleQuickAdd}
           className="absolute bottom-8 left-1 right-1 bg-white border border-border rounded-full py-1.5 text-xs font-medium text-secondary opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-[#F3F4F6]"
         >
-          Add to cart
+          {tSearch('addToCart')}
         </button>
       )}
     </div>
@@ -119,6 +122,7 @@ interface YouMayAlsoLikeProps {
 }
 
 export function YouMayAlsoLike({ products, locale }: YouMayAlsoLikeProps) {
+  const t = useTranslations('product.pdp');
   const [showAll, setShowAll] = useState(false);
 
   if (safeArr(products).length === 0) return null;
@@ -129,8 +133,8 @@ export function YouMayAlsoLike({ products, locale }: YouMayAlsoLikeProps) {
     <section className="mt-10 pt-8 border-t border-border">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-lg font-semibold text-secondary">You may also like</h2>
-          <p className="text-xs text-muted">Including ads</p>
+          <h2 className="text-lg font-semibold text-secondary">{t('youMayAlsoLike')}</h2>
+          <p className="text-xs text-muted">{t('includingAds')}</p>
         </div>
         {safeArr(products).length > GRID_THRESHOLD && (
           <button
@@ -138,7 +142,7 @@ export function YouMayAlsoLike({ products, locale }: YouMayAlsoLikeProps) {
             onClick={() => setShowAll((v) => !v)}
             className="text-sm text-primary hover:underline"
           >
-            {showAll ? 'Show less' : 'See more'}
+            {showAll ? t('showLess') : t('seeMore')}
           </button>
         )}
       </div>

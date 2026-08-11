@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { HeartOff, Heart, Share2 } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { AddToCartFromWishlist } from './AddToCartFromWishlist';
 import { API_BASE } from '../../../../../lib/api-client';
 import { fmtAmount, safeArr } from '@ezihubb/utils';
@@ -46,15 +47,16 @@ async function getPublicWishlist(token: string): Promise<PublicWishlistResponse 
 
 // ── Share bar ─────────────────────────────────────────────────────────────────
 
-function ShareBar({ token, title }: { token: string; title: string }) {
+async function ShareBar({ token, title, locale }: { token: string; title: string; locale: string }) {
+  const t = await getTranslations({ locale, namespace: 'shops' });
   const url     = `https://ezihubb.com/wishlist/${token}`;
   const encoded = encodeURIComponent(url);
-  const text    = encodeURIComponent(`Check out this wishlist on EziHubb: "${title}"`);
+  const text    = encodeURIComponent(t('sharedWishlist.shareCheckOut', { title }));
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <span className="flex items-center gap-1.5 text-xs text-muted font-medium">
-        <Share2 className="w-3.5 h-3.5" /> Share this list:
+        <Share2 className="w-3.5 h-3.5" /> {t('sharedWishlist.shareThisList')}
       </span>
       {[
         { label: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${encoded}`, cls: 'text-[#1877F2] bg-[#1877F2]/10 hover:bg-[#1877F2]/20' },
@@ -120,6 +122,7 @@ export default async function SharedWishlistPage({
   params: Promise<{ token: string; locale: string }>;
 }) {
   const { token, locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'shops' });
   const data = await getPublicWishlist(token);
 
   if (!data) notFound();
@@ -130,8 +133,8 @@ export default async function SharedWishlistPage({
   const heading = wishlistName
     ? wishlistName
     : ownerName
-    ? `${ownerName}'s Wishlist`
-    : 'Shared Wishlist';
+    ? t('sharedWishlist.ownerHeading', { name: ownerName })
+    : t('sharedWishlist.defaultHeading');
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-10 space-y-8">
@@ -144,15 +147,20 @@ export default async function SharedWishlistPage({
             <h1 className="font-display text-3xl font-bold text-secondary">{heading}</h1>
           </div>
           {ownerName && wishlistName && (
-            <p className="text-sm text-muted">Curated by <span className="font-medium text-secondary">{ownerName}</span></p>
+            <p className="text-sm text-muted">
+              {t.rich('sharedWishlist.curatedBy', {
+                name: ownerName,
+                b: (chunks) => <span className="font-medium text-secondary">{chunks}</span>,
+              })}
+            </p>
           )}
           <p className="text-xs text-muted">
-            {items.length} item{items.length !== 1 ? 's' : ''}
+            {t('sharedWishlist.itemsCount', { count: items.length })}
           </p>
         </div>
         {shareToken && items.length > 0 && (
           <div className="shrink-0">
-            <ShareBar token={shareToken} title={heading} />
+            <ShareBar token={shareToken} title={heading} locale={locale} />
           </div>
         )}
       </div>
@@ -161,13 +169,13 @@ export default async function SharedWishlistPage({
       {items.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
           <HeartOff className="w-14 h-14 text-muted/30" aria-hidden />
-          <p className="text-secondary font-semibold">This wishlist is empty</p>
-          <p className="text-sm text-muted">Nothing here yet — but there's plenty to love in the store.</p>
+          <p className="text-secondary font-semibold">{t('sharedWishlist.emptyTitle')}</p>
+          <p className="text-sm text-muted">{t('sharedWishlist.emptyDesc')}</p>
           <Link
             href={`/${locale}/search`}
             className="mt-2 bg-primary hover:bg-primary-dark text-white font-bold text-sm px-6 py-3 rounded-button transition-colors uppercase tracking-wide"
           >
-            Explore Gifts
+            {t('sharedWishlist.exploreGifts')}
           </Link>
         </div>
       )}
@@ -183,11 +191,11 @@ export default async function SharedWishlistPage({
 
           {/* ── CTA footer ──────────────────────────────────────────────────── */}
           <div className="border-t border-border pt-8 text-center">
-            <p className="text-sm text-muted mb-3">Love what you see? Create your own wishlist on EziHubb.</p>
+            <p className="text-sm text-muted mb-3">{t('sharedWishlist.ctaText')}</p>
             <Link href={`/${locale}/register`}
               className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white font-bold text-sm rounded-button hover:bg-primary/90 transition-colors">
               <Heart className="w-4 h-4" />
-              Start your own wishlist
+              {t('sharedWishlist.startOwnWishlist')}
             </Link>
           </div>
         </>

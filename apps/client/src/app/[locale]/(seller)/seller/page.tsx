@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { useLocale, useTranslations } from 'next-intl';
 import { ShoppingBag, DollarSign, Star, Package, TrendingUp, Clock } from 'lucide-react';
 import { useAuthStore } from '../../../../lib/store/auth.store';
 import { apiClient } from '@ezihubb/api-client';
@@ -34,7 +35,9 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function SellerDashboard() {
-  const token = useAuthStore((s) => s.accessToken);
+  const t      = useTranslations('seller');
+  const locale = useLocale();
+  const token  = useAuthStore((s) => s.accessToken);
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ['seller-dashboard-stats'],
@@ -49,17 +52,17 @@ export default function SellerDashboard() {
   });
 
   const STAT_CARDS = [
-    { label: 'Total Orders',    value: stats?.totalOrders   ?? 0,      icon: ShoppingBag, color: 'text-blue-600',   bg: 'bg-blue-50'   },
-    { label: 'Revenue',         value: fmtAmount(stats?.totalRevenue), icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Avg Rating',      value: stats?.avgRating != null ? fmtRating(stats.avgRating) : '—', icon: Star, color: 'text-amber-600', bg: 'bg-amber-50' },
-    { label: 'Active Products', value: stats?.totalProducts ?? 0,      icon: Package,    color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'Pending Orders',  value: stats?.pendingOrders ?? 0,      icon: Clock,      color: 'text-orange-600', bg: 'bg-orange-50' },
-    { label: 'Pending Payout',  value: fmtAmount(stats?.pendingPayout), icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/5' },
+    { label: t('dashboard.stats.totalOrders'),    value: stats?.totalOrders   ?? 0,      icon: ShoppingBag, color: 'text-blue-600',   bg: 'bg-blue-50'   },
+    { label: t('dashboard.stats.revenue'),         value: fmtAmount(stats?.totalRevenue), icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
+    { label: t('dashboard.stats.avgRating'),      value: stats?.avgRating != null ? fmtRating(stats.avgRating) : '—', icon: Star, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: t('dashboard.stats.activeProducts'), value: stats?.totalProducts ?? 0,      icon: Package,    color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: t('dashboard.stats.pendingOrders'),  value: stats?.pendingOrders ?? 0,      icon: Clock,      color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: t('dashboard.stats.pendingPayout'),  value: fmtAmount(stats?.pendingPayout), icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/5' },
   ];
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-secondary">Dashboard</h1>
+      <h1 className="text-xl font-bold text-secondary">{t('dashboard.title')}</h1>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -81,7 +84,7 @@ export default function SellerDashboard() {
       {/* Recent orders */}
       <div className="bg-surface border border-border rounded-card overflow-hidden">
         <div className="px-5 py-4 border-b border-border">
-          <h2 className="text-sm font-semibold text-secondary">Recent Orders</h2>
+          <h2 className="text-sm font-semibold text-secondary">{t('dashboard.recentOrders')}</h2>
         </div>
         {ordersLoading ? (
           <div className="p-5 space-y-3">
@@ -92,13 +95,13 @@ export default function SellerDashboard() {
         ) : recentOrders.length === 0 ? (
           <div className="p-10 text-center">
             <ShoppingBag className="w-10 h-10 text-muted/30 mx-auto mb-2" />
-            <p className="text-sm text-muted">No orders yet</p>
+            <p className="text-sm text-muted">{t('dashboard.noOrders')}</p>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-background/40">
               <tr>
-                {['Order', 'Items', 'Total', 'Status', 'Date'].map((h) => (
+                {[t('dashboard.table.order'), t('dashboard.table.items'), t('dashboard.table.total'), t('dashboard.table.status'), t('dashboard.table.date')].map((h) => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -111,11 +114,11 @@ export default function SellerDashboard() {
                   <td className="px-5 py-3 font-semibold">{fmtAmount(o.total)}</td>
                   <td className="px-5 py-3">
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[o.status] ?? 'bg-border/30 text-muted'}`}>
-                      {o.status}
+                      {t.has(`status.${o.status}`) ? t(`status.${o.status}`) : o.status}
                     </span>
                   </td>
                   <td className="px-5 py-3 text-muted">
-                    {new Date(o.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    {new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(new Date(o.createdAt))}
                   </td>
                 </tr>
               ))}

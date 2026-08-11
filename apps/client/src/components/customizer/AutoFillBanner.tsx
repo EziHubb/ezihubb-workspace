@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useCustomizerStore } from '../../lib/store/customizer.store';
 import { API_ROUTES } from '@ezihubb/constants';
 import { apiClient } from '../../lib/api-client';
@@ -11,6 +12,7 @@ interface AutoFillBannerProps {
 }
 
 export function AutoFillBanner({ isLoggedIn }: AutoFillBannerProps) {
+  const t         = useTranslations('customizer.autoFill');
   const productId = useCustomizerStore((s) => s.productId);
   const autoFill  = useCustomizerStore((s) => s.autoFill);
 
@@ -55,27 +57,27 @@ export function AutoFillBanner({ isLoggedIn }: AutoFillBannerProps) {
         </svg>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-secondary">We saved your previous customization</p>
-        <p className="text-xs text-muted mt-0.5">Want to start from where you left off?</p>
+        <p className="text-sm font-medium text-secondary">{t('saved')}</p>
+        <p className="text-xs text-muted mt-0.5">{t('prompt')}</p>
         <div className="flex gap-2 mt-2">
           <button
             onClick={handleApply}
             className="text-xs font-semibold text-primary hover:underline"
           >
-            Yes, auto-fill
+            {t('yes')}
           </button>
           <span className="text-muted text-xs">·</span>
           <button
             onClick={() => setDismissed(true)}
             className="text-xs text-muted hover:text-secondary"
           >
-            Start fresh
+            {t('startFresh')}
           </button>
         </div>
       </div>
       <button
         onClick={() => setDismissed(true)}
-        aria-label="Dismiss"
+        aria-label={t('dismiss')}
         className="shrink-0 text-muted hover:text-secondary"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

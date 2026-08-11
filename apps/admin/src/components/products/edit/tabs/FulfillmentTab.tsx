@@ -7,6 +7,7 @@ import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { PrintFilesSection } from './PrintFilesSection';
 import type { ProductImage } from '../types';
+import { useDialog } from '../../../../contexts/DialogContext';
 
 // ─── Layout primitives (mirrors PricingShippingTab.tsx's conventions) ─────────
 
@@ -124,6 +125,7 @@ function ShopProductPickerModal({ connectionId, onSelect, onClose }: {
 
 export function FulfillmentTab({ productId, images = [] }: { productId?: string; images?: ProductImage[] }) {
   const qc = useQueryClient();
+  const { alert } = useDialog();
   const [pickerConnectionId, setPickerConnectionId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -155,6 +157,8 @@ export function FulfillmentTab({ productId, images = [] }: { productId?: string;
         externalVariantId: variant.externalVariantId,
       });
       void qc.invalidateQueries({ queryKey: mappingsKey(productId) });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not connect this product.', { variant: 'error' });
     } finally {
       setSaving(false);
     }
@@ -162,8 +166,12 @@ export function FulfillmentTab({ productId, images = [] }: { productId?: string;
 
   const handleRemove = async () => {
     if (!mapping) return;
-    await api.delete(API_ROUTES.ADMIN.FULFILLMENT_MAPPING_DELETE(mapping.id));
-    void qc.invalidateQueries({ queryKey: mappingsKey(productId ?? '') });
+    try {
+      await api.delete(API_ROUTES.ADMIN.FULFILLMENT_MAPPING_DELETE(mapping.id));
+      void qc.invalidateQueries({ queryKey: mappingsKey(productId ?? '') });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not remove this mapping.', { variant: 'error' });
+    }
   };
 
   if (!productId) {

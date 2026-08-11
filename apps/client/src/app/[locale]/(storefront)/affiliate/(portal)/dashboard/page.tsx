@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Copy, Check, ExternalLink } from 'lucide-react';
 import { useAuthQuery } from '../../../../../../lib/hooks/useAuthQuery';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -40,12 +40,22 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: 'bg-red-100 text-red-700',
 };
 
-const fmt     = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-const fmtDate = (d: string) => fmt.format(new Date(d));
+const STATUS_LABEL_KEY: Record<string, string> = {
+  PENDING:   'pending',
+  CONFIRMED: 'confirmed',
+  APPROVED:  'approved',
+  PAID:      'paid',
+  CANCELLED: 'cancelled',
+};
 
 export default function AffiliateDashboardPage() {
-  const locale                = useLocale();
-  const [copied, setCopied]   = useState(false);
+  const locale               = useLocale();
+  const t                    = useTranslations('affiliate.dashboard');
+  const tStatus               = useTranslations('affiliate.status');
+  const [copied, setCopied]  = useState(false);
+
+  const fmt     = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric' });
+  const fmtDate = (d: string) => fmt.format(new Date(d));
 
   const { data, isLoading } = useAuthQuery<DashboardData>(
     ['affiliate-dashboard'],
@@ -82,16 +92,16 @@ export default function AffiliateDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="font-display text-2xl font-bold text-secondary">Dashboard</h1>
+      <h1 className="font-display text-2xl font-bold text-secondary">{t('title')}</h1>
 
       {/* ── Balance card ─────────────────────────────────────────────────────── */}
       <div className="bg-surface border border-border rounded-card p-6">
-        <p className="text-sm text-muted mb-1">Available balance</p>
+        <p className="text-sm text-muted mb-1">{t('availableBalance')}</p>
         <p className="font-display text-4xl font-bold text-secondary">
           {fmtAmount(data.balance)}
         </p>
         <p className="text-xs text-muted mt-1">
-          All-time earned: {fmtAmount(data.totalEarned)}
+          {t('allTimeEarned', { amount: fmtAmount(data.totalEarned) })}
         </p>
         <Link
           href={`/${locale}/affiliate/payouts`}
@@ -104,18 +114,18 @@ export default function AffiliateDashboardPage() {
           aria-disabled={safeNum(data.balance) < minPayout}
         >
           {safeNum(data.balance) >= minPayout
-            ? 'Request payout'
-            : `${fmtAmount(minPayout - safeNum(data.balance))} until minimum`}
+            ? t('requestPayout')
+            : t('untilMinimum', { amount: fmtAmount(minPayout - safeNum(data.balance)) })}
         </Link>
       </div>
 
       {/* ── KPI row ──────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total clicks',      value: safeNum(data.totalClicks).toLocaleString()      },
-          { label: 'Conversions',       value: safeNum(data.totalConversions).toLocaleString() },
-          { label: 'Total earned',      value: fmtAmount(data.totalEarned)                     },
-          { label: 'Conversion rate',   value: `${(safeNum(data.conversionRate) * 100).toFixed(1)}%` },
+          { label: t('kpiClicks'),          value: safeNum(data.totalClicks).toLocaleString()      },
+          { label: t('kpiConversions'),      value: safeNum(data.totalConversions).toLocaleString() },
+          { label: t('kpiEarned'),           value: fmtAmount(data.totalEarned)                     },
+          { label: t('kpiConversionRate'),   value: `${(safeNum(data.conversionRate) * 100).toFixed(1)}%` },
         ].map(({ label, value }) => (
           <div key={label} className="bg-surface border border-border rounded-card p-4 text-center">
             <p className="font-display text-2xl font-bold text-secondary tabular-nums">{value}</p>
@@ -126,7 +136,7 @@ export default function AffiliateDashboardPage() {
 
       {/* ── Referral link ────────────────────────────────────────────────────── */}
       <div className="bg-surface border border-border rounded-card p-5">
-        <h2 className="font-semibold text-secondary mb-3 text-sm">Your referral link</h2>
+        <h2 className="font-semibold text-secondary mb-3 text-sm">{t('yourLinkTitle')}</h2>
         <div className="flex items-center gap-2 mb-4">
           <div className="flex-1 bg-background border border-border rounded-button px-3 py-2 text-sm text-muted font-mono truncate">
             {referralUrl}
@@ -137,7 +147,7 @@ export default function AffiliateDashboardPage() {
             className="flex items-center gap-1.5 text-sm font-medium text-primary border border-primary/30 rounded-button px-3 py-2 hover:bg-primary/5 transition-colors shrink-0"
           >
             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? t('copied') : t('copy')}
           </button>
         </div>
 
@@ -168,7 +178,7 @@ export default function AffiliateDashboardPage() {
               className={`inline-flex items-center gap-1.5 text-xs font-medium border rounded-button px-3 py-1.5 transition-opacity hover:opacity-80 ${bg}`}
             >
               <ExternalLink className="w-3 h-3" />
-              Share on {label}
+              {t('shareOn', { platform: label })}
             </a>
           ))}
         </div>
@@ -177,28 +187,28 @@ export default function AffiliateDashboardPage() {
       {/* ── Recent commissions ───────────────────────────────────────────────── */}
       <div className="bg-surface border border-border rounded-card">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="font-semibold text-secondary text-sm">Recent commissions</h2>
+          <h2 className="font-semibold text-secondary text-sm">{t('recentTitle')}</h2>
           <Link
             href={`/${locale}/affiliate/payouts`}
             className="text-xs text-primary hover:underline"
           >
-            View all →
+            {t('viewAll')}
           </Link>
         </div>
 
         {safeArr(data.recentCommissions).length === 0 ? (
           <p className="px-5 py-10 text-sm text-muted text-center">
-            No commissions yet. Start sharing your link!
+            {t('noCommissions')}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">Date</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">Order</th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wide">Commission</th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wide">Status</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">{t('colDate')}</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">{t('colOrder')}</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wide">{t('colCommission')}</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wide">{t('colStatus')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -211,7 +221,7 @@ export default function AffiliateDashboardPage() {
                     </td>
                     <td className="px-5 py-3 text-right">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[c.status] ?? 'bg-muted/10 text-muted'}`}>
-                        {safeStr(c.status).charAt(0) + safeStr(c.status).slice(1).toLowerCase()}
+                        {STATUS_LABEL_KEY[c.status] ? tStatus(STATUS_LABEL_KEY[c.status]) : safeStr(c.status).charAt(0) + safeStr(c.status).slice(1).toLowerCase()}
                       </span>
                     </td>
                   </tr>

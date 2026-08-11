@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   Package,
   Heart,
@@ -26,6 +26,7 @@ interface AccountSidebarProps {
 }
 
 export function AccountSidebar({ profile, onNavigate }: AccountSidebarProps) {
+  const t        = useTranslations('account.sidebar');
   const locale   = useLocale();
   const router   = useRouter();
   const pathname = usePathname();
@@ -61,16 +62,16 @@ export function AccountSidebar({ profile, onNavigate }: AccountSidebarProps) {
     `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`.toUpperCase() || '?';
 
   const NAV_LINKS = [
-    { href: CLIENT_ROUTES.ACCOUNT_ORDERS,    icon: Package,       label: 'My Orders',          badge: undefined    },
-    { href: CLIENT_ROUTES.ACCOUNT_WISHLIST,  icon: Heart,         label: 'Wishlist',            badge: undefined    },
-    { href: CLIENT_ROUTES.ACCOUNT_MESSAGES,  icon: MessageCircle, label: 'Messages',            badge: unreadCount > 0 ? unreadCount : undefined },
-    { href: CLIENT_ROUTES.ACCOUNT_CREATOR,   icon: Users,         label: 'Creator Hub',         badge: undefined    },
-    { href: CLIENT_ROUTES.ACCOUNT_ADDRESSES, icon: MapPin,        label: 'Address Book',        badge: undefined    },
-    { href: CLIENT_ROUTES.ACCOUNT_PROFILE,   icon: User,          label: 'Profile & Password',  badge: undefined    },
+    { href: CLIENT_ROUTES.ACCOUNT_ORDERS,    icon: Package,       label: t('myOrders'),        badge: undefined    },
+    { href: CLIENT_ROUTES.ACCOUNT_WISHLIST,  icon: Heart,         label: t('wishlist'),         badge: undefined    },
+    { href: CLIENT_ROUTES.ACCOUNT_MESSAGES,  icon: MessageCircle, label: t('messages'),         badge: unreadCount > 0 ? unreadCount : undefined },
+    { href: CLIENT_ROUTES.ACCOUNT_CREATOR,   icon: Users,         label: t('creatorHub'),       badge: undefined    },
+    { href: CLIENT_ROUTES.ACCOUNT_ADDRESSES, icon: MapPin,        label: t('addressBook'),      badge: undefined    },
+    { href: CLIENT_ROUTES.ACCOUNT_PROFILE,   icon: User,          label: t('profilePassword'),  badge: undefined    },
   ] as const;
 
   return (
-    <nav aria-label="Account navigation" className="space-y-1">
+    <nav aria-label={t('aria')} className="space-y-1">
       {/* ── User card ─────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 px-3 py-4 mb-2">
         <div className="relative w-12 h-12 shrink-0 rounded-full overflow-hidden bg-primary/10">
@@ -134,7 +135,7 @@ export function AccountSidebar({ profile, onNavigate }: AccountSidebarProps) {
         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-button text-sm font-medium text-secondary hover:bg-error/8 hover:text-error transition-colors mt-2"
       >
         <LogOut className="w-4 h-4 shrink-0 text-muted" />
-        Sign Out
+        {t('signOut')}
       </button>
     </nav>
   );

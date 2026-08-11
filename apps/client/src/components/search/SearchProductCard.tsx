@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Heart, Star } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { ProductListItemDto } from '@ezihubb/types';
 import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { useCartStore } from '../../lib/store/cart.store';
@@ -13,24 +13,26 @@ import { fmtAmount, safeArr, safeNum } from '@ezihubb/utils';
 
 // ── Badge logic ───────────────────────────────────────────────────────────────
 
-function getProductBadge(product: ProductListItemDto) {
+type Translator = ReturnType<typeof useTranslations>;
+
+function getProductBadge(t: Translator, product: ProductListItemDto) {
   if ((product.soldCount24h ?? 0) >= 10) {
     return {
-      label: `In ${product.soldCount24h}+ carts`,
+      label: t('badge.inCarts', { count: product.soldCount24h ?? 0 }),
       style: 'bg-[#FFF0EC] text-primary',
     };
   }
   if (product.soldCount > 1000 || product.badge === 'bestseller') {
-    return { label: 'Bestseller', style: 'bg-yellow-100 text-yellow-800' };
+    return { label: t('badge.bestseller'), style: 'bg-yellow-100 text-yellow-800' };
   }
   if (product.compareAtPrice || product.badge === 'sale') {
-    return { label: 'Sale', style: 'bg-green-100 text-green-700' };
+    return { label: t('badge.sale'), style: 'bg-green-100 text-green-700' };
   }
   if (product.isFeatured || product.badge === 'hot') {
-    return { label: "Editor's pick", style: 'bg-purple-100 text-purple-700' };
+    return { label: t('badge.editorsPick'), style: 'bg-purple-100 text-purple-700' };
   }
   if (product.badge === 'new') {
-    return { label: 'New', style: 'bg-blue-100 text-blue-700' };
+    return { label: t('badge.new'), style: 'bg-blue-100 text-blue-700' };
   }
   return null;
 }
@@ -44,6 +46,8 @@ interface Props {
 
 export function SearchProductCard({ product, priority = false }: Props) {
   const locale = useLocale();
+  const t = useTranslations('search');
+  const tCommon = useTranslations('common');
   const router = useRouter();
   const [isHovered, setIsHovered] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -87,7 +91,7 @@ export function SearchProductCard({ product, priority = false }: Props) {
 
   const activeImage =
     safeArr(product.images)[activeImageIndex]?.url ?? safeArr(product.images)[0]?.url ?? '';
-  const badge = getProductBadge(product);
+  const badge = getProductBadge(t, product);
   const avg = product.rating?.avg ?? 0;
   const ratingCount = product.rating?.count ?? 0;
   const discount =
@@ -130,7 +134,7 @@ export function SearchProductCard({ product, priority = false }: Props) {
         <button
           type="button"
           onClick={handleWishlistClick}
-          aria-label={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+          aria-label={isInWishlist ? tCommon('removeFromWishlist') : tCommon('addToWishlist')}
           className={[
             'absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm',
             isHovered || isInWishlist ? 'opacity-100' : 'opacity-0',
@@ -166,14 +170,14 @@ export function SearchProductCard({ product, priority = false }: Props) {
               disabled={cartLoading}
               className="flex-1 bg-white rounded-full py-1.5 text-xs font-medium text-secondary hover:bg-primary hover:text-white transition-colors shadow-sm text-center disabled:opacity-50"
             >
-              Add to cart
+              {t('addToCart')}
             </button>
           ) : (
             <Link
               href={`/${locale}/products/${product.slug}`}
               className="flex-1 bg-white rounded-full py-1.5 text-xs font-medium text-secondary hover:bg-primary hover:text-white transition-colors shadow-sm text-center"
             >
-              Personalize
+              {t('personalize')}
             </Link>
           )}
 
@@ -211,7 +215,7 @@ export function SearchProductCard({ product, priority = false }: Props) {
                 {fmtAmount(product.compareAtPrice)}
               </span>
               <span className="text-xs text-green-700 font-medium">
-                ({discount}% off)
+                {t('percentOff', { percent: discount })}
               </span>
             </>
           )}
@@ -236,7 +240,7 @@ export function SearchProductCard({ product, priority = false }: Props) {
           </div>
         )}
 
-        <p className="text-xs text-muted">Free shipping</p>
+        <p className="text-xs text-muted">{t('freeShipping')}</p>
       </div>
     </div>
   );

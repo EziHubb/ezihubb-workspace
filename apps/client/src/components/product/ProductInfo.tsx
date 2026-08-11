@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import type { ProductDto, ReviewSummaryDto } from '@ezihubb/types';
 import { fmtAmount, fmtRating, safeNum } from '@ezihubb/utils';
 
@@ -7,9 +8,10 @@ interface ProductInfoProps {
 }
 
 function StarRow({ rating, count }: { rating: number; count?: number }) {
+  const t = useTranslations('product.info');
   return (
     <div className="flex items-center gap-1.5">
-      <div className="flex gap-0.5" aria-label={`${fmtRating(rating)} out of 5 stars`}>
+      <div className="flex gap-0.5" aria-label={t('starsOutOf5', { rating: fmtRating(rating) })}>
         {Array.from({ length: 5 }).map((_, i) => (
           <svg
             key={i}
@@ -24,7 +26,7 @@ function StarRow({ rating, count }: { rating: number; count?: number }) {
       </div>
       <span className="text-sm font-semibold text-secondary">{fmtRating(rating)}</span>
       {count !== undefined && (
-        <span className="text-sm text-muted">({count} {count === 1 ? 'review' : 'reviews'})</span>
+        <span className="text-sm text-muted">({t('reviewCount', { count })})</span>
       )}
     </div>
   );
@@ -37,6 +39,7 @@ function PriceDisplay({
   price:           number;
   compareAtPrice?: number;
 }) {
+  const t = useTranslations('product.info');
   const discount =
     compareAtPrice && compareAtPrice > price
       ? Math.round((1 - price / compareAtPrice) * 100)
@@ -50,7 +53,7 @@ function PriceDisplay({
         <>
           <span className="text-base text-muted line-through">{fmtAmount(compareAtPrice)}</span>
           <span className="text-sm font-semibold text-error bg-error/8 rounded-pill px-2 py-0.5">
-            Save {discount}%
+            {t('save', { percent: discount })}
           </span>
         </>
       )}
@@ -59,6 +62,7 @@ function PriceDisplay({
 }
 
 export function ProductInfo({ product, reviewSummary }: ProductInfoProps) {
+  const t = useTranslations('product.info');
   return (
     <div className="space-y-3.5">
       {/* Category label */}
@@ -86,7 +90,7 @@ export function ProductInfo({ product, reviewSummary }: ProductInfoProps) {
             <span className="font-medium text-secondary">
               {product.soldCount.toLocaleString()}
             </span>{' '}
-            sold
+            {t('sold')}
           </span>
         )}
       </div>
@@ -94,7 +98,7 @@ export function ProductInfo({ product, reviewSummary }: ProductInfoProps) {
       {/* In-demand badge — show only when recent 24h sales data is available */}
       {product.soldCount24h !== undefined && product.soldCount24h >= 10 && (
         <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-warning bg-warning/8 border border-warning/20 rounded-pill px-3 py-1">
-          🔥 {product.soldCount24h} people bought this in the last 24 hours
+          {t('boughtIn24h', { count: product.soldCount24h })}
         </div>
       )}
 

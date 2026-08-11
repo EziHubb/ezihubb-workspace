@@ -16,10 +16,13 @@ export interface SizeGuideModalProps {
 
 // ── Default size guides ───────────────────────────────────────────────────────
 
-const APPAREL_SIZE_GUIDE = `
+type Translator = ReturnType<typeof useTranslations>;
+
+function buildApparelSizeGuide(t: Translator): string {
+  return `
 <table>
   <thead>
-    <tr><th>Size</th><th>Chest (in)</th><th>Waist (in)</th><th>Length (in)</th></tr>
+    <tr><th>${t('sizeGuide.apparel.size')}</th><th>${t('sizeGuide.apparel.chest')}</th><th>${t('sizeGuide.apparel.waist')}</th><th>${t('sizeGuide.apparel.length')}</th></tr>
   </thead>
   <tbody>
     <tr><td>S</td><td>34–36</td><td>28–30</td><td>27</td></tr>
@@ -29,45 +32,52 @@ const APPAREL_SIZE_GUIDE = `
     <tr><td>2XL</td><td>50–52</td><td>44–46</td><td>31</td></tr>
   </tbody>
 </table>
-<p>Measurements are in inches. For a relaxed fit, size up.</p>
+<p>${t('sizeGuide.apparel.note')}</p>
 `;
+}
 
-const CANVAS_SIZE_GUIDE = `
+function buildCanvasSizeGuide(t: Translator): string {
+  return `
 <table>
   <thead>
-    <tr><th>Size code</th><th>Inches</th><th>Centimeters</th><th>Best for</th></tr>
+    <tr><th>${t('sizeGuide.canvas.sizeCode')}</th><th>${t('sizeGuide.canvas.inches')}</th><th>${t('sizeGuide.canvas.centimeters')}</th><th>${t('sizeGuide.canvas.bestFor')}</th></tr>
   </thead>
   <tbody>
-    <tr><td>8x10</td><td>8×10"</td><td>20×25 cm</td><td>Desktop / shelf display</td></tr>
-    <tr><td>12x16</td><td>12×16"</td><td>30×40 cm</td><td>Small wall, bedroom</td></tr>
-    <tr><td>16x20</td><td>16×20"</td><td>40×50 cm</td><td>Feature wall, living room</td></tr>
-    <tr><td>20x24</td><td>20×24"</td><td>51×61 cm</td><td>Large statement piece</td></tr>
-    <tr><td>11x14</td><td>11×14"</td><td>28×36 cm</td><td>Portrait orientation</td></tr>
+    <tr><td>8x10</td><td>8×10"</td><td>20×25 cm</td><td>${t('sizeGuide.canvas.desktopDisplay')}</td></tr>
+    <tr><td>12x16</td><td>12×16"</td><td>30×40 cm</td><td>${t('sizeGuide.canvas.smallWall')}</td></tr>
+    <tr><td>16x20</td><td>16×20"</td><td>40×50 cm</td><td>${t('sizeGuide.canvas.featureWall')}</td></tr>
+    <tr><td>20x24</td><td>20×24"</td><td>51×61 cm</td><td>${t('sizeGuide.canvas.largePiece')}</td></tr>
+    <tr><td>11x14</td><td>11×14"</td><td>28×36 cm</td><td>${t('sizeGuide.canvas.portrait')}</td></tr>
   </tbody>
 </table>
-<p>All canvas prints come gallery-wrapped with 1.5" deep wood frame. Ready to hang.</p>
+<p>${t('sizeGuide.canvas.note')}</p>
 `;
+}
 
-const DRINKWARE_SIZE_GUIDE = `
+function buildDrinkwareSizeGuide(t: Translator): string {
+  return `
 <table>
   <thead>
-    <tr><th>Size</th><th>Height</th><th>Diameter</th><th>Best for</th></tr>
+    <tr><th>${t('sizeGuide.drinkware.size')}</th><th>${t('sizeGuide.drinkware.height')}</th><th>${t('sizeGuide.drinkware.diameter')}</th><th>${t('sizeGuide.drinkware.bestFor')}</th></tr>
   </thead>
   <tbody>
-    <tr><td>11oz</td><td>3.8"</td><td>3.2"</td><td>Standard coffee / tea</td></tr>
-    <tr><td>15oz</td><td>4.5"</td><td>3.4"</td><td>Larger drinks, latte</td></tr>
-    <tr><td>20oz</td><td>6.9"</td><td>3.5"</td><td>Tumbler, iced drinks</td></tr>
-    <tr><td>30oz</td><td>8.0"</td><td>4.0"</td><td>All-day hydration</td></tr>
+    <tr><td>11oz</td><td>3.8"</td><td>3.2"</td><td>${t('sizeGuide.drinkware.standardCoffee')}</td></tr>
+    <tr><td>15oz</td><td>4.5"</td><td>3.4"</td><td>${t('sizeGuide.drinkware.largerDrinks')}</td></tr>
+    <tr><td>20oz</td><td>6.9"</td><td>3.5"</td><td>${t('sizeGuide.drinkware.tumbler')}</td></tr>
+    <tr><td>30oz</td><td>8.0"</td><td>4.0"</td><td>${t('sizeGuide.drinkware.hydration')}</td></tr>
   </tbody>
 </table>
-<p>All ceramic mugs are dishwasher and microwave safe.</p>
+<p>${t('sizeGuide.drinkware.note')}</p>
 `;
+}
 
-const DEFAULT_SIZE_GUIDES: Partial<Record<ProductType, string>> = {
-  apparel:   APPAREL_SIZE_GUIDE,
-  canvas:    CANVAS_SIZE_GUIDE,
-  drinkware: DRINKWARE_SIZE_GUIDE,
-};
+function buildDefaultSizeGuides(t: Translator): Partial<Record<ProductType, string>> {
+  return {
+    apparel:   buildApparelSizeGuide(t),
+    canvas:    buildCanvasSizeGuide(t),
+    drinkware: buildDrinkwareSizeGuide(t),
+  };
+}
 
 // ── Inline sanitizer ──────────────────────────────────────────────────────────
 // DOMPurify would be ideal here (install with: pnpm add -w dompurify @types/dompurify).
@@ -97,16 +107,17 @@ export function SizeGuideModal({
   customSizeGuide,
 }: SizeGuideModalProps) {
   const t = useTranslations('product');
+  const tCommon = useTranslations('common');
 
   const html = customSizeGuide
     ? stripDangerousHtml(customSizeGuide)
-    : DEFAULT_SIZE_GUIDES[productType] ?? '';
+    : buildDefaultSizeGuides(t)[productType] ?? '';
 
   if (!html) return null;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="md">
-      <ModalHeader onClose={onClose}>
+      <ModalHeader onClose={onClose} closeLabel={tCommon('close')}>
         {t('sizeGuide.title')}
       </ModalHeader>
 

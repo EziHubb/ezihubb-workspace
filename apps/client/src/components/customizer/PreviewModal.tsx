@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { useCustomizerStore } from '../../lib/store/customizer.store';
 import { fmtAmount } from '@ezihubb/utils';
 
@@ -11,6 +12,7 @@ interface PreviewModalProps {
 }
 
 export function PreviewModal({ basePrice, onAddToCart }: PreviewModalProps) {
+  const t                 = useTranslations('customizer.previewModal');
   const isOpen            = useCustomizerStore((s) => s.isPreviewOpen);
   const isGenerating      = useCustomizerStore((s) => s.isGeneratingPreview);
   const previewImageUrl   = useCustomizerStore((s) => s.previewImageUrl);
@@ -31,10 +33,10 @@ export function PreviewModal({ basePrice, onAddToCart }: PreviewModalProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-base font-semibold text-secondary">Your Preview</h2>
+          <h2 className="text-base font-semibold text-secondary">{t('title')}</h2>
           <button
             onClick={closePreview}
-            aria-label="Close preview"
+            aria-label={t('close')}
             className="p-1 rounded-sm text-muted hover:text-secondary transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -52,8 +54,8 @@ export function PreviewModal({ basePrice, onAddToCart }: PreviewModalProps) {
                 <div className="h-full bg-primary animate-[shimmer_1.5s_infinite_linear] bg-gradient-to-r from-primary via-primary-light to-primary bg-[length:200%_100%]" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-secondary">Generating your preview…</p>
-                <p className="text-xs text-muted mt-1">This takes about 20 seconds</p>
+                <p className="text-sm font-medium text-secondary">{t('generating')}</p>
+                <p className="text-xs text-muted mt-1">{t('generatingHint')}</p>
               </div>
               <svg className="w-10 h-10 text-primary animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -69,7 +71,7 @@ export function PreviewModal({ basePrice, onAddToCart }: PreviewModalProps) {
                 onClick={() => generatePreview()}
                 className="text-sm font-medium text-primary hover:underline"
               >
-                Try again
+                {t('tryAgain')}
               </button>
             </div>
           )}
@@ -79,7 +81,7 @@ export function PreviewModal({ basePrice, onAddToCart }: PreviewModalProps) {
               <div className="relative aspect-square rounded-md overflow-hidden bg-background">
                 <Image
                   src={previewImageUrl}
-                  alt="Customized product preview"
+                  alt={t('previewAlt')}
                   fill
                   className="object-contain"
                   sizes="(max-width: 640px) 100vw, 512px"
@@ -90,7 +92,7 @@ export function PreviewModal({ basePrice, onAddToCart }: PreviewModalProps) {
                 <svg className="w-4 h-4 text-success shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <p className="text-xs text-success font-medium">Looks great! This is an approximate preview — the final product may vary slightly.</p>
+                <p className="text-xs text-success font-medium">{t('looksGreat')}</p>
               </div>
             </div>
           )}
@@ -103,13 +105,13 @@ export function PreviewModal({ basePrice, onAddToCart }: PreviewModalProps) {
               onClick={closePreview}
               className="flex-1 h-10 rounded-button border border-border text-sm font-medium text-secondary hover:bg-background transition-colors"
             >
-              Edit More
+              {t('editMore')}
             </button>
             <button
               onClick={() => { closePreview(); onAddToCart(); }}
               className="flex-1 h-10 rounded-button bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-colors"
             >
-              Add to Cart — {fmtAmount(basePrice)}
+              {t('addToCart', { amount: fmtAmount(basePrice) })}
             </button>
           </div>
         )}

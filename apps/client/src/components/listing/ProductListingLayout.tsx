@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { Pagination } from '@ezihubb/ui';
+import { usePaginationLabels } from '../../lib/hooks/usePaginationLabels';
 import type { CategoryDto, TagDto, ProductListItemDto } from '@ezihubb/types';
 import { buildFilterUrl, SORT_OPTIONS } from './types';
 import type { ListingFilters } from './types';
@@ -38,6 +39,7 @@ export function ProductListingLayout({
 }: ProductListingLayoutProps) {
   const router   = useRouter();
   const pathname = usePathname();
+  const paginationLabels = usePaginationLabels();
   const [sheetOpen, setSheetOpen] = useState(false);
 
   // ── Filter mutation helpers ───────────────────────────────────────────────
@@ -214,6 +216,7 @@ export function ProductListingLayout({
                 page={currentFilters.page}
                 totalPages={totalPages}
                 onPageChange={handlePageChange}
+                labels={paginationLabels}
               />
             </div>
           )}

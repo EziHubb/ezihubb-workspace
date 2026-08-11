@@ -1,0 +1,28 @@
+{
+  "rating": "Rating",
+  "starLabel": "{star} {star, plural, one {star} other {stars}}",
+  "addPhotos": "📷 Add photos (optional)",
+  "upToPhotos": "Up to 5 photos",
+  "removePhoto": "Remove photo",
+  "addAnotherPhoto": "Add another photo",
+  "writeReview": "Write a Review",
+  "alreadyReviewed": "You've already reviewed this product.",
+  "mustPurchase": "You can only review products you've purchased.",
+  "submitted": "Review submitted!",
+  "submittedDetail": "Your review will appear after approval (usually within 24 hours).",
+  "yourRating": "Your Rating",
+  "titleLabel": "Review Title",
+  "optional": "(optional)",
+  "titlePlaceholder": "Summarize your experience…",
+  "yourReview": "Your Review",
+  "bodyPlaceholder": "What did you love about this product? (at least 20 characters)",
+  "photosLabel": "Photos (optional)",
+  "close": "Close",
+  "publiclyVisible": "Reviews are publicly visible after approval.",
+  "submitReview": "Submit Review",
+  "errors": {
+    "selectRating": "Please select a rating",
+    "minLength": "Review must be at least 20 characters",
+    "generic": "Something went wrong."
+  }
+}

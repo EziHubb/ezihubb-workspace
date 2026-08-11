@@ -15,6 +15,7 @@ import type {
 import { RadioGroupWithDesc }    from '../RadioGroupWithDesc';
 import { CheckboxGroupWithDesc } from '../CheckboxGroupWithDesc';
 import { GPSRModal }             from '../GPSRModal';
+import { useDialog } from '../../../../contexts/DialogContext';
 
 // ─── Layout primitives ────────────────────────────────────────────────────────
 
@@ -141,6 +142,7 @@ function ProductionPartnersSection({
 }) {
   const [showModal, setShowModal] = useState(false);
   const qc = useQueryClient();
+  const { alert } = useDialog();
 
   const { data: allPartners = [] } = useQuery<ProductionPartner[]>({
     queryKey: ['production-partners'],
@@ -176,6 +178,8 @@ function ProductionPartnersSection({
       setNewName('');
       setNewLoc('');
       setShowCreate(false);
+    } catch (err) {
+      await alert((err as Error).message || 'Could not create this production partner.', { variant: 'error' });
     } finally {
       setCreating(false);
     }

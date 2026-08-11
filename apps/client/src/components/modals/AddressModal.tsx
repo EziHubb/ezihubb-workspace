@@ -1,30 +1,36 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useTranslations } from 'next-intl';
+import type { useTranslations as UseTranslations } from 'next-intl';
 import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@ezihubb/ui';
 import { useMutateAddresses } from '@ezihubb/api-client';
 import type { AddressDto } from '@ezihubb/types';
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
-const schema = z.object({
-  label:       z.string().optional(),
-  firstName:   z.string().min(1, 'Required'),
-  lastName:    z.string().min(1, 'Required'),
-  phone:       z.string().regex(/^\+?[\d\s\-(]{7,15}$/, 'Invalid phone number'),
-  line1:       z.string().min(5, 'Enter a full street address'),
-  line2:       z.string().optional(),
-  city:        z.string().min(1, 'Required'),
-  state:       z.string().optional(),
-  postalCode:  z.string().min(3, 'Required'),
-  country:     z.string().length(2, 'Select a country'),
-  isDefault:   z.boolean().optional(),
-});
+type Translator = ReturnType<typeof UseTranslations>;
 
-type FormValues = z.infer<typeof schema>;
+function buildSchema(tErr: Translator) {
+  return z.object({
+    label:       z.string().optional(),
+    firstName:   z.string().min(1, tErr('required')),
+    lastName:    z.string().min(1, tErr('required')),
+    phone:       z.string().regex(/^\+?[\d\s\-(]{7,15}$/, tErr('invalidPhone')),
+    line1:       z.string().min(5, tErr('enterFullAddress')),
+    line2:       z.string().optional(),
+    city:        z.string().min(1, tErr('required')),
+    state:       z.string().optional(),
+    postalCode:  z.string().min(3, tErr('required')),
+    country:     z.string().length(2, tErr('selectCountry')),
+    isDefault:   z.boolean().optional(),
+  });
+}
+
+type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 
 // ── Countries ─────────────────────────────────────────────────────────────────
 
@@ -103,9 +109,12 @@ export function AddressModal({
   onClose,
   showDefault = true,
 }: AddressModalProps) {
+  const t = useTranslations('account.addresses');
+  const tErr = useTranslations('account.addresses.errors');
   const isEditing = Boolean(address);
   const { addAddress, updateAddress } = useMutateAddresses();
   const isPending = addAddress.isPending || updateAddress.isPending;
+  const schema = useMemo(() => buildSchema(tErr), [tErr]);
 
   const {
     register,
@@ -177,8 +186,8 @@ export function AddressModal({
 
   return (
     <Modal isOpen={isOpen} onClose={isPending ? () => undefined : onClose} size="md">
-      <ModalHeader onClose={isPending ? undefined : onClose}>
-        {isEditing ? 'Edit Address' : 'Add New Address'}
+      <ModalHeader onClose={isPending ? undefined : onClose} closeLabel={t('modal.close')}>
+        {isEditing ? t('modal.editTitle') : t('modal.addTitle')}
       </ModalHeader>
 
       <ModalBody>
@@ -189,24 +198,24 @@ export function AddressModal({
           className="space-y-4"
         >
           {/* Label */}
-          <Field label="Label (optional)" error={errors.label?.message}>
+          <Field label={t('fields.label')} error={errors.label?.message}>
             <input
               {...register('label')}
-              placeholder="Home, Office…"
+              placeholder={t('fields.labelPlaceholder')}
               className={inputCls(errors.label?.message)}
             />
           </Field>
 
           {/* Name row */}
           <div className="grid grid-cols-2 gap-3">
-            <Field label="First Name" required error={errors.firstName?.message}>
+            <Field label={t('fields.firstName')} required error={errors.firstName?.message}>
               <input
                 {...register('firstName')}
                 autoComplete="given-name"
                 className={inputCls(errors.firstName?.message)}
               />
             </Field>
-            <Field label="Last Name" required error={errors.lastName?.message}>
+            <Field label={t('fields.lastName')} required error={errors.lastName?.message}>
               <input
                 {...register('lastName')}
                 autoComplete="family-name"
@@ -216,7 +225,7 @@ export function AddressModal({
           </div>
 
           {/* Phone */}
-          <Field label="Phone" required error={errors.phone?.message}>
+          <Field label={t('fields.phone')} required error={errors.phone?.message}>
             <input
               {...register('phone')}
               type="tel"
@@ -227,17 +236,17 @@ export function AddressModal({
           </Field>
 
           {/* Address Line 1 */}
-          <Field label="Address" required error={errors.line1?.message}>
+          <Field label={t('fields.address')} required error={errors.line1?.message}>
             <input
               {...register('line1')}
               autoComplete="address-line1"
-              placeholder="123 Main St"
+              placeholder={t('fields.addressPlaceholder')}
               className={inputCls(errors.line1?.message)}
             />
           </Field>
 
           {/* Address Line 2 */}
-          <Field label="Apt, suite, etc. (optional)">
+          <Field label={t('fields.apt')}>
             <input
               {...register('line2')}
               autoComplete="address-line2"
@@ -247,14 +256,14 @@ export function AddressModal({
 
           {/* City / State / ZIP */}
           <div className="grid grid-cols-3 gap-3">
-            <Field label="City" required error={errors.city?.message}>
+            <Field label={t('fields.city')} required error={errors.city?.message}>
               <input
                 {...register('city')}
                 autoComplete="address-level2"
                 className={inputCls(errors.city?.message)}
               />
             </Field>
-            <Field label="State" error={errors.state?.message}>
+            <Field label={t('fields.state')} error={errors.state?.message}>
               <input
                 {...register('state')}
                 autoComplete="address-level1"
@@ -262,7 +271,7 @@ export function AddressModal({
                 className={inputCls(errors.state?.message)}
               />
             </Field>
-            <Field label="ZIP" required error={errors.postalCode?.message}>
+            <Field label={t('fields.zip')} required error={errors.postalCode?.message}>
               <input
                 {...register('postalCode')}
                 autoComplete="postal-code"
@@ -272,7 +281,7 @@ export function AddressModal({
           </div>
 
           {/* Country */}
-          <Field label="Country" required error={errors.country?.message}>
+          <Field label={t('fields.country')} required error={errors.country?.message}>
             <select
               {...register('country')}
               autoComplete="country"
@@ -292,7 +301,7 @@ export function AddressModal({
                 type="checkbox"
                 className="w-4 h-4 accent-primary"
               />
-              <span className="text-sm text-secondary">Set as default address</span>
+              <span className="text-sm text-secondary">{t('fields.setDefault')}</span>
             </label>
           )}
 
@@ -300,7 +309,7 @@ export function AddressModal({
           {(addAddress.error || updateAddress.error) && (
             <p className="text-xs text-error" role="alert">
               {(addAddress.error ?? updateAddress.error)?.message ??
-                'Failed to save address'}
+                tErr('failedToSave')}
             </p>
           )}
         </form>
@@ -308,7 +317,7 @@ export function AddressModal({
 
       <ModalFooter>
         <Button variant="ghost" onClick={onClose} disabled={isPending}>
-          Cancel
+          {t('actions.cancel')}
         </Button>
         <Button
           type="submit"
@@ -316,7 +325,7 @@ export function AddressModal({
           variant="primary"
           loading={isPending}
         >
-          Save Address
+          {t('actions.save')}
         </Button>
       </ModalFooter>
     </Modal>

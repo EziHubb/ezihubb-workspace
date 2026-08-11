@@ -1,8 +1,10 @@
+import { getTranslations } from 'next-intl/server';
 import { Skeleton } from '@ezihubb/ui';
 const S = 'animate-shimmer bg-gradient-to-r from-border/60 via-background to-border/60 bg-[length:400%_100%] rounded-sm';
-export default function OrderDetailLoading() {
+export default async function OrderDetailLoading() {
+  const t = await getTranslations('common');
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="Loading order">
+    <div className="space-y-6" aria-busy="true" aria-label={t('loadingOrder')}>
       <div className={`h-4 w-24 ${S}`} />
       <div className="flex items-start justify-between">
         <div className="space-y-2">

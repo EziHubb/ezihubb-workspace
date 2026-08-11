@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   Users,
   DollarSign,
@@ -15,7 +15,7 @@ import {
 import { Skeleton } from '@ezihubb/ui';
 import { useAuthQuery } from '../../../../../lib/hooks/useAuthQuery';
 import { API_ROUTES } from '@ezihubb/constants';
-import { fmtAmount, safeArr, safeNum, safeStr } from '@ezihubb/utils';
+import { fmtAmount, safeArr, safeNum } from '@ezihubb/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -59,9 +59,6 @@ interface CommissionsPage {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-const fmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-function formatDate(d: string) { return fmt.format(new Date(d)); }
 
 const STATUS_COLORS: Record<ReferralCommission['status'], string> = {
   PENDING:   'bg-amber-100 text-amber-700',
@@ -132,6 +129,7 @@ function ReferralsSkeleton() {
 // ── Copy button ───────────────────────────────────────────────────────────────
 
 function CopyButton({ text }: { text: string }) {
+  const t = useTranslations('account.wishlist');
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -151,7 +149,7 @@ function CopyButton({ text }: { text: string }) {
       className="flex items-center gap-1.5 px-3 py-2 rounded-button border border-border text-sm font-medium text-secondary hover:border-primary hover:text-primary transition-colors shrink-0"
     >
       {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-      {copied ? 'Copied!' : 'Copy'}
+      {copied ? t('copied') : t('copy')}
     </button>
   );
 }
@@ -160,6 +158,11 @@ function CopyButton({ text }: { text: string }) {
 
 export default function ReferralsPage() {
   const locale = useLocale();
+  const t = useTranslations('account.referrals');
+  const tCommon = useTranslations('common');
+
+  const fmt = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric' });
+  const formatDate = (d: string) => fmt.format(new Date(d));
 
   const { data: me, isLoading: meLoading } = useAuthQuery<ReferralMe>(
     ['referrals', 'me'],
@@ -195,9 +198,9 @@ export default function ReferralsPage() {
     <div className="space-y-6">
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div>
-        <h1 className="font-display text-2xl font-bold text-secondary">Referrals</h1>
+        <h1 className="font-display text-2xl font-bold text-secondary">{t('title')}</h1>
         <p className="text-sm text-muted mt-1">
-          Share your link, earn commissions when friends shop.
+          {t('subtitle')}
         </p>
       </div>
 
@@ -223,16 +226,16 @@ export default function ReferralsPage() {
                     {me.tier.name}
                   </span>
                   <span className="text-xs text-muted">
-                    {Math.round(safeNum(me.tier.commissionRate) * 100)}% commission rate
+                    {t('commissionRate', { rate: Math.round(safeNum(me.tier.commissionRate) * 100) })}
                   </span>
                 </div>
                 <p className="text-sm text-secondary mt-1">
-                  {me.directReferrals} direct referral{me.directReferrals !== 1 ? 's' : ''}
+                  {t('directReferralCount', { count: me.directReferrals })}
                 </p>
                 {me.tier.nextTier && (
                   <div className="mt-2">
                     <div className="flex items-center justify-between text-xs text-muted mb-1">
-                      <span>Progress to {me.tier.nextTier.name}</span>
+                      <span>{t('progressTo', { tier: me.tier.nextTier.name })}</span>
                       <span>{me.directReferrals} / {me.tier.nextTier.minReferrals}</span>
                     </div>
                     <div className="h-1.5 bg-border rounded-full overflow-hidden">
@@ -254,7 +257,7 @@ export default function ReferralsPage() {
           <div className="bg-surface border border-border rounded-card p-5 space-y-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-secondary">
               <Share2 className="w-4 h-4 text-primary" />
-              Your referral link
+              {t('yourReferralLink')}
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -266,7 +269,7 @@ export default function ReferralsPage() {
             </div>
             {/* Share buttons */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-muted">Share via:</span>
+              <span className="text-xs text-muted">{t('shareVia')}</span>
               <a
                 href={whatsappUrl}
                 target="_blank"
@@ -296,23 +299,23 @@ export default function ReferralsPage() {
 
           {/* ── How it works ───────────────────────────────────────────────── */}
           <div className="bg-[#FAFAF8] border border-border rounded-card p-5">
-            <p className="text-sm font-semibold text-secondary mb-3">How it works</p>
+            <p className="text-sm font-semibold text-secondary mb-3">{t('howItWorks.title')}</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
                 {
                   step: '1',
-                  title: 'Share your link',
-                  desc: 'Copy your unique referral link and share it with friends and family.',
+                  title: t('howItWorks.step1Title'),
+                  desc: t('howItWorks.step1Body'),
                 },
                 {
                   step: '2',
-                  title: 'Friends shop',
-                  desc: 'When someone places an order using your link, it gets tracked automatically.',
+                  title: t('howItWorks.step2Title'),
+                  desc: t('howItWorks.step2Body'),
                 },
                 {
                   step: '3',
-                  title: 'You earn commissions',
-                  desc: 'Commissions are confirmed after the order is fulfilled and locked.',
+                  title: t('howItWorks.step3Title'),
+                  desc: t('howItWorks.step3Body'),
                 },
               ].map(({ step, title, desc }) => (
                 <div key={step} className="flex gap-3">
@@ -332,30 +335,30 @@ export default function ReferralsPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             <StatCard
               icon={Users}
-              label="Direct refs"
+              label={t('stats.directRefs')}
               value={me.directReferrals}
               color="text-primary"
             />
             <StatCard
               icon={Users}
-              label="Level 2"
+              label={t('stats.level2')}
               value={me.level2Referrals}
             />
             <StatCard
               icon={Users}
-              label="Level 3"
+              label={t('stats.level3')}
               value={me.level3Referrals}
             />
             <StatCard
               icon={TrendingUp}
-              label="All-time earned"
+              label={t('stats.allTimeEarned')}
               value={fmtAmount(me.totalEarned)}
             />
             <StatCard
               icon={DollarSign}
-              label="Balance"
+              label={t('stats.balance')}
               value={fmtAmount(me.confirmedBalance)}
-              sub={me.pendingBalance > 0 ? `+${fmtAmount(me.pendingBalance)} pending` : undefined}
+              sub={me.pendingBalance > 0 ? t('stats.pendingSuffix', { amount: fmtAmount(me.pendingBalance) }) : undefined}
               color="text-green-700"
             />
           </div>
@@ -368,9 +371,9 @@ export default function ReferralsPage() {
             >
               <div>
                 <p className="text-sm font-semibold text-secondary group-hover:text-primary transition-colors">
-                  Commission History
+                  {t('quickLinks.commissionHistory')}
                 </p>
-                <p className="text-xs text-muted mt-0.5">View all your earnings by order</p>
+                <p className="text-xs text-muted mt-0.5">{t('quickLinks.commissionHistoryDesc')}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted group-hover:text-primary transition-colors" />
             </Link>
@@ -380,9 +383,9 @@ export default function ReferralsPage() {
             >
               <div>
                 <p className="text-sm font-semibold text-secondary group-hover:text-primary transition-colors">
-                  Payouts
+                  {t('quickLinks.payouts')}
                 </p>
-                <p className="text-xs text-muted mt-0.5">Request a payout of your balance</p>
+                <p className="text-xs text-muted mt-0.5">{t('quickLinks.payoutsDesc')}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted group-hover:text-primary transition-colors" />
             </Link>
@@ -391,12 +394,12 @@ export default function ReferralsPage() {
           {/* ── Recent commissions ─────────────────────────────────────────── */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-semibold text-secondary">Recent Earnings</h2>
+              <h2 className="text-base font-semibold text-secondary">{t('recentEarnings')}</h2>
               <Link
                 href={`/${locale}/account/referrals/earnings`}
                 className="text-xs text-primary hover:underline"
               >
-                View all
+                {tCommon('viewAll')}
               </Link>
             </div>
 
@@ -418,7 +421,7 @@ export default function ReferralsPage() {
               safeArr(commissionsPage.data).length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
                   <Users className="w-10 h-10 text-muted/30" />
-                  <p className="text-sm text-muted">No commissions yet. Share your link to start earning!</p>
+                  <p className="text-sm text-muted">{t('noCommissions')}</p>
                 </div>
               ) : (
                 <div className="border border-border rounded-card overflow-hidden">
@@ -431,9 +434,9 @@ export default function ReferralsPage() {
                         <p className="text-sm font-medium text-secondary">
                           {c.fromUser
                             ? `${c.fromUser.firstName} ${c.fromUser.lastName}`
-                            : `Level ${c.level} commission`}
+                            : t('levelCommission', { level: c.level })}
                           {c.orderId && (
-                            <span className="text-xs text-muted ml-2">Order #{c.orderId.slice(-8).toUpperCase()}</span>
+                            <span className="text-xs text-muted ml-2">{t('orderRef', { id: c.orderId.slice(-8).toUpperCase() })}</span>
                           )}
                         </p>
                         <p className="text-xs text-muted">{formatDate(c.createdAt)}</p>
@@ -442,7 +445,7 @@ export default function ReferralsPage() {
                         <span
                           className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[c.status]}`}
                         >
-                          {safeStr(c.status).charAt(0) + safeStr(c.status).slice(1).toLowerCase()}
+                          {t(`commissionStatus.${c.status.toLowerCase()}` as 'commissionStatus.pending')}
                         </span>
                         <span className="text-sm font-bold tabular-nums text-green-700">
                           +{fmtAmount(c.amount)}

@@ -341,6 +341,7 @@ function MegaMenuEditor({ onSync }: { onSync: () => Promise<void> }) {
   const [open,    setOpen]    = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [done,    setDone]    = useState(false);
+  const { alert } = useDialog();
 
   const handleSync = async () => {
     setSyncing(true);
@@ -348,7 +349,9 @@ function MegaMenuEditor({ onSync }: { onSync: () => Promise<void> }) {
       await onSync();
       setDone(true);
       setTimeout(() => setDone(false), 3000);
-    } catch { /* silent */ } finally { setSyncing(false); }
+    } catch (err) {
+      await alert((err as Error).message || 'Could not sync the mega menu.', { variant: 'error' });
+    } finally { setSyncing(false); }
   };
 
   return (

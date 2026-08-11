@@ -66,7 +66,7 @@ function SkeletonCard() {
 const PAGE_SIZE = 12;
 
 export default function ReviewsPage() {
-  const { confirm } = useDialog();
+  const { confirm, alert } = useDialog();
   const qc = useQueryClient();
 
   const [tab,          setTab]          = useState<TabValue>('PENDING');
@@ -127,6 +127,8 @@ export default function ReviewsPage() {
     try {
       await api.post(API_ROUTES.ADMIN.REVIEW_APPROVE(id));
       invalidate();
+    } catch (err) {
+      await alert((err as Error).message || 'Could not approve this review.', { variant: 'error' });
     } finally { setLoadingId(null); }
   };
 
@@ -135,6 +137,8 @@ export default function ReviewsPage() {
     try {
       await api.post(API_ROUTES.ADMIN.REVIEW_HIDE(id));
       invalidate();
+    } catch (err) {
+      await alert((err as Error).message || 'Could not hide this review.', { variant: 'error' });
     } finally { setLoadingId(null); }
   };
 
@@ -144,6 +148,8 @@ export default function ReviewsPage() {
     try {
       await api.delete(API_ROUTES.ADMIN.REVIEW(id));
       invalidate();
+    } catch (err) {
+      await alert((err as Error).message || 'Could not delete this review.', { variant: 'error' });
     } finally { setLoadingId(null); }
   };
 
@@ -181,6 +187,8 @@ export default function ReviewsPage() {
       ));
       invalidate();
       clearSelection();
+    } catch (err) {
+      await alert((err as Error).message || 'Could not approve the selected reviews.', { variant: 'error' });
     } finally { setBulkLoading(false); }
   };
 
@@ -192,6 +200,8 @@ export default function ReviewsPage() {
       ));
       invalidate();
       clearSelection();
+    } catch (err) {
+      await alert((err as Error).message || 'Could not hide the selected reviews.', { variant: 'error' });
     } finally { setBulkLoading(false); }
   };
 

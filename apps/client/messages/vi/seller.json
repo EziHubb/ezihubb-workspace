@@ -1,0 +1,138 @@
+{
+  "layout": {
+    "hubLabel": "Trung tâm người bán"
+  },
+  "sidebar": {
+    "aria": "Điều hướng người bán",
+    "yourStore": "Cửa hàng của bạn",
+    "viewPublicPage": "Xem trang công khai",
+    "nav": {
+      "dashboard": "Bảng điều khiển",
+      "orders": "Đơn hàng",
+      "products": "Sản phẩm",
+      "analytics": "Phân tích",
+      "reviews": "Đánh giá",
+      "payouts": "Thanh toán",
+      "storeSettings": "Cài đặt cửa hàng"
+    },
+    "signOut": "Đăng xuất"
+  },
+  "dashboard": {
+    "title": "Bảng điều khiển",
+    "stats": {
+      "totalOrders": "Tổng đơn hàng",
+      "revenue": "Doanh thu",
+      "avgRating": "Đánh giá trung bình",
+      "activeProducts": "Sản phẩm đang bán",
+      "pendingOrders": "Đơn hàng chờ xử lý",
+      "pendingPayout": "Thanh toán đang chờ"
+    },
+    "recentOrders": "Đơn hàng gần đây",
+    "noOrders": "Chưa có đơn hàng nào",
+    "table": {
+      "order": "Đơn hàng",
+      "items": "Số lượng",
+      "total": "Tổng cộng",
+      "status": "Trạng thái",
+      "date": "Ngày"
+    }
+  },
+  "orders": {
+    "title": "Đơn hàng",
+    "all": "Tất cả",
+    "noOrders": "Không tìm thấy đơn hàng nào",
+    "table": {
+      "order": "Đơn hàng",
+      "customer": "Khách hàng",
+      "items": "Số lượng",
+      "total": "Tổng cộng",
+      "status": "Trạng thái",
+      "date": "Ngày"
+    }
+  },
+  "payouts": {
+    "title": "Thanh toán",
+    "stats": {
+      "available": "Khả dụng",
+      "pending": "Đang chờ",
+      "totalPaid": "Tổng đã thanh toán"
+    },
+    "history": "Lịch sử thanh toán",
+    "noPayouts": "Chưa có khoản thanh toán nào",
+    "table": {
+      "amount": "Số tiền",
+      "status": "Trạng thái",
+      "requested": "Ngày yêu cầu",
+      "paid": "Ngày thanh toán"
+    }
+  },
+  "products": {
+    "title": "Sản phẩm",
+    "addProduct": "Thêm sản phẩm",
+    "noProducts": "Chưa có sản phẩm nào",
+    "table": {
+      "product": "Sản phẩm",
+      "price": "Giá",
+      "status": "Trạng thái",
+      "stock": "Tồn kho",
+      "actions": "Thao tác"
+    },
+    "edit": "Sửa",
+    "publish": "Đăng bán",
+    "unpublish": "Ngừng bán"
+  },
+  "reviews": {
+    "title": "Đánh giá",
+    "noReviews": "Chưa có đánh giá nào"
+  },
+  "store": {
+    "title": "Cài đặt cửa hàng",
+    "storeNameLabel": "Tên cửa hàng",
+    "storeNamePlaceholder": "Tên cửa hàng của bạn",
+    "emailLabel": "Email liên hệ",
+    "emailPlaceholder": "store@example.com",
+    "websiteLabel": "Trang web",
+    "websitePlaceholder": "https://yoursite.com",
+    "descriptionLabel": "Mô tả",
+    "descriptionPlaceholder": "Giới thiệu cửa hàng của bạn với người mua…",
+    "saving": "Đang lưu…",
+    "saveChanges": "Lưu thay đổi",
+    "saveSuccess": "Đã lưu cài đặt cửa hàng",
+    "saveError": "Không thể lưu cài đặt"
+  },
+  "scoreCard": {
+    "title": "Điểm hiệu suất của bạn",
+    "history": "Lịch sử",
+    "tier": {
+      "topSeller": "Người bán hàng đầu",
+      "trusted": "Đáng tin cậy",
+      "rising": "Đang phát triển"
+    },
+    "shippingAccuracy": "Độ chính xác giao hàng",
+    "refundRate": "Tỷ lệ hoàn tiền",
+    "reviewRating": "Đánh giá của khách hàng",
+    "responseTime": "Thời gian phản hồi",
+    "lowScoreAlert": "Thời gian phản hồi của bạn còn thấp. Hãy trả lời tin nhắn trong vòng 24 giờ để cải thiện.",
+    "viewMessages": "Xem tin nhắn",
+    "hideDetails": "Ẩn chi tiết",
+    "seeFullBreakdown": "Xem chi tiết đầy đủ",
+    "updatedDaily": "Cập nhật hàng ngày",
+    "lastUpdated": "Lần cuối: {date}"
+  },
+  "pagination": {
+    "prev": "Trước",
+    "next": "Sau",
+    "page": "Trang {current} / {total}"
+  },
+  "status": {
+    "PENDING": "Đang chờ",
+    "PROCESSING": "Đang xử lý",
+    "SHIPPED": "Đã gửi hàng",
+    "DELIVERED": "Đã giao hàng",
+    "CANCELLED": "Đã hủy",
+    "PAID": "Đã thanh toán",
+    "ACTIVE": "Đang hoạt động",
+    "DRAFT": "Bản nháp",
+    "ARCHIVED": "Đã lưu trữ"
+  }
+}

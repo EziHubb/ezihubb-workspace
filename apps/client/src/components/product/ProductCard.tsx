@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Heart } from 'lucide-react';
 import { RatingStars } from '@ezihubb/ui';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -47,12 +48,23 @@ export function ProductCard({
   reviewCount      = 0,
   badge,
   lowStock         = false,
-  labelPersonalize = 'Personalize Now',
-  labelLowStock    = 'Low stock',
+  labelPersonalize,
+  labelLowStock,
   className        = '',
   productId,
   initialWishlisted = false,
 }: ProductCardProps) {
+  const t = useTranslations('product.actions');
+  const tCommon = useTranslations('common');
+  const tBadge = useTranslations('search.badge');
+  const badgeLabels: Record<BadgeType, string> = {
+    new:        tBadge('new'),
+    sale:       tBadge('sale'),
+    hot:        tBadge('editorsPick'),
+    bestseller: tBadge('bestseller'),
+  };
+  const resolvedLabelPersonalize = labelPersonalize ?? t('personalize');
+  const resolvedLabelLowStock = labelLowStock ?? tCommon('lowStock');
   const [isWishlisted,       setIsWishlisted]       = useState(initialWishlisted);
   const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
   const { format } = useCurrency();
@@ -85,7 +97,7 @@ export function ProductCard({
         <span
           className={`absolute top-2 left-2 z-10 rounded-pill px-3 py-1 text-xs uppercase font-semibold tracking-wide ${badgeClasses[badge]}`}
         >
-          {badge}
+          {badgeLabels[badge]}
         </span>
       )}
 
@@ -94,7 +106,7 @@ export function ProductCard({
         type="button"
         onClick={handleWishlistToggle}
         disabled={isTogglingWishlist}
-        aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+        aria-label={isWishlisted ? tCommon('removeFromWishlist') : tCommon('addToWishlist')}
         aria-pressed={isWishlisted}
         aria-busy={isTogglingWishlist || undefined}
         className="absolute top-2 right-2 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white transition-colors disabled:opacity-60"
@@ -132,11 +144,15 @@ export function ProductCard({
         )}
       </div>
 
-      <RatingStars rating={rating} reviewCount={reviewCount} />
+      <RatingStars
+        rating={rating}
+        reviewCount={reviewCount}
+        starAriaLabel={(value) => tCommon('starAriaLabel', { value })}
+      />
 
       {lowStock && (
         <p className="text-xs text-error font-medium mt-2" role="status">
-          ⚠ {labelLowStock}
+          ⚠ {resolvedLabelLowStock}
         </p>
       )}
 
@@ -153,7 +169,7 @@ export function ProductCard({
         aria-hidden="true"
         className="mt-3 hidden group-hover:block w-full bg-primary hover:bg-primary-dark text-white font-semibold text-sm uppercase tracking-wide rounded-button py-3 transition-colors text-center"
       >
-        {labelPersonalize}
+        {resolvedLabelPersonalize}
       </Link>
     </article>
   );

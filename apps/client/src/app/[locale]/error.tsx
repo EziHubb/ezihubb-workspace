@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { AlertTriangle, RefreshCw, MessageCircle } from 'lucide-react';
 
 interface ErrorPageProps {
@@ -12,6 +12,8 @@ interface ErrorPageProps {
 
 export default function ErrorPage({ error, reset }: ErrorPageProps) {
   const locale = useLocale();
+  const t = useTranslations('errors');
+  const tCommon = useTranslations('common');
 
   useEffect(() => {
     // Structured logging in all environments
@@ -34,17 +36,16 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
       </div>
 
       <h1 className="font-display text-2xl md:text-3xl font-bold text-secondary mb-3">
-        Something Went Wrong
+        {t('somethingWentWrongTitle')}
       </h1>
       <p className="text-muted text-base max-w-sm mb-6">
-        An unexpected error occurred. Please try again — if the problem
-        persists, contact our support team.
+        {t('unexpectedErrorDesc')}
       </p>
 
       {/* Error ID for support reference */}
       {error.digest && (
         <div className="bg-background border border-border rounded-sm px-4 py-2 mb-8 inline-flex items-center gap-2">
-          <span className="text-xs text-muted">Error ID:</span>
+          <span className="text-xs text-muted">{tCommon('errorId')}</span>
           <code className="font-mono text-xs text-secondary">{error.digest}</code>
         </div>
       )}
@@ -57,14 +58,14 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
           className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white font-bold px-6 py-3 rounded-button transition-colors text-sm uppercase tracking-wide"
         >
           <RefreshCw className="w-4 h-4" />
-          Try Again
+          {tCommon('retry')}
         </button>
         <Link
           href={`/${locale}/pages/contact`}
           className="inline-flex items-center justify-center gap-2 border border-border text-secondary font-semibold px-6 py-3 rounded-button hover:border-primary hover:text-primary transition-colors text-sm"
         >
           <MessageCircle className="w-4 h-4" />
-          Contact Support
+          {t('contactSupport')}
         </Link>
       </div>
 
@@ -72,7 +73,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
         href={`/${locale}`}
         className="text-sm text-primary hover:underline underline-offset-2"
       >
-        ← Return to Homepage
+        {t('returnHome')}
       </Link>
     </div>
   );

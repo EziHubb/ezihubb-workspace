@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 export default function CollectionError({
@@ -11,6 +12,9 @@ export default function CollectionError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations('errors');
+  const tCommon = useTranslations('common');
+
   useEffect(() => {
     console.error('[CollectionPage error]', error);
   }, [error]);
@@ -21,10 +25,10 @@ export default function CollectionError({
         <AlertTriangle className="w-8 h-8 text-error" />
       </div>
       <h1 className="font-display text-2xl font-bold text-secondary mb-3">
-        Something went wrong
+        {tCommon('error')}
       </h1>
       <p className="text-muted mb-8 max-w-sm mx-auto">
-        We couldn&apos;t load this collection. Please try again.
+        {t('couldntLoadCollection')}
       </p>
       <div className="flex items-center justify-center gap-4 flex-wrap">
         <button
@@ -32,13 +36,13 @@ export default function CollectionError({
           className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-2.5 rounded-button transition-colors text-sm"
         >
           <RefreshCw className="w-4 h-4" />
-          Try again
+          {tCommon('retry')}
         </button>
         <Link
           href="/collections"
           className="text-sm text-primary hover:underline underline-offset-2"
         >
-          Browse all collections
+          {t('browseAllCollections')}
         </Link>
       </div>
     </div>

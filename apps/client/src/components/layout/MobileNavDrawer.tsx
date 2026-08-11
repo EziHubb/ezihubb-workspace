@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { X, ChevronDown, LogOut, Package, Settings } from 'lucide-react';
 import { signOut } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { queryKeys } from '@ezihubb/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { SearchInput } from '../search/SearchInput';
@@ -100,6 +101,8 @@ function AccordionSection({
 // ── Drawer ────────────────────────────────────────────────────────────────────
 
 export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDrawerProps) {
+  const t          = useTranslations('nav');
+  const tCommon    = useTranslations('common');
   const router     = useRouter();
   const qc         = useQueryClient();
   const profile    = useAuthStore((s) => s.user);
@@ -149,7 +152,7 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
-        aria-label="Navigation menu"
+        aria-label={t('toggleMenu')}
         className="lg:hidden fixed inset-y-0 left-0 z-[60] flex flex-col w-[min(85vw,360px)] bg-surface shadow-2xl outline-none"
       >
         {/* Header */}
@@ -163,7 +166,7 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close menu"
+            aria-label={tCommon('close')}
             className="min-h-11 min-w-11 flex items-center justify-center text-muted hover:text-secondary transition-colors"
           >
             <X className="w-6 h-6" />
@@ -174,7 +177,7 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
         <div className="px-4 py-3 border-b border-border shrink-0">
           <SearchInput
             variant="page"
-            placeholder="Search gifts…"
+            placeholder={t('search')}
             onSearch={onClose}
           />
         </div>
@@ -184,7 +187,7 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
           {/* Mega-menu tabs as accordion */}
           <div className="px-2 py-2">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted px-3 py-2">
-              Shop
+              {t('shop')}
             </p>
             {tabs.map((tab) => (
               <AccordionSection
@@ -200,9 +203,9 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
             {/* Extra nav links */}
             <div className="mt-2 pt-2 border-t border-border space-y-0.5">
               {[
-                { href: `/${locale}/collections`, label: 'Collections'  },
-                { href: `/${locale}/occasions`,   label: 'Occasions'    },
-                { href: `/${locale}/gift-cards`,  label: 'Gift Cards'   },
+                { href: `/${locale}/collections`, label: t('collections')  },
+                { href: `/${locale}/occasions`,   label: t('occasions')    },
+                { href: `/${locale}/gift-cards`,  label: t('giftCards')   },
               ].map(({ href, label }) => (
                 <Link
                   key={href}
@@ -219,7 +222,7 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
           {/* Account section */}
           <div className="px-2 py-3 border-t border-border mt-2">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted px-3 py-2">
-              Account
+              {t('account')}
             </p>
 
             {profile ? (
@@ -243,8 +246,8 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
                 </div>
 
                 {[
-                  { href: `/${locale}/account/orders`,   label: 'My Orders',  icon: Package  },
-                  { href: `/${locale}/account/profile`,  label: 'Profile',    icon: Settings },
+                  { href: `/${locale}/account/orders`,   label: t('myOrders'),  icon: Package  },
+                  { href: `/${locale}/account/profile`,  label: t('profile'),    icon: Settings },
                 ].map(({ href, label, icon: Icon }) => (
                   <Link
                     key={href}
@@ -263,7 +266,7 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-button text-sm text-secondary hover:bg-error/8 hover:text-error transition-colors"
                 >
                   <LogOut className="w-4 h-4 text-muted" />
-                  Sign Out
+                  {t('signOut')}
                 </button>
               </>
             ) : (
@@ -273,14 +276,14 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
                   onClick={onClose}
                   className="block w-full text-center py-2.5 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors uppercase tracking-wide"
                 >
-                  Sign In
+                  {t('signIn')}
                 </Link>
                 <Link
                   href={`/${locale}/register`}
                   onClick={onClose}
                   className="block text-center py-2 text-sm font-medium text-secondary hover:text-primary transition-colors"
                 >
-                  Create Account
+                  {t('createAccount')}
                 </Link>
               </div>
             )}

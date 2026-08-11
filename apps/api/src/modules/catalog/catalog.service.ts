@@ -19,6 +19,9 @@ import { UpdateCollectionDto } from './dto/update-collection.dto';
 import { CollectionResponseDto, TagResponseDto } from './dto/collection-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { PaginatedResult, paginatedResponse } from '../../common/dto/paginated-response.dto';
+import { TranslationService } from '../translations/translation.service';
+import { AutoTranslateService } from '../translations/auto-translate.service';
+import type { SupportedLocale } from '../../common/utils/locale.util';
 
 // re-exported for use in CollectionResponseDto.products
 export type { CollectionResponseDto };
@@ -37,29 +40,98 @@ export class CatalogService {
     private readonly categoryMenuModel: Model<CategoryMenu>,
     @InjectModel(ProductDetail.name)
     private readonly productDetailModel: Model<ProductDetail>,
+    private readonly translationService: TranslationService,
+    private readonly autoTranslate: AutoTranslateService,
   ) {}
 
   // ─── Mega menu (MongoDB → Redis cache) ───────────────────────────────────
 
-  async getMegaMenu(): Promise<CategoryMenu[]> {
-    const cached = await this.redis.get<CategoryMenu[]>(MEGA_MENU_CACHE_KEY);
-    if (cached) return cached;
+  async getMegaMenu(locale: SupportedLocale = 'en'): Promise<CategoryMenu[]> {
+    let menus = await this.redis.get<CategoryMenu[]>(MEGA_MENU_CACHE_KEY);
 
-    const menus = await this.categoryMenuModel
-      .find({ isVisible: true })
-      .sort({ sortOrder: 1 })
-      .lean<CategoryMenu[]>()
-      .exec();
+    if (!menus) {
+      menus = await this.categoryMenuModel
+        .find({ isVisible: true })
+        .sort({ sortOrder: 1 })
+        .lean<CategoryMenu[]>()
+        .exec();
 
-    await this.redis.set(MEGA_MENU_CACHE_KEY, menus, MEGA_MENU_TTL);
-    return menus;
+      await this.redis.set(MEGA_MENU_CACHE_KEY, menus, MEGA_MENU_TTL);
+    }
+
+    if (locale === 'en') return menus;
+
+    // Cache stores the English (source) tree; translate a copy per-request so
+    // the cache stays locale-agnostic. categoryId at every level maps back to
+    // a real Category row, so we reuse its `name` translations directly.
+    const categoryIds = menus.flatMap((nav) => [
+      nav.categoryId,
+      ...nav.groups.flatMap((g) => [
+        g.categoryId,
+        ...g.items.map((item) => item.categoryId),
+      ]),
+    ]).filter(Boolean);
+
+    const translations = await this.translationService.getBatchTranslations(
+      'Category', categoryIds, locale,
+    );
+    const nameFor = (categoryId: string, fallback: string) =>
+      translations[categoryId]?.['name'] ?? fallback;
+
+    return menus.map((nav) => ({
+      ...nav,
+      navLabel: nameFor(nav.categoryId, nav.navLabel),
+      groups: nav.groups.map((g) => ({
+        ...g,
+        title: nameFor(g.categoryId, g.title),
+        items: g.items.map((item) => ({
+          ...item,
+          name: nameFor(item.categoryId, item.name),
+        })),
+      })),
+    })) as CategoryMenu[];
   }
 
   // ─── Categories ────────────────────────────────────────────────────────────
 
-  async getCategories(): Promise<CategoryResponseDto[]> {
+  /**
+   * Applies Category name/description translations to a tree (root → children →
+   * grandchildren) fetched from cache or DB in English. Cache stays locale-agnostic;
+   * translation happens per-request on top of it, same pattern as getMegaMenu().
+   */
+  private async translateCategoryTree(
+    tree: CategoryResponseDto[],
+    locale: SupportedLocale,
+  ): Promise<CategoryResponseDto[]> {
+    if (locale === 'en') return tree;
+
+    const ids = tree.flatMap((c) => [
+      c.id,
+      ...(c.children ?? []).flatMap((child) => [
+        child.id,
+        ...(child.children ?? []).map((gc) => gc.id),
+      ]),
+    ]);
+
+    const translations = await this.translationService.getBatchTranslations('Category', ids, locale);
+    const apply = <T extends { id: string; name: string; description?: string | null }>(node: T): T => ({
+      ...node,
+      name:        translations[node.id]?.['name'] ?? node.name,
+      description: (translations[node.id]?.['description'] ?? node.description) as T['description'],
+    });
+
+    return tree.map((c) => ({
+      ...apply(c),
+      children: (c.children ?? []).map((child) => ({
+        ...apply(child),
+        children: (child.children ?? []).map((gc) => apply(gc)),
+      })),
+    }));
+  }
+
+  async getCategories(locale: SupportedLocale = 'en'): Promise<CategoryResponseDto[]> {
     const cached = await this.redis.get<CategoryResponseDto[]>(CacheKeys.categoriesTree());
-    if (cached) return cached;
+    if (cached) return this.translateCategoryTree(cached, locale);
 
     const categories = await this.prisma.category.findMany({
       where: { isVisible: true },
@@ -114,10 +186,10 @@ export class CatalogService {
       }));
 
     await this.redis.set(CacheKeys.categoriesTree(), tree, CacheTtl.long);
-    return tree;
+    return this.translateCategoryTree(tree, locale);
   }
 
-  async getCategoryBySlug(slug: string): Promise<CategoryResponseDto> {
+  async getCategoryBySlug(slug: string, locale: SupportedLocale = 'en'): Promise<CategoryResponseDto> {
     const cat = await this.prisma.category.findUnique({
       where: { slug },
       include: {
@@ -134,7 +206,7 @@ export class CatalogService {
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Category not found' });
     }
 
-    return {
+    const result: CategoryResponseDto = {
       id: cat.id,
       name: cat.name,
       slug: cat.slug,
@@ -155,6 +227,9 @@ export class CatalogService {
         children: [],
       })),
     };
+
+    const [translated] = await this.translateCategoryTree([result], locale);
+    return translated ?? result;
   }
 
   async createCategory(dto: CreateCategoryDto): Promise<CategoryResponseDto> {
@@ -199,6 +274,11 @@ export class CatalogService {
       this.redis.del(CacheKeys.categoriesTree()),
       this.invalidateMenuCache(),
     ]);
+
+    this.autoTranslate.triggerTranslation('Category', category.id, {
+      name: category.name,
+      description: category.description ?? '',
+    });
 
     return {
       id: category.id,
@@ -250,6 +330,13 @@ export class CatalogService {
       this.invalidateMenuCache(),
     ]);
 
+    if (dto.name !== undefined || dto.description !== undefined) {
+      this.autoTranslate.triggerTranslation('Category', category.id, {
+        name: category.name,
+        description: category.description ?? '',
+      }, true);
+    }
+
     return {
       id: category.id,
       name: category.name,
@@ -291,6 +378,7 @@ export class CatalogService {
     await Promise.all([
       this.redis.del(CacheKeys.categoriesTree()),
       this.invalidateMenuCache(),
+      this.translationService.deleteEntityTranslations('Category', id),
     ]);
   }
 
@@ -342,6 +430,7 @@ export class CatalogService {
   async getCollectionBySlug(
     slug: string,
     pagination: PaginationDto,
+    locale: SupportedLocale = 'en',
   ): Promise<CollectionResponseDto & { products: PaginatedResult<{ id: string; name: string; slug: string; imageUrl: string | null; basePrice: number }> }> {
     const collection = await this.prisma.collection.findUnique({
       where: { slug },
@@ -373,9 +462,16 @@ export class CatalogService {
       this.prisma.collectionProduct.count({ where: { collectionId: collection.id } }),
     ]);
 
+    const [collectionTranslation, productTranslations] = await Promise.all([
+      this.translationService.getTranslations('Collection', collection.id, locale),
+      this.translationService.getBatchTranslations(
+        'Product', collectionProducts.map((cp) => cp.product.id), locale,
+      ),
+    ]);
+
     const productItems = collectionProducts.map((cp) => ({
       id: cp.product.id,
-      name: cp.product.name,
+      name: productTranslations[cp.product.id]?.['name'] ?? cp.product.name,
       slug: cp.product.slug,
       imageUrl: cp.product.images[0]?.url ?? null,
       basePrice: Number(cp.product.basePrice),
@@ -383,9 +479,9 @@ export class CatalogService {
 
     return {
       id: collection.id,
-      name: collection.name,
+      name: collectionTranslation['name'] ?? collection.name,
       slug: collection.slug,
-      description: collection.description,
+      description: collectionTranslation['description'] ?? collection.description,
       bannerUrl: collection.bannerUrl,
       occasion: collection.occasion,
       isActive: collection.isActive,
@@ -414,6 +510,11 @@ export class CatalogService {
         endDate: dto.endDate ? new Date(dto.endDate) : null,
       },
       include: { _count: { select: { products: true } } },
+    });
+
+    this.autoTranslate.triggerTranslation('Collection', collection.id, {
+      name: collection.name,
+      description: collection.description ?? '',
     });
 
     return {
@@ -460,6 +561,13 @@ export class CatalogService {
       include: { _count: { select: { products: true } } },
     });
 
+    if (dto.name !== undefined || dto.description !== undefined) {
+      this.autoTranslate.triggerTranslation('Collection', collection.id, {
+        name: collection.name,
+        description: collection.description ?? '',
+      }, true);
+    }
+
     return {
       id: collection.id,
       name: collection.name,
@@ -480,6 +588,7 @@ export class CatalogService {
     const existing = await this.prisma.collection.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Collection not found' });
     await this.prisma.collection.delete({ where: { id } });
+    await this.translationService.deleteEntityTranslations('Collection', id);
   }
 
   // ─── Tags ──────────────────────────────────────────────────────────────────

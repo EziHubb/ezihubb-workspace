@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { Star } from 'lucide-react';
 import type { ProductListItemDto } from '@ezihubb/types';
 import { fmtAmount, safeArr, safeNum } from '@ezihubb/utils';
@@ -75,17 +76,18 @@ interface MoreFromShopProps {
 }
 
 export function MoreFromShop({ products, locale }: MoreFromShopProps) {
+  const t = useTranslations('product.pdp');
   if (safeArr(products).length === 0) return null;
 
   return (
     <section className="mt-10 pt-8 border-t border-border">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-secondary">More from this shop</h2>
+        <h2 className="text-lg font-semibold text-secondary">{t('moreFromShop')}</h2>
         <Link
           href={`/${locale}/search`}
           className="text-sm text-primary hover:underline"
         >
-          Visit shop
+          {t('visitShop')}
         </Link>
       </div>
 

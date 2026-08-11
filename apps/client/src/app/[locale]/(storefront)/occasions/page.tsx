@@ -28,6 +28,8 @@ export default async function OccasionsPage({
   // Fetch collections that have an occasion field set
   const collections = await fetchList<CollectionDto & { occasion?: string }>(
     `${API_BASE}/api/v1/catalog/collections?isActive=true`,
+    60,
+    locale,
   );
 
   // Filter to only occasion-based collections (those with an occasion field)

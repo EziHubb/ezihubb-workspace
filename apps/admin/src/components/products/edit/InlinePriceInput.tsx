@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { api } from '../../../lib/api-client';
+import { useDialog } from '../../../contexts/DialogContext';
 
 interface Props {
   variantId?: string
@@ -21,6 +22,7 @@ export function InlinePriceInput({
   const [isFocused, setIsFocused] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const { alert } = useDialog()
 
   const save = async () => {
     if (!variantId) return
@@ -32,6 +34,9 @@ export function InlinePriceInput({
         { [field]: numValue },
       )
       onSaved?.(numValue)
+    } catch (err) {
+      setValue(defaultValue != null ? String(defaultValue) : '')
+      await alert((err as Error).message || 'Could not save price.', { variant: 'error' })
     } finally {
       setIsSaving(false)
     }

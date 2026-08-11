@@ -7,6 +7,7 @@ import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { FormField } from './primitives/FormField';
 import type { GpsrInfo } from './types';
+import { useDialog } from '../../../contexts/DialogContext';
 
 interface GPSRFormValues {
   manufacturerName:    string;
@@ -29,6 +30,7 @@ const inputCls =
 export function GPSRModal({ productId, isOpen, onClose }: Props) {
   const [saving,  setSaving]  = useState(false);
   const [saved,   setSaved]   = useState(false);
+  const { alert } = useDialog();
 
   const { register, handleSubmit, formState: { errors } } = useForm<GPSRFormValues>();
 
@@ -56,6 +58,8 @@ export function GPSRModal({ productId, isOpen, onClose }: Props) {
       await api.patch(API_ROUTES.ADMIN.PRODUCT_DETAIL(productId), { gpsrInfo });
       setSaved(true);
       setTimeout(() => { setSaved(false); onClose(); }, 800);
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save GPSR info.', { variant: 'error' });
     } finally {
       setSaving(false);
     }

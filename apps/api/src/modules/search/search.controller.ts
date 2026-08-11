@@ -4,6 +4,7 @@ import { Throttle } from '@nestjs/throttler';
 import { SearchService, SearchResultDto } from './search.service';
 import { SearchQueryDto } from './dto/search-query.dto';
 import { Public } from '../../common/decorators/public.decorator';
+import { TranslatableResponse } from '../../common/interceptors/i18n.interceptor';
 
 @ApiTags('Search')
 @Public()
@@ -14,6 +15,7 @@ export class SearchController {
 
   // GET /search
   @Get()
+  @TranslatableResponse('Product')
   @ApiOperation({ summary: 'Full-text product search with filters, facets, and sort' })
   @ApiResponse({ status: 200, description: 'Paginated products + facets + appliedFilters' })
   search(@Query() query: SearchQueryDto): Promise<SearchResultDto> {

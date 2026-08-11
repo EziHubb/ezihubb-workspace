@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { ProductCard, ProductCardSkeleton } from '@ezihubb/ui';
+import type { ProductBadgeVariant, ProductCardLabels } from '@ezihubb/ui';
 import type { ProductListItemDto } from '@ezihubb/types';
 
 interface TrendingProductsProps {
@@ -17,7 +18,25 @@ function deriveBadge(product: ProductListItemDto) {
 }
 
 export async function TrendingProducts({ products, locale, viewAllLabel }: TrendingProductsProps) {
-  const t = await getTranslations({ locale, namespace: 'home' });
+  const t        = await getTranslations({ locale, namespace: 'home' });
+  const tCommon  = await getTranslations({ locale, namespace: 'common' });
+  const tActions = await getTranslations({ locale, namespace: 'product.actions' });
+  const tBadge   = await getTranslations({ locale, namespace: 'search.badge' });
+
+  const cardLabels: ProductCardLabels = {
+    addToWishlist:      tCommon('addToWishlist'),
+    removeFromWishlist: tCommon('removeFromWishlist'),
+    personalizeNow:     tActions('personalize'),
+    addToCart:          tActions('addToCart'),
+    byStore:            (name: string) => tCommon('byStore', { name }),
+  };
+
+  const badgeLabels: Record<ProductBadgeVariant, string> = {
+    bestseller: tBadge('bestseller'),
+    new:        tBadge('new'),
+    sale:       tBadge('sale'),
+    hot:        tBadge('editorsPick'),
+  };
 
   return (
     <section className="py-16 md:py-20">
@@ -46,22 +65,28 @@ export async function TrendingProducts({ products, locale, viewAllLabel }: Trend
                   <ProductCardSkeleton />
                 </div>
               ))
-            : products.map((product) => (
-                <div key={product.id} className="snap-start shrink-0 w-[48vw] sm:w-[200px] md:w-auto">
-                  <ProductCard
-                    id={product.id}
-                    slug={product.slug}
-                    name={product.name}
-                    imageUrl={product.images?.[0]?.url ?? 'https://placehold.co/400x500.png?text=No+Image'}
-                    basePrice={product.basePrice}
-                    compareAtPrice={product.compareAtPrice}
-                    rating={product.rating?.avg}
-                    reviewCount={product.rating?.count}
-                    badge={deriveBadge(product)}
-                    isPersonalizable={product.isPersonalizable}
-                  />
-                </div>
-              ))}
+            : products.map((product) => {
+                const badge = deriveBadge(product);
+                return (
+                  <div key={product.id} className="snap-start shrink-0 w-[48vw] sm:w-[200px] md:w-auto">
+                    <ProductCard
+                      id={product.id}
+                      slug={product.slug}
+                      name={product.name}
+                      imageUrl={product.images?.[0]?.url ?? 'https://placehold.co/400x500.png?text=No+Image'}
+                      basePrice={product.basePrice}
+                      compareAtPrice={product.compareAtPrice}
+                      rating={product.rating?.avg}
+                      reviewCount={product.rating?.count}
+                      badge={badge}
+                      badgeLabel={badge ? badgeLabels[badge] : undefined}
+                      isPersonalizable={product.isPersonalizable}
+                      locale={locale}
+                      labels={cardLabels}
+                    />
+                  </div>
+                );
+              })}
         </div>
 
         {/* Mobile View All button — only shown when products exist */}

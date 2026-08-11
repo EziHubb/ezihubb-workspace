@@ -47,19 +47,23 @@ export default async function HomePage({
   const { locale } = await params;
 
   // All fetches in parallel — Promise.allSettled so a single failure never crashes the page
+  const localeHeaders = { 'X-Locale': locale };
   const [trendingRes, collectionsRes, featuredRes, categoriesRes] =
     await Promise.allSettled([
       apiClient.get<PaginatedResponse<ProductListItemDto>>(API_ROUTES.PRODUCTS.LIST, {
         params: { sort: 'bestseller', limit: 8, isActive: true },
+        headers: localeHeaders,
       }),
       apiClient.get<PaginatedResponse<CollectionDto>>(API_ROUTES.CATALOG.COLLECTIONS, {
         params: { isActive: true, limit: 6 },
+        headers: localeHeaders,
       }),
       apiClient.get<PaginatedResponse<ReviewDto>>(API_ROUTES.REVIEWS.LIST, {
         params: { featured: true, limit: 3 },
       }),
       apiClient.get<CategoryDto[]>(API_ROUTES.CATALOG.CATEGORIES, {
         params: { level: 1 },
+        headers: localeHeaders,
       }),
     ]);
 

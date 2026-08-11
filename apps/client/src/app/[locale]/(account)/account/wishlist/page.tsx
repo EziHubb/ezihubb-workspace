@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useState, useRef } from 'react';
 import { Heart, ShoppingCart, HeartOff, Share2, Copy, Check, X, Globe } from 'lucide-react';
 import { queryKeys, useMutateCart } from '@ezihubb/api-client';
@@ -38,6 +38,7 @@ function WishlistCard({
   isRemovingId:   string | null;
   isAddingId:     string | null;
 }) {
+  const t = useTranslations('account.wishlist');
   const p = item.product;
 
   return (
@@ -58,7 +59,7 @@ function WishlistCard({
         type="button"
         onClick={() => onRemove(p.id)}
         disabled={removingId === p.id}
-        aria-label="Remove from wishlist"
+        aria-label={t('removeAria')}
         className="absolute top-2 right-2 p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-sm text-error hover:bg-error hover:text-white transition-colors disabled:opacity-50"
       >
         <Heart className="w-4 h-4 fill-current" />
@@ -84,10 +85,10 @@ function WishlistCard({
         >
           <ShoppingCart className="w-3.5 h-3.5" />
           {addingId === p.id
-            ? 'Adding…'
+            ? t('adding')
             : p.isActive
-            ? 'Add to Cart'
-            : 'Out of Stock'}
+            ? t('addToCart')
+            : t('outOfStock')}
         </button>
       </div>
     </article>
@@ -97,6 +98,7 @@ function WishlistCard({
 // ── Sharing Panel ─────────────────────────────────────────────────────────────
 
 function SharingPanel() {
+  const t = useTranslations('account.wishlist');
   const toast = useToast();
   const [copied, setCopied] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -123,7 +125,7 @@ function SharingPanel() {
     {
       onSuccess: () => {
         refetch();
-        toast.info('Wishlist link revoked');
+        toast.info(t('linkRevoked'));
       },
     },
   );
@@ -159,7 +161,7 @@ function SharingPanel() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Share2 className="w-4 h-4 text-primary" />
-          <h2 className="font-semibold text-secondary text-sm">Share Wishlist</h2>
+          <h2 className="font-semibold text-secondary text-sm">{t('shareTitle')}</h2>
         </div>
         {shareToken && (
           <button
@@ -169,7 +171,7 @@ function SharingPanel() {
             className="text-xs text-muted hover:text-error transition-colors flex items-center gap-1"
           >
             <X className="w-3 h-3" />
-            Revoke link
+            {t('revokeLink')}
           </button>
         )}
       </div>
@@ -177,7 +179,7 @@ function SharingPanel() {
       {!shareToken ? (
         <div className="space-y-3">
           <p className="text-xs text-muted">
-            Create a shareable link so friends and family can view your wishlist and buy you gifts.
+            {t('createLinkHint')}
           </p>
           <button
             type="button"
@@ -186,7 +188,7 @@ function SharingPanel() {
             className="flex items-center gap-2 bg-primary text-white text-xs font-semibold px-4 py-2 rounded-button hover:bg-primary-dark transition-colors disabled:opacity-50"
           >
             <Globe className="w-3.5 h-3.5" />
-            {enableMutation.isPending ? 'Creating…' : 'Create share link'}
+            {enableMutation.isPending ? t('creating') : t('createShareLink')}
           </button>
         </div>
       ) : (
@@ -194,7 +196,7 @@ function SharingPanel() {
           {/* Name input */}
           <div>
             <label className="block text-xs font-medium text-secondary mb-1">
-              Wishlist name <span className="text-muted font-normal">(optional)</span>
+              {t('nameLabel')} <span className="text-muted font-normal">{t('optional')}</span>
             </label>
             <input
               ref={nameRef}
@@ -202,7 +204,7 @@ function SharingPanel() {
               maxLength={100}
               defaultValue={shareStatus?.name ?? ''}
               onBlur={handleNameBlur}
-              placeholder="e.g. My Birthday Wishlist"
+              placeholder={t('namePlaceholder')}
               className="w-full border border-border rounded-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
@@ -229,8 +231,8 @@ function SharingPanel() {
             </div>
             <span className="text-xs text-secondary">
               {shareStatus?.isPublic
-                ? 'Visible to anyone with the link'
-                : 'Hidden (link inactive)'}
+                ? t('visiblePublic')
+                : t('hiddenInactive')}
             </span>
           </label>
 
@@ -253,13 +255,13 @@ function SharingPanel() {
                   ) : (
                     <Copy className="w-3.5 h-3.5" />
                   )}
-                  {copied ? 'Copied!' : 'Copy'}
+                  {copied ? t('copied') : t('copy')}
                 </button>
               </div>
 
               {/* Social share */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted">Share on:</span>
+                <span className="text-xs text-muted">{t('shareOn')}</span>
                 <a
                   href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
                   target="_blank"
@@ -270,7 +272,7 @@ function SharingPanel() {
                 </a>
                 <a
                   href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(
-                    'Check out my wishlist!',
+                    t('shareCheckOut'),
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -290,6 +292,7 @@ function SharingPanel() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function WishlistPage() {
+  const t      = useTranslations('account.wishlist');
   const locale = useLocale();
   const toast  = useToast();
 
@@ -303,7 +306,7 @@ export default function WishlistPage() {
       apiClient.delete<void>(API_ROUTES.USERS.WISHLIST_ITEM(productId), { token }),
     {
       invalidateKeys: [queryKeys.wishlist()],
-      onSuccess:      () => toast.info('Removed from wishlist'),
+      onSuccess:      () => toast.info(t('removedFromWishlist')),
     },
   );
 
@@ -322,16 +325,16 @@ export default function WishlistPage() {
     addItem.mutate(
       { productId, quantity: 1 },
       {
-        onSuccess: () => toast.success('Added to cart!'),
+        onSuccess: () => toast.success(t('addedToCart')),
         onError: (err) =>
-          toast.error(err instanceof Error ? err.message : 'Failed to add to cart'),
+          toast.error(err instanceof Error ? err.message : t('failedToAddToCart')),
       },
     );
   };
 
   return (
     <div className="space-y-6">
-      <h1 className="font-display text-2xl font-bold text-secondary">Wishlist</h1>
+      <h1 className="font-display text-2xl font-bold text-secondary">{t('pageTitle')}</h1>
 
       {/* Sharing panel */}
       <SharingPanel />
@@ -356,16 +359,16 @@ export default function WishlistPage() {
         <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
           <HeartOff className="w-14 h-14 text-muted/30" aria-hidden />
           <div>
-            <p className="font-semibold text-secondary text-base">Nothing saved yet</p>
+            <p className="font-semibold text-secondary text-base">{t('nothingSaved')}</p>
             <p className="text-sm text-muted mt-1">
-              Heart products you love and find them here later.
+              {t('nothingSavedHint')}
             </p>
           </div>
           <Link
             href={`/${locale}/search`}
             className="mt-2 bg-primary hover:bg-primary-dark text-white font-bold text-sm px-6 py-3 rounded-button transition-colors uppercase tracking-wide"
           >
-            Explore Gifts
+            {t('exploreGifts')}
           </Link>
         </div>
       )}
@@ -375,7 +378,7 @@ export default function WishlistPage() {
         <>
           <p className="text-sm text-muted">
             <span className="font-semibold text-secondary">{items.length}</span>{' '}
-            saved item{items.length !== 1 ? 's' : ''}
+            {t('savedItems', { count: items.length })}
           </p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
             {items.map((item: WishlistItemDto) => (

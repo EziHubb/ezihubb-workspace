@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { MessageCircle, Mail, Package, Clock } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ContactForm } from '../../../../../components/pages/ContactForm';
@@ -15,64 +16,69 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-// ── Data ──────────────────────────────────────────────────────────────────────
-
-const CONTACT_CARDS: {
-  Icon:    LucideIcon;
-  title:   string;
-  desc:    string;
-  action:  string;
-  href:    string;
-  accent:  string;
-}[] = [
-  {
-    Icon:   MessageCircle,
-    title:  'Live Chat',
-    desc:   'Available 24/7',
-    action: 'Start a chat →',
-    href:   '#chat',
-    accent: 'bg-blue-50 text-blue-600',
-  },
-  {
-    Icon:   Mail,
-    title:  'Email',
-    desc:   'support@ezihubb.com',
-    action: 'Send email →',
-    href:   'mailto:support@ezihubb.com',
-    accent: 'bg-green-50 text-green-600',
-  },
-  {
-    Icon:   Package,
-    title:  'Order Issues',
-    desc:   'Track or manage your order',
-    action: 'Track order →',
-    href:   '/orders/track',
-    accent: 'bg-amber-50 text-amber-600',
-  },
-];
-
-const HOURS = [
-  { day: 'Monday – Friday', hours: '9:00 AM – 6:00 PM EST' },
-  { day: 'Saturday',        hours: '10:00 AM – 4:00 PM EST' },
-  { day: 'Sunday',          hours: 'Closed' },
-];
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function ContactPage() {
+export default async function ContactPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'pages.contact' });
+
+  const CONTACT_CARDS: {
+    Icon:    LucideIcon;
+    title:   string;
+    desc:    string;
+    action:  string;
+    href:    string;
+    accent:  string;
+  }[] = [
+    {
+      Icon:   MessageCircle,
+      title:  t('cards.chat.title'),
+      desc:   t('cards.chat.desc'),
+      action: t('cards.chat.action'),
+      href:   '#chat',
+      accent: 'bg-blue-50 text-blue-600',
+    },
+    {
+      Icon:   Mail,
+      title:  t('cards.email.title'),
+      desc:   t('cards.email.desc'),
+      action: t('cards.email.action'),
+      href:   'mailto:support@ezihubb.com',
+      accent: 'bg-green-50 text-green-600',
+    },
+    {
+      Icon:   Package,
+      title:  t('cards.orderIssues.title'),
+      desc:   t('cards.orderIssues.desc'),
+      action: t('cards.orderIssues.action'),
+      href:   '/orders/track',
+      accent: 'bg-amber-50 text-amber-600',
+    },
+  ];
+
+  const HOURS = [
+    { day: t('hours.mondayFriday'), hours: t('hours.mondayFridayTime') },
+    { day: t('hours.saturday'),     hours: t('hours.saturdayTime')     },
+    { day: t('hours.sunday'),       hours: t('hours.sundayTime')       },
+  ];
+
   return (
     <div className="max-w-[1000px] mx-auto px-4 py-16">
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div className="text-center mb-14">
         <p className="text-primary font-medium text-sm mb-3 uppercase tracking-wide">
-          Contact Us
+          {t('eyebrow')}
         </p>
         <h1 className="font-display text-4xl font-bold text-secondary mb-3">
-          We&apos;d Love to Hear from You
+          {t('title')}
         </h1>
         <p className="text-muted text-lg">
-          Questions, feedback, or custom orders — we&apos;re here to help.
+          {t('subtitle')}
         </p>
       </div>
 
@@ -108,7 +114,7 @@ export default function ContactPage() {
           <div className="border border-border rounded-2xl p-5">
             <h3 className="font-semibold text-secondary mb-3 flex items-center gap-2">
               <Clock className="w-4 h-4 text-primary" />
-              Business Hours
+              {t('hours.title')}
             </h3>
             <div className="space-y-1.5 text-sm">
               {HOURS.map(({ day, hours }) => (
@@ -119,16 +125,16 @@ export default function ContactPage() {
               ))}
             </div>
             <p className="text-xs text-muted mt-3">
-              Average response time: <strong>under 2 hours</strong>
+              {t.rich('hours.responseTime', { b: (chunks) => <strong>{chunks}</strong> })}
             </p>
           </div>
 
           {/* FAQ link */}
           <div className="bg-primary/5 rounded-2xl p-4 text-sm text-secondary">
-            <p className="font-semibold mb-1">Looking for quick answers?</p>
-            <p className="text-muted mb-2 text-xs">Check our FAQ for instant help with common questions.</p>
+            <p className="font-semibold mb-1">{t('faqTeaser.title')}</p>
+            <p className="text-muted mb-2 text-xs">{t('faqTeaser.desc')}</p>
             <Link href="/pages/faq" className="text-primary font-medium hover:underline text-xs">
-              Browse FAQ →
+              {t('faqTeaser.link')}
             </Link>
           </div>
         </div>

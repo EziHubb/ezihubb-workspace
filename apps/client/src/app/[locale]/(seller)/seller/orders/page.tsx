@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocale, useTranslations } from 'next-intl';
 import { ShoppingBag } from 'lucide-react';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
 import { apiClient } from '@ezihubb/api-client';
@@ -29,6 +30,8 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUSES = ['', 'PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 
 export default function SellerOrdersPage() {
+  const t                     = useTranslations('seller');
+  const locale                = useLocale();
   const token                 = useAuthStore((s) => s.accessToken);
   const [status, setStatus]   = useState('');
   const [page, setPage]       = useState(1);
@@ -47,7 +50,7 @@ export default function SellerOrdersPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-bold text-secondary">Orders</h1>
+      <h1 className="text-xl font-bold text-secondary">{t('orders.title')}</h1>
 
       {/* Filters */}
       <div className="flex gap-2 flex-wrap">
@@ -60,7 +63,7 @@ export default function SellerOrdersPage() {
               status === s ? 'bg-primary text-white border-primary' : 'border-border text-secondary hover:bg-background'
             }`}
           >
-            {s || 'All'}
+            {s ? (t.has(`status.${s}`) ? t(`status.${s}`) : s) : t('orders.all')}
           </button>
         ))}
       </div>
@@ -73,13 +76,13 @@ export default function SellerOrdersPage() {
         ) : orders.length === 0 ? (
           <div className="p-14 text-center">
             <ShoppingBag className="w-10 h-10 text-muted/30 mx-auto mb-2" />
-            <p className="text-sm text-muted">No orders found</p>
+            <p className="text-sm text-muted">{t('orders.noOrders')}</p>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-background/40">
               <tr>
-                {['Order', 'Customer', 'Items', 'Total', 'Status', 'Date'].map((h) => (
+                {[t('orders.table.order'), t('orders.table.customer'), t('orders.table.items'), t('orders.table.total'), t('orders.table.status'), t('orders.table.date')].map((h) => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -93,11 +96,11 @@ export default function SellerOrdersPage() {
                   <td className="px-5 py-3 font-semibold">{fmtAmount(o.total)}</td>
                   <td className="px-5 py-3">
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[o.status] ?? 'bg-border/30 text-muted'}`}>
-                      {o.status}
+                      {t.has(`status.${o.status}`) ? t(`status.${o.status}`) : o.status}
                     </span>
                   </td>
                   <td className="px-5 py-3 text-muted">
-                    {new Date(o.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(o.createdAt))}
                   </td>
                 </tr>
               ))}
@@ -109,9 +112,9 @@ export default function SellerOrdersPage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center gap-2">
-          <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1.5 text-sm border border-border rounded-button disabled:opacity-40 hover:bg-background">Prev</button>
-          <span className="px-3 py-1.5 text-sm text-muted">Page {page} / {totalPages}</span>
-          <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 text-sm border border-border rounded-button disabled:opacity-40 hover:bg-background">Next</button>
+          <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1.5 text-sm border border-border rounded-button disabled:opacity-40 hover:bg-background">{t('pagination.prev')}</button>
+          <span className="px-3 py-1.5 text-sm text-muted">{t('pagination.page', { current: page, total: totalPages })}</span>
+          <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 text-sm border border-border rounded-button disabled:opacity-40 hover:bg-background">{t('pagination.next')}</button>
         </div>
       )}
     </div>

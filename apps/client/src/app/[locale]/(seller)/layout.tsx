@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { Menu, X } from 'lucide-react';
 import { useAuthStore } from '../../../lib/store/auth.store';
@@ -18,6 +18,7 @@ interface StoreMe {
 }
 
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
+  const t         = useTranslations('seller.layout');
   const locale    = useLocale();
   const router    = useRouter();
   const pathname  = usePathname();
@@ -54,7 +55,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex flex-col w-56 shrink-0 bg-surface border-r border-border">
         <div className="px-4 py-5 border-b border-border">
-          <span className="text-xs font-bold uppercase tracking-widest text-primary">Seller Hub</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-primary">{t('hubLabel')}</span>
         </div>
         <div className="flex-1 overflow-y-auto py-2 px-2">
           <SellerSidebar store={{ name: store.name, slug: store.slug }} />
@@ -70,7 +71,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
           />
           <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-surface border-r border-border flex flex-col lg:hidden">
             <div className="flex items-center justify-between px-4 py-4 border-b border-border">
-              <span className="text-xs font-bold uppercase tracking-widest text-primary">Seller Hub</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-primary">{t('hubLabel')}</span>
               <button type="button" onClick={() => setSidebarOpen(false)} className="p-1 rounded text-muted hover:text-secondary">
                 <X className="w-5 h-5" />
               </button>

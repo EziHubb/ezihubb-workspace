@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { X, CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react';
 import { useToasts, toast as toastApi } from '../../lib/store/toast.store';
 import type { ToastItem, ToastType } from '../../lib/store/toast.store';
@@ -37,6 +38,7 @@ const TYPE_STYLES: Record<ToastType, {
 // ── Single toast item ─────────────────────────────────────────────────────────
 
 function Toast({ t }: { t: ToastItem }) {
+  const tCommon = useTranslations('common');
   const [progress, setProgress] = useState(100);
   const [paused,   setPaused]   = useState(false);
   const startRef = useRef(Date.now());
@@ -95,7 +97,7 @@ function Toast({ t }: { t: ToastItem }) {
       <button
         type="button"
         onClick={() => toastApi.dismiss(t.id)}
-        aria-label="Dismiss notification"
+        aria-label={tCommon('dismissNotification')}
         className="shrink-0 text-muted hover:text-secondary transition-colors"
       >
         <X className="w-4 h-4" />
@@ -115,13 +117,14 @@ function Toast({ t }: { t: ToastItem }) {
 // ── Container ─────────────────────────────────────────────────────────────────
 
 export function ToastContainer() {
+  const tCommon = useTranslations('common');
   const toasts = useToasts();
 
   if (toasts.length === 0) return null;
 
   return (
     <div
-      aria-label="Notifications"
+      aria-label={tCommon('notifications')}
       className={[
         'fixed z-[100] flex flex-col gap-2 pointer-events-none',
         // Mobile: top-center

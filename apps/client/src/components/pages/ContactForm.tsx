@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useTranslations } from 'next-intl';
 import { CheckCircle, Loader2, Send } from 'lucide-react';
 import { apiClient } from '../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -12,24 +13,19 @@ import { API_ROUTES } from '@ezihubb/constants';
 
 const SUBJECT_VALUES = ['general', 'order', 'personalization', 'returns', 'custom', 'other'] as const;
 
-const schema = z.object({
-  name:        z.string().min(2,  'Name must be at least 2 characters').max(100),
-  email:       z.string().email('Enter a valid email address'),
-  subject:     z.enum(SUBJECT_VALUES, { error: 'Please select a topic' }),
-  orderNumber: z.string().max(50).optional(),
-  message:     z.string().min(20, 'Please provide more detail (min 20 characters)').max(2000),
-});
+// Validation messages injected at call time via a factory, since useTranslations
+// can only be called inside a component/hook body.
+function buildSchema(t: ReturnType<typeof useTranslations<'pages.contact.form.validation'>>) {
+  return z.object({
+    name:        z.string().min(2, t('nameMin')).max(100),
+    email:       z.string().email(t('emailInvalid')),
+    subject:     z.enum(SUBJECT_VALUES, { error: t('subjectRequired') }),
+    orderNumber: z.string().max(50).optional(),
+    message:     z.string().min(20, t('messageMin')).max(2000),
+  });
+}
 
-type FormValues = z.infer<typeof schema>;
-
-const SUBJECTS: { value: FormValues['subject']; label: string }[] = [
-  { value: 'general',         label: 'General question'            },
-  { value: 'order',           label: 'Order issue or question'     },
-  { value: 'personalization', label: 'Personalization help'        },
-  { value: 'returns',         label: 'Returns & exchanges'         },
-  { value: 'custom',          label: 'Custom / bulk order inquiry' },
-  { value: 'other',           label: 'Other'                       },
-];
+type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 
 // ── Input style helper ────────────────────────────────────────────────────────
 
@@ -43,8 +39,20 @@ const inp = (hasError?: boolean) =>
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function ContactForm() {
+  const t           = useTranslations('pages.contact.form');
+  const tValidation  = useTranslations('pages.contact.form.validation');
+
   const [submitted, setSubmitted] = useState(false);
   const [apiError,  setApiError]  = useState('');
+
+  const SUBJECTS: { value: FormValues['subject']; label: string }[] = [
+    { value: 'general',         label: t('subjects.general')         },
+    { value: 'order',           label: t('subjects.order')           },
+    { value: 'personalization', label: t('subjects.personalization') },
+    { value: 'returns',         label: t('subjects.returns')         },
+    { value: 'custom',          label: t('subjects.custom')          },
+    { value: 'other',           label: t('subjects.other')           },
+  ];
 
   const {
     register,
@@ -53,7 +61,7 @@ export function ContactForm() {
     reset,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(buildSchema(tValidation)),
   });
 
   const subject       = watch('subject');
@@ -66,7 +74,7 @@ export function ContactForm() {
       setSubmitted(true);
       reset();
     } catch (err) {
-      setApiError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setApiError(err instanceof Error ? err.message : t('genericError'));
     }
   };
 
@@ -78,16 +86,16 @@ export function ContactForm() {
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
           <CheckCircle className="w-8 h-8 text-green-600" />
         </div>
-        <h3 className="text-xl font-bold text-secondary mb-2">Message sent!</h3>
+        <h3 className="text-xl font-bold text-secondary mb-2">{t('successTitle')}</h3>
         <p className="text-muted mb-4 text-sm max-w-xs">
-          We&apos;ll reply to your email within 2 hours during business hours.
+          {t('successDesc')}
         </p>
         <button
           type="button"
           onClick={() => setSubmitted(false)}
           className="text-primary text-sm hover:underline"
         >
-          Send another message
+          {t('sendAnother')}
         </button>
       </div>
     );
@@ -107,25 +115,25 @@ export function ContactForm() {
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label className="text-sm font-medium text-secondary block mb-1.5">
-            Name <span className="text-red-500">*</span>
+            {t('nameLabel')} <span className="text-red-500">*</span>
           </label>
           <input
             {...register('name')}
             autoComplete="name"
-            placeholder="Your full name"
+            placeholder={t('namePlaceholder')}
             className={inp(!!errors.name)}
           />
           {errors.name && <p className="text-xs text-red-500 mt-0.5">{errors.name.message}</p>}
         </div>
         <div>
           <label className="text-sm font-medium text-secondary block mb-1.5">
-            Email <span className="text-red-500">*</span>
+            {t('emailLabel')} <span className="text-red-500">*</span>
           </label>
           <input
             {...register('email')}
             type="email"
             autoComplete="email"
-            placeholder="you@example.com"
+            placeholder={t('emailPlaceholder')}
             className={inp(!!errors.email)}
           />
           {errors.email && <p className="text-xs text-red-500 mt-0.5">{errors.email.message}</p>}
@@ -135,10 +143,10 @@ export function ContactForm() {
       {/* Subject */}
       <div>
         <label className="text-sm font-medium text-secondary block mb-1.5">
-          Subject <span className="text-red-500">*</span>
+          {t('subjectLabel')} <span className="text-red-500">*</span>
         </label>
         <select {...register('subject')} className={inp(!!errors.subject)}>
-          <option value="">Select a topic…</option>
+          <option value="">{t('subjectPlaceholder')}</option>
           {SUBJECTS.map((s) => (
             <option key={s.value} value={s.value}>{s.label}</option>
           ))}
@@ -150,15 +158,15 @@ export function ContactForm() {
       {showOrderField && (
         <div>
           <label className="text-sm font-medium text-secondary block mb-1.5">
-            Order Number
+            {t('orderNumberLabel')}
           </label>
           <input
             {...register('orderNumber')}
-            placeholder="e.g. MLH-2024-04521"
+            placeholder={t('orderNumberPlaceholder')}
             className={`${inp()} font-mono`}
           />
           <p className="text-xs text-muted mt-0.5">
-            Find this in your confirmation email or Account → My Orders.
+            {t('orderNumberHint')}
           </p>
         </div>
       )}
@@ -166,12 +174,12 @@ export function ContactForm() {
       {/* Message */}
       <div>
         <label className="text-sm font-medium text-secondary block mb-1.5">
-          Message <span className="text-red-500">*</span>
+          {t('messageLabel')} <span className="text-red-500">*</span>
         </label>
         <textarea
           {...register('message')}
           rows={5}
-          placeholder="Tell us how we can help…"
+          placeholder={t('messagePlaceholder')}
           className={`${inp(!!errors.message)} resize-none`}
         />
         {errors.message && <p className="text-xs text-red-500 mt-0.5">{errors.message.message}</p>}
@@ -185,12 +193,12 @@ export function ContactForm() {
         {isSubmitting ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            Sending…
+            {t('submitting')}
           </>
         ) : (
           <>
             <Send className="w-4 h-4" />
-            Send Message
+            {t('submit')}
           </>
         )}
       </button>

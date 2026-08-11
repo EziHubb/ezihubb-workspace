@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { DollarSign } from 'lucide-react';
 import { Skeleton } from '@ezihubb/ui';
 import { useAuthQuery } from '../../../../../../lib/hooks/useAuthQuery';
@@ -32,9 +33,6 @@ interface CommissionsPage {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const fmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-function formatDate(d: string) { return fmt.format(new Date(d)); }
-
 function daysUntilLock(lockedAt: string | null): number | null {
   if (!lockedAt) return null;
   const diff = new Date(lockedAt).getTime() - Date.now();
@@ -42,27 +40,23 @@ function daysUntilLock(lockedAt: string | null): number | null {
   return days > 0 ? days : null;
 }
 
-const STATUS_BADGE: Record<CommissionStatus, { label: string; className: string }> = {
-  PENDING:   { label: 'Pending',   className: 'bg-amber-100 text-amber-700' },
-  CONFIRMED: { label: 'Confirmed', className: 'bg-green-100 text-green-700' },
-  PAID:      { label: 'Paid',      className: 'bg-gray-100 text-gray-500' },
-  CANCELLED: { label: 'Cancelled', className: 'bg-red-100 text-red-600' },
-};
-
-const LEVEL_LABEL: Record<number, string> = {
-  1: 'Direct (L1)',
-  2: 'Level 2',
-  3: 'Level 3',
+const STATUS_CLASSNAMES: Record<CommissionStatus, string> = {
+  PENDING:   'bg-amber-100 text-amber-700',
+  CONFIRMED: 'bg-green-100 text-green-700',
+  PAID:      'bg-gray-100 text-gray-500',
+  CANCELLED: 'bg-red-100 text-red-600',
 };
 
 type FilterTab = 'ALL' | CommissionStatus;
 
-const FILTER_TABS: { key: FilterTab; label: string }[] = [
-  { key: 'ALL',       label: 'All'       },
-  { key: 'PENDING',   label: 'Pending'   },
-  { key: 'CONFIRMED', label: 'Confirmed' },
-  { key: 'PAID',      label: 'Paid'      },
-];
+function useFilterTabs(t: ReturnType<typeof useTranslations>): { key: FilterTab; label: string }[] {
+  return [
+    { key: 'ALL',       label: t('earnings.tabAll') },
+    { key: 'PENDING',   label: t('commissionStatus.pending') },
+    { key: 'CONFIRMED', label: t('commissionStatus.confirmed') },
+    { key: 'PAID',      label: t('commissionStatus.paid') },
+  ];
+}
 
 const PAGE_SIZE = 20;
 
@@ -91,6 +85,16 @@ function TableSkeleton() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ReferralEarningsPage() {
+  const locale = useLocale();
+  const t = useTranslations('account.referrals');
+  const tCommon = useTranslations('common');
+  const filterTabs = useFilterTabs(t);
+
+  const fmt = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric' });
+  const formatDate = (d: string) => fmt.format(new Date(d));
+
+  const levelLabel = (level: number) => level === 1 ? t('earnings.levelDirect') : t('earnings.levelN', { level });
+
   const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
   const [page, setPage]           = useState(1);
 
@@ -114,15 +118,15 @@ export default function ReferralEarningsPage() {
     <div className="space-y-6">
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div>
-        <h1 className="font-display text-2xl font-bold text-secondary">Commission History</h1>
+        <h1 className="font-display text-2xl font-bold text-secondary">{t('earnings.title')}</h1>
         <p className="text-sm text-muted mt-1">
-          All referral commissions earned across your network.
+          {t('earnings.subtitle')}
         </p>
       </div>
 
       {/* ── Filter tabs ────────────────────────────────────────────────────── */}
       <div className="flex gap-1 p-1 bg-[#FAFAF8] border border-border rounded-card w-fit">
-        {FILTER_TABS.map(({ key, label }) => (
+        {filterTabs.map(({ key, label }) => (
           <button
             key={key}
             type="button"
@@ -148,8 +152,8 @@ export default function ReferralEarningsPage() {
             <DollarSign className="w-10 h-10 text-muted/30" />
             <p className="text-sm text-muted">
               {activeTab === 'ALL'
-                ? 'No commissions yet. Share your referral link to start earning!'
-                : `No ${activeTab.toLowerCase()} commissions.`}
+                ? t('earnings.emptyAll')
+                : t('earnings.emptyFiltered', { status: t(`commissionStatus.${activeTab.toLowerCase()}` as 'commissionStatus.pending').toLowerCase() })}
             </p>
           </div>
         ) : (
@@ -159,18 +163,19 @@ export default function ReferralEarningsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-[#FAFAF8] border-b border-border">
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Date</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">From</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Order</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Level</th>
-                    <th className="text-right px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Amount</th>
-                    <th className="text-right px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Status</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">{t('earnings.tableDate')}</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">{t('earnings.tableFrom')}</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">{t('earnings.tableOrder')}</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">{t('earnings.tableLevel')}</th>
+                    <th className="text-right px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">{t('earnings.tableAmount')}</th>
+                    <th className="text-right px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wide">{t('earnings.tableStatus')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {safeArr(data.data).map((c) => {
                     const lockDays   = c.status === 'PENDING' ? daysUntilLock(c.lockedAt) : null;
-                    const badge      = STATUS_BADGE[c.status];
+                    const badgeClassName = STATUS_CLASSNAMES[c.status];
+                    const badgeLabel = t(`commissionStatus.${c.status.toLowerCase()}` as 'commissionStatus.pending');
                     return (
                       <tr
                         key={c.id}
@@ -191,7 +196,7 @@ export default function ReferralEarningsPage() {
                         </td>
                         <td className="px-5 py-4">
                           <span className="text-xs font-medium px-2 py-0.5 bg-primary/10 text-primary rounded-full">
-                            {LEVEL_LABEL[c.level] ?? `Level ${c.level}`}
+                            {levelLabel(c.level)}
                           </span>
                         </td>
                         <td className="px-5 py-4 text-right font-bold tabular-nums text-green-700">
@@ -199,12 +204,12 @@ export default function ReferralEarningsPage() {
                         </td>
                         <td className="px-5 py-4 text-right">
                           <div className="flex flex-col items-end gap-0.5">
-                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badge.className}`}>
-                              {badge.label}
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badgeClassName}`}>
+                              {badgeLabel}
                             </span>
                             {lockDays !== null && (
                               <span className="text-[10px] text-amber-600">
-                                Locks in {lockDays}d
+                                {t('earnings.locksInDays', { days: lockDays })}
                               </span>
                             )}
                           </div>
@@ -220,7 +225,8 @@ export default function ReferralEarningsPage() {
             <div className="sm:hidden border border-border rounded-card overflow-hidden divide-y divide-border">
               {safeArr(data.data).map((c) => {
                 const lockDays = c.status === 'PENDING' ? daysUntilLock(c.lockedAt) : null;
-                const badge    = STATUS_BADGE[c.status];
+                const badgeClassName = STATUS_CLASSNAMES[c.status];
+                const badgeLabel = t(`commissionStatus.${c.status.toLowerCase()}` as 'commissionStatus.pending');
                 return (
                   <div key={c.id} className="px-4 py-4 space-y-2">
                     <div className="flex items-start justify-between gap-2">
@@ -228,7 +234,7 @@ export default function ReferralEarningsPage() {
                         <p className="text-sm font-medium text-secondary">
                           {c.fromUser
                             ? `${c.fromUser.firstName} ${c.fromUser.lastName}`
-                            : `${LEVEL_LABEL[c.level] ?? `Level ${c.level}`} commission`}
+                            : t('levelCommission', { level: c.level })}
                         </p>
                         <p className="text-xs text-muted">{formatDate(c.createdAt)}</p>
                       </div>
@@ -238,14 +244,14 @@ export default function ReferralEarningsPage() {
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-medium px-2 py-0.5 bg-primary/10 text-primary rounded-full">
-                        {LEVEL_LABEL[c.level] ?? `Level ${c.level}`}
+                        {levelLabel(c.level)}
                       </span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badge.className}`}>
-                        {badge.label}
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badgeClassName}`}>
+                        {badgeLabel}
                       </span>
                       {lockDays !== null && (
                         <span className="text-[10px] text-amber-600 font-medium">
-                          Locks in {lockDays}d
+                          {t('earnings.locksInDays', { days: lockDays })}
                         </span>
                       )}
                       {c.orderId && (
@@ -263,7 +269,7 @@ export default function ReferralEarningsPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between text-sm">
                 <p className="text-muted text-xs">
-                  Page {page} of {totalPages} &nbsp;·&nbsp; {data.total} total
+                  {t('earnings.pageOf', { page, totalPages })} &nbsp;·&nbsp; {t('earnings.totalCount', { count: data.total })}
                 </p>
                 <div className="flex items-center gap-2">
                   <button
@@ -272,7 +278,7 @@ export default function ReferralEarningsPage() {
                     disabled={page <= 1}
                     className="px-3 py-1.5 border border-border rounded-button text-xs font-medium text-secondary hover:border-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
-                    Previous
+                    {tCommon('previous')}
                   </button>
                   <button
                     type="button"
@@ -280,7 +286,7 @@ export default function ReferralEarningsPage() {
                     disabled={page >= totalPages}
                     className="px-3 py-1.5 border border-border rounded-button text-xs font-medium text-secondary hover:border-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
-                    Next
+                    {tCommon('next')}
                   </button>
                 </div>
               </div>

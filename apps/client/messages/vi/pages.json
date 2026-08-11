@@ -1,0 +1,646 @@
+{
+  "about": {
+    "eyebrow": "Câu Chuyện Của Chúng Tôi",
+    "heroTitleLine1": "Lưu Giữ Kỷ Niệm,",
+    "heroTitleLine2": "Từng Món Quà Một",
+    "heroImageAlt": "Món quà cá nhân hóa đang được in",
+    "quote": "Món quà ý nghĩa nhất không phải mua được — mà được tạo nên bằng sự chủ tâm, tình yêu thương và dấu ấn riêng.",
+    "missionP1": "EziHubb ra đời từ một niềm tin đơn giản: món quà ý nghĩa nhất là món quà được làm riêng cho một người. Chúng tôi tự thiết kế mọi sản phẩm và chỉ in theo yêu cầu — không có gì được sản xuất sẵn và cất trong kho.",
+    "missionP2": "Mỗi đơn hàng đều trải qua cùng một quy trình tỉ mỉ, từ thiết kế đến sản xuất rồi giao hàng, để chiếc cốc, tranh canvas hay bình giữ nhiệt bạn nhận được thực sự được làm riêng cho bạn.",
+    "missionP3": "Chúng tôi tin cá nhân hóa không chỉ là in một cái tên. Đó là lưu giữ một khoảnh khắc, trân trọng một mối quan hệ, và tạo ra thứ sẽ được nâng niu qua năm tháng.",
+    "stats": {
+      "madeToOrder": { "value": "Làm Theo Yêu Cầu", "label": "Mỗi sản phẩm đều được cá nhân hóa" },
+      "usaPrinted": { "value": "In Tại Mỹ", "label": "Sản xuất theo đơn đặt hàng" },
+      "noInventory": { "value": "Không Tồn Kho", "label": "Không có gì được làm sẵn hay lưu trữ" }
+    },
+    "process": {
+      "title": "Từ Ý Tưởng Của Bạn Đến Tay Người Nhận",
+      "subtitle": "Quy trình của chúng tôi đơn giản và đầy niềm vui — đây là cách món quà của bạn đi từ ý tưởng đến khi được giao.",
+      "steps": {
+        "personalize": {
+          "title": "Bạn Cá Nhân Hóa",
+          "description": "Chọn từ hàng trăm sản phẩm, tải lên ảnh của bạn, thêm tên và lời nhắn, sau đó xem trước sản phẩm trước khi đặt hàng."
+        },
+        "print": {
+          "title": "Chúng Tôi In",
+          "description": "Mỗi sản phẩm được in theo yêu cầu bằng vật liệu cao cấp và thiết bị chuyên nghiệp — chỉ được làm sau khi bạn đặt hàng."
+        },
+        "deliver": {
+          "title": "Chúng Tôi Giao Hàng",
+          "description": "Sản phẩm của bạn được đóng gói cẩn thận và giao đến tận cửa nhà bạn — hoặc trực tiếp đến người nhận như một món quà bất ngờ."
+        }
+      }
+    },
+    "values": {
+      "title": "Điều Chúng Tôi Theo Đuổi",
+      "items": {
+        "love": { "title": "Làm Bằng Cả Trái Tim", "description": "Mỗi đơn hàng là một biểu hiện cá nhân của sự quan tâm. Chúng tôi trân trọng từng sản phẩm với sự tỉ mỉ xứng đáng." },
+        "quality": { "title": "Chất Lượng Là Trên Hết", "description": "Chúng tôi chỉ sử dụng chất liệu cao cấp và công nghệ in chuyên nghiệp để đảm bảo kết quả bền lâu." },
+        "sustainable": { "title": "Bền Vững", "description": "Chúng tôi sử dụng mực in thân thiện môi trường, bao bì tái chế và các lựa chọn vận chuyển trung hòa carbon khi có thể." },
+        "customer": { "title": "Khách Hàng Là Ưu Tiên", "description": "Từ cá nhân hóa đến giao hàng, chúng tôi luôn đồng hành cùng bạn. Đội ngũ của chúng tôi phản hồi trong vòng 2 giờ." }
+      }
+    },
+    "cta": {
+      "title": "Sẵn Sàng Tạo Nên Điều Đặc Biệt?",
+      "subtitle": "Khám phá bộ sưu tập của chúng tôi và tạo nên món quà cá nhân hóa mà họ sẽ không bao giờ quên.",
+      "button": "Mua Sắm Quà Cá Nhân Hóa"
+    }
+  },
+
+  "careers": {
+    "eyebrow": "Tuyển Dụng",
+    "title": "Làm Việc Tại EziHubb",
+    "subtitle": "Chúng tôi là một đội ngũ nhỏ với những hoài bão lớn. Nếu bạn yêu thích sự khéo léo, sáng tạo và mang lại niềm vui cho mọi người — chúng tôi rất muốn nghe từ bạn.",
+    "cultureImageAlt": "Đội ngũ đang làm việc",
+    "cultureTitle": "Cuộc Sống Tại EziHubb",
+    "perks": {
+      "remote": "Văn hóa làm việc từ xa — làm việc ở bất cứ đâu",
+      "flexible": "Giờ giấc linh hoạt — chúng tôi quan tâm đến kết quả, không phải số giờ làm",
+      "mission": "Công việc mang lại ý nghĩa và nụ cười cho mọi người",
+      "growth": "Cơ hội phát triển trong một startup đang tăng trưởng nhanh",
+      "discounts": "Ưu đãi cho nhân viên trên tất cả sản phẩm của chúng tôi",
+      "ownership": "Đội ngũ nhỏ = quyền làm chủ và tầm ảnh hưởng thực sự"
+    },
+    "openPositions": {
+      "title": "Vị Trí Đang Tuyển",
+      "emptyTitle": "Hiện tại chưa có vị trí nào đang tuyển",
+      "emptyDesc": "Hiện chúng tôi chưa có vị trí trống nào, nhưng chúng tôi luôn phát triển. Hãy gửi hồ sơ của bạn và chúng tôi sẽ ghi nhớ bạn cho những cơ hội trong tương lai.",
+      "resumeButton": "Gửi Hồ Sơ Của Bạn"
+    },
+    "values": {
+      "title": "Những Điều Chúng Tôi Tìm Kiếm",
+      "items": {
+        "creative": { "title": "Người tư duy sáng tạo", "desc": "Chúng tôi trân trọng những người nhìn vấn đề như một câu đố cần được giải quyết một cách sáng tạo." },
+        "ownership": { "title": "Tinh thần làm chủ", "desc": "Đội ngũ nhỏ nghĩa là bạn làm chủ công việc từ đầu đến cuối. Chúng tôi tin tưởng bạn sẽ tự tin thực hiện." },
+        "customer": { "title": "Lấy khách hàng làm trọng tâm", "desc": "Mọi việc chúng tôi làm đều bắt đầu từ câu hỏi \"điều này giúp ngày của khách hàng tốt hơn như thế nào?\"" }
+      }
+    }
+  },
+
+  "contact": {
+    "eyebrow": "Liên Hệ Với Chúng Tôi",
+    "title": "Chúng Tôi Rất Mong Được Lắng Nghe Bạn",
+    "subtitle": "Câu hỏi, góp ý, hay đơn hàng đặc biệt — chúng tôi luôn sẵn sàng hỗ trợ.",
+    "cards": {
+      "chat": { "title": "Trò Chuyện Trực Tiếp", "desc": "Hỗ trợ 24/7", "action": "Bắt đầu trò chuyện →" },
+      "email": { "title": "Email", "desc": "support@ezihubb.com", "action": "Gửi email →" },
+      "orderIssues": { "title": "Vấn Đề Đơn Hàng", "desc": "Theo dõi hoặc quản lý đơn hàng của bạn", "action": "Theo dõi đơn hàng →" }
+    },
+    "hours": {
+      "title": "Giờ Làm Việc",
+      "mondayFriday": "Thứ Hai – Thứ Sáu",
+      "mondayFridayTime": "9:00 – 18:00 (giờ EST)",
+      "saturday": "Thứ Bảy",
+      "saturdayTime": "10:00 – 16:00 (giờ EST)",
+      "sunday": "Chủ Nhật",
+      "sundayTime": "Nghỉ",
+      "responseTime": "Thời gian phản hồi trung bình: <b>dưới 2 giờ</b>"
+    },
+    "faqTeaser": {
+      "title": "Đang tìm câu trả lời nhanh?",
+      "desc": "Xem mục Câu Hỏi Thường Gặp để được hỗ trợ ngay với các thắc mắc phổ biến.",
+      "link": "Xem Câu Hỏi Thường Gặp →"
+    },
+    "form": {
+      "nameLabel": "Họ và tên",
+      "namePlaceholder": "Họ và tên đầy đủ của bạn",
+      "emailLabel": "Email",
+      "emailPlaceholder": "ban@example.com",
+      "subjectLabel": "Chủ đề",
+      "subjectPlaceholder": "Chọn một chủ đề…",
+      "subjects": {
+        "general": "Câu hỏi chung",
+        "order": "Vấn đề hoặc câu hỏi về đơn hàng",
+        "personalization": "Hỗ trợ cá nhân hóa",
+        "returns": "Đổi trả hàng",
+        "custom": "Yêu cầu đặt hàng riêng / số lượng lớn",
+        "other": "Khác"
+      },
+      "orderNumberLabel": "Mã đơn hàng",
+      "orderNumberPlaceholder": "vd: MLH-2024-04521",
+      "orderNumberHint": "Bạn có thể tìm mã này trong email xác nhận hoặc tại Tài khoản → Đơn hàng của tôi.",
+      "messageLabel": "Nội dung",
+      "messagePlaceholder": "Hãy cho chúng tôi biết chúng tôi có thể giúp gì cho bạn…",
+      "submit": "Gửi Tin Nhắn",
+      "submitting": "Đang gửi…",
+      "successTitle": "Đã gửi tin nhắn!",
+      "successDesc": "Chúng tôi sẽ phản hồi qua email của bạn trong vòng 2 giờ trong giờ làm việc.",
+      "sendAnother": "Gửi tin nhắn khác",
+      "genericError": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+      "validation": {
+        "nameMin": "Họ và tên phải có ít nhất 2 ký tự",
+        "emailInvalid": "Vui lòng nhập địa chỉ email hợp lệ",
+        "subjectRequired": "Vui lòng chọn một chủ đề",
+        "messageMin": "Vui lòng cung cấp thêm chi tiết (tối thiểu 20 ký tự)"
+      }
+    }
+  },
+
+  "faq": {
+    "eyebrow": "Câu Hỏi Thường Gặp",
+    "title": "Câu Hỏi Thường Gặp",
+    "subtitle": "Mọi thứ bạn cần biết về đặt hàng, cá nhân hóa và giao hàng.",
+    "search": {
+      "placeholder": "Tìm câu hỏi… vd: vận chuyển, hoàn tiền, cá nhân hóa",
+      "clearAriaLabel": "Xóa tìm kiếm",
+      "noResultsPrefix": "Không có kết quả cho",
+      "askDirectly": "Hỏi trực tiếp chúng tôi →"
+    },
+    "stillHaveQuestions": {
+      "title": "Vẫn còn thắc mắc?",
+      "desc": "Đội ngũ hỗ trợ của chúng tôi phản hồi trong vòng 2 giờ vào các ngày làm việc.",
+      "button": "Liên Hệ Hỗ Trợ"
+    },
+    "data": {
+      "categories": {
+        "ordering": "Đặt Hàng & Cá Nhân Hóa",
+        "production": "Sản Xuất & Chất Lượng",
+        "shipping": "Vận Chuyển & Giao Hàng",
+        "returns": "Đổi Trả & Hoàn Tiền",
+        "account": "Tài Khoản & Thanh Toán"
+      },
+      "questions": {
+        "ordering": {
+          "q1": { "q": "Làm thế nào để cá nhân hóa sản phẩm?", "a": "Sau khi chọn sản phẩm, nhấn \"Cá Nhân Hóa Ngay\" để mở công cụ tùy chỉnh của chúng tôi. Bạn có thể thêm tên, tải ảnh lên, chọn kiểu dáng và nhập lời nhắn. Bạn sẽ thấy bản xem trước theo thời gian thực trước khi thêm vào giỏ hàng." },
+          "q2": { "q": "Định dạng tệp ảnh nào được chấp nhận khi tải lên?", "a": "Chúng tôi chấp nhận JPG, PNG, WEBP và HEIC (ảnh chụp từ iPhone). Để có kết quả tốt nhất, hãy dùng ảnh có độ phân giải tối thiểu 1000×1000 pixel. Chúng tôi sẽ báo cho bạn biết nếu chất lượng ảnh quá thấp." },
+          "q3": { "q": "Tôi có thể đặt sản phẩm mà không cần cá nhân hóa không?", "a": "Hầu hết sản phẩm của chúng tôi được thiết kế để cá nhân hóa, nhưng một số có thể đặt mua nguyên bản. Sản phẩm có nút \"Thêm Vào Giỏ Hàng\" (không yêu cầu cá nhân hóa) có thể mua ngay lập tức." },
+          "q4": { "q": "Tôi có thể thay đổi đơn hàng sau khi đặt không?", "a": "Có — nhưng chỉ trong vòng 2 giờ sau khi đặt hàng. Sau thời gian đó, quá trình sản xuất có thể đã bắt đầu và không thể thay đổi được nữa. Vui lòng liên hệ ngay với support@ezihubb.com nếu cần thay đổi." },
+          "q5": { "q": "Bạn có nhận đặt hàng riêng không có trên website không?", "a": "Có! Chúng tôi rất thích các đơn hàng đặc biệt. Hãy liên hệ qua trang Liên Hệ và mô tả những gì bạn cần. Chúng tôi nhận đặt hàng riêng cho sự kiện, quà tặng doanh nghiệp và đơn hàng số lượng lớn." }
+        },
+        "production": {
+          "q1": { "q": "Quá trình sản xuất mất bao lâu?", "a": "Hầu hết sản phẩm được sản xuất trong vòng 3–7 ngày làm việc sau khi đặt hàng. Sản xuất nhanh (1–2 ngày) có sẵn khi thanh toán cho hầu hết sản phẩm." },
+          "q2": { "q": "Bạn sử dụng vật liệu và phương pháp in nào?", "a": "Tùy thuộc vào sản phẩm. Cốc được làm bằng gốm sứ với công nghệ in thăng hoa. Tranh canvas dùng công nghệ in UV giclée trên vải canvas pha cotton. Quần áo dùng công nghệ in DTG (in trực tiếp lên vải) trên cotton cao cấp. Chi tiết cụ thể có trên từng trang sản phẩm." },
+          "q3": { "q": "Nếu chất lượng đơn hàng không như mong đợi thì sao?", "a": "Chúng tôi cam kết chất lượng cho mọi sản phẩm. Nếu bạn không hài lòng, hãy liên hệ trong vòng 30 ngày kèm ảnh chụp vấn đề và chúng tôi sẽ gửi sản phẩm thay thế miễn phí hoặc hoàn tiền toàn bộ — không cần giải thích thêm." }
+        },
+        "shipping": {
+          "q1": { "q": "Vận chuyển mất bao lâu?", "a": "Vận chuyển tiêu chuẩn trong nước Mỹ mất 5–10 ngày làm việc sau khi sản xuất. Vận chuyển nhanh (2–3 ngày) cũng có sẵn. Vận chuyển quốc tế mất 14–21 ngày làm việc." },
+          "q2": { "q": "Bạn có miễn phí vận chuyển không?", "a": "Có! Mọi đơn hàng trong nước Mỹ trên $50 được miễn phí vận chuyển. Đơn hàng quốc tế trên $100 được giảm giá vận chuyển. Miễn phí vận chuyển được áp dụng tự động khi thanh toán." },
+          "q3": { "q": "Tôi có thể theo dõi đơn hàng của mình không?", "a": "Chắc chắn rồi. Ngay khi đơn hàng được gửi đi, bạn sẽ nhận được email kèm mã theo dõi. Bạn cũng có thể theo dõi đơn hàng bất cứ lúc nào tại ezihubb.com/orders/track." },
+          "q4": { "q": "Bạn có vận chuyển quốc tế không?", "a": "Chúng tôi giao hàng đến hơn 30 quốc gia trên toàn thế giới. Chi phí và thời gian vận chuyển tùy theo điểm đến. Nhập địa chỉ khi thanh toán để nhận báo giá chính xác. Lưu ý: đơn hàng quốc tế có thể phát sinh thuế hải quan." },
+          "q5": { "q": "Đơn hàng của tôi báo \"đã giao\" nhưng tôi chưa nhận được — tôi nên làm gì?", "a": "Trước tiên, hãy hỏi hàng xóm và kiểm tra các vị trí an toàn quanh nhà bạn. Nếu vẫn không tìm thấy, hãy liên hệ với chúng tôi trong vòng 7 ngày kể từ ngày giao hàng dự kiến. Chúng tôi sẽ phối hợp với đơn vị vận chuyển để xác định vị trí hoặc gửi hàng thay thế." }
+        },
+        "returns": {
+          "q1": { "q": "Tôi có thể trả lại sản phẩm đã cá nhân hóa không?", "a": "Nhìn chung, sản phẩm cá nhân hóa không thể trả lại vì được làm riêng cho bạn. Tuy nhiên, nếu sản phẩm bị lỗi, cá nhân hóa sai, hoặc hư hỏng trong vận chuyển, chúng tôi sẽ thay thế miễn phí hoặc hoàn tiền toàn bộ." },
+          "q2": { "q": "Nếu tôi lỡ gõ sai chính tả khi cá nhân hóa thì sao?", "a": "Chúng tôi in chính xác những gì bạn nhập — kể cả lỗi chính tả. Vui lòng kiểm tra kỹ mọi nội dung trước khi đặt hàng. Nếu bạn phát hiện lỗi trong vòng 2 giờ sau khi đặt hàng, hãy liên hệ với chúng tôi ngay lập tức." },
+          "q3": { "q": "Hoàn tiền mất bao lâu?", "a": "Sau khi được chấp thuận, khoản hoàn tiền sẽ được xử lý trong vòng 2–3 ngày làm việc. Tùy vào ngân hàng của bạn, có thể mất thêm 3–5 ngày làm việc để hiển thị trên sao kê." }
+        },
+        "account": {
+          "q1": { "q": "Tôi có cần tài khoản để đặt hàng không?", "a": "Không, bạn có thể thanh toán với tư cách khách vãng lai. Tuy nhiên, việc tạo tài khoản cho phép bạn theo dõi đơn hàng, lưu địa chỉ và truy cập lịch sử cá nhân hóa — giúp các lần đặt hàng sau nhanh hơn." },
+          "q2": { "q": "Bạn chấp nhận những phương thức thanh toán nào?", "a": "Chúng tôi chấp nhận hầu hết các thẻ tín dụng lớn (Visa, Mastercard, Amex), PayPal, Apple Pay và Google Pay. Thẻ quà tặng mua từ chúng tôi cũng có thể được áp dụng khi thanh toán." },
+          "q3": { "q": "Thông tin thanh toán của tôi có an toàn không?", "a": "Có. Chúng tôi sử dụng Stripe để xử lý thanh toán — một trong những nền tảng thanh toán an toàn nhất hiện có. Chúng tôi không bao giờ lưu trữ toàn bộ thông tin thẻ của bạn trên máy chủ." }
+        }
+      }
+    }
+  },
+
+  "howItWorks": {
+    "eyebrow": "Cách Thức Hoạt Động",
+    "title": "Tạo Món Quà Hoàn Hảo Thật Đơn Giản",
+    "subtitle": "Từ lúc duyệt sản phẩm đến khi nhận hàng chỉ trong vài bước. Đây là cách quy trình hoạt động chính xác.",
+    "tipLabel": "Mẹo:",
+    "steps": {
+      "browse": {
+        "title": "Duyệt & Chọn Sản Phẩm",
+        "desc": "Khám phá danh mục hơn 120 sản phẩm cá nhân hóa — từ cốc, tranh canvas đến áo hoodie, đồ trang trí và nhiều hơn nữa. Lọc theo dịp, người nhận hoặc danh mục để tìm sản phẩm phù hợp nhất.",
+        "tip": "Sử dụng menu \"Dịp Đặc Biệt\" để tìm quà cho các sự kiện cụ thể như sinh nhật hoặc kỷ niệm."
+      },
+      "personalize": {
+        "title": "Cá Nhân Hóa Theo Ý Bạn",
+        "desc": "Sử dụng công cụ tùy chỉnh dễ dùng của chúng tôi để thêm tên, tải ảnh lên, chọn kiểu dáng và viết lời nhắn đặc biệt. Xem bản xem trước theo thời gian thực khi bạn tùy chỉnh — không cần kỹ năng thiết kế.",
+        "tip": "Tải lên ảnh có chất lượng cao nhất bạn có để có kết quả in tốt nhất. Chúng tôi sẽ tự động tối ưu hóa ảnh."
+      },
+      "craft": {
+        "title": "Chúng Tôi Làm Riêng Cho Bạn",
+        "desc": "Ngay khi bạn đặt hàng, đội ngũ sản xuất của chúng tôi bắt tay vào việc. Mỗi sản phẩm đều được làm theo yêu cầu — không bao giờ sản xuất hàng loạt. Chúng tôi dùng vật liệu cao cấp và công nghệ in chuyên nghiệp để đảm bảo chất lượng tốt nhất.",
+        "tip": "Hầu hết đơn hàng được đưa vào sản xuất trong vòng 1–2 ngày làm việc. Sản xuất nhanh có sẵn khi thanh toán."
+      },
+      "delivery": {
+        "title": "Giao Hàng Nhanh Chóng & An Toàn",
+        "desc": "Đơn hàng của bạn được đóng gói cẩn thận và giao đến tận cửa. Chúng tôi cung cấp vận chuyển tiêu chuẩn miễn phí cho đơn trên $50, và có lựa chọn vận chuyển nhanh nếu bạn cần gấp. Theo dõi thời gian thực giúp bạn luôn cập nhật.",
+        "tip": "Hãy đặt hàng trước ít nhất 7 ngày trước dịp tặng quà để nhận hàng đúng thời gian một cách thoải mái."
+      }
+    },
+    "guarantees": {
+      "title": "Cam Kết Của Chúng Tôi Với Bạn",
+      "items": {
+        "quality": { "title": "Đảm Bảo Chất Lượng", "desc": "Không hài lòng với đơn hàng của bạn? Liên hệ với chúng tôi trong vòng 30 ngày và chúng tôi sẽ khắc phục — thay thế miễn phí hoặc hoàn tiền toàn bộ." },
+        "secure": { "title": "Thanh Toán An Toàn", "desc": "Mua sắm an toàn với mã hóa SSL, thanh toán qua Stripe và PayPal. Thông tin thanh toán của bạn không bao giờ được lưu trên máy chủ của chúng tôi." },
+        "onTime": { "title": "Giao Hàng Đúng Hẹn", "desc": "Chúng tôi theo dõi mọi đơn hàng và chủ động liên hệ với bạn nếu có bất kỳ sự chậm trễ nào. Quà của bạn sẽ đến đúng như đã hứa." },
+        "support": { "title": "Hỗ Trợ 24/7", "desc": "Đội ngũ nhân viên thực sự luôn sẵn sàng hỗ trợ qua trò chuyện hoặc email. Thời gian phản hồi trung bình dưới 2 giờ trong giờ làm việc." }
+      }
+    },
+    "faqTeaser": {
+      "prompt": "Vẫn còn thắc mắc?",
+      "viewFaq": "Xem Toàn Bộ Câu Hỏi Thường Gặp",
+      "contactSupport": "Liên Hệ Hỗ Trợ"
+    }
+  },
+
+  "ourStory": {
+    "eyebrow": "Câu Chuyện Của Chúng Tôi",
+    "heroTitleLine1": "Làm Bằng Tình Yêu,",
+    "heroTitleLine2": "Giao Bằng Sự Tận Tâm",
+    "subtitle": "EziHubb ra đời từ một niềm tin đơn giản: món quà tuyệt vời nhất là món quà kể một câu chuyện — câu chuyện của bạn.",
+    "aboutTitle": "Chúng Tôi Là Ai",
+    "aboutP1": "EziHubb ra đời vì có quá nhiều món quà trên thị trường cảm giác chung chung, sản xuất hàng loạt và dễ bị lãng quên. Chúng tôi muốn giúp việc tặng một món quà thực sự mang dấu ấn cá nhân trở nên dễ dàng hơn — một chiếc cốc khắc câu chuyện riêng, một bức tranh canvas về nơi chốn ý nghĩa, hay một món đồ trang trí khắc ngày đặc biệt.",
+    "aboutP2": "Mọi thiết kế đều được tạo ra nội bộ và chỉ in theo đơn đặt hàng — không có gì được làm sẵn và chờ trong kho để bán. Đó là điều giúp chúng tôi giữ mỗi sản phẩm luôn mang tính cá nhân đối với người nhận.",
+    "aboutImageAlt": "Quá trình sản xuất quà cá nhân hóa",
+    "beliefs": {
+      "title": "Điều Chúng Tôi Tin Tưởng",
+      "items": {
+        "story": { "title": "Mỗi Món Quà Đều Có Một Câu Chuyện", "desc": "Chúng tôi tin rằng món quà ý nghĩa nhất là món quà lưu giữ những khoảnh khắc thật, mối quan hệ thật và tình yêu thật. Đó là lý do mỗi sản phẩm chúng tôi tạo ra đều bắt đầu từ câu chuyện của bạn." },
+        "quality": { "title": "Chất Lượng Không Thỏa Hiệp", "desc": "Chúng tôi sử dụng vật liệu cao cấp và chỉ hợp tác với các đối tác in ấn đáng tin cậy, cùng chung nỗi ám ảnh về chất lượng. Nếu chưa đủ tốt cho gia đình chúng tôi, nó sẽ không được giao đến gia đình bạn." },
+        "people": { "title": "Con Người Trên Cả Lợi Nhuận", "desc": "Chúng tôi là một đội ngũ nhỏ nhưng quan tâm sâu sắc đến khách hàng. Mỗi tin nhắn đều nhận được phản hồi thật, mỗi khiếu nại đều được xem xét nghiêm túc, mỗi đơn hàng đều nhận được sự chú ý trọn vẹn của chúng tôi." }
+      }
+    },
+    "howWeWork": {
+      "title": "Cách Chúng Tôi Làm Việc",
+      "items": {
+        "designed": { "title": "Thiết Kế Nội Bộ", "desc": "Mọi thiết kế đều bắt đầu từ chúng tôi, không phải từ catalogue có sẵn." },
+        "printed": { "title": "In Theo Yêu Cầu", "desc": "Không có gì được làm sẵn — chỉ được làm sau khi bạn đặt hàng." },
+        "shipped": { "title": "Giao Hàng Từ Mỹ", "desc": "Được sản xuất và giao hàng trong nước." }
+      }
+    },
+    "cta": {
+      "title": "Sẵn Sàng Tạo Nên Điều Đặc Biệt?",
+      "subtitle": "Khám phá bộ sưu tập của chúng tôi và tìm món quà cá nhân hóa hoàn hảo cho người bạn yêu thương.",
+      "button": "Mua Sắm Quà Cá Nhân Hóa"
+    }
+  },
+
+  "returns": {
+    "eyebrow": "Đổi Trả Hàng",
+    "title": "Cam Kết Của Chúng Tôi Với Bạn",
+    "subtitle": "Chúng tôi muốn bạn hài lòng với sản phẩm của mình. Nếu có gì đó không ổn, chúng tôi sẽ luôn khắc phục.",
+    "policyCards": {
+      "protection": { "title": "Bảo Vệ 30 Ngày", "desc": "Liên hệ với chúng tôi trong vòng 30 ngày kể từ ngày giao hàng nếu có bất kỳ vấn đề chất lượng nào." },
+      "replacements": { "title": "Thay Thế Miễn Phí", "desc": "Sản phẩm lỗi hoặc sai sẽ được thay thế miễn phí, không cần gửi trả hàng." },
+      "refunds": { "title": "Hoàn Tiền Toàn Bộ", "desc": "Nếu chúng tôi không thể khắc phục, bạn sẽ được hoàn lại 100% số tiền." }
+    },
+    "coverage": {
+      "title": "Những Gì Được Bảo Vệ",
+      "items": {
+        "defective": { "covered": true, "title": "Sản phẩm bị lỗi hoặc hư hỏng", "desc": "Nếu sản phẩm của bạn bị vỡ, nứt, hoặc hư hỏng trong quá trình vận chuyển, chúng tôi sẽ thay thế ngay lập tức." },
+        "wrongPersonalization": { "covered": true, "title": "Cá nhân hóa sai", "desc": "Nếu chúng tôi in sai tên, ngày tháng hoặc ảnh — hoàn toàn do lỗi của chúng tôi — bạn sẽ được thay thế miễn phí." },
+        "different": { "covered": true, "title": "Khác biệt đáng kể so với mô tả", "desc": "Nếu sản phẩm trông khác biệt đáng kể so với những gì được hiển thị, hãy liên hệ với chúng tôi để được giải quyết." },
+        "lost": { "covered": true, "title": "Thất lạc trong quá trình vận chuyển", "desc": "Nếu đơn hàng của bạn không bao giờ đến và thông tin theo dõi không cập nhật trong hơn 7 ngày, chúng tôi sẽ gửi lại hoặc hoàn tiền." },
+        "typos": { "covered": false, "title": "Lỗi chính tả hoặc nhập sai từ phía người mua", "desc": "Chúng tôi in chính xác những gì bạn nhập. Lỗi trong nội dung cá nhân hóa của bạn không được bảo hiểm, vì vậy hãy kiểm tra kỹ càng." },
+        "changedMind": { "covered": false, "title": "Đổi ý", "desc": "Vì mỗi sản phẩm đều được làm riêng theo yêu cầu của bạn, chúng tôi không thể nhận trả hàng vì lý do đổi ý." },
+        "colorVariation": { "covered": false, "title": "Sai lệch màu sắc trên màn hình", "desc": "Màu sắc hiển thị khác nhau tùy thiết bị. Sự khác biệt nhỏ về màu sắc giữa bản xem trước trên màn hình và sản phẩm in thực tế là điều bình thường." }
+      }
+    },
+    "resolution": {
+      "title": "Cách Được Giải Quyết Vấn Đề",
+      "steps": {
+        "contact": { "title": "Liên hệ với chúng tôi trong vòng 30 ngày", "desc": "Liên hệ qua trang liên hệ hoặc email support@ezihubb.com. Vui lòng bao gồm mã đơn hàng và mô tả ngắn gọn về vấn đề." },
+        "photo": { "title": "Gửi ảnh chụp vấn đề", "desc": "Đối với các vấn đề về chất lượng hoặc hư hỏng, hãy đính kèm 1–2 ảnh rõ nét. Điều này giúp chúng tôi hiểu vấn đề và xử lý yêu cầu của bạn nhanh hơn." },
+        "resolve": { "title": "Chúng tôi sẽ giải quyết trong vòng 24 giờ", "desc": "Chúng tôi thường phản hồi và giải quyết trong vòng 24 giờ làm việc. Chúng tôi sẽ gửi sản phẩm thay thế miễn phí hoặc hoàn tiền toàn bộ về phương thức thanh toán ban đầu của bạn." }
+      }
+    },
+    "cancellations": {
+      "title": "Hủy Đơn Hàng",
+      "p1": "Bạn có thể hủy đơn hàng <b>trong vòng 2 giờ</b> sau khi đặt. Sau thời gian đó, quá trình sản xuất có thể đã bắt đầu và chúng tôi không thể hủy đơn.",
+      "p2": "Để hủy, vào <b>Tài Khoản Của Tôi → Đơn Hàng</b> và nhấn \"Hủy Đơn Hàng\" trên đơn hàng liên quan, hoặc liên hệ ngay với chúng tôi qua support@ezihubb.com.",
+      "viewOrders": "Xem Đơn Hàng Của Tôi",
+      "contactUs": "Liên Hệ Với Chúng Tôi"
+    },
+    "exchanges": {
+      "title": "Đổi Hàng",
+      "desc": "Vì sản phẩm của chúng tôi được cá nhân hóa theo yêu cầu, việc đổi hàng truyền thống không khả thi. Nếu bạn muốn kích thước, màu sắc hoặc cá nhân hóa khác — hãy đặt đơn hàng mới và liên hệ với chúng tôi về đơn hàng cũ. Chúng tôi sẽ cố gắng hết sức để hỗ trợ bạn.",
+      "link": "Trao đổi với đội ngũ của chúng tôi →"
+    }
+  },
+
+  "reviews": {
+    "eyebrow": "Đánh Giá Khách Hàng",
+    "title": "Khách Hàng Nói Gì Về Chúng Tôi",
+    "subtitle": "Những đánh giá thật từ những khách hàng thật. Chúng tôi không lọc bỏ đánh giá tiêu cực — dù thực ra cũng không có nhiều.",
+    "reviewsCount": "{count} đánh giá",
+    "gaveFiveStars": "{percent}% đánh giá 5 sao",
+    "verifiedPurchasesOnly": "Chỉ tính đơn hàng đã xác thực",
+    "verifiedBadge": "Đã xác thực ✓",
+    "anonymous": "Ẩn danh",
+    "purchased": "Đã mua:",
+    "customerPhotoAlt": "Ảnh của khách hàng",
+    "noReviews": "Chưa có đánh giá nào — hãy quay lại sau nhé!",
+    "topRated": "Sản Phẩm Được Đánh Giá Cao Nhất"
+  },
+
+  "shippingInfo": {
+    "eyebrow": "Thông Tin Vận Chuyển",
+    "title": "Giao Hàng Nhanh Chóng & Đáng Tin Cậy",
+    "subtitle": "Chúng tôi vận chuyển mọi đơn hàng cẩn thận và cung cấp theo dõi thời gian thực để bạn luôn biết quà của mình đang ở đâu.",
+    "productionNotice": {
+      "title": "Lưu ý quan trọng: Thời gian sản xuất luôn đến trước",
+      "desc": "Vì mỗi sản phẩm đều được làm theo yêu cầu, quá trình sản xuất mất 3–7 ngày làm việc trước khi đơn hàng được gửi đi. Thời gian vận chuyển bên dưới là cộng thêm vào thời gian sản xuất. Sản xuất nhanh (1–2 ngày) có sẵn khi thanh toán."
+    },
+    "domestic": {
+      "title": "Vận Chuyển Trong Nước (Hoa Kỳ)",
+      "headers": { "method": "Phương thức", "time": "Thời gian giao hàng", "cost": "Chi phí" },
+      "rows": {
+        "standard": { "method": "Vận chuyển tiêu chuẩn", "time": "5–10 ngày làm việc", "cost": "$5.99 (Miễn phí cho đơn trên $50)" },
+        "express": { "method": "Vận chuyển nhanh", "time": "2–3 ngày làm việc", "cost": "$14.99" },
+        "overnight": { "method": "Vận chuyển hỏa tốc", "time": "1 ngày làm việc", "cost": "$29.99" }
+      },
+      "footnote": "* Miễn phí vận chuyển cho đơn hàng trên $50 được áp dụng tự động khi thanh toán. Không áp dụng cùng lúc với mua thẻ quà tặng."
+    },
+    "international": {
+      "title": "Vận Chuyển Quốc Tế",
+      "headers": { "region": "Khu vực", "time": "Thời gian giao hàng", "cost": "Giá từ" },
+      "rows": {
+        "canada": { "region": "Canada", "time": "7–14 ngày làm việc", "cost": "$12.99" },
+        "uk": { "region": "Vương Quốc Anh", "time": "10–18 ngày làm việc", "cost": "$14.99" },
+        "eu": { "region": "Liên Minh Châu Âu", "time": "10–21 ngày làm việc", "cost": "$14.99" },
+        "anz": { "region": "Úc & New Zealand", "time": "14–21 ngày làm việc", "cost": "$16.99" },
+        "sea": { "region": "Việt Nam & Đông Nam Á", "time": "14–25 ngày làm việc", "cost": "$15.99" },
+        "row": { "region": "Các Khu Vực Khác", "time": "14–30 ngày làm việc", "cost": "$19.99" }
+      },
+      "note1": "⚠️ Đơn hàng quốc tế có thể phải chịu thuế hải quan và thuế nhập khẩu.",
+      "note2": "Các khoản phí này thuộc trách nhiệm của người nhận và không được bao gồm trong giá sản phẩm.",
+      "note3": "Miễn phí vận chuyển quốc tế cho đơn hàng trên $100."
+    },
+    "tracking": {
+      "title": "Theo Dõi Đơn Hàng",
+      "stepLabel": "Bước {step}",
+      "steps": {
+        "confirmed": { "title": "Đã Xác Nhận Đơn Hàng", "desc": "Bạn sẽ nhận được email xác nhận ngay sau khi đặt hàng." },
+        "production": { "title": "Đang Sản Xuất", "desc": "Chúng tôi sẽ gửi email khi sản phẩm của bạn bắt đầu được sản xuất (thường trong vòng 24 giờ)." },
+        "shipped": { "title": "Đã Gửi Hàng", "desc": "Bạn sẽ nhận được mã theo dõi qua email. Bạn có thể theo dõi bất cứ lúc nào trong tài khoản của mình." }
+      },
+      "trackButton": "Theo Dõi Đơn Hàng Của Bạn"
+    },
+    "faqs": {
+      "title": "Câu Hỏi Thường Gặp Về Vận Chuyển",
+      "items": {
+        "lost": { "q": "Điều gì xảy ra nếu đơn hàng của tôi bị thất lạc trong quá trình vận chuyển?", "a": "Hãy liên hệ với chúng tôi trong vòng 30 ngày kể từ ngày giao hàng dự kiến. Chúng tôi sẽ khiếu nại với đơn vị vận chuyển và gửi cho bạn sản phẩm thay thế miễn phí." },
+        "address": { "q": "Tôi có thể thay đổi địa chỉ giao hàng sau khi đặt hàng không?", "a": "Có thể thay đổi địa chỉ trong vòng 2 giờ sau khi đặt hàng. Sau thời gian đó, đơn hàng có thể đã được xử lý. Hãy liên hệ với chúng tôi ngay lập tức." },
+        "poBox": { "q": "Bạn có giao hàng đến hộp thư bưu điện (PO box) không?", "a": "Có, đối với vận chuyển USPS tiêu chuẩn. Các tùy chọn vận chuyển nhanh và hỏa tốc yêu cầu địa chỉ thực." }
+      },
+      "moreQuestions": "Còn thắc mắc khác?",
+      "viewFaq": "Xem Toàn Bộ Câu Hỏi Thường Gặp →"
+    }
+  },
+
+  "privacyPolicy": {
+    "legalLabel": "Pháp Lý",
+    "title": "Chính Sách Bảo Mật",
+    "subtitle": "Quyền riêng tư của bạn rất quan trọng với chúng tôi. Chính sách này giải thích những dữ liệu cá nhân nào chúng tôi thu thập, vì sao chúng tôi thu thập và cách bạn có thể kiểm soát chúng.",
+    "effectiveLabel": "Có hiệu lực từ:",
+    "lastUpdatedLabel": "Cập nhật lần cuối:",
+    "effectiveDate": "15 tháng 6, 2026",
+    "lastUpdatedDate": "15 tháng 6, 2026",
+    "contentsLabel": "Mục Lục",
+    "toc": {
+      "informationWeCollect": "1. Thông Tin Chúng Tôi Thu Thập",
+      "howWeUse": "2. Cách Chúng Tôi Sử Dụng Thông Tin Của Bạn",
+      "sharing": "3. Chia Sẻ Thông Tin",
+      "cookies": "4. Cookie & Công Nghệ Theo Dõi",
+      "security": "5. Bảo Mật Dữ Liệu",
+      "yourRights": "6. Quyền Riêng Tư Của Bạn",
+      "retention": "7. Lưu Trữ Dữ Liệu",
+      "children": "8. Quyền Riêng Tư Của Trẻ Em",
+      "international": "9. Chuyển Giao Dữ Liệu Quốc Tế",
+      "changes": "10. Thay Đổi Chính Sách",
+      "contact": "11. Liên Hệ Với Chúng Tôi"
+    },
+    "sections": {
+      "informationWeCollect": {
+        "title": "1. Thông Tin Chúng Tôi Thu Thập",
+        "intro": "Chúng tôi thu thập thông tin bạn cung cấp trực tiếp cho chúng tôi và thông tin chúng tôi thu thập tự động khi bạn sử dụng Nền Tảng.",
+        "providedLabel": "Thông tin bạn cung cấp:",
+        "providedItems": [
+          "Thông tin tài khoản: họ tên, địa chỉ email, mật khẩu và ảnh đại diện.",
+          "Thông tin thanh toán: địa chỉ thanh toán và chi tiết phương thức thanh toán (được xử lý an toàn bởi các đối tác thanh toán của chúng tôi — chúng tôi không lưu trữ số thẻ).",
+          "Thông tin giao hàng: địa chỉ giao hàng cho các đơn hàng.",
+          "Nội dung bạn tải lên: ảnh sản phẩm, tệp cá nhân hóa, nội dung đánh giá và tin nhắn.",
+          "Thông tin liên lạc: tin nhắn bạn gửi đến đội ngũ hỗ trợ của chúng tôi."
+        ],
+        "automaticLabel": "Thông tin thu thập tự động:",
+        "automaticItems": [
+          "Dữ liệu sử dụng: các trang đã truy cập, từ khóa tìm kiếm, lượt nhấp chuột và thời gian sử dụng Nền Tảng.",
+          "Dữ liệu thiết bị: loại trình duyệt, hệ điều hành, địa chỉ IP và mã định danh thiết bị.",
+          "Dữ liệu vị trí: vị trí gần đúng được suy ra từ địa chỉ IP.",
+          "Dữ liệu giao dịch: lịch sử đơn hàng, số tiền và thời gian giao dịch.",
+          "Cookie và các công nghệ theo dõi tương tự (xem Mục 4)."
+        ]
+      },
+      "howWeUse": {
+        "title": "2. Cách Chúng Tôi Sử Dụng Thông Tin Của Bạn",
+        "intro": "Chúng tôi sử dụng thông tin thu thập được để:",
+        "items": [
+          "Tạo và quản lý tài khoản của bạn.",
+          "Xử lý giao dịch và thanh toán cho đơn hàng của bạn.",
+          "Gửi xác nhận đơn hàng, cập nhật vận chuyển và biên nhận.",
+          "Trả lời câu hỏi và hỗ trợ khách hàng.",
+          "Cá nhân hóa trải nghiệm và hiển thị sản phẩm phù hợp.",
+          "Gửi thông tin tiếp thị (khi có sự đồng ý của bạn, ở những nơi yêu cầu).",
+          "Phát hiện và ngăn chặn gian lận, lạm dụng và các hoạt động trái phép khác.",
+          "Tuân thủ nghĩa vụ pháp lý và thực thi Điều Khoản Dịch Vụ của chúng tôi.",
+          "Phân tích các mô hình sử dụng để cải thiện Nền Tảng.",
+          "Thông báo về cập nhật Nền Tảng, thay đổi chính sách và các thông báo quan trọng."
+        ],
+        "legalBasisTitle": "Cơ Sở Pháp Lý (GDPR)",
+        "legalBasisBody": "Đối với người dùng tại Khu Vực Kinh Tế Châu Âu, cơ sở pháp lý cho việc xử lý dữ liệu của chúng tôi bao gồm: thực hiện hợp đồng (hoàn tất đơn hàng), lợi ích hợp pháp (ngăn chặn gian lận, cải thiện nền tảng), sự đồng ý (email tiếp thị), và nghĩa vụ pháp lý (hồ sơ thuế)."
+      },
+      "sharing": {
+        "title": "3. Chia Sẻ & Tiết Lộ Thông Tin",
+        "intro": "Chúng tôi không bán thông tin cá nhân của bạn. Chúng tôi chỉ chia sẻ trong các trường hợp sau:",
+        "providersLabel": "Với các nhà cung cấp dịch vụ:",
+        "providersBody": "Chúng tôi hợp tác với các bên thứ ba đáng tin cậy để vận hành Nền Tảng, bao gồm đơn vị xử lý thanh toán (Stripe), đơn vị vận chuyển (EasyPost), gửi email (SendGrid), lưu trữ đám mây (Cloudflare R2) và phân tích dữ liệu. Các đối tác này có nghĩa vụ hợp đồng phải bảo vệ dữ liệu của bạn.",
+        "legalReasonsLabel": "Vì lý do pháp lý:",
+        "legalReasonsBody": "Chúng tôi có thể tiết lộ thông tin nếu được pháp luật, lệnh của tòa án hoặc cơ quan chính phủ yêu cầu, hoặc nếu chúng tôi tin rằng việc tiết lộ là cần thiết để bảo vệ quyền, tài sản hoặc sự an toàn của EziHubb, người dùng của chúng tôi hoặc công chúng.",
+        "transfersLabel": "Chuyển nhượng doanh nghiệp:",
+        "transfersBody": "Trong trường hợp sáp nhập, mua lại hoặc bán toàn bộ hoặc phần lớn tài sản của chúng tôi, thông tin của bạn có thể được chuyển giao như một phần của giao dịch đó. Chúng tôi sẽ thông báo cho bạn trước khi dữ liệu của bạn chịu sự điều chỉnh của một chính sách bảo mật khác."
+      },
+      "cookies": {
+        "title": "4. Cookie & Công Nghệ Theo Dõi",
+        "intro": "Chúng tôi sử dụng cookie và các công nghệ tương tự để vận hành Nền Tảng, ghi nhớ tùy chọn của bạn và phân tích việc sử dụng.",
+        "table": {
+          "headers": { "category": "Loại", "purpose": "Mục đích", "optOut": "Có thể từ chối?" },
+          "rows": {
+            "essential": { "category": "Cần thiết", "purpose": "Quản lý phiên đăng nhập, bảo mật, thanh toán", "optOut": "Không" },
+            "functional": { "category": "Chức năng", "purpose": "Tùy chọn ngôn ngữ, tiền tệ và hiển thị", "optOut": "Không" },
+            "analytics": { "category": "Phân tích", "purpose": "Lượt xem trang, mô hình sử dụng (Google Analytics)", "optOut": "Có" },
+            "marketing": { "category": "Tiếp thị", "purpose": "Quảng cáo cá nhân hóa và tiếp thị lại (Meta Pixel, Pinterest Tag)", "optOut": "Có" }
+          }
+        },
+        "outro": "Bạn có thể quản lý tùy chọn cookie qua Bảng Thông Báo Cookie hoặc cài đặt trình duyệt của mình. Việc tắt một số cookie có thể ảnh hưởng đến chức năng của Nền Tảng."
+      },
+      "security": {
+        "title": "5. Bảo Mật Dữ Liệu",
+        "p1": "Chúng tôi áp dụng các biện pháp bảo mật theo tiêu chuẩn ngành để bảo vệ thông tin của bạn, bao gồm mã hóa TLS cho dữ liệu khi truyền tải, mã hóa AES-256 cho dữ liệu nhạy cảm khi lưu trữ, và các cuộc kiểm tra bảo mật định kỳ.",
+        "p2": "Quyền truy cập vào dữ liệu cá nhân chỉ giới hạn cho nhân viên và cộng tác viên cần thiết để thực hiện nhiệm vụ, và tất cả những người này đều chịu ràng buộc bởi nghĩa vụ bảo mật.",
+        "p3": "Dù đã nỗ lực hết sức, không biện pháp bảo mật nào là hoàn hảo tuyệt đối. Nếu bạn tin rằng tài khoản của mình đã bị xâm phạm, vui lòng liên hệ ngay với chúng tôi tại security@ezihubb.com."
+      },
+      "yourRights": {
+        "title": "6. Quyền Riêng Tư Của Bạn",
+        "intro": "Tùy thuộc vào nơi bạn sinh sống, bạn có thể có các quyền sau đây đối với dữ liệu cá nhân của mình:",
+        "rights": {
+          "access": { "right": "Truy cập", "desc": "Yêu cầu một bản sao dữ liệu chúng tôi đang lưu giữ về bạn." },
+          "correction": { "right": "Chỉnh sửa", "desc": "Sửa dữ liệu không chính xác hoặc chưa đầy đủ." },
+          "deletion": { "right": "Xóa", "desc": "Yêu cầu xóa dữ liệu cá nhân của bạn." },
+          "portability": { "right": "Di chuyển dữ liệu", "desc": "Nhận dữ liệu của bạn ở định dạng có thể đọc được bằng máy." },
+          "restriction": { "right": "Hạn chế", "desc": "Giới hạn cách chúng tôi xử lý dữ liệu của bạn trong một số trường hợp nhất định." },
+          "objection": { "right": "Phản đối", "desc": "Phản đối việc xử lý dữ liệu dựa trên lợi ích hợp pháp." },
+          "optOut": { "right": "Từ chối nhận", "desc": "Từ chối nhận email tiếp thị bất cứ lúc nào." },
+          "withdrawConsent": { "right": "Rút lại sự đồng ý", "desc": "Rút lại sự đồng ý khi việc xử lý dựa trên sự đồng ý." }
+        },
+        "contactP": "Để thực hiện bất kỳ quyền nào trong số này, hãy gửi email cho chúng tôi tại privacy@ezihubb.com. Chúng tôi sẽ phản hồi trong vòng 30 ngày (hoặc theo yêu cầu của pháp luật hiện hành). Chúng tôi có thể cần xác minh danh tính của bạn trước khi thực hiện yêu cầu.",
+        "euP": "Nếu bạn ở khu vực EU/EEA, bạn cũng có quyền khiếu nại với cơ quan bảo vệ dữ liệu địa phương của mình."
+      },
+      "retention": {
+        "title": "7. Lưu Trữ Dữ Liệu",
+        "p1": "Chúng tôi lưu giữ dữ liệu cá nhân của bạn trong suốt thời gian tài khoản của bạn còn hoạt động, cộng thêm bất kỳ khoảng thời gian bổ sung nào cần thiết để tuân thủ nghĩa vụ pháp lý (chẳng hạn như lưu trữ hồ sơ thuế), giải quyết tranh chấp và thực thi thỏa thuận của chúng tôi.",
+        "p2": "Cụ thể: dữ liệu tài khoản được lưu giữ trong 2 năm sau khi đóng tài khoản; hồ sơ giao dịch được lưu giữ trong 7 năm cho mục đích thuế; hồ sơ đồng ý tiếp thị được lưu giữ trong 5 năm.",
+        "p3": "Bạn có thể yêu cầu xóa tài khoản và dữ liệu liên quan bất cứ lúc nào bằng cách vào <b>Tài Khoản → Cài Đặt → Xóa Tài Khoản</b>, hoặc gửi email đến privacy@ezihubb.com."
+      },
+      "children": {
+        "title": "8. Quyền Riêng Tư Của Trẻ Em",
+        "p1": "Nền Tảng không hướng đến trẻ em dưới 13 tuổi, và chúng tôi không cố ý thu thập thông tin cá nhân từ trẻ em dưới 13 tuổi. Nếu bạn tin rằng chúng tôi đã vô tình thu thập thông tin từ trẻ em, vui lòng liên hệ với chúng tôi ngay lập tức và chúng tôi sẽ xóa thông tin đó.",
+        "p2": "Đối với người dùng từ 13 đến 18 tuổi, chúng tôi khuyến khích phụ huynh hoặc người giám hộ theo dõi và giám sát việc sử dụng Nền Tảng."
+      },
+      "international": {
+        "title": "9. Chuyển Giao Dữ Liệu Quốc Tế",
+        "p1": "EziHubb hoạt động từ Hoa Kỳ. Nếu bạn ở ngoài Hoa Kỳ, thông tin của bạn có thể được chuyển giao đến và xử lý tại Hoa Kỳ hoặc các quốc gia khác nơi các nhà cung cấp dịch vụ của chúng tôi hoạt động.",
+        "p2": "Đối với việc chuyển giao dữ liệu từ Khu Vực Kinh Tế Châu Âu (EEA) hoặc Vương Quốc Anh, chúng tôi dựa vào các Điều Khoản Hợp Đồng Chuẩn được Ủy Ban Châu Âu phê duyệt để đảm bảo mức độ bảo vệ dữ liệu phù hợp."
+      },
+      "changes": {
+        "title": "10. Thay Đổi Chính Sách Này",
+        "p1": "Chúng tôi có thể cập nhật Chính Sách Bảo Mật này theo thời gian để phản ánh những thay đổi trong hoạt động của chúng tôi hoặc vì lý do pháp lý, vận hành hay quy định. Chúng tôi sẽ thông báo cho bạn về những thay đổi quan trọng qua email hoặc thông báo nổi bật trên Nền Tảng.",
+        "p2": "Chúng tôi khuyến khích bạn xem lại Chính Sách này định kỳ. Ngày \"Cập nhật lần cuối\" ở trên cùng cho biết thời điểm những thay đổi gần đây nhất được thực hiện."
+      },
+      "contact": {
+        "title": "11. Liên Hệ Với Chúng Tôi",
+        "intro": "Nếu bạn có câu hỏi về Chính Sách Bảo Mật này hoặc cách chúng tôi xử lý dữ liệu của bạn, vui lòng liên hệ với chúng tôi:",
+        "companyName": "EziHubb, Inc.",
+        "deptLabel": "Bộ Phận Bảo Mật & Bảo Vệ Dữ Liệu",
+        "euNote": "Người dùng tại EU/Anh cũng có thể liên hệ với Nhân Viên Bảo Vệ Dữ Liệu của chúng tôi tại dpo@ezihubb.com."
+      }
+    },
+    "footer": {
+      "copyright": "© 2026 EziHubb, Inc. Bảo lưu mọi quyền.",
+      "termsLink": "Điều Khoản Dịch Vụ",
+      "faqLink": "Câu Hỏi Thường Gặp",
+      "contactLink": "Liên Hệ"
+    }
+  },
+
+  "terms": {
+    "legalLabel": "Pháp Lý",
+    "title": "Điều Khoản Dịch Vụ",
+    "subtitle": "Các Điều Khoản này điều chỉnh việc bạn sử dụng EziHubb. Vui lòng đọc kỹ trước khi đặt hàng.",
+    "effectiveLabel": "Có hiệu lực từ:",
+    "lastUpdatedLabel": "Cập nhật lần cuối:",
+    "effectiveDate": "15 tháng 6, 2026",
+    "lastUpdatedDate": "15 tháng 6, 2026",
+    "contentsLabel": "Mục Lục",
+    "toc": {
+      "acceptance": "1. Chấp Nhận Điều Khoản",
+      "useOfPlatform": "2. Sử Dụng Nền Tảng",
+      "accounts": "3. Đăng Ký Tài Khoản",
+      "buyerTerms": "4. Đặt Hàng & Mua Sắm",
+      "feesPayments": "5. Phí & Thanh Toán",
+      "intellectual": "6. Sở Hữu Trí Tuệ",
+      "prohibited": "7. Hành Vi Bị Cấm",
+      "disclaimers": "8. Miễn Trừ Trách Nhiệm & Giới Hạn Trách Nhiệm",
+      "governingLaw": "9. Luật Áp Dụng",
+      "changes": "10. Thay Đổi Điều Khoản",
+      "contact": "11. Liên Hệ Với Chúng Tôi"
+    },
+    "sections": {
+      "acceptance": {
+        "title": "1. Chấp Nhận Điều Khoản",
+        "p1": "Bằng việc truy cập hoặc sử dụng EziHubb (\"Nền Tảng\", \"chúng tôi\"), bạn đồng ý tuân theo các Điều Khoản Dịch Vụ này (\"Điều Khoản\"). Nếu bạn không đồng ý với các Điều Khoản này, bạn không được sử dụng Nền Tảng.",
+        "p2": "Các Điều Khoản này tạo thành một thỏa thuận ràng buộc pháp lý giữa bạn và EziHubb. Việc bạn tiếp tục sử dụng Nền Tảng sau bất kỳ cập nhật nào đối với các Điều Khoản này đồng nghĩa với việc bạn chấp nhận các Điều Khoản đã sửa đổi.",
+        "p3": "Nếu bạn đang sử dụng Nền Tảng thay mặt cho một tổ chức, bạn xác nhận rằng mình có thẩm quyền ràng buộc tổ chức đó với các Điều Khoản này."
+      },
+      "useOfPlatform": {
+        "title": "2. Sử Dụng Nền Tảng",
+        "p1": "EziHubb thiết kế và bán trực tiếp cho bạn các món quà cá nhân hóa, in theo yêu cầu. Mọi sản phẩm trên Nền Tảng đều là của chúng tôi — chúng tôi là người bán chính thức cho mọi đơn hàng.",
+        "p2": "Bạn phải từ 18 tuổi trở lên để tạo tài khoản hoặc mua hàng. Bằng việc sử dụng Nền Tảng, bạn xác nhận rằng mình đáp ứng yêu cầu về độ tuổi này.",
+        "p3": "Bạn đồng ý chỉ sử dụng Nền Tảng cho các mục đích hợp pháp và theo các Điều Khoản này. Bạn có trách nhiệm đảm bảo rằng việc sử dụng của mình tuân thủ mọi luật và quy định địa phương, quốc gia và quốc tế hiện hành."
+      },
+      "accounts": {
+        "title": "3. Đăng Ký Tài Khoản",
+        "intro": "Để truy cập một số tính năng nhất định, bạn phải đăng ký tài khoản. Khi làm vậy, bạn đồng ý:",
+        "items": [
+          "Cung cấp thông tin chính xác, cập nhật và đầy đủ khi đăng ký.",
+          "Duy trì và cập nhật kịp thời thông tin tài khoản của bạn.",
+          "Giữ mật khẩu của bạn an toàn và không chia sẻ với bên thứ ba.",
+          "Thông báo ngay cho chúng tôi về bất kỳ hành vi sử dụng trái phép tài khoản nào.",
+          "Chịu trách nhiệm cho mọi hoạt động diễn ra dưới tài khoản của bạn."
+        ],
+        "outro": "Chúng tôi có quyền tạm ngưng hoặc chấm dứt các tài khoản cung cấp thông tin không chính xác, vi phạm các Điều Khoản này, hoặc tham gia vào hoạt động gian lận."
+      },
+      "buyerTerms": {
+        "title": "4. Đặt Hàng & Mua Sắm",
+        "p1": "Khi bạn đặt hàng trên EziHubb, bạn tham gia vào một hợp đồng trực tiếp với chúng tôi. Mọi sản phẩm đều được EziHubb thiết kế và in theo yêu cầu — chúng tôi là người bán chính thức cho mọi sản phẩm trên Nền Tảng.",
+        "ordersPaymentLabel": "Đặt Hàng & Thanh Toán:",
+        "ordersPaymentBody": "Bằng việc hoàn tất thanh toán, bạn ủy quyền thanh toán cho tổng giá trị đơn hàng, bao gồm các khoản thuế và phí vận chuyển hiện hành.",
+        "cancellationsLabel": "Hủy Đơn Hàng:",
+        "cancellationsBody": "Bạn có thể yêu cầu hủy đơn hàng trong vòng 2 giờ sau khi đặt hàng, trước khi quá trình sản xuất bắt đầu. Sau khoảng thời gian đó, việc hủy đơn hàng tùy thuộc vào quyết định của chúng tôi vì quá trình sản xuất đã bắt đầu.",
+        "returnsRefundsLabel": "Đổi Trả & Hoàn Tiền:",
+        "returnsRefundsBody": "Các sản phẩm cá nhân hóa và làm theo yêu cầu có thể không đủ điều kiện trả hàng trừ khi chúng đến trong tình trạng hư hỏng, lỗi, hoặc khác biệt đáng kể so với mô tả sản phẩm. Xem đầy đủ <link>Chính Sách Đổi Trả</link> của chúng tôi để biết thêm chi tiết.",
+        "disputesLabel": "Tranh Chấp:",
+        "disputesBody": "Nếu bạn gặp vấn đề với một đơn hàng, hãy liên hệ trực tiếp với chúng tôi và chúng tôi sẽ nỗ lực giải quyết."
+      },
+      "feesPayments": {
+        "title": "5. Phí & Thanh Toán",
+        "p1": "Giá trên Nền Tảng được hiển thị bao gồm hoặc chưa bao gồm thuế tùy theo khu vực của bạn. Bạn có trách nhiệm với bất kỳ khoản thuế bán hàng, VAT hoặc thuế hải quan nào liên quan đến việc mua hàng của mình.",
+        "p2": "Chúng tôi sử dụng các đơn vị xử lý thanh toán theo tiêu chuẩn ngành và không lưu trữ toàn bộ thông tin thẻ của bạn."
+      },
+      "intellectual": {
+        "title": "6. Sở Hữu Trí Tuệ",
+        "platformIpLabel": "Sở hữu trí tuệ Nền Tảng:",
+        "platformIpBody": "Tên, logo, thiết kế và phần mềm của EziHubb thuộc quyền sở hữu của chúng tôi và được bảo vệ bởi luật sở hữu trí tuệ. Bạn không được sử dụng chúng khi chưa có sự đồng ý bằng văn bản từ chúng tôi.",
+        "userContentLabel": "Nội dung của người dùng:",
+        "userContentBody": "Bằng việc tải nội dung lên Nền Tảng (ảnh, văn bản, thiết kế), bạn cấp cho EziHubb giấy phép không độc quyền, trên toàn thế giới, miễn phí bản quyền để sử dụng, hiển thị và tái tạo nội dung đó chỉ nhằm vận hành và quảng bá Nền Tảng. Bạn vẫn giữ quyền sở hữu đối với nội dung của mình.",
+        "thirdPartyIpLabel": "Sở hữu trí tuệ của bên thứ ba:",
+        "thirdPartyIpBody": "Bạn không được tải lên hoặc bán nội dung vi phạm quyền sở hữu trí tuệ của bên khác. Nếu bạn tin rằng quyền sở hữu trí tuệ của mình đã bị vi phạm, vui lòng liên hệ với chúng tôi qua quy trình thông báo DMCA tại legal@ezihubb.com."
+      },
+      "prohibited": {
+        "title": "7. Hành Vi Bị Cấm",
+        "intro": "Bạn đồng ý không:",
+        "items": [
+          "Sử dụng Nền Tảng cho bất kỳ mục đích bất hợp pháp nào hoặc để quảng bá các hoạt động phi pháp.",
+          "Đăng nội dung sai sự thật, gây hiểu lầm hoặc lừa dối.",
+          "Quấy rối, đe dọa hoặc gây hại cho người dùng khác.",
+          "Cố gắng truy cập trái phép vào bất kỳ phần nào của Nền Tảng hoặc tài khoản của người dùng khác.",
+          "Sử dụng bot tự động, công cụ thu thập dữ liệu hoặc trình thu thập dữ liệu mà không có sự cho phép rõ ràng bằng văn bản của chúng tôi.",
+          "Phá vỡ, vô hiệu hóa hoặc can thiệp vào các tính năng bảo mật hoặc xác thực.",
+          "Tham gia vào việc thao túng thị trường, đánh giá giả mạo, hoặc hành vi phối hợp không trung thực.",
+          "Bán lại sản phẩm mua từ EziHubb theo cách khiến người khác hiểu nhầm đó là thiết kế của riêng bạn."
+        ]
+      },
+      "disclaimers": {
+        "title": "8. Miễn Trừ Trách Nhiệm & Giới Hạn Trách Nhiệm Pháp Lý",
+        "p1": "NỀN TẢNG ĐƯỢC CUNG CẤP \"NGUYÊN TRẠNG\" MÀ KHÔNG CÓ BẤT KỲ BẢO ĐẢM NÀO. CHÚNG TÔI KHÔNG ĐẢM BẢO RẰNG NỀN TẢNG SẼ HOẠT ĐỘNG LIÊN TỤC, KHÔNG CÓ LỖI, HOẶC KHÔNG CÓ VIRUS HAY CÁC THÀNH PHẦN GÂY HẠI KHÁC.",
+        "p2": "TRONG PHẠM VI TỐI ĐA ĐƯỢC PHÁP LUẬT CHO PHÉP, EZIHUBB SẼ KHÔNG CHỊU TRÁCH NHIỆM CHO BẤT KỲ THIỆT HẠI GIÁN TIẾP, NGẪU NHIÊN, ĐẶC BIỆT, HỆ QUẢ HOẶC MANG TÍNH TRỪNG PHẠT NÀO PHÁT SINH TỪ VIỆC BẠN SỬ DỤNG NỀN TẢNG HOẶC CÁC GIAO DỊCH THỰC HIỆN QUA ĐÓ.",
+        "p3": "TỔNG TRÁCH NHIỆM CỦA CHÚNG TÔI ĐỐI VỚI BẠN CHO BẤT KỲ KHIẾU NẠI NÀO PHÁT SINH TỪ HOẶC LIÊN QUAN ĐẾN CÁC ĐIỀU KHOẢN NÀY HOẶC NỀN TẢNG SẼ KHÔNG VƯỢT QUÁ MỨC LỚN HƠN GIỮA (A) 100 USD HOẶC (B) TỔNG SỐ PHÍ BẠN ĐÃ THANH TOÁN CHO CHÚNG TÔI TRONG 12 THÁNG TRƯỚC KHIẾU NẠI.",
+        "p4": "Một số khu vực pháp lý không cho phép loại trừ một số bảo đảm nhất định hoặc giới hạn trách nhiệm, vì vậy một số điều khoản trên có thể không áp dụng với bạn."
+      },
+      "governingLaw": {
+        "title": "9. Luật Áp Dụng",
+        "p1": "Các Điều Khoản này sẽ được điều chỉnh và giải thích theo luật của Bang Delaware, Hoa Kỳ, không xét đến các nguyên tắc xung đột pháp luật.",
+        "p2": "Mọi tranh chấp phát sinh từ hoặc liên quan đến các Điều Khoản này hoặc Nền Tảng mà không thể giải quyết một cách không chính thức sẽ được đệ trình lên trọng tài ràng buộc theo Quy Tắc Trọng Tài Tiêu Dùng của Hiệp Hội Trọng Tài Hoa Kỳ. Bạn từ bỏ quyền tham gia vào bất kỳ vụ kiện tập thể hoặc trọng tài tập thể nào."
+      },
+      "changes": {
+        "title": "10. Thay Đổi Điều Khoản",
+        "p1": "Chúng tôi có thể sửa đổi các Điều Khoản này theo thời gian. Khi có thay đổi quan trọng, chúng tôi sẽ thông báo cho bạn qua email hoặc thông báo nổi bật trên Nền Tảng ít nhất 30 ngày trước khi các thay đổi có hiệu lực.",
+        "p2": "Việc bạn tiếp tục sử dụng Nền Tảng sau ngày có hiệu lực của các Điều Khoản đã sửa đổi đồng nghĩa với việc bạn chấp nhận các thay đổi đó. Nếu bạn không đồng ý với các Điều Khoản mới, bạn phải ngừng sử dụng Nền Tảng."
+      },
+      "contact": {
+        "title": "11. Liên Hệ Với Chúng Tôi",
+        "intro": "Nếu bạn có câu hỏi về Điều Khoản Dịch Vụ này, vui lòng liên hệ với chúng tôi:",
+        "companyName": "EziHubb, Inc.",
+        "deptLabel": "Bộ Phận Pháp Lý"
+      }
+    },
+    "footer": {
+      "copyright": "© 2026 EziHubb, Inc. Bảo lưu mọi quyền.",
+      "privacyLink": "Chính Sách Bảo Mật",
+      "faqLink": "Câu Hỏi Thường Gặp",
+      "contactLink": "Liên Hệ"
+    }
+  }
+}

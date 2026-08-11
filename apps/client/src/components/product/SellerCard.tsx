@@ -2,30 +2,21 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Star, Heart, MessageCircle, Package } from 'lucide-react';
 import type { ProductDto } from '@ezihubb/types';
 import { MessageShopModal } from '../messages/MessageShopModal';
 
 // ── Badge data ────────────────────────────────────────────────────────────────
 
-const SELLER_BADGES = [
-  {
-    Icon:  Package,
-    title: 'Smooth shipping',
-    desc:  'Has a history of shipping on time with tracking',
-  },
-  {
-    Icon:  MessageCircle,
-    title: 'Speedy replies',
-    desc:  'Has a history of replying to messages quickly',
-  },
-  {
-    Icon:  Star,
-    title: 'Rave reviews',
-    desc:  'Average review rating is 4.8 or higher',
-  },
-] as const;
+function useSellerBadges() {
+  const t = useTranslations('product.sellerCard');
+  return [
+    { Icon: Package,      title: t('smoothShippingTitle'), desc: t('smoothShippingDesc') },
+    { Icon: MessageCircle, title: t('speedyRepliesTitle'),  desc: t('speedyRepliesDesc')  },
+    { Icon: Star,          title: t('raveReviewsTitle'),    desc: t('raveReviewsDesc')    },
+  ] as const;
+}
 
 // ── Helper: renders a Link when href is set, otherwise a plain div/span ───────
 
@@ -53,6 +44,8 @@ interface SellerCardProps {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function SellerCard({ product }: SellerCardProps) {
+  const t = useTranslations('product.sellerCard');
+  const sellerBadges = useSellerBadges();
   const [isMessageOpen, setIsMessageOpen] = useState(false);
   const locale = useLocale();
 
@@ -99,7 +92,7 @@ export function SellerCard({ product }: SellerCardProps) {
               <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
               4.9
               {product.soldCount > 0 && (
-                <span>({product.soldCount.toLocaleString()} sales)</span>
+                <span>{t('sales', { count: product.soldCount.toLocaleString() })}</span>
               )}
             </span>
           </div>
@@ -112,7 +105,7 @@ export function SellerCard({ product }: SellerCardProps) {
             className="flex items-center gap-1.5 border border-border rounded-full px-3 py-1.5 text-sm text-secondary hover:bg-[#F3F4F6] transition-colors"
           >
             <Heart className="w-4 h-4" />
-            Follow shop
+            {t('followShop')}
           </button>
           <button
             type="button"
@@ -120,14 +113,14 @@ export function SellerCard({ product }: SellerCardProps) {
             className="flex items-center gap-1.5 border border-border rounded-full px-3 py-1.5 text-sm text-secondary hover:bg-[#F3F4F6] transition-colors"
           >
             <MessageCircle className="w-4 h-4" />
-            Message seller
+            {t('messageSeller')}
           </button>
         </div>
       </div>
 
       {/* ── SELLER BADGES ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-[#FAFAF8] rounded-2xl">
-        {SELLER_BADGES.map(({ Icon, title, desc }) => (
+        {sellerBadges.map(({ Icon, title, desc }) => (
           <div key={title} className="text-center">
             <div className="w-10 h-10 rounded-full bg-white border border-border mx-auto flex items-center justify-center mb-2">
               <Icon className="w-5 h-5 text-secondary" />

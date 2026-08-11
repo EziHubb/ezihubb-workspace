@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { fmtAmount } from '../../lib/fmt';
 import { ADMIN_ROUTES } from '@ezihubb/constants';
+import { useDialog } from '../../contexts/DialogContext';
 
 export interface AdminProduct {
   id:              string;
@@ -69,6 +70,7 @@ function GearMenu({
   const [open,    setOpen]    = useState(false);
   const [copied,  setCopied]  = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const { alert } = useDialog();
 
   useEffect(() => {
     if (!open) return;
@@ -88,7 +90,9 @@ function GearMenu({
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch { /* silent */ }
+    } catch (err) {
+      await alert((err as Error).message || 'Could not copy the link.', { variant: 'error' });
+    }
     setOpen(false);
   };
 

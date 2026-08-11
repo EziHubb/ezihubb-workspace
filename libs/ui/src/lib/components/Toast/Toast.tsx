@@ -89,7 +89,11 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
-export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ToastProvider: React.FC<{
+  children: React.ReactNode;
+  /** aria-label on each toast's dismiss button. Default: "Dismiss" */
+  dismissLabel?: string;
+}> = ({ children, dismissLabel = 'Dismiss' }) => {
   const [toasts, dispatch] = useReducer(reducer, []);
 
   const dismiss = useCallback((id: string) => dispatch({ kind: 'REMOVE', id }), []);
@@ -147,7 +151,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             </div>
             <button
               onClick={() => dismiss(t.id)}
-              aria-label="Dismiss"
+              aria-label={dismissLabel}
               className="shrink-0 text-muted hover:text-secondary transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

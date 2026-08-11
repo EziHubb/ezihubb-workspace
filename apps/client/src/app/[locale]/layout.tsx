@@ -17,6 +17,7 @@ import { PinterestTag } from '../../components/analytics/PinterestTag';
 import { OrganizationStructuredData } from '../../components/seo/OrganizationStructuredData';
 import { WebsiteStructuredData } from '../../components/seo/WebsiteStructuredData';
 import { AffiliateTracker } from '../../components/providers/AffiliateTracker';
+import { ApiLocaleSync } from '../../components/providers/ApiLocaleSync';
 import { CurrencyProvider } from '../../lib/currency/currency-context';
 import '../global.css';
 
@@ -161,10 +162,11 @@ export default async function LocaleLayout({
         )}
         <OrganizationStructuredData />
         <WebsiteStructuredData />
+        <NextIntlClientProvider messages={messages}>
         <NextAuthProvider>
         <ReactQueryProvider>
           <CurrencyProvider>
-          <NextIntlClientProvider messages={messages}>
+            <ApiLocaleSync />
             {children}
             <AffiliateTracker />
             {/* Module-level toast store — call toast.success/error anywhere, including outside React */}
@@ -174,10 +176,10 @@ export default async function LocaleLayout({
             <CookieConsentBanner />
             <Suspense fallback={null}><MetaPixel /></Suspense>
             <Suspense fallback={null}><PinterestTag /></Suspense>
-          </NextIntlClientProvider>
           </CurrencyProvider>
         </ReactQueryProvider>
         </NextAuthProvider>
+        </NextIntlClientProvider>
         {/* Direct GA4 tag — keep while GTM is being validated; remove once GTM is confirmed */}
         {isProd && gaId && <GoogleAnalytics gaId={gaId} />}
         {/* Hotjar — afterInteractive so it never blocks LCP */}

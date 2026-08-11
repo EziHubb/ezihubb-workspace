@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Star, ExternalLink } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, Button, Skeleton } from '@ezihubb/ui';
 import { ProductGallery } from '../product/ProductGallery';
@@ -59,6 +59,9 @@ export function QuickViewModal({
   onAddToCart,
 }: QuickViewModalProps) {
   const locale = useLocale();
+  const t = useTranslations('product.quickView');
+  const tSpecs = useTranslations('product.specs');
+  const tCommon = useTranslations('common');
 
   const [product,          setProduct]          = useState<ProductDto | null>(null);
   const [loading,          setLoading]          = useState(true);
@@ -75,7 +78,7 @@ export function QuickViewModal({
     apiClient
       .get<ProductDto>(API_ROUTES.PRODUCTS.DETAIL(productSlug))
       .then((product) => setProduct(product))
-      .catch((err: Error) => setError(err.message ?? 'Product not found'))
+      .catch((err: Error) => setError(err.message ?? t('notFound')))
       .finally(() => setLoading(false));
   }, [isOpen, productSlug]);
 
@@ -83,8 +86,8 @@ export function QuickViewModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg">
-      <ModalHeader onClose={onClose}>
-        {!loading && product ? product.name : 'Product Details'}
+      <ModalHeader onClose={onClose} closeLabel={tCommon('close')}>
+        {!loading && product ? product.name : tSpecs('title')}
       </ModalHeader>
 
       <ModalBody>
@@ -122,7 +125,7 @@ export function QuickViewModal({
                     {fmtRating(product.rating.avg)}
                   </span>
                   <span className="text-xs text-muted">
-                    ({product.rating.count} review{product.rating.count !== 1 ? 's' : ''})
+                    ({t('reviewCount', { count: product.rating.count })})
                   </span>
                 </div>
               )}
@@ -177,14 +180,14 @@ export function QuickViewModal({
                   className="flex items-center justify-center w-full h-11 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors"
                   onClick={onClose}
                 >
-                  Personalize &amp; Add to Cart
+                  {t('personalizeAddToCart')}
                 </Link>
                 <Link
                   href={`/${locale}/products/${productSlug}`}
                   className="flex items-center justify-center gap-1.5 w-full h-10 border border-border rounded-button text-sm font-medium text-secondary hover:border-primary hover:text-primary transition-colors"
                   onClick={onClose}
                 >
-                  View Full Details
+                  {t('viewFullDetails')}
                   <ExternalLink className="w-3.5 h-3.5" />
                 </Link>
               </div>

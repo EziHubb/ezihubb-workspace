@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { API_ROUTES } from '@ezihubb/constants';
 import { CustomizerProvider } from './CustomizerProvider';
 import { BundleCustomizerPanel } from './BundleCustomizerPanel';
@@ -49,6 +50,7 @@ function CustomizerPanelInner({
   isLoggedIn,
   onCartSuccess,
 }: InnerProps) {
+  const t               = useTranslations('customizer.panel');
   const template        = useCustomizerStore((s) => s.template);
   const isValid         = useCustomizerStore((s) => s.isValid);
   const generatePreview = useCustomizerStore((s) => s.generatePreview);
@@ -75,7 +77,7 @@ function CustomizerPanelInner({
 
       onCartSuccess();
     } catch (err) {
-      setCartError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setCartError(err instanceof Error ? err.message : t('genericError'));
     } finally {
       setIsAddingToCart(false);
     }
@@ -99,10 +101,10 @@ function CustomizerPanelInner({
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-secondary text-base">
-          ✏️ Personalize Your Gift
+          {t('title')}
         </h3>
         <span className="text-xs text-muted">
-          <span className="text-error font-semibold">*</span> Required
+          <span className="text-error font-semibold">*</span> {t('required')}
         </span>
       </div>
 
@@ -143,7 +145,7 @@ function CustomizerPanelInner({
         onClick={() => generatePreview()}
         className="w-full py-2.5 border border-primary/50 text-primary text-sm font-medium rounded-button hover:bg-primary/5 transition-colors"
       >
-        👁 Generate Preview
+        {t('generatePreview')}
       </button>
 
       {/* Cart error */}
@@ -162,23 +164,23 @@ function CustomizerPanelInner({
         aria-busy={isAddingToCart}
       >
         {isAddingToCart
-          ? 'Adding to Cart…'
-          : `Add to Cart — ${fmtAmount(basePrice)}`}
+          ? t('addingToCart')
+          : t('addToCart', { amount: fmtAmount(basePrice) })}
       </button>
 
       {/* Completion hint */}
       {!valid && (
         <p className="text-xs text-muted text-center">
-          Fill in all required fields (
-          <span className="text-error font-semibold">*</span>) to continue
+          {t('fillRequired')}
+          <span className="text-error font-semibold">*</span>{t('toContinue')}
         </p>
       )}
 
       {/* Trust strip */}
       <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 pt-1 border-t border-primary/10 text-xs text-muted">
-        <span>🚚 Ships in 3–5 days</span>
-        <span>✅ Cancel within 2h</span>
-        <span>🔒 Secure checkout</span>
+        <span>{t('trust.shipping')}</span>
+        <span>{t('trust.cancel')}</span>
+        <span>{t('trust.secure')}</span>
       </div>
 
       {/* Preview modal (renders itself when isPreviewOpen = true in store) */}

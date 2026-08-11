@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { RotateCcw, RotateCw, ZoomIn, ZoomOut } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@ezihubb/ui';
@@ -66,6 +67,7 @@ export function ImageCropModal({
   onCrop,
   onClose,
 }: ImageCropModalProps) {
+  const t = useTranslations('common');
   const imgRef         = useRef<HTMLImageElement>(null);
   const [crop,         setCrop]         = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
@@ -105,8 +107,8 @@ export function ImageCropModal({
 
   return (
     <Modal isOpen={isOpen} onClose={applying ? () => undefined : onClose} size="md">
-      <ModalHeader onClose={applying ? undefined : onClose}>
-        Crop Photo
+      <ModalHeader onClose={applying ? undefined : onClose} closeLabel={t('close')}>
+        {t('cropPhoto')}
       </ModalHeader>
 
       <ModalBody className="!p-0">
@@ -125,7 +127,7 @@ export function ImageCropModal({
               <img
                 ref={imgRef}
                 src={imageUrl}
-                alt="Crop preview"
+                alt={t('cropPreview')}
                 onLoad={handleImageLoad}
                 style={{
                   transform:  `rotate(${rotation}deg) scale(${scale})`,
@@ -146,7 +148,7 @@ export function ImageCropModal({
             className="flex items-center gap-1.5 px-3 py-2 text-sm text-secondary border border-border rounded-button hover:bg-background transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            Rotate Left
+            {t('rotateLeft')}
           </button>
           <button
             type="button"
@@ -154,7 +156,7 @@ export function ImageCropModal({
             className="flex items-center gap-1.5 px-3 py-2 text-sm text-secondary border border-border rounded-button hover:bg-background transition-colors"
           >
             <RotateCw className="w-3.5 h-3.5" />
-            Rotate Right
+            {t('rotateRight')}
           </button>
           <button
             type="button"
@@ -162,7 +164,7 @@ export function ImageCropModal({
             className="flex items-center gap-1.5 px-3 py-2 text-sm text-secondary border border-border rounded-button hover:bg-background transition-colors"
           >
             <ZoomIn className="w-3.5 h-3.5" />
-            Zoom In
+            {t('zoomIn')}
           </button>
           <button
             type="button"
@@ -170,14 +172,14 @@ export function ImageCropModal({
             className="flex items-center gap-1.5 px-3 py-2 text-sm text-secondary border border-border rounded-button hover:bg-background transition-colors"
           >
             <ZoomOut className="w-3.5 h-3.5" />
-            Zoom Out
+            {t('zoomOut')}
           </button>
         </div>
       </ModalBody>
 
       <ModalFooter>
         <Button variant="ghost" onClick={onClose} disabled={applying}>
-          Cancel
+          {t('cancel')}
         </Button>
         <Button
           variant="primary"
@@ -185,7 +187,7 @@ export function ImageCropModal({
           loading={applying}
           disabled={!completedCrop}
         >
-          Apply Crop
+          {t('applyCrop')}
         </Button>
       </ModalFooter>
     </Modal>

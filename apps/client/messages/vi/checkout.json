@@ -3,15 +3,21 @@
   "currencyNote": "Giá hiển thị là quy đổi tham khảo. Thẻ của bạn sẽ bị tính phí bằng {currency}.",
 
   "steps": {
+    "cart": "Giỏ hàng",
     "shipping": "Giao hàng",
     "delivery": "Phương thức",
-    "payment": "Thanh toán"
+    "payment": "Thanh toán",
+    "contact": "Liên hệ",
+    "review": "Xem lại",
+    "aria": "Các bước thanh toán"
   },
 
   "stepHeadings": {
     "shippingInformation": "Thông tin giao hàng",
     "deliveryMethod": "Phương thức vận chuyển",
-    "payment": "Thanh toán"
+    "payment": "Thanh toán",
+    "contactInformation": "Thông tin liên hệ",
+    "preparingOrder": "Đang chuẩn bị đơn hàng của bạn…"
   },
 
   "orderSummary": {
@@ -41,5 +47,132 @@
 
   "errors": {
     "createOrderFailed": "Tạo đơn hàng thất bại. Vui lòng thử lại."
+  },
+
+  "shippingForm": {
+    "savedAddress": "Dùng địa chỉ đã lưu",
+    "selectSavedAddress": "— Chọn địa chỉ đã lưu —",
+    "email": "Email",
+    "emailPlaceholder": "your@email.com",
+    "emailHint": "Xác nhận đơn hàng sẽ được gửi đến đây",
+    "firstName": "Tên",
+    "lastName": "Họ",
+    "phone": "Số điện thoại",
+    "phonePlaceholder": "+84 90 000 0000",
+    "address": "Địa chỉ",
+    "addressPlaceholder": "123 Đường Chính",
+    "addressLine2": "Căn hộ, phòng, v.v. (không bắt buộc)",
+    "city": "Thành phố",
+    "state": "Tỉnh / Bang",
+    "statePlaceholder": "CA",
+    "zip": "Mã bưu điện",
+    "country": "Quốc gia",
+    "saveAddress": "Lưu địa chỉ này cho lần đặt hàng sau",
+    "continueToDelivery": "Tiếp tục đến Vận chuyển →",
+    "validation": {
+      "validEmail": "Vui lòng nhập email hợp lệ",
+      "required": "Bắt buộc",
+      "invalidPhone": "Số điện thoại không hợp lệ",
+      "fullAddress": "Vui lòng nhập địa chỉ đầy đủ",
+      "selectCountry": "Vui lòng chọn quốc gia"
+    }
+  },
+
+  "deliveryForm": {
+    "calculating": "Đang tính phí vận chuyển cho <b>{country}</b>…",
+    "failedToLoad": "Không thể tải phương thức vận chuyển.",
+    "tryAgain": "Thử lại",
+    "noShipTo": "Chúng tôi chưa hỗ trợ giao hàng đến {country}.",
+    "changeCountry": "← Đổi quốc gia",
+    "selectMethod": "Chọn phương thức vận chuyển",
+    "methodsAria": "Phương thức vận chuyển",
+    "via": "qua {carrier}",
+    "businessDays": "{min}–{max} ngày làm việc · Đến nơi {date}",
+    "free": "MIỄN PHÍ",
+    "freeOver": "Miễn phí khi đơn từ {amount}",
+    "back": "← Quay lại",
+    "backAria": "Quay lại",
+    "continueToPayment": "Tiếp tục đến Thanh toán →",
+    "creatingOrder": "Đang tạo đơn hàng…",
+    "creating": "Đang tạo…"
+  },
+
+  "paymentForm": {
+    "cardTab": "Thẻ tín dụng / ghi nợ",
+    "paypalTab": "PayPal",
+    "securePayments": "Thanh toán được mã hóa và bảo mật",
+    "back": "← Quay lại",
+    "backAria": "Quay lại",
+    "placeOrder": "Đặt hàng — {amount}",
+    "processing": "Đang xử lý…",
+    "paymentFailed": "Thanh toán thất bại. Vui lòng thử lại.",
+    "paypalFailed": "Thanh toán PayPal thất bại. Vui lòng thử lại hoặc dùng thẻ."
+  },
+
+  "giftOptions": {
+    "isGift": "Đơn hàng này là quà tặng",
+    "addOptionsHint": "Thêm lời nhắn và tùy chọn quà tặng",
+    "from": "Từ (không bắt buộc)",
+    "fromPlaceholder": "vd. Ba & Mẹ",
+    "message": "Lời nhắn quà tặng",
+    "optional": "(không bắt buộc)",
+    "messagePlaceholder": "Viết lời nhắn cho người nhận...",
+    "sendReceipt": "Gửi hóa đơn quà tặng",
+    "receiptNote": "Phiếu đóng gói sẽ không hiển thị giá",
+    "addWrapping": "Thêm gói quà",
+    "wrappingNote": "Giấy lụa, ruy băng và túi quà",
+    "wrappingPrice": "+$4.99"
+  },
+
+  "expressPay": {
+    "expressCheckout": "Thanh toán nhanh",
+    "payWithPaypal": "Thanh toán bằng PayPal",
+    "orPayWithCard": "hoặc thanh toán bằng thẻ",
+    "total": "Tổng: {amount} USD"
+  },
+
+  "affiliateBanner": {
+    "savingPercent": "Bạn đang tiết kiệm {percent}%",
+    "thanksTo": " — nhờ có {name}!",
+    "referralApplied": "Giảm giá giới thiệu {amount} đã được áp dụng tự động."
+  },
+
+  "digitalContact": {
+    "digitalOnlyNote": "Đơn hàng này chỉ gồm sản phẩm số — không cần giao hàng. Chúng tôi sẽ gửi liên kết tải xuống và hóa đơn qua email này.",
+    "emailAddress": "Địa chỉ email",
+    "emailPlaceholder": "you@example.com",
+    "invalidEmail": "Vui lòng nhập địa chỉ email hợp lệ",
+    "continueToPayment": "Tiếp tục thanh toán",
+    "preparingOrder": "Đang chuẩn bị đơn hàng của bạn…"
+  },
+
+  "success": {
+    "paymentProcessing": "Đang xử lý thanh toán…",
+    "orderConfirmed": "Đặt hàng thành công! 🎉",
+    "confirmingPayment": "Chúng tôi đang xác nhận thanh toán của bạn. Việc này thường mất vài giây.",
+    "yourOrderNumber": "Mã đơn hàng của bạn",
+    "clickToCopy": "(Nhấn để sao chép)",
+    "copyOrderNumber": "Sao chép mã đơn hàng {orderNumber}",
+    "confirmationSentTo": "Email xác nhận đã được gửi đến",
+    "inbox": "hộp thư của {name}",
+    "orderItems": "Sản phẩm trong đơn",
+    "qty": "SL {count}",
+    "subtotal": "Tạm tính",
+    "shipping": "Phí vận chuyển",
+    "free": "MIỄN PHÍ",
+    "discount": "Giảm giá",
+    "giftCard": "Thẻ quà tặng",
+    "totalPaid": "Tổng đã thanh toán",
+    "shippingTo": "Giao đến",
+    "estimatedDelivery": "Dự kiến giao hàng",
+    "deliveryEstimate": "5–10 ngày làm việc sau khi sản xuất",
+    "orderNumberNotFound": "Không tìm thấy mã đơn hàng.",
+    "continueShopping": "Tiếp tục mua sắm",
+    "couldNotLoad": "Không thể tải thông tin đơn hàng.",
+    "orderNumberIs": "Mã đơn hàng của bạn là <b>{orderNumber}</b>. Vui lòng kiểm tra email để xác nhận.",
+    "saveOrderHistory": "Lưu lại lịch sử đơn hàng",
+    "createAccountHint": "Tạo tài khoản miễn phí để theo dõi đơn hàng này, xem lịch sử mua hàng và thanh toán nhanh hơn trong lần sau.",
+    "createAccount": "Tạo tài khoản →",
+    "trackMyOrder": "Theo dõi đơn hàng"
   }
 }

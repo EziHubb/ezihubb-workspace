@@ -44,6 +44,7 @@ export async function generateMetadata({
   const collection = await apiClient
     .get<CollectionDto>(API_ROUTES.CATALOG.COLLECTION(slug), {
       next: { revalidate: 300 },
+      headers: { 'X-Locale': locale },
     })
     .catch(() => null);
 
@@ -85,9 +86,11 @@ export default async function CollectionPage({
     meta:       { timestamp: '', requestId: '' },
   };
 
+  const localeHeaders = { 'X-Locale': locale };
   const [collectionRes, productsRes] = await Promise.allSettled([
     apiClient.get<CollectionDto>(API_ROUTES.CATALOG.COLLECTION(slug), {
       next: { revalidate: 300 },
+      headers: localeHeaders,
     }),
     apiClient.get<PaginatedResponse<ProductListItemDto>>(API_ROUTES.PRODUCTS.LIST, {
       params: {
@@ -98,6 +101,7 @@ export default async function CollectionPage({
         isActive:       true,
       },
       next: { revalidate: 60 },
+      headers: localeHeaders,
     }),
   ]);
 

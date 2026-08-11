@@ -12,6 +12,14 @@
   "toggleMenu": "Mở/đóng menu",
   "allProducts": "Tất cả sản phẩm",
   "viewAll": "Xem tất cả {category}",
+  "myOrders": "Đơn hàng của tôi",
+  "profile": "Hồ sơ",
+  "sellerHub": "Kênh người bán",
+  "signOut": "Đăng xuất",
+  "signIn": "Đăng nhập",
+  "shop": "Mua sắm",
+  "createAccount": "Tạo tài khoản",
+  "selectLanguage": "Chọn ngôn ngữ",
   "megaMenu": {
     "ariaLabel": "Danh mục sản phẩm"
   }

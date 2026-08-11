@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../../../../../lib/store/auth.store';
 import { apiClient } from '@ezihubb/api-client';
@@ -30,19 +31,29 @@ const PAYOUT_STATUS_COLORS: Record<string, string> = {
   REJECTED:   'bg-red-100 text-red-700',
 };
 
-const METHODS = [
-  { value: 'paypal',         label: 'PayPal',         placeholder: 'your@paypal.com' },
-  { value: 'bank_transfer',  label: 'Bank transfer',  placeholder: 'Account number / routing / IBAN' },
-] as const;
-
-const fmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-const fmtDate = (d: string) => fmt.format(new Date(d));
+const PAYOUT_STATUS_LABEL_KEY: Record<string, string> = {
+  REQUESTED:  'requested',
+  PROCESSING: 'processing',
+  PAID:       'paid',
+  REJECTED:   'rejected',
+};
 
 const MIN_PAYOUT = 50;
 
 export default function AffiliatePayoutsPage() {
-  const token      = useAuthStore((s) => s.accessToken);
-  const queryClient = useQueryClient();
+  const locale       = useLocale();
+  const t            = useTranslations('affiliate.payouts');
+  const tStatus      = useTranslations('affiliate.status');
+  const token        = useAuthStore((s) => s.accessToken);
+  const queryClient  = useQueryClient();
+
+  const fmt     = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric' });
+  const fmtDate = (d: string) => fmt.format(new Date(d));
+
+  const METHODS = [
+    { value: 'paypal',        label: t('methodPaypal'), placeholder: t('paypalPlaceholder') },
+    { value: 'bank_transfer', label: t('methodBank'),   placeholder: t('bankPlaceholder')    },
+  ] as const;
 
   const { data: dashboard, isLoading: dashLoading } = useAuthQuery<DashboardData>(
     ['affiliate-dashboard'],
@@ -73,11 +84,11 @@ export default function AffiliatePayoutsPage() {
     setFormError('');
     const amount = parseFloat(effectiveAmount);
     if (isNaN(amount) || amount <= 0) {
-      setFormError('Please enter a valid amount.');
+      setFormError(t('errorInvalidAmount'));
       return;
     }
     if (!detail.trim()) {
-      setFormError('Please provide payment details.');
+      setFormError(t('errorMissingDetail'));
       return;
     }
     setIsSubmitting(true);
@@ -94,7 +105,7 @@ export default function AffiliatePayoutsPage() {
       void queryClient.invalidateQueries({ queryKey: ['affiliate-dashboard'] });
       void queryClient.invalidateQueries({ queryKey: ['affiliate-payouts'] });
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Request failed. Please try again.');
+      setFormError(err instanceof Error ? err.message : t('errorGeneric'));
     } finally {
       setIsSubmitting(false);
     }
@@ -112,14 +123,14 @@ export default function AffiliatePayoutsPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="font-display text-2xl font-bold text-secondary">Payouts</h1>
+      <h1 className="font-display text-2xl font-bold text-secondary">{t('title')}</h1>
 
       {/* ── Balance summary ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Confirmed balance', value: fmtAmount(balance),      note: 'Ready to withdraw'          },
-          { label: 'Pending (locked)',  value: fmtAmount(pendingLocked), note: `${14}-day lock after delivery` },
-          { label: 'All-time earned',   value: fmtAmount(totalEarned),   note: 'Paid + confirmed'           },
+          { label: t('confirmedBalance'), value: fmtAmount(balance),       note: t('confirmedNote') },
+          { label: t('pendingLocked'),    value: fmtAmount(pendingLocked), note: t('pendingNote', { days: 14 }) },
+          { label: t('allTimeEarned'),    value: fmtAmount(totalEarned),   note: t('allTimeNote') },
         ].map(({ label, value, note }) => (
           <div key={label} className="bg-surface border border-border rounded-card p-4 text-center">
             <p className="text-xs text-muted mb-1">{label}</p>
@@ -132,11 +143,11 @@ export default function AffiliatePayoutsPage() {
       {/* ── Request payout form ──────────────────────────────────────────────── */}
       {balance >= MIN_PAYOUT ? (
         <div className="bg-surface border border-border rounded-card p-5">
-          <h2 className="font-semibold text-secondary mb-4 text-sm">Request payout</h2>
+          <h2 className="font-semibold text-secondary mb-4 text-sm">{t('requestTitle')}</h2>
 
           {formSuccess && (
             <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-sm text-sm text-green-700">
-              Payout request submitted! We&apos;ll process it manually and confirm by email.
+              {t('requestSuccess')}
             </div>
           )}
 
@@ -150,7 +161,7 @@ export default function AffiliatePayoutsPage() {
             {/* Method */}
             <div>
               <label className="block text-sm font-medium text-secondary mb-1.5">
-                Payment method
+                {t('methodLabel')}
               </label>
               <div className="flex flex-wrap gap-2">
                 {METHODS.map((m) => (
@@ -174,7 +185,7 @@ export default function AffiliatePayoutsPage() {
             {/* Detail */}
             <div>
               <label className="block text-sm font-medium text-secondary mb-1.5">
-                Payment details
+                {t('detailLabel')}
               </label>
               <input
                 type="text"
@@ -189,7 +200,7 @@ export default function AffiliatePayoutsPage() {
             {/* Amount */}
             <div>
               <label className="block text-sm font-medium text-secondary mb-1.5">
-                Amount (max {fmtAmount(balance)})
+                {t('amountLabel', { amount: fmtAmount(balance) })}
               </label>
               <div className="flex items-center gap-2">
                 <span className="text-muted text-sm font-medium">$</span>
@@ -208,7 +219,7 @@ export default function AffiliatePayoutsPage() {
                   onClick={() => setRequestAmount(balance.toFixed(2))}
                   className="text-xs text-primary hover:underline whitespace-nowrap"
                 >
-                  Full balance
+                  {t('fullBalance')}
                 </button>
               </div>
             </div>
@@ -218,17 +229,17 @@ export default function AffiliatePayoutsPage() {
               disabled={isSubmitting}
               className="w-full bg-primary hover:bg-primary/90 disabled:opacity-60 text-white font-bold text-sm px-6 py-3 rounded-button transition-colors uppercase tracking-wide"
             >
-              {isSubmitting ? 'Submitting…' : 'Request payout'}
+              {isSubmitting ? t('submitting') : t('submit')}
             </button>
           </form>
         </div>
       ) : (
         <div className="bg-surface border border-border rounded-card p-6 text-center">
           <p className="text-secondary font-medium mb-1">
-            {fmtAmount(MIN_PAYOUT - balance)} more to reach the payout minimum
+            {t('minNotice', { amount: fmtAmount(MIN_PAYOUT - balance) })}
           </p>
           <p className="text-sm text-muted">
-            Payouts are processed manually once your balance reaches ${MIN_PAYOUT}.
+            {t('minBody', { amount: fmtAmount(MIN_PAYOUT) })}
           </p>
         </div>
       )}
@@ -236,20 +247,20 @@ export default function AffiliatePayoutsPage() {
       {/* ── Payout history ───────────────────────────────────────────────────── */}
       <div className="bg-surface border border-border rounded-card">
         <div className="px-5 py-4 border-b border-border">
-          <h2 className="font-semibold text-secondary text-sm">Payout history</h2>
+          <h2 className="font-semibold text-secondary text-sm">{t('historyTitle')}</h2>
         </div>
 
         {!payouts || safeArr(payouts).length === 0 ? (
-          <p className="px-5 py-10 text-sm text-muted text-center">No payouts yet.</p>
+          <p className="px-5 py-10 text-sm text-muted text-center">{t('noPayouts')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">Date</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">Method</th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wide">Amount</th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wide">Status</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">{t('colDate')}</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">{t('colMethod')}</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wide">{t('colAmount')}</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wide">{t('colStatus')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -264,7 +275,7 @@ export default function AffiliatePayoutsPage() {
                     </td>
                     <td className="px-5 py-3 text-right">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${PAYOUT_STATUS_COLORS[p.status] ?? 'bg-muted/10 text-muted'}`}>
-                        {safeStr(p.status).charAt(0) + safeStr(p.status).slice(1).toLowerCase()}
+                        {PAYOUT_STATUS_LABEL_KEY[p.status] ? tStatus(PAYOUT_STATUS_LABEL_KEY[p.status]) : safeStr(p.status).charAt(0) + safeStr(p.status).slice(1).toLowerCase()}
                       </span>
                     </td>
                   </tr>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { useLocale, useTranslations } from 'next-intl';
 import { Star } from 'lucide-react';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
 import { apiClient } from '@ezihubb/api-client';
@@ -26,7 +27,9 @@ function Stars({ rating }: { rating: number }) {
 }
 
 export default function SellerReviewsPage() {
-  const token = useAuthStore((s) => s.accessToken);
+  const t      = useTranslations('seller');
+  const locale = useLocale();
+  const token  = useAuthStore((s) => s.accessToken);
 
   const { data: reviews = [], isLoading } = useQuery<SellerReview[]>({
     queryKey: ['seller-reviews'],
@@ -36,7 +39,7 @@ export default function SellerReviewsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-bold text-secondary">Reviews</h1>
+      <h1 className="text-xl font-bold text-secondary">{t('reviews.title')}</h1>
 
       <div className="bg-surface border border-border rounded-card overflow-hidden">
         {isLoading ? (
@@ -46,7 +49,7 @@ export default function SellerReviewsPage() {
         ) : reviews.length === 0 ? (
           <div className="p-14 text-center">
             <Star className="w-10 h-10 text-muted/30 mx-auto mb-2" />
-            <p className="text-sm text-muted">No reviews yet</p>
+            <p className="text-sm text-muted">{t('reviews.noReviews')}</p>
           </div>
         ) : (
           <ul className="divide-y divide-border">
@@ -54,7 +57,7 @@ export default function SellerReviewsPage() {
               <li key={r.id} className="p-5 space-y-1.5">
                 <div className="flex items-center justify-between gap-4">
                   <Stars rating={r.rating} />
-                  <span className="text-xs text-muted">{new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  <span className="text-xs text-muted">{new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(r.createdAt))}</span>
                 </div>
                 {r.title && <p className="text-sm font-semibold text-secondary">{r.title}</p>}
                 {r.body  && <p className="text-sm text-muted line-clamp-3">{r.body}</p>}

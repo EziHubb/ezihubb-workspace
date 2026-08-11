@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import {
   Star, CheckCircle2, Clock, ShoppingCart,
   Loader2, Plus, ChevronDown, Download, FileText,
@@ -41,8 +41,8 @@ function addCalendarDays(from: Date, days: number): Date {
   return d;
 }
 
-function fmtDate(date: Date): string {
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+function fmtDate(date: Date, locale: string): string {
+  return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
 }
 
 // ── Field type from ProductDto['customization'] ───────────────────────────────
@@ -52,11 +52,12 @@ type CustomField = NonNullable<ProductDto['customization']>['fields'][number];
 // ── InDemandBadge ─────────────────────────────────────────────────────────────
 
 function InDemandBadge({ count }: { count: number }) {
+  const t = useTranslations('product.purchasePanel');
   return (
     <div className="flex items-center gap-2 text-sm text-secondary">
       <span className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
       <span>
-        <strong>{count} people</strong> bought this in the last 24 hours
+        {t.rich('boughtInDemand', { count, strong: (chunks) => <strong>{chunks}</strong> })}
       </span>
     </div>
   );
@@ -73,6 +74,7 @@ function PriceBlock({
   compareAtPrice?: number;
   discountPercent: number | null;
 }) {
+  const t = useTranslations('product.purchasePanel');
   const { format } = useCurrency();
   return (
     <div>
@@ -87,12 +89,12 @@ function PriceBlock({
         )}
         {discountPercent !== null && discountPercent > 0 && (
           <span className="text-sm font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
-            {discountPercent}% off
+            {t('discountOff', { percent: discountPercent })}
           </span>
         )}
       </div>
       {discountPercent !== null && discountPercent > 0 && (
-        <p className="text-xs text-muted mt-0.5">Limited time sale</p>
+        <p className="text-xs text-muted mt-0.5">{t('limitedTimeSale')}</p>
       )}
     </div>
   );
@@ -101,6 +103,8 @@ function PriceBlock({
 // ── DeliveryInfo ──────────────────────────────────────────────────────────────
 
 function DeliveryInfo({ processingDays }: { processingDays: number }) {
+  const t      = useTranslations('product.purchasePanel');
+  const locale = useLocale();
   const today       = new Date();
   const shipBy      = addBusinessDays(today, processingDays);
   const deliveryMin = addCalendarDays(shipBy, 5);
@@ -110,18 +114,21 @@ function DeliveryInfo({ processingDays }: { processingDays: number }) {
     <div className="space-y-1.5 text-sm">
       <div className="flex items-center gap-2 text-secondary">
         <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-        <span>Free shipping</span>
+        <span>{t('freeShipping')}</span>
       </div>
       <div className="flex items-center gap-2 text-secondary">
         <Clock className="w-4 h-4 flex-shrink-0" />
         <span>
-          Arrives soon! Get it by{' '}
-          <strong>{fmtDate(deliveryMin)}–{fmtDate(deliveryMax)}</strong> if you order today
+          {t.rich('arrivesSoon', {
+            min: fmtDate(deliveryMin, locale),
+            max: fmtDate(deliveryMax, locale),
+            strong: (chunks) => <strong>{chunks}</strong>,
+          })}
         </span>
       </div>
       <div className="flex items-center gap-2 text-secondary">
         <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-        <span>Returns &amp; exchanges accepted</span>
+        <span>{t('returnsAccepted')}</span>
       </div>
     </div>
   );
@@ -130,6 +137,7 @@ function DeliveryInfo({ processingDays }: { processingDays: number }) {
 // ── DigitalDownloadInfo (Etsy-style "Digital download" info card) ────────────
 
 function DigitalDownloadInfo({ files }: { files: { mimeType: string }[] }) {
+  const t = useTranslations('product.purchasePanel');
   const extOf = (mime: string) => mime.split('/').pop()?.split('+')[0]?.toUpperCase() ?? 'FILE';
   const typeSummary = files.length
     ? [...new Set(files.map((f) => extOf(f.mimeType)))].join(', ')
@@ -139,22 +147,23 @@ function DigitalDownloadInfo({ files }: { files: { mimeType: string }[] }) {
     <div className="space-y-1.5 text-sm">
       <div className="flex items-center gap-2 text-secondary">
         <Download className="w-4 h-4 text-primary flex-shrink-0" />
-        <span className="font-medium">Digital download</span>
+        <span className="font-medium">{t('digitalDownload')}</span>
       </div>
       {typeSummary && (
         <div className="flex items-center gap-2 text-secondary">
           <FileText className="w-4 h-4 flex-shrink-0" />
           <span>
-            Digital file type{files.length > 1 ? 's' : ''}: {typeSummary}
-            {files.length > 1 && ` (${files.length} files)`}
+            {files.length > 1
+              ? t('digitalFileTypes', { types: typeSummary, count: files.length })
+              : t('digitalFileType', { types: typeSummary })}
           </span>
         </div>
       )}
       <div className="flex items-center gap-2 text-secondary">
         <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-        <span>Instant download after purchase — no shipping</span>
+        <span>{t('instantDownload')}</span>
       </div>
-      <p className="text-xs text-muted pl-6">This item is non-refundable once downloaded.</p>
+      <p className="text-xs text-muted pl-6">{t('nonRefundable')}</p>
     </div>
   );
 }
@@ -168,6 +177,7 @@ function RatingRow({
   averageRating: number;
   totalReviews:  number;
 }) {
+  const t = useTranslations('product.info');
   const rounded = Math.round(safeNum(averageRating));
   return (
     <a href="#reviews" className="flex items-center gap-1.5 text-sm hover:underline w-fit">
@@ -184,7 +194,7 @@ function RatingRow({
           />
         ))}
       </div>
-      <span className="text-muted">({safeNum(totalReviews).toLocaleString()} reviews)</span>
+      <span className="text-muted">({t('reviewCount', { count: safeNum(totalReviews) })})</span>
     </a>
   );
 }
@@ -206,13 +216,14 @@ function VariantDropdown({
   hasError?: boolean;
   id?:       string;
 }) {
+  const t = useTranslations('product.purchasePanel');
   return (
     <div id={id}>
       <label className="text-sm font-medium block mb-1.5">
         {label} <span className="text-red-500">*</span>
       </label>
       {hasError && !selected && (
-        <p className="text-xs text-red-500 mb-1">Please select an option</p>
+        <p className="text-xs text-red-500 mb-1">{t('pleaseSelectOption')}</p>
       )}
       <div className="relative">
         <select
@@ -228,7 +239,7 @@ function VariantDropdown({
                 : 'border-border text-muted focus:ring-primary/20',
           ].join(' ')}
         >
-          <option value="">Select an option</option>
+          <option value="">{t('selectOptionPlaceholder')}</option>
           {values.map((v) => (
             <option key={v} value={v}>{v}</option>
           ))}
@@ -282,6 +293,7 @@ function PersonalizationCollapsible({
   onToggle: () => void;
   label:    string;
 }) {
+  const t = useTranslations('common');
   const [responses, setResponses] = useState<Record<string, string>>({});
   const set = (id: string, val: string) =>
     setResponses((prev) => ({ ...prev, [id]: val }));
@@ -329,7 +341,7 @@ function PersonalizationCollapsible({
                     onChange={(e) => set(field.id, e.target.value)}
                     className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
-                    <option value="">Select...</option>
+                    <option value="">{t('selectEllipsis')}</option>
                     {field.options?.map((o) => (
                       <option key={o} value={o}>{o}</option>
                     ))}
@@ -386,6 +398,7 @@ interface Props {
 
 export function ProductPurchasePanel({ product, reviewSummary }: Props) {
   const t      = useTranslations('product');
+  const tPanel = useTranslations('product.purchasePanel');
   const [selectedOptions,       setSelectedOptions]       = useState<Record<string, string>>({});
   const [isPersonalizationOpen, setIsPersonalizationOpen] = useState(false);
   const [isAdding,              setIsAdding]              = useState(false);
@@ -450,7 +463,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       setHasAttemptedSubmit(true);
       if (allOptionsSelected && selectedVariant === null) {
         // All options chosen but no DB variant matches — data mismatch
-        toast.error('This combination is not available. Please try different options.');
+        toast.error(tPanel('combinationNotAvailable'));
       } else {
         // Some options still need to be selected
         const firstMissing = product.variantOptions?.find(
@@ -461,7 +474,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
             behavior: 'smooth', block: 'center',
           });
         }
-        toast.error('Please select all required options before adding to cart.');
+        toast.error(tPanel('selectRequiredOptions'));
       }
       return;
     }
@@ -475,9 +488,9 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
         customizationData: null,
       });
       openDrawer();
-      toast.success('Added to cart!');
+      toast.success(tPanel('addedToCart'));
     } catch {
-      toast.error('Could not add to cart. Please try again.');
+      toast.error(tPanel('couldNotAddToCart'));
     } finally {
       setIsAdding(false);
     }
@@ -497,7 +510,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       {product.isFeatured && (
         <div className="inline-flex items-center gap-1.5 bg-[#FFF0EC] text-primary text-xs font-medium px-2.5 py-1 rounded-full">
           <Star className="w-3 h-3 fill-primary" />
-          EziHubb&apos;s Pick
+          {tPanel('editorsPick')}
         </div>
       )}
 

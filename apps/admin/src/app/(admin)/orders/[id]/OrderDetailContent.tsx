@@ -49,7 +49,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail }) {
   const qc = useQueryClient();
-  const { confirm, preview } = useDialog();
+  const { confirm, preview, alert } = useDialog();
   const { data: order = initialOrder } = useQuery({
     queryKey: ['admin-order', initialOrder.id],
     queryFn: () => api.get<OrderDetail>(API_ROUTES.ADMIN.ORDER(initialOrder.id)),
@@ -80,7 +80,9 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
       setSSuc(true);
       setTimeout(() => setSSuc(false), 3000);
       refresh();
-    } catch { /* silent */ } finally { setSSaving(false); }
+    } catch (err) {
+      await alert((err as Error).message || 'Could not update order status.', { variant: 'error' });
+    } finally { setSSaving(false); }
   };
 
   const handleTrackSave = async () => {
@@ -88,7 +90,9 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
     try {
       await api.patch(API_ROUTES.ADMIN.ORDER_TRACKING(order.id), { trackingNumber: trackNum, carrier: trackCarrier });
       refresh();
-    } catch { /* silent */ } finally { setTSaving(false); }
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save tracking info.', { variant: 'error' });
+    } finally { setTSaving(false); }
   };
 
   return (

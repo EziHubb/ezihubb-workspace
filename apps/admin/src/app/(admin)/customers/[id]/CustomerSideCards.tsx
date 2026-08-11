@@ -5,6 +5,7 @@ import { Plus, X, Save } from 'lucide-react';
 import { api } from '../../../../lib/api-client';
 import { fmtDate } from '../../../../lib/fmt';
 import { API_ROUTES } from '@ezihubb/constants';
+import { useDialog } from '../../../../contexts/DialogContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -107,27 +108,33 @@ function TagsCard({ customerId, initialTags }: { customerId: string; initialTags
   const [tags,    setTags]    = useState<string[]>(initialTags);
   const [input,   setInput]   = useState('');
   const [saving,  setSaving]  = useState(false);
+  const { alert } = useDialog();
 
-  const sync = async (updated: string[]) => {
+  const sync = async (updated: string[], previous: string[]) => {
     setSaving(true);
     try {
       await api.patch(API_ROUTES.ADMIN.CUSTOMER_TAGS(customerId), { tags: updated });
-    } catch { /* silent */ } finally { setSaving(false); }
+    } catch (err) {
+      setTags(previous);
+      await alert((err as Error).message || 'Could not save tags.', { variant: 'error' });
+    } finally { setSaving(false); }
   };
 
   const addTag = () => {
     const t = input.trim();
     if (!t || tags.includes(t)) { setInput(''); return; }
+    const previous = tags;
     const updated = [...tags, t];
     setTags(updated);
     setInput('');
-    sync(updated);
+    sync(updated, previous);
   };
 
   const removeTag = (t: string) => {
+    const previous = tags;
     const updated = tags.filter((x) => x !== t);
     setTags(updated);
-    sync(updated);
+    sync(updated, previous);
   };
 
   return (

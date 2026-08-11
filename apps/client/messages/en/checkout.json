@@ -3,15 +3,21 @@
   "currencyNote": "Prices shown are approximate conversions for reference. Your card will be charged in {currency}.",
 
   "steps": {
+    "cart": "Cart",
     "shipping": "Shipping",
     "delivery": "Delivery",
-    "payment": "Payment"
+    "payment": "Payment",
+    "contact": "Contact",
+    "review": "Review",
+    "aria": "Checkout steps"
   },
 
   "stepHeadings": {
     "shippingInformation": "Shipping Information",
     "deliveryMethod": "Delivery Method",
-    "payment": "Payment"
+    "payment": "Payment",
+    "contactInformation": "Contact information",
+    "preparingOrder": "Preparing your order…"
   },
 
   "orderSummary": {
@@ -41,5 +47,132 @@
 
   "errors": {
     "createOrderFailed": "Failed to create order. Please try again."
+  },
+
+  "shippingForm": {
+    "savedAddress": "Use a saved address",
+    "selectSavedAddress": "— Select a saved address —",
+    "email": "Email",
+    "emailPlaceholder": "your@email.com",
+    "emailHint": "Order confirmation will be sent here",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "phone": "Phone",
+    "phonePlaceholder": "+1 555 000 0000",
+    "address": "Address",
+    "addressPlaceholder": "123 Main St",
+    "addressLine2": "Apt, suite, etc. (optional)",
+    "city": "City",
+    "state": "State / Province",
+    "statePlaceholder": "CA",
+    "zip": "ZIP / Postal Code",
+    "country": "Country",
+    "saveAddress": "Save this address for future orders",
+    "continueToDelivery": "Continue to Delivery →",
+    "validation": {
+      "validEmail": "Valid email required",
+      "required": "Required",
+      "invalidPhone": "Invalid phone number",
+      "fullAddress": "Enter a full street address",
+      "selectCountry": "Select a country"
+    }
+  },
+
+  "deliveryForm": {
+    "calculating": "Calculating shipping for <b>{country}</b>…",
+    "failedToLoad": "Failed to load shipping options.",
+    "tryAgain": "Try again",
+    "noShipTo": "We don't ship to {country} yet.",
+    "changeCountry": "← Change country",
+    "selectMethod": "Select a shipping method",
+    "methodsAria": "Shipping methods",
+    "via": "via {carrier}",
+    "businessDays": "{min}–{max} business days · Arrives {date}",
+    "free": "FREE",
+    "freeOver": "Free over {amount}",
+    "back": "← Back",
+    "backAria": "Back",
+    "continueToPayment": "Continue to Payment →",
+    "creatingOrder": "Creating order…",
+    "creating": "Creating…"
+  },
+
+  "paymentForm": {
+    "cardTab": "Credit / Debit Card",
+    "paypalTab": "PayPal",
+    "securePayments": "Payments are encrypted and secure",
+    "back": "← Back",
+    "backAria": "Back",
+    "placeOrder": "Place Order — {amount}",
+    "processing": "Processing…",
+    "paymentFailed": "Payment failed. Please try again.",
+    "paypalFailed": "PayPal payment failed. Please try again or use a card."
+  },
+
+  "giftOptions": {
+    "isGift": "This order is a gift",
+    "addOptionsHint": "Add a message and gift options",
+    "from": "From (optional)",
+    "fromPlaceholder": "e.g. Mom & Dad",
+    "message": "Gift message",
+    "optional": "(optional)",
+    "messagePlaceholder": "Write a personal message to the recipient...",
+    "sendReceipt": "Send a gift receipt",
+    "receiptNote": "The packing slip will not show prices",
+    "addWrapping": "Add gift wrapping",
+    "wrappingNote": "Tissue paper, ribbon, and gift bag",
+    "wrappingPrice": "+$4.99"
+  },
+
+  "expressPay": {
+    "expressCheckout": "Express checkout",
+    "payWithPaypal": "Pay with PayPal",
+    "orPayWithCard": "or pay with card",
+    "total": "Total: {amount} USD"
+  },
+
+  "affiliateBanner": {
+    "savingPercent": "You're saving {percent}%",
+    "thanksTo": " — thanks to {name}!",
+    "referralApplied": "Referral discount of {amount} applied automatically."
+  },
+
+  "digitalContact": {
+    "digitalOnlyNote": "This order is digital only — no shipping needed. We'll email your download link and receipt here.",
+    "emailAddress": "Email address",
+    "emailPlaceholder": "you@example.com",
+    "invalidEmail": "Enter a valid email address",
+    "continueToPayment": "Continue to payment",
+    "preparingOrder": "Preparing your order…"
+  },
+
+  "success": {
+    "paymentProcessing": "Payment processing…",
+    "orderConfirmed": "Order Confirmed! 🎉",
+    "confirmingPayment": "We're confirming your payment. This usually takes a few seconds.",
+    "yourOrderNumber": "Your order number",
+    "clickToCopy": "(Click to copy)",
+    "copyOrderNumber": "Copy order number {orderNumber}",
+    "confirmationSentTo": "A confirmation email has been sent to",
+    "inbox": "{name}'s inbox",
+    "orderItems": "Order items",
+    "qty": "Qty {count}",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "free": "FREE",
+    "discount": "Discount",
+    "giftCard": "Gift card",
+    "totalPaid": "Total paid",
+    "shippingTo": "Shipping to",
+    "estimatedDelivery": "Estimated delivery",
+    "deliveryEstimate": "5–10 business days after production",
+    "orderNumberNotFound": "Order number not found.",
+    "continueShopping": "Continue Shopping",
+    "couldNotLoad": "Could not load order details.",
+    "orderNumberIs": "Your order number is <b>{orderNumber}</b>. Check your email for confirmation.",
+    "saveOrderHistory": "Save your order history",
+    "createAccountHint": "Create a free account to track this order, view past purchases, and check out faster next time.",
+    "createAccount": "Create account →",
+    "trackMyOrder": "Track My Order"
   }
 }

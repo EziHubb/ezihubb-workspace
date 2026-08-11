@@ -1,11 +1,14 @@
 'use client';
 
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { Check, RefreshCw } from 'lucide-react';
 import { useCustomizerStore } from '../../../lib/store/customizer.store';
 import type { SelectField } from '../../../lib/customizer/types';
 
 export function Step3StylePicker() {
+  const t                  = useTranslations('customizer.step3');
+  const tCommon            = useTranslations('common');
   const template           = useCustomizerStore((s) => s.template);
   const fieldValues        = useCustomizerStore((s) => s.fieldValues);
   const setField           = useCustomizerStore((s) => s.setFieldValue);
@@ -23,9 +26,9 @@ export function Step3StylePicker() {
   return (
     <div className="space-y-5">
       <div>
-        <h4 className="text-base font-bold text-secondary">Choose Your Style</h4>
+        <h4 className="text-base font-bold text-secondary">{t('title')}</h4>
         <p className="text-sm text-muted mt-1">
-          Select an art style for your photo to give it a unique look.
+          {t('desc')}
         </p>
       </div>
 
@@ -108,8 +111,8 @@ export function Step3StylePicker() {
             onClick={() => generatePreview()}
             className="w-full h-[60px] flex flex-col items-center justify-center gap-0.5 border-2 border-dashed border-primary/40 rounded-xl bg-primary/5 hover:bg-primary/10 transition-colors"
           >
-            <span className="text-sm font-bold text-primary">👁 Generate Preview</span>
-            <span className="text-xs text-muted">See exactly how it'll look (~20 sec)</span>
+            <span className="text-sm font-bold text-primary">{t('generatePreview')}</span>
+            <span className="text-xs text-muted">{t('generateHint')}</span>
           </button>
         )}
 
@@ -120,10 +123,10 @@ export function Step3StylePicker() {
               <div className="h-full bg-primary rounded-full animate-[shimmer_1.5s_infinite_linear] bg-gradient-to-r from-primary via-primary-light to-primary bg-[length:200%_100%]" />
             </div>
             <p className="text-sm text-center text-secondary font-medium">
-              Generating your preview…
+              {t('generating')}
             </p>
             <p className="text-xs text-center text-muted">
-              Please keep this screen open
+              {t('generatingHint')}
             </p>
           </div>
         )}
@@ -134,21 +137,21 @@ export function Step3StylePicker() {
             <div className="relative w-full h-[200px] rounded-xl overflow-hidden bg-background">
               <Image
                 src={previewImageUrl}
-                alt="Your personalized preview"
+                alt={t('previewAlt')}
                 fill
                 sizes="(max-width: 480px) 100vw, 480px"
                 className="object-cover"
               />
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-success font-medium">Looking good! ✨</span>
+              <span className="text-sm text-success font-medium">{t('lookingGood')}</span>
               <button
                 type="button"
                 onClick={() => generatePreview()}
                 className="flex items-center gap-1.5 text-xs text-muted hover:text-secondary font-medium"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                Regenerate
+                {t('regenerate')}
               </button>
             </div>
           </div>
@@ -163,7 +166,7 @@ export function Step3StylePicker() {
               onClick={() => generatePreview()}
               className="text-xs text-primary hover:underline"
             >
-              Try again
+              {tCommon('retry')}
             </button>
           </div>
         )}
@@ -171,7 +174,7 @@ export function Step3StylePicker() {
 
       {selectFields.length === 0 && (
         <p className="text-sm text-muted text-center py-2">
-          No style options for this product.
+          {t('noStyleOptions')}
         </p>
       )}
     </div>

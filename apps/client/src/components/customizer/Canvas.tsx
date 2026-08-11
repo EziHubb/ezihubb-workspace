@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import type { Canvas as FabricCanvasType, FabricObject } from 'fabric';
 import { useCustomizerStore } from '../../lib/store/customizer.store';
 import { CANVAS_LOGICAL_SIZE } from '../../lib/customizer/types';
@@ -15,6 +16,7 @@ interface CanvasProps {
 }
 
 export function Canvas({ readOnly = false }: CanvasProps) {
+  const t             = useTranslations('customizer');
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasElRef  = useRef<HTMLCanvasElement>(null);
   const fabricRef    = useRef<FabricCanvasType | null>(null);
@@ -247,7 +249,7 @@ export function Canvas({ readOnly = false }: CanvasProps) {
     <div className="flex flex-col w-full">
       {/* Angle tabs */}
       {angles.length > 1 && (
-        <div className="flex gap-1 mb-2 px-1" role="tablist" aria-label="Product angles">
+        <div className="flex gap-1 mb-2 px-1" role="tablist" aria-label={t('productAngles')}>
           {angles.map((angle) => (
             <button
               key={angle.id}

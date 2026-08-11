@@ -1,8 +1,10 @@
+import { getTranslations } from 'next-intl/server';
 import { OrderCardSkeleton } from '../../../../../components/skeletons/OrderCardSkeleton';
 
-export default function OrdersLoading() {
+export default async function OrdersLoading() {
+  const t = await getTranslations('common');
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="Loading orders">
+    <div className="space-y-6" aria-busy="true" aria-label={t('loadingOrders')}>
       {/* Header */}
       <div className="h-8 w-36 animate-shimmer bg-gradient-to-r from-border/60 via-background to-border/60 bg-[length:400%_100%] rounded-sm" />
 

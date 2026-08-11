@@ -226,6 +226,7 @@ function StoreTab() {
   const [address,  setAddress]  = useState<Partial<StoreSettings>>({});
   const [currency, setCurrency] = useState<Partial<StoreSettings>>({});
   const [saving,   setSaving]   = useState('');
+  const { alert } = useDialog();
 
   const { data, isLoading } = useQuery<StoreSettings>({
     queryKey: ['store-settings'],
@@ -252,6 +253,8 @@ function StoreTab() {
     setSaving(section);
     try {
       await api.patch(API_ROUTES.ADMIN.SETTINGS_STORE, payload);
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save settings.', { variant: 'error' });
     } finally { setSaving(''); }
   };
 
@@ -388,6 +391,7 @@ function EmailTemplateEditor({
   const [saving,  setSaving]  = useState(false);
   const [success, setSuccess] = useState(false);
   const vars = TEMPLATE_VARIABLES[template.slug] ?? [];
+  const { alert } = useDialog();
 
   const handleSave = async () => {
     setSaving(true);
@@ -395,6 +399,8 @@ function EmailTemplateEditor({
       await api.patch(API_ROUTES.ADMIN.EMAIL_TEMPLATE(template.slug), { body });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save the email template.', { variant: 'error' });
     } finally { setSaving(false); }
   };
 
@@ -513,7 +519,7 @@ const EMAIL_TEMPLATES = [
 ];
 
 function EmailTab() {
-  const { preview } = useDialog();
+  const { preview, alert } = useDialog();
   const [smtp, setSmtp] = useState({
     host: '', port: '587', user: '', password: '',
     fromName: 'EziHubb', fromEmail: '',
@@ -538,6 +544,8 @@ function EmailTab() {
     setSmtpSaving(true);
     try {
       await api.patch(API_ROUTES.ADMIN.SETTINGS_EMAIL, smtp);
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save SMTP settings.', { variant: 'error' });
     } finally { setSmtpSaving(false); }
   };
 
@@ -547,6 +555,8 @@ function EmailTab() {
       await api.post(API_ROUTES.ADMIN.SETTINGS_EMAIL_TEST);
       setTestDone(true);
       setTimeout(() => setTestDone(false), 4000);
+    } catch (err) {
+      await alert((err as Error).message || 'Could not send the test email.', { variant: 'error' });
     } finally { setTestSending(false); }
   };
 
@@ -693,6 +703,7 @@ function NotificationsTab() {
   });
   const [saving, setSaving] = useState(false);
   const [done,   setDone]   = useState(false);
+  const { alert } = useDialog();
 
   useQuery({
     queryKey: ['notif-settings'],
@@ -713,6 +724,8 @@ function NotificationsTab() {
       await api.patch(API_ROUTES.ADMIN.SETTINGS_NOTIFICATIONS, s);
       setDone(true);
       setTimeout(() => setDone(false), 3000);
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save notification preferences.', { variant: 'error' });
     } finally { setSaving(false); }
   };
 
@@ -851,7 +864,7 @@ function InviteModal({ onClose, onInvite }: { onClose: () => void; onInvite: (em
 
 function TeamTab() {
   const qc = useQueryClient();
-  const { confirm } = useDialog();
+  const { confirm, alert } = useDialog();
   const [inviteOpen, setInviteOpen] = useState(false);
 
   const { data: members = [], isLoading } = useQuery<AdminMember[]>({
@@ -875,13 +888,22 @@ function TeamTab() {
 
   const handleRevoke = async (id: string, name: string) => {
     if (!await confirm(`Revoke admin access for ${name}? They will be logged out immediately.`, { confirmLabel: 'Revoke', destructive: true })) return;
-    await api.delete(API_ROUTES.ADMIN.TEAM_MEMBER(id));
-    qc.invalidateQueries({ queryKey: ['admin-team'] });
+    try {
+      await api.delete(API_ROUTES.ADMIN.TEAM_MEMBER(id));
+      qc.invalidateQueries({ queryKey: ['admin-team'] });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not revoke access.', { variant: 'error' });
+    }
   };
 
   const handleRoleChange = async (id: string, role: string) => {
-    await api.patch(API_ROUTES.ADMIN.TEAM_MEMBER(id), { role });
-    qc.invalidateQueries({ queryKey: ['admin-team'] });
+    try {
+      await api.patch(API_ROUTES.ADMIN.TEAM_MEMBER(id), { role });
+      qc.invalidateQueries({ queryKey: ['admin-team'] });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not update role.', { variant: 'error' });
+      qc.invalidateQueries({ queryKey: ['admin-team'] });
+    }
   };
 
   return (
@@ -1103,6 +1125,7 @@ function SeoTab() {
   const [s,      setS]      = useState<SeoSettings>({});
   const [saving, setSaving] = useState(false);
   const [done,   setDone]   = useState(false);
+  const { alert } = useDialog();
 
   const { data } = useQuery<SeoSettings>({
     queryKey: ['seo-settings'],
@@ -1129,6 +1152,8 @@ function SeoTab() {
       await api.patch(API_ROUTES.ADMIN.SETTINGS_SEO, s);
       setDone(true);
       setTimeout(() => setDone(false), 3000);
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save SEO settings.', { variant: 'error' });
     } finally { setSaving(false); }
   };
 
@@ -1262,6 +1287,7 @@ function AppearanceTab() {
 
   // ── Site theme (server-saved, applies to all visitors) ─────────────────────
   const qc = useQueryClient();
+  const { alert } = useDialog();
   const [siteKey,   setSiteKey]   = useState('coral');
   const [siteSaving, setSiteSaving] = useState(false);
   const [siteDone,   setSiteDone]   = useState(false);
@@ -1290,6 +1316,8 @@ function AppearanceTab() {
       qc.invalidateQueries({ queryKey: ['site-theme-settings'] });
       setSiteDone(true);
       setTimeout(() => setSiteDone(false), 3000);
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save the site theme.', { variant: 'error' });
     } finally { setSiteSaving(false); }
   };
 

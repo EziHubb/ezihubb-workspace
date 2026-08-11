@@ -11,6 +11,7 @@ import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtNum } from '../../../lib/fmt';
+import { useDialog } from '../../../contexts/DialogContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -108,13 +109,20 @@ function SettingsAccordion({ campaign, onSave }: {
     endDate:      campaign.endDate?.slice(0, 10)   ?? '',
   });
   const [saving, setSaving] = useState(false);
+  const { alert } = useDialog();
 
   const f = (key: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((p) => ({ ...p, [key]: e.target.value }));
 
   const handleSave = async () => {
     setSaving(true);
-    try { await onSave(campaign.id, form); } finally { setSaving(false); }
+    try {
+      await onSave(campaign.id, form);
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save campaign settings.', { variant: 'error' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const inputCls = 'w-full border border-border rounded-button px-2 py-1.5 text-xs bg-surface focus:outline-none focus:ring-1 focus:ring-primary/30 text-secondary';
@@ -311,16 +319,29 @@ function CampaignCard({ campaign, onActivate, onDeactivate, onSaveSettings, onDe
   const [toggling, setToggling]   = useState(false);
   const [deleting, setDeleting]   = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
+  const { alert } = useDialog();
 
   const handleToggle = async () => {
     setToggling(true);
-    try { campaign.isActive ? await onDeactivate(campaign.id) : await onActivate(campaign.id); }
-    finally { setToggling(false); }
+    try {
+      campaign.isActive ? await onDeactivate(campaign.id) : await onActivate(campaign.id);
+    } catch (err) {
+      await alert((err as Error).message || `Could not ${campaign.isActive ? 'deactivate' : 'activate'} this campaign.`, { variant: 'error' });
+    } finally {
+      setToggling(false);
+    }
   };
 
   const handleDelete = async () => {
     setDeleting(true);
-    try { await onDelete(campaign.id); } finally { setDeleting(false); setConfirmDel(false); }
+    try {
+      await onDelete(campaign.id);
+    } catch (err) {
+      await alert((err as Error).message || 'Could not delete this campaign.', { variant: 'error' });
+    } finally {
+      setDeleting(false);
+      setConfirmDel(false);
+    }
   };
 
   const stripGradient = campaign.season && SEASON_CFG[campaign.season]

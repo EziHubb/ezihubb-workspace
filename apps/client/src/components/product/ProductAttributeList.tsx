@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ChevronDown } from 'lucide-react';
 
 export interface ProductAttribute {
@@ -15,6 +16,7 @@ interface ProductAttributeListProps {
 }
 
 export function ProductAttributeList({ attributes }: ProductAttributeListProps) {
+  const t = useTranslations('product.specs');
   const [open, setOpen] = useState(true);
 
   const visible = attributes.filter((a) => a.key && a.value);
@@ -29,7 +31,7 @@ export function ProductAttributeList({ attributes }: ProductAttributeListProps) 
         aria-expanded={open}
         className="w-full flex items-center justify-between px-4 py-3 bg-background hover:bg-muted/5 transition-colors text-left"
       >
-        <span className="font-semibold text-sm text-secondary">Product Details</span>
+        <span className="font-semibold text-sm text-secondary">{t('title')}</span>
         <ChevronDown
           className={`w-4 h-4 text-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
         />

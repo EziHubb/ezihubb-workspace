@@ -19,7 +19,44 @@
     "count": "{total, plural, one {# đơn hàng} other {# đơn hàng}}",
     "actions": {
       "viewDetails": "Xem chi tiết",
-      "trackOrder": "Theo dõi đơn hàng"
+      "trackOrder": "Theo dõi đơn hàng",
+      "writeReview": "Viết đánh giá"
+    },
+    "itemCount": "{count, plural, other {# sản phẩm}}",
+    "viewOrderDetailsAria": "Xem chi tiết đơn hàng",
+    "detail": {
+      "backToOrders": "Đơn hàng của tôi",
+      "placed": "Đặt lúc {date}",
+      "downloadInvoice": "Tải hóa đơn",
+      "yourFiles": "Tệp của bạn",
+      "items": "Sản phẩm ({count})",
+      "qty": "SL {count}",
+      "shippingAddress": "Địa chỉ giao hàng",
+      "orderSummaryTitle": "Tóm tắt đơn hàng",
+      "subtotal": "Tạm tính",
+      "shipping": "Phí vận chuyển",
+      "free": "MIỄN PHÍ",
+      "discount": "Giảm giá",
+      "total": "Tổng cộng",
+      "trackingNumber": "Mã vận đơn",
+      "trackPackage": "Theo dõi kiện hàng",
+      "orderNotFound": "Không tìm thấy đơn hàng.",
+      "needToCancel": "Bạn cần hủy đơn hàng?",
+      "availableToCancelFor": "Có thể hủy trong",
+      "cancelOrderTitle": "Hủy đơn hàng {orderNumber}?",
+      "cancelOrderBody": "Hành động này không thể hoàn tác. Bạn sẽ được hoàn tiền đầy đủ.",
+      "yesCancel": "Đồng ý, Hủy",
+      "cancelledMessage": "Đơn hàng này đã bị {status}.",
+      "statusWords": {
+        "CANCELLED": "hủy",
+        "REFUNDED": "hoàn tiền",
+        "REFUND_REQUESTED": "yêu cầu hoàn tiền",
+        "DISPUTED": "khiếu nại"
+      },
+      "timelineAriaLabel": "Dòng thời gian trạng thái đơn hàng",
+      "current": "Hiện tại",
+      "cancelSuccessToast": "Đã hủy đơn hàng. Bạn sẽ được hoàn tiền trong vòng 5–7 ngày làm việc.",
+      "cancelErrorToast": "Không thể hủy đơn hàng"
     }
   },
 
@@ -105,6 +142,13 @@
       "cancel": "Hủy",
       "save": "Lưu địa chỉ",
       "saving": "Đang lưu…"
+    },
+    "errors": {
+      "required": "Bắt buộc",
+      "invalidPhone": "Số điện thoại không hợp lệ",
+      "enterFullAddress": "Vui lòng nhập địa chỉ đầy đủ",
+      "selectCountry": "Vui lòng chọn quốc gia",
+      "failedToSave": "Không thể lưu địa chỉ"
     }
   },
 
@@ -185,5 +229,176 @@
     "signIn": "Đăng nhập để xem trạng thái VIP của bạn",
     "signInSub": "Mở khóa quyền lợi độc quyền khi mua sắm.",
     "signInBtn": "Đăng nhập"
+  },
+
+  "sidebar": {
+    "aria": "Điều hướng tài khoản",
+    "myOrders": "Đơn hàng của tôi",
+    "wishlist": "Danh sách yêu thích",
+    "messages": "Tin nhắn",
+    "creatorHub": "Creator Hub",
+    "addressBook": "Sổ địa chỉ",
+    "profilePassword": "Hồ sơ & Mật khẩu",
+    "signOut": "Đăng xuất"
+  },
+
+  "messages": {
+    "title": "Tin nhắn",
+    "noMessages": "Chưa có tin nhắn nào",
+    "questionsHint": "Bạn có thắc mắc về đơn hàng hoặc sản phẩm?",
+    "messageUs": "Nhắn tin cho chúng tôi",
+    "selectConversation": "Chọn một cuộc trò chuyện để xem tin nhắn",
+    "backToConversations": "Quay lại danh sách trò chuyện",
+    "orderNumber": "Đơn hàng #{number}",
+    "sendMessage": "Gửi tin nhắn",
+    "typePlaceholder": "Nhập tin nhắn... (Enter để gửi)",
+    "shiftEnterHint": "Shift+Enter để xuống dòng",
+    "resolvedNotice": "Cuộc trò chuyện này đã được giải quyết.",
+    "reopen": "Mở lại",
+    "justNow": "vừa xong",
+    "minutesAgo": "{count} phút trước",
+    "hoursAgo": "{count} giờ trước",
+    "daysAgo": "{count} ngày trước",
+    "status": {
+      "pending": "Đang chờ",
+      "resolved": "Đã giải quyết",
+      "spam": "Spam"
+    }
+  },
+
+  "wishlist": {
+    "pageTitle": "Danh sách yêu thích",
+    "removeAria": "Xóa khỏi danh sách yêu thích",
+    "adding": "Đang thêm…",
+    "addToCart": "Thêm vào giỏ",
+    "outOfStock": "Hết hàng",
+    "shareTitle": "Chia sẻ danh sách yêu thích",
+    "revokeLink": "Thu hồi liên kết",
+    "createLinkHint": "Tạo liên kết chia sẻ để bạn bè và người thân xem danh sách yêu thích và mua quà cho bạn.",
+    "creating": "Đang tạo…",
+    "createShareLink": "Tạo liên kết chia sẻ",
+    "nameLabel": "Tên danh sách yêu thích",
+    "optional": "(không bắt buộc)",
+    "namePlaceholder": "vd. Danh sách sinh nhật của tôi",
+    "visiblePublic": "Hiển thị với bất kỳ ai có liên kết",
+    "hiddenInactive": "Ẩn (liên kết không hoạt động)",
+    "copied": "Đã sao chép!",
+    "copy": "Sao chép",
+    "shareOn": "Chia sẻ trên:",
+    "shareCheckOut": "Xem danh sách yêu thích của tôi!",
+    "linkRevoked": "Đã thu hồi liên kết danh sách yêu thích",
+    "removedFromWishlist": "Đã xóa khỏi danh sách yêu thích",
+    "addedToCart": "Đã thêm vào giỏ hàng!",
+    "failedToAddToCart": "Không thể thêm vào giỏ hàng",
+    "nothingSaved": "Chưa lưu gì cả",
+    "nothingSavedHint": "Yêu thích những sản phẩm bạn thích và tìm lại chúng ở đây.",
+    "exploreGifts": "Khám phá quà tặng",
+    "savedItems": "sản phẩm đã lưu"
+  },
+
+  "referrals": {
+    "title": "Giới thiệu bạn bè",
+    "subtitle": "Chia sẻ liên kết của bạn, kiếm hoa hồng khi bạn bè mua sắm.",
+    "commissionRate": "Tỷ lệ hoa hồng {rate}%",
+    "directReferralCount": "{count, plural, one {# lượt giới thiệu trực tiếp} other {# lượt giới thiệu trực tiếp}}",
+    "progressTo": "Tiến độ đến {tier}",
+    "yourReferralLink": "Liên kết giới thiệu của bạn",
+    "shareVia": "Chia sẻ qua:",
+    "howItWorks": {
+      "title": "Cách thức hoạt động",
+      "step1Title": "Chia sẻ liên kết của bạn",
+      "step1Body": "Sao chép liên kết giới thiệu riêng của bạn và chia sẻ với bạn bè, người thân.",
+      "step2Title": "Bạn bè mua sắm",
+      "step2Body": "Khi ai đó đặt hàng qua liên kết của bạn, đơn hàng sẽ được theo dõi tự động.",
+      "step3Title": "Bạn kiếm được hoa hồng",
+      "step3Body": "Hoa hồng được xác nhận sau khi đơn hàng được hoàn tất và khóa."
+    },
+    "stats": {
+      "directRefs": "Giới thiệu trực tiếp",
+      "level2": "Cấp 2",
+      "level3": "Cấp 3",
+      "allTimeEarned": "Tổng đã kiếm",
+      "balance": "Số dư",
+      "pendingSuffix": "+{amount} đang chờ"
+    },
+    "quickLinks": {
+      "commissionHistory": "Lịch sử hoa hồng",
+      "commissionHistoryDesc": "Xem tất cả thu nhập của bạn theo đơn hàng",
+      "payouts": "Rút tiền",
+      "payoutsDesc": "Yêu cầu rút số dư của bạn"
+    },
+    "recentEarnings": "Thu nhập gần đây",
+    "noCommissions": "Chưa có hoa hồng nào. Chia sẻ liên kết để bắt đầu kiếm tiền!",
+    "levelCommission": "Hoa hồng cấp {level}",
+    "orderRef": "Đơn hàng #{id}",
+    "commissionStatus": {
+      "pending": "Đang chờ",
+      "confirmed": "Đã xác nhận",
+      "paid": "Đã trả",
+      "cancelled": "Đã hủy"
+    },
+    "earnings": {
+      "title": "Lịch sử hoa hồng",
+      "subtitle": "Tất cả hoa hồng giới thiệu đã kiếm được trong mạng lưới của bạn.",
+      "tabAll": "Tất cả",
+      "emptyAll": "Chưa có hoa hồng nào. Chia sẻ liên kết giới thiệu để bắt đầu kiếm tiền!",
+      "emptyFiltered": "Không có hoa hồng {status}.",
+      "tableDate": "Ngày",
+      "tableFrom": "Từ",
+      "tableOrder": "Đơn hàng",
+      "tableLevel": "Cấp",
+      "tableAmount": "Số tiền",
+      "tableStatus": "Trạng thái",
+      "levelDirect": "Trực tiếp (Cấp 1)",
+      "levelN": "Cấp {level}",
+      "locksInDays": "Khóa trong {days} ngày",
+      "pageOf": "Trang {page} / {totalPages}",
+      "totalCount": "{count} tổng cộng"
+    },
+    "payouts": {
+      "title": "Rút tiền",
+      "subtitle": "Yêu cầu rút số dư hoa hồng giới thiệu đã xác nhận.",
+      "confirmedBalance": "Số dư đã xác nhận",
+      "availableToWithdraw": "Có thể rút",
+      "minToWithdraw": "Tối thiểu {amount} để rút",
+      "pendingEarnings": "Thu nhập đang chờ",
+      "locksAfterFulfillment": "Khóa sau khi đơn hàng hoàn tất",
+      "allTimeEarned": "Tổng đã kiếm",
+      "notEnoughTitle": "Chưa đủ số dư",
+      "notEnoughBody": "Bạn cần ít nhất {amount} trong số dư đã xác nhận để yêu cầu rút tiền. Hãy tiếp tục chia sẻ liên kết để kiếm thêm!",
+      "requestTitle": "Yêu cầu rút tiền",
+      "minAndAvailable": "Tối thiểu: {min} · Khả dụng: {available}",
+      "methodLabel": "Phương thức rút tiền",
+      "methodPaypal": "PayPal",
+      "methodBank": "Chuyển khoản ngân hàng",
+      "detailLabelPaypal": "Email PayPal",
+      "detailLabelBank": "Thông tin tài khoản ngân hàng",
+      "detailPlaceholderPaypal": "Nhập địa chỉ email PayPal của bạn",
+      "detailPlaceholderBank": "Nhập số tài khoản / IBAN",
+      "amountLabel": "Số tiền ($)",
+      "useFullBalance": "Dùng toàn bộ số dư",
+      "submitting": "Đang gửi…",
+      "requestButton": "Yêu cầu rút tiền",
+      "successTitle": "Đã gửi yêu cầu rút tiền!",
+      "successBody": "Chúng tôi sẽ xử lý yêu cầu của bạn trong vòng 3–5 ngày làm việc.",
+      "errorMinAmount": "Số tiền rút tối thiểu là {amount}.",
+      "errorExceedsBalance": "Số tiền vượt quá số dư đã xác nhận của bạn là {amount}.",
+      "errorDetailRequired": "Vui lòng nhập thông tin rút tiền của bạn.",
+      "historyTitle": "Lịch sử rút tiền",
+      "noPayouts": "Chưa có yêu cầu rút tiền nào.",
+      "tableDate": "Ngày",
+      "tableAmount": "Số tiền",
+      "tableMethod": "Phương thức",
+      "tableStatus": "Trạng thái",
+      "paidOn": "Đã trả {date}",
+      "status": {
+        "pending": "Đang chờ",
+        "processing": "Đang xử lý",
+        "paid": "Đã trả",
+        "rejected": "Bị từ chối"
+      },
+      "pageOf": "Trang {page} / {totalPages}",
+      "totalCount": "{count} tổng cộng"
+    }
   }
 }

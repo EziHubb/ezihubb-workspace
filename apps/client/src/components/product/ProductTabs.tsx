@@ -55,7 +55,7 @@ export function ProductTabs({ product, reviewSummary, initialReviews }: ProductT
       {/* Tab bar */}
       <div
         role="tablist"
-        aria-label="Product information"
+        aria-label={t('productInformation')}
         className="flex border-b border-border overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
       >
         {tabs.map((tab) => (

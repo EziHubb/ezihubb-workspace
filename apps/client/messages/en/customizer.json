@@ -1,7 +1,9 @@
 {
   "step1": {
     "title": "Add Names & Message",
-    "desc": "Personalize with names, dates, or a heartfelt message."
+    "desc": "Personalize with names, dates, or a heartfelt message.",
+    "maxCharacters": "Maximum {max} characters",
+    "noTextFields": "No text fields for this product."
   },
   "step2": {
     "title": "Upload a Photo",
@@ -23,7 +25,11 @@
     },
     "replace": "Replace",
     "skip": "Skip this step →",
-    "noPhoto": "No photo?"
+    "noPhoto": "No photo?",
+    "sizeError": "Photo must be under {max}MB.",
+    "uploadLabel": "Upload {label}",
+    "photoFallback": "Photo",
+    "noImageFields": "No photo upload required for this product."
   },
   "step3": {
     "title": "Choose Your Style",
@@ -33,7 +39,9 @@
     "generating": "Generating your preview…",
     "generatingHint": "Please keep this screen open",
     "lookingGood": "Looking good! ✨",
-    "regenerate": "Regenerate"
+    "regenerate": "Regenerate",
+    "previewAlt": "Your personalized preview",
+    "noStyleOptions": "No style options for this product."
   },
   "topBar": {
     "preview": "Preview",
@@ -60,11 +68,80 @@
   "progress": "Step {current} of {total}",
   "continue": "Continue →",
   "back": "← Back",
+  "productAngles": "Product angles",
+  "desktopImageUpload": {
+    "replace": "🔄 Replace",
+    "uploadLabel": "Upload {label}",
+    "uploadImage": "Upload image",
+    "dropOrBrowse": "Drop photo here or <browse>browse</browse>",
+    "sizeHint": "JPG, PNG, WebP, HEIC — max {max}MB",
+    "uploading": "Uploading… {progress}%",
+    "removingBg": "Removing background… (~10s)",
+    "processing": "Processing…",
+    "uploadedAlt": "Uploaded photo",
+    "bgRemoved": "BG removed",
+    "removeImage": "Remove image",
+    "removeBackground": "Remove Background",
+    "revertToOriginal": "Revert to Original",
+    "bestResultsHint": "Upload a photo for best results",
+    "unsupportedType": "Unsupported file type. Use JPG, PNG, WebP, or HEIC.",
+    "sizeError": "Image must be under {max}MB."
+  },
+  "artStyle": {
+    "label": "Art Style",
+    "processing": "Processing...",
+    "none": "None",
+    "original": "Original"
+  },
+  "autoFill": {
+    "saved": "We saved your previous customization",
+    "prompt": "Want to start from where you left off?",
+    "yes": "Yes, auto-fill",
+    "startFresh": "Start fresh",
+    "dismiss": "Dismiss"
+  },
+  "previewModal": {
+    "title": "Your Preview",
+    "close": "Close preview",
+    "generating": "Generating your preview…",
+    "generatingHint": "This takes about 20 seconds",
+    "tryAgain": "Try again",
+    "previewAlt": "Customized product preview",
+    "looksGreat": "Looks great! This is an approximate preview — the final product may vary slightly.",
+    "editMore": "Edit More",
+    "addToCart": "Add to Cart — {amount}"
+  },
+  "panel": {
+    "title": "✏️ Personalize Your Gift",
+    "required": "Required",
+    "generatePreview": "👁 Generate Preview",
+    "addingToCart": "Adding to Cart…",
+    "addToCart": "Add to Cart — {amount}",
+    "fillRequired": "Fill in all required fields (",
+    "toContinue": ") to continue",
+    "genericError": "Something went wrong. Please try again.",
+    "trust": {
+      "shipping": "🚚 Ships in 3–5 days",
+      "cancel": "✅ Cancel within 2h",
+      "secure": "🔒 Secure checkout"
+    }
+  },
   "bundle": {
     "tabLabel": "{item} for...",
     "itemTab": "Item {n}",
     "complete": "Complete",
     "incomplete": "Required fields missing",
-    "priceNote": "Price for the complete set"
+    "priceNote": "Price for the complete set",
+    "title": "🎁 Personalize Your Set",
+    "subtitle": "Customize each item in the set individually",
+    "itemFor": "{item} for {name}",
+    "noFields": "No fields for this item.",
+    "enterPlaceholder": "Enter {label}…",
+    "itemN": "Item {n}",
+    "itemsComplete": "{count}/{total} complete",
+    "addingToCart": "Adding to Cart…",
+    "addSetToCart": "Add Set to Cart — {amount}",
+    "personalizeAllToContinue": "Personalize all {count} items to continue",
+    "failedToAdd": "Failed to add to cart"
   }
 }

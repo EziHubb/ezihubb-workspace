@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { SlidersHorizontal, ChevronDown, X } from 'lucide-react';
 import { safeNum } from '@ezihubb/utils';
 
@@ -22,56 +23,43 @@ interface SearchTopBarProps {
   isLoading: boolean;
 }
 
-// ── Sort options (search-specific — includes relevance) ───────────────────────
+// ── Chip helpers (need `t`, so declared as plain functions and called from
+// inside the component rather than as module-level constants) ────────────────
 
-const SEARCH_SORT_OPTIONS = [
-  { value: 'relevance',  label: 'Relevancy'           },
-  { value: 'bestseller', label: 'Most popular'        },
-  { value: 'newest',     label: 'Newest'              },
-  { value: 'price_asc',  label: 'Price: Low to High'  },
-  { value: 'price_desc', label: 'Price: High to Low'  },
-  { value: 'rating',     label: 'Top rated'           },
-] as const;
+type Translator = ReturnType<typeof useTranslations>;
 
-// ── Chip helpers ──────────────────────────────────────────────────────────────
-
-const FILTER_LABELS: Record<string, string> = {
-  minPrice:    'Min price',
-  maxPrice:    'Max price',
-  minRating:   'Rating',
-  color:       'Color',
-  freeShipping:'Free shipping',
-  onSale:      'On sale',
-  starSeller:  'Star Seller',
-  itemType:    'Item type',
-};
-
-function formatFilterLabel(key: string, value: string): string {
-  if (key === 'minPrice')    return `From $${value}`;
-  if (key === 'maxPrice')    return `To $${value}`;
-  if (key === 'minRating')   return `${'★'.repeat(Number(value))} & up`;
-  if (key === 'freeShipping') return 'Free shipping';
-  if (key === 'onSale')       return 'On sale';
-  if (key === 'starSeller')   return 'Star Seller';
+function formatFilterLabel(t: Translator, key: string, value: string): string {
+  if (key === 'minPrice')    return t('chips.fromPrice', { value: `$${value}` });
+  if (key === 'maxPrice')    return t('chips.toPrice', { value: `$${value}` });
+  if (key === 'minRating')   return t('chips.ratingAndUp', { stars: '★'.repeat(Number(value)) });
+  if (key === 'freeShipping') return t('freeShipping');
+  if (key === 'onSale')       return t('onSale');
+  if (key === 'starSeller')   return t('starSeller');
   if (key === 'itemType') {
-    if (value === 'ready_to_ship') return 'Ready to ship';
-    if (value === 'to_order')      return 'Made to order';
-    if (value === 'digital')       return 'Digital';
+    if (value === 'ready_to_ship') return t('readyToShip');
+    if (value === 'to_order')      return t('madeToOrder');
+    if (value === 'digital')       return t('chips.digital');
   }
-  // attr[Key]=Value  → "Key: Value"
+  // attr[Key]=Value  → "Key: Value" — attribute names come from product data,
+  // not UI chrome, so they're left as-is rather than translated.
   const attrMatch = key.match(/^attr\[([^\]]+)\]$/);
   if (attrMatch) return `${attrMatch[1]}: ${value}`;
 
-  const base = FILTER_LABELS[key] ?? key;
+  const filterLabels: Record<string, string> = {
+    minPrice: t('chips.minPrice'), maxPrice: t('chips.maxPrice'), minRating: t('chips.rating'),
+    color: t('color'), freeShipping: t('freeShipping'), onSale: t('onSale'),
+    starSeller: t('starSeller'), itemType: t('itemType'),
+  };
+  const base = filterLabels[key] ?? key;
   return `${base}: ${value}`;
 }
 
 const SKIP_KEYS = new Set(['q', 'sort', 'page', 'limit']);
 
-function getChips(filters: Record<string, string | undefined>): ActiveFilter[] {
+function getChips(t: Translator, filters: Record<string, string | undefined>): ActiveFilter[] {
   return Object.entries(filters)
     .filter(([key, value]) => !SKIP_KEYS.has(key) && value !== undefined && value !== '')
-    .map(([key, value]) => ({ key, label: formatFilterLabel(key, value as string) }));
+    .map(([key, value]) => ({ key, label: formatFilterLabel(t, key, value as string) }));
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -87,7 +75,18 @@ export function SearchTopBar({
   onOpenSidebar,
   isLoading,
 }: SearchTopBarProps) {
-  const chips = getChips(activeFilters);
+  const t = useTranslations('search');
+  const chips = getChips(t, activeFilters);
+
+  // Sort options (search-specific — includes relevance)
+  const SEARCH_SORT_OPTIONS = [
+    { value: 'relevance',  label: t('sort.relevancy')  },
+    { value: 'bestseller', label: t('sort.mostPopular') },
+    { value: 'newest',     label: t('sort.newest')      },
+    { value: 'price_asc',  label: t('sort.priceAsc')    },
+    { value: 'price_desc', label: t('sort.priceDesc')   },
+    { value: 'rating',     label: t('sort.topRated')    },
+  ] as const;
 
   return (
     <div className="sticky top-16 z-20 bg-background/95 backdrop-blur-sm border-b border-border">
@@ -104,7 +103,7 @@ export function SearchTopBar({
               className="lg:hidden flex items-center gap-1.5 border border-border rounded-full px-3 py-1.5 text-sm text-secondary hover:border-secondary transition-colors"
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
-              Filters
+              {t('filters')}
               {chips.length > 0 && (
                 <span className="w-4 h-4 bg-primary text-white rounded-full text-[10px] flex items-center justify-center leading-none">
                   {chips.length}
@@ -114,15 +113,11 @@ export function SearchTopBar({
 
             <p className="text-sm text-muted">
               {isLoading ? (
-                <span className="text-muted">Searching…</span>
+                <span className="text-muted">{t('searching')}</span>
+              ) : query ? (
+                t('resultsFor', { count: safeNum(totalCount), query })
               ) : (
-                <>
-                  <span className="font-semibold text-secondary">{safeNum(totalCount).toLocaleString()}</span>{' '}
-                  {totalCount === 1 ? 'result' : 'results'}
-                  {query && (
-                    <> for <span className="font-semibold text-secondary">&ldquo;{query}&rdquo;</span></>
-                  )}
-                </>
+                t('results', { count: safeNum(totalCount) })
               )}
             </p>
           </div>
@@ -145,7 +140,7 @@ export function SearchTopBar({
         {/* Row 2: active filter chips */}
         {chips.length > 0 && (
           <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-            <span className="text-xs text-muted">Active filters:</span>
+            <span className="text-xs text-muted">{t('activeFilters')}</span>
             {chips.map((chip) => (
               <button
                 key={chip.key}
@@ -162,7 +157,7 @@ export function SearchTopBar({
               onClick={onClearAll}
               className="text-xs text-primary hover:underline ml-1"
             >
-              Clear all
+              {t('clearAll')}
             </button>
           </div>
         )}

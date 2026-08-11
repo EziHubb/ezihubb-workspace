@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useCustomizerStore } from '../../../lib/store/customizer.store';
 import { AutoFillBanner } from '../AutoFillBanner';
 import type { TextField, DateField } from '../../../lib/customizer/types';
@@ -9,6 +10,7 @@ interface Step1Props {
 }
 
 export function Step1BasicInfo({ isLoggedIn }: Step1Props) {
+  const t           = useTranslations('customizer.step1');
   const template    = useCustomizerStore((s) => s.template);
   const fieldValues = useCustomizerStore((s) => s.fieldValues);
   const setField    = useCustomizerStore((s) => s.setFieldValue);
@@ -23,9 +25,9 @@ export function Step1BasicInfo({ isLoggedIn }: Step1Props) {
   return (
     <div className="space-y-5">
       <div>
-        <h4 className="text-base font-bold text-secondary">Add Names &amp; Message</h4>
+        <h4 className="text-base font-bold text-secondary">{t('title')}</h4>
         <p className="text-sm text-muted mt-1">
-          Personalize with names, dates, or a heartfelt message.
+          {t('desc')}
         </p>
       </div>
 
@@ -89,7 +91,7 @@ export function Step1BasicInfo({ isLoggedIn }: Step1Props) {
             )}
             {isOver && (
               <p className="text-xs text-error" role="alert">
-                Maximum {maxLen} characters
+                {t('maxCharacters', { max: maxLen })}
               </p>
             )}
           </div>
@@ -98,7 +100,7 @@ export function Step1BasicInfo({ isLoggedIn }: Step1Props) {
 
       {textFields.length === 0 && (
         <p className="text-sm text-muted text-center py-4">
-          No text fields for this product.
+          {t('noTextFields')}
         </p>
       )}
     </div>

@@ -26,7 +26,7 @@ export default function CartPage() {
       <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-16 flex items-center justify-center min-h-[50vh]">
         <div
           className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin"
-          aria-label="Loading cart"
+          aria-label={t('loadingCart')}
         />
       </div>
     );
@@ -95,11 +95,10 @@ export default function CartPage() {
           className="mb-6 p-4 bg-warning/8 border border-warning/25 rounded-card"
         >
           <p className="text-sm font-semibold text-warning">
-            ⚠️ Your cart has both physical items and digital downloads.
+            ⚠️ {t('mixedCart.title')}
           </p>
           <p className="text-sm text-secondary mt-1">
-            You&apos;ll need to check out one type at a time — remove either the physical items
-            or the digital downloads to continue.
+            {t('mixedCart.detail')}
           </p>
         </div>
       )}
@@ -128,8 +127,8 @@ export default function CartPage() {
 
       {/* 2-col desktop / stacked mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-[65fr_35fr] gap-8 lg:gap-12 items-start">
-        <section aria-label="Cart items">
-          <ul aria-label="Items in your cart">
+        <section aria-label={t('itemsSectionAria')}>
+          <ul aria-label={t('itemsListAria')}>
             {safeArr(cart.items).map((item) => (
               <CartItemRow
                 key={item.id}
@@ -150,7 +149,7 @@ export default function CartPage() {
           </div>
         </section>
 
-        <section aria-label="Order summary">
+        <section aria-label={t('orderSummaryAria')}>
           <OrderSummary cart={cart} />
         </section>
       </div>

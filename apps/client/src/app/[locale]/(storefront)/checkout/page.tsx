@@ -164,7 +164,7 @@ function OrderSummarySidebar({
       </div>
 
       {/* Desktop: always visible */}
-      <aside className="hidden md:block" aria-label="Order summary">
+      <aside className="hidden md:block" aria-label={t('orderSummary.title')}>
         <div className="bg-surface border border-border rounded-card p-5 sticky top-24">
           <h2 className="font-semibold text-secondary mb-4 text-base">
             {t('orderSummary.title')}
@@ -438,7 +438,7 @@ export default function CheckoutPage() {
             <StepIndicator
               currentStep={step}
               completedSteps={completedSteps}
-              labels={isDigitalOnly ? ['Contact', 'Review', 'Payment'] : undefined}
+              labels={isDigitalOnly ? [t('steps.contact'), t('steps.review'), t('steps.payment')] : undefined}
             />
 
             {/* Price changed banner (shown before step 3) */}
@@ -468,12 +468,12 @@ export default function CheckoutPage() {
                   isLoggedIn ? (
                     <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted">
                       <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                      <p className="text-sm">Preparing your order…</p>
+                      <p className="text-sm">{t('stepHeadings.preparingOrder')}</p>
                     </div>
                   ) : (
                     <>
                       <h2 id="step1-heading" className="text-base font-semibold text-secondary mb-5">
-                        Contact information
+                        {t('stepHeadings.contactInformation')}
                       </h2>
                       <DigitalContactForm
                         initialEmail={guestEmail}

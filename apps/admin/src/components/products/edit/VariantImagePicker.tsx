@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../lib/api-client';
 import type { ProductImage } from './types';
 import type { VariationOption } from './types';
+import { useDialog } from '../../../contexts/DialogContext';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -188,16 +189,21 @@ export function VariantImagePicker({
 }: VariantImagePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const qc = useQueryClient();
+  const { alert } = useDialog();
 
   const assignedImage = productImages.find((img) => img.id === option.imageId);
 
   const handleSelect = async (imageId: string | null) => {
-    await api.patch(
-      `/admin/products/${productId}/variations/${option.groupId}/options/${option.id}`,
-      { imageId },
-    );
-    qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
-    setIsOpen(false);
+    try {
+      await api.patch(
+        `/admin/products/${productId}/variations/${option.groupId}/options/${option.id}`,
+        { imageId },
+      );
+      qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
+      setIsOpen(false);
+    } catch (err) {
+      await alert((err as Error).message || 'Could not assign this image.', { variant: 'error' });
+    }
   };
 
   return (

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import type { ProductListItemDto, PaginatedResponse } from '@ezihubb/types';
@@ -45,8 +46,8 @@ interface GlobalSummary {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
+function formatDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, {
     year:  'numeric',
     month: 'short',
     day:   'numeric',
@@ -83,7 +84,14 @@ function StarRow({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'lg' }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function ReviewsPage() {
+export default async function ReviewsPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'pages.reviews' });
+
   const [summaryRes, reviewsRes, topProductsRes] = await Promise.allSettled([
     apiClient.get<GlobalSummary>(API_ROUTES.REVIEWS.SUMMARY),
     apiClient.get<PaginatedResponse<GlobalReview>>(API_ROUTES.REVIEWS.LIST, {
@@ -110,13 +118,13 @@ export default async function ReviewsPage() {
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div className="text-center mb-14">
         <p className="text-primary font-medium text-sm mb-3 uppercase tracking-wide">
-          Customer Reviews
+          {t('eyebrow')}
         </p>
         <h1 className="font-display text-4xl md:text-5xl font-bold text-secondary mb-4">
-          What Our Customers Say
+          {t('title')}
         </h1>
         <p className="text-muted text-lg mb-8 max-w-xl mx-auto">
-          Real reviews from real people. We don&apos;t filter the bad ones — though there aren&apos;t many.
+          {t('subtitle')}
         </p>
 
         {/* Overall rating card */}
@@ -132,14 +140,14 @@ export default async function ReviewsPage() {
             </div>
             <div className="text-left border-l border-border pl-4">
               <p className="font-semibold text-secondary">
-                {safeNum(summary.totalReviews).toLocaleString()} reviews
+                {t('reviewsCount', { count: safeNum(summary.totalReviews).toLocaleString() })}
               </p>
               {summary.totalReviews > 0 && (
                 <p className="text-sm text-muted">
-                  {Math.round((safeNum(summary.distribution?.[5]) / summary.totalReviews) * 100)}% gave 5 stars
+                  {t('gaveFiveStars', { percent: Math.round((safeNum(summary.distribution?.[5]) / summary.totalReviews) * 100) })}
                 </p>
               )}
-              <p className="text-sm text-green-600 mt-0.5">Verified purchases only</p>
+              <p className="text-sm text-green-600 mt-0.5">{t('verifiedPurchasesOnly')}</p>
             </div>
           </div>
         )}
@@ -188,7 +196,7 @@ export default async function ReviewsPage() {
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={safeArr(review.imageUrls)[0]}
-                  alt="Customer photo"
+                  alt={t('customerPhotoAlt')}
                   className="w-full h-32 object-cover rounded-xl mt-4"
                 />
               )}
@@ -200,18 +208,18 @@ export default async function ReviewsPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-secondary truncate">
-                    {review.author.firstName ?? 'Anonymous'}
+                    {review.author.firstName ?? t('anonymous')}
                   </p>
-                  <p className="text-xs text-muted">{formatDate(review.createdAt)}</p>
+                  <p className="text-xs text-muted">{formatDate(review.createdAt, locale)}</p>
                 </div>
                 <span className="ml-auto text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full shrink-0">
-                  Verified ✓
+                  {t('verifiedBadge')}
                 </span>
               </div>
 
               {/* Product name */}
               <p className="text-xs text-muted mt-2 truncate">
-                Purchased:{' '}
+                {t('purchased')}{' '}
                 <Link href={`/products/${review.product.slug}`} className="hover:text-primary transition-colors">
                   {review.product.name}
                 </Link>
@@ -221,7 +229,7 @@ export default async function ReviewsPage() {
         </section>
       ) : (
         <div className="text-center py-16 text-muted mb-16">
-          <p className="text-lg">No reviews yet — check back soon!</p>
+          <p className="text-lg">{t('noReviews')}</p>
         </div>
       )}
 
@@ -229,7 +237,7 @@ export default async function ReviewsPage() {
       {topProducts.length > 0 && (
         <section>
           <h2 className="text-2xl font-bold text-secondary mb-6 text-center">
-            Our Highest-Rated Products
+            {t('topRated')}
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {topProducts.map((product) => (

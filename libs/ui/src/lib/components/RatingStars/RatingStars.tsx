@@ -6,6 +6,12 @@ export interface RatingStarsProps {
   size?:        'sm' | 'md';
   interactive?: boolean;
   onChange?:    (value: number) => void;
+  /** aria-label per star, e.g. "3 stars". Default English pluralization. */
+  starAriaLabel?: (value: number) => string;
+}
+
+function defaultStarAriaLabel(value: number): string {
+  return `${value} star${value !== 1 ? 's' : ''}`;
 }
 
 const STAR_PATH =
@@ -17,6 +23,7 @@ export const RatingStars: React.FC<RatingStarsProps> = ({
   size        = 'sm',
   interactive = false,
   onChange,
+  starAriaLabel = defaultStarAriaLabel,
 }) => {
   const [hovered, setHovered] = React.useState<number | null>(null);
   const display = hovered ?? rating;
@@ -36,7 +43,7 @@ export const RatingStars: React.FC<RatingStarsProps> = ({
             key={i}
             type="button"
             disabled={!interactive}
-            aria-label={`${value} star${value !== 1 ? 's' : ''}`}
+            aria-label={starAriaLabel(value)}
             className={[
               'relative shrink-0',
               iconClass,

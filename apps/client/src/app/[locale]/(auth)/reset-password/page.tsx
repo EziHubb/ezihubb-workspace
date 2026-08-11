@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -250,8 +250,9 @@ function ResetPasswordForm() {
 // ── Page wrapper ──────────────────────────────────────────────────────────────
 
 export default function ResetPasswordPage() {
+  const t = useTranslations('common');
   return (
-    <ToastProvider>
+    <ToastProvider dismissLabel={t('dismissNotification')}>
       <ResetPasswordForm />
     </ToastProvider>
   );

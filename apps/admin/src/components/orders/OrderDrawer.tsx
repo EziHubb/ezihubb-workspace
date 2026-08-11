@@ -264,6 +264,7 @@ function ShippingInfo({ order, onUpdate }: { order: OrderDetail; onUpdate: () =>
   const [carrier,  setCarrier]  = useState(order.trackingCarrier ?? 'FedEx');
   const [tracking, setTracking] = useState(order.trackingNumber ?? '');
   const [saving,   setSaving]   = useState(false);
+  const { alert } = useDialog();
 
   const address =
     typeof order.shippingAddress === 'string'
@@ -275,7 +276,9 @@ function ShippingInfo({ order, onUpdate }: { order: OrderDetail; onUpdate: () =>
     try {
       await api.patch(API_ROUTES.ADMIN.ORDER_TRACKING(order.id), { trackingNumber: tracking, carrier });
       onUpdate();
-    } catch { /* silent */ } finally {
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save tracking info.', { variant: 'error' });
+    } finally {
       setSaving(false);
     }
   };
@@ -380,6 +383,7 @@ function UpdateStatus({ order, onUpdate }: { order: OrderDetail; onUpdate: () =>
   const [note,    setNote]    = useState('');
   const [saving,  setSaving]  = useState(false);
   const [success, setSuccess] = useState(false);
+  const { alert } = useDialog();
 
   const handleUpdate = async () => {
     setSaving(true);
@@ -388,7 +392,9 @@ function UpdateStatus({ order, onUpdate }: { order: OrderDetail; onUpdate: () =>
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       onUpdate();
-    } catch { /* silent */ } finally {
+    } catch (err) {
+      await alert((err as Error).message || 'Could not update order status.', { variant: 'error' });
+    } finally {
       setSaving(false);
     }
   };

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Menu } from 'lucide-react';
 import { ToastProvider } from '@ezihubb/ui';
 import { useProfile } from '@ezihubb/api-client';
@@ -15,6 +15,7 @@ export default function AccountLayoutClient({
 }: {
   children: React.ReactNode;
 }) {
+  const t        = useTranslations('common');
   const locale   = useLocale();
   const router   = useRouter();
   const pathname = usePathname();
@@ -61,7 +62,7 @@ export default function AccountLayoutClient({
   }
 
   return (
-    <ToastProvider>
+    <ToastProvider dismissLabel={t('dismissNotification')}>
       <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-8 md:py-12">
 
         {/* ── Mobile header bar ──────────────────────────────────────────── */}

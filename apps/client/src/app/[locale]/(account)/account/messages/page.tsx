@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -10,21 +11,25 @@ import { MessageShopModal } from '../../../../../components/messages/MessageShop
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatRelativeTime(dateStr: string | null): string {
+function formatRelativeTime(
+  dateStr: string | null,
+  locale: string,
+  t: ReturnType<typeof useTranslations<'account.messages'>>,
+): string {
   if (!dateStr) return '';
   const diff = Date.now() - new Date(dateStr).getTime();
   const min  = Math.floor(diff / 60_000);
   const hr   = Math.floor(diff / 3_600_000);
   const day  = Math.floor(diff / 86_400_000);
-  if (min < 1)  return 'just now';
-  if (min < 60) return `${min}m ago`;
-  if (hr  < 24) return `${hr}h ago`;
-  if (day < 7)  return `${day}d ago`;
-  return new Date(dateStr).toLocaleDateString();
+  if (min < 1)  return t('justNow');
+  if (min < 60) return t('minutesAgo', { count: min });
+  if (hr  < 24) return t('hoursAgo', { count: hr });
+  if (day < 7)  return t('daysAgo', { count: day });
+  return new Date(dateStr).toLocaleDateString(locale);
 }
 
-function formatTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+function formatTime(dateStr: string, locale: string): string {
+  return new Date(dateStr).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 }
 
 // ── Skeletons ─────────────────────────────────────────────────────────────────
@@ -61,11 +66,12 @@ function MessageSkeleton({ count }: { count: number }) {
 // ── Status badge ──────────────────────────────────────────────────────────────
 
 function ConversationStatusBadge({ status }: { status?: string }) {
+  const t = useTranslations('account.messages.status');
   if (!status || status === 'OPEN') return null;
   const map: Record<string, { label: string; cls: string }> = {
-    PENDING:  { label: 'Pending',  cls: 'bg-yellow-100 text-yellow-700' },
-    RESOLVED: { label: 'Resolved', cls: 'bg-green-100 text-green-700'   },
-    SPAM:     { label: 'Spam',     cls: 'bg-gray-100 text-gray-500'      },
+    PENDING:  { label: t('pending'),  cls: 'bg-yellow-100 text-yellow-700' },
+    RESOLVED: { label: t('resolved'), cls: 'bg-green-100 text-green-700'   },
+    SPAM:     { label: t('spam'),     cls: 'bg-gray-100 text-gray-500'      },
   };
   const cfg = map[status];
   if (!cfg) return null;
@@ -87,6 +93,8 @@ function ConversationListItem({
   isSelected:   boolean;
   onClick:      () => void;
 }) {
+  const t = useTranslations('account.messages');
+  const locale = useLocale();
   const hasUnread = conv.unreadByCustomer > 0;
   return (
     <button
@@ -106,11 +114,11 @@ function ConversationListItem({
               EziHubb
             </span>
             <span className="text-xs text-muted flex-shrink-0 ml-2">
-              {formatRelativeTime(conv.lastMessageAt)}
+              {formatRelativeTime(conv.lastMessageAt, locale, t)}
             </span>
           </div>
           {conv.order && (
-            <p className="text-xs text-muted">Order #{conv.order.orderNumber}</p>
+            <p className="text-xs text-muted">{t('orderNumber', { number: conv.order.orderNumber })}</p>
           )}
           <p className={`text-xs mt-0.5 truncate ${hasUnread ? 'font-medium text-secondary' : 'text-muted'}`}>
             {conv.lastMessage}
@@ -130,6 +138,7 @@ function MessageBubble({ message: msg, isOwn }: {
   message: ConversationWithMessagesDto['messages'][number];
   isOwn:   boolean;
 }) {
+  const locale = useLocale();
   const isSystem = msg.senderType === 'SYSTEM';
   if (isSystem) {
     return (
@@ -165,7 +174,7 @@ function MessageBubble({ message: msg, isOwn }: {
           </div>
         )}
         <p className={`text-[10px] mt-1 ${isOwn ? 'text-white/70' : 'text-muted'}`}>
-          {formatTime(msg.createdAt)}
+          {formatTime(msg.createdAt, locale)}
           {isOwn && msg.isRead && <span className="ml-1">✓✓</span>}
         </p>
       </div>
@@ -182,6 +191,7 @@ function MessageThread({
   conversationId: string;
   onBack:         () => void;
 }) {
+  const t = useTranslations('account.messages');
   const token = useAuthStore((s) => s.accessToken);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -225,7 +235,7 @@ function MessageThread({
         <button
           onClick={onBack}
           className="md:hidden w-8 h-8 flex items-center justify-center text-muted hover:text-secondary"
-          aria-label="Back to conversations"
+          aria-label={t('backToConversations')}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -238,7 +248,7 @@ function MessageThread({
           <div className="min-w-0">
             <p className="text-sm font-medium text-secondary">EziHubb</p>
             {conv?.order && (
-              <p className="text-xs text-muted">Order #{conv.order.orderNumber}</p>
+              <p className="text-xs text-muted">{t('orderNumber', { number: conv.order.orderNumber })}</p>
             )}
           </div>
         </div>
@@ -274,7 +284,7 @@ function MessageThread({
                   sendMessage();
                 }
               }}
-              placeholder="Type a message... (Enter to send)"
+              placeholder={t('typePlaceholder')}
               rows={2}
               className="flex-1 border rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
@@ -282,7 +292,7 @@ function MessageThread({
               onClick={sendMessage}
               disabled={!newMessage.trim() || isSending}
               className="w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center hover:bg-primary/90 transition-colors disabled:opacity-50 self-end"
-              aria-label="Send message"
+              aria-label={t('sendMessage')}
             >
               {isSending ? (
                 <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -296,12 +306,12 @@ function MessageThread({
               )}
             </button>
           </div>
-          <p className="text-xs text-muted mt-1">Shift+Enter for new line</p>
+          <p className="text-xs text-muted mt-1">{t('shiftEnterHint')}</p>
         </div>
       ) : (
         <div className="p-4 border-t text-center">
           <p className="text-xs text-muted">
-            This conversation has been resolved.{' '}
+            {t('resolvedNotice')}{' '}
             <button
               onClick={() =>
                 apiClient
@@ -310,7 +320,7 @@ function MessageThread({
               }
               className="text-primary hover:underline"
             >
-              Reopen
+              {t('reopen')}
             </button>
           </p>
         </div>
@@ -322,6 +332,7 @@ function MessageThread({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function MessagesPage() {
+  const t = useTranslations('account.messages');
   const token = useAuthStore((s) => s.accessToken);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isComposeOpen, setIsComposeOpen] = useState(false);
@@ -344,7 +355,7 @@ export default function MessagesPage() {
         selectedId ? 'hidden md:flex' : 'flex',
       ].join(' ')}>
         <div className="p-4 border-b">
-          <h2 className="font-semibold text-secondary">Messages</h2>
+          <h2 className="font-semibold text-secondary">{t('title')}</h2>
         </div>
 
         {isLoading ? (
@@ -354,14 +365,14 @@ export default function MessagesPage() {
             <svg className="w-12 h-12 text-muted mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
-            <p className="font-medium text-secondary mb-1">No messages yet</p>
+            <p className="font-medium text-secondary mb-1">{t('noMessages')}</p>
             <p className="text-sm text-muted">
-              Questions about your orders or products?{' '}
+              {t('questionsHint')}{' '}
               <button
                 onClick={() => setIsComposeOpen(true)}
                 className="text-primary hover:underline"
               >
-                Message us
+                {t('messageUs')}
               </button>
             </p>
           </div>
@@ -395,7 +406,7 @@ export default function MessagesPage() {
               <svg className="w-16 h-16 text-muted mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
               </svg>
-              <p className="text-secondary font-medium">Select a conversation to read messages</p>
+              <p className="text-secondary font-medium">{t('selectConversation')}</p>
             </div>
           </div>
         )}

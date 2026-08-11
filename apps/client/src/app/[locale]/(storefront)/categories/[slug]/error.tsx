@@ -1,7 +1,10 @@
 'use client';
 
+'use client';
+
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 export default function CategoryError({
@@ -11,6 +14,9 @@ export default function CategoryError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations('errors');
+  const tCommon = useTranslations('common');
+
   useEffect(() => {
     console.error('[CategoryPage error]', error);
   }, [error]);
@@ -21,10 +27,10 @@ export default function CategoryError({
         <AlertTriangle className="w-8 h-8 text-error" />
       </div>
       <h1 className="font-display text-2xl font-bold text-secondary mb-3">
-        Something went wrong
+        {tCommon('error')}
       </h1>
       <p className="text-muted mb-8 max-w-sm mx-auto">
-        We couldn't load this category. Please try again.
+        {t('couldntLoadCategory')}
       </p>
       <div className="flex items-center justify-center gap-4">
         <button
@@ -32,13 +38,13 @@ export default function CategoryError({
           className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-2.5 rounded-button transition-colors text-sm"
         >
           <RefreshCw className="w-4 h-4" />
-          Try again
+          {tCommon('retry')}
         </button>
         <Link
           href="/search"
           className="text-sm text-primary hover:underline underline-offset-2"
         >
-          Browse all products
+          {t('browseAllProducts')}
         </Link>
       </div>
     </div>

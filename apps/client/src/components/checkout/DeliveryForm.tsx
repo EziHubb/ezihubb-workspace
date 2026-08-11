@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { Truck, Clock } from 'lucide-react';
 import { apiClient } from '@ezihubb/api-client';
 import type { ShippingOptionDto } from '@ezihubb/types';
@@ -16,13 +17,13 @@ interface DeliveryFormProps {
   isCreatingOrder?: boolean;
 }
 
-function formatDelivery(opt: ShippingOptionDto): string {
+function formatDelivery(opt: ShippingOptionDto, locale: string): string {
   const from = new Date();
   from.setDate(from.getDate() + opt.minDays);
   const to = new Date();
   to.setDate(to.getDate() + opt.maxDays);
 
-  const fmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+  const fmt = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' });
   return `${fmt.format(from)} – ${fmt.format(to)}`;
 }
 
@@ -33,6 +34,8 @@ export function DeliveryForm({
   onBack,
   isCreatingOrder = false,
 }: DeliveryFormProps) {
+  const t = useTranslations('checkout.deliveryForm');
+  const locale = useLocale();
   const [selected,  setSelected]  = useState<string>('');
   const [options,   setOptions]   = useState<ShippingOptionDto[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -76,7 +79,7 @@ export function DeliveryForm({
     return (
       <div className="space-y-3">
         <p className="text-sm text-muted mb-4">
-          Calculating shipping for <strong>{countryCode}</strong>…
+          {t.rich('calculating', { country: countryCode, b: (chunks) => <strong>{chunks}</strong> })}
         </p>
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="border border-border rounded-card p-4 flex gap-3">
@@ -96,13 +99,13 @@ export function DeliveryForm({
   if (isError || options === null) {
     return (
       <div className="py-8 text-center space-y-3">
-        <p className="text-sm text-error">Failed to load shipping options.</p>
+        <p className="text-sm text-error">{t('failedToLoad')}</p>
         <button
           type="button"
           onClick={() => { setIsError(false); setOptions(null); }}
           className="text-sm text-primary hover:underline"
         >
-          Try again
+          {t('tryAgain')}
         </button>
       </div>
     );
@@ -114,14 +117,14 @@ export function DeliveryForm({
       <div className="py-8 text-center space-y-3">
         <Truck className="w-10 h-10 text-muted mx-auto" />
         <p className="text-sm text-secondary font-medium">
-          We don&apos;t ship to {countryCode} yet.
+          {t('noShipTo', { country: countryCode })}
         </p>
         <button
           type="button"
           onClick={onBack}
           className="text-sm text-primary hover:underline"
         >
-          ← Change country
+          {t('changeCountry')}
         </button>
       </div>
     );
@@ -132,13 +135,13 @@ export function DeliveryForm({
       {/* Radio cards */}
       <fieldset>
         <legend className="text-sm font-semibold text-secondary mb-3">
-          Select a shipping method
+          {t('selectMethod')}
         </legend>
 
-        <div className="space-y-3" role="radiogroup" aria-label="Shipping methods">
+        <div className="space-y-3" role="radiogroup" aria-label={t('methodsAria')}>
           {safeArr(options).map((opt) => {
             const isActive = selected === opt.methodId;
-            const estDelivery = formatDelivery(opt);
+            const estDelivery = formatDelivery(opt, locale);
 
             return (
               <label
@@ -166,26 +169,26 @@ export function DeliveryForm({
                         {opt.name}
                         {opt.carrier && (
                           <span className="text-muted font-normal ml-1.5">
-                            via {opt.carrier}
+                            {t('via', { carrier: opt.carrier })}
                           </span>
                         )}
                       </p>
                       <p className="text-xs text-muted flex items-center gap-1 mt-0.5">
                         <Clock className="w-3 h-3" />
-                        {opt.minDays}–{opt.maxDays} business days · Arrives {estDelivery}
+                        {t('businessDays', { min: opt.minDays, max: opt.maxDays, date: estDelivery })}
                       </p>
                     </div>
 
                     <div className="shrink-0">
                       {opt.isFree ? (
-                        <span className="text-sm font-bold text-success">FREE</span>
+                        <span className="text-sm font-bold text-success">{t('free')}</span>
                       ) : opt.freeShippingOver !== undefined ? (
                         <div className="text-right">
                           <p className="text-sm font-bold text-secondary">
                             {fmtAmount(opt.price)}
                           </p>
                           <p className="text-[10px] text-muted">
-                            Free over {fmtAmount(opt.freeShippingOver)}
+                            {t('freeOver', { amount: fmtAmount(opt.freeShippingOver) })}
                           </p>
                         </div>
                       ) : (
@@ -210,7 +213,7 @@ export function DeliveryForm({
           disabled={isCreatingOrder}
           className="px-6 py-3 border border-border text-secondary text-sm font-medium rounded-button hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
         >
-          ← Back
+          {t('back')}
         </button>
         <button
           type="button"
@@ -218,7 +221,7 @@ export function DeliveryForm({
           disabled={!selected || isCreatingOrder}
           className="flex-1 py-3 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wide"
         >
-          {isCreatingOrder ? 'Creating order…' : 'Continue to Payment →'}
+          {isCreatingOrder ? t('creatingOrder') : t('continueToPayment')}
         </button>
       </div>
 
@@ -229,7 +232,7 @@ export function DeliveryForm({
           onClick={onBack}
           disabled={isCreatingOrder}
           className="w-12 h-12 border border-border rounded-button flex items-center justify-center text-secondary disabled:opacity-50"
-          aria-label="Back"
+          aria-label={t('backAria')}
         >
           ←
         </button>
@@ -239,7 +242,7 @@ export function DeliveryForm({
           disabled={!selected || isCreatingOrder}
           className="flex-1 py-3 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors disabled:opacity-50 uppercase tracking-wide"
         >
-          {isCreatingOrder ? 'Creating…' : 'Continue to Payment →'}
+          {isCreatingOrder ? t('creating') : t('continueToPayment')}
         </button>
       </div>
     </div>

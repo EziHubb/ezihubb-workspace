@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import type { ProductAttributeDto } from '@ezihubb/types';
 
 // ── Attribute grouping ────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ interface ProductSpecificationsProps {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function ProductSpecifications({ attributes }: ProductSpecificationsProps) {
+  const t = useTranslations('product.specGroups');
   if (attributes.length === 0) return null;
 
   const useGrouping = attributes.length >= 4;
@@ -75,7 +77,7 @@ export function ProductSpecifications({ attributes }: ProductSpecificationsProps
         return (
           <div key={group}>
             <h6 className="text-[10px] font-bold uppercase tracking-widest text-muted mb-2">
-              {group}
+              {t(group as 'Other')}
             </h6>
             <dl className="text-sm">
               {attrs.map((attr, idx) => (

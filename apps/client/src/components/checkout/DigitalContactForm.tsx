@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Download } from 'lucide-react';
 
 // A digital-only cart needs no shipping address — guests still need to give
@@ -20,10 +21,11 @@ interface DigitalContactFormProps {
 }
 
 export function DigitalContactForm({ initialEmail, isSubmitting, error, onSubmit }: DigitalContactFormProps) {
+  const t = useTranslations('checkout.digitalContact');
   const [email, setEmail] = useState(initialEmail ?? '');
   const [touched, setTouched] = useState(false);
 
-  const emailError = touched && !isValidEmail(email) ? 'Enter a valid email address' : undefined;
+  const emailError = touched && !isValidEmail(email) ? t('invalidEmail') : undefined;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,13 +39,13 @@ export function DigitalContactForm({ initialEmail, isSubmitting, error, onSubmit
       <div className="flex items-start gap-2.5 bg-primary/5 border border-primary/20 rounded-card px-4 py-3.5">
         <Download className="w-4 h-4 text-primary shrink-0 mt-0.5" />
         <p className="text-sm text-secondary">
-          This order is digital only — no shipping needed. We&apos;ll email your download link and receipt here.
+          {t('digitalOnlyNote')}
         </p>
       </div>
 
       <div className="flex flex-col gap-1">
         <label className="text-sm font-medium text-secondary" htmlFor="digital-checkout-email">
-          Email address<span className="text-error ml-0.5">*</span>
+          {t('emailAddress')}<span className="text-error ml-0.5">*</span>
         </label>
         <input
           id="digital-checkout-email"
@@ -51,7 +53,7 @@ export function DigitalContactForm({ initialEmail, isSubmitting, error, onSubmit
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           onBlur={() => setTouched(true)}
-          placeholder="you@example.com"
+          placeholder={t('emailPlaceholder')}
           className={[
             'w-full px-3 py-2.5 text-sm border rounded-button bg-background text-secondary',
             'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors',
@@ -72,7 +74,7 @@ export function DigitalContactForm({ initialEmail, isSubmitting, error, onSubmit
         disabled={isSubmitting}
         className="w-full py-3 rounded-button bg-primary hover:bg-primary-dark text-white text-sm font-semibold transition-colors disabled:opacity-60"
       >
-        {isSubmitting ? 'Preparing your order…' : 'Continue to payment'}
+        {isSubmitting ? t('preparingOrder') : t('continueToPayment')}
       </button>
     </form>
   );

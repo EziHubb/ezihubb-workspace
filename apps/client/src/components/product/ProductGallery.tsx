@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ProductImageDto } from '@ezihubb/types';
 
@@ -14,6 +15,7 @@ interface ProductGalleryProps {
 const PLACEHOLDER = 'https://placehold.co/600x600/FFF5F0/E85D3F.png?text=No+Image';
 
 export function ProductGallery({ images, productName, soldCount }: ProductGalleryProps) {
+  const t = useTranslations('product.gallery');
   const displayed =
     images.length > 0
       ? images
@@ -45,7 +47,7 @@ export function ProductGallery({ images, productName, soldCount }: ProductGaller
           className="inline-flex items-center gap-1.5 self-start px-3 py-1 text-xs font-semibold rounded-pill bg-warning/10 border border-warning/25 text-warning"
           aria-live="polite"
         >
-          🔥 {soldCount}+ bought recently
+          {t('boughtRecently', { count: soldCount })}
         </div>
       )}
 
@@ -70,7 +72,7 @@ export function ProductGallery({ images, productName, soldCount }: ProductGaller
             <button
               type="button"
               onClick={prev}
-              aria-label="Previous image"
+              aria-label={t('previousImage')}
               className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full items-center justify-center shadow-sm hover:bg-white transition-colors"
             >
               <ChevronLeft className="w-5 h-5 text-secondary" />
@@ -78,7 +80,7 @@ export function ProductGallery({ images, productName, soldCount }: ProductGaller
             <button
               type="button"
               onClick={next}
-              aria-label="Next image"
+              aria-label={t('nextImage')}
               className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full items-center justify-center shadow-sm hover:bg-white transition-colors"
             >
               <ChevronRight className="w-5 h-5 text-secondary" />
@@ -94,7 +96,7 @@ export function ProductGallery({ images, productName, soldCount }: ProductGaller
                 key={i}
                 type="button"
                 onClick={() => setActiveIdx(i)}
-                aria-label={`View image ${i + 1}`}
+                aria-label={t('viewImage', { n: i + 1 })}
                 className={`w-1.5 h-1.5 rounded-full transition-all ${
                   i === activeIdx ? 'bg-primary w-3' : 'bg-white/70'
                 }`}
@@ -106,7 +108,7 @@ export function ProductGallery({ images, productName, soldCount }: ProductGaller
 
       {/* ── Thumbnail strip — desktop ────────────────────────────────────────── */}
       {thumbnails.length > 1 && (
-        <div className="hidden md:flex gap-2" role="list" aria-label="Product images">
+        <div className="hidden md:flex gap-2" role="list" aria-label={t('productImages')}>
           {thumbnails.map((img, i) => (
             <button
               key={img.id ?? i}
@@ -124,7 +126,7 @@ export function ProductGallery({ images, productName, soldCount }: ProductGaller
             >
               <Image
                 src={img.url}
-                alt={img.altText ?? `Image ${i + 1}`}
+                alt={img.altText ?? t('image', { n: i + 1 })}
                 fill
                 sizes="64px"
                 className="object-cover"

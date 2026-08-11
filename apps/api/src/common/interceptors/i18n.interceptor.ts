@@ -12,6 +12,7 @@ import {
   TranslationService,
   type TranslatableEntityType,
 } from '../../modules/translations/translation.service';
+import { extractLocale, type LocaleRequest } from '../utils/locale.util';
 
 export const TRANSLATE_ENTITY_KEY = 'translate_entity';
 
@@ -34,13 +35,9 @@ export class I18nInterceptor implements NestInterceptor {
 
     if (!entityType) return next.handle();
 
-    const request = context.switchToHttp().getRequest<{
-      headers: Record<string, string>;
-      path: string;
-      query: Record<string, string>;
-    }>();
+    const request = context.switchToHttp().getRequest<LocaleRequest>();
 
-    const locale = this.extractLocale(request);
+    const locale = extractLocale(request);
     if (locale === 'en') return next.handle();
 
     return next.handle().pipe(
@@ -92,28 +89,5 @@ export class I18nInterceptor implements NestInterceptor {
         return response;
       }),
     );
-  }
-
-  private extractLocale(request: {
-    headers: Record<string, string>;
-    path: string;
-    query: Record<string, string>;
-  }): string {
-    // 1. Accept-Language header
-    const acceptLang = request.headers['accept-language'];
-    if (acceptLang) {
-      const primary = acceptLang.split(',')[0]?.split(';')[0]?.trim() ?? '';
-      const lang    = primary.split('-')[0]?.toLowerCase() ?? '';
-      if (['en', 'vi', 'zh'].includes(lang)) return lang;
-    }
-
-    // 2. URL prefix: /vi/products → 'vi'
-    const urlLocale = request.path?.split('/')?.[1];
-    if (urlLocale && ['vi', 'zh'].includes(urlLocale)) return urlLocale;
-
-    // 3. Query param: ?locale=vi
-    if (request.query?.['locale']) return request.query['locale'];
-
-    return 'en';
   }
 }

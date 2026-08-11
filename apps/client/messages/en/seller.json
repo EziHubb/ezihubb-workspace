@@ -1,0 +1,138 @@
+{
+  "layout": {
+    "hubLabel": "Seller Hub"
+  },
+  "sidebar": {
+    "aria": "Seller navigation",
+    "yourStore": "Your Store",
+    "viewPublicPage": "View public page",
+    "nav": {
+      "dashboard": "Dashboard",
+      "orders": "Orders",
+      "products": "Products",
+      "analytics": "Analytics",
+      "reviews": "Reviews",
+      "payouts": "Payouts",
+      "storeSettings": "Store Settings"
+    },
+    "signOut": "Sign Out"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "stats": {
+      "totalOrders": "Total Orders",
+      "revenue": "Revenue",
+      "avgRating": "Avg Rating",
+      "activeProducts": "Active Products",
+      "pendingOrders": "Pending Orders",
+      "pendingPayout": "Pending Payout"
+    },
+    "recentOrders": "Recent Orders",
+    "noOrders": "No orders yet",
+    "table": {
+      "order": "Order",
+      "items": "Items",
+      "total": "Total",
+      "status": "Status",
+      "date": "Date"
+    }
+  },
+  "orders": {
+    "title": "Orders",
+    "all": "All",
+    "noOrders": "No orders found",
+    "table": {
+      "order": "Order",
+      "customer": "Customer",
+      "items": "Items",
+      "total": "Total",
+      "status": "Status",
+      "date": "Date"
+    }
+  },
+  "payouts": {
+    "title": "Payouts",
+    "stats": {
+      "available": "Available",
+      "pending": "Pending",
+      "totalPaid": "Total Paid"
+    },
+    "history": "Payout History",
+    "noPayouts": "No payouts yet",
+    "table": {
+      "amount": "Amount",
+      "status": "Status",
+      "requested": "Requested",
+      "paid": "Paid"
+    }
+  },
+  "products": {
+    "title": "Products",
+    "addProduct": "Add product",
+    "noProducts": "No products yet",
+    "table": {
+      "product": "Product",
+      "price": "Price",
+      "status": "Status",
+      "stock": "Stock",
+      "actions": "Actions"
+    },
+    "edit": "Edit",
+    "publish": "Publish",
+    "unpublish": "Unpublish"
+  },
+  "reviews": {
+    "title": "Reviews",
+    "noReviews": "No reviews yet"
+  },
+  "store": {
+    "title": "Store Settings",
+    "storeNameLabel": "Store name",
+    "storeNamePlaceholder": "Your store name",
+    "emailLabel": "Contact email",
+    "emailPlaceholder": "store@example.com",
+    "websiteLabel": "Website",
+    "websitePlaceholder": "https://yoursite.com",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Tell buyers about your shop…",
+    "saving": "Saving…",
+    "saveChanges": "Save changes",
+    "saveSuccess": "Store settings saved",
+    "saveError": "Failed to save settings"
+  },
+  "scoreCard": {
+    "title": "Your performance score",
+    "history": "History",
+    "tier": {
+      "topSeller": "Top Seller",
+      "trusted": "Trusted",
+      "rising": "Rising"
+    },
+    "shippingAccuracy": "Shipping accuracy",
+    "refundRate": "Refund rate",
+    "reviewRating": "Review rating",
+    "responseTime": "Response time",
+    "lowScoreAlert": "Response time is low. Reply to messages within 24h to improve.",
+    "viewMessages": "View messages",
+    "hideDetails": "Hide details",
+    "seeFullBreakdown": "See full breakdown",
+    "updatedDaily": "Updated daily",
+    "lastUpdated": "Last: {date}"
+  },
+  "pagination": {
+    "prev": "Prev",
+    "next": "Next",
+    "page": "Page {current} / {total}"
+  },
+  "status": {
+    "PENDING": "Pending",
+    "PROCESSING": "Processing",
+    "SHIPPED": "Shipped",
+    "DELIVERED": "Delivered",
+    "CANCELLED": "Cancelled",
+    "PAID": "Paid",
+    "ACTIVE": "Active",
+    "DRAFT": "Draft",
+    "ARCHIVED": "Archived"
+  }
+}

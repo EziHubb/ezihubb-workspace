@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { Heart, Sparkles, Users, ArrowRight } from 'lucide-react';
 
 export const dynamic = 'force-static';
@@ -13,63 +14,63 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-const values = [
-  {
-    Icon:  Heart,
-    title: 'Every Gift Has a Story',
-    desc:  "We believe the most meaningful gifts capture real moments, real relationships, and real love. That's why every item we create starts with your story.",
-  },
-  {
-    Icon:  Sparkles,
-    title: 'Quality Without Compromise',
-    desc:  "We use premium materials and work only with trusted print partners who share our obsession with quality. If it's not good enough for our family, it won't ship to yours.",
-  },
-  {
-    Icon:  Users,
-    title: 'People Over Profit',
-    desc:  "We're a small team that cares deeply about our customers. Every message gets a real response, every complaint gets taken seriously, every order gets our full attention.",
-  },
-];
+export default async function OurStoryPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'pages.ourStory' });
 
-const highlights = [
-  { title: 'Designed In-House',   desc: 'Every design starts with us, not a catalog.' },
-  { title: 'Printed On Demand',   desc: 'Nothing is pre-made — made only after you order.' },
-  { title: 'Shipped from the USA', desc: 'Produced and shipped domestically.' },
-];
+  const values = [
+    {
+      Icon:  Heart,
+      title: t('beliefs.items.story.title'),
+      desc:  t('beliefs.items.story.desc'),
+    },
+    {
+      Icon:  Sparkles,
+      title: t('beliefs.items.quality.title'),
+      desc:  t('beliefs.items.quality.desc'),
+    },
+    {
+      Icon:  Users,
+      title: t('beliefs.items.people.title'),
+      desc:  t('beliefs.items.people.desc'),
+    },
+  ];
 
-export default function OurStoryPage() {
+  const highlights = [
+    { title: t('howWeWork.items.designed.title'), desc: t('howWeWork.items.designed.desc') },
+    { title: t('howWeWork.items.printed.title'),  desc: t('howWeWork.items.printed.desc')  },
+    { title: t('howWeWork.items.shipped.title'),  desc: t('howWeWork.items.shipped.desc')  },
+  ];
+
   return (
     <div className="max-w-[900px] mx-auto px-4 py-16">
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div className="text-center mb-16">
         <p className="text-primary font-medium text-sm mb-3 tracking-wide uppercase">
-          Our Story
+          {t('eyebrow')}
         </p>
         <h1 className="font-display text-4xl md:text-5xl font-bold text-secondary leading-tight mb-6">
-          Made with Love,<br />Delivered with Care
+          {t('heroTitleLine1')}<br />{t('heroTitleLine2')}
         </h1>
         <p className="text-lg text-muted max-w-2xl mx-auto leading-relaxed">
-          EziHubb was born from a simple belief: the best gifts are the ones
-          that tell a story — your story.
+          {t('subtitle')}
         </p>
       </div>
 
       {/* ── Founding story ────────────────────────────────────────────────── */}
       <section className="grid md:grid-cols-2 gap-12 items-center mb-20">
         <div>
-          <h2 className="text-2xl font-bold text-secondary mb-4">What We're About</h2>
+          <h2 className="text-2xl font-bold text-secondary mb-4">{t('aboutTitle')}</h2>
           <p className="text-muted leading-relaxed mb-4">
-            EziHubb exists because too many gifts on the market feel generic,
-            mass-produced, and forgettable. We wanted to make it easy to give
-            something that actually feels personal — a custom mug with an
-            inside joke, a canvas print of a meaningful place, an ornament
-            engraved with a special date.
+            {t('aboutP1')}
           </p>
           <p className="text-muted leading-relaxed">
-            Every design is created in-house and printed to order — nothing
-            sits pre-made in a warehouse waiting to be sold. That's what lets
-            us keep every item personal to the person receiving it.
+            {t('aboutP2')}
           </p>
         </div>
 
@@ -78,7 +79,7 @@ export default function OurStoryPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?w=600&q=80"
-              alt="Personalized gift production"
+              alt={t('aboutImageAlt')}
               className="w-full h-full object-cover"
             />
           </div>
@@ -88,7 +89,7 @@ export default function OurStoryPage() {
       {/* ── Mission + Values ──────────────────────────────────────────────── */}
       <section className="bg-[#FAFAF8] rounded-3xl p-10 mb-20">
         <h2 className="text-2xl font-bold text-secondary text-center mb-10">
-          What We Believe In
+          {t('beliefs.title')}
         </h2>
         <div className="grid sm:grid-cols-3 gap-8">
           {values.map(({ Icon, title, desc }) => (
@@ -105,7 +106,7 @@ export default function OurStoryPage() {
 
       {/* ── How We Work ───────────────────────────────────────────────────── */}
       <section className="text-center mb-20">
-        <h2 className="text-2xl font-bold text-secondary mb-10">How We Work</h2>
+        <h2 className="text-2xl font-bold text-secondary mb-10">{t('howWeWork.title')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {highlights.map(({ title, desc }) => (
             <div key={title}>
@@ -119,16 +120,16 @@ export default function OurStoryPage() {
       {/* ── CTA ───────────────────────────────────────────────────────────── */}
       <section className="text-center bg-primary/5 rounded-3xl p-12">
         <h2 className="text-2xl font-bold text-secondary mb-3">
-          Ready to Create Something Special?
+          {t('cta.title')}
         </h2>
         <p className="text-muted mb-6">
-          Browse our collection and find the perfect personalized gift for someone you love.
+          {t('cta.subtitle')}
         </p>
         <Link
           href="/search"
           className="inline-flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-full font-semibold hover:bg-primary-dark transition-colors"
         >
-          Shop Personalized Gifts
+          {t('cta.button')}
           <ArrowRight className="w-4 h-4" />
         </Link>
       </section>

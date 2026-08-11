@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Home, Search, ShoppingBag, User } from 'lucide-react';
 import { useCartStore } from '../../lib/store/cart.store';
 import { CLIENT_ROUTES } from '@ezihubb/constants';
@@ -12,6 +12,7 @@ import { CLIENT_ROUTES } from '@ezihubb/constants';
  * Hidden on checkout and full-screen customizer pages.
  */
 export function MobileBottomNav() {
+  const t        = useTranslations('nav');
   const locale   = useLocale();
   const pathname = usePathname();
   const cart       = useCartStore((s) => s.cart);
@@ -37,22 +38,22 @@ export function MobileBottomNav() {
       <div className="flex items-stretch h-16 max-w-sm mx-auto">
 
         {/* Home */}
-        <Link href={`/${locale}`} aria-label="Home" className={tabCls(pathname === `/${locale}`)}>
+        <Link href={`/${locale}`} aria-label={t('home')} className={tabCls(pathname === `/${locale}`)}>
           <Home className="w-5 h-5" />
-          <span>Home</span>
+          <span>{t('home')}</span>
         </Link>
 
         {/* Search */}
-        <Link href={`/${locale}${CLIENT_ROUTES.SEARCH}`} aria-label="Search" className={tabCls(isActive(CLIENT_ROUTES.SEARCH))}>
+        <Link href={`/${locale}${CLIENT_ROUTES.SEARCH}`} aria-label={t('search')} className={tabCls(isActive(CLIENT_ROUTES.SEARCH))}>
           <Search className="w-5 h-5" />
-          <span>Search</span>
+          <span>{t('search')}</span>
         </Link>
 
         {/* Cart */}
         <button
           type="button"
           onClick={openDrawer}
-          aria-label={`Cart${cartCount > 0 ? ` (${cartCount})` : ''}`}
+          aria-label={`${t('cart')}${cartCount > 0 ? ` (${cartCount})` : ''}`}
           className={tabCls(isActive('/cart'))}
         >
           <div className="relative">
@@ -63,13 +64,13 @@ export function MobileBottomNav() {
               </span>
             )}
           </div>
-          <span>Cart</span>
+          <span>{t('cart')}</span>
         </button>
 
         {/* Account */}
-        <Link href={`/${locale}${CLIENT_ROUTES.ACCOUNT}`} aria-label="Account" className={tabCls(isActive(CLIENT_ROUTES.ACCOUNT))}>
+        <Link href={`/${locale}${CLIENT_ROUTES.ACCOUNT}`} aria-label={t('account')} className={tabCls(isActive(CLIENT_ROUTES.ACCOUNT))}>
           <User className="w-5 h-5" />
-          <span>Account</span>
+          <span>{t('account')}</span>
         </Link>
       </div>
     </div>

@@ -181,7 +181,7 @@ function TierModal({ tier, onClose, onSave }: { tier: Tier | null; onClose: () =
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function CreatorSettingsPage() {
-  const { confirm } = useDialog();
+  const { confirm, alert } = useDialog();
   const qc = useQueryClient();
 
   const [s, setS] = useState<CreatorSettings>({
@@ -233,6 +233,8 @@ export default function CreatorSettingsPage() {
     try {
       await api.delete(API_ROUTES.ADMIN.ADMIN_CREATORS_TIER(id));
       void qc.invalidateQueries({ queryKey: ['admin-creator-tiers'] });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not delete this tier.', { variant: 'error' });
     } finally { setDeletingTier(null); }
   };
 

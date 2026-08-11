@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Search } from 'lucide-react';
 import { StoreProductsClient } from './StoreProductsClient';
 import { StoreReviewsClient } from './StoreReviewsClient';
@@ -21,28 +22,30 @@ interface StoreDto {
 // ── About section ─────────────────────────────────────────────────────────────
 
 function AboutSection({ store }: { store: StoreDto }) {
+  const t = useTranslations('shops');
+
   return (
     <div className="max-w-2xl space-y-6 py-4">
       {store.description ? (
         <div>
-          <h2 className="font-display text-lg font-bold text-secondary mb-3">About this shop</h2>
+          <h2 className="font-display text-lg font-bold text-secondary mb-3">{t('storePage.about.title')}</h2>
           <p className="text-secondary/80 leading-relaxed whitespace-pre-line">{store.description}</p>
         </div>
       ) : null}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-surface border border-border rounded-card p-5">
-          <h3 className="font-semibold text-secondary text-sm mb-1">Total Sales</h3>
+          <h3 className="font-semibold text-secondary text-sm mb-1">{t('storePage.about.totalSales')}</h3>
           <p className="text-2xl font-bold text-secondary">{safeNum(store.totalOrders).toLocaleString()}</p>
         </div>
         <div className="bg-surface border border-border rounded-card p-5">
-          <h3 className="font-semibold text-secondary text-sm mb-1">Active Listings</h3>
+          <h3 className="font-semibold text-secondary text-sm mb-1">{t('storePage.about.activeListings')}</h3>
           <p className="text-2xl font-bold text-secondary">{safeNum(store.totalProducts).toLocaleString()}</p>
         </div>
       </div>
 
       {!store.description && (
-        <p className="text-muted text-sm">No shop description provided yet.</p>
+        <p className="text-muted text-sm">{t('storePage.about.noDescription')}</p>
       )}
     </div>
   );
@@ -57,14 +60,16 @@ export function StorePageClient({
   store:  StoreDto;
   locale: string;
 }) {
+  const t = useTranslations('shops');
+
   const [activeTab,   setActiveTab]   = useState<Tab>('items');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'items',   label: `Items (${store.totalProducts})` },
-    { id: 'reviews', label: 'Reviews'                        },
-    { id: 'about',   label: 'About'                          },
+    { id: 'items',   label: t('storePage.tabItems', { count: store.totalProducts }) },
+    { id: 'reviews', label: t('storePage.tabReviews')                               },
+    { id: 'about',   label: t('storePage.tabAbout')                                 },
   ];
 
   const handleSearch = (e: React.FormEvent) => {
@@ -82,7 +87,7 @@ export function StorePageClient({
             {/* Tabs */}
             <div
               role="tablist"
-              aria-label="Store sections"
+              aria-label={t('storePage.sectionsAriaLabel')}
               className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden flex-1"
             >
               {tabs.map((tab) => (
@@ -112,7 +117,7 @@ export function StorePageClient({
                   <input
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
-                    placeholder={`Search all ${store.totalProducts} items`}
+                    placeholder={t('storePage.searchPlaceholder', { count: store.totalProducts })}
                     className="bg-transparent text-xs text-secondary placeholder:text-muted outline-none w-44"
                   />
                 </div>

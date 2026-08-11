@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { LayoutDashboard, Link2, Banknote, LogOut } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@ezihubb/api-client';
@@ -21,21 +21,22 @@ interface AffiliateProfile {
   email:       string;
 }
 
-const NAV = [
-  { href: '/affiliate/dashboard', icon: LayoutDashboard, label: 'Dashboard'  },
-  { href: '/affiliate/links',     icon: Link2,           label: 'My Links'   },
-  { href: '/affiliate/payouts',   icon: Banknote,        label: 'Payouts'    },
-] as const;
-
 export default function AffiliatePortalLayoutClient({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const locale   = useLocale();
+  const t        = useTranslations('affiliate.portal');
   const router   = useRouter();
   const pathname = usePathname();
   const token    = useAuthStore((s) => s.accessToken);
+
+  const NAV = [
+    { href: '/affiliate/dashboard', icon: LayoutDashboard, label: t('navDashboard') },
+    { href: '/affiliate/links',     icon: Link2,           label: t('navLinks')     },
+    { href: '/affiliate/payouts',   icon: Banknote,        label: t('navPayouts')   },
+  ] as const;
 
   const { data: affiliate, isLoading, isError } = useQuery<AffiliateProfile | null>({
     queryKey: ['affiliate-me'],
@@ -85,17 +86,19 @@ export default function AffiliatePortalLayoutClient({
           <span className="text-2xl">⏳</span>
         </div>
         <h1 className="font-display text-2xl font-bold text-secondary mb-3">
-          Your application is under review
+          {t('pendingTitle')}
         </h1>
         <p className="text-muted text-sm mb-6">
-          We review every application personally. You&apos;ll receive an email at{' '}
-          <strong className="text-secondary">{affiliate.email}</strong> within 24 hours.
+          {t.rich('pendingBody', {
+            email: affiliate.email,
+            strong: (chunks) => <strong className="text-secondary">{chunks}</strong>,
+          })}
         </p>
         <Link
           href={`/${locale}/affiliate`}
           className="text-sm text-primary hover:underline"
         >
-          ← Back to Affiliate Program
+          {t('backToProgram')}
         </Link>
       </div>
     );
@@ -116,7 +119,7 @@ export default function AffiliatePortalLayoutClient({
               </p>
               <p className="text-xs text-muted truncate">{affiliate.referralCode}</p>
               <p className="text-xs font-medium text-green-600 mt-0.5">
-                {fmtAmount(affiliate.balance)} available
+                {fmtAmount(affiliate.balance)} {t('available')}
               </p>
             </div>
 
@@ -146,7 +149,7 @@ export default function AffiliatePortalLayoutClient({
                 className="flex items-center gap-3 px-3 py-2.5 rounded-button text-sm font-medium text-secondary hover:bg-error/8 hover:text-error transition-colors mt-1 pt-2 border-t border-border"
               >
                 <LogOut className="w-4 h-4 shrink-0 text-muted" />
-                Back to Store
+                {t('backToStore')}
               </Link>
             </nav>
           </div>

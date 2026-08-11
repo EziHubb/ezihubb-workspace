@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { SearchX } from 'lucide-react';
 import { apiClient } from '@ezihubb/api-client';
@@ -13,6 +13,7 @@ interface SearchNoResultsProps {
 
 export function SearchNoResults({ query }: SearchNoResultsProps) {
   const locale = useLocale();
+  const t = useTranslations('search');
 
   const { data: trending = [] } = useQuery<string[]>({
     queryKey: ['search', 'trending'],
@@ -25,16 +26,16 @@ export function SearchNoResults({ query }: SearchNoResultsProps) {
       <SearchX className="w-14 h-14 text-muted mx-auto mb-4" aria-hidden />
 
       <h2 className="text-xl font-bold text-secondary mb-2">
-        {query ? <>No results for &ldquo;{query}&rdquo;</> : 'No products found'}
+        {query ? t('noResultsFor', { query }) : t('noProductsFound')}
       </h2>
 
       <p className="text-muted text-sm mb-8">
-        Try different keywords, check your spelling, or browse popular searches below.
+        {t('tryDifferentKeywords')}
       </p>
 
       {trending.length > 0 && (
         <div>
-          <p className="text-sm font-medium text-secondary mb-3">Popular right now</p>
+          <p className="text-sm font-medium text-secondary mb-3">{t('popularRightNow')}</p>
           <div className="flex flex-wrap gap-2 justify-center">
             {trending.slice(0, 8).map((kw) => (
               <Link
@@ -53,7 +54,7 @@ export function SearchNoResults({ query }: SearchNoResultsProps) {
         href={`/${locale}/search`}
         className="inline-flex items-center gap-2 mt-8 bg-primary hover:bg-primary-dark text-white font-bold text-sm px-8 py-3.5 rounded-button transition-colors uppercase tracking-wide"
       >
-        Browse All Products
+        {t('browseAllProducts')}
       </Link>
     </div>
   );

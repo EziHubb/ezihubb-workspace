@@ -1,0 +1,28 @@
+{
+  "rating": "评分",
+  "starLabel": "{star} 星",
+  "addPhotos": "📷 添加照片（选填）",
+  "upToPhotos": "最多5张照片",
+  "removePhoto": "删除照片",
+  "addAnotherPhoto": "添加更多照片",
+  "writeReview": "撰写评价",
+  "alreadyReviewed": "您已经评价过该商品。",
+  "mustPurchase": "只有购买过的商品才能评价。",
+  "submitted": "评价已提交！",
+  "submittedDetail": "您的评价将在审核通过后显示（通常在24小时内）。",
+  "yourRating": "您的评分",
+  "titleLabel": "评价标题",
+  "optional": "（选填）",
+  "titlePlaceholder": "简要描述您的使用体验…",
+  "yourReview": "评价内容",
+  "bodyPlaceholder": "您喜欢这件商品的哪些方面？（至少20个字符）",
+  "photosLabel": "照片（选填）",
+  "close": "关闭",
+  "publiclyVisible": "评价经审核通过后将公开显示。",
+  "submitReview": "提交评价",
+  "errors": {
+    "selectRating": "请选择评分",
+    "minLength": "评价内容至少需要20个字符",
+    "generic": "出错了。"
+  }
+}

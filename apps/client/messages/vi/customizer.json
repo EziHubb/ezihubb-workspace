@@ -1,7 +1,9 @@
 {
   "step1": {
     "title": "Thêm Tên & Lời Nhắn",
-    "desc": "Cá nhân hóa với tên, ngày hoặc một lời nhắn từ trái tim."
+    "desc": "Cá nhân hóa với tên, ngày hoặc một lời nhắn từ trái tim.",
+    "maxCharacters": "Tối đa {max} ký tự",
+    "noTextFields": "Sản phẩm này không có trường văn bản nào."
   },
   "step2": {
     "title": "Tải Lên Ảnh",
@@ -23,7 +25,11 @@
     },
     "replace": "Thay ảnh",
     "skip": "Bỏ qua bước này →",
-    "noPhoto": "Không có ảnh?"
+    "noPhoto": "Không có ảnh?",
+    "sizeError": "Ảnh phải nhỏ hơn {max}MB.",
+    "uploadLabel": "Tải lên {label}",
+    "photoFallback": "Ảnh",
+    "noImageFields": "Sản phẩm này không cần tải ảnh lên."
   },
   "step3": {
     "title": "Chọn Phong Cách",
@@ -33,7 +39,9 @@
     "generating": "Đang tạo bản xem trước...",
     "generatingHint": "Vui lòng giữ màn hình này mở",
     "lookingGood": "Trông tuyệt vời! ✨",
-    "regenerate": "Tạo lại"
+    "regenerate": "Tạo lại",
+    "previewAlt": "Bản xem trước cá nhân hóa của bạn",
+    "noStyleOptions": "Sản phẩm này không có tùy chọn phong cách."
   },
   "topBar": {
     "preview": "Xem trước",
@@ -60,11 +68,80 @@
   "progress": "Bước {current} / {total}",
   "continue": "Tiếp tục →",
   "back": "← Quay lại",
+  "productAngles": "Góc nhìn sản phẩm",
+  "desktopImageUpload": {
+    "replace": "🔄 Thay ảnh",
+    "uploadLabel": "Tải lên {label}",
+    "uploadImage": "Tải lên ảnh",
+    "dropOrBrowse": "Kéo thả ảnh vào đây hoặc <browse>chọn tệp</browse>",
+    "sizeHint": "JPG, PNG, WebP, HEIC — tối đa {max}MB",
+    "uploading": "Đang tải lên… {progress}%",
+    "removingBg": "Đang xóa nền… (~10 giây)",
+    "processing": "Đang xử lý…",
+    "uploadedAlt": "Ảnh đã tải lên",
+    "bgRemoved": "Đã xóa nền",
+    "removeImage": "Xóa ảnh",
+    "removeBackground": "Xóa nền",
+    "revertToOriginal": "Khôi phục ảnh gốc",
+    "bestResultsHint": "Tải ảnh lên để có kết quả tốt nhất",
+    "unsupportedType": "Định dạng tệp không được hỗ trợ. Dùng JPG, PNG, WebP hoặc HEIC.",
+    "sizeError": "Ảnh phải nhỏ hơn {max}MB."
+  },
+  "artStyle": {
+    "label": "Phong cách nghệ thuật",
+    "processing": "Đang xử lý...",
+    "none": "Không",
+    "original": "Ảnh gốc"
+  },
+  "autoFill": {
+    "saved": "Chúng tôi đã lưu tùy chỉnh trước đó của bạn",
+    "prompt": "Bạn muốn tiếp tục từ nơi đã dừng lại?",
+    "yes": "Có, tự động điền",
+    "startFresh": "Bắt đầu lại",
+    "dismiss": "Đóng"
+  },
+  "previewModal": {
+    "title": "Bản xem trước",
+    "close": "Đóng xem trước",
+    "generating": "Đang tạo bản xem trước…",
+    "generatingHint": "Quá trình này mất khoảng 20 giây",
+    "tryAgain": "Thử lại",
+    "previewAlt": "Bản xem trước sản phẩm cá nhân hóa",
+    "looksGreat": "Trông tuyệt vời! Đây là bản xem trước gần đúng — sản phẩm thực tế có thể khác đôi chút.",
+    "editMore": "Chỉnh sửa thêm",
+    "addToCart": "Thêm vào giỏ — {amount}"
+  },
+  "panel": {
+    "title": "✏️ Cá nhân hóa món quà của bạn",
+    "required": "Bắt buộc",
+    "generatePreview": "👁 Xem trước",
+    "addingToCart": "Đang thêm vào giỏ…",
+    "addToCart": "Thêm vào giỏ — {amount}",
+    "fillRequired": "Điền đầy đủ các trường bắt buộc (",
+    "toContinue": ") để tiếp tục",
+    "genericError": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+    "trust": {
+      "shipping": "🚚 Giao trong 3–5 ngày",
+      "cancel": "✅ Hủy trong vòng 2 giờ",
+      "secure": "🔒 Thanh toán an toàn"
+    }
+  },
   "bundle": {
     "tabLabel": "{item} cho...",
     "itemTab": "Món {n}",
     "complete": "Hoàn thành",
     "incomplete": "Còn trường bắt buộc",
-    "priceNote": "Giá cho cả bộ"
+    "priceNote": "Giá cho cả bộ",
+    "title": "🎁 Cá nhân hóa bộ quà của bạn",
+    "subtitle": "Tùy chỉnh riêng từng món trong bộ",
+    "itemFor": "{item} cho {name}",
+    "noFields": "Món này không có trường tùy chỉnh.",
+    "enterPlaceholder": "Nhập {label}…",
+    "itemN": "Món {n}",
+    "itemsComplete": "{count}/{total} hoàn thành",
+    "addingToCart": "Đang thêm vào giỏ…",
+    "addSetToCart": "Thêm bộ vào giỏ — {amount}",
+    "personalizeAllToContinue": "Cá nhân hóa đủ {count} món để tiếp tục",
+    "failedToAdd": "Không thể thêm vào giỏ hàng"
   }
 }

@@ -653,7 +653,7 @@ export default function AdminStoreDetailPage() {
       {/* ── KPI stats ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard label="Total Orders"   value={String(store.totalOrders)}  icon={ShoppingBag} color="blue" />
-        <StatCard label="Total Revenue"  value={fmtAmount(store.totalRevenue)} icon={DollarSign} color="coral" prefix="$" />
+        <StatCard label="Total Revenue"  value={fmtAmount(store.totalRevenue)} icon={DollarSign} color="coral" />
         <StatCard label="Store Rating"   value={store.rating > 0 ? store.rating.toFixed(1) : '—'} icon={Star} color="amber" />
         <StatCard label="Active Products" value={String(store.totalProducts)} icon={Package} color="blue" />
       </div>

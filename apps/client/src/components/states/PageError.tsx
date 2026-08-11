@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { RefreshCw, Copy, Check, ChevronDown } from 'lucide-react';
 
 // ── Sentry integration — soft dependency ──────────────────────────────────────
@@ -28,6 +29,7 @@ export interface PageErrorProps {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function PageError({ error, reset, homeHref = '/' }: PageErrorProps) {
+  const t = useTranslations('common');
   const [copied,    setCopied]    = useState(false);
   const [showStack, setShowStack] = useState(false);
 
@@ -56,21 +58,21 @@ export function PageError({ error, reset, homeHref = '/' }: PageErrorProps) {
       </div>
 
       <h2 className="font-display text-2xl font-bold text-secondary mb-2">
-        Something went wrong
+        {t('error')}
       </h2>
       <p className="text-sm text-muted max-w-xs mb-6">
-        We&apos;ve been notified and are looking into it.
+        {t('weveBeenNotified')}
       </p>
 
       {/* Error ID */}
       {error.digest && (
         <div className="inline-flex items-center gap-2 bg-background border border-border rounded-sm px-3 py-2 mb-8">
-          <span className="text-xs text-muted font-mono">Error ID:</span>
+          <span className="text-xs text-muted font-mono">{t('errorId')}</span>
           <code className="font-mono text-xs text-secondary">{error.digest}</code>
           <button
             type="button"
             onClick={copyDigest}
-            aria-label="Copy error ID"
+            aria-label={t('copyErrorId')}
             className="ml-1 text-muted hover:text-secondary transition-colors"
           >
             {copied ? (
@@ -90,13 +92,13 @@ export function PageError({ error, reset, homeHref = '/' }: PageErrorProps) {
           className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white font-bold px-6 py-3 rounded-button transition-colors text-sm"
         >
           <RefreshCw className="w-4 h-4" />
-          Try Again
+          {t('retry')}
         </button>
         <Link
           href={homeHref}
           className="inline-flex items-center justify-center px-6 py-3 border border-border text-secondary text-sm font-medium rounded-button hover:border-primary hover:text-primary transition-colors"
         >
-          Go to Homepage
+          {t('goHome')}
         </Link>
       </div>
 
@@ -109,7 +111,7 @@ export function PageError({ error, reset, homeHref = '/' }: PageErrorProps) {
             className="flex items-center gap-1.5 text-xs text-muted hover:text-secondary transition-colors"
           >
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showStack ? 'rotate-180' : ''}`} />
-            {showStack ? 'Hide' : 'Show'} error details
+            {showStack ? t('hideErrorDetails') : t('showErrorDetails')}
           </button>
           {showStack && (
             <pre className="mt-2 p-3 bg-background border border-border rounded-sm text-xs text-error overflow-x-auto whitespace-pre-wrap break-words">

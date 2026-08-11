@@ -8,7 +8,7 @@ import {
   useId,
 } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { Search, X, TrendingUp } from 'lucide-react';
 import { apiClient, queryKeys } from '@ezihubb/api-client';
@@ -47,16 +47,19 @@ interface SearchInputProps {
 export function SearchInput({
   defaultValue = '',
   variant      = 'page',
-  placeholder  = 'Search gifts, mugs, canvas prints…',
+  placeholder,
   className    = '',
   onSearch,
   autoFocus    = false,
 }: SearchInputProps) {
+  const t        = useTranslations('search');
+  const tCommon  = useTranslations('common');
   const id       = useId();
   const listId   = `${id}-listbox`;
   const router   = useRouter();
   const pathname = usePathname();
   const locale   = useLocale();
+  const resolvedPlaceholder = placeholder ?? t('inputPlaceholder');
 
   const [value,     setValue]     = useState(defaultValue);
   const [isFocused, setIsFocused] = useState(false);
@@ -201,7 +204,7 @@ export function SearchInput({
           onKeyDown={handleKeyDown}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 150)}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           autoFocus={autoFocus}
           autoComplete="off"
           spellCheck="false"
@@ -219,7 +222,7 @@ export function SearchInput({
           <button
             type="button"
             onClick={clearInput}
-            aria-label="Clear search"
+            aria-label={t('clearSearch')}
             className={
               isHeader
                 ? 'absolute right-14 top-1/2 -translate-y-1/2 p-1.5 text-muted hover:text-secondary transition-colors'
@@ -234,7 +237,7 @@ export function SearchInput({
           <button
             type="button"
             onClick={() => { setActiveIdx(-1); navigate(value); inputRef.current?.blur(); }}
-            aria-label="Search"
+            aria-label={tCommon('search')}
             className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-primary hover:bg-primary-dark rounded-full flex items-center justify-center transition-colors shrink-0"
           >
             <Search className="w-4 h-4 text-white" />
@@ -247,7 +250,7 @@ export function SearchInput({
         <div
           id={listId}
           role="listbox"
-          aria-label="Search suggestions"
+          aria-label={t('suggestions')}
           className="absolute top-full left-0 right-0 z-50 mt-1 bg-surface border border-border rounded-card shadow-floating overflow-hidden"
         >
           {suggestions.length > 0 ? (
@@ -291,7 +294,7 @@ export function SearchInput({
             <div className="p-4">
               <p className="flex items-center gap-1.5 text-xs font-semibold text-muted uppercase tracking-wide mb-3">
                 <TrendingUp className="w-3.5 h-3.5" />
-                Trending searches
+                {t('trendingSearches')}
               </p>
               <div className="flex flex-wrap gap-2">
                 {popularTerms.slice(0, 8).map((term) => (

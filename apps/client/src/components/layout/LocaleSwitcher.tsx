@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ChevronDown, Check } from 'lucide-react';
 
 const LOCALES = [
@@ -19,6 +19,7 @@ interface LocaleSwitcherProps {
 }
 
 export function LocaleSwitcher({ variant = 'dropdown' }: LocaleSwitcherProps) {
+  const t        = useTranslations('nav');
   const router   = useRouter();
   const pathname = usePathname();
   const locale   = useLocale() as LocaleCode;
@@ -37,7 +38,7 @@ export function LocaleSwitcher({ variant = 'dropdown' }: LocaleSwitcherProps) {
   // ── Inline variant (mobile drawer) ───────────────────────────────────────────
   if (variant === 'inline') {
     return (
-      <div className="flex items-center gap-1" role="group" aria-label="Select language">
+      <div className="flex items-center gap-1" role="group" aria-label={t('selectLanguage')}>
         {LOCALES.map((l) => {
           const active = l.code === locale;
           return (
@@ -68,7 +69,7 @@ export function LocaleSwitcher({ variant = 'dropdown' }: LocaleSwitcherProps) {
       <button
         type="button"
         onClick={() => setIsOpen((o) => !o)}
-        aria-label="Select language"
+        aria-label={t('selectLanguage')}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         className="flex items-center gap-1.5 text-sm text-muted hover:text-secondary transition-colors px-2 py-1 rounded-lg hover:bg-muted/10"
@@ -87,7 +88,7 @@ export function LocaleSwitcher({ variant = 'dropdown' }: LocaleSwitcherProps) {
           {/* Dropdown */}
           <div
             role="listbox"
-            aria-label="Language"
+            aria-label={t('selectLanguage')}
             className="absolute right-0 top-full mt-1 w-44 bg-surface rounded-xl shadow-floating border border-border z-50 overflow-hidden py-1"
           >
             {LOCALES.map((l) => {

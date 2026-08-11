@@ -1,8 +1,10 @@
+import { getTranslations } from 'next-intl/server';
 import { Skeleton } from '@ezihubb/ui';
 const S = 'animate-shimmer bg-gradient-to-r from-border/60 via-background to-border/60 bg-[length:400%_100%] rounded-sm';
-export default function AddressesLoading() {
+export default async function AddressesLoading() {
+  const t = await getTranslations('common');
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="Loading addresses">
+    <div className="space-y-6" aria-busy="true" aria-label={t('loadingAddresses')}>
       <div className="flex items-center justify-between">
         <Skeleton variant="rect" className="h-8 w-40" />
         <div className={`h-9 w-32 rounded-button ${S}`} />

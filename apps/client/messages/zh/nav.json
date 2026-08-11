@@ -12,6 +12,14 @@
   "toggleMenu": "切换菜单",
   "allProducts": "全部商品",
   "viewAll": "查看全部 {category}",
+  "myOrders": "我的订单",
+  "profile": "个人资料",
+  "sellerHub": "卖家中心",
+  "signOut": "退出登录",
+  "signIn": "登录",
+  "shop": "购物",
+  "createAccount": "创建账户",
+  "selectLanguage": "选择语言",
   "megaMenu": {
     "ariaLabel": "商品分类"
   }

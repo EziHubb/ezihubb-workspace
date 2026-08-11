@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   Star, Sparkles, Award, Heart, Truck, Check, ThumbsUp, Camera, X,
 } from 'lucide-react';
@@ -17,8 +18,8 @@ import { fmtRating, safeNum } from '@ezihubb/utils';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
+function fmtDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, {
     year: 'numeric', month: 'short', day: 'numeric',
   });
 }
@@ -72,16 +73,22 @@ function ReviewListSkeleton() {
 
 // ── SentimentBadges ───────────────────────────────────────────────────────────
 
-const BADGE_DEFS = [
-  { Icon: Sparkles, label: 'Looks great',  minRating: 4.5 },
-  { Icon: Award,    label: 'Quality',      minRating: 0 },
-  { Icon: Heart,    label: 'Love it',      minRating: 4.8 },
-  { Icon: Truck,    label: 'Fast shipping',minRating: 0 },
-  { Icon: Check,    label: 'As described', minRating: 0 },
-] as const;
+type Translator = ReturnType<typeof useTranslations>;
+
+function useBadgeDefs(t: Translator) {
+  return [
+    { Icon: Sparkles, label: t('badges.looksGreat'),   minRating: 4.5 },
+    { Icon: Award,    label: t('badges.quality'),      minRating: 0 },
+    { Icon: Heart,    label: t('badges.loveIt'),        minRating: 4.8 },
+    { Icon: Truck,    label: t('badges.fastShipping'), minRating: 0 },
+    { Icon: Check,    label: t('badges.asDescribed'),  minRating: 0 },
+  ] as const;
+}
 
 function SentimentBadges({ averageRating }: { averageRating: number }) {
-  const active = BADGE_DEFS.filter((b) => averageRating >= b.minRating);
+  const t = useTranslations('product.etsyReviews');
+  const badgeDefs = useBadgeDefs(t);
+  const active = badgeDefs.filter((b) => averageRating >= b.minRating);
   return (
     <div className="flex flex-wrap gap-2 mb-6">
       {active.map(({ Icon, label }) => (
@@ -100,6 +107,8 @@ function SentimentBadges({ averageRating }: { averageRating: number }) {
 // ── ReviewCard ────────────────────────────────────────────────────────────────
 
 function ReviewCard({ review, onHelpful }: { review: ReviewDto; onHelpful?: (id: string) => void }) {
+  const t = useTranslations('product.etsyReviews');
+  const locale = useLocale();
   const [isExpanded,  setIsExpanded]  = useState(false);
   const [markedHelpful, setMarkedHelpful] = useState(false);
   const body   = review.body ?? '';
@@ -129,7 +138,7 @@ function ReviewCard({ review, onHelpful }: { review: ReviewDto; onHelpful?: (id:
           onClick={() => setIsExpanded((e) => !e)}
           className="text-xs text-primary hover:underline mt-1"
         >
-          {isExpanded ? 'Show less' : 'Read more'}
+          {isExpanded ? t('showLess') : t('readMore')}
         </button>
       )}
 
@@ -143,7 +152,7 @@ function ReviewCard({ review, onHelpful }: { review: ReviewDto; onHelpful?: (id:
             >
               <Image
                 src={url}
-                alt={`Review photo ${i + 1}`}
+                alt={t('reviewPhoto', { n: i + 1 })}
                 fill
                 sizes="64px"
                 className="object-cover"
@@ -172,7 +181,7 @@ function ReviewCard({ review, onHelpful }: { review: ReviewDto; onHelpful?: (id:
             dateTime={review.createdAt}
             className="text-xs text-muted"
           >
-            {fmtDate(review.createdAt)}
+            {fmtDate(review.createdAt, locale)}
           </time>
         </div>
       </div>
@@ -181,7 +190,7 @@ function ReviewCard({ review, onHelpful }: { review: ReviewDto; onHelpful?: (id:
       {review.adminReply && (
         <div className="mt-3 pl-3 border-l-2 border-border">
           <p className="text-xs font-semibold text-secondary">
-            Response from EziHubb
+            {t('responseFrom')}
           </p>
           <p className="text-sm text-muted mt-1">{review.adminReply}</p>
         </div>
@@ -196,7 +205,7 @@ function ReviewCard({ review, onHelpful }: { review: ReviewDto; onHelpful?: (id:
           className={`mt-3 flex items-center gap-1.5 text-xs transition-colors ${markedHelpful ? 'text-primary cursor-default' : 'text-muted hover:text-secondary'}`}
         >
           <ThumbsUp className="w-3.5 h-3.5" />
-          {markedHelpful ? 'Marked as helpful' : 'Helpful?'}
+          {markedHelpful ? t('markedAsHelpful') : t('helpfulQuestion')}
         </button>
       )}
     </div>
@@ -212,8 +221,6 @@ function InteractiveStar({ filled, onHover, onClick }: { filled: boolean; onHove
     </button>
   );
 }
-
-const RATING_LABELS = ['', 'Poor', 'Fair', 'Good', 'Very good', 'Excellent'];
 
 // ── WriteReviewForm ───────────────────────────────────────────────────────────
 
@@ -233,6 +240,7 @@ function WriteReviewForm({
   productSlug: string;
   onSuccess:   () => void;
 }) {
+  const t            = useTranslations('product.etsyReviews');
   const user         = useAuthStore((s) => s.user);
   const accessToken  = useAuthStore((s) => s.accessToken);
   const queryClient  = useQueryClient();
@@ -286,9 +294,9 @@ function WriteReviewForm({
   };
 
   const handleSubmit = async () => {
-    if (rating === 0)       return setError('Please select a star rating.');
-    if (body.length < 10)   return setError('Review text must be at least 10 characters.');
-    if (!orderId)           return setError('Please select the order for this review.');
+    if (rating === 0)       return setError(t('pleaseSelectRating'));
+    if (body.length < 10)   return setError(t('reviewTooShort'));
+    if (!orderId)           return setError(t('pleaseSelectOrder'));
     setError('');
     setIsSubmitting(true);
     try {
@@ -303,7 +311,7 @@ function WriteReviewForm({
       setRating(0); setTitle(''); setBody(''); setOrderId(''); setImageUrls([]);
       onSuccess();
     } catch (e: unknown) {
-      const msg = (e as { message?: string })?.message ?? 'Failed to submit review';
+      const msg = (e as { message?: string })?.message ?? t('failedToSubmit');
       setError(msg);
     } finally {
       setIsSubmitting(false);
@@ -314,8 +322,8 @@ function WriteReviewForm({
     return (
       <div className="mt-4 py-4 border border-dashed border-border rounded-2xl text-center">
         <p className="text-sm text-muted">
-          <Link href="/login" className="text-primary hover:underline font-medium">Sign in</Link>{' '}
-          to write a review
+          <Link href="/login" className="text-primary hover:underline font-medium">{t('signIn')}</Link>{' '}
+          {t('toWriteReview')}
         </p>
       </div>
     );
@@ -331,7 +339,7 @@ function WriteReviewForm({
                    flex items-center justify-center gap-2"
       >
         <Star className="w-4 h-4" />
-        Write a review
+        {t('writeAReview')}
       </button>
     );
   }
@@ -339,7 +347,7 @@ function WriteReviewForm({
   return (
     <div className="mt-4 border border-border rounded-2xl p-5 bg-[#FAFAF8]">
       <div className="flex items-center justify-between mb-4">
-        <h4 className="font-semibold text-secondary">Write a review</h4>
+        <h4 className="font-semibold text-secondary">{t('writeAReview')}</h4>
         <button type="button" onClick={() => setIsOpen(false)} className="text-muted hover:text-secondary">
           <X className="w-4 h-4" />
         </button>
@@ -348,15 +356,15 @@ function WriteReviewForm({
       {/* Order selector */}
       {reviewables.length > 1 && (
         <div className="mb-4">
-          <label className="text-xs font-medium block mb-1.5 text-secondary">Order *</label>
+          <label className="text-xs font-medium block mb-1.5 text-secondary">{t('order')}</label>
           <select
             value={orderId}
             onChange={(e) => setOrderId(e.target.value)}
             className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
-            <option value="">Select order…</option>
+            <option value="">{t('selectOrder')}</option>
             {reviewables.map((r) => (
-              <option key={r.orderId} value={r.orderId}>Order #{r.orderNumber}</option>
+              <option key={r.orderId} value={r.orderId}>{t('orderNumber', { number: r.orderNumber })}</option>
             ))}
           </select>
         </div>
@@ -364,7 +372,7 @@ function WriteReviewForm({
 
       {/* Star rating */}
       <div className="mb-4">
-        <label className="text-xs font-medium block mb-2 text-secondary">Rating *</label>
+        <label className="text-xs font-medium block mb-2 text-secondary">{t('rating')}</label>
         <div className="flex items-center gap-1"
           onMouseLeave={() => setHoveredStar(0)}>
           {[1, 2, 3, 4, 5].map((s) => (
@@ -376,7 +384,7 @@ function WriteReviewForm({
             />
           ))}
           {(hoveredStar || rating) > 0 && (
-            <span className="ml-2 text-sm text-muted">{RATING_LABELS[hoveredStar || rating]}</span>
+            <span className="ml-2 text-sm text-muted">{t(`ratingLabels.${hoveredStar || rating}` as 'ratingLabels.1')}</span>
           )}
         </div>
       </div>
@@ -384,13 +392,13 @@ function WriteReviewForm({
       {/* Title */}
       <div className="mb-3">
         <label className="text-xs font-medium block mb-1.5 text-secondary">
-          Title <span className="text-muted font-normal">(optional)</span>
+          {t('title')} <span className="text-muted font-normal">{t('optional')}</span>
         </label>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           maxLength={120}
-          placeholder="Summarize your experience"
+          placeholder={t('titlePlaceholder')}
           className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
@@ -398,14 +406,14 @@ function WriteReviewForm({
       {/* Body */}
       <div className="mb-4">
         <label className="text-xs font-medium block mb-1.5 text-secondary">
-          Review * <span className="text-muted font-normal">(min 10 characters)</span>
+          {t('review')} <span className="text-muted font-normal">{t('minChars')}</span>
         </label>
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={4}
           maxLength={2000}
-          placeholder="Tell others about your experience with this product…"
+          placeholder={t('reviewPlaceholder')}
           className="w-full border border-border rounded-xl px-3 py-2 text-sm resize-none bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
         <p className="text-xs text-muted text-right mt-0.5">{body.length}/2000</p>
@@ -414,7 +422,7 @@ function WriteReviewForm({
       {/* Photo upload */}
       <div className="mb-5">
         <label className="text-xs font-medium block mb-2 text-secondary">
-          Photos <span className="text-muted font-normal">(up to 5, optional)</span>
+          {t('photos')} <span className="text-muted font-normal">{t('upTo5Optional')}</span>
         </label>
         <div className="flex gap-2 flex-wrap">
           {imageUrls.map((url, i) => (
@@ -450,7 +458,7 @@ function WriteReviewForm({
 
       <div className="flex justify-end gap-2">
         <button type="button" onClick={() => setIsOpen(false)} className="px-4 py-2 text-sm text-muted hover:text-secondary">
-          Cancel
+          {t('cancel')}
         </button>
         <button
           type="button"
@@ -458,7 +466,7 @@ function WriteReviewForm({
           onClick={handleSubmit}
           className="px-5 py-2 bg-primary text-white rounded-full text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
         >
-          {isSubmitting ? 'Submitting…' : 'Submit review'}
+          {isSubmitting ? t('submitting') : t('submitReview')}
         </button>
       </div>
     </div>
@@ -482,6 +490,7 @@ interface Props {
 }
 
 export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
+  const t = useTranslations('product.etsyReviews');
   const [activeFilter,  setActiveFilter]  = useState<FilterId>('suggested');
   const [starFilter,    setStarFilter]    = useState<number | null>(null);
   const [page,          setPage]          = useState(1);
@@ -503,15 +512,15 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
   if (!reviewSummary || reviewSummary.totalReviews === 0) {
     return (
       <section id="reviews" className="mt-12 pt-8 border-t border-border">
-        <h2 className="text-xl font-semibold mb-4">Reviews for this item</h2>
+        <h2 className="text-xl font-semibold mb-4">{t('reviewsForThisItem')}</h2>
         {reviewSuccess ? (
           <div className="py-6 text-center text-sm text-green-700 bg-green-50 rounded-2xl border border-green-100">
-            Thank you! Your review has been submitted and will appear after moderation.
+            {t('thankYouSubmitted')}
           </div>
         ) : (
           <>
             <WriteReviewForm productSlug={productSlug} onSuccess={() => setReviewSuccess(true)} />
-            <p className="text-sm text-muted text-center mt-6">No reviews yet — be the first!</p>
+            <p className="text-sm text-muted text-center mt-6">{t('noReviewsBeFirst')}</p>
           </>
         )}
       </section>
@@ -521,9 +530,9 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
   const { averageRating, totalReviews, distribution } = reviewSummary;
 
   const filterTabs: { id: FilterId; label: string }[] = [
-    { id: 'suggested', label: 'Suggested' },
-    { id: 'photo',     label: `With photos (${photoCount})` },
-    { id: 'all',       label: 'All' },
+    { id: 'suggested', label: t('suggested') },
+    { id: 'photo',     label: t('withPhotos', { count: photoCount }) },
+    { id: 'all',       label: t('all') },
   ];
 
   const handleFilterChange = (id: FilterId) => {
@@ -556,19 +565,19 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
 
   // Approximate per-category scores from overall average (API has no breakdown)
   const categoryRatings = [
-    { label: 'Item quality',      score: averageRating },
-    { label: 'Shipping',          score: Math.min(5, averageRating + 0.1) },
-    { label: 'Customer service',  score: 4.9 },
+    { label: t('itemQuality'),     score: averageRating },
+    { label: t('shipping'),        score: Math.min(5, averageRating + 0.1) },
+    { label: t('customerService'), score: 4.9 },
   ];
 
   return (
     <section id="reviews" className="mt-12 pt-8 border-t border-border">
       <div className="flex items-baseline gap-3 mb-6">
         <h2 className="text-xl font-semibold">
-          {starFilter !== null ? `${starFilter}-star reviews` : 'Reviews for this item'}
+          {starFilter !== null ? t('starReviews', { star: starFilter }) : t('reviewsForThisItem')}
         </h2>
         <span className="text-sm text-muted">
-          {safeNum(totalReviews).toLocaleString()} total
+          {t('total', { count: safeNum(totalReviews).toLocaleString() })}
         </span>
       </div>
 
@@ -588,7 +597,7 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
               <Stars rating={averageRating} />
             </div>
             <p className="text-xs text-muted mt-1">
-              {safeNum(totalReviews).toLocaleString()} reviews
+              {t('reviewCount', { count: safeNum(totalReviews) })}
             </p>
           </div>
         </div>
@@ -651,11 +660,11 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
         {starFilter !== null && (
           <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm bg-yellow-400 text-yellow-900 font-medium">
             <Star className="w-3.5 h-3.5 fill-yellow-700 text-yellow-700" />
-            {starFilter} stars
+            {t('stars', { star: starFilter })}
             <button
               type="button"
               onClick={clearStarFilter}
-              aria-label="Clear star filter"
+              aria-label={t('clearStarFilter')}
               className="ml-0.5 hover:text-yellow-900/70 transition-colors"
             >
               <X className="w-3.5 h-3.5" />
@@ -687,7 +696,7 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
             onClick={clearStarFilter}
             className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm border border-border text-secondary hover:border-secondary transition-colors"
           >
-            All reviews
+            {t('allReviews')}
           </button>
         )}
       </div>
@@ -695,7 +704,7 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
       {/* ── WRITE REVIEW FORM ── */}
       {reviewSuccess ? (
         <div className="mb-6 py-4 text-center text-sm text-green-700 bg-green-50 rounded-2xl border border-green-100">
-          Thank you! Your review has been submitted and will appear after moderation.
+          {t('thankYouSubmitted')}
         </div>
       ) : (
         <div className="mb-6">
@@ -710,10 +719,10 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
         <div className="text-center py-10">
           <p className="text-sm text-muted">
             {starFilter !== null
-              ? `No ${starFilter}-star reviews yet.`
+              ? t('noStarReviews', { star: starFilter })
               : activeFilter === 'photo'
-                ? 'No reviews with photos yet.'
-                : 'No reviews match this filter.'}
+                ? t('noPhotoReviews')
+                : t('noFilterReviews')}
           </p>
           {starFilter !== null && (
             <button
@@ -721,7 +730,7 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
               onClick={clearStarFilter}
               className="mt-2 text-sm text-primary hover:underline"
             >
-              Show all reviews
+              {t('showAllReviews')}
             </button>
           )}
         </div>
@@ -736,7 +745,7 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
       {/* ── PHOTOS FROM REVIEWS ── */}
       {allPhotos.length > 0 && (
         <div className="mt-8">
-          <h3 className="text-sm font-medium text-secondary mb-3">Photos from reviews</h3>
+          <h3 className="text-sm font-medium text-secondary mb-3">{t('photosFromReviews')}</h3>
           <div className="flex gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden">
             {allPhotos.slice(0, 10).map((url, i) => (
               <div
@@ -745,7 +754,7 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
               >
                 <Image
                   src={url}
-                  alt={`Customer photo ${i + 1}`}
+                  alt={t('customerPhoto', { n: i + 1 })}
                   fill
                   sizes="80px"
                   className="object-cover"
@@ -763,7 +772,7 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
           onClick={() => setPage((p) => p + 1)}
           className="mt-6 w-full border border-border rounded-full py-2.5 text-sm font-medium hover:bg-[#F3F4F6] transition-colors"
         >
-          View all reviews for this item
+          {t('viewAllReviews')}
         </button>
       )}
     </section>

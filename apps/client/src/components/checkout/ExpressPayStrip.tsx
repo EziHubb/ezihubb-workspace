@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { fmtAmount } from '@ezihubb/utils';
 
 interface ExpressPayStripProps {
@@ -9,6 +10,7 @@ interface ExpressPayStripProps {
 }
 
 export function ExpressPayStrip({ total, onSelect }: ExpressPayStripProps) {
+  const t = useTranslations('checkout.expressPay');
   const [loading, setLoading] = useState(false);
 
   const handleClick = async () => {
@@ -25,7 +27,7 @@ export function ExpressPayStrip({ total, onSelect }: ExpressPayStripProps) {
       <div className="flex items-center gap-3">
         <div className="flex-1 h-px bg-border" />
         <span className="text-xs text-muted font-medium uppercase tracking-wide whitespace-nowrap">
-          Express checkout
+          {t('expressCheckout')}
         </span>
         <div className="flex-1 h-px bg-border" />
       </div>
@@ -34,7 +36,7 @@ export function ExpressPayStrip({ total, onSelect }: ExpressPayStripProps) {
         type="button"
         onClick={handleClick}
         disabled={loading}
-        aria-label="Pay with PayPal"
+        aria-label={t('payWithPaypal')}
         className={[
           'w-full flex items-center justify-center h-12 rounded-lg border transition-all',
           'bg-[#FFC439] text-[#003087] border-[#FFC439] hover:brightness-110 active:scale-[0.98]',
@@ -52,12 +54,12 @@ export function ExpressPayStrip({ total, onSelect }: ExpressPayStripProps) {
 
       <div className="flex items-center gap-3">
         <div className="flex-1 h-px bg-border" />
-        <span className="text-xs text-muted">or pay with card</span>
+        <span className="text-xs text-muted">{t('orPayWithCard')}</span>
         <div className="flex-1 h-px bg-border" />
       </div>
 
       <p className="text-center text-[10px] text-muted tabular-nums">
-        Total: {fmtAmount(total)} USD
+        {t('total', { amount: fmtAmount(total) })}
       </p>
     </div>
   );

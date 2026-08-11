@@ -34,6 +34,8 @@ export default async function CollectionsPage({
 
   const collections = await fetchList<CollectionDto & { bannerUrl?: string; imageUrl?: string }>(
     `${API_BASE}/api/v1/catalog/collections?isActive=true`,
+    60,
+    locale,
   );
 
   return (

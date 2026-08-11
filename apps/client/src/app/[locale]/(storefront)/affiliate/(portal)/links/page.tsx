@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuthQuery } from '../../../../../../lib/hooks/useAuthQuery';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -30,15 +31,18 @@ interface ClicksResponse {
 // Fetch referral code from the dashboard cache (avoids a separate request)
 interface DashboardData { referralCode: string }
 
-const fmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-const fmtDate = (d: string) => fmt.format(new Date(d));
-
 function trunc(url: string, max = 55) {
   try { url = decodeURIComponent(url); } catch { /* keep raw */ }
   return url.length > max ? `…${url.slice(-max + 1)}` : url;
 }
 
 export default function AffiliateLinksPage() {
+  const locale = useLocale();
+  const t      = useTranslations('affiliate.links');
+
+  const fmt     = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric' });
+  const fmtDate = (d: string) => fmt.format(new Date(d));
+
   const [baseInput, setBaseInput] = useState('');
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [page, setPage]           = useState(1);
@@ -87,13 +91,13 @@ export default function AffiliateLinksPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="font-display text-2xl font-bold text-secondary">Links &amp; Analytics</h1>
+      <h1 className="font-display text-2xl font-bold text-secondary">{t('title')}</h1>
 
       {/* ── Link generator ───────────────────────────────────────────────────── */}
       <div className="bg-surface border border-border rounded-card p-5">
-        <h2 className="font-semibold text-secondary text-sm mb-1">Link generator</h2>
+        <h2 className="font-semibold text-secondary text-sm mb-1">{t('generatorTitle')}</h2>
         <p className="text-xs text-muted mb-4">
-          Enter any page URL to generate a referral link. Leave blank for the homepage.
+          {t('generatorDesc')}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -115,7 +119,7 @@ export default function AffiliateLinksPage() {
               className="flex items-center gap-1.5 text-xs font-semibold text-green-700 hover:text-green-900 shrink-0 transition-colors"
             >
               {copiedLink === generatedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              {copiedLink === generatedLink ? 'Copied!' : 'Copy'}
+              {copiedLink === generatedLink ? t('copied') : t('copy')}
             </button>
           </div>
         )}
@@ -124,10 +128,10 @@ export default function AffiliateLinksPage() {
       {/* ── Click history ────────────────────────────────────────────────────── */}
       <div className="bg-surface border border-border rounded-card">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="font-semibold text-secondary text-sm">Click history</h2>
+          <h2 className="font-semibold text-secondary text-sm">{t('historyTitle')}</h2>
           {clicks && (
             <span className="text-xs text-muted">
-              {safeNum(clicks.total).toLocaleString()} total clicks
+              {t('totalClicks', { count: safeNum(clicks.total) })}
             </span>
           )}
         </div>
@@ -138,7 +142,7 @@ export default function AffiliateLinksPage() {
           </div>
         ) : safeArr(clicks?.data).length === 0 ? (
           <p className="px-5 py-10 text-sm text-muted text-center">
-            No clicks yet. Share your referral link to start tracking!
+            {t('noClicks')}
           </p>
         ) : (
           <>
@@ -146,9 +150,9 @@ export default function AffiliateLinksPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">Date</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">Landing page</th>
-                    <th className="px-5 py-3 text-center text-xs font-semibold text-muted uppercase tracking-wide">Converted?</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">{t('colDate')}</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">{t('colLandingPage')}</th>
+                    <th className="px-5 py-3 text-center text-xs font-semibold text-muted uppercase tracking-wide">{t('colConverted')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -163,7 +167,7 @@ export default function AffiliateLinksPage() {
                       <td className="px-5 py-3 text-center">
                         {row.convertedAt ? (
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                            ✓ Order placed
+                            ✓ {t('orderPlaced')}
                           </span>
                         ) : (
                           <span className="text-muted text-xs">—</span>
@@ -187,7 +191,7 @@ export default function AffiliateLinksPage() {
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <span className="text-sm text-muted">
-                  Page {page} of {clicks.totalPages}
+                  {t('pageOf', { page, total: clicks.totalPages })}
                 </span>
                 <button
                   type="button"
@@ -206,7 +210,7 @@ export default function AffiliateLinksPage() {
       {/* Quick copy — homepage link */}
       {referralCode && (
         <div className="text-center text-sm text-muted">
-          Your base referral link:{' '}
+          {t('baseLinkLabel')}{' '}
           <button
             type="button"
             onClick={() => copyTo(`${BASE_URL}?ref=${referralCode}`)}
@@ -215,7 +219,7 @@ export default function AffiliateLinksPage() {
             {BASE_URL}?ref={referralCode}
           </button>
           {copiedLink === `${BASE_URL}?ref=${referralCode}` && (
-            <span className="ml-2 text-green-600 text-xs">Copied!</span>
+            <span className="ml-2 text-green-600 text-xs">{t('copied')}</span>
           )}
         </div>
       )}

@@ -6,6 +6,15 @@ import Link from 'next/link';
 import { Badge, type ProductBadgeVariant } from '../Badge/Badge';
 import { RatingStars } from '../RatingStars/RatingStars';
 
+export interface ProductCardLabels {
+  addToWishlist?:    string;
+  removeFromWishlist?: string;
+  personalizeNow?:   string;
+  addToCart?:        string;
+  /** e.g. "By {name}" — receives the store name. */
+  byStore?:          (name: string) => string;
+}
+
 export interface ProductCardProps {
   id:               string;
   slug:             string;
@@ -16,17 +25,31 @@ export interface ProductCardProps {
   rating?:          number;
   reviewCount?:     number;
   badge?:           ProductBadgeVariant;
+  /** Translated badge text — overrides the built-in English default (e.g. "Bestseller"). */
+  badgeLabel?:      string;
   isPersonalizable?: boolean;
   isWishlisted?:    boolean;
   currency?:        string;
+  /** BCP-47 locale for price formatting (e.g. "vi", "zh"). Default: "en-US". */
+  locale?:          string;
   onWishlistToggle?: (id: string) => void;
   onAddToCart?:     (id: string) => void;
   storeName?:       string | null;
   storeSlug?:       string | null;
+  /** Translated labels — every field falls back to its English default. */
+  labels?:          ProductCardLabels;
 }
 
-function formatPrice(amount: number, currency = 'USD'): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount);
+const defaultLabels: Required<ProductCardLabels> = {
+  addToWishlist:      'Add to wishlist',
+  removeFromWishlist: 'Remove from wishlist',
+  personalizeNow:     'Personalize Now',
+  addToCart:          'Add to Cart',
+  byStore:            (name) => `By ${name}`,
+};
+
+function formatPrice(amount: number, currency = 'USD', locale = 'en-US'): string {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount);
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -39,14 +62,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   rating,
   reviewCount,
   badge,
+  badgeLabel,
   isPersonalizable = false,
   isWishlisted     = false,
   currency         = 'USD',
+  locale           = 'en-US',
   onWishlistToggle,
   onAddToCart,
   storeName,
   storeSlug,
+  labels,
 }) => {
+  const L = { ...defaultLabels, ...labels };
   const [hovered, setHovered] = useState(false);
   const discount =
     compareAtPrice && compareAtPrice > basePrice
@@ -71,7 +98,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {badge && (
           <div className="absolute top-3 left-3">
-            <Badge variant={badge} />
+            <Badge variant={badge}>{badgeLabel}</Badge>
           </div>
         )}
 
@@ -79,7 +106,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <button
             type="button"
             onClick={(e) => { e.preventDefault(); onWishlistToggle(id); }}
-            aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            aria-label={isWishlisted ? L.removeFromWishlist : L.addToWishlist}
             className={[
               'absolute top-3 right-3 p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-sm',
               'transition-colors duration-150',
@@ -103,7 +130,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           ].join(' ')}
         >
           <span className="block text-center text-white text-sm font-medium">
-            {isPersonalizable ? 'Personalize Now' : 'Add to Cart'}
+            {isPersonalizable ? L.personalizeNow : L.addToCart}
           </span>
         </div>
       </Link>
@@ -121,7 +148,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             className="block text-xs text-muted hover:text-primary transition-colors mb-1 truncate"
             onClick={(e) => e.stopPropagation()}
           >
-            By {storeName}
+            {L.byStore(storeName)}
           </Link>
         )}
 
@@ -133,12 +160,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-semibold text-secondary">
-            {formatPrice(basePrice, currency)}
+            {formatPrice(basePrice, currency, locale)}
           </span>
           {compareAtPrice && compareAtPrice > basePrice && (
             <>
               <span className="text-xs text-muted line-through">
-                {formatPrice(compareAtPrice, currency)}
+                {formatPrice(compareAtPrice, currency, locale)}
               </span>
               {discount > 0 && (
                 <span className="text-xs font-medium text-error">-{discount}%</span>
@@ -153,7 +180,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             onClick={() => onAddToCart(id)}
             className="mt-3 w-full h-8 rounded-button border border-primary text-primary text-xs font-medium hover:bg-primary hover:text-white transition-colors duration-150"
           >
-            Add to Cart
+            {L.addToCart}
           </button>
         )}
       </div>

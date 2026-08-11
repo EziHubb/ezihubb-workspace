@@ -1,7 +1,9 @@
 {
   "step1": {
     "title": "添加姓名和文字",
-    "desc": "用姓名、日期或心意满满的留言进行个性化定制。"
+    "desc": "用姓名、日期或心意满满的留言进行个性化定制。",
+    "maxCharacters": "最多 {max} 个字符",
+    "noTextFields": "该商品没有可填写的文本字段。"
   },
   "step2": {
     "title": "上传照片",
@@ -23,7 +25,11 @@
     },
     "replace": "更换",
     "skip": "跳过此步骤 →",
-    "noPhoto": "没有照片？"
+    "noPhoto": "没有照片？",
+    "sizeError": "照片大小需小于 {max}MB。",
+    "uploadLabel": "上传 {label}",
+    "photoFallback": "照片",
+    "noImageFields": "该商品无需上传照片。"
   },
   "step3": {
     "title": "选择风格",
@@ -33,7 +39,9 @@
     "generating": "正在生成预览…",
     "generatingHint": "请保持页面打开",
     "lookingGood": "效果不错！✨",
-    "regenerate": "重新生成"
+    "regenerate": "重新生成",
+    "previewAlt": "您的个性化预览效果",
+    "noStyleOptions": "该商品没有可选风格。"
   },
   "topBar": {
     "preview": "预览",
@@ -60,11 +68,80 @@
   "progress": "步骤 {current} / {total}",
   "continue": "继续 →",
   "back": "← 返回",
+  "productAngles": "商品视角",
+  "desktopImageUpload": {
+    "replace": "🔄 更换",
+    "uploadLabel": "上传 {label}",
+    "uploadImage": "上传图片",
+    "dropOrBrowse": "将照片拖到此处或<browse>浏览文件</browse>",
+    "sizeHint": "JPG、PNG、WebP、HEIC — 最大 {max}MB",
+    "uploading": "上传中… {progress}%",
+    "removingBg": "正在移除背景…（约10秒）",
+    "processing": "处理中…",
+    "uploadedAlt": "已上传的照片",
+    "bgRemoved": "已移除背景",
+    "removeImage": "移除图片",
+    "removeBackground": "移除背景",
+    "revertToOriginal": "恢复原图",
+    "bestResultsHint": "上传照片以获得最佳效果",
+    "unsupportedType": "不支持的文件类型，请使用 JPG、PNG、WebP 或 HEIC。",
+    "sizeError": "图片大小需小于 {max}MB。"
+  },
+  "artStyle": {
+    "label": "艺术风格",
+    "processing": "处理中...",
+    "none": "无",
+    "original": "原图"
+  },
+  "autoFill": {
+    "saved": "我们已保存您之前的个性化设置",
+    "prompt": "要从上次的进度继续吗？",
+    "yes": "是，自动填充",
+    "startFresh": "重新开始",
+    "dismiss": "关闭"
+  },
+  "previewModal": {
+    "title": "预览效果",
+    "close": "关闭预览",
+    "generating": "正在生成预览…",
+    "generatingHint": "大约需要20秒",
+    "tryAgain": "重试",
+    "previewAlt": "定制商品预览效果",
+    "looksGreat": "效果不错！这是大致预览效果 — 实际商品可能略有差异。",
+    "editMore": "继续编辑",
+    "addToCart": "加入购物车 — {amount}"
+  },
+  "panel": {
+    "title": "✏️ 个性化定制您的礼物",
+    "required": "必填",
+    "generatePreview": "👁 生成预览",
+    "addingToCart": "正在加入购物车…",
+    "addToCart": "加入购物车 — {amount}",
+    "fillRequired": "请填写所有必填项（",
+    "toContinue": "）以继续",
+    "genericError": "出错了，请重试。",
+    "trust": {
+      "shipping": "🚚 3–5天发货",
+      "cancel": "✅ 2小时内可取消",
+      "secure": "🔒 安全支付"
+    }
+  },
   "bundle": {
     "tabLabel": "{item} 专属...",
     "itemTab": "商品 {n}",
     "complete": "已完成",
     "incomplete": "缺少必填项",
-    "priceNote": "整套价格"
+    "priceNote": "整套价格",
+    "title": "🎁 个性化定制您的套装",
+    "subtitle": "单独定制套装中的每件商品",
+    "itemFor": "{item}：{name}",
+    "noFields": "该商品没有可填写字段。",
+    "enterPlaceholder": "请输入{label}…",
+    "itemN": "商品 {n}",
+    "itemsComplete": "{count}/{total} 已完成",
+    "addingToCart": "正在加入购物车…",
+    "addSetToCart": "将套装加入购物车 — {amount}",
+    "personalizeAllToContinue": "请完成全部 {count} 件商品的个性化定制以继续",
+    "failedToAdd": "加入购物车失败"
   }
 }

@@ -6,6 +6,10 @@ interface Props {
   children: ReactNode;
   fallback?: ReactNode;
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  /** Shown when the caught error has no message. Default: "Something went wrong." */
+  fallbackMessage?: string;
+  /** Retry button label. Default: "Try again" */
+  retryLabel?: string;
 }
 
 interface State {
@@ -38,14 +42,14 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex flex-col items-center justify-center p-8 text-center">
           <p className="text-sm text-muted mb-3">
-            {this.state.error?.message ?? 'Something went wrong.'}
+            {this.state.error?.message ?? this.props.fallbackMessage ?? 'Something went wrong.'}
           </p>
           <button
             type="button"
             onClick={this.reset}
             className="text-sm text-primary underline underline-offset-2 hover:no-underline"
           >
-            Try again
+            {this.props.retryLabel ?? 'Try again'}
           </button>
         </div>
       );

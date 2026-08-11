@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { ChevronDown, Check } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -116,6 +117,7 @@ function PriceRangeFilter({
   max: number | undefined;
   onChange: (min: number | undefined, max: number | undefined) => void;
 }) {
+  const t = useTranslations('search');
   const [localMin, setLocalMin] = useState(min !== undefined ? String(min) : '');
   const [localMax, setLocalMax] = useState(max !== undefined ? String(max) : '');
 
@@ -146,12 +148,12 @@ function PriceRangeFilter({
           value={localMin}
           onChange={(e) => setLocalMin(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Min"
+          placeholder={t('minPlaceholder')}
           min={0}
           className="w-full border border-border rounded-lg pl-6 pr-2 py-1.5 text-sm bg-background outline-none focus:border-primary transition-colors"
         />
       </div>
-      <span className="text-muted text-xs flex-shrink-0">to</span>
+      <span className="text-muted text-xs flex-shrink-0">{t('to')}</span>
       <div className="flex-1 relative">
         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted text-xs pointer-events-none">
           $
@@ -161,7 +163,7 @@ function PriceRangeFilter({
           value={localMax}
           onChange={(e) => setLocalMax(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Max"
+          placeholder={t('maxPlaceholder')}
           min={0}
           className="w-full border border-border rounded-lg pl-6 pr-2 py-1.5 text-sm bg-background outline-none focus:border-primary transition-colors"
         />
@@ -171,7 +173,7 @@ function PriceRangeFilter({
         onClick={handleSubmit}
         className="px-3 py-1.5 bg-secondary text-white rounded-lg text-xs hover:bg-primary transition-colors flex-shrink-0"
       >
-        Go
+        {t('go')}
       </button>
     </div>
   );
@@ -222,6 +224,7 @@ function MoreFiltersSection({
   facets: SearchFacets | undefined;
   onFilterChange: (key: string, value: string | null) => void;
 }) {
+  const t = useTranslations('search');
   const [isExpanded, setIsExpanded] = useState(false);
   const facetsRecord = facets as Record<string, FacetItem[] | undefined> | undefined;
 
@@ -238,7 +241,7 @@ function MoreFiltersSection({
         onClick={() => setIsExpanded((o) => !o)}
         className="w-full text-left py-3 text-sm font-medium text-secondary hover:text-primary transition-colors flex items-center gap-1"
       >
-        {isExpanded ? 'Fewer filters' : 'More filters'}
+        {isExpanded ? t('fewerFilters') : t('moreFilters')}
         <ChevronDown
           className={`w-3.5 h-3.5 text-muted transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
         />
@@ -271,6 +274,7 @@ function MoreFiltersSection({
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function SearchFilterSidebar({ filters, facets, onFilterChange, onClearAll }: Props) {
+  const t = useTranslations('search');
   const hasActiveFilters = Object.keys(filters).some(
     (k) => !['q', 'page', 'limit', 'sort'].includes(k),
   );
@@ -279,28 +283,28 @@ export function SearchFilterSidebar({ filters, facets, onFilterChange, onClearAl
     <div className="text-sm">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <span className="font-semibold text-secondary">Filters</span>
+        <span className="font-semibold text-secondary">{t('filters')}</span>
         {hasActiveFilters && (
           <button
             type="button"
             onClick={onClearAll}
             className="text-xs text-primary hover:underline"
           >
-            Clear all
+            {t('clearAll')}
           </button>
         )}
       </div>
 
       {/* ── Special offers ── */}
-      <FilterSection title="Special offers" defaultOpen>
+      <FilterSection title={t('specialOffers')} defaultOpen>
         <FilterCheckbox
-          label="Free shipping"
+          label={t('freeShipping')}
           checked={filters.freeShipping === 'true'}
           onChange={(v) => onFilterChange('freeShipping', v ? 'true' : null)}
           count={facets?.freeShipping}
         />
         <FilterCheckbox
-          label="On sale"
+          label={t('onSale')}
           checked={filters.onSale === 'true'}
           onChange={(v) => onFilterChange('onSale', v ? 'true' : null)}
           count={facets?.onSale}
@@ -308,13 +312,13 @@ export function SearchFilterSidebar({ filters, facets, onFilterChange, onClearAl
       </FilterSection>
 
       {/* ── Item type ── */}
-      <FilterSection title="Item type" defaultOpen>
+      <FilterSection title={t('itemType')} defaultOpen>
         {(
           [
-            { value: '',              label: 'All'              },
-            { value: 'ready_to_ship', label: 'Ready to ship'   },
-            { value: 'to_order',      label: 'Made to order'   },
-            { value: 'digital',       label: 'Digital download' },
+            { value: '',              label: t('itemTypeAll')     },
+            { value: 'ready_to_ship', label: t('readyToShip')     },
+            { value: 'to_order',      label: t('madeToOrder')     },
+            { value: 'digital',       label: t('digitalDownload') },
           ] as const
         ).map((opt) => (
           <label
@@ -334,7 +338,7 @@ export function SearchFilterSidebar({ filters, facets, onFilterChange, onClearAl
       </FilterSection>
 
       {/* ── Price ── */}
-      <FilterSection title="Price" defaultOpen>
+      <FilterSection title={t('price')} defaultOpen>
         <PriceRangeFilter
           min={filters.minPrice ? Number(filters.minPrice) : undefined}
           max={filters.maxPrice ? Number(filters.maxPrice) : undefined}
@@ -346,7 +350,7 @@ export function SearchFilterSidebar({ filters, facets, onFilterChange, onClearAl
       </FilterSection>
 
       {/* ── Color ── */}
-      <FilterSection title="Color">
+      <FilterSection title={t('color')}>
         <ColorSwatchFilter
           selected={filters.color}
           onChange={(color) => onFilterChange('color', color)}
@@ -354,9 +358,9 @@ export function SearchFilterSidebar({ filters, facets, onFilterChange, onClearAl
       </FilterSection>
 
       {/* ── Star Seller ── */}
-      <FilterSection title="Star Seller">
+      <FilterSection title={t('starSeller')}>
         <FilterCheckbox
-          label="Star Seller shops only"
+          label={t('starSellerShopsOnly')}
           checked={filters.starSeller === 'true'}
           onChange={(v) => onFilterChange('starSeller', v ? 'true' : null)}
         />
@@ -364,7 +368,7 @@ export function SearchFilterSidebar({ filters, facets, onFilterChange, onClearAl
 
       {/* ── Style (from facets) ── */}
       {(facets?.styles?.length ?? 0) > 0 && (
-        <FilterSection title="Style">
+        <FilterSection title={t('style')}>
           {facets!.styles!.map((s) => (
             <FilterCheckbox
               key={s.value}
@@ -379,7 +383,7 @@ export function SearchFilterSidebar({ filters, facets, onFilterChange, onClearAl
 
       {/* ── Material (from facets) ── */}
       {(facets?.materials?.length ?? 0) > 0 && (
-        <FilterSection title="Material">
+        <FilterSection title={t('material')}>
           {facets!.materials!.slice(0, 6).map((m) => (
             <FilterCheckbox
               key={m.value}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Check, Gift } from 'lucide-react';
 
 export interface GiftOptions {
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function GiftOptionsSection({ value, onChange }: Props) {
+  const t = useTranslations('checkout.giftOptions');
   const update = (partial: Partial<GiftOptions>) =>
     onChange({ ...value, ...partial });
 
@@ -43,9 +45,9 @@ export function GiftOptionsSection({ value, onChange }: Props) {
         <div>
           <p className="text-sm font-medium flex items-center gap-1.5">
             <Gift className="w-4 h-4 text-primary" />
-            This order is a gift
+            {t('isGift')}
           </p>
-          <p className="text-xs text-muted">Add a message and gift options</p>
+          <p className="text-xs text-muted">{t('addOptionsHint')}</p>
         </div>
       </label>
 
@@ -55,11 +57,11 @@ export function GiftOptionsSection({ value, onChange }: Props) {
 
           {/* Gift from */}
           <div>
-            <label className="text-xs font-medium block mb-1.5">From (optional)</label>
+            <label className="text-xs font-medium block mb-1.5">{t('from')}</label>
             <input
               value={value.giftFrom}
               onChange={(e) => update({ giftFrom: e.target.value })}
-              placeholder="e.g. Mom &amp; Dad"
+              placeholder={t('fromPlaceholder')}
               maxLength={100}
               className="w-full border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background"
             />
@@ -68,13 +70,13 @@ export function GiftOptionsSection({ value, onChange }: Props) {
           {/* Gift message */}
           <div>
             <label className="text-xs font-medium block mb-1.5">
-              Gift message
-              <span className="text-muted font-normal ml-1">(optional)</span>
+              {t('message')}
+              <span className="text-muted font-normal ml-1">{t('optional')}</span>
             </label>
             <textarea
               value={value.giftMessage}
               onChange={(e) => update({ giftMessage: e.target.value })}
-              placeholder="Write a personal message to the recipient..."
+              placeholder={t('messagePlaceholder')}
               rows={3}
               maxLength={500}
               className="w-full border border-border rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 bg-background"
@@ -94,8 +96,8 @@ export function GiftOptionsSection({ value, onChange }: Props) {
               {value.giftReceipt && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
             </div>
             <div>
-              <p className="text-sm font-medium">Send a gift receipt</p>
-              <p className="text-xs text-muted">The packing slip will not show prices</p>
+              <p className="text-sm font-medium">{t('sendReceipt')}</p>
+              <p className="text-xs text-muted">{t('receiptNote')}</p>
             </div>
             <input
               type="checkbox"
@@ -115,10 +117,10 @@ export function GiftOptionsSection({ value, onChange }: Props) {
               {value.giftWrapping && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium">Add gift wrapping</p>
-              <p className="text-xs text-muted">Tissue paper, ribbon, and gift bag</p>
+              <p className="text-sm font-medium">{t('addWrapping')}</p>
+              <p className="text-xs text-muted">{t('wrappingNote')}</p>
             </div>
-            <span className="text-sm font-semibold text-primary">+$4.99</span>
+            <span className="text-sm font-semibold text-primary">{t('wrappingPrice')}</span>
             <input
               type="checkbox"
               className="sr-only"

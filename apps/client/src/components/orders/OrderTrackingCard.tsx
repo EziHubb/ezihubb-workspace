@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
 import { Copy, ExternalLink, Package, Check } from 'lucide-react';
 import { Button, Modal, ModalHeader, ModalBody, ModalFooter, OrderStatusBadge } from '@ezihubb/ui';
 import type { OrderDto, OrderStatus } from '@ezihubb/types';
@@ -27,17 +28,10 @@ function isAtLeastShipped(status: OrderStatus): boolean {
   return (STATUS_RANK[status] ?? -1) >= 2;
 }
 
-// ── Date formatter ────────────────────────────────────────────────────────────
-
-const dateFmt = new Intl.DateTimeFormat('en-US', {
-  month: 'long',
-  day:   'numeric',
-  year:  'numeric',
-});
-
 // ── Copy button ───────────────────────────────────────────────────────────────
 
 function CopyButton({ text }: { text: string }) {
+  const t = useTranslations('orderTracking');
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -50,7 +44,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      aria-label="Copy tracking number"
+      aria-label={t('copyTrackingNumberAria')}
       className="ml-1.5 p-1 text-muted hover:text-secondary transition-colors"
     >
       {copied ? (
@@ -72,21 +66,22 @@ interface CancelModalProps {
 }
 
 function CancelModal({ isOpen, onClose, onConfirm, loading }: CancelModalProps) {
+  const t = useTranslations('orderTracking');
+  const tCommon = useTranslations('common');
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="sm">
-      <ModalHeader onClose={onClose}>Cancel Order</ModalHeader>
+      <ModalHeader onClose={onClose} closeLabel={tCommon('close')}>{t('cancelTitle')}</ModalHeader>
       <ModalBody>
         <p className="text-sm text-secondary">
-          Are you sure you want to cancel this order? This action cannot be undone.
-          You will receive a full refund within 5–10 business days.
+          {t('cancelConfirm')}
         </p>
       </ModalBody>
       <ModalFooter>
         <Button variant="ghost" onClick={onClose} disabled={loading}>
-          Keep Order
+          {t('keepOrder')}
         </Button>
         <Button variant="destructive" onClick={onConfirm} loading={loading}>
-          Yes, Cancel Order
+          {t('yesCancelButton')}
         </Button>
       </ModalFooter>
     </Modal>
@@ -102,6 +97,13 @@ export interface OrderTrackingCardProps {
 }
 
 export function OrderTrackingCard({ order, guestEmail, onCancel }: OrderTrackingCardProps) {
+  const t = useTranslations('orderTracking');
+  const locale = useLocale();
+  const dateFmt = new Intl.DateTimeFormat(locale, {
+    month: 'long',
+    day:   'numeric',
+    year:  'numeric',
+  });
   const [cancelOpen,    setCancelOpen]    = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelError,   setCancelError]   = useState<string | null>(null);
@@ -128,7 +130,7 @@ export function OrderTrackingCard({ order, guestEmail, onCancel }: OrderTracking
       setCancelOpen(false);
       onCancel?.(updated);
     } catch (err) {
-      setCancelError(err instanceof Error ? err.message : 'Something went wrong.');
+      setCancelError(err instanceof Error ? err.message : t('genericError'));
     } finally {
       setCancelLoading(false);
     }
@@ -140,14 +142,15 @@ export function OrderTrackingCard({ order, guestEmail, onCancel }: OrderTracking
       <div className="px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h3 className="font-display text-lg font-bold text-secondary font-mono">
-            Order #{order.orderNumber}
+            {t('orderNumberHeading', { orderNumber: order.orderNumber })}
           </h3>
           <p className="text-xs text-muted mt-0.5">
-            Placed: {dateFmt.format(new Date(order.createdAt))}
+            {t('placedLabel', { date: dateFmt.format(new Date(order.createdAt)) })}
           </p>
         </div>
         <OrderStatusBadge
           status={order.status as Parameters<typeof OrderStatusBadge>[0]['status']}
+          label={t(`orderStatusBadge.${order.status}` as Parameters<typeof t>[0])}
           size="md"
         />
       </div>
@@ -171,7 +174,7 @@ export function OrderTrackingCard({ order, guestEmail, onCancel }: OrderTracking
             <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-sm px-4 py-3">
               <Package className="w-4 h-4 text-emerald-600 shrink-0" />
               <span className="text-sm font-medium text-emerald-700">
-                Your order is on its way!
+                {t('orderOnItsWay')}
               </span>
             </div>
 
@@ -196,7 +199,7 @@ export function OrderTrackingCard({ order, guestEmail, onCancel }: OrderTracking
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
                   >
-                    Track with {order.carrier ?? 'Carrier'}
+                    {t('trackWithCarrier', { carrier: order.carrier ?? t('carrierFallback') })}
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 )}
@@ -208,7 +211,7 @@ export function OrderTrackingCard({ order, guestEmail, onCancel }: OrderTracking
         {/* ── Items ── */}
         <div className="border-t border-border pt-5">
           <h5 className="text-sm font-semibold text-secondary mb-3">
-            Items in this order
+            {t('itemsTitle')}
           </h5>
           <ul className="space-y-3">
             {safeArr(order.items).map((item) => {
@@ -223,7 +226,7 @@ export function OrderTrackingCard({ order, guestEmail, onCancel }: OrderTracking
                     {previewUrl ? (
                       <Image
                         src={previewUrl}
-                        alt={item.product?.name ?? 'Order item'}
+                        alt={item.product?.name ?? t('orderItemFallback')}
                         fill
                         sizes="48px"
                         className="object-cover"
@@ -238,7 +241,7 @@ export function OrderTrackingCard({ order, guestEmail, onCancel }: OrderTracking
                   {/* Details */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-secondary truncate">
-                      {item.product?.name ?? 'Product'}
+                      {item.product?.name ?? t('productFallback')}
                     </p>
                     {item.variantName && (
                       <p className="text-xs text-muted">{item.variantName}</p>
@@ -259,7 +262,7 @@ export function OrderTrackingCard({ order, guestEmail, onCancel }: OrderTracking
         <div className="border-t border-border pt-5 flex flex-wrap items-center gap-3">
           <Link href="/pages/contact">
             <Button variant="ghost" size="sm">
-              Contact Support
+              {t('contactSupport')}
             </Button>
           </Link>
 

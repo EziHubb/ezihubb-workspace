@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import { getTranslations, getLocale } from 'next-intl/server';
 import type { ProductListItemDto } from '@ezihubb/types';
 import { ProductCard } from '@ezihubb/ui';
+import type { ProductBadgeVariant, ProductCardLabels } from '@ezihubb/ui';
 import { BackButton } from './BackButton';
 import { API_BASE } from '../../lib/api-client';
 
@@ -43,7 +45,29 @@ function Illustration() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function NotFound() {
-  const trending = await getTrending();
+  const [trending, t, tCommon, tActions, tBadge, locale] = await Promise.all([
+    getTrending(),
+    getTranslations('errors'),
+    getTranslations('common'),
+    getTranslations('product.actions'),
+    getTranslations('search.badge'),
+    getLocale(),
+  ]);
+
+  const cardLabels: ProductCardLabels = {
+    addToWishlist:      tCommon('addToWishlist'),
+    removeFromWishlist: tCommon('removeFromWishlist'),
+    personalizeNow:     tActions('personalize'),
+    addToCart:          tActions('addToCart'),
+    byStore:            (name: string) => tCommon('byStore', { name }),
+  };
+
+  const badgeLabels: Record<ProductBadgeVariant, string> = {
+    bestseller: tBadge('bestseller'),
+    new:        tBadge('new'),
+    sale:       tBadge('sale'),
+    hot:        tBadge('editorsPick'),
+  };
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-16 md:py-24">
@@ -55,11 +79,10 @@ export default async function NotFound() {
         <Illustration />
 
         <h1 className="font-display text-2xl md:text-3xl font-bold text-secondary mt-6 mb-3">
-          Oops! Page Not Found
+          {t('pageNotFoundTitle')}
         </h1>
         <p className="text-muted text-base max-w-md mx-auto mb-8">
-          The page you&apos;re looking for doesn&apos;t exist or has been moved.
-          Let&apos;s get you back on track.
+          {t('pageNotFoundDesc')}
         </p>
 
         {/* CTA buttons */}
@@ -69,7 +92,7 @@ export default async function NotFound() {
             href="/"
             className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white font-bold px-6 py-3 rounded-button transition-colors text-sm uppercase tracking-wide"
           >
-            Go to Homepage
+            {tCommon('goHome')}
           </Link>
         </div>
 
@@ -80,14 +103,14 @@ export default async function NotFound() {
               <input
                 name="q"
                 type="search"
-                placeholder="Search for gifts…"
+                placeholder={t('searchPlaceholder')}
                 className="flex-1 px-3 py-2.5 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
               <button
                 type="submit"
                 className="px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-button hover:bg-primary-dark transition-colors"
               >
-                Search
+                {tCommon('search')}
               </button>
             </div>
           </form>
@@ -98,7 +121,7 @@ export default async function NotFound() {
       {trending.length > 0 && (
         <section>
           <h2 className="font-display text-2xl font-bold text-secondary mb-6 text-center">
-            Trending Right Now
+            {t('trendingRightNow')}
           </h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {trending.map((product) => (
@@ -116,7 +139,10 @@ export default async function NotFound() {
                 rating={product.rating?.avg}
                 reviewCount={product.rating?.count}
                 badge={product.badge}
+                badgeLabel={product.badge ? badgeLabels[product.badge] : undefined}
                 isPersonalizable={product.isPersonalizable}
+                locale={locale}
+                labels={cardLabels}
               />
             ))}
           </div>

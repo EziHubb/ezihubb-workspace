@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { Save, Store } from 'lucide-react';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
 import { apiClient } from '@ezihubb/api-client';
@@ -19,6 +20,7 @@ interface StoreSettings {
 }
 
 export default function SellerStorePage() {
+  const t      = useTranslations('seller.store');
   const token  = useAuthStore((s) => s.accessToken);
   const toast  = useToast();
   const [form, setForm] = useState<Partial<StoreSettings>>({});
@@ -36,15 +38,21 @@ export default function SellerStorePage() {
   const save = useMutation({
     mutationFn: (body: Partial<StoreSettings>) =>
       apiClient.patch(API_ROUTES.SELLER.STORE_ME_UPDATE, body, { token: token ?? undefined }),
-    onSuccess: () => toast.success('Store settings saved'),
-    onError:   () => toast.error('Failed to save settings'),
+    onSuccess: () => toast.success(t('saveSuccess')),
+    onError:   () => toast.error(t('saveError')),
   });
+
+  const FIELDS = [
+    { key: 'name',    label: t('storeNameLabel'), placeholder: t('storeNamePlaceholder') },
+    { key: 'email',   label: t('emailLabel'),      placeholder: t('emailPlaceholder')     },
+    { key: 'website', label: t('websiteLabel'),    placeholder: t('websitePlaceholder')   },
+  ];
 
   if (isLoading) return <div className="p-8 flex justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <h1 className="text-xl font-bold text-secondary">Store Settings</h1>
+      <h1 className="text-xl font-bold text-secondary">{t('title')}</h1>
 
       <div className="bg-surface border border-border rounded-card p-6 space-y-5">
         <div className="flex items-center gap-3 pb-4 border-b border-border">
@@ -57,11 +65,7 @@ export default function SellerStorePage() {
           </div>
         </div>
 
-        {[
-          { key: 'name',        label: 'Store name',   placeholder: 'Your store name' },
-          { key: 'email',       label: 'Contact email', placeholder: 'store@example.com' },
-          { key: 'website',     label: 'Website',       placeholder: 'https://yoursite.com' },
-        ].map(({ key, label, placeholder }) => (
+        {FIELDS.map(({ key, label, placeholder }) => (
           <div key={key}>
             <label className="block text-sm font-medium text-secondary mb-1.5">{label}</label>
             <input
@@ -75,12 +79,12 @@ export default function SellerStorePage() {
         ))}
 
         <div>
-          <label className="block text-sm font-medium text-secondary mb-1.5">Description</label>
+          <label className="block text-sm font-medium text-secondary mb-1.5">{t('descriptionLabel')}</label>
           <textarea
             rows={4}
             value={form.description ?? ''}
             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            placeholder="Tell buyers about your shop…"
+            placeholder={t('descriptionPlaceholder')}
             className="w-full border border-border rounded-input px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background"
           />
         </div>
@@ -92,7 +96,7 @@ export default function SellerStorePage() {
           className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-button hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
           <Save className="w-4 h-4" />
-          {save.isPending ? 'Saving…' : 'Save changes'}
+          {save.isPending ? t('saving') : t('saveChanges')}
         </button>
       </div>
     </div>

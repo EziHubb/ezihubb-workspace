@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { ArrowRight } from 'lucide-react';
 import { useCartStore } from '../../lib/store/cart.store';
 import { CustomizerPanel } from '../customizer/CustomizerPanel';
@@ -40,6 +41,7 @@ export function ProductActions({
   selectedVariant,
   locale,
 }: ProductActionsProps) {
+  const t = useTranslations('product.quickView');
   const openDrawer  = useCartStore((s) => s.openDrawer);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -93,7 +95,7 @@ export function ProductActions({
             href={`/${locale}/products/${product.slug}/customize`}
             className="flex items-center justify-center gap-2 w-full py-3.5 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors uppercase tracking-wide"
           >
-            Personalize &amp; Add to Cart
+            {t('personalizeAddToCart')}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

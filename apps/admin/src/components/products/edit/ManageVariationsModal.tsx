@@ -374,6 +374,7 @@ function AddVariationGroupSheet({
   const [displayType, setDisplayType] = useState<DisplayType>('dropdown');
   const [options,     setOptions]     = useState<{ value: string; colorHex?: string }[]>([]);
   const [saving,      setSaving]      = useState(false);
+  const { alert } = useDialog();
 
   const available = SUGGESTED_NAMES.filter((n) => !existingGroupNames.includes(n));
 
@@ -404,6 +405,8 @@ function AddVariationGroupSheet({
         })),
       });
       onSaved();
+    } catch (err) {
+      await alert((err as Error).message || 'Could not create this variation group.', { variant: 'error' });
     } finally {
       setSaving(false);
     }
@@ -587,6 +590,7 @@ function EditVariationGroupSheet({
   onClose:   () => void;
 }) {
   const qc = useQueryClient();
+  const { alert } = useDialog();
 
   // Load the single group
   const { data: group } = useQuery<VariationGroup>({
@@ -602,20 +606,28 @@ function EditVariationGroupSheet({
   });
 
   const addOption = async (opt: { value: string; colorHex?: string }) => {
-    await api.post(API_ROUTES.ADMIN.PRODUCT_VARIATION_OPTIONS(productId, groupId), {
-      name:        opt.value,
-      value:       opt.value.toLowerCase().replace(/\s+/g, '-'),
-      colorHex:    opt.colorHex,
-      isAvailable: true,
-    });
-    qc.invalidateQueries({ queryKey: ['variation-group-single', groupId] });
-    qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
+    try {
+      await api.post(API_ROUTES.ADMIN.PRODUCT_VARIATION_OPTIONS(productId, groupId), {
+        name:        opt.value,
+        value:       opt.value.toLowerCase().replace(/\s+/g, '-'),
+        colorHex:    opt.colorHex,
+        isAvailable: true,
+      });
+      qc.invalidateQueries({ queryKey: ['variation-group-single', groupId] });
+      qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not add this option.', { variant: 'error' });
+    }
   };
 
   const removeOption = async (optionId: string) => {
-    await api.delete(API_ROUTES.ADMIN.PRODUCT_VARIATION_OPTION(productId, groupId, optionId));
-    qc.invalidateQueries({ queryKey: ['variation-group-single', groupId] });
-    qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
+    try {
+      await api.delete(API_ROUTES.ADMIN.PRODUCT_VARIATION_OPTION(productId, groupId, optionId));
+      qc.invalidateQueries({ queryKey: ['variation-group-single', groupId] });
+      qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not remove this option.', { variant: 'error' });
+    }
   };
 
   useEffect(() => {
@@ -707,7 +719,7 @@ export function ManageVariationsModal({
   productId, isOpen, onClose, onSaved,
 }: ManageVariationsModalProps) {
   const qc = useQueryClient();
-  const { confirm } = useDialog();
+  const { confirm, alert } = useDialog();
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [addingGroup,    setAddingGroup]    = useState(false);
   const [savedMsg,       setSavedMsg]       = useState(false);
@@ -733,32 +745,44 @@ export function ManageVariationsModal({
   });
 
   const deleteGroup = async (groupId: string) => {
-    // Remove by re-saving without that group
-    const remaining = groups.filter((g) => g.id !== groupId);
-    await api.put(API_ROUTES.ADMIN.PRODUCT_VARIATIONS(productId), { groups: remaining });
-    qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
+    try {
+      // Remove by re-saving without that group
+      const remaining = groups.filter((g) => g.id !== groupId);
+      await api.put(API_ROUTES.ADMIN.PRODUCT_VARIATIONS(productId), { groups: remaining });
+      qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not delete this variation group.', { variant: 'error' });
+    }
   };
 
   const saveSettings = async (variesBy: string[]) => {
-    await api.patch(API_ROUTES.ADMIN.PRODUCT_VARIATION_SETTINGS(productId), { variesBy, enableVariations: true });
-    qc.invalidateQueries({ queryKey: ['variation-settings', productId] });
+    try {
+      await api.patch(API_ROUTES.ADMIN.PRODUCT_VARIATION_SETTINGS(productId), { variesBy, enableVariations: true });
+      qc.invalidateQueries({ queryKey: ['variation-settings', productId] });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save variation settings.', { variant: 'error' });
+    }
   };
 
   const handleApply = async () => {
-    // Ensure enableVariations is persisted as true when groups exist
-    if (groups.length > 0) {
-      const currentVariesBy = settings?.variesBy ?? [];
-      await api.patch(API_ROUTES.ADMIN.PRODUCT_VARIATION_SETTINGS(productId), {
-        enableVariations: true,
-        variesBy: currentVariesBy,
-      });
-      qc.invalidateQueries({ queryKey: ['variation-settings', productId] });
-      qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
+    try {
+      // Ensure enableVariations is persisted as true when groups exist
+      if (groups.length > 0) {
+        const currentVariesBy = settings?.variesBy ?? [];
+        await api.patch(API_ROUTES.ADMIN.PRODUCT_VARIATION_SETTINGS(productId), {
+          enableVariations: true,
+          variesBy: currentVariesBy,
+        });
+        qc.invalidateQueries({ queryKey: ['variation-settings', productId] });
+        qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
+      }
+      onSaved();
+      onClose();
+      setSavedMsg(true);
+      setTimeout(() => setSavedMsg(false), 3000);
+    } catch (err) {
+      await alert((err as Error).message || 'Could not apply variation settings.', { variant: 'error' });
     }
-    onSaved();
-    onClose();
-    setSavedMsg(true);
-    setTimeout(() => setSavedMsg(false), 3000);
   };
 
   // Close on Escape

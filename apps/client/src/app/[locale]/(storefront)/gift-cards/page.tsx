@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Check, Gift, Search, AlertCircle, Tag } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@ezihubb/ui';
 import { apiClient } from '../../../../lib/api-client';
@@ -384,6 +384,7 @@ function BalanceChecker() {
 
 export default function GiftCardsPage() {
   const locale = useLocale();
+  const tCommon = useTranslations('common');
 
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount,   setCustomAmount]   = useState('');
@@ -519,7 +520,7 @@ export default function GiftCardsPage() {
       {/* Success modal */}
       {successModal && (
         <Modal isOpen={Boolean(successModal)} onClose={() => setSuccessModal(null)} size="sm">
-          <ModalHeader onClose={() => setSuccessModal(null)}>
+          <ModalHeader onClose={() => setSuccessModal(null)} closeLabel={tCommon('close')}>
             Gift Card Sent! 🎉
           </ModalHeader>
           <ModalBody>

@@ -15,6 +15,7 @@ import type { OrderDetail } from '../../../components/orders/OrderDrawer';
 import { api, adminApi } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { fmtDate, unwrapArr } from '../../../lib/fmt';
+import { useDialog } from '../../../contexts/DialogContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -99,6 +100,7 @@ function BulkStatusDropdown({ selectedIds, onDone }: { selectedIds: string[]; on
   const [open, setOpen]   = useState(false);
   const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const { alert } = useDialog();
 
   useEffect(() => {
     if (!open) return;
@@ -130,7 +132,9 @@ function BulkStatusDropdown({ selectedIds, onDone }: { selectedIds: string[]; on
         selectedIds.map((id) => api.patch(API_ROUTES.ADMIN.ORDER_STATUS(id), { status })),
       );
       onDone();
-    } catch { /* silent */ } finally { setSaving(false); }
+    } catch (err) {
+      await alert((err as Error).message || 'Could not update the selected orders.', { variant: 'error' });
+    } finally { setSaving(false); }
   };
 
   return (

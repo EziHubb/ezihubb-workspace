@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ShieldCheck, Star, ShoppingBag, Share2 } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { StorePageClient } from './StorePageClient';
@@ -28,15 +29,16 @@ export async function generateMetadata({
   params: Promise<{ slug: string; locale: string }>;
 }): Promise<Metadata> {
   const { slug, locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'shops' });
   const store = await apiClient
     .get<StorePublicDto>(API_ROUTES.STORES.DETAIL(slug))
     .catch(() => null);
 
-  if (!store) return { title: 'Store not found' };
+  if (!store) return { title: t('storePage.storeNotFoundTitle') };
 
   return {
     title:       store.name,
-    description: store.description?.slice(0, 160) ?? `Shop ${store.name} on EziHubb.`,
+    description: store.description?.slice(0, 160) ?? t('storePage.metaDescriptionFallback', { name: store.name }),
     openGraph: {
       title:       store.name,
       description: store.description?.slice(0, 160),
@@ -51,15 +53,16 @@ export const dynamic = 'force-dynamic';
 
 // ── Share buttons ─────────────────────────────────────────────────────────────
 
-function ShareButtons({ name, slug }: { name: string; slug: string }) {
+async function ShareButtons({ name, slug, locale }: { name: string; slug: string; locale: string }) {
+  const t = await getTranslations({ locale, namespace: 'shops' });
   const url     = `https://ezihubb.com/shops/${slug}`;
   const encoded = encodeURIComponent(url);
-  const text    = encodeURIComponent(`Check out ${name} on EziHubb!`);
+  const text    = encodeURIComponent(t('storePage.shareCheckOut', { name }));
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <span className="flex items-center gap-1 text-xs text-muted font-medium">
-        <Share2 className="w-3.5 h-3.5" /> Share:
+        <Share2 className="w-3.5 h-3.5" /> {t('storePage.share')}
       </span>
       {[
         { label: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${encoded}`, color: 'text-[#1877F2] bg-[#1877F2]/10 hover:bg-[#1877F2]/20' },
@@ -88,6 +91,7 @@ export default async function StorePublicPage({
   params: Promise<{ slug: string; locale: string }>;
 }) {
   const { slug, locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'shops' });
 
   const store = await apiClient
     .get<StorePublicDto>(API_ROUTES.STORES.DETAIL(slug))
@@ -95,7 +99,7 @@ export default async function StorePublicPage({
 
   if (!store) notFound();
 
-  const memberSince = new Intl.DateTimeFormat('en-US', {
+  const memberSince = new Intl.DateTimeFormat(locale, {
     month: 'long',
     year:  'numeric',
   }).format(new Date(store.verifiedAt ?? store.createdAt));
@@ -109,7 +113,7 @@ export default async function StorePublicPage({
         {store.bannerUrl && (
           <Image
             src={store.bannerUrl}
-            alt={`${store.name} banner`}
+            alt={t('storePage.bannerAlt', { name: store.name })}
             fill
             className="object-cover"
             priority
@@ -127,7 +131,7 @@ export default async function StorePublicPage({
             {store.logoUrl ? (
               <Image
                 src={store.logoUrl}
-                alt={`${store.name} logo`}
+                alt={t('storePage.logoAlt', { name: store.name })}
                 width={112}
                 height={112}
                 className="object-cover w-full h-full"
@@ -149,7 +153,7 @@ export default async function StorePublicPage({
               </h1>
               {store.verifiedAt && (
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
-                  <ShieldCheck className="w-3 h-3" /> Verified Seller
+                  <ShieldCheck className="w-3 h-3" /> {t('storePage.verifiedSeller')}
                 </span>
               )}
             </div>
@@ -158,21 +162,21 @@ export default async function StorePublicPage({
                 <span className="flex items-center gap-1">
                   <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                   <span className="font-semibold text-secondary">{fmtRating(rating)}</span>
-                  <span>rating</span>
+                  <span>{t('storePage.rating')}</span>
                 </span>
               )}
               <span className="flex items-center gap-1">
                 <ShoppingBag className="w-3.5 h-3.5" />
-                {safeNum(store.totalOrders).toLocaleString()} sales
+                {t('storePage.sales', { count: safeNum(store.totalOrders) })}
               </span>
-              <span>{safeNum(store.totalProducts).toLocaleString()} listings</span>
-              <span>Member since {memberSince}</span>
+              <span>{t('storePage.listings', { count: safeNum(store.totalProducts) })}</span>
+              <span>{t('storePage.memberSince', { date: memberSince })}</span>
             </div>
           </div>
 
           {/* Share — desktop only */}
           <div className="hidden md:block pb-1 shrink-0">
-            <ShareButtons name={store.name} slug={store.slug} />
+            <ShareButtons name={store.name} slug={store.slug} locale={locale} />
           </div>
         </div>
 
@@ -184,7 +188,7 @@ export default async function StorePublicPage({
             </p>
           )}
           <div className="md:hidden">
-            <ShareButtons name={store.name} slug={store.slug} />
+            <ShareButtons name={store.name} slug={store.slug} locale={locale} />
           </div>
         </div>
       </div>

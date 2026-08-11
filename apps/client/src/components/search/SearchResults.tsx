@@ -7,6 +7,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { SlidersHorizontal, X, Heart } from 'lucide-react';
 import { Pagination } from '@ezihubb/ui';
+import { usePaginationLabels } from '../../lib/hooks/usePaginationLabels';
 import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
 import type { ProductListItemDto, CategoryDto, TagDto } from '@ezihubb/types';
@@ -208,6 +209,7 @@ export function SearchResults({
 }: SearchResultsProps) {
   const router   = useRouter();
   const pathname = usePathname();
+  const paginationLabels = usePaginationLabels();
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const pushFilters = (
@@ -374,6 +376,7 @@ export function SearchResults({
                 page={currentFilters.page}
                 totalPages={totalPages}
                 onPageChange={handlePageChange}
+                labels={paginationLabels}
               />
             </div>
           )}

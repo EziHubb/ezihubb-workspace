@@ -10,6 +10,7 @@ import { PaginatedResult } from '../../common/dto/paginated-response.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ParseCuidPipe } from '../../common/pipes/parse-cuid.pipe';
+import { TranslatableResponse } from '../../common/interceptors/i18n.interceptor';
 
 @ApiTags('Products')
 @Controller('products')
@@ -20,6 +21,7 @@ export class ProductsController {
   @Public()
   @Get()
   @Throttle({ default: { ttl: 60_000, limit: 120 } })
+  @TranslatableResponse('Product')
   @ApiOperation({ summary: 'List products with filters, sorting, and pagination' })
   @ApiResponse({ status: 200, type: [ProductListItemDto] })
   findAll(@Query() query: ProductQueryDto): Promise<PaginatedResult<ProductListItemDto>> {
@@ -29,6 +31,7 @@ export class ProductsController {
   // GET /products/trending
   @Public()
   @Get('trending')
+  @TranslatableResponse('Product')
   @ApiOperation({ summary: 'Top 12 trending products by sold count' })
   @ApiResponse({ status: 200, type: [ProductListItemDto] })
   findTrending(): Promise<ProductListItemDto[]> {
@@ -37,6 +40,7 @@ export class ProductsController {
 
   // GET /products/recently-viewed  (must be before /:slug to avoid route conflict)
   @Get('recently-viewed')
+  @TranslatableResponse('Product')
   @ApiOperation({ summary: 'Last 8 products viewed by the authenticated user' })
   @ApiResponse({ status: 200, type: [ProductListItemDto] })
   getRecentlyViewed(
@@ -48,6 +52,7 @@ export class ProductsController {
   // GET /products/:slug
   @Public()
   @Get(':slug')
+  @TranslatableResponse('Product')
   @ApiOperation({ summary: 'Get product detail by slug' })
   @ApiResponse({ status: 200, type: ProductResponseDto })
   findBySlug(
@@ -61,6 +66,7 @@ export class ProductsController {
   // GET /products/:slug/related
   @Public()
   @Get(':slug/related')
+  @TranslatableResponse('Product')
   @ApiOperation({ summary: 'Get 8 related products (same category + tags)' })
   @ApiResponse({ status: 200, type: [ProductListItemDto] })
   findRelated(@Param('slug') slug: string): Promise<ProductListItemDto[]> {

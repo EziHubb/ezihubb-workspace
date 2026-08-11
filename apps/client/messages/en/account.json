@@ -19,7 +19,44 @@
     "count": "{total, plural, one {# order} other {# orders}}",
     "actions": {
       "viewDetails": "View Details",
-      "trackOrder": "Track Order"
+      "trackOrder": "Track Order",
+      "writeReview": "Write a Review"
+    },
+    "itemCount": "{count, plural, one {# item} other {# items}}",
+    "viewOrderDetailsAria": "View order details",
+    "detail": {
+      "backToOrders": "My Orders",
+      "placed": "Placed {date}",
+      "downloadInvoice": "Download Invoice",
+      "yourFiles": "Your files",
+      "items": "Items ({count})",
+      "qty": "Qty {count}",
+      "shippingAddress": "Shipping Address",
+      "orderSummaryTitle": "Order Summary",
+      "subtotal": "Subtotal",
+      "shipping": "Shipping",
+      "free": "FREE",
+      "discount": "Discount",
+      "total": "Total",
+      "trackingNumber": "Tracking number",
+      "trackPackage": "Track Package",
+      "orderNotFound": "Order not found.",
+      "needToCancel": "Need to cancel your order?",
+      "availableToCancelFor": "Available to cancel for",
+      "cancelOrderTitle": "Cancel order {orderNumber}?",
+      "cancelOrderBody": "This action cannot be undone. A full refund will be issued.",
+      "yesCancel": "Yes, Cancel",
+      "cancelledMessage": "This order has been {status}.",
+      "statusWords": {
+        "CANCELLED": "cancelled",
+        "REFUNDED": "refunded",
+        "REFUND_REQUESTED": "refund requested",
+        "DISPUTED": "disputed"
+      },
+      "timelineAriaLabel": "Order status timeline",
+      "current": "Current",
+      "cancelSuccessToast": "Order cancelled. A refund will be issued within 5–7 business days.",
+      "cancelErrorToast": "Failed to cancel order"
     }
   },
 
@@ -105,6 +142,13 @@
       "cancel": "Cancel",
       "save": "Save Address",
       "saving": "Saving…"
+    },
+    "errors": {
+      "required": "Required",
+      "invalidPhone": "Invalid phone number",
+      "enterFullAddress": "Enter a full street address",
+      "selectCountry": "Select a country",
+      "failedToSave": "Failed to save address"
     }
   },
 
@@ -185,5 +229,176 @@
     "signIn": "Sign in to see your VIP status",
     "signInSub": "Unlock exclusive benefits as you shop.",
     "signInBtn": "Sign In"
+  },
+
+  "sidebar": {
+    "aria": "Account navigation",
+    "myOrders": "My Orders",
+    "wishlist": "Wishlist",
+    "messages": "Messages",
+    "creatorHub": "Creator Hub",
+    "addressBook": "Address Book",
+    "profilePassword": "Profile & Password",
+    "signOut": "Sign Out"
+  },
+
+  "messages": {
+    "title": "Messages",
+    "noMessages": "No messages yet",
+    "questionsHint": "Questions about your orders or products?",
+    "messageUs": "Message us",
+    "selectConversation": "Select a conversation to read messages",
+    "backToConversations": "Back to conversations",
+    "orderNumber": "Order #{number}",
+    "sendMessage": "Send message",
+    "typePlaceholder": "Type a message... (Enter to send)",
+    "shiftEnterHint": "Shift+Enter for new line",
+    "resolvedNotice": "This conversation has been resolved.",
+    "reopen": "Reopen",
+    "justNow": "just now",
+    "minutesAgo": "{count}m ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago",
+    "status": {
+      "pending": "Pending",
+      "resolved": "Resolved",
+      "spam": "Spam"
+    }
+  },
+
+  "wishlist": {
+    "pageTitle": "Wishlist",
+    "removeAria": "Remove from wishlist",
+    "adding": "Adding…",
+    "addToCart": "Add to Cart",
+    "outOfStock": "Out of Stock",
+    "shareTitle": "Share Wishlist",
+    "revokeLink": "Revoke link",
+    "createLinkHint": "Create a shareable link so friends and family can view your wishlist and buy you gifts.",
+    "creating": "Creating…",
+    "createShareLink": "Create share link",
+    "nameLabel": "Wishlist name",
+    "optional": "(optional)",
+    "namePlaceholder": "e.g. My Birthday Wishlist",
+    "visiblePublic": "Visible to anyone with the link",
+    "hiddenInactive": "Hidden (link inactive)",
+    "copied": "Copied!",
+    "copy": "Copy",
+    "shareOn": "Share on:",
+    "shareCheckOut": "Check out my wishlist!",
+    "linkRevoked": "Wishlist link revoked",
+    "removedFromWishlist": "Removed from wishlist",
+    "addedToCart": "Added to cart!",
+    "failedToAddToCart": "Failed to add to cart",
+    "nothingSaved": "Nothing saved yet",
+    "nothingSavedHint": "Heart products you love and find them here later.",
+    "exploreGifts": "Explore Gifts",
+    "savedItems": "{count, plural, one {saved item} other {saved items}}"
+  },
+
+  "referrals": {
+    "title": "Referrals",
+    "subtitle": "Share your link, earn commissions when friends shop.",
+    "commissionRate": "{rate}% commission rate",
+    "directReferralCount": "{count, plural, one {# direct referral} other {# direct referrals}}",
+    "progressTo": "Progress to {tier}",
+    "yourReferralLink": "Your referral link",
+    "shareVia": "Share via:",
+    "howItWorks": {
+      "title": "How it works",
+      "step1Title": "Share your link",
+      "step1Body": "Copy your unique referral link and share it with friends and family.",
+      "step2Title": "Friends shop",
+      "step2Body": "When someone places an order using your link, it gets tracked automatically.",
+      "step3Title": "You earn commissions",
+      "step3Body": "Commissions are confirmed after the order is fulfilled and locked."
+    },
+    "stats": {
+      "directRefs": "Direct refs",
+      "level2": "Level 2",
+      "level3": "Level 3",
+      "allTimeEarned": "All-time earned",
+      "balance": "Balance",
+      "pendingSuffix": "+{amount} pending"
+    },
+    "quickLinks": {
+      "commissionHistory": "Commission History",
+      "commissionHistoryDesc": "View all your earnings by order",
+      "payouts": "Payouts",
+      "payoutsDesc": "Request a payout of your balance"
+    },
+    "recentEarnings": "Recent Earnings",
+    "noCommissions": "No commissions yet. Share your link to start earning!",
+    "levelCommission": "Level {level} commission",
+    "orderRef": "Order #{id}",
+    "commissionStatus": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "paid": "Paid",
+      "cancelled": "Cancelled"
+    },
+    "earnings": {
+      "title": "Commission History",
+      "subtitle": "All referral commissions earned across your network.",
+      "tabAll": "All",
+      "emptyAll": "No commissions yet. Share your referral link to start earning!",
+      "emptyFiltered": "No {status} commissions.",
+      "tableDate": "Date",
+      "tableFrom": "From",
+      "tableOrder": "Order",
+      "tableLevel": "Level",
+      "tableAmount": "Amount",
+      "tableStatus": "Status",
+      "levelDirect": "Direct (L1)",
+      "levelN": "Level {level}",
+      "locksInDays": "Locks in {days}d",
+      "pageOf": "Page {page} of {totalPages}",
+      "totalCount": "{count} total"
+    },
+    "payouts": {
+      "title": "Payouts",
+      "subtitle": "Request a payout of your confirmed referral balance.",
+      "confirmedBalance": "Confirmed balance",
+      "availableToWithdraw": "Available to withdraw",
+      "minToWithdraw": "Min {amount} to withdraw",
+      "pendingEarnings": "Pending earnings",
+      "locksAfterFulfillment": "Locks after order fulfillment",
+      "allTimeEarned": "All-time earned",
+      "notEnoughTitle": "Not enough balance yet",
+      "notEnoughBody": "You need at least {amount} in confirmed balance to request a payout. Keep sharing your referral link to earn more!",
+      "requestTitle": "Request a Payout",
+      "minAndAvailable": "Minimum payout: {min} · Available: {available}",
+      "methodLabel": "Payout method",
+      "methodPaypal": "PayPal",
+      "methodBank": "Bank Transfer",
+      "detailLabelPaypal": "PayPal email",
+      "detailLabelBank": "Bank account details",
+      "detailPlaceholderPaypal": "Enter your PayPal email address",
+      "detailPlaceholderBank": "Enter account number / IBAN",
+      "amountLabel": "Amount ($)",
+      "useFullBalance": "Use full balance",
+      "submitting": "Submitting…",
+      "requestButton": "Request Payout",
+      "successTitle": "Payout request submitted!",
+      "successBody": "We will process your request within 3–5 business days.",
+      "errorMinAmount": "Minimum payout amount is {amount}.",
+      "errorExceedsBalance": "Amount exceeds your confirmed balance of {amount}.",
+      "errorDetailRequired": "Please enter your payout details.",
+      "historyTitle": "Payout History",
+      "noPayouts": "No payout requests yet.",
+      "tableDate": "Date",
+      "tableAmount": "Amount",
+      "tableMethod": "Method",
+      "tableStatus": "Status",
+      "paidOn": "Paid {date}",
+      "status": {
+        "pending": "Pending",
+        "processing": "Processing",
+        "paid": "Paid",
+        "rejected": "Rejected"
+      },
+      "pageOf": "Page {page} of {totalPages}",
+      "totalCount": "{count} total"
+    }
   }
 }

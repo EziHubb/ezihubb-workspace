@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { X, ShoppingBag, ArrowRight, Trash2 } from 'lucide-react';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useCartStore } from '../../lib/store/cart.store';
 import { fmtAmount, safeNum, safeArr } from '@ezihubb/utils';
 
@@ -16,6 +16,8 @@ import { fmtAmount, safeNum, safeArr } from '@ezihubb/utils';
  * Open/close: same store.
  */
 export function CartDrawer() {
+  const t           = useTranslations('cart');
+  const tCommon     = useTranslations('common');
   const locale      = useLocale();
   const isOpen      = useCartStore((s) => s.isDrawerOpen);
   const closeDrawer = useCartStore((s) => s.closeDrawer);
@@ -77,7 +79,7 @@ export function CartDrawer() {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Shopping cart"
+        aria-label={t('drawer.title')}
         aria-hidden={!isOpen}
         className={[
           'fixed z-50 bg-surface shadow-xl flex flex-col transition-transform duration-300',
@@ -98,18 +100,17 @@ export function CartDrawer() {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <h2 className="font-semibold text-secondary text-base">
-            Your Cart
+            {t('drawer.title')}
             {cart && cart.totals.itemCount > 0 && (
               <span className="ml-2 text-sm font-normal text-muted">
-                ({cart.totals.itemCount}{' '}
-                {cart.totals.itemCount === 1 ? 'item' : 'items'})
+                ({t('itemCount', { count: cart.totals.itemCount })})
               </span>
             )}
           </h2>
           <button
             type="button"
             onClick={closeDrawer}
-            aria-label="Close cart"
+            aria-label={t('drawer.close')}
             className="p-2 -mr-2 text-muted hover:text-secondary transition-colors"
           >
             <X className="w-5 h-5" />
@@ -122,14 +123,14 @@ export function CartDrawer() {
             <div className="flex flex-col items-center justify-center py-14 text-center gap-3">
               <ShoppingBag className="w-12 h-12 text-muted/25" aria-hidden />
               <p className="text-sm font-semibold text-secondary">
-                Your cart is empty
+                {t('drawer.empty')}
               </p>
               <Link
                 href={`/${locale}/search`}
                 onClick={closeDrawer}
                 className="text-sm text-primary hover:underline underline-offset-2"
               >
-                Browse products →
+                {t('drawer.browseProducts')}
               </Link>
             </div>
           ) : (
@@ -143,7 +144,7 @@ export function CartDrawer() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={thumb}
-                          alt={item.productName || 'Product'}
+                          alt={item.productName || tCommon('product')}
                           className="w-full h-full object-cover"
                           onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
@@ -168,7 +169,7 @@ export function CartDrawer() {
                       ) : null}
                       {item.priceChanged && (
                         <p className="text-xs text-warning mt-0.5">
-                          ⚠️ Price updated
+                          ⚠️ {t('item.priceUpdated')}
                         </p>
                       )}
                       <div className="flex items-center justify-between mt-2">
@@ -176,7 +177,7 @@ export function CartDrawer() {
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
-                            aria-label={item.quantity <= 1 ? `Remove ${item.productName}` : 'Decrease quantity'}
+                            aria-label={item.quantity <= 1 ? t('item.remove', { name: item.productName }) : t('item.decreaseQty')}
                             disabled={mutatingId === item.id}
                             onClick={() => handleQtyChange(item.id, item.quantity - 1)}
                             className="w-7 h-7 flex items-center justify-center rounded border border-border text-muted hover:text-error hover:border-error disabled:opacity-40 transition-colors"
@@ -191,7 +192,7 @@ export function CartDrawer() {
                           </span>
                           <button
                             type="button"
-                            aria-label="Increase quantity"
+                            aria-label={t('item.increaseQty')}
                             disabled={mutatingId === item.id}
                             onClick={() => handleQtyChange(item.id, item.quantity + 1)}
                             className="w-7 h-7 flex items-center justify-center rounded border border-border text-muted hover:text-secondary hover:border-secondary disabled:opacity-40 transition-colors"
@@ -216,32 +217,32 @@ export function CartDrawer() {
           <div className="shrink-0 border-t border-border px-5 py-4 space-y-3 bg-surface">
             {cart.discountAmount !== null && cart.discountAmount > 0 && (
               <div className="flex justify-between text-sm text-success font-medium">
-                <span>Discount ({cart.couponCode})</span>
+                <span>{t('drawer.discount', { couponCode: cart.couponCode ?? '' })}</span>
                 <span className="tabular-nums">
                   −{fmtAmount(cart.discountAmount)}
                 </span>
               </div>
             )}
             <div className="flex justify-between items-baseline">
-              <span className="font-semibold text-secondary">Subtotal</span>
+              <span className="font-semibold text-secondary">{t('drawer.subtotal')}</span>
               <span className="font-bold text-lg text-secondary tabular-nums">
                 {fmtAmount(cart.totals?.subtotal)}
               </span>
             </div>
-            <p className="text-xs text-muted">Shipping calculated at checkout</p>
+            <p className="text-xs text-muted">{t('drawer.shippingNote')}</p>
             <Link
               href={`/${locale}/checkout`}
               onClick={closeDrawer}
               className="block w-full text-center py-3 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors uppercase tracking-wide"
             >
-              Checkout — {fmtAmount(cart.totals?.subtotal)}
+              {t('drawer.checkout', { amount: fmtAmount(cart.totals?.subtotal) })}
             </Link>
             <Link
               href={`/${locale}/cart`}
               onClick={closeDrawer}
               className="flex items-center justify-center gap-1.5 w-full py-2.5 border border-border text-secondary text-sm font-medium rounded-button hover:border-primary hover:text-primary transition-colors"
             >
-              View Full Cart
+              {t('drawer.viewFullCart')}
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>

@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Trash2, Minus, Plus } from 'lucide-react';
 import type { CartItemDto } from '@ezihubb/types';
 import { fmtAmount, safeNum } from '@ezihubb/utils';
@@ -57,6 +58,7 @@ function getBundleSummary(data: CustData | null | undefined): string[] | null {
 }
 
 export function CartItemRow({ item, locale, onUpdate, onRemove }: CartItemRowProps) {
+  const t = useTranslations('cart.item');
   const [localQty, setLocalQty] = useState(item.quantity);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -105,7 +107,7 @@ export function CartItemRow({ item, locale, onUpdate, onRemove }: CartItemRowPro
           <button
             type="button"
             onClick={() => onRemove(item.id)}
-            aria-label={`Remove ${item.productName}`}
+            aria-label={t('remove', { name: item.productName })}
             className="shrink-0 p-1 -mt-0.5 text-muted hover:text-error transition-colors"
           >
             <Trash2 className="w-4 h-4" />
@@ -129,7 +131,7 @@ export function CartItemRow({ item, locale, onUpdate, onRemove }: CartItemRowPro
         )}
         {item.priceChanged && (
           <p className="text-xs text-warning font-medium">
-            ⚠️ Price updated to {fmtAmount(item.currentPrice)}
+            {t('priceUpdatedTo', { amount: fmtAmount(item.currentPrice) })}
           </p>
         )}
 
@@ -138,13 +140,13 @@ export function CartItemRow({ item, locale, onUpdate, onRemove }: CartItemRowPro
           <div
             className="inline-flex items-center border border-border rounded-button overflow-hidden"
             role="group"
-            aria-label={`Quantity for ${item.productName}`}
+            aria-label={t('quantityFor', { name: item.productName })}
           >
             <button
               type="button"
               onClick={() => scheduleUpdate(localQty - 1)}
               disabled={localQty <= 1}
-              aria-label="Decrease"
+              aria-label={t('decrease')}
               className="w-8 h-8 flex items-center justify-center text-muted hover:text-secondary hover:bg-muted/5 transition-colors disabled:opacity-40"
             >
               <Minus className="w-3.5 h-3.5" />
@@ -156,7 +158,7 @@ export function CartItemRow({ item, locale, onUpdate, onRemove }: CartItemRowPro
               type="button"
               onClick={() => scheduleUpdate(localQty + 1)}
               disabled={localQty >= 99}
-              aria-label="Increase"
+              aria-label={t('increase')}
               className="w-8 h-8 flex items-center justify-center text-muted hover:text-secondary hover:bg-muted/5 transition-colors disabled:opacity-40"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -169,7 +171,7 @@ export function CartItemRow({ item, locale, onUpdate, onRemove }: CartItemRowPro
             </p>
             {localQty > 1 && (
               <p className="text-xs text-muted tabular-nums">
-                {fmtAmount(item.currentPrice)} each
+                {t('each', { price: fmtAmount(item.currentPrice) })}
               </p>
             )}
           </div>

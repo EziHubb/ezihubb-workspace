@@ -1,0 +1,75 @@
+{
+  "storePage": {
+    "storeNotFoundTitle": "Không tìm thấy cửa hàng",
+    "metaDescriptionFallback": "Mua sắm tại {name} trên EziHubb.",
+    "bannerAlt": "Ảnh bìa {name}",
+    "logoAlt": "Logo {name}",
+    "verifiedSeller": "Người bán đã xác minh",
+    "rating": "đánh giá",
+    "sales": "{count, plural, other {# lượt bán}}",
+    "listings": "{count, plural, other {# sản phẩm}}",
+    "memberSince": "Thành viên từ {date}",
+    "share": "Chia sẻ:",
+    "shareCheckOut": "Xem ngay {name} trên EziHubb!",
+    "sectionsAriaLabel": "Danh mục cửa hàng",
+    "tabItems": "Sản phẩm ({count})",
+    "tabReviews": "Đánh giá",
+    "tabAbout": "Giới thiệu",
+    "searchPlaceholder": "Tìm trong {count} sản phẩm",
+    "about": {
+      "title": "Giới thiệu về cửa hàng",
+      "totalSales": "Tổng lượt bán",
+      "activeListings": "Sản phẩm đang bán",
+      "noDescription": "Cửa hàng chưa cung cấp mô tả."
+    }
+  },
+  "products": {
+    "sortLabel": "Sắp xếp: {label}",
+    "sortOptions": {
+      "newest": "Mới nhất",
+      "bestseller": "Bán chạy nhất",
+      "rating": "Đánh giá cao nhất",
+      "priceAsc": "Giá: Thấp → Cao",
+      "priceDesc": "Giá: Cao → Thấp"
+    },
+    "sectionsAriaLabel": "Danh mục cửa hàng",
+    "all": "Tất cả",
+    "onSale": "Đang giảm giá",
+    "featuredItems": "Sản phẩm nổi bật",
+    "onSaleHeading": "Đang giảm giá",
+    "sectionItemsHeading": "Sản phẩm trong danh mục",
+    "allItemsHeading": "Tất cả sản phẩm",
+    "clearSearchAria": "Xóa tìm kiếm",
+    "results": "{count, plural, other {# kết quả}}",
+    "emptyTitle": "Không tìm thấy sản phẩm nào",
+    "emptyDesc": "Hãy thử bộ lọc khác hoặc quay lại sau."
+  },
+  "reviews": {
+    "starsOutOf5": "{rating} trên 5 sao",
+    "reviewsCount": "{count, plural, other {# đánh giá}}",
+    "starReviews": "Đánh giá {star} sao",
+    "allReviews": "Tất cả đánh giá",
+    "noReviewsYet": "Chưa có đánh giá nào",
+    "beFirstToReview": "Hãy là người đầu tiên mua và để lại đánh giá!",
+    "noStarReviews": "Chưa có đánh giá {star} sao nào",
+    "showAllReviews": "Xem tất cả đánh giá",
+    "forProduct": "cho <b>{product}</b>",
+    "sellerReply": "Phản hồi của người bán",
+    "customerFallback": "Khách hàng",
+    "reviewPhotoAlt": "Ảnh đánh giá {n}",
+    "authorPhotoAlt": "{name}"
+  },
+  "sharedWishlist": {
+    "defaultHeading": "Danh sách yêu thích được chia sẻ",
+    "ownerHeading": "Danh sách yêu thích của {name}",
+    "curatedBy": "Được chọn bởi <b>{name}</b>",
+    "itemsCount": "{count, plural, other {# sản phẩm}}",
+    "shareThisList": "Chia sẻ danh sách này:",
+    "shareCheckOut": "Xem danh sách yêu thích này trên EziHubb: \"{title}\"",
+    "emptyTitle": "Danh sách yêu thích này đang trống",
+    "emptyDesc": "Chưa có gì ở đây — nhưng còn rất nhiều điều thú vị trong cửa hàng.",
+    "exploreGifts": "Khám phá quà tặng",
+    "ctaText": "Thích những gì bạn thấy? Hãy tạo danh sách yêu thích của riêng bạn trên EziHubb.",
+    "startOwnWishlist": "Tạo danh sách yêu thích của bạn"
+  }
+}

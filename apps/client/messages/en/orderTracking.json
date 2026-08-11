@@ -11,9 +11,9 @@
   "notFound": "Order not found. Please check your order number and email.",
   "trackAnother": "Track another order",
   "needHelp": "Need help with this order?",
-  "confirmationSentTo": "Confirmation sent to {email}",
+  "confirmationSentTo": "Confirmation sent to <b>{email}</b>",
   "verifyTitle": "Verify Your Email",
-  "verifySubtitle": "Enter the email address used at checkout to view order #{orderNumber}.",
+  "verifySubtitle": "Enter the email address used at checkout to view order <b>#{orderNumber}</b>.",
   "viewOrderButton": "View Order",
   "trackDifferent": "Track a different order",
   "cancelTitle": "Cancel Order",
@@ -21,7 +21,7 @@
   "keepOrder": "Keep Order",
   "cancelButton": "Cancel Order",
   "yesCancelButton": "Yes, Cancel Order",
-  "cancelAvailable": "{time} remaining to cancel",
+  "cancelAvailable": "<b>{time}</b> remaining to cancel",
   "contactSupport": "Contact Support",
   "itemsTitle": "Items in this order",
   "orderOnItsWay": "Your order is on its way!",
@@ -33,5 +33,50 @@
     "delivered": "Delivered",
     "completed": "Completed",
     "inProgress": "In progress"
+  },
+
+  "orderNumberRequired": "Order number is required.",
+  "emailRequired": "Email address is required.",
+  "invalidEmail": "Please enter a valid email address.",
+  "genericError": "Something went wrong. Please try again.",
+  "copyTrackingNumberAria": "Copy tracking number",
+  "placedLabel": "Placed: {date}",
+  "orderNumberHeading": "Order #{orderNumber}",
+  "productFallback": "Product",
+  "orderItemFallback": "Order item",
+  "carrierFallback": "Carrier",
+
+  "detailedTracking": {
+    "backToOrders": "Back to Orders",
+    "pageTitle": "Order Tracking",
+    "notAvailable": "Tracking information not available for this order yet.",
+    "goBackToOrders": "Go back to orders",
+    "trackOnCarrierSite": "Track on carrier site",
+    "ariaLabel": "Order tracking timeline",
+    "stages": {
+      "ORDER_CONFIRMED": { "label": "Order Confirmed", "description": "We received your order and are preparing it." },
+      "PAYMENT_VERIFIED": { "label": "Payment Verified", "description": "Your payment has been confirmed." },
+      "IN_PRODUCTION": { "label": "In Production", "description": "Your item is being printed." },
+      "PRODUCTION_COMPLETE": { "label": "Production Complete", "description": "Production is finished and your order is being packed." },
+      "SHIPPED": { "label": "Shipped", "description": "Your order has been handed to the carrier." },
+      "SENT_TO_FULFILLMENT": { "label": "Sent to Fulfillment", "description": "Your order has been sent to our fulfillment partner." },
+      "IN_TRANSIT": { "label": "In Transit", "description": "Your package is on its way." },
+      "OUT_FOR_DELIVERY": { "label": "Out for Delivery", "description": "Your package is out for delivery today." },
+      "DELIVERED": { "label": "Delivered", "description": "Your order has been delivered." },
+      "FAILED_DELIVERY": { "label": "Delivery Attempted", "description": "A delivery attempt was made. Check with your carrier." }
+    }
+  },
+
+  "orderStatusBadge": {
+    "PENDING_PAYMENT": "Pending Payment",
+    "CONFIRMED": "Confirmed",
+    "IN_PRODUCTION": "In Production",
+    "SHIPPED": "Shipped",
+    "DELIVERED": "Delivered",
+    "COMPLETED": "Completed",
+    "CANCELLED": "Cancelled",
+    "REFUND_REQUESTED": "Refund Requested",
+    "REFUNDED": "Refunded",
+    "DISPUTED": "Disputed"
   }
 }

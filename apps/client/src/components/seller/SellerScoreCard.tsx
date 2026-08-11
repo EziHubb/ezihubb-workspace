@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { MessageSquare } from 'lucide-react';
 import { apiClient } from '@ezihubb/api-client';
 
@@ -42,16 +43,18 @@ function ScoreRow({ icon, label, score, barColor }: ScoreRowProps) {
   );
 }
 
-function tierBadge(badge: string) {
+function tierBadge(badge: string, t: (key: string) => string) {
   switch (badge) {
     case 'PLATINUM':
-    case 'GOLD':     return { label: '⭐ Top Seller', bg: '#F0FDF4', text: '#2E7D52', border: '#86EFAC' };
-    case 'SILVER':   return { label: '✓ Trusted',    bg: '#EFF6FF', text: '#185FA5', border: '#93C5FD' };
-    default:         return { label: '✓ Rising',     bg: '#F5F5F4', text: '#57534E', border: '#D6D3D1' };
+    case 'GOLD':     return { icon: '⭐', label: t('scoreCard.tier.topSeller'), bg: '#F0FDF4', text: '#2E7D52', border: '#86EFAC' };
+    case 'SILVER':   return { icon: '✓', label: t('scoreCard.tier.trusted'),   bg: '#EFF6FF', text: '#185FA5', border: '#93C5FD' };
+    default:         return { icon: '✓', label: t('scoreCard.tier.rising'),    bg: '#F5F5F4', text: '#57534E', border: '#D6D3D1' };
   }
 }
 
 export function SellerScoreCard() {
+  const t                     = useTranslations('seller');
+  const locale                = useLocale();
   const [data, setData]       = useState<ScoreBreakdown | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
@@ -71,16 +74,16 @@ export function SellerScoreCard() {
   if (!data) return null;
 
   const badge      = data.scoreBadge ?? '';
-  const tier       = tierBadge(badge);
+  const tier       = tierBadge(badge, t);
   const hasLowScore = data.breakdown.response.score < 60 || data.breakdown.refund.score < 60;
 
   return (
     <div className="rounded-2xl border bg-white p-5 shadow-sm space-y-4" style={{ borderColor: '#E8E4DF' }}>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-900">Your performance score</h3>
+        <h3 className="font-semibold text-gray-900">{t('scoreCard.title')}</h3>
         <a href="/seller/score/history" className="text-xs" style={{ color: '#E85D3F' }}>
-          History →
+          {t('scoreCard.history')} →
         </a>
       </div>
 
@@ -94,16 +97,16 @@ export function SellerScoreCard() {
           className="mb-1 rounded-full px-2.5 py-1 text-xs font-semibold border"
           style={{ background: tier.bg, color: tier.text, borderColor: tier.border }}
         >
-          {tier.label}
+          {tier.icon} {tier.label}
         </span>
       </div>
 
       {/* Progress bars */}
       <div className="space-y-3">
-        <ScoreRow icon="📦" label="Shipping accuracy" score={data.breakdown.shipping.score}   barColor="#2E7D52" />
-        <ScoreRow icon="💰" label="Refund rate"        score={data.breakdown.refund.score}     barColor="#185FA5" />
-        <ScoreRow icon="⭐" label="Review rating"      score={data.breakdown.review.score}     barColor="#2E7D52" />
-        <ScoreRow icon="💬" label="Response time"      score={data.breakdown.response.score}   barColor="#0D9488" />
+        <ScoreRow icon="📦" label={t('scoreCard.shippingAccuracy')} score={data.breakdown.shipping.score}   barColor="#2E7D52" />
+        <ScoreRow icon="💰" label={t('scoreCard.refundRate')}        score={data.breakdown.refund.score}     barColor="#185FA5" />
+        <ScoreRow icon="⭐" label={t('scoreCard.reviewRating')}      score={data.breakdown.review.score}     barColor="#2E7D52" />
+        <ScoreRow icon="💬" label={t('scoreCard.responseTime')}      score={data.breakdown.response.score}   barColor="#0D9488" />
       </div>
 
       {/* Low score alert */}
@@ -113,10 +116,10 @@ export function SellerScoreCard() {
             <span className="text-base">⚠️</span>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold" style={{ color: '#92400E' }}>
-                Response time is low. Reply to messages within 24h to improve.
+                {t('scoreCard.lowScoreAlert')}
               </p>
               <a href="/seller/messages" className="text-xs font-medium mt-0.5 inline-block" style={{ color: '#D97706' }}>
-                View messages →
+                {t('scoreCard.viewMessages')} →
               </a>
             </div>
           </div>
@@ -130,12 +133,12 @@ export function SellerScoreCard() {
         className="w-full rounded-xl border py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
         style={{ borderColor: '#E8E4DF' }}
       >
-        {expanded ? 'Hide details' : 'See full breakdown'}
+        {expanded ? t('scoreCard.hideDetails') : t('scoreCard.seeFullBreakdown')}
       </button>
 
       {expanded && data.lastCalculatedAt && (
         <p className="text-xs text-center text-gray-400">
-          Updated daily · Last: {new Date(data.lastCalculatedAt).toLocaleDateString()}
+          {t('scoreCard.updatedDaily')} · {t('scoreCard.lastUpdated', { date: new Intl.DateTimeFormat(locale).format(new Date(data.lastCalculatedAt)) })}
         </p>
       )}
     </div>

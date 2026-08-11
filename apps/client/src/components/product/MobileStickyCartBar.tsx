@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import type { ProductDto, ProductVariantDto } from '@ezihubb/types';
 import { fmtAmount } from '@ezihubb/utils';
 
@@ -27,6 +28,7 @@ export function MobileStickyCartBar({
   canAddToCart,
   onAddToCart,
 }: MobileStickyCartBarProps) {
+  const t = useTranslations('search');
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -74,7 +76,7 @@ export function MobileStickyCartBar({
           onClick={onAddToCart}
           className="px-5 py-2.5 rounded-full text-sm font-semibold flex-shrink-0 transition-colors bg-primary text-white hover:bg-primary-dark active:scale-[0.97]"
         >
-          Add to cart
+          {t('addToCart')}
         </button>
 
       </div>

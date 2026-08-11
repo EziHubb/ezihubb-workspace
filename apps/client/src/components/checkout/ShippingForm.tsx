@@ -4,49 +4,44 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useLocale, useTranslations } from 'next-intl';
 import { useAddresses, useProfile } from '@ezihubb/api-client';
 import type { ShippingAddressInput } from '@ezihubb/api-client';
 
-// ── Zod schema ────────────────────────────────────────────────────────────────
+// ── Zod schema (validation messages injected at call time via a factory,
+// since useTranslations can only be called inside a component/hook body) ──────
 
-const schema = z.object({
-  email:        z.string().email('Valid email required').optional().or(z.literal('')),
-  firstName:    z.string().min(1, 'Required'),
-  lastName:     z.string().min(1, 'Required'),
-  phone:        z.string().regex(/^\+?[\d\s\-(]{7,15}$/, 'Invalid phone number'),
-  addressLine1: z.string().min(5, 'Enter a full street address'),
-  addressLine2: z.string().optional(),
-  city:         z.string().min(1, 'Required'),
-  state:        z.string().optional(),
-  postalCode:   z.string().min(3, 'Required'),
-  country:      z.string().length(2, 'Select a country'),
-  saveAddress:  z.boolean().optional(),
-});
+function buildSchema(t: ReturnType<typeof useTranslations<'checkout.shippingForm.validation'>>) {
+  return z.object({
+    email:        z.string().email(t('validEmail')).optional().or(z.literal('')),
+    firstName:    z.string().min(1, t('required')),
+    lastName:     z.string().min(1, t('required')),
+    phone:        z.string().regex(/^\+?[\d\s\-(]{7,15}$/, t('invalidPhone')),
+    addressLine1: z.string().min(5, t('fullAddress')),
+    addressLine2: z.string().optional(),
+    city:         z.string().min(1, t('required')),
+    state:        z.string().optional(),
+    postalCode:   z.string().min(3, t('required')),
+    country:      z.string().length(2, t('selectCountry')),
+    saveAddress:  z.boolean().optional(),
+  });
+}
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 
-// ── Country list ──────────────────────────────────────────────────────────────
+// ── Country list — codes only; display names are localized at render time
+// via Intl.DisplayNames so a shopper always sees their country in their own
+// language instead of a hardcoded English list. ────────────────────────────────
 
-const COUNTRIES = [
-  { code: 'US', name: 'United States' },
-  { code: 'CA', name: 'Canada' },
-  { code: 'GB', name: 'United Kingdom' },
-  { code: 'AU', name: 'Australia' },
-  { code: 'VN', name: 'Vietnam' },
-  { code: 'SG', name: 'Singapore' },
-  { code: 'JP', name: 'Japan' },
-  { code: 'KR', name: 'South Korea' },
-  { code: 'DE', name: 'Germany' },
-  { code: 'FR', name: 'France' },
-  { code: 'IT', name: 'Italy' },
-  { code: 'ES', name: 'Spain' },
-  { code: 'NL', name: 'Netherlands' },
-  { code: 'MX', name: 'Mexico' },
-  { code: 'BR', name: 'Brazil' },
-  { code: 'IN', name: 'India' },
-  { code: 'CN', name: 'China' },
-  { code: 'NZ', name: 'New Zealand' },
+const COUNTRY_CODES = [
+  'US', 'CA', 'GB', 'AU', 'VN', 'SG', 'JP', 'KR', 'DE', 'FR',
+  'IT', 'ES', 'NL', 'MX', 'BR', 'IN', 'CN', 'NZ',
 ] as const;
+
+function useCountryNames(locale: string): (code: string) => string {
+  const displayNames = new Intl.DisplayNames([locale], { type: 'region' });
+  return (code: string) => displayNames.of(code) ?? code;
+}
 
 // ── Field wrapper ─────────────────────────────────────────────────────────────
 
@@ -97,6 +92,10 @@ export function ShippingForm({
   isLoggedIn,
   onComplete,
 }: ShippingFormProps) {
+  const t = useTranslations('checkout.shippingForm');
+  const tValidation = useTranslations('checkout.shippingForm.validation');
+  const locale = useLocale();
+  const getCountryName = useCountryNames(locale);
   const { data: addresses } = useAddresses(isLoggedIn);
   const { data: profile }   = useProfile(isLoggedIn);
 
@@ -107,7 +106,7 @@ export function ShippingForm({
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(buildSchema(tValidation)),
     defaultValues: {
       email:        initialValues?.email ?? '',
       firstName:    initialValues?.firstName ?? '',
@@ -161,13 +160,13 @@ export function ShippingForm({
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
       {/* Saved address picker (logged-in only) */}
       {isLoggedIn && addresses && addresses.length > 0 && (
-        <Field label="Use a saved address">
+        <Field label={t('savedAddress')}>
           <select
             onChange={(e) => fillFromSaved(e.target.value)}
             defaultValue=""
             className={inputCls()}
           >
-            <option value="">— Select a saved address —</option>
+            <option value="">{t('selectSavedAddress')}</option>
             {addresses.map((addr) => (
               <option key={addr.id} value={addr.id}>
                 {addr.firstName} {addr.lastName} · {addr.addressLine1}, {addr.city}
@@ -179,28 +178,28 @@ export function ShippingForm({
 
       {/* Guest email */}
       {!isLoggedIn && (
-        <Field label="Email" required error={errors.email?.message}>
+        <Field label={t('email')} required error={errors.email?.message}>
           <input
             {...register('email')}
             type="email"
             autoComplete="email"
-            placeholder="your@email.com"
+            placeholder={t('emailPlaceholder')}
             className={inputCls(errors.email?.message)}
           />
-          <p className="text-xs text-muted">Order confirmation will be sent here</p>
+          <p className="text-xs text-muted">{t('emailHint')}</p>
         </Field>
       )}
 
       {/* Name row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="First Name" required error={errors.firstName?.message}>
+        <Field label={t('firstName')} required error={errors.firstName?.message}>
           <input
             {...register('firstName')}
             autoComplete="given-name"
             className={inputCls(errors.firstName?.message)}
           />
         </Field>
-        <Field label="Last Name" required error={errors.lastName?.message}>
+        <Field label={t('lastName')} required error={errors.lastName?.message}>
           <input
             {...register('lastName')}
             autoComplete="family-name"
@@ -210,28 +209,28 @@ export function ShippingForm({
       </div>
 
       {/* Phone */}
-      <Field label="Phone" required error={errors.phone?.message}>
+      <Field label={t('phone')} required error={errors.phone?.message}>
         <input
           {...register('phone')}
           type="tel"
           autoComplete="tel"
-          placeholder="+1 555 000 0000"
+          placeholder={t('phonePlaceholder')}
           className={inputCls(errors.phone?.message)}
         />
       </Field>
 
       {/* Address Line 1 */}
-      <Field label="Address" required error={errors.addressLine1?.message}>
+      <Field label={t('address')} required error={errors.addressLine1?.message}>
         <input
           {...register('addressLine1')}
           autoComplete="address-line1"
-          placeholder="123 Main St"
+          placeholder={t('addressPlaceholder')}
           className={inputCls(errors.addressLine1?.message)}
         />
       </Field>
 
       {/* Address Line 2 */}
-      <Field label="Apt, suite, etc. (optional)">
+      <Field label={t('addressLine2')}>
         <input
           {...register('addressLine2')}
           autoComplete="address-line2"
@@ -241,22 +240,22 @@ export function ShippingForm({
 
       {/* City / State / ZIP */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Field label="City" required error={errors.city?.message}>
+        <Field label={t('city')} required error={errors.city?.message}>
           <input
             {...register('city')}
             autoComplete="address-level2"
             className={inputCls(errors.city?.message)}
           />
         </Field>
-        <Field label="State / Province" error={errors.state?.message}>
+        <Field label={t('state')} error={errors.state?.message}>
           <input
             {...register('state')}
             autoComplete="address-level1"
-            placeholder="CA"
+            placeholder={t('statePlaceholder')}
             className={inputCls(errors.state?.message)}
           />
         </Field>
-        <Field label="ZIP / Postal Code" required error={errors.postalCode?.message}>
+        <Field label={t('zip')} required error={errors.postalCode?.message}>
           <input
             {...register('postalCode')}
             autoComplete="postal-code"
@@ -266,15 +265,15 @@ export function ShippingForm({
       </div>
 
       {/* Country */}
-      <Field label="Country" required error={errors.country?.message}>
+      <Field label={t('country')} required error={errors.country?.message}>
         <select
           {...register('country')}
           autoComplete="country"
           className={inputCls(errors.country?.message)}
         >
-          {COUNTRIES.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.name}
+          {COUNTRY_CODES.map((code) => (
+            <option key={code} value={code}>
+              {getCountryName(code)}
             </option>
           ))}
         </select>
@@ -288,7 +287,7 @@ export function ShippingForm({
             type="checkbox"
             className="w-4 h-4 accent-primary"
           />
-          <span className="text-sm text-secondary">Save this address for future orders</span>
+          <span className="text-sm text-secondary">{t('saveAddress')}</span>
         </label>
       )}
 
@@ -298,7 +297,7 @@ export function ShippingForm({
         disabled={isSubmitting}
         className="hidden md:block w-full py-3.5 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors disabled:opacity-50 uppercase tracking-wide"
       >
-        Continue to Delivery →
+        {t('continueToDelivery')}
       </button>
 
       {/* Mobile sticky bottom bar */}
@@ -308,7 +307,7 @@ export function ShippingForm({
           disabled={isSubmitting}
           className="w-full py-3.5 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors disabled:opacity-50 uppercase tracking-wide"
         >
-          Continue to Delivery →
+          {t('continueToDelivery')}
         </button>
       </div>
     </form>

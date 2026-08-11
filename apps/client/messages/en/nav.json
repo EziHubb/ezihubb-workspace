@@ -12,6 +12,14 @@
   "toggleMenu": "Toggle menu",
   "allProducts": "All Products",
   "viewAll": "View all {category}",
+  "myOrders": "My Orders",
+  "profile": "Profile",
+  "sellerHub": "Seller Hub",
+  "signOut": "Sign Out",
+  "signIn": "Sign In",
+  "shop": "Shop",
+  "createAccount": "Create Account",
+  "selectLanguage": "Select language",
   "megaMenu": {
     "ariaLabel": "Product categories"
   }

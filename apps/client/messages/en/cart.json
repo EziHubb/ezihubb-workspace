@@ -1,6 +1,15 @@
 {
   "title": "Shopping Cart",
   "itemCount": "{count, plural, one {# item} other {# items}}",
+  "loadingCart": "Loading cart",
+  "itemsSectionAria": "Cart items",
+  "itemsListAria": "Items in your cart",
+  "orderSummaryAria": "Order summary",
+
+  "mixedCart": {
+    "title": "Your cart has both physical items and digital downloads.",
+    "detail": "You'll need to check out one type at a time — remove either the physical items or the digital downloads to continue."
+  },
 
   "empty": {
     "heading": "Your cart is empty",
@@ -16,15 +25,21 @@
     "browseProducts": "Browse products →",
     "subtotal": "Subtotal",
     "shippingNote": "Shipping calculated at checkout",
-    "checkout": "Checkout — ${amount}",
-    "discount": "Discount ({couponCode})"
+    "checkout": "Checkout — {amount}",
+    "discount": "Discount ({couponCode})",
+    "viewFullCart": "View Full Cart"
   },
 
   "item": {
     "remove": "Remove {name}",
     "decreaseQty": "Decrease quantity",
     "increaseQty": "Increase quantity",
-    "priceUpdated": "Price updated"
+    "priceUpdated": "Price updated",
+    "quantityFor": "Quantity for {name}",
+    "decrease": "Decrease",
+    "increase": "Increase",
+    "priceUpdatedTo": "⚠️ Price updated to {amount}",
+    "each": "{price} each"
   },
 
   "summary": {
@@ -37,7 +52,8 @@
     "couponPlaceholder": "Coupon code",
     "applyCoupon": "Apply",
     "removeCoupon": "Remove coupon",
-    "proceedToCheckout": "Proceed to Checkout"
+    "proceedToCheckout": "Proceed to Checkout",
+    "couponApplied": "−{amount} applied"
   },
 
   "trust": {
@@ -56,7 +72,21 @@
   "errors": {
     "couponInvalid": "Invalid or expired coupon code.",
     "couponAlreadyUsed": "You have already used this coupon.",
-    "couponMinOrder": "Minimum order of ${amount} required.",
+    "couponMinOrder": "Minimum order of {amount} required.",
     "couponGeneric": "Could not apply coupon. Please try again."
+  },
+
+  "giftCard": {
+    "title": "Gift Card",
+    "enterCode": "Please enter a gift card code.",
+    "noBalance": "This gift card has no remaining balance.",
+    "validateError": "Could not validate gift card. Please try again.",
+    "applied": "Gift card applied",
+    "remove": "Remove",
+    "codePlaceholder": "GIFT-XXXX-XXXX",
+    "check": "Check",
+    "ofOriginal": "of {amount} original",
+    "neverExpires": "Never expires",
+    "applyToOrder": "Apply to Order"
   }
 }

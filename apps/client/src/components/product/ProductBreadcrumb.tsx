@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 export interface BreadcrumbItem {
   name: string;
@@ -11,6 +12,7 @@ interface ProductBreadcrumbProps {
 }
 
 export function ProductBreadcrumb({ items }: ProductBreadcrumbProps) {
+  const t = useTranslations('product.pdp');
   if (items.length === 0) return null;
 
   // Truncate middle when more than 5 crumbs — keep first + last 3
@@ -21,7 +23,7 @@ export function ProductBreadcrumb({ items }: ProductBreadcrumbProps) {
       : [items[0], null, ...items.slice(-(MAX - 2))];
 
   return (
-    <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs text-muted flex-wrap">
+    <nav aria-label={t('breadcrumb')} className="flex items-center gap-1 text-xs text-muted flex-wrap">
       {visible.map((item, i) => (
         <Fragment key={i}>
           {i > 0 && <span aria-hidden>›</span>}

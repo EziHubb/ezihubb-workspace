@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useCurrency, SUPPORTED_CURRENCIES, type CurrencyCode } from '../../lib/currency/currency-context';
 
 export function CurrencyPicker() {
+  const t                         = useTranslations('common');
   const { currency, setCurrency } = useCurrency();
   const [isOpen, setIsOpen]       = useState(false);
 
@@ -15,7 +17,7 @@ export function CurrencyPicker() {
       <button
         type="button"
         onClick={() => setIsOpen((o) => !o)}
-        aria-label="Select display currency"
+        aria-label={t('selectCurrency')}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         className="flex items-center gap-1.5 text-sm text-muted hover:text-secondary transition-colors px-2 py-1 rounded-lg hover:bg-muted/10"
@@ -33,7 +35,7 @@ export function CurrencyPicker() {
           {/* Dropdown */}
           <div
             role="listbox"
-            aria-label="Display currency"
+            aria-label={t('selectCurrency')}
             className="absolute right-0 top-full mt-1 w-38 bg-surface rounded-xl shadow-floating border border-border z-50 overflow-hidden py-1"
           >
             {SUPPORTED_CURRENCIES.map((c) => {

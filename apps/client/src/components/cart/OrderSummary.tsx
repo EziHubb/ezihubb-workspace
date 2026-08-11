@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Tag, X, ChevronRight, ShieldCheck, Truck, RotateCcw } from 'lucide-react';
 import { useCartStore } from '../../lib/store/cart.store';
 import type { CartDto } from '@ezihubb/types';
@@ -13,6 +13,9 @@ interface OrderSummaryProps {
 }
 
 export function OrderSummary({ cart }: OrderSummaryProps) {
+  const t = useTranslations('cart.summary');
+  const tErrors = useTranslations('cart.errors');
+  const tTrust = useTranslations('cart.trust');
   const locale = useLocale();
   const router = useRouter();
   const { applyCoupon, removeCoupon } = useCartStore();
@@ -33,18 +36,18 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
     } catch (err: unknown) {
       const apiErr = err as { code?: string; details?: Record<string, unknown> };
       if (apiErr.code === 'ERR_COUPON_NOT_FOUND' || apiErr.code === 'ERR_COUPON_EXPIRED') {
-        setCouponError('Invalid or expired coupon code.');
+        setCouponError(tErrors('couponInvalid'));
       } else if (apiErr.code === 'ERR_COUPON_MAX_USES_PER_USER') {
-        setCouponError('You have already used this coupon.');
+        setCouponError(tErrors('couponAlreadyUsed'));
       } else if (apiErr.code === 'ERR_COUPON_MIN_ORDER') {
         const minAmount = apiErr.details?.['minAmount'] as number | undefined;
         setCouponError(
           minAmount != null
-            ? `Minimum order of ${fmtAmount(minAmount)} required.`
-            : 'Order does not meet the minimum amount for this coupon.',
+            ? tErrors('couponMinOrder', { amount: fmtAmount(minAmount) })
+            : tErrors('couponGeneric'),
         );
       } else {
-        setCouponError(err instanceof Error ? err.message : 'Could not apply coupon. Please try again.');
+        setCouponError(err instanceof Error ? err.message : tErrors('couponGeneric'));
       }
     } finally {
       setCouponLoading(false);
@@ -60,26 +63,25 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
 
   return (
     <div className="bg-surface border border-border rounded-card p-5 space-y-4 md:sticky md:top-28">
-      <h2 className="font-semibold text-secondary text-base">Order Summary</h2>
+      <h2 className="font-semibold text-secondary text-base">{t('title')}</h2>
 
       {/* Line items */}
       <div className="space-y-2 text-sm">
         <div className="flex justify-between">
           <span className="text-muted">
-            Subtotal ({totals.itemCount}{' '}
-            {totals.itemCount === 1 ? 'item' : 'items'})
+            {t('subtotal', { count: totals.itemCount })}
           </span>
           <span className="font-medium text-secondary tabular-nums">
             {fmtAmount(totals?.subtotal)}
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted">Shipping</span>
-          <span className="text-muted italic text-xs">Calculated at checkout</span>
+          <span className="text-muted">{t('shipping')}</span>
+          <span className="text-muted italic text-xs">{t('shippingCalculated')}</span>
         </div>
         {cart.discountAmount !== null && cart.discountAmount > 0 && (
           <div className="flex justify-between text-success font-medium">
-            <span>Discount</span>
+            <span>{t('discount')}</span>
             <span className="tabular-nums">
               −{fmtAmount(cart.discountAmount)}
             </span>
@@ -91,7 +93,7 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
 
       {/* Total */}
       <div className="flex justify-between items-baseline">
-        <span className="font-semibold text-secondary">Estimated Total</span>
+        <span className="font-semibold text-secondary">{t('estimatedTotal')}</span>
         <span className="font-bold text-xl text-secondary tabular-nums">
           {fmtAmount(totals?.total)}
         </span>
@@ -109,7 +111,7 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
                 </p>
                 {cart.discountAmount !== null && cart.discountAmount > 0 && (
                   <p className="text-xs text-success/80">
-                    −{fmtAmount(cart.discountAmount)} applied
+                    {t('couponApplied', { amount: fmtAmount(cart.discountAmount) })}
                   </p>
                 )}
               </div>
@@ -118,7 +120,7 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
               type="button"
               onClick={handleRemoveCoupon}
               disabled={removeLoading}
-              aria-label="Remove coupon"
+              aria-label={t('removeCoupon')}
               className="p-0.5 text-success/60 hover:text-error transition-colors disabled:opacity-50"
             >
               <X className="w-4 h-4" />
@@ -135,10 +137,10 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
                   if (couponError) setCouponError('');
                 }}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleApply(); }}
-                placeholder="Coupon code"
+                placeholder={t('couponPlaceholder')}
                 autoCapitalize="characters"
                 spellCheck={false}
-                aria-label="Coupon code"
+                aria-label={t('couponPlaceholder')}
                 className="flex-1 px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
               />
               <button
@@ -147,7 +149,7 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
                 disabled={!couponInput.trim() || couponLoading}
                 className="px-4 py-2 text-sm font-semibold border border-primary text-primary rounded-button hover:bg-primary/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
               >
-                {couponLoading ? '…' : 'Apply'}
+                {couponLoading ? '…' : t('applyCoupon')}
               </button>
             </div>
             {couponError && (
@@ -163,7 +165,7 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
         onClick={() => router.push(`/${locale}/checkout`)}
         className="w-full flex items-center justify-center gap-2 py-3.5 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors uppercase tracking-wide"
       >
-        Proceed to Checkout
+        {t('proceedToCheckout')}
         <ChevronRight className="w-4 h-4" />
       </button>
 
@@ -171,15 +173,15 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
       <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted border-t border-border pt-3">
         <span className="flex items-center gap-1">
           <ShieldCheck className="w-3.5 h-3.5 text-success" />
-          Secure
+          {tTrust('secure')}
         </span>
         <span className="flex items-center gap-1">
           <Truck className="w-3.5 h-3.5 text-primary" />
-          Free over $50
+          {tTrust('freeShipping')}
         </span>
         <span className="flex items-center gap-1">
           <RotateCcw className="w-3.5 h-3.5 text-secondary" />
-          30-day returns
+          {tTrust('returns')}
         </span>
       </div>
     </div>

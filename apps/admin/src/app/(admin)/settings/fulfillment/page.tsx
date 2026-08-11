@@ -6,6 +6,7 @@ import { Plug, Trash2, CheckCircle2, Copy, Check, Webhook, PackageCheck } from '
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { useDialog } from '../../../../contexts/DialogContext';
 
 const inputCls =
   'w-full px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted';
@@ -55,6 +56,7 @@ const PROVIDER_FIELDS: Record<ProviderType, { keyLabel: string; keyPlaceholder: 
 
 function MerchizeWebhookPanel({ connection }: { connection: FulfillmentConnection }) {
   const qc = useQueryClient();
+  const { alert } = useDialog();
   const [copied, setCopied] = useState(false);
   const [secret, setSecret] = useState('');
   const [saving, setSaving] = useState(false);
@@ -73,6 +75,8 @@ function MerchizeWebhookPanel({ connection }: { connection: FulfillmentConnectio
       await api.put(API_ROUTES.ADMIN.FULFILLMENT_WEBHOOK_SECRET(connection.id), { secret: secret.trim() });
       setSecret('');
       void qc.invalidateQueries({ queryKey: QUERY_KEY });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save the webhook secret.', { variant: 'error' });
     } finally {
       setSaving(false);
     }
@@ -129,6 +133,7 @@ const MODE_QUERY_KEY = ['admin-fulfillment-mode'];
 
 function FulfillmentModeCard() {
   const qc = useQueryClient();
+  const { alert } = useDialog();
   const [saving, setSaving] = useState(false);
 
   const { data, isLoading } = useQuery<{ fulfillmentMode: FulfillmentMode }>({
@@ -145,6 +150,8 @@ function FulfillmentModeCard() {
     try {
       await api.put(API_ROUTES.ADMIN.FULFILLMENT_MODE, { mode: next });
       qc.setQueryData(MODE_QUERY_KEY, { fulfillmentMode: next });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not update fulfillment mode. This setting belongs to a store — switch into a specific store first.', { variant: 'error' });
     } finally {
       setSaving(false);
     }
@@ -218,6 +225,13 @@ export default function FulfillmentSettingsPage() {
   const [externalShopId, setExternalShopId] = useState('');
   const [connecting, setConnecting]         = useState(false);
   const [error, setError]                   = useState('');
+
+  // Chrome ignores autocomplete="off" for fields it heuristically matches to
+  // a saved profile value (this base-URL field was getting the admin's own
+  // saved email filled in). Browsers don't autofill readonly fields on load,
+  // so drop readonly the moment the user actually focuses in.
+  const [keyFieldLocked, setKeyFieldLocked] = useState(true);
+  const [idFieldLocked, setIdFieldLocked]   = useState(true);
 
   const { data: connections, isLoading } = useQuery<FulfillmentConnection[]>({
     queryKey: QUERY_KEY,
@@ -347,9 +361,18 @@ export default function FulfillmentSettingsPage() {
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
+              onFocus={() => setKeyFieldLocked(false)}
               placeholder={fields.keyPlaceholder}
               className={inputCls}
+              name="mlh-fulfillment-key"
               autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              readOnly={keyFieldLocked}
+              data-lpignore="true"
+              data-1p-ignore=""
+              data-bwignore="true"
+              data-form-type="other"
             />
           </div>
 
@@ -359,9 +382,18 @@ export default function FulfillmentSettingsPage() {
               type="text"
               value={externalShopId}
               onChange={(e) => setExternalShopId(e.target.value)}
+              onFocus={() => setIdFieldLocked(false)}
               placeholder={fields.idPlaceholder}
               className={inputCls}
+              name="mlh-fulfillment-shop-ref"
               autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              readOnly={idFieldLocked}
+              data-lpignore="true"
+              data-1p-ignore=""
+              data-bwignore="true"
+              data-form-type="other"
             />
           </div>
 

@@ -1,0 +1,646 @@
+{
+  "about": {
+    "eyebrow": "Our Story",
+    "heroTitleLine1": "Crafting Memories,",
+    "heroTitleLine2": "One Gift at a Time",
+    "heroImageAlt": "Personalized gift being printed",
+    "quote": "The best gifts aren't bought — they're created with intention, love, and a personal touch.",
+    "missionP1": "EziHubb was born from a simple belief: the most meaningful gifts are the ones made uniquely for someone. We design every product ourselves and print it on demand — nothing sits pre-made in a warehouse.",
+    "missionP2": "Every order goes through the same careful process, from design to production to shipping, so the mug, canvas print, or tumbler you receive was made specifically for you.",
+    "missionP3": "We believe personalization is more than printing a name. It's capturing a moment, honoring a relationship, and creating something that will be treasured for years to come.",
+    "stats": {
+      "madeToOrder": { "value": "Made to Order", "label": "Every item personalized" },
+      "usaPrinted": { "value": "USA Printed", "label": "On-demand production" },
+      "noInventory": { "value": "No Inventory", "label": "Nothing pre-made or stored" }
+    },
+    "process": {
+      "title": "From Your Vision to Their Hands",
+      "subtitle": "Our process is simple and joyful — here's how your gift goes from idea to delivered.",
+      "steps": {
+        "personalize": {
+          "title": "You Personalize",
+          "description": "Choose from hundreds of products, upload your photos, add names and messages, then preview your creation before ordering."
+        },
+        "print": {
+          "title": "We Print",
+          "description": "Each item is printed on demand using premium materials and professional-grade equipment — made only after you order it."
+        },
+        "deliver": {
+          "title": "We Deliver",
+          "description": "Your creation is safely packaged and shipped to your door — or directly to the lucky recipient as a surprise gift."
+        }
+      }
+    },
+    "values": {
+      "title": "What We Stand For",
+      "items": {
+        "love": { "title": "Made with Love", "description": "Every order is a personal expression of care. We treat each item with the attention it deserves." },
+        "quality": { "title": "Quality First", "description": "We use only premium substrates and professional printing technology to ensure lasting results." },
+        "sustainable": { "title": "Sustainable", "description": "We use eco-friendly inks, recycled packaging, and carbon-neutral shipping options wherever possible." },
+        "customer": { "title": "Customer First", "description": "From personalization to delivery, we're with you every step. Our team responds within 2 hours." }
+      }
+    },
+    "cta": {
+      "title": "Ready to Create Something Special?",
+      "subtitle": "Browse our collection and create a personalized gift they'll never forget.",
+      "button": "Shop Personalized Gifts"
+    }
+  },
+
+  "careers": {
+    "eyebrow": "Careers",
+    "title": "Work at EziHubb",
+    "subtitle": "We're a small team with big ambitions. If you love craftsmanship, creativity, and making people happy — we want to hear from you.",
+    "cultureImageAlt": "Team at work",
+    "cultureTitle": "Life at EziHubb",
+    "perks": {
+      "remote": "Remote-first culture — work from anywhere",
+      "flexible": "Flexible hours — we care about output, not hours",
+      "mission": "Mission-driven work that makes people smile",
+      "growth": "Growth opportunities in a fast-moving startup",
+      "discounts": "Employee discounts on all our products",
+      "ownership": "Small team = real ownership and impact"
+    },
+    "openPositions": {
+      "title": "Open Positions",
+      "emptyTitle": "No open positions right now",
+      "emptyDesc": "We don't have any open roles at the moment, but we're always growing. Send us your resume and we'll keep you in mind for future opportunities.",
+      "resumeButton": "Send Your Resume"
+    },
+    "values": {
+      "title": "What We Look For",
+      "items": {
+        "creative": { "title": "Creative thinkers", "desc": "We value people who see problems as puzzles to be solved creatively." },
+        "ownership": { "title": "Ownership mindset", "desc": "Small team means you own your work end-to-end. We trust you to run with it." },
+        "customer": { "title": "Customer obsession", "desc": "Everything we do starts with \"how does this make our customer's day better?\"" }
+      }
+    }
+  },
+
+  "contact": {
+    "eyebrow": "Contact Us",
+    "title": "We'd Love to Hear from You",
+    "subtitle": "Questions, feedback, or custom orders — we're here to help.",
+    "cards": {
+      "chat": { "title": "Live Chat", "desc": "Available 24/7", "action": "Start a chat →" },
+      "email": { "title": "Email", "desc": "support@ezihubb.com", "action": "Send email →" },
+      "orderIssues": { "title": "Order Issues", "desc": "Track or manage your order", "action": "Track order →" }
+    },
+    "hours": {
+      "title": "Business Hours",
+      "mondayFriday": "Monday – Friday",
+      "mondayFridayTime": "9:00 AM – 6:00 PM EST",
+      "saturday": "Saturday",
+      "saturdayTime": "10:00 AM – 4:00 PM EST",
+      "sunday": "Sunday",
+      "sundayTime": "Closed",
+      "responseTime": "Average response time: <b>under 2 hours</b>"
+    },
+    "faqTeaser": {
+      "title": "Looking for quick answers?",
+      "desc": "Check our FAQ for instant help with common questions.",
+      "link": "Browse FAQ →"
+    },
+    "form": {
+      "nameLabel": "Name",
+      "namePlaceholder": "Your full name",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "subjectLabel": "Subject",
+      "subjectPlaceholder": "Select a topic…",
+      "subjects": {
+        "general": "General question",
+        "order": "Order issue or question",
+        "personalization": "Personalization help",
+        "returns": "Returns & exchanges",
+        "custom": "Custom / bulk order inquiry",
+        "other": "Other"
+      },
+      "orderNumberLabel": "Order Number",
+      "orderNumberPlaceholder": "e.g. MLH-2024-04521",
+      "orderNumberHint": "Find this in your confirmation email or Account → My Orders.",
+      "messageLabel": "Message",
+      "messagePlaceholder": "Tell us how we can help…",
+      "submit": "Send Message",
+      "submitting": "Sending…",
+      "successTitle": "Message sent!",
+      "successDesc": "We'll reply to your email within 2 hours during business hours.",
+      "sendAnother": "Send another message",
+      "genericError": "Something went wrong. Please try again.",
+      "validation": {
+        "nameMin": "Name must be at least 2 characters",
+        "emailInvalid": "Enter a valid email address",
+        "subjectRequired": "Please select a topic",
+        "messageMin": "Please provide more detail (min 20 characters)"
+      }
+    }
+  },
+
+  "faq": {
+    "eyebrow": "FAQ",
+    "title": "Frequently Asked Questions",
+    "subtitle": "Everything you need to know about ordering, personalization, and delivery.",
+    "search": {
+      "placeholder": "Search questions… e.g. shipping, refund, personalization",
+      "clearAriaLabel": "Clear search",
+      "noResultsPrefix": "No results for",
+      "askDirectly": "Ask us directly →"
+    },
+    "stillHaveQuestions": {
+      "title": "Still have questions?",
+      "desc": "Our support team responds within 2 hours on business days.",
+      "button": "Contact Support"
+    },
+    "data": {
+      "categories": {
+        "ordering": "Ordering & Personalization",
+        "production": "Production & Quality",
+        "shipping": "Shipping & Delivery",
+        "returns": "Returns & Refunds",
+        "account": "Account & Payment"
+      },
+      "questions": {
+        "ordering": {
+          "q1": { "q": "How do I personalize a product?", "a": "After choosing a product, click \"Personalize Now\" to open our customizer. You can add names, upload photos, choose styles, and enter messages. You'll see a real-time preview before adding to cart." },
+          "q2": { "q": "What file formats are accepted for photo uploads?", "a": "We accept JPG, PNG, WEBP, and HEIC (iPhone photos). For best results, use a photo with at least 1000×1000 pixels. We'll let you know if the quality is too low." },
+          "q3": { "q": "Can I order a product without personalization?", "a": "Most of our products are designed to be personalized, but some can be ordered as-is. Products with an \"Add to Cart\" button (without personalization required) can be purchased immediately." },
+          "q4": { "q": "Can I make changes to my order after placing it?", "a": "Yes — but only within 2 hours of ordering. After that, production may have started and changes aren't possible. Contact us immediately at support@ezihubb.com for changes." },
+          "q5": { "q": "Do you accept custom orders not shown on the website?", "a": "Yes! We love custom orders. Contact us via the Contact page and describe what you're looking for. We handle custom orders for events, corporate gifting, and bulk orders." }
+        },
+        "production": {
+          "q1": { "q": "How long does production take?", "a": "Most items are produced within 3–7 business days after ordering. Rush production (1–2 days) is available at checkout for most products." },
+          "q2": { "q": "What materials and printing methods do you use?", "a": "It depends on the product. Mugs are ceramic with dye-sublimation printing. Canvas prints use giclée UV printing on poly-cotton canvas. Apparel uses DTG (direct-to-garment) printing on premium cotton. Specific details are on each product page." },
+          "q3": { "q": "What if the quality of my order doesn't meet expectations?", "a": "We stand behind every item. If you're not satisfied, contact us within 30 days with a photo of the issue and we'll send a free replacement or provide a full refund — no questions asked." }
+        },
+        "shipping": {
+          "q1": { "q": "How long does shipping take?", "a": "Standard shipping within the US takes 5–10 business days after production. Express shipping (2–3 days) is available. International shipping takes 14–21 business days." },
+          "q2": { "q": "Do you offer free shipping?", "a": "Yes! All US orders over $50 ship free. International orders over $100 qualify for discounted shipping. Free shipping is automatically applied at checkout." },
+          "q3": { "q": "Can I track my order?", "a": "Absolutely. Once your order ships, you'll receive an email with a tracking number. You can also track your order anytime at ezihubb.com/orders/track." },
+          "q4": { "q": "Do you ship internationally?", "a": "We ship to 30+ countries worldwide. Shipping costs and delivery times vary by destination. Enter your address at checkout for an exact quote. Note: customs duties may apply for international orders." },
+          "q5": { "q": "My order says \"delivered\" but I haven't received it — what should I do?", "a": "First, check with neighbors and any safe spots around your property. If still missing, contact us within 7 days of the marked delivery date. We'll work with the carrier to locate it or send a replacement." }
+        },
+        "returns": {
+          "q1": { "q": "Can I return a personalized item?", "a": "Personalized items generally can't be returned because they're made just for you. However, if there's a defect, wrong personalization, or damage in shipping, we'll replace it for free or issue a full refund." },
+          "q2": { "q": "What if I made a typo in my personalization?", "a": "We print exactly what you enter — typos included. Please double-check all text before ordering. If you notice an error within 2 hours of ordering, contact us immediately." },
+          "q3": { "q": "How long do refunds take?", "a": "Once approved, refunds are processed within 2–3 business days. Depending on your bank, it may take an additional 3–5 business days to appear on your statement." }
+        },
+        "account": {
+          "q1": { "q": "Do I need an account to order?", "a": "No, you can check out as a guest. However, creating an account lets you track orders, save addresses, and access your customization history — making future orders faster." },
+          "q2": { "q": "What payment methods do you accept?", "a": "We accept all major credit cards (Visa, Mastercard, Amex), PayPal, Apple Pay, and Google Pay. Gift cards purchased from us can also be applied at checkout." },
+          "q3": { "q": "Is my payment information secure?", "a": "Yes. We use Stripe for payment processing — one of the most secure payment platforms available. We never store your full card details on our servers." }
+        }
+      }
+    }
+  },
+
+  "howItWorks": {
+    "eyebrow": "How It Works",
+    "title": "Creating Your Perfect Gift is Simple",
+    "subtitle": "From browsing to doorstep in just a few steps. Here's exactly how the process works.",
+    "tipLabel": "Tip:",
+    "steps": {
+      "browse": {
+        "title": "Browse & Choose a Product",
+        "desc": "Explore our catalog of 120+ personalized products — from custom mugs and canvas prints to hoodies, ornaments, and more. Filter by occasion, recipient, or category to find the perfect match.",
+        "tip": "Use the \"Occasions\" menu to find gifts for specific events like birthdays or anniversaries."
+      },
+      "personalize": {
+        "title": "Personalize It Your Way",
+        "desc": "Use our easy-to-use customizer to add names, upload photos, choose styles, and write special messages. See a real-time preview of your product as you customize it — no design skills needed.",
+        "tip": "Upload the highest quality photo you have for the best print result. We'll optimize it automatically."
+      },
+      "craft": {
+        "title": "We Craft It Just for You",
+        "desc": "Once you order, our production team gets to work. Every item is made to order — never mass-produced. We use premium materials and professional-grade printing to ensure the highest quality.",
+        "tip": "Most orders are in production within 1–2 business days. Rush production is available at checkout."
+      },
+      "delivery": {
+        "title": "Fast, Safe Delivery",
+        "desc": "Your order is carefully packaged and shipped to your door. We offer free standard shipping on orders over $50, and express options if you need it fast. Real-time tracking keeps you updated.",
+        "tip": "Order at least 7 days before a gift occasion to receive it comfortably in time."
+      }
+    },
+    "guarantees": {
+      "title": "Our Guarantee to You",
+      "items": {
+        "quality": { "title": "Quality Guaranteed", "desc": "Not happy with your order? Contact us within 30 days and we'll make it right — free replacement or full refund." },
+        "secure": { "title": "Secure Checkout", "desc": "Shop safely with SSL encryption, Stripe payments, and PayPal. Your payment info is never stored on our servers." },
+        "onTime": { "title": "On-Time Delivery", "desc": "We track every order and proactively contact you if there's any delay. Your gift will arrive when promised." },
+        "support": { "title": "24/7 Support", "desc": "Real humans ready to help via chat or email. Average response time is under 2 hours during business hours." }
+      }
+    },
+    "faqTeaser": {
+      "prompt": "Still have questions?",
+      "viewFaq": "View Full FAQ",
+      "contactSupport": "Contact Support"
+    }
+  },
+
+  "ourStory": {
+    "eyebrow": "Our Story",
+    "heroTitleLine1": "Made with Love,",
+    "heroTitleLine2": "Delivered with Care",
+    "subtitle": "EziHubb was born from a simple belief: the best gifts are the ones that tell a story — your story.",
+    "aboutTitle": "What We're About",
+    "aboutP1": "EziHubb exists because too many gifts on the market feel generic, mass-produced, and forgettable. We wanted to make it easy to give something that actually feels personal — a custom mug with an inside joke, a canvas print of a meaningful place, an ornament engraved with a special date.",
+    "aboutP2": "Every design is created in-house and printed to order — nothing sits pre-made in a warehouse waiting to be sold. That's what lets us keep every item personal to the person receiving it.",
+    "aboutImageAlt": "Personalized gift production",
+    "beliefs": {
+      "title": "What We Believe In",
+      "items": {
+        "story": { "title": "Every Gift Has a Story", "desc": "We believe the most meaningful gifts capture real moments, real relationships, and real love. That's why every item we create starts with your story." },
+        "quality": { "title": "Quality Without Compromise", "desc": "We use premium materials and work only with trusted print partners who share our obsession with quality. If it's not good enough for our family, it won't ship to yours." },
+        "people": { "title": "People Over Profit", "desc": "We're a small team that cares deeply about our customers. Every message gets a real response, every complaint gets taken seriously, every order gets our full attention." }
+      }
+    },
+    "howWeWork": {
+      "title": "How We Work",
+      "items": {
+        "designed": { "title": "Designed In-House", "desc": "Every design starts with us, not a catalog." },
+        "printed": { "title": "Printed On Demand", "desc": "Nothing is pre-made — made only after you order." },
+        "shipped": { "title": "Shipped from the USA", "desc": "Produced and shipped domestically." }
+      }
+    },
+    "cta": {
+      "title": "Ready to Create Something Special?",
+      "subtitle": "Browse our collection and find the perfect personalized gift for someone you love.",
+      "button": "Shop Personalized Gifts"
+    }
+  },
+
+  "returns": {
+    "eyebrow": "Returns & Exchanges",
+    "title": "Our Promise to You",
+    "subtitle": "We want you to love your purchase. If something goes wrong, we'll always make it right.",
+    "policyCards": {
+      "protection": { "title": "30-Day Protection", "desc": "Contact us within 30 days of delivery for any quality issue." },
+      "replacements": { "title": "Free Replacements", "desc": "Defective or incorrect items get a free replacement, no return needed." },
+      "refunds": { "title": "Full Refunds", "desc": "If we can't fix it, you get 100% of your money back." }
+    },
+    "coverage": {
+      "title": "What's Covered",
+      "items": {
+        "defective": { "covered": true, "title": "Defective or damaged items", "desc": "If your item arrived broken, cracked, or damaged during shipping, we'll replace it immediately." },
+        "wrongPersonalization": { "covered": true, "title": "Wrong personalization", "desc": "If we printed the wrong name, date, or photo — entirely our fault — you get a free replacement." },
+        "different": { "covered": true, "title": "Significantly different from description", "desc": "If the product looks substantially different from what was shown, contact us for a resolution." },
+        "lost": { "covered": true, "title": "Lost in transit", "desc": "If your order never arrived and tracking shows no updates for 7+ days, we'll resend or refund." },
+        "typos": { "covered": false, "title": "Buyer typos or input errors", "desc": "We print exactly what you enter. Mistakes in your personalization text are not covered, so please proofread carefully." },
+        "changedMind": { "covered": false, "title": "Changed your mind", "desc": "Since every item is made to order specifically for you, we're unable to accept returns for change of mind." },
+        "colorVariation": { "covered": false, "title": "Color variation on screens", "desc": "Screen colors vary between devices. Minor color differences between screen preview and printed product are normal." }
+      }
+    },
+    "resolution": {
+      "title": "How to Get a Resolution",
+      "steps": {
+        "contact": { "title": "Contact us within 30 days", "desc": "Reach out via our contact page or email support@ezihubb.com. Include your order number and a brief description of the issue." },
+        "photo": { "title": "Send a photo of the issue", "desc": "For quality issues or damage, attach 1–2 clear photos. This helps us understand the problem and process your request faster." },
+        "resolve": { "title": "We'll resolve it within 24 hours", "desc": "We typically respond and resolve within 24 business hours. We'll either ship a free replacement or issue a full refund to your original payment method." }
+      }
+    },
+    "cancellations": {
+      "title": "Order Cancellations",
+      "p1": "You can cancel your order <b>within 2 hours</b> of placing it. After that, production may have started and we're unable to cancel.",
+      "p2": "To cancel, go to <b>My Account → Orders</b> and click \"Cancel Order\" on the relevant order, or contact us immediately at support@ezihubb.com.",
+      "viewOrders": "View My Orders",
+      "contactUs": "Contact Us"
+    },
+    "exchanges": {
+      "title": "Exchanges",
+      "desc": "Because our items are personalized to order, traditional exchanges aren't possible. If you'd like a different size, color, or personalization — place a new order and contact us about the original. We'll do our best to accommodate you.",
+      "link": "Talk to our team →"
+    }
+  },
+
+  "reviews": {
+    "eyebrow": "Customer Reviews",
+    "title": "What Our Customers Say",
+    "subtitle": "Real reviews from real people. We don't filter the bad ones — though there aren't many.",
+    "reviewsCount": "{count} reviews",
+    "gaveFiveStars": "{percent}% gave 5 stars",
+    "verifiedPurchasesOnly": "Verified purchases only",
+    "verifiedBadge": "Verified ✓",
+    "anonymous": "Anonymous",
+    "purchased": "Purchased:",
+    "customerPhotoAlt": "Customer photo",
+    "noReviews": "No reviews yet — check back soon!",
+    "topRated": "Our Highest-Rated Products"
+  },
+
+  "shippingInfo": {
+    "eyebrow": "Shipping Information",
+    "title": "Fast, Reliable Delivery",
+    "subtitle": "We ship every order with care and provide real-time tracking so you always know where your gift is.",
+    "productionNotice": {
+      "title": "Important: Production Time Comes First",
+      "desc": "Since every item is made to order, production takes 3–7 business days before your order ships. The shipping times below are in addition to production time. Rush production (1–2 days) is available at checkout."
+    },
+    "domestic": {
+      "title": "Domestic Shipping (United States)",
+      "headers": { "method": "Method", "time": "Delivery Time", "cost": "Cost" },
+      "rows": {
+        "standard": { "method": "Standard Shipping", "time": "5–10 business days", "cost": "$5.99 (Free over $50)" },
+        "express": { "method": "Express Shipping", "time": "2–3 business days", "cost": "$14.99" },
+        "overnight": { "method": "Overnight Shipping", "time": "1 business day", "cost": "$29.99" }
+      },
+      "footnote": "* Free shipping on orders over $50 is automatically applied at checkout. Not combinable with gift card purchases."
+    },
+    "international": {
+      "title": "International Shipping",
+      "headers": { "region": "Region", "time": "Delivery Time", "cost": "Starting From" },
+      "rows": {
+        "canada": { "region": "Canada", "time": "7–14 business days", "cost": "$12.99" },
+        "uk": { "region": "United Kingdom", "time": "10–18 business days", "cost": "$14.99" },
+        "eu": { "region": "European Union", "time": "10–21 business days", "cost": "$14.99" },
+        "anz": { "region": "Australia & NZ", "time": "14–21 business days", "cost": "$16.99" },
+        "sea": { "region": "Vietnam & SE Asia", "time": "14–25 business days", "cost": "$15.99" },
+        "row": { "region": "Rest of World", "time": "14–30 business days", "cost": "$19.99" }
+      },
+      "note1": "⚠️ International orders may be subject to customs duties and import taxes.",
+      "note2": "These fees are the responsibility of the recipient and are not included in our prices.",
+      "note3": "Free international shipping on orders over $100."
+    },
+    "tracking": {
+      "title": "Order Tracking",
+      "stepLabel": "Step {step}",
+      "steps": {
+        "confirmed": { "title": "Order Confirmed", "desc": "You'll receive an email confirmation immediately after ordering." },
+        "production": { "title": "In Production", "desc": "We'll email you when your item enters production (usually within 24 hours)." },
+        "shipped": { "title": "Shipped", "desc": "You'll receive a tracking number via email. Track at any time in your account." }
+      },
+      "trackButton": "Track Your Order"
+    },
+    "faqs": {
+      "title": "Common Shipping Questions",
+      "items": {
+        "lost": { "q": "What happens if my order is lost in transit?", "a": "Contact us within 30 days of the expected delivery date. We'll file a claim with the carrier and send you a free replacement." },
+        "address": { "q": "Can I change my shipping address after ordering?", "a": "Address changes are possible within 2 hours of ordering. After that, the order may already be processed. Contact us immediately." },
+        "poBox": { "q": "Do you ship to PO boxes?", "a": "Yes, for standard USPS shipping. Express and overnight options require a physical address." }
+      },
+      "moreQuestions": "More questions?",
+      "viewFaq": "View Full FAQ →"
+    }
+  },
+
+  "privacyPolicy": {
+    "legalLabel": "Legal",
+    "title": "Privacy Policy",
+    "subtitle": "Your privacy matters to us. This policy explains what personal data we collect, why we collect it, and how you can control it.",
+    "effectiveLabel": "Effective:",
+    "lastUpdatedLabel": "Last updated:",
+    "effectiveDate": "June 15, 2026",
+    "lastUpdatedDate": "June 15, 2026",
+    "contentsLabel": "Contents",
+    "toc": {
+      "informationWeCollect": "1. Information We Collect",
+      "howWeUse": "2. How We Use Your Information",
+      "sharing": "3. Information Sharing",
+      "cookies": "4. Cookies & Tracking",
+      "security": "5. Data Security",
+      "yourRights": "6. Your Privacy Rights",
+      "retention": "7. Data Retention",
+      "children": "8. Children's Privacy",
+      "international": "9. International Transfers",
+      "changes": "10. Changes to Policy",
+      "contact": "11. Contact Us"
+    },
+    "sections": {
+      "informationWeCollect": {
+        "title": "1. Information We Collect",
+        "intro": "We collect information you provide directly to us and information we collect automatically when you use the Platform.",
+        "providedLabel": "Information you provide:",
+        "providedItems": [
+          "Account details: name, email address, password, and profile photo.",
+          "Payment information: billing address and payment method details (processed securely by our payment partners — we do not store card numbers).",
+          "Shipping information: delivery addresses for orders.",
+          "Content you upload: product photos, personalization files, review text, and messages.",
+          "Communications: messages you send to our support team."
+        ],
+        "automaticLabel": "Information collected automatically:",
+        "automaticItems": [
+          "Usage data: pages visited, search queries, clicks, and time spent on the Platform.",
+          "Device data: browser type, operating system, IP address, and device identifiers.",
+          "Location data: approximate location inferred from IP address.",
+          "Transaction data: order history, amounts, and timestamps.",
+          "Cookies and similar tracking technologies (see Section 4)."
+        ]
+      },
+      "howWeUse": {
+        "title": "2. How We Use Your Information",
+        "intro": "We use the information we collect to:",
+        "items": [
+          "Create and manage your account.",
+          "Process transactions and payments for your orders.",
+          "Send order confirmations, shipping updates, and receipts.",
+          "Respond to your questions and provide customer support.",
+          "Personalize your experience and surface relevant products.",
+          "Send marketing communications (with your consent, where required).",
+          "Detect and prevent fraud, abuse, and other unauthorized activity.",
+          "Comply with legal obligations and enforce our Terms of Service.",
+          "Analyze usage patterns to improve the Platform.",
+          "Communicate Platform updates, policy changes, and important notices."
+        ],
+        "legalBasisTitle": "Legal Basis (GDPR)",
+        "legalBasisBody": "For users in the European Economic Area, our legal bases for processing are: contract performance (order fulfillment), legitimate interests (fraud prevention, platform improvement), consent (marketing emails), and legal obligation (tax records)."
+      },
+      "sharing": {
+        "title": "3. Information Sharing & Disclosure",
+        "intro": "We do not sell your personal information. We share it only in the following circumstances:",
+        "providersLabel": "With service providers:",
+        "providersBody": "We work with trusted third parties to operate the Platform, including payment processors (Stripe), shipping carriers (EasyPost), email delivery (SendGrid), cloud hosting (Cloudflare R2), and analytics. These providers are contractually bound to protect your data.",
+        "legalReasonsLabel": "For legal reasons:",
+        "legalReasonsBody": "We may disclose information if required by law, court order, or government authority, or if we believe disclosure is necessary to protect the rights, property, or safety of EziHubb, our users, or the public.",
+        "transfersLabel": "Business transfers:",
+        "transfersBody": "In the event of a merger, acquisition, or sale of all or substantially all of our assets, your information may be transferred as part of that transaction. We will notify you before your data becomes subject to a different privacy policy."
+      },
+      "cookies": {
+        "title": "4. Cookies & Tracking Technologies",
+        "intro": "We use cookies and similar technologies to operate the Platform, remember your preferences, and analyze usage.",
+        "table": {
+          "headers": { "category": "Category", "purpose": "Purpose", "optOut": "Can opt out?" },
+          "rows": {
+            "essential": { "category": "Essential", "purpose": "Session management, security, checkout", "optOut": "No" },
+            "functional": { "category": "Functional", "purpose": "Language, currency, and display preferences", "optOut": "No" },
+            "analytics": { "category": "Analytics", "purpose": "Page views, usage patterns (Google Analytics)", "optOut": "Yes" },
+            "marketing": { "category": "Marketing", "purpose": "Personalised ads and retargeting (Meta Pixel, Pinterest Tag)", "optOut": "Yes" }
+          }
+        },
+        "outro": "You can manage cookie preferences via our Cookie Banner or your browser settings. Disabling certain cookies may impact Platform functionality."
+      },
+      "security": {
+        "title": "5. Data Security",
+        "p1": "We implement industry-standard security measures to protect your information, including TLS encryption for data in transit, AES-256 encryption for sensitive data at rest, and regular security audits.",
+        "p2": "Access to personal data is restricted to employees and contractors who need it to perform their duties, and all such personnel are bound by confidentiality obligations.",
+        "p3": "Despite our efforts, no security measure is perfect. If you believe your account has been compromised, please contact us immediately at security@ezihubb.com."
+      },
+      "yourRights": {
+        "title": "6. Your Privacy Rights",
+        "intro": "Depending on where you live, you may have the following rights regarding your personal data:",
+        "rights": {
+          "access": { "right": "Access", "desc": "Request a copy of the data we hold about you." },
+          "correction": { "right": "Correction", "desc": "Correct inaccurate or incomplete data." },
+          "deletion": { "right": "Deletion", "desc": "Request deletion of your personal data." },
+          "portability": { "right": "Portability", "desc": "Receive your data in a machine-readable format." },
+          "restriction": { "right": "Restriction", "desc": "Limit how we process your data in certain situations." },
+          "objection": { "right": "Objection", "desc": "Object to processing based on legitimate interests." },
+          "optOut": { "right": "Opt-out", "desc": "Opt out of marketing emails at any time." },
+          "withdrawConsent": { "right": "Withdraw consent", "desc": "Withdraw consent where processing is consent-based." }
+        },
+        "contactP": "To exercise any of these rights, email us at privacy@ezihubb.com. We will respond within 30 days (or as required by applicable law). We may need to verify your identity before fulfilling your request.",
+        "euP": "If you are in the EU/EEA, you also have the right to lodge a complaint with your local data protection authority."
+      },
+      "retention": {
+        "title": "7. Data Retention",
+        "p1": "We retain your personal data for as long as your account is active, plus any additional period required to comply with legal obligations (such as tax record-keeping), resolve disputes, and enforce our agreements.",
+        "p2": "Specifically: account data is kept for 2 years after account closure; transaction records are kept for 7 years for tax purposes; marketing consent records are kept for 5 years.",
+        "p3": "You may request deletion of your account and associated data at any time by going to <b>Account → Settings → Delete Account</b>, or by emailing privacy@ezihubb.com."
+      },
+      "children": {
+        "title": "8. Children's Privacy",
+        "p1": "The Platform is not directed to children under 13 years of age, and we do not knowingly collect personal information from children under 13. If you believe we have inadvertently collected information from a child, please contact us immediately and we will delete it.",
+        "p2": "For users between 13 and 18, we encourage parental or guardian review and supervision of Platform use."
+      },
+      "international": {
+        "title": "9. International Data Transfers",
+        "p1": "EziHubb operates from the United States. If you are located outside the US, your information may be transferred to and processed in the US or other countries where our service providers operate.",
+        "p2": "For transfers from the European Economic Area (EEA) or United Kingdom, we rely on Standard Contractual Clauses approved by the European Commission to ensure an adequate level of data protection."
+      },
+      "changes": {
+        "title": "10. Changes to This Policy",
+        "p1": "We may update this Privacy Policy from time to time to reflect changes in our practices or for legal, operational, or regulatory reasons. We will notify you of material changes via email or a prominent notice on the Platform.",
+        "p2": "We encourage you to review this Policy periodically. The \"Last updated\" date at the top indicates when the most recent changes were made."
+      },
+      "contact": {
+        "title": "11. Contact Us",
+        "intro": "If you have questions about this Privacy Policy or how we handle your data, please contact us:",
+        "companyName": "EziHubb, Inc.",
+        "deptLabel": "Privacy & Data Protection",
+        "euNote": "EU/UK users may also contact our Data Protection Officer at dpo@ezihubb.com."
+      }
+    },
+    "footer": {
+      "copyright": "© 2026 EziHubb, Inc. All rights reserved.",
+      "termsLink": "Terms of Service",
+      "faqLink": "FAQ",
+      "contactLink": "Contact"
+    }
+  },
+
+  "terms": {
+    "legalLabel": "Legal",
+    "title": "Terms of Service",
+    "subtitle": "These Terms govern your use of EziHubb. Please read them carefully before placing an order.",
+    "effectiveLabel": "Effective:",
+    "lastUpdatedLabel": "Last updated:",
+    "effectiveDate": "June 15, 2026",
+    "lastUpdatedDate": "June 15, 2026",
+    "contentsLabel": "Contents",
+    "toc": {
+      "acceptance": "1. Acceptance of Terms",
+      "useOfPlatform": "2. Use of the Platform",
+      "accounts": "3. Account Registration",
+      "buyerTerms": "4. Orders & Purchases",
+      "feesPayments": "5. Fees & Payments",
+      "intellectual": "6. Intellectual Property",
+      "prohibited": "7. Prohibited Activities",
+      "disclaimers": "8. Disclaimers & Liability",
+      "governingLaw": "9. Governing Law",
+      "changes": "10. Changes to Terms",
+      "contact": "11. Contact Us"
+    },
+    "sections": {
+      "acceptance": {
+        "title": "1. Acceptance of Terms",
+        "p1": "By accessing or using EziHubb (\"Platform\", \"we\", \"us\", or \"our\"), you agree to be bound by these Terms of Service (\"Terms\"). If you do not agree to these Terms, you may not use the Platform.",
+        "p2": "These Terms constitute a legally binding agreement between you and EziHubb. Your continued use of the Platform following any updates to these Terms constitutes your acceptance of the revised Terms.",
+        "p3": "If you are using the Platform on behalf of an organization, you represent that you have the authority to bind that organization to these Terms."
+      },
+      "useOfPlatform": {
+        "title": "2. Use of the Platform",
+        "p1": "EziHubb designs and sells personalized, print-on-demand gifts directly to you. Every product on the Platform is our own — we are the seller of record for every order.",
+        "p2": "You must be at least 18 years old to create an account or make purchases. By using the Platform, you represent that you meet this age requirement.",
+        "p3": "You agree to use the Platform only for lawful purposes and in accordance with these Terms. You are responsible for ensuring that your use complies with all applicable local, national, and international laws and regulations."
+      },
+      "accounts": {
+        "title": "3. Account Registration",
+        "intro": "To access certain features, you must register for an account. When you do, you agree to:",
+        "items": [
+          "Provide accurate, current, and complete information during registration.",
+          "Maintain and promptly update your account information.",
+          "Keep your password secure and not share it with third parties.",
+          "Notify us immediately of any unauthorized use of your account.",
+          "Accept responsibility for all activities that occur under your account."
+        ],
+        "outro": "We reserve the right to suspend or terminate accounts that provide inaccurate information, violate these Terms, or engage in fraudulent activity."
+      },
+      "buyerTerms": {
+        "title": "4. Orders & Purchases",
+        "p1": "When you place an order on EziHubb, you enter into a contract directly with us. Every product is designed by EziHubb and printed to order — we are the seller of record for every item on the Platform.",
+        "ordersPaymentLabel": "Orders & Payment:",
+        "ordersPaymentBody": "By completing checkout, you authorize payment for the order total, including applicable taxes and shipping fees.",
+        "cancellationsLabel": "Cancellations:",
+        "cancellationsBody": "You may request a cancellation within 2 hours of placing an order, before production begins. After that window, cancellation is at our discretion since production has already started.",
+        "returnsRefundsLabel": "Returns & Refunds:",
+        "returnsRefundsBody": "Personalized and custom-made items may not be eligible for return unless they arrive damaged, defective, or materially different from the listing description. See our full <link>Returns Policy</link> for details.",
+        "disputesLabel": "Disputes:",
+        "disputesBody": "If you have a problem with an order, contact us directly and we'll work to resolve it."
+      },
+      "feesPayments": {
+        "title": "5. Fees & Payments",
+        "p1": "Prices on the Platform are displayed inclusive or exclusive of taxes depending on your location. You are responsible for any applicable sales tax, VAT, or customs duties related to your purchase.",
+        "p2": "We use industry-standard payment processors and do not store your full card details."
+      },
+      "intellectual": {
+        "title": "6. Intellectual Property",
+        "platformIpLabel": "Platform IP:",
+        "platformIpBody": "The EziHubb name, logo, design, and software are owned by us and protected by intellectual property laws. You may not use them without our prior written consent.",
+        "userContentLabel": "User Content:",
+        "userContentBody": "By uploading content to the Platform (photos, text, designs), you grant EziHubb a non-exclusive, worldwide, royalty-free license to use, display, and reproduce that content solely to operate and promote the Platform. You retain ownership of your content.",
+        "thirdPartyIpLabel": "Third-party IP:",
+        "thirdPartyIpBody": "You must not upload or sell content that infringes another party's intellectual property rights. If you believe your IP has been infringed, please contact us via our DMCA notice process at legal@ezihubb.com."
+      },
+      "prohibited": {
+        "title": "7. Prohibited Activities",
+        "intro": "You agree not to:",
+        "items": [
+          "Use the Platform for any unlawful purpose or to promote illegal activities.",
+          "Post false, misleading, or deceptive content.",
+          "Harass, threaten, or harm other users.",
+          "Attempt to gain unauthorized access to any part of the Platform or other users' accounts.",
+          "Use automated bots, scrapers, or crawlers without our express written permission.",
+          "Circumvent, disable, or interfere with security or authentication features.",
+          "Engage in market manipulation, fake reviews, or coordinated inauthentic behavior.",
+          "Resell items purchased from EziHubb in a way that misrepresents them as your own designs."
+        ]
+      },
+      "disclaimers": {
+        "title": "8. Disclaimers & Limitation of Liability",
+        "p1": "THE PLATFORM IS PROVIDED \"AS IS\" WITHOUT WARRANTIES OF ANY KIND. WE DO NOT WARRANT THAT THE PLATFORM WILL BE UNINTERRUPTED, ERROR-FREE, OR FREE OF VIRUSES OR OTHER HARMFUL COMPONENTS.",
+        "p2": "TO THE MAXIMUM EXTENT PERMITTED BY LAW, EZIHUBB SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING FROM YOUR USE OF THE PLATFORM OR TRANSACTIONS CONDUCTED THROUGH IT.",
+        "p3": "OUR TOTAL LIABILITY TO YOU FOR ANY CLAIMS ARISING FROM OR RELATING TO THESE TERMS OR THE PLATFORM SHALL NOT EXCEED THE GREATER OF (A) $100 USD OR (B) THE TOTAL FEES YOU PAID TO US IN THE 12 MONTHS PRECEDING THE CLAIM.",
+        "p4": "Some jurisdictions do not allow the exclusion of certain warranties or limitation of liability, so some of the above may not apply to you."
+      },
+      "governingLaw": {
+        "title": "9. Governing Law",
+        "p1": "These Terms shall be governed by and construed in accordance with the laws of the State of Delaware, United States, without regard to its conflict of law principles.",
+        "p2": "Any dispute arising from or relating to these Terms or the Platform that cannot be resolved informally shall be submitted to binding arbitration in accordance with the American Arbitration Association's Consumer Arbitration Rules. You waive any right to participate in a class action lawsuit or class-wide arbitration."
+      },
+      "changes": {
+        "title": "10. Changes to Terms",
+        "p1": "We may modify these Terms from time to time. When we make material changes, we will notify you via email or a prominent notice on the Platform at least 30 days before the changes take effect.",
+        "p2": "Your continued use of the Platform after the effective date of the revised Terms constitutes your acceptance of the changes. If you do not agree to the new Terms, you must stop using the Platform."
+      },
+      "contact": {
+        "title": "11. Contact Us",
+        "intro": "If you have questions about these Terms of Service, please reach out to us:",
+        "companyName": "EziHubb, Inc.",
+        "deptLabel": "Legal Department"
+      }
+    },
+    "footer": {
+      "copyright": "© 2026 EziHubb, Inc. All rights reserved.",
+      "privacyLink": "Privacy Policy",
+      "faqLink": "FAQ",
+      "contactLink": "Contact"
+    }
+  }
+}

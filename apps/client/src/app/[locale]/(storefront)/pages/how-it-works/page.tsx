@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import {
   ShoppingBag, Pencil, Wrench, Truck, Lightbulb,
   ShieldCheck, Lock, Clock, MessageCircle,
@@ -17,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-// ── Data ──────────────────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 interface Step {
   step:  string;
@@ -28,86 +29,91 @@ interface Step {
   image: string;
 }
 
-const steps: Step[] = [
-  {
-    step:  '01',
-    title: 'Browse & Choose a Product',
-    desc:  'Explore our catalog of 120+ personalized products — from custom mugs and canvas prints to hoodies, ornaments, and more. Filter by occasion, recipient, or category to find the perfect match.',
-    tip:   'Use the "Occasions" menu to find gifts for specific events like birthdays or anniversaries.',
-    Icon:  ShoppingBag,
-    image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=500&q=80',
-  },
-  {
-    step:  '02',
-    title: 'Personalize It Your Way',
-    desc:  "Use our easy-to-use customizer to add names, upload photos, choose styles, and write special messages. See a real-time preview of your product as you customize it — no design skills needed.",
-    tip:   "Upload the highest quality photo you have for the best print result. We'll optimize it automatically.",
-    Icon:  Pencil,
-    image: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=500&q=80',
-  },
-  {
-    step:  '03',
-    title: 'We Craft It Just for You',
-    desc:  'Once you order, our production team gets to work. Every item is made to order — never mass-produced. We use premium materials and professional-grade printing to ensure the highest quality.',
-    tip:   'Most orders are in production within 1–2 business days. Rush production is available at checkout.',
-    Icon:  Wrench,
-    image: 'https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?w=500&q=80',
-  },
-  {
-    step:  '04',
-    title: 'Fast, Safe Delivery',
-    desc:  'Your order is carefully packaged and shipped to your door. We offer free standard shipping on orders over $50, and express options if you need it fast. Real-time tracking keeps you updated.',
-    tip:   'Order at least 7 days before a gift occasion to receive it comfortably in time.',
-    Icon:  Truck,
-    image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500&q=80',
-  },
-];
-
 interface Guarantee {
   Icon:  LucideIcon;
   title: string;
   desc:  string;
 }
 
-const guarantees: Guarantee[] = [
-  {
-    Icon:  ShieldCheck,
-    title: 'Quality Guaranteed',
-    desc:  "Not happy with your order? Contact us within 30 days and we'll make it right — free replacement or full refund.",
-  },
-  {
-    Icon:  Lock,
-    title: 'Secure Checkout',
-    desc:  'Shop safely with SSL encryption, Stripe payments, and PayPal. Your payment info is never stored on our servers.',
-  },
-  {
-    Icon:  Clock,
-    title: 'On-Time Delivery',
-    desc:  "We track every order and proactively contact you if there's any delay. Your gift will arrive when promised.",
-  },
-  {
-    Icon:  MessageCircle,
-    title: '24/7 Support',
-    desc:  'Real humans ready to help via chat or email. Average response time is under 2 hours during business hours.',
-  },
-];
+export default async function HowItWorksPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'pages.howItWorks' });
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+  const steps: Step[] = [
+    {
+      step:  '01',
+      title: t('steps.browse.title'),
+      desc:  t('steps.browse.desc'),
+      tip:   t('steps.browse.tip'),
+      Icon:  ShoppingBag,
+      image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=500&q=80',
+    },
+    {
+      step:  '02',
+      title: t('steps.personalize.title'),
+      desc:  t('steps.personalize.desc'),
+      tip:   t('steps.personalize.tip'),
+      Icon:  Pencil,
+      image: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=500&q=80',
+    },
+    {
+      step:  '03',
+      title: t('steps.craft.title'),
+      desc:  t('steps.craft.desc'),
+      tip:   t('steps.craft.tip'),
+      Icon:  Wrench,
+      image: 'https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?w=500&q=80',
+    },
+    {
+      step:  '04',
+      title: t('steps.delivery.title'),
+      desc:  t('steps.delivery.desc'),
+      tip:   t('steps.delivery.tip'),
+      Icon:  Truck,
+      image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500&q=80',
+    },
+  ];
 
-export default function HowItWorksPage() {
+  const guarantees: Guarantee[] = [
+    {
+      Icon:  ShieldCheck,
+      title: t('guarantees.items.quality.title'),
+      desc:  t('guarantees.items.quality.desc'),
+    },
+    {
+      Icon:  Lock,
+      title: t('guarantees.items.secure.title'),
+      desc:  t('guarantees.items.secure.desc'),
+    },
+    {
+      Icon:  Clock,
+      title: t('guarantees.items.onTime.title'),
+      desc:  t('guarantees.items.onTime.desc'),
+    },
+    {
+      Icon:  MessageCircle,
+      title: t('guarantees.items.support.title'),
+      desc:  t('guarantees.items.support.desc'),
+    },
+  ];
+
   return (
     <div className="max-w-[900px] mx-auto px-4 py-16">
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div className="text-center mb-16">
         <p className="text-primary font-medium text-sm mb-3 tracking-wide uppercase">
-          How It Works
+          {t('eyebrow')}
         </p>
         <h1 className="font-display text-4xl md:text-5xl font-bold text-secondary mb-4">
-          Creating Your Perfect Gift is Simple
+          {t('title')}
         </h1>
         <p className="text-lg text-muted max-w-xl mx-auto">
-          From browsing to doorstep in just a few steps. Here&apos;s exactly how the process works.
+          {t('subtitle')}
         </p>
       </div>
 
@@ -141,7 +147,7 @@ export default function HowItWorksPage() {
               <p className="text-muted leading-relaxed mb-4">{desc}</p>
               <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-sm text-secondary flex items-start gap-2">
                 <Lightbulb className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                <span><strong>Tip:</strong> {tip}</span>
+                <span><strong>{t('tipLabel')}</strong> {tip}</span>
               </div>
             </div>
           </div>
@@ -151,7 +157,7 @@ export default function HowItWorksPage() {
       {/* ── Guarantees ────────────────────────────────────────────────────── */}
       <section className="bg-[#FAFAF8] rounded-3xl p-10 mb-16">
         <h2 className="text-2xl font-bold text-secondary text-center mb-8">
-          Our Guarantee to You
+          {t('guarantees.title')}
         </h2>
         <div className="grid sm:grid-cols-2 gap-6">
           {guarantees.map(({ Icon, title, desc }) => (
@@ -170,19 +176,19 @@ export default function HowItWorksPage() {
 
       {/* ── FAQ teaser ────────────────────────────────────────────────────── */}
       <section className="text-center">
-        <p className="text-muted mb-4">Still have questions?</p>
+        <p className="text-muted mb-4">{t('faqTeaser.prompt')}</p>
         <div className="flex flex-wrap gap-3 justify-center">
           <Link
             href="/pages/faq"
             className="border border-border rounded-full px-5 py-2.5 text-sm font-medium text-secondary hover:border-primary hover:text-primary transition-colors"
           >
-            View Full FAQ
+            {t('faqTeaser.viewFaq')}
           </Link>
           <Link
             href="/pages/contact"
             className="border border-border rounded-full px-5 py-2.5 text-sm font-medium text-secondary hover:border-primary hover:text-primary transition-colors"
           >
-            Contact Support
+            {t('faqTeaser.contactSupport')}
           </Link>
         </div>
       </section>

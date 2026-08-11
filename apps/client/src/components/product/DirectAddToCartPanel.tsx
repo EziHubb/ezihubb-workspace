@@ -71,7 +71,7 @@ export function DirectAddToCartPanel({
       });
       openDrawer();
     } catch (err) {
-      setAddError(err instanceof Error ? err.message : 'Failed to add to cart');
+      setAddError(err instanceof Error ? err.message : t('actions.failedToAddToCart'));
     } finally {
       setIsAdding(false);
     }
@@ -106,7 +106,7 @@ export function DirectAddToCartPanel({
         >
           <button
             type="button"
-            aria-label="Decrease quantity"
+            aria-label={t('actions.decreaseQuantity')}
             onClick={() => setQuantity((q) => Math.max(1, q - 1))}
             disabled={quantity <= 1}
             className="w-10 h-10 flex items-center justify-center text-muted hover:text-secondary hover:bg-muted/5 transition-colors disabled:opacity-40"
@@ -118,7 +118,7 @@ export function DirectAddToCartPanel({
             value={quantity}
             min={1}
             max={99}
-            aria-label="Quantity"
+            aria-label={t('actions.quantity')}
             onChange={(e) => {
               const v = Math.min(99, Math.max(1, Number(e.target.value) || 1));
               setQuantity(v);
@@ -127,7 +127,7 @@ export function DirectAddToCartPanel({
           />
           <button
             type="button"
-            aria-label="Increase quantity"
+            aria-label={t('actions.increaseQuantity')}
             onClick={() => setQuantity((q) => Math.min(99, q + 1))}
             disabled={quantity >= 99}
             className="w-10 h-10 flex items-center justify-center text-muted hover:text-secondary hover:bg-muted/5 transition-colors disabled:opacity-40"
@@ -152,10 +152,10 @@ export function DirectAddToCartPanel({
         {isAdding ? (
           <>
             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            Adding…
+            {t('actions.adding')}
           </>
         ) : isOutOfStock ? (
-          'Out of Stock'
+          t('actions.outOfStockButton')
         ) : (
           <>
             <ShoppingCart className="w-4 h-4" />
@@ -188,15 +188,15 @@ export function DirectAddToCartPanel({
       <ul className="space-y-1.5 text-xs text-muted pt-1">
         <li className="flex items-center gap-2">
           <Truck className="w-3.5 h-3.5 text-primary shrink-0" />
-          Ships in {product.processingDays ?? 3}–{(product.processingDays ?? 3) + 2} business days
+          {t('actions.shipsInDays', { min: product.processingDays ?? 3, max: (product.processingDays ?? 3) + 2 })}
         </li>
         <li className="flex items-center gap-2">
           <Clock className="w-3.5 h-3.5 text-warning shrink-0" />
-          Cancel within 2 hours of ordering
+          {t('actions.cancelWithinHours')}
         </li>
         <li className="flex items-center gap-2">
           <ShieldCheck className="w-3.5 h-3.5 text-success shrink-0" />
-          Secure checkout
+          {t('actions.secureCheckout')}
         </li>
       </ul>
 

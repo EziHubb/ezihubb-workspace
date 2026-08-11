@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { useTranslations, useLocale } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { Star, MessageSquare, User } from 'lucide-react';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { Pagination, Skeleton } from '@ezihubb/ui';
+import { usePaginationLabels } from '../../../../../lib/hooks/usePaginationLabels';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -43,9 +45,10 @@ interface PaginatedReviews {
 // ── Stars ─────────────────────────────────────────────────────────────────────
 
 function Stars({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'md' }) {
+  const t = useTranslations('shops');
   const cls = size === 'md' ? 'w-5 h-5' : 'w-4 h-4';
   return (
-    <span className="inline-flex items-center gap-0.5" aria-label={`${rating} out of 5 stars`}>
+    <span className="inline-flex items-center gap-0.5" aria-label={t('reviews.starsOutOf5', { rating })}>
       {Array.from({ length: 5 }).map((_, i) => (
         <Star
           key={i}
@@ -95,16 +98,19 @@ function RatingBar({
 
 // ── Review card ───────────────────────────────────────────────────────────────
 
-const dateFmt = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day:   'numeric',
-  year:  'numeric',
-});
-
 function ReviewCard({ review }: { review: ReviewItem }) {
+  const t      = useTranslations('shops');
+  const locale = useLocale();
+
+  const dateFmt = new Intl.DateTimeFormat(locale, {
+    month: 'short',
+    day:   'numeric',
+    year:  'numeric',
+  });
+
   const fullName = [review.author.firstName, review.author.lastName]
     .filter(Boolean)
-    .join(' ') || 'Customer';
+    .join(' ') || t('reviews.customerFallback');
   const initial = fullName[0]?.toUpperCase() ?? '?';
   const date    = dateFmt.format(new Date(review.createdAt));
 
@@ -133,7 +139,10 @@ function ReviewCard({ review }: { review: ReviewItem }) {
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             <Stars rating={review.rating} />
             <span className="text-xs text-muted">
-              for <span className="text-secondary/80">{review.product.name}</span>
+              {t.rich('reviews.forProduct', {
+                product: review.product.name,
+                b: (chunks) => <span className="text-secondary/80">{chunks}</span>,
+              })}
             </span>
           </div>
         </div>
@@ -155,7 +164,7 @@ function ReviewCard({ review }: { review: ReviewItem }) {
             >
               <Image
                 src={url}
-                alt={`Review photo ${i + 1}`}
+                alt={t('reviews.reviewPhotoAlt', { n: i + 1 })}
                 width={64}
                 height={64}
                 className="object-cover w-full h-full"
@@ -168,7 +177,7 @@ function ReviewCard({ review }: { review: ReviewItem }) {
       {/* Seller reply */}
       {review.sellerReply && (
         <div className="mt-4 pl-4 border-l-2 border-primary/30">
-          <p className="text-xs font-semibold text-primary mb-1">Seller's reply</p>
+          <p className="text-xs font-semibold text-primary mb-1">{t('reviews.sellerReply')}</p>
           <p className="text-sm text-secondary/80 leading-relaxed">{review.sellerReply}</p>
         </div>
       )}
@@ -185,6 +194,9 @@ export function StoreReviewsClient({
   storeSlug:   string;
   storeRating: number;
 }) {
+  const t = useTranslations('shops');
+  const paginationLabels = usePaginationLabels();
+
   const [page,       setPage]       = useState(1);
   const [starFilter, setStarFilter] = useState<number | null>(null);
 
@@ -239,8 +251,8 @@ export function StoreReviewsClient({
           <div className="w-16 h-16 bg-muted/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <MessageSquare className="w-8 h-8 text-muted/40" />
           </div>
-          <p className="font-semibold text-secondary text-lg mb-1">No reviews yet</p>
-          <p className="text-sm text-muted">Be the first to purchase and leave a review!</p>
+          <p className="font-semibold text-secondary text-lg mb-1">{t('reviews.noReviewsYet')}</p>
+          <p className="text-sm text-muted">{t('reviews.beFirstToReview')}</p>
         </div>
       </div>
     );
@@ -260,7 +272,7 @@ export function StoreReviewsClient({
             </p>
             <Stars rating={Math.round(avg)} size="md" />
             <p className="text-xs text-muted mt-2">
-              {total.toLocaleString()} review{total !== 1 ? 's' : ''}
+              {t('reviews.reviewsCount', { count: total })}
             </p>
           </div>
 
@@ -285,8 +297,8 @@ export function StoreReviewsClient({
         <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
           <h3 className="font-display text-lg font-bold text-secondary">
             {starFilter
-              ? `${starFilter}-star reviews`
-              : `${total.toLocaleString()} Review${total !== 1 ? 's' : ''}`}
+              ? t('reviews.starReviews', { star: starFilter })
+              : t('reviews.reviewsCount', { count: total })}
           </h3>
           {starFilter && (
             <button
@@ -294,7 +306,7 @@ export function StoreReviewsClient({
               onClick={() => { setStarFilter(null); setPage(1); }}
               className="text-sm text-primary hover:underline"
             >
-              All reviews
+              {t('reviews.allReviews')}
             </button>
           )}
         </div>
@@ -318,14 +330,14 @@ export function StoreReviewsClient({
         ) : reviews.length === 0 ? (
           <div className="py-12 text-center">
             <p className="font-semibold text-secondary mb-1">
-              No {starFilter}-star reviews yet
+              {t('reviews.noStarReviews', { star: starFilter ?? 0 })}
             </p>
             <button
               type="button"
               onClick={() => { setStarFilter(null); setPage(1); }}
               className="text-sm text-primary hover:underline mt-1"
             >
-              Show all reviews
+              {t('reviews.showAllReviews')}
             </button>
           </div>
         ) : (
@@ -342,6 +354,7 @@ export function StoreReviewsClient({
               page={page}
               totalPages={totalPages}
               onPageChange={setPage}
+              labels={paginationLabels}
             />
           </div>
         )}

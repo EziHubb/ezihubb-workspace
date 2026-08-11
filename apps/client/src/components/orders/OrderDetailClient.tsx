@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { AlertTriangle, Search } from 'lucide-react';
 import { Button, Input } from '@ezihubb/ui';
 import type { OrderDto } from '@ezihubb/types';
@@ -28,6 +29,7 @@ interface VerifyFormProps {
 }
 
 function VerifyForm({ orderNumber, onVerified }: VerifyFormProps) {
+  const t = useTranslations('orderTracking');
   const [email,      setEmail]      = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [loading,    setLoading]    = useState(false);
@@ -39,11 +41,11 @@ function VerifyForm({ orderNumber, onVerified }: VerifyFormProps) {
     setError(null);
 
     if (!email.trim()) {
-      setEmailError('Email address is required.');
+      setEmailError(t('emailRequired'));
       return;
     }
     if (!isValidEmail(email)) {
-      setEmailError('Please enter a valid email address.');
+      setEmailError(t('invalidEmail'));
       return;
     }
 
@@ -62,7 +64,7 @@ function VerifyForm({ orderNumber, onVerified }: VerifyFormProps) {
       });
 
       if (res.status === 404 || res.status === 401) {
-        setError('Order not found. Please check your email address.');
+        setError(t('notFound'));
         return;
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -71,7 +73,7 @@ function VerifyForm({ orderNumber, onVerified }: VerifyFormProps) {
       const order: OrderDto = json?.data ?? json;
       onVerified(order, email.trim());
     } catch {
-      setError('Something went wrong. Please try again.');
+      setError(t('genericError'));
     } finally {
       setLoading(false);
     }
@@ -81,23 +83,22 @@ function VerifyForm({ orderNumber, onVerified }: VerifyFormProps) {
     <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-12 md:py-20">
       <div className="text-center mb-10">
         <h1 className="font-display text-3xl font-bold text-secondary">
-          Verify Your Email
+          {t('verifyTitle')}
         </h1>
         <p className="mt-2 text-muted text-sm max-w-xs mx-auto">
-          Enter the email address used at checkout to view order{' '}
-          <span className="font-mono font-semibold text-secondary">
-            #{orderNumber}
-          </span>
-          .
+          {t.rich('verifySubtitle', {
+            orderNumber,
+            b: (chunks) => <span className="font-mono font-semibold text-secondary">{chunks}</span>,
+          })}
         </p>
       </div>
 
       <div className="max-w-[480px] mx-auto bg-surface border border-border rounded-card shadow-sm p-6 space-y-4">
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <Input
-            label="Email Address *"
+            label={t('emailLabel')}
             type="email"
-            placeholder="Email used at checkout"
+            placeholder={t('emailPlaceholder')}
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
@@ -124,7 +125,7 @@ function VerifyForm({ orderNumber, onVerified }: VerifyFormProps) {
             loading={loading}
             leftIcon={<Search />}
           >
-            View Order
+            {t('viewOrderButton')}
           </Button>
         </form>
 
@@ -133,7 +134,7 @@ function VerifyForm({ orderNumber, onVerified }: VerifyFormProps) {
             href="/orders/track"
             className="text-primary font-medium hover:underline"
           >
-            ← Track a different order
+            ← {t('trackDifferent')}
           </Link>
         </p>
       </div>
@@ -149,13 +150,16 @@ interface OrderViewProps {
 }
 
 function OrderView({ order, email }: OrderViewProps) {
+  const t = useTranslations('orderTracking');
   const [currentOrder, setCurrentOrder] = useState(order);
 
   return (
     <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
       <p className="text-xs text-muted mb-4">
-        Confirmation sent to{' '}
-        <span className="font-medium text-secondary">{maskEmail(email)}</span>
+        {t.rich('confirmationSentTo', {
+          email: maskEmail(email),
+          b: (chunks) => <span className="font-medium text-secondary">{chunks}</span>,
+        })}
       </p>
       <div className="max-w-2xl">
         <OrderTrackingCard
@@ -169,7 +173,7 @@ function OrderView({ order, email }: OrderViewProps) {
           href="/pages/contact?subject=order"
           className="text-sm text-muted hover:text-primary transition-colors"
         >
-          Need help with this order? →
+          {t('needHelp')} →
         </Link>
       </div>
     </div>

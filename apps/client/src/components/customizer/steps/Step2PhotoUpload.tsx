@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { Cloud, Check, RefreshCw, Wand2 } from 'lucide-react';
 import { useCustomizerStore } from '../../../lib/store/customizer.store';
 import type { ImageField } from '../../../lib/customizer/types';
@@ -21,6 +22,7 @@ interface FieldUploadProps {
 }
 
 function ImageFieldUpload({ field }: FieldUploadProps) {
+  const t                = useTranslations('customizer.step2');
   const fieldValue       = useCustomizerStore((s) => s.fieldValues[field.id]);
   const uploadImage      = useCustomizerStore((s) => s.uploadImage);
   const removeBackground = useCustomizerStore((s) => s.removeBackground);
@@ -44,7 +46,7 @@ function ImageFieldUpload({ field }: FieldUploadProps) {
   const handleFile = async (file: File) => {
     setSizeError('');
     if (file.size > MAX_MB * 1024 * 1024) {
-      setSizeError(`Photo must be under ${MAX_MB}MB.`);
+      setSizeError(t('sizeError', { max: MAX_MB }));
       return;
     }
     setFileName(file.name);
@@ -79,7 +81,7 @@ function ImageFieldUpload({ field }: FieldUploadProps) {
         capture="environment"
         onChange={handleInputChange}
         className="sr-only"
-        aria-label={`Upload ${field.label}`}
+        aria-label={t('uploadLabel', { label: field.label })}
       />
 
       {/* ── Empty state ─────────────────────────────────────────────────────── */}
@@ -90,10 +92,10 @@ function ImageFieldUpload({ field }: FieldUploadProps) {
           className="w-full h-[120px] flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-xl bg-background hover:border-primary/50 transition-colors"
         >
           <Cloud className="w-10 h-10 text-primary" />
-          <span className="text-sm font-bold text-secondary">Tap to upload</span>
-          <span className="text-xs text-muted">or take a photo</span>
+          <span className="text-sm font-bold text-secondary">{t('uploadZone.title')}</span>
+          <span className="text-xs text-muted">{t('uploadZone.subtitle')}</span>
           <span className="text-[11px] text-muted/70 mt-0.5">
-            JPG · PNG · HEIC up to 10MB
+            {t('uploadZone.hint')}
           </span>
         </button>
       )}
@@ -104,12 +106,12 @@ function ImageFieldUpload({ field }: FieldUploadProps) {
           <div className="flex items-center gap-3">
             <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-background border border-border shrink-0">
               {imageUrl && (
-                <Image src={imageUrl} alt="uploading" fill sizes="56px" className="object-cover" />
+                <Image src={imageUrl} alt={t('uploadZone.title')} fill sizes="56px" className="object-cover" />
               )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-secondary truncate">{fileName}</p>
-              <p className="text-xs text-muted">Uploading... {progress}%</p>
+              <p className="text-xs text-muted">{t('uploading', { progress })}</p>
             </div>
           </div>
           <div className="h-1.5 bg-border rounded-full overflow-hidden">
@@ -129,8 +131,8 @@ function ImageFieldUpload({ field }: FieldUploadProps) {
               <div className="absolute inset-0 bg-gradient-to-r from-border/40 via-background to-border/40 animate-shimmer bg-[length:400%_100%]" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-secondary">✨ Removing background...</p>
-              <p className="text-xs text-muted">Usually 5–10 seconds</p>
+              <p className="text-sm font-medium text-secondary">{t('removeBg.processing')}</p>
+              <p className="text-xs text-muted">{t('removeBg.processingHint')}</p>
             </div>
           </div>
           <div className="h-1.5 bg-border rounded-full overflow-hidden">
@@ -141,7 +143,7 @@ function ImageFieldUpload({ field }: FieldUploadProps) {
             onClick={() => revertToOriginal(field.id)}
             className="text-xs text-muted hover:text-secondary underline"
           >
-            Cancel
+            {t('removeBg.cancel')}
           </button>
         </div>
       )}
@@ -151,10 +153,10 @@ function ImageFieldUpload({ field }: FieldUploadProps) {
         <div className="space-y-3">
           <div className="flex items-center gap-3">
             <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-background border border-border shrink-0">
-              <Image src={displayUrl} alt="Uploaded photo" fill sizes="64px" className="object-cover" />
+              <Image src={displayUrl} alt={t('photoFallback')} fill sizes="64px" className="object-cover" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-secondary truncate">{fileName || 'Photo'}</p>
+              <p className="text-sm font-medium text-secondary truncate">{fileName || t('photoFallback')}</p>
               {fileSize > 0 && (
                 <p className="text-xs text-muted">{formatBytes(fileSize)}</p>
               )}
@@ -163,13 +165,13 @@ function ImageFieldUpload({ field }: FieldUploadProps) {
                   <>
                     <Check className="w-3 h-3 text-success" />
                     <span className="text-xs text-success font-medium">
-                      Background removed ✓
+                      {t('removeBg.done')}
                     </span>
                   </>
                 ) : (
                   <>
                     <Check className="w-3 h-3 text-success" />
-                    <span className="text-xs text-success font-medium">Ready</span>
+                    <span className="text-xs text-success font-medium">{t('ready')}</span>
                   </>
                 )}
               </div>
@@ -185,7 +187,7 @@ function ImageFieldUpload({ field }: FieldUploadProps) {
                 className="flex items-center justify-center gap-2 w-full h-10 border border-border rounded-button text-sm font-medium text-secondary hover:border-primary hover:text-primary transition-colors"
               >
                 <Wand2 className="w-4 h-4" />
-                Remove Background
+                {t('removeBg.button')}
               </button>
             )}
 
@@ -196,7 +198,7 @@ function ImageFieldUpload({ field }: FieldUploadProps) {
                 className="flex items-center justify-center gap-2 w-full h-10 border border-border rounded-button text-sm font-medium text-muted hover:text-secondary transition-colors"
               >
                 <RefreshCw className="w-4 h-4" />
-                Undo
+                {t('removeBg.undo')}
               </button>
             )}
 
@@ -206,7 +208,7 @@ function ImageFieldUpload({ field }: FieldUploadProps) {
               className="flex items-center justify-center gap-2 w-full h-10 border border-border rounded-button text-sm font-medium text-secondary hover:border-primary hover:text-primary transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
-              Replace
+              {t('replace')}
             </button>
           </div>
 
@@ -225,13 +227,13 @@ function ImageFieldUpload({ field }: FieldUploadProps) {
       {/* Skip option */}
       {!field.required && !displayUrl && !isUploading && (
         <p className="text-xs text-muted text-center">
-          No photo?{' '}
+          {t('noPhoto')}{' '}
           <button
             type="button"
             onClick={() => {/* parent handles step navigation */}}
             className="text-primary font-medium hover:underline"
           >
-            Skip this step →
+            {t('skip')}
           </button>
         </p>
       )}
@@ -242,6 +244,7 @@ function ImageFieldUpload({ field }: FieldUploadProps) {
 // ── Step wrapper ─────────────────────────────────────────────────────────────
 
 export function Step2PhotoUpload() {
+  const t        = useTranslations('customizer.step2');
   const template = useCustomizerStore((s) => s.template);
 
   if (!template) return null;
@@ -253,9 +256,9 @@ export function Step2PhotoUpload() {
   return (
     <div className="space-y-6">
       <div>
-        <h4 className="text-base font-bold text-secondary">Upload a Photo</h4>
+        <h4 className="text-base font-bold text-secondary">{t('title')}</h4>
         <p className="text-sm text-muted mt-1">
-          Add a personal photo to make this gift truly one-of-a-kind.
+          {t('desc')}
         </p>
       </div>
 
@@ -265,7 +268,7 @@ export function Step2PhotoUpload() {
 
       {imageFields.length === 0 && (
         <p className="text-sm text-muted text-center py-4">
-          No photo upload required for this product.
+          {t('noImageFields')}
         </p>
       )}
     </div>

@@ -7,6 +7,7 @@ import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { Toggle as PrimitiveToggle } from '../../../../components/products/edit/primitives/Toggle';
+import { useDialog } from '../../../../contexts/DialogContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -89,6 +90,7 @@ const DEFAULTS: Omit<PlatformSettings, 'id'> = {
 
 export default function PlatformSettingsPage() {
   const qc = useQueryClient();
+  const { alert } = useDialog();
 
   const { data, isLoading } = useQuery<PlatformSettings>({
     queryKey:  ['admin-platform-settings'],
@@ -127,6 +129,8 @@ export default function PlatformSettingsPage() {
     try {
       await api.patch(API_ROUTES.ADMIN.PLATFORM_SETTINGS, s);
       qc.invalidateQueries({ queryKey: ['admin-platform-settings'] });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save platform settings.', { variant: 'error' });
     } finally {
       setSaving(null);
     }

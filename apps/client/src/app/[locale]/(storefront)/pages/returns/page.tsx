@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import {
   ShieldCheck, RefreshCw, CreditCard,
   CheckCircle2, XCircle, ArrowLeftRight,
@@ -18,37 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-// ── Data ──────────────────────────────────────────────────────────────────────
-
-const POLICY_CARDS: {
-  Icon:      LucideIcon;
-  iconCls:   string;
-  bgCls:     string;
-  title:     string;
-  desc:      string;
-}[] = [
-  {
-    Icon:    ShieldCheck,
-    iconCls: 'text-green-600',
-    bgCls:   'bg-green-50',
-    title:   '30-Day Protection',
-    desc:    'Contact us within 30 days of delivery for any quality issue.',
-  },
-  {
-    Icon:    RefreshCw,
-    iconCls: 'text-blue-600',
-    bgCls:   'bg-blue-50',
-    title:   'Free Replacements',
-    desc:    'Defective or incorrect items get a free replacement, no return needed.',
-  },
-  {
-    Icon:    CreditCard,
-    iconCls: 'text-purple-600',
-    bgCls:   'bg-purple-50',
-    title:   'Full Refunds',
-    desc:    "If we can't fix it, you get 100% of your money back.",
-  },
-];
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 interface CoverageItem {
   covered: boolean;
@@ -56,79 +27,73 @@ interface CoverageItem {
   desc:    string;
 }
 
-const COVERAGE_ITEMS: CoverageItem[] = [
-  {
-    covered: true,
-    title:   'Defective or damaged items',
-    desc:    "If your item arrived broken, cracked, or damaged during shipping, we'll replace it immediately.",
-  },
-  {
-    covered: true,
-    title:   'Wrong personalization',
-    desc:    "If we printed the wrong name, date, or photo — entirely our fault — you get a free replacement.",
-  },
-  {
-    covered: true,
-    title:   'Significantly different from description',
-    desc:    'If the product looks substantially different from what was shown, contact us for a resolution.',
-  },
-  {
-    covered: true,
-    title:   'Lost in transit',
-    desc:    "If your order never arrived and tracking shows no updates for 7+ days, we'll resend or refund.",
-  },
-  {
-    covered: false,
-    title:   'Buyer typos or input errors',
-    desc:    'We print exactly what you enter. Mistakes in your personalization text are not covered, so please proofread carefully.',
-  },
-  {
-    covered: false,
-    title:   'Changed your mind',
-    desc:    "Since every item is made to order specifically for you, we're unable to accept returns for change of mind.",
-  },
-  {
-    covered: false,
-    title:   'Color variation on screens',
-    desc:    'Screen colors vary between devices. Minor color differences between screen preview and printed product are normal.',
-  },
-];
+export default async function ReturnsPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'pages.returns' });
 
-const RESOLUTION_STEPS = [
-  {
-    step:  '1',
-    title: 'Contact us within 30 days',
-    desc:  'Reach out via our contact page or email support@ezihubb.com. Include your order number and a brief description of the issue.',
-  },
-  {
-    step:  '2',
-    title: 'Send a photo of the issue',
-    desc:  'For quality issues or damage, attach 1–2 clear photos. This helps us understand the problem and process your request faster.',
-  },
-  {
-    step:  '3',
-    title: "We'll resolve it within 24 hours",
-    desc:  "We typically respond and resolve within 24 business hours. We'll either ship a free replacement or issue a full refund to your original payment method.",
-  },
-];
+  const POLICY_CARDS: {
+    Icon:      LucideIcon;
+    iconCls:   string;
+    bgCls:     string;
+    title:     string;
+    desc:      string;
+  }[] = [
+    {
+      Icon:    ShieldCheck,
+      iconCls: 'text-green-600',
+      bgCls:   'bg-green-50',
+      title:   t('policyCards.protection.title'),
+      desc:    t('policyCards.protection.desc'),
+    },
+    {
+      Icon:    RefreshCw,
+      iconCls: 'text-blue-600',
+      bgCls:   'bg-blue-50',
+      title:   t('policyCards.replacements.title'),
+      desc:    t('policyCards.replacements.desc'),
+    },
+    {
+      Icon:    CreditCard,
+      iconCls: 'text-purple-600',
+      bgCls:   'bg-purple-50',
+      title:   t('policyCards.refunds.title'),
+      desc:    t('policyCards.refunds.desc'),
+    },
+  ];
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+  const COVERAGE_ITEMS: CoverageItem[] = [
+    { covered: true,  title: t('coverage.items.defective.title'),            desc: t('coverage.items.defective.desc')            },
+    { covered: true,  title: t('coverage.items.wrongPersonalization.title'), desc: t('coverage.items.wrongPersonalization.desc') },
+    { covered: true,  title: t('coverage.items.different.title'),            desc: t('coverage.items.different.desc')            },
+    { covered: true,  title: t('coverage.items.lost.title'),                 desc: t('coverage.items.lost.desc')                 },
+    { covered: false, title: t('coverage.items.typos.title'),                desc: t('coverage.items.typos.desc')                },
+    { covered: false, title: t('coverage.items.changedMind.title'),          desc: t('coverage.items.changedMind.desc')          },
+    { covered: false, title: t('coverage.items.colorVariation.title'),       desc: t('coverage.items.colorVariation.desc')       },
+  ];
 
-export default function ReturnsPage() {
+  const RESOLUTION_STEPS = [
+    { step: '1', title: t('resolution.steps.contact.title'), desc: t('resolution.steps.contact.desc') },
+    { step: '2', title: t('resolution.steps.photo.title'),   desc: t('resolution.steps.photo.desc')   },
+    { step: '3', title: t('resolution.steps.resolve.title'), desc: t('resolution.steps.resolve.desc') },
+  ];
+
   return (
     <div className="max-w-[900px] mx-auto px-4 py-16">
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div className="text-center mb-14">
         <p className="text-primary font-medium text-sm mb-3 uppercase tracking-wide">
-          Returns &amp; Exchanges
+          {t('eyebrow')}
         </p>
         <h1 className="font-display text-4xl font-bold text-secondary mb-3">
-          Our Promise to You
+          {t('title')}
         </h1>
         <p className="text-muted text-lg max-w-xl mx-auto">
-          We want you to love your purchase. If something goes wrong,
-          we&apos;ll always make it right.
+          {t('subtitle')}
         </p>
       </div>
 
@@ -147,7 +112,7 @@ export default function ReturnsPage() {
 
       {/* ── What's covered ────────────────────────────────────────────────── */}
       <section className="mb-14">
-        <h2 className="text-2xl font-bold text-secondary mb-6">What&apos;s Covered</h2>
+        <h2 className="text-2xl font-bold text-secondary mb-6">{t('coverage.title')}</h2>
         <div className="space-y-4">
           {COVERAGE_ITEMS.map(({ covered, title, desc }) => (
             <div
@@ -173,7 +138,7 @@ export default function ReturnsPage() {
 
       {/* ── How to get a resolution ───────────────────────────────────────── */}
       <section className="mb-14">
-        <h2 className="text-2xl font-bold text-secondary mb-6">How to Get a Resolution</h2>
+        <h2 className="text-2xl font-bold text-secondary mb-6">{t('resolution.title')}</h2>
         <div className="space-y-4">
           {RESOLUTION_STEPS.map(({ step, title, desc }) => (
             <div key={step} className="flex gap-4">
@@ -191,14 +156,12 @@ export default function ReturnsPage() {
 
       {/* ── Cancellations ────────────────────────────────────────────────── */}
       <section className="mb-14 bg-[#FAFAF8] rounded-3xl p-8">
-        <h2 className="text-xl font-bold text-secondary mb-4">Order Cancellations</h2>
+        <h2 className="text-xl font-bold text-secondary mb-4">{t('cancellations.title')}</h2>
         <p className="text-muted leading-relaxed mb-4">
-          You can cancel your order <strong>within 2 hours</strong> of placing it.
-          After that, production may have started and we&apos;re unable to cancel.
+          {t.rich('cancellations.p1', { b: (chunks) => <strong>{chunks}</strong> })}
         </p>
         <p className="text-muted leading-relaxed mb-5">
-          To cancel, go to <strong>My Account → Orders</strong> and click &ldquo;Cancel Order&rdquo;
-          on the relevant order, or contact us immediately at support@ezihubb.com.
+          {t.rich('cancellations.p2', { b: (chunks) => <strong>{chunks}</strong> })}
         </p>
         <div className="flex flex-wrap gap-3">
           <Link
@@ -206,14 +169,14 @@ export default function ReturnsPage() {
             className="inline-flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-primary-dark transition-colors"
           >
             <Package className="w-4 h-4" />
-            View My Orders
+            {t('cancellations.viewOrders')}
           </Link>
           <Link
             href="/pages/contact"
             className="inline-flex items-center gap-2 border border-border text-secondary px-5 py-2.5 rounded-full text-sm font-medium hover:border-primary hover:text-primary transition-colors"
           >
             <Mail className="w-4 h-4" />
-            Contact Us
+            {t('cancellations.contactUs')}
           </Link>
         </div>
       </section>
@@ -221,14 +184,12 @@ export default function ReturnsPage() {
       {/* ── Exchanges note ────────────────────────────────────────────────── */}
       <section className="text-center border border-border rounded-2xl p-8">
         <ArrowLeftRight className="w-8 h-8 text-primary mx-auto mb-3" />
-        <h2 className="text-xl font-bold text-secondary mb-2">Exchanges</h2>
+        <h2 className="text-xl font-bold text-secondary mb-2">{t('exchanges.title')}</h2>
         <p className="text-muted max-w-lg mx-auto mb-4">
-          Because our items are personalized to order, traditional exchanges aren&apos;t possible.
-          If you&apos;d like a different size, color, or personalization — place a new order and
-          contact us about the original. We&apos;ll do our best to accommodate you.
+          {t('exchanges.desc')}
         </p>
         <Link href="/pages/contact" className="text-primary text-sm hover:underline">
-          Talk to our team →
+          {t('exchanges.link')}
         </Link>
       </section>
     </div>

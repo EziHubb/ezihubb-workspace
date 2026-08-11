@@ -122,6 +122,7 @@ function OrderDetailsTab({ order, onUpdate }: { order: OrderDetail; onUpdate: ()
   const [noteSaved,  setNoteSaved]  = useState(false);
   const [savingTrk,  setSavingTrk]  = useState(false);
   const [previewItem, setPreviewItem] = useState<OrderItem | null>(null);
+  const { alert } = useDialog();
 
   const effectiveCarrier = carrier === 'Other' ? customCarrier.trim() : carrier;
 
@@ -139,7 +140,9 @@ function OrderDetailsTab({ order, onUpdate }: { order: OrderDetail; onUpdate: ()
       await api.post(API_ROUTES.ADMIN.ORDER_NOTE(order.id), { note });
       setNoteSaved(true);
       setTimeout(() => setNoteSaved(false), 2500);
-    } catch { /* silent */ } finally { setSavingNote(false); }
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save note.', { variant: 'error' });
+    } finally { setSavingNote(false); }
   };
 
   const saveTracking = async () => {
@@ -147,7 +150,9 @@ function OrderDetailsTab({ order, onUpdate }: { order: OrderDetail; onUpdate: ()
     try {
       await api.patch(API_ROUTES.ADMIN.ORDER_TRACKING(order.id), { trackingNumber: tracking, carrier: effectiveCarrier });
       onUpdate();
-    } catch { /* silent */ } finally { setSavingTrk(false); }
+    } catch (err) {
+      await alert((err as Error).message || 'Could not save tracking info.', { variant: 'error' });
+    } finally { setSavingTrk(false); }
   };
 
   const trackingUrl =
@@ -370,6 +375,7 @@ function OrderDetailsTab({ order, onUpdate }: { order: OrderDetail; onUpdate: ()
 
 function StatusChanger({ order, onUpdate }: { order: OrderDetail; onUpdate: () => void }) {
   const [saving, setSaving] = useState(false);
+  const { alert } = useDialog();
 
   const update = async (status: string) => {
     if (status === order.status || saving) return;
@@ -377,7 +383,9 @@ function StatusChanger({ order, onUpdate }: { order: OrderDetail; onUpdate: () =
     try {
       await api.patch(API_ROUTES.ADMIN.ORDER_STATUS(order.id), { status });
       onUpdate();
-    } catch { /* silent */ } finally { setSaving(false); }
+    } catch (err) {
+      await alert((err as Error).message || 'Could not update order status.', { variant: 'error' });
+    } finally { setSaving(false); }
   };
 
   return (
@@ -395,14 +403,16 @@ function StatusChanger({ order, onUpdate }: { order: OrderDetail; onUpdate: () =
 
 function ThreeDotMenu({ order, onCancel, onUpdate }: { order: OrderDetail; onCancel: () => void; onUpdate: () => void }) {
   const [open, setOpen] = useState(false);
-  const { confirm }     = useDialog();
+  const { confirm, alert } = useDialog();
 
   const printInvoice = async () => {
     setOpen(false);
     try {
       const { url } = await api.get<{ url: string }>(API_ROUTES.ADMIN.ORDER_INVOICE(order.id));
       window.open(url, '_blank');
-    } catch { /* silent */ }
+    } catch (err) {
+      await alert((err as Error).message || 'Could not generate the invoice.', { variant: 'error' });
+    }
   };
 
   const handleRefund = async () => {
@@ -417,7 +427,9 @@ function ThreeDotMenu({ order, onCancel, onUpdate }: { order: OrderDetail; onCan
     try {
       await api.post(API_ROUTES.ADMIN.ORDER_REFUND(order.id), { reason: 'Admin initiated' });
       onUpdate();
-    } catch { /* silent */ }
+    } catch (err) {
+      await alert((err as Error).message || 'Could not issue the refund.', { variant: 'error' });
+    }
   };
 
   return (
@@ -458,6 +470,7 @@ function ThreeDotMenu({ order, onCancel, onUpdate }: { order: OrderDetail; onCan
 function CancelModal({ order, onClose, onDone }: { order: OrderDetail; onClose: () => void; onDone: () => void }) {
   const [reason,  setReason]  = useState('');
   const [saving,  setSaving]  = useState(false);
+  const { alert } = useDialog();
 
   const handleCancel = async () => {
     setSaving(true);
@@ -465,7 +478,9 @@ function CancelModal({ order, onClose, onDone }: { order: OrderDetail; onClose: 
       await api.post(API_ROUTES.ADMIN.ORDER_CANCEL(order.id), { reason: reason || 'Cancelled by admin' });
       onDone();
       onClose();
-    } catch { /* silent */ } finally { setSaving(false); }
+    } catch (err) {
+      await alert((err as Error).message || 'Could not cancel this order.', { variant: 'error' });
+    } finally { setSaving(false); }
   };
 
   return (

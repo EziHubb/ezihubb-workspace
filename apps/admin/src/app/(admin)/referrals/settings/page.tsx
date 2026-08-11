@@ -259,7 +259,7 @@ function TierModal({
 
 export default function ReferralSettingsPage() {
   const qc = useQueryClient();
-  const { confirm } = useDialog();
+  const { confirm, alert } = useDialog();
 
   // ── Settings state ──────────────────────────────────────────────────────────
   const [s,        setS]        = useState<ReferralSettings>({
@@ -314,6 +314,8 @@ export default function ReferralSettingsPage() {
     try {
       await api.delete(API_ROUTES.ADMIN.ADMIN_CREATORS_TIER(id));
       void qc.invalidateQueries({ queryKey: ['admin-referral-tiers'] });
+    } catch (err) {
+      await alert((err as Error).message || 'Could not delete this tier.', { variant: 'error' });
     } finally { setDeletingTier(null); }
   };
 

@@ -37,6 +37,7 @@ function Badge({ count }: { count: number }) {
 // ── User Menu (desktop) ───────────────────────────────────────────────────────
 
 function UserMenu({ locale }: { locale: string }) {
+  const t                = useTranslations('nav');
   const [open, setOpen]  = useState(false);
   const menuRef          = useRef<HTMLDivElement>(null);
   const router           = useRouter();
@@ -77,7 +78,7 @@ function UserMenu({ locale }: { locale: string }) {
         href={`/${locale}/login`}
         className="hidden md:block bg-primary hover:bg-primary-dark text-white font-semibold text-sm px-5 py-2 rounded-button transition-colors uppercase tracking-wide"
       >
-        Sign In
+        {t('signIn')}
       </Link>
     );
   }
@@ -121,12 +122,12 @@ function UserMenu({ locale }: { locale: string }) {
             <p className="text-xs text-muted truncate">{profile.email}</p>
           </div>
           {[
-            { icon: Package,  label: 'My Orders', href: `/${locale}/account/orders`,  newTab: false },
-            { icon: Settings, label: 'Profile',   href: `/${locale}/account/profile`, newTab: false },
+            { icon: Package,  label: t('myOrders'), href: `/${locale}/account/orders`,  newTab: false },
+            { icon: Settings, label: t('profile'),  href: `/${locale}/account/profile`, newTab: false },
             // "Open a Shop" is intentionally not offered here — the storefront
             // must not present as a multi-seller marketplace (Pinterest merchant
             // policy). Existing sellers still get a link to their own Seller Hub.
-            ...(isSeller ? [{ icon: Store, label: 'Seller Hub', href: adminUrl, newTab: true }] : []),
+            ...(isSeller ? [{ icon: Store, label: t('sellerHub'), href: adminUrl, newTab: true }] : []),
           ].map(({ icon: Icon, label, href, newTab }) => (
             <Link
               key={label}
@@ -146,7 +147,7 @@ function UserMenu({ locale }: { locale: string }) {
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-secondary hover:bg-error/8 hover:text-error transition-colors"
             >
               <LogOut className="w-4 h-4 text-muted" />
-              Sign Out
+              {t('signOut')}
             </button>
           </div>
         </div>
@@ -220,7 +221,7 @@ export function Navbar({ menuData }: NavbarProps = {}) {
                 type="button"
                 className="lg:hidden min-h-11 min-w-11 flex items-center justify-center -ml-2"
                 onClick={() => setMobileOpen(true)}
-                aria-label="Open navigation menu"
+                aria-label={t('toggleMenu')}
                 aria-expanded={mobileOpen}
               >
                 <Menu className="w-6 h-6 text-secondary" />
@@ -294,7 +295,7 @@ export function Navbar({ menuData }: NavbarProps = {}) {
               {isSeller && (
               <Link
                 href={adminUrl_}
-                aria-label="My Shop"
+                aria-label={t('sellerHub')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hidden md:flex relative p-2 hover:bg-muted/10 rounded-full transition-colors"

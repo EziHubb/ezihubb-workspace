@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter, usePathname } from 'next/navigation';
 import { ChevronDown, PackageOpen, X } from 'lucide-react';
@@ -8,6 +9,8 @@ import { apiClient, useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { ProductCard, Pagination, Skeleton } from '@ezihubb/ui';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
+import { usePaginationLabels } from '../../../../../lib/hooks/usePaginationLabels';
+import { useProductCardLabels } from '../../../../../lib/hooks/useProductCardLabels';
 import type { ProductListItemDto } from '@ezihubb/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -31,19 +34,21 @@ interface StoreSectionsResponse {
 
 // ── Sort options ───────────────────────────────────────────────────────────────
 
-const SORT_OPTIONS: { value: string; label: string }[] = [
-  { value: 'newest',     label: 'Most Recent'        },
-  { value: 'bestseller', label: 'Best Selling'        },
-  { value: 'rating',     label: 'Top Rated'           },
-  { value: 'price_asc',  label: 'Price: Low → High'  },
-  { value: 'price_desc', label: 'Price: High → Low'  },
+const SORT_OPTIONS: { value: string; key: string }[] = [
+  { value: 'newest',     key: 'newest'     },
+  { value: 'bestseller', key: 'bestseller' },
+  { value: 'rating',     key: 'rating'     },
+  { value: 'price_asc',  key: 'priceAsc'   },
+  { value: 'price_desc', key: 'priceDesc'  },
 ];
 
 // ── Sort dropdown ─────────────────────────────────────────────────────────────
 
 function SortDropdown({ sort, onChange }: { sort: string; onChange: (v: string) => void }) {
+  const t = useTranslations('shops');
   const [open, setOpen] = useState(false);
-  const current = SORT_OPTIONS.find((o) => o.value === sort)?.label ?? 'Most Recent';
+  const currentKey = SORT_OPTIONS.find((o) => o.value === sort)?.key ?? 'newest';
+  const current    = t(`products.sortOptions.${currentKey}`);
 
   return (
     <div className="relative">
@@ -52,7 +57,7 @@ function SortDropdown({ sort, onChange }: { sort: string; onChange: (v: string) 
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-1.5 text-sm font-medium text-secondary hover:text-primary transition-colors"
       >
-        Sort: {current}
+        {t('products.sortLabel', { label: current })}
         <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
@@ -70,7 +75,7 @@ function SortDropdown({ sort, onChange }: { sort: string; onChange: (v: string) 
                   sort === opt.value ? 'text-primary font-semibold' : 'text-secondary',
                 ].join(' ')}
               >
-                {opt.label}
+                {t(`products.sortOptions.${opt.key}`)}
               </button>
             ))}
           </div>
@@ -93,6 +98,7 @@ function SectionsSidebar({
   onSaleSelected: boolean;
   onSelect:       (sectionId: string | null, onSale?: boolean) => void;
 }) {
+  const t = useTranslations('shops');
   const { data } = useQuery<StoreSectionsResponse>({
     queryKey:  ['store-sections', storeSlug],
     queryFn:   () => apiClient.get<StoreSectionsResponse>(API_ROUTES.STORES.SECTIONS(storeSlug)),
@@ -104,7 +110,7 @@ function SectionsSidebar({
   const isAllSelected = !selected && !onSaleSelected;
 
   return (
-    <nav className="w-52 shrink-0 hidden md:block" aria-label="Shop sections">
+    <nav className="w-52 shrink-0 hidden md:block" aria-label={t('products.sectionsAriaLabel')}>
       <ul className="space-y-0.5">
         {/* All */}
         <li>
@@ -118,7 +124,7 @@ function SectionsSidebar({
                 : 'text-secondary/70 hover:text-secondary hover:bg-secondary/5',
             ].join(' ')}
           >
-            <span>All</span>
+            <span>{t('products.all')}</span>
             <span className="text-muted text-xs tabular-nums">{data.total}</span>
           </button>
         </li>
@@ -136,7 +142,7 @@ function SectionsSidebar({
                   : 'text-secondary/70 hover:text-secondary hover:bg-secondary/5',
               ].join(' ')}
             >
-              <span>On sale</span>
+              <span>{t('products.onSale')}</span>
               <span className="text-muted text-xs tabular-nums">{data.onSale}</span>
             </button>
           </li>
@@ -171,12 +177,13 @@ function SectionsSidebar({
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 function EmptyState() {
+  const t = useTranslations('shops');
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
       <PackageOpen className="w-14 h-14 text-muted/30" aria-hidden />
       <div>
-        <p className="font-semibold text-secondary">No products found</p>
-        <p className="text-sm text-muted mt-1">Try a different filter or check back soon.</p>
+        <p className="font-semibold text-secondary">{t('products.emptyTitle')}</p>
+        <p className="text-sm text-muted mt-1">{t('products.emptyDesc')}</p>
       </div>
     </div>
   );
@@ -205,6 +212,7 @@ function ProductGrid({
   wishlistedIds:    Set<string>;
   onWishlistToggle: (id: string) => void;
 }) {
+  const { locale, labels, badgeLabels } = useProductCardLabels();
   return (
     <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
       {products.map((product) => (
@@ -219,9 +227,12 @@ function ProductGrid({
           rating={product.rating?.avg}
           reviewCount={product.rating?.count}
           badge={product.badge}
+          badgeLabel={product.badge ? badgeLabels[product.badge] : undefined}
           isPersonalizable={product.isPersonalizable}
           isWishlisted={wishlistedIds.has(product.id)}
           onWishlistToggle={onWishlistToggle}
+          locale={locale}
+          labels={labels}
         />
       ))}
     </div>
@@ -241,6 +252,10 @@ export function StoreProductsClient({
   searchQuery?:   string;
   onSearchClear?: () => void;
 }) {
+  const t = useTranslations('shops');
+  const paginationLabels = usePaginationLabels();
+  const { labels: cardLabels, badgeLabels } = useProductCardLabels();
+
   const [page,            setPage]            = useState(1);
   const [sort,            setSort]            = useState('newest');
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
@@ -331,7 +346,7 @@ export function StoreProductsClient({
         {/* ── Featured Items (only shown when no filter active) ─────────── */}
         {!hasFilter && (
           <section>
-            <h2 className="font-display text-xl font-bold text-secondary mb-5">Featured items</h2>
+            <h2 className="font-display text-xl font-bold text-secondary mb-5">{t('products.featuredItems')}</h2>
             {featuredLoading ? (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
                 {Array.from({ length: 4 }).map((_, i) => (
@@ -352,9 +367,12 @@ export function StoreProductsClient({
                     rating={product.rating?.avg}
                     reviewCount={product.rating?.count}
                     badge={product.badge}
+                    badgeLabel={product.badge ? badgeLabels[product.badge] : undefined}
                     isPersonalizable={product.isPersonalizable}
                     isWishlisted={wishlistedIds.has(product.id)}
                     onWishlistToggle={handleWishlistToggle}
+                    locale={locale}
+                    labels={cardLabels}
                   />
                 ))}
               </div>
@@ -368,14 +386,14 @@ export function StoreProductsClient({
           <div className="flex items-center justify-between gap-4 flex-wrap mb-5">
             <div>
               <h2 className="font-display text-xl font-bold text-secondary">
-                {onSaleFilter ? 'On Sale' : selectedSection ? 'Section Items' : 'All items'}
+                {onSaleFilter ? t('products.onSaleHeading') : selectedSection ? t('products.sectionItemsHeading') : t('products.allItemsHeading')}
               </h2>
 
               {/* Active search filter chip */}
               {searchQuery && (
                 <span className="inline-flex items-center gap-1 mt-1 text-xs bg-primary/10 text-primary rounded-full px-2.5 py-0.5">
                   "{searchQuery}"
-                  <button type="button" onClick={onSearchClear} aria-label="Clear search">
+                  <button type="button" onClick={onSearchClear} aria-label={t('products.clearSearchAria')}>
                     <X className="w-3 h-3" />
                   </button>
                 </span>
@@ -383,7 +401,7 @@ export function StoreProductsClient({
 
               {!allLoading && (
                 <p className="text-sm text-muted mt-0.5">
-                  {total.toLocaleString()} result{total !== 1 ? 's' : ''}
+                  {t('products.results', { count: total })}
                 </p>
               )}
             </div>
@@ -405,6 +423,7 @@ export function StoreProductsClient({
                 page={page}
                 totalPages={totalPages}
                 onPageChange={handlePageChange}
+                labels={paginationLabels}
               />
             </div>
           )}

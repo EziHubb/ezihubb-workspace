@@ -1,16 +1,22 @@
 import React from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { Check } from 'lucide-react';
 import type { OrderStatus, OrderStatusHistoryDto } from '@ezihubb/types';
 
 // ── Step definitions ──────────────────────────────────────────────────────────
 
-const STEPS: { status: OrderStatus; label: string }[] = [
-  { status: 'CONFIRMED',     label: 'Confirmed'     },
-  { status: 'IN_PRODUCTION', label: 'In Production' },
-  { status: 'SHIPPED',       label: 'Shipped'       },
-  { status: 'DELIVERED',     label: 'Delivered'     },
-  { status: 'COMPLETED',     label: 'Completed'     },
-];
+function useSteps(): { status: OrderStatus; label: string }[] {
+  const t = useTranslations('orderTracking.timeline');
+  return [
+    { status: 'CONFIRMED',     label: t('confirmed')     },
+    { status: 'IN_PRODUCTION', label: t('inProduction')  },
+    { status: 'SHIPPED',       label: t('shipped')       },
+    { status: 'DELIVERED',     label: t('delivered')     },
+    { status: 'COMPLETED',     label: t('completed')     },
+  ];
+}
+
+type Steps = ReturnType<typeof useSteps>;
 
 const STATUS_RANK: Partial<Record<OrderStatus, number>> = {
   CONFIRMED:     0,
@@ -20,20 +26,20 @@ const STATUS_RANK: Partial<Record<OrderStatus, number>> = {
   COMPLETED:     4,
 };
 
-const dateFmt = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day:   'numeric',
-  year:  'numeric',
-  hour:  'numeric',
-  minute: '2-digit',
-});
-
 function stepDate(
   status: OrderStatus,
   history: OrderStatusHistoryDto[],
+  locale: string,
 ): string | null {
   const entry = history.find((h) => h.status === status);
   if (!entry) return null;
+  const dateFmt = new Intl.DateTimeFormat(locale, {
+    month: 'short',
+    day:   'numeric',
+    year:  'numeric',
+    hour:  'numeric',
+    minute: '2-digit',
+  });
   return dateFmt.format(new Date(entry.createdAt));
 }
 
@@ -53,17 +59,20 @@ function VerticalTimeline({
   steps,
   currentRank,
   history,
+  locale,
 }: {
-  steps: typeof STEPS;
+  steps: Steps;
   currentRank: number;
   history: OrderStatusHistoryDto[];
+  locale: string;
 }) {
+  const t = useTranslations('orderTracking.timeline');
   return (
     <ol className="flex flex-col gap-0">
       {steps.map((step, i) => {
         const rank  = STATUS_RANK[step.status] ?? i;
         const state = getStepState(rank, currentRank);
-        const date  = state !== 'upcoming' ? stepDate(step.status, history) : null;
+        const date  = state !== 'upcoming' ? stepDate(step.status, history, locale) : null;
         const isLast = i === steps.length - 1;
 
         return (
@@ -95,7 +104,7 @@ function VerticalTimeline({
                 <p className="text-xs text-muted mt-0.5">{date}</p>
               )}
               {state === 'current' && !date && (
-                <p className="text-xs text-primary mt-0.5">In progress</p>
+                <p className="text-xs text-primary mt-0.5">{t('inProgress')}</p>
               )}
             </div>
           </li>
@@ -111,17 +120,19 @@ function HorizontalTimeline({
   steps,
   currentRank,
   history,
+  locale,
 }: {
-  steps: typeof STEPS;
+  steps: Steps;
   currentRank: number;
   history: OrderStatusHistoryDto[];
+  locale: string;
 }) {
   return (
     <ol className="flex items-start gap-0 w-full">
       {steps.map((step, i) => {
         const rank   = STATUS_RANK[step.status] ?? i;
         const state  = getStepState(rank, currentRank);
-        const date   = state !== 'upcoming' ? stepDate(step.status, history) : null;
+        const date   = state !== 'upcoming' ? stepDate(step.status, history, locale) : null;
         const isLast = i === steps.length - 1;
 
         return (
@@ -209,15 +220,17 @@ export function OrderStatusTimeline({
   history      = [],
   orientation  = 'vertical',
 }: OrderStatusTimelineProps) {
+  const locale = useLocale();
+  const steps  = useSteps();
   const currentRank = STATUS_RANK[currentStatus] ?? -1;
 
   if (orientation === 'horizontal') {
     return (
-      <HorizontalTimeline steps={STEPS} currentRank={currentRank} history={history} />
+      <HorizontalTimeline steps={steps} currentRank={currentRank} history={history} locale={locale} />
     );
   }
 
   return (
-    <VerticalTimeline steps={STEPS} currentRank={currentRank} history={history} />
+    <VerticalTimeline steps={steps} currentRank={currentRank} history={history} locale={locale} />
   );
 }

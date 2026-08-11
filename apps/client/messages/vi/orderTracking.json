@@ -11,9 +11,9 @@
   "notFound": "Không tìm thấy đơn hàng. Vui lòng kiểm tra mã đơn hàng và email.",
   "trackAnother": "Theo dõi đơn hàng khác",
   "needHelp": "Cần hỗ trợ về đơn hàng này?",
-  "confirmationSentTo": "Xác nhận đã gửi đến {email}",
+  "confirmationSentTo": "Xác nhận đã gửi đến <b>{email}</b>",
   "verifyTitle": "Xác minh Email",
-  "verifySubtitle": "Nhập địa chỉ email đã dùng khi đặt hàng để xem đơn hàng #{orderNumber}.",
+  "verifySubtitle": "Nhập địa chỉ email đã dùng khi đặt hàng để xem đơn hàng <b>#{orderNumber}</b>.",
   "viewOrderButton": "Xem đơn hàng",
   "trackDifferent": "Theo dõi đơn hàng khác",
   "cancelTitle": "Hủy đơn hàng",
@@ -21,7 +21,7 @@
   "keepOrder": "Giữ đơn hàng",
   "cancelButton": "Hủy đơn hàng",
   "yesCancelButton": "Có, Hủy đơn hàng",
-  "cancelAvailable": "Còn {time} để hủy",
+  "cancelAvailable": "Còn <b>{time}</b> để hủy",
   "contactSupport": "Liên hệ hỗ trợ",
   "itemsTitle": "Sản phẩm trong đơn hàng",
   "orderOnItsWay": "Đơn hàng của bạn đang trên đường!",
@@ -33,5 +33,50 @@
     "delivered": "Đã giao hàng",
     "completed": "Hoàn thành",
     "inProgress": "Đang xử lý"
+  },
+
+  "orderNumberRequired": "Vui lòng nhập mã đơn hàng.",
+  "emailRequired": "Vui lòng nhập địa chỉ email.",
+  "invalidEmail": "Vui lòng nhập địa chỉ email hợp lệ.",
+  "genericError": "Đã xảy ra lỗi. Vui lòng thử lại.",
+  "copyTrackingNumberAria": "Sao chép mã vận đơn",
+  "placedLabel": "Đặt lúc: {date}",
+  "orderNumberHeading": "Đơn hàng #{orderNumber}",
+  "productFallback": "Sản phẩm",
+  "orderItemFallback": "Sản phẩm trong đơn",
+  "carrierFallback": "Đơn vị vận chuyển",
+
+  "detailedTracking": {
+    "backToOrders": "Quay lại Đơn hàng",
+    "pageTitle": "Theo Dõi Đơn Hàng",
+    "notAvailable": "Chưa có thông tin theo dõi cho đơn hàng này.",
+    "goBackToOrders": "Quay lại danh sách đơn hàng",
+    "trackOnCarrierSite": "Theo dõi trên trang đơn vị vận chuyển",
+    "ariaLabel": "Dòng thời gian theo dõi đơn hàng",
+    "stages": {
+      "ORDER_CONFIRMED": { "label": "Đã xác nhận đơn hàng", "description": "Chúng tôi đã nhận đơn hàng và đang chuẩn bị." },
+      "PAYMENT_VERIFIED": { "label": "Đã xác minh thanh toán", "description": "Thanh toán của bạn đã được xác nhận." },
+      "IN_PRODUCTION": { "label": "Đang sản xuất", "description": "Sản phẩm của bạn đang được in." },
+      "PRODUCTION_COMPLETE": { "label": "Hoàn tất sản xuất", "description": "Đã hoàn tất sản xuất, đơn hàng đang được đóng gói." },
+      "SHIPPED": { "label": "Đã gửi hàng", "description": "Đơn hàng đã được bàn giao cho đơn vị vận chuyển." },
+      "SENT_TO_FULFILLMENT": { "label": "Đã chuyển đến đối tác xử lý đơn", "description": "Đơn hàng đã được gửi đến đối tác xử lý đơn của chúng tôi." },
+      "IN_TRANSIT": { "label": "Đang vận chuyển", "description": "Kiện hàng của bạn đang trên đường vận chuyển." },
+      "OUT_FOR_DELIVERY": { "label": "Đang giao hàng", "description": "Kiện hàng của bạn sẽ được giao hôm nay." },
+      "DELIVERED": { "label": "Đã giao hàng", "description": "Đơn hàng của bạn đã được giao thành công." },
+      "FAILED_DELIVERY": { "label": "Giao hàng không thành công", "description": "Đã có một lần giao hàng không thành công. Vui lòng liên hệ đơn vị vận chuyển." }
+    }
+  },
+
+  "orderStatusBadge": {
+    "PENDING_PAYMENT": "Chờ thanh toán",
+    "CONFIRMED": "Đã xác nhận",
+    "IN_PRODUCTION": "Đang sản xuất",
+    "SHIPPED": "Đã gửi hàng",
+    "DELIVERED": "Đã giao hàng",
+    "COMPLETED": "Hoàn thành",
+    "CANCELLED": "Đã hủy",
+    "REFUND_REQUESTED": "Yêu cầu hoàn tiền",
+    "REFUNDED": "Đã hoàn tiền",
+    "DISPUTED": "Đang tranh chấp"
   }
 }

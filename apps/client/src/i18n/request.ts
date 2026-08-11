@@ -15,10 +15,16 @@ const NAMESPACES = [
   'collections',
   'occasions',
   'product',
+  'review',
+  'search',
   'cart',
   'checkout',
   'account',
   'creator',
+  'seller',
+  'affiliate',
+  'pages',
+  'shops',
 ] as const;
 
 export default getRequestConfig(async ({ requestLocale }) => {

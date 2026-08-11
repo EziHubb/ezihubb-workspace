@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { useLocale, useTranslations } from 'next-intl';
 import { useReviews } from '@ezihubb/api-client';
 import type { ReviewDto, ReviewSummaryDto } from '@ezihubb/types';
 import { fmtRating } from '@ezihubb/utils';
@@ -47,6 +48,8 @@ function StarBar({
 }
 
 function ReviewCard({ review }: { review: ReviewDto }) {
+  const t = useTranslations('product.reviewSection');
+  const locale = useLocale();
   const firstName = review.user?.firstName ?? '';
   const lastName  = review.user?.lastName  ?? '';
   const initials  = `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase() || '?';
@@ -71,12 +74,12 @@ function ReviewCard({ review }: { review: ReviewDto }) {
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-semibold text-secondary">{fullName}</p>
             <span className="text-[10px] font-semibold text-success bg-success/8 border border-success/20 px-1.5 py-0.5 rounded-pill">
-              ✓ Verified
+              {t('verified')}
             </span>
           </div>
 
           <div className="flex items-center gap-2 mt-0.5">
-            <div className="flex gap-0.5" aria-label={`${review.rating} out of 5 stars`}>
+            <div className="flex gap-0.5" aria-label={t('starsOutOf5', { rating: review.rating })}>
               {Array.from({ length: 5 }).map((_, i) => (
                 <svg
                   key={i}
@@ -90,7 +93,7 @@ function ReviewCard({ review }: { review: ReviewDto }) {
               ))}
             </div>
             <time className="text-xs text-muted" dateTime={review.createdAt}>
-              {new Date(review.createdAt).toLocaleDateString('en-US', {
+              {new Date(review.createdAt).toLocaleDateString(locale, {
                 year: 'numeric', month: 'short', day: 'numeric',
               })}
             </time>
@@ -105,7 +108,7 @@ function ReviewCard({ review }: { review: ReviewDto }) {
             <div className="flex gap-2 mt-3 flex-wrap">
               {review.images.map((url, i) => (
                 <div key={i} className="relative w-14 h-14 rounded-sm overflow-hidden bg-background">
-                  <Image src={url} alt={`Review photo ${i + 1}`} fill sizes="56px" className="object-cover" />
+                  <Image src={url} alt={t('reviewPhoto', { n: i + 1 })} fill sizes="56px" className="object-cover" />
                 </div>
               ))}
             </div>
@@ -117,6 +120,7 @@ function ReviewCard({ review }: { review: ReviewDto }) {
 }
 
 export function ReviewSection({ productSlug, reviewSummary, initialReviews }: ReviewSectionProps) {
+  const t = useTranslations('product.reviewSection');
   const [page,       setPage]       = useState(1);
   const [starFilter, setStarFilter] = useState<number | undefined>(undefined);
 
@@ -157,7 +161,7 @@ export function ReviewSection({ productSlug, reviewSummary, initialReviews }: Re
                   </svg>
                 ))}
               </div>
-              <p className="text-xs text-muted">{reviewSummary.totalReviews} reviews</p>
+              <p className="text-xs text-muted">{t('reviewCount', { count: reviewSummary.totalReviews })}</p>
             </div>
 
             <div className="flex-1 space-y-1">
@@ -178,14 +182,14 @@ export function ReviewSection({ productSlug, reviewSummary, initialReviews }: Re
           {starFilter && (
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-secondary">
-                {starFilter}-star reviews
+                {t('starReviews', { star: starFilter })}
               </span>
               <button
                 type="button"
                 onClick={() => { setStarFilter(undefined); setPage(1); }}
                 className="text-xs text-primary hover:underline"
               >
-                All reviews
+                {t('allReviews')}
               </button>
             </div>
           )}
@@ -193,7 +197,7 @@ export function ReviewSection({ productSlug, reviewSummary, initialReviews }: Re
           {/* Review list */}
           {isError ? (
             <p className="text-sm text-error text-center py-6">
-              Failed to load reviews.
+              {t('failedToLoad')}
             </p>
           ) : isLoading ? (
             <div className="space-y-4">
@@ -210,7 +214,7 @@ export function ReviewSection({ productSlug, reviewSummary, initialReviews }: Re
             </div>
           ) : reviews.length === 0 ? (
             <p className="text-sm text-muted text-center py-8">
-              No reviews with this filter.
+              {t('noFilterReviews')}
             </p>
           ) : (
             <>
@@ -224,7 +228,7 @@ export function ReviewSection({ productSlug, reviewSummary, initialReviews }: Re
                       onClick={() => setPage((p) => p - 1)}
                       className="text-sm px-4 py-2 border border-border rounded-button text-secondary hover:border-primary hover:text-primary transition-colors"
                     >
-                      ← Previous
+                      {t('previous')}
                     </button>
                   )}
                   {page < totalPages && (
@@ -233,7 +237,7 @@ export function ReviewSection({ productSlug, reviewSummary, initialReviews }: Re
                       onClick={() => setPage((p) => p + 1)}
                       className="text-sm px-4 py-2 border border-border rounded-button text-secondary hover:border-primary hover:text-primary transition-colors"
                     >
-                      Next →
+                      {t('next')}
                     </button>
                   )}
                 </div>
@@ -243,8 +247,8 @@ export function ReviewSection({ productSlug, reviewSummary, initialReviews }: Re
         </>
       ) : (
         <div className="text-center py-12 text-muted">
-          <p className="text-base font-medium text-secondary mb-1">No reviews yet</p>
-          <p className="text-sm">Be the first to review this product.</p>
+          <p className="text-base font-medium text-secondary mb-1">{t('noReviewsYet')}</p>
+          <p className="text-sm">{t('beFirstToReview')}</p>
         </div>
       )}
     </div>

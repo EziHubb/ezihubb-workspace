@@ -148,7 +148,7 @@ export function Footer() {
 
         {/* ── Bottom bar ────────────────────────────────────────────────── */}
         <div className="mt-10 pt-6 border-t border-[#3D3D4E] flex flex-col sm:flex-row items-center justify-between gap-3 text-[#6B7280] text-xs">
-          <p>© {year} EziHubb. All rights reserved.</p>
+          <p>{t('copyright', { year })}</p>
           <div className="flex gap-4">
             <Link href={CLIENT_ROUTES.PAGE_PRIVACY_POLICY} className="hover:text-white transition-colors">
               {t('privacyPolicy')}

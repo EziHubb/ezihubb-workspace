@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { Check, ShoppingCart } from 'lucide-react';
 
 interface StepIndicatorProps {
@@ -8,10 +9,10 @@ interface StepIndicatorProps {
   labels?: [string, string, string];
 }
 
-const DEFAULT_LABELS: [string, string, string] = ['Shipping', 'Delivery', 'Payment'];
-
 export function StepIndicator({ currentStep, completedSteps, labels }: StepIndicatorProps) {
-  const stepLabels = labels ?? DEFAULT_LABELS;
+  const t = useTranslations('checkout.steps');
+  const defaultLabels: [string, string, string] = [t('shipping'), t('delivery'), t('payment')];
+  const stepLabels = labels ?? defaultLabels;
   const STEPS = [
     { id: 1, label: stepLabels[0] },
     { id: 2, label: stepLabels[1] },
@@ -19,13 +20,13 @@ export function StepIndicator({ currentStep, completedSteps, labels }: StepIndic
   ] as const;
 
   return (
-    <nav aria-label="Checkout steps" className="flex items-center gap-0 w-full mb-8">
+    <nav aria-label={t('aria')} className="flex items-center gap-0 w-full mb-8">
       {/* Cart — always completed */}
       <div className="flex items-center gap-1.5 shrink-0">
         <span className="w-7 h-7 rounded-full bg-primary flex items-center justify-center">
           <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
         </span>
-        <span className="hidden sm:block text-xs font-medium text-primary">Cart</span>
+        <span className="hidden sm:block text-xs font-medium text-primary">{t('cart')}</span>
       </div>
 
       {STEPS.map((step, i) => {

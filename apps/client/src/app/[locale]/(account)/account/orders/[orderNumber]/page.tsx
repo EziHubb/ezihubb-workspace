@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ArrowLeft, Package, MapPin, ExternalLink, AlertTriangle, MessageCircle, Download } from 'lucide-react';
 import { useOrder, useCancelOrder, api } from '@ezihubb/api-client';
 import { OrderStatusBadge } from '@ezihubb/ui';
@@ -12,7 +12,7 @@ import { useToast } from '@ezihubb/ui';
 import type { OrderDto, OrderStatus } from '@ezihubb/types';
 import { MessageShopModal } from '../../../../../../components/messages/MessageShopModal';
 import { DigitalDownloadsPanel } from '../../../../../../components/orders/DigitalDownloadsPanel';
-import { fmtAmount, safeArr, safeStr } from '@ezihubb/utils';
+import { fmtAmount, safeArr } from '@ezihubb/utils';
 
 // ── Status timeline config ────────────────────────────────────────────────────
 
@@ -24,39 +24,46 @@ const TIMELINE_STEPS: OrderStatus[] = [
   'COMPLETED',
 ];
 
-const STEP_LABELS: Partial<Record<OrderStatus, string>> = {
-  CONFIRMED:     'Order Confirmed',
-  IN_PRODUCTION: 'In Production',
-  SHIPPED:       'Shipped',
-  DELIVERED:     'Delivered',
-  COMPLETED:     'Completed',
-};
+function getStepLabels(t: ReturnType<typeof useTranslations>): Partial<Record<OrderStatus, string>> {
+  return {
+    CONFIRMED:     t('timeline.confirmed'),
+    IN_PRODUCTION: t('timeline.inProduction'),
+    SHIPPED:       t('timeline.shipped'),
+    DELIVERED:     t('timeline.delivered'),
+    COMPLETED:     t('timeline.completed'),
+  };
+}
+
+const STATUS_WORD_KEYS = ['CANCELLED', 'REFUNDED', 'REFUND_REQUESTED', 'DISPUTED'] as const;
 
 // ── Status timeline ───────────────────────────────────────────────────────────
 
 function StatusTimeline({ order }: { order: OrderDto }) {
-  const isCancelled = ['CANCELLED', 'REFUNDED', 'REFUND_REQUESTED', 'DISPUTED'].includes(
-    order.status,
-  );
+  const t = useTranslations('orderTracking');
+  const tAccount = useTranslations('account');
+  const isCancelled = STATUS_WORD_KEYS.includes(order.status as typeof STATUS_WORD_KEYS[number]);
 
   if (isCancelled) {
+    const statusKey = order.status as typeof STATUS_WORD_KEYS[number];
+    const statusWord = tAccount(`orders.detail.statusWords.${statusKey}` as 'orders.detail.statusWords.CANCELLED');
     return (
       <div className="flex items-center gap-2 p-4 bg-error/5 border border-error/20 rounded-card">
         <AlertTriangle className="w-4 h-4 text-error shrink-0" />
         <p className="text-sm font-medium text-error">
-          This order has been {safeStr(order.status).toLowerCase().replace('_', ' ')}.
+          {tAccount('orders.detail.cancelledMessage', { status: statusWord })}
         </p>
       </div>
     );
   }
 
+  const stepLabels = getStepLabels(t);
   const currentIdx = TIMELINE_STEPS.indexOf(order.status as OrderStatus);
 
   return (
     <div
       className="relative"
       role="list"
-      aria-label="Order status timeline"
+      aria-label={tAccount('orders.detail.timelineAriaLabel')}
     >
       {/* Desktop: horizontal — Mobile: vertical */}
       <div className="flex flex-col md:flex-row md:items-start gap-0 md:gap-0">
@@ -120,10 +127,10 @@ function StatusTimeline({ order }: { order: OrderDto }) {
                     isDone || isCurrent ? 'text-secondary' : 'text-muted'
                   }`}
                 >
-                  {STEP_LABELS[step] ?? step}
+                  {stepLabels[step] ?? step}
                 </p>
                 {isCurrent && (
-                  <p className="text-[10px] text-primary font-medium mt-0.5">Current</p>
+                  <p className="text-[10px] text-primary font-medium mt-0.5">{tAccount('orders.detail.current')}</p>
                 )}
               </div>
             </div>
@@ -143,6 +150,8 @@ function CancelSection({
   order:    OrderDto;
   onCancel: () => void;
 }) {
+  const t = useTranslations('orderTracking');
+  const tAccount = useTranslations('account');
   const confirmedEntry = order.statusHistory?.find((h) => h.status === 'CONFIRMED');
   const confirmedAt    = confirmedEntry?.createdAt ?? order.createdAt;
   const deadline       = new Date(confirmedAt).getTime() + 2 * 60 * 60 * 1000;
@@ -181,10 +190,10 @@ function CancelSection({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-border rounded-card bg-surface">
         <div>
           <p className="text-sm font-medium text-secondary">
-            Need to cancel your order?
+            {tAccount('orders.detail.needToCancel')}
           </p>
           <p className="text-xs text-muted mt-0.5">
-            Available to cancel for{' '}
+            {tAccount('orders.detail.availableToCancelFor')}{' '}
             <span className="font-mono font-bold text-primary">{timeLeft}</span>
           </p>
         </div>
@@ -193,7 +202,7 @@ function CancelSection({
           onClick={() => setShowDialog(true)}
           className="shrink-0 px-4 py-2 border border-error text-error text-sm font-medium rounded-button hover:bg-error/5 transition-colors"
         >
-          Cancel Order
+          {t('cancelButton')}
         </button>
       </div>
 
@@ -202,10 +211,10 @@ function CancelSection({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-surface rounded-modal shadow-modal w-full max-w-sm p-6 space-y-4">
             <h3 className="font-semibold text-secondary text-base">
-              Cancel order {order.orderNumber}?
+              {tAccount('orders.detail.cancelOrderTitle', { orderNumber: order.orderNumber })}
             </h3>
             <p className="text-sm text-muted">
-              This action cannot be undone. A full refund will be issued.
+              {tAccount('orders.detail.cancelOrderBody')}
             </p>
             <div className="flex gap-3 pt-1">
               <button
@@ -213,14 +222,14 @@ function CancelSection({
                 onClick={() => setShowDialog(false)}
                 className="flex-1 py-2.5 border border-border text-secondary text-sm font-medium rounded-button hover:border-primary transition-colors"
               >
-                Keep Order
+                {t('keepOrder')}
               </button>
               <button
                 type="button"
                 onClick={() => { setShowDialog(false); onCancel(); }}
                 className="flex-1 py-2.5 bg-error text-white text-sm font-bold rounded-button hover:bg-red-700 transition-colors"
               >
-                Yes, Cancel
+                {tAccount('orders.detail.yesCancel')}
               </button>
             </div>
           </div>
@@ -230,18 +239,18 @@ function CancelSection({
   );
 }
 
-// ── Date formatter ────────────────────────────────────────────────────────────
-
-const fmt = new Intl.DateTimeFormat('en-US', {
-  month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
-});
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function OrderDetailPage() {
   const locale      = useLocale();
+  const t           = useTranslations('orderTracking');
+  const tAccount    = useTranslations('account');
   const { orderNumber } = useParams<{ orderNumber: string }>();
   const toast = useToast();
+
+  const fmt = new Intl.DateTimeFormat(locale, {
+    month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
 
   const { data: order, isLoading, isError } = useOrder(orderNumber ?? '');
   const cancelMutation = useCancelOrder();
@@ -249,9 +258,9 @@ export default function OrderDetailPage() {
 
   const handleCancel = () => {
     cancelMutation.mutate(orderNumber!, {
-      onSuccess: () => toast.success('Order cancelled. A refund will be issued within 5–7 business days.'),
+      onSuccess: () => toast.success(tAccount('orders.detail.cancelSuccessToast')),
       onError: (err) =>
-        toast.error(err instanceof Error ? err.message : 'Failed to cancel order'),
+        toast.error(err instanceof Error ? err.message : tAccount('orders.detail.cancelErrorToast')),
     });
   };
 
@@ -269,9 +278,13 @@ export default function OrderDetailPage() {
   if (isError || !order) {
     return (
       <div className="py-12 text-center space-y-3">
-        <p className="text-secondary font-medium">Order not found.</p>
-        <Link href={`/${locale}/account/orders`} className="text-sm text-primary hover:underline">
-          ← Back to orders
+        <p className="text-secondary font-medium">{tAccount('orders.detail.orderNotFound')}</p>
+        <Link
+          href={`/${locale}/account/orders`}
+          className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          {tAccount('orders.detail.backToOrders')}
         </Link>
       </div>
     );
@@ -287,7 +300,7 @@ export default function OrderDetailPage() {
         className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
       >
         <ArrowLeft className="w-4 h-4" />
-        My Orders
+        {tAccount('orders.detail.backToOrders')}
       </Link>
 
       {/* Header */}
@@ -297,12 +310,13 @@ export default function OrderDetailPage() {
             {order.orderNumber}
           </h1>
           <p className="text-sm text-muted mt-0.5">
-            Placed {fmt.format(new Date(order.createdAt))}
+            {tAccount('orders.detail.placed', { date: fmt.format(new Date(order.createdAt)) })}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <OrderStatusBadge
             status={order.status as Parameters<typeof OrderStatusBadge>[0]['status']}
+            label={t(`orderStatusBadge.${order.status}` as Parameters<typeof t>[0])}
             size="md"
           />
           <button
@@ -314,7 +328,7 @@ export default function OrderDetailPage() {
             className="flex items-center gap-2 border border-border rounded-full px-4 py-2 text-sm hover:border-primary hover:text-primary transition-colors"
           >
             <Download className="w-4 h-4" />
-            Download Invoice
+            {tAccount('orders.detail.downloadInvoice')}
           </button>
           <button
             type="button"
@@ -322,7 +336,7 @@ export default function OrderDetailPage() {
             className="flex items-center gap-2 border border-border rounded-full px-4 py-2 text-sm hover:border-primary hover:text-primary transition-colors"
           >
             <MessageCircle className="w-4 h-4" />
-            Contact Support
+            {t('contactSupport')}
           </button>
         </div>
       </div>
@@ -344,7 +358,7 @@ export default function OrderDetailPage() {
       {/* Digital downloads — replaces the shipment tracker entirely */}
       {order.isDigital && (
         <section>
-          <h2 className="font-semibold text-secondary text-base mb-4">Your files</h2>
+          <h2 className="font-semibold text-secondary text-base mb-4">{tAccount('orders.detail.yourFiles')}</h2>
           <DigitalDownloadsPanel items={order.items} />
         </section>
       )}
@@ -352,7 +366,7 @@ export default function OrderDetailPage() {
       {/* Items */}
       <section>
         <h2 className="font-semibold text-secondary text-base mb-4">
-          Items ({safeArr(order.items).length})
+          {tAccount('orders.detail.items', { count: safeArr(order.items).length })}
         </h2>
         <div className="space-y-3">
           {safeArr(order.items).map((item) => {
@@ -379,7 +393,7 @@ export default function OrderDetailPage() {
                   >
                     {item.product?.name ?? '—'}
                   </Link>
-                  <p className="text-xs text-muted mt-0.5">Qty {item.quantity}</p>
+                  <p className="text-xs text-muted mt-0.5">{tAccount('orders.detail.qty', { count: item.quantity })}</p>
                 </div>
                 <p className="text-sm font-bold text-secondary tabular-nums shrink-0">
                   {fmtAmount(item.totalPrice)}
@@ -397,7 +411,7 @@ export default function OrderDetailPage() {
           <section className="border border-border rounded-card p-4 space-y-2">
             <h3 className="text-xs font-semibold text-muted uppercase tracking-wide flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5" />
-              Shipping Address
+              {tAccount('orders.detail.shippingAddress')}
             </h3>
             <address className="not-italic text-sm text-secondary leading-relaxed">
               {order.shippingName}<br />
@@ -413,18 +427,18 @@ export default function OrderDetailPage() {
         {/* Order totals + tracking */}
         <section className="border border-border rounded-card p-4 space-y-3">
           <h3 className="text-xs font-semibold text-muted uppercase tracking-wide">
-            Order Summary
+            {tAccount('orders.detail.orderSummaryTitle')}
           </h3>
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-muted">
-              <span>Subtotal</span>
+              <span>{tAccount('orders.detail.subtotal')}</span>
               <span>{fmtAmount(order.subtotal)}</span>
             </div>
             <div className="flex justify-between text-muted">
-              <span>Shipping</span>
+              <span>{tAccount('orders.detail.shipping')}</span>
               <span>
                 {order.shippingCost === 0 ? (
-                  <span className="text-success">FREE</span>
+                  <span className="text-success">{tAccount('orders.detail.free')}</span>
                 ) : (
                   fmtAmount(order.shippingCost)
                 )}
@@ -432,12 +446,12 @@ export default function OrderDetailPage() {
             </div>
             {order.discount > 0 && (
               <div className="flex justify-between text-success">
-                <span>Discount</span>
+                <span>{tAccount('orders.detail.discount')}</span>
                 <span>−{fmtAmount(order.discount)}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-secondary border-t border-border pt-2">
-              <span>Total</span>
+              <span>{tAccount('orders.detail.total')}</span>
               <span>{fmtAmount(order.total)}</span>
             </div>
           </div>
@@ -445,7 +459,7 @@ export default function OrderDetailPage() {
           {/* Tracking */}
           {order.trackingNumber && (
             <div className="pt-2 border-t border-border">
-              <p className="text-xs text-muted mb-1">Tracking number</p>
+              <p className="text-xs text-muted mb-1">{tAccount('orders.detail.trackingNumber')}</p>
               <p className="text-sm font-mono text-secondary">{order.trackingNumber}</p>
               {order.trackingUrl && (
                 <a
@@ -455,7 +469,7 @@ export default function OrderDetailPage() {
                   className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
                 >
                   <ExternalLink className="w-3 h-3" />
-                  Track Package
+                  {tAccount('orders.detail.trackPackage')}
                 </a>
               )}
             </div>

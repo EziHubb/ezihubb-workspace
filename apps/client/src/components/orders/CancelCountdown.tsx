@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@ezihubb/ui';
 
@@ -22,6 +23,7 @@ function formatCountdown(ms: number): string {
 }
 
 export function CancelCountdown({ confirmedAt, onCancel, isLoading }: Props) {
+  const t = useTranslations('orderTracking');
   const deadline = new Date(confirmedAt).getTime() + CANCEL_WINDOW_MS;
 
   const [remaining, setRemaining] = useState(() => deadline - Date.now());
@@ -46,13 +48,13 @@ export function CancelCountdown({ confirmedAt, onCancel, isLoading }: Props) {
         loading={isLoading}
         leftIcon={<AlertTriangle />}
       >
-        Cancel Order
+        {t('cancelButton')}
       </Button>
       <span className="text-xs text-muted">
-        <span className="font-mono font-semibold text-error">
-          {formatCountdown(remaining)}
-        </span>
-        {' '}remaining to cancel
+        {t.rich('cancelAvailable', {
+          time: formatCountdown(remaining),
+          b: (chunks) => <span className="font-mono font-semibold text-error">{chunks}</span>,
+        })}
       </span>
     </div>
   );

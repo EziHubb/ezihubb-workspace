@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { MessageCircle } from 'lucide-react';
-import { FAQ_DATA } from '../../../../../components/faq/faq-data';
+import { getFaqData } from '../../../../../components/faq/faq-data';
 import { FAQAccordionList } from '../../../../../components/faq/FAQAccordionList';
 import { FAQSearchBar } from '../../../../../components/faq/FAQSearchBar';
 import { FAQStructuredData } from '../../../../../components/seo/FAQStructuredData';
@@ -17,20 +18,29 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function FAQPage() {
+export default async function FAQPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'pages.faq' });
+
+  const FAQ_DATA = getFaqData(t);
   const allFaqs = FAQ_DATA.flatMap((section) => section.questions);
+
   return (
     <div className="max-w-[900px] mx-auto px-4 py-16">
       <FAQStructuredData faqs={allFaqs} />
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div className="text-center mb-12">
-        <p className="text-primary font-medium text-sm mb-3 uppercase tracking-wide">FAQ</p>
+        <p className="text-primary font-medium text-sm mb-3 uppercase tracking-wide">{t('eyebrow')}</p>
         <h1 className="font-display text-4xl font-bold text-secondary mb-3">
-          Frequently Asked Questions
+          {t('title')}
         </h1>
         <p className="text-muted text-lg max-w-xl mx-auto">
-          Everything you need to know about ordering, personalization, and delivery.
+          {t('subtitle')}
         </p>
       </div>
 
@@ -54,16 +64,16 @@ export default function FAQPage() {
 
       {/* ── Still need help ───────────────────────────────────────────────── */}
       <div className="mt-16 text-center bg-[#FAFAF8] rounded-3xl p-10">
-        <h2 className="text-xl font-bold text-secondary mb-2">Still have questions?</h2>
+        <h2 className="text-xl font-bold text-secondary mb-2">{t('stillHaveQuestions.title')}</h2>
         <p className="text-muted mb-6">
-          Our support team responds within 2 hours on business days.
+          {t('stillHaveQuestions.desc')}
         </p>
         <Link
           href="/pages/contact"
           className="inline-flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-full font-semibold text-sm hover:bg-primary-dark transition-colors"
         >
           <MessageCircle className="w-4 h-4" />
-          Contact Support
+          {t('stillHaveQuestions.button')}
         </Link>
       </div>
     </div>

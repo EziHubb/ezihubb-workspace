@@ -18,9 +18,25 @@ export function setBaseUrl(url: string): void {
 
 type TokenGetter  = () => string | null;
 type TokenUpdater = (token: string | null) => void;
+type LocaleGetter = () => string | null;
 
 let _tokenGetter:  TokenGetter  = () => null;     // returns in-memory access token
 let _tokenUpdater: TokenUpdater = () => undefined; // called when token is refreshed
+let _localeGetter: LocaleGetter = () => null;     // returns the active UI locale ('en' | 'vi' | 'zh')
+
+/**
+ * Registered once at app root (from a component that calls `useLocale()`) so
+ * every API request tells the server which locale to translate DB content
+ * (product/category/collection names) into via the `X-Locale` header.
+ */
+export function setLocaleGetter(getter: LocaleGetter): void {
+  _localeGetter = getter;
+}
+
+function getLocaleHeader(): Record<string, string> {
+  const locale = _localeGetter();
+  return locale ? { 'X-Locale': locale } : {};
+}
 
 /**
  * Register an in-memory token provider from the auth store.
@@ -100,6 +116,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
         'Content-Type': 'application/json',
         Accept:         'application/json',
         ...authHeader,
+        ...getLocaleHeader(),
         ...(extraHeaders as Record<string, string>),
       },
     });
@@ -193,6 +210,7 @@ async function apiRequest<T>(path: string, options: ApiClientOptions = {}): Prom
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : getAuthHeader()),
+    ...getLocaleHeader(),
     ...(init.headers as Record<string, string>),
   };
 

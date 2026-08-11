@@ -145,7 +145,7 @@ export class StoresService {
   async listStores(page = 1, limit = 12) {
     const where = { status: 'ACTIVE' as const };
     const skip  = (page - 1) * limit;
-    const [total, data] = await Promise.all([
+    const [total, rows] = await Promise.all([
       this.prisma.store.count({ where }),
       this.prisma.store.findMany({
         where,
@@ -154,11 +154,15 @@ export class StoresService {
         orderBy: { rating: 'desc' },
         select: {
           id: true, slug: true, name: true, description: true,
-          logoUrl: true, bannerUrl: true,
-          totalProducts: true, rating: true,
+          logoUrl: true, bannerUrl: true, rating: true,
+          // Store.totalProducts is a denormalized counter with no write path
+          // anywhere in the codebase (never incremented/decremented on
+          // create/delete) — always compute live instead of trusting it.
+          _count: { select: { products: { where: { isActive: true, deletedAt: null } } } },
         },
       }),
     ]);
+    const data = rows.map(({ _count, ...s }) => ({ ...s, totalProducts: _count.products }));
     return paginatedResponse(data, total, page, limit);
   }
 
@@ -170,8 +174,11 @@ export class StoresService {
       select: {
         id: true, slug: true, name: true, description: true,
         logoUrl: true, bannerUrl: true, status: true,
-        totalProducts: true, totalOrders: true, rating: true,
+        totalOrders: true, rating: true,
         createdAt: true, verifiedAt: true,
+        // Store.totalProducts is a denormalized counter with no write path
+        // anywhere in the codebase — always compute live instead.
+        _count: { select: { products: { where: { isActive: true, deletedAt: null } } } },
       },
     });
 
@@ -179,7 +186,8 @@ export class StoresService {
       throw new NotFoundException('Store not found');
     }
 
-    return store;
+    const { _count, ...rest } = store;
+    return { ...rest, totalProducts: _count.products };
   }
 
   // ─── Public: Store sections (shop sections sidebar) ───────────────────────
@@ -284,7 +292,15 @@ export class StoresService {
     if (scopedOwnerId && store.ownerId !== scopedOwnerId) {
       throw new NotFoundException('Store not found');
     }
-    return store;
+
+    // Store.totalProducts is a denormalized counter with no write path
+    // anywhere in the codebase (never incremented/decremented on product
+    // create/delete) — always compute live instead of trusting the stale column.
+    const totalProducts = await this.prisma.product.count({
+      where: { storeId, isActive: true, deletedAt: null },
+    });
+
+    return { ...store, totalProducts };
   }
 
   // ─── Admin: Approve ───────────────────────────────────────────────────────

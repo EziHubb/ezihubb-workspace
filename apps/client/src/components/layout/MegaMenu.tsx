@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useId } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { MegaMenuTab } from '../../types/mega-menu';
 
 interface MegaMenuProps {
@@ -34,6 +35,7 @@ function getActiveTabSlug(tabs: MegaMenuTab[], pathname: string, categoryParam?:
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function MegaMenu({ tabs, locale }: MegaMenuProps) {
+  const tNav             = useTranslations('nav');
   const pathname        = usePathname();
   const searchParams    = useSearchParams();
   const categoryParam   = searchParams.get('category');
@@ -78,7 +80,7 @@ export function MegaMenu({ tabs, locale }: MegaMenuProps) {
     <nav
       ref={menuRef}
       role="navigation"
-      aria-label="Product categories"
+      aria-label={tNav('megaMenu.ariaLabel')}
       className="hidden lg:block"
       onMouseLeave={startClose}
       onKeyDown={handleKeyDown}
@@ -173,7 +175,7 @@ export function MegaMenu({ tabs, locale }: MegaMenuProps) {
                           onClick={closeNow}
                           className="block text-sm text-primary font-medium hover:underline underline-offset-2 transition-colors py-0.5"
                         >
-                          View all →
+                          {tNav('viewAll', { category: group.title })} →
                         </Link>
                       </li>
                     )}

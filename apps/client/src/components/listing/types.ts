@@ -106,9 +106,9 @@ export interface PagedResult<T> {
 
 const EMPTY_PAGE = <T>(): PagedResult<T> => ({ data: [], total: 0, totalPages: 0 });
 
-export async function fetchPaged<T>(url: string, revalidate = 30): Promise<PagedResult<T>> {
+export async function fetchPaged<T>(url: string, revalidate = 30, locale?: string): Promise<PagedResult<T>> {
   try {
-    const res = await fetch(url, { next: { revalidate } });
+    const res = await fetch(url, { next: { revalidate }, headers: localeHeader(locale) });
     if (!res.ok) return EMPTY_PAGE<T>();
     const body = (await res.json()) as PaginatedResponse<T>;
     return {
@@ -121,9 +121,9 @@ export async function fetchPaged<T>(url: string, revalidate = 30): Promise<Paged
   }
 }
 
-export async function fetchOne<T>(url: string, revalidate = 30): Promise<T | null> {
+export async function fetchOne<T>(url: string, revalidate = 30, locale?: string): Promise<T | null> {
   try {
-    const res = await fetch(url, { next: { revalidate } });
+    const res = await fetch(url, { next: { revalidate }, headers: localeHeader(locale) });
     if (!res.ok) return null;
     const body = (await res.json()) as { data: T };
     return body.data ?? null;
@@ -132,15 +132,19 @@ export async function fetchOne<T>(url: string, revalidate = 30): Promise<T | nul
   }
 }
 
-export async function fetchList<T>(url: string, revalidate = 60): Promise<T[]> {
+export async function fetchList<T>(url: string, revalidate = 60, locale?: string): Promise<T[]> {
   try {
-    const res = await fetch(url, { next: { revalidate } });
+    const res = await fetch(url, { next: { revalidate }, headers: localeHeader(locale) });
     if (!res.ok) return [];
     const body = (await res.json()) as { data: T[]; success: boolean };
     return body.data ?? [];
   } catch {
     return [];
   }
+}
+
+function localeHeader(locale?: string): Record<string, string> {
+  return locale ? { 'X-Locale': locale } : {};
 }
 
 /**

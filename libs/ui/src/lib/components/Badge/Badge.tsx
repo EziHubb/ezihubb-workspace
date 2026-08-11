@@ -114,8 +114,12 @@ export const Badge: React.FC<BadgeProps> = ({
 
 export const OrderStatusBadge: React.FC<{
   status:    OrderStatusBadgeVariant;
+  /** Translated label — overrides the built-in English default (e.g. "Shipped"). */
+  label?:    string;
   size?:     'sm' | 'md';
   className?: string;
-}> = ({ status, size, className }) => (
-  <Badge variant={status} size={size} className={className} />
+}> = ({ status, label, size, className }) => (
+  <Badge variant={status} size={size} className={className}>
+    {label}
+  </Badge>
 );

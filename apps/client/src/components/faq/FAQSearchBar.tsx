@@ -2,17 +2,21 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Search, X } from 'lucide-react';
-import { FAQ_FLAT } from './faq-data';
+import { getFaqFlat } from './faq-data';
 
 export function FAQSearchBar() {
+  const t = useTranslations('pages.faq');
   const [query, setQuery] = useState('');
 
   const trimmed  = query.trim();
   const isActive = trimmed.length >= 2;
 
+  const faqFlat = getFaqFlat(t);
+
   const filtered = isActive
-    ? FAQ_FLAT.filter(
+    ? faqFlat.filter(
         (faq) =>
           faq.q.toLowerCase().includes(trimmed.toLowerCase()) ||
           faq.a.toLowerCase().includes(trimmed.toLowerCase()),
@@ -27,7 +31,7 @@ export function FAQSearchBar() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search questions… e.g. shipping, refund, personalization"
+          placeholder={t('search.placeholder')}
           className="flex-1 text-sm outline-none bg-transparent placeholder:text-muted"
         />
         {query && (
@@ -35,7 +39,7 @@ export function FAQSearchBar() {
             type="button"
             onClick={() => setQuery('')}
             className="text-muted hover:text-secondary transition-colors"
-            aria-label="Clear search"
+            aria-label={t('search.clearAriaLabel')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -57,9 +61,9 @@ export function FAQSearchBar() {
       {/* No results */}
       {isActive && filtered.length === 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border rounded-xl shadow-lg z-20 px-5 py-4 text-sm text-muted text-center">
-          No results for &ldquo;{trimmed}&rdquo;.{' '}
+          {t('search.noResultsPrefix')} &ldquo;{trimmed}&rdquo;.{' '}
           <Link href="/pages/contact" className="text-primary hover:underline">
-            Ask us directly →
+            {t('search.askDirectly')}
           </Link>
         </div>
       )}
