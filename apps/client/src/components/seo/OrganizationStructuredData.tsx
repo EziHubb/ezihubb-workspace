@@ -4,7 +4,7 @@
     '@type': 'Organization',
     name: 'EziHubb',
     url: 'https://ezihubb.com',
-    logo: 'https://ezihubb.com/logo.jpg',
+    logo: 'https://ezihubb.com/logo.png',
     sameAs: [
       'https://instagram.com/ezihubb',
       'https://facebook.com/ezihubb',

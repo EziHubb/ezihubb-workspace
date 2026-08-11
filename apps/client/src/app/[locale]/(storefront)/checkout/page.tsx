@@ -124,7 +124,7 @@ function OrderSummarySidebar({
           <div className="flex justify-between text-sm text-green-700">
             <span className="flex items-center gap-1">
               <i className="ti ti-gift text-xs" />
-              {t('orderSummary.referralDiscount')}
+              {t('orderSummary.affiliateDiscount')}
             </span>
             <span className="font-medium tabular-nums">−{fmtAmount(affiliateDiscount)}</span>
           </div>

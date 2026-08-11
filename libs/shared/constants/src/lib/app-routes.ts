@@ -39,11 +39,6 @@ export const ADMIN_ROUTES = {
   AFFILIATE:     (id: string) => `/affiliates/${id}`,
   AFFILIATES_PAYOUTS: '/affiliates/payouts',
 
-  CREATORS_ADMIN:          '/creators',
-  CREATORS_ADMIN_MEMBERS:  '/creators/members',
-  CREATORS_ADMIN_PAYOUTS:  '/creators/payouts',
-  CREATORS_ADMIN_SETTINGS: '/creators/settings',
-
   MODERATION:       '/moderation',
   MODERATION_QUEUE: '/moderation/queue',
 
@@ -57,11 +52,6 @@ export const ADMIN_ROUTES = {
 
   PAYOUTS:       '/payouts',
   CAMPAIGNS:     '/campaigns',
-
-  REFERRALS:          '/referrals',
-  REFERRALS_USERS:    '/referrals/users',
-  REFERRALS_PAYOUTS:  '/referrals/payouts',
-  REFERRALS_SETTINGS: '/referrals/settings',
 
   SETTINGS:           '/settings',
   SETTINGS_AUDIT_LOG: '/settings/audit-log',
@@ -115,12 +105,6 @@ export const CLIENT_ROUTES = {
   ACCOUNT_WISHLIST: '/account/wishlist',
   ACCOUNT_ADDRESSES: '/account/addresses',
   ACCOUNT_MESSAGES: '/account/messages',
-  ACCOUNT_CREATOR:         '/account/creator',
-  ACCOUNT_CREATOR_EARNINGS: '/account/creator/earnings',
-  ACCOUNT_CREATOR_PAYOUTS:  '/account/creator/payouts',
-
-  CREATORS:     '/creators',
-  CREATORS_JOIN: '/creators/join',
 
   AFFILIATE:           '/affiliate',
   AFFILIATE_REGISTER:  '/affiliate/register',

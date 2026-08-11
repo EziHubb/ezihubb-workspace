@@ -1,7 +1,7 @@
 import {
   DollarSign, PackageSearch, Clock, Hammer, Store, AlertTriangle,
-  Users, ShoppingBag, CheckCircle2, Flag, CreditCard, Star,
-  ArrowRight, TrendingUp, BarChart2, ShieldCheck, Package,
+  ShoppingBag, CheckCircle2, Flag, CreditCard, Star,
+  TrendingUp, BarChart2, ShieldCheck, Package,
 } from 'lucide-react';
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
@@ -57,7 +57,6 @@ interface PlatformKpis {
   pendingStores?:         number;
   openOrders?:            number;
   moderationQueue?:       number;
-  creatorPayoutsPending?: number;
 }
 
 interface ActivityEvent {
@@ -77,18 +76,8 @@ interface TopStore {
   rating:   number | null;
 }
 
-interface TopCreatorMini {
-  userId:      string;
-  email:       string;
-  firstName:   string | null;
-  lastName:    string | null;
-  earned:      number;
-  directRefs:  number;
-}
-
 interface TopStoresResponse {
   stores?:   TopStore[];
-  creators?: TopCreatorMini[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -187,7 +176,6 @@ export default async function DashboardPage() {
 
   const activityFeed  = safeArr(activityRaw);
   const topStores     = safeArr(topStoresData.stores);
-  const topCreators   = safeArr(topStoresData.creators);
 
   return (
     <>
@@ -199,14 +187,13 @@ export default async function DashboardPage() {
 
       {/* ── SUPER_ADMIN-only sections ─────────────────────────────────────── */}
       {!isShopOwner && (<>
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
         {[
           { icon: DollarSign,   label: 'GMV Today',               value: fmtAmount(platformKpis.gmvToday              ?? 0), color: 'bg-primary'   },
           { icon: Store,        label: 'Active Stores',            value: String(platformKpis.activeStores             ?? 0), color: 'bg-green-500' },
           { icon: Clock,        label: 'Pending Stores',           value: String(platformKpis.pendingStores            ?? 0), color: 'bg-amber-500' },
           { icon: ShoppingBag,  label: 'Open Orders',              value: String(platformKpis.openOrders               ?? 0), color: 'bg-blue-500'  },
           { icon: AlertTriangle,label: 'Moderation Queue',         value: String(platformKpis.moderationQueue          ?? 0), color: 'bg-red-500'   },
-          { icon: Users,        label: 'Creator Payouts Pending',  value: String(platformKpis.creatorPayoutsPending    ?? 0), color: 'bg-[#7C3AED]' },
         ].map(({ icon: Icon, label, value, color }) => (
           <div key={label} className="bg-surface border border-border rounded-card p-4 flex items-center gap-3">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
@@ -221,11 +208,10 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── Quick actions grid (2×3) ──────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3 mb-8">
         {[
           { href: `${ADMIN_ROUTES.STORES}?status=PENDING`,  label: 'Review Stores',       icon: Store,        badge: platformKpis.pendingStores ?? 0,          color: 'text-amber-600 bg-amber-50 border-amber-200 hover:bg-amber-100'  },
           { href: ADMIN_ROUTES.MODERATION,                 label: 'Moderation Queue',    icon: ShieldCheck,  badge: platformKpis.moderationQueue ?? 0,        color: 'text-red-600 bg-red-50 border-red-200 hover:bg-red-100'          },
-          { href: ADMIN_ROUTES.CREATORS_ADMIN_PAYOUTS,     label: 'Creator Payouts',     icon: CreditCard,   badge: platformKpis.creatorPayoutsPending ?? 0,  color: 'text-[#7C3AED] bg-[#F3F0FF] border-[#C4B5FD] hover:bg-[#EEEDFE]' },
           { href: `${ADMIN_ROUTES.ORDERS}?status=PENDING`, label: 'Pending Orders',      icon: Package,      badge: kpis.pendingOrders ?? 0,                  color: 'text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100'      },
           { href: `${ADMIN_ROUTES.REVIEWS}?status=PENDING`,label: 'Pending Reviews',     icon: Star,         badge: totalPending,                             color: 'text-green-600 bg-green-50 border-green-200 hover:bg-green-100'  },
           { href: ADMIN_ROUTES.FINANCE,                    label: 'Finance Overview',    icon: BarChart2,    badge: 0,                                        color: 'text-secondary bg-surface border-border hover:bg-background'     },
@@ -312,7 +298,7 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* ── Row 4: Activity feed + Top stores/creators — SUPER_ADMIN only ── */}
+      {/* ── Row 4: Activity feed + Top stores — SUPER_ADMIN only ── */}
       {!isShopOwner && (<>
       <div className="grid grid-cols-1 xl:grid-cols-[40fr_60fr] gap-6 mb-8">
 
@@ -349,7 +335,6 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* Top stores + top creators */}
         <div className="flex flex-col gap-5">
 
           {/* Top stores */}
@@ -396,53 +381,6 @@ export default async function DashboardPage() {
                 </tbody>
               </table>
             )}
-          </div>
-
-          {/* Top creators */}
-          <div className="bg-surface border border-border rounded-card overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
-              <h3 className="font-semibold text-secondary text-sm">Top Creators This Month</h3>
-              <Link href={ADMIN_ROUTES.CREATORS_ADMIN} className="text-xs text-primary hover:underline">View all →</Link>
-            </div>
-            {topCreators.length === 0 ? (
-              <div className="px-5 py-8 text-center text-sm text-muted">No data yet.</div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-background">
-                    {['Creator', 'Earned', 'Members'].map((h) => (
-                      <th key={h} className="px-4 py-2.5 text-left text-[11px] font-semibold text-muted uppercase tracking-wide">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {topCreators.map((c, i) => (
-                    <tr key={c.userId} className="hover:bg-background transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted w-4 tabular-nums">
-                            {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
-                          </span>
-                          <div>
-                            <p className="text-xs font-semibold text-secondary">
-                              {[c.firstName, c.lastName].filter(Boolean).join(' ') || '—'}
-                            </p>
-                            <p className="text-[10px] text-muted font-mono">{c.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-xs font-bold text-secondary tabular-nums">{fmtAmount(c.earned)}</td>
-                      <td className="px-4 py-3 text-xs text-secondary tabular-nums">{c.directRefs}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            <div className="px-5 py-2.5 border-t border-border">
-              <Link href={ADMIN_ROUTES.CREATORS_ADMIN} className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
-                Creator network overview <ArrowRight className="w-3 h-3" />
-              </Link>
-            </div>
           </div>
         </div>
       </div>

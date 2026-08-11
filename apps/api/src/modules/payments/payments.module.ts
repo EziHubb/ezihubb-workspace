@@ -7,10 +7,9 @@ import { QueueModule } from '../../queue/queue.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { AffiliatesModule } from '../affiliates/affiliates.module';
 import { ProductsModule } from '../products/products.module';
-import { ReferralModule } from '../referrals/referral.module';
 
 @Module({
-  imports: [QueueModule, AnalyticsModule, AffiliatesModule, ProductsModule, ReferralModule],
+  imports: [QueueModule, AnalyticsModule, AffiliatesModule, ProductsModule],
   controllers: [PaymentsController, WebhooksController],
   providers: [PaymentsService, PaypalService],
   exports: [PaymentsService, PaypalService],

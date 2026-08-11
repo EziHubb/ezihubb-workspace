@@ -13,6 +13,7 @@ import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { useDialog } from '../../../contexts/DialogContext';
 import { FilterSelect } from '../../../components/ui/FilterSelect';
+import { useAdminMode } from '../../../lib/store-context';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -68,6 +69,7 @@ const PAGE_SIZE = 12;
 export default function ReviewsPage() {
   const { confirm, alert } = useDialog();
   const qc = useQueryClient();
+  const { isPlatformContext } = useAdminMode();
 
   const [tab,          setTab]          = useState<TabValue>('PENDING');
   const [page,         setPage]         = useState(1);
@@ -388,6 +390,7 @@ export default function ReviewsPage() {
               onDelete={handleDelete}
               onReply={setReplyTarget}
               loading={loadingId}
+              showStore={isPlatformContext}
             />
           ))}
         </div>

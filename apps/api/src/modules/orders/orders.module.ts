@@ -8,11 +8,10 @@ import { PaymentsModule } from '../payments/payments.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AffiliatesModule } from '../affiliates/affiliates.module';
 import { PdfModule } from '../pdf/pdf.module';
-import { ReferralModule } from '../referrals/referral.module';
 import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 
 @Module({
-  imports: [ShippingModule, PaymentsModule, NotificationsModule, AffiliatesModule, PdfModule, ReferralModule, FulfillmentModule],
+  imports: [ShippingModule, PaymentsModule, NotificationsModule, AffiliatesModule, PdfModule, FulfillmentModule],
   controllers: [OrdersController, AdminOrdersController, OrderDownloadsController],
   providers: [OrdersService],
   exports: [OrdersService],

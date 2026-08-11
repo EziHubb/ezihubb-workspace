@@ -38,6 +38,22 @@ function notify() {
 }
 
 function addToast(type: ToastType, message: string, options: ToastOptions = {}): string {
+  // A page that fires several independent queries can have more than one fail
+  // for the same underlying reason at nearly the same time (e.g. a stats query
+  // and a list query both hitting the same broken endpoint) — without this,
+  // each failure stacks its own toast even though they're the same message.
+  const duplicate = _toasts.find((t) => t.type === type && t.message === message);
+  if (duplicate) {
+    // useSyncExternalStore compares snapshots by reference (Object.is) — mutating
+    // the existing toast in place would leave `_toasts` pointing at the same
+    // array, so React would never re-render and the refreshed timer below would
+    // silently never take effect. Replace both the array and the toast object.
+    const refreshed: ToastItem = { ...duplicate, createdAt: Date.now() };
+    _toasts = _toasts.map((t) => (t.id === duplicate.id ? refreshed : t));
+    notify();
+    return duplicate.id;
+  }
+
   const id       = `t-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const duration = options.duration ?? DEFAULT_DURATION[type];
 

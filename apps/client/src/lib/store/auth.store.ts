@@ -59,7 +59,6 @@ export interface RegisterDto {
   password:      string;
   firstName:     string;
   lastName:      string;
-  referralCode?: string;
 }
 
 // ── Store interface ───────────────────────────────────────────────────────────

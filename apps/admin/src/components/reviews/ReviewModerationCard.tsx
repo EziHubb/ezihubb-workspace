@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { fmtDateTime, fmtDate } from '../../lib/fmt';
-import { Check, EyeOff, MessageSquare, Trash2, Package, BadgeCheck } from 'lucide-react';
+import { Check, EyeOff, MessageSquare, Trash2, Package, BadgeCheck, Store } from 'lucide-react';
 
 // ── Types (exported for page to share) ───────────────────────────────────────
 
@@ -19,6 +19,7 @@ export interface Review {
   productImageUrl?:  string;
   productSlug:       string;
   categoryName?:     string;
+  store?:            { id: string; name: string; slug: string } | null;
   orderId:           string;
   rating:            number;
   title?:            string;
@@ -102,6 +103,8 @@ interface ReviewModerationCardProps {
   onDelete:       (id: string) => void;
   onReply:        (review: Review) => void;
   loading?:       string | null;
+  /** Show which store this review belongs to — only meaningful in the platform-wide (SUPER_ADMIN, no store selected) view. */
+  showStore?:     boolean;
 }
 
 export function ReviewModerationCard({
@@ -114,6 +117,7 @@ export function ReviewModerationCard({
   onDelete,
   onReply,
   loading,
+  showStore,
 }: ReviewModerationCardProps) {
   const truncateBody = activeTab !== 'PENDING' && activeTab !== 'ALL';
   const isLoading    = loading === review.id;
@@ -180,6 +184,12 @@ export function ReviewModerationCard({
             <p className="text-xs text-muted mt-0.5">{review.categoryName}</p>
           )}
         </div>
+        {showStore && (
+          <span className="ml-auto flex items-center gap-1 text-[11px] font-semibold text-secondary bg-surface border border-border px-2 py-1 rounded-full shrink-0">
+            <Store className="w-3 h-3 text-muted" />
+            {review.store?.name ?? 'Unknown store'}
+          </span>
+        )}
       </div>
 
       {/* ── Rating + Title ────────────────────────────────────────────────── */}

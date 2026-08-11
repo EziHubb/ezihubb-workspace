@@ -18,7 +18,6 @@ export async function seedAdminUser(prisma: PrismaClient) {
       role:            'SUPER_ADMIN',
       isEmailVerified: true,
       isActive:        true,
-      referralCode:    'ADMIN2024',
     },
   });
   console.log(`    ✓ Admin: ${admin.email}`);
@@ -33,14 +32,14 @@ export async function seedUsers(prisma: PrismaClient) {
 
   // ── Test customers ────────────────────────────────────────────────────────
   const customerDefs = [
-    { email: 'alice@test.com',   firstName: 'Alice',   lastName: 'Johnson',  referralCode: 'ALICE10' },
-    { email: 'bob@test.com',     firstName: 'Bob',     lastName: 'Smith',    referralCode: 'BOB20'   },
-    { email: 'carol@test.com',   firstName: 'Carol',   lastName: 'Williams', referralCode: 'CAROL30' },
-    { email: 'dave@test.com',    firstName: 'Dave',    lastName: 'Brown',    referralCode: 'DAVE40'  },
-    { email: 'emma@test.com',    firstName: 'Emma',    lastName: 'Davis',    referralCode: 'EMMA50'  },
-    { email: 'frank@test.com',   firstName: 'Frank',   lastName: 'Miller',   referralCode: 'FRANK60' },
-    { email: 'grace@test.com',   firstName: 'Grace',   lastName: 'Wilson',   referralCode: 'GRACE70' },
-    { email: 'hannah@test.com',  firstName: 'Hannah',  lastName: 'Taylor',   referralCode: 'HANNAH80'},
+    { email: 'alice@test.com',   firstName: 'Alice',   lastName: 'Johnson'  },
+    { email: 'bob@test.com',     firstName: 'Bob',     lastName: 'Smith'    },
+    { email: 'carol@test.com',   firstName: 'Carol',   lastName: 'Williams' },
+    { email: 'dave@test.com',    firstName: 'Dave',    lastName: 'Brown'    },
+    { email: 'emma@test.com',    firstName: 'Emma',    lastName: 'Davis'    },
+    { email: 'frank@test.com',   firstName: 'Frank',   lastName: 'Miller'   },
+    { email: 'grace@test.com',   firstName: 'Grace',   lastName: 'Wilson'   },
+    { email: 'hannah@test.com',  firstName: 'Hannah',  lastName: 'Taylor'   },
   ];
 
   const customers = await Promise.all(
@@ -56,7 +55,6 @@ export async function seedUsers(prisma: PrismaClient) {
           role:            'CUSTOMER',
           isEmailVerified: true,
           isActive:        true,
-          referralCode:    def.referralCode,
         },
       })
     )
@@ -77,7 +75,6 @@ export async function seedUsers(prisma: PrismaClient) {
       isEmailVerified: true,
       isSeller:        false,
       isActive:        true,
-      referralCode:    'SOPHIE99',
     },
   });
   console.log(`    ✓ Test seller: ${seller.email}`);

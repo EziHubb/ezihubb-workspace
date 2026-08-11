@@ -51,6 +51,20 @@ export class FulfillmentConnectionsService {
     }));
   }
 
+  /** Platform-wide view for a SUPER_ADMIN — every store's connections, with the owning store attached. */
+  async listAllPlatform() {
+    const connections = await this.prisma.storeFulfillmentConnection.findMany({
+      select: { ...CONNECTION_LIST_SELECT, store: { select: { id: true, name: true, slug: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return connections.map(({ webhookToken, encryptedWebhookSecret, ...rest }) => ({
+      ...rest,
+      webhookCallbackUrl: webhookToken ? `${this.webhookBaseUrl(rest.provider)}/${webhookToken}` : null,
+      hasWebhookSecret:   !!encryptedWebhookSecret,
+    }));
+  }
+
   async connect(storeId: string, provider: FulfillmentProviderType, apiKey: string, externalShopId: string) {
     const existing = await this.prisma.storeFulfillmentConnection.findUnique({
       where: { storeId_provider: { storeId, provider } },

@@ -14,7 +14,7 @@ function getShopOwnerRedirect(pathname: string, storeId: string | null): string 
   // Strictly super-admin-only prefixes — always redirect to /dashboard
   const superAdminOnly = [
     '/catalog', '/customers', '/payments', '/campaigns', '/affiliates',
-    '/creators', '/moderation', '/settings', '/referrals', '/finance',
+    '/moderation', '/settings', '/finance',
     '/stores/plans', '/stores/settings',
   ];
   if (superAdminOnly.some((p) => pathname === p || pathname.startsWith(p + '/'))) {

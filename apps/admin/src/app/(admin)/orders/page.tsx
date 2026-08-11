@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { subDays, addDays } from 'date-fns';
 import { OrderStatusBadge } from '../../../components/orders/OrderStatusBadge';
+import { FilterSelect } from '../../../components/ui/FilterSelect';
 import { OrderDetailPanel } from '../../../components/orders/OrderDetailPanel';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import type { OrderDetail } from '../../../components/orders/OrderDrawer';
@@ -467,6 +468,16 @@ export default function OrdersPage() {
           )}
         </div>
 
+        <FilterSelect
+          value={activeTab}
+          onChange={(v) => { setActiveTab(v); setSelected(new Set()); }}
+          options={STATUS_TABS.map((tab) => {
+            const count = tab.key ? (statusCounts[tab.key] ?? 0) : totalCount;
+            return { value: tab.key, label: count > 0 ? `${tab.label} (${count})` : tab.label };
+          })}
+          className="w-auto"
+        />
+
         <button
           type="button"
           onClick={() => setShowFilters((v) => !v)}
@@ -502,46 +513,10 @@ export default function OrdersPage() {
         </button>
       </div>
 
-      {/* Status tabs */}
-      <div className="bg-surface border border-border rounded-t-card border-b-0 overflow-x-auto">
-        <div className="flex min-w-max">
-          {STATUS_TABS.map((tab) => {
-            const count = tab.key
-              ? (statusCounts[tab.key] ?? 0)
-              : totalCount;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => { setActiveTab(tab.key); setSelected(new Set()); }}
-                className={[
-                  'flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
-                  activeTab === tab.key
-                    ? 'border-primary text-primary bg-primary/4'
-                    : 'border-transparent text-muted hover:text-secondary hover:bg-muted/4',
-                ].join(' ')}
-              >
-                {tab.label}
-                {count > 0 && (
-                  <span className={[
-                    'text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center',
-                    activeTab === tab.key
-                      ? 'bg-primary text-white'
-                      : 'bg-muted/15 text-muted',
-                  ].join(' ')}>
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Main content: list + sidebar */}
       <div className="flex flex-col lg:flex-row gap-4 items-start">
         {/* Orders list */}
-        <div className="flex-1 min-w-0 bg-surface border border-border border-t-0 rounded-b-card overflow-hidden">
+        <div className="flex-1 min-w-0 bg-surface border border-border rounded-card overflow-hidden">
           {/* Bulk action bar */}
           <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-background/60">
             {/* Select all */}

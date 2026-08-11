@@ -208,7 +208,7 @@ export function InvoiceDocument({ order, shopUrl, isGiftReceipt = false }: Props
 
               {order.affiliateDiscountAmount > 0 && (
                 <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Referral discount</Text>
+                  <Text style={styles.totalLabel}>Affiliate discount</Text>
                   <Text style={[styles.totalValue, { color: '#16A34A' }]}>
                     -{fmt(order.affiliateDiscountAmount)}
                   </Text>

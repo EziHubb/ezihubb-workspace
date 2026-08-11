@@ -62,7 +62,12 @@ export class PromotionsController {
   @ApiOperation({ summary: 'Create a promotion/coupon' })
   async create(@Req() req: Request, @Body() dto: CreatePromotionDto): Promise<PromotionResponseDto> {
     const context = await this.storeContext.resolve(req);
-    return this.promotionsService.create(dto, context.storeId ?? undefined);
+    // A scoped caller (plain ADMIN, or SUPER_ADMIN in "My Store") always creates under
+    // their own store — dto.storeId is ignored for them, so this can't be used for IDOR.
+    // A platform-context SUPER_ADMIN may target a specific store via dto.storeId, or
+    // leave it unset to create a platform-wide coupon (valid across every store).
+    const targetStoreId = context.isPlatformContext ? dto.storeId : (context.storeId ?? undefined);
+    return this.promotionsService.create(dto, targetStoreId);
   }
 
   @Get('page-stats')

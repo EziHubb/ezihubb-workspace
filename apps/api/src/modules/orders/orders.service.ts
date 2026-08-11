@@ -14,7 +14,6 @@ import { AffiliateTrackingService } from '../affiliates/affiliate-tracking.servi
 import { fmtDateTimeVN } from '../../common/utils/date';
 import { CommissionService } from '../affiliates/commission.service';
 import { PushService } from '../notifications/push.service';
-import { ReferralService } from '../referrals/referral.service';
 import { FulfillmentConnectionStatus } from '@prisma/client';
 import { FulfillmentRegistryService } from '../fulfillment/fulfillment-registry.service';
 import { FulfillmentConnectionsService } from '../fulfillment/fulfillment-connections.service';
@@ -94,7 +93,6 @@ export class OrdersService {
     private readonly affiliateTrackingService: AffiliateTrackingService,
     private readonly commissionService: CommissionService,
     private readonly pushService: PushService,
-    private readonly referralService: ReferralService,
     private readonly fulfillmentRegistry: FulfillmentRegistryService,
     private readonly fulfillmentConnections: FulfillmentConnectionsService,
   ) {}
@@ -320,26 +318,6 @@ export class OrdersService {
       }
     }
 
-    // ── Referral attribution (multi-level) ──────────────────────────────────
-    let referralUserId: string | null = null;
-    let referralDiscountAmt = 0;
-    const mlhRef = cookies?.['ezihubb_ref'];
-
-    if (mlhRef && userId) {
-      const resolved = await this.referralService.resolveCode(mlhRef);
-      if (resolved) {
-        // Find the user who owns this referral code (must not be the buyer)
-        const referrer = await this.prisma.user.findUnique({
-          where: { referralCode: mlhRef.toUpperCase() },
-          select: { id: true },
-        });
-        if (referrer && referrer.id !== userId) {
-          referralUserId    = referrer.id;
-          referralDiscountAmt = Math.round(subtotal * resolved.discountRate * 100) / 100;
-        }
-      }
-    }
-
     // Calculate shipping (waived if FREE_SHIPPING coupon applied).
     // If every item in the cart is fulfilled by a connected provider (e.g.
     // Printify), providerShippingCost holds a real per-store quote and we skip
@@ -369,11 +347,11 @@ export class OrdersService {
     // client sent one — isDigitalOnly is the single source of truth here.
     const addr = isDigitalOnly ? undefined : dto.shippingAddress;
 
-    // Affiliate + referral discounts — applied AFTER coupon, BEFORE payment
+    // Affiliate discount — applied AFTER coupon, BEFORE payment
     const total = Math.max(
       0,
       Math.round(
-        (subtotalAfterDiscount + shippingCost + giftWrappingCost - affiliateDiscountAmount - referralDiscountAmt) * 100,
+        (subtotalAfterDiscount + shippingCost + giftWrappingCost - affiliateDiscountAmount) * 100,
       ) / 100,
     );
 
@@ -411,8 +389,6 @@ export class OrdersService {
           note:                    dto.note ?? null,
           affiliateId:              affiliateId,
           affiliateDiscountAmount:  affiliateDiscountAmount > 0 ? affiliateDiscountAmount : undefined,
-          referralUserId:           referralUserId ?? undefined,
-          referralDiscountAmount:   referralDiscountAmt > 0 ? referralDiscountAmt : undefined,
         },
       });
 
@@ -895,14 +871,6 @@ export class OrdersService {
             this.logger.error(`Failed to schedule auto-confirm for order ${id}: ${err.message}`),
           );
       }
-      // Referral commission lock period
-      if (order.referralUserId) {
-        this.referralService
-          .scheduleAutoConfirm(id)
-          .catch((err: Error) =>
-            this.logger.error(`Failed to schedule referral auto-confirm for order ${id}: ${err.message}`),
-          );
-      }
     }
 
     return this.mapToDto(updated);
@@ -1145,7 +1113,6 @@ export class OrdersService {
     const shippingCost     = Number(order.shippingCost);
     const discountAmount   = Number(order.discountAmount);
     const affiliateDisc    = Number(order.affiliateDiscountAmount ?? 0);
-    const referralDisc     = Number(order.referralDiscountAmount ?? 0);
     const total            = Number(order.total);
 
     // Platform fees (5% transaction + 3%+$0.25 payment processing)
@@ -1159,7 +1126,6 @@ export class OrdersService {
       shippingRevenue:   shippingCost,
       couponDiscount:    discountAmount,
       affiliateDiscount: affiliateDisc,
-      referralDiscount:  referralDisc,
       transactionFee,
       processingFee,
       netEarnings,

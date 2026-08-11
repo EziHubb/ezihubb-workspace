@@ -229,12 +229,12 @@ export function Navbar({ menuData }: NavbarProps = {}) {
 
               <Link href={`/${locale}`} className="flex items-center shrink-0">
                 <Image
-                  src="/logo.jpg"
+                  src="/logo.png"
                   alt="EziHubb"
-                  width={160}
-                  height={40}
+                  width={182}
+                  height={52}
                   priority
-                  className="h-8 md:h-9 w-auto object-contain"
+                  className="h-10 md:h-11 w-auto object-contain"
                 />
               </Link>
             </div>

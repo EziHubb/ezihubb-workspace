@@ -11,7 +11,6 @@ import {
   User,
   LogOut,
   MessageCircle,
-  Users,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, queryKeys } from '@ezihubb/api-client';
@@ -65,7 +64,6 @@ export function AccountSidebar({ profile, onNavigate }: AccountSidebarProps) {
     { href: CLIENT_ROUTES.ACCOUNT_ORDERS,    icon: Package,       label: t('myOrders'),        badge: undefined    },
     { href: CLIENT_ROUTES.ACCOUNT_WISHLIST,  icon: Heart,         label: t('wishlist'),         badge: undefined    },
     { href: CLIENT_ROUTES.ACCOUNT_MESSAGES,  icon: MessageCircle, label: t('messages'),         badge: unreadCount > 0 ? unreadCount : undefined },
-    { href: CLIENT_ROUTES.ACCOUNT_CREATOR,   icon: Users,         label: t('creatorHub'),       badge: undefined    },
     { href: CLIENT_ROUTES.ACCOUNT_ADDRESSES, icon: MapPin,        label: t('addressBook'),      badge: undefined    },
     { href: CLIENT_ROUTES.ACCOUNT_PROFILE,   icon: User,          label: t('profilePassword'),  badge: undefined    },
   ] as const;

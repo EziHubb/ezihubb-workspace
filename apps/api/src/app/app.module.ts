@@ -39,7 +39,6 @@ import { AffiliatesModule } from '../modules/affiliates/affiliates.module';
 import { CurrencyModule } from '../modules/currency/currency.module';
 import { UnsubscribeController } from '../modules/unsubscribe/unsubscribe.controller';
 import { TranslationsModule } from '../modules/translations/translations.module';
-import { ReferralModule } from '../modules/referrals/referral.module';
 import { StoresModule } from '../modules/stores/stores.module';
 import { ModerationModule } from '../modules/moderation/moderation.module';
 import { ShopStatsModule } from '../modules/shop-stats/shop-stats.module';
@@ -152,7 +151,6 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
     AffiliatesModule,
     CurrencyModule,
     TranslationsModule,
-    ReferralModule,
     StoresModule,
     ModerationModule,
     ShopStatsModule,

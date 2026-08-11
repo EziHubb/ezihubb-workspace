@@ -20,7 +20,6 @@ const NAMESPACES = [
   'cart',
   'checkout',
   'account',
-  'creator',
   'seller',
   'affiliate',
   'pages',

@@ -51,7 +51,7 @@ export default function AdminLoginPage() {
       >
         {/* Logo */}
         <div className="inline-flex items-center bg-white rounded-lg px-3 py-2 self-start">
-          <Image src="/logo.jpg" alt="EziHubb" width={160} height={40} priority className="h-8 w-auto object-contain" />
+          <Image src="/logo.png" alt="EziHubb" width={182} height={52} priority className="h-11 w-auto object-contain" />
         </div>
 
         {/* Center copy */}
@@ -90,7 +90,7 @@ export default function AdminLoginPage() {
         <div className="w-full max-w-[400px]">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center mb-8">
-            <Image src="/logo.jpg" alt="EziHubb" width={150} height={38} priority className="h-8 w-auto object-contain" />
+            <Image src="/logo.png" alt="EziHubb" width={182} height={52} priority className="h-11 w-auto object-contain" />
           </div>
 
           <h2 className="text-2xl font-bold text-secondary mb-1">Sign in to Admin</h2>

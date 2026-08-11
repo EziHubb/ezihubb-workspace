@@ -23,7 +23,6 @@ interface EarningsData {
   shippingRevenue: number;
   couponDiscount: number;
   affiliateDiscount: number;
-  referralDiscount: number;
   pointsDiscount: number;
   transactionFee: number;
   processingFee: number;
@@ -67,12 +66,11 @@ function EarningsTab({ orderId }: { orderId: string }) {
       </div>
 
       {/* Discounts */}
-      {(earnings.couponDiscount > 0 || earnings.affiliateDiscount > 0 || earnings.referralDiscount > 0 || earnings.pointsDiscount > 0) && (
+      {(earnings.couponDiscount > 0 || earnings.affiliateDiscount > 0 || earnings.pointsDiscount > 0) && (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-muted uppercase tracking-wider">Discounts applied</p>
           {earnings.couponDiscount > 0    && <Row label="Coupon discount"    value={neg(earnings.couponDiscount)}    negative />}
           {earnings.affiliateDiscount > 0 && <Row label="Affiliate discount" value={neg(earnings.affiliateDiscount)} negative />}
-          {earnings.referralDiscount > 0  && <Row label="Referral discount"  value={neg(earnings.referralDiscount)}  negative />}
           {earnings.pointsDiscount > 0    && <Row label="Points discount"    value={neg(earnings.pointsDiscount)}    negative />}
         </div>
       )}

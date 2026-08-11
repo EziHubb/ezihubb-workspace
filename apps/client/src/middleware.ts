@@ -8,8 +8,7 @@ const intlMiddleware = createMiddleware(routing);
 
 // ── Attribution cookie names ──────────────────────────────────────────────────
 
-const AFFILIATE_COOKIE = 'ezihubb_affiliate'; // legacy affiliate referralCode
-const REFERRAL_COOKIE  = 'ezihubb_ref';       // multi-level referral code
+const AFFILIATE_COOKIE = 'ezihubb_affiliate'; // affiliate referralCode
 const VISITOR_COOKIE   = 'ezihubb_visitor';   // anonymous UUID for click dedup
 const COOKIE_MAX_AGE   = 30 * 24 * 60 * 60; // 30 days in seconds
 
@@ -20,9 +19,7 @@ function applyAttributionCookies(
   searchParams: URLSearchParams,
 ): void {
   if (ref && /^[A-Z0-9]{4,20}$/.test(ref)) {
-    // Set both legacy affiliate cookie and new referral cookie
     response.cookies.set(AFFILIATE_COOKIE, ref, { sameSite: 'lax', path: '/', maxAge: COOKIE_MAX_AGE });
-    response.cookies.set(REFERRAL_COOKIE,  ref, { sameSite: 'lax', path: '/', maxAge: COOKIE_MAX_AGE });
   }
   // Buyer referral cookie
   const bref = searchParams.get('bref');

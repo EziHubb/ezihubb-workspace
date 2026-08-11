@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { signOut } from 'next-auth/react';
 import { ApiError } from '../../lib/api-client';
 import { toast } from '../../lib/store/toast.store';
+import { setStoreContext } from '../../lib/store-context';
 
 function shouldRetry(failureCount: number, err: unknown): boolean {
   if (err instanceof ApiError) {
@@ -21,6 +22,7 @@ function retryDelay(attempt: number): number {
 
 function handle401(err: unknown): boolean {
   if (err instanceof ApiError && err.status === 401) {
+    setStoreContext(null);
     signOut({ callbackUrl: '/login' });
     return true;
   }

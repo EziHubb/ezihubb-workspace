@@ -42,6 +42,7 @@ export class AdminReviewResponseDto {
   productSlug!: string;
   productImageUrl?: string | null;
   categoryName?: string | null;
+  store?: { id: string; name: string; slug: string } | null;
 }
 
 export class ReviewSummaryDto {

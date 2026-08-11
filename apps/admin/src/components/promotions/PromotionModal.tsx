@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Zap, Percent, DollarSign, Truck } from 'lucide-react';
+import { X, Zap, Percent, DollarSign, Truck, Globe2 } from 'lucide-react';
+import { StorePicker, type StoreOption } from '../ui/StorePicker';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,8 @@ export interface Promotion extends PromotionFormData {
   currentUses:  number;
   isActive:     boolean;
   createdAt:    string;
+  /** Null = a platform-wide coupon, valid across every store. */
+  store?:       StoreOption | null;
 }
 
 const EMPTY_FORM: PromotionFormData = {
@@ -96,11 +99,13 @@ const inputCls =
 
 interface PromotionModalProps {
   promotion?: Promotion | null;
+  /** True for a SUPER_ADMIN viewing "Platform" (no store switched into) — offers the store-target picker on create. */
+  isPlatformContext?: boolean;
   onClose:    () => void;
-  onSave:     (data: PromotionFormData, id?: string) => Promise<void>;
+  onSave:     (data: PromotionFormData, id?: string, storeId?: string) => Promise<void>;
 }
 
-export function PromotionModal({ promotion, onClose, onSave }: PromotionModalProps) {
+export function PromotionModal({ promotion, isPlatformContext, onClose, onSave }: PromotionModalProps) {
   const isEdit = !!promotion?.id;
 
   const [form,    setForm]    = useState<PromotionFormData>(() =>
@@ -117,6 +122,12 @@ export function PromotionModal({ promotion, onClose, onSave }: PromotionModalPro
       description:    promotion.description ?? '',
     } : { ...EMPTY_FORM }
   );
+
+  // Only meaningful on create for a platform-context SUPER_ADMIN — left unset,
+  // the coupon is platform-wide (valid across every store), matching the
+  // long-standing default. Picking a store scopes it to just that store.
+  // Not offered on edit — a coupon's store isn't reassignable after creation.
+  const [storeTarget, setStoreTarget] = useState<StoreOption | null>(null);
 
   const [errors,  setErrors]  = useState<Record<string, string>>({});
   const [saving,  setSaving]  = useState(false);
@@ -156,7 +167,7 @@ export function PromotionModal({ promotion, onClose, onSave }: PromotionModalPro
         expiresAt: form.neverExpires ? '' : form.expiresAt,
         value:     form.type === 'FREE_SHIPPING' ? 0 : form.value,
       };
-      await onSave(payload, promotion?.id);
+      await onSave(payload, promotion?.id, isEdit ? undefined : (storeTarget?.id ?? undefined));
     } catch { /* error handled by parent */ } finally { setSaving(false); }
   };
 
@@ -203,6 +214,19 @@ export function PromotionModal({ promotion, onClose, onSave }: PromotionModalPro
               </div>
               {errors.code && <p className="text-xs text-red-600 mt-1">{errors.code}</p>}
             </Field>
+
+            {/* Store scope — platform-context create only */}
+            {isPlatformContext && !isEdit && (
+              <Field label="Applies to" hint="Leave blank to create a platform-wide coupon, valid across every store">
+                <StorePicker value={storeTarget} onChange={setStoreTarget} />
+              </Field>
+            )}
+            {isPlatformContext && isEdit && (
+              <div className="flex items-center gap-2 text-xs text-muted bg-background border border-border rounded-button px-3 py-2">
+                <Globe2 className="w-3.5 h-3.5 shrink-0" />
+                Scope: {promotion?.store ? promotion.store.name : 'Platform-wide (every store)'}
+              </div>
+            )}
 
             {/* Discount type */}
             <Field label="Discount Type" required>

@@ -28,7 +28,7 @@
     "shipping": "Phí vận chuyển",
     "free": "MIỄN PHÍ",
     "discount": "Giảm giá ({couponCode})",
-    "referralDiscount": "Giảm giá giới thiệu",
+    "affiliateDiscount": "Giảm giá liên kết",
     "loyaltyPoints": "Điểm tích lũy",
     "giftWrapping": "Gói quà",
     "total": "Tổng cộng"

@@ -28,7 +28,7 @@
     "shipping": "Shipping",
     "free": "FREE",
     "discount": "Discount ({couponCode})",
-    "referralDiscount": "Referral discount",
+    "affiliateDiscount": "Affiliate discount",
     "loyaltyPoints": "Loyalty points",
     "giftWrapping": "Gift wrapping",
     "total": "Total"

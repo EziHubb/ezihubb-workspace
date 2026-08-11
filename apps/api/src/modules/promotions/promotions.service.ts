@@ -156,9 +156,11 @@ export class PromotionsService {
         expiresAt: dto.expiresAt ?? null,
         description: dto.description ?? null,
         // storeId undefined (platform context) → a platform-wide coupon, same as before.
-        // storeId set (a store owner, or SUPER_ADMIN in their own store context) → scoped to that store.
+        // storeId set (a store owner, or SUPER_ADMIN in their own store context, or a
+        // platform-context SUPER_ADMIN who explicitly picked a store) → scoped to that store.
         storeId: storeId ?? null,
       },
+      include: { store: { select: { id: true, name: true, slug: true } } },
     });
 
     return this.mapToDto(promotion);
@@ -175,6 +177,7 @@ export class PromotionsService {
     const [promotions, total] = await Promise.all([
       this.prisma.promotion.findMany({
         where,
+        include: { store: { select: { id: true, name: true, slug: true } } },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -187,7 +190,10 @@ export class PromotionsService {
 
   /** storeId undefined = platform context (no ownership check); set = must match exactly. */
   async findOne(id: string, storeId?: string): Promise<PromotionResponseDto> {
-    const promotion = await this.prisma.promotion.findUnique({ where: { id } });
+    const promotion = await this.prisma.promotion.findUnique({
+      where: { id },
+      include: { store: { select: { id: true, name: true, slug: true } } },
+    });
     if (!promotion || (storeId !== undefined && promotion.storeId !== storeId))
       throw new NotFoundException({
         code: 'ERR_NOT_FOUND',
@@ -384,6 +390,7 @@ export class PromotionsService {
     expiresAt: Date | null;
     description: string | null;
     createdAt: Date;
+    store?: { id: string; name: string; slug: string } | null;
   }): PromotionResponseDto {
     return {
       id: promotion.id,
@@ -402,6 +409,7 @@ export class PromotionsService {
       expiresAt: promotion.expiresAt,
       description: promotion.description,
       createdAt: promotion.createdAt,
+      store: promotion.store ?? null,
     };
   }
 }

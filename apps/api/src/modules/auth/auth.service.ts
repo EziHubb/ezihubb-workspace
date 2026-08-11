@@ -28,7 +28,6 @@ const LOGIN_MAX_ATTEMPTS = 5;
 const LOGIN_LOCK_TTL_SECONDS = 900; // 15 minutes
 const TOTP_PARTIAL_TOKEN_EXPIRY = '5m';
 const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN'] as const;
-const REFERRAL_CODE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
 @Injectable()
 export class AuthService {
@@ -45,23 +44,6 @@ export class AuthService {
 
   // ─── Registration ──────────────────────────────────────────────────────────
 
-  private async generateReferralCode(firstName: string): Promise<string> {
-    for (let attempt = 0; attempt < 8; attempt++) {
-      const prefix = (firstName ?? '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4).padEnd(4, 'X');
-      let suffix = '';
-      for (let i = 0; i < 4; i++) {
-        suffix += REFERRAL_CODE_CHARS[Math.floor(Math.random() * REFERRAL_CODE_CHARS.length)];
-      }
-      const code = prefix + suffix;
-      const exists = await this.prisma.user.findUnique({ where: { referralCode: code }, select: { id: true } });
-      if (!exists) return code;
-    }
-    // Fallback: pure random 8-char code
-    let code = '';
-    for (let i = 0; i < 8; i++) code += REFERRAL_CODE_CHARS[Math.floor(Math.random() * REFERRAL_CODE_CHARS.length)];
-    return code;
-  }
-
   async register(dto: RegisterDto, res: Response): Promise<AuthResponseDto> {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) {
@@ -70,31 +52,12 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
-    // ── Referral attribution ─────────────────────────────────────────────────
-    const referralCode = await this.generateReferralCode(dto.firstName);
-    let referredByUserId: string | undefined;
-    let referralDepth = 0;
-
-    if (dto.referralCode) {
-      const referrer = await this.prisma.user.findUnique({
-        where: { referralCode: dto.referralCode },
-        select: { id: true, referralDepth: true },
-      });
-      if (referrer) {
-        referredByUserId = referrer.id;
-        referralDepth = Math.min((referrer.referralDepth ?? 0) + 1, 5);
-      }
-    }
-
     const user = await this.prisma.user.create({
       data: {
         email: dto.email,
         passwordHash,
         firstName: dto.firstName,
         lastName: dto.lastName,
-        referralCode,
-        referredByUserId: referredByUserId ?? null,
-        referralDepth,
       },
     });
 
@@ -105,14 +68,6 @@ export class AuthService {
     }).catch((err: Error) =>
       this.logger.error(`Failed to link guest orders for ${dto.email}: ${err.message}`),
     );
-
-    // Increment referrer stats (fire-and-forget)
-    if (referredByUserId) {
-      this.prisma.user.update({
-        where: { id: referredByUserId },
-        data: { totalReferrals: { increment: 1 } },
-      }).catch((err: Error) => this.logger.error(`Failed to increment referrer totalReferrals: ${err.message}`));
-    }
 
     // Queue verification email (fire-and-forget)
     await this.enqueueVerificationEmail(user.id, user.email, user.firstName ?? '').catch((err) =>

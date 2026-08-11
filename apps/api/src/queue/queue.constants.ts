@@ -7,7 +7,6 @@ export const QUEUES = {
   AFFILIATE_COMMISSION: 'affiliate-commission',
   LOW_STOCK:            'low-stock',
   TRANSLATIONS:         'translations',
-  REFERRAL:             'referral',
   MODERATION:           'moderation',
   ORDER_TRACKING:       'order-tracking',
   FULFILLMENT:          'fulfillment',
@@ -41,10 +40,6 @@ export const JOBS = {
 
   // Translations
   TRANSLATE_ENTITY: 'translate-entity',
-
-  // Referral
-  REFERRAL_AUTO_CONFIRM: 'referral-auto-confirm',
-  REFERRAL_CHECK_TIER:   'referral-check-tier',
 
   // Moderation
   CHECK_TEXT:  'check-text',

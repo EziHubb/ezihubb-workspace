@@ -1,5 +1,5 @@
-import { IsEmail, IsString, IsOptional, MinLength, MaxLength, Matches } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsString, MinLength, MaxLength, Matches } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 
 export class RegisterDto {
@@ -30,11 +30,4 @@ export class RegisterDto {
   @MaxLength(50)
   @Transform(({ value }) => (value as string)?.trim())
   lastName: string;
-
-  @ApiPropertyOptional({ example: 'JANE1234', description: 'Referral code of the user who referred you' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(12)
-  @Transform(({ value }) => (value as string)?.toUpperCase().trim())
-  referralCode?: string;
 }

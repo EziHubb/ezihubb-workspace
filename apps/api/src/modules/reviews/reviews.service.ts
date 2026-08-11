@@ -50,6 +50,7 @@ const ADMIN_REVIEW_INCLUDE = {
       category: { select: { name: true } },
     },
   },
+  store: { select: { id: true, name: true, slug: true } },
 } as const;
 
 @Injectable()
@@ -490,6 +491,7 @@ export class ReviewsService {
     const data = reviews.map((r) => {
       const u = r.user as { id: string; firstName: string | null; lastName: string | null; email: string; avatarUrl: string | null };
       const p = (r as any).product as { id: string; name: string; slug: string; images: { url: string }[]; category: { name: string } | null } | null;
+      const s = (r as any).store as { id: string; name: string; slug: string } | null;
       return {
         id:               r.id,
         userId:           r.userId,
@@ -510,6 +512,7 @@ export class ReviewsService {
         productSlug:      p?.slug   ?? '',
         productImageUrl:  p?.images[0]?.url ?? null,
         categoryName:     p?.category?.name ?? null,
+        store:            s,
       };
     });
 

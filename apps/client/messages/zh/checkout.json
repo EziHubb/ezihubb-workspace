@@ -28,7 +28,7 @@
     "shipping": "运费",
     "free": "免费",
     "discount": "优惠（{couponCode}）",
-    "referralDiscount": "推荐折扣",
+    "affiliateDiscount": "联盟折扣",
     "loyaltyPoints": "积分兑换",
     "giftWrapping": "礼品包装",
     "total": "合计"

@@ -69,6 +69,11 @@ export class CreatePromotionDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({ description: 'Only honored for a platform-context SUPER_ADMIN (no store switched into) — targets a specific store instead of creating a platform-wide coupon. Ignored for any other caller, who always creates under their own store.' })
+  @IsOptional()
+  @IsString()
+  storeId?: string;
 }
 
 export class UpdatePromotionDto extends PartialType(CreatePromotionDto) {}

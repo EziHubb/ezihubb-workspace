@@ -2,12 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Share2, Copy, Check, X } from 'lucide-react';
-import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
-import { useAuthStore } from '../../lib/store/auth.store';
-import { useAuthQuery } from '../../lib/hooks/useAuthQuery';
-import { API_ROUTES } from '@ezihubb/constants';
 
 // ── Social helpers ─────────────────────────────────────────────────────────────
 
@@ -39,18 +35,6 @@ export function ShareButton({ productSlug, productName }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
   const popoverRef          = useRef<HTMLDivElement>(null);
 
-  const user      = useAuthStore((s) => s.user);
-  const isLoggedIn = !!user;
-
-  // Fetch referralCode from the referrals API (only when logged in)
-  const { data: referralMe } = useAuthQuery<{ referralCode: string }>(
-    ['referral-me-code'],
-    API_ROUTES.REFERRALS.ME,
-    undefined,
-    { enabled: isLoggedIn, staleTime: 300_000 },
-  );
-  const referralCode = referralMe?.referralCode;
-
   // ── Locale from URL params ─────────────────────────────────────────────────
   const params = useParams() as Record<string, string | string[]>;
   const locale = (Array.isArray(params['locale']) ? params['locale'][0] : params['locale']) ?? 'en';
@@ -58,9 +42,8 @@ export function ShareButton({ productSlug, productName }: ShareButtonProps) {
   // ── Share URL construction ────────────────────────────────────────────────
   const buildShareUrl = useCallback((): string => {
     if (typeof window === 'undefined') return '';
-    const base = `${window.location.origin}/${locale}/products/${productSlug}`;
-    return referralCode ? `${base}?ref=${referralCode}` : base;
-  }, [locale, productSlug, referralCode]);
+    return `${window.location.origin}/${locale}/products/${productSlug}`;
+  }, [locale, productSlug]);
 
   // ── Mobile native share ───────────────────────────────────────────────────
   const handleShareButtonClick = async () => {
@@ -231,29 +214,6 @@ export function ShareButton({ productSlug, productName }: ShareButtonProps) {
               </a>
             ))}
           </div>
-
-          {/* Commission CTA */}
-          {isLoggedIn && referralCode ? (
-            <div className="flex items-center gap-2 px-3 py-2.5 bg-green-50 border border-green-200 rounded-xl">
-              <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center shrink-0">
-                <Check className="w-3.5 h-3.5 text-white" />
-              </div>
-              <p className="text-xs text-green-700 font-medium leading-tight">
-                {t('earnCommission')}
-              </p>
-            </div>
-          ) : !isLoggedIn ? (
-            <div className="flex items-center gap-2 px-3 py-2.5 bg-primary/5 border border-primary/20 rounded-xl">
-              <Share2 className="w-4 h-4 text-primary shrink-0" />
-              <p className="text-xs text-secondary leading-tight">
-                <Link href="/login" className="text-primary font-semibold hover:underline" onClick={() => setOpen(false)}>
-                  {t('signIn')}
-                </Link>
-                {' '}{t('signInToEarn')}
-              </p>
-            </div>
-          ) : null}
-
         </div>
       )}
     </div>

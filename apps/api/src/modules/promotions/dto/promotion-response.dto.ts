@@ -14,6 +14,8 @@ export class PromotionResponseDto {
   expiresAt?: Date | null;
   description?: string | null;
   createdAt!: Date;
+  /** Null = a platform-wide coupon, valid across every store. */
+  store?: { id: string; name: string; slug: string } | null;
 }
 
 export class CouponValidationResultDto {

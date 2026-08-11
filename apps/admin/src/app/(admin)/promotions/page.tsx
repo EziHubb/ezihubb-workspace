@@ -16,6 +16,7 @@ import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtDate, fmtNum } from '../../../lib/fmt';
 import { useDialog } from '../../../contexts/DialogContext';
 import { FilterSelect } from '../../../components/ui/FilterSelect';
+import { useAdminMode } from '../../../lib/store-context';
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 
@@ -136,6 +137,7 @@ const PAGE_SIZE = 20;
 export default function PromotionsPage() {
   const qc = useQueryClient();
   const { confirm } = useDialog();
+  const { isPlatformContext } = useAdminMode();
 
   const [page,     setPage]     = useState(1);
   const [search,   setSearch]   = useState('');
@@ -188,15 +190,20 @@ export default function PromotionsPage() {
 
   const handleDuplicate = async (p: Promotion) => {
     const code = `${p.code.replace(/-COPY\d*$/, '')}-COPY${Date.now().toString().slice(-4)}`;
-    await api.post(API_ROUTES.ADMIN.PROMOTIONS, { ...p, id: undefined, code, currentUses: 0, isActive: false });
+    // `store` is an {id,name,slug} object for display — the create DTO wants a
+    // plain `storeId` string, so it must be mapped explicitly here or the
+    // duplicate would silently lose its store scope and become platform-wide.
+    await api.post(API_ROUTES.ADMIN.PROMOTIONS, {
+      ...p, id: undefined, code, currentUses: 0, isActive: false, store: undefined, storeId: p.store?.id,
+    });
     invalidate();
   };
 
-  const handleSave = async (data: PromotionFormData, id?: string) => {
+  const handleSave = async (data: PromotionFormData, id?: string, storeId?: string) => {
     if (id) {
       await api.patch(API_ROUTES.ADMIN.PROMOTION(id), data);
     } else {
-      await api.post(API_ROUTES.ADMIN.PROMOTIONS, data);
+      await api.post(API_ROUTES.ADMIN.PROMOTIONS, { ...data, storeId });
     }
     invalidate();
     setModal(null);
@@ -224,6 +231,15 @@ export default function PromotionsPage() {
         </div>
       ),
     },
+    ...(isPlatformContext ? [{
+      id:     'store',
+      header: 'Store',
+      size:   130,
+      cell:   ({ row }: { row: { original: Promotion } }) =>
+        row.original.store
+          ? <span className="text-sm text-secondary truncate">{row.original.store.name}</span>
+          : <span className="text-xs text-muted italic">Platform-wide</span>,
+    } as ColumnDef<Promotion>] : []),
     {
       accessorKey: 'type',
       header:      'Type',
@@ -316,7 +332,7 @@ export default function PromotionsPage() {
         );
       },
     },
-  ], []);
+  ], [isPlatformContext]);
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -435,6 +451,7 @@ export default function PromotionsPage() {
       {modal !== null && (
         <PromotionModal
           promotion={modal === 'new' ? null : modal}
+          isPlatformContext={isPlatformContext}
           onClose={() => setModal(null)}
           onSave={handleSave}
         />

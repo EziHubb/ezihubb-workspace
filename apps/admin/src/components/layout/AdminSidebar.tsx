@@ -7,12 +7,12 @@ import { signOut, useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
-import { useStoreContext, setStoreContext } from '../../lib/store-context';
+import { setStoreContext, useAdminMode } from '../../lib/store-context';
 import {
   LayoutDashboard, ShoppingCart, ShoppingBag, FolderOpen,
   Tag, Layers, Users, BadgePercent, Star, Truck,
   CreditCard, Settings, ChevronDown, LogOut, Globe, MessageSquare, Link2,
-  Bookmark, Factory, Shield, GitBranch, Store, BarChart2, Wallet, ShieldAlert, History,
+  Bookmark, Factory, Shield, Store, BarChart2, Wallet, ShieldAlert, History,
   SlidersHorizontal, ScanSearch, TrendingUp,
   Menu, X, Megaphone, Plug, KeyRound, ArrowLeftRight,
 } from 'lucide-react';
@@ -91,8 +91,9 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: 'Community',
     items: [
+      // Messages deliberately excluded — they're per-store customer conversations,
+      // not something that makes sense aggregated across the whole platform.
       { label: 'Customers',  href: '/customers',  icon: Users         },
-      { label: 'Messages',   href: '/messages',   icon: MessageSquare },
       { label: 'Reviews',    href: '/reviews',    icon: Star          },
       { label: 'Promotions', href: '/promotions', icon: BadgePercent  },
       { label: 'Campaigns',  href: '/campaigns',  icon: Megaphone     },
@@ -107,15 +108,6 @@ const NAV_SECTIONS: NavSection[] = [
           { label: 'Applications', href: '/affiliates',          icon: Link2      },
           { label: 'Payouts',      href: '/affiliates/payouts',  icon: CreditCard },
           { label: 'Settings',     href: '/settings/affiliates', icon: Settings   },
-        ],
-      },
-      {
-        label: 'Creator Network', href: '/creators', icon: GitBranch,
-        children: [
-          { label: 'Overview', href: '/creators',          icon: GitBranch  },
-          { label: 'Members',  href: '/creators/members',  icon: Users      },
-          { label: 'Payouts',  href: '/creators/payouts',  icon: CreditCard },
-          { label: 'Settings', href: '/creators/settings', icon: Settings   },
         ],
       },
     ],
@@ -202,24 +194,16 @@ function getShopNavSections(storeId: string): NavSection[] {
 function useNavData() {
   const { data: session } = useSession();
   const user     = session?.user as Record<string, unknown> | undefined;
-  const name     = (user?.['name']    as string) || 'Admin';
-  const email    = (user?.['email']   as string) || '';
-  const role     = (user?.['role']    as string) || '';
-  const ownStoreId = (user?.['storeId'] as string) || '';
+  const name     = (user?.['name']  as string) || 'Admin';
+  const email    = (user?.['email'] as string) || '';
   const initials = name.split(' ').map((n) => n[0] ?? '').slice(0, 2).join('').toUpperCase();
 
-  const isSuperAdmin = role === 'SUPER_ADMIN';
-  const activeStoreContext = useStoreContext();
-  // A SUPER_ADMIN who also owns a store (e.g. the platform's own shop) can
-  // switch into it and get the exact same scoped view a regular shop-owner
-  // ADMIN gets — see apps/api's StoreContextService for the server-side half.
-  const canSwitchToOwnStore = isSuperAdmin && !!ownStoreId;
-  const inStoreMode = canSwitchToOwnStore && activeStoreContext === ownStoreId;
+  const { role, ownStoreId, canSwitchToOwnStore, inStoreMode, isPlatformContext } = useAdminMode();
 
   const { data: pendingData } = useQuery<{ count: number }>({
     queryKey: ['sidebar-affiliate-pending'],
     queryFn:  () => api.get<{ count: number }>(API_ROUTES.ADMIN.AFFILIATES_PENDING_COUNT),
-    enabled:  isSuperAdmin && !inStoreMode,
+    enabled:  isPlatformContext,
     staleTime:       60_000,
     refetchInterval: 120_000,
   });
@@ -235,7 +219,7 @@ function useNavData() {
   [pendingData]);
 
   const shopNavSections = useMemo(() => getShopNavSections(ownStoreId), [ownStoreId]);
-  const navSections = isSuperAdmin && !inStoreMode ? superAdminSections : shopNavSections;
+  const navSections = isPlatformContext ? superAdminSections : shopNavSections;
 
   const toggleStoreMode = () => {
     setStoreContext(inStoreMode ? null : ownStoreId);
@@ -473,7 +457,7 @@ function SidebarBody({
           </div>
           <button
             type="button"
-            onClick={() => signOut({ callbackUrl: '/login' })}
+            onClick={() => { setStoreContext(null); signOut({ callbackUrl: '/login' }); }}
             className="shrink-0 p-1.5 rounded-lg text-[#6B7280] hover:text-red-400 hover:bg-red-500/10 transition-all duration-150"
             title="Sign out"
           >

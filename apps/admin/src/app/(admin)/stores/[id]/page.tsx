@@ -508,7 +508,7 @@ export default function AdminStoreDetailPage() {
                   <Pencil className="w-3.5 h-3.5" />
                   Edit
                 </button>
-                <a href={`/shops/${store.slug}`} target="_blank" rel="noopener noreferrer"
+                <a href={`${process.env.NEXT_PUBLIC_CLIENT_URL ?? 'http://localhost:3000'}/shops/${store.slug}`} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-1.5 text-sm text-primary hover:underline">
                   <ExternalLink className="w-4 h-4" />
                   View store

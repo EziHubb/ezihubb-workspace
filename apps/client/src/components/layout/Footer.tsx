@@ -43,11 +43,11 @@ function BrandLogo() {
   return (
     <div className="inline-flex items-center bg-white rounded-lg px-2.5 py-1.5">
       <Image
-        src="/logo.jpg"
+        src="/logo.png"
         alt="EziHubb"
-        width={140}
-        height={36}
-        className="h-7 w-auto object-contain"
+        width={161}
+        height={46}
+        className="h-9 w-auto object-contain"
       />
     </div>
   );

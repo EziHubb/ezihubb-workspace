@@ -1,7 +1,8 @@
 ﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAdminMode } from '../../../lib/store-context';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Check, RefreshCw } from 'lucide-react';
@@ -338,6 +339,8 @@ function AdminMessageThread({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AdminMessagesPage() {
+  const router = useRouter();
+  const { isPlatformContext } = useAdminMode();
   const searchParams = useSearchParams();
   const [selectedId,    setSelectedId]    = useState<string | null>(null);
   const [statusFilter,  setStatusFilter]  = useState('');
@@ -352,6 +355,13 @@ export default function AdminMessagesPage() {
     debounceRef.current = setTimeout(() => setDebounced(search), 300);
     return () => clearTimeout(debounceRef.current);
   }, [search]);
+
+  // Messages are per-store customer conversations — not a platform-wide concept.
+  // A SUPER_ADMIN viewing "Platform" has no store to scope this page to, so
+  // send them somewhere useful instead of a broken/empty inbox.
+  useEffect(() => {
+    if (isPlatformContext) router.replace('/dashboard');
+  }, [isPlatformContext, router]);
 
   // Unfiltered query — always fetches everything for accurate badge/tab counts.
   // queryKey starts with 'admin-conversations' so existing invalidateQueries calls cover it.

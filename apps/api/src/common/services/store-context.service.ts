@@ -62,6 +62,23 @@ export class StoreContextService {
     return context.storeId;
   }
 
+  /**
+   * For endpoints that must always act on exactly one store, but where a
+   * platform-context SUPER_ADMIN is allowed to manage ANY store (not just
+   * one they own) by naming it explicitly — e.g. fulfillment connections or
+   * partner API keys, managed platform-wide from Settings. A scoped caller
+   * (plain ADMIN, or a SUPER_ADMIN switched into "My Store") always acts on
+   * their own store regardless of what `requestedStoreId` says, so this can
+   * never be used to reach another store's data via IDOR.
+   */
+  resolveTargetStoreId(context: StoreContext, requestedStoreId?: string): string {
+    if (!context.isPlatformContext) return this.requireStoreId(context);
+    if (!requestedStoreId) {
+      throw new BadRequestException('storeId is required when managing platform-wide settings');
+    }
+    return requestedStoreId;
+  }
+
   /** For endpoints that only make sense platform-wide (e.g. cross-store rankings, moderation queues). */
   requirePlatformContext(context: StoreContext): void {
     if (!context.isPlatformContext) {

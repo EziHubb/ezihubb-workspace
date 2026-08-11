@@ -42,9 +42,13 @@ function Toast({ t }: { t: ToastItem }) {
   const elapsed  = useRef(0);
   const styles   = TYPE_STYLES[t.type];
 
-  // Auto-dismiss with progress bar
+  // Auto-dismiss with progress bar. Keyed on t.createdAt too — a repeat of the
+  // same error while this toast is still visible bumps createdAt (see
+  // toast.store.ts's dedupe in addToast) instead of stacking a duplicate,
+  // which should refresh the timer rather than let it die on the original schedule.
   useEffect(() => {
     const step = 50; // ms per tick
+    elapsed.current = 0;
 
     const tick = () => {
       if (paused) return;
@@ -58,7 +62,7 @@ function Toast({ t }: { t: ToastItem }) {
 
     const id = setInterval(tick, step);
     return () => clearInterval(id);
-  }, [t.id, t.duration, paused]);
+  }, [t.id, t.duration, t.createdAt, paused]);
 
   return (
     <div

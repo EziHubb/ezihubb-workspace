@@ -26,6 +26,14 @@ export class ApiKeysService {
     });
   }
 
+  /** Platform-wide view for a SUPER_ADMIN — every store's keys, with the owning store attached. */
+  async listAllPlatform() {
+    return this.prisma.apiKey.findMany({
+      select: { ...LIST_SELECT, store: { select: { id: true, name: true, slug: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   /** Returns the full plaintext key ONCE — never retrievable again after this call. */
   async create(storeId: string, name: string) {
     const rawKey  = `ezhb_${randomBytes(24).toString('base64url')}`;
