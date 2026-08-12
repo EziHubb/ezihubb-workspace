@@ -39,9 +39,8 @@ export class ShopStatsService {
   // ── Shop overview ──────────────────────────────────────────────────────────
 
   async getOverview(range: string, storeId?: string | null) {
-    const start       = this.rangeStart(range);
-    const days        = Math.round((Date.now() - start.getTime()) / 86_400_000);
-    const productWhere: Prisma.ProductWhereInput = storeId ? { storeId } : {};
+    const start = this.rangeStart(range);
+    const days  = Math.round((Date.now() - start.getTime()) / 86_400_000) || 1;
 
     const orderWhere: Prisma.OrderWhereInput = {
       createdAt: { gte: start },
@@ -49,17 +48,16 @@ export class ShopStatsService {
     };
     if (storeId) orderWhere.storeOrders = { some: { storeId } };
 
-    const [totalOrders, orderSum, totalVisits, timeSeries] = await Promise.all([
+    const [totalOrders, orderSum, visits, series] = await Promise.all([
       this.prisma.order.count({ where: orderWhere }),
       this.prisma.order.aggregate({ where: orderWhere, _sum: { total: true } }),
-      this.prisma.product.aggregate({ _sum: { viewCount: true }, where: productWhere }),
+      this.sumRangeMetric(days, 'visits', storeId),
       storeId
         ? this.getStoreOrderTimeSeries(storeId, start, days)
         : this.getDailyTimeSeries(days),
     ]);
 
     const totalRevenue = Number(orderSum._sum?.total ?? 0);
-    const visits       = Number(totalVisits._sum?.viewCount ?? 0);
     const conversion   = visits > 0 ? ((totalOrders / visits) * 100) : 0;
 
     return {
@@ -67,8 +65,21 @@ export class ShopStatsService {
       orders:         totalOrders,
       revenue:        totalRevenue,
       conversionRate: Math.round(conversion * 10) / 10,
-      timeSeries,
+      series,
     };
+  }
+
+  /** Sums a Redis daily counter (`analytics:visits:{date}` or the per-store variant) over the last `days` days. */
+  private async sumRangeMetric(days: number, metric: string, storeId?: string | null): Promise<number> {
+    if (!this.redis.isAvailable()) return 0;
+    const dates = Array.from({ length: days }, (_, i) => this.dateStr(this.subDays(new Date(), days - 1 - i)));
+    const keys  = dates.map((d) => storeId ? `analytics:store:${storeId}:${d}:${metric}` : `analytics:${metric}:${d}`);
+    try {
+      const values = await this.redis.getClient().mget(...keys);
+      return values.reduce((sum, v) => sum + Number(v ?? 0), 0);
+    } catch {
+      return 0;
+    }
   }
 
   /** DB-computed daily time series for a specific store (no Redis dependency). */
@@ -90,6 +101,17 @@ export class ShopStatsService {
         row.revenue += Number(o.total);
       }
     }
+
+    if (this.redis.isAvailable()) {
+      const dates = [...map.keys()];
+      try {
+        const values = await this.redis.getClient().mget(
+          ...dates.map((d) => `analytics:store:${storeId}:${d}:visits`),
+        );
+        dates.forEach((d, i) => { map.get(d)!.visits = Number(values[i] ?? 0); });
+      } catch { /* no-op */ }
+    }
+
     return [...map.entries()].map(([date, v]) => ({ date, ...v }));
   }
 
@@ -158,29 +180,41 @@ export class ShopStatsService {
     };
   }
 
-  // ── Traffic sources (simplified) ────────────────────────────────────────────
+  // ── Conversion funnel (real tracked events) ─────────────────────────────────
 
-  async getTrafficSources(range: string, storeId?: string | null) {
-    const storeFilter = storeId ? { storeId } : {};
-    const visits      = await this.prisma.product.aggregate({ _sum: { viewCount: true }, where: storeFilter });
-    const total       = Number(visits._sum.viewCount ?? 0);
+  async getConversionFunnel(range: string, storeId?: string | null) {
+    const start = this.rangeStart(range);
+    const days  = Math.round((Date.now() - start.getTime()) / 86_400_000) || 1;
 
-    // Get top search terms to estimate organic/search traffic
-    const searchTerms = await this.getTopSearchTerms(7);
-    const searchVisits = searchTerms.reduce((s, t) => s + t.count, 0);
+    const orderWhere: Prisma.OrderWhereInput = {
+      createdAt: { gte: start },
+      status:    { notIn: ['CANCELLED', 'REFUNDED'] },
+    };
+    if (storeId) orderWhere.storeOrders = { some: { storeId } };
 
-    // Estimated breakdown (simplified, no real tracking granularity)
-    const direct  = Math.round(total * 0.16);
-    const search  = Math.min(searchVisits, Math.round(total * 0.25));
-    const social  = Math.round(total * 0.05);
-    const organic = Math.max(0, total - direct - search - social);
+    const [visits, productViews, addToCart, checkoutStarted, orders] = await Promise.all([
+      this.sumRangeMetric(days, 'visits', storeId),
+      this.sumRangeMetric(days, 'productViews', storeId),
+      this.sumRangeMetric(days, 'addToCart', storeId),
+      this.sumRangeMetric(days, 'checkoutStarted', storeId),
+      this.prisma.order.count({ where: orderWhere }),
+    ]);
 
-    return [
-      { source: 'Direct & other traffic', visits: direct,  percentage: total > 0 ? Math.round(direct  / total * 100) : 0 },
-      { source: 'Organic search',         visits: organic, percentage: total > 0 ? Math.round(organic / total * 100) : 0 },
-      { source: 'Internal search',        visits: search,  percentage: total > 0 ? Math.round(search  / total * 100) : 0 },
-      { source: 'Social media',           visits: social,  percentage: total > 0 ? Math.round(social  / total * 100) : 0 },
+    const steps = [
+      { stage: 'Visits',          count: visits },
+      { stage: 'Product views',   count: productViews },
+      { stage: 'Added to cart',   count: addToCart },
+      { stage: 'Checkout started',count: checkoutStarted },
+      { stage: 'Orders',          count: orders },
     ];
+
+    return steps.map((s) => ({
+      ...s,
+      // Capped at 100 — a single visit can rack up multiple product views or
+      // cart adds, so raw counts can exceed the "Visits" stage; the funnel is
+      // meant to show drop-off, not >100% figures.
+      percentage: visits > 0 ? Math.min(100, Math.round((s.count / visits) * 100)) : 0,
+    }));
   }
 
   // ── Listings performance table ─────────────────────────────────────────────

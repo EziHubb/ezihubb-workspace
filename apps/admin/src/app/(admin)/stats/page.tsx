@@ -5,13 +5,15 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import {
   TrendingUp, ShoppingBag, PercentIcon, DollarSign,
-  Heart, UserPlus, Star, ArrowRight,
+  Heart, UserPlus, Star, ArrowRight, Search,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES, ADMIN_ROUTES } from '@ezihubb/constants';
 import { fmtCurrency, fmtNum, fmtPercentRaw, fmtRating, safeNum } from '../../../lib/fmt';
+import { useAdminMode } from '../../../lib/store-context';
+import { StorePicker, type StoreOption } from '../../../components/ui/StorePicker';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -36,10 +38,15 @@ interface ShopperStatsData {
   reviewsDelta:    number;
 }
 
-interface TrafficSource {
-  source:     string;
-  visits:     number;
+interface FunnelStep {
+  stage:      string;
+  count:      number;
   percentage: number;
+}
+
+interface SearchTerm {
+  term:  string;
+  count: number;
 }
 
 interface ListingRow {
@@ -134,25 +141,42 @@ function Skeleton({ className = '' }: { className?: string }) {
 export default function StatsPage() {
   const router = useRouter();
   const [range, setRange] = useState('7d');
+  const { isPlatformContext } = useAdminMode();
+  const [selectedStore, setSelectedStore] = useState<StoreOption | null>(null);
+
+  // A platform-context Super Admin may drill into any single store's stats via
+  // the picker below; everyone else (plain ADMIN, or Super Admin in "My Store"
+  // mode) stays scoped to their own store exactly as before — omitting storeId
+  // entirely is what keeps that ambient behavior unchanged.
+  const explicitStoreId = isPlatformContext && selectedStore ? selectedStore.id : undefined;
+  const qsStore = explicitStoreId ? `&storeId=${explicitStoreId}` : '';
 
   const { data: overview, isLoading: ovLoading } = useQuery<OverviewData>({
-    queryKey: ['stats-overview', range],
-    queryFn:  () => api.get(`${API_ROUTES.ADMIN.STATS_OVERVIEW}?range=${range}`),
+    queryKey: ['stats-overview', range, explicitStoreId],
+    queryFn:  () => api.get(`${API_ROUTES.ADMIN.STATS_OVERVIEW}?range=${range}${qsStore}`),
   });
 
   const { data: shopper, isLoading: shLoading } = useQuery<ShopperStatsData>({
-    queryKey: ['stats-shopper', range],
-    queryFn:  () => api.get(`${API_ROUTES.ADMIN.STATS_SHOPPER}?range=${range}`),
+    queryKey: ['stats-shopper', range, explicitStoreId],
+    queryFn:  () => api.get(`${API_ROUTES.ADMIN.STATS_SHOPPER}?range=${range}${qsStore}`),
   });
 
-  const { data: sources, isLoading: srcLoading } = useQuery<TrafficSource[]>({
-    queryKey: ['stats-traffic-sources', range],
-    queryFn:  () => api.get(`${API_ROUTES.ADMIN.STATS_TRAFFIC_SOURCES}?range=${range}`),
+  const { data: funnel, isLoading: srcLoading } = useQuery<FunnelStep[]>({
+    queryKey: ['stats-conversion-funnel', range, explicitStoreId],
+    queryFn:  () => api.get(`${API_ROUTES.ADMIN.STATS_TRAFFIC_SOURCES}?range=${range}${qsStore}`),
   });
 
   const { data: listingsData } = useQuery<{ data: ListingRow[] }>({
-    queryKey: ['stats-listings-preview'],
-    queryFn:  () => api.get(`${API_ROUTES.ADMIN.STATS_LISTINGS}?limit=5&sort=views`),
+    queryKey: ['stats-listings-preview', explicitStoreId],
+    queryFn:  () => api.get(`${API_ROUTES.ADMIN.STATS_LISTINGS}?limit=5&sort=views${qsStore}`),
+  });
+
+  // Search terms are platform-wide only — meaningless scoped to one store —
+  // so this stays keyed off isPlatformContext, not whether a store is picked.
+  const { data: searchTerms } = useQuery<SearchTerm[]>({
+    queryKey: ['stats-search-terms'],
+    queryFn:  () => api.get(`${API_ROUTES.ADMIN.STATS_SEARCH_TERMS}?limit=8`),
+    enabled:  isPlatformContext,
   });
 
   return (
@@ -161,6 +185,17 @@ export default function StatsPage() {
         title="Shop Traffic"
         subtitle="See how shoppers are finding and interacting with your shop."
       />
+
+      {/* ── Platform-context store drilldown ───────────────────────────────── */}
+      {isPlatformContext && (
+        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-card px-4 py-3">
+          <span className="text-sm font-medium text-secondary shrink-0">Viewing:</span>
+          <StorePicker value={selectedStore} onChange={setSelectedStore} className="max-w-xs" />
+          <span className="text-xs text-muted">
+            {selectedStore ? `Stats for ${selectedStore.name}` : 'Platform-wide aggregate — pick a store to drill in'}
+          </span>
+        </div>
+      )}
 
       {/* ── Date range selector ─────────────────────────────────────────────── */}
       <div className="flex gap-2 flex-wrap">
@@ -271,33 +306,49 @@ export default function StatsPage() {
         </div>
       </div>
 
-      {/* ── Traffic Sources ────────────────────────────────────────────────── */}
+      {/* ── Conversion Funnel ──────────────────────────────────────────────── */}
       <div>
-        <h2 className="text-sm font-semibold text-secondary mb-3">How shoppers found you</h2>
+        <h2 className="text-sm font-semibold text-secondary mb-3">Conversion funnel</h2>
         <div className="bg-surface border border-border rounded-card divide-y divide-border">
           {srcLoading ? (
             <div className="p-4 space-y-3">
-              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-6" />)}
+              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-6" />)}
             </div>
-          ) : (sources ?? []).length === 0 ? (
-            <p className="p-6 text-sm text-muted text-center">No traffic data for this period.</p>
+          ) : (funnel ?? []).length === 0 ? (
+            <p className="p-6 text-sm text-muted text-center">No funnel data for this period.</p>
           ) : (
-            (sources ?? []).map((s) => (
-              <div key={s.source} className="flex items-center gap-4 px-5 py-3">
-                <span className="w-36 text-sm text-secondary capitalize shrink-0">{s.source}</span>
+            (funnel ?? []).map((s) => (
+              <div key={s.stage} className="flex items-center gap-4 px-5 py-3">
+                <span className="w-36 text-sm text-secondary shrink-0">{s.stage}</span>
                 <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
                   <div
                     className="h-full bg-primary rounded-full"
                     style={{ width: `${Math.min(100, safeNum(s.percentage))}%` }}
                   />
                 </div>
-                <span className="text-sm text-muted w-20 text-right">{fmtNum(s.visits)} visits</span>
+                <span className="text-sm text-muted w-20 text-right">{fmtNum(s.count)}</span>
                 <span className="text-sm font-medium text-secondary w-12 text-right">{fmtPercentRaw(s.percentage, 0)}</span>
               </div>
             ))
           )}
         </div>
       </div>
+
+      {/* ── Top Searches (platform-wide only) ──────────────────────────────── */}
+      {isPlatformContext && (searchTerms ?? []).length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold text-secondary mb-3">Top searches</h2>
+          <div className="bg-surface border border-border rounded-card divide-y divide-border">
+            {(searchTerms ?? []).map((t) => (
+              <div key={t.term} className="flex items-center gap-3 px-5 py-2.5">
+                <Search className="w-3.5 h-3.5 text-muted shrink-0" />
+                <span className="flex-1 text-sm text-secondary truncate">{t.term}</span>
+                <span className="text-sm text-muted">{fmtNum(t.count)} searches</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Top listings preview ───────────────────────────────────────────── */}
       <div>

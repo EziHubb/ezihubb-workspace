@@ -263,6 +263,11 @@ export class ProductsService {
               `Failed to increment view count for "${slug}": ${e.message}`,
             ),
           );
+        if (product.store) {
+          this.analyticsService
+            .trackStoreMetric(product.store.id, 'productViews')
+            .catch(() => undefined);
+        }
       }
     }
 

@@ -32,12 +32,18 @@ interface NavItem {
   icon:      React.ElementType;
   badge?:    number;
   children?: ChildItem[];
+  /** Opens in a new tab as a plain <a> instead of client-side Link routing (e.g. the real GA4 dashboard). */
+  external?: boolean;
 }
 
 interface NavSection {
   title?: string;
   items:  NavItem[];
 }
+
+// Real GA4 property dashboard — set once the account is provisioned; the nav
+// link below is simply omitted until then rather than pointing at a dead URL.
+const GA_DASHBOARD_URL = process.env['NEXT_PUBLIC_GA_DASHBOARD_URL'];
 
 // ── Navigation structure — SUPER_ADMIN ────────────────────────────────────────
 
@@ -110,6 +116,9 @@ const NAV_SECTIONS: NavSection[] = [
           { label: 'Settings',     href: '/settings/affiliates', icon: Settings   },
         ],
       },
+      ...(GA_DASHBOARD_URL
+        ? [{ label: 'Google Analytics', href: GA_DASHBOARD_URL, icon: BarChart2, external: true }]
+        : []),
     ],
   },
   {
@@ -321,14 +330,13 @@ function NavRow({ item }: { item: NavItem }) {
     );
   }
 
-  return (
-    <Link
-      href={item.href}
-      className={[
-        'group flex items-center gap-3 px-3 h-10 rounded-xl text-sm font-medium transition-all duration-150 select-none',
-        isLeafActive ? 'bg-primary/20 text-white' : 'text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-white/5',
-      ].join(' ')}
-    >
+  const rowClassName = [
+    'group flex items-center gap-3 px-3 h-10 rounded-xl text-sm font-medium transition-all duration-150 select-none',
+    isLeafActive ? 'bg-primary/20 text-white' : 'text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-white/5',
+  ].join(' ');
+
+  const rowContent = (
+    <>
       <span className={[
         'flex items-center justify-center w-7 h-7 rounded-lg shrink-0 transition-all',
         isLeafActive ? 'bg-primary/30' : 'bg-white/5 group-hover:bg-white/8',
@@ -341,6 +349,20 @@ function NavRow({ item }: { item: NavItem }) {
           {item.badge > 99 ? '99+' : item.badge}
         </span>
       )}
+    </>
+  );
+
+  if (item.external) {
+    return (
+      <a href={item.href} target="_blank" rel="noopener noreferrer" className={rowClassName}>
+        {rowContent}
+      </a>
+    );
+  }
+
+  return (
+    <Link href={item.href} className={rowClassName}>
+      {rowContent}
     </Link>
   );
 }

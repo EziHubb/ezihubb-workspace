@@ -99,6 +99,13 @@ async function bootstrap() {
   // ── Security headers ──────────────────────────────────────────────────────
   app.use(helmet({
     crossOriginEmbedderPolicy: false,     // Stripe Elements requires this off
+    // Helmet's default "same-origin" COOP would sever window.opener the
+    // moment the Google OAuth popup navigates through this API's own origin
+    // (api.ezihubb.com, different origin than ezihubb.com) — breaking the
+    // client's popup-based sign-in flow, which relies on postMessage back to
+    // the opener from the callback page after the redirect chain lands back
+    // on the client's origin.
+    crossOriginOpenerPolicy: false,
     contentSecurityPolicy: {
       directives: {
         defaultSrc:  ["'self'"],

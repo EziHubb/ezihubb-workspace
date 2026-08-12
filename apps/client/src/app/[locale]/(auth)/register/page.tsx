@@ -8,10 +8,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff } from 'lucide-react';
-import { API_ROUTES } from '@ezihubb/constants';
 import { useToast, ToastProvider } from '@ezihubb/ui';
 import { useAuthStore } from '../../../../lib/store/auth.store';
-import { API_BASE } from '../../../../lib/api-client';
+import { GoogleSignInButton } from '../../../../components/auth/GoogleSignInButton';
 
 // ── Password strength ─────────────────────────────────────────────────────────
 
@@ -74,19 +73,6 @@ const schema = z
   });
 
 type FormValues = z.infer<typeof schema>;
-
-// ── Google icon ───────────────────────────────────────────────────────────────
-
-function GoogleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      <path d="M17.64 9.2a10.34 10.34 0 0 0-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92a8.78 8.78 0 0 0 2.68-6.62z" fill="#4285F4"/>
-      <path d="M9 18a8.6 8.6 0 0 0 5.96-2.18l-2.92-2.26a5.43 5.43 0 0 1-8.09-2.85H.99v2.33A9 9 0 0 0 9 18z" fill="#34A853"/>
-      <path d="M3.95 10.71a5.41 5.41 0 0 1 0-3.42V4.96H.99a9 9 0 0 0 0 8.08l2.96-2.33z" fill="#FBBC05"/>
-      <path d="M9 3.58a4.86 4.86 0 0 1 3.44 1.35l2.58-2.58A8.64 8.64 0 0 0 9 0 9 9 0 0 0 .99 4.96L3.95 7.3A5.43 5.43 0 0 1 9 3.58z" fill="#EA4335"/>
-    </svg>
-  );
-}
 
 // ── Inner component (needs toast context) ─────────────────────────────────────
 
@@ -157,14 +143,11 @@ function RegisterForm() {
         Create your account to start personalizing gifts
       </p>
 
-      {/* Google OAuth */}
-      <a
-        href={`${API_BASE}/api/v1${API_ROUTES.AUTH.GOOGLE}`}
-        className="flex items-center justify-center gap-3 w-full py-2.5 border border-border rounded-button text-sm font-medium text-secondary hover:bg-muted/5 hover:border-primary/40 transition-colors"
-      >
-        <GoogleIcon />
-        Continue with Google
-      </a>
+      {/* Google Sign-In (Identity Services — One Tap + button) */}
+      <GoogleSignInButton
+        redirectTo={`/${locale}/account`}
+        onError={setApiError}
+      />
 
       {/* Divider */}
       <div className="flex items-center gap-3 my-5">

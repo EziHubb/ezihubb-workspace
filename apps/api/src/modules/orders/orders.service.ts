@@ -19,6 +19,7 @@ import { FulfillmentRegistryService } from '../fulfillment/fulfillment-registry.
 import { FulfillmentConnectionsService } from '../fulfillment/fulfillment-connections.service';
 import { FulfillmentAddress, FulfillmentLineItem } from '../fulfillment/interfaces/fulfillment-provider.interface';
 import { calculateOrderFees, OrderFeeSettings } from '../stores/fees.util';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
@@ -95,6 +96,7 @@ export class OrdersService {
     private readonly pushService: PushService,
     private readonly fulfillmentRegistry: FulfillmentRegistryService,
     private readonly fulfillmentConnections: FulfillmentConnectionsService,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   // ─── Provider (Printify, etc.) shipping ─────────────────────────────────────
@@ -203,6 +205,17 @@ export class OrdersService {
         code: 'ERR_CART_EMPTY',
         message: 'Cart is empty',
       });
+    }
+
+    // Track checkout-started once per distinct store in the cart, at the point
+    // checkout is actually attempted — not after order creation succeeds, or
+    // this metric would just duplicate the "Orders" count and the funnel would
+    // never show drop-off from failed/abandoned checkouts.
+    const checkoutStoreIds = new Set(
+      cart.items.map((item) => item.product.storeId).filter((id): id is string => !!id),
+    );
+    for (const storeId of checkoutStoreIds) {
+      this.analyticsService.trackStoreMetric(storeId, 'checkoutStarted').catch(() => undefined);
     }
 
     // Re-validate all items

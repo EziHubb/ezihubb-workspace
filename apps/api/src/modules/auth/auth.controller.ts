@@ -6,6 +6,7 @@ import {
   Req,
   Res,
   UseGuards,
+  UseFilters,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -25,7 +26,9 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { TotpVerifyDto, TotpConfirmDto, TotpDisableDto, TotpSetupResponseDto, TotpRequiredResponseDto } from './dto/totp.dto';
+import { GoogleTokenDto } from './dto/google-token.dto';
 import { GoogleProfile } from './strategies/google.strategy';
+import { GoogleAuthExceptionFilter } from './filters/google-auth-exception.filter';
 import { RefreshPayload } from './strategies/jwt-refresh.strategy';
 import { JwtPayload } from './strategies/jwt.strategy';
 import { Public } from '../../common/decorators/public.decorator';
@@ -249,6 +252,7 @@ export class AuthController {
   @Public()
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
+  @UseFilters(GoogleAuthExceptionFilter)
   @ApiOperation({ summary: 'Google OAuth2 callback' })
   async googleCallback(
     @CurrentUser() profile: GoogleProfile,
@@ -256,6 +260,23 @@ export class AuthController {
   ): Promise<void> {
     const result = await this.authService.googleLogin(profile, res);
     const frontendUrl = this.config.get<string>('app.frontendUrl') ?? 'http://localhost:3000';
-    res.redirect(`${frontendUrl}/auth/callback?token=${result.accessToken}`);
+    const params = new URLSearchParams({
+      token: result.accessToken,
+      user:  JSON.stringify(result.user),
+    });
+    res.redirect(`${frontendUrl}/auth/google/callback?${params.toString()}`);
+  }
+
+  // POST /auth/google/token
+  @Public()
+  @Post('google/token')
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @ApiOperation({ summary: 'Sign in with a Google ID token (Google Identity Services One Tap / button)' })
+  @ApiResponse({ status: 200, type: AuthResponseDto })
+  async googleTokenLogin(
+    @Body() dto: GoogleTokenDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto> {
+    return this.authService.googleTokenLogin(dto.credential, res);
   }
 }

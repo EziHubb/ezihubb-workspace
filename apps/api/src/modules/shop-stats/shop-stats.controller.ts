@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@ezihubb/constants';
-import { StoreContextService } from '../../common/services/store-context.service';
+import { StoreContext, StoreContextService } from '../../common/services/store-context.service';
 import { ProductOwnershipGuard } from '../../common/guards/product-ownership.guard';
 import { ShopStatsService } from './shop-stats.service';
 
@@ -19,25 +19,36 @@ export class ShopStatsController {
     private readonly storeContext: StoreContextService,
   ) {}
 
+  /**
+   * Unlike `resolveTargetStoreId` (used by fulfillment/API-keys, which always
+   * requires exactly one store), a platform-context caller here may
+   * legitimately leave `storeId` unset to see the platform-wide aggregate —
+   * so `null` is a valid result, not an error.
+   */
+  private targetStoreId(context: StoreContext, storeId?: string): string | null {
+    if (!context.isPlatformContext) return context.storeId;
+    return storeId ?? null;
+  }
+
   @Get('overview')
   @ApiOperation({ summary: 'Shop traffic overview — visits, orders, revenue, conversion rate + time series' })
-  async getOverview(@Req() req: Request, @Query('range') range = '7d') {
+  async getOverview(@Req() req: Request, @Query('range') range = '7d', @Query('storeId') storeId?: string) {
     const context = await this.storeContext.resolve(req);
-    return this.statsService.getOverview(range, context.storeId);
+    return this.statsService.getOverview(range, this.targetStoreId(context, storeId));
   }
 
   @Get('shopper-stats')
   @ApiOperation({ summary: 'Shopper stats — item favourites, shop follows, reviews for range' })
-  async getShopperStats(@Req() req: Request, @Query('range') range = '30d') {
+  async getShopperStats(@Req() req: Request, @Query('range') range = '30d', @Query('storeId') storeId?: string) {
     const context = await this.storeContext.resolve(req);
-    return this.statsService.getShopperStats(range, context.storeId);
+    return this.statsService.getShopperStats(range, this.targetStoreId(context, storeId));
   }
 
   @Get('traffic-sources')
-  @ApiOperation({ summary: 'Traffic source breakdown for range' })
-  async getTrafficSources(@Req() req: Request, @Query('range') range = '30d') {
+  @ApiOperation({ summary: 'Conversion funnel (visits → product views → add to cart → checkout → orders) for range' })
+  async getConversionFunnel(@Req() req: Request, @Query('range') range = '30d', @Query('storeId') storeId?: string) {
     const context = await this.storeContext.resolve(req);
-    return this.statsService.getTrafficSources(range, context.storeId);
+    return this.statsService.getConversionFunnel(range, this.targetStoreId(context, storeId));
   }
 
   @Get('listings')
@@ -47,9 +58,10 @@ export class ShopStatsController {
     @Query('page')  page  = '1',
     @Query('limit') limit = '20',
     @Query('sort')  sort  = 'views',
+    @Query('storeId') storeId?: string,
   ) {
     const context = await this.storeContext.resolve(req);
-    return this.statsService.getListings(Number(page), Number(limit), sort, context.storeId ?? undefined);
+    return this.statsService.getListings(Number(page), Number(limit), sort, this.targetStoreId(context, storeId) ?? undefined);
   }
 
   @Get('listings/:productId')

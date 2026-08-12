@@ -207,19 +207,35 @@ async function apiRequest<T>(path: string, options: ApiClientOptions = {}): Prom
     });
   }
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : getAuthHeader()),
-    ...getLocaleHeader(),
-    ...(init.headers as Record<string, string>),
+  const doFetch = (authToken?: string): Promise<Response> => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : getAuthHeader()),
+      ...getLocaleHeader(),
+      ...(init.headers as Record<string, string>),
+    };
+    return fetch(url.toString(), {
+      credentials: 'include',
+      ...init,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
   };
 
-  const res = await fetch(url.toString(), {
-    credentials: 'include',
-    ...init,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let res = await doFetch(token);
+
+  // Auto-refresh on 401 — mirrors apiFetch's behavior below, which this
+  // client previously lacked entirely. If the refresh itself fails,
+  // refreshTokens() already calls the registered token-updater with `null`,
+  // which clears the auth store and signs the user out (see auth.store.ts) —
+  // so a dead session stops looking "logged in" instead of only surfacing on
+  // the next unrelated request.
+  if (res.status === 401) {
+    const newToken = await refreshTokens();
+    if (newToken) {
+      res = await doFetch(newToken);
+    }
+  }
 
   const json = await res.json();
 
@@ -228,10 +244,16 @@ async function apiRequest<T>(path: string, options: ApiClientOptions = {}): Prom
       code?: string;
       details?: { field: string; message: string }[];
       status?: number;
+      statusCode?: number;
     };
-    err.code    = json.error?.code;
-    err.details = json.error?.details;
-    err.status  = res.status;
+    err.code       = json.error?.code;
+    err.details    = json.error?.details;
+    err.status     = res.status;
+    // Alias so shared auth-error classifiers (which check `statusCode`, matching
+    // ApiRequestError from the older `apiFetch` client) also recognize this and
+    // stop retrying — without it, a 401 here silently falls back to the default
+    // retry policy and doubles up in the console instead of failing fast.
+    err.statusCode = res.status;
     throw err;
   }
 

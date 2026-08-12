@@ -9,6 +9,7 @@ export const API_ROUTES = {
     CHANGE_PASSWORD: '/auth/change-password',
     GOOGLE:          '/auth/google',
     GOOGLE_CALLBACK: '/auth/google/callback',
+    GOOGLE_TOKEN:    '/auth/google/token',
     VERIFY_EMAIL:    '/auth/verify-email',
     RESEND_VERIFY:   '/auth/resend-verification',
     TOTP_VERIFY:     '/auth/totp/verify',

@@ -12,6 +12,7 @@ import { DevBullModule } from '../../queue/dev-bull.module';
 import { QUEUES } from '../../queue/queue.constants';
 import { ReviewsModule } from '../reviews/reviews.module';
 import { ModerationModule } from '../moderation/moderation.module';
+import { AnalyticsModule } from '../analytics/analytics.module';
 
 const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
 
@@ -20,6 +21,7 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
     ConfigModule,
     ReviewsModule,
     ModerationModule,
+    AnalyticsModule,
     ...(disableQueue
       ? [DevBullModule.forQueues([QUEUES.EMAIL])]
       : [BullModule.registerQueue({ name: QUEUES.EMAIL })]),

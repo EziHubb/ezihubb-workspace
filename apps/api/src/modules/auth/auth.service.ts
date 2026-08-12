@@ -12,6 +12,7 @@ import { Queue } from 'bullmq';
 import { Response } from 'express';
 import { randomBytes, createHash } from 'crypto';
 import * as bcrypt from 'bcrypt';
+import { OAuth2Client } from 'google-auth-library';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
 import { JOBS, QUEUES, SendEmailJobData, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
@@ -397,9 +398,63 @@ export class AuthService {
 
   // ─── Google OAuth ──────────────────────────────────────────────────────────
 
+  /** Legacy OAuth 2.0 authorization-code flow — GET /auth/google → Google consent page → GET /auth/google/callback. */
   async googleLogin(profile: GoogleProfile, res: Response): Promise<AuthResponseDto> {
+    const user = await this.findOrCreateGoogleUser(profile);
+    return this.buildGoogleAuthResponse(user, res);
+  }
+
+  /**
+   * Google Identity Services (One Tap / "Sign in with Google" button) flow —
+   * the client posts the ID token it received directly from Google's JS SDK,
+   * with no redirect at all. Verifying it here (audience-checked against our
+   * own client ID) is what stands in for the authorization-code exchange the
+   * legacy flow above does via Passport.
+   */
+  async googleTokenLogin(idToken: string, res: Response): Promise<AuthResponseDto> {
+    const profile = await this.verifyGoogleIdToken(idToken);
+    const user = await this.findOrCreateGoogleUser(profile);
+    return this.buildGoogleAuthResponse(user, res);
+  }
+
+  private async verifyGoogleIdToken(idToken: string): Promise<GoogleProfile> {
+    const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
+    const client = new OAuth2Client(clientId);
+
+    let payload;
+    try {
+      const ticket = await client.verifyIdToken({ idToken, audience: clientId });
+      payload = ticket.getPayload();
+    } catch {
+      throw new UnauthorizedException({ code: 'ERR_GOOGLE_TOKEN_INVALID', message: 'Invalid Google credential' });
+    }
+
+    if (!payload?.email) {
+      throw new BadRequestException({ code: 'ERR_GOOGLE_NO_EMAIL', message: 'Google account has no email' });
+    }
+
+    return {
+      googleId:      payload.sub,
+      email:         payload.email,
+      emailVerified: payload.email_verified ?? false,
+      firstName:     payload.given_name ?? '',
+      lastName:      payload.family_name ?? '',
+      avatarUrl:     payload.picture ?? null,
+    };
+  }
+
+  private async findOrCreateGoogleUser(profile: GoogleProfile) {
     if (!profile.email) {
       throw new BadRequestException({ code: 'ERR_GOOGLE_NO_EMAIL', message: 'Google account has no email' });
+    }
+    // Without this, someone could sign in with an *unverified* Google email
+    // that happens to match an existing local account and get silently
+    // linked into — and logged in as — that account. Google marks an email
+    // verified once its owner has proven receipt of it, so this is the one
+    // check standing between "any string Google will hand us" and "an email
+    // we can trust enough to auto-link an account by".
+    if (!profile.emailVerified) {
+      throw new BadRequestException({ code: 'ERR_GOOGLE_EMAIL_UNVERIFIED', message: 'Google email is not verified' });
     }
 
     let user = await this.prisma.user.findUnique({ where: { email: profile.email } });
@@ -424,6 +479,13 @@ export class AuthService {
       });
     }
 
+    return user;
+  }
+
+  private async buildGoogleAuthResponse(
+    user: Awaited<ReturnType<AuthService['findOrCreateGoogleUser']>>,
+    res: Response,
+  ): Promise<AuthResponseDto> {
     const tokens = await this.generateTokens(user.id, user.email, user.role, false, user.storeId);
     this.setRefreshTokenCookie(res, tokens.refreshToken);
 

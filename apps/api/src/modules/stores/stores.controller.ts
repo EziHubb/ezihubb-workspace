@@ -1,6 +1,7 @@
 import {
   Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { StoreOwnerGuard } from './guards/store-owner.guard';
@@ -27,8 +28,8 @@ export class StoresController {
 
   /** Public: store page by slug */
   @Get(':slug')
-  getStoreBySlug(@Param('slug') slug: string) {
-    return this.storesService.getStoreBySlug(slug);
+  getStoreBySlug(@Param('slug') slug: string, @Req() req: Request) {
+    return this.storesService.getStoreBySlug(slug, this.buildViewLockId(req));
   }
 
   /** Public: product category sections with counts for the sidebar */
@@ -93,5 +94,11 @@ export class StoresController {
   @ApiBearerAuth()
   updateMyStore(@Req() req: any, @Body() dto: UpdateStoreDto) {
     return this.storesService.updateMyStore(req.user.sub ?? req.user.id, dto);
+  }
+
+  private buildViewLockId(req: Request): string {
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] ?? req.ip ?? 'unknown';
+    const ua = req.headers['user-agent'] ?? '';
+    return Buffer.from(`${ip}:${ua}`).toString('base64').substring(0, 32);
   }
 }

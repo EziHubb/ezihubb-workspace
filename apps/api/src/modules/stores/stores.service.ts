@@ -12,6 +12,8 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services/storage.service';
+import { RedisService } from '../../common/services/redis.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { JOBS, QUEUES, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
 import { ApplyStoreDto, isReservedSlug } from './dto/apply-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
@@ -35,6 +37,8 @@ export class StoresService {
     private readonly prisma: PrismaService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
     private readonly storageService: StorageService,
+    private readonly redis: RedisService,
+    private readonly analyticsService: AnalyticsService,
     @Optional() private readonly moderationService?: ModerationService,
   ) {}
 
@@ -168,7 +172,7 @@ export class StoresService {
 
   // ─── Public: Store page ───────────────────────────────────────────────────
 
-  async getStoreBySlug(slug: string) {
+  async getStoreBySlug(slug: string, viewLockId?: string) {
     const store = await this.prisma.store.findUnique({
       where: { slug },
       select: {
@@ -184,6 +188,17 @@ export class StoresService {
 
     if (!store || store.status === 'PENDING' || store.status === 'REJECTED') {
       throw new NotFoundException('Store not found');
+    }
+
+    // Debounced store-visit tracking — one increment per session/IP per hour,
+    // same dedup pattern as the product view counter.
+    if (viewLockId) {
+      const lockKey = `store:view-lock:${slug}:${viewLockId}`;
+      const seen = await this.redis.exists(lockKey);
+      if (!seen) {
+        await this.redis.set(lockKey, 1, 3600);
+        this.analyticsService.trackStoreMetric(store.id, 'visits').catch(() => undefined);
+      }
     }
 
     const { _count, ...rest } = store;

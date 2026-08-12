@@ -108,6 +108,7 @@ services:
         NEXT_PUBLIC_PINTEREST_TAG_ID: ${NEXT_PUBLIC_PINTEREST_TAG_ID}
         NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION}
         NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN}
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
     container_name: ezihubb_client
     restart: unless-stopped
     depends_on:
@@ -129,6 +130,7 @@ services:
         NEXT_PUBLIC_NEXTAUTH_URL: ${NEXT_PUBLIC_ADMIN_NEXTAUTH_URL}
         NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL}
         NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN}
+        NEXT_PUBLIC_GA_DASHBOARD_URL: ${NEXT_PUBLIC_GA_DASHBOARD_URL}
     container_name: ezihubb_admin
     restart: unless-stopped
     depends_on:

@@ -8,6 +8,7 @@ import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
 import { ShippingService } from '../shipping/shipping.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 import { ApplyCouponDto } from './dto/apply-coupon.dto';
@@ -56,6 +57,7 @@ export class CartService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly shippingService: ShippingService,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
   async getOrCreateCart(
@@ -99,7 +101,7 @@ export class CartService {
     const [product, variant] = await Promise.all([
       this.prisma.product.findFirst({
         where: { id: dto.productId, isActive: true, deletedAt: null },
-        select: { id: true, basePrice: true },
+        select: { id: true, basePrice: true, storeId: true },
       }),
       dto.variantId
         ? this.prisma.productVariant.findFirst({
@@ -185,6 +187,10 @@ export class CartService {
       where: { id: cartId },
       data:  { abandonedEmailSentAt: null },
     });
+
+    if (product.storeId) {
+      this.analyticsService.trackStoreMetric(product.storeId, 'addToCart').catch(() => undefined);
+    }
 
     const cart = await this.prisma.cart.findUniqueOrThrow({
       where: { id: cartId },

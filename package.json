@@ -68,6 +68,7 @@
     "fabric": "^6.6.1",
     "firebase": "^12.14.0",
     "firebase-admin": "^13.10.0",
+    "google-auth-library": "^11.0.1",
     "handlebars": "^4.7.9",
     "helmet": "^8.2.0",
     "ioredis": "^5.10.1",

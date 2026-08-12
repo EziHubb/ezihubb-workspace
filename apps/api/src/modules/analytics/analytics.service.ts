@@ -70,6 +70,28 @@ export class AnalyticsService {
     }
   }
 
+  // ── Per-shop metric tracking (store visits, product views, cart/checkout funnel) ──
+
+  async trackStoreMetric(
+    storeId: string,
+    metric: 'visits' | 'productViews' | 'addToCart' | 'checkoutStarted',
+  ): Promise<void> {
+    if (!this.redis.isAvailable()) return;
+    const today = this.dateStr(new Date());
+    const storeKey = `analytics:store:${storeId}:${today}:${metric}`;
+    const platformKey = `analytics:${metric}:${today}`;
+    try {
+      await Promise.all([
+        this.redis.getClient().incr(storeKey),
+        this.redis.getClient().incr(platformKey),
+        this.redis.getClient().expire(storeKey, 90 * 24 * 3600),
+        this.redis.getClient().expire(platformKey, 90 * 24 * 3600),
+      ]);
+    } catch (err) {
+      this.logger.warn(`trackStoreMetric(${metric}) Redis error: ${(err as Error).message}`);
+    }
+  }
+
   // ── Search analytics ────────────────────────────────────────────────────────
 
   async trackSearch(query: string, resultCount: number): Promise<void> {

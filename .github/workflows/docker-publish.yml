@@ -192,6 +192,7 @@ jobs:
             NEXT_PUBLIC_META_PIXEL_ID=${{ vars.NEXT_PUBLIC_META_PIXEL_ID }}
             NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=${{ vars.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }}
             NEXT_PUBLIC_SENTRY_DSN=${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+            NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
 
   # ── Admin dashboard ──────────────────────────────────────────────────────
   build-admin:
@@ -228,6 +229,7 @@ jobs:
             NEXT_PUBLIC_CDN_URL=${{ vars.NEXT_PUBLIC_CDN_URL }}
             NEXT_PUBLIC_SENTRY_DSN=${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
             NEXT_PUBLIC_CLIENT_URL=${{ vars.NEXT_PUBLIC_CLIENT_URL }}
+            NEXT_PUBLIC_GA_DASHBOARD_URL=${{ vars.NEXT_PUBLIC_GA_DASHBOARD_URL }}
 
   # ── Keep only the 3 most recent versions of each image (private-repo storage is limited) ─
   cleanup:

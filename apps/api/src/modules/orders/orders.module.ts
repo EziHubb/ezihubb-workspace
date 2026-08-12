@@ -9,9 +9,10 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { AffiliatesModule } from '../affiliates/affiliates.module';
 import { PdfModule } from '../pdf/pdf.module';
 import { FulfillmentModule } from '../fulfillment/fulfillment.module';
+import { AnalyticsModule } from '../analytics/analytics.module';
 
 @Module({
-  imports: [ShippingModule, PaymentsModule, NotificationsModule, AffiliatesModule, PdfModule, FulfillmentModule],
+  imports: [ShippingModule, PaymentsModule, NotificationsModule, AffiliatesModule, PdfModule, FulfillmentModule, AnalyticsModule],
   controllers: [OrdersController, AdminOrdersController, OrderDownloadsController],
   providers: [OrdersService],
   exports: [OrdersService],
