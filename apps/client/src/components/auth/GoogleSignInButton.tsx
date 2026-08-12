@@ -3,10 +3,10 @@
 import { useEffect, useRef } from 'react';
 import Script from 'next/script';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 import type { UserDto } from '@ezihubb/types';
 import { API_ROUTES } from '@ezihubb/constants';
 import { api } from '../../lib/api-client';
-import { useAuthStore } from '../../lib/store/auth.store';
 
 interface GoogleCredentialResponse {
   credential: string;
@@ -44,7 +44,10 @@ interface GoogleSignInButtonProps {
  *
  * The ID token Google hands back client-side is verified server-side by
  * POST /auth/google/token (see AuthService.googleTokenLogin) — there is no
- * redirect through the API at all in this flow.
+ * redirect through the API at all in this flow. The resulting accessToken
+ * is then handed to next-auth's 'google-token' provider (auth.options.ts)
+ * so the rest of the app's session-based auth guards recognize the user as
+ * signed in.
  */
 export function GoogleSignInButton({ redirectTo, onError }: GoogleSignInButtonProps) {
   const router = useRouter();
@@ -71,7 +74,20 @@ export function GoogleSignInButton({ redirectTo, onError }: GoogleSignInButtonPr
           API_ROUTES.AUTH.GOOGLE_TOKEN,
           { credential: response.credential },
         );
-        useAuthStore.getState().setTokens(result.accessToken, result.user);
+        // Wrap the already-verified token in a next-auth session (rather than
+        // writing straight to the Zustand store) — useSession()-based guards
+        // like AccountLayoutClient check next-auth's status, not Zustand, so
+        // skipping this left every Google sign-in bounced right back to
+        // /login even though the API call itself had succeeded.
+        const signInResult = await signIn('google-token', {
+          redirect:    false,
+          accessToken: result.accessToken,
+          user:        JSON.stringify(result.user),
+        });
+        if (!signInResult?.ok) {
+          onErrorRef.current?.('Google sign-in failed. Please try again.');
+          return;
+        }
         router.replace(redirectToRef.current);
       } catch {
         onErrorRef.current?.('Google sign-in failed. Please try again.');

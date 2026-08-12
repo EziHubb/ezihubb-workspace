@@ -92,6 +92,45 @@ export const authOptions: NextAuthOptions = {
         }
       },
     }),
+
+    // Google Identity Services (One Tap / button) and the legacy Google OAuth
+    // redirect both verify the Google credential and issue our own
+    // accessToken server-side (POST /auth/google/token, or the /auth/google
+    // /callback redirect) *before* this ever runs — this provider's only job
+    // is wrapping that already-trusted pair into a next-auth session so
+    // SessionSyncer and useSession()-based guards (AccountLayoutClient etc.)
+    // see the user as signed in. It does not talk to the API at all.
+    Credentials({
+      id:   'google-token',
+      name: 'Google',
+      credentials: {
+        accessToken: { label: 'Access Token', type: 'text' },
+        user:        { label: 'User',         type: 'text' }, // JSON-encoded UserDto
+      },
+
+      async authorize(credentials) {
+        if (!credentials?.accessToken || !credentials?.user) return null;
+
+        try {
+          const user = JSON.parse(credentials.user) as Record<string, unknown>;
+          if (!user?.['id']) return null;
+
+          return {
+            id:         String(user['id']),
+            email:      String(user['email'] ?? ''),
+            name:       (`${user['firstName'] ?? ''} ${user['lastName'] ?? ''}`).trim() ||
+                        String(user['email'] ?? ''),
+            role:       user['role']       as string | undefined,
+            firstName:  user['firstName']  as string | undefined,
+            lastName:   user['lastName']   as string | undefined,
+            avatarUrl:  user['avatarUrl']  as string | null | undefined,
+            accessToken: credentials.accessToken,
+          };
+        } catch {
+          return null;
+        }
+      },
+    }),
   ],
 
   callbacks: {

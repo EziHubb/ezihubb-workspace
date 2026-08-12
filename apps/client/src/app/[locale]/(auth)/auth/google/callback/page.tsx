@@ -2,8 +2,8 @@
 
 import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 import type { UserDto } from '@ezihubb/types';
-import { useAuthStore } from '../../../../../../lib/store/auth.store';
 import { GOOGLE_OAUTH_MESSAGE_TYPE, postGoogleOAuthResultToOpener } from '../../../../../../lib/auth/google-oauth-popup';
 
 /**
@@ -15,9 +15,12 @@ import { GOOGLE_OAUTH_MESSAGE_TYPE, postGoogleOAuthResultToOpener } from '../../
  *
  * Runs inside the OAuth popup window in the normal flow: hands the result
  * back to the window that opened it via postMessage, then closes itself.
- * Falls back to storing tokens + redirecting directly when there's no opener
- * (e.g. the popup was blocked and the caller fell back to a full-page
- * redirect, or someone opened this URL directly).
+ * Falls back to establishing the session directly (same next-auth
+ * 'google-token' provider GoogleSignInButton uses — see auth.options.ts;
+ * writing straight to the Zustand store here isn't enough since
+ * useSession()-based guards like AccountLayoutClient wouldn't see it) when
+ * there's no opener — e.g. the popup was blocked and the caller fell back
+ * to a full-page redirect, or someone opened this URL directly.
  */
 export default function GoogleCallbackPage() {
   const router       = useRouter();
@@ -29,26 +32,39 @@ export default function GoogleCallbackPage() {
     const redirect  = searchParams.get('redirect') ?? '/';
     const error     = searchParams.get('error');
 
-    if (error || !token || !userParam) {
-      const posted = postGoogleOAuthResultToOpener({
-        type: GOOGLE_OAUTH_MESSAGE_TYPE,
-        error: error ?? 'oauth_failed',
-      });
+    const fail = (code: string) => {
+      const posted = postGoogleOAuthResultToOpener({ type: GOOGLE_OAUTH_MESSAGE_TYPE, error: code });
       if (!posted) router.replace('/login?error=oauth_failed');
+    };
+
+    if (error || !token || !userParam) {
+      fail(error ?? 'oauth_failed');
       return;
     }
 
+    let user: UserDto;
     try {
-      const user = JSON.parse(userParam) as UserDto;
-      const posted = postGoogleOAuthResultToOpener({ type: GOOGLE_OAUTH_MESSAGE_TYPE, token, user });
-      if (!posted) {
-        useAuthStore.getState().setTokens(token, user);
-        router.replace(redirect);
-      }
+      user = JSON.parse(userParam) as UserDto;
     } catch {
-      const posted = postGoogleOAuthResultToOpener({ type: GOOGLE_OAUTH_MESSAGE_TYPE, error: 'oauth_failed' });
-      if (!posted) router.replace('/login?error=oauth_failed');
+      fail('oauth_failed');
+      return;
     }
+
+    const posted = postGoogleOAuthResultToOpener({ type: GOOGLE_OAUTH_MESSAGE_TYPE, token, user });
+    if (posted) return;
+
+    void (async () => {
+      const result = await signIn('google-token', {
+        redirect:    false,
+        accessToken: token,
+        user:        JSON.stringify(user),
+      });
+      if (!result?.ok) {
+        fail('oauth_failed');
+        return;
+      }
+      router.replace(redirect);
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
