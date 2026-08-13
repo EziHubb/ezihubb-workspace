@@ -1,4 +1,4 @@
-import type { AdminProductDto, AdminProductDetailDto, ProductEditFormValues } from './types';
+import type { AdminProductDto, AdminProductDetailDto, ProductEditFormValues, VariationGroup } from './types';
 import { safeArr, safeStr } from '../../../lib/fmt';
 
 // ── Empty defaults (create mode) ─────────────────────────────────────────────
@@ -22,6 +22,14 @@ const EMPTY_DEFAULTS: ProductEditFormValues = {
   recipientTags:        [],
   styles:               [],
   sustainability:       [],
+  width:                null,
+  height:               null,
+  // Defaults to 'CM' (not null) to match what the unit <select> in
+  // DimensionFields visually shows by default (`watch('dimensionUnit') ??
+  // 'CM'`) — otherwise a seller who only fills in width/height without ever
+  // touching the dropdown would save width:12.5, dimensionUnit:null, an
+  // ambiguous unit-less measurement despite the UI appearing to say "cm".
+  dimensionUnit:        'CM',
   customOptions:        [],
   basePrice:            0,
   compareAtPrice:       null,
@@ -47,6 +55,64 @@ const EMPTY_DEFAULTS: ProductEditFormValues = {
 
 // ── Build React Hook Form default values ──────────────────────────────────────
 // Both product and detail are optional — null = create mode.
+
+// ── Variation price-flag helpers ───────────────────────────────────────────
+// Settings are encoded in VariationSettings.variesBy: string[] as
+// 'price:<groupId>' (a specific group's options carry their own price) or
+// bare legacy 'price' (all groups vary — from before per-group pricing
+// existed). Single source of truth so readers (ItemOptionsTab,
+// PricingShippingTab) and the writer (ManageVariationsModal) never drift
+// apart on the encoding again.
+
+export function pricedGroupIds(variesBy: string[], allGroupIds: string[]): string[] {
+  if (variesBy.includes('price')) return allGroupIds;
+  return allGroupIds.filter((id) => variesBy.includes(`price:${id}`));
+}
+
+// ── Combo price grid helpers ─────────────────────────────────────────────────
+// Mirrors ProductsService.syncVariantsFromGroups()'s cartesian-product logic
+// exactly (same comboKey shape) so the grid can preview all N combinations —
+// and let the seller price them — before Apply, without a server round trip.
+
+export function comboKey(options: Record<string, string>): string {
+  return Object.entries(options)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `${k}=${v}`)
+    .join('|');
+}
+
+export interface ComboPreview {
+  key:     string;
+  name:    string;
+  options: Record<string, string>;
+}
+
+/** Cartesian product of each group's available (isAvailable !== false) options.
+ *  Empty when there are no groups, or any group currently has zero available
+ *  options (mid-edit — nothing to preview yet). */
+export function computeCombos(groups: VariationGroup[]): ComboPreview[] {
+  const availableGroups = groups.map((g) => ({
+    ...g,
+    options: g.options.filter((o) => o.isAvailable !== false),
+  }));
+  if (availableGroups.length === 0) return [];
+  if (availableGroups.some((g) => g.options.length === 0)) return [];
+
+  let combos: { name: string; options: Record<string, string> }[] = [{ name: '', options: {} }];
+  for (const group of availableGroups) {
+    const next: typeof combos = [];
+    for (const combo of combos) {
+      for (const opt of group.options) {
+        next.push({
+          name:    combo.name ? `${combo.name} / ${opt.name}` : opt.name,
+          options: { ...combo.options, [group.name]: opt.name },
+        });
+      }
+    }
+    combos = next;
+  }
+  return combos.map((c) => ({ ...c, key: comboKey(c.options) }));
+}
 
 export function buildDefaultValues(
   product: AdminProductDto | null | undefined,
@@ -80,6 +146,9 @@ export function buildDefaultValues(
     recipientTags:   safeArr(product.recipientTags),
     styles:          safeArr(product.styles),
     sustainability:  safeArr(product.sustainability),
+    width:           product.width         ?? null,
+    height:          product.height        ?? null,
+    dimensionUnit:   product.dimensionUnit ?? 'CM',
     customOptions:   safeArr(detail?.customOptions) as unknown[],
 
     // Pricing & Shipping

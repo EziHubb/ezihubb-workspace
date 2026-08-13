@@ -413,7 +413,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
     analytics.viewItem({
       id:       product.id,
       name:     product.name,
-      category: product.primaryCategory?.name ?? '',
+      category: product.categoryName ?? '',
       price:    Number(product.basePrice),
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -441,7 +441,15 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
     );
   }, [selectedOptions, product.variants]);
 
-  const currentPrice   = selectedVariant?.price ?? product.basePrice;
+  // Before a full option combination is picked, fall back to the cheapest real
+  // variant price rather than product.basePrice — basePrice is seller-entered
+  // and never auto-synced to per-variant prices, so it can silently disagree
+  // with what the product actually costs once variants exist.
+  const minVariantPrice = useMemo(
+    () => (product.variants?.length ? Math.min(...product.variants.map((v) => v.price)) : undefined),
+    [product.variants],
+  );
+  const currentPrice   = selectedVariant?.price ?? minVariantPrice ?? product.basePrice;
   const compareAtPrice = selectedVariant?.compareAtPrice ?? product.compareAtPrice;
   const discountPercent =
     compareAtPrice && compareAtPrice > currentPrice

@@ -1,32 +1,32 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDialog } from '../../../contexts/DialogContext';
 import Image from 'next/image';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   X, Plus, Trash2, Pencil, ChevronLeft, Check,
-  ArrowRight, AlignLeft, Palette, LayoutGrid,
+  ArrowRight, AlignLeft, Palette, LayoutGrid, Layers,
 } from 'lucide-react';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
-import { InlinePriceInput } from './primitives';
 import { Toggle } from './primitives/Toggle';
 import { FilterSelect } from '../../ui/FilterSelect';
-import type { VariationGroup, VariationSettings } from './types';
+import { VariantComboGrid } from './VariantComboGrid';
+import type {
+  VariationGroup, VariationSettings, ProductVariantRow,
+  VariantEditPatch, ApplyVariationsPayload,
+} from './types';
+import { pricedGroupIds } from './helpers';
 
 // ─── Settings helpers ─────────────────────────────────────────────────────────
 // Settings are encoded in `variesBy: string[]` to avoid a new migration.
 // Encoding: 'price:<groupId>' | 'processing' | 'quantity' | 'sku'
 // Bare legacy 'price' (no groupId, from before per-group pricing existed) means
 // "all groups" — matches Etsy's own "Prices vary for each: Shape and Option"
-// vs "Shape" vs "Option" distinction (a seller picks which specific
-// property/properties actually change the price, not an all-or-nothing toggle).
-
-function pricedGroupIds(variesBy: string[], allGroupIds: string[]): string[] {
-  if (variesBy.includes('price')) return allGroupIds;
-  return allGroupIds.filter((id) => variesBy.includes(`price:${id}`));
-}
+// vs "Shape" vs "Option" distinction.
+// pricedGroupIds() lives in helpers.ts — shared with ItemOptionsTab and
+// PricingShippingTab so all readers stay in sync with this writer's encoding.
 
 function setPricedGroups(variesBy: string[], groupIds: string[]): string[] {
   const without = variesBy.filter((v) => v !== 'price' && !v.startsWith('price:'));
@@ -42,10 +42,13 @@ function setSetting(variesBy: string[], key: string, on: boolean): string[] {
   return on ? [...without, key] : without;
 }
 
+function newLocalId(): string {
+  return `new-${(globalThis.crypto ?? window.crypto).randomUUID()}`;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type DisplayType = 'dropdown' | 'color_swatch' | 'button' | 'image';
-
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
@@ -204,6 +207,33 @@ function VariationGroupCard({
   );
 }
 
+// ─── Empty state ────────────────────────────────────────────────────────────
+
+function EmptyVariationsState() {
+  return (
+    <div className="flex flex-col items-center text-center py-10 px-4">
+      <div className="flex items-center gap-1 mb-4 text-secondary/70">
+        <svg width="44" height="56" viewBox="0 0 44 56" fill="none" className="rotate-[-8deg]">
+          <rect x="1" y="1" width="30" height="54" rx="3" stroke="currentColor" strokeWidth="2" />
+          <circle cx="16" cy="18" r="5" stroke="currentColor" strokeWidth="2" />
+          <line x1="8" y1="34" x2="24" y2="34" stroke="currentColor" strokeWidth="2" />
+          <line x1="8" y1="41" x2="20" y2="41" stroke="currentColor" strokeWidth="2" />
+        </svg>
+        <svg width="44" height="56" viewBox="0 0 44 56" fill="none" className="rotate-[8deg] -ml-3">
+          <rect x="1" y="1" width="30" height="54" rx="3" stroke="currentColor" strokeWidth="2" />
+          <path d="M16 10 L24 22 L8 22 Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+          <line x1="8" y1="34" x2="24" y2="34" stroke="currentColor" strokeWidth="2" />
+          <line x1="8" y1="41" x2="20" y2="41" stroke="currentColor" strokeWidth="2" />
+        </svg>
+      </div>
+      <h4 className="font-semibold text-secondary">You don&apos;t have any variations</h4>
+      <p className="text-sm text-muted mt-1 max-w-[320px]">
+        Use variations if your item is offered in different colours, sizes, materials, etc.
+      </p>
+    </div>
+  );
+}
+
 // ─── VariationSettingsToggles ─────────────────────────────────────────────────
 
 function VariationSettingsToggles({
@@ -246,7 +276,7 @@ function VariationSettingsToggles({
             value={pickerValue}
             onChange={(v) => onChange(setPricedGroups(variesBy, v === bothValue ? allIds : [v]))}
             options={pickerOptions}
-            size="sm"
+            size="md"
           />
         )}
       </div>
@@ -268,89 +298,12 @@ function VariationSettingsToggles({
   );
 }
 
-// ─── VariantPriceMatrix ───────────────────────────────────────────────────────
-
-function VariantPriceTable({
-  productId, group,
-}: {
-  productId: string;
-  group:     VariationGroup;
-}) {
-  const qc = useQueryClient();
-
-  const patchOption = async (optionId: string, priceDelta: number | null) => {
-    await api.patch(
-      API_ROUTES.ADMIN.PRODUCT_VARIATION_OPTION(productId, group.id, optionId),
-      { priceDelta },
-    );
-    qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
-  };
-
-  return (
-    <div className="border border-border rounded-xl overflow-hidden">
-      <div className="px-4 py-2.5 bg-background border-b border-border">
-        <p className="text-xs font-semibold text-muted uppercase tracking-wide">
-          Price adjustment per {group.name}
-        </p>
-        <p className="text-xs text-muted mt-0.5">Added to the base price for this option</p>
-      </div>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border bg-muted/3">
-            <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted uppercase tracking-wide">
-              {group.name}
-            </th>
-            <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted uppercase tracking-wide">
-              Price delta
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {group.options.map((opt) => (
-            <tr key={opt.id}>
-              <td className="px-4 py-2.5">
-                <div className="flex items-center gap-2">
-                  {opt.colorHex && (
-                    <div className="w-3.5 h-3.5 rounded-full border border-border shrink-0" style={{ backgroundColor: opt.colorHex }} />
-                  )}
-                  <span className="text-sm font-medium text-secondary">{opt.name || opt.value}</span>
-                </div>
-              </td>
-              <td className="px-4 py-2.5">
-                <InlinePriceInput
-                  value={opt.priceDelta ?? null}
-                  onChange={(v) => patchOption(opt.id, v)}
-                  prefix="+$"
-                  placeholder="0"
-                />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function VariantPriceMatrix({
-  productId, groups,
-}: {
-  productId: string;
-  groups:    VariationGroup[];
-}) {
-  if (groups.length === 0) return null;
-  return (
-    <div className="space-y-4">
-      {groups.map((group) => (
-        <VariantPriceTable key={group.id} productId={productId} group={group} />
-      ))}
-    </div>
-  );
-}
-
 // ─── AddVariationGroupSheet ───────────────────────────────────────────────────
+// Etsy's real suggested variation types (not the earlier "Color/Size/Style/
+// Material/Finish/Length" placeholder guess) — see "What type of variation
+// is it?" step.
 
-const SUGGESTED_NAMES = ['Color', 'Size', 'Style', 'Material', 'Finish', 'Length'];
+const SUGGESTED_NAMES = ['Primary colour', 'Width', 'Height', 'Depth', 'Secondary colour'];
 
 const DISPLAY_TYPES: { type: DisplayType; label: string; icon: React.ElementType }[] = [
   { type: 'dropdown',     label: 'Dropdown',        icon: AlignLeft   },
@@ -359,28 +312,27 @@ const DISPLAY_TYPES: { type: DisplayType; label: string; icon: React.ElementType
 ];
 
 function AddVariationGroupSheet({
-  productId,
   existingGroupNames,
-  onSaved,
+  nextSortOrder,
+  onAdd,
   onClose,
 }: {
-  productId:          string;
   existingGroupNames: string[];
-  onSaved:            () => void;
-  onClose:            () => void;
+  nextSortOrder:      number;
+  onAdd:               (group: VariationGroup) => void;
+  onClose:             () => void;
 }) {
-  const [step,        setStep]        = useState<1 | 2>(1);
-  const [groupName,   setGroupName]   = useState('');
-  const [displayType, setDisplayType] = useState<DisplayType>('dropdown');
-  const [options,     setOptions]     = useState<{ value: string; colorHex?: string }[]>([]);
-  const [saving,      setSaving]      = useState(false);
-  const { alert } = useDialog();
+  const [step,             setStep]             = useState<1 | 2>(1);
+  const [groupName,        setGroupName]        = useState('');
+  const [showCustomInput,  setShowCustomInput]  = useState(false);
+  const [displayType,      setDisplayType]      = useState<DisplayType>('dropdown');
+  const [options,          setOptions]          = useState<{ value: string; colorHex?: string }[]>([]);
 
   const available = SUGGESTED_NAMES.filter((n) => !existingGroupNames.includes(n));
 
   const pickName = (n: string) => {
     setGroupName(n);
-    if (n === 'Color') setDisplayType('color_swatch');
+    setDisplayType(n.toLowerCase().includes('colour') || n.toLowerCase().includes('color') ? 'color_swatch' : 'dropdown');
   };
 
   const addOption = (opt: { value: string; colorHex?: string }) => {
@@ -391,25 +343,23 @@ function AddVariationGroupSheet({
     setOptions((prev) => prev.filter((_, idx) => idx !== i));
   };
 
-  const handleCreate = async () => {
-    setSaving(true);
-    try {
-      await api.post(API_ROUTES.ADMIN.PRODUCT_VARIATION_GROUPS(productId), {
-        name:        groupName.trim(),
-        displayType,
-        options:     options.map((o) => ({
-          name:        o.value,
-          value:       o.value.toLowerCase().replace(/\s+/g, '-'),
-          colorHex:    o.colorHex,
-          isAvailable: true,
-        })),
-      });
-      onSaved();
-    } catch (err) {
-      await alert((err as Error).message || 'Could not create this variation group.', { variant: 'error' });
-    } finally {
-      setSaving(false);
-    }
+  const handleCreate = () => {
+    onAdd({
+      id:          newLocalId(),
+      productId:   '',
+      name:        groupName.trim(),
+      displayType,
+      sortOrder:   nextSortOrder,
+      options: options.map((o, i) => ({
+        id:          newLocalId(),
+        groupId:     '',
+        name:        o.value,
+        value:       o.value.toLowerCase().replace(/\s+/g, '-'),
+        colorHex:    o.colorHex,
+        sortOrder:   i,
+        isAvailable: true,
+      })),
+    });
   };
 
   useEffect(() => {
@@ -424,7 +374,7 @@ function AddVariationGroupSheet({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h4 className="font-semibold text-secondary">
-            {step === 1 ? 'Add a variation' : `Add options for "${groupName}"`}
+            {step === 1 ? 'What type of variation is it?' : `Add options for "${groupName}"`}
           </h4>
           <button type="button" onClick={onClose} className="p-1.5 rounded hover:bg-muted/10 text-muted">
             <X className="w-4 h-4" />
@@ -435,7 +385,11 @@ function AddVariationGroupSheet({
           {/* ── Step 1: Name + Display Type ── */}
           {step === 1 && (
             <>
-              <p className="text-sm text-muted">What kind of variation does this listing have?</p>
+              <p className="text-sm text-muted leading-relaxed">
+                You can add up to 2 variations. Use the variation types listed here for peak
+                discoverability. You can add a custom variation, but buyers won&apos;t see the
+                option in filters.
+              </p>
 
               {/* Suggested names */}
               <div className="flex flex-wrap gap-2">
@@ -443,10 +397,10 @@ function AddVariationGroupSheet({
                   <button
                     key={name}
                     type="button"
-                    onClick={() => pickName(name)}
+                    onClick={() => { pickName(name); setShowCustomInput(false); }}
                     className={[
                       'px-3 py-1.5 text-sm rounded-full border-2 transition-colors',
-                      groupName === name
+                      groupName === name && !showCustomInput
                         ? 'border-primary bg-primary/5 text-primary font-semibold'
                         : 'border-border text-muted hover:border-primary/40 hover:text-secondary',
                     ].join(' ')}
@@ -456,16 +410,27 @@ function AddVariationGroupSheet({
                 ))}
               </div>
 
-              {/* Custom name */}
-              <input
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-                placeholder="Or type a custom variation name…"
-                className={inputCls}
-              />
+              {/* Create your own */}
+              {!showCustomInput ? (
+                <button
+                  type="button"
+                  onClick={() => { setShowCustomInput(true); setGroupName(''); }}
+                  className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                >
+                  <Plus className="w-4 h-4" /> Create your own
+                </button>
+              ) : (
+                <input
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  placeholder="Name your own variation…"
+                  autoFocus
+                  className={inputCls}
+                />
+              )}
 
-              {/* Display type — only if not Color */}
-              {groupName && groupName !== 'Color' && (
+              {/* Display type — only if not a colour variation */}
+              {groupName && !groupName.toLowerCase().includes('colour') && !groupName.toLowerCase().includes('color') && (
                 <div>
                   <p className="text-xs text-muted mb-2">How should options be displayed?</p>
                   <div className="flex gap-2">
@@ -566,10 +531,10 @@ function AddVariationGroupSheet({
               <button
                 type="button"
                 onClick={handleCreate}
-                disabled={options.length === 0 || saving}
+                disabled={options.length === 0}
                 className="px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button disabled:opacity-40 transition-colors"
               >
-                {saving ? 'Saving…' : 'Save'}
+                Save
               </button>
             )}
           </div>
@@ -580,54 +545,37 @@ function AddVariationGroupSheet({
 }
 
 // ─── EditVariationGroupSheet ──────────────────────────────────────────────────
+// Operates on the draft group passed down from the modal's local state —
+// no server fetch, no per-action API call. Every add/remove just reports the
+// updated group back up via onChange().
 
 function EditVariationGroupSheet({
-  groupId, productId, onSaved, onClose,
+  group, onChange, onClose,
 }: {
-  groupId:   string;
-  productId: string;
-  onSaved:   () => void;
+  group:     VariationGroup;
+  onChange:  (group: VariationGroup) => void;
   onClose:   () => void;
 }) {
-  const qc = useQueryClient();
-  const { alert } = useDialog();
-
-  // Load the single group
-  const { data: group } = useQuery<VariationGroup>({
-    queryKey: ['variation-group-single', groupId],
-    queryFn:  async () => {
-      try {
-        return await api.get<VariationGroup>(`/admin/products/${productId}/variations/${groupId}`);
-      } catch {
-        return null as unknown as VariationGroup;
-      }
-    },
-    staleTime: 10_000,
-  });
-
-  const addOption = async (opt: { value: string; colorHex?: string }) => {
-    try {
-      await api.post(API_ROUTES.ADMIN.PRODUCT_VARIATION_OPTIONS(productId, groupId), {
-        name:        opt.value,
-        value:       opt.value.toLowerCase().replace(/\s+/g, '-'),
-        colorHex:    opt.colorHex,
-        isAvailable: true,
-      });
-      qc.invalidateQueries({ queryKey: ['variation-group-single', groupId] });
-      qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
-    } catch (err) {
-      await alert((err as Error).message || 'Could not add this option.', { variant: 'error' });
-    }
+  const addOption = (opt: { value: string; colorHex?: string }) => {
+    onChange({
+      ...group,
+      options: [
+        ...group.options,
+        {
+          id:          newLocalId(),
+          groupId:     group.id,
+          name:        opt.value,
+          value:       opt.value.toLowerCase().replace(/\s+/g, '-'),
+          colorHex:    opt.colorHex,
+          sortOrder:   group.options.length,
+          isAvailable: true,
+        },
+      ],
+    });
   };
 
-  const removeOption = async (optionId: string) => {
-    try {
-      await api.delete(API_ROUTES.ADMIN.PRODUCT_VARIATION_OPTION(productId, groupId, optionId));
-      qc.invalidateQueries({ queryKey: ['variation-group-single', groupId] });
-      qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
-    } catch (err) {
-      await alert((err as Error).message || 'Could not remove this option.', { variant: 'error' });
-    }
+  const removeOption = (optionId: string) => {
+    onChange({ ...group, options: group.options.filter((o) => o.id !== optionId) });
   };
 
   useEffect(() => {
@@ -642,9 +590,9 @@ function EditVariationGroupSheet({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
-            <h4 className="font-semibold text-secondary">Edit "{group?.name}"</h4>
+            <h4 className="font-semibold text-secondary">Edit &quot;{group.name}&quot;</h4>
             <p className="text-xs text-muted mt-0.5">
-              {group?.options.length ?? 0} option{(group?.options.length ?? 0) !== 1 ? 's' : ''} configured
+              {group.options.length} option{group.options.length !== 1 ? 's' : ''} configured
             </p>
           </div>
           <button type="button" onClick={onClose} className="p-1.5 rounded hover:bg-muted/10 text-muted">
@@ -655,9 +603,9 @@ function EditVariationGroupSheet({
         <div className="px-5 py-5 space-y-4">
           {/* Existing options */}
           <div className="space-y-2">
-            {(group?.options ?? []).map((opt) => (
+            {group.options.map((opt) => (
               <div key={opt.id} className="flex items-center gap-2.5 px-3 py-2.5 border border-border rounded-lg">
-                {group?.displayType === 'color_swatch' && (
+                {group.displayType === 'color_swatch' && (
                   <div
                     className="w-5 h-5 rounded-full border border-border shrink-0"
                     style={{ backgroundColor: opt.colorHex ?? '#E5E7EB' }}
@@ -678,11 +626,11 @@ function EditVariationGroupSheet({
           {/* Add more */}
           <div>
             <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">Add more options</p>
-            {group?.displayType === 'color_swatch' ? (
+            {group.displayType === 'color_swatch' ? (
               <ColorOptionInput onAdd={(o) => addOption({ value: o.value, colorHex: o.colorHex })} />
             ) : (
               <TagInput
-                values={(group?.options ?? []).map((o) => o.value)}
+                values={group.options.map((o) => o.value)}
                 onAdd={(v) => addOption({ value: v })}
                 placeholder="Type a value, press Enter…"
               />
@@ -693,10 +641,6 @@ function EditVariationGroupSheet({
         {/* Footer */}
         <div className="flex justify-end gap-2 px-5 py-4 border-t border-border">
           <button type="button" onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-muted border border-border rounded-button hover:border-primary/40 transition-colors">
-            Cancel
-          </button>
-          <button type="button" onClick={() => { onSaved(); onClose(); }}
             className="px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors">
             Done
           </button>
@@ -719,19 +663,29 @@ export function ManageVariationsModal({
   productId, isOpen, onClose, onSaved,
 }: ManageVariationsModalProps) {
   const qc = useQueryClient();
-  const { confirm, alert } = useDialog();
+  const { confirm } = useDialog();
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [addingGroup,    setAddingGroup]    = useState(false);
-  const [savedMsg,       setSavedMsg]       = useState(false);
+  const [applying,       setApplying]       = useState(false);
+  const [applyError,     setApplyError]     = useState<string | null>(null);
 
-  const { data: groups = [], isLoading: groupsLoading } = useQuery<VariationGroup[]>({
+  // ── Server state — fetched once per open, used only to seed the draft ──────
+  // Gated on `isFetched`, not `isLoading` — in TanStack Query v5,
+  // `isLoading = isPending && isFetching`, and on the very first render right
+  // after `isOpen` flips true (queries going enabled:false → enabled:true),
+  // the fetch hasn't been kicked off as a state update yet: `isPending` is
+  // true but `isFetching` is still false, so `isLoading` reads `false` with
+  // `data` still `undefined`. Seeding on that would lock the draft to empty
+  // arrays via `seededRef` before the real data ever arrives. `isFetched`
+  // only flips true once a fetch has actually completed, so it can't race.
+  const { data: serverGroups = [], isFetched: groupsFetched } = useQuery<VariationGroup[]>({
     queryKey: ['variation-groups', productId],
     queryFn:  () => api.get<VariationGroup[]>(API_ROUTES.ADMIN.PRODUCT_VARIATIONS(productId)),
     enabled:   isOpen,
     staleTime: 30_000,
   });
 
-  const { data: settings } = useQuery<VariationSettings>({
+  const { data: serverSettings, isFetched: settingsFetched } = useQuery<VariationSettings>({
     queryKey: ['variation-settings', productId],
     queryFn:  async () => {
       try {
@@ -744,44 +698,76 @@ export function ManageVariationsModal({
     staleTime: 30_000,
   });
 
+  const { data: serverVariants = [], isFetched: variantsFetched } = useQuery<ProductVariantRow[]>({
+    queryKey: ['product-variant-list', productId],
+    queryFn:  () => api.get<ProductVariantRow[]>(API_ROUTES.ADMIN.PRODUCT_VARIATION_VARIANTS(productId)),
+    enabled:   isOpen,
+    staleTime: 30_000,
+  });
+
+  // ── Local draft state — every edit in this modal lands here, never on the
+  // server, until "Apply" sends one consolidated commit. ─────────────────────
+  const [draftGroups,   setDraftGroups]   = useState<VariationGroup[]>([]);
+  const [draftVariesBy, setDraftVariesBy] = useState<string[]>([]);
+  const [variantEdits,  setVariantEdits]  = useState<Record<string, VariantEditPatch>>({});
+  const seededRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) { seededRef.current = false; return; }
+    if (seededRef.current) return;
+    if (!groupsFetched || !settingsFetched || !variantsFetched) return;
+    setDraftGroups(serverGroups);
+    setDraftVariesBy(serverSettings?.variesBy ?? []);
+    setVariantEdits({});
+    setApplyError(null);
+    seededRef.current = true;
+  }, [isOpen, groupsFetched, settingsFetched, variantsFetched, serverGroups, serverSettings]);
+
   const deleteGroup = async (groupId: string) => {
-    try {
-      // Remove by re-saving without that group
-      const remaining = groups.filter((g) => g.id !== groupId);
-      await api.put(API_ROUTES.ADMIN.PRODUCT_VARIATIONS(productId), { groups: remaining });
-      qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
-    } catch (err) {
-      await alert((err as Error).message || 'Could not delete this variation group.', { variant: 'error' });
-    }
+    setDraftGroups((gs) => gs.filter((g) => g.id !== groupId));
   };
 
-  const saveSettings = async (variesBy: string[]) => {
-    try {
-      await api.patch(API_ROUTES.ADMIN.PRODUCT_VARIATION_SETTINGS(productId), { variesBy, enableVariations: true });
-      qc.invalidateQueries({ queryKey: ['variation-settings', productId] });
-    } catch (err) {
-      await alert((err as Error).message || 'Could not save variation settings.', { variant: 'error' });
-    }
-  };
+  const editingGroup = draftGroups.find((g) => g.id === editingGroupId) ?? null;
 
   const handleApply = async () => {
+    setApplying(true);
+    setApplyError(null);
     try {
-      // Ensure enableVariations is persisted as true when groups exist
-      if (groups.length > 0) {
-        const currentVariesBy = settings?.variesBy ?? [];
-        await api.patch(API_ROUTES.ADMIN.PRODUCT_VARIATION_SETTINGS(productId), {
-          enableVariations: true,
-          variesBy: currentVariesBy,
-        });
-        qc.invalidateQueries({ queryKey: ['variation-settings', productId] });
-        qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
-      }
+      const payload: ApplyVariationsPayload = {
+        groups: draftGroups.map((g) => ({
+          id:          g.id,
+          name:        g.name,
+          displayType: g.displayType,
+          sortOrder:   g.sortOrder,
+          options: g.options.map((o) => ({
+            id:          o.id,
+            name:        o.name,
+            value:       o.value,
+            colorHex:    o.colorHex,
+            // Never edited in this modal — set separately via
+            // VariantImagePicker's own immediate PATCH — but must be
+            // round-tripped or Apply's replace-the-whole-tree wipes it.
+            imageUrl:    o.imageUrl,
+            imageId:     o.imageId,
+            isAvailable: o.isAvailable,
+            sortOrder:   o.sortOrder,
+          })),
+        })),
+        variesBy:     draftVariesBy,
+        variantEdits: Object.values(variantEdits),
+      };
+      await api.post(API_ROUTES.ADMIN.PRODUCT_VARIATIONS_APPLY(productId), payload);
+
+      qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
+      qc.invalidateQueries({ queryKey: ['variation-settings', productId] });
+      qc.invalidateQueries({ queryKey: ['product-variant-list', productId] });
+
       onSaved();
       onClose();
-      setSavedMsg(true);
-      setTimeout(() => setSavedMsg(false), 3000);
     } catch (err) {
-      await alert((err as Error).message || 'Could not apply variation settings.', { variant: 'error' });
+      setApplyError((err as Error).message || 'Could not apply variation changes.');
+    } finally {
+      setApplying(false);
     }
   };
 
@@ -794,6 +780,11 @@ export function ManageVariationsModal({
   }, [isOpen, onClose, editingGroupId, addingGroup]);
 
   if (!isOpen) return null;
+
+  // Tied directly to the same condition the seeding effect gates on, rather
+  // than re-deriving it from the raw query flags — this is "has the draft
+  // actually been populated yet", which is what the UI below cares about.
+  const isLoading = !seededRef.current;
 
   return (
     <>
@@ -814,15 +805,27 @@ export function ManageVariationsModal({
 
           {/* Body */}
           <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
-            {groupsLoading ? (
+            {isLoading ? (
               <div className="space-y-3 animate-pulse">
                 {[1, 2].map((i) => <div key={i} className="h-20 bg-muted/10 rounded-xl" />)}
               </div>
+            ) : draftGroups.length === 0 ? (
+              <>
+                <EmptyVariationsState />
+                <button
+                  type="button"
+                  onClick={() => setAddingGroup(true)}
+                  className="w-full py-3 text-sm font-semibold text-primary border-2 border-dashed border-primary/30 rounded-xl hover:border-primary/60 hover:bg-primary/3 transition-all flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add a variation
+                </button>
+              </>
             ) : (
               <>
                 {/* Group cards */}
                 <div className="space-y-3">
-                  {groups.map((group) => (
+                  {draftGroups.map((group) => (
                     <VariationGroupCard
                       key={group.id}
                       group={group}
@@ -837,7 +840,7 @@ export function ManageVariationsModal({
                 </div>
 
                 {/* Add variation button (max 2 groups) */}
-                {groups.length < 2 && (
+                {draftGroups.length < 2 && (
                   <button
                     type="button"
                     onClick={() => setAddingGroup(true)}
@@ -853,20 +856,29 @@ export function ManageVariationsModal({
                   <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-4">Variation settings</p>
 
                   <VariationSettingsToggles
-                    settings={settings}
-                    groups={groups}
-                    onChange={saveSettings}
+                    settings={{ enableVariations: true, variesBy: draftVariesBy }}
+                    groups={draftGroups}
+                    onChange={setDraftVariesBy}
                   />
                 </div>
 
-                {/* Price matrix — only for the group(s) picked above */}
-                {settings && groups.length > 0 && (
-                  <VariantPriceMatrix
-                    productId={productId}
-                    groups={groups.filter((g) => pricedGroupIds(settings.variesBy, groups.map((gg) => gg.id)).includes(g.id))}
-                  />
-                )}
+                {/* Combo price/quantity/SKU/visibility grid — mirrors Etsy's
+                    per-combination table exactly (not a per-option delta). */}
+                <VariantComboGrid
+                  groups={draftGroups}
+                  variesBy={draftVariesBy}
+                  variants={serverVariants}
+                  edits={variantEdits}
+                  onEditsChange={setVariantEdits}
+                />
               </>
+            )}
+
+            {applyError && (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-button px-3 py-2 flex items-start gap-2">
+                <Layers className="w-4 h-4 shrink-0 mt-0.5" />
+                {applyError}
+              </p>
             )}
           </div>
 
@@ -876,9 +888,9 @@ export function ManageVariationsModal({
               className="px-4 py-2.5 text-sm font-medium text-muted border border-border rounded-button hover:border-primary/40 transition-colors">
               Cancel
             </button>
-            <button type="button" onClick={handleApply}
-              className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors">
-              {savedMsg ? <><Check className="w-4 h-4" /> Applied</> : 'Apply'}
+            <button type="button" onClick={handleApply} disabled={applying || isLoading}
+              className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors disabled:opacity-50">
+              {applying ? 'Applying…' : 'Apply'}
             </button>
           </div>
         </div>
@@ -887,25 +899,21 @@ export function ManageVariationsModal({
       {/* Sub-sheet: Add variation group */}
       {addingGroup && (
         <AddVariationGroupSheet
-          productId={productId}
-          existingGroupNames={groups.map((g) => g.name)}
-          onSaved={() => {
+          existingGroupNames={draftGroups.map((g) => g.name)}
+          nextSortOrder={draftGroups.length}
+          onAdd={(group) => {
+            setDraftGroups((gs) => [...gs, group]);
             setAddingGroup(false);
-            qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
           }}
           onClose={() => setAddingGroup(false)}
         />
       )}
 
       {/* Sub-sheet: Edit variation group */}
-      {editingGroupId && (
+      {editingGroup && (
         <EditVariationGroupSheet
-          groupId={editingGroupId}
-          productId={productId}
-          onSaved={() => {
-            setEditingGroupId(null);
-            qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
-          }}
+          group={editingGroup}
+          onChange={(updated) => setDraftGroups((gs) => gs.map((g) => (g.id === updated.id ? updated : g)))}
           onClose={() => setEditingGroupId(null)}
         />
       )}

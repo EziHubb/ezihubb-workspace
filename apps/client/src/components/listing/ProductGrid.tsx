@@ -71,7 +71,10 @@ export function ProductGrid({ products, locale, isLoading = false }: ProductGrid
   // ── Grid ───────────────────────────────────────────────────────────────────
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-      {products.map((product) => (
+      {products.map((product) => {
+        const hasPriceRange =
+          product.minPrice != null && product.maxPrice != null && product.minPrice !== product.maxPrice;
+        return (
         <ProductCard
           key={product.id}
           id={product.id}
@@ -80,10 +83,11 @@ export function ProductGrid({ products, locale, isLoading = false }: ProductGrid
           imageUrl={
             product.primaryImage ?? 'https://placehold.co/400x500.png?text=No+Image'
           }
-          basePrice={product.basePrice}
+          basePrice={product.minPrice ?? product.basePrice}
           compareAtPrice={product.compareAtPrice}
-          rating={product.rating?.avg}
-          reviewCount={product.rating?.count}
+          isPriceRange={hasPriceRange}
+          rating={product.averageRating ?? undefined}
+          reviewCount={product.reviewCount}
           badge={product.badge}
           badgeLabel={product.badge ? badgeLabels[product.badge] : undefined}
           isPersonalizable={product.isPersonalizable}
@@ -94,7 +98,8 @@ export function ProductGrid({ products, locale, isLoading = false }: ProductGrid
           locale={cardLocale}
           labels={cardLabels}
         />
-      ))}
+        );
+      })}
     </div>
   );
 }

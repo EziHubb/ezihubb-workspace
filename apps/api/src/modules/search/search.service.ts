@@ -18,8 +18,10 @@ import {
 import { ProductDetail } from '../catalog/schemas/product-detail.schema';
 import { AnalyticsService } from '../analytics/analytics.service';
 
-const TRENDING_KEY = 'search:trending';
-const TRENDING_WINDOW_DAYS = 7;
+// Same key AnalyticsService.trackSearch() writes to — previously this
+// service also maintained its own separate 'search:trending' zset via
+// logSearch(), duplicating every write under a different key for no reason.
+const TRENDING_KEY = 'search:trending:7d';
 const IN_DEMAND_KEY = (productId: string) => `product:demand:${productId}`;
 
 export interface FacetItem {
@@ -88,7 +90,6 @@ export class SearchService {
       ]);
 
       const data = await this.toListItems(products);
-      await this.logSearch('', total).catch(() => undefined);
       paginatedResult = paginatedResponse<ProductListItemDto>(data, page, limit, total);
     }
 
@@ -97,12 +98,31 @@ export class SearchService {
 
     // Fire-and-forget analytics tracking for zero-result detection and trending
     if (query.q) {
+      // Most searches don't set an explicit category filter, so trending-by-
+      // category (marketplace-insights) infers one from the page of results
+      // actually returned — the mode of categorySlug across them — rather
+      // than requiring the buyer to have filtered.
+      const dominantCategory = this.dominantCategorySlug(paginatedResult.data);
       this.analyticsService
-        .trackSearch(query.q, paginatedResult.pagination.total)
+        .trackSearch(query.q, paginatedResult.pagination.total, dominantCategory)
         .catch(() => undefined);
     }
 
     return { ...paginatedResult, facets, appliedFilters, correctedQuery: null };
+  }
+
+  private dominantCategorySlug(results: ProductListItemDto[]): string | undefined {
+    if (results.length === 0) return undefined;
+    const counts = new Map<string, number>();
+    for (const r of results) {
+      counts.set(r.categorySlug, (counts.get(r.categorySlug) ?? 0) + 1);
+    }
+    let best: string | undefined;
+    let bestCount = 0;
+    for (const [slug, count] of counts) {
+      if (count > bestCount) { best = slug; bestCount = count; }
+    }
+    return best;
   }
 
   // ─── Autocomplete ──────────────────────────────────────────────────────────
@@ -145,19 +165,9 @@ export class SearchService {
     return keywords;
   }
 
-  async logSearch(query: string, resultCount: number): Promise<void> {
-    const clean = query.trim().toLowerCase();
-    if (!clean || clean.length < 2) return;
-
-    const client = this.redis.getClient();
-    await client.zincrby(TRENDING_KEY, 1, clean);
-
-    const ttl = await client.ttl(TRENDING_KEY);
-    if (ttl < 0) {
-      await client.expire(TRENDING_KEY, TRENDING_WINDOW_DAYS * 24 * 3600);
-    }
-
-    this.logger.debug(`Search logged: "${clean}" → ${resultCount} results`);
+  /** A buyer landed on a product page via a search-result link (?st=term). */
+  async trackClick(term: string): Promise<void> {
+    await this.analyticsService.trackSearchClick(term);
   }
 
   // ─── Related searches ──────────────────────────────────────────────────────
@@ -169,18 +179,71 @@ export class SearchService {
     const trending = await this.getTrending();
     const queryWords = new Set(clean.split(/\s+/));
 
-    const related = trending.filter((keyword) => {
+    const isCandidate = (keyword: string) => {
       if (keyword === clean) return false;
       const words = keyword.split(/\s+/);
       return words.some((w) => queryWords.has(w) || clean.includes(w) || w.includes(clean));
-    });
+    };
 
-    if (related.length < 5) {
-      const rest = trending.filter((k) => k !== clean && !related.includes(k));
-      return [...related, ...rest].slice(0, 8);
+    let candidates = trending.filter(isCandidate);
+    if (candidates.length < 5) {
+      const rest = trending.filter((k) => k !== clean && !candidates.includes(k));
+      candidates = [...candidates, ...rest];
     }
+    // Headroom before feedback-based re-ranking below trims to the final 8 —
+    // otherwise a downvoted term near the top would just get replaced by
+    // nothing, instead of the next-best candidate sliding up.
+    candidates = candidates.slice(0, 20);
 
-    return related.slice(0, 8);
+    return this.rankByFeedback(clean, candidates);
+  }
+
+  /**
+   * Re-ranks candidates by their thumbs-up/down track record for this
+   * source term (see RelatedTermFeedback / submitRelatedTermFeedback), and
+   * drops ones with a clearly negative record rather than just one stray
+   * downvote. Candidates with no feedback yet keep their original order,
+   * ranked below any with a positive net score.
+   */
+  private async rankByFeedback(sourceTerm: string, candidates: string[]): Promise<string[]> {
+    if (candidates.length === 0) return [];
+
+    const feedbackRows = await this.prisma.relatedTermFeedback.findMany({
+      where: { sourceTerm, relatedTerm: { in: candidates } },
+    });
+    const feedbackMap = new Map(feedbackRows.map((f) => [f.relatedTerm, f]));
+
+    return candidates
+      .filter((term) => {
+        const fb = feedbackMap.get(term);
+        if (!fb) return true;
+        return !(fb.notHelpfulCount > fb.helpfulCount && fb.notHelpfulCount - fb.helpfulCount >= 3);
+      })
+      .sort((a, b) => {
+        const netA = (feedbackMap.get(a)?.helpfulCount ?? 0) - (feedbackMap.get(a)?.notHelpfulCount ?? 0);
+        const netB = (feedbackMap.get(b)?.helpfulCount ?? 0) - (feedbackMap.get(b)?.notHelpfulCount ?? 0);
+        return netB - netA;
+      })
+      .slice(0, 8);
+  }
+
+  async submitRelatedTermFeedback(sourceTerm: string, relatedTerm: string, helpful: boolean): Promise<void> {
+    const source = sourceTerm.trim().toLowerCase();
+    const related = relatedTerm.trim().toLowerCase();
+    if (!source || !related) return;
+
+    await this.prisma.relatedTermFeedback.upsert({
+      where: { sourceTerm_relatedTerm: { sourceTerm: source, relatedTerm: related } },
+      create: {
+        sourceTerm: source,
+        relatedTerm: related,
+        helpfulCount:    helpful ? 1 : 0,
+        notHelpfulCount: helpful ? 0 : 1,
+      },
+      update: helpful
+        ? { helpfulCount: { increment: 1 } }
+        : { notHelpfulCount: { increment: 1 } },
+    });
   }
 
   // ─── Private: full-text search via raw SQL ─────────────────────────────────
@@ -287,7 +350,6 @@ export class SearchService {
         this.prisma.product.count({ where: ilikeFallback }),
       ]);
       const data = await this.toListItems(products);
-      await this.logSearch(q, count).catch(() => undefined);
       return paginatedResponse<ProductListItemDto>(data, page, limit, count);
     }
 
@@ -301,7 +363,6 @@ export class SearchService {
       .filter(Boolean) as typeof products;
 
     const data = await this.toListItems(ordered);
-    await this.logSearch(q, total).catch(() => undefined);
 
     return paginatedResponse<ProductListItemDto>(data, page, limit, total);
   }
@@ -551,18 +612,32 @@ export class SearchService {
     }[],
   ): Promise<ProductListItemDto[]> {
     const productIds = products.map((p) => p.id);
-    const ratingRows = productIds.length
-      ? await this.prisma.review.groupBy({
-          by: ['productId'],
-          where: { productId: { in: productIds }, status: 'APPROVED' },
-          _avg: { rating: true },
-          _count: { rating: true },
-        })
-      : [];
+    const [ratingRows, priceRangeRows] = productIds.length
+      ? await Promise.all([
+          this.prisma.review.groupBy({
+            by: ['productId'],
+            where: { productId: { in: productIds }, status: 'APPROVED' },
+            _avg: { rating: true },
+            _count: { rating: true },
+          }),
+          this.prisma.productVariant.groupBy({
+            by: ['productId'],
+            where: { productId: { in: productIds }, isAvailable: true, price: { not: null } },
+            _min: { price: true },
+            _max: { price: true },
+          }),
+        ])
+      : [[], []];
     const ratingMap = new Map(
       ratingRows.map((r) => [
         r.productId,
         r._count.rating ? Math.round((r._avg.rating ?? 0) * 10) / 10 : null,
+      ]),
+    );
+    const priceRangeMap = new Map(
+      priceRangeRows.map((r) => [
+        r.productId,
+        { min: Number(r._min.price), max: Number(r._max.price) },
       ]),
     );
 
@@ -574,11 +649,14 @@ export class SearchService {
         sku: p.sku,
         basePrice: Number(p.basePrice),
         compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
+        minPrice: priceRangeMap.get(p.id)?.min ?? null,
+        maxPrice: priceRangeMap.get(p.id)?.max ?? null,
         primaryImageUrl: p.images[0]?.url ?? null,
         primaryImage:    p.images[0]?.url ?? null,
         images:          p.images.map((img) => ({ url: img.url })),
         categoryId: p.categoryId,
         categoryName: p.category.name,
+        categorySlug: p.category.slug,
         isPersonalizable: p.isPersonalizable,
         isFeatured: p.isFeatured,
         isActive: p.isActive,

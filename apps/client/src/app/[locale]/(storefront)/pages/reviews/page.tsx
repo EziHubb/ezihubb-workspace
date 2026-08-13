@@ -253,9 +253,9 @@ export default async function ReviewsPage({
                   )}
                 </div>
                 <p className="text-xs text-secondary line-clamp-2 leading-snug">{product.name}</p>
-                {product.rating && (
+                {product.reviewCount > 0 && (
                   <p className="text-xs font-bold text-primary mt-0.5">
-                    {fmtRating(product.rating.avg)} ★
+                    {fmtRating(product.averageRating ?? 0)} ★
                   </p>
                 )}
               </Link>

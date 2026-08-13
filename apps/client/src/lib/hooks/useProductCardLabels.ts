@@ -14,6 +14,7 @@ export function useProductCardLabels() {
     personalizeNow:     tActions('personalize'),
     addToCart:          tActions('addToCart'),
     byStore:            (name: string) => tCommon('byStore', { name }),
+    fromPrice:          tCommon('fromPrice'),
   };
 
   const badgeLabels: Record<ProductBadgeVariant, string> = {

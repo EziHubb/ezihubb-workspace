@@ -66,9 +66,9 @@ export function ProductInfo({ product, reviewSummary }: ProductInfoProps) {
   return (
     <div className="space-y-3.5">
       {/* Category label */}
-      {(product.primaryCategory ?? product.category) && (
+      {product.categoryName && (
         <p className="text-xs font-semibold text-primary uppercase tracking-widest">
-          {product.primaryCategory?.name ?? product.category?.name}
+          {product.categoryName}
         </p>
       )}
 

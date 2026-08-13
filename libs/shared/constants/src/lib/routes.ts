@@ -128,6 +128,16 @@ export const API_ROUTES = {
     TRENDING:     '/search/trending',
     RELATED:      '/search/related',
     LOG:          '/search/log',
+    CLICK:        '/search/click',
+  },
+
+  MARKETPLACE_INSIGHTS: {
+    TRENDING:      '/marketplace-insights/trending',
+    TERM:          (term: string) => `/marketplace-insights/terms/${encodeURIComponent(term)}`,
+    TERM_ANALYSIS: (term: string) => `/marketplace-insights/terms/${encodeURIComponent(term)}/analysis`,
+    TERM_RELATED_FEEDBACK: (term: string) => `/marketplace-insights/terms/${encodeURIComponent(term)}/related-feedback`,
+    SAVED_SEARCHES:      '/marketplace-insights/saved-searches',
+    SAVED_SEARCH:        (id: string) => `/marketplace-insights/saved-searches/${id}`,
   },
 
   MESSAGES: {
@@ -213,6 +223,7 @@ export const API_ROUTES = {
     // ── Products ─────────────────────────────────────────────────────────────
     PRODUCTS:             '/admin/products',
     PRODUCTS_STATS:       '/admin/products/stats',
+    PRODUCT_TITLE_SUGGESTION: '/admin/products/title-suggestion',
     PRODUCT:              (id: string) => `/admin/products/${id}`,
     PRODUCT_STATUS:       (id: string) => `/admin/products/${id}/status`,
     PRODUCT_IMAGES:       (id: string) => `/admin/products/${id}/images`,
@@ -245,6 +256,8 @@ export const API_ROUTES = {
     PRODUCT_VARIATION_OPTIONS:  (id: string, gId: string) => `/admin/products/${id}/variations/${gId}/options`,
     PRODUCT_VARIATION_OPTION:   (id: string, gId: string, oId: string) => `/admin/products/${id}/variations/${gId}/options/${oId}`,
     PRODUCT_VARIATION_VARIANT:  (id: string, vId: string) => `/admin/products/${id}/variations/variants/${vId}`,
+    PRODUCT_VARIATION_VARIANTS: (id: string) => `/admin/products/${id}/variations/variants`,
+    PRODUCT_VARIATIONS_APPLY:   (id: string) => `/admin/products/${id}/variations/apply`,
     // Custom options
     PRODUCT_CUSTOM_OPTIONS:      (id: string) => `/admin/products/${id}/custom-options`,
     PRODUCT_CUSTOM_OPTION:       (id: string, oId: string) => `/admin/products/${id}/custom-options/${oId}`,

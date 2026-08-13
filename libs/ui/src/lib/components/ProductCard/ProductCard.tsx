@@ -13,6 +13,8 @@ export interface ProductCardLabels {
   addToCart?:        string;
   /** e.g. "By {name}" — receives the store name. */
   byStore?:          (name: string) => string;
+  /** Prefix shown before the price when isPriceRange is true (e.g. "From", "低至"). */
+  fromPrice?:        string;
 }
 
 export interface ProductCardProps {
@@ -22,6 +24,10 @@ export interface ProductCardProps {
   imageUrl:         string;
   basePrice:        number;
   compareAtPrice?:  number;
+  /** Caller passes true when basePrice here is actually the lowest of several
+   *  variant prices (not a single fixed price) — prefixes "From " so buyers
+   *  don't read it as the flat price of every option. */
+  isPriceRange?:    boolean;
   rating?:          number;
   reviewCount?:     number;
   badge?:           ProductBadgeVariant;
@@ -46,6 +52,7 @@ const defaultLabels: Required<ProductCardLabels> = {
   personalizeNow:     'Personalize Now',
   addToCart:          'Add to Cart',
   byStore:            (name) => `By ${name}`,
+  fromPrice:          'From',
 };
 
 function formatPrice(amount: number, currency = 'USD', locale = 'en-US'): string {
@@ -59,6 +66,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   imageUrl,
   basePrice,
   compareAtPrice,
+  isPriceRange = false,
   rating,
   reviewCount,
   badge,
@@ -160,9 +168,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-semibold text-secondary">
+            {isPriceRange && <span className="font-normal text-muted">{L.fromPrice} </span>}
             {formatPrice(basePrice, currency, locale)}
           </span>
-          {compareAtPrice && compareAtPrice > basePrice && (
+          {!isPriceRange && compareAtPrice && compareAtPrice > basePrice && (
             <>
               <span className="text-xs text-muted line-through">
                 {formatPrice(compareAtPrice, currency, locale)}

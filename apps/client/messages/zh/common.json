@@ -48,6 +48,7 @@
   "selectEllipsis": "请选择…",
   "lowStock": "库存紧张",
   "byStore": "由 {name}",
+  "fromPrice": "低至",
   "starAriaLabel": "{value} 星",
   "pagination": {
     "navAria": "分页",

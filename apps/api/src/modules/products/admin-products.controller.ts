@@ -26,7 +26,10 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { memoryStorage } from 'multer';
+import { Throttle } from '@nestjs/throttler';
 import { ProductsService } from './products.service';
+import { TitleSuggestionService } from './title-suggestion.service';
+import { TitleSuggestionRequestDto, TitleSuggestionResponseDto } from './dto/title-suggestion.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProductStatus, PrintSide } from '@prisma/client';
 import { RequireArchivedGuard } from './guards/require-archived.guard';
@@ -44,7 +47,7 @@ import { ProductOwnershipGuard } from '../../common/guards/product-ownership.gua
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
 import {
   IsArray, IsString, ArrayMaxSize, IsOptional, IsBoolean,
-  IsNumber, IsEnum, MaxLength, ValidateNested, IsIn,
+  IsNumber, IsEnum, MaxLength, ValidateNested, IsIn, IsObject,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
@@ -95,9 +98,55 @@ class VariationOptionPatchDto {
 }
 
 class VariantPatchDto {
-  @IsOptional() @IsNumber() price?: number;
-  @IsOptional() @IsNumber() compareAtPrice?: number;
-  @IsOptional() @IsString() sku?: string;
+  @IsOptional() @IsNumber() price?: number | null;
+  @IsOptional() @IsNumber() quantity?: number | null;
+  @IsOptional() @IsString() sku?: string | null;
+  @IsOptional() @IsBoolean() isAvailable?: boolean;
+}
+
+// ── Apply variations (single commit for the whole "Manage variations" modal) ──
+
+class ApplyVariationOptionDto {
+  @IsOptional() @IsString() id?: string;
+  @IsString() @MaxLength(100) name: string;
+  @IsOptional() @IsString() @MaxLength(100) value?: string;
+  @IsOptional() @IsString() @MaxLength(20) colorHex?: string;
+  // Preserved through Apply's replace-the-whole-tree cycle — set separately
+  // by VariantImagePicker's own immediate PATCH, not edited in this modal.
+  @IsOptional() @IsString() imageUrl?: string | null;
+  @IsOptional() @IsString() imageId?: string | null;
+  @IsOptional() @IsBoolean() isAvailable?: boolean;
+  @IsOptional() @IsNumber() sortOrder?: number;
+}
+
+class ApplyVariationGroupDto {
+  @IsOptional() @IsString() id?: string;
+  @IsString() @MaxLength(100) name: string;
+  @IsOptional() @IsString() displayType?: string;
+  @IsNumber() sortOrder: number;
+  @IsArray() @ValidateNested({ each: true }) @Type(() => ApplyVariationOptionDto)
+  options: ApplyVariationOptionDto[];
+}
+
+class VariantEditDto {
+  // Keyed by options, not id — a brand-new combination the seller priced in
+  // the grid before Apply has no ProductVariant.id yet.
+  @IsObject() options: Record<string, string>;
+  @IsOptional() @IsNumber() price?: number | null;
+  @IsOptional() @IsNumber() quantity?: number | null;
+  @IsOptional() @IsString() sku?: string | null;
+  @IsOptional() @IsBoolean() isAvailable?: boolean;
+}
+
+class ApplyVariationsDto {
+  @IsArray() @ValidateNested({ each: true }) @Type(() => ApplyVariationGroupDto)
+  groups: ApplyVariationGroupDto[];
+
+  @IsArray() @IsString({ each: true })
+  variesBy: string[];
+
+  @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => VariantEditDto)
+  variantEdits?: VariantEditDto[];
 }
 
 class ReorderIdsDto {
@@ -145,7 +194,18 @@ export class AdminProductsController {
     private readonly prisma: PrismaService,
     private readonly auditLog: AuditLogService,
     private readonly storeContext: StoreContextService,
+    private readonly titleSuggestion: TitleSuggestionService,
   ) {}
+
+  // POST /admin/products/title-suggestion — stateless (no id needed, works in create mode
+  // too), must be declared before :id routes. Throttled since each call is a real LLM cost.
+  @Post('title-suggestion')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({ summary: '[Admin] AI-suggested SEO-friendly title from the current name/description/category' })
+  async suggestTitle(@Body() dto: TitleSuggestionRequestDto): Promise<TitleSuggestionResponseDto> {
+    const suggestedTitle = await this.titleSuggestion.suggest(dto.name, dto.description, dto.categoryName);
+    return { suggestedTitle };
+  }
 
   // GET /admin/products/stats — must be declared before :id routes
   @Get('stats')
@@ -618,6 +678,16 @@ export class AdminProductsController {
   @ApiOperation({ summary: '[Admin] Bulk-replace all variation groups' })
   bulkSaveVariations(@Param('id', ParseCuidPipe) id: string, @Body() dto: BulkSaveVariationsDto) {
     return this.productsService.bulkSaveVariations(id, dto.groups as Parameters<typeof this.productsService.bulkSaveVariations>[1]);
+  }
+
+  // POST /admin/products/:id/variations/apply — single commit for the whole
+  // "Manage variations" modal (groups + options + variesBy settings + any
+  // direct per-variant price/quantity/sku/visible edits from the combo
+  // grid), reconciled in one transaction. Declared before :groupId routes.
+  @Post(':id/variations/apply')
+  @ApiOperation({ summary: '[Admin] Apply all pending Manage Variations changes in one commit' })
+  applyVariations(@Param('id', ParseCuidPipe) id: string, @Body() dto: ApplyVariationsDto) {
+    return this.productsService.applyVariations(id, dto);
   }
 
   @Get(':id/variations/:groupId')

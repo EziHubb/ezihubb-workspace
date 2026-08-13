@@ -224,8 +224,8 @@ function ProductGrid({
           imageUrl={product.primaryImage ?? 'https://placehold.co/400x500.png?text=No+Image'}
           basePrice={product.basePrice}
           compareAtPrice={product.compareAtPrice}
-          rating={product.rating?.avg}
-          reviewCount={product.rating?.count}
+          rating={product.averageRating ?? undefined}
+          reviewCount={product.reviewCount}
           badge={product.badge}
           badgeLabel={product.badge ? badgeLabels[product.badge] : undefined}
           isPersonalizable={product.isPersonalizable}
@@ -364,8 +364,8 @@ export function StoreProductsClient({
                     imageUrl={product.primaryImage ?? 'https://placehold.co/400x500.png?text=No+Image'}
                     basePrice={product.basePrice}
                     compareAtPrice={product.compareAtPrice}
-                    rating={product.rating?.avg}
-                    reviewCount={product.rating?.count}
+                    rating={product.averageRating ?? undefined}
+                    reviewCount={product.reviewCount}
                     badge={product.badge}
                     badgeLabel={product.badge ? badgeLabels[product.badge] : undefined}
                     isPersonalizable={product.isPersonalizable}

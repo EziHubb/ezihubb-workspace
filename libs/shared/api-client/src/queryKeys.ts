@@ -21,6 +21,7 @@ export const SEARCH_KEY      = ['search']      as const;
 export const PROFILE_KEY     = ['profile']     as const;
 export const ADDRESSES_KEY   = ['addresses']   as const;
 export const SHIPPING_KEY    = ['shipping']    as const;
+export const MARKETPLACE_INSIGHTS_KEY = ['marketplace-insights'] as const;
 
 // ── Fine-grained keys ─────────────────────────────────────────────────────────
 
@@ -61,6 +62,12 @@ export const queryKeys = {
 
   // Shipping
   shippingMethods:(country: string) => [...SHIPPING_KEY, country]         as const,
+
+  // Marketplace insights (seller keyword research)
+  insightsTrending:  ()             => [...MARKETPLACE_INSIGHTS_KEY, 'trending'] as const,
+  insightsTerm:      (term: string) => [...MARKETPLACE_INSIGHTS_KEY, 'term', term] as const,
+  insightsAnalysis:  (term: string) => [...MARKETPLACE_INSIGHTS_KEY, 'analysis', term] as const,
+  savedSearches:     ()             => [...MARKETPLACE_INSIGHTS_KEY, 'saved-searches'] as const,
 
   // New keys (aligned with query-keys.ts)
   megaMenu:       ()                   => ['mega-menu']                   as const,

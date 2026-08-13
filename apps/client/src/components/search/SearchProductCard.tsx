@@ -42,10 +42,17 @@ function getProductBadge(t: Translator, product: ProductListItemDto) {
 interface Props {
   product: ProductListItemDto;
   priority?: boolean;
+  /** Active search query, if this card is rendered inside search results — carried
+   * onto the product link as ?st= so a later purchase can be attributed to the
+   * keyword that led here (see SearchAttributionTracker + marketplace-insights). */
+  searchTerm?: string;
 }
 
-export function SearchProductCard({ product, priority = false }: Props) {
+export function SearchProductCard({ product, priority = false, searchTerm }: Props) {
   const locale = useLocale();
+  const productHref = `/${locale}/products/${product.slug}${
+    searchTerm ? `?st=${encodeURIComponent(searchTerm)}` : ''
+  }`;
   const t = useTranslations('search');
   const tCommon = useTranslations('common');
   const router = useRouter();
@@ -92,11 +99,21 @@ export function SearchProductCard({ product, priority = false }: Props) {
   const activeImage =
     safeArr(product.images)[activeImageIndex]?.url ?? safeArr(product.images)[0]?.url ?? '';
   const badge = getProductBadge(t, product);
-  const avg = product.rating?.avg ?? 0;
-  const ratingCount = product.rating?.count ?? 0;
+  const avg = product.averageRating ?? 0;
+  const ratingCount = product.reviewCount ?? 0;
+  // basePrice is seller-entered and never auto-synced to per-variant prices —
+  // prefer the real minVariantPrice so a stale basePrice can't understate or
+  // overstate what the cheapest option actually costs.
+  const hasPriceRange = product.minPrice != null && product.maxPrice != null && product.minPrice !== product.maxPrice;
+  const displayPrice = product.minPrice ?? product.basePrice;
+  // Computed from displayPrice, not basePrice — when the product has
+  // variants all priced the same (minPrice === maxPrice, so hasPriceRange is
+  // false) but that shared price differs from the stale basePrice, using
+  // basePrice here would show a "% off" badge that doesn't match the price
+  // actually printed next to it.
   const discount =
-    product.compareAtPrice
-      ? Math.round((1 - safeNum(product.basePrice) / safeNum(product.compareAtPrice)) * 100)
+    !hasPriceRange && product.compareAtPrice
+      ? Math.round((1 - safeNum(displayPrice) / safeNum(product.compareAtPrice)) * 100)
       : 0;
 
   return (
@@ -107,7 +124,7 @@ export function SearchProductCard({ product, priority = false }: Props) {
     >
       {/* IMAGE CONTAINER */}
       <div className="relative aspect-square rounded-2xl overflow-hidden bg-[#F5F1EB] mb-2.5">
-        <Link href={`/${locale}/products/${product.slug}`}>
+        <Link href={productHref}>
           <img
             src={activeImage}
             alt={product.name}
@@ -174,7 +191,7 @@ export function SearchProductCard({ product, priority = false }: Props) {
             </button>
           ) : (
             <Link
-              href={`/${locale}/products/${product.slug}`}
+              href={productHref}
               className="flex-1 bg-white rounded-full py-1.5 text-xs font-medium text-secondary hover:bg-primary hover:text-white transition-colors shadow-sm text-center"
             >
               {t('personalize')}
@@ -198,7 +215,7 @@ export function SearchProductCard({ product, priority = false }: Props) {
           <p className="text-xs text-muted truncate">{product.store?.name ?? 'EziHubb'}</p>
         )}
 
-        <Link href={`/${locale}/products/${product.slug}`}>
+        <Link href={productHref}>
           <p className="text-sm text-secondary line-clamp-2 leading-snug hover:underline hover:text-primary transition-colors">
             {product.name}
           </p>
@@ -207,9 +224,10 @@ export function SearchProductCard({ product, priority = false }: Props) {
         {/* Price */}
         <div className="flex items-baseline gap-1.5 flex-wrap">
           <span className="text-sm font-bold text-secondary">
-            {fmtAmount(product.basePrice)}
+            {hasPriceRange && <span className="font-normal text-muted">{t('fromPrice')} </span>}
+            {fmtAmount(displayPrice)}
           </span>
-          {product.compareAtPrice && (
+          {!hasPriceRange && product.compareAtPrice && (
             <>
               <span className="text-xs text-muted line-through">
                 {fmtAmount(product.compareAtPrice)}

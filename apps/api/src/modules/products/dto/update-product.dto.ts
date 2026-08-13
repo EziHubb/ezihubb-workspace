@@ -48,6 +48,18 @@ export class UpdateProductDto extends BaseUpdateProductDto {
   @IsOptional() @IsArray() @IsString({ each: true })
   sustainability?: string[];
 
+  @ApiPropertyOptional({ description: 'Buyer-facing physical width — not shipping-package dimensions' })
+  @IsOptional() @IsNumber() @Min(0) @Type(() => Number)
+  width?: number | null;
+
+  @ApiPropertyOptional({ description: 'Buyer-facing physical height — not shipping-package dimensions' })
+  @IsOptional() @IsNumber() @Min(0) @Type(() => Number)
+  height?: number | null;
+
+  @ApiPropertyOptional({ enum: ['CM','IN','MM','M'] })
+  @IsOptional() @IsEnum(['CM','IN','MM','M'])
+  dimensionUnit?: 'CM' | 'IN' | 'MM' | 'M' | null;
+
   @ApiPropertyOptional({ type: [String] })
   @IsOptional() @IsArray() @IsString({ each: true })
   videoUrls?: string[];

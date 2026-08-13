@@ -23,7 +23,7 @@ type ProductType = 'apparel' | 'canvas' | 'drinkware' | 'other';
 export interface SmartVariantPickerProps {
   variantOptions:  { name: string; values: string[] }[];
   variants:        ProductVariantDto[];
-  primaryCategory?: { slug: string } | null;
+  categorySlug?:   string | null;
   onVariantChange: (variant: ProductVariantDto | null) => void;
   /** Optional custom size guide HTML from MongoDB ProductDetail.sizeGuide */
   sizeGuide?:      string;
@@ -98,7 +98,7 @@ function findVariant(
 export function SmartVariantPicker({
   variantOptions,
   variants,
-  primaryCategory,
+  categorySlug,
   onVariantChange,
   sizeGuide,
 }: SmartVariantPickerProps) {
@@ -131,7 +131,7 @@ export function SmartVariantPicker({
 
   const activeVariant = getVariant();
   const isOutOfStock  = activeVariant?.isAvailable === false;
-  const productType   = getProductType(primaryCategory?.slug ?? '');
+  const productType   = getProductType(categorySlug ?? '');
 
   const handleChange = (dimName: string, val: string) => {
     setSelected((prev) => ({ ...prev, [dimName]: val }));

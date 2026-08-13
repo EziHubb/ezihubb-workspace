@@ -93,11 +93,15 @@ export function EstimatedEarningsRow({
   const rates = settings ?? DEFAULT_RATES;
 
   const price = Number(basePrice) || 0;
-  if (price <= 0) return null;
 
-  // Determine price range (single price or variation spread)
+  // Determine price range (single price or variation spread). When prices vary
+  // per option, basePrice is often 0/unset (the seller never touches it — see
+  // PricingShippingTab, which hides that field entirely once any variation
+  // group carries its own price) — gating visibility on basePrice alone would
+  // hide a perfectly valid earnings range whenever that's the case.
   const minPrice = hasVariations ? (minVariantPrice ?? price) : price;
   const maxPrice = hasVariations ? (maxVariantPrice ?? price) : price;
+  if (maxPrice <= 0) return null;
 
   const minEarnings = calcEarnings(minPrice, rates);
   const maxEarnings = calcEarnings(maxPrice, rates);
@@ -108,8 +112,10 @@ export function EstimatedEarningsRow({
       ? `$${fmt(minEarnings.net)}`
       : `$${fmt(minEarnings.net)} to $${fmt(maxEarnings.net)}`;
 
-  // Fee breakdown uses basePrice (most common price)
-  const breakdown = calcEarnings(price, rates);
+  // Fee breakdown: basePrice normally, falling back to the min variant price
+  // when basePrice itself is 0/unset (variant-priced listings).
+  const breakdownPrice = price > 0 ? price : minPrice;
+  const breakdown = calcEarnings(breakdownPrice, rates);
 
   return (
     <div className="mt-3">
@@ -133,12 +139,12 @@ export function EstimatedEarningsRow({
       {isExpanded && (
         <div className="mt-3 bg-[#F9FAFB] border border-border rounded-xl p-4 space-y-2">
           <p className="text-xs text-muted mb-3">
-            Based on a listing price of ${fmt(price)}
+            Based on a listing price of ${fmt(breakdownPrice)}
           </p>
 
           <FeeRow
             label="Listing price"
-            value={`$${fmt(price)}`}
+            value={`$${fmt(breakdownPrice)}`}
           />
           <FeeRow
             label={`Transaction fee (${fmt(rates.transactionFeeRate * 100, 1)}%)`}

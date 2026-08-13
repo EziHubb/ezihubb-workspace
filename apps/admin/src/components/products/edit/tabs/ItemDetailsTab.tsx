@@ -3,9 +3,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useFormContext } from 'react-hook-form';
 import {
-  Smile, Lightbulb,
+  Smile, Lightbulb, Sparkles, Check, X,
   AlertCircle, Package, Download,
 } from 'lucide-react';
+import { api } from '../../../../lib/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 import type { ProductEditFormValues, ProductType } from '../types';
 import { CategoryPickerCard } from '../CategoryPickerModal';
 
@@ -191,24 +193,66 @@ function TitleTips({ wordCount }: { wordCount: number }) {
   );
 }
 
+// ─── AI title suggestion ──────────────────────────────────────────────────────
+
+function TitleSuggestionBanner({
+  suggestion, onApply, onDismiss,
+}: {
+  suggestion: string;
+  onApply:    () => void;
+  onDismiss:  () => void;
+}) {
+  return (
+    <div className="mt-3 flex items-start gap-2.5 bg-primary/5 border border-primary/20 rounded-lg px-4 py-3">
+      <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-primary">Suggested</p>
+        <p className="text-sm text-secondary mt-1 leading-relaxed">{suggestion}</p>
+        <div className="flex items-center gap-4 mt-2">
+          <button
+            type="button"
+            onClick={onApply}
+            className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+          >
+            <Check className="w-3.5 h-3.5" /> Apply suggestion
+          </button>
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="flex items-center gap-1 text-xs font-medium text-muted hover:text-secondary transition-colors"
+          >
+            <X className="w-3.5 h-3.5" /> Dismiss
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Form field wrapper ───────────────────────────────────────────────────────
 
 function FormField({
   label,
   required,
   hint,
+  action,
   children,
 }: {
   label:    string;
   required?: boolean;
   hint?:    string;
+  /** Optional control rendered on the same row as the label (e.g. "Get title suggestion"). */
+  action?:  React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
+      <div className="flex items-center justify-between gap-3 mb-1.5">
+        <label className="block text-xs font-semibold text-muted uppercase tracking-wide">
+          {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+        {action}
+      </div>
       {hint && <p className="text-xs text-muted mb-2">{hint}</p>}
       {children}
     </div>
@@ -228,6 +272,39 @@ export function ItemDetailsTab() {
   const productType = watch('productType')        ?? 'PHYSICAL';
 
   const wordCount = title.trim() ? title.trim().split(/\s+/).length : 0;
+
+  // ── AI title suggestion — on-demand only (each call is a real LLM cost) ──────
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestion,     setSuggestion]     = useState<string | null>(null);
+  const [suggestError,   setSuggestError]   = useState<string | null>(null);
+
+  const fetchTitleSuggestion = async () => {
+    setSuggestLoading(true);
+    setSuggestError(null);
+    setSuggestion(null);
+    try {
+      const res = await api.post<{ suggestedTitle: string }>(
+        API_ROUTES.ADMIN.PRODUCT_TITLE_SUGGESTION,
+        { name: title.trim(), description: description || undefined },
+      );
+      setSuggestion(res.suggestedTitle);
+    } catch (e: unknown) {
+      setSuggestError((e as Error).message || 'Could not get a suggestion right now.');
+    } finally {
+      setSuggestLoading(false);
+    }
+  };
+
+  const applyTitleSuggestion = () => {
+    if (!suggestion) return;
+    // shouldValidate — without it, a stale "must be ≤140 characters" error
+    // (from the over-length title that triggered fetching a suggestion in
+    // the first place) would keep showing even after the new, backend-
+    // truncated title is applied, since setValue alone doesn't re-run
+    // register('name')'s validation.
+    setValue('name', suggestion, { shouldDirty: true, shouldValidate: true });
+    setSuggestion(null);
+  };
 
   return (
     <div className="max-w-[760px] mx-auto px-6 py-8">
@@ -295,6 +372,21 @@ export function ItemDetailsTab() {
             label="Title"
             required
             hint="Make sure your title is easy to understand and clearly describes what you're selling."
+            action={
+              <button
+                type="button"
+                onClick={fetchTitleSuggestion}
+                disabled={!title.trim() || suggestLoading}
+                className="flex items-center gap-1.5 text-xs font-semibold text-primary border border-primary/30 rounded-button px-2.5 py-1.5 hover:bg-primary/5 disabled:opacity-40 transition-colors shrink-0"
+              >
+                {suggestLoading ? (
+                  <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5" />
+                )}
+                {suggestLoading ? 'Thinking…' : 'Get title suggestion'}
+              </button>
+            }
           >
             <div className="relative">
               <textarea
@@ -331,6 +423,21 @@ export function ItemDetailsTab() {
               <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1">
                 <AlertCircle className="w-3 h-3 shrink-0" />
                 {errors.name.message as string}
+              </p>
+            )}
+
+            {/* AI title suggestion */}
+            {suggestion && (
+              <TitleSuggestionBanner
+                suggestion={suggestion}
+                onApply={applyTitleSuggestion}
+                onDismiss={() => setSuggestion(null)}
+              />
+            )}
+            {suggestError && (
+              <p className="mt-2 text-xs text-red-600 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                {suggestError}
               </p>
             )}
 

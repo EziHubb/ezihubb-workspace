@@ -13,6 +13,7 @@ import { ProductsService } from './products.service';
 import { CsvImportService } from './csv-import.service';
 import { QaService } from './qa.service';
 import { LowStockService } from './low-stock.service';
+import { TitleSuggestionService } from './title-suggestion.service';
 import { LowStockProcessor } from '../../queue/low-stock.processor';
 import {
   ProductDetail,
@@ -59,6 +60,7 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
     CsvImportService,
     QaService,
     LowStockService,
+    TitleSuggestionService,
     ...(disableQueue ? [] : [LowStockProcessor]),
   ],
   exports: [ProductsService, LowStockService],

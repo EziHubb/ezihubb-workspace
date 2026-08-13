@@ -10,8 +10,9 @@ import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import type {
   ProductEditFormValues, AdminProductDto, ProductImage,
-  VariationOption, VariationGroup, VariationSettings,
+  VariationOption, VariationGroup, VariationSettings, DimensionUnit,
 } from '../types';
+import { pricedGroupIds } from '../helpers';
 import { Toggle } from '../primitives/Toggle';
 import { VariantImagePicker } from '../VariantImagePicker';
 import { ManageVariationsModal } from '../ManageVariationsModal';
@@ -162,24 +163,80 @@ function AttributeTagInput({
   );
 }
 
+// ─── DimensionFields (Width / Height) ─────────────────────────────────────────
+
+const DIMENSION_UNITS: { value: DimensionUnit; label: string }[] = [
+  { value: 'CM', label: 'cm' },
+  { value: 'IN', label: 'in' },
+  { value: 'MM', label: 'mm' },
+  { value: 'M',  label: 'm'  },
+];
+
+function DimensionFields() {
+  const { watch, setValue } = useFormContext<ProductEditFormValues>();
+  const width  = watch('width');
+  const height = watch('height');
+  const unit   = watch('dimensionUnit') ?? 'CM';
+
+  const numOrNull = (v: string): number | null => (v.trim() === '' ? null : Number(v));
+
+  return (
+    <div>
+      <label className="text-sm font-semibold text-secondary mb-1.5 block">Dimensions</label>
+      <p className="text-xs text-muted mb-2">The physical size of the item — shown to buyers, separate from shipping.</p>
+      <div className="flex items-end gap-3">
+        <div>
+          <label className="block text-xs text-muted mb-1">Width</label>
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={width ?? ''}
+            onChange={(e) => setValue('width', numOrNull(e.target.value), { shouldDirty: true })}
+            placeholder="0"
+            className="w-28 px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 tabular-nums"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-muted mb-1">Height</label>
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={height ?? ''}
+            onChange={(e) => setValue('height', numOrNull(e.target.value), { shouldDirty: true })}
+            placeholder="0"
+            className="w-28 px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 tabular-nums"
+          />
+        </div>
+        <select
+          value={unit}
+          onChange={(e) => setValue('dimensionUnit', e.target.value as DimensionUnit, { shouldDirty: true })}
+          className="px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+        >
+          {DIMENSION_UNITS.map((u) => (
+            <option key={u.value} value={u.value}>{u.label}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
 // ─── Variations summary table ─────────────────────────────────────────────────
 
 function VariationOptionRow({
   option,
   showPhoto,
-  priceVaries,
   productImages,
   productId,
   onToggle,
-  onPriceChange,
 }: {
   option:        VariationOption;
   showPhoto:     boolean;
-  priceVaries:   boolean;
   productImages: ProductImage[];
   productId:     string;
   onToggle:      (available: boolean) => void;
-  onPriceChange: (price: number) => void;
 }) {
   return (
     <tr className={`border-b border-border last:border-0 group transition-opacity ${!option.isAvailable ? 'opacity-40' : ''}`}>
@@ -206,22 +263,6 @@ function VariationOptionRow({
           )}
         </div>
       </td>
-
-      {/* Price delta (only when group has price variation) */}
-      {priceVaries && (
-        <td className="py-2.5 pr-3 w-28">
-          <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted text-sm pointer-events-none">+$</span>
-            <input
-              type="number"
-              step="0.01"
-              value={option.priceDelta ?? 0}
-              onChange={(e) => onPriceChange(Number(e.target.value))}
-              className="w-full pl-7 pr-2 py-1.5 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 tabular-nums"
-            />
-          </div>
-        </td>
-      )}
 
       {/* Visible toggle */}
       <td className="py-2.5 text-right">
@@ -295,10 +336,16 @@ function VariationsSummaryTable({
     );
   }
 
+  const priceVaries = pricedGroupIds(settings?.variesBy ?? [], groups.map((g) => g.id)).length > 0;
+
   return (
     <div className="space-y-7">
+      {priceVaries && (
+        <p className="text-xs text-muted -mt-1">
+          Prices vary per option combination — set them in <span className="font-medium text-secondary">Manage variations</span>.
+        </p>
+      )}
       {groups.map((group) => {
-        const priceVaries = settings?.variesBy?.includes(group.id + ':price') ?? false;
         const showPhoto =
           group.displayType === 'color_swatch' ||
           group.displayType === 'image' ||
@@ -315,7 +362,6 @@ function VariationsSummaryTable({
                   <tr className="border-b border-border">
                     {showPhoto && <th className="text-left pb-2 text-xs font-semibold text-muted uppercase tracking-wide w-12">Photo</th>}
                     <th className="text-left pb-2 text-xs font-semibold text-muted uppercase tracking-wide">{group.name}</th>
-                    {priceVaries && <th className="text-left pb-2 text-xs font-semibold text-muted uppercase tracking-wide w-28">Price</th>}
                     <th className="text-right pb-2 text-xs font-semibold text-muted uppercase tracking-wide">Visible</th>
                   </tr>
                 </thead>
@@ -325,11 +371,9 @@ function VariationsSummaryTable({
                       key={opt.id}
                       option={opt}
                       showPhoto={showPhoto}
-                      priceVaries={priceVaries}
                       productImages={product.images ?? []}
                       productId={product.id}
                       onToggle={(available) => updateOption(group.id, opt.id, { isAvailable: available })}
-                      onPriceChange={(price) => updateOption(group.id, opt.id, { priceDelta: price })}
                     />
                   ))}
                 </tbody>
@@ -418,6 +462,9 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
               maxSelections={1}
               searchEndpoint="/admin/attributes/color"
             />
+
+            {/* Dimensions (width / height) */}
+            <DimensionFields />
 
             {/* Sustainability */}
             <AttributeSearchSelect

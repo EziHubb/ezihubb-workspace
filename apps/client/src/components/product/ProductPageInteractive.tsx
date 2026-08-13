@@ -23,7 +23,7 @@ export function ProductPageInteractive({
       <SmartVariantPicker
         variantOptions={product.variantOptions ?? []}
         variants={product.variants ?? []}
-        primaryCategory={product.primaryCategory}
+        categorySlug={product.categorySlug}
         onVariantChange={setSelectedVariant}
         sizeGuide={product.sizeGuide}
       />

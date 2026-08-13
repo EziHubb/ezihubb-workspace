@@ -1,4 +1,4 @@
-import type { CategoryDto, TagDto } from './catalog.types';
+import type { TagDto } from './catalog.types';
 
 export interface ProductImageDto {
   id: string;
@@ -64,22 +64,32 @@ export interface ProductListItemDto {
   slug: string;
   basePrice: number;
   compareAtPrice?: number;
+  /** Lowest/highest ProductVariant.price, or null/undefined when the product has no
+   *  variants. basePrice is seller-entered and never auto-synced to variant prices —
+   *  prefer minPrice (falling back to basePrice) so a stale basePrice can't mislead
+   *  buyers into thinking the cheapest option costs more (or less) than it does. */
+  minPrice?: number | null;
+  maxPrice?: number | null;
   isPersonalizable: boolean;
   isFeatured: boolean;
   soldCount: number;
   soldCount24h?: number;
-  primaryCategory: { name: string; slug: string };
+  // Flat fields, matching exactly what the API actually sends (see
+  // apps/api/src/modules/products/dto/product-list-item.dto.ts) — this type
+  // previously declared a nested `primaryCategory: {name,slug}` and
+  // `rating: {avg,count}` shape that NO backend endpoint ever produced, which
+  // silently broke every rating star and category label reading it (always
+  // undefined). Keep this in sync with the backend DTO, not with wishful shape.
+  categoryId: string;
+  categoryName: string;
+  categorySlug: string;
   images: ProductImageDto[];
-  /** { avg, count } — pass avg to ProductCard.rating, count to ProductCard.reviewCount */
-  rating?: { avg: number; count: number };
+  averageRating: number | null;
+  reviewCount: number;
   tags: { name: string; slug: string }[];
-  // backward compat fields used by existing components
+  // backward compat field used by existing components
   /** @deprecated use images[0].url */
   primaryImage?: string;
-  /** @deprecated use a separate count endpoint */
-  reviewCount?: number;
-  /** @deprecated use primaryCategory */
-  category?: CategoryDto;
   badge?: 'bestseller' | 'new' | 'sale' | 'hot';
   store?: { id: string; name: string; slug: string } | null;
 }

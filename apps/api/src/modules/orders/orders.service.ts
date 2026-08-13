@@ -263,8 +263,8 @@ export class OrdersService {
 
     // Recalculate subtotal from current prices (server-side, never trust client)
     const subtotal = cart.items.reduce((sum, item) => {
-      const variantPrice = item.variant ? Number(item.variant.price) : 0;
-      const price = variantPrice > 0 ? variantPrice : Number(item.product.basePrice);
+      const variantPrice = item.variant?.price != null ? Number(item.variant.price) : null;
+      const price = variantPrice ?? Number(item.product.basePrice);
       return sum + price * item.quantity;
     }, 0);
 
@@ -413,13 +413,14 @@ export class OrdersService {
           variantId:        item.variantId,
           quantity:         item.quantity,
           unitPrice:        (() => {
-            const vp = item.variant ? Number(item.variant.price) : 0;
-            return vp > 0 ? vp : Number(item.product.basePrice);
+            const vp = item.variant?.price != null ? Number(item.variant.price) : null;
+            return vp ?? Number(item.product.basePrice);
           })(),
           customizationData: item.customizationData as
             | Prisma.InputJsonValue
             | undefined,
           previewUrl:       item.previewUrl,
+          searchTerm:       item.searchTerm,
           storeId:          item.product.storeId ?? null,
           // ── Snapshots captured at order time ─────────────────────────────
           productName:      item.product.name,
@@ -458,8 +459,8 @@ export class OrdersService {
 
         for (const [storeId, items] of storeGroups) {
           const storeSubtotal = items.reduce((sum, item) => {
-            const vp = item.variant ? Number(item.variant.price) : 0;
-            const price = vp > 0 ? vp : Number(item.product.basePrice);
+            const vp = item.variant?.price != null ? Number(item.variant.price) : null;
+            const price = vp ?? Number(item.product.basePrice);
             return sum + price * item.quantity;
           }, 0);
           const roundedSubtotal = Math.round(storeSubtotal * 100) / 100;

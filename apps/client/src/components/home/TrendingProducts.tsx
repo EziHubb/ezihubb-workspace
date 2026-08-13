@@ -76,8 +76,8 @@ export async function TrendingProducts({ products, locale, viewAllLabel }: Trend
                       imageUrl={product.images?.[0]?.url ?? 'https://placehold.co/400x500.png?text=No+Image'}
                       basePrice={product.basePrice}
                       compareAtPrice={product.compareAtPrice}
-                      rating={product.rating?.avg}
-                      reviewCount={product.rating?.count}
+                      rating={product.averageRating ?? undefined}
+                      reviewCount={product.reviewCount}
                       badge={badge}
                       badgeLabel={badge ? badgeLabels[badge] : undefined}
                       isPersonalizable={product.isPersonalizable}

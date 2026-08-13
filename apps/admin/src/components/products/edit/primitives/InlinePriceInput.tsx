@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 
 interface InlinePriceInputProps {
   /** Current value (null = no price override) */
@@ -43,6 +43,16 @@ export function InlinePriceInput({
   );
   const [focused, setFocused] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
+
+  // Resync when `value` changes from outside this input (e.g. a bulk-edit
+  // action in a parent grid sets several rows' prices at once) — `draft`
+  // otherwise only ever initializes once at mount and would keep showing
+  // stale/empty text even though the underlying value actually changed.
+  // Skipped while focused so it can't clobber in-progress typing.
+  useEffect(() => {
+    if (focused) return;
+    setDraft(value != null ? String(value) : '');
+  }, [value, focused]);
 
   const commit = useCallback(() => {
     if (draft.trim() === '') {

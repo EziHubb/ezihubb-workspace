@@ -83,11 +83,11 @@ function RelatedProductCard({
         </p>
 
         {/* Stars + count */}
-        {product.rating && (
+        {product.reviewCount > 0 && (
           <div className="flex items-center gap-0.5 mt-0.5">
-            <MiniStars rating={product.rating.avg} size="xs" />
+            <MiniStars rating={product.averageRating ?? 0} size="xs" />
             <span className="text-[10px] text-muted ml-0.5">
-              ({safeNum(product.rating.count).toLocaleString()})
+              ({safeNum(product.reviewCount).toLocaleString()})
             </span>
           </div>
         )}

@@ -48,6 +48,7 @@
   "selectEllipsis": "Chọn…",
   "lowStock": "Sắp hết hàng",
   "byStore": "Bởi {name}",
+  "fromPrice": "Từ",
   "starAriaLabel": "{value} sao",
   "pagination": {
     "navAria": "Phân trang",

@@ -41,3 +41,5 @@ export * from './hooks/useShipping';   // useShippingOptions
 
 // Profile & Addresses
 export * from './hooks/useProfile';    // useProfile, useMutateProfile, useAddresses, useMutateAddresses
+
+export * from './hooks/useMarketplaceInsights'; // useTrendingTerms, useTermDetail, useTermAnalysis, useSavedSearches, useMutateSavedSearches

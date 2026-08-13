@@ -45,7 +45,7 @@ function buildRelatedSearches(product: ProductDto, locale: string): RelatedSearc
 
   const keywords = [
     ...tags.slice(0, 6).map((t) => t.name),
-    product.primaryCategory?.name,
+    product.categoryName,
     ...(materialAttr ? [materialAttr.value] : []),
   ].filter(Boolean) as string[];
 

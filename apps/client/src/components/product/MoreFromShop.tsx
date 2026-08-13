@@ -56,11 +56,11 @@ function MiniProductCard({
       <p className="text-sm font-semibold text-secondary mt-0.5">
         {fmtAmount(product.basePrice)}
       </p>
-      {product.rating && (
+      {product.reviewCount > 0 && (
         <div className="flex items-center gap-1 mt-0.5">
-          <MiniStars rating={product.rating.avg} />
+          <MiniStars rating={product.averageRating ?? 0} />
           <span className="text-xs text-muted">
-            ({safeNum(product.rating.count).toLocaleString()})
+            ({safeNum(product.reviewCount).toLocaleString()})
           </span>
         </div>
       )}

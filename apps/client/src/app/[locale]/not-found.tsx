@@ -136,8 +136,8 @@ export default async function NotFound() {
                 }
                 basePrice={product.basePrice}
                 compareAtPrice={product.compareAtPrice}
-                rating={product.rating?.avg}
-                reviewCount={product.rating?.count}
+                rating={product.averageRating ?? undefined}
+                reviewCount={product.reviewCount}
                 badge={product.badge}
                 badgeLabel={product.badge ? badgeLabels[product.badge] : undefined}
                 isPersonalizable={product.isPersonalizable}

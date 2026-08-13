@@ -1,8 +1,9 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, HttpCode, HttpStatus, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { SearchService, SearchResultDto } from './search.service';
 import { SearchQueryDto } from './dto/search-query.dto';
+import { SearchClickDto } from './dto/search-click.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { TranslatableResponse } from '../../common/interceptors/i18n.interceptor';
 
@@ -64,5 +65,13 @@ export class SearchController {
   @ApiResponse({ status: 200, schema: { type: 'array', items: { type: 'string' } } })
   getRelated(@Query('q') q = ''): Promise<string[]> {
     return this.searchService.getRelated(q);
+  }
+
+  // POST /search/click
+  @Post('click')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Track that a search result was clicked through to (marketplace-insights conversion tracking)' })
+  async trackClick(@Body() dto: SearchClickDto): Promise<void> {
+    await this.searchService.trackClick(dto.term);
   }
 }

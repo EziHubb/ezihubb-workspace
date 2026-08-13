@@ -8,9 +8,11 @@ import { SearchProductCard } from './SearchProductCard';
 interface SearchProductGridProps {
   products: ProductListItemDto[];
   isPending: boolean;
+  /** Active search query — forwarded to each card for ?st= click attribution. */
+  searchTerm?: string;
 }
 
-export function SearchProductGrid({ products, isPending }: SearchProductGridProps) {
+export function SearchProductGrid({ products, isPending, searchTerm }: SearchProductGridProps) {
   return (
     <div
       className={[
@@ -23,6 +25,7 @@ export function SearchProductGrid({ products, isPending }: SearchProductGridProp
           key={product.id}
           product={product}
           priority={index < 8}
+          searchTerm={searchTerm}
         />
       ))}
     </div>

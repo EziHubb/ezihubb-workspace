@@ -94,6 +94,13 @@ enum ReturnPolicy {
   EXCHANGES_ONLY
 }
 
+enum DimensionUnit {
+  CM
+  IN
+  MM
+  M
+}
+
 enum ProductStatus {
   DRAFT // Being created — not yet published
   ACTIVE // Live and visible to buyers
@@ -197,6 +204,7 @@ model User {
   conversations       Conversation[]
   affiliateAccount    AffiliateAccount?
   ownedStore          Store?               @relation("StoreOwner")
+  savedSearchTerms    SavedSearchTerm[]
 
   wishlistShareToken String? @unique
   wishlistIsPublic   Boolean @default(false)
@@ -564,6 +572,11 @@ model Product {
   sku                 String        @unique
   description         String
   shortDescription    String?
+  // Postgres-generated (STORED, auto-maintained on every insert/update — see
+  // migration 20260813140000). Prisma can't model tsvector natively; marking
+  // it Unsupported keeps it visible in introspection without Prisma Client
+  // trying to read/write it — search.service.ts touches it only via raw SQL.
+  searchVector        Unsupported("tsvector")? @map("search_vector")
   basePrice           Decimal       @db.Decimal(10, 2)
   compareAtPrice      Decimal?      @db.Decimal(10, 2)
   isPersonalizable    Boolean       @default(true)
@@ -600,6 +613,9 @@ model Product {
   recipientTags   String[] // up to 4 recipients
   styles          String[]
   sustainability  String[] // up to 3 sustainability attributes
+  width           Decimal?       @db.Decimal(8, 2) // physical dimensions, buyer-facing info — not shipping-package dimensions
+  height          Decimal?       @db.Decimal(8, 2)
+  dimensionUnit   DimensionUnit?
 
   // ── TAB: Pricing & Inventory ────────────────────────────────────────────────
   domesticGlobalPricing Boolean      @default(false)
@@ -661,15 +677,28 @@ model Product {
 }
 
 model ProductVariant {
-  id                String  @id @default(cuid())
+  id                String   @id @default(cuid())
   productId         String
-  product           Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   name              String
   options           Json
-  price             Decimal @db.Decimal(10, 2)
-  sku               String? @unique
-  isDefault         Boolean @default(false)
-  sortOrder         Int     @default(0)
+  // Nullable — a newly-generated combination (from Manage Variations, when
+  // "Prices vary" is on) starts blank until the seller fills it in, matching
+  // Etsy's own per-combination price grid. Publish is blocked while any
+  // isAvailable row still has a null price (see ProductsService).
+  price             Decimal? @db.Decimal(10, 2)
+  // Per-combination quantity — only meaningful when VariationSettings.variesBy
+  // includes 'quantity'; otherwise Product.quantity applies to every combo.
+  quantity          Int?
+  sku               String?  @unique
+  // The "Visible" toggle per combination row in the price grid, and also how
+  // syncVariantsFromGroups() retires a combination that no longer matches the
+  // seller's options — never hard-deleted (ProductFulfillmentMapping cascades
+  // on delete, and CartItem/OrderItem/DigitalFile would silently lose their
+  // variant link), just hidden from new selection.
+  isAvailable       Boolean  @default(true)
+  isDefault         Boolean  @default(false)
+  sortOrder         Int      @default(0)
   lowStockThreshold Int?
 
   cartItems           CartItem[]
@@ -912,6 +941,10 @@ model CartItem {
   unitPrice         Decimal         @db.Decimal(10, 2)
   customizationData Json?
   previewUrl        String?
+  // Search term that led the buyer to this product (via ?st= on the product
+  // link), if any — carried over to OrderItem at checkout so purchases can be
+  // attributed back to the keyword for marketplace-insights conversion rates.
+  searchTerm        String?
   createdAt         DateTime        @default(now())
 
   storeId String?
@@ -1007,6 +1040,9 @@ model OrderItem {
   unitPrice         Decimal         @db.Decimal(10, 2)
   customizationData Json?
   previewUrl        String?
+  // Carried over from CartItem.searchTerm — see comment there.
+  searchTerm        String?
+  createdAt         DateTime        @default(now())
 
   // ── Snapshots (captured at order time, never changes) ──────────────────────
   productName     String
@@ -1821,4 +1857,59 @@ model Campaign {
 
   @@index([isActive])
   @@index([season])
+}
+
+// ─── Search Analytics (Marketplace Insights) ──────────────────────────────────
+// Platform-wide, per-day keyword stats. Flushed nightly from Redis (see
+// AnalyticsService.flushDailySearchStats / ScheduledProcessor) rather than
+// written per-request — durable history for the seller-facing keyword
+// research tool, since Redis alone only keeps a rolling 7-day window.
+// Retention: rows older than 90 days are pruned by the same nightly job.
+model SearchTermDailyStat {
+  id           String   @id @default(cuid())
+  term         String
+  date         String   // YYYY-MM-DD
+  searches     Int      @default(0)
+  resultsCount Int      @default(0)
+  clicks       Int      @default(0)
+  purchases    Int      @default(0)
+  // Dominant category slug among that day's matching results for this term
+  // (most-common category on the page of results actually returned, not an
+  // explicit filter — most searches don't set one). Null until enough
+  // matching products exist to infer one, or for days before this was added.
+  category     String?
+  createdAt    DateTime @default(now())
+
+  @@unique([term, date])
+  @@index([date])
+  @@index([category, date])
+}
+
+/** A seller "watchlisting" a keyword in the marketplace-insights tool, to
+ *  revisit its trend later — mirrors Etsy Shop Manager's "Saved searches". */
+model SavedSearchTerm {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  term      String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, term])
+  @@index([userId])
+}
+
+/** Thumbs up/down on a "similar search term" suggestion — SearchService.
+ *  getRelated() uses the net score to re-rank/filter future suggestions for
+ *  the same source term, so the "related terms" list actually improves from
+ *  feedback instead of just collecting unused signal. */
+model RelatedTermFeedback {
+  id            String   @id @default(cuid())
+  sourceTerm    String
+  relatedTerm   String
+  helpfulCount    Int    @default(0)
+  notHelpfulCount Int    @default(0)
+  updatedAt     DateTime @updatedAt
+
+  @@unique([sourceTerm, relatedTerm])
+  @@index([sourceTerm])
 }

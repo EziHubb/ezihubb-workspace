@@ -5,6 +5,7 @@ export type HowItWasMade  = 'MADE_TO_ORDER' | 'HANDMADE' | 'ASSEMBLED' | 'ALTERE
 export type ReturnPolicy  = 'NO_RETURNS' | 'RETURNS_ACCEPTED' | 'EXCHANGES_ONLY';
 export type RenewalType   = 'AUTOMATIC' | 'MANUAL';
 export type ProductType   = 'PHYSICAL' | 'DIGITAL';
+export type DimensionUnit = 'CM' | 'IN' | 'MM' | 'M';
 
 // ── GPSR manufacturer / responsible-person info ───────────────────────────────
 
@@ -42,6 +43,9 @@ export interface ProductEditFormValues {
   recipientTags:   string[];
   styles:          string[];
   sustainability:  string[];
+  width:           number | null;
+  height:          number | null;
+  dimensionUnit:   DimensionUnit | null;
   customOptions:   unknown[];
 
   // Pricing & Shipping tab
@@ -101,6 +105,61 @@ export interface VariationGroup {
   displayType: string; // 'dropdown' | 'color_swatch' | 'button' | 'image'
   sortOrder:   number;
   options:     VariationOption[];
+}
+
+// ── Combo price grid (ManageVariationsModal's VariantComboGrid) ──────────────
+
+/** A real, materialised ProductVariant row — the purchasable, priced SKU. */
+export interface ProductVariantRow {
+  id:          string;
+  productId:   string;
+  name:        string;
+  options:     Record<string, string>;
+  price:       number | null;
+  quantity:    number | null;
+  sku:         string | null;
+  isAvailable: boolean;
+  isDefault:   boolean;
+  sortOrder:   number;
+}
+
+/** A pending per-combo edit, keyed by options (not id) — a brand-new
+ *  combination the seller priced before hitting Apply has no
+ *  ProductVariant.id yet; the backend resolves it once it creates the row. */
+export interface VariantEditPatch {
+  options:      Record<string, string>;
+  price?:       number | null;
+  quantity?:    number | null;
+  sku?:         string | null;
+  isAvailable?: boolean;
+}
+
+/** Body for POST /admin/products/:id/variations/apply — the single commit
+ *  for everything changed inside the "Manage variations" modal. */
+export interface ApplyVariationsPayload {
+  groups: {
+    id?:          string;
+    name:         string;
+    displayType?: string;
+    sortOrder:    number;
+    options: {
+      id?:          string;
+      name:         string;
+      value?:       string;
+      colorHex?:    string;
+      // Preserved through the round-trip so VariantImagePicker's photo
+      // assignment (a separate, immediate-commit PATCH) doesn't get wiped
+      // out the next time the seller hits Apply — applyVariations() replaces
+      // the whole group/option tree, so any field missing here is silently
+      // dropped even if it was never touched in this session.
+      imageUrl?:    string | null;
+      imageId?:     string | null;
+      isAvailable?: boolean;
+      sortOrder?:   number;
+    }[];
+  }[];
+  variesBy:      string[];
+  variantEdits?: VariantEditPatch[];
 }
 
 // ── API shapes (what we receive from the server) ──────────────────────────────
@@ -165,6 +224,9 @@ export interface AdminProductDto {
   recipientTags?:       string[];
   styles?:              string[];
   sustainability?:      string[];
+  width?:               number | null;
+  height?:              number | null;
+  dimensionUnit?:       DimensionUnit | null;
   quantity?:            number | null;
   trackInventory?:      boolean;
   lowStockThreshold?:   number | null;

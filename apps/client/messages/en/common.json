@@ -48,6 +48,7 @@
   "selectEllipsis": "Select…",
   "lowStock": "Low stock",
   "byStore": "By {name}",
+  "fromPrice": "From",
   "starAriaLabel": "{value, plural, one {# star} other {# stars}}",
   "pagination": {
     "navAria": "Pagination",

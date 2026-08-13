@@ -8,12 +8,13 @@ import {
 } from 'lucide-react';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
-import type { ProductEditFormValues, AdminProductDto, ReturnPolicy } from '../types';
+import type { ProductEditFormValues, AdminProductDto, ReturnPolicy, VariationGroup } from '../types';
 import { EstimatedEarningsRow }    from '../EstimatedEarningsRow';
 import { ProcessingProfileCard }   from '../ProcessingProfileCard';
 import { ShippingCostPreview }     from '../ShippingCostPreview';
 import { ReturnPolicyCard }        from '../ReturnPolicyCard';
 import { Toggle as PrimitiveToggle } from '../primitives/Toggle';
+import { pricedGroupIds } from '../helpers';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -308,41 +309,33 @@ function ShippingProfileCard({
   );
 }
 
-// ─── Variation-aware price notice ─────────────────────────────────────────────
+// ─── Variant-priced summary (replaces the editable Price input entirely — ──
+// matches Etsy: once any variation group carries its own price, the
+// top-level Price field is dropped in favour of "Prices may vary per
+// Option" + a link into the variations editor, so there's never two
+// disagreeing sources of truth for what the item actually costs. ──────────
 
-function VariationPriceNotice({
-  productId,
-  onSwitchToVariations,
+function VariantPricedSummary({
+  variantCount,
+  onEdit,
 }: {
-  productId:            string;
-  onSwitchToVariations: () => void;
+  variantCount: number;
+  onEdit:       () => void;
 }) {
-  const { data: settings } = useQuery<VariationSettings>({
-    queryKey: ['variation-settings', productId],
-    queryFn:  async () => {
-      try {
-        return await api.get<VariationSettings>(`/admin/products/${productId}/variation-settings`);
-      } catch {
-        return { enableVariations: false, variesBy: [] };
-      }
-    },
-    enabled:  !!productId,
-    staleTime: 30_000,
-  });
-
-  if (!settings?.variesBy?.some((v) => v.includes(':price'))) return null;
-
   return (
-    <div className="flex items-start gap-2.5 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg">
-      <Lightbulb className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-      <div>
-        <p className="text-sm text-amber-800">Prices vary for each variation option.</p>
+    <div>
+      <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
+        Price <span className="text-red-500">*</span>
+      </label>
+      <div className="flex items-center gap-3 px-4 py-3 border border-border rounded-lg bg-background">
+        <Lightbulb className="w-4 h-4 text-amber-600 shrink-0" />
+        <span className="text-sm text-secondary">Prices may vary per Option</span>
         <button
           type="button"
-          onClick={onSwitchToVariations}
-          className="text-sm text-primary hover:underline flex items-center gap-1 mt-0.5"
+          onClick={onEdit}
+          className="ml-auto shrink-0 flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
         >
-          Edit in the Variations tab <ChevronRight className="w-3.5 h-3.5" />
+          Edit {variantCount} variation{variantCount !== 1 ? 's' : ''} <ChevronRight className="w-3.5 h-3.5" />
         </button>
       </div>
     </div>
@@ -372,6 +365,44 @@ export function PricingShippingTab({ product, onSwitchTab, isDigital }: PricingS
   const sku              = watch('sku') ?? '';
   const trackInventory   = watch('trackInventory') ?? false;
 
+  // ── Variant pricing — does any variation group carry its own price? ────────
+  // Same queryKeys as ItemOptionsTab's VariationsSummaryTable, so these share
+  // the React Query cache instead of double-fetching (both tabs are mounted
+  // simultaneously — ProductEditShell scroll-spies, it doesn't unmount tabs).
+  const { data: variationGroups = [] } = useQuery<VariationGroup[]>({
+    queryKey: ['variation-groups', product.id],
+    queryFn:  () => api.get<VariationGroup[]>(API_ROUTES.ADMIN.PRODUCT_VARIATIONS(product.id)),
+    enabled:  !!product.id,
+    staleTime: 30_000,
+  });
+  const { data: variationSettings } = useQuery<VariationSettings>({
+    queryKey: ['variation-settings', product.id],
+    queryFn:  async () => {
+      try {
+        return await api.get<VariationSettings>(API_ROUTES.ADMIN.PRODUCT_VARIATION_SETTINGS(product.id));
+      } catch {
+        return { enableVariations: false, variesBy: [] };
+      }
+    },
+    enabled:  !!product.id,
+    staleTime: 30_000,
+  });
+  const { data: variants = [] } = useQuery<{ id: string; price: string | number }[]>({
+    queryKey: ['product-variant-list', product.id],
+    queryFn:  () => api.get<{ id: string; price: string | number }[]>(API_ROUTES.ADMIN.PRODUCT_VARIATION_VARIANTS(product.id)),
+    enabled:  !!product.id,
+    staleTime: 30_000,
+  });
+
+  const priceVaries = pricedGroupIds(
+    variationSettings?.variesBy ?? [],
+    variationGroups.map((g) => g.id),
+  ).length > 0 && variants.length > 0;
+
+  const variantPrices    = variants.map((v) => Number(v.price)).filter((n) => !Number.isNaN(n));
+  const minVariantPrice  = variantPrices.length ? Math.min(...variantPrices) : undefined;
+  const maxVariantPrice  = variantPrices.length ? Math.max(...variantPrices) : undefined;
+
   return (
     <div className="max-w-[760px] mx-auto">
       <div className="bg-surface rounded-card border border-border shadow-card overflow-hidden divide-y divide-border">
@@ -391,16 +422,26 @@ export function PricingShippingTab({ product, onSwitchTab, isDigital }: PricingS
             />
           </div>
 
-          {/* Price inputs */}
+          {/* Price inputs — replaced entirely by a "prices vary" summary once
+              any variation group has its own per-option pricing, matching
+              Etsy: editing basePrice here would be misleading when the
+              variations tab is the actual source of truth for what buyers pay. */}
           <div className="mb-4">
-            <VariationPriceNotice
-              productId={product.id}
-              onSwitchToVariations={() => onSwitchTab?.('item-options' as AnyTabId)}
-            />
-            <div className="mt-3">
+            {priceVaries ? (
+              <VariantPricedSummary
+                variantCount={variants.length}
+                onEdit={() => onSwitchTab?.('item-options' as AnyTabId)}
+              />
+            ) : (
               <PriceInput />
-            </div>
-            <EstimatedEarningsRow basePrice={Number(basePrice)} compareAtPrice={compareAt} />
+            )}
+            <EstimatedEarningsRow
+              basePrice={Number(basePrice)}
+              compareAtPrice={compareAt}
+              hasVariations={priceVaries}
+              minVariantPrice={minVariantPrice}
+              maxVariantPrice={maxVariantPrice}
+            />
           </div>
 
           {/* Quantity + SKU row */}
@@ -418,7 +459,7 @@ export function PricingShippingTab({ product, onSwitchTab, isDigital }: PricingS
               />
             </FormField>
 
-            <FormField label="SKU (stock keeping unit)">
+            <FormField label="SKU (stock keeping unit)" hint="Auto-generated if left blank">
               <input
                 {...register('sku', { maxLength: 32 })}
                 className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 font-mono"

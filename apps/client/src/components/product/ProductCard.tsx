@@ -44,7 +44,7 @@ export function ProductCard({
   name,
   price,
   originalPrice,
-  rating           = 5,
+  rating,
   reviewCount      = 0,
   badge,
   lowStock         = false,
@@ -144,11 +144,13 @@ export function ProductCard({
         )}
       </div>
 
-      <RatingStars
-        rating={rating}
-        reviewCount={reviewCount}
-        starAriaLabel={(value) => tCommon('starAriaLabel', { value })}
-      />
+      {rating !== undefined && (
+        <RatingStars
+          rating={rating}
+          reviewCount={reviewCount}
+          starAriaLabel={(value) => tCommon('starAriaLabel', { value })}
+        />
+      )}
 
       {lowStock && (
         <p className="text-xs text-error font-medium mt-2" role="status">

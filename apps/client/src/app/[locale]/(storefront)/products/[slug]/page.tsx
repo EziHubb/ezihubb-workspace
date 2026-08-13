@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { apiClient } from '@ezihubb/api-client';
@@ -9,6 +10,7 @@ import type { PaginatedResponse } from '@ezihubb/types';
 import { ProductBreadcrumb } from '../../../../../components/product/ProductBreadcrumb';
 import type { BreadcrumbItem } from '../../../../../components/product/ProductBreadcrumb';
 import { ProductStructuredData } from '../../../../../components/seo/ProductStructuredData';
+import { SearchAttributionTracker } from '../../../../../components/providers/SearchAttributionTracker';
 import { BreadcrumbStructuredData } from '../../../../../components/seo/BreadcrumbStructuredData';
 import { BackToResults } from '../../../../../components/product/BackToResults';
 import { ProductGalleryColumn } from '../../../../../components/product/ProductGalleryColumn';
@@ -39,8 +41,8 @@ function buildBreadcrumbs(product: ProductDetailDto, locale: string, homeLabel: 
   const prefix = locale !== 'en' ? `/${locale}` : '';
   return [
     { name: homeLabel, href: `${prefix}/` },
-    ...(product.primaryCategory
-      ? [{ name: product.primaryCategory.name, href: `${prefix}/search?category=${product.primaryCategory.slug}` }]
+    ...(product.categoryName
+      ? [{ name: product.categoryName, href: `${prefix}/search?category=${product.categorySlug}` }]
       : []),
     { name: product.name, href: `${prefix}/products/${product.slug}` },
   ];
@@ -173,6 +175,9 @@ export default async function ProductDetailPage({
 
   return (
     <>
+      <Suspense fallback={null}>
+        <SearchAttributionTracker />
+      </Suspense>
       <ProductStructuredData
         product={product}
         reviewSummary={reviewSummary}

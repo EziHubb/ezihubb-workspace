@@ -137,14 +137,14 @@ function SearchProductCard({
           </h3>
         </Link>
 
-        {product.rating !== undefined && (
+        {product.reviewCount > 0 && (
           <div className="flex items-center gap-1 mb-1.5">
             <div className="flex gap-0.5">
               {Array.from({ length: 5 }).map((_, i) => (
                 <svg
                   key={i}
                   className={`w-3 h-3 ${
-                    i < Math.round(product.rating!.avg) ? 'text-warning' : 'text-border'
+                    i < Math.round(product.averageRating ?? 0) ? 'text-warning' : 'text-border'
                   }`}
                   fill="currentColor"
                   viewBox="0 0 20 20"
@@ -154,9 +154,7 @@ function SearchProductCard({
                 </svg>
               ))}
             </div>
-            {product.reviewCount !== undefined && product.reviewCount > 0 && (
-              <span className="text-xs text-muted">({product.reviewCount})</span>
-            )}
+            <span className="text-xs text-muted">({product.reviewCount})</span>
           </div>
         )}
 

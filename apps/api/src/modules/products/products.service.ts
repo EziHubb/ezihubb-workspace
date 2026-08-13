@@ -136,9 +136,9 @@ export class ProductsService {
       this.prisma.product.count({ where }),
     ]);
 
-    // Batch rating aggregation and in-demand counts — avoid N+1
+    // Batch rating aggregation, in-demand counts, and variant price range — avoid N+1
     const productIds = products.map((p) => p.id);
-    const [ratingRows, inDemandEntries] = await Promise.all([
+    const [ratingRows, inDemandEntries, priceRangeRows] = await Promise.all([
       this.prisma.review.groupBy({
         by: ['productId'],
         where: { productId: { in: productIds }, status: 'APPROVED' },
@@ -148,6 +148,15 @@ export class ProductsService {
       Promise.all(
         productIds.map((id) => this.redis.get<number>(IN_DEMAND_KEY(id))),
       ),
+      this.prisma.productVariant.groupBy({
+        by: ['productId'],
+        // isAvailable + price-not-null: an all-null-priced (unpriced) or
+        // all-retired variant set must fall back to basePrice downstream
+        // (map lookup miss → null), not silently aggregate to $0.
+        where: { productId: { in: productIds }, isAvailable: true, price: { not: null } },
+        _min: { price: true },
+        _max: { price: true },
+      }),
     ]);
 
     const ratingMap = new Map(
@@ -159,6 +168,12 @@ export class ProductsService {
     const inDemandMap = new Map(
       productIds.map((id, i) => [id, inDemandEntries[i] ?? 0]),
     );
+    const priceRangeMap = new Map(
+      priceRangeRows.map((r) => [
+        r.productId,
+        { min: Number(r._min.price), max: Number(r._max.price) },
+      ]),
+    );
 
     const data = products.map(
       (p) =>
@@ -169,11 +184,14 @@ export class ProductsService {
           sku: p.sku,
           basePrice: Number(p.basePrice),
           compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
+          minPrice: priceRangeMap.get(p.id)?.min ?? null,
+          maxPrice: priceRangeMap.get(p.id)?.max ?? null,
           primaryImageUrl: p.images[0]?.url ?? null,
           primaryImage:    p.images[0]?.url ?? null,
           images:          p.images.map((img) => ({ url: img.url, isPrimary: true })),
           categoryId: p.categoryId,
           categoryName: p.category.name,
+          categorySlug: p.category.slug,
           isPersonalizable: p.isPersonalizable,
           isFeatured: p.isFeatured,
           isActive: p.isActive,
@@ -649,6 +667,21 @@ export class ProductsService {
       });
     }
 
+    // Block publish while any visible variation combination is still missing
+    // a price — matches Etsy's own "fill in every row before you can publish"
+    // behaviour for the per-combination price grid.
+    if (dto.isActive === true) {
+      const unpriced = await this.prisma.productVariant.count({
+        where: { productId: id, isAvailable: true, price: null },
+      });
+      if (unpriced > 0) {
+        throw new BadRequestException({
+          code:    'ERR_VARIANTS_MISSING_PRICE',
+          message: `Set a price for all ${unpriced} unpriced variation${unpriced !== 1 ? 's' : ''} before publishing.`,
+        });
+      }
+    }
+
     const data: Prisma.ProductUpdateInput = {};
 
     // ── Existing scalar fields ─────────────────────────────────────────────
@@ -661,6 +694,7 @@ export class ProductsService {
       'domesticGlobalPricing', 'quantity', 'trackInventory', 'lowStockThreshold', 'isAdsEnabled', 'hsCode',
       'titleCharCount', 'thumbnailCropData',
       'returnPolicy', 'whoMadeIt', 'howItWasMade', 'renewalType',
+      'width', 'height', 'dimensionUnit',
       // Array fields (assigned directly below)
     ];
     for (const f of fields) {
@@ -798,6 +832,9 @@ export class ProductsService {
       recipientTags:        product.recipientTags,
       styles:               product.styles,
       sustainability:       product.sustainability,
+      width:                product.width  !== null ? Number(product.width)  : null,
+      height:               product.height !== null ? Number(product.height) : null,
+      dimensionUnit:        product.dimensionUnit,
       videoUrls:            product.videoUrls,
       thumbnailCropData:    product.thumbnailCropData,
       titleCharCount:       product.titleCharCount,
@@ -1067,6 +1104,21 @@ export class ProductsService {
   ) {
     const group = await this.prisma.variationGroup.findFirst({ where: { id: groupId, productId } });
     if (!group) throw new Error('Group not found');
+
+    // Toggling an option's availability from the quick summary table (outside
+    // the "Manage variations" modal) is a structural change — it changes
+    // which combinations are valid, so the ProductVariant price grid needs
+    // the same resync the modal's Apply triggers, or a buyer could still
+    // select/purchase a combo the seller just hid.
+    if (dto.isAvailable !== undefined) {
+      const product = await this.prisma.product.findUnique({ where: { id: productId }, select: { basePrice: true } });
+      return this.prisma.$transaction(async (tx) => {
+        const updated = await tx.variationOption.update({ where: { id: optionId }, data: dto });
+        if (product) await this.syncVariantsFromGroups(tx, productId, Number(product.basePrice));
+        return updated;
+      }, { timeout: 20_000, maxWait: 10_000 });
+    }
+
     return this.prisma.variationOption.update({
       where: { id: optionId },
       data:  dto,
@@ -1108,10 +1160,237 @@ export class ProductsService {
     });
   }
 
-  async updateVariantById(productId: string, variantId: string, dto: { price?: number; compareAtPrice?: number | null; sku?: string | null }) {
-    return this.prisma.productVariant.update({
-      where: { id: variantId },
+  async updateVariantById(
+    productId: string,
+    variantId: string,
+    dto: { price?: number | null; quantity?: number | null; sku?: string | null; isAvailable?: boolean },
+  ) {
+    const { count } = await this.prisma.productVariant.updateMany({
+      where: { id: variantId, productId },
       data:  dto,
+    });
+    if (count === 0) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Variant not found' });
+    }
+    return this.prisma.productVariant.findUnique({ where: { id: variantId } });
+  }
+
+  // ─── Variant price-grid sync ──────────────────────────────────────────────
+  // Regenerates ProductVariant rows (the real, purchasable, priced SKU table)
+  // from the seller's VariationGroup/VariationOption configuration. Before
+  // this existed, "Manage variations" only ever wrote VariationGroup/Option
+  // rows — ProductVariant was exclusively populated at product-creation time
+  // (explicit `variants` list or CSV/Etsy import), so a product built via
+  // "Manage variations" from scratch could never actually be checked out
+  // once a buyer selected a variant (nothing ever matched).
+
+  private readonly MAX_VARIANT_COMBOS = 100;
+
+  private comboKey(options: Record<string, string>): string {
+    return Object.entries(options)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => `${k}=${v}`)
+      .join('|');
+  }
+
+  /**
+   * Returns comboKey → ProductVariant.id for every combo that exists after
+   * the sync (both newly-created and pre-existing) — applyVariations() uses
+   * this to resolve the seller's per-combo edits (keyed by options, since a
+   * brand-new combo has no id until this sync creates it) into real variant
+   * ids to patch.
+   */
+  private async syncVariantsFromGroups(
+    tx: Prisma.TransactionClient,
+    productId: string,
+    basePrice: number,
+  ): Promise<Map<string, string>> {
+    const [groups, settings, existingVariants] = await Promise.all([
+      tx.variationGroup.findMany({
+        where:   { productId },
+        orderBy: { sortOrder: 'asc' },
+        include: { options: { where: { isAvailable: true }, orderBy: { sortOrder: 'asc' } } },
+      }),
+      tx.variationSettings.findUnique({ where: { productId } }),
+      tx.productVariant.findMany({ where: { productId } }),
+    ]);
+
+    // No groups configured — single-SKU product, nothing to generate. Cart
+    // already falls back to product.basePrice when a product has no variants.
+    if (groups.length === 0) return new Map();
+    // A group with zero available options can't form any valid combination
+    // yet (e.g. seller just added the group, hasn't added options) — leave
+    // existing variants alone rather than wiping them out mid-edit.
+    if (groups.some((g) => g.options.length === 0)) return new Map();
+
+    let combos: { name: string; options: Record<string, string> }[] = [{ name: '', options: {} }];
+    for (const group of groups) {
+      const next: typeof combos = [];
+      for (const combo of combos) {
+        for (const opt of group.options) {
+          next.push({
+            name:    combo.name ? `${combo.name} / ${opt.name}` : opt.name,
+            options: { ...combo.options, [group.name]: opt.name },
+          });
+        }
+      }
+      combos = next;
+    }
+
+    if (combos.length > this.MAX_VARIANT_COMBOS) {
+      throw new BadRequestException({
+        code:    'ERR_TOO_MANY_COMBINATIONS',
+        message: `Too many option combinations (${combos.length}) — reduce options or split into fewer groups (max ${this.MAX_VARIANT_COMBOS}).`,
+      });
+    }
+
+    const variesBy = settings?.variesBy ?? [];
+    const allGroupIds = groups.map((g) => g.id);
+    const pricedGroupIds = variesBy.includes('price')
+      ? allGroupIds
+      : allGroupIds.filter((id) => variesBy.includes(`price:${id}`));
+    const priceVaries = pricedGroupIds.length > 0;
+
+    const existingByKey = new Map(
+      existingVariants.map((v) => [this.comboKey(v.options as Record<string, string>), v]),
+    );
+    const seenIds = new Set<string>();
+    const resultKeyToId = new Map<string, string>();
+
+    let sortOrder = 0;
+    for (const combo of combos) {
+      const comboKey = this.comboKey(combo.options);
+      const existing = existingByKey.get(comboKey);
+      if (existing) {
+        seenIds.add(existing.id);
+        resultKeyToId.set(comboKey, existing.id);
+        await tx.productVariant.update({
+          where: { id: existing.id },
+          data: {
+            isAvailable: true,
+            sortOrder:   sortOrder++,
+            // When price doesn't vary, basePrice is the single source of
+            // truth for every combo — keep them mirrored. When it does vary,
+            // the seller's own per-combo price is authoritative; never
+            // overwritten by a structural sync (only by an explicit edit).
+            ...(!priceVaries ? { price: basePrice } : {}),
+          },
+        });
+      } else {
+        const created = await tx.productVariant.create({
+          data: {
+            productId,
+            name:        combo.name,
+            options:     combo.options as Prisma.InputJsonValue,
+            price:       priceVaries ? null : basePrice,
+            isAvailable: true,
+            sortOrder:   sortOrder++,
+          },
+        });
+        resultKeyToId.set(comboKey, created.id);
+      }
+    }
+
+    // Retire (never delete) combinations that no longer match any valid
+    // option set — hard-deleting would cascade-delete ProductFulfillmentMapping
+    // and silently null out CartItem/OrderItem/DigitalFile's variant link.
+    const staleIds = existingVariants
+      .filter((v) => !seenIds.has(v.id) && v.isAvailable)
+      .map((v) => v.id);
+    if (staleIds.length) {
+      await tx.productVariant.updateMany({ where: { id: { in: staleIds } }, data: { isAvailable: false } });
+    }
+
+    return resultKeyToId;
+  }
+
+  /**
+   * Single commit for the "Manage variations" modal — replaces groups/options
+   * wholesale, saves variesBy settings, resyncs the ProductVariant price grid,
+   * then applies any direct per-variant edits (price/quantity/sku/visible)
+   * the seller made in the combo table. Everything in one transaction so a
+   * partial failure can't leave groups/settings/variants out of sync with
+   * each other — the modal only ever calls this once, on "Apply".
+   */
+  async applyVariations(
+    productId: string,
+    dto: {
+      groups: {
+        id?: string; name: string; displayType?: string; sortOrder: number;
+        options: { id?: string; name: string; value?: string; colorHex?: string; imageUrl?: string | null; imageId?: string | null; isAvailable?: boolean; sortOrder?: number }[];
+      }[];
+      variesBy: string[];
+      // Keyed by `options` (not id) — a brand-new combination the seller
+      // priced in the grid before hitting Apply has no ProductVariant.id yet;
+      // syncVariantsFromGroups() creates it and hands back the id this
+      // resolves against.
+      variantEdits?: { options: Record<string, string>; price?: number | null; quantity?: number | null; sku?: string | null; isAvailable?: boolean }[];
+    },
+  ) {
+    const product = await this.prisma.product.findUnique({ where: { id: productId }, select: { basePrice: true } });
+    if (!product) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.variationGroup.deleteMany({ where: { productId } });
+      for (const g of dto.groups) {
+        if (!g.name) continue;
+        await tx.variationGroup.create({
+          data: {
+            id:          g.id && !g.id.startsWith('new-') ? g.id : undefined,
+            productId,
+            name:        g.name,
+            displayType: g.displayType ?? 'dropdown',
+            sortOrder:   g.sortOrder,
+            options: {
+              create: g.options
+                .filter((o) => o.name)
+                .map((o, i) => ({
+                  id:          o.id && !o.id.startsWith('new-') ? o.id : undefined,
+                  name:        o.name,
+                  value:       o.value ?? o.name.toLowerCase().replace(/\s+/g, '-'),
+                  colorHex:    o.colorHex,
+                  imageUrl:    o.imageUrl,
+                  imageId:     o.imageId,
+                  sortOrder:   o.sortOrder ?? i,
+                  isAvailable: o.isAvailable !== false,
+                })),
+            },
+          },
+        });
+      }
+
+      await tx.variationSettings.upsert({
+        where:  { productId },
+        create: { productId, enableVariations: dto.groups.length > 0, variesBy: dto.variesBy },
+        update: { enableVariations: dto.groups.length > 0, variesBy: dto.variesBy },
+      });
+
+      const keyToId = await this.syncVariantsFromGroups(tx, productId, Number(product.basePrice));
+
+      for (const edit of dto.variantEdits ?? []) {
+        const { options, ...patch } = edit;
+        const id = keyToId.get(this.comboKey(options));
+        if (!id) continue; // combo no longer valid (e.g. option removed in this same Apply) — drop the edit
+        await tx.productVariant.updateMany({ where: { id, productId }, data: patch });
+      }
+
+      return {
+        groups: await tx.variationGroup.findMany({
+          where:   { productId },
+          orderBy: { sortOrder: 'asc' },
+          include: { options: { orderBy: { sortOrder: 'asc' } } },
+        }),
+        settings: await tx.variationSettings.findUnique({ where: { productId } }),
+        variants: await tx.productVariant.findMany({ where: { productId }, orderBy: { sortOrder: 'asc' } }),
+      };
+    }, {
+      // syncVariantsFromGroups() issues one sequential create/update per
+      // combination (up to MAX_VARIANT_COMBOS) — Prisma's 5s default
+      // transaction timeout is comfortably enough for a handful of combos
+      // but not guaranteed at the 100-combo ceiling, especially over a
+      // higher-latency DB connection. Longer than default, still bounded.
+      timeout: 20_000,
+      maxWait: 10_000,
     });
   }
 
@@ -1279,6 +1558,7 @@ export class ProductsService {
             name: v.name,
             options: v.options as Prisma.InputJsonValue,
             price: v.price,
+            isAvailable: v.isAvailable,
             sku: v.sku ? `${v.sku}-COPY` : undefined,
             isDefault: v.isDefault,
             sortOrder: v.sortOrder,
@@ -2184,7 +2464,7 @@ export class ProductsService {
     if (products.length === 0) return [];
 
     const ids = products.map((p) => p.id);
-    const [ratingRows, inDemandEntries] = await Promise.all([
+    const [ratingRows, inDemandEntries, priceRangeRows] = await Promise.all([
       this.prisma.review.groupBy({
         by: ['productId'],
         where: { productId: { in: ids }, status: 'APPROVED' },
@@ -2192,6 +2472,12 @@ export class ProductsService {
         _count: { rating: true },
       }),
       Promise.all(ids.map((id) => this.redis.get<number>(IN_DEMAND_KEY(id)))),
+      this.prisma.productVariant.groupBy({
+        by: ['productId'],
+        where: { productId: { in: ids }, isAvailable: true, price: { not: null } },
+        _min: { price: true },
+        _max: { price: true },
+      }),
     ]);
 
     const ratingMap = new Map(
@@ -2203,6 +2489,12 @@ export class ProductsService {
     const inDemandMap = new Map(
       ids.map((id, i) => [id, inDemandEntries[i] ?? 0]),
     );
+    const priceRangeMap = new Map(
+      priceRangeRows.map((r) => [
+        r.productId,
+        { min: Number(r._min.price), max: Number(r._max.price) },
+      ]),
+    );
 
     return products.map((p) => ({
       id: p.id,
@@ -2211,11 +2503,14 @@ export class ProductsService {
       sku: p.sku,
       basePrice: Number(p.basePrice),
       compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
+      minPrice: priceRangeMap.get(p.id)?.min ?? null,
+      maxPrice: priceRangeMap.get(p.id)?.max ?? null,
       primaryImageUrl: p.images[0]?.url ?? null,
       primaryImage:    p.images[0]?.url ?? null,
       images:          p.images.map((img) => ({ url: img.url, isPrimary: true })),
       categoryId: p.categoryId,
       categoryName: p.category.name,
+      categorySlug: p.category.slug,
       isPersonalizable: p.isPersonalizable,
       isFeatured: p.isFeatured,
       isActive: p.isActive,
@@ -2257,6 +2552,8 @@ export class ProductsService {
         name: string;
         options: unknown;
         price: unknown;
+        quantity: number | null;
+        isAvailable: boolean;
         sku: string | null;
         isDefault: boolean;
         sortOrder: number;
@@ -2305,11 +2602,16 @@ export class ProductsService {
       processingDays: product.processingDays,
       category: product.category,
       store: product.store ?? null,
-      variants: product.variants.map((v) => ({
+      // Retired combinations (isAvailable:false) are never shown to buyers —
+      // they only stay in the DB to keep historical orders/fulfillment intact.
+      // A still-visible combo with no price of its own (shouldn't happen once
+      // publish is blocked on it, but defend anyway) falls back to basePrice
+      // rather than surfacing $0.
+      variants: product.variants.filter((v) => v.isAvailable).map((v) => ({
         id: v.id,
         name: v.name,
         options: v.options as Record<string, string>,
-        price: Number(v.price),
+        price: v.price !== null ? Number(v.price) : Number(product.basePrice),
         sku: v.sku,
         isDefault: v.isDefault,
         sortOrder: v.sortOrder,

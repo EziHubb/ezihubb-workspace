@@ -105,7 +105,7 @@ export class CartService {
       }),
       dto.variantId
         ? this.prisma.productVariant.findFirst({
-            where: { id: dto.variantId, productId: dto.productId },
+            where: { id: dto.variantId, productId: dto.productId, isAvailable: true },
             select: { id: true, price: true },
           })
         : Promise.resolve(null),
@@ -119,11 +119,14 @@ export class CartService {
     if (dto.variantId && !variant)
       throw new NotFoundException({
         code: 'ERR_NOT_FOUND',
-        message: 'Variant not found',
+        message: 'Variant not found or no longer available',
       });
 
     const qty = dto.quantity ?? 1;
-    const unitPrice = variant
+    // variant.price is nullable — a combination the seller hasn't priced yet
+    // (or one that never varies from the base price) falls back to basePrice
+    // rather than adding to the cart at $0.
+    const unitPrice = variant?.price != null
       ? Number(variant.price)
       : Number(product.basePrice);
     const customKey = dto.customizationData
@@ -177,6 +180,7 @@ export class CartService {
               | Prisma.InputJsonValue
               | undefined,
             previewUrl: dto.previewUrl,
+            searchTerm: dto.searchTerm?.trim().toLowerCase() || null,
           },
         });
       }
@@ -459,8 +463,8 @@ export class CartService {
 
   private calcSubtotal(items: CartWithItems['items']): number {
     return items.reduce((sum, item) => {
-      const variantPrice = item.variant ? Number(item.variant.price) : 0;
-      const price = variantPrice > 0 ? variantPrice : Number(item.product.basePrice);
+      const variantPrice = item.variant?.price != null ? Number(item.variant.price) : null;
+      const price = variantPrice ?? Number(item.product.basePrice);
       return sum + price * item.quantity;
     }, 0);
   }
@@ -478,11 +482,11 @@ export class CartService {
 
   private mapToDto(cart: CartWithItems): CartResponseDto {
     const items: CartItemDto[] = cart.items.map((item) => {
-      const variantPrice = item.variant ? Number(item.variant.price) : 0;
+      const variantPrice = item.variant?.price != null ? Number(item.variant.price) : null;
       const unitPrice = Number(item.unitPrice);
-      const livePrice = variantPrice > 0 ? variantPrice : Number(item.product.basePrice);
-      // Fall back to unitPrice when the live price is 0 (e.g. variant was deleted on a
-      // variant-only product whose basePrice is 0).
+      const livePrice = variantPrice ?? Number(item.product.basePrice);
+      // Fall back to the snapshotted unitPrice when even that live lookup is
+      // legitimately 0 (variant-only product whose basePrice is $0).
       const currentPrice = livePrice > 0 ? livePrice : unitPrice;
       return {
         id: item.id,
