@@ -191,6 +191,7 @@ export interface DigitalFile {
 
 export interface AdminProductDto {
   id:                   string;
+  storeId?:             string | null;
   name:                 string;
   slug:                 string;
   sku:                  string;

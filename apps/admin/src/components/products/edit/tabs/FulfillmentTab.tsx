@@ -67,14 +67,19 @@ const mappingsKey = (productId: string) => ['admin-fulfillment-mappings', produc
 
 // ─── Shop product picker ──────────────────────────────────────────────────────
 
-function ShopProductPickerModal({ connectionId, onSelect, onClose }: {
+function ShopProductPickerModal({ connectionId, storeId, onSelect, onClose }: {
   connectionId: string;
+  storeId?:     string | null;
   onSelect:     (product: ShopProduct, variant: ShopProductVariant) => void;
   onClose:      () => void;
 }) {
   const { data: products = [], isLoading } = useQuery<ShopProduct[]>({
-    queryKey: ['admin-fulfillment-shop-products', connectionId],
-    queryFn:  () => api.get<ShopProduct[]>(API_ROUTES.ADMIN.FULFILLMENT_SHOP_PRODUCTS(connectionId)),
+    queryKey: ['admin-fulfillment-shop-products', connectionId, storeId ?? null],
+    queryFn:  () => api.get<ShopProduct[]>(
+      storeId
+        ? `${API_ROUTES.ADMIN.FULFILLMENT_SHOP_PRODUCTS(connectionId)}?storeId=${storeId}`
+        : API_ROUTES.ADMIN.FULFILLMENT_SHOP_PRODUCTS(connectionId),
+    ),
     staleTime: 5 * 60_000,
   });
 
@@ -123,22 +128,30 @@ function ShopProductPickerModal({ connectionId, onSelect, onClose }: {
 
 // ─── Main tab ─────────────────────────────────────────────────────────────────
 
-export function FulfillmentTab({ productId, images = [] }: { productId?: string; images?: ProductImage[] }) {
+export function FulfillmentTab({ productId, storeId, images = [] }: { productId?: string; storeId?: string | null; images?: ProductImage[] }) {
   const qc = useQueryClient();
   const { alert } = useDialog();
   const [pickerConnectionId, setPickerConnectionId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // storeId is this product's own store — always pass it explicitly. Without
+  // it, a platform-context SUPER_ADMIN (no store switched into) 400s on the
+  // mappings call below ("storeId is required when managing platform-wide
+  // settings"), since the backend has no ambient store to scope to otherwise.
   const { data: connections = [] } = useQuery<FulfillmentConnection[]>({
-    queryKey: CONNECTIONS_KEY,
-    queryFn:  () => api.get<FulfillmentConnection[]>(API_ROUTES.ADMIN.FULFILLMENT_CONNECTIONS),
+    queryKey: [...CONNECTIONS_KEY, storeId ?? null],
+    queryFn:  () => api.get<FulfillmentConnection[]>(
+      storeId ? `${API_ROUTES.ADMIN.FULFILLMENT_CONNECTIONS}?storeId=${storeId}` : API_ROUTES.ADMIN.FULFILLMENT_CONNECTIONS,
+    ),
     staleTime: 60_000,
   });
   const activeConnections = connections.filter((c) => c.status === 'ACTIVE');
 
   const { data: mappings = [] } = useQuery<Mapping[]>({
     queryKey: mappingsKey(productId ?? ''),
-    queryFn:  () => api.get<Mapping[]>(API_ROUTES.ADMIN.FULFILLMENT_MAPPINGS),
+    queryFn:  () => api.get<Mapping[]>(
+      storeId ? `${API_ROUTES.ADMIN.FULFILLMENT_MAPPINGS}?storeId=${storeId}` : API_ROUTES.ADMIN.FULFILLMENT_MAPPINGS,
+    ),
     enabled:  !!productId,
     staleTime: 30_000,
     select:   (all) => all.filter((m) => m.productId === productId),
@@ -155,6 +168,7 @@ export function FulfillmentTab({ productId, images = [] }: { productId?: string;
         productId,
         externalProductId: product.externalProductId,
         externalVariantId: variant.externalVariantId,
+        ...(storeId ? { storeId } : {}),
       });
       void qc.invalidateQueries({ queryKey: mappingsKey(productId) });
     } catch (err) {
@@ -167,7 +181,11 @@ export function FulfillmentTab({ productId, images = [] }: { productId?: string;
   const handleRemove = async () => {
     if (!mapping) return;
     try {
-      await api.delete(API_ROUTES.ADMIN.FULFILLMENT_MAPPING_DELETE(mapping.id));
+      await api.delete(
+        storeId
+          ? `${API_ROUTES.ADMIN.FULFILLMENT_MAPPING_DELETE(mapping.id)}?storeId=${storeId}`
+          : API_ROUTES.ADMIN.FULFILLMENT_MAPPING_DELETE(mapping.id),
+      );
       void qc.invalidateQueries({ queryKey: mappingsKey(productId ?? '') });
     } catch (err) {
       await alert((err as Error).message || 'Could not remove this mapping.', { variant: 'error' });
@@ -250,6 +268,7 @@ export function FulfillmentTab({ productId, images = [] }: { productId?: string;
       {pickerConnectionId && (
         <ShopProductPickerModal
           connectionId={pickerConnectionId}
+          storeId={storeId}
           onSelect={(product, variant) => handleSelect(pickerConnectionId, product, variant)}
           onClose={() => setPickerConnectionId(null)}
         />

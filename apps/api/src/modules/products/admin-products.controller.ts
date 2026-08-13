@@ -690,6 +690,28 @@ export class AdminProductsController {
     return this.productsService.applyVariations(id, dto);
   }
 
+  // ─── Flat Variants (for price matrix) ────────────────────────────────────
+  // Declared BEFORE ':id/variations/:groupId' below — Nest/Express matches
+  // routes in registration order, so a literal segment ("variants") must be
+  // registered ahead of a wildcard param (":groupId") on the same prefix, or
+  // every call here gets swallowed by getVariationGroup(id, "variants")
+  // instead (returns null, not the flat array the frontend expects).
+  @Get(':id/variations/variants')
+  @ApiOperation({ summary: '[Admin] List flat ProductVariant rows (for price matrix)' })
+  getVariants(@Param('id', ParseCuidPipe) id: string) {
+    return this.productsService.getVariants(id);
+  }
+
+  @Patch(':id/variations/variants/:variantId')
+  @ApiOperation({ summary: '[Admin] Update a variant (price / compareAt / sku)' })
+  updateVariant(
+    @Param('id', ParseCuidPipe) id: string,
+    @Param('variantId') variantId: string,
+    @Body() dto: VariantPatchDto,
+  ) {
+    return this.productsService.updateVariantById(id, variantId, dto);
+  }
+
   @Get(':id/variations/:groupId')
   @ApiOperation({ summary: '[Admin] Get single variation group' })
   getVariationGroup(
@@ -769,24 +791,6 @@ export class AdminProductsController {
     @Body() dto: VariationSettingsDto,
   ) {
     return this.productsService.upsertVariationSettings(id, dto);
-  }
-
-  // ─── Flat Variants (for price matrix) ────────────────────────────────────
-
-  @Get(':id/variations/variants')
-  @ApiOperation({ summary: '[Admin] List flat ProductVariant rows (for price matrix)' })
-  getVariants(@Param('id', ParseCuidPipe) id: string) {
-    return this.productsService.getVariants(id);
-  }
-
-  @Patch(':id/variations/variants/:variantId')
-  @ApiOperation({ summary: '[Admin] Update a variant (price / compareAt / sku)' })
-  updateVariant(
-    @Param('id', ParseCuidPipe) id: string,
-    @Param('variantId') variantId: string,
-    @Body() dto: VariantPatchDto,
-  ) {
-    return this.productsService.updateVariantById(id, variantId, dto);
   }
 
   // ─── Custom Options ───────────────────────────────────────────────────────

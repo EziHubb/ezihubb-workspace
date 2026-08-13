@@ -494,7 +494,11 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
           {mode === 'edit' && productType === 'PHYSICAL' && (
             <>
               <div ref={(el) => { sectionRefs.current['fulfillment'] = el; }}>
-                <FulfillmentTab productId={tabProduct?.id ?? product?.id} images={tabProduct?.images ?? []} />
+                <FulfillmentTab
+                productId={tabProduct?.id ?? product?.id}
+                storeId={tabProduct?.storeId ?? product?.storeId}
+                images={tabProduct?.images ?? []}
+              />
               </div>
               <div className="h-px bg-border" />
             </>

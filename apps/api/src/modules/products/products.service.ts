@@ -822,6 +822,7 @@ export class ProductsService {
         avgRating,
       ),
       // ── New extended fields ──
+      storeId:              product.storeId,
       categoryId:           product.categoryId,
       primaryCategoryId:    product.productCategories.find((pc) => pc.isPrimary)?.categoryId ?? product.categoryId,
       primaryColors:        product.primaryColors,
