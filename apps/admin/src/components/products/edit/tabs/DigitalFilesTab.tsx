@@ -72,14 +72,14 @@ export function DigitalFilesTab({ productId, digitalFiles }: { productId?: strin
 
   if (!productId) {
     return (
-      <div className="max-w-[760px] mx-auto px-6 py-8">
+      <div className="max-w-[1040px] mx-auto px-6 py-8">
         <p className="text-sm text-muted">Save the listing once before uploading digital files.</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-[760px] mx-auto px-6 py-8">
+    <div className="max-w-[1040px] mx-auto px-6 py-8">
       <div className="bg-surface rounded-card border border-border shadow-card overflow-hidden">
         <div className="px-6 py-5 border-b border-border">
           <h3 className="font-semibold text-secondary">Digital files</h3>

@@ -307,7 +307,7 @@ export function ItemDetailsTab() {
   };
 
   return (
-    <div className="max-w-[760px] mx-auto px-6 py-8">
+    <div className="max-w-[1040px] mx-auto px-6 py-8">
       <div className="bg-surface rounded-card border border-border shadow-card overflow-hidden">
         {/* Section header */}
         <div className="px-6 py-5 border-b border-border">

@@ -163,7 +163,7 @@ export function SettingsTab({ productId, initialRelatedIds }: { productId?: stri
   });
 
   return (
-    <div className="max-w-[760px] mx-auto">
+    <div className="max-w-[1040px] mx-auto">
       <div className="bg-surface rounded-card border border-border shadow-card overflow-hidden">
         <TabSection
           title="Settings"

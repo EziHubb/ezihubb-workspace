@@ -455,7 +455,7 @@ export function PricingShippingTab({ product, onSwitchTab, isDigital }: PricingS
   const maxVariantPrice  = variantPrices.length ? Math.max(...variantPrices) : undefined;
 
   return (
-    <div className="max-w-[760px] mx-auto">
+    <div className="max-w-[1040px] mx-auto">
       <div className="bg-surface rounded-card border border-border shadow-card overflow-hidden divide-y divide-border">
 
         {/* ── Price & Inventory (Image 10) ─────────────────────────────── */}

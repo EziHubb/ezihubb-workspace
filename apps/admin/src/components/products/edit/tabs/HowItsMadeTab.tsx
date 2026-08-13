@@ -385,7 +385,7 @@ export function HowItsMadeTab({ productId }: { productId?: string }) {
   );
 
   return (
-    <div className="max-w-[760px] mx-auto">
+    <div className="max-w-[1040px] mx-auto">
       <div className="bg-surface rounded-card border border-border shadow-card overflow-hidden divide-y divide-border">
 
         {/* ── GPSR & Customs (Image 13) ────────────────────────────────── */}

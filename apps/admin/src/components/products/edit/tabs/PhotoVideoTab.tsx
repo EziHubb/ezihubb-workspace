@@ -741,7 +741,7 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
   };
 
   return (
-    <div className="max-w-[920px] mx-auto px-6 py-8 space-y-8">
+    <div className="max-w-[1200px] mx-auto px-6 py-8 space-y-8">
       {/* Header */}
       <div>
         <h2 className="text-lg font-semibold text-secondary">Photo and video</h2>

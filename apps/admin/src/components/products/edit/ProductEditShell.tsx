@@ -439,7 +439,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
           {/* Section nav (scroll-spy) — stays pinned to top on its own once the heading above scrolls out of view */}
           <nav
             ref={headerRef}
-            className="flex gap-0 px-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-border bg-surface sticky -top-6 lg:-top-8 z-20"
+            className="flex gap-0 px-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-border bg-surface sticky top-0 z-20"
           >
             {TABS.map((tab) => (
               <button
@@ -541,7 +541,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
         </div>
 
         {/* ── Sticky footer ─────────────────────────────────────────────────── */}
-        <div className="sticky -bottom-6 lg:-bottom-8 bg-surface border-t border-border px-6 py-3 flex items-center justify-between z-20">
+        <div className="sticky bottom-0 bg-surface border-t border-border px-6 py-3 flex items-center justify-between z-20">
           <div className="flex items-center gap-4">
             {mode === 'create' && (
               <button
