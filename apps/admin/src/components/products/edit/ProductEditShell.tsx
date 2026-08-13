@@ -134,12 +134,18 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
   // not an inner div. We locate it once on mount and attach everything to it.
 
   const [scrollContainer, setScrollContainer] = useState<HTMLElement | null>(null);
+  const scrollAreaRef  = useRef<HTMLDivElement>(null);
   const headerRef      = useRef<HTMLDivElement>(null);
   const sectionRefs    = useRef<Partial<Record<TabId, HTMLDivElement | null>>>({});
   const isScrollingRef = useRef(false);
 
+  // The shell owns its own scroll region (see the outer `overflow-y-auto` div
+  // below) instead of relying on the admin layout's <main> — the nav's sticky
+  // containing block needs to span the FULL scrollable content, and reaching
+  // across a negative-margin-bled boundary into an ancestor scroll container
+  // was exactly what made the tab nav/footer fail to stay pinned.
   useEffect(() => {
-    setScrollContainer(document.querySelector<HTMLElement>('main'));
+    setScrollContainer(scrollAreaRef.current);
   }, []);
 
   const scrollToSection = useCallback((id: TabId) => {
@@ -348,11 +354,17 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
 
   return (
     <FormProvider {...form}>
-      <div className="-m-6 lg:-m-8 flex flex-col" style={{ minHeight: 'calc(100vh - 64px)' }}>
+      <div className="-m-4 lg:-m-8 flex flex-col h-full">
 
-        {/* ── Page header ───────────────────────────────────────────────────── */}
-        {/* Breadcrumb + title scroll away with the page; only the tab strip below stays pinned — matches Etsy's Shop Manager listing editor. */}
-        <div className="bg-surface">
+        {/* ── Scroll region ─────────────────────────────────────────────────── */}
+        {/* Owns its own scrollbar so the tab nav's sticky containing block spans
+            the full height (breadcrumb+title+nav+all sections) instead of just
+            the short header wrapper — that mismatch was why the nav detached
+            and scrolled away instead of staying pinned. */}
+        <div ref={scrollAreaRef} className="flex-1 min-h-0 overflow-y-auto">
+
+          {/* Breadcrumb + title scroll away with the page; only the tab strip below stays pinned — matches Etsy's Shop Manager listing editor. */}
+          <div className="bg-surface">
 
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-xs text-muted px-6 pt-5 mb-3">
@@ -435,29 +447,33 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
               </div>
             )}
           </div>
-
-          {/* Section nav (scroll-spy) — stays pinned to top on its own once the heading above scrolls out of view */}
-          <nav
-            ref={headerRef}
-            className="flex gap-0 px-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-border bg-surface sticky top-0 z-20"
-          >
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => scrollToSection(tab.id)}
-                className={[
-                  'px-4 py-3 text-sm whitespace-nowrap border-b-2 transition-colors shrink-0',
-                  activeTab === tab.id
-                    ? 'border-primary text-primary font-semibold'
-                    : 'border-transparent text-muted hover:text-secondary',
-                ].join(' ')}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
         </div>
+
+        {/* Section nav (scroll-spy) — a direct child of the scroll region (not
+            nested inside the short header block above) so its sticky containing
+            block spans the full scrollable height and it stays pinned to top
+            all the way through the sections below, instead of detaching the
+            moment the short header block scrolls past. */}
+        <nav
+          ref={headerRef}
+          className="flex gap-0 px-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-border bg-surface sticky top-0 z-20"
+        >
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => scrollToSection(tab.id)}
+              className={[
+                'px-4 py-3 text-sm whitespace-nowrap border-b-2 transition-colors shrink-0',
+                activeTab === tab.id
+                  ? 'border-primary text-primary font-semibold'
+                  : 'border-transparent text-muted hover:text-secondary',
+              ].join(' ')}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
 
         {/* ── Sections ─────────────────────────────────────────────────────── */}
         <div className="flex-1 bg-background">
@@ -539,9 +555,14 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
           {/* Bottom breathing room */}
           <div className="h-16" />
         </div>
+        </div>
+        {/* ── end scroll region ────────────────────────────────────────────── */}
 
-        {/* ── Sticky footer ─────────────────────────────────────────────────── */}
-        <div className="sticky bottom-0 bg-surface border-t border-border px-6 py-3 flex items-center justify-between z-20">
+        {/* ── Footer ────────────────────────────────────────────────────────── */}
+        {/* A plain flex sibling OUTSIDE the scroll region, not `position: sticky`
+            — since it's the last item in the fixed-height flex column, it's
+            always flush against the bottom with no containing-block ambiguity. */}
+        <div className="shrink-0 bg-surface border-t border-border px-6 py-3 flex items-center justify-between z-20">
           <div className="flex items-center gap-4">
             {mode === 'create' && (
               <button

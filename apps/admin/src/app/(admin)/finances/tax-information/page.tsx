@@ -1,10 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
 import { Lock, Pencil } from 'lucide-react';
-import { useFinancesTaxInfo, useUpdateTaxInfo } from '@ezihubb/api-client';
-import { FinancesSubNav } from '../../../../../../components/seller/FinancesSubNav';
+import { useFinancesTaxInfo, useUpdateTaxInfo } from '../../../../lib/useFinances';
 
 type SellerType = 'INDIVIDUAL' | 'BUSINESS';
 
@@ -32,7 +30,6 @@ function Skeleton({ className = '' }: { className?: string }) {
 }
 
 export default function TaxInformationPage() {
-  const t = useTranslations('seller.finances.taxInfo');
   const { data: taxInfo, isLoading } = useFinancesTaxInfo();
   const updateTaxInfo = useUpdateTaxInfo();
   const [editing, setEditing] = useState(false);
@@ -44,8 +41,7 @@ export default function TaxInformationPage() {
       sellerType:    taxInfo.sellerType,
       fullLegalName: taxInfo.fullLegalName,
       // The API only ever returns a masked last4 — leaving this blank on
-      // submit keeps the existing encrypted value server-side (see
-      // updateTaxInfo), it does not clear it.
+      // submit keeps the existing encrypted value server-side, not clears it.
       taxpayerId:    '',
       dateOfBirth:   taxInfo.dateOfBirth ? taxInfo.dateOfBirth.slice(0, 10) : '',
       country:       taxInfo.country,
@@ -85,20 +81,21 @@ export default function TaxInformationPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-secondary mb-1">{t('title')}</h1>
-      <FinancesSubNav />
+      <h1 className="text-xl font-bold text-secondary mb-6">Legal and tax information</h1>
 
       {isLoading ? (
         <Skeleton className="h-64" />
       ) : editing ? (
         <form onSubmit={handleSubmit} className="max-w-2xl space-y-6">
           <p className="flex items-center gap-1.5 text-xs text-muted">
-            <Lock className="w-3.5 h-3.5" /> {t('encryptNote')}
+            <Lock className="w-3.5 h-3.5" /> We will encrypt and securely store this info
           </p>
 
           <div>
-            <p className="text-sm font-bold text-secondary mb-1">{t('sellerTypeQuestion')}</p>
-            <p className="text-xs text-muted mb-3">{t('sellerTypeNote')}</p>
+            <p className="text-sm font-bold text-secondary mb-1">What type of seller are you?</p>
+            <p className="text-xs text-muted mb-3">
+              This will not affect the status of your shop in any way. You can always update this later.
+            </p>
             <div className="space-y-2">
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
@@ -107,8 +104,8 @@ export default function TaxInformationPage() {
                   onChange={() => setForm((f) => ({ ...f, sellerType: 'INDIVIDUAL' }))}
                 />
                 <span>
-                  <span className="block text-sm text-secondary font-medium">{t('individual')}</span>
-                  <span className="block text-xs text-muted">{t('individualNote')}</span>
+                  <span className="block text-sm text-secondary font-medium">Individual or sole proprietorship</span>
+                  <span className="block text-xs text-muted">You sell under your own name or a trade name. Most sellers fall into this category.</span>
                 </span>
               </label>
               <label className="flex items-start gap-2.5 cursor-pointer">
@@ -117,65 +114,67 @@ export default function TaxInformationPage() {
                   checked={form.sellerType === 'BUSINESS'}
                   onChange={() => setForm((f) => ({ ...f, sellerType: 'BUSINESS' }))}
                 />
-                <span className="block text-sm text-secondary font-medium">{t('business')}</span>
+                <span className="block text-sm text-secondary font-medium">Incorporated business</span>
               </label>
             </div>
           </div>
 
           <div className="pt-4 border-t border-border space-y-4">
             <div>
-              <p className="text-sm font-bold text-secondary">{t('taxpayerIdTitle')}</p>
-              <p className="text-xs text-muted mt-0.5">{t('taxpayerIdNote')}</p>
+              <p className="text-sm font-bold text-secondary">Taxpayer information</p>
+              <p className="text-xs text-muted mt-0.5">
+                Enter your taxpayer ID to ensure withholding taxes aren&apos;t deducted from your sales where exempt.
+              </p>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-secondary mb-1">{t('fullLegalName')}</label>
+              <label className="block text-xs font-semibold text-secondary mb-1">Full legal name</label>
               <input required value={form.fullLegalName} onChange={(e) => setForm((f) => ({ ...f, fullLegalName: e.target.value }))} className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-secondary mb-1">{t('taxpayerId')}</label>
+              <label className="block text-xs font-semibold text-secondary mb-1">Taxpayer ID</label>
               <input
                 value={form.taxpayerId}
                 onChange={(e) => setForm((f) => ({ ...f, taxpayerId: e.target.value }))}
-                placeholder={taxInfo?.taxpayerIdLast4 ? t('taxpayerIdPlaceholderExisting', { last4: taxInfo.taxpayerIdLast4 }) : ''}
+                placeholder={taxInfo?.taxpayerIdLast4 ? `Leave blank to keep •••• ${taxInfo.taxpayerIdLast4}` : ''}
                 className={inputCls}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-secondary mb-1">{t('dateOfBirth')}</label>
+              <label className="block text-xs font-semibold text-secondary mb-1">Date of birth</label>
               <input type="date" value={form.dateOfBirth} onChange={(e) => setForm((f) => ({ ...f, dateOfBirth: e.target.value }))} className={inputCls} />
             </div>
           </div>
 
           <div className="pt-4 border-t border-border space-y-4">
-            <p className="text-sm font-bold text-secondary">{t('contactInfoTitle')}</p>
+            <p className="text-sm font-bold text-secondary">Primary owner&apos;s contact information</p>
             <div>
-              <label className="block text-xs font-semibold text-secondary mb-1">{t('country')}</label>
+              <label className="block text-xs font-semibold text-secondary mb-1">Country</label>
               <input required value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value.toUpperCase().slice(0, 2) }))} className={inputCls} maxLength={2} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-secondary mb-1">{t('streetAddress')}</label>
+              <label className="block text-xs font-semibold text-secondary mb-1">Street address</label>
               <input required value={form.streetAddress} onChange={(e) => setForm((f) => ({ ...f, streetAddress: e.target.value }))} className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-secondary mb-1">{t('flatOther')}</label>
+              <label className="block text-xs font-semibold text-secondary mb-1">Flat/Other (optional)</label>
               <input value={form.flatOther} onChange={(e) => setForm((f) => ({ ...f, flatOther: e.target.value }))} className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-secondary mb-1">{t('city')}</label>
+              <label className="block text-xs font-semibold text-secondary mb-1">City</label>
               <input required value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} className={inputCls} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-secondary mb-1">{t('province')}</label>
+                <label className="block text-xs font-semibold text-secondary mb-1">Province (optional)</label>
                 <input value={form.province} onChange={(e) => setForm((f) => ({ ...f, province: e.target.value }))} className={inputCls} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-secondary mb-1">{t('postCode')}</label>
+                <label className="block text-xs font-semibold text-secondary mb-1">Post code</label>
                 <input value={form.postCode} onChange={(e) => setForm((f) => ({ ...f, postCode: e.target.value }))} className={inputCls} />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-secondary mb-1">{t('phone')}</label>
+              <label className="block text-xs font-semibold text-secondary mb-1">Phone number (optional)</label>
               <input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} className={inputCls} />
             </div>
           </div>
@@ -183,11 +182,11 @@ export default function TaxInformationPage() {
           <div className="flex gap-3">
             <button type="button" onClick={() => setEditing(false)}
               className="px-5 py-2.5 border border-border text-secondary text-sm font-medium rounded-button hover:border-primary/40 transition-colors">
-              {t('cancel')}
+              Cancel
             </button>
             <button type="submit" disabled={updateTaxInfo.isPending}
               className="px-5 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors disabled:opacity-50">
-              {updateTaxInfo.isPending ? t('saving') : t('submit')}
+              {updateTaxInfo.isPending ? 'Saving…' : 'Submit'}
             </button>
           </div>
         </form>
@@ -195,25 +194,25 @@ export default function TaxInformationPage() {
         <div className="max-w-2xl bg-surface border border-border rounded-card p-5 space-y-4">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs text-muted mb-0.5">{t('sellerTypeQuestion')}</p>
-              <p className="text-sm text-secondary font-medium">{t(taxInfo.sellerType === 'INDIVIDUAL' ? 'individual' : 'business')}</p>
+              <p className="text-xs text-muted mb-0.5">What type of seller are you?</p>
+              <p className="text-sm text-secondary font-medium">{taxInfo.sellerType === 'INDIVIDUAL' ? 'Individual or sole proprietorship' : 'Incorporated business'}</p>
             </div>
             <button type="button" onClick={startEdit} className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
-              <Pencil className="w-3.5 h-3.5" /> {t('edit')}
+              <Pencil className="w-3.5 h-3.5" /> Edit
             </button>
           </div>
           <div className="pt-4 border-t border-border">
-            <p className="text-xs text-muted mb-0.5">{t('fullLegalName')}</p>
+            <p className="text-xs text-muted mb-0.5">Full legal name</p>
             <p className="text-sm text-secondary">{taxInfo.fullLegalName}</p>
           </div>
           {taxInfo.taxpayerIdLast4 && (
             <div>
-              <p className="text-xs text-muted mb-0.5">{t('taxpayerId')}</p>
+              <p className="text-xs text-muted mb-0.5">Taxpayer ID</p>
               <p className="text-sm text-secondary">•••• {taxInfo.taxpayerIdLast4}</p>
             </div>
           )}
           <div className="pt-4 border-t border-border">
-            <p className="text-xs text-muted mb-0.5">{t('contactInfoTitle')}</p>
+            <p className="text-xs text-muted mb-0.5">Primary owner&apos;s contact information</p>
             <p className="text-sm text-secondary">{taxInfo.streetAddress}</p>
             {taxInfo.flatOther && <p className="text-sm text-secondary">{taxInfo.flatOther}</p>}
             <p className="text-sm text-secondary">{[taxInfo.city, taxInfo.province, taxInfo.postCode].filter(Boolean).join(', ')}</p>
@@ -222,10 +221,10 @@ export default function TaxInformationPage() {
         </div>
       ) : (
         <div className="max-w-2xl bg-surface border border-border rounded-card p-6 text-center">
-          <p className="text-sm text-muted mb-3">{t('noTaxInfo')}</p>
+          <p className="text-sm text-muted mb-3">You haven&apos;t added your legal and tax information yet.</p>
           <button type="button" onClick={startEdit}
             className="px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors">
-            {t('addTaxInfo')}
+            Add legal and tax information
           </button>
         </div>
       )}

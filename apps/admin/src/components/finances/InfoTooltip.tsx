@@ -30,8 +30,7 @@ export function InfoTooltip({ children }: { children: React.ReactNode }) {
 
 /** Dotted-underline text that opens the same style of tooltip on click —
  *  matches Etsy's "net profit"/"total balance" underlined trigger text.
- *  `children` is the trigger label (usually the `chunks` from a `t.rich()`
- *  tag), `tooltip` is the popover content. */
+ *  `children` is the trigger label, `tooltip` is the popover content. */
 export function TooltipTerm({ children, tooltip }: { children: React.ReactNode; tooltip: React.ReactNode }) {
   const [open, setOpen] = useState(false);
 

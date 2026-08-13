@@ -14,7 +14,7 @@ import {
   CreditCard, Settings, ChevronDown, LogOut, Globe, MessageSquare, Link2,
   Bookmark, Factory, Shield, Store, BarChart2, Wallet, ShieldAlert, History,
   SlidersHorizontal, ScanSearch, TrendingUp,
-  Menu, X, Megaphone, Plug, KeyRound, ArrowLeftRight,
+  Menu, X, Megaphone, Plug, KeyRound, ArrowLeftRight, Landmark, FileText,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -176,7 +176,15 @@ function getShopNavSections(storeId: string): NavSection[] {
     {
       title: 'Finance',
       items: [
-        { label: 'Payouts', href: '/payouts', icon: Wallet },
+        {
+          label: 'Finances', href: '/finances', icon: Wallet,
+          children: [
+            { label: 'Payment account',          href: '/finances',                   icon: Landmark },
+            { label: 'Monthly statements',       href: '/finances/statements',         icon: History  },
+            { label: 'Payment settings',         href: '/finances/payment-settings',   icon: CreditCard },
+            { label: 'Legal and tax information', href: '/finances/tax-information',   icon: FileText },
+          ],
+        },
       ],
     },
     {

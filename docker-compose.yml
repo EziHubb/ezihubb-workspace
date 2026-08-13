@@ -131,6 +131,7 @@ services:
         NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL}
         NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN}
         NEXT_PUBLIC_GA_DASHBOARD_URL: ${NEXT_PUBLIC_GA_DASHBOARD_URL}
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
     container_name: ezihubb_admin
     restart: unless-stopped
     depends_on:

@@ -1,33 +1,31 @@
 'use client';
 
 import Link from 'next/link';
-import { useLocale, useTranslations } from 'next-intl';
 import { Clock, CheckCircle2, AlertCircle, ArrowRight, Landmark, Receipt } from 'lucide-react';
-import { useFinancesOverview, useFinancesActivitySummary, useFinancesActivities } from '@ezihubb/api-client';
-import { fmtAmount } from '@ezihubb/utils';
-import { FinancesSubNav } from '../../../../../components/seller/FinancesSubNav';
-import { ActivitySummaryCard } from '../../../../../components/seller/finances/ActivitySummaryCard';
-import { TooltipTerm } from '../../../../../components/seller/finances/InfoTooltip';
+import { useFinancesOverview, useFinancesActivitySummary, useFinancesActivities } from '../../../lib/useFinances';
+import { fmtAmount } from '../../../lib/fmt';
+import { ActivitySummaryCard } from '../../../components/finances/ActivitySummaryCard';
+import { TooltipTerm } from '../../../components/finances/InfoTooltip';
+import { LEDGER_TYPE_LABEL } from '../../../components/finances/ledgerTypeLabel';
 
 function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`animate-pulse bg-border rounded ${className}`} />;
 }
 
-export default function PaymentAccountPage() {
-  const t = useTranslations('seller.finances.paymentAccount');
-  const tType = useTranslations('seller.finances.ledgerType');
-  const locale = useLocale();
+const SCHEDULE_LABEL: Record<string, string> = {
+  WEEKLY: 'Weekly', BIWEEKLY: 'Every 2 weeks', MONTHLY: 'Monthly',
+};
 
+export default function PaymentAccountPage() {
   const { data: overview, isLoading: ovLoading } = useFinancesOverview();
   const { data: summary, isLoading: sumLoading } = useFinancesActivitySummary();
   const { data: recent } = useFinancesActivities(undefined, undefined, 1, 5);
 
-  const monthLabel = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(new Date());
+  const monthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date());
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-secondary mb-1">{t('title')}</h1>
-      <FinancesSubNav />
+      <h1 className="text-xl font-bold text-secondary mb-6">Payment account</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 mb-8">
         {/* Balance card */}
@@ -38,23 +36,23 @@ export default function PaymentAccountPage() {
             <>
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <p className="text-sm text-muted mb-1">{t('current')}</p>
+                  <p className="text-sm text-muted mb-1">Current</p>
                   <p className={`text-3xl font-bold ${(overview?.current ?? 0) < 0 ? 'text-error' : 'text-secondary'}`}>
                     {fmtAmount(overview?.current ?? 0)}
                   </p>
-                  <p className="text-xs text-muted mt-1">{t('currentDesc')}</p>
+                  <p className="text-xs text-muted mt-1">Balance to be covered by future or pending earnings</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted mb-1">{t('pending')}</p>
+                  <p className="text-sm text-muted mb-1">Pending</p>
                   <p className="text-3xl font-bold text-secondary">{fmtAmount(overview?.pending ?? 0)}</p>
-                  <p className="text-xs text-muted mt-1">{t('noPending')}</p>
+                  <p className="text-xs text-muted mt-1">No funds pending</p>
                 </div>
               </div>
 
               <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
                 <div>
-                  <p className="text-sm text-muted mb-1">{t('total')}</p>
-                  <p className="text-xs text-muted">{t('totalDesc')}</p>
+                  <p className="text-sm text-muted mb-1">Total</p>
+                  <p className="text-xs text-muted">All sales, fees, refunds, and credits</p>
                 </div>
                 <p className={`text-xl font-bold ${(overview?.total ?? 0) < 0 ? 'text-error' : 'text-secondary'}`}>
                   {fmtAmount(overview?.total ?? 0)}
@@ -62,7 +60,7 @@ export default function PaymentAccountPage() {
               </div>
 
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-border text-sm">
-                <span className="text-muted">{t('depositNote')}</span>
+                <span className="text-muted">Funds are eligible for deposit 14 days after a sale.</span>
               </div>
             </>
           )}
@@ -74,29 +72,29 @@ export default function PaymentAccountPage() {
             {overview?.hasFundsReadyForDeposit ? (
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                <span className="text-sm font-bold text-secondary">{t('fundsReady')}</span>
+                <span className="text-sm font-bold text-secondary">Funds ready for deposit</span>
               </div>
             ) : (
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="w-4 h-4 text-secondary shrink-0" />
-                <span className="text-sm font-bold text-secondary">{t('noFundsReady')}</span>
+                <span className="text-sm font-bold text-secondary">No funds ready for deposit</span>
               </div>
             )}
             <p className="text-xs text-muted mb-3">
-              {t('noFundsReadyDesc', { amount: fmtAmount(overview?.depositMinAmount ?? 2) })}
+              Deposits become available once your current balance is above {fmtAmount(overview?.depositMinAmount ?? 2)}.
             </p>
             <Link
-              href={`/${locale}/seller/finances/payment-settings`}
+              href="/finances/payment-settings"
               className="flex items-center justify-between text-xs font-medium text-secondary hover:text-primary transition-colors"
             >
               <span className="flex items-center gap-1.5">
                 <Landmark className="w-3.5 h-3.5 text-muted" />
-                {t('depositSettings')}
+                Deposit settings
               </span>
               <span className="flex items-center gap-1 text-muted">
                 {overview?.bankAccount
-                  ? t(`schedule.${overview.bankAccount.depositSchedule}`)
-                  : t('notSet')}
+                  ? SCHEDULE_LABEL[overview.bankAccount.depositSchedule]
+                  : 'Not set'}
                 <ArrowRight className="w-3 h-3" />
               </span>
             </Link>
@@ -111,22 +109,24 @@ export default function PaymentAccountPage() {
               )}
               <span className="text-sm font-bold text-secondary">
                 {overview?.nothingDueThisMonth
-                  ? t('nothingDue', { month: monthLabel })
-                  : t('somethingDue', { amount: fmtAmount(overview?.amountDueThisMonth ?? 0), month: monthLabel })}
+                  ? `Nothing due for ${monthLabel}`
+                  : `${fmtAmount(overview?.amountDueThisMonth ?? 0)} due for ${monthLabel}`}
               </span>
             </div>
             <p className="text-xs text-muted mb-3">
-              {overview?.nothingDueThisMonth ? t('nothingDueDesc') : t('somethingDueDesc')}
+              {overview?.nothingDueThisMonth
+                ? 'Your earnings covered your fees this month.'
+                : 'This amount will be charged to your billing card.'}
             </p>
             <Link
-              href={`/${locale}/seller/finances/payment-settings?tab=billing`}
+              href="/finances/payment-settings?tab=billing"
               className="flex items-center justify-between text-xs font-medium text-secondary hover:text-primary transition-colors"
             >
-              <span>{t('autoBilling')}</span>
+              <span>Auto-billing</span>
               <span className="flex items-center gap-1 text-muted">
                 {overview?.defaultCard
-                  ? t('cardEnding', { last4: overview.defaultCard.last4 })
-                  : t('notSet')}
+                  ? `•••• ${overview.defaultCard.last4}`
+                  : 'Not set'}
                 <ArrowRight className="w-3 h-3" />
               </span>
             </Link>
@@ -145,33 +145,32 @@ export default function PaymentAccountPage() {
       {/* Recent activities */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-bold text-secondary">{t('recentActivities')}</h2>
+          <h2 className="text-base font-bold text-secondary">Recent activities</h2>
           <Link
-            href={`/${locale}/seller/finances/statements`}
+            href="/finances/statements"
             className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
           >
-            {t('seeFullHistory')} <ArrowRight className="w-3 h-3" />
+            See full history <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
         <p className="text-sm text-secondary mb-4">
-          {t.rich('totalBalanceText', {
-            amount: fmtAmount(overview?.current ?? 0),
-            tb: (chunks) => <TooltipTerm tooltip={t('totalBalanceTooltip')}>{chunks}</TooltipTerm>,
-            amt: (chunks) => (
-              <span className={(overview?.current ?? 0) < 0 ? 'text-error font-bold' : 'text-secondary font-bold'}>
-                {chunks}
-              </span>
-            ),
-          })}
+          Your{' '}
+          <TooltipTerm tooltip="A running total of all activity in your Payment account, like money you've made from your sales, fees you've been charged, and more. This number changes with each new transaction. Your total balance might include funds from recent sales that aren't available for deposit yet.">
+            total balance
+          </TooltipTerm>{' '}
+          is{' '}
+          <span className={(overview?.current ?? 0) < 0 ? 'text-error font-bold' : 'text-secondary font-bold'}>
+            {fmtAmount(overview?.current ?? 0)}
+          </span>
         </p>
 
         <div className="bg-surface border border-border rounded-card overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-background/40">
-                <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">{t('table.type')}</th>
-                <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">{t('table.date')}</th>
-                <th className="text-right px-4 py-2.5 font-medium text-muted text-xs">{t('table.net')}</th>
+                <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">Type</th>
+                <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">Date</th>
+                <th className="text-right px-4 py-2.5 font-medium text-muted text-xs">Net</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -180,11 +179,11 @@ export default function PaymentAccountPage() {
                   <td className="px-4 py-3">
                     <span className="flex items-center gap-2 text-secondary">
                       <Receipt className="w-4 h-4 text-muted shrink-0" />
-                      {tType(row.type)}
+                      {LEDGER_TYPE_LABEL[row.type] ?? row.type}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-muted">
-                    {new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(row.date))}
+                    {new Intl.DateTimeFormat('en-US', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(row.date))}
                   </td>
                   <td className={`px-4 py-3 text-right font-medium ${row.amount < 0 ? 'text-error' : 'text-secondary'}`}>
                     {fmtAmount(row.amount)}
@@ -193,7 +192,7 @@ export default function PaymentAccountPage() {
               ))}
               {(recent?.data ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-sm text-muted">{t('noActivity')}</td>
+                  <td colSpan={3} className="px-4 py-8 text-center text-sm text-muted">No activity yet</td>
                 </tr>
               )}
             </tbody>

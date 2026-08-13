@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -12,6 +12,7 @@ import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtDate, capitalize } from '../../../lib/fmt';
 import { useDialog } from '../../../contexts/DialogContext';
 import { FilterSelect, type FilterOption } from '../../../components/ui/FilterSelect';
+import { useAdminMode } from '../../../lib/store-context';
 
 interface PayoutStats {
   pendingCount:      number;
@@ -236,7 +237,34 @@ function AdminPayoutsPageInner() {
 
 // ── Page wrapper (Suspense boundary for useSearchParams) ─────────────────────
 
+/**
+ * The Etsy-parity Finances module (/finances) replaced this page for a
+ * single-store view (a real shop-owner ADMIN, or a SUPER_ADMIN switched into
+ * "My Store") — Finances has no multi-store concept, so it can't take over
+ * the platform-wide "review every seller's payout requests" table a
+ * platform-context SUPER_ADMIN still needs. That admin oversight tool stays
+ * here, unchanged, for platform context only.
+ */
 export default function AdminPayoutsPage() {
+  const router = useRouter();
+  const { role, isPlatformContext } = useAdminMode();
+  // `role` is '' until the session resolves — don't redirect on that transient
+  // state, or a genuine platform-context SUPER_ADMIN would flash-redirect to
+  // /finances on every load before bouncing back.
+  const sessionReady = role !== '';
+
+  useEffect(() => {
+    if (sessionReady && !isPlatformContext) router.replace('/finances');
+  }, [sessionReady, isPlatformContext, router]);
+
+  if (!sessionReady || !isPlatformContext) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <>
       <AdminPageHeader

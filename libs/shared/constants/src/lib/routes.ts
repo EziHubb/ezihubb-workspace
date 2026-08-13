@@ -390,6 +390,21 @@ export const API_ROUTES = {
     FINANCE_STORES:           '/admin/finance/stores',
     FINANCE_CHART:            '/admin/finance/chart',
 
+    // ── Finances (Etsy-parity shop-owner module — admin-app mirror of SELLER.FINANCES_*) ──
+    FINANCES_OVERVIEW:             '/admin/finances/overview',
+    FINANCES_ACTIVITY_SUMMARY:     '/admin/finances/activity-summary',
+    FINANCES_ACTIVITIES:           '/admin/finances/activities',
+    FINANCES_ACTIVITIES_EXPORT:    '/admin/finances/activities/export',
+    FINANCES_BANK_ACCOUNT:         '/admin/finances/bank-account',
+    FINANCES_BILLING_CARDS:        '/admin/finances/billing-cards',
+    FINANCES_BILLING_SETUP_INTENT: '/admin/finances/billing-cards/setup-intent',
+    FINANCES_BILLING_CONFIRM:      '/admin/finances/billing-cards/confirm',
+    FINANCES_BILLING_CARD_DEFAULT: (id: string) => `/admin/finances/billing-cards/${id}/default`,
+    FINANCES_BILLING_CARD:         (id: string) => `/admin/finances/billing-cards/${id}`,
+    FINANCES_AUTO_BILLING:         '/admin/finances/auto-billing',
+    FINANCES_CURRENCY:             '/admin/finances/currency',
+    FINANCES_TAX_INFO:             '/admin/finances/tax-info',
+
     // ── Moderation / Trust & Safety ──────────────────────────────────────────
     MODERATION_FLAGS:         '/admin/moderation/flags',
     MODERATION_STATS:         '/admin/moderation/stats',

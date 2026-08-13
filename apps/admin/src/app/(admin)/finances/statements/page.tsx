@@ -1,32 +1,28 @@
 'use client';
 
 import { useState } from 'react';
-import { useLocale, useTranslations } from 'next-intl';
 import { Landmark, Receipt, ArrowLeft, ArrowRight, Download } from 'lucide-react';
-import { api, useFinancesActivitySummary, useFinancesActivities } from '@ezihubb/api-client';
+import { api } from '../../../../lib/api-client';
+import { useFinancesActivitySummary, useFinancesActivities } from '../../../../lib/useFinances';
 import { API_ROUTES } from '@ezihubb/constants';
-import { fmtAmount } from '@ezihubb/utils';
-import { FinancesSubNav } from '../../../../../../components/seller/FinancesSubNav';
-import { ActivitySummaryCard } from '../../../../../../components/seller/finances/ActivitySummaryCard';
+import { fmtAmount } from '../../../../lib/fmt';
+import { ActivitySummaryCard } from '../../../../components/finances/ActivitySummaryCard';
+import { LEDGER_TYPE_LABEL } from '../../../../components/finances/ledgerTypeLabel';
 
 function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`animate-pulse bg-border rounded ${className}`} />;
 }
 
 export default function MonthlyStatementPage() {
-  const t = useTranslations('seller.finances.statements');
-  const tType = useTranslations('seller.finances.ledgerType');
-  const locale = useLocale();
-
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
 
-  const monthLabel = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(new Date(year, month - 1, 1));
+  const monthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date(year, month - 1, 1));
   const monthNames = Array.from({ length: 12 }, (_, i) =>
-    new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(2000, i, 1)),
+    new Intl.DateTimeFormat('en-US', { month: 'long' }).format(new Date(2000, i, 1)),
   );
   const yearOptions = Array.from({ length: 6 }, (_, i) => now.getFullYear() - i);
 
@@ -42,7 +38,7 @@ export default function MonthlyStatementPage() {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const csv = await api.get<string>(API_ROUTES.SELLER.FINANCES_ACTIVITIES_EXPORT, { params: { month, year } });
+      const csv = await api.get<string>(API_ROUTES.ADMIN.FINANCES_ACTIVITIES_EXPORT, { params: { month, year } });
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -60,14 +56,13 @@ export default function MonthlyStatementPage() {
   return (
     <div>
       <div className="flex items-center gap-1.5 text-xs text-muted mb-2">
-        <span>{t('breadcrumbPaymentAccount')}</span>
+        <span>Payment account</span>
         <span>/</span>
-        <span>{t('breadcrumbMonthlyStatements')}</span>
+        <span>Monthly statements</span>
         <span>/</span>
-        <span className="text-secondary font-medium">{t('breadcrumbCurrent')}</span>
+        <span className="text-secondary font-medium">Monthly statement</span>
       </div>
-      <h1 className="text-xl font-bold text-secondary mb-1">{t('title')}</h1>
-      <FinancesSubNav />
+      <h1 className="text-xl font-bold text-secondary mb-6">Monthly statement</h1>
 
       <div className="flex items-center gap-2 mb-5">
         <select
@@ -97,7 +92,7 @@ export default function MonthlyStatementPage() {
       )}
 
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-base font-bold text-secondary">{t('allActivities')}</h2>
+        <h2 className="text-base font-bold text-secondary">All activities</h2>
         <button
           type="button"
           onClick={handleExport}
@@ -105,7 +100,7 @@ export default function MonthlyStatementPage() {
           className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-border text-secondary hover:border-primary/40 transition-colors disabled:opacity-50"
         >
           <Download className="w-3.5 h-3.5" />
-          {exporting ? t('generating') : t('generateCsv')}
+          {exporting ? 'Generating…' : 'Generate CSV'}
         </button>
       </div>
 
@@ -114,11 +109,11 @@ export default function MonthlyStatementPage() {
           <thead>
             <tr className="border-b border-border bg-background/40">
               <th className="w-8" />
-              <th className="text-left px-3 py-2.5 font-medium text-muted text-xs">{t('table.date')}</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted text-xs">{t('table.type')}</th>
-              <th className="text-left px-3 py-2.5 font-medium text-muted text-xs">{t('table.description')}</th>
-              <th className="text-right px-3 py-2.5 font-medium text-muted text-xs">{t('table.net')}</th>
-              <th className="text-right px-3 py-2.5 font-medium text-muted text-xs">{t('table.balance')}</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted text-xs">Date</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted text-xs">Type</th>
+              <th className="text-left px-3 py-2.5 font-medium text-muted text-xs">Description</th>
+              <th className="text-right px-3 py-2.5 font-medium text-muted text-xs">Net</th>
+              <th className="text-right px-3 py-2.5 font-medium text-muted text-xs">Balance</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -127,7 +122,7 @@ export default function MonthlyStatementPage() {
                 <tr key={i}><td colSpan={6} className="px-3 py-3"><Skeleton className="h-4" /></td></tr>
               ))
             ) : (activities?.data ?? []).length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-muted">{t('noActivity')}</td></tr>
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-muted">No activity for this period.</td></tr>
             ) : (
               (activities?.data ?? []).map((row) => (
                 <tr key={row.id} className="hover:bg-background/40 transition-colors">
@@ -137,9 +132,9 @@ export default function MonthlyStatementPage() {
                       : <Receipt className="w-4 h-4 text-muted" />}
                   </td>
                   <td className="px-3 py-3 text-muted whitespace-nowrap">
-                    {new Intl.DateTimeFormat(locale, { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(row.date))}
+                    {new Intl.DateTimeFormat('en-US', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(row.date))}
                   </td>
-                  <td className="px-3 py-3 text-secondary">{tType(row.type)}</td>
+                  <td className="px-3 py-3 text-secondary">{LEDGER_TYPE_LABEL[row.type] ?? row.type}</td>
                   <td className="px-3 py-3 text-secondary max-w-xs truncate">{row.description}</td>
                   <td className={`px-3 py-3 text-right font-medium whitespace-nowrap ${row.amount < 0 ? 'text-error' : 'text-secondary'}`}>
                     {fmtAmount(row.amount)}
@@ -160,7 +155,7 @@ export default function MonthlyStatementPage() {
             type="button"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}
-            aria-label={t('prevPage')}
+            aria-label="Previous page"
             className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted hover:border-primary/40 disabled:opacity-40 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -170,7 +165,7 @@ export default function MonthlyStatementPage() {
             type="button"
             onClick={() => setPage((p) => Math.min(activities.pagination.totalPages, p + 1))}
             disabled={page >= activities.pagination.totalPages}
-            aria-label={t('nextPage')}
+            aria-label="Next page"
             className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted hover:border-primary/40 disabled:opacity-40 transition-colors"
           >
             <ArrowRight className="w-4 h-4" />

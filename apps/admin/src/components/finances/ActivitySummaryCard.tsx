@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
 import { ChevronDown, ChevronUp, Wallet, CreditCard, Megaphone } from 'lucide-react';
-import { fmtAmount } from '@ezihubb/utils';
+import { fmtAmount } from '../../lib/fmt';
 import type { FinancesActivitySummaryDto } from '@ezihubb/types';
 import { InfoTooltip, TooltipTerm } from './InfoTooltip';
 
@@ -63,70 +62,67 @@ export function ActivitySummaryCard({
   summary:    FinancesActivitySummaryDto;
   monthLabel: string;
 }) {
-  const t = useTranslations('seller.finances.activitySummary');
   const [expanded, setExpanded] = useState(false);
 
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-base font-bold text-secondary">{t('title')}</h2>
+        <h2 className="text-base font-bold text-secondary">Activity summary</h2>
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
           className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-border text-secondary hover:border-primary/40 transition-colors"
         >
           {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          {expanded ? t('collapseCategories') : t('expandCategories')}
+          {expanded ? 'Collapse categories' : 'Expand categories'}
         </button>
       </div>
 
       <p className="text-sm text-secondary mb-4">
-        {t.rich('netProfitText', {
-          month:  monthLabel,
-          amount: fmtAmount(summary.netProfit),
-          np:  (chunks) => <TooltipTerm tooltip={t('netProfitTooltip')}>{chunks}</TooltipTerm>,
-          amt: (chunks) => (
-            <span className={summary.netProfit < 0 ? 'text-error font-bold' : 'text-secondary font-bold'}>
-              {chunks}
-            </span>
-          ),
-        })}
+        Your current{' '}
+        <TooltipTerm tooltip="Your total Sales minus any deductions like refunds and your total Fees and Marketing costs for the selected time period.">
+          net profit
+        </TooltipTerm>{' '}
+        on {monthLabel} is{' '}
+        <span className={summary.netProfit < 0 ? 'text-error font-bold' : 'text-secondary font-bold'}>
+          {fmtAmount(summary.netProfit)}
+        </span>
       </p>
 
-      <p className="text-sm font-semibold text-secondary mb-2">{t('salesAndFees')}</p>
+      <p className="text-sm font-semibold text-secondary mb-2">Sales and fees</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         <CategoryCard
           icon={Wallet} iconBg="bg-success/10" iconColor="text-success"
-          title={t('sales')} total={summary.sales.total} expanded={expanded}
+          title="Sales" total={summary.sales.total} expanded={expanded}
           rows={[
-            { label: t('totalSales', { count: summary.sales.totalSalesCount }), value: null },
-            { label: t('refunds', { count: 0 }), value: null },
-            { label: t('salesTaxRemitted'), value: null, tooltip: t('remittedTooltip') },
-            { label: t('vatRemitted'), value: null, tooltip: t('remittedTooltip') },
+            { label: `Total sales (${summary.sales.totalSalesCount})`, value: null },
+            { label: 'Refunds (0)', value: null },
+            { label: 'Sales tax paid by buyer (Remitted)', value: null, tooltip: 'Collected from the buyer and passed directly to tax authorities — not deducted from your earnings.' },
+            { label: 'VAT paid by buyer (Remitted)', value: null, tooltip: 'Collected from the buyer and passed directly to tax authorities — not deducted from your earnings.' },
           ]}
         />
         <CategoryCard
           icon={CreditCard} iconBg="bg-error/10" iconColor="text-error"
-          title={t('fees')} total={summary.fees.total} expanded={expanded}
+          title="Fees" total={summary.fees.total} expanded={expanded}
           rows={[
-            { label: t('listingFees'), value: summary.fees.listingFees || null, tooltip: t('listingFeesTooltip') },
-            { label: t('transactionFees'), value: summary.fees.transactionFees || null, tooltip: t('transactionFeesTooltip') },
-            { label: t('processingFees'), value: summary.fees.processingFees || null, tooltip: t('processingFeesTooltip') },
-            { label: t('regulatoryFee'), value: summary.fees.regulatoryFee || null, tooltip: t('regulatoryFeeTooltip') },
-            { label: t('depositFees'), value: summary.fees.depositFees || null, tooltip: t('depositFeesTooltip') },
-            { label: t('vatOnFees'), value: summary.fees.vatOnFees || null, tooltip: t('vatOnFeesTooltip') },
+            { label: 'Listing fees', value: summary.fees.listingFees || null, tooltip: 'A flat fee charged each time you publish a listing.' },
+            { label: 'Transaction fees', value: summary.fees.transactionFees || null, tooltip: 'A percentage of the order subtotal and shipping, charged on each sale.' },
+            { label: 'Processing fees', value: summary.fees.processingFees || null, tooltip: 'A percentage plus a fixed fee to process each payment.' },
+            { label: 'Regulatory Operating fee', value: summary.fees.regulatoryFee || null, tooltip: 'An additional fee applied in certain regions to cover regulatory costs.' },
+            { label: 'Deposit fees', value: summary.fees.depositFees || null, tooltip: 'A fee that may apply to certain international bank deposits.' },
+            { label: 'VAT on seller fees', value: summary.fees.vatOnFees || null, tooltip: 'Value-added tax charged on top of your other platform fees.' },
           ]}
         />
       </div>
 
-      <p className="text-sm font-semibold text-secondary mb-2">{t('sellerServices')}</p>
+      <p className="text-sm font-semibold text-secondary mb-2">Seller services</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <CategoryCard
           icon={Megaphone} iconBg="bg-primary/10" iconColor="text-primary"
-          title={t('marketing')} total={summary.marketing.total} expanded={expanded}
+          title="Marketing" total={summary.marketing.total} expanded={expanded}
           rows={[
-            { label: t('platformAds'), value: null },
-            { label: t('offsiteAds'), value: null },
+            { label: 'Platform Ads', value: null },
+            { label: 'Offsite Ads', value: null },
           ]}
         />
       </div>
