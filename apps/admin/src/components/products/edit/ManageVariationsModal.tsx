@@ -5,7 +5,7 @@ import { useDialog } from '../../../contexts/DialogContext';
 import Image from 'next/image';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  X, Plus, Trash2, Pencil, ChevronLeft, Check,
+  X, Plus, Trash2, Pencil, ChevronLeft,
   ArrowRight, AlignLeft, Palette, LayoutGrid, Layers,
 } from 'lucide-react';
 import { api } from '../../../lib/api-client';

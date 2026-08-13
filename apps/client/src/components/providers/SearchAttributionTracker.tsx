@@ -19,7 +19,7 @@ export function SearchAttributionTracker() {
   useEffect(() => {
     if (!term) return;
     saveSearchAttribution(term);
-    apiClient.post(API_ROUTES.SEARCH.CLICK, { term }).catch(() => {});
+    apiClient.post(API_ROUTES.SEARCH.CLICK, { term }).catch(() => undefined);
   }, [term]);
 
   return null;
