@@ -42,6 +42,7 @@ import { TranslationsModule } from '../modules/translations/translations.module'
 import { StoresModule } from '../modules/stores/stores.module';
 import { ModerationModule } from '../modules/moderation/moderation.module';
 import { ShopStatsModule } from '../modules/shop-stats/shop-stats.module';
+import { MarketplaceInsightsModule } from '../modules/marketplace-insights/marketplace-insights.module';
 import { OrderTrackingModule } from '../modules/order-tracking/order-tracking.module';
 import { FulfillmentModule } from '../modules/fulfillment/fulfillment.module';
 import { PartnerApiModule } from '../modules/partner-api/partner-api.module';
@@ -154,6 +155,7 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
     StoresModule,
     ModerationModule,
     ShopStatsModule,
+    MarketplaceInsightsModule,
     OrderTrackingModule,
     FulfillmentModule,
     PartnerApiModule,

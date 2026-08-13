@@ -10,12 +10,14 @@ export class QueueSchedulerService implements OnApplicationBootstrap {
   constructor(
     @InjectQueue(QUEUES.ABANDONED_CART) private readonly abandonedCartQueue: Queue,
     @InjectQueue(QUEUES.IMAGE_PROCESSING) private readonly imageQueue: Queue,
+    @InjectQueue(QUEUES.SCHEDULED) private readonly scheduledQueue: Queue,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
     await Promise.all([
       this.scheduleAbandonedCartScan(),
       this.scheduleCleanupTempImages(),
+      this.scheduleFlushSearchStats(),
     ]);
   }
 
@@ -57,6 +59,27 @@ export class QueueSchedulerService implements OnApplicationBootstrap {
       }
     } catch (err) {
       this.logger.warn(`Failed to schedule cleanup-temp-images job: ${String(err)}`);
+    }
+  }
+
+  private async scheduleFlushSearchStats(): Promise<void> {
+    try {
+      const existing = await this.scheduledQueue.getRepeatableJobs();
+      if (!existing.some((j) => j.name === JOBS.DAILY_FLUSH_SEARCH_STATS)) {
+        await this.scheduledQueue.add(
+          JOBS.DAILY_FLUSH_SEARCH_STATS,
+          {},
+          {
+            repeat:           { pattern: '15 0 * * *' }, // 00:15 UTC daily — just past midnight
+            removeOnComplete: { count: 30 },
+            removeOnFail:     { count: 20 },
+            jobId:            'daily-flush-search-stats',
+          },
+        );
+        this.logger.log('Scheduled search-stats flush: daily at 00:15 UTC');
+      }
+    } catch (err) {
+      this.logger.warn(`Failed to schedule daily-flush-search-stats job: ${String(err)}`);
     }
   }
 }

@@ -93,20 +93,143 @@ export class AnalyticsService {
   }
 
   // ── Search analytics ────────────────────────────────────────────────────────
+  // Single source of truth for search tracking — SearchService used to also
+  // write its own separate 'search:trending' zset on every query, duplicating
+  // this one under a different key for no reason. getTrending()/getRelated()
+  // now read 'search:trending:7d' (below) instead.
 
-  async trackSearch(query: string, resultCount: number): Promise<void> {
+  async trackSearch(query: string, resultCount: number, category?: string): Promise<void> {
     if (!query?.trim() || !this.redis.isAvailable()) return;
     const normalized = query.trim().toLowerCase();
     const client = this.redis.getClient();
+    const today = this.dateStr(new Date());
     try {
-      await client.zincrby('search:trending:7d', 1, normalized);
-      await client.expire('search:trending:7d', 7 * 24 * 3600);
+      const ops: Promise<unknown>[] = [
+        client.zincrby('search:trending:7d', 1, normalized),
+        client.expire('search:trending:7d', 7 * 24 * 3600),
+        // Per-day counters, flushed into SearchTermDailyStat by the nightly
+        // job (flushDailySearchStats) then deleted — short TTL here is just
+        // a safety net in case a flush is ever missed.
+        client.zincrby(`search:volume:${today}`, 1, normalized),
+        client.expire(`search:volume:${today}`, 3 * 24 * 3600),
+        client.hset(`search:results:${today}`, normalized, resultCount),
+        client.expire(`search:results:${today}`, 3 * 24 * 3600),
+      ];
+      if (category) {
+        // Last-write-wins per term per day — a reasonable approximation
+        // since a given term's matching results (and thus dominant category)
+        // rarely shift category across searches on the same day.
+        ops.push(
+          client.hset(`search:category:${today}`, normalized, category),
+          client.expire(`search:category:${today}`, 3 * 24 * 3600),
+        );
+      }
+      await Promise.all(ops);
       if (resultCount === 0) {
         await client.zincrby('search:zero_results', 1, normalized);
       }
     } catch (err) {
       this.logger.warn(`trackSearch Redis error: ${(err as Error).message}`);
     }
+  }
+
+  /** Fired when a buyer lands on a product page via a search-result link (?st=term). */
+  async trackSearchClick(query: string): Promise<void> {
+    if (!query?.trim() || !this.redis.isAvailable()) return;
+    const normalized = query.trim().toLowerCase();
+    const today = this.dateStr(new Date());
+    try {
+      const client = this.redis.getClient();
+      await client.zincrby(`search:clicks:${today}`, 1, normalized);
+      await client.expire(`search:clicks:${today}`, 3 * 24 * 3600);
+    } catch (err) {
+      this.logger.warn(`trackSearchClick Redis error: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Nightly: fold the given day's Redis search counters into durable
+   * SearchTermDailyStat rows, then clear the Redis keys. Purchases are
+   * computed straight from OrderItem.searchTerm (already persisted at
+   * checkout) rather than a separate Redis counter, so there's one source of
+   * truth for that number instead of two that could drift apart.
+   */
+  async flushDailySearchStats(date: string): Promise<{ termsFlushed: number }> {
+    if (!this.redis.isAvailable()) return { termsFlushed: 0 };
+    const client = this.redis.getClient();
+
+    const [volumeRows, resultsHash, clickRows, categoryHash] = await Promise.all([
+      client.zrange(`search:volume:${date}`, 0, -1, 'WITHSCORES'),
+      client.hgetall(`search:results:${date}`),
+      client.zrange(`search:clicks:${date}`, 0, -1, 'WITHSCORES'),
+      client.hgetall(`search:category:${date}`),
+    ]);
+
+    const searches = new Map<string, number>();
+    for (let i = 0; i < volumeRows.length; i += 2) {
+      searches.set(volumeRows[i], Number(volumeRows[i + 1]));
+    }
+    const clicks = new Map<string, number>();
+    for (let i = 0; i < clickRows.length; i += 2) {
+      clicks.set(clickRows[i], Number(clickRows[i + 1]));
+    }
+
+    const dayStart = new Date(`${date}T00:00:00.000Z`);
+    const dayEnd = new Date(`${date}T23:59:59.999Z`);
+    const purchaseRows = await this.prisma.orderItem.groupBy({
+      by: ['searchTerm'],
+      where: { searchTerm: { not: null }, createdAt: { gte: dayStart, lte: dayEnd } },
+      _count: { searchTerm: true },
+    });
+    const purchases = new Map<string, number>();
+    for (const row of purchaseRows) {
+      if (row.searchTerm) purchases.set(row.searchTerm, row._count.searchTerm);
+    }
+
+    const allTerms = new Set<string>([
+      ...searches.keys(),
+      ...clicks.keys(),
+      ...purchases.keys(),
+    ]);
+
+    for (const term of allTerms) {
+      await this.prisma.searchTermDailyStat.upsert({
+        where: { term_date: { term, date } },
+        create: {
+          term,
+          date,
+          searches:     searches.get(term) ?? 0,
+          resultsCount: Number(resultsHash?.[term] ?? 0),
+          clicks:       clicks.get(term) ?? 0,
+          purchases:    purchases.get(term) ?? 0,
+          category:     categoryHash?.[term] ?? null,
+        },
+        update: {
+          searches:     searches.get(term) ?? 0,
+          resultsCount: Number(resultsHash?.[term] ?? 0),
+          clicks:       clicks.get(term) ?? 0,
+          purchases:    purchases.get(term) ?? 0,
+          category:     categoryHash?.[term] ?? null,
+        },
+      }).catch((err: Error) =>
+        this.logger.warn(`SearchTermDailyStat upsert failed (${term}, ${date}): ${err.message}`),
+      );
+    }
+
+    await client
+      .del(`search:volume:${date}`, `search:results:${date}`, `search:clicks:${date}`, `search:category:${date}`)
+      .catch(() => undefined);
+
+    return { termsFlushed: allTerms.size };
+  }
+
+  /** 90-day retention for SearchTermDailyStat — called by the same nightly job. */
+  async cleanupOldSearchStats(): Promise<{ deleted: number }> {
+    const cutoff = this.dateStr(this.subDays(new Date(), 90));
+    const result = await this.prisma.searchTermDailyStat.deleteMany({
+      where: { date: { lt: cutoff } },
+    });
+    return { deleted: result.count };
   }
 
   // ── Product view tracking ───────────────────────────────────────────────────
@@ -211,16 +334,22 @@ export class AnalyticsService {
 
   // ── Private helpers ─────────────────────────────────────────────────────────
 
+  // UTC-explicit (not local time) — flushDailySearchStats compares this
+  // against OrderItem.createdAt using explicit `${date}T00:00:00.000Z`
+  // boundaries, so the two have to agree on what "day" a timestamp falls in
+  // regardless of the container's TZ setting. Production runs UTC today, so
+  // this is a no-op in practice, but local-time getters here would silently
+  // misattribute purchases near midnight the moment that ever changes.
   private dateStr(d: Date): string {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
   }
 
   private subDays(d: Date, days: number): Date {
     const result = new Date(d);
-    result.setDate(result.getDate() - days);
+    result.setUTCDate(result.getUTCDate() - days);
     return result;
   }
 }

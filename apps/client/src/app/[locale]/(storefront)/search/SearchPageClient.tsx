@@ -203,6 +203,7 @@ export function SearchPageClient() {
               <SearchProductGrid
                 products={data?.data ?? []}
                 isPending={isPending}
+                searchTerm={trimmedQ || undefined}
               />
               <SearchPagination
                 pagination={data?.pagination}

@@ -28,4 +28,9 @@ export class AddCartItemDto {
   @IsOptional()
   @IsString()
   previewUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Search term that led the buyer here, for marketplace-insights conversion tracking' })
+  @IsOptional()
+  @IsString()
+  searchTerm?: string;
 }

@@ -6,9 +6,11 @@ import { ImageProcessor } from './image.processor';
 import { OrderProcessor } from './order.processor';
 import { AbandonedCartProcessor } from './abandoned-cart.processor';
 import { FulfillmentProcessor } from './fulfillment.processor';
+import { ScheduledProcessor } from './scheduled.processor';
 import { QueueSchedulerService } from './queue-scheduler.service';
 import { DevBullModule } from './dev-bull.module';
 import { FulfillmentModule } from '../modules/fulfillment/fulfillment.module';
+import { AnalyticsModule } from '../modules/analytics/analytics.module';
 
 const ALL_QUEUES = [
   QUEUES.EMAIL,
@@ -24,6 +26,7 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
 @Module({
   imports: [
     FulfillmentModule,
+    AnalyticsModule,
     ...(disableQueue
       ? [DevBullModule.forQueues(ALL_QUEUES)]
       : [BullModule.registerQueue(
@@ -38,7 +41,7 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
   ],
   providers: disableQueue
     ? []
-    : [EmailProcessor, ImageProcessor, OrderProcessor, AbandonedCartProcessor, FulfillmentProcessor, QueueSchedulerService],
+    : [EmailProcessor, ImageProcessor, OrderProcessor, AbandonedCartProcessor, FulfillmentProcessor, ScheduledProcessor, QueueSchedulerService],
   exports: disableQueue ? [DevBullModule] : [BullModule],
 })
 export class QueueModule {}

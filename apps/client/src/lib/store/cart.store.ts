@@ -5,6 +5,7 @@ import type { CartDto, CartItemDto, CartTotals } from '@ezihubb/types';
 import { API_ROUTES } from '@ezihubb/constants';
 import { safeNum, safeArr } from '@ezihubb/utils';
 import { analytics } from '../analytics';
+import { readSearchAttribution } from '../search-attribution';
 
 // ── Helper: read auth token without circular import ───────────────────────────
 
@@ -91,6 +92,9 @@ export interface AddItemDto {
   quantity: number;
   customizationData?: unknown;
   previewUrl?: string | null;
+  /** Explicit override — normally left unset so addItem() fills it in from
+   * the buyer's recent search-click attribution (see search-attribution.ts). */
+  searchTerm?: string;
 }
 
 // ── Store interface ───────────────────────────────────────────────────────────
@@ -155,8 +159,12 @@ export const useCartStore = create<CartStore>()(
 
       addItem: async (dto) => {
         const prevCart = get().cart;
+        const payload = {
+          ...dto,
+          searchTerm: dto.searchTerm ?? readSearchAttribution(),
+        };
         try {
-          const res = await apiClient.post<CartDto>(API_ROUTES.CART.ADD, dto, {
+          const res = await apiClient.post<CartDto>(API_ROUTES.CART.ADD, payload, {
             headers: sessionHeader(get().sessionId),
           });
           set({ cart: normalizeCart(res), _lastMutatedAt: Date.now() });

@@ -31,6 +31,7 @@ export const JOBS = {
   DAILY_REVIEW_REMINDERS:    'daily-review-reminders',
   DAILY_ORDER_AUTO_COMPLETE: 'daily-order-auto-complete',
   WEEKLY_CLEANUP_CARTS:      'weekly-cleanup-carts',
+  DAILY_FLUSH_SEARCH_STATS:  'daily-flush-search-stats',
 
   // Abandoned cart
   SCAN_ABANDONED_CARTS: 'scan-abandoned-carts',
