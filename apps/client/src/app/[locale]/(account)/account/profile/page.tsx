@@ -51,23 +51,28 @@ const profileSchema = z.object({
   phone:     z.string().optional(),
 });
 
-const passwordSchema = z
-  .object({
-    currentPassword: z.string().min(1, 'Required'),
-    newPassword:     z.string()
-      .min(8, 'At least 8 characters')
-      .regex(/[A-Z]/, 'Include an uppercase letter')
-      .regex(/[0-9]/, 'Include a number')
-      .regex(/[^A-Za-z0-9]/, 'Include a special character'),
-    confirmPassword: z.string(),
-  })
-  .refine((d) => d.newPassword === d.confirmPassword, {
-    message: 'Passwords do not match',
-    path:    ['confirmPassword'],
-  });
+// `requireCurrent` is false for Google-only accounts setting a password for
+// the first time — there's no existing password to prove knowledge of.
+const buildPasswordSchema = (requireCurrent: boolean) =>
+  z
+    .object({
+      currentPassword: requireCurrent
+        ? z.string().min(1, 'Required')
+        : z.string().optional(),
+      newPassword: z.string()
+        .min(8, 'At least 8 characters')
+        .regex(/[A-Z]/, 'Include an uppercase letter')
+        .regex(/[0-9]/, 'Include a number')
+        .regex(/[^A-Za-z0-9]/, 'Include a special character'),
+      confirmPassword: z.string(),
+    })
+    .refine((d) => d.newPassword === d.confirmPassword, {
+      message: 'Passwords do not match',
+      path:    ['confirmPassword'],
+    });
 
 type ProfileForm   = z.infer<typeof profileSchema>;
-type PasswordForm  = z.infer<typeof passwordSchema>;
+type PasswordForm  = z.infer<ReturnType<typeof buildPasswordSchema>>;
 
 // ── Input helper ──────────────────────────────────────────────────────────────
 
@@ -148,12 +153,16 @@ export default function ProfilePage() {
   }, [profile?.id, resetProfile]);
 
   // ── Password form ──────────────────────────────────────────────────────────
+  // Google-only accounts (never set a password) get a "Set Password" form
+  // with no Current Password field instead of "Change Password".
+  const hasPassword = profile?.hasPassword ?? true;
+
   const {
     register:     regPw,
     handleSubmit: handlePw,
     reset:        resetPw,
     formState:    { errors: pwErr },
-  } = useForm<PasswordForm>({ resolver: zodResolver(passwordSchema) });
+  } = useForm<PasswordForm>({ resolver: zodResolver(buildPasswordSchema(hasPassword)) });
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -198,10 +207,17 @@ export default function ProfilePage() {
 
   const onPasswordSave = (data: PasswordForm) => {
     changePassword.mutate(
-      { currentPassword: data.currentPassword, newPassword: data.newPassword },
+      {
+        currentPassword: hasPassword ? data.currentPassword : undefined,
+        newPassword:     data.newPassword,
+      },
       {
         onSuccess: () => {
-          toast.success('Password updated. Please log in again.');
+          toast.success(
+            hasPassword
+              ? 'Password updated. Please log in again.'
+              : 'Password set. Please log in again.',
+          );
           resetPw();
           // Redirect to login after password change
           setTimeout(() => {
@@ -369,36 +385,44 @@ export default function ProfilePage() {
         </form>
       </section>
 
-      {/* ── Change password section ──────────────────────────────────────────── */}
+      {/* ── Change / set password section ────────────────────────────────────── */}
       <section className="border border-border rounded-card p-5 md:p-6 space-y-5">
         <h2 className="font-semibold text-secondary text-base border-b border-border pb-3">
-          {t('profile.sections.changePassword')}
+          {t(hasPassword ? 'profile.sections.changePassword' : 'profile.sections.setPassword')}
         </h2>
 
+        {!hasPassword && (
+          <p className="text-xs text-muted bg-primary/5 border border-primary/20 rounded-sm px-3 py-2">
+            {t('profile.password.setPasswordNote')}
+          </p>
+        )}
+
         <form onSubmit={handlePw(onPasswordSave)} className="space-y-4">
-          {/* Current password */}
-          <div>
-            <label className="text-xs font-medium text-muted mb-1 block">
-              {t('profile.password.currentPassword')} <span className="text-error">*</span>
-            </label>
-            <div className="relative">
-              <input
-                {...regPw('currentPassword')}
-                type={showCurrent ? 'text' : 'password'}
-                className={inp(pwErr.currentPassword?.message) + ' pr-10'}
-              />
-              <button
-                type="button"
-                onClick={() => setShowCurrent((s) => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted"
-              >
-                {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
+          {/* Current password — only for accounts that already have one */}
+          {hasPassword && (
+            <div>
+              <label className="text-xs font-medium text-muted mb-1 block">
+                {t('profile.password.currentPassword')} <span className="text-error">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  {...regPw('currentPassword')}
+                  type={showCurrent ? 'text' : 'password'}
+                  className={inp(pwErr.currentPassword?.message) + ' pr-10'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrent((s) => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted"
+                >
+                  {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {pwErr.currentPassword && (
+                <p className="text-xs text-error mt-0.5">{pwErr.currentPassword.message}</p>
+              )}
             </div>
-            {pwErr.currentPassword && (
-              <p className="text-xs text-error mt-0.5">{pwErr.currentPassword.message}</p>
-            )}
-          </div>
+          )}
 
           {/* New password */}
           <div>
@@ -477,7 +501,9 @@ export default function ProfilePage() {
             disabled={changePassword.isPending}
             className="px-6 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors disabled:opacity-50"
           >
-            {changePassword.isPending ? t('profile.buttons.updating') : t('profile.buttons.updatePassword')}
+            {changePassword.isPending
+              ? t(hasPassword ? 'profile.buttons.updating' : 'profile.buttons.settingPassword')
+              : t(hasPassword ? 'profile.buttons.updatePassword' : 'profile.buttons.setPassword')}
           </button>
         </form>
       </section>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
@@ -54,6 +54,12 @@ export function GoogleSignInButton({ redirectTo, onError }: GoogleSignInButtonPr
   const buttonRef = useRef<HTMLDivElement>(null);
   const clientId = process.env['NEXT_PUBLIC_GOOGLE_CLIENT_ID'];
 
+  // Covers the gap between "Google handed us a credential" and the redirect
+  // actually landing — verifying it and establishing the session both need a
+  // round trip, and without this the One Tap card just closes with no other
+  // feedback, which reads as "did that even work?" on a slow connection.
+  const [isLoading, setIsLoading] = useState(false);
+
   // GSI's callback is bound once inside initialize() below, which only runs
   // again if `clientId` changes — without refs, it would keep calling the
   // redirectTo/onError from whatever render first mounted this component,
@@ -69,6 +75,7 @@ export function GoogleSignInButton({ redirectTo, onError }: GoogleSignInButtonPr
     let pollTimer: ReturnType<typeof setInterval> | undefined;
 
     const handleCredential = async (response: GoogleCredentialResponse) => {
+      setIsLoading(true);
       try {
         const result = await api.post<{ accessToken: string; user: UserDto }>(
           API_ROUTES.AUTH.GOOGLE_TOKEN,
@@ -85,11 +92,17 @@ export function GoogleSignInButton({ redirectTo, onError }: GoogleSignInButtonPr
           user:        JSON.stringify(result.user),
         });
         if (!signInResult?.ok) {
+          setIsLoading(false);
           onErrorRef.current?.('Google sign-in failed. Please try again.');
           return;
         }
+        // Left true on purpose — the redirect below is about to unmount this
+        // page, so there's no render left where resetting it would matter,
+        // and keeping the overlay up avoids a one-frame flash of the bare
+        // button right before navigation completes.
         router.replace(redirectToRef.current);
       } catch {
+        setIsLoading(false);
         onErrorRef.current?.('Google sign-in failed. Please try again.');
       }
     };
@@ -138,7 +151,17 @@ export function GoogleSignInButton({ redirectTo, onError }: GoogleSignInButtonPr
   return (
     <>
       <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
-      <div ref={buttonRef} className="w-full flex justify-center [&>div]:!w-full" />
+      <div className="relative">
+        <div ref={buttonRef} className="w-full flex justify-center [&>div]:!w-full" />
+        {isLoading && (
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-button"
+          >
+            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+      </div>
     </>
   );
 }

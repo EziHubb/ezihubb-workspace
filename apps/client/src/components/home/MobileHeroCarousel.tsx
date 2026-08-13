@@ -26,7 +26,7 @@ const SLIDES: Slide[] = [
     ctaText:  'Shop now',
     ctaHref:  '/search',
     bg:       'bg-gradient-to-br from-[#FFF5F0] to-[#FFECD2]',
-    pill:     'Made to order, printed in the USA',
+    pill:     'Made to order, shipped worldwide',
   },
 ];
 

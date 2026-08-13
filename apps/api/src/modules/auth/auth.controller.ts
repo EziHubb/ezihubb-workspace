@@ -231,7 +231,7 @@ export class AuthController {
   @Post('change-password')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Change password (requires current password)' })
+  @ApiOperation({ summary: 'Change password, or set one for the first time on a Google-only account (currentPassword required only if the account already has a password)' })
   async changePassword(
     @CurrentUser() user: JwtPayload,
     @Body() dto: ChangePasswordDto,

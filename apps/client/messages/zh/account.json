@@ -64,7 +64,8 @@
     "title": "个人资料与密码",
     "sections": {
       "profileInformation": "个人信息",
-      "changePassword": "修改密码"
+      "changePassword": "修改密码",
+      "setPassword": "设置密码"
     },
     "avatar": {
       "changePhoto": "更换照片",
@@ -87,6 +88,7 @@
       "currentPassword": "当前密码",
       "newPassword": "新密码",
       "confirmPassword": "确认新密码",
+      "setPasswordNote": "您是通过 Google 登录的，尚未设置密码。设置密码后即可同时使用邮箱登录。",
       "strength": {
         "tooWeak": "太弱",
         "weak": "弱",
@@ -99,7 +101,9 @@
       "saveChanges": "保存更改",
       "saving": "保存中…",
       "updatePassword": "更新密码",
-      "updating": "更新中…"
+      "updating": "更新中…",
+      "setPassword": "设置密码",
+      "settingPassword": "设置中…"
     }
   },
 

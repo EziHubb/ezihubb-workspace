@@ -45,6 +45,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'placehold.co' },
       { protocol: 'https', hostname: 's3.amazonaws.com' },
       { protocol: 'https', hostname: '*.r2.dev' },
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' }, // Google account avatars
       { protocol: 'http',  hostname: 'localhost' },
     ],
   },

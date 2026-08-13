@@ -10,7 +10,7 @@
     "missionP3": "We believe personalization is more than printing a name. It's capturing a moment, honoring a relationship, and creating something that will be treasured for years to come.",
     "stats": {
       "madeToOrder": { "value": "Made to Order", "label": "Every item personalized" },
-      "usaPrinted": { "value": "USA Printed", "label": "On-demand production" },
+      "usaPrinted": { "value": "Globally Printed", "label": "On-demand production" },
       "noInventory": { "value": "No Inventory", "label": "Nothing pre-made or stored" }
     },
     "process": {
@@ -173,8 +173,8 @@
           "q3": { "q": "What if the quality of my order doesn't meet expectations?", "a": "We stand behind every item. If you're not satisfied, contact us within 30 days with a photo of the issue and we'll send a free replacement or provide a full refund — no questions asked." }
         },
         "shipping": {
-          "q1": { "q": "How long does shipping take?", "a": "Standard shipping within the US takes 5–10 business days after production. Express shipping (2–3 days) is available. International shipping takes 14–21 business days." },
-          "q2": { "q": "Do you offer free shipping?", "a": "Yes! All US orders over $50 ship free. International orders over $100 qualify for discounted shipping. Free shipping is automatically applied at checkout." },
+          "q1": { "q": "How long does shipping take?", "a": "Standard shipping takes 5–10 business days after production. Express shipping (2–3 days) is available. International shipping takes 14–21 business days." },
+          "q2": { "q": "Do you offer free shipping?", "a": "Yes! Orders over $50 ship free. International orders over $100 qualify for discounted shipping. Free shipping is automatically applied at checkout." },
           "q3": { "q": "Can I track my order?", "a": "Absolutely. Once your order ships, you'll receive an email with a tracking number. You can also track your order anytime at ezihubb.com/orders/track." },
           "q4": { "q": "Do you ship internationally?", "a": "We ship to 30+ countries worldwide. Shipping costs and delivery times vary by destination. Enter your address at checkout for an exact quote. Note: customs duties may apply for international orders." },
           "q5": { "q": "My order says \"delivered\" but I haven't received it — what should I do?", "a": "First, check with neighbors and any safe spots around your property. If still missing, contact us within 7 days of the marked delivery date. We'll work with the carrier to locate it or send a replacement." }
@@ -258,7 +258,7 @@
       "items": {
         "designed": { "title": "Designed In-House", "desc": "Every design starts with us, not a catalog." },
         "printed": { "title": "Printed On Demand", "desc": "Nothing is pre-made — made only after you order." },
-        "shipped": { "title": "Shipped from the USA", "desc": "Produced and shipped domestically." }
+        "shipped": { "title": "Shipped Worldwide", "desc": "Produced on demand and delivered to your door, wherever you are." }
       }
     },
     "cta": {
@@ -335,7 +335,7 @@
       "desc": "Since every item is made to order, production takes 3–7 business days before your order ships. The shipping times below are in addition to production time. Rush production (1–2 days) is available at checkout."
     },
     "domestic": {
-      "title": "Domestic Shipping (United States)",
+      "title": "Standard Shipping Rates",
       "headers": { "method": "Method", "time": "Delivery Time", "cost": "Cost" },
       "rows": {
         "standard": { "method": "Standard Shipping", "time": "5–10 business days", "cost": "$5.99 (Free over $50)" },
@@ -501,7 +501,7 @@
       },
       "international": {
         "title": "9. International Data Transfers",
-        "p1": "EziHubb operates from the United States. If you are located outside the US, your information may be transferred to and processed in the US or other countries where our service providers operate.",
+        "p1": "EziHubb operates from Vietnam. If you are located outside Vietnam, your information may be transferred to and processed in Vietnam or other countries where our service providers operate.",
         "p2": "For transfers from the European Economic Area (EEA) or United Kingdom, we rely on Standard Contractual Clauses approved by the European Commission to ensure an adequate level of data protection."
       },
       "changes": {
@@ -621,8 +621,8 @@
       },
       "governingLaw": {
         "title": "9. Governing Law",
-        "p1": "These Terms shall be governed by and construed in accordance with the laws of the State of Delaware, United States, without regard to its conflict of law principles.",
-        "p2": "Any dispute arising from or relating to these Terms or the Platform that cannot be resolved informally shall be submitted to binding arbitration in accordance with the American Arbitration Association's Consumer Arbitration Rules. You waive any right to participate in a class action lawsuit or class-wide arbitration."
+        "p1": "These Terms shall be governed by and construed in accordance with the laws of Vietnam, without regard to its conflict of law principles.",
+        "p2": "Any dispute arising from or relating to these Terms or the Platform that cannot be resolved informally shall be submitted to binding arbitration in accordance with the Vietnam International Arbitration Centre (VIAC)'s rules. You waive any right to participate in a class action lawsuit or class-wide arbitration."
       },
       "changes": {
         "title": "10. Changes to Terms",

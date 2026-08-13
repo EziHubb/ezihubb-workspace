@@ -10,7 +10,7 @@
     "missionP3": "Chúng tôi tin cá nhân hóa không chỉ là in một cái tên. Đó là lưu giữ một khoảnh khắc, trân trọng một mối quan hệ, và tạo ra thứ sẽ được nâng niu qua năm tháng.",
     "stats": {
       "madeToOrder": { "value": "Làm Theo Yêu Cầu", "label": "Mỗi sản phẩm đều được cá nhân hóa" },
-      "usaPrinted": { "value": "In Tại Mỹ", "label": "Sản xuất theo đơn đặt hàng" },
+      "usaPrinted": { "value": "In Toàn Cầu", "label": "Sản xuất theo đơn đặt hàng" },
       "noInventory": { "value": "Không Tồn Kho", "label": "Không có gì được làm sẵn hay lưu trữ" }
     },
     "process": {
@@ -173,8 +173,8 @@
           "q3": { "q": "Nếu chất lượng đơn hàng không như mong đợi thì sao?", "a": "Chúng tôi cam kết chất lượng cho mọi sản phẩm. Nếu bạn không hài lòng, hãy liên hệ trong vòng 30 ngày kèm ảnh chụp vấn đề và chúng tôi sẽ gửi sản phẩm thay thế miễn phí hoặc hoàn tiền toàn bộ — không cần giải thích thêm." }
         },
         "shipping": {
-          "q1": { "q": "Vận chuyển mất bao lâu?", "a": "Vận chuyển tiêu chuẩn trong nước Mỹ mất 5–10 ngày làm việc sau khi sản xuất. Vận chuyển nhanh (2–3 ngày) cũng có sẵn. Vận chuyển quốc tế mất 14–21 ngày làm việc." },
-          "q2": { "q": "Bạn có miễn phí vận chuyển không?", "a": "Có! Mọi đơn hàng trong nước Mỹ trên $50 được miễn phí vận chuyển. Đơn hàng quốc tế trên $100 được giảm giá vận chuyển. Miễn phí vận chuyển được áp dụng tự động khi thanh toán." },
+          "q1": { "q": "Vận chuyển mất bao lâu?", "a": "Vận chuyển tiêu chuẩn mất 5–10 ngày làm việc sau khi sản xuất. Vận chuyển nhanh (2–3 ngày) cũng có sẵn. Vận chuyển quốc tế mất 14–21 ngày làm việc." },
+          "q2": { "q": "Bạn có miễn phí vận chuyển không?", "a": "Có! Đơn hàng trên $50 được miễn phí vận chuyển. Đơn hàng quốc tế trên $100 được giảm giá vận chuyển. Miễn phí vận chuyển được áp dụng tự động khi thanh toán." },
           "q3": { "q": "Tôi có thể theo dõi đơn hàng của mình không?", "a": "Chắc chắn rồi. Ngay khi đơn hàng được gửi đi, bạn sẽ nhận được email kèm mã theo dõi. Bạn cũng có thể theo dõi đơn hàng bất cứ lúc nào tại ezihubb.com/orders/track." },
           "q4": { "q": "Bạn có vận chuyển quốc tế không?", "a": "Chúng tôi giao hàng đến hơn 30 quốc gia trên toàn thế giới. Chi phí và thời gian vận chuyển tùy theo điểm đến. Nhập địa chỉ khi thanh toán để nhận báo giá chính xác. Lưu ý: đơn hàng quốc tế có thể phát sinh thuế hải quan." },
           "q5": { "q": "Đơn hàng của tôi báo \"đã giao\" nhưng tôi chưa nhận được — tôi nên làm gì?", "a": "Trước tiên, hãy hỏi hàng xóm và kiểm tra các vị trí an toàn quanh nhà bạn. Nếu vẫn không tìm thấy, hãy liên hệ với chúng tôi trong vòng 7 ngày kể từ ngày giao hàng dự kiến. Chúng tôi sẽ phối hợp với đơn vị vận chuyển để xác định vị trí hoặc gửi hàng thay thế." }
@@ -258,7 +258,7 @@
       "items": {
         "designed": { "title": "Thiết Kế Nội Bộ", "desc": "Mọi thiết kế đều bắt đầu từ chúng tôi, không phải từ catalogue có sẵn." },
         "printed": { "title": "In Theo Yêu Cầu", "desc": "Không có gì được làm sẵn — chỉ được làm sau khi bạn đặt hàng." },
-        "shipped": { "title": "Giao Hàng Từ Mỹ", "desc": "Được sản xuất và giao hàng trong nước." }
+        "shipped": { "title": "Giao Hàng Toàn Cầu", "desc": "Được sản xuất theo đơn và giao đến tận nơi, dù bạn ở đâu." }
       }
     },
     "cta": {
@@ -335,7 +335,7 @@
       "desc": "Vì mỗi sản phẩm đều được làm theo yêu cầu, quá trình sản xuất mất 3–7 ngày làm việc trước khi đơn hàng được gửi đi. Thời gian vận chuyển bên dưới là cộng thêm vào thời gian sản xuất. Sản xuất nhanh (1–2 ngày) có sẵn khi thanh toán."
     },
     "domestic": {
-      "title": "Vận Chuyển Trong Nước (Hoa Kỳ)",
+      "title": "Mức Phí Vận Chuyển Tiêu Chuẩn",
       "headers": { "method": "Phương thức", "time": "Thời gian giao hàng", "cost": "Chi phí" },
       "rows": {
         "standard": { "method": "Vận chuyển tiêu chuẩn", "time": "5–10 ngày làm việc", "cost": "$5.99 (Miễn phí cho đơn trên $50)" },
@@ -501,7 +501,7 @@
       },
       "international": {
         "title": "9. Chuyển Giao Dữ Liệu Quốc Tế",
-        "p1": "EziHubb hoạt động từ Hoa Kỳ. Nếu bạn ở ngoài Hoa Kỳ, thông tin của bạn có thể được chuyển giao đến và xử lý tại Hoa Kỳ hoặc các quốc gia khác nơi các nhà cung cấp dịch vụ của chúng tôi hoạt động.",
+        "p1": "EziHubb hoạt động từ Việt Nam. Nếu bạn ở ngoài Việt Nam, thông tin của bạn có thể được chuyển giao đến và xử lý tại Việt Nam hoặc các quốc gia khác nơi các nhà cung cấp dịch vụ của chúng tôi hoạt động.",
         "p2": "Đối với việc chuyển giao dữ liệu từ Khu Vực Kinh Tế Châu Âu (EEA) hoặc Vương Quốc Anh, chúng tôi dựa vào các Điều Khoản Hợp Đồng Chuẩn được Ủy Ban Châu Âu phê duyệt để đảm bảo mức độ bảo vệ dữ liệu phù hợp."
       },
       "changes": {
@@ -621,8 +621,8 @@
       },
       "governingLaw": {
         "title": "9. Luật Áp Dụng",
-        "p1": "Các Điều Khoản này sẽ được điều chỉnh và giải thích theo luật của Bang Delaware, Hoa Kỳ, không xét đến các nguyên tắc xung đột pháp luật.",
-        "p2": "Mọi tranh chấp phát sinh từ hoặc liên quan đến các Điều Khoản này hoặc Nền Tảng mà không thể giải quyết một cách không chính thức sẽ được đệ trình lên trọng tài ràng buộc theo Quy Tắc Trọng Tài Tiêu Dùng của Hiệp Hội Trọng Tài Hoa Kỳ. Bạn từ bỏ quyền tham gia vào bất kỳ vụ kiện tập thể hoặc trọng tài tập thể nào."
+        "p1": "Các Điều Khoản này sẽ được điều chỉnh và giải thích theo luật pháp Việt Nam, không xét đến các nguyên tắc xung đột pháp luật.",
+        "p2": "Mọi tranh chấp phát sinh từ hoặc liên quan đến các Điều Khoản này hoặc Nền Tảng mà không thể giải quyết một cách không chính thức sẽ được đệ trình lên trọng tài ràng buộc theo quy tắc của Trung Tâm Trọng Tài Quốc Tế Việt Nam (VIAC). Bạn từ bỏ quyền tham gia vào bất kỳ vụ kiện tập thể hoặc trọng tài tập thể nào."
       },
       "changes": {
         "title": "10. Thay Đổi Điều Khoản",

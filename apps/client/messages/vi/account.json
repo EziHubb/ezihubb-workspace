@@ -64,7 +64,8 @@
     "title": "Hồ sơ & Mật khẩu",
     "sections": {
       "profileInformation": "Thông tin hồ sơ",
-      "changePassword": "Đổi mật khẩu"
+      "changePassword": "Đổi mật khẩu",
+      "setPassword": "Đặt mật khẩu"
     },
     "avatar": {
       "changePhoto": "Đổi ảnh",
@@ -87,6 +88,7 @@
       "currentPassword": "Mật khẩu hiện tại",
       "newPassword": "Mật khẩu mới",
       "confirmPassword": "Xác nhận mật khẩu mới",
+      "setPasswordNote": "Bạn đã đăng nhập bằng Google và chưa có mật khẩu. Đặt mật khẩu để có thể đăng nhập bằng email nữa.",
       "strength": {
         "tooWeak": "Quá yếu",
         "weak": "Yếu",
@@ -99,7 +101,9 @@
       "saveChanges": "Lưu thay đổi",
       "saving": "Đang lưu…",
       "updatePassword": "Cập nhật mật khẩu",
-      "updating": "Đang cập nhật…"
+      "updating": "Đang cập nhật…",
+      "setPassword": "Đặt mật khẩu",
+      "settingPassword": "Đang đặt…"
     }
   },
 

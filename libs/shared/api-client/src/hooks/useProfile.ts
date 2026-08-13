@@ -33,8 +33,12 @@ export function useMutateProfile() {
   });
 
   const changePassword = useMutation({
-    mutationFn: (input: { currentPassword: string; newPassword: string }) =>
-      api.patch<void>(API_ROUTES.USERS.PASSWORD, input),
+    // currentPassword is omitted for Google-only accounts setting a password
+    // for the first time (see UserDto.hasPassword). This hits the auth
+    // module's endpoint — there's no user-scoped password route in the
+    // users module.
+    mutationFn: (input: { currentPassword?: string; newPassword: string }) =>
+      api.post<void>(API_ROUTES.AUTH.CHANGE_PASSWORD, input),
   });
 
   /**

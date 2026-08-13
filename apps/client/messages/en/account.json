@@ -64,7 +64,8 @@
     "title": "Profile & Password",
     "sections": {
       "profileInformation": "Profile Information",
-      "changePassword": "Change Password"
+      "changePassword": "Change Password",
+      "setPassword": "Set Password"
     },
     "avatar": {
       "changePhoto": "Change photo",
@@ -87,6 +88,7 @@
       "currentPassword": "Current Password",
       "newPassword": "New Password",
       "confirmPassword": "Confirm New Password",
+      "setPasswordNote": "You signed in with Google and don't have a password yet. Set one so you can also sign in with your email.",
       "strength": {
         "tooWeak": "Too weak",
         "weak": "Weak",
@@ -99,7 +101,9 @@
       "saveChanges": "Save Changes",
       "saving": "Saving…",
       "updatePassword": "Update Password",
-      "updating": "Updating…"
+      "updating": "Updating…",
+      "setPassword": "Set Password",
+      "settingPassword": "Setting…"
     }
   },
 

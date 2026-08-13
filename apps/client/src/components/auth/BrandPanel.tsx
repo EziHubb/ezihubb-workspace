@@ -4,7 +4,7 @@ import { Star } from 'lucide-react';
 
 const HIGHLIGHTS = [
   'Custom-designed by us, not resold',
-  'Printed to order in the USA',
+  'Printed to order, shipped worldwide',
   'Free shipping over $50',
 ];
 

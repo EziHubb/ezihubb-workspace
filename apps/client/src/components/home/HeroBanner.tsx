@@ -117,7 +117,7 @@ export function HeroBanner({
                 <ShieldCheck className="w-4 h-4 text-success flex-shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-secondary leading-none">Made to Order</p>
-                  <p className="text-xs text-muted">Printed in the USA</p>
+                  <p className="text-xs text-muted">Shipped Worldwide</p>
                 </div>
               </div>
             </div>

@@ -10,6 +10,8 @@ export class UserResponseDto {
   @ApiPropertyOptional() avatarUrl: string | null;
   @ApiProperty() isEmailVerified: boolean;
   @ApiPropertyOptional() phone: string | null;
+  @ApiProperty({ description: 'Whether the account has a password set — false for Google-only accounts that never set one' })
+  hasPassword: boolean;
   @ApiProperty() createdAt: Date;
   @ApiProperty() updatedAt: Date;
 
@@ -22,6 +24,8 @@ export class UserResponseDto {
     dto.role = user.role;
     dto.avatarUrl = user.avatarUrl;
     dto.isEmailVerified = user.isEmailVerified;
+    dto.phone = user.phone;
+    dto.hasPassword = !!user.passwordHash;
     dto.createdAt = user.createdAt;
     dto.updatedAt = user.updatedAt;
     return dto;

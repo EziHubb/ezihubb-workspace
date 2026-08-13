@@ -373,17 +373,23 @@ export class AuthService {
     ]);
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+  async changePassword(userId: string, currentPassword: string | undefined, newPassword: string): Promise<void> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
 
-    if (!user.passwordHash) {
-      throw new BadRequestException({ code: 'ERR_NO_PASSWORD', message: 'This account uses social login — set a password first' });
+    if (user.passwordHash) {
+      // Normal change — the account already has a password, so the caller
+      // must prove they know it.
+      if (!currentPassword) {
+        throw new BadRequestException({ code: 'ERR_CURRENT_PASSWORD_REQUIRED', message: 'Current password is required' });
+      }
+      const match = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!match) {
+        throw new UnauthorizedException({ code: 'ERR_CREDENTIALS_INVALID', message: 'Current password is incorrect' });
+      }
     }
-
-    const match = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!match) {
-      throw new UnauthorizedException({ code: 'ERR_CREDENTIALS_INVALID', message: 'Current password is incorrect' });
-    }
+    // else: account signed up via Google and has no password yet — setting
+    // one for the first time needs no current-password check, since there
+    // isn't one to prove knowledge of.
 
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
 

@@ -9,6 +9,8 @@ export interface UserDto {
   phone?: string;
   role: UserRole;
   isEmailVerified: boolean;
+  /** False for accounts that signed up/in via Google and never set a password. */
+  hasPassword?: boolean;
   // backward compat
   /** @deprecated use isEmailVerified */
   emailVerified?: boolean;
