@@ -14,7 +14,7 @@
 
   "stepHeadings": {
     "shippingInformation": "配送信息",
-    "deliveryMethod": "配送方式",
+    "deliveryMethod": "预计配送",
     "payment": "支付",
     "contactInformation": "联系方式",
     "preparingOrder": "正在准备您的订单…"
@@ -79,17 +79,14 @@
   },
 
   "deliveryForm": {
-    "calculating": "正在计算 <b>{country}</b> 的运费…",
-    "failedToLoad": "加载配送方式失败。",
+    "calculating": "正在计算 <b>{country}</b> 的配送时间…",
+    "failedToLoad": "加载配送预计失败。",
     "tryAgain": "重试",
-    "noShipTo": "暂不支持配送至 {country}。",
+    "unresolvable": "暂时无法估算配送至 {country} 的信息 — 请联系卖家或尝试其他地址。",
     "changeCountry": "← 更改国家/地区",
-    "selectMethod": "选择配送方式",
-    "methodsAria": "配送方式",
-    "via": "通过 {carrier}",
+    "estimateTitle": "配送",
     "businessDays": "{min}–{max} 个工作日 · 预计到达 {date}",
     "free": "免费",
-    "freeOver": "满 {amount} 免运费",
     "back": "← 返回",
     "backAria": "返回",
     "continueToPayment": "继续支付 →",

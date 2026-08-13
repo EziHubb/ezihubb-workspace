@@ -107,10 +107,10 @@ export class OrdersService {
    * in the cart is fulfilled by an active provider connection — i.e. the
    * customer's whole order can be quoted for real. Any gap at all (an
    * unmapped item, a disconnected connection, a provider API error/timeout)
-   * returns null and the caller falls back entirely to the existing flat
-   * ShippingMethod behavior, unchanged. Deliberately all-or-nothing: splitting
-   * a single flat rate across a partially-covered cart has no principled
-   * allocation and isn't worth the complexity for phase 1.
+   * returns null and the caller falls back to the seller's own Delivery
+   * profile pricing instead. Deliberately all-or-nothing: splitting a single
+   * quote across a partially-covered cart has no principled allocation and
+   * isn't worth the complexity for phase 1.
    */
   private async computeProviderShippingCost(
     items: Array<{
@@ -231,8 +231,8 @@ export class OrdersService {
 
     // A cart must be 100% physical or 100% digital — mixing the two would need
     // per-item shipping/fulfillment splitting with no principled allocation.
-    // See dto/checkout.dto.ts for why shippingAddress/shippingMethodId are
-    // optional at the DTO level: only the physical path requires them.
+    // See dto/checkout.dto.ts for why shippingAddress is optional at the DTO
+    // level: only the physical path requires it.
     const productTypes = new Set(cart.items.map((i) => i.product.productType));
     if (productTypes.size > 1) {
       throw new BadRequestException({
@@ -248,12 +248,6 @@ export class OrdersService {
         message: 'shippingAddress is required',
       });
     }
-    if (!isDigitalOnly && !dto.shippingMethodId) {
-      throw new BadRequestException({
-        code: 'ERR_VALIDATION',
-        message: 'shippingMethodId is required',
-      });
-    }
 
     // ── Provider (Printify, etc.) shipping — computed up-front, before the total
     // is frozen, since a per-store StoreOrder isn't built until inside the
@@ -262,10 +256,12 @@ export class OrdersService {
       ? null
       : await this.computeProviderShippingCost(cart.items, dto.shippingAddress!);
 
-    // Seller-configured Delivery profiles (Etsy-parity) — only used when
-    // EVERY physical item resolves to one; otherwise null and the legacy
-    // flat ShippingZone/shippingMethodId path below is used for the whole
-    // order, same as before this feature existed.
+    // Seller-configured Delivery profiles (Etsy-parity) — every physical
+    // listing is required to carry one before it can be published (see
+    // ProductsService.update()'s ERR_DELIVERY_INFO_REQUIRED check), so this
+    // should resolve for any cart of current listings; a legacy listing that
+    // predates that requirement is the only way it comes back null, in which
+    // case checkout hard-errors below rather than silently mispricing.
     const sellerShipping = isDigitalOnly || providerShippingCost
       ? null
       : await this.shippingService.resolveSellerShippingCost(
@@ -276,6 +272,13 @@ export class OrdersService {
           })),
           dto.shippingAddress!.country,
         );
+
+    if (!isDigitalOnly && !providerShippingCost && !sellerShipping) {
+      throw new BadRequestException({
+        code: 'ERR_SHIPPING_UNRESOLVABLE',
+        message: 'One or more items in your cart cannot be shipped to this address yet — please contact the seller or try a different address.',
+      });
+    }
 
     // Recalculate subtotal from current prices (server-side, never trust client)
     const subtotal = cart.items.reduce((sum, item) => {
@@ -349,10 +352,10 @@ export class OrdersService {
 
     // Calculate shipping (waived if FREE_SHIPPING coupon applied).
     // If every item in the cart is fulfilled by a connected provider (e.g.
-    // Printify), providerShippingCost holds a real per-store quote and we skip
-    // the flat ShippingMethod entirely — otherwise (the common case today)
-    // fall back to the existing flat-rate behavior unchanged. A digital-only
-    // order never has shipping at all.
+    // Printify), providerShippingCost holds a real per-store quote — otherwise
+    // the seller-configured Delivery profile cost is used (guaranteed
+    // resolvable at this point, or checkout would have hard-errored above). A
+    // digital-only order never has shipping at all.
     let shippingCost: number;
     let shippingMethodName: string | null;
     if (isDigitalOnly) {
@@ -361,17 +364,10 @@ export class OrdersService {
     } else if (providerShippingCost) {
       shippingCost = freeShipping ? 0 : [...providerShippingCost.values()].reduce((s, c) => s + c, 0);
       shippingMethodName = 'Standard Shipping';
-    } else if (sellerShipping) {
-      shippingCost = freeShipping ? 0 : [...sellerShipping.perStore.values()].reduce((s, c) => s + c, 0);
-      const distinctNames = new Set(sellerShipping.methodNames.values());
-      shippingMethodName = distinctNames.size === 1 ? [...distinctNames][0] : 'Standard Shipping';
     } else {
-      const shippingCalc = await this.shippingService.calculateShipping(
-        dto.shippingMethodId!,
-        subtotalAfterDiscount,
-      );
-      shippingCost = freeShipping ? 0 : shippingCalc.cost;
-      shippingMethodName = shippingCalc.name;
+      shippingCost = freeShipping ? 0 : [...sellerShipping!.perStore.values()].reduce((s, c) => s + c, 0);
+      const distinctNames = new Set(sellerShipping!.methodNames.values());
+      shippingMethodName = distinctNames.size === 1 ? [...distinctNames][0] : 'Standard Shipping';
     }
 
     // Gift wrapping is a physical concept — a digital order has nothing to wrap.

@@ -33,6 +33,8 @@ const CART_INCLUDE = {
           basePrice: true,
           isActive: true,
           productType: true,
+          storeId: true,
+          shippingProfileId: true,
           images: {
             where: { type: 'MOCKUP' as const },
             orderBy: { isPrimary: 'desc' as const },
@@ -435,28 +437,36 @@ export class CartService {
   async estimateShipping(
     cartId: string,
     dto: EstimateShippingDto,
-  ): Promise<ShippingEstimateDto[]> {
+  ): Promise<ShippingEstimateDto> {
     const cart = await this.prisma.cart.findUnique({
       where: { id: cartId },
       include: CART_INCLUDE,
     });
-    if (!cart) return [];
+    const unresolvable: ShippingEstimateDto = { resolvable: false, perStore: [], totalCost: 0, minDays: null, maxDays: null };
+    if (!cart || cart.items.length === 0) return unresolvable;
 
-    const subtotal = this.calcSubtotal(cart.items);
-    const discount = cart.discountAmount ? Number(cart.discountAmount) : 0;
-    const subtotalAfterDiscount = Math.max(0, subtotal - discount);
+    const physicalItems = cart.items.filter((i) => i.product.productType !== 'DIGITAL');
+    if (physicalItems.length === 0) return { resolvable: true, perStore: [], totalCost: 0, minDays: null, maxDays: null };
 
-    const methods = await this.shippingService.getMethodsByCountry(dto.country);
-
-    return Promise.all(
-      methods.map(async (m) => {
-        const { cost } = await this.shippingService.calculateShipping(
-          m.methodId,
-          subtotalAfterDiscount,
-        );
-        return { ...m, price: cost, isFree: cost === 0 };
-      }),
+    const result = await this.shippingService.resolveSellerShippingCost(
+      physicalItems.map((i) => ({
+        storeId: i.product.storeId,
+        shippingProfileId: i.product.shippingProfileId,
+        quantity: i.quantity,
+      })),
+      dto.country,
     );
+    if (!result) return unresolvable;
+
+    const perStore = [...result.perStore.entries()].map(([storeId, cost]) => {
+      const days = result.deliveryDays.get(storeId)!;
+      return { storeId, cost, methodName: result.methodNames.get(storeId) ?? 'Standard Shipping', minDays: days.minDays, maxDays: days.maxDays };
+    });
+    const totalCost = perStore.reduce((sum, s) => sum + s.cost, 0);
+    const minDays = perStore.length ? Math.min(...perStore.map((s) => s.minDays)) : null;
+    const maxDays = perStore.length ? Math.max(...perStore.map((s) => s.maxDays)) : null;
+
+    return { resolvable: true, perStore, totalCost, minDays, maxDays };
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import type { ShippingOptionDto } from '@ezihubb/types';
+import type { ShippingEstimateDto } from '@ezihubb/types';
 
 // Re-exported so checkout sub-components share a single source of truth
 export type { ShippingAddressInput } from '@ezihubb/api-client';
@@ -13,7 +13,7 @@ export interface CheckoutState {
   completedSteps:   number[];
   shippingAddress:  import('@ezihubb/api-client').ShippingAddressInput | null;
   guestEmail:       string;
-  shippingMethod:   ShippingOptionDto | null;
+  shippingEstimate: ShippingEstimateDto | null;
   /** Set after order is submitted in step 3 */
   orderId:          string | null;
   orderNumber:      string | null;

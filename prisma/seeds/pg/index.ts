@@ -8,7 +8,6 @@ import { seedShopSections }       from './06-shop-sections';
 import { seedProducts }           from './07-products';
 import { seedCollectionLinks }    from './08-collection-links';
 import { seedPromotions }         from './09-promotions';
-import { seedShippingZones }      from './10-shipping-zones';
 import { seedAttributeValues }    from './11-attribute-values';
 import { seedAffiliates }         from './12-affiliates';
 import { seedConversations }      from './13-conversations';
@@ -35,7 +34,6 @@ export async function runPgSeeds(): Promise<Record<string, string>> {
   const productIds = await seedProducts(prisma, storeId);
   await seedCollectionLinks(prisma, collectionIds, productIds);
   await seedPromotions(prisma);
-  await seedShippingZones(prisma);
   await seedAttributeValues(prisma);
   await seedAffiliates(prisma);
 

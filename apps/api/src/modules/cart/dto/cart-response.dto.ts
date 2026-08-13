@@ -22,14 +22,21 @@ export class CartItemDto {
   @ApiPropertyOptional() previewUrl: string | null;
 }
 
-export class ShippingEstimateDto {
-  @ApiProperty() methodId: string;
-  @ApiProperty() name: string;
-  @ApiPropertyOptional() carrier: string | null;
-  @ApiProperty() price: number;
+export class ShippingEstimateStoreDto {
+  @ApiProperty() storeId: string;
+  @ApiProperty() cost: number;
+  @ApiProperty() methodName: string;
   @ApiProperty() minDays: number;
   @ApiProperty() maxDays: number;
-  @ApiProperty() isFree: boolean;
+}
+
+export class ShippingEstimateDto {
+  /** False when any cart item lacks a resolvable delivery profile for the given destination — the buyer's cart can't be priced yet. */
+  @ApiProperty() resolvable: boolean;
+  @ApiProperty({ type: [ShippingEstimateStoreDto] }) perStore: ShippingEstimateStoreDto[];
+  @ApiProperty() totalCost: number;
+  @ApiPropertyOptional() minDays: number | null;
+  @ApiPropertyOptional() maxDays: number | null;
 }
 
 export class CartTotalsDto {

@@ -16,9 +16,6 @@ function getShopOwnerRedirect(pathname: string, storeId: string | null): string 
     '/catalog', '/customers', '/payments', '/campaigns', '/affiliates',
     '/moderation', '/finance',
     '/stores/plans', '/stores/settings',
-    // Platform-wide ShippingZone/Method rate table — a shop owner manages
-    // their OWN delivery pricing at /settings/delivery instead.
-    '/shipping',
   ];
   if (superAdminOnly.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
     return '/dashboard';

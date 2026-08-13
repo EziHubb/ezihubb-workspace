@@ -61,7 +61,7 @@ export const queryKeys = {
   addresses:      ()               => ADDRESSES_KEY,
 
   // Shipping
-  shippingMethods:(country: string) => [...SHIPPING_KEY, country]         as const,
+  shippingEstimate:(country: string) => [...SHIPPING_KEY, 'estimate', country] as const,
 
   // Marketplace insights (seller keyword research)
   insightsTrending:  ()             => [...MARKETPLACE_INSIGHTS_KEY, 'trending'] as const,

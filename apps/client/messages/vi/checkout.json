@@ -14,7 +14,7 @@
 
   "stepHeadings": {
     "shippingInformation": "Thông tin giao hàng",
-    "deliveryMethod": "Phương thức vận chuyển",
+    "deliveryMethod": "Dự kiến giao hàng",
     "payment": "Thanh toán",
     "contactInformation": "Thông tin liên hệ",
     "preparingOrder": "Đang chuẩn bị đơn hàng của bạn…"
@@ -79,17 +79,14 @@
   },
 
   "deliveryForm": {
-    "calculating": "Đang tính phí vận chuyển cho <b>{country}</b>…",
-    "failedToLoad": "Không thể tải phương thức vận chuyển.",
+    "calculating": "Đang tính thời gian giao hàng cho <b>{country}</b>…",
+    "failedToLoad": "Không thể tải dự kiến giao hàng.",
     "tryAgain": "Thử lại",
-    "noShipTo": "Chúng tôi chưa hỗ trợ giao hàng đến {country}.",
+    "unresolvable": "Chúng tôi chưa thể ước tính giao hàng đến {country} — vui lòng liên hệ người bán hoặc thử địa chỉ khác.",
     "changeCountry": "← Đổi quốc gia",
-    "selectMethod": "Chọn phương thức vận chuyển",
-    "methodsAria": "Phương thức vận chuyển",
-    "via": "qua {carrier}",
+    "estimateTitle": "Giao hàng",
     "businessDays": "{min}–{max} ngày làm việc · Đến nơi {date}",
     "free": "MIỄN PHÍ",
-    "freeOver": "Miễn phí khi đơn từ {amount}",
     "back": "← Quay lại",
     "backAria": "Quay lại",
     "continueToPayment": "Tiếp tục đến Thanh toán →",

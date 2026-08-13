@@ -37,7 +37,7 @@ export * from './hooks/useReviews';    // useReviews, useReviewSummary
 export * from './hooks/useNewsletter'; // useNewsletterSubscribe
 
 // Shipping
-export * from './hooks/useShipping';   // useShippingOptions
+export * from './hooks/useShipping';   // useShippingEstimate
 
 // Profile & Addresses
 export * from './hooks/useProfile';    // useProfile, useMutateProfile, useAddresses, useMutateAddresses

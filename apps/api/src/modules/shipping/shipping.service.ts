@@ -6,16 +6,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ShippingEstimateDto } from '../cart/dto/cart-response.dto';
-import { CalculateShippingDto } from './dto/calculate-shipping.dto';
-import {
-  CreateShippingZoneDto,
-  UpdateShippingZoneDto,
-} from './dto/create-shipping-zone.dto';
-import {
-  CreateShippingMethodDto,
-  UpdateShippingMethodDto,
-} from './dto/create-shipping-method.dto';
 import {
   CreateProcessingProfileDto,
   UpdateProcessingProfileDto,
@@ -23,110 +13,37 @@ import {
   DeliveryUpgradesDto,
 } from './dto/processing-profile.dto';
 import { ShippingProfileDto, ShippingProfileMethodDto } from './dto/shipping-profile.dto';
-import { ShippingZone, ShippingMethod, ShippingProfile, ShippingProfileMethod as ShippingProfileMethodModel } from '@prisma/client';
+import { ShippingProfile, ShippingProfileMethod as ShippingProfileMethodModel } from '@prisma/client';
 import { carrierServiceLabel } from '@ezihubb/constants';
 
-export type ZoneWithMethods = ShippingZone & { methods: ShippingMethod[] };
+export interface SellerShippingCost {
+  perStore:      Map<string, number>;
+  methodNames:   Map<string, string>;
+  /** Per-store delivery-time SLA, for display (e.g. cart/checkout estimate). */
+  deliveryDays:  Map<string, { minDays: number; maxDays: number }>;
+}
 
 @Injectable()
 export class ShippingService {
   constructor(private readonly prisma: PrismaService) {}
-
-  /** Returns all active shipping methods available for a given country. */
-  async getMethodsByCountry(
-    countryCode: string,
-  ): Promise<ShippingEstimateDto[]> {
-    const zones = await this.prisma.shippingZone.findMany({
-      where: { countries: { has: countryCode } },
-      include: { methods: { where: { isActive: true } } },
-    });
-
-    if (!zones.length) return [];
-
-    return zones.flatMap((zone) =>
-      zone.methods.map((m) => ({
-        methodId: m.id,
-        name: m.name,
-        carrier: m.carrier ?? null,
-        price: Number(m.price),
-        minDays: m.minDays,
-        maxDays: m.maxDays,
-        isFree: false,
-      })),
-    );
-  }
-
-  /** Calculates shipping cost for a specific method, considering free-shipping threshold. */
-  async calculateShipping(
-    methodId: string,
-    orderSubtotalAfterDiscount: number,
-  ): Promise<{ cost: number; minDays: number; maxDays: number; name: string }> {
-    const method = await this.prisma.shippingMethod.findUnique({
-      where: { id: methodId },
-    });
-
-    if (!method || !method.isActive) {
-      throw new NotFoundException({
-        code: 'ERR_NOT_FOUND',
-        message: 'Shipping method not found or inactive',
-      });
-    }
-
-    const isFree =
-      method.freeShippingOver !== null &&
-      orderSubtotalAfterDiscount >= Number(method.freeShippingOver);
-
-    return {
-      cost: isFree ? 0 : Number(method.price),
-      minDays: method.minDays,
-      maxDays: method.maxDays,
-      name: method.name,
-    };
-  }
-
-  /** Returns all options for a country+total, with isFree applied. */
-  async calculateShippingOptions(
-    dto: CalculateShippingDto,
-  ): Promise<ShippingEstimateDto[]> {
-    const zones = await this.prisma.shippingZone.findMany({
-      where: { countries: { has: dto.countryCode } },
-      include: { methods: { where: { isActive: true } } },
-    });
-
-    if (!zones.length) return [];
-
-    return zones.flatMap((zone) =>
-      zone.methods.map((m) => {
-        const isFree =
-          m.freeShippingOver !== null &&
-          dto.orderTotal >= Number(m.freeShippingOver);
-        return {
-          methodId: m.id,
-          name: m.name,
-          carrier: m.carrier ?? null,
-          price: isFree ? 0 : Number(m.price),
-          minDays: m.minDays,
-          maxDays: m.maxDays,
-          isFree,
-        };
-      }),
-    );
-  }
 
   /**
    * Resolves per-store checkout shipping cost from each product's own
    * seller-assigned ShippingProfile (Etsy-parity Delivery profiles), for a
    * given destination country. Returns null if ANY physical item lacks a
    * resolvable profile (no profile assigned, a deleted/dangling reference,
-   * or the profile has no row covering this destination) — callers fall
-   * back to the legacy ShippingZone/shippingMethodId flat-rate path for the
-   * WHOLE order in that case, deliberately avoiding a partial blend of two
-   * different pricing models within one checkout. See OrdersService.checkout().
+   * or the profile has no row covering this destination) — callers must
+   * treat that as "this order can't be priced yet" (see OrdersService.checkout()
+   * and CartService.estimateShipping()). Every physical listing is required
+   * to carry both a processing profile and a delivery profile before it can
+   * be published (see ProductsService.update()), so this should be rare in
+   * practice — legacy listings that predate that requirement are the only
+   * way to hit it.
    */
   async resolveSellerShippingCost(
     items: { storeId: string | null; shippingProfileId: string | null; quantity: number }[],
     destinationCountry: string,
-  ): Promise<{ perStore: Map<string, number>; methodNames: Map<string, string> } | null> {
+  ): Promise<SellerShippingCost | null> {
     if (items.some((i) => !i.storeId || !i.shippingProfileId)) return null;
 
     const profileIds = [...new Set(items.map((i) => i.shippingProfileId as string))];
@@ -147,8 +64,9 @@ export class ShippingService {
       else groups.set(key, { storeId: item.storeId as string, profile, quantity: item.quantity });
     }
 
-    const perStore    = new Map<string, number>();
-    const methodNames = new Map<string, string>();
+    const perStore     = new Map<string, number>();
+    const methodNames  = new Map<string, string>();
+    const deliveryDays = new Map<string, { minDays: number; maxDays: number }>();
     const dest = destinationCountry.toUpperCase();
 
     for (const { storeId, profile, quantity } of groups.values()) {
@@ -169,10 +87,18 @@ export class ShippingService {
           storeId,
           method.carrierService === 'OTHER' ? (method.carrierName ?? 'Standard Shipping') : carrierServiceLabel(method.carrierService),
         );
+        deliveryDays.set(storeId, { minDays: method.minDays, maxDays: method.maxDays });
+      } else {
+        // Multiple profiles within the same store — widen the range to cover both.
+        const prev = deliveryDays.get(storeId)!;
+        deliveryDays.set(storeId, {
+          minDays: Math.min(prev.minDays, method.minDays),
+          maxDays: Math.max(prev.maxDays, method.maxDays),
+        });
       }
     }
 
-    return { perStore, methodNames };
+    return { perStore, methodNames, deliveryDays };
   }
 
   // ─── Processing & shipping profiles ─────────────────────────────────────────
@@ -358,172 +284,6 @@ export class ShippingService {
     const profile = await this.prisma.shippingProfile.findUnique({ where: { id }, select: { storeId: true } });
     if (!profile) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Delivery profile not found' });
     if (profile.storeId !== storeId) throw new ForbiddenException('You do not have access to this delivery profile');
-  }
-
-  // ── Zone CRUD ────────────────────────────────────────────────────────────────
-
-  async getZones(): Promise<ZoneWithMethods[]> {
-    return this.prisma.shippingZone.findMany({
-      include: { methods: { orderBy: { price: 'asc' } } },
-      orderBy: { name: 'asc' },
-    });
-  }
-
-  async getZoneById(id: string): Promise<ZoneWithMethods> {
-    const zone = await this.prisma.shippingZone.findUnique({
-      where: { id },
-      include: { methods: { orderBy: { price: 'asc' } } },
-    });
-    if (!zone)
-      throw new NotFoundException({
-        code: 'ERR_NOT_FOUND',
-        message: 'Shipping zone not found',
-      });
-    return zone;
-  }
-
-  async createZone(dto: CreateShippingZoneDto): Promise<ZoneWithMethods> {
-    return this.prisma.shippingZone.create({
-      data: { name: dto.name, countries: dto.countries },
-      include: { methods: true },
-    });
-  }
-
-  async updateZone(
-    id: string,
-    dto: UpdateShippingZoneDto,
-  ): Promise<ZoneWithMethods> {
-    await this.getZoneById(id);
-    return this.prisma.shippingZone.update({
-      where: { id },
-      data: {
-        ...(dto.name && { name: dto.name }),
-        ...(dto.countries && { countries: dto.countries }),
-      },
-      include: { methods: true },
-    });
-  }
-
-  async deleteZone(id: string): Promise<void> {
-    await this.getZoneById(id);
-    await this.prisma.shippingZone.delete({ where: { id } });
-  }
-
-  // ── Method CRUD ──────────────────────────────────────────────────────────────
-
-  async getMethodsByZone(zoneId: string): Promise<ShippingMethod[]> {
-    await this.getZoneById(zoneId);
-    return this.prisma.shippingMethod.findMany({
-      where: { zoneId },
-      orderBy: { price: 'asc' },
-    });
-  }
-
-  async createMethod(
-    zoneId: string,
-    dto: CreateShippingMethodDto,
-  ): Promise<ShippingMethod> {
-    await this.getZoneById(zoneId);
-    return this.prisma.shippingMethod.create({
-      data: {
-        zoneId,
-        name: dto.name,
-        carrier: dto.carrier,
-        price: dto.price,
-        freeShippingOver: dto.freeShippingOver ?? null,
-        minDays: dto.minDays,
-        maxDays: dto.maxDays,
-        isActive: dto.isActive ?? true,
-      },
-    });
-  }
-
-  async updateMethod(
-    id: string,
-    dto: UpdateShippingMethodDto,
-  ): Promise<ShippingMethod> {
-    const existing = await this.prisma.shippingMethod.findUnique({
-      where: { id },
-    });
-    if (!existing)
-      throw new NotFoundException({
-        code: 'ERR_NOT_FOUND',
-        message: 'Shipping method not found',
-      });
-
-    return this.prisma.shippingMethod.update({
-      where: { id },
-      data: {
-        ...(dto.name !== undefined && { name: dto.name }),
-        ...(dto.carrier !== undefined && { carrier: dto.carrier }),
-        ...(dto.price !== undefined && { price: dto.price }),
-        ...(dto.freeShippingOver !== undefined && {
-          freeShippingOver: dto.freeShippingOver,
-        }),
-        ...(dto.minDays !== undefined && { minDays: dto.minDays }),
-        ...(dto.maxDays !== undefined && { maxDays: dto.maxDays }),
-        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
-      },
-    });
-  }
-
-  async deleteMethod(id: string): Promise<void> {
-    const existing = await this.prisma.shippingMethod.findUnique({
-      where: { id },
-    });
-    if (!existing)
-      throw new NotFoundException({
-        code: 'ERR_NOT_FOUND',
-        message: 'Shipping method not found',
-      });
-    await this.prisma.shippingMethod.delete({ where: { id } });
-  }
-
-  async getShippingSettings() {
-    const s = await this.prisma.platformSettings.upsert({
-      where:  { id: 'singleton' },
-      update: {},
-      create: { id: 'singleton' },
-      select: {
-        freeShippingEnabled:   true,
-        freeShippingMinAmount: true,
-        freeShippingZoneIds:   true,
-        defaultProcessingDays: true,
-        showEstimatedDelivery: true,
-        showCarrierInCheckout: true,
-      },
-    });
-    return {
-      ...s,
-      freeShippingMinAmount: Number(s.freeShippingMinAmount),
-    };
-  }
-
-  async updateShippingSettings(dto: {
-    freeShippingEnabled?:   boolean;
-    freeShippingMinAmount?: number;
-    freeShippingZoneIds?:   string[];
-    defaultProcessingDays?: number;
-    showEstimatedDelivery?: boolean;
-    showCarrierInCheckout?: boolean;
-  }) {
-    const s = await this.prisma.platformSettings.upsert({
-      where:  { id: 'singleton' },
-      update: dto,
-      create: { id: 'singleton', ...dto },
-      select: {
-        freeShippingEnabled:   true,
-        freeShippingMinAmount: true,
-        freeShippingZoneIds:   true,
-        defaultProcessingDays: true,
-        showEstimatedDelivery: true,
-        showCarrierInCheckout: true,
-      },
-    });
-    return {
-      ...s,
-      freeShippingMinAmount: Number(s.freeShippingMinAmount),
-    };
   }
 
   /** Returns the carrier-specific tracking URL for a given tracking number. */

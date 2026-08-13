@@ -14,7 +14,7 @@
 
   "stepHeadings": {
     "shippingInformation": "Shipping Information",
-    "deliveryMethod": "Delivery Method",
+    "deliveryMethod": "Delivery Estimate",
     "payment": "Payment",
     "contactInformation": "Contact information",
     "preparingOrder": "Preparing your order…"
@@ -79,17 +79,14 @@
   },
 
   "deliveryForm": {
-    "calculating": "Calculating shipping for <b>{country}</b>…",
-    "failedToLoad": "Failed to load shipping options.",
+    "calculating": "Calculating delivery for <b>{country}</b>…",
+    "failedToLoad": "Failed to load your delivery estimate.",
     "tryAgain": "Try again",
-    "noShipTo": "We don't ship to {country} yet.",
+    "unresolvable": "We can't estimate delivery to {country} yet — please contact the seller or try a different address.",
     "changeCountry": "← Change country",
-    "selectMethod": "Select a shipping method",
-    "methodsAria": "Shipping methods",
-    "via": "via {carrier}",
+    "estimateTitle": "Delivery",
     "businessDays": "{min}–{max} business days · Arrives {date}",
     "free": "FREE",
-    "freeOver": "Free over {amount}",
     "back": "← Back",
     "backAria": "Back",
     "continueToPayment": "Continue to Payment →",

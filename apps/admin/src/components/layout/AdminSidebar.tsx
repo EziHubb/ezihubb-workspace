@@ -90,7 +90,6 @@ const NAV_SECTIONS: NavSection[] = [
       },
       { label: 'Finance',  href: '/finance',  icon: BarChart2  },
       { label: 'Payouts',  href: '/payouts',  icon: Wallet     },
-      { label: 'Shipping', href: '/shipping', icon: Truck      },
       { label: 'Payments', href: '/payments', icon: CreditCard },
     ],
   },

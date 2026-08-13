@@ -8,7 +8,7 @@ import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { useCartStore } from '../../../../lib/store/cart.store';
 import type { ShippingAddressInput } from '@ezihubb/api-client';
-import type { ShippingOptionDto, CartDto } from '@ezihubb/types';
+import type { ShippingEstimateDto, CartDto } from '@ezihubb/types';
 import { StepIndicator }           from '../../../../components/checkout/StepIndicator';
 import { ShippingForm }             from '../../../../components/checkout/ShippingForm';
 import { DeliveryForm }             from '../../../../components/checkout/DeliveryForm';
@@ -203,7 +203,7 @@ export default function CheckoutPage() {
   const [completedSteps,   setCompletedSteps]   = useState<number[]>([]);
   const [shippingAddress,  setShippingAddress]  = useState<ShippingAddressInput | null>(null);
   const [guestEmail,       setGuestEmail]       = useState('');
-  const [shippingMethod,   setShippingMethod]   = useState<ShippingOptionDto | null>(null);
+  const [shippingEstimate, setShippingEstimate] = useState<ShippingEstimateDto | null>(null);
 
   // ── Gift options ───────────────────────────────────────────────────────────
   const [giftOptions, setGiftOptions] = useState<GiftOptions>({
@@ -344,15 +344,18 @@ export default function CheckoutPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  /** Called from DeliveryForm when user selects a method and clicks Continue.
-   *  Creates the order + payment intent before showing Stripe Elements. */
-  const handleProceedToPayment = async (method: ShippingOptionDto) => {
+  /** Called from DeliveryForm once the automatic delivery estimate resolves
+   *  and the shopper clicks Continue. Creates the order + payment intent
+   *  before showing Stripe Elements — the server independently re-resolves
+   *  the same seller Delivery-profile cost, this estimate is only used to
+   *  drive the UI in the meantime. */
+  const handleProceedToPayment = async (estimate: ShippingEstimateDto) => {
     if (!shippingAddress || !cart) return;
-    setShippingMethod(method);
+    setShippingEstimate(estimate);
     setCompletedSteps((prev) => [...new Set([...prev, 2])]);
     analytics.addShippingInfo({
       total:          cart.totals?.total ?? 0,
-      shippingMethod: method.name,
+      shippingMethod: estimate.perStore[0]?.methodName ?? 'Standard Shipping',
     });
     setIsCreatingOrder(true);
     setOrderError('');
@@ -374,7 +377,6 @@ export default function CheckoutPage() {
           postalCode:    shippingAddress.postalCode,
           country:       shippingAddress.country,
         },
-        shippingMethodId: method.methodId,
         couponCode:       cart.couponCode ?? undefined,
         guestEmail:       !isLoggedIn ? guestEmail : undefined,
         isGift:           giftOptions.isGift,
@@ -408,7 +410,7 @@ export default function CheckoutPage() {
     router.push(`/${locale}/checkout/success?order=${num}${guestParam}`);
   };
 
-  const shippingCost = shippingMethod?.isFree ? 0 : (shippingMethod?.price ?? 0);
+  const shippingCost = shippingEstimate?.totalCost ?? 0;
 
   return (
     <div className="bg-background min-h-screen">
@@ -522,7 +524,6 @@ export default function CheckoutPage() {
 
                 <DeliveryForm
                   countryCode={shippingAddress.country}
-                  orderTotal={safeNum(cart.totals?.subtotal)}
                   onComplete={handleProceedToPayment}
                   onBack={() => setStep(1)}
                   isCreatingOrder={isCreatingOrder}
@@ -531,7 +532,7 @@ export default function CheckoutPage() {
             )}
 
             {/* Step 3: Payment — data-hj-suppress prevents Hotjar from recording card fields */}
-            {step === 3 && clientSecret && (isDigitalOnly || (shippingAddress && shippingMethod)) && (
+            {step === 3 && clientSecret && (isDigitalOnly || (shippingAddress && shippingEstimate)) && (
               <section aria-labelledby="step3-heading" data-hj-suppress>
                 <h2 id="step3-heading" className="text-base font-semibold text-secondary mb-5">
                   {t('stepHeadings.payment')}

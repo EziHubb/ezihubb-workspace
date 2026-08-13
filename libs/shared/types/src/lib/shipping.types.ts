@@ -1,34 +1,18 @@
-export interface ShippingZoneDto {
-  id:        string;
-  name:      string;
-  countries: string[];
-  methods?:  ShippingMethodDto[];
-  createdAt: string;
-  updatedAt: string;
+export interface ShippingEstimateStoreDto {
+  storeId:    string;
+  cost:       number;
+  methodName: string;
+  minDays:    number;
+  maxDays:    number;
 }
 
-export interface ShippingMethodDto {
-  id:                string;
-  zoneId:            string;
-  name:              string;
-  carrier?:          string;
-  price:             number;
-  freeShippingOver?: number;
-  minDays:           number;
-  maxDays:           number;
-  isActive:          boolean;
-  createdAt:         string;
-  updatedAt:         string;
-}
-
-export interface ShippingOptionDto {
-  methodId:          string;
-  name:              string;
-  carrier?:          string;
-  price:             number;
-  isFree:            boolean;
-  freeShippingOver?: number;
-  minDays:           number;
-  maxDays:           number;
-  estimatedDelivery: string;
+/** Aggregate delivery cost/timeline for a cart, resolved from each seller's
+ *  own Delivery profile — see ShippingService.resolveSellerShippingCost(). */
+export interface ShippingEstimateDto {
+  /** False when any cart item lacks a resolvable delivery profile for the given destination. */
+  resolvable: boolean;
+  perStore:   ShippingEstimateStoreDto[];
+  totalCost:  number;
+  minDays:    number | null;
+  maxDays:    number | null;
 }

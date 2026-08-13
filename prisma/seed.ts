@@ -26,13 +26,12 @@ async function main() {
   }
 
   // Summary
-  const [users, categories, collections, products, promotions, zones, orders, reviews, giftCards, wishlistItems, qanda] = await Promise.all([
+  const [users, categories, collections, products, promotions, orders, reviews, giftCards, wishlistItems, qanda] = await Promise.all([
     prisma.user.count(),
     prisma.category.count(),
     prisma.collection.count(),
     prisma.product.count(),
     prisma.promotion.count(),
-    prisma.shippingZone.count(),
     prisma.order.count(),
     prisma.review.count(),
     prisma.giftCard.count(),
@@ -50,7 +49,6 @@ async function main() {
   console.log(`  Wishlist Items:   ${wishlistItems}`);
   console.log(`  Product Q&A:      ${qanda}`);
   console.log(`  Promotions:       ${promotions}`);
-  console.log(`  Shipping zones:   ${zones}`);
 
   console.log('\n✅ Seed complete!');
 }

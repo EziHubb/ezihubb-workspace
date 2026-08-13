@@ -22,7 +22,6 @@ export interface ShippingAddressInput {
 export interface SubmitCheckoutInput {
   email?:          string;   // guest only
   shippingAddress: ShippingAddressInput;
-  shippingMethodId: string;
   couponCode?:     string;
   giftCardCode?:   string;
   notes?:          string;

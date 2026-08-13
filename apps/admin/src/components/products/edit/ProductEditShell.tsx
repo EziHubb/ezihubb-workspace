@@ -224,6 +224,14 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
   // ── Save — edit mode ─────────────────────────────────────────────────────────
 
   const handleEdit = async (data: ProductEditFormValues) => {
+    // Published listings must always carry their own delivery info — the
+    // backend enforces this too (merged against whatever's already stored),
+    // but checking client-side first avoids a round-trip and scrolls the
+    // seller straight to the field that needs fixing.
+    if (product?.isActive && data.productType !== 'DIGITAL' && (!data.processingProfileId || !data.shippingProfileId)) {
+      scrollToSection('pricing-shipping');
+      throw new Error('Set a processing profile and a delivery option before saving this listing');
+    }
     await Promise.all([
       api.patch(API_ROUTES.ADMIN.PRODUCT(product!.id), extractPrismaFields(data)),
       api.put(API_ROUTES.ADMIN.PRODUCT_DETAIL(product!.id), extractMongoFields(data)),
@@ -246,6 +254,12 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
     if (!data.primaryCategoryId) {
       scrollToSection('item-details');
       throw new Error('Category is required');
+    }
+    // A copy starts as an inactive draft (isActive: false below) — no need
+    // to have delivery info ready before the seller has even reviewed it.
+    if (!isCopy && data.productType !== 'DIGITAL' && (!data.processingProfileId || !data.shippingProfileId)) {
+      scrollToSection('pricing-shipping');
+      throw new Error('Set a processing profile and a delivery option before publishing this listing');
     }
 
     const sku = data.sku?.trim() || generateSku();

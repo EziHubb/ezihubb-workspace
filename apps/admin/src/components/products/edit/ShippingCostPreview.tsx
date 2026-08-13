@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronDown, Lightbulb } from 'lucide-react';
-import { COUNTRIES } from '../../shipping/ShippingZoneModal';
+import { COUNTRIES } from '../../shipping/delivery/countries';
 
 interface PreviewMethod {
   destinationType: string;

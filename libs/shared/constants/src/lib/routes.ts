@@ -61,13 +61,14 @@ export const API_ROUTES = {
   },
 
   CART: {
-    GET:         '/cart',
-    ADD:         '/cart/items',
-    UPDATE_ITEM: (itemId: string) => `/cart/items/${itemId}`,
-    REMOVE_ITEM: (itemId: string) => `/cart/items/${itemId}`,
-    CLEAR:       '/cart/clear',
-    MERGE:       '/cart/merge',
-    COUPON:      '/cart/coupon',
+    GET:               '/cart',
+    ADD:               '/cart/items',
+    UPDATE_ITEM:       (itemId: string) => `/cart/items/${itemId}`,
+    REMOVE_ITEM:       (itemId: string) => `/cart/items/${itemId}`,
+    CLEAR:             '/cart/clear',
+    MERGE:             '/cart/merge',
+    COUPON:            '/cart/coupon',
+    ESTIMATE_SHIPPING: '/cart/estimate-shipping',
   },
 
   ORDERS: {
@@ -93,11 +94,6 @@ export const API_ROUTES = {
 
   PROMOTIONS: {
     VALIDATE: '/promotions/validate',
-  },
-
-  SHIPPING: {
-    CALCULATE: '/shipping/calculate',
-    METHODS:   '/shipping/methods',
   },
 
   CUSTOMIZATION: {
@@ -309,12 +305,7 @@ export const API_ROUTES = {
     PROMOTIONS_PAGE_STATS:  '/promotions/page-stats',
     PROMOTION_STATS:        (id: string) => `/promotions/${id}/stats`,
 
-    // ── Shipping ─────────────────────────────────────────────────────────────
-    SHIPPING_SETTINGS:          '/admin/shipping/settings',
-    SHIPPING_ZONES:             '/admin/shipping/zones',
-    SHIPPING_ZONE:              (id: string) => `/admin/shipping/zones/${id}`,
-    SHIPPING_ZONE_METHODS:      (zoneId: string) => `/admin/shipping/zones/${zoneId}/methods`,
-    SHIPPING_METHOD:            (id: string) => `/admin/shipping/methods/${id}`,
+    // ── Shipping (seller-owned Delivery settings) ─────────────────────────────
     SHIPPING_PROFILES:          '/admin/shipping/profiles',
     SHIPPING_PROFILE:           (id: string) => `/admin/shipping/profiles/${id}`,
     SHIPPING_PROCESSING_PROFILES: '/admin/shipping/processing-profiles',

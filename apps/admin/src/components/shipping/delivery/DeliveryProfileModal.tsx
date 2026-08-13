@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Plus, Trash2, X } from 'lucide-react';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES, CARRIER_SERVICES } from '@ezihubb/constants';
-import { COUNTRIES } from '../ShippingZoneModal';
+import { COUNTRIES } from './countries';
 import type { ShippingProfile, ShippingProfileMethodRow } from './types';
 import { DOMESTIC, EVERYWHERE_ELSE } from './types';
 

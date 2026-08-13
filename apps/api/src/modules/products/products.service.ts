@@ -682,6 +682,38 @@ export class ProductsService {
       }
     }
 
+    // A physical listing that is (or will remain) active must always carry
+    // its own Processing profile + Delivery profile — checked against the
+    // MERGED state (this patch's fields, falling back to what's already
+    // stored) rather than only `dto.isActive === true`, so this also blocks
+    // an ordinary edit to an already-published listing that predates this
+    // requirement, not just the initial publish. Checkout requires every
+    // physical item to resolve a Delivery profile (see
+    // ShippingService.resolveSellerShippingCost()), so this is what keeps
+    // that guarantee true for every active listing.
+    {
+      const existingForDelivery = await this.prisma.product.findUnique({
+        where:  { id },
+        select: { isActive: true, productType: true, processingProfileId: true, shippingProfileId: true },
+      });
+      const willBeActive = dto.isActive ?? existingForDelivery?.isActive ?? false;
+      const productType  = dto.productType ?? existingForDelivery?.productType;
+      if (willBeActive && productType !== ProductType.DIGITAL) {
+        const processingProfileId = dto.processingProfileId !== undefined
+          ? dto.processingProfileId
+          : existingForDelivery?.processingProfileId;
+        const shippingProfileId = dto.shippingProfileId !== undefined
+          ? dto.shippingProfileId
+          : existingForDelivery?.shippingProfileId;
+        if (!processingProfileId || !shippingProfileId) {
+          throw new BadRequestException({
+            code:    'ERR_DELIVERY_INFO_REQUIRED',
+            message: 'Set a processing profile and a delivery option before publishing this listing.',
+          });
+        }
+      }
+    }
+
     const data: Prisma.ProductUpdateInput = {};
 
     // ── Existing scalar fields ─────────────────────────────────────────────
