@@ -1,52 +1,59 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { ChevronDown } from 'lucide-react';
-import { api } from '../../../lib/api-client';
+import { ChevronDown, Lightbulb } from 'lucide-react';
+import { COUNTRIES } from '../../shipping/ShippingZoneModal';
 
-interface ShippingDestination {
-  label: string;
-  price: string;
+interface PreviewMethod {
+  destinationType: string;
+  chargeType:      'FIXED' | 'FREE';
+  price?:          number | null;
 }
 
-interface Props { profileId: string | null }
+interface Props {
+  originCountry: string | null;
+  methods:       PreviewMethod[] | undefined;
+}
 
-export function ShippingCostPreview({ profileId }: Props) {
-  const [isOpen, setIsOpen] = useState(false)
+function destinationLabel(destinationType: string, originCountry: string | null): string {
+  if (destinationType === 'domestic') return COUNTRIES.find((c) => c.code === originCountry)?.name ?? originCountry ?? 'Domestic';
+  if (destinationType === 'everywhere_else') return 'Everywhere else';
+  return COUNTRIES.find((c) => c.code === destinationType)?.name ?? destinationType;
+}
 
-  const { data: destinations = [] } = useQuery<ShippingDestination[]>({
-    queryKey: ['shipping-preview', profileId],
-    queryFn: () => api.get<ShippingDestination[]>(`/admin/shipping-profiles/${profileId}/preview`),
-    enabled: !!profileId && isOpen,
-  })
+// Reads straight off the already-fetched profile's own methods — no separate
+// API round trip. Previously called a `/admin/shipping-profiles/:id/preview`
+// route that was never actually implemented on the backend, so this panel
+// showed "Loading preview..." forever.
+export function ShippingCostPreview({ originCountry, methods }: Props) {
+  const [isOpen, setIsOpen] = useState(false);
 
-  if (!profileId) return null
+  if (!methods?.length) return null;
 
   return (
     <div className="mt-3">
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setIsOpen((v) => !v)}
         className="flex items-center gap-2 text-sm text-secondary hover:text-primary transition-colors"
       >
-        <i className="ti ti-bulb text-primary" />
+        <Lightbulb className="w-3.5 h-3.5 text-primary" />
         <span>Preview shipping cost</span>
         <ChevronDown className={`w-3.5 h-3.5 text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
         <div className="mt-3 bg-[#F9FAFB] rounded-xl p-4 text-sm space-y-2">
-          {destinations.length > 0 ? destinations.map(d => (
-            <div key={d.label} className="flex justify-between">
-              <span className="text-muted">{d.label}</span>
-              <span className="font-medium text-secondary">{d.price}</span>
+          {methods.map((m) => (
+            <div key={m.destinationType} className="flex justify-between">
+              <span className="text-muted">{destinationLabel(m.destinationType, originCountry)}</span>
+              <span className="font-medium text-secondary tabular-nums">
+                {m.chargeType === 'FREE' ? 'Free' : `$${Number(m.price ?? 0).toFixed(2)}`}
+              </span>
             </div>
-          )) : (
-            <p className="text-muted text-xs">Loading preview...</p>
-          )}
+          ))}
         </div>
       )}
     </div>
-  )
+  );
 }

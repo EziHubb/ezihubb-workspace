@@ -22,6 +22,7 @@ const TITLE_MAP: Record<string, string> = {
   '/payments':            'Payments',
   '/messages':            'Messages',
   '/settings':            'Settings',
+  '/settings/delivery':   'Delivery settings',
 };
 
 function getPageTitle(pathname: string): string {

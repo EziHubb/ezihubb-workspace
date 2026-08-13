@@ -316,7 +316,11 @@ export const API_ROUTES = {
     SHIPPING_ZONE_METHODS:      (zoneId: string) => `/admin/shipping/zones/${zoneId}/methods`,
     SHIPPING_METHOD:            (id: string) => `/admin/shipping/methods/${id}`,
     SHIPPING_PROFILES:          '/admin/shipping/profiles',
+    SHIPPING_PROFILE:           (id: string) => `/admin/shipping/profiles/${id}`,
     SHIPPING_PROCESSING_PROFILES: '/admin/shipping/processing-profiles',
+    SHIPPING_PROCESSING_PROFILE:  (id: string) => `/admin/shipping/processing-profiles/${id}`,
+    SHIPPING_PROCESSING_SCHEDULE: '/admin/shipping/processing-schedule',
+    SHIPPING_DELIVERY_UPGRADES:   '/admin/shipping/delivery-upgrades',
 
     // ── Messages ─────────────────────────────────────────────────────────────
     CONVERSATIONS:        '/admin/messages/conversations',

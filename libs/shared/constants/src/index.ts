@@ -5,3 +5,4 @@ export * from './lib/routes';
 export * from './lib/app-routes';
 export * from './lib/upload';
 export * from './lib/permissions';
+export * from './lib/carriers';

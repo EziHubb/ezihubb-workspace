@@ -187,7 +187,7 @@ function getShopNavSections(storeId: string): NavSection[] {
           label: 'Store Settings', href: storeHref, icon: Settings,
           children: [
             { label: 'General',     href: storeHref,               icon: Settings     },
-            { label: 'Shipping',    href: '/shipping',              icon: Truck        },
+            { label: 'Delivery',    href: '/settings/delivery',    icon: Truck        },
             { label: 'Promotions',  href: '/promotions',            icon: BadgePercent },
             { label: 'Fulfillment', href: '/settings/fulfillment',  icon: Plug         },
             { label: 'API Keys',    href: '/settings/api-keys',     icon: KeyRound     },

@@ -56,6 +56,7 @@ const CART_INCLUDE_FOR_CHECKOUT = {
           productType: true,
           deletedAt: true,
           storeId: true,
+          shippingProfileId: true,
           images: {
             where: { type: 'MOCKUP' as const },
             orderBy: { isPrimary: 'desc' as const },
@@ -261,6 +262,21 @@ export class OrdersService {
       ? null
       : await this.computeProviderShippingCost(cart.items, dto.shippingAddress!);
 
+    // Seller-configured Delivery profiles (Etsy-parity) — only used when
+    // EVERY physical item resolves to one; otherwise null and the legacy
+    // flat ShippingZone/shippingMethodId path below is used for the whole
+    // order, same as before this feature existed.
+    const sellerShipping = isDigitalOnly || providerShippingCost
+      ? null
+      : await this.shippingService.resolveSellerShippingCost(
+          cart.items.map((item) => ({
+            storeId:           item.product.storeId,
+            shippingProfileId: item.product.shippingProfileId,
+            quantity:          item.quantity,
+          })),
+          dto.shippingAddress!.country,
+        );
+
     // Recalculate subtotal from current prices (server-side, never trust client)
     const subtotal = cart.items.reduce((sum, item) => {
       const variantPrice = item.variant?.price != null ? Number(item.variant.price) : null;
@@ -345,6 +361,10 @@ export class OrdersService {
     } else if (providerShippingCost) {
       shippingCost = freeShipping ? 0 : [...providerShippingCost.values()].reduce((s, c) => s + c, 0);
       shippingMethodName = 'Standard Shipping';
+    } else if (sellerShipping) {
+      shippingCost = freeShipping ? 0 : [...sellerShipping.perStore.values()].reduce((s, c) => s + c, 0);
+      const distinctNames = new Set(sellerShipping.methodNames.values());
+      shippingMethodName = distinctNames.size === 1 ? [...distinctNames][0] : 'Standard Shipping';
     } else {
       const shippingCalc = await this.shippingService.calculateShipping(
         dto.shippingMethodId!,
@@ -464,7 +484,9 @@ export class OrdersService {
             return sum + price * item.quantity;
           }, 0);
           const roundedSubtotal = Math.round(storeSubtotal * 100) / 100;
-          const storeShippingCost = freeShipping ? 0 : (providerShippingCost?.get(storeId) ?? 0);
+          const storeShippingCost = freeShipping
+            ? 0
+            : (providerShippingCost?.get(storeId) ?? sellerShipping?.perStore.get(storeId) ?? 0);
 
           const fees = calculateOrderFees(roundedSubtotal, storeShippingCost, storeCountryMap.get(storeId), feeSettings);
 

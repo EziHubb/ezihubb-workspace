@@ -32,6 +32,7 @@ export const ADMIN_ROUTES = {
   REVIEWS:       '/reviews',
 
   SHIPPING:      '/shipping',
+  SETTINGS_DELIVERY: '/settings/delivery',
 
   PAYMENTS:      '/payments',
 

@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ChevronRight, X, ExternalLink, Lightbulb, Truck,
+  ChevronRight, X, ExternalLink, Lightbulb, Truck, Plus, CheckCircle2, Pencil,
 } from 'lucide-react';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -15,26 +15,10 @@ import { ShippingCostPreview }     from '../ShippingCostPreview';
 import { ReturnPolicyCard }        from '../ReturnPolicyCard';
 import { Toggle as PrimitiveToggle } from '../primitives/Toggle';
 import { pricedGroupIds } from '../helpers';
+import { DeliveryProfileModal } from '../../../shipping/delivery/DeliveryProfileModal';
+import type { ShippingProfile } from '../../../shipping/delivery/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface ShippingProfileMethod {
-  id:              string;
-  destinationType: string;
-  carrier?:        string;
-  minDays:         number;
-  maxDays:         number;
-  price:           number;
-}
-
-interface ShippingProfile {
-  id:             string;
-  name:           string;
-  type:           string;
-  activeListings: number;
-  isDefault:      boolean;
-  methods?:       ShippingProfileMethod[];
-}
 
 interface VariationSettings {
   enableVariations: boolean;
@@ -45,7 +29,7 @@ interface VariationSettings {
 
 function TabSection({ title, description, link, children }: {
   title:       string;
-  description?: string;
+  description?: React.ReactNode;
   link?:       { label: string; href: string };
   children:    React.ReactNode;
 }) {
@@ -54,7 +38,7 @@ function TabSection({ title, description, link, children }: {
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <h3 className="font-semibold text-secondary">{title}</h3>
-          {description && <p className="text-sm text-muted mt-0.5 max-w-xl">{description}</p>}
+          {description && <p className="text-sm text-muted mt-0.5 max-w-2xl">{description}</p>}
         </div>
         {link && (
           <a href={link.href} target="_blank" rel="noopener noreferrer"
@@ -105,40 +89,71 @@ function Toggle({ checked, onChange, label, sub }: {
 // ─── Profile picker modal ─────────────────────────────────────────────────────
 
 function ProfilePickerModal<T extends { id: string }>({
-  title, items, selectedId, renderItem, onSelect, onClose,
+  title, subtitle, items, selectedId, renderItem, onSelect, onCreateNew, onEdit, canEdit, onClose,
 }: {
-  title:      string;
-  items:      T[];
-  selectedId: string | null;
-  renderItem: (item: T) => React.ReactNode;
-  onSelect:   (id: string) => void;
-  onClose:    () => void;
+  title:       string;
+  subtitle?:   string;
+  items:       T[];
+  selectedId:  string | null;
+  renderItem:  (item: T) => React.ReactNode;
+  onSelect:    (id: string) => void;
+  /** Opens the create-new-profile flow — omit to hide the "+ Create new" row entirely. */
+  onCreateNew?: () => void;
+  /** Opens the edit-in-place flow for one row's pencil icon — omit to hide edit icons entirely. */
+  onEdit?:     (item: T) => void;
+  /** Per-row gate for the pencil icon (e.g. hide it for read-only platform-default rows the backend would reject saving) — omitted means every row is editable. */
+  canEdit?:    (item: T) => boolean;
+  onClose:     () => void;
 }) {
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-md"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h4 className="font-semibold text-secondary">{title}</h4>
-          <button type="button" onClick={onClose} className="p-1.5 rounded hover:bg-muted/10 text-muted">
+          <div>
+            <h4 className="font-semibold text-secondary">{title}</h4>
+            {subtitle && <p className="text-sm text-muted mt-0.5">{subtitle}</p>}
+          </div>
+          <button type="button" onClick={onClose} className="p-1.5 rounded hover:bg-muted/10 text-muted shrink-0">
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="px-5 py-3 space-y-2 max-h-72 overflow-y-auto">
-          {items.map((item) => (
-            <button key={item.id} type="button" onClick={() => { onSelect(item.id); onClose(); }}
-              className={[
-                'w-full flex items-center gap-3 px-4 py-3 rounded-lg border-2 text-left transition-all',
-                selectedId === item.id
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border hover:border-primary/40',
-              ].join(' ')}>
-              <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${selectedId === item.id ? 'border-primary' : 'border-muted'}`}>
-                {selectedId === item.id && <div className="w-2 h-2 rounded-full bg-primary" />}
-              </div>
-              <div className="flex-1 min-w-0">{renderItem(item)}</div>
+        <div className="px-5 py-3 space-y-2 max-h-80 overflow-y-auto">
+          {onCreateNew && (
+            <button type="button" onClick={onCreateNew}
+              className="w-full flex items-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed border-border hover:border-primary/40 text-primary transition-colors">
+              <Plus className="w-4 h-4" />
+              <span className="text-sm font-semibold">Create new</span>
             </button>
-          ))}
+          )}
+          {items.map((item) => {
+            const isSelected = selectedId === item.id;
+            return (
+              <div key={item.id}
+                className={[
+                  'w-full flex items-center gap-3 px-4 py-3 rounded-lg border-2 transition-all',
+                  isSelected ? 'border-secondary bg-muted/3' : 'border-border hover:border-primary/40',
+                ].join(' ')}>
+                <button type="button" onClick={() => { onSelect(item.id); onClose(); }}
+                  className="flex-1 min-w-0 text-left">
+                  {renderItem(item)}
+                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  {isSelected && (
+                    <span className="flex items-center gap-1 text-xs font-bold text-green-600">
+                      <CheckCircle2 className="w-4 h-4" /> Applied
+                    </span>
+                  )}
+                  {onEdit && (!canEdit || canEdit(item)) && (
+                    <button type="button" onClick={() => onEdit(item)}
+                      className="p-1.5 rounded hover:bg-primary/10 text-muted hover:text-primary transition-colors">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
         <div className="px-5 py-3 border-t border-border">
           <button type="button" onClick={onClose}
@@ -207,13 +222,23 @@ function PriceInput() {
 
 // ─── ShippingProfileCard (Image 11-12) ───────────────────────────────────────
 
+/** "Fixed" when every row charges a fixed price, "Free" when every row is free delivery, "Mixed" otherwise. */
+function profileChargeBadge(profile: ShippingProfile): string {
+  const types = new Set((profile.methods ?? []).map((m) => m.chargeType));
+  if (types.size === 0) return 'Fixed';
+  if (types.size > 1) return 'Mixed';
+  return types.has('FREE') ? 'Free' : 'Fixed';
+}
+
 function ShippingProfileCard({
   profileId, onChange,
 }: {
   profileId: string | null;
   onChange:  (id: string | null) => void;
 }) {
-  const [showModal, setShowModal] = useState(false);
+  const qc = useQueryClient();
+  const [showPicker, setShowPicker]   = useState(false);
+  const [editing,    setEditing]      = useState<ShippingProfile | 'new' | null>(null);
 
   const { data: profiles = [] } = useQuery<ShippingProfile[]>({
     queryKey: ['shipping-profiles'],
@@ -225,9 +250,18 @@ function ShippingProfileCard({
     ?? profiles.find((p) => p.isDefault)
     ?? profiles[0];
 
-  const lowestPrice = selected?.methods?.length
-    ? Math.min(...selected.methods.map((m) => Number(m.price)))
-    : null;
+  const handleProfileSaved = (saved: ShippingProfile) => {
+    qc.invalidateQueries({ queryKey: ['shipping-profiles'] });
+    // A brand-new profile always gets applied to this listing (that's the
+    // point of "+ Create new" here). Editing an EXISTING profile that isn't
+    // the one currently applied to this listing should only update its own
+    // rates in place — it must not silently reassign this listing to it.
+    if (editing === 'new' || saved.id === profileId) {
+      onChange(saved.id);
+    }
+    setEditing(null);
+    setShowPicker(false);
+  };
 
   return (
     <>
@@ -243,66 +277,83 @@ function ShippingProfileCard({
             <>
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-sm font-semibold text-secondary">{selected.name}</p>
-                <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted/10 text-muted">
-                  {selected.type}
+                <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border border-border text-muted">
+                  {profileChargeBadge(selected)}
                 </span>
-                {lowestPrice !== null && (
-                  <span className="text-xs text-muted">from ${lowestPrice.toFixed(2)}</span>
-                )}
               </div>
-              {selected.activeListings > 0 && (
-                <p className="text-xs text-muted mt-0.5">
-                  {selected.activeListings} active listing{selected.activeListings !== 1 ? 's' : ''}
-                </p>
-              )}
+              <p className="text-xs text-muted mt-0.5">
+                From {selected.originPostalCode || selected.originCountry}
+                {selected.activeListings > 0 && (
+                  <> · {selected.activeListings} active listing{selected.activeListings !== 1 ? 's' : ''}</>
+                )}
+              </p>
             </>
           ) : (
-            <p className="text-sm text-muted">No shipping profile selected</p>
+            <p className="text-sm text-muted">No delivery option selected</p>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <a href="/shipping" target="_blank" rel="noopener noreferrer"
-            className="text-xs font-medium text-muted border border-border rounded-button px-2.5 py-1.5 hover:border-primary/40 hover:text-primary transition-colors flex items-center gap-1">
-            <ExternalLink className="w-3 h-3" />
-            Edit
-          </a>
-          <button type="button" onClick={() => setShowModal(true)}
-            className="text-sm font-semibold text-primary hover:underline">
-            Change
-          </button>
+        <div className="flex items-center gap-3 shrink-0">
+          {selected && (
+            <button type="button" onClick={() => setShowPicker(true)}
+              className="text-sm font-semibold text-primary hover:underline">
+              Change
+            </button>
+          )}
+          {/* Platform-default profiles (storeId: null) are read-only for
+              sellers — the backend rejects edits on them regardless, so this
+              only appears for an owned profile or when nothing is selected
+              yet (where it starts the create flow instead). */}
+          {(!selected || selected.storeId !== null) && (
+            <button
+              type="button"
+              onClick={() => (selected ? setEditing(selected) : setEditing('new'))}
+              className="flex items-center gap-1.5 text-xs font-semibold text-secondary bg-muted/10 hover:bg-muted/15 rounded-full px-3 py-2 transition-colors"
+            >
+              <Pencil className="w-3 h-3" />
+              {selected ? 'Edit' : 'Select delivery option'}
+            </button>
+          )}
         </div>
       </div>
 
       {/* Shipping cost preview */}
-      <ShippingCostPreview profileId={selected?.id ?? null} />
+      <ShippingCostPreview originCountry={selected?.originCountry ?? null} methods={selected?.methods} />
 
-      {showModal && (
+      {showPicker && (
         <ProfilePickerModal
-          title="Select shipping profile"
+          title="Delivery options"
+          subtitle="Select a delivery profile or create a new one."
           items={profiles}
           selectedId={profileId}
-          renderItem={(p) => {
-            const lowest = p.methods?.length
-              ? Math.min(...p.methods.map((m) => Number(m.price)))
-              : null;
-            return (
-              <>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-secondary">{p.name}</p>
-                  <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-muted/10 text-muted">{p.type}</span>
-                  {lowest !== null && <span className="text-xs text-muted">from ${lowest.toFixed(2)}</span>}
-                </div>
-                {p.activeListings > 0 && (
-                  <p className="text-xs text-muted mt-0.5">{p.activeListings} active listing{p.activeListings !== 1 ? 's' : ''}</p>
-                )}
-                {p.isDefault && (
-                  <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Default</span>
-                )}
-              </>
-            );
-          }}
+          canEdit={(p) => p.storeId !== null}
+          renderItem={(p) => (
+            <>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-semibold text-secondary">{p.name}</p>
+                <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border border-border text-muted">
+                  {profileChargeBadge(p)}
+                </span>
+              </div>
+              <p className="text-xs text-muted mt-0.5">
+                From {p.originPostalCode || p.originCountry}
+                {p.activeListings > 0 && <> · {p.activeListings} active listing{p.activeListings !== 1 ? 's' : ''}</>}
+              </p>
+            </>
+          )}
           onSelect={onChange}
-          onClose={() => setShowModal(false)}
+          onCreateNew={() => { setShowPicker(false); setEditing('new'); }}
+          onEdit={(p) => { setShowPicker(false); setEditing(p); }}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
+
+      {editing !== null && (
+        <DeliveryProfileModal
+          profile={editing === 'new' ? null : editing}
+          submitLabel="Apply"
+          entityLabel="delivery option"
+          onClose={() => setEditing(null)}
+          onSaved={handleProfileSaved}
         />
       )}
     </>
@@ -498,26 +549,34 @@ export function PricingShippingTab({ product, onSwitchTab, isDigital }: PricingS
           </div>
         </TabSection>
 
-        {/* ── Shipping, Processing & Returns (Images 11-12) ────────────── */}
+        {/* ── Delivery, Processing & Returns (Images 11-12) ────────────── */}
         {/* Digital downloads have no physical shipping/fulfillment — this
             entire section only applies to physical products. */}
         {!isDigital && (
           <TabSection
-            title="Shipping, processing, and returns"
-            description="Give clear expectations about delivery time and cost."
-            link={{ label: 'Shipping settings', href: '/shipping' }}
+            title="Delivery, processing, and returns"
+            description={
+              <>
+                Give clear expectations about delivery time and cost by making sure your delivery info is
+                accurate — including the delivery profile and your order processing schedule. You can make
+                updates any time in{' '}
+                <a href="/settings/delivery" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:no-underline">
+                  Delivery settings
+                </a>.
+              </>
+            }
           >
             <div className="space-y-7">
               {/* Processing profile */}
-              <FormField label="Processing profile" required hint="How long does it take to make and pack your item?">
+              <FormField label="Processing profile" required>
                 <ProcessingProfileCard
                   profileId={profileId}
                   onChange={(id) => setValue('processingProfileId', id, { shouldDirty: true })}
                 />
               </FormField>
 
-              {/* Shipping option */}
-              <FormField label="Shipping option" required hint="Which shipping profile should apply to this listing?">
+              {/* Delivery option */}
+              <FormField label="Delivery option" required>
                 <ShippingProfileCard
                   profileId={shippingId}
                   onChange={(id) => setValue('shippingProfileId', id, { shouldDirty: true })}

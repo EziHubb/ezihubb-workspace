@@ -14,10 +14,27 @@ function getShopOwnerRedirect(pathname: string, storeId: string | null): string 
   // Strictly super-admin-only prefixes — always redirect to /dashboard
   const superAdminOnly = [
     '/catalog', '/customers', '/payments', '/campaigns', '/affiliates',
-    '/moderation', '/settings', '/finance',
+    '/moderation', '/finance',
     '/stores/plans', '/stores/settings',
+    // Platform-wide ShippingZone/Method rate table — a shop owner manages
+    // their OWN delivery pricing at /settings/delivery instead.
+    '/shipping',
   ];
   if (superAdminOnly.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
+    return '/dashboard';
+  }
+
+  // Bare "/settings" (exact match only — NOT a prefix check, or it would
+  // swallow every /settings/* sub-route below) is the platform-wide General
+  // Settings page — super-admin only.
+  if (pathname === '/settings') return '/dashboard';
+
+  // These specific /settings/* subtrees are ALSO fully super-admin-only.
+  // Everything else under /settings/* (fulfillment, api-keys, delivery) is
+  // the SAME page a shop owner uses for their own store's settings, scoped
+  // by store context rather than by URL — those must stay reachable here.
+  const settingsSuperAdminOnlySubtrees = ['/settings/audit-log', '/settings/affiliates'];
+  if (settingsSuperAdminOnlySubtrees.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
     return '/dashboard';
   }
 

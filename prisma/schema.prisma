@@ -88,6 +88,14 @@ enum ProcessingProfileType {
   READY_TO_SHIP
 }
 
+// What a seller charges for one row of a delivery profile's standard
+// delivery table (Etsy's "What you'll charge"). CALCULATED (weight/carrier
+// API-based) is intentionally not modeled yet — out of scope for now.
+enum ShippingChargeType {
+  FIXED
+  FREE
+}
+
 enum ReturnPolicy {
   NO_RETURNS
   RETURNS_ACCEPTED
@@ -325,6 +333,19 @@ model Store {
   approvedById    String?
   fulfillmentMode StoreFulfillmentMode @default(AUTOMATIC)
 
+  // ── Order processing schedule (Etsy: Delivery settings → Order processing
+  // schedule) — Monday–Friday is always on and not configurable; a seller can
+  // additionally opt Saturday and/or Sunday into their processing week so
+  // dispatch-by-date estimates account for weekend prep. ──────────────────────
+  processesOnSaturday Boolean @default(false)
+  processesOnSunday   Boolean @default(false)
+
+  // Shop-level switch for paid expedited-delivery upgrades (Etsy: Delivery
+  // settings → Upgrades). Per-profile upgrade options (name/price/SLA) are
+  // intentionally out of scope for now — this only gates whether the seller
+  // has opted the feature on at all.
+  deliveryUpgradesEnabled Boolean @default(false)
+
   // Denormalized stats
   totalProducts Int     @default(0)
   totalOrders   Int     @default(0)
@@ -344,8 +365,9 @@ model Store {
   storeOrders      StoreOrder[]
   ledgerEntries    SellerLedgerEntry[]
   payouts          SellerPayout[]
-  shopSections     ShopSection[]
-  shippingProfiles ShippingProfile[]
+  shopSections       ShopSection[]
+  shippingProfiles   ShippingProfile[]
+  processingProfiles ProcessingProfile[]
   promotions       Promotion[]
   reviews          Review[]            @relation("StoreReviews")
   conversations    Conversation[]
@@ -822,26 +844,36 @@ model ProcessingProfile {
   minDays   Int                   @default(3)
   maxDays   Int                   @default(7)
   isDefault Boolean               @default(false)
+  // Nullable for the handful of legacy platform-default profiles seeded
+  // before per-store profiles existed (storeId: null, isDefault: true) —
+  // every seller-created profile from here on always carries a storeId.
+  storeId   String?
+  store     Store?                @relation(fields: [storeId], references: [id])
   createdAt DateTime              @default(now())
   updatedAt DateTime              @updatedAt
 
   products Product[]
+
+  @@index([storeId])
 }
 
 // ─── Shipping Profiles ────────────────────────────────────────────────────────
-// Product-level shipping templates (distinct from ShippingZone which is
-// the customer-facing rate calculation engine).
+// Seller-owned "Delivery profiles" (Etsy: Shop Manager → Settings → Delivery
+// settings → Delivery profiles), distinct from ShippingZone which is the
+// platform-wide rate table a Super Admin manages for the fallback/legacy
+// checkout path (see ShippingProfileMethod below for how these two combine).
 
 model ShippingProfile {
-  id             String   @id @default(cuid())
-  name           String // "Standard Shipping", "Embroidered Hat"
-  type           String   @default("fixed") // "fixed" | "calculated" | "free"
-  activeListings Int      @default(0) // denormalised count
-  isDefault      Boolean  @default(false)
-  storeId        String?
-  store          Store?   @relation(fields: [storeId], references: [id])
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id               String   @id @default(cuid())
+  name             String // "Standard Shipping", "Embroidered Hat"
+  activeListings   Int      @default(0) // denormalised count
+  isDefault        Boolean  @default(false)
+  originCountry    String   @default("VN") @db.VarChar(2) // ISO 3166-1 alpha-2
+  originPostalCode String   @default("")
+  storeId          String?
+  store            Store?   @relation(fields: [storeId], references: [id])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   methods  ShippingProfileMethod[]
   products Product[]
@@ -850,15 +882,22 @@ model ShippingProfile {
 }
 
 model ShippingProfileMethod {
-  id              String          @id @default(cuid())
+  id              String             @id @default(cuid())
   profileId       String
-  profile         ShippingProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile         ShippingProfile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
   destinationType String // "domestic" | "everywhere_else" | ISO country code
-  carrier         String?
+  // Named service from the platform's fixed carrier list (GHN, GHTK, DHL...)
+  // or "OTHER" — when OTHER, carrierName holds the seller's free-text label
+  // and minDays/maxDays become seller-entered instead of a known SLA.
+  carrierService  String             @default("OTHER")
+  carrierName     String? // free-text label, only meaningful when carrierService = "OTHER"
+  chargeType      ShippingChargeType @default(FIXED)
   minDays         Int
   maxDays         Int
-  price           Decimal         @db.Decimal(10, 2)
-  extraItemPrice  Decimal?        @db.Decimal(10, 2) // additional item surcharge
+  // Null when chargeType = FREE — the row still carries a destination and
+  // delivery-time SLA, just no cost.
+  price           Decimal?           @db.Decimal(10, 2)
+  extraItemPrice  Decimal?           @db.Decimal(10, 2) // additional item surcharge, FIXED only
 
   @@index([profileId])
 }
