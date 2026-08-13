@@ -12,7 +12,7 @@
       "products": "Products",
       "analytics": "Analytics",
       "reviews": "Reviews",
-      "payouts": "Payouts",
+      "finances": "Finances",
       "storeSettings": "Store Settings"
     },
     "signOut": "Sign Out"
@@ -50,20 +50,198 @@
       "date": "Date"
     }
   },
-  "payouts": {
-    "title": "Payouts",
-    "stats": {
-      "available": "Available",
-      "pending": "Pending",
-      "totalPaid": "Total Paid"
+  "finances": {
+    "subnav": {
+      "paymentAccount": "Payment account",
+      "monthlyStatements": "Monthly statements",
+      "paymentSettings": "Payment settings",
+      "legalTaxInfo": "Legal and tax information"
     },
-    "history": "Payout History",
-    "noPayouts": "No payouts yet",
-    "table": {
-      "amount": "Amount",
-      "status": "Status",
-      "requested": "Requested",
-      "paid": "Paid"
+    "ledgerType": {
+      "SALE": "Sale",
+      "TRANSACTION_FEE": "Transaction fee",
+      "PAYMENT_PROCESSING_FEE": "Processing fee",
+      "REGULATORY_FEE": "Regulatory fee",
+      "LISTING_FEE": "Listing fee",
+      "ADJUSTMENT": "Adjustment",
+      "VAT": "VAT",
+      "DEPOSIT_FEE": "Deposit fee",
+      "PAYOUT": "Payout"
+    },
+    "paymentAccount": {
+      "title": "Payment account",
+      "current": "Current",
+      "currentDesc": "Balance to be covered by future or pending earnings",
+      "pending": "Pending",
+      "noPending": "No funds pending",
+      "total": "Total",
+      "totalDesc": "All sales, fees, refunds, and credits",
+      "depositNote": "Funds are eligible for deposit 14 days after a sale.",
+      "fundsReady": "Funds ready for deposit",
+      "noFundsReady": "No funds ready for deposit",
+      "noFundsReadyDesc": "Deposits become available once your current balance is above {amount}.",
+      "depositSettings": "Deposit settings",
+      "notSet": "Not set",
+      "nothingDue": "Nothing due for {month}",
+      "nothingDueDesc": "Your earnings covered your fees this month.",
+      "somethingDue": "{amount} due for {month}",
+      "somethingDueDesc": "This amount will be charged to your billing card.",
+      "autoBilling": "Auto-billing",
+      "cardEnding": "•••• {last4}",
+      "recentActivities": "Recent activities",
+      "seeFullHistory": "See full history",
+      "totalBalanceText": "Your <tb>total balance</tb> is <amt>{amount}</amt>",
+      "totalBalanceTooltip": "A running total of all activity in your Payment account, like money you've made from your sales, fees you've been charged, and more. This number changes with each new transaction. Your total balance might include funds from recent sales that aren't available for deposit yet.",
+      "table": {
+        "type": "Type",
+        "date": "Date",
+        "net": "Net"
+      },
+      "noActivity": "No activity yet",
+      "schedule": {
+        "WEEKLY": "Weekly",
+        "BIWEEKLY": "Every 2 weeks",
+        "MONTHLY": "Monthly"
+      }
+    },
+    "activitySummary": {
+      "title": "Activity summary",
+      "expandCategories": "Expand categories",
+      "collapseCategories": "Collapse categories",
+      "netProfitText": "Your current <np>net profit</np> on {month} is <amt>{amount}</amt>",
+      "netProfitTooltip": "Your total Sales minus any deductions like refunds and your total Fees and Marketing costs for the selected time period.",
+      "salesAndFees": "Sales and fees",
+      "sales": "Sales",
+      "totalSales": "Total sales {count}",
+      "refunds": "Refunds {count}",
+      "salesTaxRemitted": "Sales tax paid by buyer (Remitted)",
+      "vatRemitted": "VAT paid by buyer (Remitted)",
+      "remittedTooltip": "Collected from the buyer and passed directly to tax authorities — not deducted from your earnings.",
+      "fees": "Fees",
+      "listingFees": "Listing fees",
+      "listingFeesTooltip": "A flat fee charged each time you publish a listing.",
+      "transactionFees": "Transaction fees",
+      "transactionFeesTooltip": "A percentage of the order subtotal and shipping, charged on each sale.",
+      "processingFees": "Processing fees",
+      "processingFeesTooltip": "A percentage plus a fixed fee to process each payment.",
+      "regulatoryFee": "Regulatory Operating fee",
+      "regulatoryFeeTooltip": "An additional fee applied in certain regions to cover regulatory costs.",
+      "depositFees": "Deposit fees",
+      "depositFeesTooltip": "A fee that may apply to certain international bank deposits.",
+      "vatOnFees": "VAT on seller fees",
+      "vatOnFeesTooltip": "Value-added tax charged on top of your other platform fees.",
+      "sellerServices": "Seller services",
+      "marketing": "Marketing",
+      "platformAds": "Platform Ads",
+      "offsiteAds": "Offsite Ads"
+    },
+    "statements": {
+      "breadcrumbPaymentAccount": "Payment account",
+      "breadcrumbMonthlyStatements": "Monthly statements",
+      "breadcrumbCurrent": "Monthly statement",
+      "title": "Monthly statement",
+      "allActivities": "All activities",
+      "generateCsv": "Generate CSV",
+      "generating": "Generating…",
+      "table": {
+        "date": "Date",
+        "type": "Type",
+        "description": "Description",
+        "net": "Net",
+        "balance": "Balance"
+      },
+      "noActivity": "No activity for this period.",
+      "prevPage": "Previous page",
+      "nextPage": "Next page"
+    },
+    "paymentSettings": {
+      "title": "Payment settings",
+      "tabs": {
+        "methods": "Payment Methods",
+        "currency": "Currency",
+        "billing": "Billing",
+        "address": "Address"
+      },
+      "methods": {
+        "title": "Payments",
+        "description": "This is where deposits from your sales are sent.",
+        "accountHolderName": "Account holder name",
+        "bankName": "Bank name",
+        "accountNumber": "Account number",
+        "accountNumberPlaceholderExisting": "Leave blank to keep •••• {last4}",
+        "depositSchedule": "Deposit schedule",
+        "scheduleWeekly": "Once per week",
+        "scheduleBiweekly": "Once every 2 weeks",
+        "scheduleMonthly": "Once per month",
+        "cancel": "Cancel",
+        "saving": "Saving…",
+        "save": "Save",
+        "bankDetails": "Bank details",
+        "accountEnding": "account ending in {last4}",
+        "edit": "Edit",
+        "noBankAccount": "You haven't added a bank account yet.",
+        "addBankAccount": "Add bank account",
+        "acceptedPaymentOptions": "Accepted payment options"
+      },
+      "currency": {
+        "title": "Shop Currency",
+        "description": "This is the currency in which you list your items.",
+        "currentCurrency": "Your shop listing currency is {currency}.",
+        "conversionNote": "If your shop currency differs from your bank account currency, deposits are converted with a small fee added to the market rate. Choose your bank account's currency to avoid conversion.",
+        "chooseCurrency": "Choose shop currency"
+      },
+      "billing": {
+        "title": "Your billing cards",
+        "description": "You can pay your balance using your cards on file.",
+        "defaultCardNote": "Your default card will be used if we need to cover funds paid to buyers (like for refunds), and for auto-billing.",
+        "cardType": "Card type & number",
+        "expiration": "Expiration date",
+        "cardholder": "Cardholder name",
+        "setDefault": "Set as default",
+        "removeCard": "Remove card",
+        "noCards": "No cards on file yet.",
+        "addCard": "Add a new card",
+        "autobilling": "Autobilling",
+        "cardError": "Something went wrong saving your card. Please try again.",
+        "secureNote": "Payments are encrypted and secure",
+        "cancel": "Cancel",
+        "saving": "Saving…"
+      },
+      "address": {
+        "title": "Taxpayer address",
+        "description": "If you're operating as an individual, this should be your home address. If you're operating as a business, it should be your business address.",
+        "noAddress": "You haven't added a taxpayer address yet.",
+        "editLegalInfo": "Edit legal shop information"
+      }
+    },
+    "taxInfo": {
+      "title": "Legal and tax information",
+      "encryptNote": "We will encrypt and securely store this info",
+      "sellerTypeQuestion": "What type of seller are you?",
+      "sellerTypeNote": "This will not affect the status of your shop in any way. You can always update this later.",
+      "individual": "Individual or sole proprietorship",
+      "individualNote": "You sell under your own name or a trade name. Most sellers fall into this category.",
+      "business": "Incorporated business",
+      "taxpayerIdTitle": "Taxpayer information",
+      "taxpayerIdNote": "Enter your taxpayer ID to ensure withholding taxes aren't deducted from your sales where exempt.",
+      "fullLegalName": "Full legal name",
+      "taxpayerId": "Taxpayer ID",
+      "taxpayerIdPlaceholderExisting": "Leave blank to keep •••• {last4}",
+      "dateOfBirth": "Date of birth",
+      "contactInfoTitle": "Primary owner's contact information",
+      "country": "Country",
+      "streetAddress": "Street address",
+      "flatOther": "Flat/Other (optional)",
+      "city": "City",
+      "province": "Province (optional)",
+      "postCode": "Post code",
+      "phone": "Phone number (optional)",
+      "cancel": "Cancel",
+      "saving": "Saving…",
+      "submit": "Submit",
+      "edit": "Edit",
+      "noTaxInfo": "You haven't added your legal and tax information yet.",
+      "addTaxInfo": "Add legal and tax information"
     }
   },
   "products": {

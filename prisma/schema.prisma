@@ -154,6 +154,19 @@ enum SellerLedgerEntryType {
   REGULATORY_FEE
   LISTING_FEE
   ADJUSTMENT
+  VAT
+  DEPOSIT_FEE
+}
+
+enum DepositSchedule {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum SellerType {
+  INDIVIDUAL
+  BUSINESS
 }
 
 enum SellerPayoutStatus {
@@ -389,9 +402,73 @@ model Store {
 
   followers StoreFollow[]
 
+  // ── Finances (Etsy: Shop Manager → Finances) ──────────────────────────────
+  currency           String            @default("USD") @db.VarChar(3)
+  stripeCustomerId   String?
+  autoBillingEnabled Boolean           @default(true)
+  bankAccount        StoreBankAccount?
+  billingCards       StoreBillingCard[]
+  taxInfo            StoreTaxInfo?
+
   @@index([slug])
   @@index([status])
   @@index([ownerId])
+}
+
+// ── Finances: seller deposit destination, billing method, tax profile ────────
+// Kept as separate 1:1/1:many models (not flat Store columns) so sensitive
+// fields (account number, taxpayer ID) can be encrypted at rest independently
+// and so a store can hold >1 billing card, matching Etsy's own data shape.
+
+model StoreBankAccount {
+  id                      String          @id @default(cuid())
+  storeId                 String          @unique
+  store                   Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  accountHolderName       String
+  bankName                String
+  accountNumberEncrypted  String // full number, AES-256-GCM via EncryptionService
+  accountNumberLast4      String // denormalized for display — never decrypt just to show "···· 0085"
+  country                 String          @db.VarChar(2)
+  depositSchedule         DepositSchedule @default(WEEKLY)
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+}
+
+model StoreBillingCard {
+  id                    String   @id @default(cuid())
+  storeId               String
+  store                 Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  stripePaymentMethodId String   @unique
+  fingerprint           String?
+  brand                 String
+  last4                 String
+  expMonth               Int
+  expYear                Int
+  cardholderName        String
+  isDefault             Boolean  @default(false)
+  createdAt             DateTime @default(now())
+
+  @@index([storeId])
+  @@index([storeId, fingerprint])
+}
+
+model StoreTaxInfo {
+  id             String     @id @default(cuid())
+  storeId        String     @unique
+  store          Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  sellerType     SellerType @default(INDIVIDUAL)
+  fullLegalName  String
+  taxpayerIdEncrypted String? // encrypted; nullable until the seller fills it in
+  dateOfBirth    DateTime?
+  country        String     @db.VarChar(2)
+  streetAddress  String
+  flatOther      String?
+  city           String
+  province       String?
+  postCode       String?
+  phone          String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 }
 
 model StoreFollow {
@@ -492,6 +569,10 @@ model PlatformSettings {
   listingFee                Decimal  @default(0.20) @db.Decimal(10, 2) // charged once per product created
   regulatoryFeeRate         Decimal  @default(0.0124) @db.Decimal(5, 4)
   regulatoryFeeCountries    String[] @default([]) // ISO 3166-1 alpha-2 codes; empty = applies to nobody
+  // VAT charged on top of the seller's other platform fees (Etsy: "VAT on
+  // seller fees") — applied unconditionally, unlike regulatoryFee which is
+  // country-gated. Default matches Vietnam's standard VAT rate.
+  vatOnFeesRate             Decimal  @default(0.10) @db.Decimal(5, 4)
   platformName              String   @default("EziHubb")
   allowPublicRegistration   Boolean  @default(false)
   minPayoutAmount           Decimal  @default(100.00) @db.Decimal(10, 2)

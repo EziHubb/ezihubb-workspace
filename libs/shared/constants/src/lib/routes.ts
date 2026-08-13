@@ -457,6 +457,22 @@ export const API_ROUTES = {
     PAYOUTS:           '/seller/payouts',
     PAYOUT_REQUEST:    '/seller/payouts/request',
     PAYOUT_STATS:      '/seller/payouts/stats',
+
+    // ── Finances (Etsy: Shop Manager → Finances) ────────────────────────────
+    FINANCES_OVERVIEW:         '/seller/finances/overview',
+    FINANCES_ACTIVITY_SUMMARY: '/seller/finances/activity-summary',
+    FINANCES_ACTIVITIES:       '/seller/finances/activities',
+    FINANCES_ACTIVITIES_EXPORT: '/seller/finances/activities/export',
+    FINANCES_BANK_ACCOUNT:      '/seller/finances/bank-account',
+    FINANCES_BILLING_CARDS:     '/seller/finances/billing-cards',
+    FINANCES_BILLING_SETUP_INTENT: '/seller/finances/billing-cards/setup-intent',
+    FINANCES_BILLING_CONFIRM:      '/seller/finances/billing-cards/confirm',
+    FINANCES_BILLING_CARD_DEFAULT: (id: string) => `/seller/finances/billing-cards/${id}/default`,
+    FINANCES_BILLING_CARD:          (id: string) => `/seller/finances/billing-cards/${id}`,
+    FINANCES_AUTO_BILLING:          '/seller/finances/auto-billing',
+    FINANCES_CURRENCY:              '/seller/finances/currency',
+    FINANCES_TAX_INFO:              '/seller/finances/tax-info',
+
     STORE_ME:          '/stores/me',
     STORE_ME_UPDATE:   '/stores/me',
     STORE_APPLY:       '/stores/apply',

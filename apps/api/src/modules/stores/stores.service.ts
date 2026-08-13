@@ -7,6 +7,7 @@ import {
   BadRequestException,
   Optional,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { ModerationService } from '../moderation/moderation.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -541,12 +542,19 @@ export class StoresService {
 
   // ─── Admin: Seller Payouts ────────────────────────────────────────────────
 
-  async adminListPayouts(params: { page?: number; limit?: number; status?: string }) {
+  /** `storeId` is set whenever the caller isn't a platform-context SUPER_ADMIN
+   *  (i.e. a shop-owner ADMIN, or a SUPER_ADMIN switched into "My Store") —
+   *  scopes every query below to that one store instead of the whole
+   *  platform. Previously these ran totally unscoped for both roles, so a
+   *  shop owner hitting /payouts or /finance could see every other store's
+   *  payouts and revenue. */
+  async adminListPayouts(params: { page?: number; limit?: number; status?: string; storeId?: string }) {
     const page  = params.page  ?? 1;
     const limit = params.limit ?? 20;
     const skip  = (page - 1) * limit;
-    const where: any = {};
-    if (params.status) where.status = params.status;
+    const where: Prisma.SellerPayoutWhereInput = {};
+    if (params.status) where.status = params.status as Prisma.EnumSellerPayoutStatusFilter['equals'];
+    if (params.storeId) where.storeId = params.storeId;
 
     const [payouts, total] = await Promise.all([
       this.prisma.sellerPayout.findMany({
@@ -562,9 +570,20 @@ export class StoresService {
     return paginatedResponse(payouts, page, limit, total);
   }
 
-  async adminMarkPayoutPaid(payoutId: string, adminId: string, dto: { paymentMethod: string; paymentDetail?: string; adminNotes?: string }) {
+  async adminMarkPayoutPaid(
+    payoutId: string,
+    adminId: string,
+    dto: { paymentMethod: string; paymentDetail?: string; adminNotes?: string },
+    storeId?: string,
+  ) {
     const payout = await this.prisma.sellerPayout.findUnique({ where: { id: payoutId } });
     if (!payout) throw new NotFoundException('Payout not found');
+    // A shop-owner ADMIN (storeId set) may only mark their own payouts paid —
+    // without this check, any authenticated shop owner could pay out ANY
+    // other store's pending payout by guessing/enumerating its id.
+    if (storeId && payout.storeId !== storeId) {
+      throw new ForbiddenException('You do not have access to this payout');
+    }
     if (payout.status === 'PAID') throw new BadRequestException('Payout already paid');
 
     return this.prisma.sellerPayout.update({
@@ -582,9 +601,14 @@ export class StoresService {
 
   // ─── Admin: Finance Stats ─────────────────────────────────────────────────
 
-  async getFinanceStats() {
+  async getFinanceStats(storeId?: string) {
     const today      = new Date();
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const orderWhere: Prisma.StoreOrderWhereInput = { status: { not: 'CANCELLED' } };
+    if (storeId) orderWhere.storeId = storeId;
+    const payoutWhere: Prisma.SellerPayoutWhereInput = {};
+    if (storeId) payoutWhere.storeId = storeId;
 
     const [
       totalFees,
@@ -594,24 +618,24 @@ export class StoresService {
       activeStores,
     ] = await Promise.all([
       this.prisma.storeOrder.aggregate({
-        where:  { status: { not: 'CANCELLED' } },
+        where:  orderWhere,
         _sum:   { platformFee: true },
       }),
       this.prisma.storeOrder.aggregate({
-        where:  { status: { not: 'CANCELLED' }, createdAt: { gte: monthStart } },
+        where:  { ...orderWhere, createdAt: { gte: monthStart } },
         _sum:   { platformFee: true },
       }),
       this.prisma.sellerPayout.aggregate({
-        where: { status: { in: ['PENDING', 'PROCESSING'] } },
+        where: { ...payoutWhere, status: { in: ['PENDING', 'PROCESSING'] } },
         _sum:  { amount: true },
         _count: true,
       }),
       this.prisma.sellerPayout.aggregate({
-        where: { status: 'PAID' },
+        where: { ...payoutWhere, status: 'PAID' },
         _sum:  { amount: true },
         _count: true,
       }),
-      this.prisma.store.count({ where: { status: 'ACTIVE' } }),
+      storeId ? Promise.resolve(1) : this.prisma.store.count({ where: { status: 'ACTIVE' } }),
     ]);
 
     return {
@@ -625,26 +649,38 @@ export class StoresService {
     };
   }
 
-  async getFinanceChart(days = 30) {
+  async getFinanceChart(days = 30, storeId?: string) {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1_000);
-    const rows = await this.prisma.$queryRaw<{ date: string; fees: number; payouts: number }[]>`
-      SELECT
-        TO_CHAR(so."createdAt", 'YYYY-MM-DD') AS date,
-        COALESCE(SUM(so."platformFee"), 0)::float AS fees,
-        0::float AS payouts
-      FROM "StoreOrder" so
-      WHERE so."createdAt" >= ${since} AND so.status <> 'CANCELLED'
-      GROUP BY date
-      ORDER BY date ASC
-    `;
+    const rows = storeId
+      ? await this.prisma.$queryRaw<{ date: string; fees: number; payouts: number }[]>`
+          SELECT
+            TO_CHAR(so."createdAt", 'YYYY-MM-DD') AS date,
+            COALESCE(SUM(so."platformFee"), 0)::float AS fees,
+            0::float AS payouts
+          FROM "StoreOrder" so
+          WHERE so."createdAt" >= ${since} AND so.status <> 'CANCELLED' AND so."storeId" = ${storeId}
+          GROUP BY date
+          ORDER BY date ASC
+        `
+      : await this.prisma.$queryRaw<{ date: string; fees: number; payouts: number }[]>`
+          SELECT
+            TO_CHAR(so."createdAt", 'YYYY-MM-DD') AS date,
+            COALESCE(SUM(so."platformFee"), 0)::float AS fees,
+            0::float AS payouts
+          FROM "StoreOrder" so
+          WHERE so."createdAt" >= ${since} AND so.status <> 'CANCELLED'
+          GROUP BY date
+          ORDER BY date ASC
+        `;
     return rows.map((r) => ({ date: r.date, fees: Number(r.fees), payouts: Number(r.payouts) }));
   }
 
-  async getStoreFinanceList(query: { page: number; limit: number }) {
-    const { page, limit } = query;
+  async getStoreFinanceList(query: { page: number; limit: number; storeId?: string }) {
+    const { page, limit, storeId } = query;
+    const where: Prisma.StoreWhereInput = storeId ? { id: storeId } : { status: 'ACTIVE' };
     const [stores, total] = await Promise.all([
       this.prisma.store.findMany({
-        where: { status: 'ACTIVE' },
+        where,
         select: {
           id: true, name: true, slug: true,
           _count: { select: { storeOrders: true } },
@@ -653,17 +689,18 @@ export class StoresService {
         take: limit,
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.store.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.store.count({ where }),
     ]);
     return { data: stores, total, page, totalPages: Math.ceil(total / limit) };
   }
 
-  async adminPayoutStats() {
+  async adminPayoutStats(storeId?: string) {
+    const where: Prisma.SellerPayoutWhereInput = storeId ? { storeId } : {};
     const [pending, processing, paid, totalPaidAmount] = await Promise.all([
-      this.prisma.sellerPayout.count({ where: { status: 'PENDING' } }),
-      this.prisma.sellerPayout.count({ where: { status: 'PROCESSING' } }),
-      this.prisma.sellerPayout.count({ where: { status: 'PAID' } }),
-      this.prisma.sellerPayout.aggregate({ where: { status: 'PAID' }, _sum: { amount: true } }),
+      this.prisma.sellerPayout.count({ where: { ...where, status: 'PENDING' } }),
+      this.prisma.sellerPayout.count({ where: { ...where, status: 'PROCESSING' } }),
+      this.prisma.sellerPayout.count({ where: { ...where, status: 'PAID' } }),
+      this.prisma.sellerPayout.aggregate({ where: { ...where, status: 'PAID' }, _sum: { amount: true } }),
     ]);
     return { pending, processing, paid, totalPaidAmount: Number(totalPaidAmount._sum.amount ?? 0) };
   }

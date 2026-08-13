@@ -12,7 +12,7 @@
       "products": "商品",
       "analytics": "数据分析",
       "reviews": "评价",
-      "payouts": "结算",
+      "finances": "财务",
       "storeSettings": "店铺设置"
     },
     "signOut": "退出登录"
@@ -50,20 +50,198 @@
       "date": "日期"
     }
   },
-  "payouts": {
-    "title": "结算",
-    "stats": {
-      "available": "可提现余额",
-      "pending": "待结算",
-      "totalPaid": "累计已结算"
+  "finances": {
+    "subnav": {
+      "paymentAccount": "付款账户",
+      "monthlyStatements": "月度对账单",
+      "paymentSettings": "付款设置",
+      "legalTaxInfo": "法律和税务信息"
     },
-    "history": "结算记录",
-    "noPayouts": "暂无结算记录",
-    "table": {
-      "amount": "金额",
-      "status": "状态",
-      "requested": "申请日期",
-      "paid": "支付日期"
+    "ledgerType": {
+      "SALE": "销售收入",
+      "TRANSACTION_FEE": "交易费",
+      "PAYMENT_PROCESSING_FEE": "支付处理费",
+      "REGULATORY_FEE": "监管费",
+      "LISTING_FEE": "上架费",
+      "ADJUSTMENT": "调整",
+      "VAT": "增值税",
+      "DEPOSIT_FEE": "结算手续费",
+      "PAYOUT": "已结算"
+    },
+    "paymentAccount": {
+      "title": "付款账户",
+      "current": "当前",
+      "currentDesc": "将由未来或待处理收入覆盖的余额",
+      "pending": "待处理",
+      "noPending": "暂无待处理金额",
+      "total": "总计",
+      "totalDesc": "所有销售额、费用、退款和信用额度",
+      "depositNote": "资金在销售完成 14 天后可进行结算。",
+      "fundsReady": "可结算资金",
+      "noFundsReady": "暂无可结算资金",
+      "noFundsReadyDesc": "当前余额超过 {amount} 后，结算将可用。",
+      "depositSettings": "结算设置",
+      "notSet": "未设置",
+      "nothingDue": "{month} 无需支付任何费用",
+      "nothingDueDesc": "您本月的收入已覆盖所有费用。",
+      "somethingDue": "{month} 需支付 {amount}",
+      "somethingDueDesc": "此金额将从您的付款卡中扣除。",
+      "autoBilling": "自动扣款",
+      "cardEnding": "•••• {last4}",
+      "recentActivities": "近期活动",
+      "seeFullHistory": "查看完整记录",
+      "totalBalanceText": "您的<tb>总余额</tb>为 <amt>{amount}</amt>",
+      "totalBalanceTooltip": "您付款账户中所有活动的累计总额，例如销售所得、被收取的费用等。此数字会随每笔新交易而变化。总余额可能包含尚不可结算的近期销售款项。",
+      "table": {
+        "type": "类型",
+        "date": "日期",
+        "net": "净额"
+      },
+      "noActivity": "暂无活动记录",
+      "schedule": {
+        "WEEKLY": "每周",
+        "BIWEEKLY": "每两周",
+        "MONTHLY": "每月"
+      }
+    },
+    "activitySummary": {
+      "title": "活动摘要",
+      "expandCategories": "展开分类",
+      "collapseCategories": "收起分类",
+      "netProfitText": "您在 {month} 的当前<np>净利润</np>为 <amt>{amount}</amt>",
+      "netProfitTooltip": "所选时间段内的总销售额减去退款等扣除项，再减去总费用和营销支出。",
+      "salesAndFees": "销售额与费用",
+      "sales": "销售额",
+      "totalSales": "总销售额 {count}",
+      "refunds": "退款 {count}",
+      "salesTaxRemitted": "买家支付的销售税（已代缴）",
+      "vatRemitted": "买家支付的增值税（已代缴）",
+      "remittedTooltip": "从买家处收取并直接缴纳给税务机关——不会从您的收入中扣除。",
+      "fees": "费用",
+      "listingFees": "上架费",
+      "listingFeesTooltip": "每次发布商品时收取的固定费用。",
+      "transactionFees": "交易费",
+      "transactionFeesTooltip": "按每笔订单小计和运费的一定比例收取。",
+      "processingFees": "支付处理费",
+      "processingFeesTooltip": "处理每笔付款所收取的比例加固定费用。",
+      "regulatoryFee": "监管运营费",
+      "regulatoryFeeTooltip": "在某些地区收取的额外费用，用于承担合规成本。",
+      "depositFees": "结算手续费",
+      "depositFeesTooltip": "可能适用于部分国际银行结算的费用。",
+      "vatOnFees": "卖家费用增值税",
+      "vatOnFeesTooltip": "在您其他平台费用基础上加收的增值税。",
+      "sellerServices": "卖家服务",
+      "marketing": "营销",
+      "platformAds": "站内广告",
+      "offsiteAds": "站外广告"
+    },
+    "statements": {
+      "breadcrumbPaymentAccount": "付款账户",
+      "breadcrumbMonthlyStatements": "月度对账单",
+      "breadcrumbCurrent": "月度对账单",
+      "title": "月度对账单",
+      "allActivities": "全部活动",
+      "generateCsv": "生成 CSV",
+      "generating": "生成中…",
+      "table": {
+        "date": "日期",
+        "type": "类型",
+        "description": "描述",
+        "net": "净额",
+        "balance": "余额"
+      },
+      "noActivity": "此期间暂无活动记录。",
+      "prevPage": "上一页",
+      "nextPage": "下一页"
+    },
+    "paymentSettings": {
+      "title": "付款设置",
+      "tabs": {
+        "methods": "付款方式",
+        "currency": "货币",
+        "billing": "账单",
+        "address": "地址"
+      },
+      "methods": {
+        "title": "付款",
+        "description": "这是您销售所得的结算款项发送到的地方。",
+        "accountHolderName": "账户持有人姓名",
+        "bankName": "银行名称",
+        "accountNumber": "账号",
+        "accountNumberPlaceholderExisting": "留空以保留 •••• {last4}",
+        "depositSchedule": "结算周期",
+        "scheduleWeekly": "每周一次",
+        "scheduleBiweekly": "每两周一次",
+        "scheduleMonthly": "每月一次",
+        "cancel": "取消",
+        "saving": "保存中…",
+        "save": "保存",
+        "bankDetails": "银行信息",
+        "accountEnding": "尾号为 {last4} 的账户",
+        "edit": "编辑",
+        "noBankAccount": "您尚未添加银行账户。",
+        "addBankAccount": "添加银行账户",
+        "acceptedPaymentOptions": "接受的付款方式"
+      },
+      "currency": {
+        "title": "店铺货币",
+        "description": "这是您用于商品定价的货币。",
+        "currentCurrency": "您店铺的上架货币为 {currency}。",
+        "conversionNote": "如果您的店铺货币与银行账户货币不同，结算款项将按市场汇率加收小额手续费进行兑换。选择与银行账户相同的货币可避免兑换。",
+        "chooseCurrency": "选择店铺货币"
+      },
+      "billing": {
+        "title": "您的付款卡",
+        "description": "您可以使用已保存的卡支付账户余额。",
+        "defaultCardNote": "如需支付给买家的款项（如退款）或进行自动扣款，将使用您的默认卡。",
+        "cardType": "卡类型与卡号",
+        "expiration": "有效期",
+        "cardholder": "持卡人姓名",
+        "setDefault": "设为默认",
+        "removeCard": "移除卡片",
+        "noCards": "暂无已保存的卡片。",
+        "addCard": "添加新卡",
+        "autobilling": "自动扣款",
+        "cardError": "保存卡片时出错，请重试。",
+        "secureNote": "支付信息已加密且安全",
+        "cancel": "取消",
+        "saving": "保存中…"
+      },
+      "address": {
+        "title": "纳税人地址",
+        "description": "如果您以个人身份经营，此处应填写您的家庭地址。如果您以企业身份经营，此处应填写企业地址。",
+        "noAddress": "您尚未添加纳税人地址。",
+        "editLegalInfo": "编辑店铺法律信息"
+      }
+    },
+    "taxInfo": {
+      "title": "法律和税务信息",
+      "encryptNote": "我们将对此信息进行加密并安全存储",
+      "sellerTypeQuestion": "您属于哪种卖家类型？",
+      "sellerTypeNote": "这不会以任何方式影响您店铺的状态，您随时可以更新此信息。",
+      "individual": "个人或个体经营者",
+      "individualNote": "您以个人姓名或商号进行销售。大多数卖家属于此类别。",
+      "business": "注册企业",
+      "taxpayerIdTitle": "纳税人信息",
+      "taxpayerIdNote": "填写您的纳税人识别号，以确保在符合免税条件时不会从您的销售额中扣除预扣税。",
+      "fullLegalName": "法定全名",
+      "taxpayerId": "纳税人识别号",
+      "taxpayerIdPlaceholderExisting": "留空以保留 •••• {last4}",
+      "dateOfBirth": "出生日期",
+      "contactInfoTitle": "主要所有人联系信息",
+      "country": "国家/地区",
+      "streetAddress": "街道地址",
+      "flatOther": "单元/其他（选填）",
+      "city": "城市",
+      "province": "省份（选填）",
+      "postCode": "邮政编码",
+      "phone": "电话号码（选填）",
+      "cancel": "取消",
+      "saving": "保存中…",
+      "submit": "提交",
+      "edit": "编辑",
+      "noTaxInfo": "您尚未添加法律和税务信息。",
+      "addTaxInfo": "添加法律和税务信息"
     }
   },
   "products": {

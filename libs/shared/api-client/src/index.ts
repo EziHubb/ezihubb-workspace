@@ -43,3 +43,4 @@ export * from './hooks/useShipping';   // useShippingEstimate
 export * from './hooks/useProfile';    // useProfile, useMutateProfile, useAddresses, useMutateAddresses
 
 export * from './hooks/useMarketplaceInsights'; // useTrendingTerms, useTermDetail, useTermAnalysis, useSavedSearches, useMutateSavedSearches
+export * from './hooks/useFinances';

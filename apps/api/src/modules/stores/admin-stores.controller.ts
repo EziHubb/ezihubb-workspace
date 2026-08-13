@@ -2,12 +2,14 @@ import {
   Get, Post, Patch, Delete, Body, Param, Query, Req,
   UseInterceptors, UploadedFile, BadRequestException,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
 import { StoresService } from './stores.service';
 import { AuditLogService } from '../../common/services/audit-log.service';
+import { StoreContextService } from '../../common/services/store-context.service';
 
 class AdminUpdateStoreDto {
   @IsOptional() @IsString() @MaxLength(100)
@@ -152,29 +154,42 @@ export class AdminPlatformSettingsController {
 
 @AdminController('seller-payouts')
 export class AdminSellerPayoutsController {
-  constructor(private readonly storesService: StoresService) {}
+  constructor(
+    private readonly storesService: StoresService,
+    private readonly storeContext:  StoreContextService,
+  ) {}
 
   @Get()
-  listPayouts(
+  async listPayouts(
+    @Req() req: Request,
     @Query('page')   page?: string,
     @Query('limit')  limit?: string,
     @Query('status') status?: string,
   ) {
+    const context = await this.storeContext.resolve(req);
     return this.storesService.adminListPayouts({
       page:   page  ? +page  : undefined,
       limit:  limit ? +limit : undefined,
       status,
+      storeId: context.isPlatformContext ? undefined : context.storeId ?? undefined,
     });
   }
 
   @Get('stats')
-  getPayoutStats() {
-    return this.storesService.adminPayoutStats();
+  async getPayoutStats(@Req() req: Request) {
+    const context = await this.storeContext.resolve(req);
+    return this.storesService.adminPayoutStats(context.isPlatformContext ? undefined : context.storeId ?? undefined);
   }
 
   @Post(':id/pay')
-  markPaid(@Param('id') id: string, @Req() req: any, @Body() dto: MarkPayoutPaidDto) {
-    return this.storesService.adminMarkPayoutPaid(id, req.user.sub ?? req.user.id, dto);
+  async markPaid(@Param('id') id: string, @Req() req: any, @Body() dto: MarkPayoutPaidDto) {
+    const context = await this.storeContext.resolve(req);
+    return this.storesService.adminMarkPayoutPaid(
+      id,
+      req.user.sub ?? req.user.id,
+      dto,
+      context.isPlatformContext ? undefined : context.storeId ?? undefined,
+    );
   }
 }
 
@@ -182,26 +197,37 @@ export class AdminSellerPayoutsController {
 
 @AdminController('finance')
 export class AdminFinanceController {
-  constructor(private readonly storesService: StoresService) {}
+  constructor(
+    private readonly storesService: StoresService,
+    private readonly storeContext:  StoreContextService,
+  ) {}
 
   @Get('stats')
-  getStats() {
-    return this.storesService.getFinanceStats();
+  async getStats(@Req() req: Request) {
+    const context = await this.storeContext.resolve(req);
+    return this.storesService.getFinanceStats(context.isPlatformContext ? undefined : context.storeId ?? undefined);
   }
 
   @Get('chart')
-  getChart(@Query('days') days?: string) {
-    return this.storesService.getFinanceChart(days ? +days : 30);
+  async getChart(@Req() req: Request, @Query('days') days?: string) {
+    const context = await this.storeContext.resolve(req);
+    return this.storesService.getFinanceChart(
+      days ? +days : 30,
+      context.isPlatformContext ? undefined : context.storeId ?? undefined,
+    );
   }
 
   @Get('stores')
-  getStoreFinance(
+  async getStoreFinance(
+    @Req() req: Request,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
+    const context = await this.storeContext.resolve(req);
     return this.storesService.getStoreFinanceList({
       page: page ? +page : 1,
       limit: limit ? +limit : 20,
+      storeId: context.isPlatformContext ? undefined : context.storeId ?? undefined,
     });
   }
 }

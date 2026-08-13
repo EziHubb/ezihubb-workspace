@@ -72,6 +72,12 @@ export class UpdatePlatformSettingsDto {
   @IsNumber()
   @IsOptional()
   @Min(0)
+  @Max(0.5)
+  vatOnFeesRate?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
   minPayoutAmount?: number;
 
   @IsString()

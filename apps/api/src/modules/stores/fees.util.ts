@@ -15,12 +15,16 @@ export interface OrderFeeSettings {
   paymentProcessingFixedFee: number;
   regulatoryFeeRate:         number;
   regulatoryFeeCountries:    string[];
+  /** VAT charged on top of the seller's other platform fees (Etsy: "VAT on
+   *  seller fees") — applied unconditionally, unlike regulatoryFee. */
+  vatOnFeesRate:              number;
 }
 
 export interface OrderFeeBreakdown {
   transactionFee:        number;
   paymentProcessingFee:  number;
   regulatoryFee:          number;
+  vatOnFees:              number;
   totalFees:              number;
   sellerEarnings:         number;
 }
@@ -40,9 +44,10 @@ export function calculateOrderFees(
   const regulatoryFee        = storeCountry && settings.regulatoryFeeCountries.includes(storeCountry.toUpperCase())
     ? round2(base * settings.regulatoryFeeRate)
     : 0;
+  const vatOnFees            = round2((transactionFee + paymentProcessingFee + regulatoryFee) * settings.vatOnFeesRate);
 
-  const totalFees     = round2(transactionFee + paymentProcessingFee + regulatoryFee);
+  const totalFees     = round2(transactionFee + paymentProcessingFee + regulatoryFee + vatOnFees);
   const sellerEarnings = round2(base - totalFees);
 
-  return { transactionFee, paymentProcessingFee, regulatoryFee, totalFees, sellerEarnings };
+  return { transactionFee, paymentProcessingFee, regulatoryFee, vatOnFees, totalFees, sellerEarnings };
 }

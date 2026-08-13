@@ -44,7 +44,7 @@ export function SellerSidebar({ store, onNavigate }: SellerSidebarProps) {
     { href: '/seller/products', icon: Package,         label: t('nav.products')      },
     { href: '/seller/analytics', icon: BarChart2, label: t('nav.analytics')       },
     { href: '/seller/reviews',   icon: Star,     label: t('nav.reviews')         },
-    { href: '/seller/payouts',   icon: Wallet,   label: t('nav.payouts')         },
+    { href: '/seller/finances',  icon: Wallet,   label: t('nav.finances')        },
     { href: '/seller/store',     icon: Store,    label: t('nav.storeSettings')   },
   ] as const;
 

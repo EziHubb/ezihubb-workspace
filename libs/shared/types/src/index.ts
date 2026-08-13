@@ -11,3 +11,4 @@ export * from './lib/user.types';
 export * from './lib/message.types';
 export * from './lib/customization.types';
 export * from './lib/marketplace-insights.types';
+export * from './lib/finances.types';

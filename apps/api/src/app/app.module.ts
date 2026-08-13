@@ -40,6 +40,7 @@ import { CurrencyModule } from '../modules/currency/currency.module';
 import { UnsubscribeController } from '../modules/unsubscribe/unsubscribe.controller';
 import { TranslationsModule } from '../modules/translations/translations.module';
 import { StoresModule } from '../modules/stores/stores.module';
+import { FinancesModule } from '../modules/finances/finances.module';
 import { ModerationModule } from '../modules/moderation/moderation.module';
 import { ShopStatsModule } from '../modules/shop-stats/shop-stats.module';
 import { MarketplaceInsightsModule } from '../modules/marketplace-insights/marketplace-insights.module';
@@ -153,6 +154,7 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
     CurrencyModule,
     TranslationsModule,
     StoresModule,
+    FinancesModule,
     ModerationModule,
     ShopStatsModule,
     MarketplaceInsightsModule,

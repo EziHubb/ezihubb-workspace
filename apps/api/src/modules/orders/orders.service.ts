@@ -465,6 +465,7 @@ export class OrdersService {
           paymentProcessingFixedFee: Number(platformSettings?.paymentProcessingFixedFee ?? 0.25),
           regulatoryFeeRate:         Number(platformSettings?.regulatoryFeeRate ?? 0.0124),
           regulatoryFeeCountries:    platformSettings?.regulatoryFeeCountries ?? [],
+          vatOnFeesRate:             Number(platformSettings?.vatOnFeesRate ?? 0.10),
         };
 
         const storeRecords = await tx.store.findMany({
@@ -520,6 +521,13 @@ export class OrdersService {
               storeId, storeOrderId: storeOrder.id, type: 'REGULATORY_FEE',
               amount: -fees.regulatoryFee,
               description: `Regulatory operating fee — order ${newOrder.orderNumber}`,
+            });
+          }
+          if (fees.vatOnFees > 0) {
+            ledgerEntries.push({
+              storeId, storeOrderId: storeOrder.id, type: 'VAT',
+              amount: -fees.vatOnFees,
+              description: `VAT on seller fees — order ${newOrder.orderNumber}`,
             });
           }
           await tx.sellerLedgerEntry.createMany({ data: ledgerEntries });

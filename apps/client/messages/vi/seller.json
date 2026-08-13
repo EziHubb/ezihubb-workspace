@@ -12,7 +12,7 @@
       "products": "Sản phẩm",
       "analytics": "Phân tích",
       "reviews": "Đánh giá",
-      "payouts": "Thanh toán",
+      "finances": "Tài chính",
       "storeSettings": "Cài đặt cửa hàng"
     },
     "signOut": "Đăng xuất"
@@ -50,20 +50,198 @@
       "date": "Ngày"
     }
   },
-  "payouts": {
-    "title": "Thanh toán",
-    "stats": {
-      "available": "Khả dụng",
-      "pending": "Đang chờ",
-      "totalPaid": "Tổng đã thanh toán"
+  "finances": {
+    "subnav": {
+      "paymentAccount": "Tài khoản thanh toán",
+      "monthlyStatements": "Sao kê hàng tháng",
+      "paymentSettings": "Cài đặt thanh toán",
+      "legalTaxInfo": "Thông tin pháp lý và thuế"
     },
-    "history": "Lịch sử thanh toán",
-    "noPayouts": "Chưa có khoản thanh toán nào",
-    "table": {
-      "amount": "Số tiền",
-      "status": "Trạng thái",
-      "requested": "Ngày yêu cầu",
-      "paid": "Ngày thanh toán"
+    "ledgerType": {
+      "SALE": "Doanh thu bán hàng",
+      "TRANSACTION_FEE": "Phí giao dịch",
+      "PAYMENT_PROCESSING_FEE": "Phí xử lý thanh toán",
+      "REGULATORY_FEE": "Phí quy định",
+      "LISTING_FEE": "Phí đăng sản phẩm",
+      "ADJUSTMENT": "Điều chỉnh",
+      "VAT": "Thuế GTGT",
+      "DEPOSIT_FEE": "Phí chuyển khoản",
+      "PAYOUT": "Đã chuyển khoản"
+    },
+    "paymentAccount": {
+      "title": "Tài khoản thanh toán",
+      "current": "Hiện tại",
+      "currentDesc": "Số dư sẽ được bù đắp bởi các khoản thu nhập sắp tới hoặc đang chờ xử lý",
+      "pending": "Đang chờ",
+      "noPending": "Không có khoản nào đang chờ",
+      "total": "Tổng cộng",
+      "totalDesc": "Tất cả doanh thu, phí, hoàn tiền và khoản tín dụng",
+      "depositNote": "Tiền đủ điều kiện chuyển khoản sau 14 ngày kể từ khi bán hàng.",
+      "fundsReady": "Số tiền sẵn sàng chuyển khoản",
+      "noFundsReady": "Chưa có khoản nào sẵn sàng chuyển khoản",
+      "noFundsReadyDesc": "Khoản chuyển khoản sẽ khả dụng khi số dư hiện tại của bạn vượt quá {amount}.",
+      "depositSettings": "Cài đặt chuyển khoản",
+      "notSet": "Chưa thiết lập",
+      "nothingDue": "Không có khoản nào cần thanh toán cho {month}",
+      "nothingDueDesc": "Thu nhập của bạn đã đủ để bù đắp phí trong tháng này.",
+      "somethingDue": "{amount} cần thanh toán cho {month}",
+      "somethingDueDesc": "Số tiền này sẽ được trừ vào thẻ thanh toán của bạn.",
+      "autoBilling": "Tự động thanh toán",
+      "cardEnding": "•••• {last4}",
+      "recentActivities": "Hoạt động gần đây",
+      "seeFullHistory": "Xem toàn bộ lịch sử",
+      "totalBalanceText": "<tb>Tổng số dư</tb> của bạn là <amt>{amount}</amt>",
+      "totalBalanceTooltip": "Tổng hợp toàn bộ hoạt động trong Tài khoản thanh toán của bạn, như tiền bạn kiếm được từ doanh thu, các khoản phí bạn phải trả, và hơn thế nữa. Con số này thay đổi theo từng giao dịch mới. Tổng số dư có thể bao gồm tiền từ các đơn hàng gần đây chưa sẵn sàng để chuyển khoản.",
+      "table": {
+        "type": "Loại",
+        "date": "Ngày",
+        "net": "Thực nhận"
+      },
+      "noActivity": "Chưa có hoạt động nào",
+      "schedule": {
+        "WEEKLY": "Hàng tuần",
+        "BIWEEKLY": "Mỗi 2 tuần",
+        "MONTHLY": "Hàng tháng"
+      }
+    },
+    "activitySummary": {
+      "title": "Tóm tắt hoạt động",
+      "expandCategories": "Mở rộng danh mục",
+      "collapseCategories": "Thu gọn danh mục",
+      "netProfitText": "<np>Lợi nhuận ròng</np> hiện tại của bạn trong {month} là <amt>{amount}</amt>",
+      "netProfitTooltip": "Tổng Doanh thu trừ đi các khoản khấu trừ như hoàn tiền, cùng với tổng Phí và chi phí Marketing trong khoảng thời gian đã chọn.",
+      "salesAndFees": "Doanh thu và phí",
+      "sales": "Doanh thu",
+      "totalSales": "Tổng doanh thu {count}",
+      "refunds": "Hoàn tiền {count}",
+      "salesTaxRemitted": "Thuế bán hàng do người mua trả (Đã nộp)",
+      "vatRemitted": "Thuế GTGT do người mua trả (Đã nộp)",
+      "remittedTooltip": "Được thu từ người mua và chuyển trực tiếp cho cơ quan thuế — không bị trừ vào thu nhập của bạn.",
+      "fees": "Phí",
+      "listingFees": "Phí đăng sản phẩm",
+      "listingFeesTooltip": "Một khoản phí cố định được tính mỗi khi bạn đăng một sản phẩm.",
+      "transactionFees": "Phí giao dịch",
+      "transactionFeesTooltip": "Một tỷ lệ phần trăm trên giá trị đơn hàng và phí vận chuyển, tính cho mỗi lần bán hàng.",
+      "processingFees": "Phí xử lý thanh toán",
+      "processingFeesTooltip": "Một tỷ lệ phần trăm cộng với một khoản phí cố định để xử lý mỗi thanh toán.",
+      "regulatoryFee": "Phí vận hành theo quy định",
+      "regulatoryFeeTooltip": "Một khoản phí bổ sung áp dụng tại một số khu vực để trang trải chi phí tuân thủ quy định.",
+      "depositFees": "Phí chuyển khoản",
+      "depositFeesTooltip": "Một khoản phí có thể áp dụng cho một số khoản chuyển khoản ngân hàng quốc tế.",
+      "vatOnFees": "Thuế GTGT trên phí người bán",
+      "vatOnFeesTooltip": "Thuế giá trị gia tăng tính thêm trên các khoản phí nền tảng khác của bạn.",
+      "sellerServices": "Dịch vụ người bán",
+      "marketing": "Marketing",
+      "platformAds": "Quảng cáo trên nền tảng",
+      "offsiteAds": "Quảng cáo bên ngoài"
+    },
+    "statements": {
+      "breadcrumbPaymentAccount": "Tài khoản thanh toán",
+      "breadcrumbMonthlyStatements": "Sao kê hàng tháng",
+      "breadcrumbCurrent": "Sao kê hàng tháng",
+      "title": "Sao kê hàng tháng",
+      "allActivities": "Tất cả hoạt động",
+      "generateCsv": "Xuất file CSV",
+      "generating": "Đang tạo…",
+      "table": {
+        "date": "Ngày",
+        "type": "Loại",
+        "description": "Mô tả",
+        "net": "Thực nhận",
+        "balance": "Số dư"
+      },
+      "noActivity": "Không có hoạt động nào trong khoảng thời gian này.",
+      "prevPage": "Trang trước",
+      "nextPage": "Trang sau"
+    },
+    "paymentSettings": {
+      "title": "Cài đặt thanh toán",
+      "tabs": {
+        "methods": "Phương thức thanh toán",
+        "currency": "Tiền tệ",
+        "billing": "Thanh toán",
+        "address": "Địa chỉ"
+      },
+      "methods": {
+        "title": "Thanh toán",
+        "description": "Đây là nơi các khoản chuyển khoản từ doanh thu bán hàng của bạn được gửi đến.",
+        "accountHolderName": "Tên chủ tài khoản",
+        "bankName": "Tên ngân hàng",
+        "accountNumber": "Số tài khoản",
+        "accountNumberPlaceholderExisting": "Để trống để giữ nguyên •••• {last4}",
+        "depositSchedule": "Lịch chuyển khoản",
+        "scheduleWeekly": "Một lần mỗi tuần",
+        "scheduleBiweekly": "Một lần mỗi 2 tuần",
+        "scheduleMonthly": "Một lần mỗi tháng",
+        "cancel": "Hủy",
+        "saving": "Đang lưu…",
+        "save": "Lưu",
+        "bankDetails": "Thông tin ngân hàng",
+        "accountEnding": "tài khoản kết thúc bằng {last4}",
+        "edit": "Chỉnh sửa",
+        "noBankAccount": "Bạn chưa thêm tài khoản ngân hàng nào.",
+        "addBankAccount": "Thêm tài khoản ngân hàng",
+        "acceptedPaymentOptions": "Các phương thức thanh toán được chấp nhận"
+      },
+      "currency": {
+        "title": "Tiền tệ cửa hàng",
+        "description": "Đây là loại tiền tệ bạn dùng để niêm yết sản phẩm.",
+        "currentCurrency": "Tiền tệ niêm yết cửa hàng của bạn hiện là {currency}.",
+        "conversionNote": "Nếu tiền tệ cửa hàng khác với tiền tệ tài khoản ngân hàng của bạn, khoản chuyển khoản sẽ được quy đổi kèm một khoản phí nhỏ cộng thêm vào tỷ giá thị trường. Chọn cùng tiền tệ với tài khoản ngân hàng để tránh quy đổi.",
+        "chooseCurrency": "Chọn tiền tệ cửa hàng"
+      },
+      "billing": {
+        "title": "Thẻ thanh toán của bạn",
+        "description": "Bạn có thể thanh toán số dư của mình bằng các thẻ đã lưu.",
+        "defaultCardNote": "Thẻ mặc định của bạn sẽ được sử dụng nếu chúng tôi cần bù đắp khoản tiền trả cho người mua (như hoàn tiền), và cho tính năng tự động thanh toán.",
+        "cardType": "Loại thẻ & số thẻ",
+        "expiration": "Ngày hết hạn",
+        "cardholder": "Tên chủ thẻ",
+        "setDefault": "Đặt làm mặc định",
+        "removeCard": "Xóa thẻ",
+        "noCards": "Chưa có thẻ nào được lưu.",
+        "addCard": "Thêm thẻ mới",
+        "autobilling": "Tự động thanh toán",
+        "cardError": "Đã xảy ra lỗi khi lưu thẻ của bạn. Vui lòng thử lại.",
+        "secureNote": "Thanh toán được mã hóa và bảo mật",
+        "cancel": "Hủy",
+        "saving": "Đang lưu…"
+      },
+      "address": {
+        "title": "Địa chỉ người nộp thuế",
+        "description": "Nếu bạn hoạt động với tư cách cá nhân, đây nên là địa chỉ nhà riêng của bạn. Nếu bạn hoạt động với tư cách doanh nghiệp, đây nên là địa chỉ doanh nghiệp.",
+        "noAddress": "Bạn chưa thêm địa chỉ người nộp thuế.",
+        "editLegalInfo": "Chỉnh sửa thông tin pháp lý cửa hàng"
+      }
+    },
+    "taxInfo": {
+      "title": "Thông tin pháp lý và thuế",
+      "encryptNote": "Chúng tôi sẽ mã hóa và lưu trữ an toàn thông tin này",
+      "sellerTypeQuestion": "Bạn là loại người bán nào?",
+      "sellerTypeNote": "Điều này sẽ không ảnh hưởng đến trạng thái cửa hàng của bạn. Bạn luôn có thể cập nhật lại sau.",
+      "individual": "Cá nhân hoặc hộ kinh doanh cá thể",
+      "individualNote": "Bạn bán hàng dưới tên cá nhân hoặc tên thương mại. Hầu hết người bán thuộc nhóm này.",
+      "business": "Doanh nghiệp có tư cách pháp nhân",
+      "taxpayerIdTitle": "Thông tin người nộp thuế",
+      "taxpayerIdNote": "Nhập mã số thuế của bạn để đảm bảo thuế khấu trừ không bị trừ vào doanh thu nếu bạn được miễn.",
+      "fullLegalName": "Họ tên pháp lý đầy đủ",
+      "taxpayerId": "Mã số thuế",
+      "taxpayerIdPlaceholderExisting": "Để trống để giữ nguyên •••• {last4}",
+      "dateOfBirth": "Ngày sinh",
+      "contactInfoTitle": "Thông tin liên hệ của chủ sở hữu chính",
+      "country": "Quốc gia",
+      "streetAddress": "Địa chỉ",
+      "flatOther": "Căn hộ/Khác (không bắt buộc)",
+      "city": "Thành phố",
+      "province": "Tỉnh/Thành (không bắt buộc)",
+      "postCode": "Mã bưu điện",
+      "phone": "Số điện thoại (không bắt buộc)",
+      "cancel": "Hủy",
+      "saving": "Đang lưu…",
+      "submit": "Gửi",
+      "edit": "Chỉnh sửa",
+      "noTaxInfo": "Bạn chưa thêm thông tin pháp lý và thuế.",
+      "addTaxInfo": "Thêm thông tin pháp lý và thuế"
     }
   },
   "products": {

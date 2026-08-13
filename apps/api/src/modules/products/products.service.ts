@@ -446,15 +446,24 @@ export class ProductsService {
       const settings = await this.prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
       const listingFee = Number(settings?.listingFee ?? 0.20);
       if (listingFee <= 0) return;
+      const vatOnFeesRate = Number(settings?.vatOnFeesRate ?? 0.10);
+      const vat = Math.round(listingFee * vatOnFeesRate * 100) / 100;
 
-      await this.prisma.sellerLedgerEntry.create({
-        data: {
+      const entries: Prisma.SellerLedgerEntryCreateManyInput[] = [{
+        storeId,
+        type:        'LISTING_FEE',
+        amount:      -listingFee,
+        description: `Listing fee — product ${productId}`,
+      }];
+      if (vat > 0) {
+        entries.push({
           storeId,
-          type:        'LISTING_FEE',
-          amount:      -listingFee,
-          description: `Listing fee — product ${productId}`,
-        },
-      });
+          type:        'VAT',
+          amount:      -vat,
+          description: `VAT: listing — product ${productId}`,
+        });
+      }
+      await this.prisma.sellerLedgerEntry.createMany({ data: entries });
     } catch (err) {
       this.logger.error(`Failed to charge listing fee for product ${productId}: ${(err as Error).message}`);
     }
