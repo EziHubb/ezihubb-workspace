@@ -51,6 +51,13 @@ export class ShopStatsController {
     return this.statsService.getConversionFunnel(range, this.targetStoreId(context, storeId));
   }
 
+  @Get('traffic-attribution')
+  @ApiOperation({ summary: '"How shoppers found you" — visits broken down by referrer source (on-platform search, direct, social, external)' })
+  async getTrafficAttribution(@Req() req: Request, @Query('range') range = '30d', @Query('storeId') storeId?: string) {
+    const context = await this.storeContext.resolve(req);
+    return this.statsService.getTrafficSources(range, this.targetStoreId(context, storeId));
+  }
+
   @Get('listings')
   @ApiOperation({ summary: 'All listings with views, favourites, orders, revenue — sortable (scoped to own store for shop owners)' })
   async getListings(

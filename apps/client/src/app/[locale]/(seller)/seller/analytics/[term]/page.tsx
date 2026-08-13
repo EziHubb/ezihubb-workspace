@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { ChevronLeft, Bookmark, BookmarkCheck, Star, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { ChevronLeft, Bookmark, BookmarkCheck, Star, ThumbsUp, ThumbsDown, Search } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -15,7 +15,7 @@ import {
   useSubmitRelatedTermFeedback,
 } from '@ezihubb/api-client';
 import { fmtAmount } from '@ezihubb/utils';
-import type { ConversionBucket } from '@ezihubb/types';
+import { ApiRequestError, type ConversionBucket } from '@ezihubb/types';
 
 // ── Conversion badge ─────────────────────────────────────────────────────────
 
@@ -55,8 +55,9 @@ export default function TermInsightsPage() {
   const locale = useLocale();
   const term = decodeURIComponent(params.term ?? '');
 
-  const { data: detail, isLoading: detailLoading } = useTermDetail(term);
+  const { data: detail, isLoading: detailLoading, error: detailError } = useTermDetail(term);
   const { data: analysis, isLoading: analysisLoading } = useTermAnalysis(term);
+  const quotaExceeded = detailError instanceof ApiRequestError && detailError.statusCode === 403;
   const { data: savedSearches } = useSavedSearches();
   const { saveSearch, removeSavedSearch } = useMutateSavedSearches();
   const submitFeedback = useSubmitRelatedTermFeedback();
@@ -88,6 +89,14 @@ export default function TermInsightsPage() {
         <ChevronLeft className="w-4 h-4" /> Marketplace Insights
       </button>
 
+      {quotaExceeded ? (
+        <div className="bg-surface rounded-card border border-border shadow-card p-10 text-center">
+          <Search className="w-10 h-10 text-muted/30 mx-auto mb-3" />
+          <h1 className="text-lg font-bold text-secondary mb-1">Daily lookup limit reached</h1>
+          <p className="text-sm text-muted max-w-sm mx-auto">{detailError?.message}</p>
+        </div>
+      ) : (
+        <>
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -311,6 +320,8 @@ export default function TermInsightsPage() {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

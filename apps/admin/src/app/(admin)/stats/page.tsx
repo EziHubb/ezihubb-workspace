@@ -1,12 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import {
   TrendingUp, ShoppingBag, PercentIcon, DollarSign,
-  Heart, UserPlus, Star, ArrowRight, Search,
+  Heart, UserPlus, Star, ArrowRight, Search, Repeat, MapPin, ShoppingCart,
+  ChevronDown, ThumbsUp, ThumbsDown, Check,
 } from 'lucide-react';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
 import Link from 'next/link';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
@@ -29,19 +33,27 @@ interface OverviewData {
 }
 
 interface ShopperStatsData {
-  itemFavourites:  number;
-  shopFollows:     number;
-  reviewCount:     number;
-  avgRating:       number;
-  favouritesDelta: number;
-  followsDelta:    number;
-  reviewsDelta:    number;
+  itemFavourites:   number;
+  shopFollows:      number;
+  reviewCount:      number;
+  avgRating:        number | null;
+  repeatBuyers:     number;
+  citiesReached:    number;
+  abandonedBaskets: number;
+  favouritesDelta:  number;
+  followsDelta:     number;
+  reviewsDelta:     number;
 }
 
 interface FunnelStep {
   stage:      string;
   count:      number;
   percentage: number;
+}
+
+interface TrafficSourcesData {
+  totalVisits: number;
+  sources: Array<{ key: string; label: string; count: number; percentage: number }>;
 }
 
 interface SearchTerm {
@@ -62,10 +74,10 @@ interface ListingRow {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const RANGE_OPTIONS = [
-  { label: 'Yesterday',   value: '1d'  },
-  { label: 'Last 7 days', value: '7d'  },
-  { label: 'Last 30 days',value: '30d' },
-  { label: 'Last 90 days',value: '90d' },
+  { label: 'Yesterday',    value: '1d'  },
+  { label: 'Last 7 days',  value: '7d'  },
+  { label: 'Last 30 days', value: '30d' },
+  { label: 'Last 90 days', value: '90d' },
 ];
 
 function delta(n: number) {
@@ -78,27 +90,174 @@ function delta(n: number) {
   );
 }
 
-// ── Sparkline (pure CSS bar chart) ───────────────────────────────────────────
+/** `series[].date` is a plain "YYYY-MM-DD" string (see ShopStatsService.dateStr,
+ *  UTC-explicit). `new Date("2026-08-13")` parses that as UTC midnight, and
+ *  formatting it back in a negative-UTC-offset timezone (most of the
+ *  Americas) rolls it back to "Aug 12" — so build the Date from explicit
+ *  Y/M/D components instead of round-tripping through UTC. */
+function fmtDateShort(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  if (!y || !m || !d) return dateStr;
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(y, m - 1, d));
+}
 
-function MiniChart({
-  series,
-  metric,
+/** "This month: 01 Aug – 13 Aug" style label for the currently-selected preset range. */
+function rangeLabel(value: string): string {
+  const opt = RANGE_OPTIONS.find((o) => o.value === value);
+  const days = value === '1d' ? 1 : value === '7d' ? 7 : value === '90d' ? 90 : 30;
+  const to = new Date();
+  const from = new Date();
+  from.setDate(from.getDate() - (days - 1));
+  const fmt = new Intl.DateTimeFormat('en-US', { day: '2-digit', month: 'short' });
+  return `${opt?.label ?? 'Last 7 days'}: ${fmt.format(from)} – ${fmt.format(to)}`;
+}
+
+/** "Updated just now" / "Updated 4 minutes ago" / "Updated 2 hours ago" —
+ *  driven by the overview query's own `dataUpdatedAt` (React Query), so it
+ *  reflects when data ACTUALLY last arrived (initial load, range change,
+ *  store switch, or a background refetch), not a proxy like "did the range
+ *  dropdown value change" that misses all the other cases. */
+function useFreshness(dataUpdatedAt: number): string {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // React Query reports 0 before the first successful fetch resolves —
+  // don't render a nonsense "Updated ~50 years ago" while still loading.
+  if (!dataUpdatedAt) return 'Updating…';
+
+  const seconds = Math.max(0, Math.round((now - dataUpdatedAt) / 1000));
+  if (seconds < 60) return 'Updated just now';
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `Updated ${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  const hours = Math.round(minutes / 60);
+  return `Updated ${hours} hour${hours === 1 ? '' : 's'} ago`;
+}
+
+// ── Date range dropdown ───────────────────────────────────────────────────────
+
+function DateRangeDropdown({
+  value,
+  onChange,
+  dataUpdatedAt,
 }: {
-  series: OverviewData['series'];
-  metric: 'visits' | 'orders' | 'revenue';
+  value:          string;
+  onChange:       (v: string) => void;
+  dataUpdatedAt:  number;
 }) {
-  const vals = series.map((s) => s[metric]);
-  const max  = Math.max(...vals, 1);
+  const [open, setOpen] = useState(false);
+  const freshness = useFreshness(dataUpdatedAt);
+
   return (
-    <div className="flex items-end gap-0.5 h-14 w-full">
-      {vals.map((v, i) => (
-        <div
-          key={i}
-          className="flex-1 bg-primary/20 rounded-sm hover:bg-primary/40 transition-colors"
-          style={{ height: `${Math.max(4, (v / max) * 100)}%` }}
-          title={String(v)}
+    <div className="relative inline-block">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 pl-4 pr-3 py-2 rounded-full border border-border bg-surface text-sm font-medium text-secondary hover:border-primary/40 transition-colors"
+      >
+        {rangeLabel(value)}
+        <ChevronDown className={`w-3.5 h-3.5 text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 mt-1.5 w-48 bg-surface border border-border rounded-card shadow-floating z-20 py-1.5">
+            {RANGE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { onChange(opt.value); setOpen(false); }}
+                className={[
+                  'w-full text-left px-4 py-2 text-sm transition-colors',
+                  value === opt.value ? 'text-primary font-semibold bg-primary/5' : 'text-secondary hover:bg-muted/5',
+                ].join(' ')}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      <span className="ml-3 text-xs text-muted inline-flex items-center gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> {freshness}
+      </span>
+    </div>
+  );
+}
+
+// ── Trend chart (recharts) ────────────────────────────────────────────────────
+
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) {
+  if (!active || !payload?.length || !label) return null;
+  return (
+    <div className="bg-surface border border-border rounded-card px-3 py-2 shadow-floating text-sm">
+      <p className="text-muted mb-0.5">{fmtDateShort(label)}</p>
+      <p className="font-bold text-secondary">{payload[0].value.toLocaleString()} visits</p>
+    </div>
+  );
+}
+
+function TrendChart({ series }: { series: OverviewData['series'] }) {
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <LineChart data={series} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#F0EDE8" vertical={false} />
+        <XAxis
+          dataKey="date"
+          tickFormatter={fmtDateShort}
+          tick={{ fontSize: 11, fill: '#9CA3AF' }}
+          axisLine={false}
+          tickLine={false}
+          interval="preserveStartEnd"
         />
-      ))}
+        <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
+        <Tooltip content={<ChartTooltip />} />
+        <Line
+          type="monotone"
+          dataKey="visits"
+          stroke="#E85D3F"
+          strokeWidth={2}
+          dot={false}
+          activeDot={{ r: 4, fill: '#E85D3F', strokeWidth: 0 }}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ── "Is this helpful?" feedback ───────────────────────────────────────────────
+
+function HelpfulFeedback() {
+  const [voted, setVoted] = useState<'up' | 'down' | null>(null);
+  if (voted) {
+    return (
+      <p className="flex items-center gap-1.5 text-xs text-muted">
+        <Check className="w-3.5 h-3.5 text-success" /> Thanks for the feedback!
+      </p>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted">
+      <span>Is this helpful?</span>
+      <button
+        type="button"
+        onClick={() => setVoted('up')}
+        aria-label="Yes, this is helpful"
+        className="w-7 h-7 rounded-full flex items-center justify-center border border-border hover:border-primary/40 hover:text-primary transition-colors"
+      >
+        <ThumbsUp className="w-3.5 h-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => setVoted('down')}
+        aria-label="No, this is not helpful"
+        className="w-7 h-7 rounded-full flex items-center justify-center border border-border hover:border-error/40 hover:text-error transition-colors"
+      >
+        <ThumbsDown className="w-3.5 h-3.5" />
+      </button>
     </div>
   );
 }
@@ -130,6 +289,51 @@ function KpiCard({
   );
 }
 
+// ── Shopper Stat Card (with description + CTA) ────────────────────────────────
+
+function ShopperStatCard({
+  icon: Icon,
+  color,
+  value,
+  valueSuffix,
+  deltaValue,
+  label,
+  description,
+  cta,
+}: {
+  icon:         React.ElementType;
+  color:        string;
+  value:        string;
+  valueSuffix?: string;
+  deltaValue?:  number;
+  label:        string;
+  description:  string;
+  cta?:         { label: string; href: string };
+}) {
+  return (
+    <div className="bg-surface border border-border rounded-card p-5">
+      <div className="flex items-center gap-3 mb-1">
+        <Icon className={`w-5 h-5 shrink-0 ${color}`} />
+        <span className="text-sm font-semibold text-secondary">{label}</span>
+      </div>
+      <div className="flex items-baseline gap-1.5 mb-2">
+        <p className="text-2xl font-bold text-secondary">{value}</p>
+        {valueSuffix && <span className="text-sm font-medium text-amber-500">{valueSuffix}</span>}
+        {deltaValue !== undefined && delta(deltaValue)}
+      </div>
+      <p className="text-xs text-muted leading-relaxed">{description}</p>
+      {cta && (
+        <Link
+          href={cta.href}
+          className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline mt-2"
+        >
+          {cta.label} <ArrowRight className="w-3 h-3" />
+        </Link>
+      )}
+    </div>
+  );
+}
+
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 
 function Skeleton({ className = '' }: { className?: string }) {
@@ -141,7 +345,7 @@ function Skeleton({ className = '' }: { className?: string }) {
 export default function StatsPage() {
   const router = useRouter();
   const [range, setRange] = useState('7d');
-  const { isPlatformContext } = useAdminMode();
+  const { isPlatformContext, ownStoreId } = useAdminMode();
   const [selectedStore, setSelectedStore] = useState<StoreOption | null>(null);
 
   // A platform-context Super Admin may drill into any single store's stats via
@@ -150,8 +354,15 @@ export default function StatsPage() {
   // entirely is what keeps that ambient behavior unchanged.
   const explicitStoreId = isPlatformContext && selectedStore ? selectedStore.id : undefined;
   const qsStore = explicitStoreId ? `&storeId=${explicitStoreId}` : '';
+  // Which store's settings/promotions the Shopper Stats CTAs deep-link into —
+  // whichever store's data is actually on screen. In platform context this
+  // must stay null unless a specific store is picked: falling back to the
+  // Super Admin's own store here would silently point "Set up offer" at
+  // their unrelated personal store while the numbers on screen are the
+  // platform-wide aggregate.
+  const ctaStoreId = isPlatformContext ? (explicitStoreId ?? null) : (ownStoreId || null);
 
-  const { data: overview, isLoading: ovLoading } = useQuery<OverviewData>({
+  const { data: overview, isLoading: ovLoading, dataUpdatedAt: overviewUpdatedAt } = useQuery<OverviewData>({
     queryKey: ['stats-overview', range, explicitStoreId],
     queryFn:  () => api.get(`${API_ROUTES.ADMIN.STATS_OVERVIEW}?range=${range}${qsStore}`),
   });
@@ -164,6 +375,11 @@ export default function StatsPage() {
   const { data: funnel, isLoading: srcLoading } = useQuery<FunnelStep[]>({
     queryKey: ['stats-conversion-funnel', range, explicitStoreId],
     queryFn:  () => api.get(`${API_ROUTES.ADMIN.STATS_TRAFFIC_SOURCES}?range=${range}${qsStore}`),
+  });
+
+  const { data: attribution, isLoading: attrLoading } = useQuery<TrafficSourcesData>({
+    queryKey: ['stats-traffic-attribution', range, explicitStoreId],
+    queryFn:  () => api.get(`${API_ROUTES.ADMIN.STATS_TRAFFIC_ATTRIBUTION}?range=${range}${qsStore}`),
   });
 
   const { data: listingsData } = useQuery<{ data: ListingRow[] }>({
@@ -198,22 +414,7 @@ export default function StatsPage() {
       )}
 
       {/* ── Date range selector ─────────────────────────────────────────────── */}
-      <div className="flex gap-2 flex-wrap">
-        {RANGE_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => setRange(opt.value)}
-            className={[
-              'px-4 py-1.5 rounded-full text-sm font-medium transition-colors border',
-              range === opt.value
-                ? 'bg-primary text-white border-primary'
-                : 'bg-surface text-muted border-border hover:border-primary/40 hover:text-secondary',
-            ].join(' ')}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      <DateRangeDropdown value={range} onChange={setRange} dataUpdatedAt={overviewUpdatedAt} />
 
       {/* ── KPI cards ──────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -256,54 +457,82 @@ export default function StatsPage() {
       {!ovLoading && overview?.series && overview.series.length > 0 && (
         <div className="bg-surface border border-border rounded-card p-6">
           <h2 className="text-sm font-semibold text-secondary mb-4">Visits over time</h2>
-          <MiniChart series={overview.series} metric="visits" />
-          <div className="flex justify-between mt-2 text-[10px] text-muted">
-            <span>{overview.series[0]?.date}</span>
-            <span>{overview.series[overview.series.length - 1]?.date}</span>
-          </div>
+          <TrendChart series={overview.series} />
         </div>
       )}
 
       {/* ── Shopper Stats ──────────────────────────────────────────────────── */}
       <div>
-        <h2 className="text-sm font-semibold text-secondary mb-3">Shopper Stats</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-sm font-semibold text-secondary">Shopper Stats</h2>
+        </div>
+        <p className="text-xs text-muted mb-3">
+          Get a snapshot of how buyers interacted with your shop — stats are based on the date range set above.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {shLoading ? (
-            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24" />)
+            Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-36" />)
           ) : (
             <>
-              <div className="bg-surface border border-border rounded-card p-5 flex items-center gap-4">
-                <Heart className="w-8 h-8 text-red-400 shrink-0" />
-                <div>
-                  <p className="text-2xl font-bold text-secondary">{fmtNum(shopper?.itemFavourites)}</p>
-                  <p className="text-xs text-muted mt-0.5">Item favourites</p>
-                  <div className="mt-0.5">{shopper?.favouritesDelta !== undefined && delta(shopper.favouritesDelta)}</div>
-                </div>
-              </div>
-              <div className="bg-surface border border-border rounded-card p-5 flex items-center gap-4">
-                <UserPlus className="w-8 h-8 text-blue-400 shrink-0" />
-                <div>
-                  <p className="text-2xl font-bold text-secondary">{fmtNum(shopper?.shopFollows)}</p>
-                  <p className="text-xs text-muted mt-0.5">Shop follows</p>
-                  <div className="mt-0.5">{shopper?.followsDelta !== undefined && delta(shopper.followsDelta)}</div>
-                </div>
-              </div>
-              <div className="bg-surface border border-border rounded-card p-5 flex items-center gap-4">
-                <Star className="w-8 h-8 text-amber-400 shrink-0" />
-                <div>
-                  <div className="flex items-baseline gap-1.5">
-                    <p className="text-2xl font-bold text-secondary">{fmtNum(shopper?.reviewCount)}</p>
-                    {shopper?.avgRating && (
-                      <span className="text-sm font-medium text-amber-500">({fmtRating(shopper.avgRating)} ★)</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted mt-0.5">Reviews</p>
-                  <div className="mt-0.5">{shopper?.reviewsDelta !== undefined && delta(shopper.reviewsDelta)}</div>
-                </div>
-              </div>
+              <ShopperStatCard
+                icon={Heart} color="text-red-400" value={fmtNum(shopper?.itemFavourites)}
+                deltaValue={shopper?.favouritesDelta}
+                label="Item favourites"
+                description={
+                  shopper && shopper.itemFavourites > 0
+                    ? `${fmtNum(shopper.itemFavourites)} shopper${shopper.itemFavourites === 1 ? '' : 's'} favourited your items. Share a discount to help seal the deal.`
+                    : "No favourites yet in this period. Share a discount when a shopper loves a listing to help seal the deal."
+                }
+                cta={ctaStoreId ? { label: 'Set up offer', href: ADMIN_ROUTES.PROMOTIONS } : undefined}
+              />
+              <ShopperStatCard
+                icon={UserPlus} color="text-blue-400" value={fmtNum(shopper?.shopFollows)}
+                deltaValue={shopper?.followsDelta}
+                label="Shop follows"
+                description={
+                  shopper && shopper.shopFollows > 0
+                    ? `${fmtNum(shopper.shopFollows)} new follower${shopper.shopFollows === 1 ? '' : 's'} this period.`
+                    : "Looks like you don't have any new followers yet. Add your story to help buyers get to know you!"
+                }
+                cta={ctaStoreId ? { label: 'Add your story', href: ADMIN_ROUTES.STORE(ctaStoreId) } : undefined}
+              />
+              <ShopperStatCard
+                icon={Star} color="text-amber-400" value={fmtNum(shopper?.reviewCount)}
+                valueSuffix={shopper?.avgRating ? `(${fmtRating(shopper.avgRating)} ★)` : undefined}
+                deltaValue={shopper?.reviewsDelta}
+                label="Reviews"
+                description={
+                  shopper && shopper.reviewCount > 0
+                    ? `Averaging ${fmtRating(shopper.avgRating ?? 0)} stars across ${fmtNum(shopper.reviewCount)} review${shopper.reviewCount === 1 ? '' : 's'} this period.`
+                    : "Looks like you don't have any reviews yet. Read our tips on how to score a 5-star review!"
+                }
+                cta={{ label: 'Get tips', href: ADMIN_ROUTES.REVIEWS }}
+              />
+              <ShopperStatCard
+                icon={Repeat} color="text-violet-400" value={fmtNum(shopper?.repeatBuyers)}
+                label="Repeat buyers"
+                description="Encourage more shoppers to come back — send a thank-you offer after their order dispatches."
+                cta={ctaStoreId ? { label: 'Set up offer', href: ADMIN_ROUTES.PROMOTIONS } : undefined}
+              />
+              <ShopperStatCard
+                icon={MapPin} color="text-teal-400" value={fmtNum(shopper?.citiesReached)}
+                label="Cities reached"
+                description={
+                  shopper && shopper.citiesReached > 0
+                    ? `Shipped to ${fmtNum(shopper.citiesReached)} different cit${shopper.citiesReached === 1 ? 'y' : 'ies'} this period.`
+                    : "No orders shipped in this date range yet."
+                }
+              />
+              <ShopperStatCard
+                icon={ShoppingCart} color="text-orange-400" value={fmtNum(shopper?.abandonedBaskets)}
+                label="Abandoned baskets"
+                description="Next time shoppers leave items in their basket, you can send an offer automatically to nudge them to check out."
+                cta={ctaStoreId ? { label: 'Set up offer', href: ADMIN_ROUTES.PROMOTIONS } : undefined}
+              />
             </>
           )}
         </div>
+        {!shLoading && <div className="mt-3"><HelpfulFeedback /></div>}
       </div>
 
       {/* ── Conversion Funnel ──────────────────────────────────────────────── */}
@@ -320,6 +549,35 @@ export default function StatsPage() {
             (funnel ?? []).map((s) => (
               <div key={s.stage} className="flex items-center gap-4 px-5 py-3">
                 <span className="w-36 text-sm text-secondary shrink-0">{s.stage}</span>
+                <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full"
+                    style={{ width: `${Math.min(100, safeNum(s.percentage))}%` }}
+                  />
+                </div>
+                <span className="text-sm text-muted w-20 text-right">{fmtNum(s.count)}</span>
+                <span className="text-sm font-medium text-secondary w-12 text-right">{fmtPercentRaw(s.percentage, 0)}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* ── How shoppers found you ───────────────────────────────────────────── */}
+      <div>
+        <h2 className="text-sm font-semibold text-secondary mb-1">How shoppers found you</h2>
+        <p className="text-xs text-muted mb-3">Where visits to your shop came from in this period.</p>
+        <div className="bg-surface border border-border rounded-card divide-y divide-border">
+          {attrLoading ? (
+            <div className="p-4 space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-6" />)}
+            </div>
+          ) : !attribution || attribution.totalVisits === 0 ? (
+            <p className="p-6 text-sm text-muted text-center">No visit data for this period.</p>
+          ) : (
+            attribution.sources.map((s) => (
+              <div key={s.key} className="flex items-center gap-4 px-5 py-3">
+                <span className="w-56 text-sm text-secondary shrink-0">{s.label}</span>
                 <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
                   <div
                     className="h-full bg-primary rounded-full"

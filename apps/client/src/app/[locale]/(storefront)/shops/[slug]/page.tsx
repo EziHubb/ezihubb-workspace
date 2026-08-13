@@ -6,6 +6,7 @@ import { getTranslations } from 'next-intl/server';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { StorePageClient } from './StorePageClient';
+import { FollowShopButton } from '../../../../../components/shops/FollowShopButton';
 import { fmtRating, safeNum } from '@ezihubb/utils';
 
 interface StorePublicDto {
@@ -19,6 +20,7 @@ interface StorePublicDto {
   rating:        number;
   totalOrders:   number;
   totalProducts: number;
+  followerCount: number;
   verifiedAt:    string | null;
   createdAt:     string;
 }
@@ -174,20 +176,22 @@ export default async function StorePublicPage({
             </div>
           </div>
 
-          {/* Share — desktop only */}
-          <div className="hidden md:block pb-1 shrink-0">
+          {/* Follow + Share — desktop only */}
+          <div className="hidden md:flex items-center gap-3 pb-1 shrink-0">
+            <FollowShopButton slug={store.slug} initialFollowerCount={store.followerCount} />
             <ShareButtons name={store.name} slug={store.slug} locale={locale} />
           </div>
         </div>
 
-        {/* Description + mobile share */}
+        {/* Description + mobile follow/share */}
         <div className="flex flex-col md:flex-row md:items-start gap-3 mb-0">
           {store.description && (
             <p className="flex-1 min-w-0 text-sm text-secondary/80 leading-relaxed line-clamp-3 md:line-clamp-none">
               {store.description}
             </p>
           )}
-          <div className="md:hidden">
+          <div className="md:hidden flex items-center gap-3">
+            <FollowShopButton slug={store.slug} initialFollowerCount={store.followerCount} />
             <ShareButtons name={store.name} slug={store.slug} locale={locale} />
           </div>
         </div>

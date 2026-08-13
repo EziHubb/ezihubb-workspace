@@ -1,9 +1,12 @@
 import {
-  Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Req,
+  Controller, Get, Post, Delete, Patch, Body, Param, Query, UseGuards, Req,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { StoreOwnerGuard } from './guards/store-owner.guard';
 import { StoresService } from './stores.service';
 import { ApplyStoreDto } from './dto/apply-store.dto';
@@ -29,7 +32,34 @@ export class StoresController {
   /** Public: store page by slug */
   @Get(':slug')
   getStoreBySlug(@Param('slug') slug: string, @Req() req: Request) {
-    return this.storesService.getStoreBySlug(slug, this.buildViewLockId(req));
+    return this.storesService.getStoreBySlug(
+      slug,
+      this.buildViewLockId(req),
+      req.headers['referer'] as string | undefined,
+    );
+  }
+
+  /** Whether the current user follows this store — false (not 401) for guests */
+  @Get(':slug/follow-status')
+  @UseGuards(OptionalAuthGuard)
+  getFollowStatus(@Param('slug') slug: string, @CurrentUser() user?: JwtPayload) {
+    return this.storesService.getFollowStatus(slug, user?.sub);
+  }
+
+  /** Buyer: follow a shop */
+  @Post(':slug/follow')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  followStore(@Param('slug') slug: string, @Req() req: any) {
+    return this.storesService.followStore(slug, req.user.sub ?? req.user.id);
+  }
+
+  /** Buyer: unfollow a shop */
+  @Delete(':slug/follow')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  unfollowStore(@Param('slug') slug: string, @Req() req: any) {
+    return this.storesService.unfollowStore(slug, req.user.sub ?? req.user.id);
   }
 
   /** Public: product category sections with counts for the sidebar */

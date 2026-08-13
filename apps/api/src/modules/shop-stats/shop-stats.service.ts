@@ -12,10 +12,13 @@ export class ShopStatsService {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
+  // UTC-explicit — must match AnalyticsService.dateStr(), which writes every
+  // Redis counter this service reads (analytics:*). Using local server time
+  // here would silently mismatch on any host not running in UTC.
   private dateStr(d: Date): string {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
   }
 
@@ -144,26 +147,50 @@ export class ShopStatsService {
 
   // ── Shopper stats ──────────────────────────────────────────────────────────
 
-  async getShopperStats(range: string, storeId?: string | null) {
-    const start = this.rangeStart(range);
+  /** % change of current vs. prior equal-length period. previous=0 with current>0 reads as +100%. */
+  private pctChange(current: number, previous: number): number {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return Math.round(((current - previous) / previous) * 1000) / 10;
+  }
 
-    const wishWhere: Prisma.WishlistItemWhereInput = { createdAt: { gte: start } };
-    const reviewWhere: Prisma.ReviewWhereInput     = { createdAt: { gte: start } };
+  async getShopperStats(range: string, storeId?: string | null) {
+    const start     = this.rangeStart(range);
+    const rangeMs   = Date.now() - start.getTime();
+    const prevStart = new Date(start.getTime() - rangeMs);
+
+    const wishWhere: Prisma.WishlistItemWhereInput     = { createdAt: { gte: start } };
+    const wishPrevWhere: Prisma.WishlistItemWhereInput  = { createdAt: { gte: prevStart, lt: start } };
+    const reviewWhere: Prisma.ReviewWhereInput          = { createdAt: { gte: start } };
+    const reviewPrevWhere: Prisma.ReviewWhereInput      = { createdAt: { gte: prevStart, lt: start } };
     if (storeId) {
-      wishWhere.product   = { storeId };
-      reviewWhere.product = { storeId };
+      wishWhere.product     = { storeId };
+      wishPrevWhere.product = { storeId };
+      reviewWhere.product     = { storeId };
+      reviewPrevWhere.product = { storeId };
     }
 
-    const orderActivityWhere: Prisma.OrderWhereInput = { createdAt: { gte: start } };
-    if (storeId) orderActivityWhere.storeOrders = { some: { storeId } };
+    const followWhere: Prisma.StoreFollowWhereInput    = { createdAt: { gte: start } };
+    const followPrevWhere: Prisma.StoreFollowWhereInput = { createdAt: { gte: prevStart, lt: start } };
+    if (storeId) {
+      followWhere.storeId     = storeId;
+      followPrevWhere.storeId = storeId;
+    }
 
-    const [favCount, reviews, followCount] = await Promise.all([
+    const [
+      favCount, favPrevCount,
+      reviews, reviewPrevCount,
+      followCount, followPrevCount,
+      repeatBuyers, citiesReached, abandonedBaskets,
+    ] = await Promise.all([
       this.prisma.wishlistItem.count({ where: wishWhere }),
+      this.prisma.wishlistItem.count({ where: wishPrevWhere }),
       this.prisma.review.findMany({ where: reviewWhere, select: { rating: true } }),
-      // Shop owner: count orders as proxy for customer activity; platform: new signups
-      storeId
-        ? this.prisma.order.count({ where: orderActivityWhere })
-        : this.prisma.user.count({ where: { createdAt: { gte: start } } }),
+      this.prisma.review.count({ where: reviewPrevWhere }),
+      this.prisma.storeFollow.count({ where: followWhere }),
+      this.prisma.storeFollow.count({ where: followPrevWhere }),
+      this.getRepeatBuyersCount(start, storeId),
+      this.getCitiesReachedCount(start, storeId),
+      this.getAbandonedBasketsCount(start, storeId),
     ]);
 
     const avgRating = reviews.length > 0
@@ -174,10 +201,67 @@ export class ShopStatsService {
       shopFollows:     followCount,
       reviewCount:     reviews.length,
       avgRating,
-      favouritesDelta: 0,
-      followsDelta:    0,
-      reviewsDelta:    0,
+      repeatBuyers,
+      citiesReached,
+      abandonedBaskets,
+      favouritesDelta: this.pctChange(favCount, favPrevCount),
+      followsDelta:    this.pctChange(followCount, followPrevCount),
+      reviewsDelta:    this.pctChange(reviews.length, reviewPrevCount),
     };
+  }
+
+  /** Distinct customers (by userId, falling back to guestEmail) with >1 order in the range. */
+  private async getRepeatBuyersCount(start: Date, storeId?: string | null): Promise<number> {
+    const where: Prisma.OrderWhereInput = {
+      createdAt: { gte: start },
+      status:    { notIn: ['CANCELLED', 'REFUNDED'] },
+    };
+    if (storeId) where.storeOrders = { some: { storeId } };
+
+    const orders = await this.prisma.order.findMany({ where, select: { userId: true, guestEmail: true } });
+    const counts = new Map<string, number>();
+    for (const o of orders) {
+      const key = o.userId ?? o.guestEmail;
+      if (!key) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return [...counts.values()].filter((c) => c > 1).length;
+  }
+
+  /** Distinct shipping cities in the range. Order.shippingCity is per-order
+   *  (not per-seller), so a store-scoped count reflects the cities of orders
+   *  that included at least one of that store's items — a close approximation,
+   *  not a precise per-store shipment breakdown. */
+  private async getCitiesReachedCount(start: Date, storeId?: string | null): Promise<number> {
+    const where: Prisma.OrderWhereInput = {
+      createdAt:    { gte: start },
+      status:       { notIn: ['CANCELLED', 'REFUNDED'] },
+      shippingCity: { not: null },
+    };
+    if (storeId) where.storeOrders = { some: { storeId } };
+
+    const rows = await this.prisma.order.findMany({
+      where,
+      select:   { shippingCity: true },
+      distinct: ['shippingCity'],
+    });
+    return rows.length;
+  }
+
+  /** Carts with items that went idle (no update) within the requested range.
+   *  Uses the same 2h idle threshold as AbandonedCartProcessor's reminder-email
+   *  scan, so this stat means the same thing as "abandoned" does elsewhere in
+   *  the codebase. (A 24h threshold would make the window `[start, now-24h]`
+   *  collapse to ~empty for the "Yesterday" range preset, since start is
+   *  itself only 24h back — always reading as zero regardless of real data.) */
+  private async getAbandonedBasketsCount(start: Date, storeId?: string | null): Promise<number> {
+    const idleCutoff = new Date(Date.now() - 2 * 3600 * 1000);
+    return this.prisma.cart.count({
+      where: {
+        updatedAt: { gte: start, lte: idleCutoff },
+        items:     { some: storeId ? { storeId } : {} },
+      },
+    });
   }
 
   // ── Conversion funnel (real tracked events) ─────────────────────────────────
@@ -215,6 +299,36 @@ export class ShopStatsService {
       // meant to show drop-off, not >100% figures.
       percentage: visits > 0 ? Math.min(100, Math.round((s.count / visits) * 100)) : 0,
     }));
+  }
+
+  // ── Traffic sources ("How shoppers found you") ──────────────────────────────
+
+  private static readonly SOURCE_LABELS: Record<string, string> = {
+    search:   'On-platform search & browse',
+    direct:   'Direct & other traffic',
+    social:   'Social media',
+    external: 'External sites',
+  };
+
+  async getTrafficSources(range: string, storeId?: string | null) {
+    const start = this.rangeStart(range);
+    const days  = Math.round((Date.now() - start.getTime()) / 86_400_000) || 1;
+    const keys  = ['search', 'direct', 'social', 'external'] as const;
+
+    const counts = await Promise.all(
+      keys.map((k) => this.sumRangeMetric(days, `source:${k}`, storeId)),
+    );
+    const totalVisits = counts.reduce((s, c) => s + c, 0);
+
+    return {
+      totalVisits,
+      sources: keys.map((key, i) => ({
+        key,
+        label:      ShopStatsService.SOURCE_LABELS[key],
+        count:      counts[i],
+        percentage: totalVisits > 0 ? Math.round((counts[i]! / totalVisits) * 100) : 0,
+      })),
+    };
   }
 
   // ── Listings performance table ─────────────────────────────────────────────

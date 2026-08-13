@@ -25,6 +25,7 @@ export interface TrendingTermDto {
   term: string;
   searches: number;
   changePercent: number | null;
+  imageUrl: string | null;
 }
 
 export interface TermTimeSeriesPoint {
@@ -61,4 +62,11 @@ export interface SavedSearchTermDto {
   userId: string;
   term: string;
   createdAt: string;
+}
+
+export interface InsightsQuotaDto {
+  used:      number;
+  limit:     number;
+  remaining: number;
+  resetsAt:  string;
 }

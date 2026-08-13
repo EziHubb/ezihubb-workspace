@@ -11,6 +11,8 @@
     "memberSince": "加入于 {date}",
     "share": "分享：",
     "shareCheckOut": "快来看看 EziHubb 上的 {name}！",
+    "follow": "关注",
+    "following": "已关注",
     "sectionsAriaLabel": "店铺分类",
     "tabItems": "商品（{count}）",
     "tabReviews": "评价",

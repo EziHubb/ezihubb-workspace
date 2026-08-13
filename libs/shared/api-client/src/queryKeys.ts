@@ -68,6 +68,7 @@ export const queryKeys = {
   insightsTerm:      (term: string) => [...MARKETPLACE_INSIGHTS_KEY, 'term', term] as const,
   insightsAnalysis:  (term: string) => [...MARKETPLACE_INSIGHTS_KEY, 'analysis', term] as const,
   savedSearches:     ()             => [...MARKETPLACE_INSIGHTS_KEY, 'saved-searches'] as const,
+  insightsQuota:     ()             => [...MARKETPLACE_INSIGHTS_KEY, 'quota'] as const,
 
   // New keys (aligned with query-keys.ts)
   megaMenu:       ()                   => ['mega-menu']                   as const,

@@ -40,6 +40,17 @@ export function fmtNum(val: Numeric): string {
   return toNum(val).toLocaleString();
 }
 
+/** `219200` → `"219.2k"`, `1500000` → `"1.5m"` (Etsy-style compact search-volume counts) */
+export function fmtCompactNum(val: Numeric): string {
+  const n = toNum(val);
+  if (n < 1000) return String(Math.round(n));
+  // Intl's compact notation renders "219.2K" (uppercase) — Etsy's own
+  // trending-term cards use lowercase ("219.2k"), so match that exactly.
+  return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 })
+    .format(n)
+    .toLowerCase();
+}
+
 /** `4.567` → `"4.6"` (one decimal, for ratings) */
 export function fmtRating(val: Numeric): string {
   return toNum(val).toFixed(1);

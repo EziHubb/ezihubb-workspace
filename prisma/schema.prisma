@@ -213,6 +213,7 @@ model User {
   affiliateAccount    AffiliateAccount?
   ownedStore          Store?               @relation("StoreOwner")
   savedSearchTerms    SavedSearchTerm[]
+  storeFollows        StoreFollow[]
 
   wishlistShareToken String? @unique
   wishlistIsPublic   Boolean @default(false)
@@ -386,9 +387,24 @@ model Store {
   fulfillmentConnections StoreFulfillmentConnection[]
   apiKeys                ApiKey[]
 
+  followers StoreFollow[]
+
   @@index([slug])
   @@index([status])
   @@index([ownerId])
+}
+
+model StoreFollow {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, storeId])
+  @@index([storeId])
+  @@index([userId])
 }
 
 model StoreOrder {

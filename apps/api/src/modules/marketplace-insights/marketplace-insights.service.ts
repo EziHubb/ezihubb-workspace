@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { RedisService } from '../../common/services/redis.service';
 import { SearchService } from '../search/search.service';
 import { SearchQueryDto, SearchSortBy } from '../search/dto/search-query.dto';
 import { ProductListItemDto } from '../products/dto/product-list-item.dto';
@@ -11,6 +12,10 @@ export interface TrendingTermDto {
   searches: number;
   /** % change vs the prior period of equal length, or null if there's no prior data yet. */
   changePercent: number | null;
+  /** Thumbnail of a representative listing matching this term (best-selling
+   *  match by product name) — null when nothing matches, common for
+   *  long-tail terms. Purely decorative, matching Etsy's trending-term cards. */
+  imageUrl: string | null;
 }
 
 export interface TermDetailDto {
@@ -42,10 +47,26 @@ export interface TermAnalysisDto {
   yourPrices: { min: number; max: number; count: number } | null;
 }
 
+export interface QuotaDto {
+  used:      number;
+  limit:     number;
+  remaining: number;
+  /** ISO timestamp of the next UTC midnight, when the quota resets. */
+  resetsAt:  string;
+}
+
 @Injectable()
 export class MarketplaceInsightsService {
+  /** Etsy-parity: a free daily cap on keyword-lookup depth (term-detail page
+   *  opens), independent of any paid plan — EziHubb has no seller tier to
+   *  gate this behind yet, so it's a flat per-store daily allowance. Only
+   *  counts opening a term's detail page (getTermDetail), not the
+   *  supplementary price/bestseller analysis call the same page also fires. */
+  private static readonly DAILY_QUOTA = 20;
+
   constructor(
     private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
     private readonly searchService: SearchService,
   ) {}
 
@@ -81,18 +102,81 @@ export class MarketplaceInsightsService {
       _sum: { searches: true },
     });
     const prevMap = new Map(prevRows.map((r) => [r.term, r._sum.searches ?? 0]));
+    const imageMap = await this.getRepresentativeImages(terms);
 
     return rows.map((r) => {
       const current = r._sum.searches ?? 0;
       const prev = prevMap.get(r.term) ?? 0;
       const changePercent = prev > 0 ? Math.round(((current - prev) / prev) * 1000) / 10 : null;
-      return { term: r.term, searches: current, changePercent };
+      return { term: r.term, searches: current, changePercent, imageUrl: imageMap.get(r.term) ?? null };
     });
+  }
+
+  /** Best-selling active listing whose name contains each term — a cheap,
+   *  direct-name-match lookup (not the full SearchService pipeline) since
+   *  this only needs one decorative thumbnail per term, not ranked results. */
+  private async getRepresentativeImages(terms: string[]): Promise<Map<string, string | null>> {
+    const entries = await Promise.all(
+      terms.map(async (term): Promise<[string, string | null]> => {
+        const product = await this.prisma.product.findFirst({
+          where:   { name: { contains: term, mode: 'insensitive' }, isActive: true, deletedAt: null },
+          orderBy: { soldCount: 'desc' },
+          select:  { images: { where: { isPrimary: true }, select: { url: true }, take: 1 } },
+        });
+        return [term, product?.images[0]?.url ?? null];
+      }),
+    );
+    return new Map(entries);
+  }
+
+  // ── Search quota ─────────────────────────────────────────────────────────
+
+  private quotaKey(storeId: string | null): string {
+    return `marketplace-insights:quota:${storeId ?? 'platform'}:${this.dateStr(new Date())}`;
+  }
+
+  private nextUtcMidnight(): Date {
+    const d = new Date();
+    d.setUTCHours(24, 0, 0, 0);
+    return d;
+  }
+
+  async getQuota(storeId: string | null): Promise<QuotaDto> {
+    const used = this.redis.isAvailable()
+      ? Number((await this.redis.getClient().get(this.quotaKey(storeId))) ?? 0)
+      : 0;
+    return {
+      used,
+      limit:     MarketplaceInsightsService.DAILY_QUOTA,
+      remaining: Math.max(0, MarketplaceInsightsService.DAILY_QUOTA - used),
+      resetsAt:  this.nextUtcMidnight().toISOString(),
+    };
+  }
+
+  /** Fails open (allows the lookup) if Redis is unavailable — a quota outage
+   *  must never block sellers from using the tool. */
+  private async consumeQuota(storeId: string | null): Promise<void> {
+    if (!this.redis.isAvailable()) return;
+    const key = this.quotaKey(storeId);
+    let used: number;
+    try {
+      used = await this.redis.getClient().incr(key);
+      if (used === 1) await this.redis.getClient().expire(key, 26 * 3600); // safety margin past UTC midnight
+    } catch {
+      return; // Redis error — fail open
+    }
+    if (used > MarketplaceInsightsService.DAILY_QUOTA) {
+      throw new ForbiddenException({
+        code:    'ERR_INSIGHTS_QUOTA_EXCEEDED',
+        message: `Daily search-term lookup limit reached (${MarketplaceInsightsService.DAILY_QUOTA}/day). Try again tomorrow.`,
+      });
+    }
   }
 
   // ── Term deep-dive ───────────────────────────────────────────────────────
 
-  async getTermDetail(term: string, days = 30): Promise<TermDetailDto> {
+  async getTermDetail(term: string, days: number, storeId: string | null): Promise<TermDetailDto> {
+    await this.consumeQuota(storeId);
     const normalized = this.normalize(term);
     const startDate = this.dateStr(this.subDays(new Date(), days));
 

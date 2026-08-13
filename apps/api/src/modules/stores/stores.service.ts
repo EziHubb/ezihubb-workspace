@@ -172,7 +172,7 @@ export class StoresService {
 
   // ─── Public: Store page ───────────────────────────────────────────────────
 
-  async getStoreBySlug(slug: string, viewLockId?: string) {
+  async getStoreBySlug(slug: string, viewLockId?: string, referer?: string) {
     const store = await this.prisma.store.findUnique({
       where: { slug },
       select: {
@@ -182,7 +182,7 @@ export class StoresService {
         createdAt: true, verifiedAt: true,
         // Store.totalProducts is a denormalized counter with no write path
         // anywhere in the codebase — always compute live instead.
-        _count: { select: { products: { where: { isActive: true, deletedAt: null } } } },
+        _count: { select: { products: { where: { isActive: true, deletedAt: null } }, followers: true } },
       },
     });
 
@@ -191,18 +191,96 @@ export class StoresService {
     }
 
     // Debounced store-visit tracking — one increment per session/IP per hour,
-    // same dedup pattern as the product view counter.
+    // same dedup pattern as the product view counter. Traffic-source
+    // attribution rides the same dedup window so a single visit is only
+    // classified once, same as the visit counter itself.
     if (viewLockId) {
       const lockKey = `store:view-lock:${slug}:${viewLockId}`;
       const seen = await this.redis.exists(lockKey);
       if (!seen) {
         await this.redis.set(lockKey, 1, 3600);
         this.analyticsService.trackStoreMetric(store.id, 'visits').catch(() => undefined);
+        this.analyticsService
+          .trackVisitSource(store.id, this.classifyTrafficSource(referer))
+          .catch(() => undefined);
       }
     }
 
     const { _count, ...rest } = store;
-    return { ...rest, totalProducts: _count.products };
+    return { ...rest, totalProducts: _count.products, followerCount: _count.followers };
+  }
+
+  /**
+   * Buckets a visit's HTTP Referer into the same 4 categories Etsy's "How
+   * shoppers found you" uses: on-platform search/browse, direct (no
+   * referrer — bookmarked/typed URL), social media, or other external sites.
+   * Best-effort — a stripped/missing Referer (increasingly common under
+   * strict browser referrer policies) falls back to "direct", same as most
+   * analytics tools.
+   */
+  private classifyTrafficSource(referer?: string): 'search' | 'direct' | 'social' | 'external' {
+    if (!referer) return 'direct';
+    let url: URL;
+    try {
+      url = new URL(referer);
+    } catch {
+      return 'direct';
+    }
+    const host = url.hostname.toLowerCase();
+
+    let ownHost: string;
+    try {
+      ownHost = new URL(SHOP_URL).hostname.toLowerCase();
+    } catch {
+      ownHost = '';
+    }
+    if (host === ownHost) {
+      // On-platform navigation — only count it as "search" attribution when
+      // it came from a search/browse surface, not e.g. the homepage.
+      return /^\/[a-z]{2}\/(search|products|collections)(\/|$)/.test(url.pathname)
+        ? 'search'
+        : 'direct';
+    }
+
+    const socialHosts = ['facebook.com', 'instagram.com', 'tiktok.com', 'pinterest.com', 'twitter.com', 'x.com', 't.co'];
+    if (socialHosts.some((h) => host === h || host.endsWith(`.${h}`))) return 'social';
+
+    const searchEngineHosts = ['google.', 'bing.', 'yahoo.', 'duckduckgo.', 'baidu.'];
+    if (searchEngineHosts.some((h) => host.includes(h))) return 'search';
+
+    return 'external';
+  }
+
+  // ─── Public: Follow a shop ─────────────────────────────────────────────────
+
+  async getFollowStatus(slug: string, userId?: string): Promise<{ following: boolean }> {
+    if (!userId) return { following: false };
+    const store = await this.prisma.store.findUnique({ where: { slug }, select: { id: true } });
+    if (!store) return { following: false };
+    const existing = await this.prisma.storeFollow.findUnique({
+      where: { userId_storeId: { userId, storeId: store.id } },
+    });
+    return { following: !!existing };
+  }
+
+  async followStore(slug: string, userId: string): Promise<{ following: true; followerCount: number }> {
+    const store = await this.prisma.store.findUnique({ where: { slug }, select: { id: true } });
+    if (!store) throw new NotFoundException('Store not found');
+    await this.prisma.storeFollow.upsert({
+      where:  { userId_storeId: { userId, storeId: store.id } },
+      create: { userId, storeId: store.id },
+      update: {},
+    });
+    const followerCount = await this.prisma.storeFollow.count({ where: { storeId: store.id } });
+    return { following: true, followerCount };
+  }
+
+  async unfollowStore(slug: string, userId: string): Promise<{ following: false; followerCount: number }> {
+    const store = await this.prisma.store.findUnique({ where: { slug }, select: { id: true } });
+    if (!store) throw new NotFoundException('Store not found');
+    await this.prisma.storeFollow.deleteMany({ where: { userId, storeId: store.id } });
+    const followerCount = await this.prisma.storeFollow.count({ where: { storeId: store.id } });
+    return { following: false, followerCount };
   }
 
   // ─── Public: Store sections (shop sections sidebar) ───────────────────────

@@ -92,6 +92,33 @@ export class AnalyticsService {
     }
   }
 
+  /**
+   * Per-store + platform-wide daily counter for the "How shoppers found you"
+   * traffic-source breakdown. Both keys deliberately match the
+   * `analytics:store:{storeId}:{date}:{metric}` / `analytics:{metric}:{date}`
+   * shape `ShopStatsService.sumRangeMetric()` already reads, with
+   * `metric = "source:{bucket}"` — lets the reader reuse that helper as-is.
+   */
+  async trackVisitSource(
+    storeId: string,
+    source: 'search' | 'direct' | 'social' | 'external',
+  ): Promise<void> {
+    if (!this.redis.isAvailable()) return;
+    const today = this.dateStr(new Date());
+    const storeKey = `analytics:store:${storeId}:${today}:source:${source}`;
+    const platformKey = `analytics:source:${source}:${today}`;
+    try {
+      await Promise.all([
+        this.redis.getClient().incr(storeKey),
+        this.redis.getClient().incr(platformKey),
+        this.redis.getClient().expire(storeKey, 90 * 24 * 3600),
+        this.redis.getClient().expire(platformKey, 90 * 24 * 3600),
+      ]);
+    } catch (err) {
+      this.logger.warn(`trackVisitSource(${source}) Redis error: ${(err as Error).message}`);
+    }
+  }
+
   // ── Search analytics ────────────────────────────────────────────────────────
   // Single source of truth for search tracking — SearchService used to also
   // write its own separate 'search:trending' zset on every query, duplicating

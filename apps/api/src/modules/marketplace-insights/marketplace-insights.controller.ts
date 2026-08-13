@@ -36,9 +36,17 @@ export class MarketplaceInsightsController {
   }
 
   @Get('terms/:term')
-  @ApiOperation({ summary: 'Deep-dive on one keyword: volume trend, conversion rate, related terms' })
-  getTermDetail(@Param('term') term: string, @Query('days') days = '30') {
-    return this.insightsService.getTermDetail(term, Number(days));
+  @ApiOperation({ summary: 'Deep-dive on one keyword: volume trend, conversion rate, related terms. Counts against the caller\'s daily lookup quota.' })
+  async getTermDetail(@Req() req: Request, @Param('term') term: string, @Query('days') days = '30') {
+    const context: StoreContext = await this.storeContext.resolve(req);
+    return this.insightsService.getTermDetail(term, Number(days), context.storeId);
+  }
+
+  @Get('quota')
+  @ApiOperation({ summary: "Caller's remaining daily search-term lookup quota" })
+  async getQuota(@Req() req: Request) {
+    const context: StoreContext = await this.storeContext.resolve(req);
+    return this.insightsService.getQuota(context.storeId);
   }
 
   @Get('terms/:term/analysis')

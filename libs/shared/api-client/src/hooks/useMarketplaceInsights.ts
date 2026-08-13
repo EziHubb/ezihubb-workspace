@@ -6,6 +6,7 @@ import type {
   TermDetailDto,
   TermAnalysisDto,
   SavedSearchTermDto,
+  InsightsQuotaDto,
 } from '@ezihubb/types';
 import { queryKeys } from '../queryKeys';
 
@@ -48,6 +49,19 @@ export function useSavedSearches(enabled = true) {
     queryFn:  () => api.get<SavedSearchTermDto[]>(API_ROUTES.MARKETPLACE_INSIGHTS.SAVED_SEARCHES),
     enabled,
     staleTime: 60_000,
+  });
+}
+
+/** Caller's remaining daily search-term lookup quota. `staleTime: 0` is
+ *  deliberate: opening a term's detail page consumes one unit server-side,
+ *  and there's no mutation hook to invalidate this cache from — always
+ *  refetching on mount is what makes the pill correct again after
+ *  navigating landing → term detail → back to landing. */
+export function useInsightsQuota() {
+  return useQuery({
+    queryKey: queryKeys.insightsQuota(),
+    queryFn:  () => api.get<InsightsQuotaDto>(API_ROUTES.MARKETPLACE_INSIGHTS.QUOTA),
+    staleTime: 0,
   });
 }
 

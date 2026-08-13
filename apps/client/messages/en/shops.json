@@ -11,6 +11,8 @@
     "memberSince": "Member since {date}",
     "share": "Share:",
     "shareCheckOut": "Check out {name} on EziHubb!",
+    "follow": "Follow",
+    "following": "Following",
     "sectionsAriaLabel": "Store sections",
     "tabItems": "Items ({count})",
     "tabReviews": "Reviews",

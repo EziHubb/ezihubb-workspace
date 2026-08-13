@@ -134,6 +134,7 @@ export const API_ROUTES = {
     TERM_RELATED_FEEDBACK: (term: string) => `/marketplace-insights/terms/${encodeURIComponent(term)}/related-feedback`,
     SAVED_SEARCHES:      '/marketplace-insights/saved-searches',
     SAVED_SEARCH:        (id: string) => `/marketplace-insights/saved-searches/${id}`,
+    QUOTA:               '/marketplace-insights/quota',
   },
 
   MESSAGES: {
@@ -209,12 +210,13 @@ export const API_ROUTES = {
     ORDER_EARNINGS:       (id: string) => `/admin/orders/${id}/earnings`,
 
     // ── Shop Stats ───────────────────────────────────────────────────────────
-    STATS_OVERVIEW:       '/admin/stats/overview',
-    STATS_SHOPPER:        '/admin/stats/shopper-stats',
-    STATS_TRAFFIC_SOURCES:'/admin/stats/traffic-sources',
-    STATS_LISTINGS:       '/admin/stats/listings',
-    STATS_LISTING:        (id: string) => `/admin/stats/listings/${id}`,
-    STATS_SEARCH_TERMS:   '/admin/stats/search-terms',
+    STATS_OVERVIEW:          '/admin/stats/overview',
+    STATS_SHOPPER:           '/admin/stats/shopper-stats',
+    STATS_TRAFFIC_SOURCES:   '/admin/stats/traffic-sources',
+    STATS_TRAFFIC_ATTRIBUTION: '/admin/stats/traffic-attribution',
+    STATS_LISTINGS:          '/admin/stats/listings',
+    STATS_LISTING:           (id: string) => `/admin/stats/listings/${id}`,
+    STATS_SEARCH_TERMS:      '/admin/stats/search-terms',
 
     // ── Products ─────────────────────────────────────────────────────────────
     PRODUCTS:             '/admin/products',
@@ -436,6 +438,8 @@ export const API_ROUTES = {
     SECTIONS:         (slug: string) => `/stores/${slug}/sections`,
     REVIEWS:          (slug: string) => `/stores/${slug}/reviews`,
     REVIEWS_SUMMARY:  (slug: string) => `/stores/${slug}/reviews/summary`,
+    FOLLOW:           (slug: string) => `/stores/${slug}/follow`,
+    FOLLOW_STATUS:    (slug: string) => `/stores/${slug}/follow-status`,
   },
 
   // ── Seller (store-owner portal) ─────────────────────────────────────────────
