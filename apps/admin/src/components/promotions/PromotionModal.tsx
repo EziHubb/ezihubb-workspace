@@ -21,13 +21,20 @@ export interface PromotionFormData {
   description:      string;
 }
 
-export interface Promotion extends PromotionFormData {
+export interface Promotion extends Omit<PromotionFormData, 'code'> {
   id:           string;
+  /** Null for an autoApply sale (Etsy "Set up a sale") — a buyer-code coupon always has one. */
+  code:         string | null;
   currentUses:  number;
   isActive:     boolean;
   createdAt:    string;
   /** Null = a platform-wide coupon, valid across every store. */
   store?:       StoreOption | null;
+  autoApply:    boolean;
+  scope:        'SHOP_WIDE' | 'SPECIFIC_LISTINGS';
+  country?:     string | null;
+  termsAndConditions?: string | null;
+  productIds?:  string[];
 }
 
 const EMPTY_FORM: PromotionFormData = {
@@ -110,7 +117,7 @@ export function PromotionModal({ promotion, isPlatformContext, onClose, onSave }
 
   const [form,    setForm]    = useState<PromotionFormData>(() =>
     isEdit ? {
-      code:           promotion.code,
+      code:           promotion.code ?? '',
       type:           promotion.type,
       value:          promotion.value,
       minOrderAmount: promotion.minOrderAmount,

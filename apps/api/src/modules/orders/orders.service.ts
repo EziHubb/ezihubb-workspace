@@ -4,7 +4,11 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { OrderStatus, Prisma, ProductType } from '@prisma/client';
+import { OrderStatus, Prisma, ProductType, Promotion } from '@prisma/client';
+import { randomBytes } from 'crypto';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { TrackingService } from '../shipping/tracking.service';
@@ -19,7 +23,11 @@ import { FulfillmentRegistryService } from '../fulfillment/fulfillment-registry.
 import { FulfillmentConnectionsService } from '../fulfillment/fulfillment-connections.service';
 import { FulfillmentAddress, FulfillmentLineItem } from '../fulfillment/interfaces/fulfillment-provider.interface';
 import { calculateOrderFees, OrderFeeSettings } from '../stores/fees.util';
+import { getEffectivePrices, applyBestPromo } from '../products/pricing.util';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { BundleOffersService } from '../promotions/bundle-offers.service';
+import { LinkAttributionService } from '../marketing/link-attribution.service';
+import { SHARE_SAVE_REFUND_RATE } from '../marketing/marketing.constants';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
@@ -97,7 +105,10 @@ export class OrdersService {
     private readonly pushService: PushService,
     private readonly fulfillmentRegistry: FulfillmentRegistryService,
     private readonly fulfillmentConnections: FulfillmentConnectionsService,
+    @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
     private readonly analyticsService: AnalyticsService,
+    private readonly bundleOffersService: BundleOffersService,
+    private readonly linkAttributionService: LinkAttributionService,
   ) {}
 
   // ─── Provider (Printify, etc.) shipping ─────────────────────────────────────
@@ -280,12 +291,73 @@ export class OrdersService {
       });
     }
 
-    // Recalculate subtotal from current prices (server-side, never trust client)
-    const subtotal = cart.items.reduce((sum, item) => {
+    // Resolve any active auto-apply sales (Etsy "Set up a sale" — shop-wide or
+    // listing-specific, no buyer code) per store present in the cart. Checkout
+    // recomputes this itself rather than trusting a client-displayed sale
+    // price, same discipline as the coupon-code path below.
+    const cartStoreIds = [...checkoutStoreIds];
+    const salePromosByProduct = new Map<string, { promotionId: string; type: string; value: number; scope: string; country: string | null }[]>();
+    await Promise.all(
+      cartStoreIds.map(async (sid) => {
+        const productIds = cart.items
+          .filter((i) => i.product.storeId === sid)
+          .map((i) => i.productId);
+        const result = await getEffectivePrices(this.prisma, productIds, sid, dto.shippingAddress?.country);
+        for (const [pid, promos] of result) salePromosByProduct.set(pid, promos);
+      }),
+    );
+    const unitPriceFor = (item: (typeof cart.items)[number]): number => {
       const variantPrice = item.variant?.price != null ? Number(item.variant.price) : null;
-      const price = variantPrice ?? Number(item.product.basePrice);
-      return sum + price * item.quantity;
-    }, 0);
+      const rawPrice = variantPrice ?? Number(item.product.basePrice);
+      return applyBestPromo(rawPrice, salePromosByProduct.get(item.productId));
+    };
+
+    // Etsy "Buy them together" bundle offers — a % off the combined price,
+    // only when every listing in the bundle is present in the SAME store's
+    // cart together. Server-recomputed per store, same discipline as sales
+    // and coupons above; never trust a client-displayed bundle price.
+    const bundleDiscountByStore = new Map<string, number>();
+    await Promise.all(
+      cartStoreIds.map(async (sid) => {
+        const storeItems = cart.items.filter((i) => i.product.storeId === sid);
+        const qtyByProduct = new Map<string, number>();
+        for (const item of storeItems) {
+          qtyByProduct.set(item.productId, (qtyByProduct.get(item.productId) ?? 0) + item.quantity);
+        }
+        const matches = await this.bundleOffersService.findActiveMatchingBundles(sid, [...qtyByProduct.keys()]);
+        let storeBundleDiscount = 0;
+        for (const bundle of matches) {
+          const sets = Math.min(...bundle.products.map((p) => qtyByProduct.get(p.productId) ?? 0));
+          if (sets <= 0) continue;
+          const setValue = bundle.products.reduce((sum, p) => {
+            const item = storeItems.find((i) => i.productId === p.productId);
+            return sum + (item ? unitPriceFor(item) : 0);
+          }, 0);
+          storeBundleDiscount += (setValue * sets * Number(bundle.discountPercent)) / 100;
+        }
+        if (storeBundleDiscount > 0) {
+          bundleDiscountByStore.set(sid, Math.round(storeBundleDiscount * 100) / 100);
+        }
+      }),
+    );
+    const totalBundleDiscount = [...bundleDiscountByStore.values()].reduce((s, v) => s + v, 0);
+
+    // Share & Save / Offsite Ads attribution — "last click across both kinds
+    // wins" is already enforced by resolveAttribution()'s single query, so
+    // each store gets at most one of the two, never both.
+    const linkVisitorId = cookies?.['ezihubb_visitor'];
+    const attributionByStore = new Map<string, { id: string; kind: string; sharerId: string | null }>();
+    if (linkVisitorId) {
+      await Promise.all(
+        cartStoreIds.map(async (sid) => {
+          const click = await this.linkAttributionService.resolveAttribution(linkVisitorId, sid);
+          if (click) attributionByStore.set(sid, { id: click.id, kind: click.kind, sharerId: click.sharerId });
+        }),
+      );
+    }
+
+    // Recalculate subtotal from current prices (server-side, never trust client)
+    const subtotal = cart.items.reduce((sum, item) => sum + unitPriceFor(item) * item.quantity, 0);
 
     // Validate coupon and calculate discount
     let discount = 0;
@@ -293,15 +365,23 @@ export class OrdersService {
     let couponCode: string | undefined = cart.couponCode ?? undefined;
     if (dto.couponCode) couponCode = dto.couponCode;
 
+    // Lifted to checkout-function scope (not just the `if` block below) so the
+    // $transaction's per-store allocation loop further down can see which
+    // single store this coupon is scoped to — every coupon on Etsy is
+    // seller-funded, so a store-scoped Promotion's discount must reduce that
+    // store's own StoreOrder, not just the platform-level Order total.
+    let promo: (Promotion & { products: { productId: string }[] }) | null = null;
+
     if (couponCode) {
       const now = new Date();
-      const promo = await this.prisma.promotion.findFirst({
+      promo = await this.prisma.promotion.findFirst({
         where: {
           code: couponCode,
           isActive: true,
           OR: [{ startsAt: null }, { startsAt: { lte: now } }],
           AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] }],
         },
+        include: { products: { select: { productId: true } } },
       });
 
       if (!promo) {
@@ -316,9 +396,51 @@ export class OrdersService {
           message: 'Coupon usage limit reached',
         });
       }
+      // Per-user cap — CartService.applyCoupon()/PromotionsService.validateCoupon()
+      // already check this for the "preview" path, but checkout itself never
+      // re-validated it, so a client could bypass the cap entirely by passing
+      // dto.couponCode directly instead of going through the cart-apply step.
+      if (userId) {
+        const userUses = await this.prisma.promotionUsage.count({
+          where: { promotionId: promo.id, userId },
+        });
+        if (userUses >= promo.maxUsesPerUser) {
+          throw new BadRequestException({
+            code: 'ERR_COUPON_USER_LIMIT',
+            message: 'You have already used this coupon',
+          });
+        }
+      }
+
+      // A store-scoped coupon only discounts that store's items — compute the
+      // discount base (and min-order check) off just that portion of the
+      // cart, not the whole multi-seller subtotal, matching real-world coupon
+      // scoping (a seller's coupon can't be used to discount another
+      // seller's items just because they're in the same cart). A
+      // SPECIFIC_LISTINGS-scoped promotion (same scope field A2 added for
+      // auto-apply sales — nothing stops a coupon from using it too) must
+      // further narrow the base to just its linked listings, or it would
+      // silently discount the whole store instead of the intended products.
+      const promoProductIds = promo.scope === 'SPECIFIC_LISTINGS'
+        ? new Set(promo.products.map((p) => p.productId))
+        : null;
+      const promoBaseSubtotal = (promo.storeId || promoProductIds)
+        ? cart.items.reduce((sum, item) => {
+            if (promo!.storeId && item.product.storeId !== promo!.storeId) return sum;
+            if (promoProductIds && !promoProductIds.has(item.productId)) return sum;
+            return sum + unitPriceFor(item) * item.quantity;
+          }, 0)
+        : subtotal;
+
+      if ((promo.storeId || promoProductIds) && promoBaseSubtotal <= 0) {
+        throw new BadRequestException({
+          code: 'ERR_COUPON_INVALID',
+          message: 'This coupon does not apply to any items in your cart',
+        });
+      }
       if (
         promo.minOrderAmount !== null &&
-        subtotal < Number(promo.minOrderAmount)
+        promoBaseSubtotal < Number(promo.minOrderAmount)
       ) {
         throw new BadRequestException({
           code: 'ERR_COUPON_MIN_ORDER',
@@ -327,13 +449,13 @@ export class OrdersService {
       }
 
       if (promo.type === 'PERCENTAGE')
-        discount = Math.round(subtotal * Number(promo.value)) / 100;
+        discount = Math.round(promoBaseSubtotal * Number(promo.value)) / 100;
       else if (promo.type === 'FIXED_AMOUNT')
-        discount = Math.min(subtotal, Number(promo.value));
+        discount = Math.min(promoBaseSubtotal, Number(promo.value));
       else if (promo.type === 'FREE_SHIPPING') freeShipping = true;
     }
 
-    const subtotalAfterDiscount = Math.max(0, subtotal - discount);
+    const subtotalAfterDiscount = Math.max(0, subtotal - discount - totalBundleDiscount);
 
     // ── Affiliate attribution ────────────────────────────────────────────────
     let affiliateId: string | null = null;
@@ -384,6 +506,12 @@ export class OrdersService {
       ) / 100,
     );
 
+    // Share & Save rewards go to the SHARER, a different person than whoever
+    // is checking out right now — collected here and emailed after the
+    // transaction commits (the Promotion code itself is still created inside
+    // the transaction, atomically with everything else).
+    const sharerRewards: { sharerId: string; storeId: string; storeName: string; storeSlug: string; amount: number; code: string; expiresAt: Date }[] = [];
+
     // $transaction: create order + items + status history + atomic coupon increment
     const order = await this.prisma.$transaction(async (tx) => {
       const orderNumber = await this.generateOrderNumber(tx);
@@ -407,7 +535,7 @@ export class OrdersService {
           shippingMethod: shippingMethodName,
           shippingCost,
           subtotal:       Math.round(subtotal * 100) / 100,
-          discountAmount: Math.round(discount * 100) / 100,
+          discountAmount: Math.round((discount + totalBundleDiscount) * 100) / 100,
           total,
           couponCode:     couponCode ?? null,
           isGift:         dto.isGift ?? false,
@@ -428,10 +556,7 @@ export class OrdersService {
           productId:        item.productId,
           variantId:        item.variantId,
           quantity:         item.quantity,
-          unitPrice:        (() => {
-            const vp = item.variant?.price != null ? Number(item.variant.price) : null;
-            return vp ?? Number(item.product.basePrice);
-          })(),
+          unitPrice:        unitPriceFor(item),
           customizationData: item.customizationData as
             | Prisma.InputJsonValue
             | undefined,
@@ -467,25 +592,36 @@ export class OrdersService {
           regulatoryFeeCountries:    platformSettings?.regulatoryFeeCountries ?? [],
           vatOnFeesRate:             Number(platformSettings?.vatOnFeesRate ?? 0.10),
         };
+        const offsiteAdsFeeRate = Number(platformSettings?.offsiteAdsFeeRate ?? 0.15);
 
         const storeRecords = await tx.store.findMany({
           where:  { id: { in: [...storeGroups.keys()] } },
-          select: { id: true, country: true },
+          select: { id: true, name: true, slug: true, country: true, offsiteAdsOptedOut: true, shareSaveEnabled: true },
         });
         const storeCountryMap = new Map(storeRecords.map(s => [s.id, s.country]));
+        const storeOptOutMap = new Map(storeRecords.map(s => [s.id, s.offsiteAdsOptedOut]));
+        const storeInfoMap = new Map(storeRecords.map(s => [s.id, { name: s.name, slug: s.slug }]));
+        const storeShareSaveMap = new Map(storeRecords.map(s => [s.id, s.shareSaveEnabled]));
 
         for (const [storeId, items] of storeGroups) {
-          const storeSubtotal = items.reduce((sum, item) => {
-            const vp = item.variant?.price != null ? Number(item.variant.price) : null;
-            const price = vp ?? Number(item.product.basePrice);
-            return sum + price * item.quantity;
-          }, 0);
+          const storeSubtotal = items.reduce((sum, item) => sum + unitPriceFor(item) * item.quantity, 0);
           const roundedSubtotal = Math.round(storeSubtotal * 100) / 100;
           const storeShippingCost = freeShipping
             ? 0
             : (providerShippingCost?.get(storeId) ?? sellerShipping?.perStore.get(storeId) ?? 0);
 
-          const fees = calculateOrderFees(roundedSubtotal, storeShippingCost, storeCountryMap.get(storeId), feeSettings);
+          // Every discount on Etsy is seller-funded — a store-scoped coupon's
+          // discount reduces THAT store's own subtotal (and therefore fees +
+          // seller earnings + the SALE ledger credit), never the platform's.
+          // A platform-wide coupon (promo.storeId === null) is left absorbed
+          // at the platform level exactly as before — that's an admin-created
+          // case with no Etsy-parity equivalent, not touched by this fix.
+          const couponDiscount = promo?.storeId === storeId ? Math.min(discount, roundedSubtotal) : 0;
+          const storeBundleDiscount = bundleDiscountByStore.get(storeId) ?? 0;
+          const storeDiscount = Math.min(couponDiscount + storeBundleDiscount, roundedSubtotal);
+          const discountedSubtotal = Math.round((roundedSubtotal - storeDiscount) * 100) / 100;
+
+          const fees = calculateOrderFees(discountedSubtotal, storeShippingCost, storeCountryMap.get(storeId), feeSettings);
 
           const storeOrder = await tx.storeOrder.create({
             data: {
@@ -493,16 +629,18 @@ export class OrdersService {
               storeId,
               status:         OrderStatus.PENDING_PAYMENT,
               subtotal:       roundedSubtotal,
+              discountAmount: storeDiscount,
               platformFee:    fees.totalFees,
               sellerEarnings: fees.sellerEarnings,
               shippingCost:   storeShippingCost,
+              visitorId:      linkVisitorId ?? null,
             },
           });
 
           const ledgerEntries: Prisma.SellerLedgerEntryCreateManyInput[] = [
             {
               storeId, storeOrderId: storeOrder.id, type: 'SALE',
-              amount: roundedSubtotal + storeShippingCost,
+              amount: discountedSubtotal + storeShippingCost,
               description: `Sale — order ${newOrder.orderNumber}`,
             },
             {
@@ -530,7 +668,61 @@ export class OrdersService {
               description: `VAT on seller fees — order ${newOrder.orderNumber}`,
             });
           }
+
+          const attribution = attributionByStore.get(storeId);
+          // A valid Share & Save reward requires a REAL sharer identity, and
+          // that sharer must not be the person checking out right now — a
+          // generic/missing sharerId (e.g. someone hand-appending `?ss=1`
+          // with no real link) earns nothing, which is what stops anyone
+          // self-serving a discount instead of genuinely referring someone.
+          const validSharerId = attribution?.kind === 'SHARE_SAVE' && attribution.sharerId && attribution.sharerId !== userId
+            ? attribution.sharerId
+            : null;
+          if (validSharerId && storeShareSaveMap.get(storeId)) {
+            // Seller-funded, same as every other discount in this codebase —
+            // the sharer gets 4% back, which comes out of THIS store's
+            // earnings, not extra revenue for them. A positive entry here
+            // would incorrectly overpay the seller.
+            const rewardAmount = Math.round(discountedSubtotal * SHARE_SAVE_REFUND_RATE * 100) / 100;
+            ledgerEntries.push({
+              storeId, storeOrderId: storeOrder.id, type: 'SHARE_SAVE_REFUND',
+              amount: -rewardAmount,
+              description: `Share & Save credit — order ${newOrder.orderNumber}`,
+            });
+
+            if (rewardAmount > 0) {
+              const code = `SHARE-${randomBytes(4).toString('hex').toUpperCase()}`;
+              const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+              await tx.promotion.create({
+                data: {
+                  code, type: 'FIXED_AMOUNT', value: rewardAmount,
+                  maxUses: 1, maxUsesPerUser: 1,
+                  storeId, scope: 'SHOP_WIDE',
+                  targetUserId: validSharerId,
+                  expiresAt,
+                  description: `share-save:${storeOrder.id}`,
+                },
+              });
+              const storeInfo = storeInfoMap.get(storeId);
+              if (storeInfo) {
+                sharerRewards.push({
+                  sharerId: validSharerId, storeId, storeName: storeInfo.name, storeSlug: storeInfo.slug,
+                  amount: rewardAmount, code, expiresAt,
+                });
+              }
+            }
+          } else if (attribution?.kind === 'OFFSITE_AD' && !storeOptOutMap.get(storeId)) {
+            ledgerEntries.push({
+              storeId, storeOrderId: storeOrder.id, type: 'OFFSITE_ADS_FEE',
+              amount: -Math.round(discountedSubtotal * offsiteAdsFeeRate * 100) / 100,
+              description: `Offsite Ads fee — order ${newOrder.orderNumber}`,
+            });
+          }
+
           await tx.sellerLedgerEntry.createMany({ data: ledgerEntries });
+          if (attribution) {
+            await this.linkAttributionService.markConverted(attribution.id, newOrder.id, tx);
+          }
 
           await tx.orderItem.updateMany({
             where: {
@@ -564,17 +756,15 @@ export class OrdersService {
         }
       }
 
-      // Record promotion usage
-      if (couponCode && userId) {
-        const promo = await tx.promotion.findUnique({
-          where: { code: couponCode },
-          select: { id: true },
+      // Record promotion usage — including guest checkouts (userId: null).
+      // Previously this only ran `&& userId`, so a guest's use of a coupon
+      // was silently invisible to admin stats (getStats()/getPageStats()
+      // both derive entirely from PromotionUsage) despite the discount and
+      // the atomic currentUses increment above both still applying.
+      if (couponCode) {
+        await tx.promotionUsage.create({
+          data: { promotionId: promo!.id, userId: userId ?? null, orderId: newOrder.id },
         });
-        if (promo) {
-          await tx.promotionUsage.create({
-            data: { promotionId: promo.id, userId, orderId: newOrder.id },
-          });
-        }
       }
 
       return newOrder;
@@ -586,6 +776,33 @@ export class OrdersService {
         .markClickConverted(visitorId, affiliateId, order.id)
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         .catch(() => {}); // non-critical; never blocks checkout
+    }
+
+    // Email each Share & Save sharer their reward code — the codes themselves
+    // were already created atomically inside the transaction above; sending
+    // the email is a non-critical side effect, done after commit.
+    for (const reward of sharerRewards) {
+      this.prisma.user.findUnique({ where: { id: reward.sharerId }, select: { email: true, firstName: true } })
+        .then((sharer) => {
+          if (!sharer) return;
+          return this.emailQueue.add(JOBS.SEND_EMAIL, {
+            to: sharer.email,
+            template: 'targeted-offer',
+            subject: `You earned $${reward.amount.toFixed(2)} for sharing ${reward.storeName}!`,
+            data: {
+              storeName: reward.storeName,
+              firstName: sharer.firstName ?? 'there',
+              headline: 'Your share paid off!',
+              message: `Someone bought from ${reward.storeName} through your Share & Save link — here's your instant credit.`,
+              code: reward.code,
+              discountLabel: `$${reward.amount.toFixed(2)}`,
+              expiresAt: reward.expiresAt.toLocaleDateString(),
+              shopUrl: `${process.env['CLIENT_URL'] ?? 'https://ezihubb.com'}/shops/${reward.storeSlug}`,
+              year: new Date().getFullYear(),
+            },
+          }, DEFAULT_JOB_OPTIONS);
+        })
+        .catch((err: Error) => this.logger.warn(`Failed to queue Share & Save reward email: ${err.message}`));
     }
 
     // OUTSIDE transaction: create Stripe PaymentIntent

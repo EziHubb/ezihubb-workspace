@@ -24,7 +24,7 @@ import {
   PromotionStatsDto,
 } from './dto/promotion-response.dto';
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
-import { PaginationDto } from '../../common/dto/pagination.dto';
+import { PromotionQueryDto } from './dto/promotion-query.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -83,7 +83,7 @@ export class PromotionsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'List all promotions (admin)' })
-  async findAll(@Req() req: Request, @Query() query: PaginationDto): Promise<PaginatedResult<PromotionResponseDto>> {
+  async findAll(@Req() req: Request, @Query() query: PromotionQueryDto): Promise<PaginatedResult<PromotionResponseDto>> {
     const context = await this.storeContext.resolve(req);
     return this.promotionsService.findAll(query, context.storeId ?? undefined);
   }

@@ -1,11 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { Star, Heart, MessageCircle, Package } from 'lucide-react';
+import { Star, Heart, MessageCircle, Package, HandCoins } from 'lucide-react';
+import { apiClient } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 import type { ProductDto } from '@ezihubb/types';
 import { MessageShopModal } from '../messages/MessageShopModal';
+import { MakeOfferModal } from './MakeOfferModal';
 
 // ── Badge data ────────────────────────────────────────────────────────────────
 
@@ -47,7 +50,22 @@ export function SellerCard({ product }: SellerCardProps) {
   const t = useTranslations('product.sellerCard');
   const sellerBadges = useSellerBadges();
   const [isMessageOpen, setIsMessageOpen] = useState(false);
+  const [isOfferOpen, setIsOfferOpen] = useState(false);
+  const [offersEligible, setOffersEligible] = useState(false);
   const locale = useLocale();
+
+  // Every product would otherwise show "Make an offer" regardless of whether
+  // the seller has actually turned the feature on — check eligibility first
+  // so a buyer never gets a confusing "this shop isn't accepting offers"
+  // error after the fact.
+  useEffect(() => {
+    let cancelled = false;
+    apiClient
+      .get<{ eligible: boolean }>(API_ROUTES.OFFERS.ELIGIBILITY(product.id))
+      .then((res) => { if (!cancelled) setOffersEligible(res.eligible); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [product.id]);
 
   const storeName = product.store?.name ?? 'EziHubb';
   const storeSlug = product.store?.slug;
@@ -115,8 +133,27 @@ export function SellerCard({ product }: SellerCardProps) {
             <MessageCircle className="w-4 h-4" />
             {t('messageSeller')}
           </button>
+          {product.store?.id && offersEligible && (
+            <button
+              type="button"
+              onClick={() => setIsOfferOpen(true)}
+              className="flex items-center gap-1.5 border border-border rounded-full px-3 py-1.5 text-sm text-secondary hover:bg-[#F3F4F6] transition-colors"
+            >
+              <HandCoins className="w-4 h-4" />
+              Make an offer
+            </button>
+          )}
         </div>
       </div>
+
+      {isOfferOpen && (
+        <MakeOfferModal
+          productId={product.id}
+          productName={product.name}
+          basePrice={Number(product.basePrice)}
+          onClose={() => setIsOfferOpen(false)}
+        />
+      )}
 
       {/* ── SELLER BADGES ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-[#FAFAF8] rounded-2xl">

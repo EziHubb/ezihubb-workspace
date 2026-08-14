@@ -11,6 +11,7 @@ import { QueueSchedulerService } from './queue-scheduler.service';
 import { DevBullModule } from './dev-bull.module';
 import { FulfillmentModule } from '../modules/fulfillment/fulfillment.module';
 import { AnalyticsModule } from '../modules/analytics/analytics.module';
+import { MarketingModule } from '../modules/marketing/marketing.module';
 
 const ALL_QUEUES = [
   QUEUES.EMAIL,
@@ -27,6 +28,7 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
   imports: [
     FulfillmentModule,
     AnalyticsModule,
+    MarketingModule,
     ...(disableQueue
       ? [DevBullModule.forQueues(ALL_QUEUES)]
       : [BullModule.registerQueue(

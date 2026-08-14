@@ -55,6 +55,19 @@ export class VariantOptionDto {
   @ApiProperty({ type: [String] }) values: string[];
 }
 
+export class BundlePartnerProductDto {
+  @ApiProperty() id: string;
+  @ApiProperty() name: string;
+  @ApiProperty() price: number;
+  @ApiProperty({ type: [String] }) images: string[];
+}
+
+export class ProductBundleOfferDto {
+  @ApiProperty() id: string;
+  @ApiProperty() discountPercent: number;
+  @ApiProperty({ type: [BundlePartnerProductDto] }) products: BundlePartnerProductDto[];
+}
+
 export class ProductResponseDto {
   @ApiProperty() id: string;
   @ApiProperty() name: string;
@@ -64,6 +77,16 @@ export class ProductResponseDto {
   @ApiPropertyOptional() shortDescription: string | null;
   @ApiProperty() basePrice: number;
   @ApiPropertyOptional() compareAtPrice: number | null;
+  /**
+   * Etsy "Set up a sale" — the active auto-apply discount's own terms (not a
+   * pre-computed price), so the storefront can apply it to whichever price is
+   * currently selected (base or a specific variant) rather than only
+   * `basePrice`. Null when no sale is active. Checkout always recomputes this
+   * itself server-side — never trust a client-displayed price.
+   */
+  @ApiPropertyOptional() salePromo?: { type: 'PERCENTAGE' | 'FIXED_AMOUNT'; value: number } | null;
+  /** Active "Buy them together" bundle this listing belongs to, if any. */
+  @ApiPropertyOptional({ type: () => ProductBundleOfferDto }) bundleOffer?: ProductBundleOfferDto | null;
   @ApiProperty() isPersonalizable: boolean;
   @ApiProperty() isActive: boolean;
   @ApiProperty({ enum: ProductType }) productType: ProductType;

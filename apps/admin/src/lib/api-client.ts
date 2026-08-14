@@ -21,6 +21,22 @@ function p(path: string): string {
   return path.replace(/^\/api\/v1(?=\/|$)/, '');
 }
 
+// The API wraps every response as `{ success, data, meta }` (see
+// TransformInterceptor). Unwrapping with `body.data ?? body` breaks the very
+// common case of a legitimately-null payload (e.g. "no bank account yet") —
+// `null ?? body` falls through to `body`, returning the whole envelope
+// object instead of `null`. That envelope is truthy and has none of the real
+// fields, so a `data ? <has-value UI> : <empty-state UI>` check in a caller
+// picks the wrong branch. Checking for the `data` key's presence (not its
+// value) distinguishes "enveloped, value is null" from "not enveloped at
+// all" the `??` version couldn't.
+function unwrapEnvelope<T>(body: { data?: T } | T): T {
+  if (body && typeof body === 'object' && 'data' in body) {
+    return (body as { data: T }).data;
+  }
+  return body as T;
+}
+
 // ── Typed error ───────────────────────────────────────────────────────────────
 
 export class ApiError extends Error {
@@ -72,8 +88,7 @@ async function request<T>(
     data,
     ...config,
   });
-  const body = res.data as { data?: T } | T;
-  return ((body as { data?: T }).data ?? body) as T;
+  return unwrapEnvelope<T>(res.data as { data?: T } | T);
 }
 
 export const api = {
@@ -126,7 +141,6 @@ export async function serverApi<T>(
       ...(config?.headers as Record<string, string> | undefined),
     },
   });
-  const body = res.data as { data?: T } | T;
-  return ((body as { data?: T }).data ?? body) as T;
+  return unwrapEnvelope<T>(res.data as { data?: T } | T);
 }
 

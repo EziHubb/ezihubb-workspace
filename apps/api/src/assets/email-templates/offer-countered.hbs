@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seller countered your offer</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; background: #faf9f7; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .header { background: #3d2b1f; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #f5e6d3; margin: 0; font-size: 24px; letter-spacing: 1px; }
+    .header p { color: #c8a882; margin: 8px 0 0; font-size: 14px; }
+    .body { padding: 40px; color: #3d2b1f; line-height: 1.7; }
+    .body h2 { font-size: 20px; margin-top: 0; }
+    .compare-row { display: flex; justify-content: space-around; align-items: center; border-radius: 8px; padding: 24px 20px; margin: 24px 0; background: #eef4ff; border: 2px solid #90a4d4; }
+    .compare-row .col { text-align: center; }
+    .compare-row .label { font-size: 12px; color: #5c6b8a; text-transform: uppercase; letter-spacing: 0.5px; }
+    .compare-row .value { font-size: 22px; font-weight: bold; color: #2a3a63; margin-top: 4px; }
+    .compare-row .your-offer .value { color: #7a5c45; text-decoration: line-through; }
+    .cta { display: inline-block; margin: 24px 0; background: #3d2b1f; color: #f5e6d3 !important; padding: 14px 32px; border-radius: 4px; text-decoration: none; font-size: 15px; }
+    .footer { background: #f5e6d3; padding: 20px 40px; text-align: center; font-size: 12px; color: #7a5c45; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>{{storeName}}</h1>
+      <p>Countered your offer</p>
+    </div>
+    <div class="body">
+      <h2>Hi {{firstName}},</h2>
+      <p>{{storeName}} responded to your offer on <strong>{{productName}}</strong> with a counter-offer.</p>
+
+      <div class="compare-row">
+        <div class="col your-offer">
+          <div class="label">Your offer</div>
+          <div class="value">${{yourOffer}}</div>
+        </div>
+        <div class="col">
+          <div class="label">Their counter</div>
+          <div class="value">${{counterPrice}}</div>
+        </div>
+      </div>
+
+      <p>This counter-offer expires {{expiresAt}} — review it and accept or decline from your account.</p>
+
+      <a class="cta" href="{{offersUrl}}">Review counter-offer →</a>
+
+      <p><strong>{{storeName}}</strong></p>
+    </div>
+    <div class="footer">
+      &copy; {{year}} EziHubb. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>

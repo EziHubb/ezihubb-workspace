@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import {
   Star, CheckCircle2, Clock, ShoppingCart,
-  Loader2, Plus, ChevronDown, Download, FileText,
+  Loader2, Plus, ChevronDown, Download, FileText, Users,
 } from 'lucide-react';
 import { ShareButton } from './ShareButton';
 import {
@@ -96,6 +96,77 @@ function PriceBlock({
       {discountPercent !== null && discountPercent > 0 && (
         <p className="text-xs text-muted mt-0.5">{t('limitedTimeSale')}</p>
       )}
+    </div>
+  );
+}
+
+// ── BuyTogetherCard ──────────────────────────────────────────────────────────
+
+function BuyTogetherCard({
+  bundleOffer,
+  currentProductId,
+  onAdded,
+}: {
+  bundleOffer: NonNullable<ProductDto['bundleOffer']>;
+  currentProductId: string;
+  onAdded: () => void;
+}) {
+  const t = useTranslations('product.purchasePanel');
+  const { format } = useCurrency();
+  const addItem = useCartStore((s) => s.addItem);
+  const openDrawer = useCartStore((s) => s.openDrawer);
+  const [isAdding, setIsAdding] = useState(false);
+
+  const partners = bundleOffer.products.filter((p) => p.id !== currentProductId);
+  if (partners.length === 0) return null;
+
+  const originalTotal = bundleOffer.products.reduce((sum, p) => sum + p.price, 0);
+  const bundleTotal = Math.round(originalTotal * (1 - bundleOffer.discountPercent / 100) * 100) / 100;
+
+  const handleAddBundle = async () => {
+    setIsAdding(true);
+    try {
+      await Promise.all([
+        addItem({ productId: currentProductId, variantId: null, quantity: 1, customizationData: null }),
+        ...partners.map((p) => addItem({ productId: p.id, variantId: null, quantity: 1, customizationData: null })),
+      ]);
+      openDrawer();
+      onAdded();
+    } catch {
+      toast.error(t('couldNotAddToCart'));
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  return (
+    <div className="border border-primary/20 bg-primary/[0.03] rounded-2xl p-4 space-y-3">
+      <div className="flex items-center gap-2 text-sm font-semibold text-secondary">
+        <Users className="w-4 h-4 text-primary" />
+        {t('buyTogether', { percent: bundleOffer.discountPercent })}
+      </div>
+
+      <div className="flex items-center gap-2">
+        {bundleOffer.products.map((p) => (
+          p.images[0]
+            ? <img key={p.id} src={p.images[0]} alt={p.name} className="w-12 h-12 rounded-lg object-cover border border-border" />
+            : <div key={p.id} className="w-12 h-12 rounded-lg bg-background border border-border" />
+        ))}
+      </div>
+
+      <div className="flex items-baseline gap-2">
+        <span className="text-lg font-bold text-secondary">{format(bundleTotal)}</span>
+        <span className="text-sm text-muted line-through">{format(originalTotal)}</span>
+      </div>
+
+      <button
+        type="button"
+        onClick={handleAddBundle}
+        disabled={isAdding}
+        className="w-full py-2.5 rounded-full font-semibold text-sm bg-secondary text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+      >
+        {isAdding ? t('actions.adding') : t('addBundleToCart')}
+      </button>
     </div>
   );
 }
@@ -449,8 +520,26 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
     () => (product.variants?.length ? Math.min(...product.variants.map((v) => v.price)) : undefined),
     [product.variants],
   );
-  const currentPrice   = selectedVariant?.price ?? minVariantPrice ?? product.basePrice;
-  const compareAtPrice = selectedVariant?.compareAtPrice ?? product.compareAtPrice;
+  const rawPrice        = selectedVariant?.price ?? minVariantPrice ?? product.basePrice;
+  const rawCompareAtPrice = selectedVariant?.compareAtPrice ?? product.compareAtPrice;
+
+  // Etsy "Set up a sale" — applied to whichever price is currently selected
+  // (base or variant), same math as the server (checkout recomputes this
+  // itself regardless, so this is purely a display preview).
+  const salePromo = product.salePromo;
+  const currentPrice = useMemo(() => {
+    if (!salePromo) return rawPrice;
+    const discounted = salePromo.type === 'PERCENTAGE'
+      ? rawPrice - Math.round(rawPrice * salePromo.value) / 100
+      : Math.max(0, rawPrice - salePromo.value);
+    return Math.round(Math.max(0, discounted) * 100) / 100;
+  }, [rawPrice, salePromo]);
+  // The sale price becomes the new "current price", so the original
+  // (seller's own price, or their manually-set compareAtPrice if higher)
+  // becomes the struck-through reference.
+  const compareAtPrice = salePromo
+    ? Math.max(rawPrice, rawCompareAtPrice ?? 0) || rawPrice
+    : rawCompareAtPrice;
   const discountPercent =
     compareAtPrice && compareAtPrice > currentPrice
       ? Math.round((1 - currentPrice / compareAtPrice) * 100)
@@ -609,6 +698,15 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
           </>
         )}
       </button>
+
+      {/* ── BUY THEM TOGETHER ── */}
+      {product.bundleOffer && (
+        <BuyTogetherCard
+          bundleOffer={product.bundleOffer}
+          currentProductId={product.id}
+          onAdded={() => toast.success(t('actions.addedToCart'))}
+        />
+      )}
 
       {/* ── STAR SELLER BADGE ── */}
       <StarSellerBadge title={t('starSeller.title')} description={t('starSeller.description')} />

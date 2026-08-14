@@ -242,7 +242,26 @@
     "messages": "消息",
     "addressBook": "地址簿",
     "profilePassword": "个人资料与密码",
+    "myOffers": "我的还价",
     "signOut": "退出登录"
+  },
+
+  "offers": {
+    "title": "我的还价",
+    "empty": "您还没有发出任何还价。",
+    "listedAt": "标价 {price}",
+    "yourOffer": "您的还价：{price}",
+    "counterOffer": "卖家还价：{price}",
+    "expires": "{date} 过期",
+    "accept": "接受",
+    "decline": "拒绝",
+    "status": {
+      "PENDING": "待处理",
+      "ACCEPTED": "已接受",
+      "REJECTED": "已拒绝",
+      "EXPIRED": "已过期",
+      "COUNTERED": "已还价"
+    }
   },
 
   "messages": {

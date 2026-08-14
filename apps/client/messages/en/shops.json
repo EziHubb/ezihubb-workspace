@@ -73,5 +73,11 @@
     "exploreGifts": "Explore Gifts",
     "ctaText": "Love what you see? Create your own wishlist on EziHubb.",
     "startOwnWishlist": "Start your own wishlist"
+  },
+  "shareSave": {
+    "title": "Share & Save",
+    "description": "Share your link — earn 4% back when someone buys through it",
+    "copyLink": "Copy link",
+    "copied": "Copied!"
   }
 }

@@ -354,7 +354,14 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
 
   return (
     <FormProvider {...form}>
-      <div className="-m-4 lg:-m-8 flex flex-col h-full">
+      {/* h-full alone leaves a gap at the bottom equal to 2× the parent's
+          padding: the negative margin shifts this box up to bleed into
+          <main>'s padding, but margin never changes an element's own height,
+          so a plain 100% falls short by exactly what the top margin ate.
+          calc(100% + 2×padding) grows the box by that same amount so its
+          bottom edge actually reaches <main>'s true bottom edge — matching
+          <main>'s own `p-4 lg:p-8` this negative margin is undoing. */}
+      <div className="-m-4 lg:-m-8 flex flex-col h-[calc(100%+2rem)] lg:h-[calc(100%+4rem)]">
 
         {/* ── Scroll region ─────────────────────────────────────────────────── */}
         {/* Owns its own scrollbar so the tab nav's sticky containing block spans

@@ -5,11 +5,13 @@ import { UsersController, WishlistPublicController } from './users.controller';
 import { AdminCustomersController } from './admin-customers.controller';
 import { UsersService } from './users.service';
 import { ModerationModule } from '../moderation/moderation.module';
+import { MarketingModule } from '../marketing/marketing.module';
 
 @Module({
   imports: [
     MulterModule.register({ storage: memoryStorage() }),
     ModerationModule,
+    MarketingModule,
   ],
   controllers: [UsersController, WishlistPublicController, AdminCustomersController],
   providers: [UsersService],

@@ -15,6 +15,7 @@ import {
   Bookmark, Factory, Shield, Store, BarChart2, Wallet, ShieldAlert, History,
   SlidersHorizontal, ScanSearch, TrendingUp,
   Menu, X, Megaphone, Plug, KeyRound, ArrowLeftRight, Landmark, FileText,
+  Share2, Gift, Radio,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -174,6 +175,20 @@ function getShopNavSections(storeId: string): NavSection[] {
       ],
     },
     {
+      title: 'Marketing',
+      items: [
+        {
+          label: 'Marketing', href: '/marketing/sales', icon: Megaphone,
+          children: [
+            { label: 'Sales and discounts', href: '/marketing/sales',       icon: BadgePercent },
+            { label: 'Social media',        href: '/marketing/social',      icon: Share2       },
+            { label: 'Share & Save',        href: '/marketing/share-save',  icon: Gift         },
+            { label: 'Offsite Ads',         href: '/marketing/offsite-ads', icon: Radio        },
+          ],
+        },
+      ],
+    },
+    {
       title: 'Finance',
       items: [
         {
@@ -195,7 +210,6 @@ function getShopNavSections(storeId: string): NavSection[] {
           children: [
             { label: 'General',     href: storeHref,               icon: Settings     },
             { label: 'Delivery',    href: '/settings/delivery',    icon: Truck        },
-            { label: 'Promotions',  href: '/promotions',            icon: BadgePercent },
             { label: 'Fulfillment', href: '/settings/fulfillment',  icon: Plug         },
             { label: 'API Keys',    href: '/settings/api-keys',     icon: KeyRound     },
           ],

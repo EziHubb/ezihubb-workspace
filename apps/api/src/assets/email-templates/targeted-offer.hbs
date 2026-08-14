@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A little something for you</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; background: #faf9f7; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+    .header { background: #3d2b1f; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #f5e6d3; margin: 0; font-size: 24px; letter-spacing: 1px; }
+    .header p { color: #c8a882; margin: 8px 0 0; font-size: 14px; }
+    .body { padding: 40px; color: #3d2b1f; line-height: 1.7; }
+    .body h2 { font-size: 20px; margin-top: 0; }
+    .code-block { text-align: center; border-radius: 8px; padding: 28px 20px; margin: 24px 0; background: #fff8e1; border: 2px dashed #e65100; }
+    .code-block .code { font-size: 26px; font-weight: bold; letter-spacing: 3px; color: #e65100; }
+    .code-block .value { font-size: 14px; margin-top: 6px; color: #5c4537; }
+    .cta { display: inline-block; margin: 24px 0; background: #3d2b1f; color: #f5e6d3 !important; padding: 14px 32px; border-radius: 4px; text-decoration: none; font-size: 15px; }
+    .footer { background: #f5e6d3; padding: 20px 40px; text-align: center; font-size: 12px; color: #7a5c45; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>{{storeName}}</h1>
+      <p>{{headline}}</p>
+    </div>
+    <div class="body">
+      <h2>Hi {{firstName}},</h2>
+      <p>{{message}}</p>
+
+      <div class="code-block">
+        <div class="code">{{code}}</div>
+        <div class="value">{{discountLabel}} off — expires {{expiresAt}}</div>
+      </div>
+
+      <a class="cta" href="{{shopUrl}}">Shop {{storeName}} →</a>
+
+      <p><strong>{{storeName}}</strong></p>
+    </div>
+    <div class="footer">
+      &copy; {{year}} EziHubb. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>

@@ -26,6 +26,8 @@ import { QUEUES } from '../../queue/queue.constants';
 import { StoresModule } from '../stores/stores.module';
 import { ShippingModule } from '../shipping/shipping.module';
 import { ModerationModule } from '../moderation/moderation.module';
+import { MarketingModule } from '../marketing/marketing.module';
+import { BundleOffersModule } from '../promotions/bundle-offers.module';
 
 const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
 
@@ -40,6 +42,8 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
     StoresModule,
     ShippingModule,
     ModerationModule,
+    MarketingModule,
+    BundleOffersModule,
     ...(disableQueue
       ? [DevBullModule.forQueues([QUEUES.LOW_STOCK, QUEUES.IMAGE_PROCESSING])]
       : [BullModule.registerQueue(

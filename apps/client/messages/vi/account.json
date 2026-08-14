@@ -242,7 +242,26 @@
     "messages": "Tin nhắn",
     "addressBook": "Sổ địa chỉ",
     "profilePassword": "Hồ sơ & Mật khẩu",
+    "myOffers": "Đề nghị của tôi",
     "signOut": "Đăng xuất"
+  },
+
+  "offers": {
+    "title": "Đề nghị của tôi",
+    "empty": "Bạn chưa gửi đề nghị nào.",
+    "listedAt": "Giá niêm yết {price}",
+    "yourOffer": "Đề nghị của bạn: {price}",
+    "counterOffer": "Người bán đề nghị lại: {price}",
+    "expires": "Hết hạn {date}",
+    "accept": "Chấp nhận",
+    "decline": "Từ chối",
+    "status": {
+      "PENDING": "Đang chờ",
+      "ACCEPTED": "Đã chấp nhận",
+      "REJECTED": "Đã từ chối",
+      "EXPIRED": "Đã hết hạn",
+      "COUNTERED": "Đã đề nghị lại"
+    }
   },
 
   "messages": {

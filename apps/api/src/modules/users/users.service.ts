@@ -13,6 +13,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services/storage.service';
 import { RedisService } from '../../common/services/redis.service';
 import { ModerationService } from '../moderation/moderation.service';
+import { TargetedOffersService } from '../marketing/targeted-offers.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
@@ -35,6 +36,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly redis: RedisService,
+    private readonly targetedOffersService: TargetedOffersService,
     @Optional() private readonly moderationService?: ModerationService,
   ) {}
 
@@ -359,7 +361,10 @@ export class UsersService {
   }
 
   async addToWishlist(userId: string, productId: string): Promise<{ id: string }> {
-    await this.requireProductExists(productId);
+    const product = await this.prisma.product.findUnique({ where: { id: productId }, select: { id: true, storeId: true } });
+    if (!product) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+    }
 
     const existing = await this.prisma.wishlistItem.findFirst({ where: { userId, productId } });
     if (existing) {
@@ -367,6 +372,17 @@ export class UsersService {
     }
 
     const item = await this.prisma.wishlistItem.create({ data: { userId, productId } });
+
+    const storeId = product.storeId;
+    if (storeId) {
+      this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, firstName: true } })
+        .then((user) => {
+          if (!user) return;
+          return this.targetedOffersService.fireOffer(storeId, 'FAVOURITED_ITEM', { id: userId, email: user.email, firstName: user.firstName });
+        })
+        .catch((err) => this.logger.warn(`Failed to fire FAVOURITED_ITEM targeted offer: ${(err as Error).message}`));
+    }
+
     return { id: item.id };
   }
 
@@ -495,10 +511,4 @@ export class UsersService {
     }
   }
 
-  private async requireProductExists(productId: string): Promise<void> {
-    const product = await this.prisma.product.findUnique({ where: { id: productId }, select: { id: true } });
-    if (!product) {
-      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
-    }
-  }
 }

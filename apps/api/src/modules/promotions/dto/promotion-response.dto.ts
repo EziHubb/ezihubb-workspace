@@ -1,8 +1,9 @@
-import { DiscountType } from '@prisma/client';
+import { DiscountType, PromotionScope } from '@prisma/client';
 
 export class PromotionResponseDto {
   id!: string;
-  code!: string;
+  /** Null only for an autoApply sale — a buyer-code coupon always has one. */
+  code!: string | null;
   type!: DiscountType;
   value!: number;
   minOrderAmount?: number | null;
@@ -16,6 +17,12 @@ export class PromotionResponseDto {
   createdAt!: Date;
   /** Null = a platform-wide coupon, valid across every store. */
   store?: { id: string; name: string; slug: string } | null;
+
+  autoApply!: boolean;
+  scope!: PromotionScope;
+  country?: string | null;
+  termsAndConditions?: string | null;
+  productIds?: string[];
 }
 
 export class CouponValidationResultDto {
@@ -28,14 +35,19 @@ export class CouponValidationResultDto {
 }
 
 export class PromotionStatsDto {
-  promotionId!: string;
-  code!: string;
-  currentUses!: number;
-  maxUses?: number | null;
-  totalRevenueSaved!: number;
+  totalUsed!: number;
+  totalDiscount!: number;
+  avgOrderSize!: number;
+  topUserEmail?: string;
+  topUserUses?: number;
+  dailyUsage!: { date: string; count: number }[];
   recentUsages!: {
+    id: string;
+    customerName: string;
+    customerEmail: string;
     orderId: string;
+    orderNumber: string;
+    discountAmount: number;
     usedAt: Date;
-    userId?: string | null;
   }[];
 }

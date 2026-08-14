@@ -181,6 +181,7 @@ export class StoresService {
         logoUrl: true, bannerUrl: true, status: true,
         totalOrders: true, rating: true,
         createdAt: true, verifiedAt: true,
+        shareSaveEnabled: true,
         // Store.totalProducts is a denormalized counter with no write path
         // anywhere in the codebase — always compute live instead.
         _count: { select: { products: { where: { isActive: true, deletedAt: null } }, followers: true } },

@@ -55,6 +55,12 @@ enum DiscountType {
   FREE_SHIPPING
 }
 
+/** SHOP_WIDE = every current/future listing in the store; SPECIFIC_LISTINGS = only the linked PromotionProduct rows. Only meaningful for autoApply promotions — a buyer-entered coupon code always applies shop-wide by design (there's nothing to scope to a listing before the code is typed in). */
+enum PromotionScope {
+  SHOP_WIDE
+  SPECIFIC_LISTINGS
+}
+
 enum ReviewStatus {
   PENDING
   APPROVED
@@ -156,6 +162,44 @@ enum SellerLedgerEntryType {
   ADJUSTMENT
   VAT
   DEPOSIT_FEE
+  SHARE_SAVE_REFUND
+  OFFSITE_ADS_FEE
+}
+
+enum LinkClickKind {
+  SHARE_SAVE
+  OFFSITE_AD
+}
+
+enum TargetedOfferTrigger {
+  INTERESTED_SHOPPER
+  THANK_YOU
+  ABANDONED_BASKET
+  FAVOURITED_ITEM
+}
+
+enum SocialPlatform {
+  FACEBOOK
+  PINTEREST
+  X
+}
+
+enum SocialConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+}
+
+enum BuyerOfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  COUNTERED
+}
+
+enum OffersScope {
+  ALL_LISTINGS
+  SPECIFIC_LISTINGS
 }
 
 enum DepositSchedule {
@@ -227,6 +271,7 @@ model User {
   ownedStore          Store?               @relation("StoreOwner")
   savedSearchTerms    SavedSearchTerm[]
   storeFollows        StoreFollow[]
+  buyerOffers         BuyerOffer[]
 
   wishlistShareToken String? @unique
   wishlistIsPublic   Boolean @default(false)
@@ -383,6 +428,7 @@ model Store {
   shippingProfiles   ShippingProfile[]
   processingProfiles ProcessingProfile[]
   promotions       Promotion[]
+  bundleOffers     BundleOffer[]
   reviews          Review[]            @relation("StoreReviews")
   conversations    Conversation[]
 
@@ -409,6 +455,25 @@ model Store {
   bankAccount        StoreBankAccount?
   billingCards       StoreBillingCard[]
   taxInfo            StoreTaxInfo?
+
+  // ── Marketing: Share & Save / Offsite Ads (Etsy parity) ───────────────────
+  shareSaveEnabled   Boolean          @default(false)
+  shareSaveJoinedAt  DateTime?
+  offsiteAdsOptedOut Boolean          @default(false)
+  linkClicks         StoreLinkClick[]
+  targetedOfferCampaigns TargetedOfferCampaign[]
+
+  // ── Marketing: Social media (UI-parity only — no real OAuth/posting) ─────
+  socialConnections StoreSocialConnection[]
+  socialPosts       SocialPost[]
+
+  // ── Marketing: Let buyers make offers ─────────────────────────────────────
+  offersEnabled            Boolean      @default(false)
+  offersScope              OffersScope  @default(ALL_LISTINGS)
+  /** Null = "Receive all offers" (no floor on how low a buyer can offer). */
+  offersMaxDiscountPercent Decimal?     @db.Decimal(5, 2)
+  offerListings            StoreOfferListing[]
+  buyerOffers              BuyerOffer[]
 
   @@index([slug])
   @@index([status])
@@ -492,6 +557,7 @@ model StoreOrder {
   store          Store                   @relation(fields: [storeId], references: [id])
   status         OrderStatus             @default(PENDING_PAYMENT)
   subtotal       Decimal                 @db.Decimal(10, 2)
+  discountAmount Decimal                 @default(0) @db.Decimal(10, 2)
   shippingCost   Decimal                 @default(0) @db.Decimal(10, 2)
   platformFee    Decimal                 @db.Decimal(10, 2)
   sellerEarnings Decimal                 @db.Decimal(10, 2)
@@ -509,10 +575,16 @@ model StoreOrder {
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
 
+  // The buyer's `ezihubb_visitor` cookie at checkout time — lets Offsite Ads
+  // cross-reference an external-referrer click logged on a DIFFERENT store's
+  // page against a purchase made here ("indirect" ad traffic).
+  visitorId String?
+
   @@unique([orderId, storeId])
   @@index([orderId])
   @@index([storeId])
   @@index([status])
+  @@index([visitorId])
 }
 
 model SellerPayout {
@@ -560,6 +632,86 @@ model SellerLedgerEntry {
   @@index([storeId, payoutId])
 }
 
+// ── Marketing: Share & Save / Offsite Ads attribution (Etsy parity) ──────────
+// One shared click/attribution model for both mechanisms — they're mutually
+// exclusive per order (last click across BOTH kinds wins), so a single table
+// discriminated by `kind` lets that resolution be a single query rather than
+// two independent, possibly-conflicting checks.
+model StoreLinkClick {
+  id          String         @id @default(cuid())
+  storeId     String
+  store       Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  kind        LinkClickKind
+  visitorId   String // cookie-based visitor id of whoever CLICKED, same mechanism as affiliate tracking
+  // Etsy Share & Save rewards the person who SHARED the link, not necessarily
+  // the one who clicks it — set only for a SHARE_SAVE click carrying a
+  // personalized `?ss=<userId>` link (see the buyer-facing share widget). A
+  // generic, non-personalized link (or missing sharerId) earns no reward —
+  // this is also what stops anyone self-serving a discount by hand-appending
+  // `?ss=1`-style params with no real referrer identity.
+  sharerId    String?
+  productId   String? // null = shop-wide link click, not scoped to one listing
+  // Referrer host for an OFFSITE_AD click (google.com, facebook.com, …); null
+  // for a SHARE_SAVE click, which has no "channel" concept.
+  source      String?
+  convertedAt DateTime?
+  orderId     String?
+  createdAt   DateTime       @default(now())
+
+  @@index([storeId, kind, createdAt])
+  @@index([visitorId, createdAt])
+}
+
+// ── Marketing: automated targeted offers (Etsy "Set up targeted offers") ─────
+// One row per store per trigger — firing creates a personalized single-use
+// Promotion (Promotion.targetUserId set, maxUsesPerUser: 1, short expiresAt).
+model TargetedOfferCampaign {
+  id               String               @id @default(cuid())
+  storeId          String
+  store            Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  trigger          TargetedOfferTrigger
+  discountType     DiscountType
+  discountValue    Decimal              @db.Decimal(10, 2)
+  // How long the personalized code stays valid once issued.
+  expiresAfterDays Int                  @default(3)
+  // Used by ABANDONED_BASKET/INTERESTED_SHOPPER — how far back to look for the
+  // qualifying signal (e.g. cart untouched, or repeat views with no purchase).
+  lookbackDays     Int                  @default(7)
+  isActive         Boolean              @default(true)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@unique([storeId, trigger])
+  @@index([isActive])
+}
+
+// ── Marketing: Social media (Etsy parity, UI-only per explicit scope decision
+// — no real OAuth/posting integration; StoreSocialConnection exists only so
+// the "Social account settings" toggle UI has somewhere real to persist state,
+// and SocialPost is the seller's own post-history record, not a real publish). ──
+model StoreSocialConnection {
+  id          String                  @id @default(cuid())
+  storeId     String
+  store       Store                   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  platform    SocialPlatform
+  status      SocialConnectionStatus  @default(DISCONNECTED)
+  connectedAt DateTime?
+
+  @@unique([storeId, platform])
+}
+
+model SocialPost {
+  id        String           @id @default(cuid())
+  storeId   String
+  store     Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  content   String           @db.Text
+  imageUrl  String?
+  platforms SocialPlatform[]
+  createdAt DateTime         @default(now())
+
+  @@index([storeId, createdAt])
+}
+
 model PlatformSettings {
   id                        String   @id @default("singleton")
   // ── Seller fees (modeled on Etsy's published fee schedule) ────────────────
@@ -573,6 +725,10 @@ model PlatformSettings {
   // seller fees") — applied unconditionally, unlike regulatoryFee which is
   // country-gated. Default matches Vietnam's standard VAT rate.
   vatOnFeesRate             Decimal  @default(0.10) @db.Decimal(5, 4)
+  // Etsy "Offsite Ads" — debited from the seller on an attributed order from
+  // an external-referrer click (see StoreLinkClick), configurable like the
+  // other seller fees rather than hardcoded.
+  offsiteAdsFeeRate         Decimal  @default(0.15) @db.Decimal(5, 4)
   platformName              String   @default("EziHubb")
   allowPublicRegistration   Boolean  @default(false)
   minPayoutAmount           Decimal  @default(100.00) @db.Decimal(10, 2)
@@ -775,8 +931,12 @@ model Product {
   productCategories   ProductCategory[]
   variationGroups     VariationGroup[]
   variationSettings   VariationSettings?
+  promotionProducts   PromotionProduct[]
+  bundleOfferProducts BundleOfferProduct[]
   fulfillmentMappings ProductFulfillmentMapping[]
   digitalFiles        DigitalFile[]
+  storeOfferListings  StoreOfferListing[]
+  buyerOffers         BuyerOffer[]
 
   @@unique([slug, storeId])
   @@index([categoryId])
@@ -1279,7 +1439,8 @@ model GiftCardUsage {
 
 model Promotion {
   id             String       @id @default(cuid())
-  code           String       @unique
+  /** Null only for an autoApply sale (no buyer-entered code) — every coupon-code promotion keeps a required, unique code. */
+  code           String?      @unique
   type           DiscountType
   value          Decimal      @db.Decimal(10, 2)
   minOrderAmount Decimal?     @db.Decimal(10, 2)
@@ -1294,11 +1455,35 @@ model Promotion {
   store          Store?       @relation(fields: [storeId], references: [id])
   createdAt      DateTime     @default(now())
 
-  usages PromotionUsage[]
+  /** Etsy "Set up a sale" — silently applied at the best-price calculation, no buyer code entry. False = today's coupon-code behavior. */
+  autoApply          Boolean        @default(false)
+  scope              PromotionScope @default(SHOP_WIDE)
+  /** Nullable = "Everywhere". ISO 3166-1 alpha-2, checked against the buyer's shipping country at checkout. */
+  country             String?
+  /** Buyer-facing terms shown on eligible listings during the sale — distinct from `description`, which stays admin-only. */
+  termsAndConditions String?
+  /** Set only for a personalized targeted-offer send (A4) — ties a single-use promo to the one buyer it was emailed to. */
+  targetUserId       String?
+
+  usages   PromotionUsage[]
+  products PromotionProduct[]
 
   @@index([code])
   @@index([isActive])
   @@index([storeId])
+  @@index([autoApply])
+  @@index([targetUserId])
+}
+
+model PromotionProduct {
+  id          String    @id @default(cuid())
+  promotionId String
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([promotionId, productId])
+  @@index([productId])
 }
 
 model PromotionUsage {
@@ -1313,6 +1498,67 @@ model PromotionUsage {
   @@index([promotionId])
   @@index([userId])
   @@index([orderId])
+}
+
+// ─── Bundle offer ("Buy them together") ───────────────────────────────────────
+
+model BundleOffer {
+  id              String                @id @default(cuid())
+  storeId         String
+  store           Store                 @relation(fields: [storeId], references: [id])
+  discountPercent Decimal               @db.Decimal(5, 2)
+  isActive        Boolean               @default(true)
+  createdAt       DateTime              @default(now())
+
+  products BundleOfferProduct[]
+
+  @@index([storeId])
+  @@index([isActive])
+}
+
+model BundleOfferProduct {
+  id            String      @id @default(cuid())
+  bundleOfferId String
+  bundleOffer   BundleOffer @relation(fields: [bundleOfferId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([bundleOfferId, productId])
+  @@index([productId])
+}
+
+// ── Marketing: Let buyers make offers (Etsy parity) ───────────────────────────
+
+model StoreOfferListing {
+  id        String  @id @default(cuid())
+  storeId   String
+  store     Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, productId])
+  @@index([productId])
+}
+
+model BuyerOffer {
+  id            String           @id @default(cuid())
+  productId     String
+  product       Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyerId       String
+  buyer         User             @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  storeId       String
+  store         Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  offeredPrice  Decimal          @db.Decimal(10, 2)
+  /** Set only when the seller counters instead of accepting/rejecting outright. */
+  counterPrice  Decimal?         @db.Decimal(10, 2)
+  status        BuyerOfferStatus @default(PENDING)
+  expiresAt     DateTime
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([storeId, status])
+  @@index([productId])
+  @@index([buyerId])
 }
 
 // ─── Review ──────────────────────────────────────────────────────────────────

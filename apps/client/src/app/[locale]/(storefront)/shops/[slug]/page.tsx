@@ -7,6 +7,8 @@ import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { StorePageClient } from './StorePageClient';
 import { FollowShopButton } from '../../../../../components/shops/FollowShopButton';
+import { MarketingTracker } from '../../../../../components/providers/MarketingTracker';
+import { ShareSaveWidget } from '../../../../../components/shops/ShareSaveWidget';
 import { fmtRating, safeNum } from '@ezihubb/utils';
 
 interface StorePublicDto {
@@ -23,6 +25,7 @@ interface StorePublicDto {
   followerCount: number;
   verifiedAt:    string | null;
   createdAt:     string;
+  shareSaveEnabled: boolean;
 }
 
 export async function generateMetadata({
@@ -110,6 +113,7 @@ export default async function StorePublicPage({
 
   return (
     <div className="bg-background pb-16">
+      <MarketingTracker storeId={store.id} />
       {/* ── Banner ────────────────────────────────────────────────────────────── */}
       <div className="relative h-44 md:h-64 bg-gradient-to-br from-primary/20 to-primary/5 overflow-hidden">
         {store.bannerUrl && (
@@ -195,6 +199,12 @@ export default async function StorePublicPage({
             <ShareButtons name={store.name} slug={store.slug} locale={locale} />
           </div>
         </div>
+
+        {store.shareSaveEnabled && (
+          <div className="mt-4">
+            <ShareSaveWidget />
+          </div>
+        )}
       </div>
 
       {/* ── Tab navigation + tab content (client) ────────────────────────────── */}

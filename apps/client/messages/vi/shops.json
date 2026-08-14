@@ -73,5 +73,11 @@
     "exploreGifts": "Khám phá quà tặng",
     "ctaText": "Thích những gì bạn thấy? Hãy tạo danh sách yêu thích của riêng bạn trên EziHubb.",
     "startOwnWishlist": "Tạo danh sách yêu thích của bạn"
+  },
+  "shareSave": {
+    "title": "Chia sẻ & Nhận thưởng",
+    "description": "Chia sẻ link của bạn — nhận lại 4% khi có người mua qua link đó",
+    "copyLink": "Sao chép link",
+    "copied": "Đã sao chép!"
   }
 }

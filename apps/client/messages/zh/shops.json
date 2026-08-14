@@ -73,5 +73,11 @@
     "exploreGifts": "探索礼物",
     "ctaText": "喜欢这些商品？在 EziHubb 上创建属于你自己的心愿单吧。",
     "startOwnWishlist": "创建你的心愿单"
+  },
+  "shareSave": {
+    "title": "分享 & 省钱",
+    "description": "分享你的链接——有人通过它购买时,你可获得4%返现",
+    "copyLink": "复制链接",
+    "copied": "已复制！"
   }
 }

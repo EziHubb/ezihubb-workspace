@@ -6,6 +6,7 @@ import { randomBytes } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS } from './queue.constants';
+import { TargetedOffersService } from '../modules/marketing/targeted-offers.service';
 
 @Processor(QUEUES.ABANDONED_CART)
 export class AbandonedCartProcessor extends WorkerHost {
@@ -15,6 +16,7 @@ export class AbandonedCartProcessor extends WorkerHost {
     private readonly prisma:  PrismaService,
     private readonly config:  ConfigService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
+    private readonly targetedOffersService: TargetedOffersService,
   ) {
     super();
   }
@@ -53,6 +55,7 @@ export class AbandonedCartProcessor extends WorkerHost {
                 name:   true,
                 slug:   true,
                 basePrice: true,
+                storeId: true,
                 images: { where: { isPrimary: true }, select: { url: true }, take: 1 },
               },
             },
@@ -108,6 +111,16 @@ export class AbandonedCartProcessor extends WorkerHost {
         where: { id: cart.id },
         data:  { abandonedEmailSentAt: new Date() },
       });
+
+      // Etsy "Abandoned basket" targeted offer — a personalized single-use
+      // code per store present in the cart (fireOffer is itself a no-op for
+      // any store with no active campaign, so this is cheap for the common case).
+      const storeIds = [...new Set(cart.items.map((i) => i.product.storeId).filter((id): id is string => !!id))];
+      for (const storeId of storeIds) {
+        this.targetedOffersService
+          .fireOffer(storeId, 'ABANDONED_BASKET', { id: cart.user.id, email: cart.user.email, firstName: cart.user.firstName })
+          .catch(() => undefined);
+      }
 
       processed++;
     }

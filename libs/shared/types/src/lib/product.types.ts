@@ -102,6 +102,19 @@ export interface DigitalFileDto {
   sortOrder: number;
 }
 
+export interface ProductBundlePartnerDto {
+  id: string;
+  name: string;
+  price: number;
+  images: string[];
+}
+
+export interface ProductBundleOfferDto {
+  id: string;
+  discountPercent: number;
+  products: ProductBundlePartnerDto[];
+}
+
 export interface ProductDto extends ProductListItemDto {
   sku: string;
   description: string;
@@ -117,6 +130,10 @@ export interface ProductDto extends ProductListItemDto {
   videoUrls?: string[];
   productType?: 'PHYSICAL' | 'DIGITAL';
   digitalFiles?: DigitalFileDto[];
+  /** Etsy "Set up a sale" — the active auto-apply discount's own terms, applied client-side to whichever price (base or variant) is currently selected. Null/undefined when no sale is active. */
+  salePromo?: { type: 'PERCENTAGE' | 'FIXED_AMOUNT'; value: number } | null;
+  /** Active "Buy them together" bundle this listing belongs to, if any. */
+  bundleOffer?: ProductBundleOfferDto | null;
 }
 
 // ── Backward-compat legacy types ───────────────────────────────────────────────

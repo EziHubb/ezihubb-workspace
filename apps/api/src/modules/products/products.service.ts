@@ -22,6 +22,9 @@ import {
 import { StorageService } from '../../common/services/storage.service';
 import { ProductDetail } from '../catalog/schemas/product-detail.schema';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { TargetedOffersService } from '../marketing/targeted-offers.service';
+import { getEffectivePrice } from './pricing.util';
+import { BundleOffersService } from '../promotions/bundle-offers.service';
 import type {
   CreateProductDetailDto,
   AttributeDto,
@@ -101,6 +104,8 @@ export class ProductsService {
     @InjectModel(ProductDetail.name)
     private readonly productDetailModel: Model<ProductDetail>,
     private readonly autoTranslate: AutoTranslateService,
+    private readonly targetedOffersService: TargetedOffersService,
+    private readonly bundleOffersService: BundleOffersService,
     @InjectQueue(QUEUES.IMAGE_PROCESSING) private readonly imageQueue: Queue,
     @Optional() private readonly moderationService?: ModerationService,
   ) {}
@@ -294,9 +299,10 @@ export class ProductsService {
       this.analyticsService
         .trackRecentlyViewed(userId, product.id)
         .catch(() => undefined);
+      this.recordInterestedShopperView(userId, product).catch(() => undefined);
     }
 
-    const [inDemandCount, averageRating, mongoDetail] = await Promise.all([
+    const [inDemandCount, averageRating, mongoDetail, effectivePrice, bundleOffer] = await Promise.all([
       this.redis.get<number>(IN_DEMAND_KEY(product.id)).then((v) => v ?? 0),
       this.getAverageRating(product.id),
       // Fetch flexible product detail from MongoDB (non-blocking; fallback to PG data if unavailable)
@@ -304,7 +310,16 @@ export class ProductsService {
         .findOne({ productId: product.id })
         .lean<ProductDetail>()
         .catch(() => null),
+      // Etsy "Set up a sale" — resolved fresh on every view, same discipline
+      // checkout already applies: never trust a stale/cached discounted price.
+      product.storeId
+        ? getEffectivePrice(this.prisma, product.id, product.storeId, Number(product.basePrice)).catch(() => null)
+        : Promise.resolve(null),
+      this.bundleOffersService.findActiveBundleForProduct(product.id).catch(() => null),
     ]);
+    const salePromo = effectivePrice?.promotionId
+      ? { type: effectivePrice.discountType as 'PERCENTAGE' | 'FIXED_AMOUNT', value: effectivePrice.discountValue as number }
+      : null;
 
     // If the product has no store association (e.g. platform-created products),
     // fall back to the first active store so the seller card / shop chip still links correctly.
@@ -338,6 +353,8 @@ export class ProductsService {
     return {
       ...base,
       variantOptions,
+      salePromo,
+      bundleOffer,
       ...(mongoDetail && {
         richDescription:  mongoDetail.richDescription  ?? undefined,
         sizeGuide:        mongoDetail.sizeGuide         ?? undefined,
@@ -348,6 +365,38 @@ export class ProductsService {
         printSpecs:       mongoDetail.printSpecs        ?? null,
       }),
     };
+  }
+
+  /**
+   * Etsy "Interested shopper" targeted offer — fires when a logged-in buyer
+   * views the same listing a 2nd time (a rolling Redis counter, since there's
+   * no persistent per-user view-history table) without having bought it.
+   * Reuses TargetedOffersService's own dedup (a lookback-scoped check against
+   * already-issued codes), so this can fire on every qualifying view without
+   * spamming the buyer.
+   */
+  private async recordInterestedShopperView(
+    userId: string,
+    product: { id: string; storeId: string | null; name: string },
+  ): Promise<void> {
+    if (!product.storeId) return;
+    const count = await this.redis.increment(`interested-shopper:${userId}:${product.id}`, 30 * 24 * 3600);
+    if (count < 2) return;
+
+    const alreadyPurchased = await this.prisma.orderItem.findFirst({
+      where: { productId: product.id, order: { userId } },
+      select: { id: true },
+    });
+    if (alreadyPurchased) return;
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, firstName: true } });
+    if (!user) return;
+
+    await this.targetedOffersService.fireOffer(product.storeId, 'INTERESTED_SHOPPER', {
+      id: userId,
+      email: user.email,
+      firstName: user.firstName,
+    });
   }
 
   async findRelated(slugOrId: string): Promise<ProductListItemDto[]> {

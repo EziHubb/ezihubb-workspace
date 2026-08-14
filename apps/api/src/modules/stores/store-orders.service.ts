@@ -12,6 +12,7 @@ import { paginatedResponse } from '../../common/dto/paginated-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { OrderStatus } from '@prisma/client';
+import { TargetedOffersService } from '../marketing/targeted-offers.service';
 
 export class UpdateStoreOrderDto {
   @IsEnum(OrderStatus)
@@ -42,6 +43,7 @@ export class StoreOrdersService {
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
+    private readonly targetedOffersService: TargetedOffersService,
   ) {}
 
   // ─── Seller: List their store's orders ────────────────────────────────────
@@ -178,12 +180,23 @@ export class StoreOrdersService {
 
     // Notify buyer
     let buyerEmail: string | null = storeOrder.order.guestEmail ?? null;
-    if (!buyerEmail && storeOrder.order.userId) {
+    let buyerFirstName: string | null = null;
+    if (storeOrder.order.userId) {
       const user = await this.prisma.user.findUnique({
         where:  { id: storeOrder.order.userId },
-        select: { email: true },
+        select: { email: true, firstName: true },
       });
-      buyerEmail = user?.email ?? null;
+      if (!buyerEmail) buyerEmail = user?.email ?? null;
+      buyerFirstName = user?.firstName ?? null;
+    }
+
+    // Etsy "Thank you" targeted offer — only for a logged-in buyer, since a
+    // personalized single-use Promotion needs a targetUserId (guest checkouts
+    // have no account for the code to be scoped to).
+    if (storeOrder.order.userId && buyerEmail) {
+      this.targetedOffersService
+        .fireOffer(storeId, 'THANK_YOU', { id: storeOrder.order.userId, email: buyerEmail, firstName: buyerFirstName })
+        .catch(() => undefined);
     }
 
     if (buyerEmail) {

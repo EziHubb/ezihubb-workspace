@@ -8,4 +8,6 @@ export const LEDGER_TYPE_LABEL: Record<string, string> = {
   VAT: 'VAT',
   DEPOSIT_FEE: 'Deposit fee',
   PAYOUT: 'Payout',
+  SHARE_SAVE_REFUND: 'Share & Save credit',
+  OFFSITE_ADS_FEE: 'Offsite Ads fee',
 };

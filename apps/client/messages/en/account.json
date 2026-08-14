@@ -242,7 +242,26 @@
     "messages": "Messages",
     "addressBook": "Address Book",
     "profilePassword": "Profile & Password",
+    "myOffers": "My Offers",
     "signOut": "Sign Out"
+  },
+
+  "offers": {
+    "title": "My Offers",
+    "empty": "You haven't made any offers yet.",
+    "listedAt": "Listed at {price}",
+    "yourOffer": "Your offer: {price}",
+    "counterOffer": "Seller countered: {price}",
+    "expires": "Expires {date}",
+    "accept": "Accept",
+    "decline": "Decline",
+    "status": {
+      "PENDING": "Pending",
+      "ACCEPTED": "Accepted",
+      "REJECTED": "Declined",
+      "EXPIRED": "Expired",
+      "COUNTERED": "Countered"
+    }
   },
 
   "messages": {

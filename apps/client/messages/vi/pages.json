@@ -642,5 +642,84 @@
       "faqLink": "Câu Hỏi Thường Gặp",
       "contactLink": "Liên Hệ"
     }
+  },
+
+  "payments": {
+    "eyebrow": "EziHubb Payments",
+    "title": "Đơn giản. Linh hoạt. An toàn.",
+    "subtitle": "Mang đến cho người mua nhiều lý do hơn để mua hàng từ shop của bạn — và nhận tiền theo cách bạn muốn.",
+    "benefits": {
+      "items": {
+        "methods": {
+          "title": "Phương thức thanh toán người mua ưa thích",
+          "desc": "Người mua có thể thanh toán bằng PayPal, các thẻ tín dụng lớn, Apple Pay, Google Pay và nhiều hơn nữa — tất cả ngay trong shop của bạn."
+        },
+        "finances": {
+          "title": "Tài chính đơn giản, do bạn kiểm soát",
+          "desc": "Theo dõi mọi đơn hàng, phí và khoản tiền chuyển vào tài khoản ngay trong trang Tài chính, và tự chọn tần suất nhận tiền."
+        },
+        "protection": {
+          "title": "Chúng tôi luôn bảo vệ bạn",
+          "desc": "Với EziHubb Purchase Protection, bạn vẫn giữ được thu nhập nếu có sự cố xảy ra với đơn hàng đủ điều kiện."
+        }
+      }
+    },
+    "depositCurrency": {
+      "title": "Nhận tiền bằng đơn vị tiền tệ của bạn",
+      "desc": "Ở hầu hết các thị trường, chúng tôi sẽ chuyển tiền bán hàng vào tài khoản ngân hàng của bạn theo đơn vị tiền tệ nội địa."
+    },
+    "salesLift": {
+      "title": "Người bán chuyển đổi thường bán được nhiều hơn",
+      "desc": "Người bán chuyển sang dùng EziHubb Payments ghi nhận doanh số tăng 7% — người mua chốt đơn nhiều hơn khi được thanh toán theo cách họ thích."
+    },
+    "fees": {
+      "title": "Chi phí là bao nhiêu?",
+      "desc": "Đăng ký hoàn toàn miễn phí — bạn chỉ trả 5% + 0.25 USD cho mỗi đơn hàng.",
+      "footnote": "Phí xử lý thanh toán được tính trên giá sản phẩm cộng phí vận chuyển. Xem chi tiết từng khoản phí của mỗi đơn hàng trong trang Tài chính."
+    },
+    "howItWorks": {
+      "title": "Cách thức hoạt động",
+      "stepLabel": "Bước {step}",
+      "steps": {
+        "schedule": {
+          "title": "Đặt lịch nhận tiền",
+          "desc": "Hầu hết người bán chọn nhận tiền hàng tuần, nhưng bạn có thể đổi sang mỗi 2 tuần hoặc mỗi tháng trong Cài đặt thanh toán."
+        },
+        "processed": {
+          "title": "Chúng tôi xử lý thanh toán",
+          "desc": "Ngay khi đơn hàng hoàn tất, chúng tôi xử lý thanh toán của người mua một cách an toàn và chuẩn bị chuyển tiền."
+        },
+        "deposited": {
+          "title": "Tiền về tài khoản ngân hàng",
+          "desc": "Nếu chọn nhận tiền hàng tuần, tiền thường được gửi vào thứ Hai và về tài khoản sau 2–3 ngày làm việc."
+        }
+      }
+    },
+    "faqs": {
+      "title": "Câu hỏi thường gặp",
+      "items": {
+        "why": {
+          "q": "Vì sao tôi cần dùng EziHubb Payments cho shop của mình?",
+          "a": "Để mang lại trải nghiệm tốt hơn cho người mua, EziHubb yêu cầu tất cả người bán đủ điều kiện sử dụng EziHubb Payments trong shop. Điều này giúp người mua thanh toán theo cách họ thích ở mọi shop trên sàn, và giúp chúng tôi hỗ trợ thanh toán trực tiếp khi bạn cần."
+        },
+        "howToAdd": {
+          "q": "Làm sao để thêm EziHubb Payments vào shop?",
+          "a": "Vào Seller Hub → Tài chính → Cài đặt thanh toán. Bạn sẽ cần cung cấp tài khoản ngân hàng và địa chỉ để chúng tôi biết nơi chuyển tiền. Quá trình này mất chưa đến 10 phút."
+        },
+        "fees": {
+          "q": "Phí sử dụng EziHubb Payments là bao nhiêu?",
+          "a": "Đăng ký hoàn toàn miễn phí. Phí xử lý thanh toán là 5% + 0.25 USD mỗi đơn hàng, tính trên giá sản phẩm cộng phí vận chuyển. Xem chi tiết từng khoản phí trong trang Tài chính."
+        },
+        "countries": {
+          "q": "EziHubb Payments có hỗ trợ ở quốc gia của tôi không?",
+          "a": "EziHubb Payments hỗ trợ nhận tiền bằng hơn 20 loại tiền tệ, bao gồm USD, EUR, GBP, CAD và AUD. Chọn đơn vị tiền tệ trong Cài đặt thanh toán → Tiền tệ."
+        }
+      }
+    },
+    "cta": {
+      "title": "Sẵn sàng bắt đầu bán hàng?",
+      "subtitle": "Mở shop và bắt đầu nhận thanh toán chỉ trong vài phút.",
+      "button": "Mở shop của bạn"
+    }
   }
 }

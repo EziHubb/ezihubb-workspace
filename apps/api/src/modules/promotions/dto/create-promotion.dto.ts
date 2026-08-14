@@ -2,6 +2,7 @@ import { PartialType } from '@nestjs/mapped-types';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsDate,
   IsEnum,
@@ -9,16 +10,19 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Length,
+  MaxLength,
   Min,
   MinLength,
 } from 'class-validator';
-import { DiscountType } from '@prisma/client';
+import { DiscountType, PromotionScope } from '@prisma/client';
 
 export class CreatePromotionDto {
-  @ApiProperty({ example: 'SUMMER20' })
+  @ApiPropertyOptional({ example: 'SUMMER20', description: 'Required unless autoApply is true (an Etsy-style "sale" has no buyer-entered code)' })
+  @IsOptional()
   @IsString()
   @MinLength(1)
-  code!: string;
+  code?: string;
 
   @ApiProperty({ enum: DiscountType })
   @IsEnum(DiscountType)
@@ -74,6 +78,34 @@ export class CreatePromotionDto {
   @IsOptional()
   @IsString()
   storeId?: string;
+
+  @ApiPropertyOptional({ default: false, description: 'Etsy "Set up a sale" — silently applied at the best-price calculation, no buyer code entry.' })
+  @IsOptional()
+  @IsBoolean()
+  autoApply?: boolean;
+
+  @ApiPropertyOptional({ enum: PromotionScope, default: PromotionScope.SHOP_WIDE })
+  @IsOptional()
+  @IsEnum(PromotionScope)
+  scope?: PromotionScope;
+
+  @ApiPropertyOptional({ description: 'Product IDs this sale applies to — required when scope is SPECIFIC_LISTINGS.' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  productIds?: string[];
+
+  @ApiPropertyOptional({ description: 'ISO 3166-1 alpha-2 country code — null/omitted means "Everywhere".' })
+  @IsOptional()
+  @IsString()
+  @Length(2, 2)
+  country?: string;
+
+  @ApiPropertyOptional({ description: 'Buyer-facing terms shown on eligible listings during the sale.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  termsAndConditions?: string;
 }
 
 export class UpdatePromotionDto extends PartialType(CreatePromotionDto) {}

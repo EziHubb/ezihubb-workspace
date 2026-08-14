@@ -26,6 +26,8 @@ import { PaymentsModule } from '../modules/payments/payments.module';
 import { ShippingModule } from '../modules/shipping/shipping.module';
 import { ReviewsModule } from '../modules/reviews/reviews.module';
 import { PromotionsModule } from '../modules/promotions/promotions.module';
+import { BundleOffersModule } from '../modules/promotions/bundle-offers.module';
+import { MarketingModule } from '../modules/marketing/marketing.module';
 import { NotificationsModule } from '../modules/notifications/notifications.module';
 import { CustomizationModule } from '../modules/customization/customization.module';
 import { SearchModule } from '../modules/search/search.module';
@@ -143,6 +145,8 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
     ShippingModule,
     ReviewsModule,
     PromotionsModule,
+    BundleOffersModule,
+    MarketingModule,
     NotificationsModule,
     CustomizationModule,
     SearchModule,

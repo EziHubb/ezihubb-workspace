@@ -105,6 +105,7 @@ export const CLIENT_ROUTES = {
   ACCOUNT_WISHLIST: '/account/wishlist',
   ACCOUNT_ADDRESSES: '/account/addresses',
   ACCOUNT_MESSAGES: '/account/messages',
+  ACCOUNT_OFFERS:   '/account/offers',
 
   AFFILIATE:           '/affiliate',
   AFFILIATE_REGISTER:  '/affiliate/register',
@@ -125,4 +126,5 @@ export const CLIENT_ROUTES = {
   PAGE_RETURNS:       '/pages/returns',
   PAGE_FAQ:           '/pages/faq',
   PAGE_CAREERS:       '/pages/careers',
+  PAGE_PAYMENTS:      '/pages/payments',
 } as const;

@@ -642,5 +642,84 @@
       "faqLink": "FAQ",
       "contactLink": "Contact"
     }
+  },
+
+  "payments": {
+    "eyebrow": "EziHubb Payments",
+    "title": "Simple. Flexible. Secure.",
+    "subtitle": "Give shoppers more reasons to buy from your shop — and get paid your way.",
+    "benefits": {
+      "items": {
+        "methods": {
+          "title": "Preferred payment methods for buyers",
+          "desc": "Buyers can pay with PayPal, major credit cards, Apple Pay, Google Pay, and more — all without leaving your shop."
+        },
+        "finances": {
+          "title": "Simplified finances you control",
+          "desc": "Track every sale, fee, and deposit in one place in your Finances dashboard, and choose how often you get paid."
+        },
+        "protection": {
+          "title": "We've got your back",
+          "desc": "With EziHubb Purchase Protection, you'll keep your earnings if something goes wrong with a qualifying order."
+        }
+      }
+    },
+    "depositCurrency": {
+      "title": "Get paid in your local currency",
+      "desc": "In most markets, we'll deposit your sales into your bank account in your local currency."
+    },
+    "salesLift": {
+      "title": "Sellers who switch see more sales",
+      "desc": "Sellers who switched to EziHubb Payments saw a 7% lift in sales — buyers convert more often when they can pay their preferred way."
+    },
+    "fees": {
+      "title": "How much does it cost?",
+      "desc": "It's free to set up — you'll pay just 5% + $0.25 USD for each sale.",
+      "footnote": "Payment processing fees are calculated on the item price plus shipping. See your Finances dashboard for a full breakdown of every fee on every order."
+    },
+    "howItWorks": {
+      "title": "How it works",
+      "stepLabel": "Step {step}",
+      "steps": {
+        "schedule": {
+          "title": "Set your deposit schedule",
+          "desc": "Most sellers choose to be paid weekly, but you can switch to every two weeks or once a month in Payment settings."
+        },
+        "processed": {
+          "title": "We process your payment",
+          "desc": "Once an order is complete, we securely process the buyer's payment and prepare it for deposit."
+        },
+        "deposited": {
+          "title": "Funds reach your bank",
+          "desc": "If you choose weekly deposits, funds are typically sent every Monday and arrive in 2–3 business days."
+        }
+      }
+    },
+    "faqs": {
+      "title": "Frequently asked questions",
+      "items": {
+        "why": {
+          "q": "Why do I need EziHubb Payments for my shop?",
+          "a": "To give buyers a better experience, EziHubb requires all eligible sellers to offer EziHubb Payments in their shop. This lets buyers pay using their preferred method in shops across the marketplace, and lets us provide direct payment support when you need it."
+        },
+        "howToAdd": {
+          "q": "How do I add EziHubb Payments to my shop?",
+          "a": "Go to Seller Hub → Finances → Payment settings. You'll be asked for your bank account and address so we know where to send your deposits. It takes less than 10 minutes."
+        },
+        "fees": {
+          "q": "What are the fees for using EziHubb Payments?",
+          "a": "It's free to enroll. Payment processing fees are 5% + $0.25 USD per sale, calculated on the item price plus shipping. See your Finances dashboard for a full breakdown of every fee on every order."
+        },
+        "countries": {
+          "q": "Is EziHubb Payments available in my country?",
+          "a": "EziHubb Payments supports deposits in more than 20 currencies, including USD, EUR, GBP, CAD, and AUD. Choose your currency under Payment settings → Currency."
+        }
+      }
+    },
+    "cta": {
+      "title": "Ready to start selling?",
+      "subtitle": "Open your shop and start accepting payments in minutes.",
+      "button": "Open your shop"
+    }
   }
 }

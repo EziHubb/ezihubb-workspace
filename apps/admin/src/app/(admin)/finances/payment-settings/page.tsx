@@ -62,8 +62,19 @@ function PaymentMethodsTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-bold text-secondary mb-1">Payments</h3>
-        <p className="text-sm text-muted">This is where deposits from your sales are sent.</p>
+        <h3 className="text-base font-bold text-secondary mb-1">EziHubb Payments</h3>
+        <p className="text-sm text-muted">
+          You&apos;re getting our highest level of payment protection and support while offering buyers the most
+          payment options.{' '}
+          <a
+            href={`${process.env.NEXT_PUBLIC_CLIENT_URL ?? 'http://localhost:3000'}/pages/payments`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline hover:no-underline"
+          >
+            Learn more
+          </a>
+        </p>
       </div>
 
       {editing ? (

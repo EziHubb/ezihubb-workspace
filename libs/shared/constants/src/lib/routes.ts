@@ -159,6 +159,18 @@ export const API_ROUTES = {
     SHARED: (token: string) => `/wishlist/${token}`,
   },
 
+  MARKETING: {
+    TRACK_CLICK: '/marketing/track-click',
+  },
+
+  OFFERS: {
+    CREATE:         '/offers',
+    MY:             '/offers/me',
+    ELIGIBILITY:    (productId: string) => `/offers/eligibility/${productId}`,
+    ACCEPT_COUNTER: (id: string) => `/offers/${id}/accept-counter`,
+    REJECT_COUNTER: (id: string) => `/offers/${id}/reject-counter`,
+  },
+
   CURRENCY: {
     RATES: '/currency/rates',
   },
@@ -306,6 +318,31 @@ export const API_ROUTES = {
     PROMOTION:              (id: string) => `/promotions/${id}`,
     PROMOTIONS_PAGE_STATS:  '/promotions/page-stats',
     PROMOTION_STATS:        (id: string) => `/promotions/${id}/stats`,
+
+    // ── Bundle offers ("Buy them together") ───────────────────────────────────
+    BUNDLE_OFFERS:          '/bundle-offers',
+    BUNDLE_OFFER:           (id: string) => `/bundle-offers/${id}`,
+
+    // ── Marketing: Share & Save / Offsite Ads ──────────────────────────────────
+    SHARE_SAVE:              '/marketing/share-save',
+    SHARE_SAVE_JOIN:         '/marketing/share-save/join',
+    SHARE_SAVE_LEAVE:        '/marketing/share-save/leave',
+    OFFSITE_ADS:             '/marketing/offsite-ads',
+    OFFSITE_ADS_OPT_OUT:     '/marketing/offsite-ads/opt-out',
+    TARGETED_OFFERS:         '/marketing/targeted-offers',
+
+    // ── Marketing: Social media (UI-parity only) ────────────────────────────────
+    SOCIAL_CONNECTIONS:      '/marketing/social/connections',
+    SOCIAL_CONNECTION:       (platform: string) => `/marketing/social/connections/${platform}`,
+    SOCIAL_CONTENT:          '/marketing/social/content',
+    SOCIAL_POSTS:            '/marketing/social/posts',
+
+    // ── Marketing: Let buyers make offers ───────────────────────────────────────
+    OFFERS_SETTINGS:         '/offers/settings',
+    OFFERS_INBOX:            '/offers/inbox',
+    OFFER_ACCEPT:            (id: string) => `/offers/${id}/accept`,
+    OFFER_REJECT:            (id: string) => `/offers/${id}/reject`,
+    OFFER_COUNTER:           (id: string) => `/offers/${id}/counter`,
 
     // ── Shipping (seller-owned Delivery settings) ─────────────────────────────
     SHIPPING_PROFILES:          '/admin/shipping/profiles',

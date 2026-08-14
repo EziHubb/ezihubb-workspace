@@ -11,6 +11,7 @@ import { ProductBreadcrumb } from '../../../../../components/product/ProductBrea
 import type { BreadcrumbItem } from '../../../../../components/product/ProductBreadcrumb';
 import { ProductStructuredData } from '../../../../../components/seo/ProductStructuredData';
 import { SearchAttributionTracker } from '../../../../../components/providers/SearchAttributionTracker';
+import { MarketingTracker } from '../../../../../components/providers/MarketingTracker';
 import { BreadcrumbStructuredData } from '../../../../../components/seo/BreadcrumbStructuredData';
 import { BackToResults } from '../../../../../components/product/BackToResults';
 import { ProductGalleryColumn } from '../../../../../components/product/ProductGalleryColumn';
@@ -178,6 +179,7 @@ export default async function ProductDetailPage({
       <Suspense fallback={null}>
         <SearchAttributionTracker />
       </Suspense>
+      {product.store?.id && <MarketingTracker storeId={product.store.id} productId={product.id} />}
       <ProductStructuredData
         product={product}
         reviewSummary={reviewSummary}

@@ -238,7 +238,9 @@
     "selectRequiredOptions": "Vui lòng chọn đầy đủ các tùy chọn bắt buộc trước khi thêm vào giỏ.",
     "addedToCart": "Đã thêm vào giỏ hàng!",
     "couldNotAddToCart": "Không thể thêm vào giỏ hàng. Vui lòng thử lại.",
-    "editorsPick": "Lựa chọn của EziHubb"
+    "editorsPick": "Lựa chọn của EziHubb",
+    "buyTogether": "Mua cùng nhau giảm {percent}%",
+    "addBundleToCart": "Thêm combo vào giỏ"
   },
   "share": {
     "shareThisProduct": "Chia sẻ sản phẩm này",

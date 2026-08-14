@@ -5,13 +5,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { DiscountType } from '@prisma/client';
+import { DiscountType, PromotionScope } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   PaginatedResult,
   paginatedResponse,
 } from '../../common/dto/paginated-response.dto';
-import { PaginationDto } from '../../common/dto/pagination.dto';
+import { PromotionQueryDto } from './dto/promotion-query.dto';
 import {
   CreatePromotionDto,
   UpdatePromotionDto,
@@ -101,7 +101,7 @@ export class PromotionsService {
 
     return {
       valid: true,
-      code: promotion.code,
+      code: promotion.code!,
       type: promotion.type,
       value: Number(promotion.value),
       discountAmount,
@@ -133,15 +133,30 @@ export class PromotionsService {
   // ── Admin CRUD ───────────────────────────────────────────────────────────────
 
   async create(dto: CreatePromotionDto, storeId?: string): Promise<PromotionResponseDto> {
-    const code = dto.code.toUpperCase();
-    const existing = await this.prisma.promotion.findUnique({
-      where: { code },
-    });
-    if (existing) {
-      throw new ConflictException({
-        code: 'ERR_COUPON_CODE_TAKEN',
-        message: 'Coupon code already exists',
+    if (!dto.autoApply && !dto.code) {
+      throw new BadRequestException({
+        code: 'ERR_COUPON_CODE_REQUIRED',
+        message: 'A coupon code is required unless autoApply is true',
       });
+    }
+    if (dto.scope === PromotionScope.SPECIFIC_LISTINGS && !dto.productIds?.length) {
+      throw new BadRequestException({
+        code: 'ERR_PROMOTION_LISTINGS_REQUIRED',
+        message: 'At least one listing must be selected for a listing-specific promotion',
+      });
+    }
+
+    const code = dto.code ? dto.code.toUpperCase() : null;
+    if (code) {
+      const existing = await this.prisma.promotion.findUnique({
+        where: { code },
+      });
+      if (existing) {
+        throw new ConflictException({
+          code: 'ERR_COUPON_CODE_TAKEN',
+          message: 'Coupon code already exists',
+        });
+      }
     }
 
     const promotion = await this.prisma.promotion.create({
@@ -159,25 +174,68 @@ export class PromotionsService {
         // storeId set (a store owner, or SUPER_ADMIN in their own store context, or a
         // platform-context SUPER_ADMIN who explicitly picked a store) → scoped to that store.
         storeId: storeId ?? null,
+        autoApply: dto.autoApply ?? false,
+        scope: dto.scope ?? PromotionScope.SHOP_WIDE,
+        country: dto.country ?? null,
+        termsAndConditions: dto.termsAndConditions ?? null,
+        ...(dto.scope === PromotionScope.SPECIFIC_LISTINGS && dto.productIds?.length
+          ? { products: { create: dto.productIds.map((productId) => ({ productId })) } }
+          : {}),
       },
-      include: { store: { select: { id: true, name: true, slug: true } } },
+      include: {
+        store: { select: { id: true, name: true, slug: true } },
+        products: { select: { productId: true } },
+      },
     });
 
     return this.mapToDto(promotion);
   }
 
   async findAll(
-    query: PaginationDto,
+    query: PromotionQueryDto,
     storeId?: string,
   ): Promise<PaginatedResult<PromotionResponseDto>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 24;
-    const where = storeId !== undefined ? { storeId } : {};
+    const where: Prisma.PromotionWhereInput = storeId !== undefined ? { storeId } : {};
+
+    if (query.q) {
+      where.code = { contains: query.q, mode: 'insensitive' };
+    }
+    if (query.type) {
+      where.type = query.type;
+    }
+    // Mirrors the admin UI's own derived-status logic exactly (getStatus() in
+    // apps/admin/.../promotions/page.tsx): EXPIRED beats PAUSED beats
+    // SCHEDULED beats ACTIVE, so the same precedence has to be reproduced
+    // here rather than just checking isActive/startsAt/expiresAt independently.
+    if (query.status) {
+      const now = new Date();
+      if (query.status === 'EXPIRED') {
+        where.expiresAt = { lt: now };
+      } else if (query.status === 'PAUSED') {
+        where.isActive = false;
+        where.OR = [{ expiresAt: null }, { expiresAt: { gte: now } }];
+      } else if (query.status === 'SCHEDULED') {
+        where.isActive = true;
+        where.startsAt = { gt: now };
+        where.AND = [{ OR: [{ expiresAt: null }, { expiresAt: { gte: now } }] }];
+      } else if (query.status === 'ACTIVE') {
+        where.isActive = true;
+        where.AND = [
+          { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+          { OR: [{ expiresAt: null }, { expiresAt: { gte: now } }] },
+        ];
+      }
+    }
 
     const [promotions, total] = await Promise.all([
       this.prisma.promotion.findMany({
         where,
-        include: { store: { select: { id: true, name: true, slug: true } } },
+        include: {
+          store: { select: { id: true, name: true, slug: true } },
+          products: { select: { productId: true } },
+        },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -192,7 +250,10 @@ export class PromotionsService {
   async findOne(id: string, storeId?: string): Promise<PromotionResponseDto> {
     const promotion = await this.prisma.promotion.findUnique({
       where: { id },
-      include: { store: { select: { id: true, name: true, slug: true } } },
+      include: {
+        store: { select: { id: true, name: true, slug: true } },
+        products: { select: { productId: true } },
+      },
     });
     if (!promotion || (storeId !== undefined && promotion.storeId !== storeId))
       throw new NotFoundException({
@@ -223,6 +284,13 @@ export class PromotionsService {
       dto.code = code;
     }
 
+    if (dto.scope === PromotionScope.SPECIFIC_LISTINGS && dto.productIds && dto.productIds.length === 0) {
+      throw new BadRequestException({
+        code: 'ERR_PROMOTION_LISTINGS_REQUIRED',
+        message: 'At least one listing must be selected for a listing-specific promotion',
+      });
+    }
+
     const promotion = await this.prisma.promotion.update({
       where: { id },
       data: {
@@ -239,6 +307,20 @@ export class PromotionsService {
         ...(dto.startsAt !== undefined && { startsAt: dto.startsAt }),
         ...(dto.expiresAt !== undefined && { expiresAt: dto.expiresAt }),
         ...(dto.description !== undefined && { description: dto.description }),
+        ...(dto.autoApply !== undefined && { autoApply: dto.autoApply }),
+        ...(dto.scope !== undefined && { scope: dto.scope }),
+        ...(dto.country !== undefined && { country: dto.country }),
+        ...(dto.termsAndConditions !== undefined && { termsAndConditions: dto.termsAndConditions }),
+        ...(dto.productIds !== undefined && {
+          products: {
+            deleteMany: {},
+            create: dto.productIds.map((productId) => ({ productId })),
+          },
+        }),
+      },
+      include: {
+        store: { select: { id: true, name: true, slug: true } },
+        products: { select: { productId: true } },
       },
     });
 
@@ -266,6 +348,13 @@ export class PromotionsService {
       dto.code = code;
     }
 
+    if (dto.scope === PromotionScope.SPECIFIC_LISTINGS && dto.productIds && dto.productIds.length === 0) {
+      throw new BadRequestException({
+        code: 'ERR_PROMOTION_LISTINGS_REQUIRED',
+        message: 'At least one listing must be selected for a listing-specific promotion',
+      });
+    }
+
     const promotion = await this.prisma.promotion.update({
       where: { id },
       data: {
@@ -279,6 +368,20 @@ export class PromotionsService {
         ...(dto.expiresAt !== undefined && { expiresAt: dto.expiresAt }),
         ...(dto.description !== undefined && { description: dto.description }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+        ...(dto.autoApply !== undefined && { autoApply: dto.autoApply }),
+        ...(dto.scope !== undefined && { scope: dto.scope }),
+        ...(dto.country !== undefined && { country: dto.country }),
+        ...(dto.termsAndConditions !== undefined && { termsAndConditions: dto.termsAndConditions }),
+        ...(dto.productIds !== undefined && {
+          products: {
+            deleteMany: {},
+            create: dto.productIds.map((productId) => ({ productId })),
+          },
+        }),
+      },
+      include: {
+        store: { select: { id: true, name: true, slug: true } },
+        products: { select: { productId: true } },
       },
     });
 
@@ -330,39 +433,107 @@ export class PromotionsService {
   }
 
   async getStats(id: string, storeId?: string): Promise<PromotionStatsDto> {
-    const promotion = await this.prisma.promotion.findUnique({
-      where: { id },
-      include: {
-        usages: {
-          orderBy: { usedAt: 'desc' },
-          take: 20,
-          include: {
-            order: { select: { discountAmount: true } },
-          },
-        },
-      },
-    });
+    const promotion = await this.prisma.promotion.findUnique({ where: { id } });
     if (!promotion || (storeId !== undefined && promotion.storeId !== storeId))
       throw new NotFoundException({
         code: 'ERR_NOT_FOUND',
         message: 'Promotion not found',
       });
 
-    const totalRevenueSaved = promotion.usages.reduce(
-      (sum, u) => sum + Number(u.order.discountAmount),
-      0,
-    );
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+    // Two separate queries rather than one `include` with `take: 20` — the
+    // aggregates (total discount, avg order size, top user, daily chart) need
+    // every usage, not just the 20 most recent shown in the table below.
+    const [allUsages, recentUsages] = await Promise.all([
+      this.prisma.promotionUsage.findMany({
+        where: { promotionId: id },
+        select: {
+          userId: true,
+          usedAt: true,
+          order: {
+            select: {
+              total: true,
+              discountAmount: true,
+              guestEmail: true,
+              user: { select: { email: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.promotionUsage.findMany({
+        where: { promotionId: id },
+        orderBy: { usedAt: 'desc' },
+        take: 20,
+        select: {
+          id: true,
+          orderId: true,
+          usedAt: true,
+          order: {
+            select: {
+              orderNumber: true,
+              discountAmount: true,
+              guestEmail: true,
+              user: { select: { firstName: true, lastName: true, email: true } },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const totalDiscount = allUsages.reduce((sum, u) => sum + Number(u.order.discountAmount), 0);
+    const avgOrderSize = allUsages.length > 0
+      ? allUsages.reduce((sum, u) => sum + Number(u.order.total), 0) / allUsages.length
+      : 0;
+
+    // Top user by usage count — grouped by userId when present, else the
+    // guest email (guest checkouts have no userId but still count).
+    const userKey = (u: (typeof allUsages)[number]) => u.userId ?? u.order.guestEmail ?? u.order.user?.email ?? 'unknown';
+    const userCounts = new Map<string, number>();
+    const userEmails = new Map<string, string | undefined>();
+    for (const u of allUsages) {
+      const key = userKey(u);
+      userCounts.set(key, (userCounts.get(key) ?? 0) + 1);
+      userEmails.set(key, u.order.user?.email ?? u.order.guestEmail ?? undefined);
+    }
+    let topUserEmail: string | undefined;
+    let topUserUses = 0;
+    for (const [key, count] of userCounts) {
+      if (count > topUserUses) {
+        topUserUses = count;
+        topUserEmail = userEmails.get(key);
+      }
+    }
+
+    const dailyMap = new Map<string, number>();
+    for (const u of allUsages) {
+      if (u.usedAt < thirtyDaysAgo) continue;
+      const day = u.usedAt.toISOString().slice(0, 10);
+      dailyMap.set(day, (dailyMap.get(day) ?? 0) + 1);
+    }
+    const dailyUsage = [...dailyMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, count]) => ({ date, count }));
 
     return {
-      promotionId: promotion.id,
-      code: promotion.code,
-      currentUses: promotion.currentUses,
-      maxUses: promotion.maxUses,
-      totalRevenueSaved,
-      recentUsages: promotion.usages.map((u) => ({
+      totalUsed: promotion.currentUses,
+      totalDiscount: Math.round(totalDiscount * 100) / 100,
+      avgOrderSize: Math.round(avgOrderSize * 100) / 100,
+      topUserEmail,
+      topUserUses: topUserUses > 0 ? topUserUses : undefined,
+      dailyUsage,
+      recentUsages: recentUsages.map((u) => ({
+        id: u.id,
+        customerName: u.order.user
+          ? (`${u.order.user.firstName ?? ''} ${u.order.user.lastName ?? ''}`.trim() || u.order.user.email)
+          : 'Guest',
+        customerEmail: u.order.user?.email ?? u.order.guestEmail ?? '',
         orderId: u.orderId,
+        orderNumber: u.order.orderNumber,
+        discountAmount: Number(u.order.discountAmount),
         usedAt: u.usedAt,
-        userId: u.userId,
       })),
     };
   }
@@ -378,7 +549,7 @@ export class PromotionsService {
 
   private mapToDto(promotion: {
     id: string;
-    code: string;
+    code: string | null;
     type: DiscountType;
     value: Prisma.Decimal;
     minOrderAmount: Prisma.Decimal | null;
@@ -391,6 +562,11 @@ export class PromotionsService {
     description: string | null;
     createdAt: Date;
     store?: { id: string; name: string; slug: string } | null;
+    autoApply: boolean;
+    scope: PromotionScope;
+    country: string | null;
+    termsAndConditions: string | null;
+    products?: { productId: string }[];
   }): PromotionResponseDto {
     return {
       id: promotion.id,
@@ -410,6 +586,11 @@ export class PromotionsService {
       description: promotion.description,
       createdAt: promotion.createdAt,
       store: promotion.store ?? null,
+      autoApply: promotion.autoApply,
+      scope: promotion.scope,
+      country: promotion.country,
+      termsAndConditions: promotion.termsAndConditions,
+      productIds: promotion.products?.map((p) => p.productId),
     };
   }
 }
