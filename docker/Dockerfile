@@ -78,7 +78,14 @@ RUN --mount=type=cache,id=nx-cache,target=/app/.nx/cache \
 # --config.confirmModulesPurge=false — pnpm's accidental-data-loss guard
 # refuses to remove node_modules without a TTY to confirm against, which a
 # Docker RUN step never has (surfaced as ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY).
-RUN pnpm prune --prod --config.confirmModulesPurge=false
+# --ignore-scripts — pruning otherwise re-fires the root `prepare` lifecycle
+# script (package.json), which shells out to `pnpm exec prisma generate`;
+# by the time prune gets to it the `prisma` devDependency it needs is
+# already stripped, so it fails. Unnecessary anyway — `source`'s own
+# `prisma generate` call above already ran once, shared by this stage via
+# `FROM source`, and pruning only removes packages, not that generated
+# @prisma/client output.
+RUN pnpm prune --prod --config.confirmModulesPurge=false --ignore-scripts
 
 FROM source AS builder-client
 # NEXT_PUBLIC_* vars are inlined into the client bundle at BUILD time — must
