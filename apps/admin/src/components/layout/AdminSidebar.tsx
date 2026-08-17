@@ -476,6 +476,15 @@ function SidebarBody({
 
       {/* User footer */}
       <div className="shrink-0 px-3 py-3 border-t border-border">
+        {/* Build version — SUPER_ADMIN only, so support can confirm which
+            commit is actually live without SSHing into the server. Baked in
+            at Docker build time (see docker/Dockerfile's builder-admin
+            stage); "dev" for a plain `nx serve admin`. */}
+        {role === 'SUPER_ADMIN' && (
+          <p className="text-[9px] font-mono text-muted/60 mb-2 truncate" title="Build version">
+            ver {(process.env.NEXT_PUBLIC_BUILD_VERSION ?? 'dev').slice(0, 7)}
+          </p>
+        )}
         <div className="flex items-center gap-2.5">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"

@@ -256,7 +256,7 @@ else
             echo ""
             echo -e "${YELLOW}--- $TARGET (local build) ---${NC}"
             check_resources
-            $SSH "cd '$DEPLOY_PATH' && $DC build $TARGET"
+            $SSH "cd '$DEPLOY_PATH' && GIT_SHA='$NEW_HEAD' $DC build $TARGET"
             LOCAL_BUILD_USED=true
         fi
     done

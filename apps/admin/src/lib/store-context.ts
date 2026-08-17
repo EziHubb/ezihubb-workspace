@@ -58,6 +58,18 @@ export interface AdminMode {
   inStoreMode:         boolean;
   /** True only for a SUPER_ADMIN NOT currently switched into their own store — mirrors the backend's StoreContext.isPlatformContext. */
   isPlatformContext:   boolean;
+  /**
+   * True once the session has actually resolved (`status !== 'loading'`).
+   * `SessionProvider` isn't seeded with the SSR session, so on every page
+   * load there's a brief window where `role`/`isPlatformContext` haven't
+   * been determined yet and default to their "unknown" values (`''`/
+   * `false`) — NOT necessarily the real ones. A query gated the opposite
+   * way, e.g. `enabled: !isPlatformContext` (fire unless platform), reads
+   * that transient `false` as "go ahead" and fires before the real value
+   * (possibly `true`) is known, hitting a store-scoped endpoint with no
+   * store and erroring. Any such gate must also require `isReady`.
+   */
+  isReady:             boolean;
 }
 
 /**
@@ -89,5 +101,8 @@ export function useAdminMode(): AdminMode {
     if (activeStoreContext && activeStoreContext !== ownStoreId) setStoreContext(null);
   }, [status, activeStoreContext, ownStoreId]);
 
-  return { role, ownStoreId, isSuperAdmin, canSwitchToOwnStore, inStoreMode, isPlatformContext };
+  return {
+    role, ownStoreId, isSuperAdmin, canSwitchToOwnStore, inStoreMode, isPlatformContext,
+    isReady: status !== 'loading',
+  };
 }

@@ -109,13 +109,22 @@ ARG NEXT_PUBLIC_SENTRY_DSN
 ARG NEXT_PUBLIC_CLIENT_URL
 ARG NEXT_PUBLIC_GA_DASHBOARD_URL
 ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+# The git SHA this image was built from — baked in at build time (inlined
+# into the client bundle like every other NEXT_PUBLIC_* var above) so a
+# SUPER_ADMIN can visually confirm which commit is actually live in
+# production without SSHing in. Set by CI (docker-publish.yml, github.sha)
+# and by deploy.sh's local-build fallback (docker-compose.yml, GIT_SHA) —
+# see CLAUDE.md "Build version" for the full wiring. Defaults to "dev" for
+# a plain `nx serve admin` where no build arg is passed.
+ARG NEXT_PUBLIC_BUILD_VERSION=dev
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_NEXTAUTH_URL=$NEXT_PUBLIC_NEXTAUTH_URL \
     NEXT_PUBLIC_CDN_URL=$NEXT_PUBLIC_CDN_URL \
     NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
     NEXT_PUBLIC_CLIENT_URL=$NEXT_PUBLIC_CLIENT_URL \
     NEXT_PUBLIC_GA_DASHBOARD_URL=$NEXT_PUBLIC_GA_DASHBOARD_URL \
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY \
+    NEXT_PUBLIC_BUILD_VERSION=$NEXT_PUBLIC_BUILD_VERSION
 RUN --mount=type=cache,id=nx-cache,target=/app/.nx/cache \
     pnpm nx build admin --configuration=production
 

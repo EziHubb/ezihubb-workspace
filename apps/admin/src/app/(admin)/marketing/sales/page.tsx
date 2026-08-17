@@ -130,7 +130,7 @@ const PAGE_SIZE = 20;
 export default function MarketingSalesPage() {
   const qc = useQueryClient();
   const { confirm } = useDialog();
-  const { isPlatformContext } = useAdminMode();
+  const { isPlatformContext, isReady } = useAdminMode();
 
   const [tab, setTab] = useState<'promotions' | 'stats'>('promotions');
 
@@ -186,7 +186,10 @@ export default function MarketingSalesPage() {
   const bundlesQuery = useQuery({
     queryKey: ['admin-bundle-offers'],
     queryFn:  () => api.get<BundleOffer[]>(API_ROUTES.ADMIN.BUNDLE_OFFERS),
-    enabled:  !isPlatformContext,
+    // Must wait for isReady too — while the session is still resolving,
+    // isPlatformContext defaults to false (not "known false"), so gating on
+    // just !isPlatformContext would fire this before we actually know.
+    enabled:  isReady && !isPlatformContext,
   });
   const bundles = bundlesQuery.data ?? [];
 

@@ -231,6 +231,7 @@ jobs:
             NEXT_PUBLIC_CLIENT_URL=${{ vars.NEXT_PUBLIC_CLIENT_URL }}
             NEXT_PUBLIC_GA_DASHBOARD_URL=${{ vars.NEXT_PUBLIC_GA_DASHBOARD_URL }}
             NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_BUILD_VERSION=${{ github.sha }}
 
   # ── Keep only the 3 most recent versions of each image (private-repo storage is limited) ─
   cleanup:
