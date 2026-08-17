@@ -75,7 +75,10 @@ RUN --mount=type=cache,id=nx-cache,target=/app/.nx/cache \
 # (a real dependency, already generated above) programmatically, never the
 # `prisma` CLI binary itself — unlike the `migrate` stage below, which
 # genuinely invokes `prisma` the CLI at runtime and must NOT be pruned.
-RUN pnpm prune --prod
+# --config.confirmModulesPurge=false — pnpm's accidental-data-loss guard
+# refuses to remove node_modules without a TTY to confirm against, which a
+# Docker RUN step never has (surfaced as ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY).
+RUN pnpm prune --prod --config.confirmModulesPurge=false
 
 FROM source AS builder-client
 # NEXT_PUBLIC_* vars are inlined into the client bundle at BUILD time — must
