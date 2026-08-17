@@ -27,8 +27,13 @@ interface SlugItem {
 
 async function fetchApi<T>(path: string): Promise<T[]> {
   try {
+    // Next.js aborts an entire static route after 60s. A slow/unreachable
+    // API (e.g. from a CI build runner) would otherwise hang past that
+    // budget instead of hitting the fallback below — bound each request
+    // well under it so all 4 parallel fetches always resolve in time.
     const res = await fetch(`${API_ORIGIN}/api/v1${path}`, {
-      next: { revalidate: 3600 },
+      next:   { revalidate: 3600 },
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) return [];
     const body = await res.json();
