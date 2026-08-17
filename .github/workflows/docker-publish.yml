@@ -53,10 +53,24 @@ jobs:
         run: echo "value=$(bash scripts/compute-version.sh)" >> "$GITHUB_OUTPUT"
       - if: github.ref == 'refs/heads/main'
         run: |
+          TAG="v${{ steps.version.outputs.value }}"
+          # `fetch-depth: 0` above already fetched every existing tag, so a
+          # plain `git tag "$TAG"` errors out ("tag already exists") whenever
+          # this version was already tagged — e.g. manually pre-tagged for a
+          # specific commit, or a concurrent run for another commit landed
+          # first. GitHub Actions runs each `run:` step with `bash -e`, so
+          # that failure aborted the whole step (never even reaching the
+          # `git push` line below) and failed this job, skipping every
+          # downstream build-* job that needs it — check for an existing tag
+          # first instead of letting `git tag` fail.
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "v${{ steps.version.outputs.value }}"
-          git push origin "v${{ steps.version.outputs.value }}" || echo "Tag already exists (concurrent run for another commit landed first) — skipping."
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists locally — skipping (nothing to do)."
+          else
+            git tag "$TAG"
+            git push origin "$TAG" || echo "Tag $TAG already exists on origin (concurrent run) — skipping."
+          fi
       - uses: dorny/paths-filter@v3
         id: filter
         with:
