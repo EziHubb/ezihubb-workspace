@@ -61,18 +61,14 @@ const ICONS: Record<ToastType, React.ReactNode> = {
   ),
 };
 
-const ICON_CLASSES: Record<ToastType, string> = {
-  success: 'text-success',
-  error:   'text-error',
-  warning: 'text-warning',
-  info:    'text-primary',
-};
-
-const BORDER_CLASSES: Record<ToastType, string> = {
-  success: 'border-success/30',
-  error:   'border-error/30',
-  warning: 'border-warning/30',
-  info:    'border-primary/30',
+// Etsy's toasts are solid-fill, not white-with-colored-border — e.g. the
+// "Your profile has been created!" success toast is a solid green card with
+// white icon/text/close button.
+const FILL_CLASSES: Record<ToastType, string> = {
+  success: 'bg-success text-white',
+  error:   'bg-error text-white',
+  warning: 'bg-warning text-white',
+  info:    'bg-secondary text-white',
 };
 
 // ── Context ───────────────────────────────────────────────────────────────────
@@ -131,19 +127,19 @@ export const ToastProvider: React.FC<{
             key={t.id}
             role="alert"
             className={[
-              'flex items-start gap-3 p-4 rounded-md border bg-surface shadow-floating animate-fade-in',
-              BORDER_CLASSES[t.type],
+              'flex items-start gap-3 p-4 rounded-md shadow-floating animate-fade-in',
+              FILL_CLASSES[t.type],
             ].join(' ')}
           >
-            <span className={`shrink-0 mt-0.5 ${ICON_CLASSES[t.type]}`}>
+            <span className="shrink-0 mt-0.5">
               {ICONS[t.type]}
             </span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-secondary leading-snug">{t.message}</p>
+              <p className="text-sm leading-snug">{t.message}</p>
               {t.action && (
                 <button
                   onClick={() => { t.action!.onClick(); dismiss(t.id); }}
-                  className="mt-1 text-xs font-medium text-primary hover:underline"
+                  className="mt-1 text-xs font-medium underline underline-offset-2 hover:opacity-80"
                 >
                   {t.action.label}
                 </button>
@@ -152,7 +148,7 @@ export const ToastProvider: React.FC<{
             <button
               onClick={() => dismiss(t.id)}
               aria-label={dismissLabel}
-              className="shrink-0 text-muted hover:text-secondary transition-colors"
+              className="shrink-0 opacity-80 hover:opacity-100 transition-opacity"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

@@ -200,7 +200,7 @@ export function AttributeSearchSelect({
 
           {/* Dropdown */}
           {isOpen && (filteredSuggestions.length > 0 || isCustom) && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-surface border border-border/60 rounded-card shadow-floating p-1.5 animate-fadeIn origin-top z-20 max-h-52 overflow-y-auto">
+            <div className="absolute top-full left-0 right-0 mt-2 bg-surface border border-border/60 rounded-card shadow-floating p-1.5 animate-fade-in origin-top z-20 max-h-52 overflow-y-auto">
               {filteredSuggestions.slice(0, 20).map((suggestion) => (
                 <button
                   key={suggestion}
@@ -228,7 +228,7 @@ export function AttributeSearchSelect({
 
           {/* No results message */}
           {isOpen && filteredSuggestions.length === 0 && !isCustom && debouncedInput.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-surface border border-border/60 rounded-card shadow-floating animate-fadeIn origin-top z-20 px-3 py-2.5">
+            <div className="absolute top-full left-0 right-0 mt-2 bg-surface border border-border/60 rounded-card shadow-floating animate-fade-in origin-top z-20 px-3 py-2.5">
               <p className="text-sm text-muted">No results for "{debouncedInput}"</p>
             </div>
           )}

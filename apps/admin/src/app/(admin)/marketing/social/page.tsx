@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Share2, Settings, Info, Package, Sparkles, X, Globe, AtSign, ImageIcon } from 'lucide-react';
-import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
+import { Share2, Settings, Info, Package, Sparkles, X, Globe, AtSign, ImageIcon, Hash, Heart, MessageCircle } from 'lucide-react';
+import { Button } from '@ezihubb/ui';
 import { SocialAccountSettingsModal } from '../../../../components/marketing/SocialAccountSettingsModal';
 import { CreatePostModal } from '../../../../components/marketing/CreatePostModal';
+import { ReloadButton } from '../../../../components/ui/ReloadButton';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { fmtDate } from '../../../../lib/fmt';
@@ -36,7 +37,7 @@ const GUIDELINES: { platform: string; tips: string[] }[] = [
 
 function GuidelinesPanel({ onClose }: { onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex justify-end" onClick={onClose}>
+    <div className="fixed inset-0 bg-[#2A2118]/45 z-50 flex justify-end" onClick={onClose}>
       <div className="w-full max-w-[420px] h-full bg-surface overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-surface">
           <h2 className="font-bold text-secondary text-base">Guidelines and tips</h2>
@@ -78,56 +79,61 @@ export default function SocialMediaPage() {
   const heroSale = content?.activeSales[0];
   const heroListing = content?.newestListings[0];
 
+  const heroKind = heroSale ? 'sale' : heroListing ? 'listing' : null;
+
   return (
     <>
-      <AdminPageHeader
-        title="Social media"
-        subtitle="Share your shop's newest listings and sales"
-        actions={
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setGuidelinesOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-muted border border-border rounded-button hover:border-primary/40 hover:text-primary transition-colors">
-              <Info className="w-4 h-4" /> Guidelines & tips
-            </button>
-            <button type="button" onClick={() => setSettingsOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-muted border border-border rounded-button hover:border-primary/40 hover:text-primary transition-colors">
-              <Settings className="w-4 h-4" /> Account settings
-            </button>
-          </div>
-        }
-      />
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <h1 className="text-lg font-semibold text-secondary">Social media</h1>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" leftIcon={<Info className="w-4 h-4" />} onClick={() => setGuidelinesOpen(true)}>
+            Guidelines &amp; tips
+          </Button>
+          <Button variant="secondary" size="sm" leftIcon={<Settings className="w-4 h-4" />} onClick={() => setSettingsOpen(true)}>
+            Account settings
+          </Button>
+          <ReloadButton queryKey={['social-content']} />
+        </div>
+      </div>
 
       {/* Hero */}
-      <div className="bg-gradient-to-br from-primary/10 to-secondary/10 rounded-card border border-border p-6 mb-8 flex items-center gap-5">
-        <div className="w-14 h-14 rounded-2xl bg-primary/15 flex items-center justify-center shrink-0">
-          <Share2 className="w-6 h-6 text-primary" />
+      <div className="bg-hero-peach rounded-card p-6 mb-8 flex items-center gap-6">
+        <div className="hidden sm:flex gap-2 shrink-0">
+          <span className="w-9 h-9 rounded-full bg-white/60 flex items-center justify-center"><Hash className="w-4 h-4 text-secondary" /></span>
+          <span className="w-9 h-9 rounded-full bg-white/60 flex items-center justify-center mt-3"><Heart className="w-4 h-4 text-secondary" /></span>
+          <span className="w-9 h-9 rounded-full bg-white/60 flex items-center justify-center"><MessageCircle className="w-4 h-4 text-secondary" /></span>
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-bold text-secondary">
-            {heroSale ? `Share your promotion: ${heroSale.label}` : heroListing ? `Share your newest listing: ${heroListing.name}` : 'Share your shop'}
+          <p className="text-[10.5px] font-bold tracking-widest uppercase text-secondary/60 mb-1.5">Recommended post</p>
+          <h2 className="font-display text-2xl font-bold text-secondary leading-snug">
+            {heroKind === 'sale' ? 'Share your promotion' : heroKind === 'listing' ? 'Share your newest listing' : 'Share your shop'}
           </h2>
-          <p className="text-sm text-muted mt-1">Turn your shop's best moments into posts your followers will love.</p>
+          <p className="text-sm text-secondary/70 mt-1.5 max-w-md">
+            {heroKind === 'sale' && heroSale ? heroSale.label : heroKind === 'listing' && heroListing ? heroListing.name : "Turn your shop's best moments into posts your followers will love."}
+          </p>
+          <p className="text-[10.5px] font-bold tracking-widest uppercase text-secondary/60 mt-4 mb-1">Tip</p>
+          <p className="text-xs text-secondary/70">Sharing offers on social media is a great way to attract potential customers.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setCreateOpen(true)}
-          className="px-5 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors shrink-0"
-        >
+        <Button variant="primary" onClick={() => setCreateOpen(true)} className="shrink-0">
           Create post
-        </button>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* My newest listings */}
         <div>
-          <p className="text-sm font-bold text-secondary mb-3 flex items-center gap-2"><Package className="w-4 h-4" /> My newest listings</p>
+          <h3 className="font-display text-base font-bold text-secondary mb-1 flex items-center gap-2"><Package className="w-4 h-4" /> My newest listings</h3>
+          <p className="text-xs text-muted mb-3">Give your followers a first look at the latest additions to your shop.</p>
           {!content || content.newestListings.length === 0 ? (
             <p className="text-sm text-muted italic">No listings yet.</p>
           ) : (
             <div className="grid grid-cols-3 gap-2">
               {content.newestListings.map((l) => (
-                <div key={l.id} className="bg-surface rounded-card border border-border overflow-hidden group">
+                <div key={l.id} className="bg-surface rounded-card border border-border overflow-hidden group relative">
                   {l.imageUrl ? <img src={l.imageUrl} alt={l.name} className="w-full aspect-square object-cover" /> : <div className="w-full aspect-square bg-muted/10" />}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors flex items-center justify-center">
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 text-secondary text-xs font-bold px-3 py-1.5 rounded-pill">Share</span>
+                  </div>
                   <div className="p-2">
                     <p className="text-[11px] font-medium text-secondary truncate">{l.name}</p>
                     <p className="text-[10px] text-muted">${l.price.toFixed(2)}</p>
@@ -140,7 +146,8 @@ export default function SocialMediaPage() {
 
         {/* Sales or promotions */}
         <div>
-          <p className="text-sm font-bold text-secondary mb-3 flex items-center gap-2"><Sparkles className="w-4 h-4" /> Sales or promotions</p>
+          <h3 className="font-display text-base font-bold text-secondary mb-1 flex items-center gap-2"><Sparkles className="w-4 h-4" /> Sales or promotions</h3>
+          <p className="text-xs text-muted mb-3">Keep your followers in the know about any special offers.</p>
           {!content || content.activeSales.length === 0 ? (
             <p className="text-sm text-muted italic">No active sales or promo codes.</p>
           ) : (

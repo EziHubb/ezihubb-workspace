@@ -17,6 +17,15 @@ export interface UpsertCampaignInput {
   isActive:         boolean;
 }
 
+// Real default expiry windows confirmed from Etsy reference screenshots —
+// each trigger has a different default, not a single generic value.
+const DEFAULT_EXPIRES_AFTER_DAYS: Record<TargetedOfferTrigger, number> = {
+  INTERESTED_SHOPPER: 7,
+  THANK_YOU:           365,
+  ABANDONED_BASKET:    60,
+  FAVOURITED_ITEM:     60,
+};
+
 const TRIGGER_COPY: Record<TargetedOfferTrigger, { headline: string; message: string }> = {
   INTERESTED_SHOPPER: {
     headline: 'Still thinking it over?',
@@ -56,7 +65,7 @@ export class TargetedOffersService {
         ? { ...c, discountValue: Number(c.discountValue) }
         : {
             id: null, storeId, trigger, discountType: 'PERCENTAGE' as DiscountType, discountValue: 10,
-            expiresAfterDays: 3, lookbackDays: 7, isActive: false,
+            expiresAfterDays: DEFAULT_EXPIRES_AFTER_DAYS[trigger], lookbackDays: 7, isActive: false,
           };
     });
   }

@@ -213,14 +213,19 @@ export class StoresService {
   }
 
   /**
-   * Buckets a visit's HTTP Referer into the same 4 categories Etsy's "How
-   * shoppers found you" uses: on-platform search/browse, direct (no
-   * referrer — bookmarked/typed URL), social media, or other external sites.
+   * Buckets a visit's HTTP Referer into 6 categories, splitting Etsy's "How
+   * shoppers found you" into its real two super-groups: signals the
+   * *platform* brought (on-platform search/browse, other on-platform pages,
+   * arriving via an external search engine — i.e. found through SEO) vs
+   * signals the *seller* brought (true direct/bookmarked, social media,
+   * other external referrers e.g. the seller's own blog or ad).
+   * `ShopStatsService.getTrafficSources` reads these keys generically, so
+   * adding buckets here doesn't require a matching frontend change.
    * Best-effort — a stripped/missing Referer (increasingly common under
    * strict browser referrer policies) falls back to "direct", same as most
    * analytics tools.
    */
-  private classifyTrafficSource(referer?: string): 'search' | 'direct' | 'social' | 'external' {
+  private classifyTrafficSource(referer?: string): 'platform_search' | 'platform_pages' | 'external_search' | 'direct' | 'social' | 'external' {
     if (!referer) return 'direct';
     let url: URL;
     try {
@@ -240,15 +245,17 @@ export class StoresService {
       // On-platform navigation — only count it as "search" attribution when
       // it came from a search/browse surface, not e.g. the homepage.
       return /^\/[a-z]{2}\/(search|products|collections)(\/|$)/.test(url.pathname)
-        ? 'search'
-        : 'direct';
+        ? 'platform_search'
+        : 'platform_pages';
     }
 
     const socialHosts = ['facebook.com', 'instagram.com', 'tiktok.com', 'pinterest.com', 'twitter.com', 'x.com', 't.co'];
     if (socialHosts.some((h) => host === h || host.endsWith(`.${h}`))) return 'social';
 
+    // Arriving via an external search engine means the platform's own SEO
+    // surfaced the listing — credited to the platform, not the seller.
     const searchEngineHosts = ['google.', 'bing.', 'yahoo.', 'duckduckgo.', 'baidu.'];
-    if (searchEngineHosts.some((h) => host.includes(h))) return 'search';
+    if (searchEngineHosts.some((h) => host.includes(h))) return 'external_search';
 
     return 'external';
   }

@@ -54,7 +54,7 @@ export function FilterSelect({
         onClick={() => setOpen((v) => !v)}
         className={[
           triggerCls,
-          'w-full flex items-center justify-between gap-2 font-medium border rounded-button transition-colors',
+          'w-full flex items-center justify-between gap-2 font-semibold border rounded-pill transition-colors',
           'bg-surface border-border text-secondary',
           'hover:border-primary/50 hover:text-secondary',
           open ? 'border-primary/60 text-primary' : '',
@@ -79,7 +79,7 @@ export function FilterSelect({
             className={[
               'absolute top-full mt-2 z-40 min-w-[180px] bg-surface',
               'border border-border/60 rounded-card shadow-floating p-1.5',
-              'animate-fadeIn origin-top',
+              'animate-fade-in origin-top',
               dropdownAlign,
             ].join(' ')}
           >

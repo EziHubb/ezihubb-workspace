@@ -2,16 +2,17 @@
 
 import { memo, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   MoreHorizontal, Package, Star, Eye, EyeOff, Copy, Archive,
   Pencil, ExternalLink, BarChart2, RefreshCw, Layers, Share2,
-  Trash2, Check,
+  Trash2,
 } from 'lucide-react';
+import { Menu, type MenuItemDef } from '@ezihubb/ui';
 import { fmtAmount } from '../../lib/fmt';
 import { ADMIN_ROUTES } from '@ezihubb/constants';
 import { useDialog } from '../../contexts/DialogContext';
+import { toast } from '../../lib/store/toast.store';
 
 export interface AdminProduct {
   id:              string;
@@ -67,165 +68,54 @@ function GearMenu({
   onDelete?:        (p: AdminProduct) => void;
   clientBaseUrl?:   string;
 }) {
-  const [open,    setOpen]    = useState(false);
-  const [copied,  setCopied]  = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const { alert } = useDialog();
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const itemCls      = 'flex items-center gap-2.5 w-full px-3 py-2 text-sm text-secondary hover:bg-muted/8 transition-colors text-left';
-  const dangerItemCls = `${itemCls} text-error hover:bg-error/5`;
 
   const handleShare = async () => {
     const url = `${clientBaseUrl ?? ''}/products/${product.slug}`;
     try {
       await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      toast.success('Link copied!');
     } catch (err) {
       await alert((err as Error).message || 'Could not copy the link.', { variant: 'error' });
     }
-    setOpen(false);
   };
 
+  const items: MenuItemDef[] = [
+    { label: 'View on site', icon: <ExternalLink className="w-3.5 h-3.5" />, onClick: () => window.open(`${clientBaseUrl ?? ''}/products/${product.slug}`, '_blank', 'noopener,noreferrer') },
+    { label: 'View stats',   icon: <BarChart2 className="w-3.5 h-3.5" />,    onClick: () => router.push(ADMIN_ROUTES.STATS_LISTING(product.id)) },
+    { label: 'Edit',         icon: <Pencil className="w-3.5 h-3.5" />,       onClick: () => router.push(`/products/${product.id}/edit`) },
+    { label: 'Copy',         icon: <Copy className="w-3.5 h-3.5" />,         onClick: () => router.push(`/products/copy/${product.id}`) },
+    {
+      label:   product.isActive ? 'Deactivate' : 'Activate',
+      icon:    product.isActive ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />,
+      onClick: () => onToggleActive(product),
+    },
+    // Renew — placeholder (for future listing renewal)
+    { label: 'Renew',          icon: <RefreshCw className="w-3.5 h-3.5" />, onClick: () => undefined },
+    { label: 'Change section', icon: <Layers className="w-3.5 h-3.5" />,    onClick: () => router.push(`/products/${product.id}/edit?tab=settings`) },
+    { label: 'Share',          icon: <Share2 className="w-3.5 h-3.5" />,    onClick: handleShare },
+    { label: 'Archive', icon: <Archive className="w-3.5 h-3.5" />, warning: true, onClick: () => onArchive(product) },
+    // Delete — only once the product is already Archived (hard-delete is
+    // irreversible; archive first is the review step before that)
+    ...(onDelete && product.status === 'ARCHIVED'
+      ? [{ label: 'Delete', icon: <Trash2 className="w-3.5 h-3.5" />, destructive: true, onClick: () => onDelete(product) }]
+      : []),
+  ];
+
   return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-        className="p-1.5 rounded-lg text-muted hover:text-secondary hover:bg-muted/10 transition-colors"
-        title="More actions"
-      >
-        <MoreHorizontal className="w-4 h-4" />
-      </button>
-
-      {open && (
-        <div
-          className="absolute right-0 bottom-full mb-1 z-50 w-48 bg-background border border-border rounded-xl shadow-xl overflow-hidden py-1"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* View on site */}
-          <a
-            href={`${clientBaseUrl ?? ''}/products/${product.slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={itemCls}
-            onClick={() => setOpen(false)}
-          >
-            <ExternalLink className="w-3.5 h-3.5 text-muted" />
-            View on site
-          </a>
-
-          {/* View stats */}
-          <Link
-            href={ADMIN_ROUTES.STATS_LISTING(product.id)}
-            className={itemCls}
-            onClick={() => setOpen(false)}
-          >
-            <BarChart2 className="w-3.5 h-3.5 text-muted" />
-            View stats
-          </Link>
-
-          <div className="h-px bg-border mx-2 my-1" />
-
-          {/* Edit */}
-          <Link
-            href={`/products/${product.id}/edit`}
-            className={itemCls}
-            onClick={() => setOpen(false)}
-          >
-            <Pencil className="w-3.5 h-3.5 text-muted" />
-            Edit
-          </Link>
-
-          {/* Copy */}
-          <Link
-            href={`/products/copy/${product.id}`}
-            className={itemCls}
-            onClick={() => setOpen(false)}
-          >
-            <Copy className="w-3.5 h-3.5 text-muted" />
-            Copy
-          </Link>
-
-          {/* Activate / Deactivate */}
-          <button
-            type="button"
-            className={itemCls}
-            onClick={() => { setOpen(false); onToggleActive(product); }}
-          >
-            {product.isActive
-              ? <><EyeOff className="w-3.5 h-3.5 text-muted" /> Deactivate</>
-              : <><Eye className="w-3.5 h-3.5 text-muted" /> Activate</>
-            }
-          </button>
-
-          {/* Renew — placeholder (for future listing renewal) */}
-          <button
-            type="button"
-            className={itemCls}
-            onClick={() => { setOpen(false); }}
-          >
-            <RefreshCw className="w-3.5 h-3.5 text-muted" />
-            Renew
-          </button>
-
-          {/* Change section */}
-          <Link
-            href={`/products/${product.id}/edit?tab=settings`}
-            className={itemCls}
-            onClick={() => setOpen(false)}
-          >
-            <Layers className="w-3.5 h-3.5 text-muted" />
-            Change section
-          </Link>
-
-          {/* Share */}
-          <button
-            type="button"
-            className={itemCls}
-            onClick={handleShare}
-          >
-            {copied
-              ? <><Check className="w-3.5 h-3.5 text-green-600" /><span className="text-green-600">Link copied!</span></>
-              : <><Share2 className="w-3.5 h-3.5 text-muted" /> Share</>
-            }
-          </button>
-
-          <div className="h-px bg-border mx-2 my-1" />
-
-          {/* Archive */}
-          <button
-            type="button"
-            className={`${itemCls} text-amber-600 hover:bg-amber-50`}
-            onClick={() => { setOpen(false); onArchive(product); }}
-          >
-            <Archive className="w-3.5 h-3.5" />
-            Archive
-          </button>
-
-          {/* Delete — only once the product is already Archived (hard-delete is
-              irreversible; archive first is the review step before that) */}
-          {onDelete && product.status === 'ARCHIVED' && (
-            <button
-              type="button"
-              className={dangerItemCls}
-              onClick={() => { setOpen(false); onDelete(product); }}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Delete
-            </button>
-          )}
-        </div>
-      )}
+    <div onClick={(e) => e.stopPropagation()}>
+      <Menu
+        align="end"
+        placement="top"
+        panelWidth="12rem"
+        trigger={
+          <span className="p-1.5 rounded-lg text-muted hover:text-secondary hover:bg-muted/10 transition-colors" title="More actions">
+            <MoreHorizontal className="w-4 h-4" />
+          </span>
+        }
+        items={items}
+      />
     </div>
   );
 }

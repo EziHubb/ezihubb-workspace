@@ -55,6 +55,56 @@ export const ModalHeader: React.FC<ModalHeaderProps> = ({ children, onClose, cla
   </div>
 );
 
+export type ModalHeroBand = 'peach' | 'periwinkle' | 'purple';
+
+export interface ModalHeroHeaderProps {
+  /** icon or small illustration, rendered at 40-48px */
+  icon:        React.ReactNode;
+  title:       React.ReactNode;
+  subtitle?:   React.ReactNode;
+  band?:       ModalHeroBand;
+  className?:  string;
+  onClose?:    () => void;
+  /** aria-label for the close button. Default: "Close" */
+  closeLabel?: string;
+}
+
+const heroBandClasses: Record<ModalHeroBand, string> = {
+  peach:      'bg-hero-peach',
+  periwinkle: 'bg-hero-periwinkle',
+  purple:     'bg-hero-purple',
+};
+
+/**
+ * Colored-band modal header used for Etsy's "wizard"/celebration-style
+ * dialogs (Set up a sale, Create a promo code, Set up targeted offers,
+ * Success confirmations) — distinct from the plain `ModalHeader` used for
+ * simple utility dialogs (bulk-edit, quick settings), which stays flat
+ * white with a sans-serif title.
+ */
+export const ModalHeroHeader: React.FC<ModalHeroHeaderProps> = ({
+  icon, title, subtitle, band = 'periwinkle', className = '', onClose, closeLabel = 'Close',
+}) => (
+  <div className={`flex items-start gap-4 px-6 py-6 rounded-t-xl md:rounded-t-modal shrink-0 ${heroBandClasses[band]} ${className}`}>
+    <div className="w-10 h-10 shrink-0 flex items-center justify-center text-secondary">{icon}</div>
+    <div className="min-w-0 flex-1">
+      <h2 className="font-display text-2xl font-bold text-secondary leading-snug">{title}</h2>
+      {subtitle && <p className="text-sm text-secondary/80 mt-1.5 leading-relaxed">{subtitle}</p>}
+    </div>
+    {onClose && (
+      <button
+        onClick={onClose}
+        aria-label={closeLabel}
+        className="shrink-0 p-1 rounded-sm text-secondary/70 hover:text-secondary hover:bg-black/5 transition-colors"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    )}
+  </div>
+);
+
 export const ModalBody: React.FC<ModalBodyProps> = ({ children, className = '' }) => (
   <div className={`flex-1 overflow-y-auto px-6 py-4 ${className}`}>{children}</div>
 );
@@ -95,7 +145,7 @@ export const Modal: React.FC<ModalProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center md:justify-center md:p-4"
+      className="fixed inset-0 z-50 bg-[#2A2118]/45 flex items-end md:items-center md:justify-center md:p-4"
       onClick={closeOnOverlayClick ? onClose : undefined}
       aria-hidden={!isOpen}
     >

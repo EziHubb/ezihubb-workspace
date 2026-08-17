@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { CreditCard, Plus, Trash2, ArrowRight } from 'lucide-react';
+import { Toggle, Select } from '@ezihubb/ui';
 import {
   useFinancesBankAccount, useUpdateBankAccount,
   useFinancesBillingCards, useSetDefaultBillingCard, useDeleteBillingCard,
@@ -11,6 +12,7 @@ import {
   useFinancesTaxInfo,
 } from '../../../../lib/useFinances';
 import { AddBillingCardModal } from '../../../../components/finances/AddBillingCardModal';
+import { ReloadButton } from '../../../../components/ui/ReloadButton';
 
 const CURRENCIES = [
   'USD', 'CAD', 'EUR', 'GBP', 'AUD', 'JPY', 'CNY', 'DKK', 'HUF', 'IDR', 'ILS',
@@ -106,15 +108,15 @@ function PaymentMethodsTab() {
           </div>
           <div>
             <label className="block text-xs font-semibold text-secondary mb-1">Deposit schedule</label>
-            <select
+            <Select
               value={form.depositSchedule}
               onChange={(e) => setForm((f) => ({ ...f, depositSchedule: e.target.value as typeof f.depositSchedule }))}
-              className="w-full px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="WEEKLY">Once per week</option>
-              <option value="BIWEEKLY">Once every 2 weeks</option>
-              <option value="MONTHLY">Once per month</option>
-            </select>
+              options={[
+                { value: 'WEEKLY',   label: 'Once per week' },
+                { value: 'BIWEEKLY', label: 'Once every 2 weeks' },
+                { value: 'MONTHLY',  label: 'Once per month' },
+              ]}
+            />
           </div>
           <div className="flex gap-3">
             <button type="button" onClick={() => setEditing(false)}
@@ -282,15 +284,11 @@ function BillingTab() {
 
       <div className="flex items-center justify-between max-w-2xl pt-4 border-t border-border">
         <span className="text-sm font-semibold text-secondary">Autobilling</span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={overview?.autoBillingEnabled ?? false}
-          onClick={() => updateAutoBilling.mutate(!(overview?.autoBillingEnabled ?? false))}
-          className={`w-11 h-6 rounded-full transition-colors relative ${overview?.autoBillingEnabled ? 'bg-primary' : 'bg-border'}`}
-        >
-          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${overview?.autoBillingEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
-        </button>
+        <Toggle
+          checked={overview?.autoBillingEnabled ?? false}
+          onChange={(v) => updateAutoBilling.mutate(v)}
+          ariaLabel="Autobilling"
+        />
       </div>
 
       {showAddModal && <AddBillingCardModal onClose={() => setShowAddModal(false)} />}
@@ -348,17 +346,20 @@ function PaymentSettingsPageInner() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-secondary mb-6">Payment settings</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-lg font-semibold text-secondary">Payment settings</h1>
+        <ReloadButton />
+      </div>
 
-      <div className="flex gap-1 border-b border-border mb-6">
+      <div className="flex gap-6 border-b border-border mb-6">
         {TABS.map((key) => (
           <button
             key={key}
             type="button"
             onClick={() => setTab(key)}
             className={[
-              'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors',
-              tab === key ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-secondary',
+              'pb-2.5 text-sm font-semibold border-b-2 transition-colors',
+              tab === key ? 'border-secondary text-secondary' : 'border-transparent text-muted hover:text-secondary',
             ].join(' ')}
           >
             {TAB_LABEL[key]}

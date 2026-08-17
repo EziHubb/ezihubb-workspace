@@ -76,7 +76,7 @@ function DateRangePicker() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-44 bg-surface border border-border/60 rounded-card shadow-floating animate-fadeIn origin-top z-30 p-1.5">
+        <div className="absolute right-0 top-full mt-2 w-44 bg-surface border border-border/60 rounded-card shadow-floating animate-fade-in origin-top z-30 p-1.5">
           {buildPresets().map((preset) => (
             <button
               key={preset.label}
@@ -137,7 +137,7 @@ function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-surface border border-border/60 rounded-card shadow-floating animate-fadeIn origin-top z-30 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-surface border border-border/60 rounded-card shadow-floating animate-fade-in origin-top z-30 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
             <h3 className="font-semibold text-sm text-secondary">Notifications</h3>
             <button type="button" onClick={() => setOpen(false)} className="text-muted hover:text-secondary">

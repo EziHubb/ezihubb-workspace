@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { Select } from '@ezihubb/ui';
 import { api } from '../../lib/api-client';
 
 interface IPScanResult {
@@ -69,16 +70,16 @@ export function IPScanPanel() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-muted mb-1">Entity Type</label>
-            <select
+            <Select
               value={entityType}
               onChange={e => setEntityType(e.target.value)}
-              className="w-full rounded-button border border-border px-3 py-2 text-sm focus:outline-none focus:border-primary transition-colors"
-            >
-              <option value="product">Product</option>
-              <option value="design_asset">Design Asset</option>
-              <option value="store_banner">Store Banner</option>
-              <option value="profile_image">Profile Image</option>
-            </select>
+              options={[
+                { value: 'product',       label: 'Product' },
+                { value: 'design_asset',  label: 'Design Asset' },
+                { value: 'store_banner',  label: 'Store Banner' },
+                { value: 'profile_image', label: 'Profile Image' },
+              ]}
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-muted mb-1">Entity ID (optional)</label>

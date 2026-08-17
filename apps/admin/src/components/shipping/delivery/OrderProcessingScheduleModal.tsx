@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Check } from 'lucide-react';
+import { Drawer, DrawerHeader, DrawerBody, DrawerFooter, Button } from '@ezihubb/ui';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 
@@ -66,13 +67,10 @@ export function OrderProcessingScheduleModal({ processesOnSaturday, processesOnS
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-lg p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="font-semibold text-secondary text-lg">Order processing schedule</h3>
+    <Drawer isOpen onClose={onClose} width="26rem">
+      <DrawerHeader onClose={onClose}>Order processing schedule</DrawerHeader>
 
+      <DrawerBody>
         <p className="text-sm text-muted leading-relaxed">
           If you're preparing, packaging, or dispatching orders on Saturday or Sunday, you can add those days
           to your processing schedule to show shoppers more accurate delivery dates for future orders.
@@ -94,21 +92,12 @@ export function OrderProcessingScheduleModal({ processesOnSaturday, processesOnS
         </div>
 
         {error && <p className="text-xs text-red-600">{error}</p>}
+      </DrawerBody>
 
-        <div className="flex items-center justify-between pt-2">
-          <button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-muted hover:text-secondary transition-colors">
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleUpdate}
-            disabled={saving}
-            className="px-5 py-2.5 bg-secondary hover:bg-secondary/90 text-white text-sm font-semibold rounded-button transition-colors disabled:opacity-50"
-          >
-            {saving ? 'Updating…' : 'Update'}
-          </button>
-        </div>
-      </div>
-    </div>
+      <DrawerFooter>
+        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" onClick={handleUpdate} loading={saving}>Update</Button>
+      </DrawerFooter>
+    </Drawer>
   );
 }

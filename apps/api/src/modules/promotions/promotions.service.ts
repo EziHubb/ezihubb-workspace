@@ -205,6 +205,9 @@ export class PromotionsService {
     if (query.type) {
       where.type = query.type;
     }
+    if (query.autoApply !== undefined) {
+      where.autoApply = query.autoApply;
+    }
     // Mirrors the admin UI's own derived-status logic exactly (getStatus() in
     // apps/admin/.../promotions/page.tsx): EXPIRED beats PAUSED beats
     // SCHEDULED beats ACTIVE, so the same precedence has to be reproduced

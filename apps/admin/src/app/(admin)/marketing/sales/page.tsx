@@ -4,14 +4,16 @@ import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ColumnDef } from '@tanstack/react-table';
 import {
-  Plus, Search, X, Tag, TrendingDown, Activity, Zap,
-  Copy, Pause, Play, Trash2, BarChart2, Pencil, Sparkles, Users, Package, Target,
+  Search, X, Sparkles, Eye, ShoppingCart, PackageCheck, Heart, Tag,
+  HandCoins, BadgePercent, ShoppingBag, Boxes, PartyPopper,
+  Copy, Pause, Play, Trash2, BarChart2, Pencil, Package,
 } from 'lucide-react';
-import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
+import { Modal, ModalHeroHeader, Button } from '@ezihubb/ui';
 import { DataTable } from '../../../../components/data/DataTable';
 import { PromotionModal, type Promotion, type PromotionFormData } from '../../../../components/promotions/PromotionModal';
 import { PromotionStatsDrawer } from '../../../../components/promotions/PromotionStatsDrawer';
 import { SetUpSaleModal, type SaleFormData } from '../../../../components/marketing/SetUpSaleModal';
+import { OrderMinimumModal, type OrderMinimumFormData, type OrderMinimumPromotion } from '../../../../components/marketing/OrderMinimumModal';
 import { BuyTogetherModal, type BundleFormData, type BundleOffer } from '../../../../components/marketing/BuyTogetherModal';
 import { TargetedOffersModal } from '../../../../components/marketing/TargetedOffersModal';
 import { BuyerOffersPanel } from '../../../../components/marketing/BuyerOffersPanel';
@@ -20,6 +22,7 @@ import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtDate, fmtNum } from '../../../../lib/fmt';
 import { useDialog } from '../../../../contexts/DialogContext';
 import { FilterSelect } from '../../../../components/ui/FilterSelect';
+import { ReloadButton } from '../../../../components/ui/ReloadButton';
 import { useAdminMode } from '../../../../lib/store-context';
 
 // ── Status helpers ────────────────────────────────────────────────────────────
@@ -61,36 +64,6 @@ function TypeBadge({ type }: { type: string }) {
   return <span className={`text-xs font-semibold px-2 py-0.5 rounded-pill ${cfg.cls}`}>{cfg.label}</span>;
 }
 
-function MiniStat({
-  label, value, icon: Icon, color = 'coral',
-}: {
-  label:  string;
-  value:  string | number;
-  icon:   React.ElementType;
-  color?: 'coral' | 'blue' | 'green' | 'amber';
-}) {
-  const colorMap = {
-    coral: { bg: 'bg-primary/10', text: 'text-primary'   },
-    blue:  { bg: 'bg-blue-50',    text: 'text-blue-500'  },
-    green: { bg: 'bg-green-50',   text: 'text-green-600' },
-    amber: { bg: 'bg-amber-50',   text: 'text-amber-600' },
-  };
-  const c = colorMap[color];
-  return (
-    <div className="bg-surface rounded-card border border-border shadow-card p-4 flex items-center gap-4">
-      <div className={`w-10 h-10 ${c.bg} rounded-lg flex items-center justify-center shrink-0`}>
-        <Icon className={`w-5 h-5 ${c.text}`} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xl font-bold text-secondary tabular-nums leading-tight">
-          {typeof value === 'number' ? fmtNum(value) : value}
-        </p>
-        <p className="text-xs text-muted mt-0.5">{label}</p>
-      </div>
-    </div>
-  );
-}
-
 function ActionBtn({
   icon: Icon, label, onClick, variant = 'ghost',
 }: {
@@ -117,6 +90,34 @@ function ActionBtn({
   );
 }
 
+// ── Entry-point card (Etsy's "Set up →" hub cards) ─────────────────────────────
+
+function EntryCard({
+  icon: Icon, title, desc, onClick,
+}: {
+  icon?:   React.ElementType;
+  title:   string;
+  desc:    string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-left bg-surface border border-border rounded-card p-4 hover:border-primary/40 transition-colors"
+    >
+      {Icon && (
+        <div className="w-7 h-7 mb-2.5 text-secondary">
+          <Icon className="w-full h-full" strokeWidth={1.6} />
+        </div>
+      )}
+      <h4 className="text-sm font-bold text-secondary mb-1">{title}</h4>
+      <p className="text-xs text-muted leading-relaxed mb-2.5">{desc}</p>
+      <span className="text-xs font-bold text-secondary">Set up →</span>
+    </button>
+  );
+}
+
 interface PromotionStats {
   activeCoupons:       number;
   usedToday:           number;
@@ -131,6 +132,8 @@ export default function MarketingSalesPage() {
   const { confirm } = useDialog();
   const { isPlatformContext } = useAdminMode();
 
+  const [tab, setTab] = useState<'promotions' | 'stats'>('promotions');
+
   const [page,     setPage]     = useState(1);
   const [search,   setSearch]   = useState('');
   const [typeF,    setTypeF]    = useState('');
@@ -141,6 +144,8 @@ export default function MarketingSalesPage() {
 
   const [bundleModal, setBundleModal] = useState<BundleOffer | null | 'new'>(null);
   const [targetedOffersOpen, setTargetedOffersOpen] = useState(false);
+  const [orderMinModal, setOrderMinModal] = useState<OrderMinimumPromotion | null | 'new'>(null);
+  const [buyerOffersOpen, setBuyerOffersOpen] = useState(false);
 
   // ── Stats query ───────────────────────────────────────────────────────────────
   const statsQuery = useQuery<PromotionStats>({
@@ -166,6 +171,13 @@ export default function MarketingSalesPage() {
   const promotions = listQuery.data?.data ?? [];
   const total      = listQuery.data?.total ?? 0;
 
+  // "Your key sales and discounts" — top active auto-apply sales, no filters, last 30 days worth
+  const keySalesQuery = useQuery({
+    queryKey: ['admin-promotions-key-sales'],
+    queryFn:  () => api.get<{ data: Promotion[] }>(API_ROUTES.ADMIN.PROMOTIONS, { params: { page: '1', limit: '5', autoApply: 'true' } }),
+  });
+  const keySales = (keySalesQuery.data?.data ?? []).filter((p) => p.autoApply);
+
   // ── Bundle offers query ──────────────────────────────────────────────────────
   const bundlesQuery = useQuery({
     queryKey: ['admin-bundle-offers'],
@@ -177,6 +189,7 @@ export default function MarketingSalesPage() {
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['admin-promotions'] });
+    qc.invalidateQueries({ queryKey: ['admin-promotions-key-sales'] });
     qc.invalidateQueries({ queryKey: ['promo-page-stats'] });
   };
 
@@ -233,6 +246,26 @@ export default function MarketingSalesPage() {
     setSaleModal(null);
   };
 
+  const handleSaveOrderMinimum = async (data: OrderMinimumFormData, id?: string) => {
+    const payload = {
+      description:    data.description,
+      type:            'PERCENTAGE',
+      value:           data.value,
+      autoApply:       true,
+      scope:           'SHOP_WIDE',
+      minOrderAmount:  data.minOrderAmount,
+      startsAt:        data.startsAt || undefined,
+      expiresAt:       data.expiresAt || undefined,
+    };
+    if (id) {
+      await api.patch(API_ROUTES.ADMIN.PROMOTION(id), payload);
+    } else {
+      await api.post(API_ROUTES.ADMIN.PROMOTIONS, payload);
+    }
+    invalidate();
+    setOrderMinModal(null);
+  };
+
   const handleSaveBundle = async (data: BundleFormData, id?: string) => {
     if (id) {
       await api.patch(API_ROUTES.ADMIN.BUNDLE_OFFER(id), data);
@@ -254,7 +287,7 @@ export default function MarketingSalesPage() {
     qc.invalidateQueries({ queryKey: ['admin-bundle-offers'] });
   };
 
-  // ── Columns ───────────────────────────────────────────────────────────────────
+  // ── Columns (Details & Stats tab) ────────────────────────────────────────────
 
   const columns = useMemo<ColumnDef<Promotion>[]>(() => [
     {
@@ -362,7 +395,15 @@ export default function MarketingSalesPage() {
           <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
             <ActionBtn icon={BarChart2} label="Stats" onClick={() => setStatsFor(p)} />
             {status !== 'EXPIRED' && (
-              <ActionBtn icon={Pencil} label="Edit" onClick={() => (p.autoApply ? setSaleModal(p) : setCouponModal(p))} />
+              <ActionBtn
+                icon={Pencil}
+                label="Edit"
+                onClick={() => {
+                  if (p.minOrderAmount != null) setOrderMinModal(p);
+                  else if (p.autoApply) setSaleModal(p);
+                  else setCouponModal(p);
+                }}
+              />
             )}
             {status === 'ACTIVE' && (
               <ActionBtn icon={Pause} label="Pause" onClick={() => handleToggleActive(p, false)} />
@@ -386,163 +427,233 @@ export default function MarketingSalesPage() {
 
   return (
     <>
-      <AdminPageHeader
-        title="Sales and discounts"
-        subtitle={`${total} sale${total !== 1 ? 's' : ''} & coupon${total !== 1 ? 's' : ''} total`}
-        actions={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setTargetedOffersOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-muted border border-border rounded-button hover:border-primary/40 hover:text-primary transition-colors"
-            >
-              <Target className="w-4 h-4" />
-              Targeted offers
-            </button>
-            <button
-              type="button"
-              onClick={() => setSaleModal('new')}
-              className="flex items-center gap-1.5 px-4 py-2 bg-secondary hover:bg-secondary/90 text-white text-sm font-semibold rounded-button transition-colors"
-            >
-              <Sparkles className="w-4 h-4" />
-              Set up a sale
-            </button>
-            <button
-              type="button"
-              onClick={() => setCouponModal('new')}
-              className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-semibold rounded-button transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Create Promotion
-            </button>
-          </div>
-        }
-        queryKey={['admin-promotions']}
-      />
-
-      {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <MiniStat label="Active Coupons" value={stats?.activeCoupons ?? '—'} icon={Tag} color="coral" />
-        <MiniStat label="Used Today" value={stats?.usedToday ?? '—'} icon={Activity} color="blue" />
-        <MiniStat label="Revenue Discounted" value={stats ? fmtAmount(stats.revenueDiscounted) : '—'} icon={TrendingDown} color="amber" />
-        <MiniStat label="Avg Discount Value" value={stats ? fmtAmount(stats.avgDiscountValue) : '—'} icon={Zap} color="green" />
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-lg font-semibold text-secondary">Sales and discounts</h1>
+        <ReloadButton queryKey={['admin-promotions']} />
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-        <div className="relative flex-1 min-w-[220px] max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-          <input
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search coupon code…"
-            className="w-full pl-9 pr-8 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20 font-mono"
-          />
-          {search && (
-            <button type="button" onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-secondary">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        <FilterSelect
-          value={typeF}
-          onChange={(v) => { setTypeF(v); setPage(1); }}
-          options={[
-            { value: '', label: 'All Types' },
-            { value: 'PERCENTAGE',   label: '% Percentage'  },
-            { value: 'FIXED_AMOUNT', label: '$ Fixed Amount' },
-            { value: 'FREE_SHIPPING',label: 'Free Shipping'  },
-          ]}
-        />
-
-        <FilterSelect
-          value={statusF}
-          onChange={(v) => { setStatusF(v); setPage(1); }}
-          options={[
-            { value: '',          label: 'All Statuses' },
-            { value: 'ACTIVE',    label: 'Active'       },
-            { value: 'PAUSED',    label: 'Paused'       },
-            { value: 'EXPIRED',   label: 'Expired'      },
-            { value: 'SCHEDULED', label: 'Scheduled'    },
-          ]}
-        />
-
-        {(search || typeF || statusF) && (
-          <button
-            type="button"
-            onClick={() => { setSearch(''); setTypeF(''); setStatusF(''); setPage(1); }}
-            className="flex items-center gap-1 text-xs text-muted hover:text-secondary transition-colors"
-          >
-            <X className="w-3.5 h-3.5" />
-            Clear filters
-          </button>
-        )}
+      {/* Tabs */}
+      <div className="flex gap-6 border-b border-border mb-6">
+        <button
+          type="button"
+          onClick={() => setTab('promotions')}
+          className={`pb-2.5 text-sm font-semibold border-b-2 transition-colors ${tab === 'promotions' ? 'border-secondary text-secondary' : 'border-transparent text-muted hover:text-secondary'}`}
+        >
+          Promotions
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('stats')}
+          className={`pb-2.5 text-sm font-semibold border-b-2 transition-colors ${tab === 'stats' ? 'border-secondary text-secondary' : 'border-transparent text-muted hover:text-secondary'}`}
+        >
+          Details &amp; Stats
+        </button>
       </div>
 
-      {/* Table */}
-      <DataTable
-        data={promotions}
-        columns={columns}
-        isLoading={listQuery.isLoading}
-        pagination={{ page, limit: PAGE_SIZE, total, onPageChange: setPage }}
-        emptyTitle="No sales or promotions found"
-        emptyDesc="Set up a sale or create a coupon code to get started."
-      />
+      {tab === 'promotions' ? (
+        <div className="space-y-10">
+          {/* Your key sales and discounts */}
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-display text-lg font-bold text-secondary">Your key sales and discounts</h2>
+              <span className="text-xs text-muted">Last 30 Days</span>
+            </div>
+            <div className="bg-surface rounded-card border border-border p-2">
+              {keySales.length === 0 ? (
+                <p className="text-sm text-muted text-center py-8">No sales or promotions found. Set up a sale or create a coupon code below to get started.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs font-semibold text-muted border-b border-border">
+                      <th className="py-2 px-3 font-semibold">Type</th>
+                      <th className="py-2 px-3 font-semibold">Discount</th>
+                      <th className="py-2 px-3 font-semibold text-right">Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {keySales.map((p) => (
+                      <tr key={p.id} className="border-b border-border last:border-0">
+                        <td className="py-2.5 px-3">
+                          <button type="button" onClick={() => (p.minOrderAmount != null ? setOrderMinModal(p) : setSaleModal(p))} className="font-semibold text-secondary hover:underline">
+                            {p.scope === 'SPECIFIC_LISTINGS' ? 'Listing sale' : 'Shop-wide sale'} ›
+                          </button>
+                          <div className="text-xs text-muted mt-0.5">
+                            {p.startsAt ? fmtDate(p.startsAt) : '—'} – {p.expiresAt ? fmtDate(p.expiresAt) : 'No end date'}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3">{p.value}%</td>
+                        {/* Etsy's real column set here is Offers granted/Purchases/Conversion
+                            rate/Revenue — a full view→offer→purchase funnel we don't track
+                            per-promotion yet. Revenue shows 0 rather than a fabricated number. */}
+                        <td className="py-2.5 px-3 text-right tabular-nums">{fmtAmount(0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </section>
 
-      {/* Bundle offers section */}
-      <div className="mt-10">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="font-bold text-secondary text-base flex items-center gap-2">
-              <Users className="w-4 h-4 text-primary" />
-              Buy them together
-            </h2>
-            <p className="text-xs text-muted mt-0.5">Bundle 2–3 listings at a discount when bought in the same order</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setBundleModal('new')}
-            className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-semibold rounded-button transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            New bundle
-          </button>
-        </div>
+          {/* Send offers to interested buyers */}
+          <section>
+            <div className="mb-3">
+              <h2 className="font-display text-lg font-bold text-secondary">Send offers to interested buyers</h2>
+              <p className="text-sm text-muted mt-0.5">Create an offer to motivate interested shoppers automatically, or create a promo code to share with anyone you like.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <EntryCard icon={Eye}          title="Interested shopper offer" desc="Send an offer when someone shows early interest in your items." onClick={() => setTargetedOffersOpen(true)} />
+              <EntryCard icon={ShoppingCart} title="Abandoned basket offer"   desc="Send an offer when someone leaves an item from your shop in their basket." onClick={() => setTargetedOffersOpen(true)} />
+              <EntryCard icon={PackageCheck} title="Thank you offer"          desc="Send an offer to a buyer after their order dispatches, to thank them." onClick={() => setTargetedOffersOpen(true)} />
+              <EntryCard icon={Heart}        title="Favourited item offer"    desc="Send an offer when someone favourites one of your items." onClick={() => setTargetedOffersOpen(true)} />
+              <EntryCard icon={Tag}          title="Promo code"               desc="Share your code with customers — they apply it for a discount at checkout." onClick={() => setCouponModal('new')} />
+            </div>
+          </section>
 
-        {bundles.length === 0 ? (
-          <div className="bg-surface rounded-card border border-dashed border-border p-8 text-center text-sm text-muted">
-            <Package className="w-6 h-6 mx-auto mb-2 opacity-40" />
-            No bundle offers yet.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {bundles.map((b) => (
-              <div key={b.id} className="bg-surface rounded-card border border-border shadow-card p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-bold text-primary">{b.discountPercent}% off</span>
-                  <StatusBadge status={b.isActive ? 'ACTIVE' : 'PAUSED'} />
-                </div>
-                <div className="flex -space-x-2 mb-3">
-                  {b.products.map((p) => (
-                    p.images[0]
-                      ? <img key={p.id} src={p.images[0]} alt={p.name} className="w-9 h-9 rounded-full object-cover border-2 border-surface" />
-                      : <div key={p.id} className="w-9 h-9 rounded-full bg-muted/10 border-2 border-surface flex items-center justify-center"><Package className="w-3.5 h-3.5 text-muted/40" /></div>
-                  ))}
-                </div>
-                <p className="text-xs text-secondary truncate mb-3">{b.products.map((p) => p.name).join(' + ')}</p>
-                <div className="flex items-center gap-1">
-                  <ActionBtn icon={Pencil} label="Edit" onClick={() => setBundleModal(b)} />
-                  {b.isActive
-                    ? <ActionBtn icon={Pause} label="Pause" onClick={() => handleToggleBundle(b, false)} />
-                    : <ActionBtn icon={Play} label="Resume" onClick={() => handleToggleBundle(b, true)} />}
-                  <ActionBtn icon={Trash2} label="Delete" onClick={() => handleDeleteBundle(b)} variant="danger" />
-                </div>
+          {/* Drive traffic and move inventory */}
+          <section>
+            <div className="mb-3">
+              <h2 className="font-display text-lg font-bold text-secondary">Drive traffic and move inventory</h2>
+              <p className="text-sm text-muted mt-0.5">Start your own sale to boost traffic, or accept offers from buyers on select listings to move inventory.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <EntryCard icon={HandCoins}    title="Accept offers from buyers" desc="Choose specific listings, set a discount limit, and have the final say." onClick={() => setBuyerOffersOpen(true)} />
+              <EntryCard icon={BadgePercent} title="Run a sale"                desc="Set lower prices for your whole shop or just a few items — no code needed." onClick={() => setSaleModal('new')} />
+            </div>
+          </section>
+
+          {/* Up your average order value */}
+          <section>
+            <div className="mb-3">
+              <h2 className="font-display text-lg font-bold text-secondary">Up your average order value</h2>
+              <p className="text-sm text-muted mt-0.5">Encourage buyers to place bigger orders and get the most out of every sale.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <EntryCard icon={ShoppingBag} title="Set an order minimum" desc="Set up a discount with an order minimum to help boost order value." onClick={() => setOrderMinModal('new')} />
+              <EntryCard icon={Boxes}       title="Bundle items together" desc="Sweeten the deal with a discount on items buyers might want together." onClick={() => setBundleModal('new')} />
+            </div>
+
+            {bundles.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                {bundles.map((b) => (
+                  <div key={b.id} className="bg-surface rounded-card border border-border p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-bold text-primary">{b.discountPercent}% off</span>
+                      <StatusBadge status={b.isActive ? 'ACTIVE' : 'PAUSED'} />
+                    </div>
+                    <div className="flex -space-x-2 mb-3">
+                      {b.products.map((p) => (
+                        p.images[0]
+                          ? <img key={p.id} src={p.images[0]} alt={p.name} className="w-9 h-9 rounded-full object-cover border-2 border-surface" />
+                          : <div key={p.id} className="w-9 h-9 rounded-full bg-muted/10 border-2 border-surface flex items-center justify-center"><Package className="w-3.5 h-3.5 text-muted/40" /></div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-secondary truncate mb-3">{b.products.map((p) => p.name).join(' + ')}</p>
+                    <div className="flex items-center gap-1">
+                      <ActionBtn icon={Pencil} label="Edit" onClick={() => setBundleModal(b)} />
+                      {b.isActive
+                        ? <ActionBtn icon={Pause} label="Pause" onClick={() => handleToggleBundle(b, false)} />
+                        : <ActionBtn icon={Play} label="Resume" onClick={() => handleToggleBundle(b, true)} />}
+                      <ActionBtn icon={Trash2} label="Delete" onClick={() => handleDeleteBundle(b)} variant="danger" />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
+          </section>
+
+          {/* Join our next sales events — platform-wide, no real events calendar */}
+          <section className="text-center py-10">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-background flex items-center justify-center text-muted">
+              <PartyPopper className="w-5 h-5" />
+            </div>
+            <h3 className="font-display text-base font-bold text-secondary mb-1">Join our next sales events</h3>
+            <p className="text-sm text-muted">There aren&apos;t any sales events — check again soon.</p>
+          </section>
+        </div>
+      ) : (
+        <div>
+          {/* Stats mini row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            <div className="bg-surface rounded-card border border-border p-4">
+              <p className="text-xs text-muted mb-1">Active Coupons</p>
+              <p className="font-display text-xl font-bold text-secondary tabular-nums">{stats?.activeCoupons ?? '—'}</p>
+            </div>
+            <div className="bg-surface rounded-card border border-border p-4">
+              <p className="text-xs text-muted mb-1">Used Today</p>
+              <p className="font-display text-xl font-bold text-secondary tabular-nums">{stats?.usedToday ?? '—'}</p>
+            </div>
+            <div className="bg-surface rounded-card border border-border p-4">
+              <p className="text-xs text-muted mb-1">Revenue Discounted</p>
+              <p className="font-display text-xl font-bold text-secondary tabular-nums">{stats ? fmtAmount(stats.revenueDiscounted) : '—'}</p>
+            </div>
+            <div className="bg-surface rounded-card border border-border p-4">
+              <p className="text-xs text-muted mb-1">Avg Discount Value</p>
+              <p className="font-display text-xl font-bold text-secondary tabular-nums">{stats ? fmtAmount(stats.avgDiscountValue) : '—'}</p>
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-3 mb-5">
+            <div className="relative flex-1 min-w-[220px] max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
+              <input
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                placeholder="Search coupon code…"
+                className="w-full pl-9 pr-8 py-2 text-sm border border-border rounded-pill bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20 font-mono"
+              />
+              {search && (
+                <button type="button" onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-secondary">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <FilterSelect
+              value={typeF}
+              onChange={(v) => { setTypeF(v); setPage(1); }}
+              options={[
+                { value: '', label: 'All Types' },
+                { value: 'PERCENTAGE',   label: '% Percentage'  },
+                { value: 'FIXED_AMOUNT', label: '$ Fixed Amount' },
+                { value: 'FREE_SHIPPING',label: 'Free Shipping'  },
+              ]}
+            />
+
+            <FilterSelect
+              value={statusF}
+              onChange={(v) => { setStatusF(v); setPage(1); }}
+              options={[
+                { value: '',          label: 'All Statuses' },
+                { value: 'ACTIVE',    label: 'Active'       },
+                { value: 'PAUSED',    label: 'Paused'       },
+                { value: 'EXPIRED',   label: 'Expired'      },
+                { value: 'SCHEDULED', label: 'Scheduled'    },
+              ]}
+            />
+
+            {(search || typeF || statusF) && (
+              <button
+                type="button"
+                onClick={() => { setSearch(''); setTypeF(''); setStatusF(''); setPage(1); }}
+                className="flex items-center gap-1 text-xs text-muted hover:text-secondary transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+                Clear filters
+              </button>
+            )}
+          </div>
+
+          <DataTable
+            data={promotions}
+            columns={columns}
+            isLoading={listQuery.isLoading}
+            pagination={{ page, limit: PAGE_SIZE, total, onPageChange: setPage }}
+            emptyTitle="No sales or promotions found"
+            emptyDesc="Set up a sale or create a coupon code to get started."
+          />
+        </div>
+      )}
 
       {/* Coupon modal */}
       {couponModal !== null && (
@@ -563,6 +674,15 @@ export default function MarketingSalesPage() {
         />
       )}
 
+      {/* Order minimum modal */}
+      {orderMinModal !== null && (
+        <OrderMinimumModal
+          promotion={orderMinModal === 'new' ? null : orderMinModal}
+          onClose={() => setOrderMinModal(null)}
+          onSave={handleSaveOrderMinimum}
+        />
+      )}
+
       {/* Bundle modal */}
       {bundleModal !== null && (
         <BuyTogetherModal
@@ -573,7 +693,23 @@ export default function MarketingSalesPage() {
       )}
 
       {/* Let buyers make offers */}
-      <BuyerOffersPanel />
+      {buyerOffersOpen && (
+        <Modal isOpen onClose={() => setBuyerOffersOpen(false)} size="md">
+          <ModalHeroHeader
+            icon={<HandCoins className="w-7 h-7" />}
+            title="Let buyers make offers"
+            subtitle="Buyers can propose a lower price on eligible listings for you to accept, reject, or counter."
+            band="periwinkle"
+            onClose={() => setBuyerOffersOpen(false)}
+          />
+          <div className="overflow-y-auto px-6 py-5">
+            <BuyerOffersPanel embedded />
+          </div>
+          <div className="shrink-0 border-t border-border px-6 py-4">
+            <Button variant="ghost" onClick={() => setBuyerOffersOpen(false)}>Done</Button>
+          </div>
+        </Modal>
+      )}
 
       {/* Targeted offers modal */}
       {targetedOffersOpen && <TargetedOffersModal onClose={() => setTargetedOffersOpen(false)} />}

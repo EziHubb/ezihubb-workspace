@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Plus, Trash2, X } from 'lucide-react';
+import { Drawer, DrawerHeader, DrawerBody, DrawerFooter, Button, Select } from '@ezihubb/ui';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES, CARRIER_SERVICES } from '@ezihubb/constants';
 import { COUNTRIES } from './countries';
@@ -58,15 +59,12 @@ function DestinationRow({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Delivery service</label>
-          <select
+          <Select
+            size="sm"
             value={row.carrierService}
             onChange={(e) => onChange({ carrierService: e.target.value })}
-            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            {CARRIER_SERVICES.map((c) => (
-              <option key={c.value} value={c.value}>{c.label}</option>
-            ))}
-          </select>
+            options={CARRIER_SERVICES.map((c) => ({ value: c.value, label: c.label }))}
+          />
           {row.carrierService === 'OTHER' && (
             <input
               value={row.carrierName ?? ''}
@@ -100,14 +98,15 @@ function DestinationRow({
       <div className="grid grid-cols-2 gap-4 items-end">
         <div>
           <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">What you'll charge</label>
-          <select
+          <Select
+            size="sm"
             value={row.chargeType}
             onChange={(e) => onChange({ chargeType: e.target.value as 'FIXED' | 'FREE' })}
-            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="FIXED">Fixed price</option>
-            <option value="FREE">Free delivery</option>
-          </select>
+            options={[
+              { value: 'FIXED', label: 'Fixed price' },
+              { value: 'FREE',  label: 'Free delivery' },
+            ]}
+          />
         </div>
 
         {!isFree && (
@@ -259,26 +258,16 @@ export function DeliveryProfileModal({ profile, submitLabel, entityLabel = 'deli
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
-      <div
-        className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-2xl my-8"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-surface rounded-t-card">
-          <div>
-            <h3 className="font-semibold text-secondary text-lg">
-              {isEdit ? `Edit ${entityLabel}` : `Create ${entityLabel}`}
-            </h3>
-            <p className="text-xs text-muted mt-0.5">
-              We use these settings to calculate postage costs and estimated delivery dates for buyers.
-            </p>
-          </div>
-          <button type="button" onClick={onClose} className="p-1.5 rounded hover:bg-muted/10 text-muted shrink-0">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+    <Drawer isOpen onClose={onClose} width="34rem">
+      <DrawerHeader onClose={onClose}>
+        {isEdit ? `Edit ${entityLabel}` : `Create ${entityLabel}`}
+      </DrawerHeader>
 
-        <div className="px-6 py-5 space-y-6">
+      <DrawerBody>
+          <p className="text-xs text-muted -mt-2">
+            We use these settings to calculate postage costs and estimated delivery dates for buyers.
+          </p>
+
           {/* Origin */}
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -286,15 +275,11 @@ export function DeliveryProfileModal({ profile, submitLabel, entityLabel = 'deli
                 Country items are dispatched from <span className="text-red-500">*</span>
               </label>
               <p className="text-xs text-muted mb-1.5">The country you're dispatching from</p>
-              <select
+              <Select
                 value={originCountry}
                 onChange={(e) => setOriginCountry(e.target.value)}
-                className="w-full px-3 py-2.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                {COUNTRIES.map((c) => (
-                  <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
-                ))}
-              </select>
+                options={COUNTRIES.map((c) => ({ value: c.code, label: `${c.flag} ${c.name}` }))}
+              />
             </div>
             <div>
               <label className="block text-sm font-semibold text-secondary mb-1">
@@ -351,22 +336,14 @@ export function DeliveryProfileModal({ profile, submitLabel, entityLabel = 'deli
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
-        </div>
+      </DrawerBody>
 
-        <div className="flex items-center justify-between px-6 py-4 border-t border-border sticky bottom-0 bg-surface rounded-b-card">
-          <button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-muted hover:text-secondary transition-colors">
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="px-5 py-2.5 bg-secondary hover:bg-secondary/90 text-white text-sm font-semibold rounded-button transition-colors disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : (submitLabel ?? 'Save profile')}
-          </button>
-        </div>
-      </div>
+      <DrawerFooter>
+        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" onClick={handleSave} loading={saving}>
+          {submitLabel ?? 'Save profile'}
+        </Button>
+      </DrawerFooter>
 
       {showAddLocation && (
         <AddLocationPicker
@@ -375,6 +352,6 @@ export function DeliveryProfileModal({ profile, submitLabel, entityLabel = 'deli
           onClose={() => setShowAddLocation(false)}
         />
       )}
-    </div>
+    </Drawer>
   );
 }

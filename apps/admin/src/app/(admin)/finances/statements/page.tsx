@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Landmark, Receipt, ArrowLeft, ArrowRight, Download } from 'lucide-react';
+import { Landmark, Receipt, ArrowLeft, ArrowRight, Download, ChevronDown } from 'lucide-react';
+import { Menu } from '@ezihubb/ui';
 import { api } from '../../../../lib/api-client';
 import { useFinancesActivitySummary, useFinancesActivities } from '../../../../lib/useFinances';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -65,22 +66,26 @@ export default function MonthlyStatementPage() {
       <h1 className="text-xl font-bold text-secondary mb-6">Monthly statement</h1>
 
       <div className="flex items-center gap-2 mb-5">
-        <select
-          value={month}
-          onChange={(e) => handleMonthChange(Number(e.target.value), year)}
-          className="text-sm font-medium border border-border rounded-full px-4 py-2 bg-surface text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          {monthNames.map((name, i) => (
-            <option key={name} value={i + 1}>{name}</option>
-          ))}
-        </select>
-        <select
-          value={year}
-          onChange={(e) => handleMonthChange(month, Number(e.target.value))}
-          className="text-sm font-medium border border-border rounded-full px-4 py-2 bg-surface text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
-        </select>
+        <Menu
+          panelWidth="9rem"
+          trigger={
+            <span className="inline-flex items-center gap-1.5 text-sm font-medium border border-border rounded-full px-4 py-2 bg-surface text-secondary hover:border-secondary/40 transition-colors">
+              {monthNames[month - 1]}
+              <ChevronDown className="w-3.5 h-3.5" />
+            </span>
+          }
+          items={monthNames.map((name, i) => ({ label: name, onClick: () => handleMonthChange(i + 1, year) }))}
+        />
+        <Menu
+          panelWidth="7rem"
+          trigger={
+            <span className="inline-flex items-center gap-1.5 text-sm font-medium border border-border rounded-full px-4 py-2 bg-surface text-secondary hover:border-secondary/40 transition-colors">
+              {year}
+              <ChevronDown className="w-3.5 h-3.5" />
+            </span>
+          }
+          items={yearOptions.map((y) => ({ label: String(y), onClick: () => handleMonthChange(month, y) }))}
+        />
       </div>
 
       {sumLoading || !summary ? (

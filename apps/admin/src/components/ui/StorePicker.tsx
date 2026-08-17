@@ -88,7 +88,7 @@ export function StorePicker({ value, onChange, className = '' }: StorePickerProp
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute top-full mt-2 z-40 w-full min-w-[280px] bg-surface border border-border/60 rounded-card shadow-floating p-1.5 animate-fadeIn origin-top">
+          <div className="absolute top-full mt-2 z-40 w-full min-w-[280px] bg-surface border border-border/60 rounded-card shadow-floating p-1.5 animate-fade-in origin-top">
             <div className="relative mb-1.5">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
               <input

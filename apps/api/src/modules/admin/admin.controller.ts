@@ -13,6 +13,7 @@ import {
   OrdersByStatusDto,
   RevenueChartPointDto,
   TopProductDto,
+  ShopHealthDto,
 } from './dto/dashboard.dto';
 import { ReviewResponseDto } from '../reviews/dto/review-response.dto';
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
@@ -50,6 +51,14 @@ export class AdminController {
   async getKPIs(@Req() req: Request): Promise<DashboardKPIsDto> {
     const context = await this.storeContext.resolve(req);
     return this.adminService.getDashboardKPIs(context.storeId ?? undefined);
+  }
+
+  @Get('shop-health')
+  @ApiOperation({ summary: 'Shop-completeness checklist + search-visibility + Star Seller signals — shop owner only' })
+  async getShopHealth(@Req() req: Request): Promise<ShopHealthDto> {
+    const context = await this.storeContext.resolve(req);
+    const storeId = this.storeContext.requireStoreId(context);
+    return this.adminService.getShopHealth(storeId);
   }
 
   @Get('revenue')

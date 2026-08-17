@@ -8,6 +8,7 @@ import {
   X, Check, Package, Truck, MapPin, User,
   ExternalLink, Save, Mail, DollarSign, MessageSquare, Gift,
 } from 'lucide-react';
+import { Select } from '@ezihubb/ui';
 import { fmtDate, fmtDateTime } from '../../lib/fmt';
 import { OrderStatusBadge, ALL_STATUSES, StatusSelect } from './OrderStatusBadge';
 import { CustomizationPreviewModal } from './CustomizationPreviewModal';
@@ -320,15 +321,14 @@ function ShippingInfo({ order, onUpdate }: { order: OrderDetail; onUpdate: () =>
 
       {/* Tracking input */}
       <div className="flex gap-2 mt-3">
-        <select
-          value={carrier}
-          onChange={(e) => setCarrier(e.target.value)}
-          className="px-2 py-1.5 text-xs border border-border rounded-button bg-background text-secondary focus:outline-none focus:ring-1 focus:ring-primary/30"
-        >
-          {['FedEx', 'USPS', 'UPS', 'DHL'].map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </select>
+        <div className="w-28 shrink-0">
+          <Select
+            size="sm"
+            value={carrier}
+            onChange={(e) => setCarrier(e.target.value)}
+            options={['FedEx', 'USPS', 'UPS', 'DHL'].map((c) => ({ value: c, label: c }))}
+          />
+        </div>
         <input
           value={tracking}
           onChange={(e) => setTracking(e.target.value)}

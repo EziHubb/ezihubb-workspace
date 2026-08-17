@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Zap, Percent, DollarSign, Truck, Globe2 } from 'lucide-react';
+import { Tag, Zap, Percent, DollarSign, Truck, Globe2 } from 'lucide-react';
+import { Modal, ModalHeroHeader, Button } from '@ezihubb/ui';
 import { StorePicker, type StoreOption } from '../ui/StorePicker';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -179,26 +180,17 @@ export function PromotionModal({ promotion, isPlatformContext, onClose, onSave }
   };
 
   return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-        {/* Modal */}
-        <div
-          className="relative bg-surface rounded-card border border-border shadow-2xl w-full max-w-[560px] max-h-[90vh] overflow-y-auto"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-surface z-10">
-            <h2 className="font-bold text-secondary text-base">
-              {isEdit ? `Edit: ${promotion.code}` : 'Create Promotion'}
-            </h2>
-            <button type="button" onClick={onClose} className="p-1.5 rounded-button hover:bg-muted/10 text-muted transition-colors">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Body */}
-          <div className="px-6 py-5 space-y-5">
+    <Modal isOpen onClose={onClose} size="md">
+      <ModalHeroHeader
+        icon={<Tag className="w-7 h-7" />}
+        title={isEdit ? `Edit ${promotion.code}` : 'Create a promo code'}
+        subtitle="A promo code is an easy way to share a discount with anyone you choose. It can also be a great way to encourage purchases and build loyalty."
+        band="periwinkle"
+        onClose={onClose}
+      />
+      <div className="overflow-y-auto">
+        {/* Body */}
+        <div className="px-6 py-5 space-y-5">
 
             {/* Code */}
             <Field label="Coupon Code" required>
@@ -362,28 +354,15 @@ export function PromotionModal({ promotion, isPlatformContext, onClose, onSave }
                 placeholder="e.g. For influencer campaign Q3 2025"
               />
             </Field>
-          </div>
-
-          {/* Footer */}
-          <div className="sticky bottom-0 bg-surface border-t border-border px-6 py-4 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors disabled:opacity-50"
-            >
-              {saving ? 'Saving…' : (isEdit ? 'Save Promotion' : 'Create Promotion')}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 text-sm font-medium text-muted border border-border rounded-button hover:border-primary/40 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
         </div>
       </div>
-    </>
+
+      <div className="shrink-0 border-t border-border px-6 py-4 flex items-center gap-3">
+        <Button variant="primary" onClick={handleSave} loading={saving}>
+          {isEdit ? 'Save code' : 'Continue'}
+        </Button>
+        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+      </div>
+    </Modal>
   );
 }

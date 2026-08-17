@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { Drawer, DrawerHeader, DrawerBody, DrawerFooter, Button, Select } from '@ezihubb/ui';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import type { ProcessingProfile, ProcessingProfileType } from './types';
@@ -86,21 +86,12 @@ export function ProcessingProfileModal({ profile, submitLabel, onClose, onSaved 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-md"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h3 className="font-semibold text-secondary text-lg">
-            {isEdit ? 'Edit processing profile' : 'Create processing profile'}
-          </h3>
-          <button type="button" onClick={onClose} className="p-1.5 rounded hover:bg-muted/10 text-muted">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+    <Drawer isOpen onClose={onClose} width="26rem">
+      <DrawerHeader onClose={onClose}>
+        {isEdit ? 'Edit processing profile' : 'Create processing profile'}
+      </DrawerHeader>
 
-        <div className="px-5 py-5 space-y-5">
+      <DrawerBody>
           <div>
             <p className="text-sm font-semibold text-secondary mb-1">
               Are your items made to order, or ready to dispatch? <span className="text-red-500">*</span>
@@ -137,34 +128,22 @@ export function ProcessingProfileModal({ profile, submitLabel, onClose, onSaved 
               How much processing time do you need? <span className="text-red-500">*</span>
             </label>
             <p className="text-xs text-muted mb-2">We use an item's processing time to calculate your dispatch-by dates.</p>
-            <select
+            <Select
               value={presetIndex}
               onChange={(e) => setPresetIndex(Number(e.target.value))}
-              className="w-full px-3 py-2.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              {options.map((p, i) => (
-                <option key={p.label} value={i}>{p.label}</option>
-              ))}
-            </select>
+              options={options.map((p, i) => ({ value: String(i), label: p.label }))}
+            />
           </div>
 
           {error && <p className="text-xs text-red-600">{error}</p>}
-        </div>
+      </DrawerBody>
 
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-border">
-          <button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-muted hover:text-secondary transition-colors">
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="px-5 py-2.5 bg-secondary hover:bg-secondary/90 text-white text-sm font-semibold rounded-button transition-colors disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : (submitLabel ?? (isEdit ? 'Save' : 'Create'))}
-          </button>
-        </div>
-      </div>
-    </div>
+      <DrawerFooter>
+        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" onClick={handleSave} loading={saving}>
+          {submitLabel ?? (isEdit ? 'Save' : 'Create')}
+        </Button>
+      </DrawerFooter>
+    </Drawer>
   );
 }

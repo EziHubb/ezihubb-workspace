@@ -15,7 +15,7 @@ import {
   Bookmark, Factory, Shield, Store, BarChart2, Wallet, ShieldAlert, History,
   SlidersHorizontal, ScanSearch, TrendingUp,
   Menu, X, Megaphone, Plug, KeyRound, ArrowLeftRight, Landmark, FileText,
-  Share2, Gift, Radio,
+  Share2, Gift, Radio, HeartHandshake,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -163,6 +163,9 @@ function getShopNavSections(storeId: string): NavSection[] {
             { label: 'Marketplace Insights', href: '/stats/listings', icon: BarChart2  },
           ],
         },
+        { label: 'Search visibility',      href: '/search-visibility',      icon: ScanSearch     },
+        { label: 'Customer service stats', href: '/customer-service-stats', icon: HeartHandshake },
+        { label: 'Policy violations',      href: '/policy-violations',      icon: ShieldAlert     },
       ],
     },
     {
@@ -260,6 +263,9 @@ function useNavData() {
 }
 
 // ── Child nav row ─────────────────────────────────────────────────────────────
+// Etsy's Shop Manager nav is flat text on a light sidebar — no boxed icon
+// backgrounds. Active state is a soft tint (theme-primary at low alpha, see
+// `sidebar-active` in apps/admin/tailwind.config.js) rather than a colored fill.
 
 function ChildRow({ item, isActive }: { item: ChildItem; isActive: boolean }) {
   const Icon = item.icon;
@@ -270,18 +276,17 @@ function ChildRow({ item, isActive }: { item: ChildItem; isActive: boolean }) {
       className={[
         'flex items-center gap-2.5 pl-9 pr-3 h-9 rounded-lg text-xs font-medium transition-all duration-150',
         isActive
-          ? 'text-white bg-white/10'
-          : 'text-[#6B7280] hover:text-[#D1D5DB] hover:bg-white/5',
+          ? 'text-secondary font-semibold bg-sidebar-active'
+          : 'text-muted hover:text-secondary hover:bg-black/[0.03]',
       ].join(' ')}
     >
-      <Icon className="w-3.5 h-3.5 shrink-0 opacity-80" />
+      <Icon className="w-3.5 h-3.5 shrink-0 opacity-70" />
       <span className="flex-1 truncate">{item.label}</span>
       {item.badge !== undefined && item.badge > 0 && (
-        <span className="bg-primary/90 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+        <span className="bg-primary text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
           {item.badge > 99 ? '99+' : item.badge}
         </span>
       )}
-      {isActive && <span className="w-1 h-1 rounded-full bg-primary shrink-0" />}
     </Link>
   );
 }
@@ -322,16 +327,11 @@ function NavRow({ item }: { item: NavItem }) {
           onClick={() => setOpen((o) => !o)}
           className={[
             'group flex items-center justify-between w-full px-3 h-10 rounded-xl text-sm font-medium transition-all duration-150 select-none',
-            hasActiveChild ? 'text-white' : 'text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-white/5',
+            hasActiveChild ? 'text-secondary font-semibold' : 'text-muted hover:text-secondary hover:bg-black/[0.03]',
           ].join(' ')}
         >
           <span className="flex items-center gap-3 min-w-0">
-            <span className={[
-              'flex items-center justify-center w-7 h-7 rounded-lg shrink-0 transition-all',
-              hasActiveChild ? 'bg-white/10' : 'bg-white/5 group-hover:bg-white/8',
-            ].join(' ')}>
-              <Icon className="w-4 h-4" />
-            </span>
+            <Icon className="w-4 h-4 shrink-0 opacity-80" />
             <span className="truncate">{item.label}</span>
           </span>
           <ChevronDown className={[
@@ -341,7 +341,7 @@ function NavRow({ item }: { item: NavItem }) {
         </button>
 
         {open && (
-          <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-white/[0.08] space-y-0.5">
+          <div className="mt-0.5 mb-1 ml-3 pl-3 border-l border-border space-y-0.5">
             {item.children!.map((child) => (
               <ChildRow key={child.href} item={child} isActive={child.href === activeChildHref} />
             ))}
@@ -353,17 +353,12 @@ function NavRow({ item }: { item: NavItem }) {
 
   const rowClassName = [
     'group flex items-center gap-3 px-3 h-10 rounded-xl text-sm font-medium transition-all duration-150 select-none',
-    isLeafActive ? 'bg-primary/20 text-white' : 'text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-white/5',
+    isLeafActive ? 'bg-sidebar-active text-secondary font-semibold' : 'text-muted hover:text-secondary hover:bg-black/[0.03]',
   ].join(' ');
 
   const rowContent = (
     <>
-      <span className={[
-        'flex items-center justify-center w-7 h-7 rounded-lg shrink-0 transition-all',
-        isLeafActive ? 'bg-primary/30' : 'bg-white/5 group-hover:bg-white/8',
-      ].join(' ')}>
-        <Icon className="w-4 h-4" />
-      </span>
+      <Icon className="w-4 h-4 shrink-0 opacity-80" />
       <span className="flex-1 truncate">{item.label}</span>
       {item.badge !== undefined && item.badge > 0 && (
         <span className="bg-primary text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
@@ -394,7 +389,7 @@ function NavSectionGroup({ section }: { section: NavSection }) {
   return (
     <div className="space-y-0.5">
       {section.title && (
-        <p className="px-3 pt-3 pb-1 text-[10px] font-semibold tracking-[0.08em] uppercase text-[#4B5563] select-none">
+        <p className="px-3 pt-3 pb-1 text-[10px] font-semibold tracking-[0.08em] uppercase text-muted select-none">
           {section.title}
         </p>
       )}
@@ -412,7 +407,7 @@ function LogoMark({ role, inStoreMode }: { role?: string; inStoreMode?: boolean 
   return (
     <div className="flex items-center gap-3">
       <div
-        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-lg"
+        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
         style={{ background: isShopOwner
           ? 'linear-gradient(135deg, #059669 0%, #047857 100%)'
           : 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)' }}
@@ -422,8 +417,8 @@ function LogoMark({ role, inStoreMode }: { role?: string; inStoreMode?: boolean 
         </span>
       </div>
       <div>
-        <p className="text-white font-bold text-sm leading-tight tracking-tight">EziHubb</p>
-        <p className="text-[10px] font-medium leading-tight mt-0.5 tracking-wide" style={{ color: isShopOwner ? '#6EE7B7' : '#6366F1' }}>
+        <p className="text-secondary font-bold text-sm leading-tight tracking-tight">EziHubb</p>
+        <p className="text-[10px] font-semibold leading-tight mt-0.5 tracking-wide" style={{ color: isShopOwner ? '#059669' : '#4F46E5' }}>
           {isShopOwner ? 'Seller Hub' : 'Admin Panel'}
         </p>
       </div>
@@ -460,14 +455,14 @@ function SidebarBody({
           <button
             type="button"
             onClick={toggleStoreMode}
-            className="w-full flex items-center gap-2 px-3 h-9 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-[#D1D5DB] transition-colors"
+            className="w-full flex items-center gap-2 px-3 h-9 rounded-xl text-xs font-semibold bg-black/[0.03] hover:bg-black/[0.06] border border-border text-secondary transition-colors"
             title={inStoreMode ? 'Switch back to the platform-wide view' : 'Switch into your own store, scoped exactly like a shop owner'}
           >
             <ArrowLeftRight className="w-3.5 h-3.5 shrink-0" />
             <span className="flex-1 text-left truncate">
               {inStoreMode ? 'Viewing: My Store' : 'Viewing: Platform'}
             </span>
-            <span className="text-[10px] font-medium text-[#6B7280]">Switch</span>
+            <span className="text-[10px] font-medium text-muted">Switch</span>
           </button>
         </div>
       )}
@@ -480,7 +475,7 @@ function SidebarBody({
       </nav>
 
       {/* User footer */}
-      <div className="shrink-0 px-3 py-3 border-t border-white/[0.06]">
+      <div className="shrink-0 px-3 py-3 border-t border-border">
         <div className="flex items-center gap-2.5">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -489,11 +484,11 @@ function SidebarBody({
             <span className="text-white font-bold text-xs">{initials}</span>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-white text-xs font-semibold truncate leading-tight">{name}</p>
-            <p className="text-[11px] truncate leading-tight mt-0.5" style={{ color: '#6B7280' }}>{email}</p>
+            <p className="text-secondary text-xs font-semibold truncate leading-tight">{name}</p>
+            <p className="text-muted text-[11px] truncate leading-tight mt-0.5">{email}</p>
             <span className={[
               'inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded mt-0.5',
-              role === 'SUPER_ADMIN' && !inStoreMode ? 'bg-[#7C3AED]/20 text-[#A78BFA]' : 'bg-emerald-500/20 text-emerald-400',
+              role === 'SUPER_ADMIN' && !inStoreMode ? 'bg-violet-100 text-violet-700' : 'bg-emerald-100 text-emerald-700',
             ].join(' ')}>
               {inStoreMode ? 'Super Admin · My Store' : role === 'SUPER_ADMIN' ? 'Super Admin' : 'Shop Owner'}
             </span>
@@ -501,7 +496,7 @@ function SidebarBody({
           <button
             type="button"
             onClick={() => { setStoreContext(null); signOut({ callbackUrl: '/login' }); }}
-            className="shrink-0 p-1.5 rounded-lg text-[#6B7280] hover:text-red-400 hover:bg-red-500/10 transition-all duration-150"
+            className="shrink-0 p-1.5 rounded-lg text-muted hover:text-red-600 hover:bg-red-50 transition-all duration-150"
             title="Sign out"
           >
             <LogOut className="w-3.5 h-3.5" />
@@ -518,14 +513,11 @@ export function AdminSidebar() {
   const { name, email, initials, navSections, role, canSwitchToOwnStore, inStoreMode, toggleStoreMode } = useNavData();
 
   return (
-    <aside
-      className="hidden lg:flex flex-col w-[248px] shrink-0 h-screen"
-      style={{ background: 'linear-gradient(180deg, #16161F 0%, #1A1A26 100%)' }}
-    >
+    <aside className="hidden lg:flex flex-col w-[248px] shrink-0 h-screen bg-background border-r border-border">
       <div className="px-4 pt-5 pb-3">
         <LogoMark role={role} inStoreMode={inStoreMode} />
       </div>
-      <div className="mx-4 mb-2 border-t border-white/5" />
+      <div className="mx-4 mb-2 border-t border-border" />
       <SidebarBody
         navSections={navSections}
         name={name}
@@ -559,15 +551,12 @@ export function AdminMobileNav() {
   return (
     <>
       {/* ── Mobile top bar ───────────────────────────────────────────────── */}
-      <div
-        className="lg:hidden flex items-center justify-between px-4 h-14 shrink-0 border-b border-white/5"
-        style={{ background: '#16161F' }}
-      >
+      <div className="lg:hidden flex items-center justify-between px-4 h-14 shrink-0 bg-background border-b border-border">
         <LogoMark role={role} inStoreMode={inStoreMode} />
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="p-2 rounded-xl text-[#9CA3AF] hover:text-white hover:bg-white/10 transition-colors"
+          className="p-2 rounded-xl text-muted hover:text-secondary hover:bg-black/[0.04] transition-colors"
           aria-label="Open navigation"
         >
           <Menu className="w-5 h-5" />
@@ -577,7 +566,7 @@ export function AdminMobileNav() {
       {/* ── Backdrop ─────────────────────────────────────────────────────── */}
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
           onClick={() => setOpen(false)}
           aria-hidden="true"
         />
@@ -587,17 +576,17 @@ export function AdminMobileNav() {
       <div
         className={[
           'fixed inset-y-0 left-0 z-50 flex flex-col w-[280px] lg:hidden transition-transform duration-300 ease-in-out overflow-hidden',
+          'bg-background',
           open ? 'translate-x-0' : '-translate-x-full',
         ].join(' ')}
-        style={{ background: 'linear-gradient(180deg, #16161F 0%, #1A1A26 100%)' }}
       >
         {/* Drawer header */}
-        <div className="flex items-center justify-between px-4 h-14 border-b border-white/5 shrink-0">
+        <div className="flex items-center justify-between px-4 h-14 border-b border-border shrink-0">
           <LogoMark role={role} inStoreMode={inStoreMode} />
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="p-2 rounded-xl text-[#9CA3AF] hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2 rounded-xl text-muted hover:text-secondary hover:bg-black/[0.04] transition-colors"
             aria-label="Close navigation"
           >
             <X className="w-5 h-5" />

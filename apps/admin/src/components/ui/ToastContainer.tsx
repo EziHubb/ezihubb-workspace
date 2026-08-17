@@ -73,7 +73,7 @@ function Toast({ t }: { t: ToastItem }) {
       className={[
         'relative overflow-hidden flex items-start gap-3 p-4',
         'bg-white rounded-md border border-border border-l-4 shadow-lg',
-        'animate-fadeIn',
+        'animate-fade-in',
         styles.border,
       ].join(' ')}
     >

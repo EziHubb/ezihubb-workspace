@@ -1,5 +1,6 @@
 const { createGlobPatternsForDependencies } = require('@nx/react/tailwind');
 const { join } = require('path');
+const uiTokens = require('../../libs/ui/tailwind.config');
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -8,50 +9,20 @@ module.exports = {
     join(__dirname, '../../libs/ui/src/**/*.{ts,tsx}'),
     ...createGlobPatternsForDependencies(__dirname),
   ],
+  // Single source of truth is libs/ui's theme (same pattern apps/client already
+  // uses) — admin previously hand-duplicated tokens and drifted (wrong bg hex,
+  // missing status/badge scales, `fadeIn` vs `fade-in` naming split). Only
+  // admin-specific additions (sidebar active-state tint) are layered on top.
   theme: {
+    ...uiTokens.theme,
     extend: {
+      ...uiTokens.theme.extend,
       colors: {
-        primary: {
-          DEFAULT: 'rgb(var(--c-primary) / <alpha-value>)',
-          dark:    'var(--c-primary-dark)',
-          light:   'var(--c-primary-light)',
-        },
-        sidebar:          'var(--c-sidebar)',
-        'sidebar-active': 'rgba(232,93,63,0.12)',
-        background:       '#F5F5F7',
-        surface:          '#FFFFFF',
-        border:           '#E8E4DF',
-        muted:            '#6B6B6B',
-        secondary:        '#2D2D2D',
-        success:          '#22C55E',
-        warning:          '#F59E0B',
-        error:            '#EF4444',
-      },
-      fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-      },
-      borderRadius: {
-        card:   '12px',
-        button: '8px',
-        pill:   '9999px',
-      },
-      boxShadow: {
-        floating: '0 4px 24px rgba(0,0,0,0.08)',
-        card:     '0 1px 3px rgba(0,0,0,0.05)',
-      },
-      keyframes: {
-        shimmer: {
-          '0%':   { backgroundPosition: '-200% 0' },
-          '100%': { backgroundPosition: '200% 0'  },
-        },
-        fadeIn: {
-          from: { opacity: '0', transform: 'translateY(4px)' },
-          to:   { opacity: '1', transform: 'translateY(0)'   },
-        },
-      },
-      animation: {
-        shimmer: 'shimmer 1.5s infinite linear',
-        fadeIn:  'fadeIn 0.15s ease-out',
+        ...uiTokens.theme.extend.colors,
+        // Etsy's sidebar itself is always the same cream as the page
+        // background — only the active-nav-item tint varies with the
+        // seller's chosen admin accent color.
+        'sidebar-active': 'rgb(var(--c-primary) / 0.10)',
       },
     },
   },

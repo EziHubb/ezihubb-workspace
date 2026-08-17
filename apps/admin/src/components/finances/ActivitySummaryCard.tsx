@@ -32,7 +32,7 @@ function CategoryCard({
           </span>
           {title}
         </span>
-        <span className={`text-sm font-bold ${total < 0 ? 'text-error' : 'text-secondary'}`}>
+        <span className={`font-display text-sm font-bold ${total < 0 ? 'text-error' : 'text-secondary'}`}>
           {fmtAmount(total)}
         </span>
       </div>
@@ -92,7 +92,7 @@ export function ActivitySummaryCard({
       <p className="text-sm font-semibold text-secondary mb-2">Sales and fees</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         <CategoryCard
-          icon={Wallet} iconBg="bg-success/10" iconColor="text-success"
+          icon={Wallet} iconBg="bg-category-sales-bg" iconColor="text-category-sales-fg"
           title="Sales" total={summary.sales.total} expanded={expanded}
           rows={[
             { label: `Total sales (${summary.sales.totalSalesCount})`, value: null },
@@ -102,7 +102,7 @@ export function ActivitySummaryCard({
           ]}
         />
         <CategoryCard
-          icon={CreditCard} iconBg="bg-error/10" iconColor="text-error"
+          icon={CreditCard} iconBg="bg-category-fees-bg" iconColor="text-category-fees-fg"
           title="Fees" total={summary.fees.total} expanded={expanded}
           rows={[
             { label: 'Listing fees', value: summary.fees.listingFees || null, tooltip: 'A flat fee charged each time you publish a listing.' },
@@ -118,7 +118,7 @@ export function ActivitySummaryCard({
       <p className="text-sm font-semibold text-secondary mb-2">Seller services</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <CategoryCard
-          icon={Megaphone} iconBg="bg-primary/10" iconColor="text-primary"
+          icon={Megaphone} iconBg="bg-category-marketing-bg" iconColor="text-category-marketing-fg"
           title="Marketing" total={summary.marketing.total} expanded={expanded}
           rows={[
             { label: 'Platform Ads', value: null },

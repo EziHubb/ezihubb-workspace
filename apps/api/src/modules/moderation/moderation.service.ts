@@ -552,11 +552,32 @@ export class ModerationService {
   }
 
   async getStoreViolations(storeId: string) {
-    const logs = await this.prisma.moderationLog.findMany({
-      where:   { entityType: { in: ['Product', 'Store', 'Review'] }, verdict: { not: 'CLEAN' } },
-      orderBy: { createdAt: 'desc' },
-    });
-    const strikes = await this.prisma.strikeRecord.findMany({ where: { storeId }, orderBy: { createdAt: 'desc' } });
+    // ModerationLog is polymorphic (entityType/entityId, no storeId column) —
+    // resolve this store's own Product and Review ids first so the log query
+    // below can't return another store's flagged content. Fixed alongside the
+    // controller-level IDOR: this used to return every flagged item on the
+    // whole platform regardless of which store was asked for.
+    const [products, reviews] = await Promise.all([
+      this.prisma.product.findMany({ where: { storeId }, select: { id: true } }),
+      this.prisma.review.findMany({ where: { storeId }, select: { id: true } }),
+    ]);
+    const productIds = products.map((p) => p.id);
+    const reviewIds = reviews.map((r) => r.id);
+
+    const [logs, strikes] = await Promise.all([
+      this.prisma.moderationLog.findMany({
+        where: {
+          verdict: { not: 'CLEAN' },
+          OR: [
+            { entityType: 'Store', entityId: storeId },
+            ...(productIds.length ? [{ entityType: 'Product', entityId: { in: productIds } }] : []),
+            ...(reviewIds.length ? [{ entityType: 'Review', entityId: { in: reviewIds } }] : []),
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.strikeRecord.findMany({ where: { storeId }, orderBy: { createdAt: 'desc' } }),
+    ]);
     return { logs, strikes };
   }
 

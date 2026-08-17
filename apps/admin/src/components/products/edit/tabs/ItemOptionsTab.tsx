@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   X, Plus, Settings,
 } from 'lucide-react';
+import { Select } from '@ezihubb/ui';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import type {
@@ -209,15 +210,13 @@ function DimensionFields() {
             className="w-28 px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 tabular-nums"
           />
         </div>
-        <select
-          value={unit}
-          onChange={(e) => setValue('dimensionUnit', e.target.value as DimensionUnit, { shouldDirty: true })}
-          className="px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          {DIMENSION_UNITS.map((u) => (
-            <option key={u.value} value={u.value}>{u.label}</option>
-          ))}
-        </select>
+        <div className="w-28 shrink-0">
+          <Select
+            value={unit}
+            onChange={(e) => setValue('dimensionUnit', e.target.value as DimensionUnit, { shouldDirty: true })}
+            options={DIMENSION_UNITS}
+          />
+        </div>
       </div>
     </div>
   );

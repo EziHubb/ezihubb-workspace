@@ -4,6 +4,7 @@ import { use, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check, X, Save } from 'lucide-react';
+import { Select } from '@ezihubb/ui';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -289,16 +290,16 @@ function EditPanel({
           <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
             Status
           </label>
-          <select
+          <Select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="PENDING">Pending</option>
-            <option value="ACTIVE">Active</option>
-            <option value="SUSPENDED">Suspended</option>
-            <option value="REJECTED">Rejected</option>
-          </select>
+            options={[
+              { value: 'PENDING',   label: 'Pending' },
+              { value: 'ACTIVE',    label: 'Active' },
+              { value: 'SUSPENDED', label: 'Suspended' },
+              { value: 'REJECTED',  label: 'Rejected' },
+            ]}
+          />
         </div>
 
         <div>

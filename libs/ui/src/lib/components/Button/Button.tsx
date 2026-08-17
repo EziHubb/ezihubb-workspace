@@ -63,7 +63,10 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       ref={ref}
       disabled={disabled || loading}
       className={[
-        'inline-flex items-center justify-center font-medium rounded-button',
+        // Etsy buttons are pill-shaped (rounded-full) across the board —
+        // primary, secondary, and ghost alike — not the 8px `rounded-button`
+        // radius (that token is still used for inputs/menus/cards).
+        'inline-flex items-center justify-center font-bold rounded-pill',
         'transition-colors duration-150',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
         'disabled:opacity-50 disabled:cursor-not-allowed',

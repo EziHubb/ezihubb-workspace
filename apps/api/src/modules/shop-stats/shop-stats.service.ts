@@ -303,28 +303,46 @@ export class ShopStatsService {
 
   // ── Traffic sources ("How shoppers found you") ──────────────────────────────
 
+  // Matches Etsy's real two-group split: signals the platform brought
+  // (search/browse on our own site, other on-platform pages, arriving via
+  // an external search engine — i.e. found through SEO) vs signals the
+  // seller brought (true direct/bookmarked, social, other external links).
   private static readonly SOURCE_LABELS: Record<string, string> = {
-    search:   'On-platform search & browse',
-    direct:   'Direct & other traffic',
-    social:   'Social media',
-    external: 'External sites',
+    platform_search: 'Platform search',
+    platform_pages:  'Platform app & other pages',
+    external_search: 'Platform marketing & SEO',
+    direct:          'Direct & other traffic',
+    social:          'Social media',
+    external:        'External sites',
+  };
+  private static readonly SOURCE_GROUP: Record<string, 'platform' | 'seller'> = {
+    platform_search: 'platform',
+    platform_pages:  'platform',
+    external_search: 'platform',
+    direct:          'seller',
+    social:          'seller',
+    external:        'seller',
   };
 
   async getTrafficSources(range: string, storeId?: string | null) {
     const start = this.rangeStart(range);
     const days  = Math.round((Date.now() - start.getTime()) / 86_400_000) || 1;
-    const keys  = ['search', 'direct', 'social', 'external'] as const;
+    const keys  = ['platform_search', 'platform_pages', 'external_search', 'direct', 'social', 'external'] as const;
 
     const counts = await Promise.all(
       keys.map((k) => this.sumRangeMetric(days, `source:${k}`, storeId)),
     );
     const totalVisits = counts.reduce((s, c) => s + c, 0);
+    const platformTotal = keys.reduce((s, k, i) => s + (ShopStatsService.SOURCE_GROUP[k] === 'platform' ? counts[i]! : 0), 0);
 
     return {
       totalVisits,
+      platformBroughtPercentage: totalVisits > 0 ? Math.round((platformTotal / totalVisits) * 100) : 0,
+      sellerBroughtPercentage:   totalVisits > 0 ? Math.round(((totalVisits - platformTotal) / totalVisits) * 100) : 0,
       sources: keys.map((key, i) => ({
         key,
         label:      ShopStatsService.SOURCE_LABELS[key],
+        group:      ShopStatsService.SOURCE_GROUP[key],
         count:      counts[i],
         percentage: totalVisits > 0 ? Math.round((counts[i]! / totalVisits) * 100) : 0,
       })),

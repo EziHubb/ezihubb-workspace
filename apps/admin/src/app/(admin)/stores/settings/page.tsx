@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Save } from 'lucide-react';
+import { Select } from '@ezihubb/ui';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -301,16 +302,16 @@ export default function PlatformSettingsPage() {
             <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
               Payout Schedule
             </label>
-            <select
+            <Select
               value={s.payoutSchedule}
               onChange={(e) => setS({ payoutSchedule: e.target.value })}
-              className={inputCls}
-            >
-              <option value="DAILY">Daily</option>
-              <option value="WEEKLY">Weekly</option>
-              <option value="BIWEEKLY">Bi-weekly</option>
-              <option value="MONTHLY">Monthly</option>
-            </select>
+              options={[
+                { value: 'DAILY',     label: 'Daily' },
+                { value: 'WEEKLY',    label: 'Weekly' },
+                { value: 'BIWEEKLY',  label: 'Bi-weekly' },
+                { value: 'MONTHLY',   label: 'Monthly' },
+              ]}
+            />
           </div>
         </SectionCard>
 

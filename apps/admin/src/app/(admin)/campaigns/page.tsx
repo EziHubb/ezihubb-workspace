@@ -7,6 +7,7 @@ import {
   CheckCircle, Circle, Settings, ChevronDown, ChevronUp,
   Target, TrendingUp, Plus, Trash2, X, Palette,
 } from 'lucide-react';
+import { Select } from '@ezihubb/ui';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -246,13 +247,18 @@ function CreateModal({ onClose, onCreate }: {
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted">Season (optional)</label>
-            <select value={form.season} onChange={f('season')} className={inputCls}>
-              <option value="">— Custom / No season —</option>
-              <option value="spring">Spring</option>
-              <option value="summer">Summer</option>
-              <option value="autumn">Autumn</option>
-              <option value="winter">Winter</option>
-            </select>
+            <Select
+              size="sm"
+              value={form.season}
+              onChange={f('season')}
+              options={[
+                { value: '',       label: '— Custom / No season —' },
+                { value: 'spring', label: 'Spring' },
+                { value: 'summer', label: 'Summer' },
+                { value: 'autumn', label: 'Autumn' },
+                { value: 'winter', label: 'Winter' },
+              ]}
+            />
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted">Banner text</label>

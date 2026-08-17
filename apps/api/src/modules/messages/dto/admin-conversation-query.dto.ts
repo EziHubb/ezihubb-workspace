@@ -1,13 +1,23 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsEnum, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { ConversationStatus } from '@prisma/client';
+
+export type AdminConversationFolder = 'prospective_buyers' | 'from_platform';
 
 export class AdminConversationQueryDto {
   @ApiPropertyOptional({ enum: ConversationStatus })
   @IsOptional()
   @IsEnum(ConversationStatus)
   status?: ConversationStatus;
+
+  @ApiPropertyOptional({
+    enum: ['prospective_buyers', 'from_platform'],
+    description: "'prospective_buyers' = general inquiries with no linked order yet; 'from_platform' = conversations containing a SYSTEM message",
+  })
+  @IsOptional()
+  @IsIn(['prospective_buyers', 'from_platform'])
+  folder?: AdminConversationFolder;
 
   @ApiPropertyOptional()
   @IsOptional()

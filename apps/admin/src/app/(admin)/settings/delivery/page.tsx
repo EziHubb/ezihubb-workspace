@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2, Truck, Clock } from 'lucide-react';
-import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
+import { Pencil, Plus, Trash2, Truck, Clock, ShieldCheck } from 'lucide-react';
+import { Button } from '@ezihubb/ui';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { useDialog } from '../../../../contexts/DialogContext';
+import { ReloadButton } from '../../../../components/ui/ReloadButton';
 import { ProcessingProfileModal } from '../../../../components/shipping/delivery/ProcessingProfileModal';
 import { DeliveryProfileModal } from '../../../../components/shipping/delivery/DeliveryProfileModal';
 import { OrderProcessingScheduleModal } from '../../../../components/shipping/delivery/OrderProcessingScheduleModal';
@@ -17,7 +18,7 @@ const SHIPPING_PROFILES_KEY   = ['delivery-shipping-profiles'];
 const SCHEDULE_KEY            = ['delivery-processing-schedule'];
 const UPGRADES_KEY            = ['delivery-upgrades-enabled'];
 
-type Tab = 'profiles' | 'upgrades';
+type Tab = 'profiles' | 'guarantee' | 'upgrades';
 
 const TYPE_LABEL: Record<ProcessingProfile['type'], string> = {
   MADE_TO_ORDER: 'Made to order',
@@ -104,13 +105,9 @@ function ProcessingProfilesSection() {
     <div>
       <div className="flex items-center justify-between mb-1">
         <h3 className="font-semibold text-secondary text-lg">Your processing profiles</h3>
-        <button
-          type="button"
-          onClick={() => setModalProfile('new')}
-          className="flex items-center gap-1.5 text-sm font-semibold border border-border rounded-button px-3 py-2 text-secondary hover:border-primary/40 hover:text-primary transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Create new
-        </button>
+        <Button variant="secondary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={() => setModalProfile('new')}>
+          Create new
+        </Button>
       </div>
       <p className="text-sm text-muted mb-3 max-w-2xl">
         Add, edit, or apply processing profiles to listings in bulk — assign one to a listing in Product Editor → Pricing &amp; Shipping.
@@ -194,13 +191,9 @@ function DeliveryProfilesSection() {
     <div>
       <div className="flex items-center justify-between mb-1">
         <h3 className="font-semibold text-secondary text-lg">Delivery profiles</h3>
-        <button
-          type="button"
-          onClick={() => setModalProfile('new')}
-          className="flex items-center gap-1.5 text-sm font-semibold border border-border rounded-button px-3 py-2 text-secondary hover:border-primary/40 hover:text-primary transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Create new
-        </button>
+        <Button variant="secondary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={() => setModalProfile('new')}>
+          Create new
+        </Button>
       </div>
       <p className="text-sm text-muted mb-3 max-w-2xl">
         Delivery profiles can be used for multiple listings with similar postage costs — assign one to a listing in Product Editor → Pricing &amp; Shipping.
@@ -256,6 +249,33 @@ function DeliveryProfilesSection() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+// ── Delivery guarantee tab ────────────────────────────────────────────────────
+// Informational only — a real "ship by this date or the buyer is refunded"
+// guarantee needs live carrier tracking + an automated refund trigger we
+// don't have yet, so this stays a static explainer rather than a wired
+// toggle (same treatment as Etsy Ads: named in the nav, not fabricated).
+
+function DeliveryGuaranteeTab() {
+  return (
+    <div>
+      <h3 className="font-semibold text-secondary text-lg mb-1 flex items-center gap-2">
+        <ShieldCheck className="w-4 h-4 text-primary" /> Delivery guarantee
+      </h3>
+      <p className="text-sm text-muted mb-4 max-w-2xl leading-relaxed">
+        A delivery guarantee promises buyers a refund if their order doesn&apos;t arrive by the estimated date —
+        it builds trust and can boost conversion on eligible listings.
+      </p>
+      <div className="border border-dashed border-border rounded-lg px-4 py-6 text-center">
+        <p className="text-sm text-secondary font-medium">Not yet available for your shop</p>
+        <p className="text-xs text-muted mt-1 max-w-md mx-auto">
+          This requires accurate carrier tracking on every order — keep your processing profiles and
+          tracking numbers up to date, and we&apos;ll let you know when your shop qualifies.
+        </p>
+      </div>
     </div>
   );
 }
@@ -322,24 +342,24 @@ export default function DeliverySettingsPage() {
 
   return (
     <>
-      <AdminPageHeader
-        title="Delivery settings"
-        subtitle="Manage how you process and ship orders"
-        queryKey={PROCESSING_PROFILES_KEY}
-      />
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-lg font-semibold text-secondary">Delivery settings</h1>
+        <ReloadButton queryKey={PROCESSING_PROFILES_KEY} />
+      </div>
 
-      <div className="flex gap-1 border-b border-border mb-6">
+      <div className="flex gap-6 border-b border-border mb-6">
         {([
-          { id: 'profiles', label: 'Delivery profiles & processing' },
-          { id: 'upgrades', label: 'Upgrades' },
+          { id: 'profiles',  label: 'Delivery profiles & processing' },
+          { id: 'guarantee', label: 'Delivery guarantee' },
+          { id: 'upgrades',  label: 'Upgrades' },
         ] as const).map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
             className={[
-              'px-4 py-3 text-sm font-medium border-b-2 transition-colors',
-              tab === t.id ? 'border-primary text-primary font-semibold' : 'border-transparent text-muted hover:text-secondary',
+              'pb-2.5 text-sm font-semibold border-b-2 transition-colors',
+              tab === t.id ? 'border-secondary text-secondary' : 'border-transparent text-muted hover:text-secondary',
             ].join(' ')}
           >
             {t.label}
@@ -348,15 +368,15 @@ export default function DeliverySettingsPage() {
       </div>
 
       <div className="max-w-[820px] space-y-10">
-        {tab === 'profiles' ? (
+        {tab === 'profiles' && (
           <>
             <ProcessingScheduleCard />
             <ProcessingProfilesSection />
             <DeliveryProfilesSection />
           </>
-        ) : (
-          <UpgradesTab />
         )}
+        {tab === 'guarantee' && <DeliveryGuaranteeTab />}
+        {tab === 'upgrades' && <UpgradesTab />}
       </div>
     </>
   );

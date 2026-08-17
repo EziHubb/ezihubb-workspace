@@ -2,6 +2,7 @@ import {
   Controller, Get, Post, Patch, Delete, Body, Param, Query,
   UseGuards, Request,
 } from '@nestjs/common';
+import type { Request as ExpressRequest } from 'express';
 import { ModerationService } from './moderation.service';
 import { IPScanService } from './ip-scan.service';
 import { IPScanDto } from './dto/ip-scan.dto';
@@ -10,6 +11,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@ezihubb/constants';
 import { AuditLogService } from '../../common/services/audit-log.service';
+import { StoreContextService } from '../../common/services/store-context.service';
 
 type ModerationRequest = { user: { sub: string }; ip: string; headers: { 'user-agent'?: string } };
 
@@ -140,17 +142,34 @@ export class ModerationController {
 
 @Controller('admin/stores')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
 export class StoreViolationsController {
   constructor(
-    private readonly svc:      ModerationService,
-    private readonly auditLog: AuditLogService,
+    private readonly svc:          ModerationService,
+    private readonly auditLog:     AuditLogService,
+    private readonly storeContext: StoreContextService,
   ) {}
 
+  // Seller-facing — always scoped to the caller's OWN store, resolved
+  // server-side rather than trusting a client-supplied id. The :id/violations
+  // route below takes an arbitrary path param and previously allowed
+  // Role.ADMIN (shop owner) to pass ANY store's id — an IDOR letting one
+  // seller read/clear another seller's violation record. Fixed by moving
+  // self-service access here and restricting the id-based routes to
+  // SUPER_ADMIN (platform moderator acting on an arbitrary store) only.
+  @Get('me/violations')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  async getMyViolations(@Request() req: ExpressRequest) {
+    const context = await this.storeContext.resolve(req);
+    const storeId = this.storeContext.requireStoreId(context);
+    return this.svc.getStoreViolations(storeId);
+  }
+
   @Get(':id/violations')
+  @Roles(Role.SUPER_ADMIN)
   getViolations(@Param('id') id: string) { return this.svc.getStoreViolations(id); }
 
   @Post(':id/clear-strikes')
+  @Roles(Role.SUPER_ADMIN)
   async clearStrikes(@Param('id') id: string, @Request() req: ModerationRequest) {
     const result = await this.svc.clearStrikes(id);
     this.auditLog.log({

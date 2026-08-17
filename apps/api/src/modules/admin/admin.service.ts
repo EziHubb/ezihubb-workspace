@@ -10,6 +10,7 @@ import {
   OrdersByStatusDto,
   RevenueChartPointDto,
   TopProductDto,
+  ShopHealthDto,
 } from './dto/dashboard.dto';
 import { ReviewResponseDto } from '../reviews/dto/review-response.dto';
 import { OrderStatus, ReviewStatus } from '@prisma/client';
@@ -356,5 +357,76 @@ export class AdminService {
     }));
 
     return paginatedResponse(data, page, limit, total);
+  }
+
+  /** Backs the Dashboard search-visibility banner + shop checklist + Top
+   *  tasks, and is reused as-is by /search-visibility and
+   *  /customer-service-stats — a single aggregation over signals that
+   *  already exist (Store profile fields, PerformanceScoreService's score
+   *  fields, Conversation unread counts) rather than a new scoring engine. */
+  async getShopHealth(storeId: string): Promise<ShopHealthDto> {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: {
+        name: true, logoUrl: true, bannerUrl: true, description: true,
+        performanceScore: true, scoreShipping: true, scoreRefund: true, scoreReview: true, scoreResponse: true, scoreBadge: true,
+        owner: { select: { avatarUrl: true } },
+      },
+    });
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+
+    const [
+      activeListingNames, overdueOrders, ordersToSendToday,
+      helpRequests, soldOutListings, inactiveListings,
+    ] = await Promise.all([
+      // A title under 40 characters is unlikely to carry enough descriptive
+      // keywords to surface well in search — a simple, honest heuristic
+      // (no AI call) rather than the on-demand title-suggestion AI service,
+      // which has no "pending suggestions" persisted state to count.
+      this.prisma.product.findMany({
+        where: { storeId, status: 'ACTIVE', deletedAt: null },
+        select: { name: true },
+      }),
+      this.prisma.storeOrder.count({
+        where: { storeId, status: { in: ['CONFIRMED', 'IN_PRODUCTION'] }, createdAt: { lt: threeDaysAgo } },
+      }),
+      this.prisma.storeOrder.count({
+        where: { storeId, status: { in: ['CONFIRMED', 'IN_PRODUCTION'] }, createdAt: { gte: startOfToday } },
+      }),
+      this.prisma.conversation.count({ where: { storeId, status: 'OPEN', unreadByAdmin: { gt: 0 } } }),
+      this.prisma.product.count({ where: { storeId, status: 'ACTIVE', deletedAt: null, trackInventory: true, quantity: 0 } }),
+      this.prisma.product.count({ where: { storeId, status: 'INACTIVE', deletedAt: null } }),
+    ]);
+    const listingsNeedingTitleWork = activeListingNames.filter((p) => p.name.length < 40).length;
+
+    return {
+      checklist: {
+        shopName:    !!store?.name,
+        logo:        !!store?.logoUrl,
+        banner:      !!store?.bannerUrl,
+        story:       !!store?.description,
+        sellerPhoto: !!store?.owner?.avatarUrl,
+      },
+      listingsNeedingTitleWork,
+      performanceScore: store?.performanceScore ?? null,
+      scoreShipping:    store?.scoreShipping    ?? null,
+      scoreRefund:      store?.scoreRefund      ?? null,
+      scoreReview:      store?.scoreReview      ?? null,
+      scoreResponse:    store?.scoreResponse    ?? null,
+      scoreBadge:       store?.scoreBadge       ?? null,
+      topTasks: {
+        overdueOrders,
+        ordersToSendToday,
+        helpRequests,
+        soldOutListings,
+        // Etsy's "expired listings" is a time-limited-listing concept our
+        // catalog doesn't have (listings stay live until archived) — INACTIVE
+        // count is the closest honest proxy, not a literal equivalent.
+        inactiveListings,
+      },
+    };
   }
 }

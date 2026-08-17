@@ -7,6 +7,7 @@ import { fmtAmount } from '../../../lib/fmt';
 import { ActivitySummaryCard } from '../../../components/finances/ActivitySummaryCard';
 import { TooltipTerm } from '../../../components/finances/InfoTooltip';
 import { LEDGER_TYPE_LABEL } from '../../../components/finances/ledgerTypeLabel';
+import { ReloadButton } from '../../../components/ui/ReloadButton';
 
 function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`animate-pulse bg-border rounded ${className}`} />;
@@ -25,7 +26,10 @@ export default function PaymentAccountPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold text-secondary mb-6">Payment account</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-lg font-semibold text-secondary">Payment account</h1>
+        <ReloadButton />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 mb-8">
         {/* Balance card */}
@@ -37,14 +41,14 @@ export default function PaymentAccountPage() {
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <p className="text-sm text-muted mb-1">Current</p>
-                  <p className={`text-3xl font-bold ${(overview?.current ?? 0) < 0 ? 'text-error' : 'text-secondary'}`}>
+                  <p className={`font-display text-3xl font-bold ${(overview?.current ?? 0) < 0 ? 'text-error' : 'text-secondary'}`}>
                     {fmtAmount(overview?.current ?? 0)}
                   </p>
                   <p className="text-xs text-muted mt-1">Balance to be covered by future or pending earnings</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted mb-1">Pending</p>
-                  <p className="text-3xl font-bold text-secondary">{fmtAmount(overview?.pending ?? 0)}</p>
+                  <p className="font-display text-3xl font-bold text-secondary">{fmtAmount(overview?.pending ?? 0)}</p>
                   <p className="text-xs text-muted mt-1">No funds pending</p>
                 </div>
               </div>
@@ -54,7 +58,7 @@ export default function PaymentAccountPage() {
                   <p className="text-sm text-muted mb-1">Total</p>
                   <p className="text-xs text-muted">All sales, fees, refunds, and credits</p>
                 </div>
-                <p className={`text-xl font-bold ${(overview?.total ?? 0) < 0 ? 'text-error' : 'text-secondary'}`}>
+                <p className={`font-display text-xl font-bold ${(overview?.total ?? 0) < 0 ? 'text-error' : 'text-secondary'}`}>
                   {fmtAmount(overview?.total ?? 0)}
                 </p>
               </div>

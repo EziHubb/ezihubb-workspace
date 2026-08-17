@@ -118,7 +118,7 @@ export function DataTable<T>({
     <div className="relative">
       {/* ── Bulk action bar ─────────────────────────────────────────────────── */}
       {selectable && selectedCount > 0 && bulkActions && (
-        <div className="flex items-center gap-3 mb-3 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-button animate-fadeIn">
+        <div className="flex items-center gap-3 mb-3 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-button animate-fade-in">
           <span className="text-sm font-medium text-primary">
             {selectedCount} selected
           </span>

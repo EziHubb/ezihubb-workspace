@@ -101,7 +101,7 @@ export class AnalyticsService {
    */
   async trackVisitSource(
     storeId: string,
-    source: 'search' | 'direct' | 'social' | 'external',
+    source: 'platform_search' | 'platform_pages' | 'external_search' | 'direct' | 'social' | 'external',
   ): Promise<void> {
     if (!this.redis.isAvailable()) return;
     const today = this.dateStr(new Date());

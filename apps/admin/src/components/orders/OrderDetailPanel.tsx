@@ -7,6 +7,7 @@ import {
   DollarSign, Gift, ExternalLink, MoreVertical,
   Check, Ban, Printer,
 } from 'lucide-react';
+import { Select } from '@ezihubb/ui';
 import { fmtDate, fmtDateTime } from '../../lib/fmt';
 import { OrderStatusBadge, StatusSelect } from './OrderStatusBadge';
 import { BuyLabelModal, type LabelPurchaseResult } from './BuyLabelModal';
@@ -284,13 +285,14 @@ function OrderDetailsTab({ order, onUpdate }: { order: OrderDetail; onUpdate: ()
           <p className="text-sm text-muted mb-2">{order.shippingMethod.name}</p>
         )}
         <div className="flex gap-2">
-          <select
-            value={carrier}
-            onChange={(e) => setCarrier(e.target.value)}
-            className="px-2 py-1.5 text-xs border border-border rounded-button bg-background text-secondary focus:outline-none focus:ring-1 focus:ring-primary/30 shrink-0"
-          >
-            {PRESET_CARRIERS.map((c) => <option key={c}>{c}</option>)}
-          </select>
+          <div className="w-28 shrink-0">
+            <Select
+              size="sm"
+              value={carrier}
+              onChange={(e) => setCarrier(e.target.value)}
+              options={PRESET_CARRIERS.map((c) => ({ value: c, label: c }))}
+            />
+          </div>
           <input
             value={tracking}
             onChange={(e) => setTracking(e.target.value)}

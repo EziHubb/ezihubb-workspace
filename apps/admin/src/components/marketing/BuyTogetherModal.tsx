@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { X, Users, Percent } from 'lucide-react';
+import { Users, Percent } from 'lucide-react';
+import { Modal, ModalHeroHeader, Button } from '@ezihubb/ui';
 import { ListingPicker, type PickedProduct } from './ListingPicker';
 
 export interface BundleFormData {
@@ -57,21 +58,15 @@ export function BuyTogetherModal({ bundle, onClose, onSave }: BuyTogetherModalPr
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="relative bg-surface rounded-card border border-border shadow-2xl w-full max-w-[560px] max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-surface z-10">
-          <h2 className="font-bold text-secondary text-base flex items-center gap-2">
-            <Users className="w-4 h-4 text-primary" />
-            {isEdit ? 'Edit bundle offer' : 'Buy them together'}
-          </h2>
-          <button type="button" onClick={onClose} className="p-1.5 rounded-button hover:bg-muted/10 text-muted transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
+    <Modal isOpen onClose={onClose} size="md">
+      <ModalHeroHeader
+        icon={<Users className="w-7 h-7" />}
+        title={isEdit ? 'Edit bundle offer' : 'Create an irresistible offer for items that belong together!'}
+        subtitle="Add up to 3 listings to offer together — all variations will be eligible for the discount."
+        band="periwinkle"
+        onClose={onClose}
+      />
+      <div className="overflow-y-auto">
         <div className="px-6 py-5 space-y-5">
           <div>
             <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
@@ -110,25 +105,14 @@ export function BuyTogetherModal({ bundle, onClose, onSave }: BuyTogetherModalPr
 
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
-
-        <div className="sticky bottom-0 bg-surface border-t border-border px-6 py-4 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : (isEdit ? 'Save bundle' : 'Create bundle offer')}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2.5 text-sm font-medium text-muted border border-border rounded-button hover:border-primary/40 transition-colors"
-          >
-            Cancel
-          </button>
-        </div>
       </div>
-    </div>
+
+      <div className="shrink-0 border-t border-border px-6 py-4 flex items-center gap-3">
+        <Button variant="primary" onClick={handleSave} loading={saving} disabled={picked.length < 2}>
+          {isEdit ? 'Save bundle' : 'Create offer'}
+        </Button>
+        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+      </div>
+    </Modal>
   );
 }

@@ -37,7 +37,7 @@ export function ReloadButton({ queryKey, className }: ReloadButtonProps) {
       aria-label="Reload data"
       title="Reload data"
       className={[
-        'flex items-center gap-1.5 text-sm font-medium text-secondary border border-border rounded-button px-3 py-1.5 hover:border-primary/40 transition-colors bg-surface disabled:opacity-60',
+        'flex items-center gap-1.5 text-sm font-semibold text-secondary border border-border rounded-pill px-3.5 py-1.5 hover:border-secondary/40 transition-colors bg-surface disabled:opacity-60',
         className ?? '',
       ].join(' ')}
     >

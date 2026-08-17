@@ -4,6 +4,7 @@ import { useFormContext } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { ExternalLink } from 'lucide-react';
 import { addMonths } from 'date-fns';
+import { Select } from '@ezihubb/ui';
 import { fmtDate } from '../../../../lib/fmt';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -177,16 +178,14 @@ export function SettingsTab({ productId, initialRelatedIds }: { productId?: stri
               description="Use shop sections to organise your products into groups shoppers can explore."
             >
               <div className="flex items-center gap-3 flex-wrap">
-                <select
-                  value={shopSectionId}
-                  onChange={(e) => setValue('shopSectionId', e.target.value || null, { shouldDirty: true })}
-                  className="px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 min-w-[240px]"
-                >
-                  <option value="">Select a section…</option>
-                  {sections.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
+                <div className="min-w-[240px]">
+                  <Select
+                    value={shopSectionId ?? ''}
+                    onChange={(e) => setValue('shopSectionId', e.target.value || null, { shouldDirty: true })}
+                    placeholder="Select a section…"
+                    options={sections.map((s) => ({ value: s.id, label: s.name }))}
+                  />
+                </div>
                 <a
                   href="/catalog/categories"
                   target="_blank"

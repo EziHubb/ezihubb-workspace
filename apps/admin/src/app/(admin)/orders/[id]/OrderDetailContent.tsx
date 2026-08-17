@@ -8,6 +8,7 @@ import {
   Check, Package, MapPin, User,
   ExternalLink, Save, Mail, DollarSign, FileText, Printer,
 } from 'lucide-react';
+import { Select } from '@ezihubb/ui';
 import { StatusSelect } from '../../../../components/orders/OrderStatusBadge';
 import { CustomizationPreviewModal } from '../../../../components/orders/CustomizationPreviewModal';
 import { api } from '../../../../lib/api-client';
@@ -203,10 +204,14 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
             </div>
           </div>
           <div className="flex gap-2">
-            <select value={trackCarrier} onChange={(e) => setCarrier(e.target.value)}
-              className="px-2 py-1.5 text-xs border border-border rounded-button bg-background focus:outline-none">
-              {['FedEx','USPS','UPS','DHL'].map((c) => <option key={c}>{c}</option>)}
-            </select>
+            <div className="w-28 shrink-0">
+              <Select
+                size="sm"
+                value={trackCarrier}
+                onChange={(e) => setCarrier(e.target.value)}
+                options={['FedEx','USPS','UPS','DHL'].map((c) => ({ value: c, label: c }))}
+              />
+            </div>
             <input value={trackNum} onChange={(e) => setTrackNum(e.target.value)} placeholder="Tracking #"
               className="flex-1 px-3 py-1.5 text-xs border border-border rounded-button bg-background font-mono focus:outline-none" />
             <button type="button" onClick={handleTrackSave} disabled={trackSaving || !trackNum}

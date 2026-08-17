@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { HandCoins, Check, X as XIcon, MessageSquareShare } from 'lucide-react';
+import { Toggle } from '@ezihubb/ui';
 import { api } from '../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { fmtDate } from '../../lib/fmt';
@@ -34,7 +35,7 @@ const STATUS_CFG: Record<InboxOffer['status'], { label: string; cls: string }> =
   COUNTERED: { label: 'Countered', cls: 'bg-blue-100 text-blue-700' },
 };
 
-export function BuyerOffersPanel() {
+export function BuyerOffersPanel({ embedded = false }: { embedded?: boolean } = {}) {
   const qc = useQueryClient();
   const [counteringId, setCounteringId] = useState<string | null>(null);
   const [counterAmount, setCounterAmount] = useState('');
@@ -96,28 +97,26 @@ export function BuyerOffersPanel() {
   const offers = inboxQuery.data ?? [];
 
   return (
-    <div className="mt-10">
-      <div className="mb-4">
-        <h2 className="font-bold text-secondary text-base flex items-center gap-2">
-          <HandCoins className="w-4 h-4 text-primary" />
-          Let buyers make offers
-        </h2>
-        <p className="text-xs text-muted mt-0.5">Buyers can propose a lower price on eligible listings for you to accept, reject, or counter.</p>
-      </div>
+    <div className={embedded ? '' : 'mt-10'}>
+      {!embedded && (
+        <div className="mb-4">
+          <h2 className="font-bold text-secondary text-base flex items-center gap-2">
+            <HandCoins className="w-4 h-4 text-primary" />
+            Let buyers make offers
+          </h2>
+          <p className="text-xs text-muted mt-0.5">Buyers can propose a lower price on eligible listings for you to accept, reject, or counter.</p>
+        </div>
+      )}
 
       {settings && (
         <div className="bg-surface rounded-card border border-border shadow-card p-4 mb-4 space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-secondary">Accept offers</p>
-            <button
-              type="button"
-              onClick={() => updateSettings({ offersEnabled: !settings.offersEnabled })}
-              role="switch"
-              aria-checked={settings.offersEnabled}
-              className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${settings.offersEnabled ? 'bg-primary' : 'bg-border'}`}
-            >
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${settings.offersEnabled ? 'translate-x-5' : ''}`} />
-            </button>
+            <Toggle
+              checked={settings.offersEnabled}
+              onChange={(v) => updateSettings({ offersEnabled: v })}
+              ariaLabel="Accept offers"
+            />
           </div>
 
           {settings.offersEnabled && (

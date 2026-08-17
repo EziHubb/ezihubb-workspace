@@ -8,6 +8,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import Image from 'next/image';
+import { Select } from '@ezihubb/ui';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api, adminApi } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -353,11 +354,14 @@ function StoreTab() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <FieldLabel>Currency</FieldLabel>
-            <select value={c('currency', 'USD') as string} onChange={(e) => setCurrency((s) => ({ ...s, currency: e.target.value }))}
-              className={inputCls}>
-              <option value="USD">USD — US Dollar</option>
-              <option value="VND">VND — Vietnamese Dong</option>
-            </select>
+            <Select
+              value={c('currency', 'USD') as string}
+              onChange={(e) => setCurrency((s) => ({ ...s, currency: e.target.value }))}
+              options={[
+                { value: 'USD', label: 'USD — US Dollar' },
+                { value: 'VND', label: 'VND — Vietnamese Dong' },
+              ]}
+            />
           </div>
         </div>
         <SaveButton saving={saving === 'currency'} onClick={() => save('currency', currency)} />
@@ -840,10 +844,14 @@ function InviteModal({ onClose, onInvite }: { onClose: () => void; onInvite: (em
         </div>
         <div>
           <FieldLabel>Role</FieldLabel>
-          <select value={role} onChange={(e) => setRole(e.target.value)} className={inputCls}>
-            <option value="ADMIN">Admin</option>
-            <option value="SUPER_ADMIN">Super Admin</option>
-          </select>
+          <Select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            options={[
+              { value: 'ADMIN',       label: 'Admin' },
+              { value: 'SUPER_ADMIN', label: 'Super Admin' },
+            ]}
+          />
           <p className="text-xs text-muted/70 mt-1">Super Admins can manage team members and access Danger Zone.</p>
         </div>
         {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-button px-3 py-2">{error}</p>}
@@ -943,14 +951,17 @@ function TeamTab() {
                     <td className="px-4 py-3 font-medium text-secondary">{m.name}</td>
                     <td className="px-4 py-3 text-muted text-xs font-mono">{m.email}</td>
                     <td className="px-4 py-3">
-                      <select
-                        value={m.role}
-                        onChange={(e) => handleRoleChange(m.id, e.target.value)}
-                        className="text-xs border border-border rounded-button px-2 py-1 bg-background focus:outline-none"
-                      >
-                        <option value="ADMIN">Admin</option>
-                        <option value="SUPER_ADMIN">Super Admin</option>
-                      </select>
+                      <div className="w-32">
+                        <Select
+                          size="sm"
+                          value={m.role}
+                          onChange={(e) => handleRoleChange(m.id, e.target.value)}
+                          options={[
+                            { value: 'ADMIN',       label: 'Admin' },
+                            { value: 'SUPER_ADMIN', label: 'Super Admin' },
+                          ]}
+                        />
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-xs text-muted">
                       {m.lastLoginAt ? fmtDateTime(m.lastLoginAt) : 'Never'}
@@ -1249,14 +1260,11 @@ function ThemePresetGrid({
                 : 'border-border hover:border-primary/40 bg-surface',
             ].join(' ')}
           >
-            <div className="w-full h-14 rounded-lg overflow-hidden flex shadow-card" aria-hidden>
-              <div className="w-6 h-full shrink-0 rounded-l-lg" style={{ backgroundColor: theme.sidebar }} />
-              <div className="flex-1 bg-[#F5F5F7] p-1.5 space-y-1">
-                <div className="h-2.5 rounded-sm w-4/5" style={{ backgroundColor: hex, opacity: 0.9 }} />
-                <div className="h-1.5 rounded-sm w-3/5 bg-[#D1D5DB]" />
-                <div className="h-1.5 rounded-sm w-2/5 bg-[#D1D5DB]" />
-                <div className="mt-1.5 h-4 rounded-sm w-full" style={{ backgroundColor: hex }} />
-              </div>
+            <div className="w-full h-14 rounded-lg overflow-hidden bg-background border border-border p-1.5 space-y-1" aria-hidden>
+              <div className="h-2.5 rounded-sm w-4/5" style={{ backgroundColor: hex, opacity: 0.9 }} />
+              <div className="h-1.5 rounded-sm w-3/5 bg-[#D1D5DB]" />
+              <div className="h-1.5 rounded-sm w-2/5 bg-[#D1D5DB]" />
+              <div className="mt-1.5 h-4 rounded-pill w-2/5" style={{ backgroundColor: hex }} />
             </div>
             <span className="text-xs font-semibold text-secondary">{theme.name}</span>
             {isActive && (
@@ -1365,7 +1373,7 @@ function AppearanceTab() {
           <div className="w-8 h-8 rounded-button shrink-0" style={{ backgroundColor: `rgb(${adminTheme.primaryRgb.replace(/ /g, ',')})` }} />
           <div>
             <p className="text-sm font-medium text-secondary">Active: {adminTheme.name}</p>
-            <p className="text-xs text-muted">Primary #{adminTheme.primaryRgb.split(' ').map((n) => parseInt(n).toString(16).padStart(2, '0')).join('')} · Sidebar {adminTheme.sidebar}</p>
+            <p className="text-xs text-muted">Primary #{adminTheme.primaryRgb.split(' ').map((n) => parseInt(n).toString(16).padStart(2, '0')).join('')}</p>
           </div>
         </div>
       </SectionCard>

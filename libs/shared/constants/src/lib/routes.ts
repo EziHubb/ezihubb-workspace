@@ -197,6 +197,7 @@ export const API_ROUTES = {
   ADMIN: {
     // ── Dashboard ────────────────────────────────────────────────────────────
     DASHBOARD_KPIS:      '/admin/dashboard/kpis',
+    DASHBOARD_SHOP_HEALTH: '/admin/dashboard/shop-health',
     DASHBOARD_REVENUE:   '/admin/dashboard/revenue',
     DASHBOARD_BY_STATUS: '/admin/dashboard/orders-by-status',
     DASHBOARD_TOP:       '/admin/dashboard/top-products',
@@ -454,6 +455,7 @@ export const API_ROUTES = {
     MODERATION_RULE_TOGGLE:   (id: string) => `/admin/moderation/rules/${id}/toggle`,
 
     MODERATION_QUEUE:        '/admin/moderation/queue',
+    MY_VIOLATIONS:           '/admin/stores/me/violations',
     MODERATION_LOGS:         '/admin/moderation/logs',
     MODERATION_LOG:          (id: string) => `/admin/moderation/logs/${id}`,
     MODERATION_LOG_APPROVE:  (id: string) => `/admin/moderation/logs/${id}/approve`,

@@ -25,6 +25,7 @@ import {
   GripVertical, Pencil, Trash2, X, Plus, ChevronDown,
   AlignLeft, List, Paperclip, Check,
 } from 'lucide-react';
+import { Select } from '@ezihubb/ui';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { safeArr } from '../../../lib/fmt';
@@ -416,14 +417,10 @@ function CustomOptionSheet({
                 </div>
                 <div>
                   <FieldLabel>Max file size</FieldLabel>
-                  <select
+                  <Select
                     {...register('maxFileSizeMB', { valueAsNumber: true })}
-                    className="px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  >
-                    {[5, 10, 20, 50].map((s) => (
-                      <option key={s} value={s}>{s} MB</option>
-                    ))}
-                  </select>
+                    options={[5, 10, 20, 50].map((s) => ({ value: String(s), label: `${s} MB` }))}
+                  />
                 </div>
               </>
             )}
@@ -562,7 +559,7 @@ export function CustomOptionsEditor({ productId }: CustomOptionsEditorProps) {
             </button>
 
             {dropdownOpen && (
-              <div className="absolute top-full left-0 mt-2 z-20 w-60 bg-surface border border-border/60 rounded-card shadow-floating p-1.5 animate-fadeIn origin-top">
+              <div className="absolute top-full left-0 mt-2 z-20 w-60 bg-surface border border-border/60 rounded-card shadow-floating p-1.5 animate-fade-in origin-top">
                 {FIELD_TYPES.map(({ type, icon: Icon, label, desc }) => (
                   <button
                     key={type}

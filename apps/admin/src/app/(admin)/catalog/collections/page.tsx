@@ -7,6 +7,7 @@ import {
   ChevronLeft, ChevronRight, Eye, EyeOff, Package,
 } from 'lucide-react';
 import Image from 'next/image';
+import { Select } from '@ezihubb/ui';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -292,15 +293,11 @@ function CollectionSlideOver({
               {/* Occasion */}
               <div>
                 <label className="block text-xs font-medium text-secondary mb-1.5">Occasion</label>
-                <select
+                <Select
                   value={form.occasion}
                   onChange={(e) => setField('occasion', e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-                >
-                  {OCCASION_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
+                  options={OCCASION_OPTIONS}
+                />
               </div>
 
               {/* Sort order */}

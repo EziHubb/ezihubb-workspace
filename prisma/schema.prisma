@@ -567,6 +567,12 @@ model StoreOrder {
   shippedAt      DateTime?
   deliveredAt    DateTime?
   sellerNotes    String?
+  // Only `Store.deliveryUpgradesEnabled` (a shop-level toggle) existed before —
+  // this is the per-order flag so the Orders "Upgrade requested" filter is
+  // real. No buyer-facing upgrade-selection UI exists yet at checkout, so
+  // this stays false until that flow is built; the field/filter itself is
+  // no longer decorative.
+  deliveryUpgradeRequested Boolean @default(false)
   payoutId       String?
   payout         SellerPayout?           @relation(fields: [payoutId], references: [id])
   items          OrderItem[]

@@ -7,6 +7,7 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { Plus, Search, X, Eye, EyeOff, Package, Upload, LayoutGrid, List, ChevronLeft, ChevronRight, Tag, Download, Archive } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@ezihubb/ui';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { DataTable } from '../../../components/data/DataTable';
 import { ProductCard, type AdminProduct } from '../../../components/products/ProductCard';
@@ -358,7 +359,7 @@ function ProductsPageInner() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search products…"
-              className="w-full pl-9 pr-8 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full pl-9 pr-8 py-2 text-sm border border-border rounded-pill bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
             {search && (
               <button type="button" onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-secondary">
@@ -370,21 +371,21 @@ function ProductsPageInner() {
           <div className="flex items-center gap-2 ml-auto">
             <Link
               href="/products/import"
-              className="flex items-center gap-1.5 px-3 py-2 border border-border hover:border-primary text-secondary hover:text-primary text-sm font-semibold rounded-button transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-2 border border-border hover:border-primary text-secondary hover:text-primary text-sm font-semibold rounded-pill transition-colors"
             >
               <Upload className="w-4 h-4" />
               Import CSV
             </Link>
             <Link
               href="/products/new"
-              className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-semibold rounded-button transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-bold rounded-pill transition-colors"
             >
               <Plus className="w-4 h-4" />
               Add Product
             </Link>
 
             {/* View toggle */}
-            <div className="flex items-center border border-border rounded-button overflow-hidden">
+            <div className="flex items-center border border-border rounded-pill overflow-hidden">
               <button
                 type="button"
                 onClick={() => toggleView('grid')}
@@ -669,52 +670,40 @@ function ProductsPageInner() {
       </aside>
 
       {/* ── Sale dialog ──────────────────────────────────────────────────────── */}
-      {showSaleDialog && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowSaleDialog(false); }}
-        >
-          <div className="bg-background rounded-2xl shadow-2xl p-6 w-full max-w-sm space-y-4">
-            <h3 className="text-base font-bold text-secondary">Set sale price</h3>
-            <p className="text-sm text-muted">
-              Apply a discount to {selectedIds.length} selected product{selectedIds.length !== 1 ? 's' : ''}.
-            </p>
-            <div>
-              <label className="text-xs font-medium text-secondary block mb-1.5">Discount percentage</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  max={99}
-                  value={salePercent}
-                  onChange={(e) => setSalePercent(Number(e.target.value))}
-                  className="w-24 border border-border rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-                <span className="text-sm text-muted">% off</span>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowSaleDialog(false)}
-                className="px-4 py-2 text-sm text-muted hover:text-secondary rounded-xl transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowSaleDialog(false);
-                  executeBulk('set-sale', { discountPercent: salePercent });
-                }}
-                className="px-5 py-2 text-sm font-semibold bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors"
-              >
-                Apply to {selectedIds.length}
-              </button>
+      <Modal isOpen={showSaleDialog} onClose={() => setShowSaleDialog(false)} size="sm">
+        <ModalHeader onClose={() => setShowSaleDialog(false)}>Set sale price</ModalHeader>
+        <ModalBody>
+          <p className="text-sm text-muted mb-4">
+            Apply a discount to {selectedIds.length} selected product{selectedIds.length !== 1 ? 's' : ''}.
+          </p>
+          <div>
+            <label className="text-xs font-medium text-secondary block mb-1.5">Discount percentage</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={99}
+                value={salePercent}
+                onChange={(e) => setSalePercent(Number(e.target.value))}
+                className="w-24 border border-border rounded-input px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <span className="text-sm text-muted">% off</span>
             </div>
           </div>
-        </div>
-      )}
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="ghost" onClick={() => setShowSaleDialog(false)}>Cancel</Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              setShowSaleDialog(false);
+              executeBulk('set-sale', { discountPercent: salePercent });
+            }}
+          >
+            Apply to {selectedIds.length}
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }

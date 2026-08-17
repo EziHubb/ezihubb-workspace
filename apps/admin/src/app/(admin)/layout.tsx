@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { authOptions } from '../../lib/auth.options';
 import { AdminSidebar, AdminMobileNav } from '../../components/layout/AdminSidebar';
+import { GetHelpButton } from '../../components/layout/GetHelpButton';
 
 // ── Route guard helpers ───────────────────────────────────────────────────────
 
@@ -87,6 +88,8 @@ export default async function AdminLayout({
           {children}
         </main>
       </div>
+
+      <GetHelpButton />
     </div>
   );
 }

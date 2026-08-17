@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Sparkles, Percent, DollarSign, Eye, Heart, PackageCheck, ShoppingCart } from 'lucide-react';
+import { Mail, Percent, DollarSign, Eye, Heart, PackageCheck, ShoppingCart } from 'lucide-react';
+import { Modal, ModalHeroHeader, Button, Toggle } from '@ezihubb/ui';
 import { api } from '../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 
@@ -74,26 +75,16 @@ export function TargetedOffersModal({ onClose }: TargetedOffersModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="relative bg-surface rounded-card border border-border shadow-2xl w-full max-w-[620px] max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-surface z-10">
-          <h2 className="font-bold text-secondary text-base flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" />
-            Set up targeted offers
-          </h2>
-          <button type="button" onClick={onClose} className="p-1.5 rounded-button hover:bg-muted/10 text-muted transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
+    <Modal isOpen onClose={onClose} size="lg">
+      <ModalHeroHeader
+        icon={<Mail className="w-7 h-7" />}
+        title="Set up targeted offers"
+        subtitle="After an eligible buyer takes an action in your shop, targeted offers are shared automatically by email."
+        band="periwinkle"
+        onClose={onClose}
+      />
+      <div className="overflow-y-auto">
         <div className="px-6 py-5 space-y-3">
-          <p className="text-xs text-muted mb-2">
-            Automatically email a personalized, single-use discount code when a shopper takes one of these actions.
-          </p>
-
           {!campaigns ? (
             <div className="h-40 bg-background rounded-card animate-pulse" />
           ) : (
@@ -110,15 +101,7 @@ export function TargetedOffersModal({ onClose }: TargetedOffersModalProps) {
                       <p className="text-sm font-semibold text-secondary">{meta.label}</p>
                       <p className="text-xs text-muted">{meta.desc}</p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => toggle(c)}
-                      role="switch"
-                      aria-checked={c.isActive}
-                      className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${c.isActive ? 'bg-primary' : 'bg-border'}`}
-                    >
-                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${c.isActive ? 'translate-x-5' : ''}`} />
-                    </button>
+                    <Toggle checked={c.isActive} onChange={() => toggle(c)} ariaLabel={`Toggle ${meta.label}`} />
                   </div>
 
                   {c.isActive && (
@@ -165,17 +148,11 @@ export function TargetedOffersModal({ onClose }: TargetedOffersModalProps) {
             })
           )}
         </div>
-
-        <div className="sticky bottom-0 bg-surface border-t border-border px-6 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2.5 text-sm font-medium text-muted border border-border rounded-button hover:border-primary/40 transition-colors"
-          >
-            Done
-          </button>
-        </div>
       </div>
-    </div>
+
+      <div className="shrink-0 border-t border-border px-6 py-4">
+        <Button variant="ghost" onClick={onClose}>Done</Button>
+      </div>
+    </Modal>
   );
 }

@@ -200,12 +200,19 @@ export class MessagesService {
   }
 
   async adminListConversations(query: AdminConversationQueryDto, storeId?: string) {
-    const { status, search, page = 1, limit = 20 } = query;
+    const { status, search, folder, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
     const where = {
       ...(storeId !== undefined && { storeId }),
       ...(status && { status }),
+      // "From potential buyers" — a general inquiry with no order attached
+      // yet is the closest real signal we have for "hasn't purchased".
+      // "From platform" — any conversation carrying a SYSTEM-authored
+      // message (Message.senderType already distinguishes CUSTOMER/SHOP/
+      // SYSTEM, so this needs no new schema).
+      ...(folder === 'prospective_buyers' && { orderId: null }),
+      ...(folder === 'from_platform' && { messages: { some: { senderType: 'SYSTEM' as const } } }),
       ...(search && {
         OR: [
           { subject: { contains: search, mode: 'insensitive' as const } },

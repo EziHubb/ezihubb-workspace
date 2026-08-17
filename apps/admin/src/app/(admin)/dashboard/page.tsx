@@ -1,7 +1,7 @@
 import {
   DollarSign, PackageSearch, Clock, Hammer, Store, AlertTriangle,
   ShoppingBag, CheckCircle2, Flag, CreditCard, Star,
-  TrendingUp, BarChart2, ShieldCheck, Package,
+  TrendingUp, BarChart2, ShieldCheck, Package, AlertOctagon, Circle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
@@ -80,6 +80,13 @@ interface TopStoresResponse {
   stores?:   TopStore[];
 }
 
+interface ShopHealth {
+  checklist: { shopName: boolean; logo: boolean; banner: boolean; story: boolean; sellerPhoto: boolean };
+  listingsNeedingTitleWork: number;
+  performanceScore: number | null;
+  topTasks: { overdueOrders: number; ordersToSendToday: number; helpRequests: number; soldOutListings: number; inactiveListings: number };
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function safeFetch<T>(path: string, fallback: T): Promise<T> {
@@ -144,7 +151,7 @@ export default async function DashboardPage() {
 
   const [
     kpis, revenueRaw, ordersByStatus, topProducts, pendingRaw, seoStats,
-    platformKpis, activityRaw, topStoresData,
+    platformKpis, activityRaw, topStoresData, shopHealth,
   ] = await Promise.all([
     safeFetch<KpiData>(API_ROUTES.ADMIN.DASHBOARD_KPIS, {}),
     safeFetch<RevenueChartResponse | RevenueDataPoint[]>(
@@ -162,6 +169,7 @@ export default async function DashboardPage() {
     isShopOwner ? Promise.resolve({} as PlatformKpis) : safeFetch<PlatformKpis>(API_ROUTES.ADMIN.DASHBOARD_PLATFORM, {}),
     isShopOwner ? Promise.resolve([] as ActivityEvent[]) : safeFetch<ActivityEvent[]>(API_ROUTES.ADMIN.DASHBOARD_ACTIVITY, []),
     isShopOwner ? Promise.resolve({} as TopStoresResponse) : safeFetch<TopStoresResponse>(`${API_ROUTES.ADMIN.DASHBOARD_TOP_STORES}?limit=5`, {}),
+    isShopOwner ? safeFetch<ShopHealth | null>(API_ROUTES.ADMIN.DASHBOARD_SHOP_HEALTH, null) : Promise.resolve(null as ShopHealth | null),
   ]);
 
   // Normalise revenue chart data
@@ -184,6 +192,95 @@ export default async function DashboardPage() {
         subtitle={isShopOwner ? 'Your store overview' : 'Platform overview at a glance'}
         queryKey={false}
       />
+
+      {/* ── Shop owner: search visibility + shop checklist + top tasks ─────── */}
+      {isShopOwner && shopHealth && (() => {
+        const checklistItems: { key: keyof ShopHealth['checklist']; label: string; desc?: string; href: string }[] = [
+          { key: 'shopName',    label: 'Shop name added',   href: '/settings' },
+          { key: 'logo',        label: 'Logo added',        href: '/settings' },
+          { key: 'banner',      label: 'Banner added',      href: '/settings' },
+          { key: 'story',       label: 'Share your story',  desc: 'Tell buyers about who you are, what inspires you, and how you create', href: '/settings' },
+          { key: 'sellerPhoto', label: 'Upload a seller photo', desc: 'Introduce yourself with a friendly, clear photo', href: '/settings' },
+        ];
+        const doneCount = checklistItems.filter((c) => shopHealth.checklist[c.key]).length;
+        const riskFactors = (shopHealth.listingsNeedingTitleWork > 0 ? 1 : 0) + (doneCount < checklistItems.length ? 1 : 0);
+
+        return (
+          <>
+            {riskFactors > 0 && (
+              <div className="bg-[#F3F1EC] rounded-card p-5 mb-6 flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-start gap-3">
+                  <AlertOctagon className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-bold text-secondary">
+                      {riskFactors} factor{riskFactors !== 1 ? 's' : ''} risk{riskFactors === 1 ? 's' : ''} lowering your search visibility
+                    </p>
+                    <p className="text-xs text-muted mt-0.5">Improving photos, listing info, and more can help how you show up in search.</p>
+                  </div>
+                </div>
+                <Link href="/search-visibility" className="px-4 py-2 bg-secondary hover:bg-secondary/90 text-white text-sm font-bold rounded-pill transition-colors shrink-0">
+                  View search visibility
+                </Link>
+              </div>
+            )}
+
+            {doneCount < checklistItems.length && (
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h2 className="font-display text-lg font-bold text-secondary">Customise your shop</h2>
+                    <p className="text-xs text-muted mt-0.5">Showcase your brand&apos;s personality and build trust with buyers</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="w-20 h-1 bg-border rounded-full overflow-hidden">
+                      <div className="h-full bg-secondary" style={{ width: `${(doneCount / checklistItems.length) * 100}%` }} />
+                    </div>
+                    <span className="text-xs font-semibold text-muted">{doneCount}/{checklistItems.length}</span>
+                  </div>
+                </div>
+                <div className="bg-surface border border-border rounded-card divide-y divide-border overflow-hidden">
+                  {checklistItems.map((item) => {
+                    const done = shopHealth.checklist[item.key];
+                    return (
+                      <Link key={item.key} href={item.href} className="flex items-start gap-3 px-4 py-3.5 hover:bg-background transition-colors">
+                        {done ? (
+                          <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
+                        ) : (
+                          <Circle className="w-5 h-5 text-border shrink-0 mt-0.5" strokeDasharray="3 3" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-secondary">{item.label} →</p>
+                          {!done && item.desc && <p className="text-xs text-muted mt-0.5">{item.desc}</p>}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="mb-8">
+              <h2 className="font-display text-lg font-bold text-secondary mb-3">Top tasks</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-surface border border-border rounded-card p-4">
+                  <p className="text-sm font-bold text-secondary mb-1">Orders</p>
+                  <p className="text-xs text-muted">{shopHealth.topTasks.overdueOrders} overdue order{shopHealth.topTasks.overdueOrders !== 1 ? 's' : ''}</p>
+                  <p className="text-xs text-muted">{shopHealth.topTasks.ordersToSendToday} order{shopHealth.topTasks.ordersToSendToday !== 1 ? 's' : ''} to send today</p>
+                </div>
+                <div className="bg-surface border border-border rounded-card p-4">
+                  <p className="text-sm font-bold text-secondary mb-1">Messages</p>
+                  <p className="text-xs text-muted">{shopHealth.topTasks.helpRequests} help request{shopHealth.topTasks.helpRequests !== 1 ? 's' : ''}</p>
+                </div>
+                <div className="bg-surface border border-border rounded-card p-4">
+                  <p className="text-sm font-bold text-secondary mb-1">Listings</p>
+                  <p className="text-xs text-muted">{shopHealth.topTasks.soldOutListings} item{shopHealth.topTasks.soldOutListings !== 1 ? 's' : ''} sold out</p>
+                  <p className="text-xs text-muted">{shopHealth.topTasks.inactiveListings} listing{shopHealth.topTasks.inactiveListings !== 1 ? 's' : ''} inactive</p>
+                </div>
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       {/* ── SUPER_ADMIN-only sections ─────────────────────────────────────── */}
       {!isShopOwner && (<>

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Percent, Globe2, Tag } from 'lucide-react';
+import { Percent, Globe2, Tag } from 'lucide-react';
+import { Modal, ModalHeroHeader, Button } from '@ezihubb/ui';
 import { ListingPicker, type PickedProduct } from './ListingPicker';
 import { api } from '../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -121,21 +122,15 @@ export function SetUpSaleModal({ sale, initialProducts = [], onClose, onSave }: 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="relative bg-surface rounded-card border border-border shadow-2xl w-full max-w-[560px] max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-surface z-10">
-          <h2 className="font-bold text-secondary text-base flex items-center gap-2">
-            <Tag className="w-4 h-4 text-primary" />
-            {isEdit ? 'Edit sale' : 'Set up a sale'}
-          </h2>
-          <button type="button" onClick={onClose} className="p-1.5 rounded-button hover:bg-muted/10 text-muted transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
+    <Modal isOpen onClose={onClose} size="md">
+      <ModalHeroHeader
+        icon={<Tag className="w-7 h-7" />}
+        title={isEdit ? 'Edit sale' : 'Set up a sale'}
+        subtitle="Running a sale can help you clear out inventory, attract new customers, and encourage shoppers to spend more."
+        band="periwinkle"
+        onClose={onClose}
+      />
+      <div className="overflow-y-auto">
         <div className="px-6 py-5 space-y-5">
           <Field label="Sale name" required hint="Shown to you only, e.g. Summer Sale">
             <input
@@ -217,25 +212,14 @@ export function SetUpSaleModal({ sale, initialProducts = [], onClose, onSave }: 
             />
           </Field>
         </div>
-
-        <div className="sticky bottom-0 bg-surface border-t border-border px-6 py-4 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : (isEdit ? 'Save sale' : 'Confirm and create sale')}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2.5 text-sm font-medium text-muted border border-border rounded-button hover:border-primary/40 transition-colors"
-          >
-            Cancel
-          </button>
-        </div>
       </div>
-    </div>
+
+      <div className="shrink-0 border-t border-border px-6 py-4 flex items-center gap-3">
+        <Button variant="primary" onClick={handleSave} loading={saving}>
+          {isEdit ? 'Save sale' : 'Confirm and create sale'}
+        </Button>
+        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+      </div>
+    </Modal>
   );
 }

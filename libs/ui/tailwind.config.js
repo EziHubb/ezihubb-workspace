@@ -42,6 +42,24 @@ module.exports = {
           sale:       '#DC2626',
           hot:        '#D97706',
         },
+        // Accent "hero band" backgrounds — modal headers, promo hero cards
+        // (Etsy reference: peach for Social Media hero, periwinkle for most
+        // modal headers, purple for FAQ/CTA bands).
+        hero: {
+          peach:      '#FCE0CC',
+          periwinkle: '#C7D2F0',
+          purple:     '#E8E0F5',
+        },
+        // Pastel icon-circle badges used in grouped list/accordion rows
+        // (e.g. Finances' Sales/Fees/Marketing category rows).
+        category: {
+          'sales-bg':     '#D7F2DE',
+          'sales-fg':     '#2E7D52',
+          'fees-bg':      '#FBE0E6',
+          'fees-fg':      '#C2185B',
+          'marketing-bg': '#EDE4FB',
+          'marketing-fg': '#7C3AED',
+        },
       },
       fontFamily: {
         display: ['var(--font-playfair)', 'Playfair Display', 'Georgia', 'serif'],
@@ -54,6 +72,7 @@ module.exports = {
         xl:  '24px',
         // aliases for convenience
         button: '8px',
+        input:  '8px',
         card:   '12px',
         modal:  '16px',
         pill:   '999px',
@@ -76,15 +95,20 @@ module.exports = {
           '0%':   { transform: 'translateY(-100%)', opacity: '0' },
           '100%': { transform: 'translateY(0)',     opacity: '1' },
         },
+        'slide-in-right': {
+          '0%':   { transform: 'translateX(100%)' },
+          '100%': { transform: 'translateX(0)' },
+        },
         'fade-in': {
-          '0%':   { opacity: '0' },
-          '100%': { opacity: '1' },
+          '0%':   { opacity: '0', transform: 'translateY(4px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },
       animation: {
-        shimmer:    'shimmer 1.5s infinite linear',
-        'slide-up': 'slide-up 0.3s ease-out',
-        'fade-in':  'fade-in 0.2s ease-out',
+        shimmer:          'shimmer 1.5s infinite linear',
+        'slide-up':       'slide-up 0.3s ease-out',
+        'fade-in':        'fade-in 0.15s ease-out',
+        'slide-in-right': 'slide-in-right 0.25s ease-out',
       },
     },
   },

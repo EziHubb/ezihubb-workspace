@@ -5,9 +5,11 @@ export interface AdminTheme {
   primaryRgb:   string;
   primaryDark:  string;
   primaryLight: string;
-  sidebar:      string;
 }
 
+// The sidebar itself is always Etsy's cream (`bg-background`) regardless of
+// theme — only the accent color used for buttons, links, and the active-nav
+// tint (`sidebar-active`, see apps/admin/tailwind.config.js) varies per theme.
 export const ADMIN_THEMES: AdminTheme[] = [
   {
     key:          'coral',
@@ -15,7 +17,13 @@ export const ADMIN_THEMES: AdminTheme[] = [
     primaryRgb:   '232 93 63',
     primaryDark:  '#C44A2E',
     primaryLight: '#FFF0EC',
-    sidebar:      '#1E1E2E',
+  },
+  {
+    key:          'classic',
+    name:         'Classic',
+    primaryRgb:   '26 26 26',
+    primaryDark:  '#000000',
+    primaryLight: '#F2F2F2',
   },
   {
     key:          'ocean',
@@ -23,7 +31,6 @@ export const ADMIN_THEMES: AdminTheme[] = [
     primaryRgb:   '14 165 233',
     primaryDark:  '#0284C7',
     primaryLight: '#E0F2FE',
-    sidebar:      '#0C2340',
   },
   {
     key:          'forest',
@@ -31,7 +38,6 @@ export const ADMIN_THEMES: AdminTheme[] = [
     primaryRgb:   '22 163 74',
     primaryDark:  '#15803D',
     primaryLight: '#DCFCE7',
-    sidebar:      '#0F2D1A',
   },
   {
     key:          'violet',
@@ -39,7 +45,6 @@ export const ADMIN_THEMES: AdminTheme[] = [
     primaryRgb:   '124 58 237',
     primaryDark:  '#6D28D9',
     primaryLight: '#EDE9FE',
-    sidebar:      '#1C1033',
   },
   {
     key:          'rose',
@@ -47,7 +52,6 @@ export const ADMIN_THEMES: AdminTheme[] = [
     primaryRgb:   '225 29 72',
     primaryDark:  '#BE123C',
     primaryLight: '#FFE4E6',
-    sidebar:      '#2D0A18',
   },
   {
     key:          'slate',
@@ -55,7 +59,6 @@ export const ADMIN_THEMES: AdminTheme[] = [
     primaryRgb:   '99 102 241',
     primaryDark:  '#4F46E5',
     primaryLight: '#EEF2FF',
-    sidebar:      '#0F172A',
   },
 ];
 
@@ -67,7 +70,6 @@ export function applyTheme(theme: AdminTheme) {
   r.style.setProperty('--c-primary',       theme.primaryRgb);
   r.style.setProperty('--c-primary-dark',  theme.primaryDark);
   r.style.setProperty('--c-primary-light', theme.primaryLight);
-  r.style.setProperty('--c-sidebar',       theme.sidebar);
 }
 
 export function loadSavedTheme(): AdminTheme {

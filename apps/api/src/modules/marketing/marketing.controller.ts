@@ -109,10 +109,10 @@ export class MarketingController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get Offsite Ads performance stats for the current store' })
-  async getOffsiteAdsStats(@Req() req: Request, @Query('days') days?: string) {
+  async getOffsiteAdsStats(@Req() req: Request, @Query('days') days?: string, @Query('offsetDays') offsetDays?: string) {
     const context = await this.storeContext.resolve(req);
     const storeId = this.storeContext.requireStoreId(context);
-    return this.offsiteAdsService.getStats(storeId, days ? Number(days) : undefined);
+    return this.offsiteAdsService.getStats(storeId, days ? Number(days) : undefined, offsetDays ? Number(offsetDays) : undefined);
   }
 
   @Patch('offsite-ads/opt-out')
