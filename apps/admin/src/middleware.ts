@@ -1,18 +1,33 @@
+import { NextResponse } from 'next/server';
 import { withAuth } from 'next-auth/middleware';
 
-export default withAuth({
-  callbacks: {
-    authorized: ({ token, req }) => {
-      // Allow TOTP verify page only for admin sessions pending 2FA completion
-      if (req.nextUrl.pathname.startsWith('/totp-verify')) {
-        return !!token &&
-          token['requiresTOTP'] === true &&
-          ['ADMIN', 'SUPER_ADMIN'].includes(token['role'] as string);
-      }
-      return !!token && ['ADMIN', 'SUPER_ADMIN'].includes(token['role'] as string);
+// `apps/admin/src/app/(admin)/layout.tsx` reads the current path server-side
+// via `headers().get('x-pathname')` to run its route guards (blocking a shop
+// owner from super-admin-only pages, and blocking a platform-context
+// super-admin from store-only pages) — Next.js has no built-in way to read
+// the request path from a Server Component, so middleware must forward it
+// as a request header explicitly. Without this, `headers()` always returns
+// null and every one of those guards silently no-ops.
+export default withAuth(
+  function middleware(req) {
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set('x-pathname', req.nextUrl.pathname);
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  },
+  {
+    callbacks: {
+      authorized: ({ token, req }) => {
+        // Allow TOTP verify page only for admin sessions pending 2FA completion
+        if (req.nextUrl.pathname.startsWith('/totp-verify')) {
+          return !!token &&
+            token['requiresTOTP'] === true &&
+            ['ADMIN', 'SUPER_ADMIN'].includes(token['role'] as string);
+        }
+        return !!token && ['ADMIN', 'SUPER_ADMIN'].includes(token['role'] as string);
+      },
     },
   },
-});
+);
 
 // Protect everything except login, NextAuth API routes, Next.js internals,
 // and the static brand/favicon assets served from public/ (logo, icons,

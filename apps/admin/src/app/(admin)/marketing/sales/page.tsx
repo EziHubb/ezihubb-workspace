@@ -179,9 +179,14 @@ export default function MarketingSalesPage() {
   const keySales = (keySalesQuery.data?.data ?? []).filter((p) => p.autoApply);
 
   // ── Bundle offers query ──────────────────────────────────────────────────────
+  // Bundles (and the other seller self-service tools below — targeted offers,
+  // buyer offers, order minimum) are scoped to one store server-side with no
+  // platform-wide aggregate; skip the fetch entirely in platform context
+  // rather than let it 400 on mount.
   const bundlesQuery = useQuery({
     queryKey: ['admin-bundle-offers'],
     queryFn:  () => api.get<BundleOffer[]>(API_ROUTES.ADMIN.BUNDLE_OFFERS),
+    enabled:  !isPlatformContext,
   });
   const bundles = bundlesQuery.data ?? [];
 
@@ -494,72 +499,86 @@ export default function MarketingSalesPage() {
             </div>
           </section>
 
-          {/* Send offers to interested buyers */}
-          <section>
-            <div className="mb-3">
-              <h2 className="font-display text-lg font-bold text-secondary">Send offers to interested buyers</h2>
-              <p className="text-sm text-muted mt-0.5">Create an offer to motivate interested shoppers automatically, or create a promo code to share with anyone you like.</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              <EntryCard icon={Eye}          title="Interested shopper offer" desc="Send an offer when someone shows early interest in your items." onClick={() => setTargetedOffersOpen(true)} />
-              <EntryCard icon={ShoppingCart} title="Abandoned basket offer"   desc="Send an offer when someone leaves an item from your shop in their basket." onClick={() => setTargetedOffersOpen(true)} />
-              <EntryCard icon={PackageCheck} title="Thank you offer"          desc="Send an offer to a buyer after their order dispatches, to thank them." onClick={() => setTargetedOffersOpen(true)} />
-              <EntryCard icon={Heart}        title="Favourited item offer"    desc="Send an offer when someone favourites one of your items." onClick={() => setTargetedOffersOpen(true)} />
-              <EntryCard icon={Tag}          title="Promo code"               desc="Share your code with customers — they apply it for a discount at checkout." onClick={() => setCouponModal('new')} />
-            </div>
-          </section>
+          {/* Seller self-service tools (targeted offers, buyer offers, order
+              minimum, bundles) are scoped to one store — not meaningful (and
+              not functional, server-side) without an active store context. */}
+          {isPlatformContext ? (
+            <section className="text-center py-10 border border-dashed border-border rounded-card">
+              <p className="text-sm font-semibold text-secondary mb-1">Store-specific tools hidden in platform view</p>
+              <p className="text-sm text-muted max-w-md mx-auto">
+                Targeted offers, buyer offers, order minimums, and bundles are managed per store — switch into a store to set them up.
+              </p>
+            </section>
+          ) : (
+            <>
+              {/* Send offers to interested buyers */}
+              <section>
+                <div className="mb-3">
+                  <h2 className="font-display text-lg font-bold text-secondary">Send offers to interested buyers</h2>
+                  <p className="text-sm text-muted mt-0.5">Create an offer to motivate interested shoppers automatically, or create a promo code to share with anyone you like.</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <EntryCard icon={Eye}          title="Interested shopper offer" desc="Send an offer when someone shows early interest in your items." onClick={() => setTargetedOffersOpen(true)} />
+                  <EntryCard icon={ShoppingCart} title="Abandoned basket offer"   desc="Send an offer when someone leaves an item from your shop in their basket." onClick={() => setTargetedOffersOpen(true)} />
+                  <EntryCard icon={PackageCheck} title="Thank you offer"          desc="Send an offer to a buyer after their order dispatches, to thank them." onClick={() => setTargetedOffersOpen(true)} />
+                  <EntryCard icon={Heart}        title="Favourited item offer"    desc="Send an offer when someone favourites one of your items." onClick={() => setTargetedOffersOpen(true)} />
+                  <EntryCard icon={Tag}          title="Promo code"               desc="Share your code with customers — they apply it for a discount at checkout." onClick={() => setCouponModal('new')} />
+                </div>
+              </section>
 
-          {/* Drive traffic and move inventory */}
-          <section>
-            <div className="mb-3">
-              <h2 className="font-display text-lg font-bold text-secondary">Drive traffic and move inventory</h2>
-              <p className="text-sm text-muted mt-0.5">Start your own sale to boost traffic, or accept offers from buyers on select listings to move inventory.</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <EntryCard icon={HandCoins}    title="Accept offers from buyers" desc="Choose specific listings, set a discount limit, and have the final say." onClick={() => setBuyerOffersOpen(true)} />
-              <EntryCard icon={BadgePercent} title="Run a sale"                desc="Set lower prices for your whole shop or just a few items — no code needed." onClick={() => setSaleModal('new')} />
-            </div>
-          </section>
+              {/* Drive traffic and move inventory */}
+              <section>
+                <div className="mb-3">
+                  <h2 className="font-display text-lg font-bold text-secondary">Drive traffic and move inventory</h2>
+                  <p className="text-sm text-muted mt-0.5">Start your own sale to boost traffic, or accept offers from buyers on select listings to move inventory.</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <EntryCard icon={HandCoins}    title="Accept offers from buyers" desc="Choose specific listings, set a discount limit, and have the final say." onClick={() => setBuyerOffersOpen(true)} />
+                  <EntryCard icon={BadgePercent} title="Run a sale"                desc="Set lower prices for your whole shop or just a few items — no code needed." onClick={() => setSaleModal('new')} />
+                </div>
+              </section>
 
-          {/* Up your average order value */}
-          <section>
-            <div className="mb-3">
-              <h2 className="font-display text-lg font-bold text-secondary">Up your average order value</h2>
-              <p className="text-sm text-muted mt-0.5">Encourage buyers to place bigger orders and get the most out of every sale.</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <EntryCard icon={ShoppingBag} title="Set an order minimum" desc="Set up a discount with an order minimum to help boost order value." onClick={() => setOrderMinModal('new')} />
-              <EntryCard icon={Boxes}       title="Bundle items together" desc="Sweeten the deal with a discount on items buyers might want together." onClick={() => setBundleModal('new')} />
-            </div>
+              {/* Up your average order value */}
+              <section>
+                <div className="mb-3">
+                  <h2 className="font-display text-lg font-bold text-secondary">Up your average order value</h2>
+                  <p className="text-sm text-muted mt-0.5">Encourage buyers to place bigger orders and get the most out of every sale.</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <EntryCard icon={ShoppingBag} title="Set an order minimum" desc="Set up a discount with an order minimum to help boost order value." onClick={() => setOrderMinModal('new')} />
+                  <EntryCard icon={Boxes}       title="Bundle items together" desc="Sweeten the deal with a discount on items buyers might want together." onClick={() => setBundleModal('new')} />
+                </div>
 
-            {bundles.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                {bundles.map((b) => (
-                  <div key={b.id} className="bg-surface rounded-card border border-border p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-bold text-primary">{b.discountPercent}% off</span>
-                      <StatusBadge status={b.isActive ? 'ACTIVE' : 'PAUSED'} />
-                    </div>
-                    <div className="flex -space-x-2 mb-3">
-                      {b.products.map((p) => (
-                        p.images[0]
-                          ? <img key={p.id} src={p.images[0]} alt={p.name} className="w-9 h-9 rounded-full object-cover border-2 border-surface" />
-                          : <div key={p.id} className="w-9 h-9 rounded-full bg-muted/10 border-2 border-surface flex items-center justify-center"><Package className="w-3.5 h-3.5 text-muted/40" /></div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-secondary truncate mb-3">{b.products.map((p) => p.name).join(' + ')}</p>
-                    <div className="flex items-center gap-1">
-                      <ActionBtn icon={Pencil} label="Edit" onClick={() => setBundleModal(b)} />
-                      {b.isActive
-                        ? <ActionBtn icon={Pause} label="Pause" onClick={() => handleToggleBundle(b, false)} />
-                        : <ActionBtn icon={Play} label="Resume" onClick={() => handleToggleBundle(b, true)} />}
-                      <ActionBtn icon={Trash2} label="Delete" onClick={() => handleDeleteBundle(b)} variant="danger" />
-                    </div>
+                {bundles.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                    {bundles.map((b) => (
+                      <div key={b.id} className="bg-surface rounded-card border border-border p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-bold text-primary">{b.discountPercent}% off</span>
+                          <StatusBadge status={b.isActive ? 'ACTIVE' : 'PAUSED'} />
+                        </div>
+                        <div className="flex -space-x-2 mb-3">
+                          {b.products.map((p) => (
+                            p.images[0]
+                              ? <img key={p.id} src={p.images[0]} alt={p.name} className="w-9 h-9 rounded-full object-cover border-2 border-surface" />
+                              : <div key={p.id} className="w-9 h-9 rounded-full bg-muted/10 border-2 border-surface flex items-center justify-center"><Package className="w-3.5 h-3.5 text-muted/40" /></div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-secondary truncate mb-3">{b.products.map((p) => p.name).join(' + ')}</p>
+                        <div className="flex items-center gap-1">
+                          <ActionBtn icon={Pencil} label="Edit" onClick={() => setBundleModal(b)} />
+                          {b.isActive
+                            ? <ActionBtn icon={Pause} label="Pause" onClick={() => handleToggleBundle(b, false)} />
+                            : <ActionBtn icon={Play} label="Resume" onClick={() => handleToggleBundle(b, true)} />}
+                          <ActionBtn icon={Trash2} label="Delete" onClick={() => handleDeleteBundle(b)} variant="danger" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </section>
+                )}
+              </section>
+            </>
+          )}
 
           {/* Join our next sales events — platform-wide, no real events calendar */}
           <section className="text-center py-10">
