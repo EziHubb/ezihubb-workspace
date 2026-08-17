@@ -5,15 +5,23 @@
 #
 # Runs from your local machine: SSHes into the EC2 instance, pulls the
 # latest code, and for each Docker image whose own files (or a shared
-# dependency) changed, first tries a plain `docker pull` (the image GitHub
-# Actions CI already built for this exact commit — .github/workflows/
-# docker-publish.yml, tagged by git SHA and pushed to GHCR), re-tagged
-# locally to the name docker-compose.yml expects, and only falls back to
-# building directly on the instance if that pull fails (CI hasn't built
-# this commit yet, is down, or DOCKER_IMAGE_BASE is unset/disabled). Then
-# it runs pending Prisma migrations against RDS and restarts the stack
-# (docker-compose.yml: redis, mongodb, api, client, admin — Postgres runs
-# on RDS, not a container).
+# dependency) changed, tries up to 3 tiers before building anything locally:
+#   1. `docker pull` the image tagged with this exact commit's SHA (CI —
+#      .github/workflows/docker-publish.yml — already built it if this
+#      target's own files changed in the latest push).
+#   2. If that tag doesn't exist (this target's own files DIDN'T change in
+#      the latest push, so CI skipped it, but an earlier commit still swept
+#      it into this run via a shared-file change), pull GHCR's `:latest`
+#      instead — CI already built+tagged it for whatever commit last
+#      actually touched it, so this is exactly as correct as a local
+#      rebuild, just without the wasted RAM/CPU/time on a 2GB instance.
+#   3. Only if both pulls fail does it build directly on the instance (CI
+#      hasn't built this commit yet, is down, or DOCKER_IMAGE_BASE is
+#      unset/disabled).
+# Whichever tier succeeds, the image gets re-tagged locally to the name
+# docker-compose.yml expects. Then it runs pending Prisma migrations
+# against RDS and restarts the stack (docker-compose.yml: redis, mongodb,
+# api, client, admin — Postgres runs on RDS, not a container).
 #
 # Config (server IP/user, SSH key path, deploy path) lives in
 # scripts/.deploy-config — gitignored, never commit real values.
@@ -182,6 +190,25 @@ DC="docker compose"
 # invalidate their build cache anyway, but skipping the build call entirely
 # for untouched services saves even the no-op "check every layer" pass.
 BUILD_TARGETS="migrate api client admin"
+# Which of those targets' OWN app files changed in the single most recent
+# commit (not the whole OLD_HEAD..NEW_HEAD catch-up range) — mirrors exactly
+# what docker-publish.yml's path-filter saw for the latest push, and is the
+# safety gate for the `:latest` pull-fallback below (Phase 1b): if a target
+# is only in BUILD_TARGETS because an EARLIER commit touched a shared file
+# (docker/Dockerfile, package.json, ...) while that target's own code hasn't
+# changed since, CI already rebuilt+tagged it — GHCR's `:latest` for it is
+# safe to reuse instead of a wasteful local rebuild. If the target's own
+# files DID change in the latest commit, `:latest` might not reflect that
+# yet (CI still running, or genuinely failed), so it's excluded here and
+# must go through a real local build if the exact-SHA pull also fails.
+OWN_FILES_CHANGED=""
+LATEST_COMMIT_CHANGED="$($SSH "cd '$DEPLOY_PATH' && git diff --name-only 'HEAD~1' 'HEAD' 2>/dev/null" || true)"
+if [ -n "$LATEST_COMMIT_CHANGED" ]; then
+    echo "$LATEST_COMMIT_CHANGED" | grep -q '^apps/api/'         && OWN_FILES_CHANGED="$OWN_FILES_CHANGED api"
+    echo "$LATEST_COMMIT_CHANGED" | grep -q '^apps/client/'       && OWN_FILES_CHANGED="$OWN_FILES_CHANGED client"
+    echo "$LATEST_COMMIT_CHANGED" | grep -q '^apps/admin/'        && OWN_FILES_CHANGED="$OWN_FILES_CHANGED admin"
+    echo "$LATEST_COMMIT_CHANGED" | grep -q '^prisma/migrations/' && OWN_FILES_CHANGED="$OWN_FILES_CHANGED migrate"
+fi
 if [ -n "$OLD_HEAD" ] && [ "$OLD_HEAD" != "$NEW_HEAD" ]; then
     CHANGED="$($SSH "cd '$DEPLOY_PATH' && git diff --name-only '$OLD_HEAD' '$NEW_HEAD'" 2>/dev/null || true)"
     if [ -n "$CHANGED" ]; then
@@ -228,35 +255,101 @@ else
         for TARGET in $BUILD_TARGETS; do
             REMOTE_IMAGE="${DOCKER_IMAGE_BASE}-${TARGET}:${IMAGE_TAG}"
             LOCAL_IMAGE="ezihubb-workspace-${TARGET}:latest"
-            ( $SSH "docker pull '$REMOTE_IMAGE' && docker tag '$REMOTE_IMAGE' '$LOCAL_IMAGE'" \
+            # `docker rmi "$REMOTE_IMAGE"` after tagging — once aliased to
+            # $LOCAL_IMAGE, the original ghcr.io/...:<sha> reference serves
+            # no further purpose, but nothing was ever dropping it: every
+            # past pull's SHA tag was accumulating on disk forever (found 5
+            # distinct ghcr.io/ezihubb/ezihubb-api:<sha> tags still present
+            # after only 5 deploys — the actual cause of disk filling back
+            # up to 93% despite KEEP_BUILDS capping the *local* timestamped
+            # tags correctly). Safe to remove immediately: it shares layers
+            # with $LOCAL_IMAGE (already tagged), so `rmi` here only drops
+            # the tag pointer, not any layer $LOCAL_IMAGE still needs.
+            ( $SSH "docker pull '$REMOTE_IMAGE' && docker tag '$REMOTE_IMAGE' '$LOCAL_IMAGE' && docker rmi '$REMOTE_IMAGE'" \
                 > "$PULL_TMPDIR/$TARGET.log" 2>&1 ) &
             PULL_PID[$TARGET]=$!
         done
         for TARGET in $BUILD_TARGETS; do
             echo ""
-            echo -e "${YELLOW}--- $TARGET (pull) ---${NC}"
+            echo -e "${YELLOW}--- $TARGET (pull @ ${IMAGE_TAG:0:7}) ---${NC}"
             cat "$PULL_TMPDIR/$TARGET.log"
             if wait "${PULL_PID[$TARGET]}"; then
                 PULLED_OK[$TARGET]=true
                 echo -e "${GREEN}✓ Pulled ${DOCKER_IMAGE_BASE}-${TARGET}:${IMAGE_TAG}, tagged as ezihubb-workspace-${TARGET}:latest${NC}"
             else
                 PULLED_OK[$TARGET]=false
-                echo -e "${YELLOW}⚠ Pull failed (tag not pushed for this commit yet, or network error) — falling back to local build${NC}"
+                echo -e "${YELLOW}⚠ No image for this exact commit yet${NC}"
             fi
         done
         rm -rf "$PULL_TMPDIR"
+
+        # ── Phase 1b: fall back to GHCR's `:latest` for targets that are only
+        # in BUILD_TARGETS because an earlier commit touched a shared file —
+        # CI already rebuilt+tagged them (both `:latest` and their own SHA)
+        # for whatever commit actually changed them, so pulling `:latest` is
+        # exactly as correct as a fresh local build and far cheaper. This is
+        # what closes the gap from the incident where a client-only fix
+        # commit swept admin/api/migrate into BUILD_TARGETS (an earlier,
+        # already-deployed-but-not-yet-picked-up commit had touched
+        # docker/Dockerfile) and, because no image existed tagged with the
+        # NEW commit's SHA for those untouched apps, all three rebuilt from
+        # scratch locally instead of reusing the perfectly good images CI
+        # had already built for them. Targets whose OWN files changed in the
+        # latest commit are deliberately excluded (see OWN_FILES_CHANGED
+        # above) — `:latest` might not reflect that change yet, so those
+        # must go through a real local build below if their exact-SHA pull
+        # also failed.
+        FALLBACK_TARGETS=""
+        for TARGET in $BUILD_TARGETS; do
+            if [ "${PULLED_OK[$TARGET]}" != true ] && ! echo " $OWN_FILES_CHANGED " | grep -q " $TARGET "; then
+                FALLBACK_TARGETS="$FALLBACK_TARGETS $TARGET"
+            fi
+        done
+        if [ -n "$FALLBACK_TARGETS" ]; then
+            echo ""
+            echo -e "${YELLOW}Trying :latest from GHCR for:$FALLBACK_TARGETS (own files unchanged since CI last built them — reusing instead of rebuilding)...${NC}"
+            PULL_TMPDIR="$(mktemp -d)"
+            declare -A LATEST_PID
+            for TARGET in $FALLBACK_TARGETS; do
+                REMOTE_IMAGE="${DOCKER_IMAGE_BASE}-${TARGET}:latest"
+                LOCAL_IMAGE="ezihubb-workspace-${TARGET}:latest"
+                ( $SSH "docker pull '$REMOTE_IMAGE' && docker tag '$REMOTE_IMAGE' '$LOCAL_IMAGE'" \
+                    > "$PULL_TMPDIR/$TARGET.log" 2>&1 ) &
+                LATEST_PID[$TARGET]=$!
+            done
+            for TARGET in $FALLBACK_TARGETS; do
+                echo ""
+                echo -e "${YELLOW}--- $TARGET (pull :latest) ---${NC}"
+                cat "$PULL_TMPDIR/$TARGET.log"
+                if wait "${LATEST_PID[$TARGET]}"; then
+                    PULLED_OK[$TARGET]=true
+                    echo -e "${GREEN}✓ Pulled ${DOCKER_IMAGE_BASE}-${TARGET}:latest — no local build needed${NC}"
+                else
+                    echo -e "${YELLOW}⚠ :latest pull also failed — falling back to local build${NC}"
+                fi
+            done
+            rm -rf "$PULL_TMPDIR"
+        fi
     fi
 
     # ── Phase 2: local build fallback — still one at a time ────────────────
     # Only reached for a target GHCR didn't have yet (or DOCKER_IMAGE_BASE
     # disabled). Kept strictly sequential: a 2GB instance can't absorb several
     # webpack/`next build` runs concurrently.
+    #
+    # BUILD_VERSION mirrors scripts/compute-version.sh's semantic version
+    # (X.Y.Z from Conventional Commits) rather than the raw SHA — computed
+    # on the server itself (same repo, same history) so it's identical to
+    # whatever CI would/did tag this commit as. Falls back to the SHA if the
+    # script can't run for some reason (e.g. an old checkout predating it).
+    BUILD_VERSION="$($SSH "cd '$DEPLOY_PATH' && bash scripts/compute-version.sh" 2>/dev/null || true)"
+    BUILD_VERSION="${BUILD_VERSION:-$NEW_HEAD}"
     for TARGET in $BUILD_TARGETS; do
         if [ "${PULLED_OK[$TARGET]:-false}" != true ]; then
             echo ""
             echo -e "${YELLOW}--- $TARGET (local build) ---${NC}"
             check_resources
-            $SSH "cd '$DEPLOY_PATH' && GIT_SHA='$NEW_HEAD' $DC build $TARGET"
+            $SSH "cd '$DEPLOY_PATH' && BUILD_VERSION='$BUILD_VERSION' $DC build $TARGET"
             LOCAL_BUILD_USED=true
         fi
     done

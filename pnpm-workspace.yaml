@@ -4,6 +4,18 @@ packages:
   - 'libs/shared/*'
   - 'packages/*'
 
+# canvas is an optional peer dependency of jsdom (pulled in transitively by
+# jest-environment-jsdom / @nx/vite's vitest tooling for tests only — no app
+# code imports it, see apps/**/libs/** grep). Its native build (needing
+# cairo/pango/jpeg/gif/fontconfig-dev + gcc/python3 in docker/Dockerfile's
+# base stage) added real weight to every production image despite never
+# being used at runtime. Aliased to an empty stub below instead of actually
+# installing/compiling it — jsdom degrades gracefully (console warning, no
+# real canvas rendering) when canvas is unavailable, which is fine since no
+# test currently asserts real canvas pixel output.
+overrides:
+  canvas: npm:empty-npm-package@1.0.0
+
 allowBuilds:
   '@firebase/util': true
   '@nestjs/core': true
@@ -12,7 +24,7 @@ allowBuilds:
   '@scarf/scarf': true
   '@swc/core': true
   bcrypt: true
-  canvas: true
+  canvas: set this to true or false
   esbuild: true
   less: true
   msgpackr-extract: true

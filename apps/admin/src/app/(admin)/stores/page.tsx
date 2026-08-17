@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Search, Store, Clock, CheckCircle2, PauseCircle, XCircle } from 'lucide-react';
@@ -57,20 +56,14 @@ const STATUS_COLORS: Record<string, string> = {
 function AdminStoresPageInner() {
   const { prompt } = useDialog();
   const qc = useQueryClient();
-  const { data: session } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const sessionUser = session?.user as Record<string, unknown> | undefined;
-  const role    = sessionUser?.['role']    as string | undefined;
-  const storeId = sessionUser?.['storeId'] as string | null | undefined;
 
-  // Shop owners go directly to their own store page — redirect as a fallback
-  // (the sidebar already links them to /stores/[id] directly)
-  useEffect(() => {
-    if (role === 'ADMIN') {
-      router.replace(storeId ? `/stores/${storeId}` : '/dashboard');
-    }
-  }, [role, storeId, router]);
+  // No client-side ADMIN redirect here — (admin)/layout.tsx's server-side
+  // guard already sends a shop owner (or a SUPER_ADMIN switched into "My
+  // Store") straight to their own /stores/[id] before this page ever
+  // renders, so this component only ever mounts for a platform-context
+  // SUPER_ADMIN.
 
   // Filter lives on the URL (?status=), not local state — shareable/bookmarkable
   // and survives a refresh. No ?status param = "All Statuses" (default).
@@ -101,7 +94,6 @@ function AdminStoresPageInner() {
       if (debSearch) p.set('search', debSearch);
       return api.get<StoresResponse>(`${API_ROUTES.ADMIN.STORES}?${p}`);
     },
-    enabled: role !== 'ADMIN',
   });
 
   const approveMutation = useMutation({
@@ -120,9 +112,6 @@ function AdminStoresPageInner() {
       api.post(API_ROUTES.ADMIN.STORE_SUSPEND(id), { reason }),
     onSuccess:  () => qc.invalidateQueries({ queryKey: ['admin-stores'] }),
   });
-
-  // Render nothing while the redirect is in-flight — prevents stores list from flashing
-  if (role === 'ADMIN') return null;
 
   const stores     = safeArr(data?.data);
   const pagination = data?.pagination;

@@ -21,16 +21,14 @@ const withNextIntl = createNextIntlPlugin(intlConfigPath);
  **/
 const nextConfig = {
   nx: {},
-  // NOT using output: 'standalone' — docker/Dockerfile's production stage
-  // copies the full node_modules and runs `next start` (never got updated
-  // to copy .next/standalone + run `node server.js`, the only way
-  // standalone's node_modules pruning actually pays off). Running
-  // `next start` against a `standalone`-configured build silently breaks
-  // things `next start` doesn't expect from that mode — reproduced as
-  // fetch() calls with `next: { revalidate }` in force-dynamic routes
-  // (e.g. the mega-menu nav) silently returning nothing in production
-  // while working fine in dev — so keep this off until the Dockerfile is
-  // actually rewritten to run the standalone server.
+  // Requires docker/Dockerfile's production stage to run `node server.js`
+  // from .next/standalone — NOT `next start` (see git history: running
+  // `next start` against a standalone-configured build silently broke
+  // fetch() + { next: { revalidate } } in force-dynamic routes, e.g. the
+  // mega-menu nav, and was reverted). The Dockerfile below has been
+  // updated accordingly — verify the mega-menu nav specifically after any
+  // future change here before trusting it in production.
+  output: 'standalone',
   compress: true,
   transpilePackages: ['@ezihubb/constants', '@ezihubb/types', '@ezihubb/ui', '@ezihubb/api-client'],
   images: {

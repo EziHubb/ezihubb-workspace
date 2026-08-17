@@ -22,10 +22,16 @@ export class CampaignsPublicController {
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
+// Campaigns are a platform-wide homepage program with no per-store concept
+// at all (campaigns.service.ts has no storeId anywhere) — unlike Reviews/
+// Messages/Promotions, a store-owner ADMIN has no legitimate reason to
+// create/edit/activate the marketplace's own homepage banner, so this whole
+// controller is SUPER_ADMIN-only, not the usual @AdminController('campaigns')
+// which would also admit ADMIN. Same reasoning as admin-affiliates.controller.ts.
 @ApiTags('Admin – Campaigns')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
+@Roles(Role.SUPER_ADMIN)
 @Controller('admin/campaigns')
 export class CampaignsController {
   constructor(private readonly svc: CampaignsService) {}

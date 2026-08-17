@@ -73,6 +73,29 @@ export interface AdminMode {
 }
 
 /**
+ * Given the caller's own storeId and whatever the store-context cookie
+ * currently holds, decides whether they're switched into "My Store" mode.
+ * Pure function (no `document`/`cookies()` access) so it works identically
+ * from a Client Component (paired with `getStoreContext()`) or a Server
+ * Component (paired with `cookies()` from `next/headers`).
+ */
+export function resolveInStoreMode(ownStoreId: string | null, storeContextCookie: string | null): boolean {
+  return !!ownStoreId && storeContextCookie === ownStoreId;
+}
+
+/**
+ * "Is this request/session effectively acting as a shop owner" — true for a
+ * plain ADMIN, or a SUPER_ADMIN currently switched into their own store.
+ * The single boolean both `(admin)/layout.tsx`'s route guard and any
+ * split-UI page (e.g. dashboard/page.tsx) need; kept here as one definition
+ * so the two don't drift the way the layout guard's two independent checks
+ * once did (see route-categories.ts for the full story).
+ */
+export function isActingAsShopOwner(role: string | undefined, inStoreMode: boolean): boolean {
+  return role === 'ADMIN' || (role === 'SUPER_ADMIN' && inStoreMode);
+}
+
+/**
  * Single source of truth for "what admin mode is this session in" — reused by
  * the sidebar (which nav to show) and by any page that needs to know whether
  * it's being viewed platform-wide vs. scoped to one store.

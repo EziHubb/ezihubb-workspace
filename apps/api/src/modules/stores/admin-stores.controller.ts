@@ -7,6 +7,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '@ezihubb/constants';
 import { StoresService } from './stores.service';
 import { AuditLogService } from '../../common/services/audit-log.service';
 import { StoreContextService } from '../../common/services/store-context.service';
@@ -40,6 +42,7 @@ export class AdminStoresController {
   constructor(
     private readonly storesService: StoresService,
     private readonly auditLog:      AuditLogService,
+    private readonly storeContext:  StoreContextService,
   ) {}
 
   private logStoreDecision(req: any, id: string, action: string, dto?: Record<string, unknown>): void {
@@ -68,7 +71,12 @@ export class AdminStoresController {
     return this.storesService.adminGetStore(id, scopedOwnerId);
   }
 
+  // Moderation actions on another seller's store — SUPER_ADMIN-only (method
+  // override narrows past @AdminController's ADMIN+SUPER_ADMIN class default;
+  // RolesGuard's Reflector.getAllAndOverride checks method-level metadata
+  // first, so this @Roles() fully replaces the class default for this route).
   @Post(':id/approve')
+  @Roles(Role.SUPER_ADMIN)
   async approveStore(@Param('id') id: string, @Req() req: any, @Body() dto: ApproveStoreDto) {
     const result = await this.storesService.adminApproveStore(id, req.user.sub ?? req.user.id, dto);
     this.logStoreDecision(req, id, 'APPROVE', dto as unknown as Record<string, unknown>);
@@ -76,6 +84,7 @@ export class AdminStoresController {
   }
 
   @Post(':id/reject')
+  @Roles(Role.SUPER_ADMIN)
   async rejectStore(@Param('id') id: string, @Req() req: any, @Body() dto: RejectStoreDto) {
     const result = await this.storesService.adminRejectStore(id, req.user.sub ?? req.user.id, dto);
     this.logStoreDecision(req, id, 'REJECT', dto as unknown as Record<string, unknown>);
@@ -83,14 +92,20 @@ export class AdminStoresController {
   }
 
   @Post(':id/suspend')
+  @Roles(Role.SUPER_ADMIN)
   async suspendStore(@Param('id') id: string, @Req() req: any, @Body() dto: SuspendStoreDto) {
     const result = await this.storesService.adminSuspendStore(id, req.user.sub ?? req.user.id, dto);
     this.logStoreDecision(req, id, 'SUSPEND', dto as unknown as Record<string, unknown>);
     return result;
   }
 
+  // These 5 methods are reachable by both ADMIN (own store) and SUPER_ADMIN
+  // (any store, when platform-context) — assertOwnership() blocks an ADMIN
+  // (or an in-store SUPER_ADMIN) from acting on any :id other than their own.
   @Patch(':id')
-  updateStore(@Param('id') id: string, @Body() dto: AdminUpdateStoreDto) {
+  async updateStore(@Param('id') id: string, @Req() req: Request, @Body() dto: AdminUpdateStoreDto) {
+    const context = await this.storeContext.resolve(req);
+    this.storeContext.assertOwnership(context, id);
     return this.storesService.adminUpdateStore(id, dto);
   }
 
@@ -98,8 +113,11 @@ export class AdminStoresController {
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   async uploadBanner(
     @Param('id') id: string,
+    @Req() req: Request,
     @UploadedFile() file: Express.Multer.File,
   ) {
+    const context = await this.storeContext.resolve(req);
+    this.storeContext.assertOwnership(context, id);
     if (!file) throw new BadRequestException({ code: 'ERR_FILE_REQUIRED', message: 'file is required' });
     return this.storesService.adminUploadStoreBanner(id, file);
   }
@@ -108,27 +126,36 @@ export class AdminStoresController {
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   async uploadLogo(
     @Param('id') id: string,
+    @Req() req: Request,
     @UploadedFile() file: Express.Multer.File,
   ) {
+    const context = await this.storeContext.resolve(req);
+    this.storeContext.assertOwnership(context, id);
     if (!file) throw new BadRequestException({ code: 'ERR_FILE_REQUIRED', message: 'file is required' });
     return this.storesService.adminUploadStoreLogo(id, file);
   }
 
   @Get(':id/products')
-  getStoreProducts(
+  async getStoreProducts(
     @Param('id') id: string,
+    @Req() req: Request,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
+    const context = await this.storeContext.resolve(req);
+    this.storeContext.assertOwnership(context, id);
     return this.storesService.adminGetStoreProducts(id, { page: page ? +page : 1, limit: limit ? +limit : 20 });
   }
 
   @Get(':id/orders')
-  getStoreOrders(
+  async getStoreOrders(
     @Param('id') id: string,
+    @Req() req: Request,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
+    const context = await this.storeContext.resolve(req);
+    this.storeContext.assertOwnership(context, id);
     return this.storesService.adminGetStoreOrders(id, { page: page ? +page : 1, limit: limit ? +limit : 20 });
   }
 }

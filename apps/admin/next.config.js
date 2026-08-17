@@ -8,11 +8,9 @@ const { composePlugins, withNx } = require('@nx/next');
  **/
 const nextConfig = {
   nx: {},
-  // NOT using output: 'standalone' — see apps/client/next.config.js for
-  // why: docker/Dockerfile's production stage runs `next start` against
-  // the full build output, never updated to run the standalone server,
-  // and that mismatch silently breaks fetch() + { next: { revalidate } }
-  // in force-dynamic routes in production (confirmed on the client app).
+  // See apps/client/next.config.js for why this requires docker/Dockerfile
+  // to run `node server.js` from .next/standalone — not `next start`.
+  output: 'standalone',
   transpilePackages: ['@ezihubb/constants', '@ezihubb/types', '@ezihubb/ui', '@ezihubb/api-client'],
   experimental: {
     optimizePackageImports: ['recharts', '@tanstack/react-table'],

@@ -19,6 +19,7 @@ import type { OrderStatusDataPoint } from '../../../components/charts/OrdersDonu
 import type { TopProductDto } from '../../../components/dashboard/TopProductsTable';
 import type { ReviewDto } from '../../../components/dashboard/PendingReviewsCard';
 import { fmtAmount, fmtRelative, unwrapArr, safeArr } from '../../../lib/fmt';
+import { STORE_CONTEXT_COOKIE, resolveInStoreMode, isActingAsShopOwner } from '../../../lib/store-context';
 
 export const metadata = { title: 'Dashboard — EziHubb Admin' };
 export const dynamic  = 'force-dynamic';
@@ -139,15 +140,17 @@ function SeoHealthCard({
 export default async function DashboardPage() {
   const session    = await getServerSession(authOptions);
   const sessionUser = session?.user as Record<string, unknown> | undefined;
-  const role        = sessionUser?.['role'] as string | undefined;
+  const role        = sessionUser?.['role']    as string | undefined;
+  const ownStoreId  = sessionUser?.['storeId'] as string | null | undefined ?? null;
   // A SUPER_ADMIN switched into "My Store" mode (see AdminSidebar's store-context
   // toggle) sends the same X-Store-Context cookie serverApi() forwards as a
   // header — the backend then scopes/rejects requests exactly like it does for
   // a plain ADMIN, so this page must treat that case as a shop owner too,
   // or it'll call the platform-only endpoints and get a 403 from the API.
   const { cookies } = await import('next/headers');
-  const inStoreMode = !!(await cookies()).get('ezihubb-store-context')?.value;
-  const isShopOwner = role === 'ADMIN' || inStoreMode;
+  const storeContextCookie = (await cookies()).get(STORE_CONTEXT_COOKIE)?.value ?? null;
+  const inStoreMode = resolveInStoreMode(ownStoreId, storeContextCookie);
+  const isShopOwner = isActingAsShopOwner(role, inStoreMode);
 
   const [
     kpis, revenueRaw, ordersByStatus, topProducts, pendingRaw, seoStats,

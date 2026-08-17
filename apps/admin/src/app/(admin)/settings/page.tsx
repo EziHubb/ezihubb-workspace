@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Save, Eye, EyeOff, Send, Plus, Pencil,
@@ -874,6 +875,8 @@ function TeamTab() {
   const qc = useQueryClient();
   const { confirm, alert } = useDialog();
   const [inviteOpen, setInviteOpen] = useState(false);
+  const { data: session } = useSession();
+  const ownId = (session?.user as Record<string, unknown> | undefined)?.['id'] as string | undefined;
 
   const { data: members = [], isLoading } = useQuery<AdminMember[]>({
     queryKey: ['admin-team'],
@@ -955,6 +958,8 @@ function TeamTab() {
                         <Select
                           size="sm"
                           value={m.role}
+                          disabled={m.id === ownId}
+                          title={m.id === ownId ? 'You cannot change your own role' : undefined}
                           onChange={(e) => handleRoleChange(m.id, e.target.value)}
                           options={[
                             { value: 'ADMIN',       label: 'Admin' },
@@ -967,13 +972,17 @@ function TeamTab() {
                       {m.lastLoginAt ? fmtDateTime(m.lastLoginAt) : 'Never'}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleRevoke(m.id, m.name)}
-                        className="text-xs text-red-500 hover:bg-red-50 px-2 py-1 rounded transition-colors"
-                      >
-                        Revoke
-                      </button>
+                      {m.id === ownId ? (
+                        <span className="text-xs text-muted" title="You cannot revoke your own admin access">—</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleRevoke(m.id, m.name)}
+                          className="text-xs text-red-500 hover:bg-red-50 px-2 py-1 rounded transition-colors"
+                        >
+                          Revoke
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

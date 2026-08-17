@@ -99,9 +99,13 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       // Messages deliberately excluded — they're per-store customer conversations,
       // not something that makes sense aggregated across the whole platform.
+      // Promotions deliberately excluded too — there is no platform-wide
+      // promotions/coupon feature; the old link here was a dead stub
+      // (/promotions just redirected into /marketing/sales, a shop-owner
+      // self-service tool). See "Sales and discounts" for the real,
+      // SHARED_AGGREGATE-shaped promotions page.
       { label: 'Customers',  href: '/customers',  icon: Users         },
       { label: 'Reviews',    href: '/reviews',    icon: Star          },
-      { label: 'Promotions', href: '/promotions', icon: BadgePercent  },
       { label: 'Campaigns',  href: '/campaigns',  icon: Megaphone     },
     ],
   },
@@ -421,6 +425,16 @@ function LogoMark({ role, inStoreMode }: { role?: string; inStoreMode?: boolean 
         <p className="text-[10px] font-semibold leading-tight mt-0.5 tracking-wide" style={{ color: isShopOwner ? '#059669' : '#4F46E5' }}>
           {isShopOwner ? 'Seller Hub' : 'Admin Panel'}
         </p>
+        {/* Build version — SUPER_ADMIN only (incl. while switched into their
+            own store), so support can confirm which release is actually live
+            without SSHing into the server. Semantic X.Y.Z, auto-computed by
+            scripts/compute-version.sh from Conventional Commits since the
+            last vX.Y.Z tag — never hand-edited (see CLAUDE.md). */}
+        {role === 'SUPER_ADMIN' && (
+          <p className="text-[10px] font-mono font-semibold leading-tight mt-0.5 text-muted" title="Build version">
+            v{process.env.NEXT_PUBLIC_BUILD_VERSION ?? 'dev'}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -476,15 +490,6 @@ function SidebarBody({
 
       {/* User footer */}
       <div className="shrink-0 px-3 py-3 border-t border-border">
-        {/* Build version — SUPER_ADMIN only, so support can confirm which
-            commit is actually live without SSHing into the server. Baked in
-            at Docker build time (see docker/Dockerfile's builder-admin
-            stage); "dev" for a plain `nx serve admin`. */}
-        {role === 'SUPER_ADMIN' && (
-          <p className="text-[9px] font-mono text-muted/60 mb-2 truncate" title="Build version">
-            ver {(process.env.NEXT_PUBLIC_BUILD_VERSION ?? 'dev').slice(0, 7)}
-          </p>
-        )}
         <div className="flex items-center gap-2.5">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"

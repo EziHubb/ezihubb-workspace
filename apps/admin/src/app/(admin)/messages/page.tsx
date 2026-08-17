@@ -340,7 +340,7 @@ function AdminMessageThread({
 
 export default function AdminMessagesPage() {
   const router = useRouter();
-  const { isPlatformContext } = useAdminMode();
+  const { isPlatformContext, isReady } = useAdminMode();
   const searchParams = useSearchParams();
   const [selectedId,    setSelectedId]    = useState<string | null>(null);
   const [statusFilter,  setStatusFilter]  = useState('');
@@ -365,9 +365,14 @@ export default function AdminMessagesPage() {
 
   // Unfiltered query — always fetches everything for accurate badge/tab counts.
   // queryKey starts with 'admin-conversations' so existing invalidateQueries calls cover it.
+  // Must wait for isReady too — while the session is still resolving,
+  // isPlatformContext defaults to false (not "known false"), so gating on
+  // just !isPlatformContext would fire this before we actually know (same
+  // race condition already fixed in marketing/sales/page.tsx's bundlesQuery).
   const { data: allData } = useQuery<AdminConvList>({
     queryKey: ['admin-conversations', 'counts'],
     queryFn:  () => api.get<AdminConvList>(`${API_ROUTES.ADMIN.CONVERSATIONS}?limit=100`),
+    enabled:  isReady && !isPlatformContext,
     refetchInterval: 30_000,
     staleTime: 10_000,
   });
@@ -380,6 +385,7 @@ export default function AdminMessagesPage() {
       if (debouncedSearch) params.set('search', debouncedSearch);
       return api.get<AdminConvList>(`${API_ROUTES.ADMIN.CONVERSATIONS}?${params.toString()}`);
     },
+    enabled:  isReady && !isPlatformContext,
     refetchInterval: 30_000,
   });
 

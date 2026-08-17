@@ -1,4 +1,5 @@
 import {
+  Controller,
   Get,
   Post,
   Param,
@@ -7,20 +8,33 @@ import {
   Body,
   Req,
   Res,
+  UseGuards,
   NotFoundException,
 } from '@nestjs/common';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditLogService } from '../../common/services/audit-log.service';
-import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '@ezihubb/constants';
 import { AdminCustomerQueryDto } from './dto/admin-customer-query.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { buildPagination } from '../../common/dto/paginated-response.dto';
 import { fmtDateTimeVN } from '../../common/utils/date';
 
-@AdminController('customers')
+// Customers are platform-wide entities with no per-store scoping anywhere
+// in this controller — browsing/searching/suspending/exporting the entire
+// customer base is a platform-operator action, so this is SUPER_ADMIN-only
+// (built manually rather than @AdminController + a class-level @Roles()
+// override — see the comment in admin-team.controller.ts for why).
+@Controller('admin/customers')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.SUPER_ADMIN)
+@ApiBearerAuth()
+@ApiTags('Admin — Customers')
 export class AdminCustomersController {
   constructor(
     private readonly prisma:    PrismaService,

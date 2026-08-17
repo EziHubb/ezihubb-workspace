@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -411,15 +411,12 @@ export default function AdminStoreDetailPage() {
   const qc      = useQueryClient();
   const { data: session } = useSession();
   const sessionUser = session?.user as Record<string, unknown> | undefined;
-  const role         = sessionUser?.['role']    as string | undefined;
-  const sessionStore = sessionUser?.['storeId'] as string | null | undefined;
+  const role         = sessionUser?.['role'] as string | undefined;
 
-  // Shop owners can only view their own store
-  useEffect(() => {
-    if (role === 'ADMIN' && sessionStore && id !== sessionStore) {
-      router.replace(`/stores/${sessionStore}`);
-    }
-  }, [role, sessionStore, id, router]);
+  // No client-side cross-store redirect here — (admin)/layout.tsx's
+  // server-side guard already blocks a shop owner (or a SUPER_ADMIN
+  // switched into "My Store") from viewing any /stores/:id other than
+  // their own, before this page ever renders.
 
   const [modal, setModal] = useState<'approve' | 'reject' | 'suspend' | 'edit' | null>(null);
 

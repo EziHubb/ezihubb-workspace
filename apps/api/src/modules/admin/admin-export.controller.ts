@@ -1,11 +1,21 @@
-import { Get, Res } from '@nestjs/common';
-import { ApiOperation } from '@nestjs/swagger';
+import { Controller, Get, Res, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
-import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '@ezihubb/constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { fmtDateTimeVN, fmtDateISOVN } from '../../common/utils/date';
 
-@AdminController('export')
+// Dumps ALL orders and ALL customers platform-wide as CSV — SUPER_ADMIN-only
+// (built manually rather than @AdminController + a class-level @Roles()
+// override — see the comment in admin-team.controller.ts for why).
+@Controller('admin/export')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.SUPER_ADMIN)
+@ApiBearerAuth()
+@ApiTags('Admin — Export')
 export class AdminExportController {
   constructor(private readonly prisma: PrismaService) {}
 

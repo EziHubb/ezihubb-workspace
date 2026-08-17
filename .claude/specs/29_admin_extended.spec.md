@@ -258,27 +258,27 @@ File: `apps/admin/src/app/(admin)/settings/page.tsx` (route trực tiếp, khôn
 
 ---
 
-## 6. Team Management (GAP-P2-02)
+## 6. Team Management (GAP-P2-02 — closed)
 
 ### Endpoints (`AdminTeamController`, prefix `/api/v1/admin/team`)
 | Method | Path | Mô tả | Auth |
 |---|---|---|---|
-| GET | `/admin/team` | List admin/super-admin users | ADMIN |
-| POST | `/admin/team/invite` | Tạo tài khoản admin ngay với **temp password ngẫu nhiên** + gửi email `team-invite` chứa password đó — KHÔNG phải link mời qua email | ADMIN |
-| PATCH | `/admin/team/{id}` | Đổi role (body: `{ role }`) — path KHÔNG có suffix `/role` | ADMIN |
-| DELETE | `/admin/team/{id}` | Hạ role xuống `CUSTOMER` (không xoá user) | ADMIN |
+| GET | `/admin/team` | List admin/super-admin users | SUPER_ADMIN |
+| POST | `/admin/team/invite` | Tạo tài khoản admin ngay với **temp password ngẫu nhiên** + gửi email `team-invite` chứa password đó — KHÔNG phải link mời qua email | SUPER_ADMIN |
+| PATCH | `/admin/team/{id}` | Đổi role (body: `{ role }`) — path KHÔNG có suffix `/role` | SUPER_ADMIN |
+| DELETE | `/admin/team/{id}` | Hạ role xuống `CUSTOMER` (không xoá user) | SUPER_ADMIN |
 
 - Chỉ 2 role: `ADMIN` / `SUPER_ADMIN`
-- Không cho phép tự đổi role hoặc tự revoke chính mình (`ForbiddenException` nếu `id === caller.sub`)
-- `AdminController` guard áp dụng chung (không thấy phân biệt riêng SUPER_ADMIN-only cho route này trong controller)
+- Không cho phép tự đổi role hoặc tự revoke chính mình (`ForbiddenException` nếu `id === caller.sub`) — enforced ở backend; frontend cũng disable control cho dòng của chính mình
+- **GAP-P2-02 đã đóng**: trước đây cả controller chỉ dùng `@AdminController('team')` (default `ADMIN` + `SUPER_ADMIN`), cho phép một shop-owner ADMIN tự mời/thăng cấp bất kỳ ai lên `SUPER_ADMIN`. Đã sửa bằng cách viết tay `@Controller('admin/team')` + `@Roles(Role.SUPER_ADMIN)` (không dùng `@AdminController` shorthand nữa, vì layering thêm `@Roles()` class-level lên trên nó dễ bị ghi đè sai chiều bởi metadata mà `@AdminController` đã set — xem comment trong `admin-team.controller.ts`).
 
 ### Admin UI
 
-File: `apps/admin/src/app/(admin)/settings/team/page.tsx` (phần của settings)
+File: `apps/admin/src/app/(admin)/settings/page.tsx` — Team là 1 **tab** (`TeamTab()`) bên trong trang Settings dùng chung, KHÔNG phải route riêng `settings/team/page.tsx` (route đó không tồn tại).
 - Team member table (name, email, role, last active)
 - "Invite Admin" modal — tạo tài khoản ngay, không phải gửi lời mời chờ chấp nhận
-- Role picker: ADMIN / SUPER_ADMIN
-- Remove access button with confirm
+- Role picker: ADMIN / SUPER_ADMIN — disabled cho dòng của chính người dùng hiện tại
+- Remove access button with confirm — ẩn cho dòng của chính người dùng hiện tại
 
 ---
 
@@ -310,7 +310,7 @@ model EmailTemplateOverride {
 
 ### Admin UI
 
-File: `apps/admin/src/app/(admin)/settings/email-templates/page.tsx`
+File: `apps/admin/src/app/(admin)/settings/page.tsx` — cũng là 1 tab bên trong trang Settings dùng chung (không phải route riêng `settings/email-templates/page.tsx`, tương tự Team ở mục 6).
 - Template list (welcome, order-confirmation, v.v. — tên hiển thị từ map cứng `TEMPLATE_NAMES` trong `settings.service.ts`)
 - Editor cho HTML/Handlebars body
 - Không xác nhận được việc có "variable reference panel" hay "send preview button" trong UI hiện tại vì backend không có endpoint hỗ trợ preview theo template
@@ -626,6 +626,19 @@ function permissionSource(doc, perm): 'deny' | 'allow' | 'role' | 'none' {
 - Routes marked `SUPER_ADMIN_ONLY` block ADMIN role users
 - Default on store approval: `permissions = { roles: ['shop_owner'] }`
 
+#### `StoreContextService` (backend) — `apps/api/src/common/services/store-context.service.ts`
+
+Single source of truth for "which store is this admin request scoped to," replacing ~10 near-duplicate per-module implementations. `resolve(req)` returns `{ storeId, isPlatformContext }`: ADMIN is always scoped to their own store; SUPER_ADMIN defaults to platform-wide (`storeId: null`) unless the `X-Store-Context` header names a store they personally own, in which case they're scoped exactly like a shop owner for that request (this is the "Viewing: My Store" toggle in the admin sidebar). Four helper methods build on this: `requireStoreId()` (400 if no store selected), `resolveTargetStoreId()` (lets a platform-context SUPER_ADMIN target an explicit `storeId` param; ignored for scoped callers — IDOR-safe), `requirePlatformContext()` (403 unless platform-wide), `assertOwnership()` (403 unless the record's `storeId` matches, always passes for platform-context).
+
+#### 3-category route model (backend + frontend)
+
+Every admin route/feature is one of:
+- **PLATFORM_ONLY** — SUPER_ADMIN only, no store concept, "Viewing: My Store" does NOT grant access (moderation queue, Campaigns/homepage banner, Affiliates, Customers, platform Payments/refunds, Audit log, Export, Team, Store approve/reject/suspend, `/finance`, `/payouts`, `/catalog`, bare `/settings`).
+- **SELF_SERVICE** — one owning store; ADMIN acts on their own, SUPER_ADMIN must switch into a store first (bundle offers, shipping/delivery, `/finances`, `/messages`, `/settings/fulfillment`, `/settings/api-keys`).
+- **SHARED_AGGREGATE** — same page for both; ADMIN/in-store-mode SUPER_ADMIN sees their store, platform-context SUPER_ADMIN sees everything (Orders, Reviews, Promotions, Products, Stats, Dashboard, `/stores`).
+
+Frontend: `apps/admin/src/lib/route-categories.ts` is the single manifest both `(admin)/layout.tsx` route guards derive their prefix lists from — previously these were two independently hand-maintained arrays (`superAdminOnly`, `STORE_ONLY_PREFIXES`) that had drifted (a SUPER_ADMIN switched into "My Store" fell through both guards untouched). `apps/admin/src/lib/store-context.ts`'s `isActingAsShopOwner(role, inStoreMode)` is the shared "is this session effectively a shop owner" boolean used by both the layout guard and any split-UI page (e.g. `dashboard/page.tsx`).
+
 ---
 
 ## 12. Admin Pages Reference (Complete List)
@@ -646,19 +659,9 @@ apps/admin/src/app/(admin)/
   messages/
   payments/
   reviews/
-  promotions/
-  shipping/
   affiliates/
     [id]/
     payouts/
-  creators/               # Creator Network management
-    members/
-    payouts/
-    settings/
-  referrals/
-    users/
-    payouts/
-    settings/
   stores/
     [id]/
       permissions/        # Permission matrix editor
@@ -683,10 +686,12 @@ apps/admin/src/app/(admin)/
       [id]/
   settings/
     page.tsx              # General settings — route trực tiếp tại /settings, KHÔNG có subfolder /settings/index
+                           # Team + Email Templates là tab bên trong page.tsx này (TeamTab()/...), KHÔNG phải subfolder riêng
     affiliates/
     audit-log/            # Audit log viewer
     fulfillment/          # POD provider connections (Printify/Merchize)
     api-keys/             # Partner API key management
+    delivery/             # Shop owner's own delivery/processing profiles
 ```
 
 ## 13. Marketplace Seller Fees (Etsy-style)

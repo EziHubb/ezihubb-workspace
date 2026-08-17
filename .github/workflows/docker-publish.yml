@@ -22,19 +22,41 @@ jobs:
   # ── Detect which apps actually changed ───────────────────────────────────
   changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       api: ${{ steps.filter.outputs.api }}
       client: ${{ steps.filter.outputs.client }}
       admin: ${{ steps.filter.outputs.admin }}
       migrate: ${{ steps.filter.outputs.migrate }}
       image_base: ${{ steps.image-base.outputs.value }}
+      version: ${{ steps.version.outputs.value }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history + tags — scripts/compute-version.sh needs to walk
+          # back to the last vX.Y.Z tag, which a shallow (depth=1) clone
+          # wouldn't have.
+          fetch-depth: 0
       # github.repository_owner preserves the org's display casing
       # (EziHubb) — ghcr.io tags must be all-lowercase, so this can't just
       # be used directly in the `tags:` inputs below.
       - id: image-base
         run: echo "value=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/ezihubb" >> "$GITHUB_OUTPUT"
+      # Semantic version from Conventional Commits (scripts/compute-version.sh)
+      # — deterministic from commit history, so this always matches what
+      # scripts/deploy.sh's local-build fallback would independently compute
+      # for the same commit. Tagging here is just for traceability in `git
+      # log --decorate`/GitHub's tag list; only tag on an actual push to
+      # main, never a workflow_dispatch re-run on some other branch.
+      - id: version
+        run: echo "value=$(bash scripts/compute-version.sh)" >> "$GITHUB_OUTPUT"
+      - if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ steps.version.outputs.value }}"
+          git push origin "v${{ steps.version.outputs.value }}" || echo "Tag already exists (concurrent run for another commit landed first) — skipping."
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -120,7 +142,13 @@ jobs:
           cache-from: |
             type=gha,scope=api
             type=gha,scope=shared-base
-          cache-to: type=gha,mode=max,scope=api
+          # mode=min (not max) — this scope only needs to speed up re-runs
+          # of this same job; the expensive shared base/source layers are
+          # already covered by build-base-cache's own mode=max scope, so
+          # duplicating them here too was most of what pushed the repo over
+          # GitHub's 10GB total Actions-cache limit (triggering LRU eviction
+          # of other, possibly still-needed caches).
+          cache-to: type=gha,mode=min,scope=api
 
   # ── Migrate (one-off Prisma migration runner) ────────────────────────────
   build-migrate:
@@ -150,7 +178,7 @@ jobs:
           cache-from: |
             type=gha,scope=migrate
             type=gha,scope=shared-base
-          cache-to: type=gha,mode=max,scope=migrate
+          cache-to: type=gha,mode=min,scope=migrate
 
   # ── Storefront (NEXT_PUBLIC_* baked in at build time — repo vars/secrets) ─
   build-client:
@@ -180,7 +208,7 @@ jobs:
           cache-from: |
             type=gha,scope=client
             type=gha,scope=shared-base
-          cache-to: type=gha,mode=max,scope=client
+          cache-to: type=gha,mode=min,scope=client
           build-args: |
             NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
             NEXT_PUBLIC_NEXTAUTH_URL=${{ vars.NEXT_PUBLIC_NEXTAUTH_URL }}
@@ -222,7 +250,7 @@ jobs:
           cache-from: |
             type=gha,scope=admin
             type=gha,scope=shared-base
-          cache-to: type=gha,mode=max,scope=admin
+          cache-to: type=gha,mode=min,scope=admin
           build-args: |
             NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
             NEXT_PUBLIC_NEXTAUTH_URL=${{ vars.NEXT_PUBLIC_ADMIN_NEXTAUTH_URL }}
@@ -231,7 +259,7 @@ jobs:
             NEXT_PUBLIC_CLIENT_URL=${{ vars.NEXT_PUBLIC_CLIENT_URL }}
             NEXT_PUBLIC_GA_DASHBOARD_URL=${{ vars.NEXT_PUBLIC_GA_DASHBOARD_URL }}
             NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-            NEXT_PUBLIC_BUILD_VERSION=${{ github.sha }}
+            NEXT_PUBLIC_BUILD_VERSION=${{ needs.changes.outputs.version }}
 
   # ── Keep only the 3 most recent versions of each image (private-repo storage is limited) ─
   cleanup:

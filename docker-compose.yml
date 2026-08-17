@@ -132,11 +132,13 @@ services:
         NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN}
         NEXT_PUBLIC_GA_DASHBOARD_URL: ${NEXT_PUBLIC_GA_DASHBOARD_URL}
         NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
-        # Set by deploy.sh's local-build fallback (exports GIT_SHA before
-        # `docker compose build`); CI's pull path bakes this in directly via
-        # docker-publish.yml's build-args instead. Falls back to "local" for
-        # a manual `docker compose build` with no GIT_SHA in the environment.
-        NEXT_PUBLIC_BUILD_VERSION: ${GIT_SHA:-local}
+        # Set by deploy.sh's local-build fallback (computes the same
+        # semantic version scripts/compute-version.sh would via SSH, then
+        # exports BUILD_VERSION before `docker compose build`); CI's pull
+        # path bakes this in directly via docker-publish.yml's build-args
+        # instead. Falls back to "local" for a manual `docker compose build`
+        # with no BUILD_VERSION in the environment.
+        NEXT_PUBLIC_BUILD_VERSION: ${BUILD_VERSION:-local}
     container_name: ezihubb_admin
     restart: unless-stopped
     depends_on:

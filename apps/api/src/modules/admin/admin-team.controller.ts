@@ -1,4 +1,5 @@
 ﻿import {
+  Controller,
   Get,
   Post,
   Patch,
@@ -6,20 +7,24 @@
   Param,
   Body,
   Req,
+  UseGuards,
   BadRequestException,
   NotFoundException,
   ForbiddenException,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { IsEmail, IsIn, IsNotEmpty } from 'class-validator';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
-import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '@ezihubb/constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QUEUES, JOBS, SendEmailJobData } from '../../queue/queue.constants';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -42,7 +47,22 @@ class UpdateRoleDto {
   role!: AdminRole;
 }
 
-@AdminController('team')
+// Team management (inviting/promoting/revoking ADMIN and SUPER_ADMIN
+// accounts) is a platform-operator action with no per-store concept —
+// unlike the usual @AdminController('team') shorthand (which also admits
+// plain ADMIN), this is SUPER_ADMIN-only so a shop owner can never invite
+// or promote anyone to SUPER_ADMIN. Written out manually (matching
+// admin-affiliates.controller.ts) rather than layering a class-level
+// @Roles() override on top of @AdminController, since RolesGuard's
+// Reflector.getAllAndOverride reads class-level metadata as a single slot —
+// composing two class-level @Roles() decorators is fragile to get the
+// override direction right, so controllers that need to be fully
+// SUPER_ADMIN-only build the guard stack directly instead.
+@Controller('admin/team')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.SUPER_ADMIN)
+@ApiBearerAuth()
+@ApiTags('Admin — Team')
 export class AdminTeamController {
   constructor(
     private readonly prisma:   PrismaService,

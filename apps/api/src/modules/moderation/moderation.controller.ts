@@ -15,9 +15,13 @@ import { StoreContextService } from '../../common/services/store-context.service
 
 type ModerationRequest = { user: { sub: string }; ip: string; headers: { 'user-agent'?: string } };
 
+// Platform-wide moderation queue (flags/logs/rules/settings across every
+// store) — SUPER_ADMIN-only. The store-scoped counterpart (self-service
+// violations for the caller's own store) lives in StoreViolationsController
+// below, unaffected by this change.
 @Controller('admin/moderation')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
+@Roles(Role.SUPER_ADMIN)
 export class ModerationController {
   constructor(
     private readonly svc:        ModerationService,

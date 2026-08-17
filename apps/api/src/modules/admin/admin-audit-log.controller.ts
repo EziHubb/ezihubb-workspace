@@ -1,8 +1,11 @@
-import { Get, Query } from '@nestjs/common';
-import { ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { IsOptional, IsString, IsInt, Min, Max } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '@ezihubb/constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { paginatedResponse } from '../../common/dto/paginated-response.dto';
 
@@ -23,7 +26,15 @@ class AuditLogQueryDto {
   action?: string;
 }
 
-@AdminController('audit-logs')
+// Exposes every admin/super-admin action across the entire platform
+// (including other accounts' actions) — SUPER_ADMIN-only (built manually
+// rather than @AdminController + a class-level @Roles() override — see the
+// comment in admin-team.controller.ts for why).
+@Controller('admin/audit-logs')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.SUPER_ADMIN)
+@ApiBearerAuth()
+@ApiTags('Admin — Audit Logs')
 export class AdminAuditLogController {
   constructor(private readonly prisma: PrismaService) {}
 

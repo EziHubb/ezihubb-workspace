@@ -107,7 +107,8 @@ export class PaymentsController {
   @Get('stats')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  // Platform-wide payments/refunds, no store scoping — SUPER_ADMIN-only.
+  @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Aggregate payment stats for dashboard (admin)' })
   async getStats() {
     return this.paymentsService.getStats();
@@ -116,7 +117,8 @@ export class PaymentsController {
   @Get()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  // Platform-wide payments/refunds, no store scoping — SUPER_ADMIN-only.
+  @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'List all payments (admin)' })
   async listPayments(
     @Query('page') page?: string,
@@ -131,7 +133,8 @@ export class PaymentsController {
   @Get(':id/refunds')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  // Platform-wide payments/refunds, no store scoping — SUPER_ADMIN-only.
+  @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get refund details for a payment (admin)' })
   async getRefunds(@Param('id') id: string) {
     return this.paymentsService.getRefunds(id);
@@ -140,7 +143,8 @@ export class PaymentsController {
   @Post(':id/refund')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  // Platform-wide payments/refunds, no store scoping — SUPER_ADMIN-only.
+  @Roles(Role.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Issue a refund (admin)' })
   async createRefund(

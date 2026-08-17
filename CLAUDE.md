@@ -24,12 +24,13 @@
 
 # Admin build version
 
-The admin app's sidebar footer shows `ver <short-sha>` for `SUPER_ADMIN` sessions only — lets support confirm which commit is actually live in production without SSHing into the server. It is **fully automatic**; never hand-edit a version number anywhere.
+The admin app's sidebar heading shows `v<X.Y.Z>` right under "Admin Panel"/"Seller Hub", for `SUPER_ADMIN` sessions only — lets support confirm which release is actually live in production without SSHing into the server. It is **fully automatic**; never hand-edit a version number anywhere.
 
+- The version itself is computed by `scripts/compute-version.sh` — walks Conventional Commits messages (`fix:`, `feat:`, `feat!:`/`BREAKING CHANGE`) since the last `vX.Y.Z` git tag and bumps MAJOR (breaking), MINOR (`feat`), or PATCH (everything else) accordingly. Deterministic from commit history alone — no state file, no manual bump, and CI and a local-build fallback always agree on the number for a given commit.
 - Baked in at Docker build time via `NEXT_PUBLIC_BUILD_VERSION`, inlined into the client bundle like every other `NEXT_PUBLIC_*` var.
-- CI (`.github/workflows/docker-publish.yml`, `build-admin` job) sets it to `${{ github.sha }}` — always the exact commit that produced that image.
-- `scripts/deploy.sh`'s local-build fallback (used only when a `docker pull` from GHCR fails) exports `GIT_SHA` before `docker compose build`; `docker-compose.yml` reads it into the same build arg (falls back to `local` if unset).
-- A plain `pnpm nx serve admin` (no Docker) shows `ver dev` — no build arg is passed locally, and `docker/Dockerfile`'s `builder-admin` stage defaults the `ARG` to `dev`.
-- Rendered in `apps/admin/src/components/layout/AdminSidebar.tsx`'s user-footer section, gated on `role === 'SUPER_ADMIN'`.
+- CI (`.github/workflows/docker-publish.yml`, `changes` job) runs the script once per push to `main`, pushes a `vX.Y.Z` tag for traceability, and passes the result to `build-admin`'s build-args.
+- `scripts/deploy.sh`'s local-build fallback (used only when a `docker pull` from GHCR fails) runs the same script over SSH against the server's own checkout and exports `BUILD_VERSION` before `docker compose build`; `docker-compose.yml` reads it into the same build arg (falls back to `local` if unset).
+- A plain `pnpm nx serve admin` (no Docker) shows `v dev` — no build arg is passed locally, and `docker/Dockerfile`'s `builder-admin` stage defaults the `ARG` to `dev`.
+- Rendered in `apps/admin/src/components/layout/AdminSidebar.tsx`'s `LogoMark` component, gated on `role === 'SUPER_ADMIN'`.
 
-If a version bump ever looks wrong after a deploy, the pipeline is the thing to check (did the admin image actually rebuild for this commit? did the pull succeed on the server?) — not this file.
+If a version bump ever looks wrong after a deploy, check the pipeline (did the admin image actually rebuild for this commit? did the pull succeed on the server?) or run `bash scripts/compute-version.sh` locally to see what it resolves to — not this file.
