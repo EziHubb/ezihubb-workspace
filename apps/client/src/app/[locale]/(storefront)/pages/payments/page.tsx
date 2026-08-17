@@ -3,15 +3,22 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { CreditCard, Wallet, ShieldCheck, Globe2, CalendarClock, Send, Landmark } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { buildAlternates } from '../../../../../lib/seo';
 
 export const dynamic = 'force-static';
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
   return {
     title: 'EziHubb Payments',
     description:
       'Simple, flexible, secure payments for EziHubb sellers — preferred payment methods for buyers, fast deposits, and EziHubb Purchase Protection.',
     robots: { index: true, follow: true },
+    alternates: buildAlternates('/pages/payments', locale),
   };
 }
 

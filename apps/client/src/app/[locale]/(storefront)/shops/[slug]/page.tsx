@@ -9,6 +9,7 @@ import { StorePageClient } from './StorePageClient';
 import { FollowShopButton } from '../../../../../components/shops/FollowShopButton';
 import { MarketingTracker } from '../../../../../components/providers/MarketingTracker';
 import { ShareSaveWidget } from '../../../../../components/shops/ShareSaveWidget';
+import { buildAlternates } from '../../../../../lib/seo';
 import { fmtRating, safeNum } from '@ezihubb/utils';
 
 interface StorePublicDto {
@@ -39,7 +40,7 @@ export async function generateMetadata({
     .get<StorePublicDto>(API_ROUTES.STORES.DETAIL(slug))
     .catch(() => null);
 
-  if (!store) return { title: t('storePage.storeNotFoundTitle') };
+  if (!store) return { title: t('storePage.storeNotFoundTitle'), robots: { index: false, follow: false } };
 
   return {
     title:       store.name,
@@ -50,7 +51,7 @@ export async function generateMetadata({
       images:      store.bannerUrl ? [store.bannerUrl] : [],
       url:         `/shops/${slug}`,
     },
-    alternates: { canonical: `/${locale}/shops/${slug}` },
+    alternates: buildAlternates(`/shops/${slug}`, locale),
   };
 }
 

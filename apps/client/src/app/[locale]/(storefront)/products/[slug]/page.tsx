@@ -78,7 +78,7 @@ export async function generateMetadata({
     .get<ProductDetailDto>(API_ROUTES.PRODUCTS.DETAIL(slug), { next: { revalidate: 30 } })
     .catch(() => null);
 
-  if (!product) return { title: 'Product Not Found' };
+  if (!product) return { title: 'Product Not Found', robots: { index: false, follow: false } };
 
   const description =
     product.shortDescription ??

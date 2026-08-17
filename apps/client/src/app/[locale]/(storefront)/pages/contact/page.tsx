@@ -4,15 +4,22 @@ import { getTranslations } from 'next-intl/server';
 import { MessageCircle, Mail, Package, Clock } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ContactForm } from '../../../../../components/pages/ContactForm';
+import { buildAlternates } from '../../../../../lib/seo';
 
 export const dynamic = 'force-dynamic';
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
   return {
     title: 'Contact Us',
     description:
       'Get in touch with EziHubb. We respond to all messages within 2 hours during business hours.',
     robots: { index: true, follow: true },
+    alternates: buildAlternates('/pages/contact', locale),
   };
 }
 
@@ -133,7 +140,7 @@ export default async function ContactPage({
           <div className="bg-primary/5 rounded-2xl p-4 text-sm text-secondary">
             <p className="font-semibold mb-1">{t('faqTeaser.title')}</p>
             <p className="text-muted mb-2 text-xs">{t('faqTeaser.desc')}</p>
-            <Link href="/pages/faq" className="text-primary font-medium hover:underline text-xs">
+            <Link href={`/${locale}/pages/faq`} className="text-primary font-medium hover:underline text-xs">
               {t('faqTeaser.link')}
             </Link>
           </div>

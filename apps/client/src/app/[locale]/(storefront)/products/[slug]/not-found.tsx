@@ -1,11 +1,24 @@
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import type { Metadata } from 'next';
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PackageX } from 'lucide-react';
 
+// When the product page body calls `notFound()` (e.g. a transient API
+// failure), Next discards whatever `generateMetadata` in page.tsx returned
+// and renders this boundary instead — which, without its own metadata,
+// inherited the layout's indexable/homepage-canonical default. That's the
+// likely mechanism behind real product URLs showing up in Search Console as
+// "Crawled - currently not indexed": a momentary fetch failure served a
+// thin, mis-canonicalized page that briefly looked indexable to Googlebot.
+export function generateMetadata(): Metadata {
+  return { robots: { index: false, follow: false } };
+}
+
 export default async function ProductNotFound() {
-  const [t, tCommon] = await Promise.all([
+  const [t, tCommon, locale] = await Promise.all([
     getTranslations('errors'),
     getTranslations('common'),
+    getLocale(),
   ]);
 
   return (
@@ -21,13 +34,13 @@ export default async function ProductNotFound() {
 
       <div className="flex flex-col sm:flex-row gap-3">
         <Link
-          href="/search"
+          href={`/${locale}/search`}
           className="bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-3 rounded-button transition-colors text-sm uppercase tracking-wide"
         >
           {t('browseAllProductsCta')}
         </Link>
         <Link
-          href="/"
+          href={`/${locale}`}
           className="border border-border text-secondary font-semibold px-6 py-3 rounded-button hover:border-primary hover:text-primary transition-colors text-sm"
         >
           {tCommon('goHome')}

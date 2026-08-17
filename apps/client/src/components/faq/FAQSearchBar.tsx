@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Search, X } from 'lucide-react';
 import { getFaqFlat } from './faq-data';
 
 export function FAQSearchBar() {
   const t = useTranslations('pages.faq');
+  const locale = useLocale();
   const [query, setQuery] = useState('');
 
   const trimmed  = query.trim();
@@ -62,7 +63,7 @@ export function FAQSearchBar() {
       {isActive && filtered.length === 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border rounded-xl shadow-lg z-20 px-5 py-4 text-sm text-muted text-center">
           {t('search.noResultsPrefix')} &ldquo;{trimmed}&rdquo;.{' '}
-          <Link href="/pages/contact" className="text-primary hover:underline">
+          <Link href={`/${locale}/pages/contact`} className="text-primary hover:underline">
             {t('search.askDirectly')}
           </Link>
         </div>

@@ -185,6 +185,7 @@ interface OrderResultProps {
 }
 
 function OrderResult({ order, email, onReset }: OrderResultProps) {
+  const locale = useLocale();
   const [currentOrder, setCurrentOrder] = useState(order);
 
   return (
@@ -214,7 +215,7 @@ function OrderResult({ order, email, onReset }: OrderResultProps) {
 
       <div className="mt-6">
         <Link
-          href="/pages/contact?subject=order"
+          href={`/${locale}/pages/contact?subject=order`}
           className="text-sm text-muted hover:text-primary transition-colors"
         >
           Need help with this order? →

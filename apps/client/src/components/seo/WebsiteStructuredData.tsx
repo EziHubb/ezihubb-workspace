@@ -3,12 +3,15 @@
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: 'EziHubb',
-    url: 'https://ezihubb.com',
+    url: 'https://ezihubb.com/en',
     potentialAction: {
       '@type': 'SearchAction',
       target: {
         '@type': 'EntryPoint',
-        urlTemplate: 'https://ezihubb.com/search?q={search_term_string}',
+        // '/en' is required: next-intl's localePrefix defaults to 'always',
+        // so a bare '/search' would 307-redirect before Google could resolve
+        // the sitelinks-searchbox template.
+        urlTemplate: 'https://ezihubb.com/en/search?q={search_term_string}',
       },
       'query-input': 'required name=search_term_string',
     },

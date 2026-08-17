@@ -7,15 +7,22 @@ import {
   Package, Mail,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { buildAlternates } from '../../../../../lib/seo';
 
 export const dynamic = 'force-static';
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
   return {
     title: 'Returns & Exchanges',
     description:
       "Our return and exchange policy. Learn what's covered, how to initiate a return, and how we make things right.",
     robots: { index: true, follow: true },
+    alternates: buildAlternates('/pages/returns', locale),
   };
 }
 
@@ -172,7 +179,7 @@ export default async function ReturnsPage({
             {t('cancellations.viewOrders')}
           </Link>
           <Link
-            href="/pages/contact"
+            href={`/${locale}/pages/contact`}
             className="inline-flex items-center gap-2 border border-border text-secondary px-5 py-2.5 rounded-full text-sm font-medium hover:border-primary hover:text-primary transition-colors"
           >
             <Mail className="w-4 h-4" />
@@ -188,7 +195,7 @@ export default async function ReturnsPage({
         <p className="text-muted max-w-lg mx-auto mb-4">
           {t('exchanges.desc')}
         </p>
-        <Link href="/pages/contact" className="text-primary text-sm hover:underline">
+        <Link href={`/${locale}/pages/contact`} className="text-primary text-sm hover:underline">
           {t('exchanges.link')}
         </Link>
       </section>

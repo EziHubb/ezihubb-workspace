@@ -260,7 +260,7 @@ export function OrderTrackingCard({ order, guestEmail, onCancel }: OrderTracking
 
         {/* ── Actions ── */}
         <div className="border-t border-border pt-5 flex flex-wrap items-center gap-3">
-          <Link href="/pages/contact">
+          <Link href={`/${locale}/pages/contact`}>
             <Button variant="ghost" size="sm">
               {t('contactSupport')}
             </Button>

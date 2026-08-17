@@ -2,15 +2,22 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { Heart, Sparkles, Users, ArrowRight } from 'lucide-react';
+import { buildAlternates } from '../../../../../lib/seo';
 
 export const dynamic = 'force-static';
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
   return {
     title: 'Our Story',
     description:
       'Learn how EziHubb was founded and our mission to create meaningful personalized gifts that bring people closer together.',
     robots: { index: true, follow: true },
+    alternates: buildAlternates('/pages/our-story', locale),
   };
 }
 

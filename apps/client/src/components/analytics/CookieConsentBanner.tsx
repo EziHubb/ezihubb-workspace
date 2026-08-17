@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 export function CookieConsentBanner() {
   const t = useTranslations('common');
+  const locale = useLocale();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -38,7 +39,7 @@ export function CookieConsentBanner() {
       <p className="text-sm text-secondary max-w-2xl">
         {t.rich('cookieConsent.message', {
           link: (chunks) => (
-            <a href="/pages/privacy-policy" className="text-primary hover:underline">
+            <a href={`/${locale}/pages/privacy-policy`} className="text-primary hover:underline">
               {chunks}
             </a>
           ),

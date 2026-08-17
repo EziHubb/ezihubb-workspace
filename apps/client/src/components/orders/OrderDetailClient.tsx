@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { AlertTriangle, Search } from 'lucide-react';
 import { Button, Input } from '@ezihubb/ui';
 import type { OrderDto } from '@ezihubb/types';
@@ -30,6 +30,7 @@ interface VerifyFormProps {
 
 function VerifyForm({ orderNumber, onVerified }: VerifyFormProps) {
   const t = useTranslations('orderTracking');
+  const locale = useLocale();
   const [email,      setEmail]      = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [loading,    setLoading]    = useState(false);
@@ -131,7 +132,7 @@ function VerifyForm({ orderNumber, onVerified }: VerifyFormProps) {
 
         <p className="text-center text-sm text-muted pt-1">
           <Link
-            href="/orders/track"
+            href={`/${locale}/orders/track`}
             className="text-primary font-medium hover:underline"
           >
             ← {t('trackDifferent')}
@@ -151,6 +152,7 @@ interface OrderViewProps {
 
 function OrderView({ order, email }: OrderViewProps) {
   const t = useTranslations('orderTracking');
+  const locale = useLocale();
   const [currentOrder, setCurrentOrder] = useState(order);
 
   return (
@@ -170,7 +172,7 @@ function OrderView({ order, email }: OrderViewProps) {
       </div>
       <div className="mt-6">
         <Link
-          href="/pages/contact?subject=order"
+          href={`/${locale}/pages/contact?subject=order`}
           className="text-sm text-muted hover:text-primary transition-colors"
         >
           {t('needHelp')} →

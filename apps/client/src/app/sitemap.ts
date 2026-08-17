@@ -49,9 +49,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     fetchApi<SlugItem>(`${API_ROUTES.CATALOG.TAGS}?isFeatured=true&fields=slug`),
   ]);
 
+  // `next-intl` routing has no `localePrefix` override, so it defaults to
+  // 'always' — even the default `en` locale is served under `/en`, never at
+  // the bare origin. Listing bare (unprefixed) URLs here would tell Google
+  // to crawl a URL that 307/308-redirects to `/en/...`, which is exactly
+  // what produced the "Page with redirect" / "Alternate page with proper
+  // canonical tag" Search Console errors — every entry below must carry the
+  // real, self-referencing `/en` prefix to match what `buildAlternates()`
+  // now declares as canonical.
+  const EN = `${BASE}/en`;
+
   const footerPages = [
     'our-story', 'how-it-works', 'reviews', 'careers',
     'contact', 'faq', 'shipping-info', 'returns',
+    'terms', 'privacy-policy', 'payments', 'about',
   ];
 
   // Leaf categories only (level 3) — avoids duplicating parent-category content
@@ -60,7 +71,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     // ── Priority 1.0: Homepage ──────────────────────────────────────────────
     {
-      url:             BASE,
+      url:             EN,
       lastModified:    new Date(),
       changeFrequency: 'daily',
       priority:        1.0,
@@ -68,14 +79,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // ── Priority 0.9: Main listing / hub pages ──────────────────────────────
     ...(['products', 'collections', 'occasions', 'gift-cards'] as const).map((path) => ({
-      url:             `${BASE}/${path}`,
+      url:             `${EN}/${path}`,
       changeFrequency: 'daily' as const,
       priority:        0.9,
     })),
 
     // ── Priority 0.85: Product pages (with image sitemaps) ─────────────────
     ...products.map((p) => ({
-      url:             `${BASE}/products/${p.slug}`,
+      url:             `${EN}/products/${p.slug}`,
       lastModified:    p.updatedAt ? new Date(p.updatedAt) : new Date(),
       changeFrequency: 'weekly' as const,
       priority:        0.85,
@@ -90,7 +101,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // ── Priority 0.75: Category search pages
     ...leafCategories.map((c) => ({
-      url:             `${BASE}/search?category=${c.slug}`,
+      url:             `${EN}/search?category=${c.slug}`,
       lastModified:    c.updatedAt ? new Date(c.updatedAt) : undefined,
       changeFrequency: 'weekly' as const,
       priority:        0.75,
@@ -98,22 +109,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // ── Priority 0.7: Collection pages ─────────────────────────────────────
     ...collections.map((c) => ({
-      url:             `${BASE}/collections/${c.slug}`,
+      url:             `${EN}/collections/${c.slug}`,
       lastModified:    c.updatedAt ? new Date(c.updatedAt) : undefined,
       changeFrequency: 'weekly' as const,
       priority:        0.7,
     })),
 
-    // ── Priority 0.65: Tag landing pages ───────────────────────────────────
+    // ── Priority 0.65: Tag landing pages ────────────────────────────────────
+    // There is no standalone `/tags/[slug]` route in this app — tags are
+    // surfaced as a `/search?tags=` filter (see ExploreRelatedSearches.tsx,
+    // SearchResults.tsx). The old `/tags/${slug}` entries here 404'd for
+    // every single one of these URLs.
     ...tags.map((t) => ({
-      url:             `${BASE}/tags/${t.slug}`,
+      url:             `${EN}/search?tags=${t.slug}`,
       changeFrequency: 'weekly' as const,
       priority:        0.65,
     })),
 
     // ── Priority 0.5: Static footer pages ──────────────────────────────────
     ...footerPages.map((slug) => ({
-      url:             `${BASE}/pages/${slug}`,
+      url:             `${EN}/pages/${slug}`,
       changeFrequency: 'monthly' as const,
       priority:        0.5,
     })),

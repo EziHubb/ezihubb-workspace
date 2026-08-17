@@ -1,6 +1,14 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
+
+// Same reasoning as [locale]/not-found.tsx — a 404-status page has no
+// metadata ancestor to inherit `noindex` from here (this file renders
+// outside the [locale] tree), so without this it defaults to indexable.
+export function generateMetadata(): Metadata {
+  return { robots: { index: false, follow: true } };
+}
 
 export default function RootNotFound() {
   return (

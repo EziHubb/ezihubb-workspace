@@ -7,6 +7,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '../../i18n/routing';
+import { buildAlternates } from '../../lib/seo';
 import { ReactQueryProvider } from '../../components/providers/ReactQueryProvider';
 import { NextAuthProvider } from '../../components/providers/NextAuthProvider';
 import { ToastContainer } from '../../components/ui/ToastContainer';
@@ -49,6 +50,10 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: 'site' });
   const isVi = locale === 'vi';
   return {
+    // NOTE: page-level `generateMetadata` (home, products, collections, etc.)
+    // overrides `alternates` below with its own `buildAlternates(path, locale)`
+    // call — this is only the fallback for routes that don't set their own
+    // (e.g. `not-found.tsx`).
     metadataBase: new URL('https://ezihubb.com'),
     title: {
       template: `%s | ${t('name')}`,
@@ -93,14 +98,7 @@ export async function generateMetadata({
     verification: {
       google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
     },
-    alternates: {
-      canonical: isVi ? 'https://ezihubb.com/vi' : 'https://ezihubb.com',
-      languages: {
-        'en':        'https://ezihubb.com',
-        'vi':        'https://ezihubb.com/vi',
-        'x-default': 'https://ezihubb.com',
-      },
-    },
+    alternates: buildAlternates('/', locale),
   };
 }
 

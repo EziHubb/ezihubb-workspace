@@ -5,15 +5,22 @@ import {
   Briefcase, Mail, Lightbulb, Target, Handshake,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { buildAlternates } from '../../../../../lib/seo';
 
 export const dynamic = 'force-static';
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
   return {
     title: 'Careers',
     description:
       "Join the EziHubb team. We're a small, passionate team creating personalized gifts. See open roles or send us your resume.",
     robots: { index: true, follow: true },
+    alternates: buildAlternates('/pages/careers', locale),
   };
 }
 

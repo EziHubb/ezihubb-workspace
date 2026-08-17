@@ -6,15 +6,22 @@ import { API_ROUTES } from '@ezihubb/constants';
 import type { ProductListItemDto, PaginatedResponse } from '@ezihubb/types';
 import { ReviewsPageStructuredData } from '../../../../../components/seo/ReviewsPageStructuredData';
 import { fmtRating, safeArr, safeNum } from '@ezihubb/utils';
+import { buildAlternates } from '../../../../../lib/seo';
 
 export const revalidate = 3600;
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
   return {
     title: 'Customer Reviews',
     description:
       "Read real reviews from people who've ordered personalized gifts from EziHubb.",
     robots: { index: true, follow: true },
+    alternates: buildAlternates('/pages/reviews', locale),
   };
 }
 

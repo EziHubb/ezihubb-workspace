@@ -1,11 +1,19 @@
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import type { Metadata } from 'next';
+import { getTranslations, getLocale } from 'next-intl/server';
 import { LayoutGrid } from 'lucide-react';
 
+// See products/[slug]/not-found.tsx — without its own metadata, this
+// boundary inherited the layout's indexable/homepage-canonical default.
+export function generateMetadata(): Metadata {
+  return { robots: { index: false, follow: false } };
+}
+
 export default async function CollectionNotFound() {
-  const [t, tCommon] = await Promise.all([
+  const [t, tCommon, locale] = await Promise.all([
     getTranslations('errors'),
     getTranslations('common'),
+    getLocale(),
   ]);
 
   return (
@@ -21,13 +29,13 @@ export default async function CollectionNotFound() {
 
       <div className="flex flex-col sm:flex-row gap-3">
         <Link
-          href="/search"
+          href={`/${locale}/search`}
           className="bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-3 rounded-button transition-colors text-sm uppercase tracking-wide"
         >
           {t('shopAllProducts')}
         </Link>
         <Link
-          href="/"
+          href={`/${locale}`}
           className="border border-border text-secondary font-semibold px-6 py-3 rounded-button hover:border-primary hover:text-primary transition-colors text-sm"
         >
           {tCommon('goHome')}

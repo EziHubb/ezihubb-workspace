@@ -6,15 +6,22 @@ import {
   ShieldCheck, Lock, Clock, MessageCircle,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { buildAlternates } from '../../../../../lib/seo';
 
 export const dynamic = 'force-static';
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
   return {
     title: 'How It Works',
     description:
       "Creating a personalized gift is easy. Choose a product, customize it with your photos and names, preview it, and we'll ship it to your door.",
     robots: { index: true, follow: true },
+    alternates: buildAlternates('/pages/how-it-works', locale),
   };
 }
 
@@ -179,13 +186,13 @@ export default async function HowItWorksPage({
         <p className="text-muted mb-4">{t('faqTeaser.prompt')}</p>
         <div className="flex flex-wrap gap-3 justify-center">
           <Link
-            href="/pages/faq"
+            href={`/${locale}/pages/faq`}
             className="border border-border rounded-full px-5 py-2.5 text-sm font-medium text-secondary hover:border-primary hover:text-primary transition-colors"
           >
             {t('faqTeaser.viewFaq')}
           </Link>
           <Link
-            href="/pages/contact"
+            href={`/${locale}/pages/contact`}
             className="border border-border rounded-full px-5 py-2.5 text-sm font-medium text-secondary hover:border-primary hover:text-primary transition-colors"
           >
             {t('faqTeaser.contactSupport')}

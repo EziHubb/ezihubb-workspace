@@ -3,13 +3,20 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { Heart, Leaf, Shield, Users } from 'lucide-react';
+import { buildAlternates } from '../../../../../lib/seo';
 
 export const dynamic = 'force-dynamic';
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
   return {
     title:       'About Us',
     description: 'Learn about our mission to create meaningful, personalized gifts — designed by us and printed on demand for every occasion.',
+    alternates:  buildAlternates('/pages/about', locale),
   };
 }
 

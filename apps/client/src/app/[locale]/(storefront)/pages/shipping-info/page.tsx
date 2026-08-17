@@ -3,15 +3,22 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { Info, Package, Wrench, Truck, MapPin } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { buildAlternates } from '../../../../../lib/seo';
 
 export const dynamic = 'force-static';
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
   return {
     title: 'Shipping Information',
     description:
       'Learn about our shipping rates, delivery times, tracking, and international shipping at EziHubb.',
     robots: { index: true, follow: true },
+    alternates: buildAlternates('/pages/shipping-info', locale),
   };
 }
 
@@ -159,7 +166,7 @@ export default async function ShippingInfoPage({
         </div>
         <div className="mt-6 text-center">
           <Link
-            href="/orders/track"
+            href={`/${locale}/orders/track`}
             className="inline-flex items-center gap-2 border border-primary text-primary px-6 py-2.5 rounded-full text-sm font-medium hover:bg-primary/5 transition-colors"
           >
             <MapPin className="w-4 h-4" />
@@ -181,7 +188,7 @@ export default async function ShippingInfoPage({
         </div>
         <div className="mt-6 pt-5 border-t border-border text-center">
           <p className="text-sm text-muted mb-3">{t('faqs.moreQuestions')}</p>
-          <Link href="/pages/faq" className="text-primary text-sm hover:underline">
+          <Link href={`/${locale}/pages/faq`} className="text-primary text-sm hover:underline">
             {t('faqs.viewFaq')}
           </Link>
         </div>

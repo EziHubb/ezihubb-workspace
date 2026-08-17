@@ -6,15 +6,22 @@ import { getFaqData } from '../../../../../components/faq/faq-data';
 import { FAQAccordionList } from '../../../../../components/faq/FAQAccordionList';
 import { FAQSearchBar } from '../../../../../components/faq/FAQSearchBar';
 import { FAQStructuredData } from '../../../../../components/seo/FAQStructuredData';
+import { buildAlternates } from '../../../../../lib/seo';
 
 export const dynamic = 'force-static';
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
   return {
     title: 'FAQ',
     description:
       'Frequently asked questions about ordering, personalization, shipping, and returns at EziHubb.',
     robots: { index: true, follow: true },
+    alternates: buildAlternates('/pages/faq', locale),
   };
 }
 
@@ -69,7 +76,7 @@ export default async function FAQPage({
           {t('stillHaveQuestions.desc')}
         </p>
         <Link
-          href="/pages/contact"
+          href={`/${locale}/pages/contact`}
           className="inline-flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-full font-semibold text-sm hover:bg-primary-dark transition-colors"
         >
           <MessageCircle className="w-4 h-4" />

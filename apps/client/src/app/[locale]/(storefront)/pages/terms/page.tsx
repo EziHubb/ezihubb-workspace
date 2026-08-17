@@ -2,11 +2,20 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { Scale, Mail } from 'lucide-react';
+import { buildAlternates } from '../../../../../lib/seo';
 
-export const metadata: Metadata = {
-  title:       'Terms of Service — EziHubb',
-  description: 'Read our Terms of Service to understand your rights and responsibilities when shopping with EziHubb.',
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return {
+    title:       'Terms of Service — EziHubb',
+    description: 'Read our Terms of Service to understand your rights and responsibilities when shopping with EziHubb.',
+    alternates:  buildAlternates('/pages/terms', locale),
+  };
+}
 
 // ── Components ────────────────────────────────────────────────────────────────
 
@@ -209,13 +218,13 @@ export default async function TermsPage({
           <div className="pt-6 border-t border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-sm text-muted">
             <p>{t('footer.copyright')}</p>
             <div className="flex gap-4">
-              <Link href="/pages/privacy-policy" className="text-primary hover:underline">
+              <Link href={`/${locale}/pages/privacy-policy`} className="text-primary hover:underline">
                 {t('footer.privacyLink')}
               </Link>
-              <Link href="/pages/faq" className="hover:text-secondary transition-colors">
+              <Link href={`/${locale}/pages/faq`} className="hover:text-secondary transition-colors">
                 {t('footer.faqLink')}
               </Link>
-              <Link href="/pages/contact" className="hover:text-secondary transition-colors">
+              <Link href={`/${locale}/pages/contact`} className="hover:text-secondary transition-colors">
                 {t('footer.contactLink')}
               </Link>
             </div>

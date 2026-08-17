@@ -1,10 +1,19 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { getTranslations, getLocale } from 'next-intl/server';
 import type { ProductListItemDto } from '@ezihubb/types';
 import { ProductCard } from '@ezihubb/ui';
 import type { ProductBadgeVariant, ProductCardLabels } from '@ezihubb/ui';
 import { BackButton } from './BackButton';
 import { API_BASE } from '../../lib/api-client';
+
+// A 404-status response indexable by default (inherited from the locale
+// layout) confused Search Console into pairing this thin fallback content
+// with whatever canonical the layout happened to declare — explicitly
+// noindex every not-found render instead.
+export async function generateMetadata(): Promise<Metadata> {
+  return { robots: { index: false, follow: true } };
+}
 
 // ── Fetch trending products server-side ───────────────────────────────────────
 
@@ -89,7 +98,7 @@ export default async function NotFound() {
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10">
           <BackButton />
           <Link
-            href="/"
+            href={`/${locale}`}
             className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white font-bold px-6 py-3 rounded-button transition-colors text-sm uppercase tracking-wide"
           >
             {tCommon('goHome')}
@@ -98,7 +107,7 @@ export default async function NotFound() {
 
         {/* Search */}
         <div className="max-w-sm mx-auto">
-          <form action="/search" method="GET">
+          <form action={`/${locale}/search`} method="GET">
             <div className="flex gap-2">
               <input
                 name="q"
