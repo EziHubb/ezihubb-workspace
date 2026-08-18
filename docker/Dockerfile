@@ -10,7 +10,18 @@
 # ============================================
 # Base — install all workspace deps once
 # ============================================
-FROM node:22-alpine AS base
+# node:24 (LTS), not 22 — Node 22's stream/web TransformStream has an
+# unpatched race condition (nodejs/node#62036, fixed by #62040, landed in
+# v24.15.0/v25.8.1, not backported to the 22.x line) where a reader being
+# cancelled mid-write throws an internal `TypeError:
+# controller[kState].transformAlgorithm is not a function` and leaves the
+# server unable to accept further connections. Next.js's App Router
+# streams SSR/RSC responses through TransformStream heavily, so any client
+# that aborts a request mid-response (a slow/truncated read, a real
+# browser navigating away, a health-check that doesn't read the full body)
+# can trigger it — reproduced in production on client/admin under 22 and
+# gone after this bump.
+FROM node:24-alpine AS base
 # python3/make/g++/pkgconf: kept as a general node-gyp fallback for any
 # native dep (e.g. bcrypt) that doesn't ship a musl/Alpine prebuilt binary
 # for the current Node version — most (bcrypt included, via `prebuildify
@@ -148,7 +159,7 @@ RUN --mount=type=cache,id=nx-cache,target=/app/.nx/cache \
 # ============================================
 # Production stages — copy only the built output, not source
 # ============================================
-FROM node:22-alpine AS api
+FROM node:24-alpine AS api
 WORKDIR /app
 ENV NODE_ENV=production
 # ffprobe (bundled with the ffmpeg package) reads a video's real duration
@@ -167,7 +178,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD wget -qO- http://localhost:3002/api/v1/health || exit 1
 CMD ["node", "dist/main.js"]
 
-FROM node:22-alpine AS client
+FROM node:24-alpine AS client
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -203,7 +214,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
   CMD wget -qO- http://localhost:3000/api/health || exit 1
 CMD ["node", "apps/client/server.js"]
 
-FROM node:22-alpine AS admin
+FROM node:24-alpine AS admin
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1

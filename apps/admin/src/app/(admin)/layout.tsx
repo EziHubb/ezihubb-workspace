@@ -4,7 +4,8 @@ import { headers, cookies } from 'next/headers';
 import { authOptions } from '../../lib/auth.options';
 import { AdminSidebar, AdminMobileNav } from '../../components/layout/AdminSidebar';
 import { GetHelpButton } from '../../components/layout/GetHelpButton';
-import { STORE_CONTEXT_COOKIE, isActingAsShopOwner, resolveInStoreMode } from '../../lib/store-context';
+import { STORE_CONTEXT_COOKIE } from '../../lib/store-context';
+import { isActingAsShopOwner, resolveInStoreMode } from '../../lib/store-context-shared';
 import { PLATFORM_ONLY_PREFIXES, SELF_SERVICE_PREFIXES } from '../../lib/route-categories';
 
 // ── Route guard helpers ───────────────────────────────────────────────────────

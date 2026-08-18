@@ -19,7 +19,8 @@ import type { OrderStatusDataPoint } from '../../../components/charts/OrdersDonu
 import type { TopProductDto } from '../../../components/dashboard/TopProductsTable';
 import type { ReviewDto } from '../../../components/dashboard/PendingReviewsCard';
 import { fmtAmount, fmtRelative, unwrapArr, safeArr } from '../../../lib/fmt';
-import { STORE_CONTEXT_COOKIE, resolveInStoreMode, isActingAsShopOwner } from '../../../lib/store-context';
+import { STORE_CONTEXT_COOKIE } from '../../../lib/store-context';
+import { resolveInStoreMode, isActingAsShopOwner } from '../../../lib/store-context-shared';
 
 export const metadata = { title: 'Dashboard — EziHubb Admin' };
 export const dynamic  = 'force-dynamic';
