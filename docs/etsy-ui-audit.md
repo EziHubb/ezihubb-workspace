@@ -419,7 +419,31 @@ Deferred items with a concrete "next time" plan, not just "not built."
 
 Not started — flagging for a future pass rather than building against an unapproved data model.
 
-### "Mixed grid" Shop Home layout (Ezihubb Plus scope B — locked, not yet built)
+### ✅ BUILT — "Mixed grid" Shop Home layout (Ezihubb Plus scope B)
+
+> **Status: no longer backlog.** Built in a later pass — `Store.featuredLayout`
+> (migration `20260819000000_store_featured_layout`), `PlusFeature.SHOP_FEATURED_MIXED_GRID`,
+> the gate in `adminUpdateStore`, the `'grid'` downgrade in `getStoreBySlug`, the
+> third radio in the admin layout modal, and the storefront CSS. The estimate and
+> plan below are kept only as a record of how it was scoped. The paragraph that
+> follows saying "only the gate exists so far / `PlusFeature` has no dedicated enum
+> member" is **historical and no longer true**.
+
+## Plus gate scope — the canonical rule
+
+**Exactly three features are gated behind Ezihubb Plus. This is intentional and complete:**
+
+| `PlusFeature` | Enforced at | What it gates |
+|---|---|---|
+| `SHOP_COLOR_THEME` | `stores.service.ts` — `adminUpdateStore` (write) + `getStoreBySlug` (read → `null`) | Shop Home colour theme |
+| `SHOP_FEATURED_MIXED_GRID` | `stores.service.ts` — `adminUpdateStore` (only when set to `'mixed'`) + `getStoreBySlug` (read → forced `'grid'`) | Featured-area mixed layout |
+| `MARKETPLACE_INSIGHTS_EXTENDED_QUOTA` | `marketplace-insights.service.ts` | Daily lookup quota 20 → 60 |
+
+**Adding a fourth gated feature requires asking first — and so does removing one of these three.** An earlier note in this document said "only `colorTheme` is gated"; that was written before mixed grid was approved and built, and is wrong now. Do not use it to "clean up" the `SHOP_FEATURED_MIXED_GRID` gate.
+
+Everything else on the Shop Home DTO — `featuredProductIds`, `tagline`, `location`, `announcement`, `about*`, `ownerBio`, `socialLinks`, `faqs` — is **free** and must never be gated.
+
+### Original scoping notes for mixed grid (historical)
 
 **What real Etsy shows, not built this pass:** an alternate Featured-area layout — one large "hero" listing tile plus several smaller tiles in a mixed-size grid — as an alternative to the current uniform grid. Locked into **Ezihubb Plus scope B** (colour theme + Mixed grid layout + Marketplace Insights extended quota) in the Phase 1 policy decision; **only the gate exists so far** (`PlusFeature` has no dedicated enum member for this yet — Phase 1 code gates just `SHOP_COLOR_THEME` and `MARKETPLACE_INSIGHTS_EXTENDED_QUOTA`, per the explicit scope lock in this session).
 
@@ -582,6 +606,26 @@ The key detail: while the session loads, `role` is `''`, so `isPlatformContext` 
 | `dashboard/page.tsx`, `(admin)/layout.tsx` | **N/A** — Server Components (`getServerSession`, `await cookies()`); the session is already resolved, there is no loading state |
 | `stores/[id]/permissions`, `stores/[id]/subscription`, `settings/page.tsx` | **Already safe** — all use `if (role && role !== 'SUPER_ADMIN')`, which no-ops on `undefined` |
 | `stores/[id]/page.tsx:599` | **Open** — `{role !== 'ADMIN' && ...}` is `true` while `role` is `undefined`, so a shop owner briefly sees the Approve/Reject/Suspend/Permissions panel. Buttons are server-blocked, so it is visual only. Not fixed — outside the scope of that pass |
+
+## Shop Home editor — reference-parity pass (open items)
+
+Reference: a screenshot of the real marketplace's Shop Home editor. **Deliberately not committed** — this repo is public and the screenshot contained a real person's name; it was reviewed and then deleted rather than published. The section-by-section table below IS the durable record, so nothing here depends on having the file.
+
+Structure compared section by section; 4 of 13 already matched, 8 were adjusted in this pass, 0 were missing outright. The 13 sections, top to bottom: header (title + "View on …" + settings button), Colour theme, Banner, identity block (logo/name/tagline/location/owner avatar), Items (search, filters with counts, contact button, Sales/Admirers), Featured area strip, All Items + rearrange + product grid, Announcement, About (Sales / since-year, video, photos, headline, story, links), Shop members, Shop policies, FAQ, Seller details.
+
+**Design decisions that are OURS, not copied** — the reference shows an ungated shop, so it has no locked state at all:
+
+- **Locked Colour theme.** Our own design: the same collapsed pill as the unlocked branch (so the section doesn't move when Plus is granted), greyed with a `Lock` icon and `cursor-not-allowed`, a dimmed 6-swatch teaser beneath, and a text link to `/settings/plus`. Nothing clickable except that link — deliberately *not* a pill that looks pressable and then errors. Do not "fix" this to match the reference; the reference has no equivalent.
+- **Two-column label-left layout** applies to the six lower sections only (Announcement, About, Shop members, Shop policies, FAQ, Seller details) — measured from the screenshot, where those labels share a baseline with their content while Colour theme / Banner / identity / Items keep the heading on top. Applying it to every section would *not* match the reference.
+
+**Open — need a decision before building:**
+
+1. **"Storefront settings" header button.** The reference has it; we have "Reload" instead. Deliberately not added: no destination page exists, and a button pointing at nothing (or back at the current page) is worse than none. Needs a target page decided first. "Reload" stays — it's a shared admin component used across the app, and the reference is one marketplace's choice, not a house rule.
+2. **"Contact shop owner" / "Contact".** Rendered to match the reference but `disabled` with a "Coming soon" tooltip, because the behaviour is undecided — linking to `/messages` would be a guess. Both live in the editor because it previews the *buyer-facing* page (a seller would never message themselves). Decide: messages thread, modal, or remove.
+3. **"Rearrange items" and "Add more details for buyers"** — same treatment, disabled pending a decision on what they do.
+4. **Items filter — needs an API change.** "On sale" and per-section counts could not be built: `adminGetStoreProducts` selects only `id, name, slug, status, basePrice, soldCount, createdAt, images`. Needs `compareAtPrice` (for "On sale") and `shopSectionId` (for per-section counts) added to that `select`. **Not done here** — this was a UI-only task, and changing a shared endpoint's payload means re-checking every other caller. Estimate: ~15 min for the two fields plus the client grouping, ~45 min including re-verifying the other consumers of that endpoint.
+
+Built with existing data only: Search (client-side filter), "All {n}", `{Sales}`/`{Admirers}` (already in the store payload), and Sort (Most Recent / Name) — `createdAt` was already in the payload and only missing from the TS interface, so declaring it is a type fix, not an API change.
 
 ## Backlog closure status
 

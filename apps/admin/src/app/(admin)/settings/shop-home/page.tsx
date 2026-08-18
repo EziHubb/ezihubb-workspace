@@ -6,13 +6,13 @@ import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Camera, Pencil, Plus, X, Check, ExternalLink, Trash2, ArrowUp, ArrowDown,
-  Video, ImagePlus, Star, MessageSquareHeart, User, LayoutGrid, Lock,
+  Video, ImagePlus, Star, MessageSquareHeart, User, LayoutGrid, Lock, Search, MessageSquare,
 } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@ezihubb/ui';
 import { useAdminMode } from '../../../../lib/store-context';
 import { api, adminApi, ApiError } from '../../../../lib/api-client';
 import { API_ROUTES, SHOP_COLOR_THEMES } from '@ezihubb/constants';
-import { fmtNum } from '../../../../lib/fmt';
+import { fmtNum, fmtDate } from '../../../../lib/fmt';
 import { useDialog } from '../../../../contexts/DialogContext';
 import { ListingPicker, type PickedProduct } from '../../../../components/marketing/ListingPicker';
 import { ReloadButton } from '../../../../components/ui/ReloadButton';
@@ -39,6 +39,7 @@ interface ShopHomeStore {
   aboutPhotoUrls:     string[];
   ownerBio:           string | null;
   featuredProductIds: string[];
+  featuredLayout:     string | null;
   socialLinks:        SocialLink[] | null;
   followerCount:      number;
   totalOrders:        number;
@@ -47,8 +48,13 @@ interface ShopHomeStore {
   owner:              { firstName: string | null; lastName: string | null; avatarUrl?: string | null };
 }
 
+type ItemsSort = 'recent' | 'name';
+
 interface ShopProductRow {
   id: string; name: string; slug: string; status: string; basePrice: number;
+  /** Present in the adminGetStoreProducts payload; the interface simply
+   *  omitted it. Declaring it here is a type fix, not an API change. */
+  createdAt: string;
   images: { url: string }[];
 }
 
@@ -85,11 +91,41 @@ const graphemeSegments = (s: string): string[] =>
 const truncateGraphemes = (s: string, max: number): string =>
   graphemeSegments(s).slice(0, max).join('');
 
+/** Full-width section: heading above content. Used by the top of the page
+ *  (Colour theme, Banner, identity, Items) — matching the reference, where
+ *  only the lower sections use a label column. */
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="py-6 border-b border-border last:border-0">
       <h2 className="text-base font-bold text-secondary mb-3">{title}</h2>
       {children}
+    </section>
+  );
+}
+
+/** Label-left section: ~200px label column, content to its right. In the
+ *  reference this applies ONLY to the six lower sections (Announcement,
+ *  About, Shop members, Shop policies, FAQ, Seller details) — measured from
+ *  the screenshot, where those labels sit at the same baseline as their
+ *  content while the sections above keep their heading on top. `meta` is the
+ *  small print under the label (e.g. "Optional", "Last updated on …").
+ *  Collapses to one column below lg so the label doesn't squeeze content. */
+function LabelledSection({
+  title,
+  meta,
+  children,
+}: {
+  title: string;
+  meta?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-3 lg:gap-8 py-8 border-b border-border last:border-0">
+      <div>
+        <h2 className="text-sm font-semibold text-secondary">{title}</h2>
+        {meta}
+      </div>
+      <div>{children}</div>
     </section>
   );
 }
@@ -109,10 +145,13 @@ export default function ShopHomeEditorPage() {
   const [photoModalOpen,    setPhotoModalOpen]    = useState(false);
   const [logoModalOpen,     setLogoModalOpen]     = useState(false);
   const [layoutModalOpen,   setLayoutModalOpen]   = useState(false);
-  const [featuredLayout,    setFeaturedLayout]    = useState<'standard' | 'none'>('standard');
+  // 'standard' maps to the stored 'grid'; 'none' clears featuredProductIds
+  // rather than being a stored layout of its own.
+  const [featuredLayout,    setFeaturedLayout]    = useState<'standard' | 'mixed' | 'none'>('standard');
   const [taglineDraft,    setTaglineDraft]    = useState('');
   const [locationDraft,   setLocationDraft]   = useState('');
-  const [itemsFilter,     setItemsFilter]     = useState<'all' | 'sale'>('all');
+  const [itemsSearch,     setItemsSearch]     = useState('');
+  const [itemsSort,       setItemsSort]       = useState<ItemsSort>('recent');
   const [editingAnnouncement, setEditingAnnouncement] = useState(false);
   const [announcementDraft, setAnnouncementDraft] = useState('');
   const [showFeaturedPicker, setShowFeaturedPicker] = useState(false);
@@ -280,9 +319,18 @@ export default function ShopHomeEditorPage() {
   };
 
   const products = useMemo(() => productsQuery.data?.data ?? [], [productsQuery.data]);
+  // Search + sort are done client-side on the already-fetched page of
+  // products — no extra request, and no API change (the payload already
+  // carries createdAt; only the TS interface was missing it).
   const filteredProducts = useMemo(
-    () => itemsFilter === 'all' ? products : products.filter((p) => p.status === 'ACTIVE'),
-    [products, itemsFilter],
+    () => {
+      const q = itemsSearch.trim().toLowerCase();
+      const list = q ? products.filter((p) => p.name.toLowerCase().includes(q)) : [...products];
+      return list.sort((a, b) => itemsSort === 'name'
+        ? a.name.localeCompare(b.name)
+        : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    },
+    [products, itemsSearch, itemsSort],
   );
 
   const sinceYear = store ? new Date(store.createdAt).getFullYear() : null;
@@ -372,7 +420,7 @@ export default function ShopHomeEditorPage() {
   }
 
   return (
-    <div className={`max-w-[900px] ${bannerPreview ? 'pb-20' : ''}`}>
+    <div className={`max-w-[1200px] ${bannerPreview ? 'pb-20' : ''}`}>
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-lg font-semibold text-secondary">Shop Home editor</h1>
         <div className="flex items-center gap-2">
@@ -390,23 +438,33 @@ export default function ShopHomeEditorPage() {
 
       {/* ── Colour theme (Ezihubb Plus) ──────────────────────────────────── */}
       <Section title="Colour theme">
+        {/* Locked state. The reference screenshot shows an ungated shop, so it
+            has NO locked variant — this shape is our own design: the same
+            collapsed pill as the unlocked branch (so the section doesn't
+            change size or position when Plus is granted), greyed and inert,
+            with a dimmed 6-swatch teaser so the seller can see what they're
+            missing. Nothing here is clickable except the link to the plan
+            page — a pill that looks pressable and then errors would be a
+            trap. */}
         {!hasPlusColorTheme ? (
-          <div className="flex items-start gap-3 p-4 bg-muted/5 border border-border rounded-xl">
-            <Lock className="w-4 h-4 text-muted shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-secondary">Requires Ezihubb Plus</p>
-              <p className="text-xs text-muted mt-0.5">
-                Colour themes are an Ezihubb Plus feature.{' '}
-                <Link href="/settings/plus" className="text-primary font-semibold hover:underline">
-                  See Ezihubb Plus
-                </Link>
-              </p>
-              <div className="flex flex-wrap gap-3 mt-3 opacity-40 pointer-events-none">
-                {SHOP_COLOR_THEMES.slice(0, 6).map((t) => (
-                  <div key={t.value} className="w-9 h-9 rounded-full shrink-0" style={{ backgroundColor: t.hex }} />
-                ))}
-              </div>
+          <div>
+            <span
+              title="Requires Ezihubb Plus"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-muted/10 text-muted border border-border text-sm font-semibold rounded-pill cursor-not-allowed select-none"
+            >
+              <Lock className="w-4 h-4" /> Add a colour theme
+            </span>
+            <div className="flex flex-wrap gap-3 mt-3 opacity-40 pointer-events-none" aria-hidden="true">
+              {SHOP_COLOR_THEMES.slice(0, 6).map((t) => (
+                <div key={t.value} className="w-9 h-9 rounded-full shrink-0" style={{ backgroundColor: t.hex }} />
+              ))}
             </div>
+            <p className="text-xs text-muted mt-3">
+              Colour themes are an Ezihubb Plus feature.{' '}
+              <Link href="/settings/plus" className="text-primary font-semibold hover:underline">
+                See Ezihubb Plus
+              </Link>
+            </p>
           </div>
         ) : themeExpanded || store.colorTheme ? (
           <>
@@ -517,55 +575,145 @@ export default function ShopHomeEditorPage() {
               </span>
             </button>
             <p className="text-xs text-muted mt-1">{ownerName}</p>
+            {/* Buyer-facing control, shown here because this editor previews
+                the public shop page. Inert until its behaviour is decided —
+                see docs backlog. */}
+            <button
+              type="button"
+              disabled
+              title="Coming soon"
+              className="mt-1 ml-auto flex items-center gap-1 text-xs text-muted cursor-not-allowed"
+            >
+              <MessageSquare className="w-3 h-3" /> Contact
+            </button>
           </div>
         </div>
       </div>
 
       {/* ── Items ────────────────────────────────────────────────────────── */}
-      <Section title="Items">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            {(['all', 'sale'] as const).map((f) => (
-              <button key={f} type="button" onClick={() => setItemsFilter(f)}
-                className={`px-3.5 py-1.5 rounded-pill text-sm font-medium border transition-colors ${itemsFilter === f ? 'border-secondary text-secondary bg-background' : 'border-border text-muted hover:bg-background'}`}>
-                {f === 'all' ? `All ${products.length}` : 'On sale'}
-              </button>
-            ))}
-          </div>
-          <button type="button" onClick={() => setLayoutModalOpen(true)}
-            className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
-            {store.featuredProductIds.length > 0
-              ? <><LayoutGrid className="w-4 h-4" /> Change layout</>
-              : <><Plus className="w-4 h-4" /> Featured area to highlight listings</>}
-          </button>
+      <section className="py-6 border-b border-border">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-bold text-secondary">Items</h2>
+          <label className="flex items-center gap-1.5 text-sm text-secondary">
+            <span className="text-muted">Sort:</span>
+            <select
+              value={itemsSort}
+              onChange={(e) => setItemsSort(e.target.value as ItemsSort)}
+              className="bg-transparent text-sm font-medium text-secondary outline-none cursor-pointer"
+            >
+              <option value="recent">Most Recent</option>
+              <option value="name">Name (A–Z)</option>
+            </select>
+          </label>
         </div>
 
-        {(featuredQuery.data?.length ?? 0) > 0 && (
-          <div className="grid grid-cols-4 gap-3 mb-4 pb-4 border-b border-border">
-            {(featuredQuery.data ?? []).map((p) => (
-              <div key={p.id} className="relative rounded-lg overflow-hidden border-2 border-primary/40 aspect-square bg-muted/10">
-                {p.images?.[0]?.url && <Image src={p.images[0].url} alt={p.name} fill className="object-cover" />}
-                <span className="absolute top-1.5 left-1.5 bg-primary text-white text-[9px] font-bold px-1.5 py-0.5 rounded">Featured</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
+          {/* ── Left rail: search, counts, shop stats ─────────────────────── */}
+          <div>
+            <div className="relative">
+              <input
+                value={itemsSearch}
+                onChange={(e) => setItemsSearch(e.target.value)}
+                placeholder="Search items"
+                className="w-full pl-3.5 pr-9 py-2 border border-border rounded-pill text-sm text-secondary placeholder:text-muted bg-surface outline-none focus:border-secondary/40"
+              />
+              <Search className="w-4 h-4 text-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
 
-        {filteredProducts.length === 0 ? (
-          <p className="text-sm text-muted text-center py-10 border border-dashed border-border rounded-card">No items to show.</p>
-        ) : (
-          <div className="grid grid-cols-4 gap-3">
-            {filteredProducts.slice(0, 8).map((p) => (
-              <Link key={p.id} href={`/products/${p.id}/edit`} className="rounded-lg overflow-hidden border border-border bg-muted/5 aspect-square relative group">
-                {p.images?.[0]?.url && <Image src={p.images[0].url} alt={p.name} fill className="object-cover" />}
-              </Link>
-            ))}
+            {/* Only "All" is shown. "On sale" and per-section counts need
+                compareAtPrice / shopSectionId, which adminGetStoreProducts
+                does not select — deliberately not added here (UI-only task);
+                tracked in docs/etsy-ui-audit.md. */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between py-2 text-sm">
+                <span className="text-secondary font-medium">All</span>
+                <span className="text-muted">{products.length}</span>
+              </div>
+            </div>
+
+            {/* Static preview of what a buyer sees — this editor mirrors the
+                public shop page, so the control belongs here even though a
+                seller would never message themselves. No behaviour decided
+                yet; see docs backlog. */}
+            <button
+              type="button"
+              disabled
+              title="Coming soon"
+              className="mt-4 w-full flex items-center justify-center gap-1.5 px-3.5 py-2 border border-border rounded-pill text-sm text-muted bg-surface cursor-not-allowed"
+            >
+              <MessageSquare className="w-3.5 h-3.5" /> Contact shop owner
+            </button>
+
+            <div className="mt-4 space-y-0.5">
+              <p className="text-xs text-muted">{fmtNum(store.totalOrders)} Sales</p>
+              <p className="text-xs text-muted">{fmtNum(store.followerCount)} Admirers</p>
+            </div>
           </div>
-        )}
-      </Section>
+
+          {/* ── Right: featured strip, then All Items ─────────────────────── */}
+          <div className="min-w-0">
+            {/* Seed the radio from what's actually stored, so reopening the
+                modal doesn't silently show 'standard' for a store already on
+                the mixed layout (and then save that back on Done). */}
+            <button type="button" onClick={() => { setFeaturedLayout(store.featuredLayout === 'mixed' ? 'mixed' : 'standard'); setLayoutModalOpen(true); }}
+              className="w-full flex items-center justify-center gap-1.5 py-3 border border-border rounded-lg text-sm font-medium text-secondary hover:border-secondary/40 transition-colors">
+              {store.featuredProductIds.length > 0
+                ? <><LayoutGrid className="w-4 h-4" /> Change layout</>
+                : <><Plus className="w-4 h-4" /> Featured area to highlight listings</>}
+            </button>
+
+            {(featuredQuery.data?.length ?? 0) > 0 && (
+              <div className="grid grid-cols-4 gap-3 mt-4">
+                {(featuredQuery.data ?? []).map((p) => (
+                  <div key={p.id} className="relative rounded-lg overflow-hidden border-2 border-primary/40 aspect-square bg-muted/10">
+                    {p.images?.[0]?.url && <Image src={p.images[0].url} alt={p.name} fill className="object-cover" />}
+                    <span className="absolute top-1.5 left-1.5 bg-primary text-white text-[9px] font-bold px-1.5 py-0.5 rounded">Featured</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between mt-6 mb-4">
+              <h3 className="text-base font-semibold text-secondary">All Items</h3>
+              <button
+                type="button"
+                disabled
+                title="Coming soon"
+                className="flex items-center gap-1.5 text-sm font-semibold text-muted cursor-not-allowed"
+              >
+                <Plus className="w-4 h-4" /> Rearrange items
+              </button>
+            </div>
+
+            {filteredProducts.length === 0 ? (
+              <p className="text-sm text-muted text-center py-10 border border-dashed border-border rounded-card">No items to show.</p>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {filteredProducts.slice(0, 8).map((p) => (
+                  <Link key={p.id} href={`/products/${p.id}/edit`} className="rounded-lg overflow-hidden border border-border bg-muted/5 aspect-square relative group">
+                    {p.images?.[0]?.url && <Image src={p.images[0].url} alt={p.name} fill className="object-cover" />}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
       {/* ── Announcement ─────────────────────────────────────────────────── */}
-      <Section title="Announcement">
+      <LabelledSection
+        title="Announcement"
+        meta={
+          <>
+            <p className="text-xs text-muted mt-1">Optional</p>
+            {store.announcementUpdatedAt && (
+              <p className="text-xs text-muted mt-1">
+                Last updated on {fmtDate(store.announcementUpdatedAt)}
+              </p>
+            )}
+          </>
+        }
+      >
         <p className="text-xs text-muted mb-2">
           {store.announcementUpdatedAt
             ? `Last updated on ${new Date(store.announcementUpdatedAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}`
@@ -608,17 +756,29 @@ export default function ShopHomeEditorPage() {
             </button>
           </div>
         )}
-      </Section>
+      </LabelledSection>
 
       {/* ── About ────────────────────────────────────────────────────────── */}
-      <Section title={`About ${store.name}`}>
-        <div className="flex items-center gap-6 mb-4 text-sm">
-          <div><span className="font-bold text-secondary">{fmtNum(store.totalOrders)}</span> <span className="text-muted">Sales</span></div>
-          <div><span className="text-muted">On Ezihubb since {sinceYear}</span></div>
+      <LabelledSection title={`About ${store.name}`}>
+        {/* Stat pair: small muted label above a large value, as in the
+            reference. "On Ezihubb since" — our own brand, not the
+            marketplace the screenshot came from. */}
+        <div className="flex gap-12 mb-6">
+          <div>
+            <p className="text-xs text-muted">Sales</p>
+            <p className="text-xl font-bold text-secondary mt-0.5">{fmtNum(store.totalOrders)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted">On Ezihubb since</p>
+            <p className="text-xl font-bold text-secondary mt-0.5">{sinceYear}</p>
+          </div>
         </div>
 
         <div className="mb-4">
-          <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">Video and photos</p>
+          <p className="text-sm font-semibold text-secondary">Add a video and up to 5 photos</p>
+          <p className="text-xs text-muted mt-0.5 mb-3">
+            Share photos of your process, workspace or anything that can inspire your buyers.
+          </p>
           <div className="flex gap-3 flex-wrap">
             <button
               type="button"
@@ -626,7 +786,7 @@ export default function ShopHomeEditorPage() {
               className="w-20 h-20 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-muted text-[10px] gap-1 hover:border-primary/40 hover:text-primary transition-colors"
             >
               <Video className="w-4 h-4" />
-              {store.aboutVideoUrl ? 'Video set' : 'Add video'}
+              {store.aboutVideoUrl ? 'Video set' : 'Add Video'}
             </button>
             <input ref={videoInputRef} type="file" accept="video/mp4,video/webm,video/quicktime" className="hidden"
               onChange={async (e) => {
@@ -659,7 +819,7 @@ export default function ShopHomeEditorPage() {
               <button type="button" disabled={photosBusy} onClick={() => photoInputRef.current?.click()}
                 className="w-20 h-20 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-muted hover:border-primary/40 hover:text-primary transition-colors gap-1 disabled:opacity-50">
                 <ImagePlus className="w-4 h-4" />
-                <span className="text-[10px]">Add photo</span>
+                <span className="text-[10px] leading-tight text-center">Add photos</span>
               </button>
             )}
             <input ref={photoInputRef} type="file" accept="image/*" className="hidden"
@@ -790,10 +950,10 @@ export default function ShopHomeEditorPage() {
             <Plus className="w-4 h-4" /> Add links to your website and social media
           </button>
         )}
-      </Section>
+      </LabelledSection>
 
       {/* ── Shop members ─────────────────────────────────────────────────── */}
-      <Section title="Shop members">
+      <LabelledSection title="Shop members">
         <div className="flex items-start gap-3">
           {store.owner.avatarUrl ? (
             <Image src={store.owner.avatarUrl} alt="" width={40} height={40} className="w-10 h-10 rounded-full object-cover shrink-0" />
@@ -811,10 +971,10 @@ export default function ShopHomeEditorPage() {
             />
           </div>
         </div>
-      </Section>
+      </LabelledSection>
 
       {/* ── Shop policies ────────────────────────────────────────────────── */}
-      <Section title="Shop policies">
+      <LabelledSection title="Shop policies">
         <div className="bg-hero-periwinkle rounded-card p-5 flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-bold text-secondary">Set up simple shop policies</p>
@@ -824,10 +984,10 @@ export default function ShopHomeEditorPage() {
             Try it now
           </Link>
         </div>
-      </Section>
+      </LabelledSection>
 
       {/* ── FAQ ──────────────────────────────────────────────────────────── */}
-      <Section title="Frequently asked questions">
+      <LabelledSection title="Frequently asked questions">
         <p className="text-xs text-muted mb-3">Information in your FAQs may not contradict Ezihubb&apos;s policies or your own shop policies.</p>
         {store.faqs.length > 0 && (
           <div className="space-y-2 mb-3">
@@ -864,10 +1024,10 @@ export default function ShopHomeEditorPage() {
             <Plus className="w-4 h-4" /> Add an FAQ
           </button>
         )}
-      </Section>
+      </LabelledSection>
 
       {/* ── Seller details ───────────────────────────────────────────────── */}
-      <Section title="Seller details">
+      <LabelledSection title="Seller details">
         <p className="text-sm font-semibold text-secondary mb-1">Your seller status in the EU</p>
         <p className="text-xs text-muted mb-2 max-w-xl">
           If you&apos;re an incorporated business on Ezihubb, you&apos;re likely considered a professional seller in the EU (known as a trader).
@@ -878,7 +1038,15 @@ export default function ShopHomeEditorPage() {
           </span>
           <Link href="/finances/tax-information" className="text-sm font-semibold text-primary hover:underline">Edit</Link>
         </div>
-      </Section>
+        <button
+          type="button"
+          disabled
+          title="Coming soon"
+          className="mt-4 flex items-center gap-1.5 text-sm font-semibold text-muted cursor-not-allowed"
+        >
+          <Plus className="w-4 h-4" /> Add more details for buyers
+        </button>
+      </LabelledSection>
 
       {/* ── Shop location modal ──────────────────────────────────────────── */}
       <Modal isOpen={locationModalOpen} onClose={() => setLocationModalOpen(false)} size="sm">
@@ -1041,9 +1209,55 @@ export default function ShopHomeEditorPage() {
                 <input type="radio" name="featured-layout" checked={featuredLayout === 'none'} onChange={() => setFeaturedLayout('none')} className="mt-0.5" />
                 <span className="block text-sm font-semibold text-secondary">None</span>
               </label>
+
+              {/* Mixed grid — Ezihubb Plus. Shown to everyone (it is the
+                  upsell), selectable only with an active subscription; the
+                  server enforces the same rule in adminUpdateStore. */}
+              {!hasPlusColorTheme && (
+                <div className="flex items-center gap-2 pt-2 text-xs text-muted">
+                  <span>Available with upgrade</span>
+                  <Link href="/settings/plus" className="text-primary font-semibold hover:underline">Learn more</Link>
+                </div>
+              )}
+              <label
+                className={`flex items-start gap-2.5 p-3 rounded-lg border border-border ${
+                  hasPlusColorTheme ? 'cursor-pointer hover:border-secondary/40' : 'opacity-55 cursor-not-allowed'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="featured-layout"
+                  disabled={!hasPlusColorTheme}
+                  checked={featuredLayout === 'mixed'}
+                  onChange={() => setFeaturedLayout('mixed')}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="flex items-center gap-1.5 text-sm font-semibold text-secondary">
+                    Mixed grid
+                    {!hasPlusColorTheme && <Lock className="w-3 h-3 text-muted" />}
+                  </span>
+                  <span className="block text-xs text-muted mt-0.5">Feature one large photo alongside four smaller ones</span>
+                </span>
+              </label>
             </div>
             <div className="rounded-lg bg-muted/5 border border-border flex items-center justify-center p-4">
-              <Image src="/images/featured-layout-standard-grid.png" alt="Standard grid preview" width={450} height={85} className="w-full h-auto" />
+              {featuredLayout === 'mixed' ? (
+                /* No dedicated mixed-grid preview asset exists yet, and an
+                   <Image src> pointing at a missing file renders as a broken
+                   image (see middleware.ts — that is exactly how the standard
+                   preview broke in production). A CSS mock of the real
+                   layout — one large tile + four small — is accurate and has
+                   nothing to 404. Replace with a designed asset when one exists. */
+                <div className="w-full grid grid-cols-3 grid-rows-2 gap-1.5" aria-label="Mixed grid preview">
+                  <div className="col-span-1 row-span-2 rounded bg-muted/25" />
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="rounded bg-muted/20 aspect-[4/3]" />
+                  ))}
+                </div>
+              ) : (
+                <Image src="/images/featured-layout-standard-grid.png" alt="Standard grid preview" width={450} height={85} className="w-full h-auto" />
+              )}
             </div>
           </div>
         </ModalBody>
@@ -1053,8 +1267,16 @@ export default function ShopHomeEditorPage() {
             type="button"
             onClick={async () => {
               setLayoutModalOpen(false);
-              if (featuredLayout === 'none') await patchStore({ featuredProductIds: [] });
-              else setShowFeaturedPicker(true);
+              if (featuredLayout === 'none') {
+                await patchStore({ featuredProductIds: [] });
+                return;
+              }
+              // Persist the layout itself before opening the picker. 'mixed'
+              // is rejected server-side without Plus (ERR_PLUS_REQUIRED,
+              // surfaced by patchStore) — the disabled radio is only the
+              // first line of defence, not the enforcement.
+              const saved = await patchStore({ featuredLayout: featuredLayout === 'mixed' ? 'mixed' : 'grid' });
+              if (saved) setShowFeaturedPicker(true);
             }}
             className="px-4 py-2 bg-secondary hover:bg-secondary/90 text-white text-sm font-semibold rounded-pill"
           >
