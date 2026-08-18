@@ -174,8 +174,13 @@ COPY --from=builder-api --chown=nestjs:nodejs /app/prisma ./prisma
 COPY --from=builder-api --chown=nestjs:nodejs /app/package.json ./package.json
 USER nestjs
 EXPOSE 3002
+# 127.0.0.1, not localhost — this image's /etc/hosts resolves "localhost"
+# to ::1 (IPv6) only, with no 127.0.0.1 entry, while HOSTNAME=0.0.0.0 below
+# (client/admin stages) binds IPv4 only. wget therefore got ECONNREFUSED
+# against a perfectly healthy server on every single check, permanently
+# stuck at Docker-reported "unhealthy" regardless of the app's real state.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD wget -qO- http://localhost:3002/api/v1/health || exit 1
+  CMD wget -qO- http://127.0.0.1:3002/api/v1/health || exit 1
 CMD ["node", "dist/main.js"]
 
 FROM node:24-alpine AS client
@@ -211,7 +216,7 @@ COPY --from=builder-client --chown=nextjs:nodejs /app/dist/apps/client/public ./
 USER nextjs
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-  CMD wget -qO- http://localhost:3000/api/health || exit 1
+  CMD wget -qO- http://127.0.0.1:3000/api/health || exit 1
 CMD ["node", "apps/client/server.js"]
 
 FROM node:24-alpine AS admin
@@ -230,7 +235,7 @@ COPY --from=builder-admin --chown=nextjs:nodejs /app/dist/apps/admin/public ./ap
 USER nextjs
 EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-  CMD wget -qO- http://localhost:3001/api/health || exit 1
+  CMD wget -qO- http://127.0.0.1:3001/api/health || exit 1
 CMD ["node", "apps/admin/server.js"]
 
 # ============================================
