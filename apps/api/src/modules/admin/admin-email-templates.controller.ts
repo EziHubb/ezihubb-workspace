@@ -8,6 +8,8 @@ import {
 import { ApiOperation } from '@nestjs/swagger';
 import { IsString, IsNotEmpty } from 'class-validator';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '@ezihubb/constants';
 import { SettingsService } from './settings.service';
 
 class UpdateTemplateDto {
@@ -16,6 +18,13 @@ class UpdateTemplateDto {
   body!: string;
 }
 
+// Class-level override fully replaces @AdminController's default
+// ADMIN+SUPER_ADMIN — every route here is SUPER_ADMIN only (same pattern as
+// AdminAffiliatesController/AdminSubscriptionsController). These are
+// platform-wide transactional email templates (password reset, order
+// confirmation, etc.) sent to every user — a shop owner editing one is a
+// content-injection vector, not just an authorization slip.
+@Roles(Role.SUPER_ADMIN)
 @AdminController('email-templates')
 export class AdminEmailTemplatesController {
   constructor(private readonly settings: SettingsService) {}

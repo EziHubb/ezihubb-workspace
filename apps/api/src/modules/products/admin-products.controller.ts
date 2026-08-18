@@ -215,15 +215,24 @@ export class AdminProductsController {
     return this.productsService.getStats(context.storeId ?? undefined);
   }
 
-  // GET /admin/products/seo-stats — declared before :id routes
+  // GET /admin/products/seo-stats — declared before :id routes. Has no :id
+  // param, so ProductOwnershipGuard no-ops on it (see the guard's own
+  // doc comment: "No-ops for routes with no product id param") — this route
+  // must scope itself, the same way `stats` above does. Previously didn't,
+  // returning platform-wide counts to any ADMIN (found via a real
+  // route-by-route audit of every non-:id route on this controller and
+  // ShopStatsController, the only other consumer of this guard — this was
+  // the only gap found, not a wider pattern).
   @Get('seo-stats')
-  @ApiOperation({ summary: '[Admin] SEO health stats across all products' })
-  async getSeoStats() {
+  @ApiOperation({ summary: '[Admin] SEO health stats (scoped to own store for shop owners)' })
+  async getSeoStats(@Req() req: Request) {
+    const context = await this.storeContext.resolve(req);
+    const storeId = context.storeId ?? undefined;
     const [total, withDescription, withImages, withName] = await Promise.all([
-      this.prisma.product.count({ where: { deletedAt: null } }),
-      this.prisma.product.count({ where: { deletedAt: null, description: { not: '' } } }),
-      this.prisma.product.count({ where: { deletedAt: null, images: { some: {} } } }),
-      this.prisma.product.count({ where: { deletedAt: null, name: { not: '' } } }),
+      this.prisma.product.count({ where: { deletedAt: null, storeId } }),
+      this.prisma.product.count({ where: { deletedAt: null, storeId, description: { not: '' } } }),
+      this.prisma.product.count({ where: { deletedAt: null, storeId, images: { some: {} } } }),
+      this.prisma.product.count({ where: { deletedAt: null, storeId, name: { not: '' } } }),
     ]);
     return {
       total,

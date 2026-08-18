@@ -24,6 +24,8 @@ interface PlatformSettings {
   payoutSchedule:             string;
   allowPublicRegistration:    boolean;
   maintenanceMode:            boolean;
+  plusMonthlyPrice:           number;
+  plusAnnualPrice:            number | null;
 }
 
 // ── Section card ──────────────────────────────────────────────────────────────
@@ -87,6 +89,8 @@ const DEFAULTS: Omit<PlatformSettings, 'id'> = {
   payoutSchedule:            'WEEKLY',
   allowPublicRegistration:   true,
   maintenanceMode:           false,
+  plusMonthlyPrice:          5.00,
+  plusAnnualPrice:           null,
 };
 
 export default function PlatformSettingsPage() {
@@ -116,6 +120,8 @@ export default function PlatformSettingsPage() {
         payoutSchedule:            data.payoutSchedule ?? 'WEEKLY',
         allowPublicRegistration:   data.allowPublicRegistration,
         maintenanceMode:           data.maintenanceMode,
+        plusMonthlyPrice:          data.plusMonthlyPrice,
+        plusAnnualPrice:           data.plusAnnualPrice,
       });
       setCountriesInput((data.regulatoryFeeCountries ?? []).join(', '));
     }
@@ -348,6 +354,59 @@ export default function PlatformSettingsPage() {
               </p>
             </div>
           )}
+        </SectionCard>
+
+        {/* Ezihubb Plus pricing */}
+        <SectionCard
+          title="⭐ Ezihubb Plus Pricing"
+          onSave={() => save('plus')}
+          saving={saving === 'plus'}
+        >
+          <div>
+            <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
+              Monthly Price
+            </label>
+            <div className="relative w-32">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                value={s.plusMonthlyPrice}
+                onChange={(e) => setS({ plusMonthlyPrice: Number(e.target.value) })}
+                className={`${inputCls} pl-7`}
+              />
+            </div>
+            <p className="text-xs text-muted/70 mt-1">
+              Snapshotted onto each store's subscription at grant time — changing this never retroactively affects existing Plus subscribers.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
+              Annual Price
+            </label>
+            <div className="relative w-32">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                value={s.plusAnnualPrice ?? ''}
+                placeholder="Not configured"
+                onChange={(e) => setS({ plusAnnualPrice: e.target.value === '' ? null : Number(e.target.value) })}
+                className={`${inputCls} pl-7`}
+              />
+            </div>
+            <p className="text-xs text-muted/70 mt-1">
+              {/* Prisma Decimal serializes to JSON as a STRING, so a freshly
+                  loaded 0 arrives as "0" and a strict `=== 0` would miss it
+                  (and `Number(null)` is 0, so null must be excluded first). */}
+              {s.plusAnnualPrice !== null && s.plusAnnualPrice !== undefined && Number(s.plusAnnualPrice) === 0
+                ? 'Set to $0.00 — annual billing is enabled and free, not disabled. To disable annual billing entirely, clear this field instead.'
+                : 'Leave this field empty to disable annual billing (granting an annual subscription is rejected while unset). This is different from setting $0.00, which enables annual billing at no charge.'}
+            </p>
+          </div>
         </SectionCard>
 
       </div>

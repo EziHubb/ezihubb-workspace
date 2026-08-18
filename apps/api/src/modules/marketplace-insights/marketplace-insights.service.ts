@@ -4,6 +4,8 @@ import { RedisService } from '../../common/services/redis.service';
 import { SearchService } from '../search/search.service';
 import { SearchQueryDto, SearchSortBy } from '../search/dto/search-query.dto';
 import { ProductListItemDto } from '../products/dto/product-list-item.dto';
+import { EntitlementsService } from '../subscriptions/entitlements.service';
+import { PlusFeature } from '@ezihubb/constants';
 
 export type ConversionBucket = 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
 
@@ -57,18 +59,28 @@ export interface QuotaDto {
 
 @Injectable()
 export class MarketplaceInsightsService {
-  /** Etsy-parity: a free daily cap on keyword-lookup depth (term-detail page
-   *  opens), independent of any paid plan — EziHubb has no seller tier to
-   *  gate this behind yet, so it's a flat per-store daily allowance. Only
-   *  counts opening a term's detail page (getTermDetail), not the
-   *  supplementary price/bestseller analysis call the same page also fires. */
+  /** Etsy-parity: a daily cap on keyword-lookup depth (term-detail page
+   *  opens). Only counts opening a term's detail page (getTermDetail), not
+   *  the supplementary price/bestseller analysis call the same page also
+   *  fires. Two tiers: free stores get DAILY_QUOTA, stores with an active
+   *  Ezihubb Plus subscription get PLUS_DAILY_QUOTA — see getQuotaLimit(). */
   private static readonly DAILY_QUOTA = 20;
+  private static readonly PLUS_DAILY_QUOTA = 60;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly searchService: SearchService,
+    private readonly entitlements: EntitlementsService,
   ) {}
+
+  /** No store in scope (platform-wide/SUPER_ADMIN view) always gets the free
+   *  tier — there's no store to check a subscription for. */
+  private async getQuotaLimit(storeId: string | null): Promise<number> {
+    if (!storeId) return MarketplaceInsightsService.DAILY_QUOTA;
+    const hasPlus = await this.entitlements.canUseFeature(storeId, PlusFeature.MARKETPLACE_INSIGHTS_EXTENDED_QUOTA);
+    return hasPlus ? MarketplaceInsightsService.PLUS_DAILY_QUOTA : MarketplaceInsightsService.DAILY_QUOTA;
+  }
 
   // ── Trending ─────────────────────────────────────────────────────────────
 
@@ -142,21 +154,30 @@ export class MarketplaceInsightsService {
   }
 
   async getQuota(storeId: string | null): Promise<QuotaDto> {
-    const used = this.redis.isAvailable()
-      ? Number((await this.redis.getClient().get(this.quotaKey(storeId))) ?? 0)
-      : 0;
+    const [used, limit] = await Promise.all([
+      this.redis.isAvailable()
+        ? Number((await this.redis.getClient().get(this.quotaKey(storeId))) ?? 0)
+        : Promise.resolve(0),
+      this.getQuotaLimit(storeId),
+    ]);
     return {
       used,
-      limit:     MarketplaceInsightsService.DAILY_QUOTA,
-      remaining: Math.max(0, MarketplaceInsightsService.DAILY_QUOTA - used),
+      limit,
+      remaining: Math.max(0, limit - used),
       resetsAt:  this.nextUtcMidnight().toISOString(),
     };
   }
 
   /** Fails open (allows the lookup) if Redis is unavailable — a quota outage
-   *  must never block sellers from using the tool. */
+   *  must never block sellers from using the tool. The limit is resolved
+   *  fresh on every call (never cached in Redis alongside the used-count),
+   *  so a store's Plus expiring mid-day correctly drops it to the free
+   *  limit on the very next lookup — no special "quota changed mid-cycle"
+   *  handling needed, the comparison below just uses whichever limit is
+   *  current right now. */
   private async consumeQuota(storeId: string | null): Promise<void> {
     if (!this.redis.isAvailable()) return;
+    const limit = await this.getQuotaLimit(storeId);
     const key = this.quotaKey(storeId);
     let used: number;
     try {
@@ -165,10 +186,10 @@ export class MarketplaceInsightsService {
     } catch {
       return; // Redis error — fail open
     }
-    if (used > MarketplaceInsightsService.DAILY_QUOTA) {
+    if (used > limit) {
       throw new ForbiddenException({
         code:    'ERR_INSIGHTS_QUOTA_EXCEEDED',
-        message: `Daily search-term lookup limit reached (${MarketplaceInsightsService.DAILY_QUOTA}/day). Try again tomorrow.`,
+        message: `Daily search-term lookup limit reached (${limit}/day). Try again tomorrow.`,
       });
     }
   }

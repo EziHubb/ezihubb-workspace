@@ -78,6 +78,12 @@ export class UpdatePlatformSettingsDto {
   @IsNumber()
   @IsOptional()
   @Min(0)
+  @Max(0.5)
+  offsiteAdsFeeRate?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
   minPayoutAmount?: number;
 
   @IsString()
@@ -91,4 +97,26 @@ export class UpdatePlatformSettingsDto {
   @IsBoolean()
   @IsOptional()
   maintenanceMode?: boolean;
+
+  // ── Ezihubb Plus pricing (list price — mirrors PlatformSettings.plusMonthlyPrice
+  // / plusAnnualPrice; see StoreSubscription.priceAtPurchase for the per-store
+  // snapshot taken at grant time, which this does NOT retroactively change) ───
+  // Same bare `@Min(0)` pattern as the other currency fields above
+  // (paymentProcessingFixedFee, listingFee, minPayoutAmount) — none of them
+  // enforce a decimal-places cap either, so adding one here only for these
+  // two fields would be inconsistent rather than safer.
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  plusMonthlyPrice?: number;
+
+  // `@IsOptional()` treats an explicit `null` the same as "omitted" (skips
+  // the @IsNumber/@Min checks) — this is what lets an admin PATCH
+  // `{ plusAnnualPrice: null }` to deliberately clear the annual price back
+  // to "not configured" (grant() then rejects ANNUAL again), while omitting
+  // the field entirely leaves the existing value untouched.
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  plusAnnualPrice?: number | null;
 }

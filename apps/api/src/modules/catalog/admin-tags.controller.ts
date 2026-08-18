@@ -7,6 +7,8 @@ import { ApiOperation } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '@ezihubb/constants';
 
 class TagBodyDto {
   @IsString()
@@ -24,6 +26,7 @@ function toSlug(name: string): string {
     .replace(/-+/g, '-');
 }
 
+@Roles(Role.SUPER_ADMIN)
 @AdminController('tags')
 export class AdminTagsController {
   constructor(private readonly prisma: PrismaService) {}

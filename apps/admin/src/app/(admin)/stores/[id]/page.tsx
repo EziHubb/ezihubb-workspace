@@ -10,7 +10,7 @@ import {
   ArrowLeft, Store, ShoppingBag, DollarSign, Star, Clock,
   ExternalLink, CheckCircle2, XCircle, PauseCircle, Package,
   ChevronRight, Globe, Calendar, User, ShieldCheck, Pencil,
-  Camera, Upload, Loader2, Image as ImageIcon,
+  Camera, Upload, Loader2, Image as ImageIcon, Sparkles,
 } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { StatCard } from '../../../../components/data/StatCard';
@@ -621,6 +621,10 @@ export default function AdminStoreDetailPage() {
                     <Link href={`/stores/${store.id}/permissions`}
                       className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-border text-secondary rounded-button hover:border-primary hover:text-primary transition-colors">
                       <ShieldCheck className="w-4 h-4" /> Permissions
+                    </Link>
+                    <Link href={`/stores/${store.id}/subscription`}
+                      className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-border text-secondary rounded-button hover:border-primary hover:text-primary transition-colors">
+                      <Sparkles className="w-4 h-4" /> Ezihubb Plus
                     </Link>
                   </>
                 )}

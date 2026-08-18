@@ -19,8 +19,12 @@ export function GetHelpButton() {
   // These 3 pages are scoped to one store with no platform-wide view — hide
   // them for a SUPER_ADMIN who hasn't switched into a store (the layout
   // guard would just bounce them back to /dashboard anyway).
-  const { isPlatformContext } = useAdminMode();
-  const links = isPlatformContext ? [] : LINKS;
+  const { isPlatformContext, isReady } = useAdminMode();
+  // Same guard as AdminSidebar's navSections: until the session resolves,
+  // `role` is '' so isPlatformContext computes false — the shop-owner value —
+  // and a SUPER_ADMIN would briefly be offered shop-owner help links. Show no
+  // links until the role is actually known.
+  const links = !isReady || isPlatformContext ? [] : LINKS;
 
   return (
     <div className="fixed bottom-5 right-5 z-40">

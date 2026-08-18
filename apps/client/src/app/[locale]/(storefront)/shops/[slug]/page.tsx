@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { ShieldCheck, Star, ShoppingBag, Share2 } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 import { apiClient } from '@ezihubb/api-client';
-import { API_ROUTES } from '@ezihubb/constants';
+import { API_ROUTES, getShopColorTheme } from '@ezihubb/constants';
 import { StorePageClient } from './StorePageClient';
 import { FollowShopButton } from '../../../../../components/shops/FollowShopButton';
 import { MarketingTracker } from '../../../../../components/providers/MarketingTracker';
@@ -27,6 +27,11 @@ interface StorePublicDto {
   verifiedAt:    string | null;
   createdAt:     string;
   shareSaveEnabled: boolean;
+  // Ezihubb Plus — null for non-Plus stores (server already gates this in
+  // getStoreBySlug) AND for any value outside the 12-entry palette
+  // (getShopColorTheme returns null for both — never crashes, never
+  // renders a broken/unstyled swatch).
+  colorTheme:    string | null;
 }
 
 export async function generateMetadata({
@@ -111,12 +116,24 @@ export default async function StorePublicPage({
   }).format(new Date(store.verifiedAt ?? store.createdAt));
 
   const rating = Number(store.rating ?? 0);
+  // null for free stores (server-gated) and for any stale/unrecognized value
+  // (hand-edited DB row, or a palette entry retired later) — never crashes,
+  // callers below all fall back to the app's default look when this is null.
+  const theme = getShopColorTheme(store.colorTheme);
 
   return (
     <div className="bg-background pb-16">
       <MarketingTracker storeId={store.id} />
       {/* ── Banner ────────────────────────────────────────────────────────────── */}
-      <div className="relative h-44 md:h-64 bg-gradient-to-br from-primary/20 to-primary/5 overflow-hidden">
+      {/* Fallback gradient only shows when the seller hasn't uploaded a real
+          banner image — a real bannerUrl always renders on top and this is
+          never visible, so tinting it with the theme color is purely
+          decorative (no text sits on it, no contrast concern). */}
+      <div className="relative h-44 md:h-64 overflow-hidden">
+        <div
+          className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5"
+          style={theme ? { background: `linear-gradient(to bottom right, ${theme.hex}33, ${theme.hex}0D)` } : undefined}
+        />
         {store.bannerUrl && (
           <Image
             src={store.bannerUrl}
@@ -183,7 +200,7 @@ export default async function StorePublicPage({
 
           {/* Follow + Share — desktop only */}
           <div className="hidden md:flex items-center gap-3 pb-1 shrink-0">
-            <FollowShopButton slug={store.slug} initialFollowerCount={store.followerCount} />
+            <FollowShopButton slug={store.slug} initialFollowerCount={store.followerCount} theme={theme} />
             <ShareButtons name={store.name} slug={store.slug} locale={locale} />
           </div>
         </div>
@@ -196,7 +213,7 @@ export default async function StorePublicPage({
             </p>
           )}
           <div className="md:hidden flex items-center gap-3">
-            <FollowShopButton slug={store.slug} initialFollowerCount={store.followerCount} />
+            <FollowShopButton slug={store.slug} initialFollowerCount={store.followerCount} theme={theme} />
             <ShareButtons name={store.name} slug={store.slug} locale={locale} />
           </div>
         </div>
@@ -220,6 +237,7 @@ export default async function StorePublicPage({
           totalOrders:   store.totalOrders,
         }}
         locale={locale}
+        theme={theme}
       />
     </div>
   );

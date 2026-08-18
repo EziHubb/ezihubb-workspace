@@ -40,7 +40,15 @@ function unwrapEnvelope<T>(body: { data?: T } | T): T {
 // ── Typed error ───────────────────────────────────────────────────────────────
 
 export class ApiError extends Error {
-  constructor(public readonly status: number, message: string) {
+  constructor(
+    public readonly status: number,
+    message: string,
+    // Backend's HttpExceptionFilter always emits { error: { code, message } }
+    // (apps/api/src/common/filters/http-exception.filter.ts) — surfaced here
+    // so callers can branch on a specific code (e.g. 'ERR_PLUS_REQUIRED')
+    // instead of matching on the human-readable message string.
+    public readonly code?: string,
+  ) {
     super(message);
     this.name = 'ApiError';
   }
@@ -49,6 +57,11 @@ export class ApiError extends Error {
 function extractMessage(err: AxiosError): string {
   const data = err.response?.data as { error?: { message?: string } } | undefined;
   return data?.error?.message ?? err.message ?? `HTTP ${err.response?.status ?? 0}`;
+}
+
+function extractCode(err: AxiosError): string | undefined {
+  const data = err.response?.data as { error?: { code?: string } } | undefined;
+  return data?.error?.code;
 }
 
 // ── Client-side axios instance ("use client" components) ──────────────────────
@@ -70,7 +83,7 @@ adminApi.interceptors.request.use(async (config) => {
 adminApi.interceptors.response.use(
   (res) => res,
   (err: AxiosError) => {
-    throw new ApiError(err.response?.status ?? 0, extractMessage(err));
+    throw new ApiError(err.response?.status ?? 0, extractMessage(err), extractCode(err));
   },
 );
 
@@ -109,7 +122,7 @@ const serverAxios = axios.create({
 serverAxios.interceptors.response.use(
   (res) => res,
   (err: AxiosError) => {
-    throw new ApiError(err.response?.status ?? 0, extractMessage(err));
+    throw new ApiError(err.response?.status ?? 0, extractMessage(err), extractCode(err));
   },
 );
 

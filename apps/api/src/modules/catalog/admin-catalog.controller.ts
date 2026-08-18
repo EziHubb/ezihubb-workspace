@@ -19,6 +19,8 @@ import { UpdateCollectionDto } from './dto/update-collection.dto';
 import { CollectionResponseDto } from './dto/collection-response.dto';
 import { ParseCuidPipe } from '../../common/pipes/parse-cuid.pipe';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '@ezihubb/constants';
 
 @AdminController('')
 export class AdminCatalogController {
@@ -28,6 +30,7 @@ export class AdminCatalogController {
 
   // POST /admin/catalog/sync-mega-menu
   @Post('catalog/sync-mega-menu')
+  @Roles(Role.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '[Admin] Rebuild MongoDB mega-menu from Prisma categories' })
   syncMegaMenu(): Promise<{ synced: number }> {
@@ -53,6 +56,7 @@ export class AdminCatalogController {
 
   // POST /admin/categories
   @Post('categories')
+  @Roles(Role.SUPER_ADMIN)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: '[Admin] Create category' })
   @ApiResponse({ status: 201, type: CategoryResponseDto })
@@ -62,6 +66,7 @@ export class AdminCatalogController {
 
   // PATCH /admin/categories/:id
   @Patch('categories/:id')
+  @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: '[Admin] Update category' })
   @ApiResponse({ status: 200, type: CategoryResponseDto })
   updateCategory(
@@ -73,6 +78,7 @@ export class AdminCatalogController {
 
   // DELETE /admin/categories/:id
   @Delete('categories/:id')
+  @Roles(Role.SUPER_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: '[Admin] Delete category (rejected if has active products)' })
   deleteCategory(@Param('id', ParseCuidPipe) id: string): Promise<void> {
@@ -91,6 +97,7 @@ export class AdminCatalogController {
 
   // POST /admin/collections
   @Post('collections')
+  @Roles(Role.SUPER_ADMIN)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: '[Admin] Create collection' })
   @ApiResponse({ status: 201, type: CollectionResponseDto })
@@ -100,6 +107,7 @@ export class AdminCatalogController {
 
   // PATCH /admin/collections/:id
   @Patch('collections/:id')
+  @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: '[Admin] Update collection' })
   @ApiResponse({ status: 200, type: CollectionResponseDto })
   updateCollection(
@@ -111,6 +119,7 @@ export class AdminCatalogController {
 
   // DELETE /admin/collections/:id
   @Delete('collections/:id')
+  @Roles(Role.SUPER_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: '[Admin] Delete collection' })
   deleteCollection(@Param('id', ParseCuidPipe) id: string): Promise<void> {

@@ -7,3 +7,5 @@ export * from './lib/upload';
 export * from './lib/permissions';
 export * from './lib/carriers';
 export * from './lib/countries';
+export * from './lib/plus-features';
+export * from './lib/shop-color-themes';

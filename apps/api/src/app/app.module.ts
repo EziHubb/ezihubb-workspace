@@ -42,6 +42,7 @@ import { CurrencyModule } from '../modules/currency/currency.module';
 import { UnsubscribeController } from '../modules/unsubscribe/unsubscribe.controller';
 import { TranslationsModule } from '../modules/translations/translations.module';
 import { StoresModule } from '../modules/stores/stores.module';
+import { SubscriptionsModule } from '../modules/subscriptions/subscriptions.module';
 import { FinancesModule } from '../modules/finances/finances.module';
 import { ModerationModule } from '../modules/moderation/moderation.module';
 import { ShopStatsModule } from '../modules/shop-stats/shop-stats.module';
@@ -158,6 +159,7 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
     CurrencyModule,
     TranslationsModule,
     StoresModule,
+    SubscriptionsModule,
     FinancesModule,
     ModerationModule,
     ShopStatsModule,

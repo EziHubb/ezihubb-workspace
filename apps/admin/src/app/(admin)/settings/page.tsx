@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Save, Eye, EyeOff, Send, Plus, Pencil,
@@ -1397,7 +1398,12 @@ function AppearanceTab() {
 type TabKey = 'store' | 'email' | 'notifications' | 'team' | 'seo' | 'appearance' | 'danger';
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
-  { key: 'store',         label: 'Store',           icon: '🏪' },
+  // Labelled "Platform", not "Store": this tab edits the PLATFORM's own
+  // identity (site name, favicon, contact email, company address, currency)
+  // via /admin/settings/store — it is not a seller's shop. A shop owner's
+  // own settings live under the sidebar's "Store Settings" → /settings/shop-home.
+  // The two were being confused; only the label changed, behaviour is identical.
+  { key: 'store',         label: 'Platform',        icon: '🏪' },
   { key: 'email',         label: 'Email',            icon: '✉️' },
   { key: 'notifications', label: 'Notifications',    icon: '🔔' },
   { key: 'team',          label: 'Team',             icon: '👥' },
@@ -1412,6 +1418,20 @@ const TABS: { key: TabKey; label: string; icon: string }[] = [
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('store');
+  const { data: session } = useSession();
+  const router = useRouter();
+  const role = (session?.user as Record<string, unknown> | undefined)?.['role'] as string | undefined;
+
+  // SUPER_ADMIN only page — every tab here (Store/Email/Notifications/SEO/
+  // Theme/Team) is already backend-restricted to SUPER_ADMIN
+  // (admin-settings.controller.ts, admin-team.controller.ts,
+  // admin-email-templates.controller.ts). The sidebar never links an ADMIN
+  // here, but nothing previously stopped a direct URL visit from rendering
+  // the page (the tabs would just fail to save) — this closes that gap
+  // explicitly, matching the pattern used at stores/[id]/permissions/page.tsx.
+  useEffect(() => {
+    if (role && role !== 'SUPER_ADMIN') router.replace('/dashboard');
+  }, [role, router]);
 
   return (
     <>

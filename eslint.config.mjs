@@ -59,6 +59,22 @@ export default [
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.cts', '**/*.mts', '**/*.js', '**/*.jsx', '**/*.cjs', '**/*.mjs'],
-    rules: {},
+    rules: {
+      // A leading underscore is the standard TS/ESLint-ecosystem convention
+      // for "intentionally unused" — an interface-required parameter not
+      // needed by this implementation, a destructured field discarded on
+      // purpose, a caught error nobody inspects. Without this, the only way
+      // to silence the rule is a `void x;` no-op read, which doesn't
+      // communicate intent and invites copy-pasting past a genuinely unused
+      // (i.e. forgotten) variable.
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+    },
   },
 ];

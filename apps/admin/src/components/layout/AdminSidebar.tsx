@@ -15,7 +15,7 @@ import {
   Bookmark, Factory, Shield, Store, BarChart2, Wallet, ShieldAlert, History,
   SlidersHorizontal, ScanSearch, TrendingUp,
   Menu, X, Megaphone, Plug, KeyRound, ArrowLeftRight, Landmark, FileText,
-  Share2, Gift, Radio, HeartHandshake,
+  Share2, Gift, Radio, HeartHandshake, Sparkles,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -151,14 +151,24 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
-// ── Navigation structure — ADMIN (shop owner) ─────────────────────────────────
+// ── Navigation structure — shop-owner context ─────────────────────────────────
 // Shop owners use the SAME routes as super admin — the API scopes data to their store.
-// "Store Settings" (General + Shop Home merged into one page) is intentionally
-// omitted for a SUPER_ADMIN in "My Store" mode — storefront cosmetics are a
-// shop owner's own-business concern, not a platform-staff task; SUPER_ADMIN
-// manages any store's moderation-facing fields via /stores/[id] instead.
+//
+// This function is only ever consumed in the `!isPlatformContext` branch (see
+// useNavData), i.e. by whoever is currently ACTING as a shop owner: a plain
+// ADMIN, or a SUPER_ADMIN who switched into "My Store" for the store they
+// personally own. Everything it returns is therefore shop-owner nav by
+// definition — do NOT re-filter it by `role` inside. An earlier version gated
+// the "Store Settings" section on `role === 'ADMIN'`, which contradicted the
+// whole point of My Store mode and left a SUPER_ADMIN who owns a store with
+// no route at all to edit their own Shop Home (/stores/[id] only edits
+// name/description + approve/reject/suspend — it has no Shop Home editor).
+//
+// The platform-context requirement is unchanged and enforced ELSEWHERE, by the
+// isPlatformContext branch itself: a SUPER_ADMIN administering the marketplace
+// gets NAV_SECTIONS and never sees this section.
 
-function getShopNavSections(role: string): NavSection[] {
+function getShopNavSections(): NavSection[] {
   const sections: NavSection[] = [
     {
       items: [
@@ -214,22 +224,21 @@ function getShopNavSections(role: string): NavSection[] {
     },
   ];
 
-  if (role === 'ADMIN') {
-    sections.push({
-      title: 'Setup',
-      items: [
-        {
-          label: 'Store Settings', href: '/settings/shop-home', icon: Settings,
-          children: [
-            { label: 'Shop Home',   href: '/settings/shop-home',   icon: Store        },
-            { label: 'Delivery',    href: '/settings/delivery',    icon: Truck        },
-            { label: 'Fulfillment', href: '/settings/fulfillment',  icon: Plug         },
-            { label: 'API Keys',    href: '/settings/api-keys',     icon: KeyRound     },
-          ],
-        },
-      ],
-    });
-  }
+  sections.push({
+    title: 'Setup',
+    items: [
+      {
+        label: 'Store Settings', href: '/settings/shop-home', icon: Settings,
+        children: [
+          { label: 'Shop Home',   href: '/settings/shop-home',   icon: Store        },
+          { label: 'Delivery',    href: '/settings/delivery',    icon: Truck        },
+          { label: 'Fulfillment', href: '/settings/fulfillment',  icon: Plug         },
+          { label: 'API Keys',    href: '/settings/api-keys',     icon: KeyRound     },
+          { label: 'Ezihubb Plus', href: '/settings/plus',        icon: Sparkles     },
+        ],
+      },
+    ],
+  });
 
   return sections;
 }
@@ -243,7 +252,7 @@ function useNavData() {
   const email    = (user?.['email'] as string) || '';
   const initials = name.split(' ').map((n) => n[0] ?? '').slice(0, 2).join('').toUpperCase();
 
-  const { role, ownStoreId, canSwitchToOwnStore, inStoreMode, isPlatformContext } = useAdminMode();
+  const { role, ownStoreId, canSwitchToOwnStore, inStoreMode, isPlatformContext, isReady } = useAdminMode();
 
   const { data: pendingData } = useQuery<{ count: number }>({
     queryKey: ['sidebar-affiliate-pending'],
@@ -263,8 +272,18 @@ function useNavData() {
     })),
   [pendingData]);
 
-  const shopNavSections = useMemo(() => getShopNavSections(role), [role]);
-  const navSections = isPlatformContext ? superAdminSections : shopNavSections;
+  // No longer role-dependent: this branch only renders for someone already
+  // acting as a shop owner (see getShopNavSections' own note).
+  const shopNavSections = useMemo(() => getShopNavSections(), []);
+  // While the session is still loading, `role` is '' (see useAdminMode) — which
+  // is neither 'SUPER_ADMIN' nor 'ADMIN', so isPlatformContext computes false
+  // and a SUPER_ADMIN would briefly render the shop-owner nav before snapping
+  // to the platform one. Render nothing until the role is actually known — the
+  // sidebar shell, logo and user block still render, only the role-dependent
+  // item list waits.
+  const navSections = !isReady
+    ? []
+    : isPlatformContext ? superAdminSections : shopNavSections;
 
   const toggleStoreMode = () => {
     setStoreContext(inStoreMode ? null : ownStoreId);

@@ -418,3 +418,222 @@ Deferred items with a concrete "next time" plan, not just "not built."
 - Total: **~half a day**, dominated by the drag-reposition interaction, not the schema.
 
 Not started — flagging for a future pass rather than building against an unapproved data model.
+
+### "Mixed grid" Shop Home layout (Ezihubb Plus scope B — locked, not yet built)
+
+**What real Etsy shows, not built this pass:** an alternate Featured-area layout — one large "hero" listing tile plus several smaller tiles in a mixed-size grid — as an alternative to the current uniform grid. Locked into **Ezihubb Plus scope B** (colour theme + Mixed grid layout + Marketplace Insights extended quota) in the Phase 1 policy decision; **only the gate exists so far** (`PlusFeature` has no dedicated enum member for this yet — Phase 1 code gates just `SHOP_COLOR_THEME` and `MARKETPLACE_INSIGHTS_EXTENDED_QUOTA`, per the explicit scope lock in this session).
+
+**Why deferred:** `Store` has no field for a layout variant at all today (`featuredProductIds` only stores which listings are pinned, not how they're arranged), and the public storefront doesn't render a Featured section from real data yet — building the grid CSS ahead of the data model would be building against an unapproved shape.
+
+**Minimum data model to build it for real:**
+
+| Piece | Field / change | Type | Migration |
+|---|---|---|---|
+| Layout choice | `Store.featuredLayout` | `String?` (enum-like: `'grid' \| 'mixed'`, default `'grid'`) | 1 additive column |
+| Gate | `PlusFeature.SHOP_FEATURED_MIXED_GRID` | new enum member in `libs/shared/constants/src/lib/plus-features.ts` | none (code-only) |
+| Enforcement | `adminUpdateStore` — same pattern as the existing `colorTheme` check: reject `featuredLayout: 'mixed'` with `ERR_PLUS_REQUIRED` when `!entitlements.canUseFeature(storeId, SHOP_FEATURED_MIXED_GRID)` | — | none (code-only) |
+| Public render | `getStoreBySlug` — return `featuredLayout: hasPlus ? store.featuredLayout : 'grid'` (force free stores to the plain grid even if a stale `'mixed'` value is on the row, mirroring the `colorTheme` gate) | — | none (code-only) |
+
+**Effort estimate** (based on the `colorTheme` gate + storefront-render slice already built this session):
+
+- Backend: 1 migration (1 column) + reuse of the existing entitlement-check pattern in `adminUpdateStore`/`getStoreBySlug` — **~30–45 min**, since the gate plumbing (service injection, `EntitlementsService`, error shape) already exists and this is mostly copy-the-pattern.
+- Frontend (admin): layout picker control on the Shop Home settings page, disabled/upsell state when not entitled — **~1 hr**.
+- Frontend (public storefront): the actual mixed-size CSS grid (1 hero tile + N small tiles, responsive breakpoints) — the only genuinely new work, nothing to reuse yet since the storefront currently has zero Featured-section rendering — **~2 hrs**.
+- Total: **~3.5–4 hrs**, dominated by the public-storefront grid CSS, not the gate.
+
+Not started — flagging for a future pass (Phase 3 UI or later) rather than building against a layout shape nobody has approved yet.
+
+### `PlatformSettings.platformName` not editable in admin (same silent-swallow class as the Plus-price bug, deferred)
+
+**What's missing:** `UpdatePlatformSettingsDto` (`apps/api/src/modules/stores/dto/admin-stores.dto.ts`) still doesn't declare `platformName`, so a `PATCH` with that field is silently stripped by the global `ValidationPipe({ whitelist: true })` — same mechanism as the `plusMonthlyPrice`/`plusAnnualPrice`/`offsiteAdsFeeRate` gaps that were fixed this session (see the Ezihubb Plus backend work above).
+
+**Why deferred:** purely a display string (`PlatformSettings.platformName`, `@default("EziHubb")`) — no financial or entitlement logic reads it the way `offsiteAdsFeeRate` feeds order fee math. Explicitly deprioritized by the user relative to the fee-rate gap.
+
+**Fix, when picked up:** add `@IsString() @IsOptional() @MaxLength(100) platformName?: string;` to `UpdatePlatformSettingsDto`, following the exact pattern of the other `@IsString()` field already in that DTO (`payoutSchedule`). Trivial, ~5 min, no schema change needed (column already exists).
+
+### `admin-products.controller.ts` variation/variant endpoints — type-checked but unbounded (correction to an earlier mischaracterization)
+
+**Correction first:** an earlier report this session said these routes have "no decorator at all / not validated." That was wrong — re-checked directly against `admin-products.controller.ts` and they DO use real `class-validator`-decorated DTO classes (declared inline in the controller file, not in a separate `dto/`, which is why a prior grep of the *service* method signatures missed them). The actual gap is narrower and different in kind: **type is enforced, domain bounds are not** — and one route has no structural validation at all. Listed precisely below so this doesn't get backlogged on a wrong premise.
+
+| Route | DTO | What's missing | Concrete risk |
+|---|---|---|---|
+| `PATCH :id/variations/:groupId/options/:optionId` | `VariationOptionPatchDto` | No `@MaxLength` on `name`/`value`/`colorHex` (the sibling `VariationOptionCreateDto` used by the CREATE route has `@MaxLength(100)`/`@MaxLength(20)` — PATCH is looser than CREATE for the same fields). No `@Min`/`@Max` on `priceDelta` anywhere. | Unbounded `priceDelta` (e.g. `-999999` or `999999`) silently changes the computed variant price (base price + delta) with no floor/ceiling — a negative final price is possible with no guard. Unbounded string length is a data-quality/storage-bloat risk, not a DB failure (columns are unbounded `String`). |
+| `PATCH :id/variations/variants/:variantId` | `VariantPatchDto` | `price`/`quantity` are `@IsNumber()` only, no `@Min(0)`. | A negative `price` or `quantity` can be written directly to `ProductVariant`. Negative price would flow into storefront price/cart-total math as a negative line item. Negative `quantity` breaks the `available = quantity − reserved` assumption used for stock checks — not verified how each downstream call site handles a negative value, which is itself part of the risk (undefined behavior, not a defined one). |
+| `POST :id/variations/apply` → `variantEdits[]` | `VariantEditDto` (nested in `ApplyVariationsDto`) | Same missing `@Min(0)` on `price`/`quantity` as above — same underlying `ProductVariant` fields, reached via a second route. | Same as above. |
+| `PATCH :id/variation-settings` | `VariationSettingsDto` | `skuPrefix` has no `@MaxLength`. `variesBy` is `@IsString({ each: true })` with no `@IsIn()` restricting values to real dimension names. | An arbitrary `variesBy` entry that doesn't match any real `VariationGroup.name` would silently desync from whatever matches on that string downstream (`syncVariantsFromGroups`) — not traced further, flagged as unverified risk. |
+| `POST :id/variations/groups/bulk` | `BulkSaveVariationsDto { groups: object[] }` | **No structural validation at all** — `object[]` has no `@ValidateNested`/`@Type`, unlike the sibling `ApplyVariationsDto` which properly validates `groups: ApplyVariationGroupDto[]`. Whatever is inside `groups` is passed to the service via a raw type-cast (`dto.groups as Parameters<...>[1]`), not a runtime check. | Widest gap of the five — malformed/missing nested fields become `undefined` deep inside `bulkSaveVariations` with no validation error at the boundary; how the service handles that wasn't traced (out of scope for this pass). |
+
+Not fixed this pass — user explicitly deferred (`KHÔNG sửa lượt này`). Whoever picks this up next: add `@Min(0)` to the 3 price/quantity fields first (cheapest, highest concrete-risk fix), then decide whether `bulkSaveVariations` should be given the same `@ValidateNested`/`@Type` treatment as `applyVariations` or deprecated in its favor (the comment at `admin-products.controller.ts:706-709` suggests `applyVariations` may already be the intended single-commit successor).
+
+### DTOs not yet column-diffed against their Prisma model (pattern-matched only)
+
+While auditing the `UpdatePlatformSettingsDto` whitelist-swallow bug, grepped for the same *mechanism* (whole DTO spread wholesale into a Prisma `update`/`upsert` call — `data: dto` / `update: dto` / `...dto`) across `apps/api/src/**/*.service.ts`. Only `PlatformSettings`, `ProcessingProfile`, and the products-module inline-type methods used that exact mechanism (see the "Rà lỗ hổng cùng loại" audit — `ProcessingProfile` came back clean).
+
+The following hand-written `Update*Dto` classes do **not** appear in that grep — meaning their services likely map fields one-by-one rather than spreading the whole DTO into Prisma (a structurally lower-risk pattern for this specific bug, since a missing field there is a visible gap in the service code itself, not a silent whitelist-strip). That inference was **not verified column-by-column against their target Prisma model** — flagging the list so it doesn't get mistaken for a completed audit:
+
+- `UpdateCampaignDto`, `UpdateAffiliateDto`, `UpdateAffiliateSettingsDto` (`campaigns`/`affiliates` modules)
+- `UpdateStoreDto`, `UpdateStoreOrderDto` (`stores` module)
+- `UpdateOrderStatusDto` (`orders` module)
+- `UpdateBundleOfferDto`, `UpdateOffersSettingsDto` (`promotions`/`marketing` modules)
+- `UpdateBankAccountDto`, `UpdateCurrencyDto`, `UpdateAutoBillingDto`, `UpdateTaxInfoDto` (`finances` module)
+- `UpdateProductDto` (`products` module)
+- `UpdateWishlistShareDto`, `UpdateProfileDto`, `UpdatePushPreferencesDto` (`users` module)
+- `UpdateCartItemDto` (`cart` module)
+- `UpdateConversationStatusDto` (`messages` module)
+
+Not started — needs a real column-by-column diff per DTO against its Prisma model before any of these can be called "clean," the same way `ProcessingProfile` was confirmed clean this session.
+
+### Admin controllers missing `@Roles` — platform-wide data reachable by plain `ADMIN` (confirmed, not fixed)
+
+Found while answering a direct question about the `AdminPlatformSettingsController` fix (was it the only one?) — grepped every `@AdminController(...)` usage, then read each candidate's actual Prisma queries (not just the route name) to confirm whether `StoreContextService` scopes it safely despite the missing `@Roles` override. Most do (`AdminFinanceController`, `AdminSellerPayoutsController`, orders/products/shipping/messages/reviews/finances/fulfillment/partner-api all verified safe via `store-context.service.ts:39-54` — a plain `ADMIN` can never get `isPlatformContext: true`). **These 5 do not use `StoreContextService` and their Prisma queries have no store filter at all — a plain `ADMIN` reaches platform-wide data/actions today:**
+
+| Controller | Route | Risk |
+|---|---|---|
+| `AdminEmailTemplatesController` | `GET/PATCH /admin/email-templates/:slug` | **Highest** — any shop owner can rewrite the body of a platform-wide transactional email template (password reset, order confirmation, etc.), sent to every user. Content-injection risk, not just a data leak. |
+| `AdminCatalogController` | categories/collections, `/admin/catalog/sync-mega-menu` | Platform-wide taxonomy — a seller could delete a category used by hundreds of other stores' products. |
+| `AdminTagsController` | `/admin/tags` | Platform-wide tags, no store filter. |
+| `AdminAttributesController` | `/admin/attributes/:type` | Platform-wide filter attribute values (color/material/...), no store filter. |
+| `AdminProductionPartnersController` | `/admin/production-partners` | Platform-wide list, no store filter. |
+
+One more, lower-confidence (different failure mode, not verified): `AdminTranslationsController` (`/admin/translations/:entityType/:entityId`) takes an arbitrary `entityId` with no visible ownership check in the controller — possible IDOR if `translation.service.ts` doesn't check ownership either (not read).
+
+### `@Roles` decorator-order bug — silently overwritten guards on 3 controllers (fixed)
+
+**What happened:** `@Roles(Role.SUPER_ADMIN)` written *after* `@AdminController(...)` in source had no effect. Decorators stacked on one declaration apply bottom-to-top — the one closer to the class runs **last** and wins when both touch the same metadata key. `@AdminController(...)` internally calls `Roles(Role.ADMIN, Role.SUPER_ADMIN)` itself (see `apps/api/src/common/decorators/admin-controller.decorator.ts`). With `@AdminController` on top and `@Roles(SUPER_ADMIN)` below it (the pattern first used for `AdminSubscriptionsController` and copied from there to two more controllers), `@AdminController`'s internal call ran *after* and silently reset the roles list back to `['ADMIN', 'SUPER_ADMIN']`. The override was never in effect — this is invisible from reading the source; the code looks correct.
+
+**How it was actually caught:** not by reading code, by running `Reflect.getMetadata('roles', ControllerClass)` against the real, compiled class and comparing it to what the source claimed. This is the only reliable check — see the full audit table below.
+
+**Affected — all now fixed by reordering (`@Roles` moved above `@AdminController`):**
+
+| Controller | File | Real metadata before fix | Real metadata after fix |
+|---|---|---|---|
+| `AdminSubscriptionsController` | `apps/api/src/modules/subscriptions/admin-subscriptions.controller.ts` | `['ADMIN','SUPER_ADMIN']` | `['SUPER_ADMIN']` |
+| `AdminPlatformSettingsController` | `apps/api/src/modules/stores/admin-stores.controller.ts` | `['ADMIN','SUPER_ADMIN']` | `['SUPER_ADMIN']` |
+| `AdminEmailTemplatesController` | `apps/api/src/modules/admin/admin-email-templates.controller.ts` | `['ADMIN','SUPER_ADMIN']` | `['SUPER_ADMIN']` |
+
+**Real-world impact while broken:** any authenticated `ADMIN` (shop owner) could grant themselves Ezihubb Plus for free, extend it arbitrarily, or revoke another store's subscription (`AdminSubscriptionsController`); could `PATCH` platform-wide fee rates, payout thresholds, and the Ezihubb Plus list price (`AdminPlatformSettingsController`); could read/rewrite platform-wide transactional email template bodies — a content-injection vector into every automated email sent to every user (`AdminEmailTemplatesController`, additionally reachable via a live UI page, `/settings`, which had no page-level role guard either — also fixed, see below).
+
+**Full real-metadata audit — every `@AdminController`/`@Roles` class in the codebase (25 + 14 = 39 classes), declared vs actual, via `Reflect.getMetadata` (not code reading):**
+
+All 39 now match their intended design. Besides the 3 above, everything else was already correct:
+- 11 classes are class-level `['SUPER_ADMIN']` only, correctly enforced (`AdminUsersController`, `AdminAuditLogController`, `AdminExportController`, `AdminTeamController`, `AdminAffiliatesController`, `CampaignsController`, `ModerationController`, `AdminCustomersController`, plus the 3 fixed above) — none of these use `@AdminController` at all, they build `@Controller` + `@UseGuards` + `@Roles` explicitly, which never had this collision risk.
+- 1 class (`AdminSettingsController`) has the `['ADMIN','SUPER_ADMIN']` class default, but **every one of its 11 methods** carries its own correctly-enforced `@Roles(['SUPER_ADMIN'])` — confirmed real, not just declared.
+- `AdminStoresController`: class default `['ADMIN','SUPER_ADMIN']`, with `approveStore`/`rejectStore`/`suspendStore` correctly narrowed to `['SUPER_ADMIN']` at method level; `updateStore`/`uploadBanner`/`uploadLogo`/FAQ routes/`getStoreProducts`/`getStoreOrders` correctly rely on `StoreContextService.assertOwnership()` instead (see below — verified by reading every line, not just checking metadata).
+- `StoreViolationsController`/`PaymentsController`: fully method-level design, every method's real metadata matches its intended role list.
+- The remaining classes (`AdminAttributesController`, `AdminCatalogController`, `AdminProductionPartnersController`, `AdminTagsController`, `AdminTranslationsController`, `AdminCacheController`, `AssetsController`, and the `StoreContextService`-scoped ones) have no `@Roles` at all — matches the earlier finding above; their exposure comes from missing scoping, not from a decorator bug.
+
+**Method-level `@Roles` vs class-level default — verified with real metadata, not NestJS docs:** method-level always wins, no exception found across every example in the codebase (`AdminSettingsController`'s 11 methods, `AdminStoresController`'s 3 method overrides, `StoreViolationsController`, `PaymentsController`). This makes sense structurally, not just empirically: `@AdminController`'s internal `Roles(...)` call is a **class** decorator — it can never attach metadata to an individual method function, so there is no possible collision at the method level the way there is at the class level. The bug above is specific to two class-level decorators competing for the same target; method-level `@Roles` was never at risk.
+
+### `StoreContextService`/ownership-guard coverage — verified route-by-route (not pattern-matched)
+
+Previously flagged as "verified by grepping for a `StoreContextService` reference in the file" — weaker evidence than reading every route. Read every route in `AdminStoresController` + the 9 controllers previously only pattern-matched. Result: **all clean except one.**
+
+- **`AdminStoresController`** — every store-scoped route (`updateStore`, `uploadBanner`, `uploadLogo`, `createFaq`/`updateFaq`/`deleteFaq`/`reorderFaqs`, `getStoreProducts`, `getStoreOrders`) calls `storeContext.resolve()` then `assertOwnership()` before touching data. `listStores`/`getStore` scope via an explicit `isShopOwner` check. Fully clean.
+- **`AdminProductsController`** (937 lines, ~45 routes) — every `:id`-scoped route is protected by a class-wide `@UseGuards(ProductOwnershipGuard)` (read `product-ownership.guard.ts` directly: resolves store context, no-ops for platform-context SUPER_ADMIN, otherwise loads the product and 403s on a store mismatch — correctly designed). Every non-`:id` route (`stats`, list, `draft`, create, `bulk`, `export`) separately calls `storeContext.resolve()`. **One gap found:** `GET /admin/products/seo-stats` (`getSeoStats()`) has no `:id` param (guard no-ops) and no `storeContext` call of its own — its 4 `prisma.product.count()` queries have zero store filter, returning **platform-wide** SEO stats to any `ADMIN`. Moderate severity: aggregate counts only, no per-record data or PII, but not what the seller-facing SEO stats page is supposed to show. **Not fixed — listed only, per instruction.**
+- **`AdminOrdersController`** (206 lines) — class-wide `@UseGuards(OrderOwnershipGuard)`; read `order-ownership.guard.ts` directly: correctly checks a `StoreOrder` row exists for (orderId, callerStoreId) — an `Order` can span multiple vendor stores, and this is the right join to check. No-ops for platform-context SUPER_ADMIN. All `:id` routes covered; the few non-`:id` routes (list, `bulk-packing-slips`, `export`) separately call `storeContext.resolve()`. Fully clean.
+- **`AdminFulfillmentController`**, **`AdminShippingController`**, **`AdminFinancesController`**, **`AdminApiKeysController`**, **`AdminShopSectionsController`**, **`AdminMessagesController`** — read in full, every single route calls `storeContext.resolve()` + `requireStoreId()`/`resolveTargetStoreId()`/`assertOwnership()` before touching data, including cross-checking child-row ownership before mutating (e.g. `admin-fulfillment.controller.ts`'s `saveMapping` verifies both the connection and the product belong to the resolved store before creating a mapping). Fully clean.
+- **`AdminReviewsController`** — every route resolves `context.storeId` and passes it into the service call (e.g. `reviewsService.adminDeleteReview(reviewId, context.storeId ?? undefined)`). **Caveat:** confirmed the controller correctly *passes* the scoping value; did not re-verify inside `reviews.service.ts` that the service actually filters/rejects on a storeId mismatch rather than just accepting it as an optional hint. Not re-read this pass — flagged so this isn't mistaken for full-depth verification.
+
+### Prevention — proposals, not implemented
+
+The decorator-order bug will recur the next time someone writes a new `@AdminController(...)`-based controller intended as SUPER_ADMIN-only, because nothing catches the wrong order except manually running `Reflect.getMetadata`. Three options, not mutually exclusive:
+
+1. **A real automated test that walks every controller and asserts declared vs. actual metadata.** Cost: one new spec file, cheap to write (the audit script written for this session's investigation is most of it), runs in the existing Jest suite, catches this exact bug and any future recurrence automatically, zero false positives since it reads real `Reflect` state. Downside: only catches it for controllers the test enumerates — a brand new controller file needs to be added to the test's list manually (unless the test itself globs the filesystem for every `*.controller.ts` and imports each, which is more robust but couples the test to the module-loading behavior of every controller, including any with import-time side effects — this session's audit script hit exactly one such case, `AdminOrdersController` failing to import standalone due to an unrelated relative-path issue in `pdf.service.ts`, requiring a workaround).
+2. **`@AdminController(path, roles?)` takes an explicit roles override as a parameter instead of a separate stacked `@Roles(...)` decorator.** Cost: touches the decorator's own definition (1 file) plus every call site that currently stacks `@Roles` after it (3, now fixed) — but removes the footgun structurally: there's no second decorator to mis-order, so the class of bug becomes impossible rather than merely tested-for. Slightly changes the call convention (`@AdminController('email-templates', [Role.SUPER_ADMIN])` instead of two decorators) — a small, one-time migration for the 3 existing sites, no ongoing cost after.
+3. **Lint rule or code-review convention enforcing decorator order.** Cost: cheapest to write (a custom ESLint rule, or just a documented convention + PR-review checklist item), but weakest — a lint rule needs someone to actually write and wire up an AST check for "no `@Roles` below `@AdminController` on the same class," and a convention alone is exactly the kind of thing that failed silently here already (the wrong order was copied between 3 files without anyone noticing).
+
+Not implemented — awaiting a decision on which 1-2 to build.
+
+### Colour theme: why there is no white/black-text-by-luminance mechanism
+
+The Follow button and the tab-nav active state use `textSafeHex` as the **text/underline/border colour on a 10%-alpha tint of that same colour** — they never paint text on a solid fill of the theme colour. Because the background is ~90% white in every case, contrast is governed entirely by `textSafeHex` vs. white (all 12 verified ≥ 4.5:1), so choosing white-or-black text by background luminance would have nothing to apply to.
+
+An earlier draft carried a `textOn: 'light' | 'dark'` field plus `SHOP_COLOR_THEME_TEXT_LIGHT`/`_DARK` constants for exactly that solid-fill case. Nothing ever consumed them — **deleted** from `libs/shared/constants/src/lib/shop-color-themes.ts` so nobody later assumes the mechanism exists and builds on it. If a genuine solid-fill-with-text surface is ever added, that luminance choice has to be re-derived then; do not resurrect the old field on the assumption it was already correct for the new surface.
+
+### SUPER_ADMIN has TWO states — do not collapse them (sidebar "Store Settings")
+
+A recurring source of confusion, resolved deliberately. `SUPER_ADMIN` is not one audience:
+
+| State | `isPlatformContext` | Nav rendered | Sees "Store Settings"? |
+|---|---|---|---|
+| SUPER_ADMIN, platform context (administering the marketplace) | `true` | `NAV_SECTIONS` | **No** — correct, this is the requirement |
+| SUPER_ADMIN, "My Store" mode (acting as owner of the store they personally own) | `false` | `getShopNavSections()` | **Yes** — correct, they ARE the shop owner here |
+| ADMIN (shop owner) | `false` | `getShopNavSections()` | **Yes** |
+| Session still loading (`role === ''`) | `false` | *(none)* | n/a — see below |
+
+An earlier version gated the section on `role === 'ADMIN'` *inside* `getShopNavSections`, which looked right but was wrong: that function is only ever consumed in the `!isPlatformContext` branch, i.e. by whoever is already acting as a shop owner. Filtering by role again inside it contradicted the definition of My Store mode, and left a SUPER_ADMIN who owns a store with **no route at all** to edit their own Shop Home — `/stores/[id]` only edits name/description plus approve/reject/suspend; it has no Shop Home editor. The platform-context requirement is enforced by the `isPlatformContext` branch itself, not by a second filter inside the shop nav. **Do not re-add that filter.**
+
+Related fix in the same pass: `useNavData` now waits on `isReady`. While the session loads, `role` is `''`, which is neither `SUPER_ADMIN` nor `ADMIN` — so `isPlatformContext` computed `false` and a SUPER_ADMIN briefly rendered the *shop-owner* nav. The role-dependent item list is now empty until the role is actually known (the sidebar shell, logo and user block still render).
+
+Also renamed: the `/settings` page's first tab is labelled **"Platform"**, not "Store". It edits platform identity (site name, favicon, contact email, company address, currency) via `/admin/settings/store` and is SUPER_ADMIN-only — it is *not* a seller's shop, and was being mistaken for one. Behaviour unchanged, label only. **Do not delete this tab**: it is the only UI for those platform fields, and a report of "SUPER_ADMIN still sees a Store tab" was this name collision, not a leftover.
+
+### `isReady` audit — which role-dependent UI actually needed gating
+
+Full grep scope, so this isn't re-litigated from a partial list: (1) every `useAdminMode()` consumer in `apps/admin/src` — 12 real call sites; (2) every direct `session.user.role` read used for UI branching — 7 more.
+
+The key detail: while the session loads, `role` is `''`, so `isPlatformContext` computes **`false` — the shop-owner value**. Adding `isReady &&` to a boolean that is already `false` changes nothing. Gating only helps where `false` renders *shop-owner content to a SUPER_ADMIN*:
+
+| Site | Verdict |
+|---|---|
+| `AdminSidebar.tsx` navSections | **Fixed** — `false` rendered the whole shop-owner nav to a SUPER_ADMIN |
+| `GetHelpButton.tsx` | **Fixed** — `false` offered clickable shop-owner help links to a SUPER_ADMIN |
+| `payouts/page.tsx` | **Already handled** — has its own `sessionReady = role !== ''` gating both redirect and render. Equivalent to `isReady`; converting it would be pure refactor |
+| `reviews` (`showStore`), `settings/api-keys` + `settings/fulfillment` (`showOverview`), `stats` (platform-only sections) | **Flash is in the safe direction** — `false` *hides* platform-only chrome, it does not expose shop-owner content. Cosmetic only; queries key off `explicitStoreId`, which is `undefined` during load either way, so no wrongly-scoped request is issued. Eliminating the flash entirely needs an early-return spinner — a UX tradeoff, deliberately not decided unilaterally |
+| `dashboard/page.tsx`, `(admin)/layout.tsx` | **N/A** — Server Components (`getServerSession`, `await cookies()`); the session is already resolved, there is no loading state |
+| `stores/[id]/permissions`, `stores/[id]/subscription`, `settings/page.tsx` | **Already safe** — all use `if (role && role !== 'SUPER_ADMIN')`, which no-ops on `undefined` |
+| `stores/[id]/page.tsx:599` | **Open** — `{role !== 'ADMIN' && ...}` is `true` while `role` is `undefined`, so a shop owner briefly sees the Approve/Reject/Suspend/Permissions panel. Buttons are server-blocked, so it is visual only. Not fixed — outside the scope of that pass |
+
+## Ezihubb Plus Phase 3 — post-deploy verification checklist
+
+None of these have been confirmed with a real click in a real browser against a real database — no dev DB has existed in this environment for the whole Plus build (sandbox has no local Postgres/Docker, only production RDS via SSH). Automated checks (real `pnpm nx run api:test`, real `lint`/`build` across `api`/`admin`/`client`, and — for the storefront colour theme specifically — a real running `client` dev server hit with `curl` against **mocked** `getStoreBySlug` data, see the "Storefront colour theme" section above for what that did and didn't prove) are the ceiling reachable without one. Run every item below for real after the next deploy, in order, before calling Ezihubb Plus done.
+
+**Split into two groups.** As of this session, group B (missing code) is empty — the storefront colour-theme render gap (originally case #13) was closed this session, not deferred. Anything that lands back in group B later is a regression, not an open item.
+
+### A — blocked only by environment (DB + real login), code exists and is either unit-tested or dev-server-verified with mocked data
+
+Seller (ADMIN), no Plus:
+1. `/settings/plus` shows `NONE` state, correct copy
+2. Shop Home: colour theme section shows the locked/upsell state
+3. Attempting to change colour theme surfaces the `ERR_PLUS_REQUIRED`-specific message (`api-client.ts`'s `ApiError.code` branch in `shop-home/page.tsx`), not the generic error alert
+4. Every OTHER Shop Home field (tagline, announcement, social links, featured products) still saves normally — confirmed by reading the JSX (the lock only wraps the colour-theme block), not yet by clicking
+
+SUPER_ADMIN, `/stores/:id/subscription`:
+5. Grant MONTHLY → UI updates, badge shows `ACTIVE`
+6. Grant a 2nd time → 409 renders as the inline `actionError` box, not a blank/broken screen (backend 409 itself is real-tested in `subscriptions.service.spec.ts`)
+7. Extend → period end advances correctly (the date math itself — including the Jan-31/leap-year edge cases — is real-tested in `subscriptions.service.spec.ts`; only the UI round-trip is unverified)
+8. Sidebar: SUPER_ADMIN doesn't see "Ezihubb Plus" (seller nav item); shop-owner ADMIN doesn't see "Stores"/"Platform Settings"/the subscription tab — confirmed by reading `AdminSidebar.tsx`'s two separate nav trees, not yet by looking at two real logged-in sessions side by side
+9. Revoke → badge becomes `REVOKED`
+
+After grant (seller):
+10. `/settings/plus` shows `ACTIVE` with the correct period-end date
+11. Shop Home colour theme unlocks, a swatch pick saves successfully
+12. Storefront shows the picked colour — code now exists and was dev-server-verified with mocked `colorTheme` values (see above); this item is specifically about the real end-to-end path: real `getStoreBySlug` response → real page → real render
+
+After revoke:
+13. Storefront colour reverts to default; `featuredProductIds` unaffected (the API-layer behavior for this is real-tested in `stores.service.spec.ts`; only the storefront's own render of it, once real gated data flows through, is unverified)
+14. Admin editor (`adminGetStore`) still shows the old saved colour — per locked decision (b)-A (colour data is kept forever, never deleted)
+15. Granting again brings the old colour back immediately (proves the retained-forever behavior, not just documented intent)
+
+Data leakage:
+16. Real `GET /seller/subscription` JSON — confirm no `grantedByUserId`/`paymentProvider`/`externalSubscriptionId` (`priceAtPurchase` is correctly present by design — it's the seller's own price, not internal data). Unit-tested already (`toSellerView` spec) with a mocked subscription object; this item is about seeing the real HTTP response body.
+17. A seller's JWT called directly against `GET /admin/stores/:id/subscription` (SUPER_ADMIN-only route) → real `403`, not just the `@Roles(Role.SUPER_ADMIN)` decorator being present in source.
+
+### A2 — sidebar role states (added after the v0.2.0 "Store Settings" report)
+
+Could not be verified locally at all: the admin app authenticates via NextAuth → API → Postgres, and this environment has no `.env` (no `NEXTAUTH_SECRET`/`DATABASE_URL`) and no Postgres on 5432, so no role can be logged in as. Running the dev server only reaches the login page, which proves nothing about the sidebar. Verify all four by eye after deploy:
+
+18. SUPER_ADMIN, platform context → sidebar shows the platform nav; **no** "Store Settings" section
+19. SUPER_ADMIN, "My Store" enabled → sidebar shows the shop nav **including** "Store Settings" → `/settings/shop-home` (this is the v0.2.0 bug being fixed)
+20. ADMIN (real shop owner) → sidebar shows the shop nav including exactly one "Store Settings" → `/settings/shop-home`
+21. On a hard refresh of any of the above, no flash of the *other* role's nav while the session loads (the `isReady` guard) — watch the first paint specifically
+22. `/settings` first tab reads **"Platform"**, not "Store", and still saves site name/favicon/contact/address/currency correctly
+
+### B — blocked by missing code
+
+*(empty as of this session)*
+
+### How to run this checklist for real
+
+Needs, at minimum: a real Postgres reachable from wherever `apps/api` runs, the `20260818140000_ezihubb_plus` migration actually applied (still pending — see the Ezihubb Plus backend report earlier in this doc for the SQL and the rollback story), 1 SUPER_ADMIN account, and 1 ADMIN account owning 1 store. From there: items 1–4 and 10–15 are `curl`/browser checks against a logged-in seller session; 5–9 and 17 against a logged-in SUPER_ADMIN session; 16 is a single authenticated `GET`.
+
+Not fixed — user explicitly kept this as "liệt kê, tôi quyết từng cái" (list only, decide individually), same discipline as the `UpdatePlatformSettingsDto` gaps above. `AdminCacheController` (`POST /admin/cache/flush`, platform-wide Redis flush) also lacks `@Roles`, but flagged separately as lower severity — availability nuisance, not a data leak.

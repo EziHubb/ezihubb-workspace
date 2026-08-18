@@ -8,6 +8,8 @@ import {
 } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '@ezihubb/constants';
 
 class CreateProductionPartnerDto {
   @IsString() @MaxLength(200) name: string;
@@ -41,12 +43,14 @@ export class AdminProductionPartnersController {
   }
 
   @Patch(':id')
+  @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update production partner' })
   async update(@Param('id') id: string, @Body() dto: UpdateProductionPartnerDto) {
     return this.prisma.productionPartner.update({ where: { id }, data: dto });
   }
 
   @Delete(':id')
+  @Roles(Role.SUPER_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete production partner' })
   async delete(@Param('id') id: string) {

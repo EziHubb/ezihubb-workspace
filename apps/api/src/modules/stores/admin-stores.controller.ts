@@ -265,6 +265,22 @@ export class AdminStoresController {
 
 // ─── Platform Settings sub-controller ────────────────────────────────────────
 
+// Class-level override fully replaces @AdminController's default
+// ADMIN+SUPER_ADMIN — every route here is SUPER_ADMIN only. These are
+// platform-wide fee rates, payout thresholds, and the Ezihubb Plus list
+// price — a shop owner has no legitimate reason to change any of them, and
+// the frontend already blocks this route for ADMIN via route-categories.ts's
+// PLATFORM_ONLY entry for /stores/settings; this closes the same hole at the
+// API layer, which the frontend guard alone doesn't.
+//
+// @Roles MUST be listed BEFORE @AdminController in source — decorators on
+// the same declaration apply bottom-to-top, and @AdminController(...)
+// internally sets its own 'roles' metadata (ADMIN+SUPER_ADMIN). With the
+// order reversed, that internal call runs last and silently overwrites this
+// one — verified via Reflect.getMetadata; this file originally had the
+// wrong order and the override never actually took effect. Caught by
+// admin-stores-platform-settings.controller.spec.ts.
+@Roles(Role.SUPER_ADMIN)
 @AdminController('platform-settings')
 export class AdminPlatformSettingsController {
   constructor(private readonly storesService: StoresService) {}

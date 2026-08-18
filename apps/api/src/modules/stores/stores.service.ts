@@ -18,6 +18,9 @@ import { AnalyticsService } from '../analytics/analytics.service';
 import { JOBS, QUEUES, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
 import { ApplyStoreDto, isReservedSlug } from './dto/apply-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { EntitlementsService } from '../subscriptions/entitlements.service';
+import { isEntitled } from '../subscriptions/subscription-status.util';
+import { PlusFeature } from '@ezihubb/constants';
 import {
   ApproveStoreDto,
   RejectStoreDto,
@@ -40,6 +43,7 @@ export class StoresService {
     private readonly storageService: StorageService,
     private readonly redis: RedisService,
     private readonly analyticsService: AnalyticsService,
+    private readonly entitlements: EntitlementsService,
     @Optional() private readonly moderationService?: ModerationService,
   ) {}
 
@@ -182,6 +186,14 @@ export class StoresService {
         totalOrders: true, rating: true,
         createdAt: true, verifiedAt: true,
         shareSaveEnabled: true,
+        // Ezihubb Plus (colorTheme only — featuredProductIds stays FREE,
+        // never gated; do not extend this gate to other fields without
+        // confirming scope first, see docs/etsy-ui-audit.md Backlog).
+        colorTheme: true,
+        featuredProductIds: true,
+        // Joined here (not a separate canUseFeature() call) so this hot,
+        // public, uncached (force-dynamic) page costs exactly 1 query.
+        subscription: { select: { status: true, currentPeriodEnd: true } },
         // Store.totalProducts is a denormalized counter with no write path
         // anywhere in the codebase — always compute live instead.
         _count: { select: { products: { where: { isActive: true, deletedAt: null } }, followers: true } },
@@ -191,6 +203,11 @@ export class StoresService {
     if (!store || store.status === 'PENDING' || store.status === 'REJECTED') {
       throw new NotFoundException('Store not found');
     }
+
+    // Computed once, reused for every Plus-gated field below — no matter how
+    // many, this never costs an extra query (see EntitlementsService for the
+    // DB-querying variant used where the subscription isn't already loaded).
+    const hasPlus = isEntitled(store.subscription);
 
     // Debounced store-visit tracking — one increment per session/IP per hour,
     // same dedup pattern as the product view counter. Traffic-source
@@ -208,8 +225,15 @@ export class StoresService {
       }
     }
 
-    const { _count, ...rest } = store;
-    return { ...rest, totalProducts: _count.products, followerCount: _count.followers };
+    // `subscription` discarded here on purpose — already consumed above via
+    // `hasPlus`; never returned to the public API response.
+    const { _count, subscription: _subscription, ...rest } = store;
+    return {
+      ...rest,
+      colorTheme:    hasPlus ? rest.colorTheme : null, // gated — see field comment above
+      totalProducts: _count.products,
+      followerCount: _count.followers,
+    };
   }
 
   /**
@@ -760,6 +784,19 @@ export class StoresService {
   ) {
     const store = await this.prisma.store.findUnique({ where: { id: storeId } });
     if (!store) throw new NotFoundException('Store not found');
+
+    // Ezihubb Plus gate — colorTheme ONLY. Do not extend this to any other
+    // field (featuredProductIds, tagline, etc. are all FREE) without
+    // confirming scope first — see docs/etsy-ui-audit.md Backlog.
+    if (dto.colorTheme !== undefined) {
+      const allowed = await this.entitlements.canUseFeature(storeId, PlusFeature.SHOP_COLOR_THEME);
+      if (!allowed) {
+        throw new ForbiddenException({
+          code:    'ERR_PLUS_REQUIRED',
+          message: 'This feature requires Ezihubb Plus.',
+        });
+      }
+    }
 
     const updated = await this.prisma.store.update({
       where: { id: storeId },

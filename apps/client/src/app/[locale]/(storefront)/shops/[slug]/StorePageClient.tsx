@@ -6,6 +6,7 @@ import { Search } from 'lucide-react';
 import { StoreProductsClient } from './StoreProductsClient';
 import { StoreReviewsClient } from './StoreReviewsClient';
 import { safeNum } from '@ezihubb/utils';
+import type { ShopColorTheme } from '@ezihubb/constants';
 
 type Tab = 'items' | 'reviews' | 'about';
 
@@ -56,9 +57,12 @@ function AboutSection({ store }: { store: StoreDto }) {
 export function StorePageClient({
   store,
   locale,
+  theme,
 }: {
   store:  StoreDto;
   locale: string;
+  /** Ezihubb Plus colour theme, or null for the default app styling. */
+  theme?: ShopColorTheme | null;
 }) {
   const t = useTranslations('shops');
 
@@ -97,10 +101,15 @@ export function StorePageClient({
                   type="button"
                   aria-selected={activeTab === tab.id}
                   onClick={() => setActiveTab(tab.id)}
+                  // textSafeHex, not the raw swatch hex — this color is the
+                  // tab's text + underline directly on the page's light
+                  // background, same AA-contrast reasoning as
+                  // FollowShopButton (see that file's comment).
+                  style={theme && activeTab === tab.id ? { borderColor: theme.textSafeHex, color: theme.textSafeHex } : undefined}
                   className={[
                     'px-5 py-4 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors shrink-0',
                     activeTab === tab.id
-                      ? 'border-primary text-primary'
+                      ? theme ? '' : 'border-primary text-primary'
                       : 'border-transparent text-muted hover:text-secondary',
                   ].join(' ')}
                 >

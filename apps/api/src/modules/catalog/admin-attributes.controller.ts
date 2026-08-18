@@ -8,6 +8,8 @@ import { IsString, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '@ezihubb/constants';
 
 // ── Valid attribute types ─────────────────────────────────────────────────────
 
@@ -52,6 +54,7 @@ export class AdminAttributesController {
    * Add a custom attribute value (admin only — e.g. shop-specific material).
    */
   @Post(':type')
+  @Roles(Role.SUPER_ADMIN)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Add a custom attribute value for a given type' })
   async addValue(
@@ -73,6 +76,7 @@ export class AdminAttributesController {
    * Remove a custom attribute value (soft: only user-added, protected seed values ignored).
    */
   @Delete(':type/:value')
+  @Roles(Role.SUPER_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove a custom attribute value' })
   async removeValue(

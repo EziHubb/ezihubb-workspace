@@ -58,9 +58,40 @@ export const ORDER_STATUS_LABELS: Record<OrderStatusBadgeVariant, string> = {
   DISPUTED:         'Disputed',
 };
 
+// ── Subscription-status badges (Ezihubb Plus) ─────────────────────────────────
+// Mirrors DisplaySubscriptionStatus from
+// apps/api/src/modules/subscriptions/subscription-status.util.ts exactly —
+// keep both in sync if that union ever changes.
+
+export type SubscriptionStatusBadgeVariant =
+  | 'NONE'
+  | 'ACTIVE'
+  | 'CANCEL_PENDING'
+  | 'PAST_DUE'
+  | 'EXPIRED'
+  | 'REVOKED';
+
+export const SUBSCRIPTION_STATUS_BADGE_CLASSES: Record<SubscriptionStatusBadgeVariant, string> = {
+  NONE:           'bg-gray-100 text-gray-500 border border-gray-200',
+  ACTIVE:         'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  CANCEL_PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
+  PAST_DUE:       'bg-orange-50 text-orange-700 border border-orange-200',
+  EXPIRED:        'bg-gray-100 text-gray-400 border border-gray-200',
+  REVOKED:        'bg-red-50 text-error border border-red-200',
+};
+
+export const SUBSCRIPTION_STATUS_LABELS: Record<SubscriptionStatusBadgeVariant, string> = {
+  NONE:           'Not subscribed',
+  ACTIVE:         'Active',
+  CANCEL_PENDING: 'Ending soon',
+  PAST_DUE:       'Past due',
+  EXPIRED:        'Expired',
+  REVOKED:        'Revoked',
+};
+
 // ── Generic Badge component ───────────────────────────────────────────────────
 
-export type BadgeVariant = ProductBadgeVariant | OrderStatusBadgeVariant | 'default';
+export type BadgeVariant = ProductBadgeVariant | OrderStatusBadgeVariant | SubscriptionStatusBadgeVariant | 'default';
 
 export interface BadgeProps {
   children?:  React.ReactNode;
@@ -77,6 +108,8 @@ function getVariantClasses(variant: BadgeVariant): string {
     return PRODUCT_BADGE_CLASSES[variant as ProductBadgeVariant];
   if (variant in ORDER_STATUS_BADGE_CLASSES)
     return ORDER_STATUS_BADGE_CLASSES[variant as OrderStatusBadgeVariant];
+  if (variant in SUBSCRIPTION_STATUS_BADGE_CLASSES)
+    return SUBSCRIPTION_STATUS_BADGE_CLASSES[variant as SubscriptionStatusBadgeVariant];
   return defaultClasses;
 }
 
@@ -92,7 +125,9 @@ export const Badge: React.FC<BadgeProps> = ({
       ? ORDER_STATUS_LABELS[variant as OrderStatusBadgeVariant]
       : variant in PRODUCT_BADGE_LABELS
         ? PRODUCT_BADGE_LABELS[variant as ProductBadgeVariant]
-        : variant);
+        : variant in SUBSCRIPTION_STATUS_LABELS
+          ? SUBSCRIPTION_STATUS_LABELS[variant as SubscriptionStatusBadgeVariant]
+          : variant);
 
   return (
     <span
@@ -115,6 +150,20 @@ export const Badge: React.FC<BadgeProps> = ({
 export const OrderStatusBadge: React.FC<{
   status:    OrderStatusBadgeVariant;
   /** Translated label — overrides the built-in English default (e.g. "Shipped"). */
+  label?:    string;
+  size?:     'sm' | 'md';
+  className?: string;
+}> = ({ status, label, size, className }) => (
+  <Badge variant={status} size={size} className={className}>
+    {label}
+  </Badge>
+);
+
+// ── Convenience: SubscriptionStatusBadge (Ezihubb Plus) ────────────────────────
+
+export const SubscriptionStatusBadge: React.FC<{
+  status:    SubscriptionStatusBadgeVariant;
+  /** Translated label — overrides the built-in English default (e.g. "Active"). */
   label?:    string;
   size?:     'sm' | 'md';
   className?: string;

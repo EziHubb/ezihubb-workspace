@@ -1,6 +1,8 @@
 import { Body, Get, Param, Patch, Post } from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '@ezihubb/constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   TranslationService,
@@ -14,6 +16,7 @@ class UpdateTranslationDto {
   translations!: Record<string, string>;
 }
 
+@Roles(Role.SUPER_ADMIN)
 @AdminController('translations')
 export class AdminTranslationsController {
   constructor(

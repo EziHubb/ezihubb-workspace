@@ -421,6 +421,12 @@ export const API_ROUTES = {
     SELLER_PLANS:             '/admin/plans',
     SELLER_PLAN:              (id: string) => `/admin/plans/${id}`,
     PLATFORM_SETTINGS:        '/admin/platform-settings',
+
+    // ── Ezihubb Plus subscription (SUPER_ADMIN grant/extend/revoke) ──────────
+    STORE_SUBSCRIPTION:        (id: string) => `/admin/stores/${id}/subscription`,
+    STORE_SUBSCRIPTION_GRANT:  (id: string) => `/admin/stores/${id}/subscription/grant`,
+    STORE_SUBSCRIPTION_EXTEND: (id: string) => `/admin/stores/${id}/subscription/extend`,
+    STORE_SUBSCRIPTION_REVOKE: (id: string) => `/admin/stores/${id}/subscription/revoke`,
     SELLER_PAYOUTS:           '/admin/seller-payouts',
     SELLER_PAYOUT:            (id: string) => `/admin/seller-payouts/${id}`,
     SELLER_PAYOUT_PAY:        (id: string) => `/admin/seller-payouts/${id}/pay`,
@@ -534,6 +540,9 @@ export const API_ROUTES = {
     STORE_ME_UPDATE:   '/stores/me',
     STORE_APPLY:       '/stores/apply',
     STORE_APPLICATION: '/stores/me/application',
+
+    // ── Ezihubb Plus (read-only self-service view) ──────────────────────────
+    SUBSCRIPTION:      '/seller/subscription',
   },
 } as const;
 

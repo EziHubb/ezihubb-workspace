@@ -6,12 +6,12 @@ import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Camera, Pencil, Plus, X, Check, ExternalLink, Trash2, ArrowUp, ArrowDown,
-  Video, ImagePlus, Star, MessageSquareHeart, User, LayoutGrid,
+  Video, ImagePlus, Star, MessageSquareHeart, User, LayoutGrid, Lock,
 } from 'lucide-react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@ezihubb/ui';
 import { useAdminMode } from '../../../../lib/store-context';
-import { api, adminApi } from '../../../../lib/api-client';
-import { API_ROUTES } from '@ezihubb/constants';
+import { api, adminApi, ApiError } from '../../../../lib/api-client';
+import { API_ROUTES, SHOP_COLOR_THEMES } from '@ezihubb/constants';
 import { fmtNum } from '../../../../lib/fmt';
 import { useDialog } from '../../../../contexts/DialogContext';
 import { ListingPicker, type PickedProduct } from '../../../../components/marketing/ListingPicker';
@@ -54,6 +54,11 @@ interface ShopProductRow {
 
 interface TaxInfoLite { sellerType: 'INDIVIDUAL' | 'BUSINESS' }
 
+// Mirrors SellerSubscriptionView from
+// apps/api/src/modules/subscriptions/subscription-status.util.ts — only the
+// field this page needs (hasPlus) is used, kept minimal on purpose.
+interface SellerSubscriptionLite { hasPlus: boolean }
+
 const SOCIAL_PLATFORMS = [
   { value: 'facebook',  label: 'Facebook'  },
   { value: 'instagram', label: 'Instagram' },
@@ -64,25 +69,9 @@ const SOCIAL_PLATFORMS = [
   { value: 'website',   label: 'Website'   },
 ] as const;
 
-// Hex values sampled from the real "Colour theme" reference screenshot
-// (docs/etsy-assets/theme colors.jpg) via scripts in the scratchpad —
-// scanline edge-detection to find each circle's true center, then a 5x5
-// pixel patch average at that point to smooth out JPEG compression noise.
-// Not estimated by eye.
-const COLOR_THEMES = [
-  { value: 'cream',      label: 'Cream',       swatch: '#F1D291' },
-  { value: 'tan',        label: 'Tan',         swatch: '#CAA475' },
-  { value: 'orange',     label: 'Orange',      swatch: '#E09C49' },
-  { value: 'sage',       label: 'Sage',        swatch: '#8B9469' },
-  { value: 'clay',       label: 'Clay',        swatch: '#A07251' },
-  { value: 'gold',       label: 'Gold',        swatch: '#9D743C' },
-  { value: 'olive',      label: 'Olive',       swatch: '#6E502A' },
-  { value: 'mustard',    label: 'Mustard',     swatch: '#876110' },
-  { value: 'maroon',     label: 'Maroon',      swatch: '#5C2C2C' },
-  { value: 'forest',     label: 'Forest',      swatch: '#51572B' },
-  { value: 'brown',      label: 'Brown',       swatch: '#5A2B19' },
-  { value: 'burgundy',   label: 'Burgundy',    swatch: '#541424' },
-];
+// Single source of truth is now @ezihubb/constants's SHOP_COLOR_THEMES —
+// also consumed by the public storefront render. Do not redefine this list
+// here again.
 
 // Plain `.length`/`.slice()` count/cut UTF-16 code units, not user-perceived
 // characters — for text containing surrogate-pair emoji, ZWJ sequences
@@ -178,6 +167,19 @@ export default function ShopHomeEditorPage() {
   });
   const store = storeQuery.data;
 
+  const subscriptionQuery = useQuery<SellerSubscriptionLite>({
+    queryKey: ['shop-home-subscription', ownStoreId],
+    queryFn:  () => api.get<SellerSubscriptionLite>(API_ROUTES.SELLER.SUBSCRIPTION),
+    enabled:  isReady && !isPlatformContext && !!ownStoreId,
+  });
+  // Default to `true` (not locked) while the subscription query is still
+  // loading — defaulting to `false` would flash a locked/upsell state at a
+  // paying seller for a split second on every page load, which is worse than
+  // the alternative: a non-Plus seller briefly sees unlocked swatches, but
+  // clicking during that window still hits the server-enforced 403 (handled
+  // below in patchStore) — access is never actually granted client-side.
+  const hasPlusColorTheme = subscriptionQuery.data?.hasPlus ?? true;
+
   const productsQuery = useQuery<{ data: ShopProductRow[] }>({
     queryKey: ['shop-home-products', ownStoreId],
     queryFn:  () => api.get(`${API_ROUTES.ADMIN.STORE_PRODUCTS(ownStoreId)}?limit=50`),
@@ -212,6 +214,14 @@ export default function ShopHomeEditorPage() {
       invalidateStore();
       return true;
     } catch (err) {
+      // Covers the race where entitlement lapses between page load and
+      // click (subscriptionQuery still says hasPlus, server disagrees) —
+      // same upsell copy as the locked-swatch state below, not a raw
+      // "Could not save" dead end.
+      if (err instanceof ApiError && err.code === 'ERR_PLUS_REQUIRED') {
+        await alert('This feature requires Ezihubb Plus. Visit Settings → Ezihubb Plus to learn more.', { variant: 'error' });
+        return false;
+      }
       await alert((err as Error).message || 'Could not save. Please try again.', { variant: 'error' });
       return false;
     }
@@ -378,12 +388,30 @@ export default function ShopHomeEditorPage() {
       </div>
       <p className="text-sm text-muted mb-6">Customise how your shop appears to buyers.</p>
 
-      {/* ── Colour theme ─────────────────────────────────────────────────── */}
+      {/* ── Colour theme (Ezihubb Plus) ──────────────────────────────────── */}
       <Section title="Colour theme">
-        {themeExpanded || store.colorTheme ? (
+        {!hasPlusColorTheme ? (
+          <div className="flex items-start gap-3 p-4 bg-muted/5 border border-border rounded-xl">
+            <Lock className="w-4 h-4 text-muted shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-secondary">Requires Ezihubb Plus</p>
+              <p className="text-xs text-muted mt-0.5">
+                Colour themes are an Ezihubb Plus feature.{' '}
+                <Link href="/settings/plus" className="text-primary font-semibold hover:underline">
+                  See Ezihubb Plus
+                </Link>
+              </p>
+              <div className="flex flex-wrap gap-3 mt-3 opacity-40 pointer-events-none">
+                {SHOP_COLOR_THEMES.slice(0, 6).map((t) => (
+                  <div key={t.value} className="w-9 h-9 rounded-full shrink-0" style={{ backgroundColor: t.hex }} />
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : themeExpanded || store.colorTheme ? (
           <>
             <div className="flex flex-wrap gap-3">
-              {COLOR_THEMES.map((t) => (
+              {SHOP_COLOR_THEMES.map((t) => (
                 <button
                   key={t.value}
                   type="button"
@@ -391,7 +419,7 @@ export default function ShopHomeEditorPage() {
                   aria-label={t.label}
                   onClick={() => patchStore({ colorTheme: t.value })}
                   className={`w-9 h-9 rounded-full shrink-0 transition-all ${store.colorTheme === t.value ? 'ring-2 ring-offset-2 ring-secondary' : 'hover:scale-105'}`}
-                  style={{ backgroundColor: t.swatch }}
+                  style={{ backgroundColor: t.hex }}
                 />
               ))}
             </div>

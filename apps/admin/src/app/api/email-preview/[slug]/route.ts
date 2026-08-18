@@ -220,9 +220,13 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
-  // Auth guard — only admins can preview email templates
+  // Auth guard — SUPER_ADMIN only. Previously only checked "is there a
+  // session," which let any shop-owner ADMIN preview platform-wide email
+  // templates too — matches the backend's AdminEmailTemplatesController,
+  // which now enforces the same restriction (@Roles(Role.SUPER_ADMIN)).
   const session = await getServerSession(authOptions);
-  if (!session) {
+  const role = (session?.user as Record<string, unknown> | undefined)?.['role'] as string | undefined;
+  if (!session || role !== 'SUPER_ADMIN') {
     return new NextResponse('<h1>Unauthorized</h1>', {
       status: 401,
       headers: { 'Content-Type': 'text/html' },
