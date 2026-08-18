@@ -13,7 +13,7 @@ interface ShowMoreAttributesProps {
 export function ShowMoreAttributes({
   children,
   defaultOpen    = false,
-  collapsedLabel = 'Show more attributes',
+  collapsedLabel = 'Show all attributes',
   expandedLabel  = 'Show less',
 }: ShowMoreAttributesProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);

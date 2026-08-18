@@ -393,7 +393,11 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
   const [variationsModalOpen, setVariationsModalOpen] = useState(false);
 
   return (
-    <div className="max-w-[1040px] mx-auto px-6 py-8">
+    <div className="max-w-[1040px] mx-auto px-6 py-8 space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-secondary">Item options</h2>
+        <p className="text-sm text-muted mt-1">Let buyers know what choices are available for this item.</p>
+      </div>
       <div className="bg-surface rounded-card border border-border shadow-card overflow-hidden divide-y divide-border">
 
         {/* ── Variations ───────────────────────────────────────────────── */}
@@ -448,7 +452,7 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
 
             {/* Primary colour */}
             <AttributeSearchSelect
-              label="Primary color"
+              label="Primary colour"
               name="primaryColors"
               maxSelections={1}
               searchEndpoint="/admin/attributes/color"
@@ -456,7 +460,7 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
 
             {/* Secondary colour */}
             <AttributeSearchSelect
-              label="Secondary color"
+              label="Secondary colour"
               name="secondaryColors"
               maxSelections={1}
               searchEndpoint="/admin/attributes/color"

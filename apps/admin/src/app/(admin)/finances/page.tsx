@@ -172,35 +172,49 @@ export default function PaymentAccountPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-background/40">
-                <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">Type</th>
                 <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">Date</th>
+                <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">Type</th>
+                <th className="text-left px-4 py-2.5 font-medium text-muted text-xs">Description</th>
                 <th className="text-right px-4 py-2.5 font-medium text-muted text-xs">Net</th>
+                <th className="text-right px-4 py-2.5 font-medium text-muted text-xs">Balance</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {(recent?.data ?? []).map((row) => (
                 <tr key={row.id}>
+                  <td className="px-4 py-3 text-muted whitespace-nowrap">
+                    {new Intl.DateTimeFormat('en-US', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(row.date))}
+                  </td>
                   <td className="px-4 py-3">
                     <span className="flex items-center gap-2 text-secondary">
                       <Receipt className="w-4 h-4 text-muted shrink-0" />
                       {LEDGER_TYPE_LABEL[row.type] ?? row.type}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-muted">
-                    {new Intl.DateTimeFormat('en-US', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(row.date))}
-                  </td>
-                  <td className={`px-4 py-3 text-right font-medium ${row.amount < 0 ? 'text-error' : 'text-secondary'}`}>
+                  <td className="px-4 py-3 text-secondary max-w-xs truncate">{row.description}</td>
+                  <td className={`px-4 py-3 text-right font-medium whitespace-nowrap ${row.amount < 0 ? 'text-error' : 'text-secondary'}`}>
                     {fmtAmount(row.amount)}
+                  </td>
+                  <td className={`px-4 py-3 text-right whitespace-nowrap ${row.balance < 0 ? 'text-error' : 'text-secondary'}`}>
+                    {fmtAmount(row.balance)}
                   </td>
                 </tr>
               ))}
               {(recent?.data ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-sm text-muted">No activity yet</td>
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted">No activity yet</td>
                 </tr>
               )}
             </tbody>
           </table>
+        </div>
+        <div className="flex justify-center mt-4">
+          <Link
+            href="/finances/statements"
+            className="px-4 py-2 border border-border text-secondary text-sm font-semibold rounded-pill hover:bg-muted/8 transition-colors"
+          >
+            View all monthly statements
+          </Link>
         </div>
       </div>
     </div>

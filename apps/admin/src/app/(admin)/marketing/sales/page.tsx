@@ -235,8 +235,8 @@ export default function MarketingSalesPage() {
   const handleSaveSale = async (data: SaleFormData, id?: string) => {
     const payload = {
       description:        data.description,
-      type:                'PERCENTAGE',
-      value:               data.value,
+      type:                data.discountType,
+      value:               data.discountType === 'FREE_SHIPPING' ? 0 : data.value,
       autoApply:           true,
       scope:               data.scope,
       productIds:          data.scope === 'SPECIFIC_LISTINGS' ? data.productIds : undefined,
@@ -262,6 +262,7 @@ export default function MarketingSalesPage() {
       autoApply:       true,
       scope:           'SHOP_WIDE',
       minOrderAmount:  data.minOrderAmount,
+      country:         data.country || undefined,
       startsAt:        data.startsAt || undefined,
       expiresAt:       data.expiresAt || undefined,
     };

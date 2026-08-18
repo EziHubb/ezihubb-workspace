@@ -221,7 +221,7 @@ function TitleSuggestionBanner({
             onClick={onDismiss}
             className="flex items-center gap-1 text-xs font-medium text-muted hover:text-secondary transition-colors"
           >
-            <X className="w-3.5 h-3.5" /> Dismiss
+            <X className="w-3.5 h-3.5" /> Discard
           </button>
         </div>
       </div>

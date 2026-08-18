@@ -5,7 +5,7 @@ import {
 import type { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import { IsOptional, IsString, IsUrl, MaxLength, IsArray, ArrayMaxSize } from 'class-validator';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@ezihubb/constants';
@@ -25,6 +25,60 @@ class AdminUpdateStoreDto {
 
   @IsOptional() @IsUrl()
   logoUrl?: string;
+
+  // ── Shop Home editor fields (Etsy: Shop Manager -> edit your storefront) ──
+  @IsOptional() @IsString() @MaxLength(150)
+  tagline?: string;
+
+  @IsOptional() @IsString() @MaxLength(150)
+  location?: string;
+
+  @IsOptional() @IsString() @MaxLength(32)
+  colorTheme?: string;
+
+  @IsOptional() @IsString() @MaxLength(2000)
+  announcement?: string;
+
+  @IsOptional() @IsString() @MaxLength(150)
+  aboutHeadline?: string;
+
+  @IsOptional() @IsUrl()
+  aboutVideoUrl?: string;
+
+  @IsOptional() @IsArray() @IsUrl({}, { each: true }) @ArrayMaxSize(5)
+  aboutPhotoUrls?: string[];
+
+  @IsOptional() @IsString() @MaxLength(2000)
+  ownerBio?: string;
+
+  @IsOptional() @IsArray() @IsString({ each: true }) @ArrayMaxSize(4)
+  featuredProductIds?: string[];
+}
+
+class FaqDto {
+  @IsString() @MaxLength(300)
+  question: string;
+
+  @IsString() @MaxLength(2000)
+  answer: string;
+}
+
+// A real class, not `Partial<FaqDto>` — NestJS's ValidationPipe resolves which
+// class-validator decorators to run from the parameter's reflected design-time
+// type, and TypeScript's mapped types (`Partial<X>`) erase to `Object` in that
+// reflection, which silently skips validation entirely (whitelist/length/type
+// checks) rather than just making the fields optional as the syntax implies.
+class UpdateFaqDto {
+  @IsOptional() @IsString() @MaxLength(300)
+  question?: string;
+
+  @IsOptional() @IsString() @MaxLength(2000)
+  answer?: string;
+}
+
+class ReorderFaqsDto {
+  @IsArray() @IsString({ each: true }) @ArrayMaxSize(100)
+  orderedIds: string[];
 }
 
 export class MarkPayoutPaidDto {
@@ -133,6 +187,41 @@ export class AdminStoresController {
     this.storeContext.assertOwnership(context, id);
     if (!file) throw new BadRequestException({ code: 'ERR_FILE_REQUIRED', message: 'file is required' });
     return this.storesService.adminUploadStoreLogo(id, file);
+  }
+
+  @Post(':id/faqs')
+  async createFaq(@Param('id') id: string, @Req() req: Request, @Body() dto: FaqDto) {
+    const context = await this.storeContext.resolve(req);
+    this.storeContext.assertOwnership(context, id);
+    return this.storesService.adminCreateFaq(id, dto.question, dto.answer);
+  }
+
+  @Patch(':id/faqs/:faqId')
+  async updateFaq(
+    @Param('id') id: string,
+    @Param('faqId') faqId: string,
+    @Req() req: Request,
+    @Body() dto: UpdateFaqDto,
+  ) {
+    const context = await this.storeContext.resolve(req);
+    this.storeContext.assertOwnership(context, id);
+    return this.storesService.adminUpdateFaq(id, faqId, dto);
+  }
+
+  @Delete(':id/faqs/:faqId')
+  async deleteFaq(@Param('id') id: string, @Param('faqId') faqId: string, @Req() req: Request) {
+    const context = await this.storeContext.resolve(req);
+    this.storeContext.assertOwnership(context, id);
+    await this.storesService.adminDeleteFaq(id, faqId);
+    return { success: true };
+  }
+
+  @Patch(':id/faqs-reorder')
+  async reorderFaqs(@Param('id') id: string, @Req() req: Request, @Body() dto: ReorderFaqsDto) {
+    const context = await this.storeContext.resolve(req);
+    this.storeContext.assertOwnership(context, id);
+    await this.storesService.adminReorderFaqs(id, dto.orderedIds);
+    return { success: true };
   }
 
   @Get(':id/products')

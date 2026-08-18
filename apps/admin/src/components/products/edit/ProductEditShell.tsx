@@ -521,7 +521,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
           {productType === 'PHYSICAL' && (
             <>
               <div ref={(el) => { sectionRefs.current['how-its-made'] = el; }}>
-                <HowItsMadeTab productId={tabProduct?.id ?? product?.id} />
+                <HowItsMadeTab />
               </div>
               <div className="h-px bg-border" />
             </>
@@ -594,7 +594,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
             ) : mode === 'create' ? (
               <span className="text-sm text-muted">Fill in at least a title and category to publish.</span>
             ) : (
-              <span className="text-sm text-muted">All changes saved.</span>
+              <span className="text-sm text-muted">You have no unsaved changes.</span>
             )}
           </div>
 

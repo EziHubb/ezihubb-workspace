@@ -239,8 +239,37 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
 CMD ["node", "apps/admin/server.js"]
 
 # ============================================
-# Migrate — targets `source`, never a per-app builder stage, so running
+# Migrate — builds from `source`, never a per-app builder stage, so running
 # migrations never forces an unrelated app to build.
 # ============================================
-FROM source AS migrate
+FROM source AS builder-migrate
+# Was the largest image by far (~4.3GB) despite an earlier attempt at
+# pruning here directly on `source` — that attempt genuinely ran (its log
+# listed every devDependency it removed) but the image size never dropped,
+# because a `RUN prune` layered ON TOP of `source` in the SAME stage still
+# carries `source`'s full pre-prune node_modules underneath: Docker images
+# are the union of every layer, and a later layer deleting files only adds
+# whiteout markers — it doesn't shrink the earlier layer's stored blobs.
+# Fixed the same way api/client/admin already avoid this: prune in its own
+# builder stage, then the separate `migrate` stage below COPYs only the
+# already-pruned result — never inheriting `source`'s heavy layer at all.
+#
+# `prisma` (the CLI, needed at runtime for `migrate deploy` below) moved
+# from devDependencies to dependencies in package.json — it genuinely is a
+# runtime dependency of this service, same fix as the earlier `tslib`
+# misclassification — so the standard `pnpm prune --prod` used elsewhere
+# works here too. See builder-api above for why the two extra flags are
+# needed.
+RUN pnpm prune --prod --config.confirmModulesPurge=false --ignore-scripts
+
+FROM node:24-alpine AS migrate
+WORKDIR /app
+ENV NODE_ENV=production
+# prisma.config.ts (root) + prisma/ (schema + migrations) are both read at
+# runtime by the CLI — package.json too, since prisma.config.ts's loader
+# and the CLI's own project-root detection both expect it present.
+COPY --from=builder-migrate /app/node_modules ./node_modules
+COPY --from=builder-migrate /app/prisma ./prisma
+COPY --from=builder-migrate /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder-migrate /app/package.json ./package.json
 CMD ["node_modules/.bin/prisma", "migrate", "deploy", "--schema=prisma/schema.prisma"]

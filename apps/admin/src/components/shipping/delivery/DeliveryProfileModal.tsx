@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Plus, Trash2, X } from 'lucide-react';
-import { Drawer, DrawerHeader, DrawerBody, DrawerFooter, Button, Select } from '@ezihubb/ui';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Button, Select } from '@ezihubb/ui';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES, CARRIER_SERVICES } from '@ezihubb/constants';
 import { COUNTRIES } from './countries';
@@ -24,6 +24,26 @@ function newRow(destinationType: string): ShippingProfileMethodRow {
 
 function rowKey(row: ShippingProfileMethodRow, i: number): string {
   return row.id ?? `${row.destinationType}-${i}`;
+}
+
+// Real Etsy presents delivery time as two Select dropdowns rather than free-
+// entry number inputs — a bounded day range is exactly the kind of input a
+// dropdown suits better than a spinner, so this mirrors that choice.
+const DAY_OPTIONS = Array.from({ length: 31 }, (_, i) => ({
+  value: String(i),
+  label: `${i} day${i === 1 ? '' : 's'}`,
+}));
+
+/** Existing rows created before this dropdown shipped (or via the API
+ *  directly) can carry a day count outside the 0-30 preset list — without
+ *  this, `<Select value={String(row.minDays)}>` would silently fall back to
+ *  showing the first option ("0 days") for e.g. a genuine 45-day made-to-
+ *  order profile, misrepresenting real data rather than just being unable
+ *  to set a new one that high. */
+function dayOptionsFor(currentValue: number): { value: string; label: string }[] {
+  if (currentValue >= 0 && currentValue <= 30) return DAY_OPTIONS;
+  return [...DAY_OPTIONS, { value: String(currentValue), label: `${currentValue} days` }]
+    .sort((a, b) => Number(a.value) - Number(b.value));
 }
 
 function destinationLabel(destinationType: string, originCountry: string): string {
@@ -70,7 +90,7 @@ function DestinationRow({
               value={row.carrierName ?? ''}
               onChange={(e) => onChange({ carrierName: e.target.value })}
               placeholder="Carrier name"
-              className="w-full mt-2 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted"
+              className="w-full h-9 mt-2 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted"
             />
           )}
         </div>
@@ -78,18 +98,18 @@ function DestinationRow({
         <div>
           <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Delivery time (business days)</label>
           <div className="flex items-center gap-2">
-            <input
-              type="number" min={0} max={180}
-              value={row.minDays}
+            <Select
+              size="sm"
+              value={String(row.minDays)}
               onChange={(e) => onChange({ minDays: Number(e.target.value) })}
-              className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 tabular-nums"
+              options={dayOptionsFor(row.minDays)}
             />
             <span className="text-muted shrink-0">–</span>
-            <input
-              type="number" min={0} max={180}
-              value={row.maxDays}
+            <Select
+              size="sm"
+              value={String(row.maxDays)}
               onChange={(e) => onChange({ maxDays: Number(e.target.value) })}
-              className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 tabular-nums"
+              options={dayOptionsFor(row.maxDays)}
             />
           </div>
         </div>
@@ -103,8 +123,8 @@ function DestinationRow({
             value={row.chargeType}
             onChange={(e) => onChange({ chargeType: e.target.value as 'FIXED' | 'FREE' })}
             options={[
-              { value: 'FIXED', label: 'Fixed price' },
               { value: 'FREE',  label: 'Free delivery' },
+              { value: 'FIXED', label: 'Fixed price' },
             ]}
           />
         </div>
@@ -119,7 +139,7 @@ function DestinationRow({
                   type="number" min={0} step={0.01}
                   value={row.price ?? 0}
                   onChange={(e) => onChange({ price: Number(e.target.value) })}
-                  className="w-full pl-11 pr-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 tabular-nums"
+                  className="w-full h-9 pl-11 pr-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 tabular-nums"
                 />
               </div>
             </div>
@@ -131,7 +151,7 @@ function DestinationRow({
                   type="number" min={0} step={0.01}
                   value={row.extraItemPrice ?? 0}
                   onChange={(e) => onChange({ extraItemPrice: Number(e.target.value) })}
-                  className="w-full pl-11 pr-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 tabular-nums"
+                  className="w-full h-9 pl-11 pr-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 tabular-nums"
                 />
               </div>
             </div>
@@ -258,12 +278,12 @@ export function DeliveryProfileModal({ profile, submitLabel, entityLabel = 'deli
   };
 
   return (
-    <Drawer isOpen onClose={onClose} width="34rem">
-      <DrawerHeader onClose={onClose}>
+    <Modal isOpen onClose={onClose} size="lg">
+      <ModalHeader onClose={onClose}>
         {isEdit ? `Edit ${entityLabel}` : `Create ${entityLabel}`}
-      </DrawerHeader>
+      </ModalHeader>
 
-      <DrawerBody>
+      <ModalBody>
           <p className="text-xs text-muted -mt-2">
             We use these settings to calculate postage costs and estimated delivery dates for buyers.
           </p>
@@ -290,7 +310,7 @@ export function DeliveryProfileModal({ profile, submitLabel, entityLabel = 'deli
                 value={originPostalCode}
                 onChange={(e) => setOriginPostalCode(e.target.value)}
                 placeholder="e.g. 700000"
-                className="w-full px-3 py-2.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted"
+                className="w-full h-11 px-3.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted"
               />
             </div>
           </div>
@@ -331,19 +351,19 @@ export function DeliveryProfileModal({ profile, submitLabel, entityLabel = 'deli
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Standard Shipping"
-              className="w-full px-3 py-2.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted"
+              className="w-full h-11 px-3.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted"
             />
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
-      </DrawerBody>
+      </ModalBody>
 
-      <DrawerFooter>
+      <ModalFooter>
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
         <Button variant="primary" onClick={handleSave} loading={saving}>
           {submitLabel ?? 'Save profile'}
         </Button>
-      </DrawerFooter>
+      </ModalFooter>
 
       {showAddLocation && (
         <AddLocationPicker
@@ -352,6 +372,6 @@ export function DeliveryProfileModal({ profile, submitLabel, entityLabel = 'deli
           onClose={() => setShowAddLocation(false)}
         />
       )}
-    </Drawer>
+    </Modal>
   );
 }

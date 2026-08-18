@@ -38,6 +38,13 @@ export class TopProductDto {
  *  checklist + "Top tasks" widgets, and is reused as-is by the dedicated
  *  /search-visibility and /customer-service-stats pages. */
 export class ShopHealthDto {
+  /** Already-fetched by the same `store.findUnique` the checklist booleans derive
+   *  from — exposed as-is so the Dashboard header can render a real greeting
+   *  instead of the generic page title. */
+  shopName!:        string | null;
+  shopSlug!:        string | null;
+  shopLogoUrl!:     string | null;
+  activeListings!:  number;
   checklist!: {
     shopName:    boolean;
     logo:        boolean;

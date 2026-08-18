@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ColumnDef } from '@tanstack/react-table';
-import { Plus, Search, X, Eye, EyeOff, Package, Upload, LayoutGrid, List, ChevronLeft, ChevronRight, Tag, Download, Archive } from 'lucide-react';
+import { Plus, Search, X, Eye, EyeOff, Package, Upload, LayoutGrid, List, ChevronLeft, ChevronRight, Tag, Download, Archive, ChevronDown, Type } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@ezihubb/ui';
@@ -70,6 +70,19 @@ function ProductsPageInner() {
   const [showSaleDialog,setShowSaleDialog]= useState(false);
   const [salePercent,   setSalePercent]   = useState(20);
   const [view,          setView]          = useState<'grid' | 'list'>('grid');
+  const [editingOptionsOpen, setEditingOptionsOpen] = useState(false);
+  const [showTagsDialog,  setShowTagsDialog]  = useState(false);
+  const [tagsMode,        setTagsMode]        = useState<'add' | 'remove'>('add');
+  const [tagsValue,       setTagsValue]       = useState('');
+  const [showTitleDialog, setShowTitleDialog] = useState(false);
+  const [titleMode,       setTitleMode]       = useState<'add-front' | 'add-end' | 'find-replace' | 'delete'>('add-front');
+  const [titleText,       setTitleText]       = useState('');
+  const [titleFindText,   setTitleFindText]   = useState('');
+  // Separate from titleText — "Replace with" is a different field than "Text
+  // to add/delete" even though only one of them is visible at a time. Sharing
+  // one state let whatever was typed for "Add to front" silently reappear in
+  // "Replace with" after switching modes, since the value was never cleared.
+  const [titleReplaceText, setTitleReplaceText] = useState('');
 
   // Load view preference from localStorage
   useEffect(() => {
@@ -358,7 +371,7 @@ function ProductsPageInner() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search products…"
+              placeholder="Search by title, tag, or SKU"
               className="w-full pl-9 pr-8 py-2 text-sm border border-border rounded-pill bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
             {search && (
@@ -381,7 +394,7 @@ function ProductsPageInner() {
               className="flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-bold rounded-pill transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Add Product
+              Add a listing
             </Link>
 
             {/* View toggle */}
@@ -420,58 +433,96 @@ function ProductsPageInner() {
           />
         </div>
 
-        {/* Bulk action bar */}
-        {selectedIds.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 mb-4 bg-secondary/5 border border-border rounded-xl">
-            <span className="text-sm font-semibold text-secondary mr-1">
-              {selectedIds.length} selected
-            </span>
-            <div className="h-4 w-px bg-border" />
+        {/* Bulk action bar — always visible, pill-styled, disabled until something is
+            selected, matching real Etsy's persistent Renew/Deactivate/Delete/Editing
+            options toolbar rather than only appearing on selection. */}
+        <div className="relative flex flex-wrap items-center gap-2 mb-4">
+          {selectedIds.length > 0 && (
+            <span className="text-sm font-semibold text-secondary mr-1">{selectedIds.length}</span>
+          )}
+          <button
+            type="button"
+            disabled={selectedIds.length === 0 || isBulkLoading}
+            onClick={() => executeBulk('publish')}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 border border-border rounded-pill text-sm font-semibold text-secondary hover:bg-muted/8 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+          >
+            <Eye className="w-3.5 h-3.5" /> Publish
+          </button>
+          <button
+            type="button"
+            disabled={selectedIds.length === 0 || isBulkLoading}
+            onClick={() => executeBulk('unpublish')}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 border border-border rounded-pill text-sm font-semibold text-secondary hover:bg-muted/8 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+          >
+            <EyeOff className="w-3.5 h-3.5" /> Unpublish
+          </button>
+          <button
+            type="button"
+            disabled={selectedIds.length === 0 || isBulkLoading}
+            onClick={async () => {
+              if (await confirm(`Archive ${selectedIds.length} product${selectedIds.length !== 1 ? 's' : ''}?`, { confirmLabel: 'Archive', destructive: true })) {
+                executeBulk('archive');
+              }
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 border border-border rounded-pill text-sm font-semibold text-secondary hover:bg-muted/8 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+          >
+            <Archive className="w-3.5 h-3.5" /> Archive
+          </button>
+
+          <div className="relative">
             <button
               type="button"
-              disabled={isBulkLoading}
-              onClick={() => executeBulk('publish')}
-              className="flex items-center gap-1.5 text-sm font-medium text-secondary hover:text-primary px-2.5 py-1.5 rounded-lg hover:bg-primary/5 disabled:opacity-50 transition-colors"
+              disabled={selectedIds.length === 0 || isBulkLoading}
+              onClick={() => setEditingOptionsOpen((v) => !v)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 border border-border rounded-pill text-sm font-semibold text-secondary hover:bg-muted/8 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
             >
-              <Eye className="w-3.5 h-3.5" /> Publish
+              Editing options <ChevronDown className="w-3.5 h-3.5" />
             </button>
-            <button
-              type="button"
-              disabled={isBulkLoading}
-              onClick={() => executeBulk('unpublish')}
-              className="flex items-center gap-1.5 text-sm font-medium text-secondary hover:text-primary px-2.5 py-1.5 rounded-lg hover:bg-primary/5 disabled:opacity-50 transition-colors"
-            >
-              <EyeOff className="w-3.5 h-3.5" /> Unpublish
-            </button>
-            <button
-              type="button"
-              disabled={isBulkLoading}
-              onClick={() => setShowSaleDialog(true)}
-              className="flex items-center gap-1.5 text-sm font-medium text-secondary hover:text-primary px-2.5 py-1.5 rounded-lg hover:bg-primary/5 disabled:opacity-50 transition-colors"
-            >
-              <Tag className="w-3.5 h-3.5" /> Set sale
-            </button>
-            <button
-              type="button"
-              disabled={isBulkLoading}
-              onClick={handleExport}
-              className="flex items-center gap-1.5 text-sm font-medium text-secondary hover:text-primary px-2.5 py-1.5 rounded-lg hover:bg-primary/5 disabled:opacity-50 transition-colors"
-            >
-              <Download className="w-3.5 h-3.5" /> Export
-            </button>
-            <div className="h-4 w-px bg-border" />
-            <button
-              type="button"
-              disabled={isBulkLoading}
-              onClick={async () => {
-                if (await confirm(`Archive ${selectedIds.length} product${selectedIds.length !== 1 ? 's' : ''}?`, { confirmLabel: 'Archive', destructive: true })) {
-                  executeBulk('archive');
-                }
-              }}
-              className="flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700 px-2.5 py-1.5 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
-            >
-              <Archive className="w-3.5 h-3.5" /> Archive
-            </button>
+            {editingOptionsOpen && selectedIds.length > 0 && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setEditingOptionsOpen(false)} />
+                <div className="absolute left-0 top-full mt-1 z-20 w-48 bg-surface border border-border rounded-xl shadow-lg py-1.5">
+                  <button
+                    type="button"
+                    onClick={() => { setEditingOptionsOpen(false); setShowTitleDialog(true); }}
+                    className="flex items-center gap-2 w-full text-left px-3.5 py-2 text-sm text-secondary hover:bg-muted/8"
+                  >
+                    <Type className="w-3.5 h-3.5" /> Edit titles
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEditingOptionsOpen(false); setShowTagsDialog(true); }}
+                    className="flex items-center gap-2 w-full text-left px-3.5 py-2 text-sm text-secondary hover:bg-muted/8"
+                  >
+                    <Tag className="w-3.5 h-3.5" /> Edit tags
+                  </button>
+                  {/* Edit descriptions/prices, change custom options/production partners/
+                      processing profile/delivery profiles/return policies — real Etsy
+                      offers these too, but no bulk API exists for them yet in this
+                      codebase; omitted rather than wiring a dead menu item. */}
+                </div>
+              </>
+            )}
+          </div>
+
+          <button
+            type="button"
+            disabled={selectedIds.length === 0 || isBulkLoading}
+            onClick={() => setShowSaleDialog(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 border border-border rounded-pill text-sm font-semibold text-secondary hover:bg-muted/8 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+          >
+            <Tag className="w-3.5 h-3.5" /> Set sale
+          </button>
+          <button
+            type="button"
+            disabled={selectedIds.length === 0 || isBulkLoading}
+            onClick={handleExport}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 border border-border rounded-pill text-sm font-semibold text-secondary hover:bg-muted/8 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" /> Export
+          </button>
+
+          {selectedIds.length > 0 && (
             <button
               type="button"
               onClick={() => setSelectedIds([])}
@@ -479,8 +530,8 @@ function ProductsPageInner() {
             >
               <X className="w-3.5 h-3.5" />
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Content */}
         {view === 'grid' ? (
@@ -704,6 +755,110 @@ function ProductsPageInner() {
           </Button>
         </ModalFooter>
       </Modal>
+
+      {/* ── Editing tags dialog ──────────────────────────────────────────────── */}
+      <Modal isOpen={showTagsDialog} onClose={() => setShowTagsDialog(false)} size="sm">
+        <ModalHeader onClose={() => setShowTagsDialog(false)}>
+          Editing tags for {selectedIds.length} listing{selectedIds.length !== 1 ? 's' : ''}
+        </ModalHeader>
+        <ModalBody>
+          <p className="text-sm text-muted mb-4">Add or remove a tag from all selected listings.</p>
+          <div className="flex items-center gap-2">
+            <select
+              value={tagsMode}
+              onChange={(e) => setTagsMode(e.target.value as 'add' | 'remove')}
+              className="h-11 px-3 border border-border rounded-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="add">Add</option>
+              <option value="remove">Remove</option>
+            </select>
+            <input
+              value={tagsValue}
+              onChange={(e) => setTagsValue(e.target.value)}
+              placeholder="Shape, colour, style, function, etc."
+              className="flex-1 h-11 px-3.5 border border-border rounded-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="ghost" onClick={() => setShowTagsDialog(false)}>Cancel</Button>
+          <Button
+            variant="primary"
+            disabled={!tagsValue.trim() || isBulkLoading}
+            onClick={() => {
+              setShowTagsDialog(false);
+              executeBulk('edit-tags', { mode: tagsMode, tag: tagsValue.trim() });
+              setTagsValue('');
+            }}
+          >
+            Apply
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* ── Editing title dialog ─────────────────────────────────────────────── */}
+      <Modal isOpen={showTitleDialog} onClose={() => setShowTitleDialog(false)} size="sm">
+        <ModalHeader onClose={() => setShowTitleDialog(false)}>
+          Editing title for {selectedIds.length} listing{selectedIds.length !== 1 ? 's' : ''}
+        </ModalHeader>
+        <ModalBody>
+          <div className="flex items-center gap-2 mb-3">
+            <select
+              value={titleMode}
+              onChange={(e) => setTitleMode(e.target.value as typeof titleMode)}
+              className="h-11 px-3 border border-border rounded-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="add-front">Add to front</option>
+              <option value="add-end">Add to end</option>
+              <option value="find-replace">Find and replace</option>
+              <option value="delete">Delete</option>
+            </select>
+            {titleMode === 'find-replace' ? (
+              <input
+                value={titleFindText}
+                onChange={(e) => setTitleFindText(e.target.value)}
+                placeholder="Text to find"
+                className="flex-1 h-11 px-3.5 border border-border rounded-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            ) : (
+              <input
+                value={titleText}
+                onChange={(e) => setTitleText(e.target.value)}
+                placeholder={titleMode === 'delete' ? 'Text to delete' : 'Text to add'}
+                className="flex-1 h-11 px-3.5 border border-border rounded-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            )}
+          </div>
+          {titleMode === 'find-replace' && (
+            <input
+              value={titleReplaceText}
+              onChange={(e) => setTitleReplaceText(e.target.value)}
+              placeholder="Replace with"
+              className="w-full h-11 px-3.5 border border-border rounded-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="ghost" onClick={() => setShowTitleDialog(false)}>Cancel</Button>
+          <Button
+            variant="primary"
+            disabled={(titleMode === 'find-replace' ? !titleFindText.trim() : !titleText.trim()) || isBulkLoading}
+            onClick={() => {
+              setShowTitleDialog(false);
+              executeBulk('edit-title', {
+                mode: titleMode,
+                text: titleMode === 'find-replace' ? titleReplaceText : titleText,
+                findText: titleFindText || undefined,
+              });
+              setTitleText('');
+              setTitleFindText('');
+              setTitleReplaceText('');
+            }}
+          >
+            Apply
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }
@@ -714,7 +869,7 @@ export default function ProductsPage() {
   return (
     <>
       <AdminPageHeader
-        title="Products"
+        title="Listings"
         queryKey={['admin-products']}
       />
       <Suspense fallback={<div className="animate-pulse h-96 bg-muted/5 rounded-xl" />}>

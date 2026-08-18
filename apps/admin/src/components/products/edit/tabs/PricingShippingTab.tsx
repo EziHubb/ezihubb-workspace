@@ -5,6 +5,7 @@ import { useFormContext } from 'react-hook-form';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ChevronRight, X, ExternalLink, Lightbulb, Truck, Plus, CheckCircle2, Pencil,
+  Shield, ChevronUp,
 } from 'lucide-react';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -17,6 +18,7 @@ import { Toggle as PrimitiveToggle } from '../primitives/Toggle';
 import { pricedGroupIds } from '../helpers';
 import { DeliveryProfileModal } from '../../../shipping/delivery/DeliveryProfileModal';
 import type { ShippingProfile } from '../../../shipping/delivery/types';
+import { GPSRModal } from '../GPSRModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -66,6 +68,71 @@ function FormField({ label, required, hint, children }: {
       </label>
       {hint && <p className="text-xs text-muted mb-2">{hint}</p>}
       {children}
+    </div>
+  );
+}
+
+// ─── HS Code section (inline expand) ─────────────────────────────────────────
+// Moved here from HowItsMadeTab.tsx — real Etsy places Customs information
+// (and GPSR, below) inside "Delivery, processing, and returns", not "How
+// it's made". Same `hsCode` form field, only the tab it renders in changed.
+
+function HsCodeSection({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [expanded, setExpanded] = useState(!!value);
+
+  return (
+    <div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="max-w-2xl">
+          <h4 className="font-semibold text-secondary">Customs information</h4>
+          <p className="text-sm text-muted mt-1 leading-relaxed">
+            This info is used to prefill a customs form when you purchase an international Shipping Label.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="shrink-0 flex items-center gap-1.5 text-sm font-semibold text-secondary border border-border rounded-lg px-3 py-2 hover:border-primary/40 hover:text-primary transition-colors"
+        >
+          {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+          {value ? 'Edit tariff number' : '+ Add tariff number'}
+        </button>
+      </div>
+
+      {value && !expanded && (
+        <p className="text-sm text-secondary mt-3">
+          HS Code: <code className="font-mono bg-background border border-border rounded px-2 py-0.5 text-xs">{value}</code>
+          <button type="button" onClick={() => onChange('')} className="ml-2 text-muted hover:text-red-500 transition-colors">
+            <X className="w-3 h-3 inline" />
+          </button>
+        </p>
+      )}
+
+      {expanded && (
+        <div className="mt-3 space-y-2">
+          <div className="flex gap-2">
+            <input
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="e.g. 6912.00"
+              className="flex-1 max-w-xs px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 font-mono placeholder:font-sans placeholder:text-muted"
+            />
+            {value && (
+              <button type="button" onClick={() => setExpanded(false)}
+                className="px-3 py-2 text-sm font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5 transition-colors">
+                Done
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-muted">
+            Look up your code at{' '}
+            <a href="https://www.trade-tariff.service.gov.uk/find_commodity" target="_blank" rel="noopener noreferrer"
+              className="text-primary hover:underline inline-flex items-center gap-0.5">
+              trade-tariff.service.gov.uk <ExternalLink className="w-2.5 h-2.5" />
+            </a>
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -415,6 +482,13 @@ export function PricingShippingTab({ product, onSwitchTab, isDigital }: PricingS
   const domGlobal        = watch('domesticGlobalPricing');
   const sku              = watch('sku') ?? '';
   const trackInventory   = watch('trackInventory') ?? false;
+  const hsCode           = watch('hsCode') ?? '';
+  const gpsrInfo         = watch('gpsrInfo');
+  const [showGpsrModal, setShowGpsrModal] = useState(false);
+  const hasGpsr = !!(
+    gpsrInfo &&
+    (gpsrInfo.manufacturerName || gpsrInfo.manufacturerAddress || gpsrInfo.manufacturerEmail)
+  );
 
   // ── Variant pricing — does any variation group carry its own price? ────────
   // Same queryKeys as ItemOptionsTab's VariationsSummaryTable, so these share
@@ -590,10 +664,60 @@ export function PricingShippingTab({ product, onSwitchTab, isDigital }: PricingS
                   onChange={(p) => setValue('returnPolicy', p, { shouldDirty: true })}
                 />
               </FormField>
+
+              {/* GPSR manufacturer and safety information */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="max-w-2xl">
+                  <h4 className="font-semibold text-secondary">GPSR manufacturer and safety information</h4>
+                  <p className="text-sm text-muted mt-1 leading-relaxed">
+                    If you&apos;re a{' '}
+                    <a href="#" className="text-primary underline-offset-2 hover:underline">trader</a>{' '}
+                    selling to{' '}
+                    <a href="#" className="text-primary underline-offset-2 hover:underline">EEA states</a>{' '}
+                    or Northern Ireland (NI), you may need to include manufacturer and safety info to comply
+                    with the{' '}
+                    <a href="#" className="text-primary underline-offset-2 hover:underline">
+                      General Product Safety Regulation
+                    </a>{' '}
+                    (GPSR).
+                  </p>
+
+                  {hasGpsr && (
+                    <div className="mt-2 text-xs text-secondary bg-green-50 border border-green-200 rounded-lg px-3 py-2 space-y-0.5">
+                      {gpsrInfo?.manufacturerName    && <p><strong>Name:</strong> {gpsrInfo.manufacturerName}</p>}
+                      {gpsrInfo?.manufacturerEmail   && <p><strong>Email:</strong> {gpsrInfo.manufacturerEmail}</p>}
+                      {gpsrInfo?.countryOfOrigin     && <p><strong>Country:</strong> {gpsrInfo.countryOfOrigin}</p>}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowGpsrModal(true)}
+                  className="shrink-0 flex items-center gap-1.5 text-sm font-semibold text-secondary border border-border rounded-lg px-3 py-2 hover:border-primary/40 hover:text-primary transition-colors"
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  {hasGpsr ? 'Edit info' : '+ Add info'}
+                </button>
+              </div>
+
+              {/* Customs information / HS Code */}
+              <HsCodeSection
+                value={hsCode}
+                onChange={(v) => setValue('hsCode', v, { shouldDirty: true })}
+              />
             </div>
           </TabSection>
         )}
       </div>
+
+      {/* GPSR modal — API-saving (edit mode only; create mode has no productId yet) */}
+      {product.id && (
+        <GPSRModal
+          productId={product.id}
+          isOpen={showGpsrModal}
+          onClose={() => setShowGpsrModal(false)}
+        />
+      )}
     </div>
   );
 }

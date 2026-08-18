@@ -385,8 +385,10 @@ export class StoresService {
     const store = await this.prisma.store.findUnique({
       where:   { id: storeId },
       include: {
-        owner:   { select: { id: true, email: true, firstName: true, lastName: true } },
+        owner:   { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } },
         payouts: { orderBy: { createdAt: 'desc' }, take: 5 },
+        faqs:    { orderBy: { sortOrder: 'asc' } },
+        _count:  { select: { followers: true } },
       },
     });
     if (!store) throw new NotFoundException('Store not found');
@@ -402,7 +404,7 @@ export class StoresService {
       where: { storeId, isActive: true, deletedAt: null },
     });
 
-    return { ...store, totalProducts };
+    return { ...store, totalProducts, followerCount: store._count.followers };
   }
 
   // ─── Admin: Approve ───────────────────────────────────────────────────────
@@ -748,7 +750,12 @@ export class StoresService {
 
   async adminUpdateStore(
     storeId: string,
-    dto: { name?: string; description?: string; bannerUrl?: string; logoUrl?: string },
+    dto: {
+      name?: string; description?: string; bannerUrl?: string; logoUrl?: string;
+      tagline?: string; location?: string; colorTheme?: string;
+      announcement?: string; aboutHeadline?: string; aboutVideoUrl?: string;
+      aboutPhotoUrls?: string[]; ownerBio?: string; featuredProductIds?: string[];
+    },
   ) {
     const store = await this.prisma.store.findUnique({ where: { id: storeId } });
     if (!store) throw new NotFoundException('Store not found');
@@ -760,6 +767,17 @@ export class StoresService {
         description: dto.description ?? undefined,
         bannerUrl:   dto.bannerUrl   ?? undefined,
         logoUrl:     dto.logoUrl     ?? undefined,
+        tagline:            dto.tagline            ?? undefined,
+        location:           dto.location           ?? undefined,
+        colorTheme:         dto.colorTheme          ?? undefined,
+        aboutHeadline:      dto.aboutHeadline       ?? undefined,
+        aboutVideoUrl:      dto.aboutVideoUrl       ?? undefined,
+        aboutPhotoUrls:     dto.aboutPhotoUrls      ?? undefined,
+        ownerBio:           dto.ownerBio            ?? undefined,
+        featuredProductIds: dto.featuredProductIds  ?? undefined,
+        ...(dto.announcement !== undefined
+          ? { announcement: dto.announcement, announcementUpdatedAt: new Date() }
+          : {}),
       },
     });
 
@@ -771,6 +789,43 @@ export class StoresService {
     }
 
     return updated;
+  }
+
+  // ─── Admin: Shop Home FAQ (Etsy: Shop Manager → edit your storefront) ────
+
+  async adminCreateFaq(storeId: string, question: string, answer: string) {
+    const maxOrder = await this.prisma.storeFaq.aggregate({
+      where: { storeId },
+      _max:  { sortOrder: true },
+    });
+    return this.prisma.storeFaq.create({
+      data: { storeId, question, answer, sortOrder: (maxOrder._max.sortOrder ?? -1) + 1 },
+    });
+  }
+
+  async adminUpdateFaq(storeId: string, faqId: string, dto: { question?: string; answer?: string }) {
+    const faq = await this.prisma.storeFaq.findUnique({ where: { id: faqId } });
+    if (!faq || faq.storeId !== storeId) throw new NotFoundException('FAQ not found');
+    return this.prisma.storeFaq.update({
+      where: { id: faqId },
+      data:  { question: dto.question ?? undefined, answer: dto.answer ?? undefined },
+    });
+  }
+
+  async adminDeleteFaq(storeId: string, faqId: string) {
+    const faq = await this.prisma.storeFaq.findUnique({ where: { id: faqId } });
+    if (!faq || faq.storeId !== storeId) throw new NotFoundException('FAQ not found');
+    await this.prisma.storeFaq.delete({ where: { id: faqId } });
+  }
+
+  async adminReorderFaqs(storeId: string, orderedIds: string[]) {
+    const owned = await this.prisma.storeFaq.findMany({ where: { storeId, id: { in: orderedIds } }, select: { id: true } });
+    const ownedIds = new Set(owned.map((f) => f.id));
+    await this.prisma.$transaction(
+      orderedIds
+        .filter((id) => ownedIds.has(id))
+        .map((id, index) => this.prisma.storeFaq.update({ where: { id }, data: { sortOrder: index } })),
+    );
   }
 
   async adminUploadStoreBanner(storeId: string, file: Express.Multer.File) {

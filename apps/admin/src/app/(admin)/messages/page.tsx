@@ -474,7 +474,7 @@ export default function AdminMessagesPage() {
             ))
           ) : conversations.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted">
-              No conversations found
+              No conversations to see here!
             </div>
           ) : (
             conversations.map((conv) => (

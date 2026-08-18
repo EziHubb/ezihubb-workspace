@@ -4,8 +4,7 @@ import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Plus, X, Check, ExternalLink, Shield, Package2,
-  ChevronUp,
+  Plus, X, Check, ExternalLink, Package2,
 } from 'lucide-react';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -14,7 +13,6 @@ import type {
 } from '../types';
 import { RadioGroupWithDesc }    from '../RadioGroupWithDesc';
 import { CheckboxGroupWithDesc } from '../CheckboxGroupWithDesc';
-import { GPSRModal }             from '../GPSRModal';
 import { useDialog } from '../../../../contexts/DialogContext';
 
 // ─── Layout primitives ────────────────────────────────────────────────────────
@@ -59,68 +57,6 @@ function FormField({ label, required, children }: {
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </p>
       {children}
-    </div>
-  );
-}
-
-// ─── HS Code section (inline expand) ─────────────────────────────────────────
-
-function HsCodeSection({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [expanded, setExpanded] = useState(!!value);
-
-  return (
-    <div>
-      <div className="flex items-start justify-between gap-4">
-        <div className="max-w-2xl">
-          <h4 className="font-semibold text-secondary">Customs information</h4>
-          <p className="text-sm text-muted mt-1 leading-relaxed">
-            This info is used to prefill a customs form when you purchase an international Shipping Label.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="shrink-0 flex items-center gap-1.5 text-sm font-semibold text-secondary border border-border rounded-lg px-3 py-2 hover:border-primary/40 hover:text-primary transition-colors"
-        >
-          {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-          {value ? 'Edit tariff number' : '+ Add tariff number'}
-        </button>
-      </div>
-
-      {value && !expanded && (
-        <p className="text-sm text-secondary mt-3">
-          HS Code: <code className="font-mono bg-background border border-border rounded px-2 py-0.5 text-xs">{value}</code>
-          <button type="button" onClick={() => onChange('')} className="ml-2 text-muted hover:text-red-500 transition-colors">
-            <X className="w-3 h-3 inline" />
-          </button>
-        </p>
-      )}
-
-      {expanded && (
-        <div className="mt-3 space-y-2">
-          <div className="flex gap-2">
-            <input
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder="e.g. 6912.00"
-              className="flex-1 max-w-xs px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 font-mono placeholder:font-sans placeholder:text-muted"
-            />
-            {value && (
-              <button type="button" onClick={() => setExpanded(false)}
-                className="px-3 py-2 text-sm font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5 transition-colors">
-                Done
-              </button>
-            )}
-          </div>
-          <p className="text-xs text-muted">
-            Look up your code at{' '}
-            <a href="https://www.trade-tariff.service.gov.uk/find_commodity" target="_blank" rel="noopener noreferrer"
-              className="text-primary hover:underline inline-flex items-center gap-0.5">
-              trade-tariff.service.gov.uk <ExternalLink className="w-2.5 h-2.5" />
-            </a>
-          </p>
-        </div>
-      )}
     </div>
   );
 }
@@ -370,68 +306,14 @@ const TOOL_OPTIONS: { value: string; label: string; desc?: string; examples?: st
 
 // ─── Main tab ─────────────────────────────────────────────────────────────────
 
-export function HowItsMadeTab({ productId }: { productId?: string }) {
+export function HowItsMadeTab() {
   const { watch, setValue } = useFormContext<ProductEditFormValues>();
 
-  const hsCode     = watch('hsCode')               ?? '';
-  const gpsrInfo   = watch('gpsrInfo');
   const partnerIds = watch('productionPartnerIds') ?? [];
-
-  const [showGpsrModal, setShowGpsrModal] = useState(false);
-
-  const hasGpsr = !!(
-    gpsrInfo &&
-    (gpsrInfo.manufacturerName || gpsrInfo.manufacturerAddress || gpsrInfo.manufacturerEmail)
-  );
 
   return (
     <div className="max-w-[1040px] mx-auto px-6 py-8">
       <div className="bg-surface rounded-card border border-border shadow-card overflow-hidden divide-y divide-border">
-
-        {/* ── GPSR & Customs (Image 13) ────────────────────────────────── */}
-        <div className="px-6 py-7 space-y-6 border-b border-border">
-          {/* GPSR */}
-          <div className="flex items-start justify-between gap-4">
-            <div className="max-w-2xl">
-              <h4 className="font-semibold text-secondary">GPSR manufacturer and safety information</h4>
-              <p className="text-sm text-muted mt-1 leading-relaxed">
-                If you're a{' '}
-                <a href="#" className="text-primary underline-offset-2 hover:underline">trader</a>{' '}
-                selling to{' '}
-                <a href="#" className="text-primary underline-offset-2 hover:underline">EEA states</a>{' '}
-                or Northern Ireland (NI), you may need to include manufacturer and safety info to comply
-                with the{' '}
-                <a href="#" className="text-primary underline-offset-2 hover:underline">
-                  General Product Safety Regulation
-                </a>{' '}
-                (GPSR).
-              </p>
-
-              {/* Summary of saved GPSR info */}
-              {hasGpsr && (
-                <div className="mt-2 text-xs text-secondary bg-green-50 border border-green-200 rounded-lg px-3 py-2 space-y-0.5">
-                  {gpsrInfo?.manufacturerName    && <p><strong>Name:</strong> {gpsrInfo.manufacturerName}</p>}
-                  {gpsrInfo?.manufacturerEmail   && <p><strong>Email:</strong> {gpsrInfo.manufacturerEmail}</p>}
-                  {gpsrInfo?.countryOfOrigin     && <p><strong>Country:</strong> {gpsrInfo.countryOfOrigin}</p>}
-                </div>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowGpsrModal(true)}
-              className="shrink-0 flex items-center gap-1.5 text-sm font-semibold text-secondary border border-border rounded-lg px-3 py-2 hover:border-primary/40 hover:text-primary transition-colors"
-            >
-              <Shield className="w-3.5 h-3.5" />
-              {hasGpsr ? 'Edit info' : '+ Add info'}
-            </button>
-          </div>
-
-          {/* HS Code / Customs */}
-          <HsCodeSection
-            value={hsCode}
-            onChange={(v) => setValue('hsCode', v, { shouldDirty: true })}
-          />
-        </div>
 
         {/* ── How it's made (Images 13-15) ────────────────────────────── */}
         <TabSection
@@ -464,15 +346,6 @@ export function HowItsMadeTab({ productId }: { productId?: string }) {
           </div>
         </TabSection>
       </div>
-
-      {/* GPSR modal — API-saving (edit mode only; create mode has no productId yet) */}
-      {productId && (
-        <GPSRModal
-          productId={productId}
-          isOpen={showGpsrModal}
-          onClose={() => setShowGpsrModal(false)}
-        />
-      )}
     </div>
   );
 }

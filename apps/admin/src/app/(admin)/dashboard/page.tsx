@@ -1,7 +1,7 @@
 import {
   DollarSign, PackageSearch, Clock, Hammer, Store, AlertTriangle,
   ShoppingBag, CheckCircle2, Flag, CreditCard, Star,
-  TrendingUp, BarChart2, ShieldCheck, Package, AlertOctagon, Circle,
+  TrendingUp, BarChart2, ShieldCheck, Package,
 } from 'lucide-react';
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
@@ -21,6 +21,7 @@ import type { ReviewDto } from '../../../components/dashboard/PendingReviewsCard
 import { fmtAmount, fmtRelative, unwrapArr, safeArr } from '../../../lib/fmt';
 import { STORE_CONTEXT_COOKIE } from '../../../lib/store-context';
 import { resolveInStoreMode, isActingAsShopOwner } from '../../../lib/store-context-shared';
+import { ShopOwnerHome } from '../../../components/dashboard/ShopOwnerHome';
 
 export const metadata = { title: 'Dashboard — EziHubb Admin' };
 export const dynamic  = 'force-dynamic';
@@ -83,6 +84,10 @@ interface TopStoresResponse {
 }
 
 interface ShopHealth {
+  shopName:       string | null;
+  shopSlug:       string | null;
+  shopLogoUrl:    string | null;
+  activeListings: number;
   checklist: { shopName: boolean; logo: boolean; banner: boolean; story: boolean; sellerPhoto: boolean };
   listingsNeedingTitleWork: number;
   performanceScore: number | null;
@@ -189,102 +194,37 @@ export default async function DashboardPage() {
   const activityFeed  = safeArr(activityRaw);
   const topStores     = safeArr(topStoresData.stores);
 
+  const storefrontUrl = isShopOwner && shopHealth?.shopSlug
+    ? `${process.env.NEXT_PUBLIC_CLIENT_URL ?? 'http://localhost:3000'}/shops/${shopHealth.shopSlug}`
+    : null;
+
   return (
     <>
-      <AdminPageHeader
-        title="Dashboard"
-        subtitle={isShopOwner ? 'Your store overview' : 'Platform overview at a glance'}
-        queryKey={false}
-      />
+      {!isShopOwner && (
+        <AdminPageHeader
+          title="Dashboard"
+          subtitle="Platform overview at a glance"
+          queryKey={false}
+        />
+      )}
 
-      {/* ── Shop owner: search visibility + shop checklist + top tasks ─────── */}
-      {isShopOwner && shopHealth && (() => {
-        const checklistItems: { key: keyof ShopHealth['checklist']; label: string; desc?: string; href: string }[] = [
-          { key: 'shopName',    label: 'Shop name added',   href: '/settings' },
-          { key: 'logo',        label: 'Logo added',        href: '/settings' },
-          { key: 'banner',      label: 'Banner added',      href: '/settings' },
-          { key: 'story',       label: 'Share your story',  desc: 'Tell buyers about who you are, what inspires you, and how you create', href: '/settings' },
-          { key: 'sellerPhoto', label: 'Upload a seller photo', desc: 'Introduce yourself with a friendly, clear photo', href: '/settings' },
-        ];
-        const doneCount = checklistItems.filter((c) => shopHealth.checklist[c.key]).length;
-        const riskFactors = (shopHealth.listingsNeedingTitleWork > 0 ? 1 : 0) + (doneCount < checklistItems.length ? 1 : 0);
-
-        return (
-          <>
-            {riskFactors > 0 && (
-              <div className="bg-[#F3F1EC] rounded-card p-5 mb-6 flex items-center justify-between gap-4 flex-wrap">
-                <div className="flex items-start gap-3">
-                  <AlertOctagon className="w-5 h-5 text-warning shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-bold text-secondary">
-                      {riskFactors} factor{riskFactors !== 1 ? 's' : ''} risk{riskFactors === 1 ? 's' : ''} lowering your search visibility
-                    </p>
-                    <p className="text-xs text-muted mt-0.5">Improving photos, listing info, and more can help how you show up in search.</p>
-                  </div>
-                </div>
-                <Link href="/search-visibility" className="px-4 py-2 bg-secondary hover:bg-secondary/90 text-white text-sm font-bold rounded-pill transition-colors shrink-0">
-                  View search visibility
-                </Link>
-              </div>
-            )}
-
-            {doneCount < checklistItems.length && (
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h2 className="font-display text-lg font-bold text-secondary">Customise your shop</h2>
-                    <p className="text-xs text-muted mt-0.5">Showcase your brand&apos;s personality and build trust with buyers</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="w-20 h-1 bg-border rounded-full overflow-hidden">
-                      <div className="h-full bg-secondary" style={{ width: `${(doneCount / checklistItems.length) * 100}%` }} />
-                    </div>
-                    <span className="text-xs font-semibold text-muted">{doneCount}/{checklistItems.length}</span>
-                  </div>
-                </div>
-                <div className="bg-surface border border-border rounded-card divide-y divide-border overflow-hidden">
-                  {checklistItems.map((item) => {
-                    const done = shopHealth.checklist[item.key];
-                    return (
-                      <Link key={item.key} href={item.href} className="flex items-start gap-3 px-4 py-3.5 hover:bg-background transition-colors">
-                        {done ? (
-                          <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
-                        ) : (
-                          <Circle className="w-5 h-5 text-border shrink-0 mt-0.5" strokeDasharray="3 3" />
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-secondary">{item.label} →</p>
-                          {!done && item.desc && <p className="text-xs text-muted mt-0.5">{item.desc}</p>}
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="mb-8">
-              <h2 className="font-display text-lg font-bold text-secondary mb-3">Top tasks</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-surface border border-border rounded-card p-4">
-                  <p className="text-sm font-bold text-secondary mb-1">Orders</p>
-                  <p className="text-xs text-muted">{shopHealth.topTasks.overdueOrders} overdue order{shopHealth.topTasks.overdueOrders !== 1 ? 's' : ''}</p>
-                  <p className="text-xs text-muted">{shopHealth.topTasks.ordersToSendToday} order{shopHealth.topTasks.ordersToSendToday !== 1 ? 's' : ''} to send today</p>
-                </div>
-                <div className="bg-surface border border-border rounded-card p-4">
-                  <p className="text-sm font-bold text-secondary mb-1">Messages</p>
-                  <p className="text-xs text-muted">{shopHealth.topTasks.helpRequests} help request{shopHealth.topTasks.helpRequests !== 1 ? 's' : ''}</p>
-                </div>
-                <div className="bg-surface border border-border rounded-card p-4">
-                  <p className="text-sm font-bold text-secondary mb-1">Listings</p>
-                  <p className="text-xs text-muted">{shopHealth.topTasks.soldOutListings} item{shopHealth.topTasks.soldOutListings !== 1 ? 's' : ''} sold out</p>
-                  <p className="text-xs text-muted">{shopHealth.topTasks.inactiveListings} listing{shopHealth.topTasks.inactiveListings !== 1 ? 's' : ''} inactive</p>
-                </div>
-              </div>
-            </div>
-          </>
-        );
-      })()}
+      {/* ── Shop owner: Etsy-parity Home / Recent activity tabs ─────────────── */}
+      {isShopOwner && (
+        shopHealth ? (
+          <ShopOwnerHome
+            shopHealth={shopHealth}
+            revenueThisMonth={kpis.revenueThisMonth ?? 0}
+            ordersThisMonth={kpis.ordersThisMonth ?? 0}
+            storefrontUrl={storefrontUrl}
+          />
+        ) : (
+          // shop-health fetch failed (safeFetch's null fallback) — without this,
+          // the shop owner saw a completely blank page: no header, no content,
+          // since every other section on this page is now gated on isShopOwner
+          // being false. A minimal header keeps the page from going empty.
+          <AdminPageHeader title="Dashboard" subtitle="Your store overview" queryKey={false} />
+        )
+      )}
 
       {/* ── SUPER_ADMIN-only sections ─────────────────────────────────────── */}
       {!isShopOwner && (<>
@@ -352,7 +292,12 @@ export default async function DashboardPage() {
       </div>
       )}
 
-      {/* ── Row 1: Revenue KPI cards ──────────────────────────────────────── */}
+      {/* ── Rows 1-3: deep analytics (revenue/orders charts, top products, reviews) —
+          real Etsy's Shop Manager Home tab doesn't show these at all (it only shows
+          the compact Stats row inside ShopOwnerHome); this richer view stays available
+          to SUPER_ADMIN's platform dashboard, and to shop owners via the dedicated
+          Stats module, without deleting any of the underlying data-fetching. ── */}
+      {!isShopOwner && (<>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
         <StatCard
           label="Revenue This Month"
@@ -381,7 +326,6 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* ── Row 2: Charts ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[65fr_35fr] gap-5 mb-6">
         <RevenueChart
           initialData={revenueData as RevenueDataPoint[]}
@@ -390,7 +334,6 @@ export default async function DashboardPage() {
         <OrdersDonut data={ordersByStatus} />
       </div>
 
-      {/* ── Row 3: Tables ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[60fr_40fr] gap-5 mb-8">
         <TopProductsTable products={topProducts} />
         <PendingReviewsCard
@@ -398,6 +341,7 @@ export default async function DashboardPage() {
           totalPending={totalPending}
         />
       </div>
+      </>)}
 
       {/* ── Row 4: Activity feed + Top stores — SUPER_ADMIN only ── */}
       {!isShopOwner && (<>
@@ -487,7 +431,9 @@ export default async function DashboardPage() {
       </div>
       </>)}
 
-      {/* ── Row 5: SEO Health ─────────────────────────────────────────────── */}
+      {/* ── Row 5: SEO Health — SUPER_ADMIN only (real Etsy funnels shop owners
+          to /search-visibility via the risk banner instead) ── */}
+      {!isShopOwner && (
       <section>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-secondary">SEO Health</h3>
@@ -522,6 +468,7 @@ export default async function DashboardPage() {
           />
         </div>
       </section>
+      )}
     </>
   );
 }

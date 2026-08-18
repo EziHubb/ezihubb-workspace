@@ -55,7 +55,9 @@ enum DiscountType {
   FREE_SHIPPING
 }
 
-/** SHOP_WIDE = every current/future listing in the store; SPECIFIC_LISTINGS = only the linked PromotionProduct rows. Only meaningful for autoApply promotions — a buyer-entered coupon code always applies shop-wide by design (there's nothing to scope to a listing before the code is typed in). */
+/**
+ * SHOP_WIDE = every current/future listing in the store; SPECIFIC_LISTINGS = only the linked PromotionProduct rows. Only meaningful for autoApply promotions — a buyer-entered coupon code always applies shop-wide by design (there's nothing to scope to a listing before the code is typed in).
+ */
 enum PromotionScope {
   SHOP_WIDE
   SPECIFIC_LISTINGS
@@ -419,18 +421,18 @@ model Store {
   strikeCount      Int              @default(0)
   strikeRecords    StrikeRecord[]
 
-  products         Product[]
-  categories       Category[]
-  storeOrders      StoreOrder[]
-  ledgerEntries    SellerLedgerEntry[]
-  payouts          SellerPayout[]
+  products           Product[]
+  categories         Category[]
+  storeOrders        StoreOrder[]
+  ledgerEntries      SellerLedgerEntry[]
+  payouts            SellerPayout[]
   shopSections       ShopSection[]
   shippingProfiles   ShippingProfile[]
   processingProfiles ProcessingProfile[]
-  promotions       Promotion[]
-  bundleOffers     BundleOffer[]
-  reviews          Review[]            @relation("StoreReviews")
-  conversations    Conversation[]
+  promotions         Promotion[]
+  bundleOffers       BundleOffer[]
+  reviews            Review[]            @relation("StoreReviews")
+  conversations      Conversation[]
 
   // ── Performance Score (NFT-03) ────────────────────────────────────────────
   performanceScore      Int?
@@ -449,18 +451,18 @@ model Store {
   followers StoreFollow[]
 
   // ── Finances (Etsy: Shop Manager → Finances) ──────────────────────────────
-  currency           String            @default("USD") @db.VarChar(3)
+  currency           String             @default("USD") @db.VarChar(3)
   stripeCustomerId   String?
-  autoBillingEnabled Boolean           @default(true)
+  autoBillingEnabled Boolean            @default(true)
   bankAccount        StoreBankAccount?
   billingCards       StoreBillingCard[]
   taxInfo            StoreTaxInfo?
 
   // ── Marketing: Share & Save / Offsite Ads (Etsy parity) ───────────────────
-  shareSaveEnabled   Boolean          @default(false)
-  shareSaveJoinedAt  DateTime?
-  offsiteAdsOptedOut Boolean          @default(false)
-  linkClicks         StoreLinkClick[]
+  shareSaveEnabled       Boolean                 @default(false)
+  shareSaveJoinedAt      DateTime?
+  offsiteAdsOptedOut     Boolean                 @default(false)
+  linkClicks             StoreLinkClick[]
   targetedOfferCampaigns TargetedOfferCampaign[]
 
   // ── Marketing: Social media (UI-parity only — no real OAuth/posting) ─────
@@ -468,16 +470,48 @@ model Store {
   socialPosts       SocialPost[]
 
   // ── Marketing: Let buyers make offers ─────────────────────────────────────
-  offersEnabled            Boolean      @default(false)
-  offersScope              OffersScope  @default(ALL_LISTINGS)
-  /** Null = "Receive all offers" (no floor on how low a buyer can offer). */
-  offersMaxDiscountPercent Decimal?     @db.Decimal(5, 2)
+  offersEnabled            Boolean             @default(false)
+  offersScope              OffersScope         @default(ALL_LISTINGS)
+  /**
+   * Null = "Receive all offers" (no floor on how low a buyer can offer).
+   */
+  offersMaxDiscountPercent Decimal?            @db.Decimal(5, 2)
   offerListings            StoreOfferListing[]
   buyerOffers              BuyerOffer[]
+
+  // ── Shop Home editor (Etsy: Shop Manager → edit your storefront) ──────────
+  // `description` already backs both the dashboard "Share your story" checklist
+  // item AND this page's "About > your story" field — same concept, one column,
+  // not duplicated here.
+  tagline               String? // short line shown under the shop name, e.g. "Tis the season to shine by Ezihubb"
+  location              String? // free-text display location, e.g. "Hai Phong, Vietnam" — not used for shipping/tax
+  colorTheme            String? // hex or named theme token for the shop-home banner accent
+  announcement          String?    @db.Text
+  announcementUpdatedAt DateTime?
+  aboutHeadline         String?
+  aboutVideoUrl         String?
+  aboutPhotoUrls        String[] // up to 5, enforced in the DTO
+  ownerBio              String?    @db.Text // "Shop members" personal bio — this app has one owner per store, not a team roster
+  featuredProductIds    String[] // up to 4 manually pinned listings for the "Featured area" grid
+  faqs                  StoreFaq[]
 
   @@index([slug])
   @@index([status])
   @@index([ownerId])
+}
+
+// ── Shop Home FAQ entries ─────────────────────────────────────────────────────
+
+model StoreFaq {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  question  String
+  answer    String   @db.Text
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([storeId])
 }
 
 // ── Finances: seller deposit destination, billing method, tax profile ────────
@@ -486,17 +520,17 @@ model Store {
 // and so a store can hold >1 billing card, matching Etsy's own data shape.
 
 model StoreBankAccount {
-  id                      String          @id @default(cuid())
-  storeId                 String          @unique
-  store                   Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  accountHolderName       String
-  bankName                String
-  accountNumberEncrypted  String // full number, AES-256-GCM via EncryptionService
-  accountNumberLast4      String // denormalized for display — never decrypt just to show "···· 0085"
-  country                 String          @db.VarChar(2)
-  depositSchedule         DepositSchedule @default(WEEKLY)
-  createdAt               DateTime        @default(now())
-  updatedAt               DateTime        @updatedAt
+  id                     String          @id @default(cuid())
+  storeId                String          @unique
+  store                  Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  accountHolderName      String
+  bankName               String
+  accountNumberEncrypted String // full number, AES-256-GCM via EncryptionService
+  accountNumberLast4     String // denormalized for display — never decrypt just to show "···· 0085"
+  country                String          @db.VarChar(2)
+  depositSchedule        DepositSchedule @default(WEEKLY)
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
 }
 
 model StoreBillingCard {
@@ -507,8 +541,8 @@ model StoreBillingCard {
   fingerprint           String?
   brand                 String
   last4                 String
-  expMonth               Int
-  expYear                Int
+  expMonth              Int
+  expYear               Int
   cardholderName        String
   isDefault             Boolean  @default(false)
   createdAt             DateTime @default(now())
@@ -518,22 +552,22 @@ model StoreBillingCard {
 }
 
 model StoreTaxInfo {
-  id             String     @id @default(cuid())
-  storeId        String     @unique
-  store          Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  sellerType     SellerType @default(INDIVIDUAL)
-  fullLegalName  String
+  id                  String     @id @default(cuid())
+  storeId             String     @unique
+  store               Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  sellerType          SellerType @default(INDIVIDUAL)
+  fullLegalName       String
   taxpayerIdEncrypted String? // encrypted; nullable until the seller fills it in
-  dateOfBirth    DateTime?
-  country        String     @db.VarChar(2)
-  streetAddress  String
-  flatOther      String?
-  city           String
-  province       String?
-  postCode       String?
-  phone          String?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  dateOfBirth         DateTime?
+  country             String     @db.VarChar(2)
+  streetAddress       String
+  flatOther           String?
+  city                String
+  province            String?
+  postCode            String?
+  phone               String?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
 }
 
 model StoreFollow {
@@ -550,36 +584,36 @@ model StoreFollow {
 }
 
 model StoreOrder {
-  id             String                  @id @default(cuid())
-  orderId        String
-  order          Order                   @relation(fields: [orderId], references: [id])
-  storeId        String
-  store          Store                   @relation(fields: [storeId], references: [id])
-  status         OrderStatus             @default(PENDING_PAYMENT)
-  subtotal       Decimal                 @db.Decimal(10, 2)
-  discountAmount Decimal                 @default(0) @db.Decimal(10, 2)
-  shippingCost   Decimal                 @default(0) @db.Decimal(10, 2)
-  platformFee    Decimal                 @db.Decimal(10, 2)
-  sellerEarnings Decimal                 @db.Decimal(10, 2)
-  trackingNumber String?
-  trackingUrl    String?
-  carrier        String?
-  shippedAt      DateTime?
-  deliveredAt    DateTime?
-  sellerNotes    String?
+  id                       String                  @id @default(cuid())
+  orderId                  String
+  order                    Order                   @relation(fields: [orderId], references: [id])
+  storeId                  String
+  store                    Store                   @relation(fields: [storeId], references: [id])
+  status                   OrderStatus             @default(PENDING_PAYMENT)
+  subtotal                 Decimal                 @db.Decimal(10, 2)
+  discountAmount           Decimal                 @default(0) @db.Decimal(10, 2)
+  shippingCost             Decimal                 @default(0) @db.Decimal(10, 2)
+  platformFee              Decimal                 @db.Decimal(10, 2)
+  sellerEarnings           Decimal                 @db.Decimal(10, 2)
+  trackingNumber           String?
+  trackingUrl              String?
+  carrier                  String?
+  shippedAt                DateTime?
+  deliveredAt              DateTime?
+  sellerNotes              String?
   // Only `Store.deliveryUpgradesEnabled` (a shop-level toggle) existed before —
   // this is the per-order flag so the Orders "Upgrade requested" filter is
   // real. No buyer-facing upgrade-selection UI exists yet at checkout, so
   // this stays false until that flow is built; the field/filter itself is
   // no longer decorative.
-  deliveryUpgradeRequested Boolean @default(false)
-  payoutId       String?
-  payout         SellerPayout?           @relation(fields: [payoutId], references: [id])
-  items          OrderItem[]
-  fulfillments   StoreOrderFulfillment[]
-  ledgerEntries  SellerLedgerEntry[]
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
+  deliveryUpgradeRequested Boolean                 @default(false)
+  payoutId                 String?
+  payout                   SellerPayout?           @relation(fields: [payoutId], references: [id])
+  items                    OrderItem[]
+  fulfillments             StoreOrderFulfillment[]
+  ledgerEntries            SellerLedgerEntry[]
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
 
   // The buyer's `ezihubb_visitor` cookie at checkout time — lets Offsite Ads
   // cross-reference an external-referrer click logged on a DIFFERENT store's
@@ -644,9 +678,9 @@ model SellerLedgerEntry {
 // discriminated by `kind` lets that resolution be a single query rather than
 // two independent, possibly-conflicting checks.
 model StoreLinkClick {
-  id          String         @id @default(cuid())
+  id          String        @id @default(cuid())
   storeId     String
-  store       Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store       Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
   kind        LinkClickKind
   visitorId   String // cookie-based visitor id of whoever CLICKED, same mechanism as affiliate tracking
   // Etsy Share & Save rewards the person who SHARED the link, not necessarily
@@ -662,7 +696,7 @@ model StoreLinkClick {
   source      String?
   convertedAt DateTime?
   orderId     String?
-  createdAt   DateTime       @default(now())
+  createdAt   DateTime      @default(now())
 
   @@index([storeId, kind, createdAt])
   @@index([visitorId, createdAt])
@@ -696,11 +730,11 @@ model TargetedOfferCampaign {
 // the "Social account settings" toggle UI has somewhere real to persist state,
 // and SocialPost is the seller's own post-history record, not a real publish). ──
 model StoreSocialConnection {
-  id          String                  @id @default(cuid())
+  id          String                 @id @default(cuid())
   storeId     String
-  store       Store                   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store       Store                  @relation(fields: [storeId], references: [id], onDelete: Cascade)
   platform    SocialPlatform
-  status      SocialConnectionStatus  @default(DISCONNECTED)
+  status      SocialConnectionStatus @default(DISCONNECTED)
   connectedAt DateTime?
 
   @@unique([storeId, platform])
@@ -840,10 +874,10 @@ model ProductTag {
 // ─── Product ─────────────────────────────────────────────────────────────────
 
 model Product {
-  id                  String        @id @default(cuid())
+  id                  String                   @id @default(cuid())
   name                String
   slug                String
-  sku                 String        @unique
+  sku                 String                   @unique
   description         String
   shortDescription    String?
   // Postgres-generated (STORED, auto-maintained on every insert/update — see
@@ -851,22 +885,22 @@ model Product {
   // it Unsupported keeps it visible in introspection without Prisma Client
   // trying to read/write it — search.service.ts touches it only via raw SQL.
   searchVector        Unsupported("tsvector")? @map("search_vector")
-  basePrice           Decimal       @db.Decimal(10, 2)
-  compareAtPrice      Decimal?      @db.Decimal(10, 2)
-  isPersonalizable    Boolean       @default(true)
-  isActive            Boolean       @default(true)
-  status              ProductStatus @default(ACTIVE)
-  productType         ProductType   @default(PHYSICAL)
-  isFeatured          Boolean       @default(false)
-  viewCount           Int           @default(0)
-  soldCount           Int           @default(0)
-  processingDays      Int           @default(3)
+  basePrice           Decimal                  @db.Decimal(10, 2)
+  compareAtPrice      Decimal?                 @db.Decimal(10, 2)
+  isPersonalizable    Boolean                  @default(true)
+  isActive            Boolean                  @default(true)
+  status              ProductStatus            @default(ACTIVE)
+  productType         ProductType              @default(PHYSICAL)
+  isFeatured          Boolean                  @default(false)
+  viewCount           Int                      @default(0)
+  soldCount           Int                      @default(0)
+  processingDays      Int                      @default(3)
   categoryId          String
-  category            Category      @relation(fields: [categoryId], references: [id])
+  category            Category                 @relation(fields: [categoryId], references: [id])
   customizationConfig Json?
   deletedAt           DateTime?
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
 
   moderationStatus ModerationStatus @default(PENDING)
   lastModeratedAt  DateTime?
@@ -1445,7 +1479,9 @@ model GiftCardUsage {
 
 model Promotion {
   id             String       @id @default(cuid())
-  /** Null only for an autoApply sale (no buyer-entered code) — every coupon-code promotion keeps a required, unique code. */
+  /**
+   * Null only for an autoApply sale (no buyer-entered code) — every coupon-code promotion keeps a required, unique code.
+   */
   code           String?      @unique
   type           DiscountType
   value          Decimal      @db.Decimal(10, 2)
@@ -1461,14 +1497,22 @@ model Promotion {
   store          Store?       @relation(fields: [storeId], references: [id])
   createdAt      DateTime     @default(now())
 
-  /** Etsy "Set up a sale" — silently applied at the best-price calculation, no buyer code entry. False = today's coupon-code behavior. */
+  /**
+   * Etsy "Set up a sale" — silently applied at the best-price calculation, no buyer code entry. False = today's coupon-code behavior.
+   */
   autoApply          Boolean        @default(false)
   scope              PromotionScope @default(SHOP_WIDE)
-  /** Nullable = "Everywhere". ISO 3166-1 alpha-2, checked against the buyer's shipping country at checkout. */
-  country             String?
-  /** Buyer-facing terms shown on eligible listings during the sale — distinct from `description`, which stays admin-only. */
+  /**
+   * Nullable = "Everywhere". ISO 3166-1 alpha-2, checked against the buyer's shipping country at checkout.
+   */
+  country            String?
+  /**
+   * Buyer-facing terms shown on eligible listings during the sale — distinct from `description`, which stays admin-only.
+   */
   termsAndConditions String?
-  /** Set only for a personalized targeted-offer send (A4) — ties a single-use promo to the one buyer it was emailed to. */
+  /**
+   * Set only for a personalized targeted-offer send (A4) — ties a single-use promo to the one buyer it was emailed to.
+   */
   targetUserId       String?
 
   usages   PromotionUsage[]
@@ -1509,12 +1553,12 @@ model PromotionUsage {
 // ─── Bundle offer ("Buy them together") ───────────────────────────────────────
 
 model BundleOffer {
-  id              String                @id @default(cuid())
+  id              String   @id @default(cuid())
   storeId         String
-  store           Store                 @relation(fields: [storeId], references: [id])
-  discountPercent Decimal               @db.Decimal(5, 2)
-  isActive        Boolean               @default(true)
-  createdAt       DateTime              @default(now())
+  store           Store    @relation(fields: [storeId], references: [id])
+  discountPercent Decimal  @db.Decimal(5, 2)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
 
   products BundleOfferProduct[]
 
@@ -1547,20 +1591,22 @@ model StoreOfferListing {
 }
 
 model BuyerOffer {
-  id            String           @id @default(cuid())
-  productId     String
-  product       Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
-  buyerId       String
-  buyer         User             @relation(fields: [buyerId], references: [id], onDelete: Cascade)
-  storeId       String
-  store         Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  offeredPrice  Decimal          @db.Decimal(10, 2)
-  /** Set only when the seller counters instead of accepting/rejecting outright. */
-  counterPrice  Decimal?         @db.Decimal(10, 2)
-  status        BuyerOfferStatus @default(PENDING)
-  expiresAt     DateTime
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id           String           @id @default(cuid())
+  productId    String
+  product      Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyerId      String
+  buyer        User             @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  storeId      String
+  store        Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  offeredPrice Decimal          @db.Decimal(10, 2)
+  /**
+   * Set only when the seller counters instead of accepting/rejecting outright.
+   */
+  counterPrice Decimal?         @db.Decimal(10, 2)
+  status       BuyerOfferStatus @default(PENDING)
+  expiresAt    DateTime
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   @@index([storeId, status])
   @@index([productId])
@@ -2223,7 +2269,7 @@ model Campaign {
 model SearchTermDailyStat {
   id           String   @id @default(cuid())
   term         String
-  date         String   // YYYY-MM-DD
+  date         String // YYYY-MM-DD
   searches     Int      @default(0)
   resultsCount Int      @default(0)
   clicks       Int      @default(0)
@@ -2240,8 +2286,10 @@ model SearchTermDailyStat {
   @@index([category, date])
 }
 
-/** A seller "watchlisting" a keyword in the marketplace-insights tool, to
- *  revisit its trend later — mirrors Etsy Shop Manager's "Saved searches". */
+/**
+ * A seller "watchlisting" a keyword in the marketplace-insights tool, to
+ * revisit its trend later — mirrors Etsy Shop Manager's "Saved searches".
+ */
 model SavedSearchTerm {
   id        String   @id @default(cuid())
   userId    String
@@ -2253,17 +2301,19 @@ model SavedSearchTerm {
   @@index([userId])
 }
 
-/** Thumbs up/down on a "similar search term" suggestion — SearchService.
- *  getRelated() uses the net score to re-rank/filter future suggestions for
- *  the same source term, so the "related terms" list actually improves from
- *  feedback instead of just collecting unused signal. */
+/**
+ * Thumbs up/down on a "similar search term" suggestion — SearchService.
+ * getRelated() uses the net score to re-rank/filter future suggestions for
+ * the same source term, so the "related terms" list actually improves from
+ * feedback instead of just collecting unused signal.
+ */
 model RelatedTermFeedback {
-  id            String   @id @default(cuid())
-  sourceTerm    String
-  relatedTerm   String
-  helpfulCount    Int    @default(0)
-  notHelpfulCount Int    @default(0)
-  updatedAt     DateTime @updatedAt
+  id              String   @id @default(cuid())
+  sourceTerm      String
+  relatedTerm     String
+  helpfulCount    Int      @default(0)
+  notHelpfulCount Int      @default(0)
+  updatedAt       DateTime @updatedAt
 
   @@unique([sourceTerm, relatedTerm])
   @@index([sourceTerm])

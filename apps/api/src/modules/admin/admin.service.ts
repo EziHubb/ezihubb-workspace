@@ -368,7 +368,7 @@ export class AdminService {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
       select: {
-        name: true, logoUrl: true, bannerUrl: true, description: true,
+        name: true, slug: true, logoUrl: true, bannerUrl: true, description: true,
         performanceScore: true, scoreShipping: true, scoreRefund: true, scoreReview: true, scoreResponse: true, scoreBadge: true,
         owner: { select: { avatarUrl: true } },
       },
@@ -403,6 +403,10 @@ export class AdminService {
     const listingsNeedingTitleWork = activeListingNames.filter((p) => p.name.length < 40).length;
 
     return {
+      shopName:       store?.name ?? null,
+      shopSlug:       store?.slug ?? null,
+      shopLogoUrl:    store?.logoUrl ?? null,
+      activeListings: activeListingNames.length,
       checklist: {
         shopName:    !!store?.name,
         logo:        !!store?.logoUrl,

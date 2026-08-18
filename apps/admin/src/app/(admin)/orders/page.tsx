@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   Search, Download, Package, ChevronDown, X, SlidersHorizontal,
-  Check, Filter,
+  Check, Filter, RefreshCw, ThumbsUp, ThumbsDown,
 } from 'lucide-react';
 import { subDays, addDays } from 'date-fns';
 import { OrderStatusBadge } from '../../../components/orders/OrderStatusBadge';
@@ -284,7 +285,7 @@ function FilterSidebar({
         </p>
         {hasFilters && (
           <button type="button" onClick={onClear} className="text-xs text-muted hover:text-error underline">
-            Clear all
+            Reset filters
           </button>
         )}
       </div>
@@ -311,15 +312,32 @@ function FilterSidebar({
         </div>
       </div>
 
-      {/* Destination */}
+      {/* Destination — real Etsy also offers "Everywhere else" (i.e. not the top
+          2 countries), which needs a NOT-IN filter the orders API doesn't support
+          yet (only equality on a single country); left out rather than faked. */}
       <div>
         <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">Destination</p>
-        <input
-          value={filters.country}
-          onChange={(e) => onChange({ country: e.target.value })}
-          placeholder="Country code (e.g. US)"
-          className="w-full px-3 py-1.5 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
-        />
+        <div className="space-y-1">
+          {[
+            { value: '',   label: 'All' },
+            { value: 'VN', label: 'Vietnam' },
+            { value: 'US', label: 'United States' },
+          ].map((d) => (
+            <button
+              key={d.value}
+              type="button"
+              onClick={() => onChange({ country: d.value })}
+              className={[
+                'w-full text-left px-3 py-1.5 text-sm rounded-button transition-colors',
+                filters.country === d.value
+                  ? 'bg-primary/10 text-primary font-semibold'
+                  : 'text-secondary hover:bg-muted/8',
+              ].join(' ')}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Order attributes */}
@@ -559,10 +577,34 @@ export default function OrdersPage() {
           {isLoading ? (
             <div className="py-16 text-center text-sm text-muted">Loading orders…</div>
           ) : orders.length === 0 ? (
-            <div className="py-16 text-center">
+            <div className="py-16 text-center px-4">
               <Package className="w-10 h-10 text-border mx-auto mb-3" />
-              <p className="text-secondary font-medium">No orders found</p>
-              <p className="text-sm text-muted mt-1">Try adjusting your filters or search term.</p>
+              <p className="text-secondary font-medium mb-1">
+                {activeFilterCount > 0 || activeTab || debouncedSearch ? 'No orders found' : 'No orders here right now'}
+              </p>
+              {(activeFilterCount > 0 || activeTab || debouncedSearch) && (
+                <p className="text-sm text-muted">Try adjusting your filters or search term.</p>
+              )}
+              <div className="max-w-sm mx-auto text-left bg-background border border-border rounded-card p-4 flex items-start gap-3 mt-6">
+                <RefreshCw className="w-8 h-8 text-primary shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-secondary">Are your processing times accurate?</p>
+                  <p className="text-xs text-muted mt-1">
+                    Make sure they accurately reflect how long it takes you to fulfil orders. This gives buyers an idea of when they&apos;ll receive their order.
+                  </p>
+                  <Link
+                    href="/settings/delivery"
+                    className="inline-block mt-3 px-3.5 py-1.5 bg-secondary hover:bg-secondary/90 text-white text-xs font-bold rounded-pill transition-colors"
+                  >
+                    Review processing times
+                  </Link>
+                  <div className="flex items-center gap-2 mt-3 text-xs text-muted">
+                    <span>Was this tip helpful?</span>
+                    <button type="button" className="p-1 rounded hover:bg-muted/10" aria-label="Yes"><ThumbsUp className="w-3.5 h-3.5" /></button>
+                    <button type="button" className="p-1 rounded hover:bg-muted/10" aria-label="No"><ThumbsDown className="w-3.5 h-3.5" /></button>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
             orders.map((order) => (

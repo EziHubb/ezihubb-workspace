@@ -211,6 +211,14 @@ export default function TaxInformationPage() {
               <p className="text-sm text-secondary">•••• {taxInfo.taxpayerIdLast4}</p>
             </div>
           )}
+          {taxInfo.dateOfBirth && (
+            <div>
+              <p className="text-xs text-muted mb-0.5">Date of birth</p>
+              <p className="text-sm text-secondary">
+                {new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(taxInfo.dateOfBirth))}
+              </p>
+            </div>
+          )}
           <div className="pt-4 border-t border-border">
             <p className="text-xs text-muted mb-0.5">Primary owner&apos;s contact information</p>
             <p className="text-sm text-secondary">{taxInfo.streetAddress}</p>

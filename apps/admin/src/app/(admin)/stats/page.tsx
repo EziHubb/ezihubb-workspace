@@ -398,7 +398,7 @@ export default function StatsPage() {
   return (
     <div className="space-y-8">
       <AdminPageHeader
-        title="Shop Traffic"
+        title="Stats"
         subtitle="See how shoppers are finding and interacting with your shop."
       />
 

@@ -173,7 +173,7 @@ class CustomOptionCreateDto {
 
 class BulkProductActionDto {
   @IsArray() @IsString({ each: true }) @ArrayMaxSize(200) ids: string[];
-  @IsIn(['publish', 'unpublish', 'archive', 'set-sale']) action: string;
+  @IsIn(['publish', 'unpublish', 'archive', 'set-sale', 'edit-tags', 'edit-title']) action: string;
   @IsOptional() payload?: Record<string, unknown>;
 }
 
@@ -363,6 +363,29 @@ export class AdminProductsController {
           }),
         );
         result = { updated: dto.ids.length, action: 'sale-applied', discountPercent: pct };
+        break;
+      }
+
+      case 'edit-tags': {
+        const mode = dto.payload?.['mode'] === 'remove' ? 'remove' : 'add';
+        const tag  = String(dto.payload?.['tag'] ?? '');
+        if (!tag.trim()) throw new BadRequestException('Tag is required');
+        await this.productsService.bulkEditTags(dto.ids, mode, tag);
+        result = { updated: dto.ids.length, action: mode === 'add' ? 'tag-added' : 'tag-removed' };
+        break;
+      }
+
+      case 'edit-title': {
+        const mode = String(dto.payload?.['mode'] ?? '') as 'add-front' | 'add-end' | 'find-replace' | 'delete';
+        if (!['add-front', 'add-end', 'find-replace', 'delete'].includes(mode)) {
+          throw new BadRequestException('Invalid title-edit mode');
+        }
+        const text     = String(dto.payload?.['text'] ?? '');
+        const findText = dto.payload?.['findText'] !== undefined ? String(dto.payload['findText']) : undefined;
+        if (mode !== 'find-replace' && !text.trim()) throw new BadRequestException('Text is required');
+        if (mode === 'find-replace' && !findText?.trim()) throw new BadRequestException('Text to find is required');
+        await this.productsService.bulkEditTitle(dto.ids, mode, text, findText);
+        result = { updated: dto.ids.length, action: 'title-edited' };
         break;
       }
 

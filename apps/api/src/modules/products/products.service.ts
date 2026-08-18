@@ -533,6 +533,58 @@ export class ProductsService {
     return ids;
   }
 
+  /** Backs the Listings bulk "Editing tags" dialog — add or remove a single tag
+   *  across many products at once, reusing the same upsert-by-slug tag resolution
+   *  the single-product editor already uses. */
+  async bulkEditTags(productIds: string[], mode: 'add' | 'remove', tagName: string): Promise<void> {
+    const trimmed = tagName.trim();
+    if (!trimmed) return;
+    if (mode === 'add') {
+      const [tagId] = await this.resolveTagNames([trimmed]);
+      await this.prisma.$transaction(
+        productIds.map((productId) =>
+          this.prisma.productTag.upsert({
+            where:  { productId_tagId: { productId, tagId } },
+            create: { productId, tagId },
+            update: {},
+          }),
+        ),
+      );
+    } else {
+      const slug = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const tag = await this.prisma.tag.findUnique({ where: { slug }, select: { id: true } });
+      if (tag) {
+        await this.prisma.productTag.deleteMany({ where: { productId: { in: productIds }, tagId: tag.id } });
+      }
+    }
+  }
+
+  /** Backs the Listings bulk "Editing title" dialog. Etsy's "Reset title" option
+   *  reverts to an auto-generated original that this catalog doesn't persist
+   *  separately from the live title, so it isn't offered here — the other four
+   *  modes (add to front/end, find and replace, delete) are plain string ops. */
+  async bulkEditTitle(
+    productIds: string[],
+    mode: 'add-front' | 'add-end' | 'find-replace' | 'delete',
+    text: string,
+    findText?: string,
+  ): Promise<void> {
+    const products = await this.prisma.product.findMany({
+      where:  { id: { in: productIds } },
+      select: { id: true, name: true },
+    });
+    await this.prisma.$transaction(
+      products.map((p) => {
+        let name = p.name;
+        if (mode === 'add-front')        name = `${text}${p.name}`;
+        else if (mode === 'add-end')      name = `${p.name}${text}`;
+        else if (mode === 'find-replace' && findText) name = p.name.split(findText).join(text);
+        else if (mode === 'delete'        && text)     name = p.name.split(text).join('');
+        return this.prisma.product.update({ where: { id: p.id }, data: { name } });
+      }),
+    );
+  }
+
   // etsyVariationSummary arrives with no admin in the loop to separately set
   // up the "Manage Variations" picker (VariationGroup/Settings) the way the
   // manual create-product UI does — derive it here so the priced SKUs

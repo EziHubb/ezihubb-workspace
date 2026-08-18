@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
-export type ModalSize = 'sm' | 'md' | 'lg' | 'fullscreen';
+export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'fullscreen';
 
 export interface ModalProps {
   isOpen:               boolean;
@@ -36,6 +36,9 @@ const panelSizeClasses: Record<Exclude<ModalSize, 'fullscreen'>, string> = {
   sm: 'md:max-w-sm',
   md: 'md:max-w-md',
   lg: 'md:max-w-2xl',
+  // Split-panel wizard dialogs (e.g. bundle offers' side-by-side preview +
+  // form) need more room than a single-column `lg` allows.
+  xl: 'md:max-w-4xl',
 };
 
 export const ModalHeader: React.FC<ModalHeaderProps> = ({ children, onClose, className = '', closeLabel = 'Close' }) => (
