@@ -128,11 +128,7 @@ function ProductionPartnersSection({
           <div className="max-w-xl">
             <h4 className="font-semibold text-secondary">Production partners for this listing</h4>
             <p className="text-sm text-muted mt-1 leading-relaxed">
-              A production partner is anyone who's not a part of your shop who helps you physically produce your items.{' '}
-              <a href="https://help.etsy.com/hc/articles/360000336747" target="_blank" rel="noopener noreferrer"
-                className="text-primary underline-offset-2 hover:underline">
-                Is this required for you?
-              </a>
+              A production partner is anyone who's not a part of your shop who helps you physically produce your items.
             </p>
           </div>
           <button

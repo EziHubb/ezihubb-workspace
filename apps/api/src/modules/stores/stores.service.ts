@@ -755,6 +755,7 @@ export class StoresService {
       tagline?: string; location?: string; colorTheme?: string;
       announcement?: string; aboutHeadline?: string; aboutVideoUrl?: string;
       aboutPhotoUrls?: string[]; ownerBio?: string; featuredProductIds?: string[];
+      socialLinks?: { platform: string; url: string }[];
     },
   ) {
     const store = await this.prisma.store.findUnique({ where: { id: storeId } });
@@ -775,6 +776,7 @@ export class StoresService {
         aboutPhotoUrls:     dto.aboutPhotoUrls      ?? undefined,
         ownerBio:           dto.ownerBio            ?? undefined,
         featuredProductIds: dto.featuredProductIds  ?? undefined,
+        socialLinks:        dto.socialLinks         ?? undefined,
         ...(dto.announcement !== undefined
           ? { announcement: dto.announcement, announcementUpdatedAt: new Date() }
           : {}),

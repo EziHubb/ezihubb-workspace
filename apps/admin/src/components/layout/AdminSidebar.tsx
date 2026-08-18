@@ -153,10 +153,13 @@ const NAV_SECTIONS: NavSection[] = [
 
 // ── Navigation structure — ADMIN (shop owner) ─────────────────────────────────
 // Shop owners use the SAME routes as super admin — the API scopes data to their store.
+// "Store Settings" (General + Shop Home merged into one page) is intentionally
+// omitted for a SUPER_ADMIN in "My Store" mode — storefront cosmetics are a
+// shop owner's own-business concern, not a platform-staff task; SUPER_ADMIN
+// manages any store's moderation-facing fields via /stores/[id] instead.
 
-function getShopNavSections(storeId: string): NavSection[] {
-  const storeHref = storeId ? `/stores/${storeId}` : '/dashboard';
-  return [
+function getShopNavSections(role: string): NavSection[] {
+  const sections: NavSection[] = [
     {
       items: [
         { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -209,13 +212,15 @@ function getShopNavSections(storeId: string): NavSection[] {
         },
       ],
     },
-    {
+  ];
+
+  if (role === 'ADMIN') {
+    sections.push({
       title: 'Setup',
       items: [
         {
-          label: 'Store Settings', href: storeHref, icon: Settings,
+          label: 'Store Settings', href: '/settings/shop-home', icon: Settings,
           children: [
-            { label: 'General',     href: storeHref,               icon: Settings     },
             { label: 'Shop Home',   href: '/settings/shop-home',   icon: Store        },
             { label: 'Delivery',    href: '/settings/delivery',    icon: Truck        },
             { label: 'Fulfillment', href: '/settings/fulfillment',  icon: Plug         },
@@ -223,8 +228,10 @@ function getShopNavSections(storeId: string): NavSection[] {
           ],
         },
       ],
-    },
-  ];
+    });
+  }
+
+  return sections;
 }
 
 // ── Shared data hook ──────────────────────────────────────────────────────────
@@ -256,7 +263,7 @@ function useNavData() {
     })),
   [pendingData]);
 
-  const shopNavSections = useMemo(() => getShopNavSections(ownStoreId), [ownStoreId]);
+  const shopNavSections = useMemo(() => getShopNavSections(role), [role]);
   const navSections = isPlatformContext ? superAdminSections : shopNavSections;
 
   const toggleStoreMode = () => {

@@ -5,13 +5,24 @@ import {
 import type { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { IsOptional, IsString, IsUrl, MaxLength, IsArray, ArrayMaxSize } from 'class-validator';
+import { IsOptional, IsString, IsUrl, MaxLength, IsArray, ArrayMaxSize, ValidateNested, IsIn } from 'class-validator';
+import { Type } from 'class-transformer';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@ezihubb/constants';
 import { StoresService } from './stores.service';
 import { AuditLogService } from '../../common/services/audit-log.service';
 import { StoreContextService } from '../../common/services/store-context.service';
+
+const SOCIAL_LINK_PLATFORMS = ['facebook', 'instagram', 'pinterest', 'twitter', 'youtube', 'tiktok', 'website'] as const;
+
+class SocialLinkDto {
+  @IsIn(SOCIAL_LINK_PLATFORMS)
+  platform: typeof SOCIAL_LINK_PLATFORMS[number];
+
+  @IsUrl()
+  url: string;
+}
 
 class AdminUpdateStoreDto {
   @IsOptional() @IsString() @MaxLength(100)
@@ -53,6 +64,9 @@ class AdminUpdateStoreDto {
 
   @IsOptional() @IsArray() @IsString({ each: true }) @ArrayMaxSize(4)
   featuredProductIds?: string[];
+
+  @IsOptional() @IsArray() @ValidateNested({ each: true }) @ArrayMaxSize(5) @Type(() => SocialLinkDto)
+  socialLinks?: SocialLinkDto[];
 }
 
 class FaqDto {

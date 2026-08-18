@@ -493,6 +493,7 @@ model Store {
   aboutPhotoUrls        String[] // up to 5, enforced in the DTO
   ownerBio              String?    @db.Text // "Shop members" personal bio — this app has one owner per store, not a team roster
   featuredProductIds    String[] // up to 4 manually pinned listings for the "Featured area" grid
+  socialLinks           Json? // { platform: string; url: string }[], up to 5, enforced in the DTO — null/absent means none set
   faqs                  StoreFaq[]
 
   @@index([slug])

@@ -47,6 +47,16 @@ function getShopOwnerRedirect(pathname: string, storeId: string | null): string 
 
     // Only allow access to own store
     if (storeId && pathStoreId !== storeId) return `/stores/${storeId}`;
+
+    // Own store's bare page ("General") now lives merged into Shop Home.
+    // Redirect there instead of leaving the old moderation-style page
+    // reachable — it still writes name/description/banner/logo via
+    // StoreEditModal, the exact same fields Shop Home owns, via the same
+    // STORE_BANNER/STORE_LOGO endpoints — a second live editor for the same
+    // data is what the merge was supposed to remove, not just hide the nav
+    // link. SUPER_ADMIN viewing another store is unaffected: this function
+    // isn't even called for them (see getAdminRouteRedirect below).
+    if (storeId && pathStoreId === storeId && suffix === '') return '/settings/shop-home';
   }
 
   return null; // allowed

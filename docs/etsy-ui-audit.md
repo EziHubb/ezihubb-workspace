@@ -392,3 +392,29 @@ All 13 planned modules were reached. Breakdown:
 **Environment incident (disclosed, not a code defect):** during this task the dev machine's C: drive filled to 100% (0 bytes free), which failed one `Edit` tool call outright (`ENOSPC`) and interrupted the final `admin:build` run. Freed ~4.4GB (pnpm store prune + Chrome cache across all profiles, both user-approved) before continuing — drive is now at ~4GB free / 97% used, enough to build but still tight. **A full `admin:build` end-to-end pass has not been re-confirmed since the cleanup** — recommend re-running it, and freeing more space (an unrelated 11.7GB `Silver14Nail` folder on the Desktop was identified but left untouched, plus Docker/WSL cache were not present on this machine so weren't a factor) before trusting a production build.
 
 **Not verified — needs the user's own eyes:** the hand-written migration against a real database; actual upload flows (banner/logo/photo/video) end-to-end with real files; hover/click affordances on the banner/logo edit overlays; whether the reused `ListingPicker` component's "max 4" cap renders sensibly inside the featured-picker modal's fixed width.
+
+## Backlog
+
+Deferred items with a concrete "next time" plan, not just "not built."
+
+### Banner "Change layout" / drag-reposition / delete (from `edit_store_page` screenshots)
+
+**What the screenshot shows, not built this pass:** while editing the banner, real Etsy shows a "Change layout" pill, a 4-arrow drag handle to reposition the image within the crop, and a trash icon to remove the banner — on top of the plain select-file-and-save flow this app now has.
+
+**Why deferred:** none of the three has any backing data in `Store` today — `bannerUrl` is just a single image URL, with no layout variant, no crop/position offset, and no "clear banner" endpoint (only upload exists).
+
+**Minimum data model to build it for real:**
+
+| Feature | Field | Type | Migration |
+|---|---|---|---|
+| Change layout | `Store.bannerLayout` | `String?` (enum-like: `'standard' \| 'focused'`, mirrors the ~2 layout variants real Etsy offers) | additive column, default `null` → `'standard'` |
+| Drag-reposition | `Store.bannerFocusX`, `Store.bannerFocusY` | `Decimal?` (0.00–1.00, CSS `object-position` fraction) | 2 additive columns |
+| Delete banner | *(no new field)* | — | new `DELETE /admin/stores/:id/banner` endpoint (service: set `bannerUrl: null`, delete the S3 object via existing `StorageService.deleteFile`) |
+
+**Effort estimate** (based on comparable work already done this session — the FAQ CRUD slice took ~1 migration + 4 endpoints + frontend wiring):
+
+- Backend: 1 migration (3 columns) + `PATCH .../banner-layout` endpoint (reuses `assertOwnership` pattern) + `DELETE .../banner` endpoint — **~1–1.5 hrs**.
+- Frontend: drag-to-reposition needs real pointer-event math against the banner's `aspect-[4/1]` box (down/move/up handlers, clamp 0–1, live CSS `object-position` preview) — the most novel part, nothing to reuse in this codebase yet. Layout-variant rendering (2 CSS arrangements) + delete-confirm button — **~2–3 hrs**.
+- Total: **~half a day**, dominated by the drag-reposition interaction, not the schema.
+
+Not started — flagging for a future pass rather than building against an unapproved data model.

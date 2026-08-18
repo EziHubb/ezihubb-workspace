@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Camera, Pencil, Plus, X, Check, ExternalLink, Trash2, ArrowUp, ArrowDown,
-  Video, ImagePlus, Star, MessageSquareHeart,
+  Video, ImagePlus, Star, MessageSquareHeart, User, LayoutGrid,
 } from 'lucide-react';
+import { Modal, ModalHeader, ModalBody, ModalFooter } from '@ezihubb/ui';
 import { useAdminMode } from '../../../../lib/store-context';
 import { api, adminApi } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -19,6 +20,7 @@ import { ReloadButton } from '../../../../components/ui/ReloadButton';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface ShopFaq { id: string; question: string; answer: string; sortOrder: number }
+interface SocialLink { platform: string; url: string }
 
 interface ShopHomeStore {
   id:                 string;
@@ -37,6 +39,7 @@ interface ShopHomeStore {
   aboutPhotoUrls:     string[];
   ownerBio:           string | null;
   featuredProductIds: string[];
+  socialLinks:        SocialLink[] | null;
   followerCount:      number;
   totalOrders:        number;
   createdAt:          string;
@@ -51,14 +54,47 @@ interface ShopProductRow {
 
 interface TaxInfoLite { sellerType: 'INDIVIDUAL' | 'BUSINESS' }
 
+const SOCIAL_PLATFORMS = [
+  { value: 'facebook',  label: 'Facebook'  },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'pinterest', label: 'Pinterest' },
+  { value: 'twitter',   label: 'Twitter/X' },
+  { value: 'youtube',   label: 'YouTube'   },
+  { value: 'tiktok',    label: 'TikTok'    },
+  { value: 'website',   label: 'Website'   },
+] as const;
+
+// Hex values sampled from the real "Colour theme" reference screenshot
+// (docs/etsy-assets/theme colors.jpg) via scripts in the scratchpad —
+// scanline edge-detection to find each circle's true center, then a 5x5
+// pixel patch average at that point to smooth out JPEG compression noise.
+// Not estimated by eye.
 const COLOR_THEMES = [
-  { value: 'coral',      label: 'Coral',      swatch: '#E85D3F' },
-  { value: 'periwinkle', label: 'Periwinkle', swatch: '#7C8FE0' },
-  { value: 'purple',     label: 'Purple',     swatch: '#8B5FBF' },
-  { value: 'forest',     label: 'Forest',     swatch: '#3F7D58' },
-  { value: 'plum',       label: 'Plum',       swatch: '#8E3B5C' },
-  { value: 'slate',      label: 'Slate',      swatch: '#4A5568' },
+  { value: 'cream',      label: 'Cream',       swatch: '#F1D291' },
+  { value: 'tan',        label: 'Tan',         swatch: '#CAA475' },
+  { value: 'orange',     label: 'Orange',      swatch: '#E09C49' },
+  { value: 'sage',       label: 'Sage',        swatch: '#8B9469' },
+  { value: 'clay',       label: 'Clay',        swatch: '#A07251' },
+  { value: 'gold',       label: 'Gold',        swatch: '#9D743C' },
+  { value: 'olive',      label: 'Olive',       swatch: '#6E502A' },
+  { value: 'mustard',    label: 'Mustard',     swatch: '#876110' },
+  { value: 'maroon',     label: 'Maroon',      swatch: '#5C2C2C' },
+  { value: 'forest',     label: 'Forest',      swatch: '#51572B' },
+  { value: 'brown',      label: 'Brown',       swatch: '#5A2B19' },
+  { value: 'burgundy',   label: 'Burgundy',    swatch: '#541424' },
 ];
+
+// Plain `.length`/`.slice()` count/cut UTF-16 code units, not user-perceived
+// characters — for text containing surrogate-pair emoji, ZWJ sequences
+// (e.g. 👨‍👩‍👧‍👦), or combining marks, that can split a single visible
+// character in half, producing a stray unpaired surrogate or an orphaned
+// combining mark. Segmenting by grapheme cluster counts/cuts what a user
+// actually sees as "one character," matching the visible 55-char limit.
+const graphemeSegments = (s: string): string[] =>
+  Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(s), (seg) => seg.segment);
+
+const truncateGraphemes = (s: string, max: number): string =>
+  graphemeSegments(s).slice(0, max).join('');
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -78,24 +114,60 @@ export default function ShopHomeEditorPage() {
 
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [uploadingLogo,   setUploadingLogo]   = useState(false);
-  const [editingTagline,  setEditingTagline]  = useState(false);
-  const [editingLocation, setEditingLocation] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [taglineModalOpen,  setTaglineModalOpen]  = useState(false);
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
+  const [photoModalOpen,    setPhotoModalOpen]    = useState(false);
+  const [logoModalOpen,     setLogoModalOpen]     = useState(false);
+  const [layoutModalOpen,   setLayoutModalOpen]   = useState(false);
+  const [featuredLayout,    setFeaturedLayout]    = useState<'standard' | 'none'>('standard');
   const [taglineDraft,    setTaglineDraft]    = useState('');
   const [locationDraft,   setLocationDraft]   = useState('');
   const [itemsFilter,     setItemsFilter]     = useState<'all' | 'sale'>('all');
-  const [announcementDraft, setAnnouncementDraft] = useState<string | null>(null);
+  const [editingAnnouncement, setEditingAnnouncement] = useState(false);
+  const [announcementDraft, setAnnouncementDraft] = useState('');
   const [showFeaturedPicker, setShowFeaturedPicker] = useState(false);
   const [aboutDraft, setAboutDraft] = useState<{ headline?: string } | null>(null);
+  const [editingStory, setEditingStory] = useState(false);
+  const [storyDraft, setStoryDraft] = useState('');
   const [newFaq, setNewFaq] = useState<{ question: string; answer: string } | null>(null);
+  const [savingFaq, setSavingFaq] = useState(false);
+  const [addingSocialLink, setAddingSocialLink] = useState<{ platform: string; url: string } | null>(null);
+  // Same read-then-write race as `photosBusy` above: add/remove both derive
+  // the next array from the current `store.socialLinks` closure, so firing a
+  // second one before the first's refetch lands can silently drop one of the
+  // two intended changes (whichever PATCH response arrives last wins).
+  const [socialLinksBusy, setSocialLinksBusy] = useState(false);
+  const [themeExpanded, setThemeExpanded] = useState(false);
+  // Shared "in flight" guard for the plain text-field Save buttons (Tagline,
+  // Location, Announcement, Story, About headline) — a user can only be
+  // editing one of these at a time in practice, so one flag is enough to
+  // stop a fast double-click from firing the same PATCH twice.
+  const [saving, setSaving] = useState(false);
   // Add/remove both read-then-write `store.aboutPhotoUrls` from the current
   // render's closure — firing a second one before the first's refetch lands
   // would silently resurrect a just-removed photo (or drop a just-added one).
   // Serializing them via this flag closes that window without a full
   // optimistic-update rewrite.
   const [photosBusy, setPhotosBusy] = useState(false);
+  // The banner is a two-step "select then confirm" edit, matching Etsy's own
+  // flow: picking a file shows a local object-URL preview + a bottom
+  // Cancel/Save bar, and only Save actually uploads.
+  const [bannerPreview, setBannerPreview] = useState<{ file: File; url: string } | null>(null);
+
+  // Revoke the object URL if the user navigates away (or the file gets
+  // replaced) while a banner preview is still pending, without going
+  // through Save/Cancel — those already revoke it themselves, but neither
+  // runs on unmount.
+  useEffect(() => {
+    if (!bannerPreview) return;
+    const { url } = bannerPreview;
+    return () => URL.revokeObjectURL(url);
+  }, [bannerPreview]);
 
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef   = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef  = useRef<HTMLInputElement>(null);
   const videoInputRef  = useRef<HTMLInputElement>(null);
 
@@ -130,12 +202,18 @@ export default function ShopHomeEditorPage() {
 
   const invalidateStore = () => qc.invalidateQueries({ queryKey: ['shop-home', ownStoreId] });
 
-  const patchStore = async (payload: Record<string, unknown>) => {
+  // Returns whether the save actually succeeded — callers that close a modal
+  // or clear a draft on completion must check this first, or a failed save
+  // (error already shown via the alert below) would still discard the user's
+  // edit as if it had gone through.
+  const patchStore = async (payload: Record<string, unknown>): Promise<boolean> => {
     try {
       await api.patch(API_ROUTES.ADMIN.STORE(ownStoreId), payload);
       invalidateStore();
+      return true;
     } catch (err) {
       await alert((err as Error).message || 'Could not save. Please try again.', { variant: 'error' });
+      return false;
     }
   };
 
@@ -143,18 +221,52 @@ export default function ShopHomeEditorPage() {
     file: File,
     endpoint: string,
     setLoading: (v: boolean) => void,
-  ) => {
+  ): Promise<boolean> => {
     setLoading(true);
     try {
       const form = new FormData();
       form.append('file', file);
       await adminApi.post(endpoint, form);
       invalidateStore();
+      return true;
     } catch {
       await alert('Upload failed. Please try again.', { variant: 'error' });
+      return false;
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAvatarUpload = async (file: File) => {
+    setUploadingAvatar(true);
+    try {
+      const form = new FormData();
+      form.append('avatar', file);
+      await adminApi.post(API_ROUTES.USERS.AVATAR, form);
+      invalidateStore();
+      setPhotoModalOpen(false);
+    } catch {
+      await alert('Upload failed. Please try again.', { variant: 'error' });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const saveBannerPreview = async () => {
+    if (!bannerPreview) return;
+    const ok = await handleUpload(bannerPreview.file, API_ROUTES.ADMIN.STORE_BANNER(ownStoreId), setUploadingBanner);
+    // Only discard the local preview once the upload actually succeeded — on
+    // failure (already surfaced via the alert in handleUpload) keep it, so
+    // the user doesn't lose their selected file and can just retry Save.
+    if (ok) {
+      URL.revokeObjectURL(bannerPreview.url);
+      setBannerPreview(null);
+    }
+  };
+
+  const cancelBannerPreview = () => {
+    if (bannerPreview) URL.revokeObjectURL(bannerPreview.url);
+    setBannerPreview(null);
   };
 
   const products = useMemo(() => productsQuery.data?.data ?? [], [productsQuery.data]);
@@ -169,20 +281,27 @@ export default function ShopHomeEditorPage() {
   // ── FAQ handlers ─────────────────────────────────────────────────────────────
 
   const saveFaq = async () => {
-    if (!newFaq?.question.trim() || !newFaq?.answer.trim()) return;
+    if (!newFaq?.question.trim() || !newFaq?.answer.trim() || savingFaq) return;
+    setSavingFaq(true);
     try {
       await api.post(API_ROUTES.ADMIN.STORE_FAQS(ownStoreId), newFaq);
       setNewFaq(null);
       invalidateStore();
     } catch (err) {
       await alert((err as Error).message || 'Could not add this FAQ.', { variant: 'error' });
+    } finally {
+      setSavingFaq(false);
     }
   };
 
   const deleteFaq = async (faqId: string) => {
     if (!await confirm('Delete this FAQ?', { confirmLabel: 'Delete', destructive: true })) return;
-    await api.delete(API_ROUTES.ADMIN.STORE_FAQ(ownStoreId, faqId));
-    invalidateStore();
+    try {
+      await api.delete(API_ROUTES.ADMIN.STORE_FAQ(ownStoreId, faqId));
+      invalidateStore();
+    } catch (err) {
+      await alert((err as Error).message || 'Could not delete this FAQ.', { variant: 'error' });
+    }
   };
 
   const moveFaq = async (faqs: ShopFaq[], index: number, dir: -1 | 1) => {
@@ -190,8 +309,41 @@ export default function ShopHomeEditorPage() {
     const swapWith = index + dir;
     if (swapWith < 0 || swapWith >= next.length) return;
     [next[index], next[swapWith]] = [next[swapWith], next[index]];
-    await api.patch(API_ROUTES.ADMIN.STORE_FAQS_REORDER(ownStoreId), { orderedIds: next.map((f) => f.id) });
-    invalidateStore();
+    try {
+      await api.patch(API_ROUTES.ADMIN.STORE_FAQS_REORDER(ownStoreId), { orderedIds: next.map((f) => f.id) });
+      invalidateStore();
+    } catch (err) {
+      await alert((err as Error).message || 'Could not reorder FAQs.', { variant: 'error' });
+    }
+  };
+
+  // ── Social links handlers ─────────────────────────────────────────────────────
+  // `store.socialLinks` is a Json column with no DB-level shape guarantee —
+  // the only write path (this DTO) always sends a real array, but a stray
+  // manual DB edit could leave something else there. Guard with
+  // Array.isArray rather than trusting the TS type, since `?? []` only
+  // catches null/undefined, not "some other JSON value."
+  const safeSocialLinks = Array.isArray(store?.socialLinks) ? store.socialLinks : [];
+
+  const saveSocialLink = async () => {
+    if (!addingSocialLink?.url.trim() || socialLinksBusy) return;
+    setSocialLinksBusy(true);
+    try {
+      const ok = await patchStore({ socialLinks: [...safeSocialLinks, addingSocialLink] });
+      if (ok) setAddingSocialLink(null);
+    } finally {
+      setSocialLinksBusy(false);
+    }
+  };
+
+  const removeSocialLink = async (index: number) => {
+    if (socialLinksBusy) return;
+    setSocialLinksBusy(true);
+    try {
+      await patchStore({ socialLinks: safeSocialLinks.filter((_, i) => i !== index) });
+    } finally {
+      setSocialLinksBusy(false);
+    }
   };
 
   // ── Guards ───────────────────────────────────────────────────────────────────
@@ -210,7 +362,7 @@ export default function ShopHomeEditorPage() {
   }
 
   return (
-    <div className="max-w-[900px]">
+    <div className={`max-w-[900px] ${bannerPreview ? 'pb-20' : ''}`}>
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-lg font-semibold text-secondary">Shop Home editor</h1>
         <div className="flex items-center gap-2">
@@ -219,7 +371,7 @@ export default function ShopHomeEditorPage() {
             target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-3.5 py-2 border border-border text-secondary text-sm font-semibold rounded-pill hover:border-primary/40 transition-colors"
           >
-            View on site <ExternalLink className="w-3.5 h-3.5" />
+            View on Ezihubb.com <ExternalLink className="w-3.5 h-3.5" />
           </a>
           <ReloadButton queryKey={['shop-home', ownStoreId]} />
         </div>
@@ -228,45 +380,78 @@ export default function ShopHomeEditorPage() {
 
       {/* ── Colour theme ─────────────────────────────────────────────────── */}
       <Section title="Colour theme">
-        <div className="flex flex-wrap gap-2">
-          {COLOR_THEMES.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              onClick={() => patchStore({ colorTheme: t.value })}
-              className={`flex items-center gap-2 px-3 py-2 rounded-pill border-2 text-sm font-medium transition-colors ${store.colorTheme === t.value ? 'border-secondary' : 'border-border hover:border-secondary/40'}`}
-            >
-              <span className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: t.swatch }} />
-              {t.label}
-            </button>
-          ))}
-        </div>
+        {themeExpanded || store.colorTheme ? (
+          <>
+            <div className="flex flex-wrap gap-3">
+              {COLOR_THEMES.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  title={t.label}
+                  aria-label={t.label}
+                  onClick={() => patchStore({ colorTheme: t.value })}
+                  className={`w-9 h-9 rounded-full shrink-0 transition-all ${store.colorTheme === t.value ? 'ring-2 ring-offset-2 ring-secondary' : 'hover:scale-105'}`}
+                  style={{ backgroundColor: t.swatch }}
+                />
+              ))}
+            </div>
+            <p className="text-xs text-muted mt-3">Choose from hues inspired by your banner and shop icon to add a splash of colour to your Shop Home on Ezihubb.com</p>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setThemeExpanded(true)}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-secondary hover:bg-secondary/90 text-white text-sm font-semibold rounded-pill transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Add a colour theme
+          </button>
+        )}
       </Section>
 
       {/* ── Banner + logo + name ─────────────────────────────────────────── */}
       <div className="py-6 border-b border-border">
         <div
-          className="relative w-full aspect-[4/1] rounded-xl overflow-hidden bg-muted/10 border border-border cursor-pointer group"
-          onClick={() => bannerInputRef.current?.click()}
+          className={`relative w-full aspect-[4/1] rounded-xl overflow-hidden bg-muted/10 border cursor-pointer group ${bannerPreview ? 'border-2 border-dashed border-primary' : 'border-border'}`}
+          onClick={() => !bannerPreview && bannerInputRef.current?.click()}
         >
-          {store.bannerUrl ? (
+          {bannerPreview ? (
+            <Image src={bannerPreview.url} alt="" fill className="object-cover" unoptimized />
+          ) : store.bannerUrl ? (
             <Image src={store.bannerUrl} alt="" fill className="object-cover" />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-muted text-sm">No banner set</div>
           )}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-            <span className="opacity-0 group-hover:opacity-100 transition-opacity w-9 h-9 rounded-full bg-white/90 flex items-center justify-center">
-              {uploadingBanner ? <div className="w-4 h-4 border-2 border-secondary border-t-transparent rounded-full animate-spin" /> : <Camera className="w-4 h-4 text-secondary" />}
-            </span>
-          </div>
+          {!bannerPreview && (
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity w-9 h-9 rounded-full bg-white/90 flex items-center justify-center">
+                <Camera className="w-4 h-4 text-secondary" />
+              </span>
+            </div>
+          )}
           <input ref={bannerInputRef} type="file" accept="image/*" className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f, API_ROUTES.ADMIN.STORE_BANNER(ownStoreId), setUploadingBanner); e.target.value = ''; }} />
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = '';
+              if (f) setBannerPreview((prev) => { if (prev) URL.revokeObjectURL(prev.url); return { file: f, url: URL.createObjectURL(f) }; });
+            }} />
         </div>
+
+        {bannerPreview && (
+          <div className="fixed bottom-0 left-0 right-0 z-40 bg-surface border-t border-border px-6 py-3 flex items-center justify-between shadow-2xl">
+            <p className="text-sm font-medium text-secondary">You are editing your banner</p>
+            <div className="flex gap-2">
+              <button type="button" onClick={cancelBannerPreview} disabled={uploadingBanner} className="px-4 py-2 border border-border text-secondary text-sm font-semibold rounded-pill disabled:opacity-50">Cancel</button>
+              <button type="button" onClick={saveBannerPreview} disabled={uploadingBanner} className="px-4 py-2 bg-secondary hover:bg-secondary/90 text-white text-sm font-semibold rounded-pill disabled:opacity-50">
+                {uploadingBanner ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-start gap-4 mt-4">
           <div
             className="relative w-16 h-16 rounded-xl overflow-hidden bg-muted/10 border border-border shrink-0 cursor-pointer group"
-            onClick={() => logoInputRef.current?.click()}
+            onClick={() => setLogoModalOpen(true)}
           >
             {store.logoUrl ? (
               <Image src={store.logoUrl} alt="" fill className="object-cover" />
@@ -274,51 +459,35 @@ export default function ShopHomeEditorPage() {
               <div className="w-full h-full flex items-center justify-center text-primary font-bold text-lg">{store.name[0]?.toUpperCase()}</div>
             )}
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-              {uploadingLogo ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Camera className="w-3.5 h-3.5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />}
+              <Camera className="w-3.5 h-3.5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <input ref={logoInputRef} type="file" accept="image/*" className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f, API_ROUTES.ADMIN.STORE_LOGO(ownStoreId), setUploadingLogo); e.target.value = ''; }} />
           </div>
 
           <div className="flex-1 min-w-0">
             <p className="font-display text-xl font-bold text-secondary">{store.name}</p>
 
-            {editingTagline ? (
-              <div className="flex items-center gap-2 mt-1">
-                <input value={taglineDraft} onChange={(e) => setTaglineDraft(e.target.value)} autoFocus maxLength={150}
-                  className="flex-1 h-9 px-3 text-sm border border-border rounded-input focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                <button type="button" onClick={async () => { await patchStore({ tagline: taglineDraft }); setEditingTagline(false); }} className="p-1.5 rounded hover:bg-primary/10 text-primary"><Check className="w-4 h-4" /></button>
-                <button type="button" onClick={() => setEditingTagline(false)} className="p-1.5 rounded hover:bg-muted/10 text-muted"><X className="w-4 h-4" /></button>
-              </div>
-            ) : (
-              <p className="text-sm text-muted mt-0.5 flex items-center gap-1.5">
-                {store.tagline || <span className="italic">No tagline set</span>}
-                <button type="button" onClick={() => { setTaglineDraft(store.tagline ?? ''); setEditingTagline(true); }} className="text-muted hover:text-primary"><Pencil className="w-3 h-3" /></button>
-              </p>
-            )}
+            <p className="text-sm text-muted mt-0.5 flex items-center gap-1.5">
+              {store.tagline || <span className="italic">No tagline set</span>}
+              <button type="button" onClick={() => { setTaglineDraft(store.tagline ?? ''); setTaglineModalOpen(true); }} className="text-muted hover:text-primary text-xs font-semibold underline">Edit</button>
+            </p>
 
-            {editingLocation ? (
-              <div className="flex items-center gap-2 mt-1">
-                <input value={locationDraft} onChange={(e) => setLocationDraft(e.target.value)} autoFocus maxLength={150}
-                  placeholder="e.g. Hai Phong, Vietnam"
-                  className="flex-1 h-9 px-3 text-sm border border-border rounded-input focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                <button type="button" onClick={async () => { await patchStore({ location: locationDraft }); setEditingLocation(false); }} className="p-1.5 rounded hover:bg-primary/10 text-primary"><Check className="w-4 h-4" /></button>
-                <button type="button" onClick={() => setEditingLocation(false)} className="p-1.5 rounded hover:bg-muted/10 text-muted"><X className="w-4 h-4" /></button>
-              </div>
-            ) : (
-              <p className="text-xs text-muted mt-0.5 flex items-center gap-1.5">
-                {store.location || 'No location set'}
-                <button type="button" onClick={() => { setLocationDraft(store.location ?? ''); setEditingLocation(true); }} className="text-muted hover:text-primary"><Pencil className="w-3 h-3" /></button>
-              </p>
-            )}
+            <p className="text-xs text-muted mt-0.5 flex items-center gap-1.5">
+              {store.location || 'No location set'}
+              <button type="button" onClick={() => { setLocationDraft(store.location ?? ''); setLocationModalOpen(true); }} className="text-muted hover:text-primary text-xs font-semibold underline">Edit</button>
+            </p>
           </div>
 
           <div className="text-right shrink-0">
-            {store.owner.avatarUrl ? (
-              <Image src={store.owner.avatarUrl} alt="" width={40} height={40} className="w-10 h-10 rounded-full object-cover ml-auto" />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-muted/10 flex items-center justify-center text-muted text-sm font-semibold ml-auto">{ownerName[0]?.toUpperCase()}</div>
-            )}
+            <button type="button" onClick={() => setPhotoModalOpen(true)} className="relative w-10 h-10 rounded-full ml-auto block group">
+              {store.owner.avatarUrl ? (
+                <Image src={store.owner.avatarUrl} alt="" width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-muted/10 flex items-center justify-center text-muted text-sm font-semibold">{ownerName[0]?.toUpperCase()}</div>
+              )}
+              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-white border border-border flex items-center justify-center shadow-sm group-hover:bg-primary/10">
+                <Camera className="w-2.5 h-2.5 text-secondary" />
+              </span>
+            </button>
             <p className="text-xs text-muted mt-1">{ownerName}</p>
           </div>
         </div>
@@ -335,9 +504,11 @@ export default function ShopHomeEditorPage() {
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => setShowFeaturedPicker(true)}
+          <button type="button" onClick={() => setLayoutModalOpen(true)}
             className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
-            <Plus className="w-4 h-4" /> Featured area to highlight listings
+            {store.featuredProductIds.length > 0
+              ? <><LayoutGrid className="w-4 h-4" /> Change layout</>
+              : <><Plus className="w-4 h-4" /> Featured area to highlight listings</>}
           </button>
         </div>
 
@@ -369,24 +540,53 @@ export default function ShopHomeEditorPage() {
       <Section title="Announcement">
         <p className="text-xs text-muted mb-2">
           {store.announcementUpdatedAt
-            ? `Last updated on ${new Date(store.announcementUpdatedAt).toLocaleDateString()}`
+            ? `Last updated on ${new Date(store.announcementUpdatedAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}`
             : 'Optional'}
         </p>
-        <textarea
-          value={announcementDraft ?? store.announcement ?? ''}
-          onChange={(e) => setAnnouncementDraft(e.target.value)}
-          onBlur={() => { if (announcementDraft !== null) patchStore({ announcement: announcementDraft }); }}
-          rows={3}
-          placeholder="Welcome to your shop! Share news, seasonal updates, or a friendly hello."
-          className="w-full px-3 py-2.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-        />
+        {editingAnnouncement ? (
+          <>
+            <textarea
+              value={announcementDraft}
+              onChange={(e) => setAnnouncementDraft(e.target.value)}
+              autoFocus
+              rows={4}
+              placeholder="Welcome to your shop! Share news, seasonal updates, or a friendly hello."
+              className="w-full px-3 py-2.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+            />
+            <div className="flex gap-2 mt-2">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={async () => {
+                  setSaving(true);
+                  const ok = await patchStore({ announcement: announcementDraft });
+                  setSaving(false);
+                  if (ok) setEditingAnnouncement(false);
+                }}
+                className="px-3.5 py-1.5 bg-primary text-white text-sm font-semibold rounded-pill disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              <button type="button" disabled={saving} onClick={() => setEditingAnnouncement(false)} className="px-3.5 py-1.5 border border-border text-secondary text-sm font-medium rounded-pill disabled:opacity-50">Cancel</button>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm text-secondary whitespace-pre-line">
+              {store.announcement || <span className="text-muted italic">Welcome to your shop! Share news, seasonal updates, or a friendly hello.</span>}
+            </p>
+            <button type="button" onClick={() => { setAnnouncementDraft(store.announcement ?? ''); setEditingAnnouncement(true); }} className="shrink-0 flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+              <Pencil className="w-3 h-3" /> Edit
+            </button>
+          </div>
+        )}
       </Section>
 
       {/* ── About ────────────────────────────────────────────────────────── */}
       <Section title={`About ${store.name}`}>
         <div className="flex items-center gap-6 mb-4 text-sm">
           <div><span className="font-bold text-secondary">{fmtNum(store.totalOrders)}</span> <span className="text-muted">Sales</span></div>
-          <div><span className="text-muted">On Etsy since {sinceYear}</span></div>
+          <div><span className="text-muted">On Ezihubb since {sinceYear}</span></div>
         </div>
 
         <div className="mb-4">
@@ -458,8 +658,18 @@ export default function ShopHomeEditorPage() {
             <input value={aboutDraft.headline ?? ''} onChange={(e) => setAboutDraft({ headline: e.target.value })} autoFocus maxLength={150}
               placeholder="Add a headline"
               className="flex-1 h-9 px-3 text-sm border border-border rounded-input focus:outline-none focus:ring-2 focus:ring-primary/20" />
-            <button type="button" onClick={async () => { await patchStore({ aboutHeadline: aboutDraft.headline }); setAboutDraft(null); }} className="p-1.5 rounded hover:bg-primary/10 text-primary"><Check className="w-4 h-4" /></button>
-            <button type="button" onClick={() => setAboutDraft(null)} className="p-1.5 rounded hover:bg-muted/10 text-muted"><X className="w-4 h-4" /></button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={async () => {
+                setSaving(true);
+                const ok = await patchStore({ aboutHeadline: aboutDraft.headline });
+                setSaving(false);
+                if (ok) setAboutDraft(null);
+              }}
+              className="p-1.5 rounded hover:bg-primary/10 text-primary disabled:opacity-50"
+            ><Check className="w-4 h-4" /></button>
+            <button type="button" disabled={saving} onClick={() => setAboutDraft(null)} className="p-1.5 rounded hover:bg-muted/10 text-muted disabled:opacity-50"><X className="w-4 h-4" /></button>
           </div>
         ) : (
           <button type="button" onClick={() => setAboutDraft({ headline: store.aboutHeadline ?? '' })}
@@ -468,12 +678,90 @@ export default function ShopHomeEditorPage() {
           </button>
         )}
 
-        <p className="text-sm text-secondary whitespace-pre-line mb-3">
-          {store.description || <span className="text-muted italic">Add your story. Tell shoppers a little about your business.</span>}
-        </p>
-        <Link href="/dashboard" className="text-sm font-semibold text-primary hover:underline">
-          {store.description ? 'Edit your story' : 'Add your story'} →
-        </Link>
+        {editingStory ? (
+          <div className="flex flex-col gap-2">
+            <textarea
+              value={storyDraft}
+              onChange={(e) => setStoryDraft(e.target.value)}
+              autoFocus
+              rows={4}
+              placeholder="How did you get started? What inspires you? We know each seller's story is unique – tell yours here."
+              className="w-full px-3 py-2.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={async () => {
+                  setSaving(true);
+                  const ok = await patchStore({ description: storyDraft });
+                  setSaving(false);
+                  if (ok) setEditingStory(false);
+                }}
+                className="px-3.5 py-1.5 bg-primary text-white text-sm font-semibold rounded-pill disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              <button type="button" disabled={saving} onClick={() => setEditingStory(false)} className="px-3.5 py-1.5 border border-border text-secondary text-sm font-medium rounded-pill disabled:opacity-50">Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-secondary whitespace-pre-line mb-3">
+              {store.description || <span className="text-muted italic">Add your story. Tell shoppers a little about your business.</span>}
+            </p>
+            <button
+              type="button"
+              onClick={() => { setStoryDraft(store.description ?? ''); setEditingStory(true); }}
+              className="text-sm font-semibold text-primary hover:underline"
+            >
+              {store.description ? 'Edit your story' : 'Add your story'} →
+            </button>
+          </>
+        )}
+
+        {safeSocialLinks.length > 0 && (
+          <div className="space-y-1.5 mt-3">
+            {safeSocialLinks.map((link, i) => (
+              <div key={`${link.platform}-${i}`} className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-secondary w-20 shrink-0">
+                  {SOCIAL_PLATFORMS.find((p) => p.value === link.platform)?.label ?? link.platform}
+                </span>
+                <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline truncate">{link.url}</a>
+                <button type="button" disabled={socialLinksBusy} onClick={() => removeSocialLink(i)} className="ml-auto p-1 rounded hover:bg-red-50 text-muted hover:text-red-500 shrink-0 disabled:opacity-50"><Trash2 className="w-3.5 h-3.5" /></button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {addingSocialLink ? (
+          <div className="flex items-center gap-2 mt-3">
+            <select
+              value={addingSocialLink.platform}
+              onChange={(e) => setAddingSocialLink({ ...addingSocialLink, platform: e.target.value })}
+              className="h-9 px-2.5 text-sm border border-border rounded-input focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              {SOCIAL_PLATFORMS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+            </select>
+            <input
+              value={addingSocialLink.url}
+              onChange={(e) => setAddingSocialLink({ ...addingSocialLink, url: e.target.value })}
+              autoFocus
+              placeholder="https://…"
+              className="flex-1 h-9 px-3 text-sm border border-border rounded-input focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <button type="button" disabled={socialLinksBusy} onClick={() => setAddingSocialLink(null)} className="text-sm font-semibold text-secondary hover:underline disabled:opacity-50">Cancel</button>
+            <button type="button" disabled={socialLinksBusy} onClick={saveSocialLink} className="text-sm font-semibold text-primary hover:underline disabled:opacity-50">{socialLinksBusy ? 'Saving…' : 'Save'}</button>
+          </div>
+        ) : safeSocialLinks.length < 5 && (
+          <button
+            type="button"
+            onClick={() => setAddingSocialLink({ platform: SOCIAL_PLATFORMS[0].value, url: '' })}
+            className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline mt-3"
+          >
+            <Plus className="w-4 h-4" /> Add links to your website and social media
+          </button>
+        )}
       </Section>
 
       {/* ── Shop members ─────────────────────────────────────────────────── */}
@@ -512,7 +800,7 @@ export default function ShopHomeEditorPage() {
 
       {/* ── FAQ ──────────────────────────────────────────────────────────── */}
       <Section title="Frequently asked questions">
-        <p className="text-xs text-muted mb-3">Information in your FAQs may not contradict Etsy&apos;s policies or your own shop policies.</p>
+        <p className="text-xs text-muted mb-3">Information in your FAQs may not contradict Ezihubb&apos;s policies or your own shop policies.</p>
         {store.faqs.length > 0 && (
           <div className="space-y-2 mb-3">
             {store.faqs.map((f, i) => (
@@ -539,8 +827,8 @@ export default function ShopHomeEditorPage() {
             <textarea value={newFaq.answer} onChange={(e) => setNewFaq({ ...newFaq, answer: e.target.value })} placeholder="Answer" rows={2}
               className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
             <div className="flex gap-2">
-              <button type="button" onClick={saveFaq} className="px-3.5 py-1.5 bg-primary text-white text-sm font-semibold rounded-pill">Save</button>
-              <button type="button" onClick={() => setNewFaq(null)} className="px-3.5 py-1.5 border border-border text-secondary text-sm font-medium rounded-pill">Cancel</button>
+              <button type="button" disabled={savingFaq} onClick={saveFaq} className="px-3.5 py-1.5 bg-primary text-white text-sm font-semibold rounded-pill disabled:opacity-50">{savingFaq ? 'Saving…' : 'Save'}</button>
+              <button type="button" disabled={savingFaq} onClick={() => setNewFaq(null)} className="px-3.5 py-1.5 border border-border text-secondary text-sm font-medium rounded-pill disabled:opacity-50">Cancel</button>
             </div>
           </div>
         ) : (
@@ -554,7 +842,7 @@ export default function ShopHomeEditorPage() {
       <Section title="Seller details">
         <p className="text-sm font-semibold text-secondary mb-1">Your seller status in the EU</p>
         <p className="text-xs text-muted mb-2 max-w-xl">
-          If you&apos;re an incorporated business on Etsy, you&apos;re likely considered a professional seller in the EU (known as a trader).
+          If you&apos;re an incorporated business on Ezihubb, you&apos;re likely considered a professional seller in the EU (known as a trader).
         </p>
         <div className="flex items-center justify-between">
           <span className="text-sm text-secondary">
@@ -563,6 +851,189 @@ export default function ShopHomeEditorPage() {
           <Link href="/finances/tax-information" className="text-sm font-semibold text-primary hover:underline">Edit</Link>
         </div>
       </Section>
+
+      {/* ── Shop location modal ──────────────────────────────────────────── */}
+      <Modal isOpen={locationModalOpen} onClose={() => setLocationModalOpen(false)} size="sm">
+        <ModalHeader onClose={() => setLocationModalOpen(false)}>Shop location</ModalHeader>
+        <ModalBody>
+          <p className="text-sm text-secondary mb-3">Start typing and choose from a suggested city to help others find you.</p>
+          <input
+            value={locationDraft}
+            onChange={(e) => setLocationDraft(e.target.value)}
+            autoFocus
+            maxLength={150}
+            placeholder="e.g. Hai Phong, Vietnam"
+            className="w-full h-10 px-3 text-sm border border-border rounded-input focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </ModalBody>
+        <ModalFooter>
+          <button type="button" onClick={() => setLocationModalOpen(false)} disabled={saving} className="px-4 py-2 border border-border text-secondary text-sm font-semibold rounded-pill disabled:opacity-50">Cancel</button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={async () => {
+              setSaving(true);
+              const ok = await patchStore({ location: locationDraft });
+              setSaving(false);
+              if (ok) setLocationModalOpen(false);
+            }}
+            className="px-4 py-2 bg-secondary hover:bg-secondary/90 text-white text-sm font-semibold rounded-pill disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </ModalFooter>
+      </Modal>
+
+      {/* ── Tagline modal ────────────────────────────────────────────────── */}
+      <Modal isOpen={taglineModalOpen} onClose={() => setTaglineModalOpen(false)} size="sm">
+        <ModalHeader onClose={() => setTaglineModalOpen(false)}>Tagline</ModalHeader>
+        <ModalBody>
+          <div className="relative">
+            <textarea
+              value={taglineDraft}
+              onChange={(e) => setTaglineDraft(truncateGraphemes(e.target.value, 55))}
+              autoFocus
+              rows={2}
+              className="w-full px-3 py-2.5 pb-5 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+            />
+            <span className="absolute bottom-1.5 right-2.5 text-xs text-muted">{graphemeSegments(taglineDraft).length}/55</span>
+          </div>
+          <div className="mt-4">
+            <p className="text-xs font-semibold text-secondary mb-2">Google search results preview</p>
+            <div className="border border-border rounded-lg p-3">
+              <p className="text-[#1a0dab] text-sm truncate">{(taglineDraft || store.tagline) ? `${taglineDraft || store.tagline} by ${store.name}` : store.name}</p>
+              <p className="text-[#006621] text-xs mt-0.5">https://www.ezihubb.com/shops/{store.slug}</p>
+            </div>
+            <p className="text-xs text-muted mt-2">Have questions? <span className="underline">Learn more about how your shop appears on Google.</span></p>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <button type="button" onClick={() => setTaglineModalOpen(false)} disabled={saving} className="px-4 py-2 border border-border text-secondary text-sm font-semibold rounded-pill disabled:opacity-50">Cancel</button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={async () => {
+              setSaving(true);
+              const ok = await patchStore({ tagline: taglineDraft });
+              setSaving(false);
+              if (ok) setTaglineModalOpen(false);
+            }}
+            className="px-4 py-2 bg-secondary hover:bg-secondary/90 text-white text-sm font-semibold rounded-pill disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </ModalFooter>
+      </Modal>
+
+      {/* ── Add a profile photo modal ────────────────────────────────────── */}
+      <Modal isOpen={photoModalOpen} onClose={() => setPhotoModalOpen(false)} size="sm">
+        <ModalHeader onClose={() => setPhotoModalOpen(false)}>Add a profile photo</ModalHeader>
+        <ModalBody>
+          <div className="flex flex-col items-center text-center py-2">
+            <div className="w-28 h-28 rounded-full bg-muted/10 flex items-center justify-center mb-4 overflow-hidden">
+              {store.owner.avatarUrl ? (
+                <Image src={store.owner.avatarUrl} alt="" width={112} height={112} className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-12 h-12 text-muted" />
+              )}
+            </div>
+            <p className="text-sm font-semibold text-secondary mb-1">Now update your owner photo</p>
+            <p className="text-xs text-muted mb-1">This should clearly show your smiling face. (See examples)</p>
+            <p className="text-xs text-muted mb-4">Must be a .jpg, .gif or .png file smaller than 10 MB and at least 400px by 400px.</p>
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="px-4 py-2 bg-secondary hover:bg-secondary/90 text-white text-sm font-semibold rounded-pill disabled:opacity-50"
+            >
+              {uploadingAvatar ? 'Uploading…' : 'Choose a file'}
+            </button>
+            <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) handleAvatarUpload(f); }} />
+          </div>
+        </ModalBody>
+      </Modal>
+
+      {/* ── Logo modal ───────────────────────────────────────────────────── */}
+      <Modal isOpen={logoModalOpen} onClose={() => setLogoModalOpen(false)} size="sm">
+        <ModalHeader onClose={() => setLogoModalOpen(false)}>Logo</ModalHeader>
+        <ModalBody>
+          <div className="flex flex-col items-center text-center py-2">
+            <div className="w-32 h-32 rounded-lg overflow-hidden border border-border bg-muted/10 mb-4">
+              {store.logoUrl ? (
+                <Image src={store.logoUrl} alt="" width={128} height={128} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-primary font-bold text-2xl">{store.name[0]?.toUpperCase()}</div>
+              )}
+            </div>
+            <div className="flex items-center gap-2.5 mb-4 px-3 py-2 border border-border rounded-lg w-full max-w-[220px] text-left">
+              <div className="w-9 h-9 rounded overflow-hidden bg-muted/10 shrink-0">
+                {store.logoUrl ? (
+                  <Image src={store.logoUrl} alt="" width={36} height={36} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-primary font-bold text-xs">{store.name[0]?.toUpperCase()}</div>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-secondary truncate">{store.name}</p>
+                <p className="text-[10px] text-amber-500">★★★★★</p>
+              </div>
+            </div>
+            <p className="text-sm font-semibold text-secondary mb-1">Upload your logo</p>
+            <p className="text-xs text-muted mb-1 max-w-[260px]">Make this a photo or logo that represents your business. (See examples)</p>
+            <p className="text-xs text-muted mb-4">Must be a .jpg, .gif or .png file smaller than 10 MB and at least 500px by 500px.</p>
+            <button
+              type="button"
+              onClick={() => logoInputRef.current?.click()}
+              disabled={uploadingLogo}
+              className="px-4 py-2 bg-secondary hover:bg-secondary/90 text-white text-sm font-semibold rounded-pill disabled:opacity-50"
+            >
+              {uploadingLogo ? 'Uploading…' : 'Choose a file'}
+            </button>
+            <input ref={logoInputRef} type="file" accept="image/*" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f, API_ROUTES.ADMIN.STORE_LOGO(ownStoreId), setUploadingLogo); e.target.value = ''; }} />
+          </div>
+        </ModalBody>
+      </Modal>
+
+      {/* ── Choose featured layout modal ─────────────────────────────────── */}
+      <Modal isOpen={layoutModalOpen} onClose={() => setLayoutModalOpen(false)} size="lg">
+        <ModalHeader onClose={() => setLayoutModalOpen(false)}>Choose featured layout</ModalHeader>
+        <ModalBody>
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <label className="flex items-start gap-2.5 p-3 rounded-lg border border-border cursor-pointer hover:border-secondary/40">
+                <input type="radio" name="featured-layout" checked={featuredLayout === 'standard'} onChange={() => setFeaturedLayout('standard')} className="mt-0.5" />
+                <span>
+                  <span className="block text-sm font-semibold text-secondary">Standard grid</span>
+                  <span className="block text-xs text-muted mt-0.5">Feature up to four listings or sections with equally sized photos</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2.5 p-3 rounded-lg border border-border cursor-pointer hover:border-secondary/40">
+                <input type="radio" name="featured-layout" checked={featuredLayout === 'none'} onChange={() => setFeaturedLayout('none')} className="mt-0.5" />
+                <span className="block text-sm font-semibold text-secondary">None</span>
+              </label>
+            </div>
+            <div className="rounded-lg bg-muted/5 border border-border flex items-center justify-center p-4">
+              <Image src="/images/featured-layout-standard-grid.png" alt="Standard grid preview" width={450} height={85} className="w-full h-auto" />
+            </div>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <button type="button" onClick={() => setLayoutModalOpen(false)} className="px-4 py-2 border border-border text-secondary text-sm font-semibold rounded-pill">Cancel</button>
+          <button
+            type="button"
+            onClick={async () => {
+              setLayoutModalOpen(false);
+              if (featuredLayout === 'none') await patchStore({ featuredProductIds: [] });
+              else setShowFeaturedPicker(true);
+            }}
+            className="px-4 py-2 bg-secondary hover:bg-secondary/90 text-white text-sm font-semibold rounded-pill"
+          >
+            Done
+          </button>
+        </ModalFooter>
+      </Modal>
 
       {/* ── Featured picker ──────────────────────────────────────────────── */}
       {showFeaturedPicker && (

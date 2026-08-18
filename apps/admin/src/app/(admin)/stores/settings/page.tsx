@@ -164,7 +164,7 @@ export default function PlatformSettingsPage() {
 
         {/* Seller Fees */}
         <SectionCard
-          title="💰 Seller Fees (Etsy-style — same for every seller)"
+          title="💰 Seller Fees (same for every seller)"
           onSave={() => save('fees')}
           saving={saving === 'fees'}
         >
