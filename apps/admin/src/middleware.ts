@@ -33,8 +33,17 @@ export default withAuth(
 // and the static brand/favicon assets served from public/ (logo, icons,
 // manifest) — these must load unauthenticated since the login page itself
 // renders the logo and browser tabs fetch favicons before any session exists.
+//
+// `images` (public/images/*) must be excluded too, and not only because those
+// files aren't sensitive: `next/image` does NOT serve them directly, it
+// requests /_next/image?url=… and the optimizer then fetches the source URL
+// itself, server-side, WITHOUT the browser's session cookie. With `images`
+// protected, that internal fetch got a 307 to the sign-in page instead of a
+// PNG, so the optimizer returned 400 and every <Image src="/images/…"> was a
+// broken image for logged-in users too — which is exactly how the "Choose
+// featured layout" preview broke in production.
 export const config = {
   matcher: [
-    '/((?!login|api/auth|_next/static|_next/image|favicon.ico|public|logo\\.png|site\\.webmanifest|favicon-16x16\\.png|favicon-32x32\\.png|apple-touch-icon\\.png|android-chrome-192x192\\.png|android-chrome-512x512\\.png).*)',
+    '/((?!login|api/auth|_next/static|_next/image|favicon.ico|public|images|logo\\.png|site\\.webmanifest|favicon-16x16\\.png|favicon-32x32\\.png|apple-touch-icon\\.png|android-chrome-192x192\\.png|android-chrome-512x512\\.png).*)',
   ],
 };
