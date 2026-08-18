@@ -18,6 +18,10 @@ interface StoreDto {
   rating:        number;
   totalProducts: number;
   totalOrders:   number;
+  /** Listings pinned in Shop Home; empty = fall back to the isFeatured flag. */
+  featuredProductIds: string[];
+  /** 'grid' | 'mixed' — API already forces 'grid' without Plus. */
+  featuredLayout: string | null;
 }
 
 // ── About section ─────────────────────────────────────────────────────────────
@@ -145,6 +149,8 @@ export function StorePageClient({
             locale={locale}
             searchQuery={searchQuery}
             onSearchClear={() => { setSearchQuery(''); setSearchInput(''); }}
+            featuredProductIds={store.featuredProductIds}
+            featuredLayout={store.featuredLayout ?? 'grid'}
           />
         )}
 

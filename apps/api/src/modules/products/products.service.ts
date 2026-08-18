@@ -2338,6 +2338,11 @@ export class ProductsService {
       where.name = { contains: query.q, mode: 'insensitive' };
     }
     if (query.isFeatured !== undefined) where.isFeatured = query.isFeatured;
+    // Explicit id set (storefront "Featured items" honouring the seller's
+    // Shop Home picks). Combines with every other filter below — notably
+    // isActive/status — so an id the seller pinned and later archived simply
+    // drops out rather than surfacing a dead listing publicly.
+    if (query.ids?.length) where.id = { in: query.ids };
     if (query.status) {
       where.status = query.status;
     } else if (!query.includeInactive) {

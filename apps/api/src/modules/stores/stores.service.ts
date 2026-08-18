@@ -191,6 +191,7 @@ export class StoresService {
         // confirming scope first, see docs/etsy-ui-audit.md Backlog).
         colorTheme: true,
         featuredProductIds: true,
+        featuredLayout: true,
         // Joined here (not a separate canUseFeature() call) so this hot,
         // public, uncached (force-dynamic) page costs exactly 1 query.
         subscription: { select: { status: true, currentPeriodEnd: true } },
@@ -231,6 +232,11 @@ export class StoresService {
     return {
       ...rest,
       colorTheme:    hasPlus ? rest.colorTheme : null, // gated — see field comment above
+      // Gated the same way, but degrades instead of nulling: a store without
+      // Plus (or whose Plus lapsed while 'mixed' was stored) renders the free
+      // standard grid. The stored preference is left untouched in the DB, so
+      // re-subscribing restores the mixed layout — same policy as colorTheme.
+      featuredLayout: hasPlus ? (rest.featuredLayout ?? 'grid') : 'grid',
       totalProducts: _count.products,
       followerCount: _count.followers,
     };
@@ -779,21 +785,36 @@ export class StoresService {
       tagline?: string; location?: string; colorTheme?: string;
       announcement?: string; aboutHeadline?: string; aboutVideoUrl?: string;
       aboutPhotoUrls?: string[]; ownerBio?: string; featuredProductIds?: string[];
+      featuredLayout?: string;
       socialLinks?: { platform: string; url: string }[];
     },
   ) {
     const store = await this.prisma.store.findUnique({ where: { id: storeId } });
     if (!store) throw new NotFoundException('Store not found');
 
-    // Ezihubb Plus gate — colorTheme ONLY. Do not extend this to any other
-    // field (featuredProductIds, tagline, etc. are all FREE) without
-    // confirming scope first — see docs/etsy-ui-audit.md Backlog.
+    // Ezihubb Plus gate — colorTheme, and featuredLayout ONLY when set to
+    // 'mixed'. Everything else on this DTO (featuredProductIds, tagline,
+    // announcement, about*, socialLinks …) is FREE; do not extend the gate to
+    // another field without confirming scope first — see docs/etsy-ui-audit.md.
     if (dto.colorTheme !== undefined) {
       const allowed = await this.entitlements.canUseFeature(storeId, PlusFeature.SHOP_COLOR_THEME);
       if (!allowed) {
         throw new ForbiddenException({
           code:    'ERR_PLUS_REQUIRED',
           message: 'This feature requires Ezihubb Plus.',
+        });
+      }
+    }
+
+    // Only the 'mixed' layout is paid — switching BACK to 'grid' must always
+    // be allowed, including for a store whose Plus has lapsed, or it would be
+    // trapped on a layout it can no longer edit.
+    if (dto.featuredLayout === 'mixed') {
+      const allowed = await this.entitlements.canUseFeature(storeId, PlusFeature.SHOP_FEATURED_MIXED_GRID);
+      if (!allowed) {
+        throw new ForbiddenException({
+          code:    'ERR_PLUS_REQUIRED',
+          message: 'The mixed grid layout requires Ezihubb Plus.',
         });
       }
     }
@@ -813,6 +834,7 @@ export class StoresService {
         aboutPhotoUrls:     dto.aboutPhotoUrls      ?? undefined,
         ownerBio:           dto.ownerBio            ?? undefined,
         featuredProductIds: dto.featuredProductIds  ?? undefined,
+        featuredLayout:     dto.featuredLayout      ?? undefined,
         socialLinks:        dto.socialLinks         ?? undefined,
         ...(dto.announcement !== undefined
           ? { announcement: dto.announcement, announcementUpdatedAt: new Date() }

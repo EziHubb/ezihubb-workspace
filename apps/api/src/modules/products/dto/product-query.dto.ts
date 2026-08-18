@@ -7,6 +7,7 @@ import {
   Max,
   IsArray,
   IsEnum,
+  ArrayMaxSize,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
@@ -86,6 +87,26 @@ export class ProductQueryDto extends PaginationDto {
   @IsBoolean()
   @Transform(({ value }) => value === 'true' || value === true)
   isFeatured?: boolean;
+
+  /**
+   * Fetch an explicit set of products by id. Used by the storefront's
+   * "Featured items" strip to render exactly the listings a seller pinned in
+   * Shop Home (`Store.featuredProductIds`) instead of whatever carries the
+   * `isFeatured` flag. Capped so this can't be turned into a bulk-scrape
+   * parameter on a public endpoint.
+   *
+   * NOTE: result ORDER is not guaranteed here — Prisma returns rows in
+   * whatever order the sort/index gives. The caller re-orders to match the
+   * ids it asked for (see StoreProductsClient), because the seller's chosen
+   * sequence is the whole point of the picker.
+   */
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(50)
+  @Transform(({ value }) => (typeof value === 'string' ? value.split(',').filter(Boolean) : value))
+  ids?: string[];
 
   @ApiPropertyOptional({ enum: ProductSortBy, default: ProductSortBy.NEWEST })
   @IsOptional()

@@ -6,5 +6,10 @@
 // site, not because one exists today.
 export enum PlusFeature {
   SHOP_COLOR_THEME = 'SHOP_COLOR_THEME',
+  SHOP_FEATURED_MIXED_GRID = 'SHOP_FEATURED_MIXED_GRID',
   MARKETPLACE_INSIGHTS_EXTENDED_QUOTA = 'MARKETPLACE_INSIGHTS_EXTENDED_QUOTA',
 }
+
+/** The two layouts `Store.featuredLayout` accepts. 'mixed' requires Plus. */
+export const FEATURED_LAYOUTS = ['grid', 'mixed'] as const;
+export type FeaturedLayout = (typeof FEATURED_LAYOUTS)[number];

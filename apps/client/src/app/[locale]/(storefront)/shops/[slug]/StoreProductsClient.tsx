@@ -246,11 +246,19 @@ export function StoreProductsClient({
   locale,
   searchQuery,
   onSearchClear,
+  featuredProductIds,
+  featuredLayout,
 }: {
   storeSlug:      string;
   locale:         string;
   searchQuery?:   string;
   onSearchClear?: () => void;
+  /** Listings the seller pinned in Shop Home. Takes priority over the
+   *  per-product `isFeatured` flag; empty means "fall back to the flag". */
+  featuredProductIds?: string[];
+  /** 'grid' (free) or 'mixed' (Plus). Already forced to 'grid' by the API for
+   *  stores without an active subscription — never gate on it here. */
+  featuredLayout?: string;
 }) {
   const t = useTranslations('shops');
   const paginationLabels = usePaginationLabels();
@@ -276,10 +284,22 @@ export function StoreProductsClient({
   const hasFilter = !!selectedSection || onSaleFilter || !!searchQuery?.trim();
 
   // Featured items query (only shown in default state: no section/sale/search filter)
+  //
+  // Two sources, in priority order. The seller's Shop Home picker writes
+  // `Store.featuredProductIds`; before this, the storefront ignored it
+  // entirely and only ever queried the per-product `isFeatured` flag, so the
+  // picker had no visible effect at all. Pinned ids now win, and the flag
+  // stays as the fallback so shops that never used the picker keep the exact
+  // behaviour they have today.
+  const pinnedIds = featuredProductIds ?? [];
+  const hasPinned = pinnedIds.length > 0;
+
   const { data: featuredData, isLoading: featuredLoading } = useQuery<PaginatedProducts>({
-    queryKey: ['store-products-featured', storeSlug],
+    queryKey: ['store-products-featured', storeSlug, hasPinned ? pinnedIds.join(',') : 'flag'],
     queryFn:  () => apiClient.get<PaginatedProducts>(API_ROUTES.PRODUCTS.LIST, {
-      params: { storeSlug, isFeatured: true, isActive: true, limit: 4, sort: 'featured' },
+      params: hasPinned
+        ? { storeSlug, ids: pinnedIds.join(','), isActive: true, limit: pinnedIds.length }
+        : { storeSlug, isFeatured: true, isActive: true, limit: 4, sort: 'featured' },
     }),
     staleTime: 60_000,
     enabled:   !hasFilter,
@@ -304,7 +324,15 @@ export function StoreProductsClient({
     staleTime: 30_000,
   });
 
-  const featured   = featuredData?.data                  ?? [];
+  // Re-order to the seller's chosen sequence — `where: { id: { in } }` returns
+  // rows in index order, not the order the ids were passed, and the picker's
+  // whole purpose is that the seller controls which listing sits first.
+  // Ids that no longer resolve (archived/deleted since being pinned) simply
+  // drop out here rather than leaving a hole.
+  const featuredRaw = featuredData?.data ?? [];
+  const featured    = hasPinned
+    ? pinnedIds.map((id) => featuredRaw.find((p) => p.id === id)).filter((p): p is NonNullable<typeof p> => !!p)
+    : featuredRaw;
   const products   = allData?.data                       ?? [];
   const totalPages = allData?.pagination?.totalPages     ?? 1;
   const total      = allData?.pagination?.total          ?? 0;
@@ -354,7 +382,14 @@ export function StoreProductsClient({
                 ))}
               </div>
             ) : featured.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
+              /* Ezihubb Plus "Mixed grid": the first pinned listing takes a
+                 2x2 cell, the rest flow beside it. Falls back to the free
+                 even 4-across grid for any other value — the server already
+                 forces 'grid' for a store without an active subscription, so
+                 this never needs to check entitlement itself. */
+              <div className={featuredLayout === 'mixed'
+                ? 'grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5 [&>*:first-child]:col-span-2 [&>*:first-child]:row-span-2'
+                : 'grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5'}>
                 {featured.map((product) => (
                   <ProductCard
                     key={product.id}

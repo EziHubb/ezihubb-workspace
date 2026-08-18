@@ -9,7 +9,7 @@ import { IsOptional, IsString, IsUrl, MaxLength, IsArray, ArrayMaxSize, Validate
 import { Type } from 'class-transformer';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { Role } from '@ezihubb/constants';
+import { Role, FEATURED_LAYOUTS, type FeaturedLayout } from '@ezihubb/constants';
 import { StoresService } from './stores.service';
 import { AuditLogService } from '../../common/services/audit-log.service';
 import { StoreContextService } from '../../common/services/store-context.service';
@@ -46,6 +46,12 @@ class AdminUpdateStoreDto {
 
   @IsOptional() @IsString() @MaxLength(32)
   colorTheme?: string;
+
+  // Restricted to the two known layouts at the DTO layer, so an unknown value
+  // can never reach the column (the DB stores plain TEXT). 'mixed' is
+  // additionally Plus-gated in StoresService.adminUpdateStore.
+  @IsOptional() @IsIn(FEATURED_LAYOUTS)
+  featuredLayout?: FeaturedLayout;
 
   @IsOptional() @IsString() @MaxLength(2000)
   announcement?: string;

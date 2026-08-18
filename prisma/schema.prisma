@@ -494,6 +494,12 @@ model Store {
   aboutPhotoUrls        String[] // up to 5, enforced in the DTO
   ownerBio              String?    @db.Text // "Shop members" personal bio — this app has one owner per store, not a team roster
   featuredProductIds    String[] // up to 4 manually pinned listings for the "Featured area" grid — FREE, never gated by Plus
+  // How the Featured area is laid out: 'grid' (standard, free) or 'mixed'
+  // (one large photo + four smaller — Ezihubb Plus only). Nullable/absent is
+  // treated as 'grid' everywhere; getStoreBySlug forces 'grid' for a store
+  // without an active subscription, so a lapsed Plus store degrades to the
+  // free layout without losing the stored preference.
+  featuredLayout        String?
   socialLinks           Json? // { platform: string; url: string }[], up to 5, enforced in the DTO — null/absent means none set
   faqs                  StoreFaq[]
 

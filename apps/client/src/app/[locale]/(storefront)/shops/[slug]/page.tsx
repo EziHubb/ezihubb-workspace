@@ -32,6 +32,9 @@ interface StorePublicDto {
   // (getShopColorTheme returns null for both — never crashes, never
   // renders a broken/unstyled swatch).
   colorTheme:    string | null;
+  featuredProductIds: string[];
+  /** Already forced to 'grid' by getStoreBySlug for a store without Plus. */
+  featuredLayout: string | null;
 }
 
 export async function generateMetadata({
@@ -235,6 +238,10 @@ export default async function StorePublicPage({
           rating,
           totalProducts: store.totalProducts,
           totalOrders:   store.totalOrders,
+          // Never gated — featuredProductIds is a FREE feature; only
+          // colorTheme (and, below, featuredLayout) are Plus-gated.
+          featuredProductIds: store.featuredProductIds ?? [],
+          featuredLayout:     store.featuredLayout ?? 'grid',
         }}
         locale={locale}
         theme={theme}
