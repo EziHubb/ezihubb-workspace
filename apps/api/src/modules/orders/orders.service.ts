@@ -22,7 +22,7 @@ import { FulfillmentConnectionStatus } from '@prisma/client';
 import { FulfillmentRegistryService } from '../fulfillment/fulfillment-registry.service';
 import { FulfillmentConnectionsService } from '../fulfillment/fulfillment-connections.service';
 import { FulfillmentAddress, FulfillmentLineItem } from '../fulfillment/interfaces/fulfillment-provider.interface';
-import { calculateOrderFees, OrderFeeSettings } from '../stores/fees.util';
+import { calculateOrderFees, OrderFeeSettings, PLATFORM_FEE_DEFAULTS } from '../stores/fees.util';
 import { getEffectivePrices, applyBestPromo } from '../products/pricing.util';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { BundleOffersService } from '../promotions/bundle-offers.service';
@@ -585,14 +585,14 @@ export class OrdersService {
       if (storeGroups.size > 0) {
         const platformSettings = await tx.platformSettings.findUnique({ where: { id: 'singleton' } });
         const feeSettings: OrderFeeSettings = {
-          transactionFeeRate:        Number(platformSettings?.transactionFeeRate ?? 0.065),
-          paymentProcessingFeeRate:  Number(platformSettings?.paymentProcessingFeeRate ?? 0.05),
-          paymentProcessingFixedFee: Number(platformSettings?.paymentProcessingFixedFee ?? 0.25),
-          regulatoryFeeRate:         Number(platformSettings?.regulatoryFeeRate ?? 0.0124),
-          regulatoryFeeCountries:    platformSettings?.regulatoryFeeCountries ?? [],
-          vatOnFeesRate:             Number(platformSettings?.vatOnFeesRate ?? 0.10),
+          transactionFeeRate:        Number(platformSettings?.transactionFeeRate        ?? PLATFORM_FEE_DEFAULTS.transactionFeeRate),
+          paymentProcessingFeeRate:  Number(platformSettings?.paymentProcessingFeeRate  ?? PLATFORM_FEE_DEFAULTS.paymentProcessingFeeRate),
+          paymentProcessingFixedFee: Number(platformSettings?.paymentProcessingFixedFee ?? PLATFORM_FEE_DEFAULTS.paymentProcessingFixedFee),
+          regulatoryFeeRate:         Number(platformSettings?.regulatoryFeeRate         ?? PLATFORM_FEE_DEFAULTS.regulatoryFeeRate),
+          regulatoryFeeCountries:    platformSettings?.regulatoryFeeCountries           ?? PLATFORM_FEE_DEFAULTS.regulatoryFeeCountries,
+          vatOnFeesRate:             Number(platformSettings?.vatOnFeesRate             ?? PLATFORM_FEE_DEFAULTS.vatOnFeesRate),
         };
-        const offsiteAdsFeeRate = Number(platformSettings?.offsiteAdsFeeRate ?? 0.15);
+        const offsiteAdsFeeRate = Number(platformSettings?.offsiteAdsFeeRate ?? PLATFORM_FEE_DEFAULTS.offsiteAdsFeeRate);
 
         const storeRecords = await tx.store.findMany({
           where:  { id: { in: [...storeGroups.keys()] } },

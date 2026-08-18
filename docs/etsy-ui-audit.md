@@ -583,6 +583,41 @@ The key detail: while the session loads, `role` is `''`, so `isPlatformContext` 
 | `stores/[id]/permissions`, `stores/[id]/subscription`, `settings/page.tsx` | **Already safe** — all use `if (role && role !== 'SUPER_ADMIN')`, which no-ops on `undefined` |
 | `stores/[id]/page.tsx:599` | **Open** — `{role !== 'ADMIN' && ...}` is `true` while `role` is `undefined`, so a shop owner briefly sees the Approve/Reject/Suspend/Permissions panel. Buttons are server-blocked, so it is visual only. Not fixed — outside the scope of that pass |
 
+## Backlog closure status
+
+### Closed
+
+- **Duplicated platform-fee defaults.** All eight hardcoded fallbacks in `orders.service.ts` and `products.service.ts` were verified **identical** to their `@default(...)` in `schema.prisma` (0.065 / 0.05 / 0.25 / 0.0124 / [] / 0.10 / 0.15 / 0.20) — no billing discrepancy existed. Consolidated into `PLATFORM_FEE_DEFAULTS` in `stores/fees.util.ts` (which already owned `OrderFeeSettings`); no calculation changed.
+- **`platformName` swallowed by `whitelist: true`.** Added to `UpdatePlatformSettingsDto` following the `payoutSchedule` pattern. **Caveat: there is still no input for it anywhere in the admin UI**, so it is API-reachable only — the DTO hole is closed, the feature is not user-facing yet.
+- **Role-dependent UI rendering before the session resolves.** Fixed in `AdminSidebar` (navSections), `GetHelpButton`, `stores/[id]/page.tsx:599`, `settings/api-keys`, `settings/fulfillment`.
+- **Seller-reachable product routes with no value bounds.** `@Min(0)` on `price`/`quantity` in `VariantPatchDto` and `VariantEditDto`; `@MaxLength` on `name`/`value`/`colorHex` in `VariationOptionPatchDto`, mirroring the caps `VariationOptionCreateDto` already had.
+
+### Still open (deliberately, with reasons)
+
+- **`priceDelta` has no bounds** (`VariationOptionPatchDto`). Negative deltas are *legitimate* (a smaller size costing less), so `@Min(0)` would be wrong. The real invariant is `basePrice + priceDelta >= 0`, which is a service-level check, not a DTO one. Not invented here.
+- **`skuPrefix` has no `@MaxLength`; `variesBy` has no `@IsIn`** (`VariationSettingsDto`). No existing precedent in the codebase to copy a cap or an allowed-value list from — picking numbers would be inventing policy.
+- **`BulkSaveVariationsDto { groups: object[] }` has no structural validation.** Adding `@ValidateNested` would require committing to a nested shape and could reject payloads the service currently accepts — a behaviour change, not a validation tightening. The sibling `applyVariations` route may already be its intended successor (see the comment at `admin-products.controller.ts:706-709`).
+- **Affiliate fee defaults duplicated the same way** (`admin-affiliates.service.ts:185-186`, `commission.service.ts:61`). Both verified to match `AffiliateSettings`' schema defaults (0.10 / 0.05) — same pattern, different model, left alone as out of the stated scope.
+- **Admin settings page `DEFAULTS`** (`stores/settings/page.tsx`) carries `minPayoutAmount: 50` and `payoutSchedule: 'WEEKLY'` while the schema defaults are `100.00` and `"monthly"`. These are pre-load form placeholders, not billing inputs, but they **do not match** the schema — flagged, not changed.
+- **`reviews` / `stats` role-dependent chrome.** Their flash is in the safe direction (hides platform-only chrome; never shows shop-owner content to a SUPER_ADMIN), and `isReady &&` on an already-`false` boolean is a no-op. Removing the flash entirely needs an early-return spinner — a UX call, not taken unilaterally.
+
+### `Update*Dto` vs Prisma model — column diff (list only, nothing changed)
+
+| DTO | Model | Columns in model, absent from DTO | Does admin need to edit them? |
+|---|---|---|---|
+| `UpdateCampaignDto` | `Campaign` | *(none)* | — complete match |
+| `UpdateAffiliateSettingsDto` | `AffiliateSettings` | *(none)* | — complete match |
+| `UpdateBundleOfferDto` | `BundleOffer` | `storeId` | No — server-derived |
+| `UpdateBankAccountDto` | `StoreBankAccount` | `accountNumberLast4` | No — derived from `accountNumber` at encrypt time |
+| `UpdateTaxInfoDto` | `StoreTaxInfo` | *(none — `taxpayerId` → `taxpayerIdEncrypted`)* | — complete match |
+| `UpdateCartItemDto` | `CartItem` | `variantId`, `customizationData`, `previewUrl`, `searchTerm`, `unitPrice` | No — fixed at add-to-cart; only `quantity` is editable by design |
+| `UpdateConversationStatusDto` | `Conversation` | `subject`, `unreadByAdmin/Customer`, `lastMessage*` | No — maintained by the messaging flow |
+| `UpdateStoreOrderDto` | `StoreOrder` | `subtotal`, `discountAmount`, `shippingCost`, **`platformFee`**, **`sellerEarnings`**, `payoutId`, `shippedAt`, `deliveredAt`, `deliveryUpgradeRequested` | **No — and deliberately so.** A seller must never PATCH their own `sellerEarnings`/`platformFee`; the timestamps are set by the ship/deliver flows |
+| `UpdateAffiliateDto` | `AffiliateAccount` | `rejectedReason`, `balance`, `email`, `firstName`, `lastName`, `website`, `promoDescription` | `rejectedReason` is set by the reject endpoint; `balance` must stay server-only; the rest are affiliate-owned |
+| `UpdateStoreDto` (seller `/stores/me`) | `Store` | ~20 incl. `tagline`, `location`, `colorTheme`, `announcement`, `about*`, `featuredProductIds`, `socialLinks`, `currency`, `offers*`, `shareSaveEnabled` | **Needs a decision.** All of these are editable through *other* dedicated endpoints (`AdminUpdateStoreDto`, shipping, marketing, finances). Whether `/stores/me` PATCH is still used at all was not traced — verify before extending it |
+
+Not column-diffed: `UpdateProductDto` (very large, extends `BaseUpdateProductDto`), `UpdateProfileDto`, `UpdatePushPreferencesDto`, `UpdateWishlistShareDto`, `UpdateOrderStatusDto`, `UpdateOffersSettingsDto`, `UpdateCurrencyDto`, `UpdateAutoBillingDto` — the last four write one or two scalars each and are trivially complete; `UpdateProductDto` needs its own pass.
+
 ## Ezihubb Plus Phase 3 — post-deploy verification checklist
 
 None of these have been confirmed with a real click in a real browser against a real database — no dev DB has existed in this environment for the whole Plus build (sandbox has no local Postgres/Docker, only production RDS via SSH). Automated checks (real `pnpm nx run api:test`, real `lint`/`build` across `api`/`admin`/`client`, and — for the storefront colour theme specifically — a real running `client` dev server hit with `curl` against **mocked** `getStoreBySlug` data, see the "Storefront colour theme" section above for what that did and didn't prove) are the ceiling reachable without one. Run every item below for real after the next deploy, in order, before calling Ezihubb Plus done.
@@ -632,8 +667,32 @@ Could not be verified locally at all: the admin app authenticates via NextAuth �
 
 *(empty as of this session)*
 
+### 23–27 — added by the backlog-closure pass
+
+23. Platform fee consolidation changed no arithmetic: place one real order and confirm the fee breakdown (transaction / payment processing / regulatory / VAT) matches what it was before this change. **Highest-value check here** — it is the only item that touches money.
+24. Create one product and confirm the listing fee + VAT ledger entry is still `0.20` + `10%`.
+25. `PATCH /admin/products/:id/variations/variants/:variantId` with `price: -1` → now rejected with 400 (was silently written).
+26. Editing a variation option's name/value/colorHex over the length cap → now rejected with 400.
+27. `PATCH /admin/platform-settings` with `{ "platformName": "X" }` → the value now persists (was silently dropped). Note there is still **no UI field** for it, so this is a `curl`-level check only.
+
+### What is "verified" vs "never actually run"
+
+Be precise about this — it has caused confusion twice already:
+
+- **Verified by running real commands:** `nx run api:test` (161 tests), `api:lint`, `admin:lint`, `client:lint`, and `api`/`admin`/`client` builds. These prove the code compiles, the `@Roles` metadata resolves as declared, and the pure-function logic (`isEntitled`, `getDisplayStatus`, date math, quota tiers) behaves as specified.
+- **Verified by reading code only:** every scoping/ownership claim (`assertOwnership`, `StoreOwnerGuard`, `ProductOwnershipGuard`), the DTO↔model column diffs above, and the fee-default comparison. Strong evidence, but no request ever actually hit a server.
+- **Never run by anyone:** every item in this checklist (1–27). The storefront colour theme is the *only* UI that was seen rendering, and that was against **mocked** `getStoreBySlug` data on a local dev server, not a real database.
+- **The migration `20260818140000_ezihubb_plus` has never been applied to any database.**
+
 ### How to run this checklist for real
 
-Needs, at minimum: a real Postgres reachable from wherever `apps/api` runs, the `20260818140000_ezihubb_plus` migration actually applied (still pending — see the Ezihubb Plus backend report earlier in this doc for the SQL and the rollback story), 1 SUPER_ADMIN account, and 1 ADMIN account owning 1 store. From there: items 1–4 and 10–15 are `curl`/browser checks against a logged-in seller session; 5–9 and 17 against a logged-in SUPER_ADMIN session; 16 is a single authenticated `GET`.
+**Environment required — none of it exists in the dev sandbox this was built in, which is why nothing below has been run:**
+
+1. A `.env` file (there is none in the repo — `.env.example` only). At minimum `DATABASE_URL`, `NEXTAUTH_SECRET`, `JWT_ACCESS_SECRET`/`JWT_REFRESH_SECRET`, and the non-empty placeholder vars `.env.example` warns crash the API at boot (`STRIPE_SECRET_KEY`, `GOOGLE_CLIENT_ID`, `SMTP_USER`/`SMTP_PASS`).
+2. A reachable Postgres (nothing listens on `localhost:5432` here; there is no local Docker either).
+3. The `20260818140000_ezihubb_plus` migration actually applied. `scripts/deploy.sh:358-361` runs it automatically when `prisma/migrations/` changed — but note that line ends in `|| echo "⚠ …"`, so **a failed migration does not abort the deploy**; watch that step's output rather than letting it run unattended.
+4. 1 SUPER_ADMIN account, and 1 ADMIN account owning 1 store. Login goes NextAuth → API → Postgres, so without 1–2 no role can be signed in as at all.
+
+Routing once you have the above: items 1–4, 10–15 and 20 are browser checks as the seller; 5–9, 17–19, 22 and 27 as the SUPER_ADMIN; 16 and 25–26 are single authenticated `curl`s; 21 is a hard-refresh first-paint check in either role; 23–24 need one real order and one real product.
 
 Not fixed — user explicitly kept this as "liệt kê, tôi quyết từng cái" (list only, decide individually), same discipline as the `UpdatePlatformSettingsDto` gaps above. `AdminCacheController` (`POST /admin/cache/flush`, platform-wide Redis flush) also lacks `@Roles`, but flagged separately as lower severity — availability nuisance, not a data leak.

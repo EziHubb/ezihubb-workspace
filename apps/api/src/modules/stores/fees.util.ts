@@ -9,6 +9,29 @@
  * processing fees (no sales tax is calculated or charged on this platform).
  */
 
+/**
+ * Fallback fee values, used ONLY when the PlatformSettings singleton row is
+ * missing (a DB that was never seeded and where nobody has opened the
+ * platform-settings page yet — that page upserts the row on read).
+ *
+ * These MUST mirror the `@default(...)` values on the PlatformSettings model
+ * in prisma/schema.prisma. They were previously duplicated inline in
+ * orders.service.ts and products.service.ts; all eight were verified
+ * identical to the schema at the time of consolidation, so this changes no
+ * calculation — it just removes the drift risk of three copies. If you change
+ * a default here, change it in schema.prisma too (and vice versa).
+ */
+export const PLATFORM_FEE_DEFAULTS = {
+  transactionFeeRate:        0.065,
+  paymentProcessingFeeRate:  0.05,
+  paymentProcessingFixedFee: 0.25,
+  listingFee:                0.20,
+  regulatoryFeeRate:         0.0124,
+  regulatoryFeeCountries:    [] as string[],
+  vatOnFeesRate:             0.10,
+  offsiteAdsFeeRate:         0.15,
+};
+
 export interface OrderFeeSettings {
   transactionFeeRate:        number;
   paymentProcessingFeeRate:  number;

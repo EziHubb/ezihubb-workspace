@@ -281,7 +281,7 @@ function PlatformOverview({ connections, isLoading, onPickStore }: {
 
 export default function FulfillmentSettingsPage() {
   const qc = useQueryClient();
-  const { isPlatformContext } = useAdminMode();
+  const { isPlatformContext, isReady } = useAdminMode();
   const [selectedStore, setSelectedStore] = useState<StoreOption | null>(null);
 
   const [provider, setProvider]             = useState<ProviderType>('PRINTIFY');
@@ -378,7 +378,11 @@ export default function FulfillmentSettingsPage() {
           </div>
         )}
 
-        {showOverview ? (
+        {/* Same guard as settings/api-keys: isPlatformContext is false while
+            the session loads (the shop-owner value), so this would briefly
+            render store-scoped fulfillment to a platform SUPER_ADMIN. Render
+            neither branch until the role is known; no spinner by design. */}
+        {!isReady ? null : showOverview ? (
           <>
             <PlatformOverview
               connections={connections ?? []}

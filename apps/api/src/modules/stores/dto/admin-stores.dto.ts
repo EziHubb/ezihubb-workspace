@@ -90,6 +90,15 @@ export class UpdatePlatformSettingsDto {
   @IsOptional()
   payoutSchedule?: string;
 
+  // Was missing from this DTO, so `whitelist: true` silently dropped it and
+  // the platform name could never actually be changed — same silent-swallow
+  // class as plusMonthlyPrice/offsiteAdsFeeRate. Follows the `payoutSchedule`
+  // pattern above exactly (no @MaxLength: no string field in this DTO caps
+  // length, and the DB column is an uncapped String).
+  @IsString()
+  @IsOptional()
+  platformName?: string;
+
   @IsBoolean()
   @IsOptional()
   allowPublicRegistration?: boolean;

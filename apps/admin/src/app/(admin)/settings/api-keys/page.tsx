@@ -100,7 +100,7 @@ function PlatformOverview({ keys, isLoading, onPickStore }: {
 
 export default function ApiKeysSettingsPage() {
   const qc = useQueryClient();
-  const { isPlatformContext } = useAdminMode();
+  const { isPlatformContext, isReady } = useAdminMode();
   const [selectedStore, setSelectedStore] = useState<StoreOption | null>(null);
 
   const [name, setName]           = useState('');
@@ -223,7 +223,12 @@ export default function ApiKeysSettingsPage() {
           </div>
         )}
 
-        {showOverview ? (
+        {/* Until the session resolves, isPlatformContext is false — the
+            shop-owner value — so this ternary would render the store-scoped
+            key management to a platform SUPER_ADMIN before flipping. Render
+            neither branch until the role is known (header above still
+            renders; deliberately no spinner). */}
+        {!isReady ? null : showOverview ? (
           <>
             <PlatformOverview
               keys={keys ?? []}

@@ -54,6 +54,7 @@ import { writeFile, unlink } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join, extname } from 'path';
 import { randomUUID } from 'crypto';
+import { PLATFORM_FEE_DEFAULTS } from '../stores/fees.util';
 
 const execFileAsync = promisify(execFile);
 
@@ -493,9 +494,9 @@ export class ProductsService {
   private async chargeListingFee(storeId: string, productId: string): Promise<void> {
     try {
       const settings = await this.prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
-      const listingFee = Number(settings?.listingFee ?? 0.20);
+      const listingFee = Number(settings?.listingFee ?? PLATFORM_FEE_DEFAULTS.listingFee);
       if (listingFee <= 0) return;
-      const vatOnFeesRate = Number(settings?.vatOnFeesRate ?? 0.10);
+      const vatOnFeesRate = Number(settings?.vatOnFeesRate ?? PLATFORM_FEE_DEFAULTS.vatOnFeesRate);
       const vat = Math.round(listingFee * vatOnFeesRate * 100) / 100;
 
       const entries: Prisma.SellerLedgerEntryCreateManyInput[] = [{

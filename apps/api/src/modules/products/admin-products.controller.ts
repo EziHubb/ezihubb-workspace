@@ -47,7 +47,7 @@ import { ProductOwnershipGuard } from '../../common/guards/product-ownership.gua
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
 import {
   IsArray, IsString, ArrayMaxSize, IsOptional, IsBoolean,
-  IsNumber, IsEnum, MaxLength, ValidateNested, IsIn, IsObject,
+  IsNumber, IsEnum, MaxLength, ValidateNested, IsIn, IsObject, Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
@@ -87,19 +87,26 @@ class VariationSettingsDto {
   @IsOptional() @IsString() skuPrefix?: string;
 }
 
+// Length caps mirror VariationOptionCreateDto above — PATCH was looser than
+// CREATE for the same three columns, so a value rejected on create could be
+// slipped in via an edit.
 class VariationOptionPatchDto {
-  @IsOptional() @IsString() name?: string;
-  @IsOptional() @IsString() value?: string;
-  @IsOptional() @IsString() colorHex?: string;
+  @IsOptional() @IsString() @MaxLength(100) name?: string;
+  @IsOptional() @IsString() @MaxLength(100) value?: string;
+  @IsOptional() @IsString() @MaxLength(20)  colorHex?: string;
   @IsOptional() @IsString() imageUrl?: string;
   @IsOptional() @IsString() imageId?: string;
   @IsOptional() @IsNumber() priceDelta?: number;
   @IsOptional() @IsBoolean() isAvailable?: boolean;
 }
 
+// price/quantity were @IsNumber only — a negative price flowed straight into
+// ProductVariant and then into storefront price / cart-total math as a
+// negative line item; a negative quantity broke the
+// `available = quantity - reserved` stock assumption.
 class VariantPatchDto {
-  @IsOptional() @IsNumber() price?: number | null;
-  @IsOptional() @IsNumber() quantity?: number | null;
+  @IsOptional() @IsNumber() @Min(0) price?: number | null;
+  @IsOptional() @IsNumber() @Min(0) quantity?: number | null;
   @IsOptional() @IsString() sku?: string | null;
   @IsOptional() @IsBoolean() isAvailable?: boolean;
 }
@@ -132,8 +139,10 @@ class VariantEditDto {
   // Keyed by options, not id — a brand-new combination the seller priced in
   // the grid before Apply has no ProductVariant.id yet.
   @IsObject() options: Record<string, string>;
-  @IsOptional() @IsNumber() price?: number | null;
-  @IsOptional() @IsNumber() quantity?: number | null;
+  // Same @Min(0) reasoning as VariantPatchDto — these reach the same
+  // ProductVariant columns through the second (Apply) route.
+  @IsOptional() @IsNumber() @Min(0) price?: number | null;
+  @IsOptional() @IsNumber() @Min(0) quantity?: number | null;
   @IsOptional() @IsString() sku?: string | null;
   @IsOptional() @IsBoolean() isAvailable?: boolean;
 }

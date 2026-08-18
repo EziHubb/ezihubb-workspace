@@ -595,8 +595,14 @@ export default function AdminStoreDetailPage() {
               </div>
             </div>
 
-            {/* Action panel — super-admin actions only */}
-            {role !== 'ADMIN' && (
+            {/* Action panel — super-admin actions only.
+                `role` is undefined until the session resolves, and
+                `undefined !== 'ADMIN'` is TRUE — so without the explicit
+                `role &&` a shop owner briefly saw the Approve/Reject/Suspend
+                panel on every load. Same negative-condition trap as
+                AdminSidebar's navSections; the buttons were always
+                server-blocked, so this was visual only. */}
+            {role && role !== 'ADMIN' && (
             <div className="bg-background border border-border rounded-card p-4 space-y-3">
               <p className="text-xs font-semibold text-muted uppercase tracking-wide">Actions</p>
               <div className="flex flex-wrap gap-2">
