@@ -10,7 +10,21 @@ import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { useCartStore } from '../../lib/store/cart.store';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { STANDARD_COLORS } from './SearchFilterSidebar';
-import { fmtAmount, safeArr, safeNum } from '@ezihubb/utils';
+import { fmtAmount, fmtRating, safeArr, safeNum } from '@ezihubb/utils';
+
+/**
+ * Review counts the way the reference prints them: 5800 -> "5.8k".
+ *
+ * Locale-independent on purpose. This is a compact magnitude next to a star,
+ * not a figure anyone reads precisely, and mixing thousands separators into a
+ * three-character slot is what makes those lines wrap.
+ */
+function compactCount(n: number): string {
+  if (n < 1000) return String(n);
+  const k = n / 1000;
+  // 5800 -> 5.8k, but 12000 -> 12k rather than 12.0k
+  return `${k >= 10 ? Math.round(k) : Math.round(k * 10) / 10}k`;
+}
 
 // ── Badge logic ───────────────────────────────────────────────────────────────
 
@@ -119,7 +133,10 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
 
   return (
     <div
-      className="group relative"
+      // flex column so the action row can sit last via `order-last`, keeping
+      // it under the card text without moving the JSX away from the hover
+      // state it belongs to.
+      className="group relative flex flex-col"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={handleMouseLeave}
     >
@@ -174,11 +191,18 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
           </div>
         )}
 
-        {/* Hover action row */}
+      </div>
+
+      {/* ACTION ROW — rendered last, below the card text, never over the
+          image. These used to be absolutely positioned inside the image
+          container, so hovering covered the bottom of the product photo,
+          which is the one thing the shopper is looking at. The row keeps a
+          reserved height so the grid does not jump as the mouse crosses it. */}
+      <div className="order-last mt-2 h-8">
         <div
           className={[
-            'absolute bottom-0 left-0 right-0 z-10 p-2.5 flex gap-2 transition-all duration-200',
-            isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2',
+            'flex gap-2 transition-opacity duration-200',
+            isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none',
           ].join(' ')}
         >
           {!product.isPersonalizable ? (
@@ -283,9 +307,15 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
           )}
         </div>
 
-        {/* Rating */}
+        {/* Rating — hidden entirely with no reviews rather than printing
+            "0 ★ (0)", which reads as a bad score instead of no data. */}
         {ratingCount > 0 && (
           <div className="flex items-center gap-1">
+            {/* Numeric average first, as in the reference: a shopper reads
+                "4.9" faster than they count filled stars. */}
+            <span className="text-xs font-semibold text-secondary tabular-nums">
+              {fmtRating(avg)}
+            </span>
             <div className="flex gap-0.5">
               {[1, 2, 3, 4, 5].map((s) => (
                 <Star
@@ -297,7 +327,7 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
               ))}
             </div>
             <span className="text-xs text-muted">
-              ({ratingCount.toLocaleString()})
+              ({compactCount(ratingCount)})
             </span>
           </div>
         )}

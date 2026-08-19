@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -12,6 +13,7 @@ interface ShopCustomizableIdeasProps {
 }
 
 export function ShopCustomizableIdeas({ query }: ShopCustomizableIdeasProps) {
+  const t = useTranslations('search');
   const locale = useLocale();
 
   const { data: products = [] } = useQuery<ProductListItemDto[]>({
@@ -29,7 +31,7 @@ export function ShopCustomizableIdeas({ query }: ShopCustomizableIdeasProps) {
 
   return (
     <section className="max-w-[1400px] mx-auto px-4 py-8 border-t border-border">
-      <h2 className="font-semibold text-secondary mb-4">Shop customizable ideas</h2>
+      <h2 className="font-semibold text-secondary mb-4">{t('customizableIdeas')}</h2>
       <div className="flex gap-4 overflow-x-auto pb-2">
         {products.map((product) => (
           <Link

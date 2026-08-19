@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -11,6 +12,7 @@ interface RelatedSearchesProps {
 }
 
 export function RelatedSearches({ query }: RelatedSearchesProps) {
+  const t = useTranslations('search');
   const locale = useLocale();
 
   const { data: related = [] } = useQuery<string[]>({
@@ -25,7 +27,7 @@ export function RelatedSearches({ query }: RelatedSearchesProps) {
 
   return (
     <section className="max-w-[1400px] mx-auto px-4 py-8 border-t border-border">
-      <h2 className="font-semibold text-secondary mb-4">Related searches</h2>
+      <h2 className="font-semibold text-secondary mb-4">{t('relatedSearches')}</h2>
       <div className="flex flex-wrap gap-2">
         {related.map((kw) => (
           <Link

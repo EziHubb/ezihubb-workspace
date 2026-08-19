@@ -205,9 +205,16 @@ export function SearchPageClient() {
         {/* LEFT SIDEBAR (desktop) — collapsible, hidden on mobile.
             Mobile keeps its own bottom sheet and is unaffected by this
             toggle: on a small screen the filters are never taking space
-            from the grid in the first place. */}
+            from the grid in the first place.
+
+            No inner scroll: a fixed height plus overflow-y gave the column its
+            own scrollbar, which cut whichever filter group happened to
+            straddle the boundary in half. It scrolls with the page instead —
+            `sticky top-16` holds it in view while the grid moves, and once it
+            is taller than the viewport it scrolls away like everything else.
+            Being longer than the results list is fine and expected. */}
         {filtersOpen && (
-          <aside className="hidden lg:block w-[220px] flex-shrink-0 pt-4 pr-4 sticky top-16 h-[calc(100vh-64px)] overflow-y-auto">
+          <aside className="hidden lg:block w-[220px] flex-shrink-0 pt-4 pr-4 sticky top-16 self-start">
             <SearchFilterSidebar
               filters={filters}
               facets={data?.facets}

@@ -76,5 +76,10 @@
   "ratingAndUp": "{stars} stars & up",
   "anyRating": "Any rating",
   "category": "Category",
-  "allCategories": "All categories"
+  "allCategories": "All categories",
+  "closeFilters": "Close filters",
+  "recentlyViewed": "Recently viewed",
+  "closeRecentlyViewed": "Close recently viewed",
+  "relatedSearches": "Related searches",
+  "customizableIdeas": "Personalisable ideas"
 }

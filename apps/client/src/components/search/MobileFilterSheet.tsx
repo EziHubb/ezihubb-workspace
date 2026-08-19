@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { X } from 'lucide-react';
 import { SearchFilterSidebar } from './SearchFilterSidebar';
 import type { SearchFacets } from './SearchFilterSidebar';
@@ -23,6 +25,7 @@ export function MobileFilterSheet({
   onClearAll,
   onClose,
 }: MobileFilterSheetProps) {
+  const t = useTranslations('search');
 
   return (
     <>
@@ -36,11 +39,11 @@ export function MobileFilterSheet({
       {/* Drawer */}
       <div className="fixed inset-y-0 left-0 w-[300px] bg-white z-50 flex flex-col shadow-2xl">
         <div className="flex items-center justify-between px-4 py-4 border-b border-border shrink-0">
-          <span className="font-semibold text-secondary">Filters</span>
+          <span className="font-semibold text-secondary">{t('filters')}</span>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close filters"
+            aria-label={t('closeFilters')}
             className="text-muted hover:text-secondary transition-colors"
           >
             <X className="w-5 h-5" />

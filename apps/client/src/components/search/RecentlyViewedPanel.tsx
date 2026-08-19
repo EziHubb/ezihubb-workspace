@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { X, Clock } from 'lucide-react';
 import { apiClient } from '@ezihubb/api-client';
@@ -11,6 +12,7 @@ import type { ProductListItemDto } from '@ezihubb/types';
 import { fmtAmount } from '@ezihubb/utils';
 
 export function RecentlyViewedPanel() {
+  const t = useTranslations('search');
   const locale = useLocale();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -38,11 +40,11 @@ export function RecentlyViewedPanel() {
       {isOpen ? (
         <div className="bg-white border border-border rounded-2xl shadow-xl w-64 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <span className="text-sm font-medium text-secondary">Recently viewed</span>
+            <span className="text-sm font-medium text-secondary">{t('recentlyViewed')}</span>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              aria-label="Close recently viewed"
+              aria-label={t('closeRecentlyViewed')}
               className="text-muted hover:text-secondary transition-colors"
             >
               <X className="w-4 h-4" />

@@ -76,5 +76,10 @@
   "ratingAndUp": "{stars} 星及以上",
   "anyRating": "不限评分",
   "category": "分类",
-  "allCategories": "全部分类"
+  "allCategories": "全部分类",
+  "closeFilters": "关闭筛选",
+  "recentlyViewed": "最近浏览",
+  "closeRecentlyViewed": "关闭最近浏览",
+  "relatedSearches": "相关搜索",
+  "customizableIdeas": "可定制灵感"
 }

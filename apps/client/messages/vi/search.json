@@ -76,5 +76,10 @@
   "ratingAndUp": "Từ {stars} sao trở lên",
   "anyRating": "Mọi mức đánh giá",
   "category": "Danh mục",
-  "allCategories": "Tất cả danh mục"
+  "allCategories": "Tất cả danh mục",
+  "closeFilters": "Đóng bộ lọc",
+  "recentlyViewed": "Vừa xem",
+  "closeRecentlyViewed": "Đóng mục vừa xem",
+  "relatedSearches": "Tìm kiếm liên quan",
+  "customizableIdeas": "Ý tưởng có thể cá nhân hoá"
 }
