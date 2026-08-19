@@ -84,7 +84,7 @@ export function ProductGrid({ products, locale, isLoading = false }: ProductGrid
             product.primaryImage ?? 'https://placehold.co/400x500.png?text=No+Image'
           }
           basePrice={product.minPrice ?? product.basePrice}
-          compareAtPrice={product.compareAtPrice}
+          compareAtPrice={product.compareAtPrice ?? undefined}
           isPriceRange={hasPriceRange}
           rating={product.averageRating ?? undefined}
           reviewCount={product.reviewCount}

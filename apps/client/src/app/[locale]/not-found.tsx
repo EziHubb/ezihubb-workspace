@@ -146,7 +146,7 @@ export default async function NotFound() {
                   'https://placehold.co/400x500.png?text=No+Image'
                 }
                 basePrice={product.basePrice}
-                compareAtPrice={product.compareAtPrice}
+                compareAtPrice={product.compareAtPrice ?? undefined}
                 rating={product.averageRating ?? undefined}
                 reviewCount={product.reviewCount}
                 badge={product.badge}

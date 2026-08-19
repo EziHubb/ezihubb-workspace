@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import type { ProductDto } from '@ezihubb/types';
+import type { ProductDetailDto } from '@ezihubb/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -19,7 +19,7 @@ interface RelatedSearches {
 
 // ── Builder ───────────────────────────────────────────────────────────────────
 
-function buildRelatedSearches(product: ProductDto, locale: string, storeLogoUrl: string | null): RelatedSearches {
+function buildRelatedSearches(product: ProductDetailDto, locale: string, storeLogoUrl: string | null): RelatedSearches {
   const tags = product.tags ?? [];
 
   // Derive material keyword from attributes
@@ -45,7 +45,7 @@ function buildRelatedSearches(product: ProductDto, locale: string, storeLogoUrl:
 
   const keywords = [
     ...tags.slice(0, 6).map((t) => t.name),
-    product.categoryName,
+    product.category.name,
     ...(materialAttr ? [materialAttr.value] : []),
   ].filter(Boolean) as string[];
 
@@ -55,7 +55,7 @@ function buildRelatedSearches(product: ProductDto, locale: string, storeLogoUrl:
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface ExploreRelatedSearchesProps {
-  product: ProductDto;
+  product: ProductDetailDto;
   locale:  string;
   /** Real shop logo, when the store has one — null/undefined falls back to the initial-letter chip. */
   storeLogoUrl?: string | null;

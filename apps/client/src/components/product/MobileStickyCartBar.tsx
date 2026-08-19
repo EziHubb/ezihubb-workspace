@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import type { ProductDto, ProductVariantDto } from '@ezihubb/types';
+import type { ProductDetailDto, ProductVariantDto } from '@ezihubb/types';
 import { fmtAmount } from '@ezihubb/utils';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -14,7 +14,7 @@ const SCROLL_THRESHOLD = 600;
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface MobileStickyCartBarProps {
-  product:         ProductDto;
+  product:         ProductDetailDto;
   selectedVariant: ProductVariantDto | null;
   canAddToCart:    boolean;
   onAddToCart:     () => void;

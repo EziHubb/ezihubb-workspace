@@ -7,7 +7,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { Star, Heart, MessageCircle, Package, HandCoins } from 'lucide-react';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
-import type { ProductDto } from '@ezihubb/types';
+import type { ProductDetailDto } from '@ezihubb/types';
 import type { StoreSummaryDto } from '../../app/[locale]/(storefront)/products/[slug]/page';
 import { fmtRating, safeNum } from '@ezihubb/utils';
 import { MessageShopModal } from '../messages/MessageShopModal';
@@ -44,7 +44,7 @@ function ShopLink({
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface SellerCardProps {
-  product:       ProductDto;
+  product:       ProductDetailDto;
   /** From GET /stores/{slug}, fetched by the page — null while unavailable/failed. */
   storeSummary?: StoreSummaryDto | null;
 }

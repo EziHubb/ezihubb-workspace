@@ -1,11 +1,11 @@
-﻿import type { ProductDto } from '@ezihubb/types';
+﻿import type { ProductDetailDto } from '@ezihubb/types';
 import type { ReviewSummaryDto } from '@ezihubb/types';
 import { fmtRating } from '@ezihubb/utils';
 
 const BASE_URL = 'https://ezihubb.com';
 
 export interface ProductStructuredDataProps {
-  product:       ProductDto;
+  product:       ProductDetailDto;
   reviewSummary?: ReviewSummaryDto | null;
   locale?:        string;
 }
@@ -37,10 +37,13 @@ export function ProductStructuredData({
       '@type':        'Offer',
       price:          product.basePrice,
       priceCurrency:  'USD',
-      // Real per-variant availability, not a hardcoded claim — Pinterest and
-      // Google both penalize/reject listings whose structured data doesn't
-      // match actual stock status.
-      availability:   product.variants?.some((v) => v.isAvailable)
+      // DETAIL only ever sends already-available variants (the API filters
+      // isAvailable:false rows out server-side and never puts the flag itself
+      // on the wire) — so `product.variants.some(v => v.isAvailable)` was
+      // silently `false` for every product that had any variants at all,
+      // reporting OutOfStock on in-stock listings. isActive is the one real
+      // signal this DTO exposes for whether the listing is purchasable.
+      availability:   product.isActive
         ? 'https://schema.org/InStock'
         : 'https://schema.org/OutOfStock',
       url:            `${BASE_URL}/${locale}/products/${product.slug}`,

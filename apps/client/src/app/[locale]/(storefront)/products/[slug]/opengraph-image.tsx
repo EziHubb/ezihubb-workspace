@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/og';
-import type { ProductDto } from '@ezihubb/types';
+import type { ProductDetailDto } from '@ezihubb/types';
 import { fmtAmount } from '@ezihubb/utils';
 
 // ── Route segment config ──────────────────────────────────────────────────────
@@ -13,14 +13,14 @@ export const contentType = 'image/png';
 
 const API = (process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002').replace(/\/api\/v1\/?$/, '');
 
-async function getProduct(slug: string): Promise<ProductDto | null> {
+async function getProduct(slug: string): Promise<ProductDetailDto | null> {
   try {
     const res = await fetch(`${API}/api/v1/products/${slug}`, {
       next: { revalidate: 3600 },
     });
     if (!res.ok) return null;
     const body = await res.json();
-    return (body.data ?? body) as ProductDto;
+    return (body.data ?? body) as ProductDetailDto;
   } catch {
     return null;
   }

@@ -17,14 +17,18 @@ import { useCustomizerValidation } from '../../../../../../lib/hooks/useCustomiz
 import { useBeforeLeave } from '../../../../../../lib/hooks/useBeforeLeave';
 import { DEMO_TEMPLATE } from '../../../../../../lib/customizer/types';
 import type { CustomizationTemplate } from '../../../../../../lib/customizer/types';
-import type { ProductDto } from '@ezihubb/types';
+import type { ProductDetailDto as ApiProductDetailDto } from '@ezihubb/types';
 import { API_ROUTES } from '@ezihubb/constants';
 import { apiClient } from '../../../../../../lib/api-client';
 import { fmtAmount } from '@ezihubb/utils';
 
 // ── Extended product type ─────────────────────────────────────────────────────
+// customizationTemplate is local UI state, not part of the DETAIL API
+// response — kept as a local extension rather than folded into the shared
+// ProductDetailDto in libs/shared/types, which should only describe what the
+// API actually sends.
 
-interface ProductDetailDto extends ProductDto {
+interface ProductDetailDto extends ApiProductDetailDto {
   customizationTemplate?: CustomizationTemplate;
 }
 
@@ -319,9 +323,10 @@ function InnerPage({ slug, product, locale }: InnerPageProps) {
                     </p>
                     {product.variants?.[0] && (
                       <p className="text-xs text-muted leading-none mt-0.5">
-                        {[product.variants[0].size, product.variants[0].color]
-                          .filter(Boolean)
-                          .join(' · ')}
+                        {/* Option group names vary per product (Size, Sleeve
+                            Length, Style…) — show whatever the first variant
+                            actually has rather than assuming "size"/"color". */}
+                        {Object.values(product.variants[0].options).join(' · ')}
                       </p>
                     )}
                   </div>

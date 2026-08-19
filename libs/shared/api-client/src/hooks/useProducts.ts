@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../client';
 import { API_ROUTES } from '@ezihubb/constants';
-import type { PaginatedResponse, ProductListItemDto, ProductDto } from '@ezihubb/types';
+import type { PaginatedResponse, ProductListItemDto, ProductDetailDto } from '@ezihubb/types';
 import { queryKeys } from '../queryKeys';
 
 // ── Query shapes ──────────────────────────────────────────────────────────────
@@ -39,7 +39,7 @@ export function useProducts(query: ProductsQuery = {}) {
 export function useProduct(slug: string) {
   return useQuery({
     queryKey: queryKeys.product(slug),
-    queryFn:  () => api.get<ProductDto>(API_ROUTES.PRODUCTS.DETAIL(slug)),
+    queryFn:  () => api.get<ProductDetailDto>(API_ROUTES.PRODUCTS.DETAIL(slug)),
     enabled:  Boolean(slug),
     staleTime: 2 * 60_000,
   });
@@ -64,7 +64,7 @@ export function usePrefetchProduct() {
   return (slug: string) =>
     qc.prefetchQuery({
       queryKey: queryKeys.product(slug),
-      queryFn:  () => api.get<ProductDto>(API_ROUTES.PRODUCTS.DETAIL(slug)),
+      queryFn:  () => api.get<ProductDetailDto>(API_ROUTES.PRODUCTS.DETAIL(slug)),
       staleTime: 2 * 60_000,
     });
 }

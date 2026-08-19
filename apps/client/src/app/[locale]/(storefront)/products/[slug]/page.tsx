@@ -5,7 +5,7 @@ import { getTranslations } from 'next-intl/server';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { buildAlternates } from '../../../../../lib/seo';
-import type { ProductDto, ProductListItemDto, ReviewSummaryDto, CategoryDto } from '@ezihubb/types';
+import type { ProductDetailDto, ProductListItemDto, ReviewSummaryDto, CategoryDto } from '@ezihubb/types';
 import type { PaginatedResponse } from '@ezihubb/types';
 import { ProductBreadcrumb } from '../../../../../components/product/ProductBreadcrumb';
 import type { BreadcrumbItem } from '../../../../../components/product/ProductBreadcrumb';
@@ -39,22 +39,6 @@ export interface StoreSummaryDto {
   logoUrl:     string | null;
 }
 
-// ── Extended product type ─────────────────────────────────────────────────────
-export interface ProductDetailDto extends ProductDto {
-  richDescription?: string;
-  shippingNote?: string;
-  /**
-   * The DETAIL endpoint (GET /products/{slug}) nests the category here instead
-   * of the flat categoryId/categoryName/categorySlug that ProductDto declares —
-   * that flat shape only actually holds on the LIST endpoint. Reading
-   * `product.categoryName` on this type was silently `undefined` on every PDP
-   * render (breadcrumb, related-search keywords, analytics). Normalized onto
-   * the flat fields right after fetch below so every existing reader of
-   * ProductDto.categoryName/Slug gets real values instead of quietly nothing.
-   */
-  category?: { id: string; name: string; slug: string };
-}
-
 // ── Breadcrumbs ───────────────────────────────────────────────────────────────
 
 const BASE = 'https://ezihubb.com';
@@ -76,17 +60,14 @@ function buildBreadcrumbs(
   homeLabel: string,
 ): BreadcrumbItem[] {
   const prefix = locale !== 'en' ? `/${locale}` : '';
-  const categoryId = product.category?.id ?? product.categoryId;
-  const categoryPath = categoryId ? findCategoryPath(categoryTree, categoryId) : [];
+  const categoryPath = findCategoryPath(categoryTree, product.category.id);
 
   // Tree lookup failed (fetch error, or category not in the visible tree) —
-  // fall back to the single leaf level we already normalized onto the product,
-  // same behaviour as before this fix, rather than dropping category entirely.
+  // fall back to the single leaf level DETAIL always sends, rather than
+  // dropping category from the breadcrumb entirely.
   const categoryCrumbs = categoryPath.length > 0
     ? categoryPath.map((c) => ({ name: c.name, href: `${prefix}/search?category=${c.slug}` }))
-    : product.categoryName
-      ? [{ name: product.categoryName, href: `${prefix}/search?category=${product.categorySlug}` }]
-      : [];
+    : [{ name: product.category.name, href: `${prefix}/search?category=${product.category.slug}` }];
 
   return [
     { name: homeLabel, href: `${prefix}/` },
@@ -208,17 +189,6 @@ export default async function ProductDetailPage({
 
   if (productRes.status === 'rejected') notFound();
   const product = productRes.value;
-
-  // See the ProductDetailDto.category doc comment — DETAIL nests category
-  // where ProductDto/the LIST endpoint declare it flat. Normalize once here
-  // so every existing reader of product.categoryName/categorySlug/categoryId
-  // downstream (breadcrumb, ExploreRelatedSearches keywords, analytics
-  // viewItem) gets the real value instead of silent undefined.
-  if (product.category) {
-    product.categoryId   = product.category.id;
-    product.categoryName = product.category.name;
-    product.categorySlug = product.category.slug;
-  }
 
   // productRes already 404s above; the rest are optional sections that quietly
   // disappear on failure. Log which one broke and why — otherwise a missing

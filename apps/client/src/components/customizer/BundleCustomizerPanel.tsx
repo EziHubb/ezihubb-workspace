@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useCartStore } from '../../lib/store/cart.store';
-import type { ProductDto, CustomizationConfigDto } from '@ezihubb/types';
+import type { ProductDetailDto, CustomizationConfigDto } from '@ezihubb/types';
 import { fmtAmount } from '@ezihubb/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -13,7 +13,7 @@ type ItemFields = Record<string, FieldValue>;
 type AllItemFields = Record<number, ItemFields>;
 
 interface BundleCustomizerPanelProps {
-  product:     ProductDto;
+  product:     ProductDetailDto;
   bundleCount: number;
   onCartSuccess: () => void;
 }

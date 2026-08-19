@@ -13,7 +13,7 @@ import {
   MapPin,
   ShieldCheck,
 } from 'lucide-react';
-import type { ProductDto } from '@ezihubb/types';
+import type { ProductDetailDto } from '@ezihubb/types';
 
 // ── ProductDescription ────────────────────────────────────────────────────────
 
@@ -85,7 +85,7 @@ export function Accordion({
 
 // ── 1. Item Details ───────────────────────────────────────────────────────────
 
-export function ItemDetailsAccordion({ product }: { product: ProductDto }) {
+export function ItemDetailsAccordion({ product }: { product: ProductDetailDto }) {
   const t = useTranslations('product.accordions');
   // Derive materials from attributes if the seller populated a Material field
   const materialAttr = (product.attributes ?? []).find(
@@ -143,7 +143,7 @@ export function ItemDetailsAccordion({ product }: { product: ProductDto }) {
 
 // ── 2. Shipping & Return Policies ─────────────────────────────────────────────
 
-export function ShippingReturnsAccordion({ product }: { product: ProductDto }) {
+export function ShippingReturnsAccordion({ product }: { product: ProductDetailDto }) {
   const t = useTranslations('product.accordions');
   const processingMin = product.processingDays ?? 3;
   const processingMax = processingMin + 3;

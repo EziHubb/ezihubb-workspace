@@ -1,13 +1,13 @@
 import { Fragment } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import type { ProductDto } from '@ezihubb/types';
+import type { ProductDetailDto } from '@ezihubb/types';
 import type { BreadcrumbItem } from './ProductBreadcrumb';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface ListedInfoFooterProps {
-  product:     ProductDto;
+  product:     ProductDetailDto;
   breadcrumbs: BreadcrumbItem[];
   locale?:     string;
 }

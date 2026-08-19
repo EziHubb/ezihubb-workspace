@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, Heart, Flag, X, Play, Volume2, VolumeX, Vide
 import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { safeArr } from '@ezihubb/utils';
-import type { ProductDto } from '@ezihubb/types';
+import type { ProductDetailDto } from '@ezihubb/types';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -22,7 +22,7 @@ interface MediaItem {
   altText?: string;
 }
 
-function buildMediaItems(product: ProductDto): MediaItem[] {
+function buildMediaItems(product: ProductDetailDto): MediaItem[] {
   const images = product.images?.length
     ? product.images.map((img) => ({ id: img.id, type: 'image' as const, url: img.url, altText: img.altText ?? undefined }))
     : [{ id: 'ph', type: 'image' as const, url: PLACEHOLDER, altText: product.name }];
@@ -152,7 +152,7 @@ function MediaThumbnail({ item, className }: { item: MediaItem; className: strin
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface EtsyGalleryProps {
-  product: ProductDto;
+  product: ProductDetailDto;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────

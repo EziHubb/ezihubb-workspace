@@ -20,7 +20,7 @@ import { MobileStickyCartBar } from './MobileStickyCartBar';
 import { toast } from '../../lib/store/toast.store';
 import { useCurrency } from '../../lib/currency/currency-context';
 import { analytics } from '../../lib/analytics';
-import type { ProductDto, ProductVariantDto, ReviewSummaryDto } from '@ezihubb/types';
+import type { ProductDetailDto, ProductVariantDto, ReviewSummaryDto } from '@ezihubb/types';
 import { fmtRating, safeNum } from '@ezihubb/utils';
 
 // ── Date helpers (no date-fns) ────────────────────────────────────────────────
@@ -45,9 +45,9 @@ function fmtDate(date: Date, locale: string): string {
   return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
 }
 
-// ── Field type from ProductDto['customization'] ───────────────────────────────
+// ── Field type from ProductDetailDto['customization'] ───────────────────────────────
 
-type CustomField = NonNullable<ProductDto['customization']>['fields'][number];
+type CustomField = NonNullable<ProductDetailDto['customization']>['fields'][number];
 
 // ── InDemandBadge ─────────────────────────────────────────────────────────────
 
@@ -107,7 +107,7 @@ function BuyTogetherCard({
   currentProductId,
   onAdded,
 }: {
-  bundleOffer: NonNullable<ProductDto['bundleOffer']>;
+  bundleOffer: NonNullable<ProductDetailDto['bundleOffer']>;
   currentProductId: string;
   onAdded: () => void;
 }) {
@@ -507,7 +507,7 @@ function StarSellerBadge({ title, description }: { title: string; description: s
 // ── ProductPurchasePanel ──────────────────────────────────────────────────────
 
 interface Props {
-  product:       ProductDto;
+  product:       ProductDetailDto;
   reviewSummary: ReviewSummaryDto | null;
   locale?:       string;
 }
@@ -529,7 +529,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
     analytics.viewItem({
       id:       product.id,
       name:     product.name,
-      category: product.categoryName ?? '',
+      category: product.category.name,
       price:    Number(product.basePrice),
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -566,7 +566,9 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
     [product.variants],
   );
   const rawPrice        = selectedVariant?.price ?? minVariantPrice ?? product.basePrice;
-  const rawCompareAtPrice = selectedVariant?.compareAtPrice ?? product.compareAtPrice;
+  // No per-variant compareAtPrice exists (ProductVariant has no such column —
+  // see ProductVariantDto) — only the product-level one.
+  const rawCompareAtPrice = product.compareAtPrice ?? undefined;
 
   // Etsy "Set up a sale" — applied to whichever price is currently selected
   // (base or variant), same math as the server (checkout recomputes this

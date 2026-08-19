@@ -1,8 +1,8 @@
-import type { ProductDto } from '@ezihubb/types';
+import type { ProductDetailDto } from '@ezihubb/types';
 import { EtsyGallery } from './EtsyGallery';
 
 interface ProductGalleryColumnProps {
-  product: ProductDto;
+  product: ProductDetailDto;
 }
 
 export function ProductGalleryColumn({ product }: ProductGalleryColumnProps) {

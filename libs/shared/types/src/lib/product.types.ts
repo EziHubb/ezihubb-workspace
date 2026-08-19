@@ -1,31 +1,41 @@
 import type { TagDto } from './catalog.types';
 
+// ── Product images ───────────────────────────────────────────────────────────
+// Two distinct shapes, not one — the LIST endpoint sends a thumbnail-only
+// shape, DETAIL sends the full row. A single ProductImageDto pretending to
+// cover both is exactly the kind of "type says yes, runtime says no" bug this
+// file used to have for category (see git history): LIST images never had
+// `id`/`sortOrder`, only `ProductDetailDto` below actually does.
+
+/** Full image row — DETAIL only (apps/api .../dto/product-response.dto.ts ProductImageResponseDto). */
 export interface ProductImageDto {
   id: string;
   url: string;
-  altText?: string;
+  altText: string | null;
   isPrimary: boolean;
   sortOrder: number;
 }
 
+/** Thumbnail-only shape the LIST endpoint actually sends (product-list-item.dto.ts). */
+export interface ProductListImageDto {
+  url: string;
+  isPrimary?: boolean;
+}
+
+// ── Variants ──────────────────────────────────────────────────────────────────
+// Matches apps/api/.../dto/product-response.dto.ts VariantResponseDto exactly.
+// There is no per-variant compareAtPrice in the Prisma schema (ProductVariant
+// has no such column) — a client-declared `compareAtPrice?: number` here for
+// years never had real data behind it.
+
 export interface ProductVariantDto {
-  sku: string;
-  options: Record<string, string>;
-  price: number;
-  compareAtPrice?: number;
+  id:       string;
+  name:     string;
+  options:  Record<string, string>;
+  price:    number;
+  sku:      string | null;
   isDefault: boolean;
-  isAvailable: boolean;
-  // backward compat — components still access the old VariantDto-style fields
-  id?: string;
-  /** @deprecated use options.Size */
-  size?: string;
-  /** @deprecated use options.Color */
-  color?: string;
-  /** @deprecated use options.Material */
-  material?: string;
-  isActive?: boolean;
-  attributes?: Record<string, string>;
-  [key: string]: unknown;
+  sortOrder: number;
 }
 
 export interface ProductAttributeDto {
@@ -58,54 +68,64 @@ export interface CustomizationConfigDto {
   }[];
 }
 
+// ── LIST (GET /products, /search, /stores/{slug}/…) ───────────────────────────
+// Keep in sync with apps/api/src/modules/products/dto/product-list-item.dto.ts,
+// not with wishful shape — this type previously declared a nested
+// `primaryCategory: {name,slug}` / `rating: {avg,count}` shape no endpoint
+// ever produced (always undefined), and separately a `soldCount24h` the API
+// has only ever sent as `inDemandCount`.
+
 export interface ProductListItemDto {
   id: string;
   name: string;
   slug: string;
+  sku: string;
   basePrice: number;
-  compareAtPrice?: number;
-  /** Lowest/highest ProductVariant.price, or null/undefined when the product has no
-   *  variants. basePrice is seller-entered and never auto-synced to variant prices —
+  compareAtPrice: number | null;
+  /** Lowest/highest ProductVariant.price, or null when the product has no variants.
+   *  basePrice is seller-entered and never auto-synced to variant prices —
    *  prefer minPrice (falling back to basePrice) so a stale basePrice can't mislead
    *  buyers into thinking the cheapest option costs more (or less) than it does. */
-  minPrice?: number | null;
-  maxPrice?: number | null;
-  isPersonalizable: boolean;
-  isFeatured: boolean;
-  soldCount: number;
-  /**
-   * Rolling 24h demand signal (Redis counter, apps/api IN_DEMAND_KEY) — powers
-   * the "In-demand"/"bought recently" badges. Was declared as `soldCount24h`,
-   * a name neither the LIST nor DETAIL endpoint has ever sent; the real field
-   * is `inDemandCount`. Renamed to match — the badges were silently dead on
-   * both the PDP and search cards until now.
-   */
-  inDemandCount?: number;
-  // Flat fields, matching exactly what the API actually sends (see
-  // apps/api/src/modules/products/dto/product-list-item.dto.ts) — this type
-  // previously declared a nested `primaryCategory: {name,slug}` and
-  // `rating: {avg,count}` shape that NO backend endpoint ever produced, which
-  // silently broke every rating star and category label reading it (always
-  // undefined). Keep this in sync with the backend DTO, not with wishful shape.
+  minPrice: number | null;
+  maxPrice: number | null;
+  primaryImageUrl: string | null;
+  /** @deprecated use images[0].url */
+  primaryImage: string | null;
+  images: ProductListImageDto[];
   categoryId: string;
   categoryName: string;
   categorySlug: string;
-  /**
-   * Colour tags, used for the swatch strip on a listing card. Optional
-   * because responses produced before the API started returning it simply
-   * omit the key — callers must treat `undefined` as "no swatches", never as
-   * an error.
-   */
-  primaryColors?: string[];
-  images: ProductImageDto[];
+  /** Colour tags for the swatch strip on a listing card. */
+  primaryColors: string[];
+  productType: 'PHYSICAL' | 'DIGITAL';
+  isPersonalizable: boolean;
+  isFeatured: boolean;
+  isActive: boolean;
+  status: string;
+  quantity: number | null;
+  viewCount: number;
+  soldCount: number;
   averageRating: number | null;
   reviewCount: number;
-  tags: { name: string; slug: string }[];
-  // backward compat field used by existing components
-  /** @deprecated use images[0].url */
-  primaryImage?: string;
-  badge?: 'bestseller' | 'new' | 'sale' | 'hot';
+  /**
+   * Rolling 24h demand signal (Redis counter, apps/api IN_DEMAND_KEY) — powers
+   * the "In-demand"/"bought recently" badges. Was declared as `soldCount24h`,
+   * a name the API has never sent; the real field is `inDemandCount`.
+   */
+  inDemandCount: number;
+  createdAt: string;
+  storeId?: string | null;
+  storeName?: string | null;
+  storeSlug?: string | null;
   store?: { id: string; name: string; slug: string } | null;
+  /**
+   * Not present on ProductListItemDto (product-list-item.dto.ts) at all —
+   * every read of `.badge` across the search/listing cards is on data that
+   * never carries it. Left declared (several live components still read it)
+   * but this is a known-dead field, same bug class as the ones fixed in this
+   * file, out of scope for the PDP work that prompted this pass. See backlog.
+   */
+  badge?: 'bestseller' | 'new' | 'sale' | 'hot';
 }
 
 export interface DigitalFileDto {
@@ -129,25 +149,58 @@ export interface ProductBundleOfferDto {
   products: ProductBundlePartnerDto[];
 }
 
-export interface ProductDto extends ProductListItemDto {
+// ── DETAIL (GET /products/{slug}) ──────────────────────────────────────────────
+// Deliberately NOT `extends ProductListItemDto`. The two endpoints share a
+// handful of field NAMES but not shapes (category/images most visibly) —
+// three ad-hoc local `ProductDetailDto extends ProductDto` definitions had
+// drifted out of sync with each other and with reality before this type
+// existed; this is the one canonical version, matching
+// apps/api/src/modules/products/dto/product-response.dto.ts ProductResponseDto,
+// plus the fields apps/api merges in from MongoDB only when a Mongo detail
+// document exists for the product (richDescription..printSpecs below).
+export interface ProductDetailDto {
+  id: string;
+  name: string;
+  slug: string;
   sku: string;
   description: string;
-  shortDescription?: string;
-  processingDays: number;
-  viewCount: number;
-  variants: ProductVariantDto[];
-  variantOptions?: { name: string; values: string[] }[];
-  attributes?: ProductAttributeDto[];
-  customization?: CustomizationConfigDto | null;
-  sizeGuide?: string;
-  collections?: { id: string; name: string; slug: string }[];
-  videoUrls?: string[];
-  productType?: 'PHYSICAL' | 'DIGITAL';
-  digitalFiles?: DigitalFileDto[];
-  /** Etsy "Set up a sale" — the active auto-apply discount's own terms, applied client-side to whichever price (base or variant) is currently selected. Null/undefined when no sale is active. */
+  shortDescription: string | null;
+  basePrice: number;
+  compareAtPrice: number | null;
+  /** Etsy "Set up a sale" — the active auto-apply discount's own terms, applied
+   *  client-side to whichever price (base or variant) is currently selected.
+   *  Null when no sale is active. Checkout always recomputes this itself. */
   salePromo?: { type: 'PERCENTAGE' | 'FIXED_AMOUNT'; value: number } | null;
   /** Active "Buy them together" bundle this listing belongs to, if any. */
   bundleOffer?: ProductBundleOfferDto | null;
+  isPersonalizable: boolean;
+  isActive: boolean;
+  productType: 'PHYSICAL' | 'DIGITAL';
+  isFeatured: boolean;
+  viewCount: number;
+  soldCount: number;
+  processingDays: number;
+  category: { id: string; name: string; slug: string };
+  store: { id: string; name: string; slug: string } | null;
+  variants: ProductVariantDto[];
+  variantOptions: { name: string; values: string[] }[];
+  images: ProductImageDto[];
+  digitalFiles?: DigitalFileDto[];
+  videoUrls?: string[];
+  tags: TagDto[];
+  averageRating: number | null;
+  reviewCount: number;
+  inDemandCount: number;
+  createdAt: string;
+  updatedAt: string;
+
+  // ── Merged in from MongoDB only when a detail document exists for the
+  // product — genuinely absent (not just null) otherwise. ────────────────────
+  richDescription?: string;
+  sizeGuide?: string;
+  shippingNote?: string;
+  attributes?: ProductAttributeDto[];
+  customization?: CustomizationConfigDto | null;
 }
 
 // ── Backward-compat legacy types ───────────────────────────────────────────────

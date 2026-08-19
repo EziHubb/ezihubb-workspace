@@ -8,7 +8,7 @@ import { Modal, ModalHeader, ModalBody, Button, Skeleton } from '@ezihubb/ui';
 import { ProductGallery } from '../product/ProductGallery';
 import { VariantPicker } from '../product/VariantPicker';
 import type { FlexVariant, VariantOption } from '../product/VariantPicker';
-import type { ProductDto } from '@ezihubb/types';
+import type { ProductDetailDto } from '@ezihubb/types';
 import { apiClient } from '../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtRating } from '@ezihubb/utils';
@@ -63,7 +63,7 @@ export function QuickViewModal({
   const tSpecs = useTranslations('product.specs');
   const tCommon = useTranslations('common');
 
-  const [product,          setProduct]          = useState<ProductDto | null>(null);
+  const [product,          setProduct]          = useState<ProductDetailDto | null>(null);
   const [loading,          setLoading]          = useState(true);
   const [selectedVariant,  setSelectedVariant]  = useState<FlexVariant | null>(null);
   const [error,            setError]            = useState('');
@@ -76,7 +76,7 @@ export function QuickViewModal({
     setError('');
 
     apiClient
-      .get<ProductDto>(API_ROUTES.PRODUCTS.DETAIL(productSlug))
+      .get<ProductDetailDto>(API_ROUTES.PRODUCTS.DETAIL(productSlug))
       .then((product) => setProduct(product))
       .catch((err: Error) => setError(err.message ?? t('notFound')))
       .finally(() => setLoading(false));
@@ -151,15 +151,13 @@ export function QuickViewModal({
 
               {/* Variant picker */}
               {product.variants && product.variants.length > 0 && (() => {
-                // Map legacy PG variants to FlexVariant shape
+                // The backend already filters to isAvailable-only variants
+                // before sending DETAIL — every row here is available.
                 const flexVariants: FlexVariant[] = product.variants!.map((v) => ({
-                  sku:         v.sku ?? v.id,
-                  options:     (v.attributes as Record<string, string> | undefined) ??
-                               (['size', 'color', 'material'] as const)
-                                 .filter((k) => v[k])
-                                 .reduce((acc, k) => ({ ...acc, [k.charAt(0).toUpperCase() + k.slice(1)]: v[k] as string }), {} as Record<string, string>),
-                  price:       typeof v.price === 'number' ? v.price : 0,
-                  isAvailable: v.isActive,
+                  sku:       v.sku ?? v.id,
+                  options:   v.options,
+                  price:     v.price,
+                  isDefault: v.isDefault,
                 }));
                 const optMap = new Map<string, Set<string>>();
                 flexVariants.forEach((fv) => Object.entries(fv.options).forEach(([k, val]) => { if (!optMap.has(k)) optMap.set(k, new Set()); optMap.get(k)!.add(val); }));
