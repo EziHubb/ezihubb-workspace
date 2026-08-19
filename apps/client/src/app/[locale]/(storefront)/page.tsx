@@ -14,6 +14,7 @@ import { SocialProof } from '../../../components/home/SocialProof';
 import { FeaturedReviews } from '../../../components/home/FeaturedReviews';
 import { NewsletterSection } from '../../../components/home/NewsletterSection';
 import { MobileHeroCarousel } from '../../../components/home/MobileHeroCarousel';
+import { warnIfRejected } from '../../../lib/warn-if-rejected';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,14 +58,33 @@ export default async function HomePage({
         params: { isActive: true, limit: 6 },
         headers: localeHeaders,
       }),
+      // No `featured` param: GET /reviews has no such concept. Review has no
+      // isFeatured column and getGlobalReviews() only ever returns APPROVED
+      // reviews newest-first, so the param was never read — and because the
+      // API runs ValidationPipe with forbidNonWhitelisted, sending it made
+      // every request 400. The rejection then landed in the allSettled
+      // fallback below and the whole section vanished with no error anywhere.
+      // Backlog: featured reviews need a real definition (likely an
+      // isFeatured column) rather than being inferred from rating/helpfulCount.
       apiClient.get<PaginatedResponse<ReviewDto>>(API_ROUTES.REVIEWS.LIST, {
-        params: { featured: true, limit: 3 },
+        params: { limit: 3 },
       }),
       apiClient.get<CategoryDto[]>(API_ROUTES.CATALOG.CATEGORIES, {
         params: { level: 1 },
         headers: localeHeaders,
       }),
     ]);
+
+  // A rejected fetch here degrades to [] and the section below simply stops
+  // rendering — indistinguishable from "no data yet" and invisible in prod.
+  // That is exactly how GET /reviews?featured=true 400'd for weeks with the
+  // homepage reviews section silently missing. This runs in a Server
+  // Component, so the warning goes to the container's stdout
+  // (`docker compose logs client`) and never reaches the browser.
+  warnIfRejected('home:trending',   API_ROUTES.PRODUCTS.LIST,       trendingRes);
+  warnIfRejected('home:collections', API_ROUTES.CATALOG.COLLECTIONS, collectionsRes);
+  warnIfRejected('home:featuredReviews', API_ROUTES.REVIEWS.LIST,    featuredRes);
+  warnIfRejected('home:rootCategories',  API_ROUTES.CATALOG.CATEGORIES, categoriesRes);
 
   // apiClient auto-unwraps envelope; .value IS the payload, .value.data for paginated arrays
   const trendingProducts =

@@ -10,6 +10,7 @@ import { ProductListingLayout } from '../../../../../components/listing/ProductL
 import { CollectionHero } from '../../../../../components/collections/CollectionHero';
 import { RelatedCollections } from '../../../../../components/collections/RelatedCollections';
 import { parseSearchParams } from '../../../../../components/listing/types';
+import { warnIfRejected } from '../../../../../lib/warn-if-rejected';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,18 +109,33 @@ export default async function CollectionPage({
   if (collectionRes.status === 'rejected' || !collectionRes.value) notFound();
   const collection = collectionRes.value;
 
+  // A failed product fetch renders the collection as if it were empty, which
+  // looks identical to a genuinely empty collection. Log it so the difference
+  // is visible in `docker compose logs client`.
+  warnIfRejected('collection:products', API_ROUTES.PRODUCTS.LIST, productsRes);
+
   const products   = productsRes.status === 'fulfilled' ? productsRes.value.data : [];
   const pagination = productsRes.status === 'fulfilled'
     ? productsRes.value.pagination
     : emptyPage.pagination;
 
-  // Related collections — non-critical, falls back to null
+  // Related collections — non-critical, falls back to null.
+  // Same silent-swallow class as the allSettled branches above, just via
+  // .catch(): the section below is gated on this being non-empty, so a broken
+  // endpoint makes it disappear with nothing logged. Keep the fallback, log
+  // the reason.
   const relatedRes = await apiClient
     .get<PaginatedResponse<CollectionDto>>(API_ROUTES.CATALOG.COLLECTIONS, {
       params: { isActive: true, limit: 4, exclude: slug },
       next: { revalidate: 600 },
     })
-    .catch(() => null);
+    .catch((err: unknown) => {
+      warnIfRejected('collection:relatedCollections', API_ROUTES.CATALOG.COLLECTIONS, {
+        status: 'rejected',
+        reason: err,
+      });
+      return null;
+    });
 
   // Urgency: show if endDate is within 7 days
   let urgencyDays: number | null = null;

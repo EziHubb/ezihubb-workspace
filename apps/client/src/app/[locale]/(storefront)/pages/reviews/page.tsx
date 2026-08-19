@@ -7,6 +7,7 @@ import type { ProductListItemDto, PaginatedResponse } from '@ezihubb/types';
 import { ReviewsPageStructuredData } from '../../../../../components/seo/ReviewsPageStructuredData';
 import { fmtRating, safeArr, safeNum } from '@ezihubb/utils';
 import { buildAlternates } from '../../../../../lib/seo';
+import { warnIfRejected } from '../../../../../lib/warn-if-rejected';
 
 export const revalidate = 3600;
 
@@ -108,6 +109,12 @@ export default async function ReviewsPage({
       params: { sort: 'rating', limit: 6, isActive: true },
     }),
   ]);
+
+  // Each of these degrades to null/[] and its section then stops rendering,
+  // which is indistinguishable from having no reviews yet. Log the reason.
+  warnIfRejected('reviewsPage:summary',     API_ROUTES.REVIEWS.SUMMARY, summaryRes);
+  warnIfRejected('reviewsPage:reviews',     API_ROUTES.REVIEWS.LIST,    reviewsRes);
+  warnIfRejected('reviewsPage:topProducts', API_ROUTES.PRODUCTS.LIST,   topProductsRes);
 
   const summary     = summaryRes.status     === 'fulfilled' ? summaryRes.value           : null;
   const reviews     = reviewsRes.status     === 'fulfilled' ? safeArr(reviewsRes.value.data)     : [];

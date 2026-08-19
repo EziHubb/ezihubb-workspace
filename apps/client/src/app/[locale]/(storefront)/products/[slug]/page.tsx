@@ -24,6 +24,7 @@ import { ExploreRelatedSearches } from '../../../../../components/product/Explor
 import { ListedInfoFooter } from '../../../../../components/product/ListedInfoFooter';
 import { ProductQandA } from '../../../../../components/product/ProductQandA';
 import type { QAItem } from '../../../../../components/product/ProductQandA';
+import { warnIfRejected } from '../../../../../lib/warn-if-rejected';
 
 export const revalidate = 30;
 
@@ -142,6 +143,14 @@ export default async function ProductDetailPage({
 
   if (productRes.status === 'rejected') notFound();
   const product = productRes.value;
+
+  // productRes already 404s above; the rest are optional sections that quietly
+  // disappear on failure. Log which one broke and why — otherwise a missing
+  // "Related products" block looks the same as a product with no relatives.
+  warnIfRejected('product:reviewSummary', API_ROUTES.PRODUCTS.REVIEW_SUMMARY(slug), reviewSummaryRes);
+  warnIfRejected('product:related',       API_ROUTES.PRODUCTS.RELATED(slug),        relatedRes);
+  warnIfRejected('product:moreFromShop',  API_ROUTES.PRODUCTS.LIST,                 moreFromShopRes);
+  warnIfRejected('product:qa',            API_ROUTES.PRODUCTS.QA(slug),             qaRes);
 
   const reviewSummary = reviewSummaryRes.status === 'fulfilled'
     ? reviewSummaryRes.value : null;
