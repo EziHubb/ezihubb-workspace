@@ -38,6 +38,13 @@ export interface SearchFacets {
   occasion: FacetItem[];
   holiday: FacetItem[];
   recipient: FacetItem[];
+  /**
+   * Shop countries present in the result set, for the "ships from" filter.
+   * `value` is the ISO 3166-1 alpha-2 code, not a display name — the client
+   * decides how to label it, so the country list is not duplicated here in
+   * one language.
+   */
+  countries: FacetItem[];
 }
 
 export interface SearchResultDto extends PaginatedResult<ProductListItemDto> {
@@ -373,7 +380,7 @@ export class SearchService {
     const empty: SearchFacets = {
       freeShipping: 0, onSale: 0,
       colors: [], materials: [], styles: [],
-      occasion: [], holiday: [], recipient: [],
+      occasion: [], holiday: [], recipient: [], countries: [],
     };
     try {
       const matching = await this.prisma.product.findMany({
@@ -384,7 +391,7 @@ export class SearchService {
       const ids = matching.map((p) => p.id);
       if (!ids.length) return empty;
 
-      const [colors, materials, styles, occasion, holiday, recipient, countsRaw] =
+      const [colors, materials, styles, occasion, holiday, recipient, countries, countsRaw] =
         await Promise.all([
           this.prisma.$queryRaw<FacetItem[]>(Prisma.sql`
             SELECT unnest("primaryColors") AS value, COUNT(*)::int AS count
@@ -416,6 +423,16 @@ export class SearchService {
             FROM "Product" WHERE id = ANY(${ids})
             GROUP BY value ORDER BY count DESC LIMIT 10
           `),
+          // Joined rather than unnested: origin lives on the shop, not the
+          // listing. Listings with no shop (platform-owned) and shops with no
+          // country set are excluded rather than bucketed under an empty
+          // string, which would render as a blank, unselectable filter row.
+          this.prisma.$queryRaw<FacetItem[]>(Prisma.sql`
+            SELECT s.country AS value, COUNT(*)::int AS count
+            FROM "Product" p JOIN "Store" s ON s.id = p."storeId"
+            WHERE p.id = ANY(${ids}) AND s.country IS NOT NULL
+            GROUP BY s.country ORDER BY count DESC LIMIT 20
+          `),
           this.prisma.$queryRaw<Array<{ freeShipping: number; onSale: number }>>(Prisma.sql`
             SELECT
               COUNT(CASE WHEN "compareAtPrice" IS NOT NULL THEN 1 END)::int AS "onSale",
@@ -429,7 +446,7 @@ export class SearchService {
         ]);
 
       const counts = countsRaw[0] ?? { freeShipping: 0, onSale: 0 };
-      return { ...counts, colors, materials, styles, occasion, holiday, recipient };
+      return { ...counts, colors, materials, styles, occasion, holiday, recipient, countries };
     } catch (err) {
       this.logger.warn('Facet computation failed', err);
       return empty;

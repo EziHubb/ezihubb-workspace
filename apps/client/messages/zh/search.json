@@ -84,5 +84,9 @@
   "customizableIdeas": "可定制灵感",
   "byStore": "来自 {name}",
   "showMore": "再显示 {count} 项",
-  "showLess": "收起"
+  "showLess": "收起",
+  "readyToDispatch": "备货时间",
+  "dispatchWithin": "{days} 天内",
+  "anyDispatchTime": "不限备货时间",
+  "shipsFrom": "发货地"
 }

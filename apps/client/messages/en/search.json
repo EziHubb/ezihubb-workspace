@@ -84,5 +84,9 @@
   "customizableIdeas": "Personalisable ideas",
   "byStore": "By {name}",
   "showMore": "Show {count} more",
-  "showLess": "Show less"
+  "showLess": "Show less",
+  "readyToDispatch": "Ready to dispatch",
+  "dispatchWithin": "Within {days} day(s)",
+  "anyDispatchTime": "Any dispatch time",
+  "shipsFrom": "Ships from"
 }

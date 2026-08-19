@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useState, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ChevronDown, Check } from 'lucide-react';
 import type { CategoryDto } from '@ezihubb/types';
 
@@ -21,6 +21,21 @@ export interface SearchFacets {
   occasion?: FacetItem[];
   holiday?: FacetItem[];
   recipient?: FacetItem[];
+  /** ISO 3166-1 alpha-2 codes, counted across the current result set. */
+  countries?: FacetItem[];
+}
+
+/**
+ * Country code -> display name, resolved by the browser so we do not ship a
+ * country table in three languages. Falls back to the raw code if the runtime
+ * has no data for it, which is still better than a blank row.
+ */
+function countryName(code: string, locale: string): string {
+  try {
+    return new Intl.DisplayNames([locale], { type: 'region' }).of(code) ?? code;
+  } catch {
+    return code;
+  }
 }
 
 interface Props {
@@ -477,6 +492,7 @@ function MoreFiltersSection({
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function SearchFilterSidebar({ filters, facets, categories, onFilterChange, onClearAll }: Props) {
+  const locale = useLocale();
   const t = useTranslations('search');
   const hasActiveFilters = Object.keys(filters).some(
     (k) => !['q', 'page', 'limit', 'sort'].includes(k),
@@ -605,6 +621,57 @@ export function SearchFilterSidebar({ filters, facets, categories, onFilterChang
           </button>
         )}
       </FilterSection>
+
+      {/* ── Ready to dispatch ──
+          Radios, not checkboxes: the API takes one upper bound, and "1 day"
+          is already contained in "1-3 days", so two boxes ticked together
+          would be the same query as the looser one alone. */}
+      <FilterSection title={t('readyToDispatch')}>
+        {([1, 3, 7] as const).map((days) => (
+          <label
+            key={days}
+            className="flex items-center gap-2 py-1.5 cursor-pointer hover:text-secondary"
+          >
+            <input
+              type="radio"
+              name="maxProcessingDays"
+              checked={filters.maxProcessingDays === String(days)}
+              onChange={() => onFilterChange('maxProcessingDays', String(days))}
+              className="accent-primary"
+            />
+            <span className="text-secondary text-sm">{t('dispatchWithin', { days })}</span>
+          </label>
+        ))}
+        {filters.maxProcessingDays && (
+          <button
+            type="button"
+            onClick={() => onFilterChange('maxProcessingDays', null)}
+            className="text-xs text-primary hover:underline mt-1"
+          >
+            {t('anyDispatchTime')}
+          </button>
+        )}
+      </FilterSection>
+
+      {/* ── Ships from ──
+          Only rendered when the result set actually spans a country we know
+          about. Hiding it on an empty facet avoids a filter group that can
+          never narrow anything. */}
+      {(facets?.countries?.length ?? 0) > 0 && (
+        <FilterSection title={t('shipsFrom')}>
+          <ShowMoreList
+            items={facets!.countries!.map((c) => (
+              <FilterCheckbox
+                key={c.value}
+                label={countryName(c.value, locale)}
+                count={c.count}
+                checked={filters.shipsFrom === c.value}
+                onChange={(v) => onFilterChange('shipsFrom', v ? c.value : null)}
+              />
+            ))}
+          />
+        </FilterSection>
+      )}
 
       {/* ── Color ── */}
       <FilterSection title={t('color')}>

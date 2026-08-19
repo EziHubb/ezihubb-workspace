@@ -281,6 +281,24 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
           );
         })()}
 
+        {/* Digital-download marker, above the title as in the reference.
+            A shopper needs to know before clicking that nothing will be
+            shipped. Icon is inline SVG on app tokens — no asset copied. */}
+        {product.productType === 'DIGITAL' && (
+          <p className="flex items-center gap-1 text-xs text-muted">
+            <svg
+              width="11" height="11" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              aria-hidden="true" className="shrink-0"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            {t('digitalDownload')}
+          </p>
+        )}
+
         {/* Title — ONE line, ellipsised. Measured off the 1280px reference:
             every card there is a single line, and a fixed line count is what
             keeps the row of cards aligned. Two lines let a long name push one

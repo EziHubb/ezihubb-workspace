@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { SlidersHorizontal, ChevronDown, X } from 'lucide-react';
 import { safeNum } from '@ezihubb/utils';
 
@@ -31,13 +31,21 @@ interface SearchTopBarProps {
 
 type Translator = ReturnType<typeof useTranslations>;
 
-function formatFilterLabel(t: Translator, key: string, value: string): string {
+function formatFilterLabel(t: Translator, locale: string, key: string, value: string): string {
   if (key === 'minPrice')    return t('chips.fromPrice', { value: `$${value}` });
   if (key === 'maxPrice')    return t('chips.toPrice', { value: `$${value}` });
   if (key === 'minRating')   return t('chips.ratingAndUp', { stars: '★'.repeat(Number(value)) });
   if (key === 'freeShipping') return t('freeShipping');
   if (key === 'onSale')       return t('onSale');
   if (key === 'starSeller')   return t('starSeller');
+  if (key === 'maxProcessingDays') return t('dispatchWithin', { days: Number(value) });
+  // Country code -> display name, same Intl.DisplayNames path the sidebar
+  // uses, so the chip reads the same as the option that produced it.
+  if (key === 'shipsFrom') {
+    try {
+      return t('shipsFrom') + ': ' + (new Intl.DisplayNames([locale], { type: 'region' }).of(value) ?? value);
+    } catch { return t('shipsFrom') + ': ' + value; }
+  }
   if (key === 'itemType') {
     if (value === 'ready_to_ship') return t('readyToShip');
     if (value === 'to_order')      return t('madeToOrder');
@@ -59,10 +67,10 @@ function formatFilterLabel(t: Translator, key: string, value: string): string {
 
 const SKIP_KEYS = new Set(['q', 'sort', 'page', 'limit']);
 
-function getChips(t: Translator, filters: Record<string, string | undefined>): ActiveFilter[] {
+function getChips(t: Translator, locale: string, filters: Record<string, string | undefined>): ActiveFilter[] {
   return Object.entries(filters)
     .filter(([key, value]) => !SKIP_KEYS.has(key) && value !== undefined && value !== '')
-    .map(([key, value]) => ({ key, label: formatFilterLabel(t, key, value as string) }));
+    .map(([key, value]) => ({ key, label: formatFilterLabel(t, locale, key, value as string) }));
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -81,7 +89,8 @@ export function SearchTopBar({
   isLoading,
 }: SearchTopBarProps) {
   const t = useTranslations('search');
-  const chips = getChips(t, activeFilters);
+  const locale = useLocale();
+  const chips = getChips(t, locale, activeFilters);
 
   // Sort options (search-specific — includes relevance)
   const SEARCH_SORT_OPTIONS = [

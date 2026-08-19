@@ -84,5 +84,9 @@
   "customizableIdeas": "Ý tưởng có thể cá nhân hoá",
   "byStore": "Bởi {name}",
   "showMore": "Xem thêm {count}",
-  "showLess": "Thu gọn"
+  "showLess": "Thu gọn",
+  "readyToDispatch": "Sẵn sàng gửi trong",
+  "dispatchWithin": "Trong {days} ngày",
+  "anyDispatchTime": "Mọi thời gian gửi",
+  "shipsFrom": "Gửi từ"
 }
