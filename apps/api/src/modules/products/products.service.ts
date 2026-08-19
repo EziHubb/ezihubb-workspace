@@ -198,6 +198,10 @@ export class ProductsService {
           categoryId: p.categoryId,
           categoryName: p.category.name,
           categorySlug: p.category.slug,
+          // Third of three places mapping into ProductListItemDto — see the
+          // note on that field. This one is inline rather than via
+          // toListItems.
+          primaryColors: p.primaryColors ?? [],
           isPersonalizable: p.isPersonalizable,
           isFeatured: p.isFeatured,
           isActive: p.isActive,
@@ -2700,6 +2704,10 @@ export class ProductsService {
       images: { url: string }[];
       categoryId: string;
       category: { id: string; name: string; slug: string };
+      // Present at runtime already: the queries use Prisma `include`, which
+      // returns every scalar column. Only this hand-written row type had to
+      // be widened — no extra database work.
+      primaryColors: string[];
       isPersonalizable: boolean;
       isFeatured: boolean;
       isActive: boolean;
@@ -2761,6 +2769,9 @@ export class ProductsService {
       categoryId: p.categoryId,
       categoryName: p.category.name,
       categorySlug: p.category.slug,
+      // Kept identical to SearchService.toListItems — see the note on
+      // ProductListItemDto.primaryColors. Free: `include` already fetched it.
+      primaryColors: p.primaryColors ?? [],
       isPersonalizable: p.isPersonalizable,
       isFeatured: p.isFeatured,
       isActive: p.isActive,

@@ -18,6 +18,16 @@ export class ProductListItemDto {
   @ApiProperty() categoryId: string;
   @ApiProperty() categoryName: string;
   @ApiProperty() categorySlug: string;
+  /**
+   * Colour tags for the swatch strip on a listing card. Costs no extra query:
+   * both mappers fetch products with Prisma `include`, which already returns
+   * every scalar column — this only maps a value that was being discarded.
+   *
+   * Mapped in TWO places (ProductsService.toListItems and
+   * SearchService.toListItems). Both must stay in sync or the swatches appear
+   * on some listing surfaces and silently vanish on others.
+   */
+  @ApiProperty({ type: [String] }) primaryColors: string[];
   @ApiProperty() isPersonalizable: boolean;
   @ApiProperty() isFeatured: boolean;
   @ApiProperty() isActive: boolean;
