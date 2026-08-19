@@ -733,11 +733,18 @@ model SellerLedgerEntry {
   // itemized "Payment account" statement.
   amount       Decimal               @db.Decimal(10, 2)
   description  String
+  // Which product this entry relates to, for LISTING_FEE and its VAT line.
+  // Nullable because most entry types (SALE, TRANSACTION_FEE, payouts) are
+  // order-scoped, not product-scoped — those keep using storeOrderId.
+  // Exists so the duplicate-charge guard can ask "has this product already
+  // been charged a listing fee?" without LIKE-matching the description text.
+  productId    String?
   payoutId     String?
   payout       SellerPayout?         @relation(fields: [payoutId], references: [id])
   createdAt    DateTime              @default(now())
 
   @@index([storeId, payoutId])
+  @@index([storeId, productId, type])
 }
 
 // ── Marketing: Share & Save / Offsite Ads attribution (Etsy parity) ──────────
