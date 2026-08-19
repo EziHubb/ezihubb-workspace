@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
-import type { ProductListItemDto } from '@ezihubb/types';
+import type { PaginatedResponse, ProductListItemDto } from '@ezihubb/types';
 
 interface ShopCustomizableIdeasProps {
   query?: string;
@@ -19,10 +19,17 @@ export function ShopCustomizableIdeas({ query }: ShopCustomizableIdeasProps) {
   const { data: products = [] } = useQuery<ProductListItemDto[]>({
     queryKey: ['search', 'customizable', query],
     queryFn: async () => {
-      const result = await apiClient.get<ProductListItemDto[]>(API_ROUTES.PRODUCTS.LIST, {
-        params: { isPersonalizable: 'true', sort: 'bestseller', limit: '6' },
-      });
-      return (result ?? []).slice(0, 6);
+      // /products returns a paginated envelope, so the payload is
+      // { data, pagination } and NOT an array. Typing it as an array and
+      // calling .slice() straight on it would throw the moment a response
+      // actually arrived — which never happened only because this request was
+      // failing with a 400 first (isPersonalizable was missing from the DTO).
+      // Two bugs hiding each other: fixing one alone just moves the failure.
+      const result = await apiClient.get<PaginatedResponse<ProductListItemDto>>(
+        API_ROUTES.PRODUCTS.LIST,
+        { params: { isPersonalizable: 'true', sort: 'bestseller', limit: '6' } },
+      );
+      return (result?.data ?? []).slice(0, 6);
     },
     staleTime: 5 * 60_000,
   });

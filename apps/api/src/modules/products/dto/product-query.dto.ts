@@ -89,6 +89,19 @@ export class ProductQueryDto extends PaginationDto {
   isFeatured?: boolean;
 
   /**
+   * Listings the buyer can personalise. Backs the storefront's
+   * "personalisable ideas" strip, which was sending this parameter already —
+   * the DTO did not declare it, so ValidationPipe's forbidNonWhitelisted
+   * rejected every one of those requests with a 400 and the strip silently
+   * rendered nothing.
+   */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true' || value === true)
+  isPersonalizable?: boolean;
+
+  /**
    * Fetch an explicit set of products by id. Used by the storefront's
    * "Featured items" strip to render exactly the listings a seller pinned in
    * Shop Home (`Store.featuredProductIds`) instead of whatever carries the

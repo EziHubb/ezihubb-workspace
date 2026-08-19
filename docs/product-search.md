@@ -145,3 +145,36 @@ disable autoplay, and a guarantee that only one video plays at a time.
 
 Deferred because production currently has no published products, so there is
 nothing to see and no way to verify any of it.
+
+## Empty is not always broken
+
+Two things on this page look like UI failures and are not. Check the data
+before changing code.
+
+**No colour swatches.** The swatch strip is implemented and wired to
+`primaryColors`. All four listings currently live have `primaryColors = null`,
+so there is nothing to draw. Set colour tags on a product and they appear.
+
+**No rating line.** Also implemented — numeric average, stars, compact count.
+It is hidden when a listing has no approved reviews, deliberately, because
+"0 ★ (0)" reads as a bad score rather than as no data. All four current
+listings have zero approved reviews.
+
+**Pagination missing.** By design: `SearchPagination` returns null at
+`totalPages <= 1`, and four results at 48 per page is one page.
+
+## Backlog
+
+**Header comparison.** The reference only captured the search field, so there
+is not enough of it to judge the rest of the header against. Differences noted
+so far, none of them yet decided:
+
+| | Reference | Ours |
+|---|---|---|
+| Category entry | A single "Categories" button opening a mega menu | A row of category links, each with its own dropdown |
+| Second row | Curated links (New Arrivals, Home Favourites, Vintage, ...) | The same category links as above |
+| Right-hand icons | favourites, notifications, shop, avatar, basket | favourites, basket, language picker, sign-in |
+
+The substantive difference is that the reference separates "browse the
+taxonomy" from "curated entry points", while ours merges them into one row.
+Needs a screenshot of the full header before deciding anything.

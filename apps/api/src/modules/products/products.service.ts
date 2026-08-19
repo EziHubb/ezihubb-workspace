@@ -2416,6 +2416,7 @@ export class ProductsService {
       where.name = { contains: query.q, mode: 'insensitive' };
     }
     if (query.isFeatured !== undefined) where.isFeatured = query.isFeatured;
+    if (query.isPersonalizable !== undefined) where.isPersonalizable = query.isPersonalizable;
     // Explicit id set (storefront "Featured items" honouring the seller's
     // Shop Home picks). Combines with every other filter below — notably
     // isActive/status — so an id the seller pinned and later archived simply

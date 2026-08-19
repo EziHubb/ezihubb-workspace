@@ -121,13 +121,19 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
   // overstate what the cheapest option actually costs.
   const hasPriceRange = product.minPrice != null && product.maxPrice != null && product.minPrice !== product.maxPrice;
   const displayPrice = product.minPrice ?? product.basePrice;
-  // Computed from displayPrice, not basePrice — when the product has
-  // variants all priced the same (minPrice === maxPrice, so hasPriceRange is
-  // false) but that shared price differs from the stale basePrice, using
-  // basePrice here would show a "% off" badge that doesn't match the price
-  // actually printed next to it.
+  // Computed from displayPrice, not basePrice: displayPrice is the figure
+  // actually printed next to it, so the percentage always describes the price
+  // the shopper can see. Using the seller-entered basePrice — which is never
+  // re-synced to per-variant prices — would print a discount that does not
+  // match the number beside it.
+  //
+  // Shown for range-priced listings too. The percentage then describes the
+  // cheapest variant, the same one the "From $X" price refers to, so the two
+  // numbers stay consistent with each other. Suppressing it on ranges, as
+  // this used to, hid every discount on any product with variants — which is
+  // most of them.
   const discount =
-    !hasPriceRange && product.compareAtPrice
+    product.compareAtPrice
       ? Math.round((1 - safeNum(displayPrice) / safeNum(product.compareAtPrice)) * 100)
       : 0;
 
@@ -295,7 +301,7 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
             {hasPriceRange && <span className="font-normal text-muted">{t('fromPrice')} </span>}
             {fmtAmount(displayPrice)}
           </span>
-          {!hasPriceRange && product.compareAtPrice && (
+          {product.compareAtPrice && discount > 0 && (
             <>
               <span className="text-xs text-muted line-through">
                 {fmtAmount(product.compareAtPrice)}
