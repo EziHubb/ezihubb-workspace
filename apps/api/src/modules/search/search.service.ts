@@ -488,13 +488,20 @@ export class SearchService {
       // today is ~101 ids in the IN list, which Postgres serves as a bitmap
       // index scan.
       //
+      // UNION, not UNION ALL. Nothing in the schema stops Category.parentId
+      // forming a cycle — it is a plain self-referencing FK with no check
+      // constraint — and UNION ALL would then recurse forever and hang the
+      // request rather than returning a wrong answer. UNION discards rows it
+      // has already seen, so a cycle terminates. Duplicate ids are not
+      // possible here anyway, so this costs nothing in the normal case.
+      //
       // Unknown slug still falls through with no category filter applied,
       // exactly as before — unchanged on purpose.
       if (cat) {
         const branch = await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
           WITH RECURSIVE branch AS (
             SELECT id FROM "Category" WHERE id = ${cat.id}
-            UNION ALL
+            UNION
             SELECT c.id FROM "Category" c JOIN branch b ON c."parentId" = b.id
           )
           SELECT id FROM branch
