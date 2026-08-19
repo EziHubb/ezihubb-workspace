@@ -28,6 +28,14 @@ export class ProductListItemDto {
    * on some listing surfaces and silently vanish on others.
    */
   @ApiProperty({ type: [String] }) primaryColors: string[];
+  /**
+   * PHYSICAL | DIGITAL. Backs the "digital download" marker on a listing
+   * card. libs/shared/types has declared this on the client type for a while
+   * without the API ever sending it, so it was a field that type-checked and
+   * was always undefined at runtime.
+   * Mapped in the same THREE places as primaryColors.
+   */
+  @ApiProperty() productType: string;
   @ApiProperty() isPersonalizable: boolean;
   @ApiProperty() isFeatured: boolean;
   @ApiProperty() isActive: boolean;

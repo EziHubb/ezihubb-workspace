@@ -202,6 +202,7 @@ export class ProductsService {
           // note on that field. This one is inline rather than via
           // toListItems.
           primaryColors: p.primaryColors ?? [],
+          productType: p.productType,
           isPersonalizable: p.isPersonalizable,
           isFeatured: p.isFeatured,
           isActive: p.isActive,
@@ -2721,6 +2722,7 @@ export class ProductsService {
       // returns every scalar column. Only this hand-written row type had to
       // be widened — no extra database work.
       primaryColors: string[];
+      productType: string;
       isPersonalizable: boolean;
       isFeatured: boolean;
       isActive: boolean;
@@ -2785,6 +2787,7 @@ export class ProductsService {
       // Kept identical to SearchService.toListItems — see the note on
       // ProductListItemDto.primaryColors. Free: `include` already fetched it.
       primaryColors: p.primaryColors ?? [],
+      productType: p.productType,
       isPersonalizable: p.isPersonalizable,
       isFeatured: p.isFeatured,
       isActive: p.isActive,

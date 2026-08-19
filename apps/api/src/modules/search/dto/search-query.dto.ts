@@ -122,6 +122,31 @@ export class SearchQueryDto extends PaginationDto {
   @IsString()
   colors?: string;
 
+  /**
+   * Upper bound on Product.processingDays — "ready to dispatch in N days".
+   * An upper bound rather than an exact match: a shopper asking for 1-3 days
+   * wants anything that ships that fast or faster, not only the listings that
+   * take exactly three.
+   */
+  @ApiPropertyOptional({ minimum: 1, maximum: 30, description: 'Dispatches within this many days' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(30)
+  @Type(() => Number)
+  maxProcessingDays?: number;
+
+  /**
+   * ISO 3166-1 alpha-2 country of the shop the listing belongs to. Filters
+   * through the Product -> Store relation; Product itself has no origin.
+   * Length-capped because it is compared against a VarChar(2) column.
+   */
+  @ApiPropertyOptional({ description: 'Two-letter country code of the shop', example: 'VN' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2)
+  shipsFrom?: string;
+
   @ApiPropertyOptional({
     description: 'Attribute filters (bracket notation) — e.g. attr[Material]=Bamboo',
   })

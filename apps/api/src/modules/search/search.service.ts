@@ -452,6 +452,8 @@ export class SearchService {
     if (query.onSale)                      filters['onSale']       = true;
     if (query.starSeller)                  filters['starSeller']   = true;
     if (query.colors)                      filters['colors']       = query.colors;
+    if (query.maxProcessingDays !== undefined) filters['maxProcessingDays'] = query.maxProcessingDays;
+    if (query.shipsFrom)                   filters['shipsFrom']    = query.shipsFrom;
     if (query.attr && Object.keys(query.attr).length) filters['attr'] = query.attr;
     return filters;
   }
@@ -508,6 +510,18 @@ export class SearchService {
         `);
         where.categoryId = { in: branch.map((r) => r.id) };
       }
+    }
+
+    // Upper bound, not equality — see the DTO comment.
+    if (query.maxProcessingDays !== undefined) {
+      where.processingDays = { lte: query.maxProcessingDays };
+    }
+
+    // Product has no origin of its own; the shop it belongs to does.
+    // Uppercased because Store.country is an ISO alpha-2 code and the query
+    // string is whatever the caller typed.
+    if (query.shipsFrom) {
+      where.store = { country: query.shipsFrom.toUpperCase() };
     }
 
     if (query.collection) {
@@ -639,6 +653,7 @@ export class SearchService {
       // returns every scalar column. Only this hand-written row type had to
       // be widened — no extra database work.
       primaryColors: string[];
+      productType: string;
       isPersonalizable: boolean;
       isFeatured: boolean;
       isActive: boolean;
@@ -699,6 +714,7 @@ export class SearchService {
         // Kept identical to ProductsService.toListItems — see the note on
         // ProductListItemDto.primaryColors. Free: `include` already fetched it.
         primaryColors: p.primaryColors ?? [],
+        productType: p.productType,
         isPersonalizable: p.isPersonalizable,
         isFeatured: p.isFeatured,
         isActive: p.isActive,
