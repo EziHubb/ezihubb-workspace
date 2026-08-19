@@ -31,9 +31,9 @@ function compactCount(n: number): string {
 type Translator = ReturnType<typeof useTranslations>;
 
 function getProductBadge(t: Translator, product: ProductListItemDto) {
-  if ((product.soldCount24h ?? 0) >= 10) {
+  if ((product.inDemandCount ?? 0) >= 10) {
     return {
-      label: t('badge.inCarts', { count: product.soldCount24h ?? 0 }),
+      label: t('badge.inCarts', { count: product.inDemandCount ?? 0 }),
       style: 'bg-[#FFF0EC] text-primary',
     };
   }

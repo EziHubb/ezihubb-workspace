@@ -147,6 +147,9 @@ export function YouMayAlsoLike({ products, locale }: YouMayAlsoLikeProps) {
         )}
       </div>
 
+      {/* Always 6 columns at desktop width — a row with fewer than 6 cards means
+          PRODUCTS.RELATED(slug) returned few matches (small catalogue, or few
+          products share this listing's category/tags), not a broken grid. */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {displayed.map((p) => (
           <RelatedProductCard key={p.id} product={p} locale={locale} />

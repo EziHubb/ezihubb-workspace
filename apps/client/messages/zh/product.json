@@ -166,6 +166,7 @@
     "raveReviewsTitle": "好评如潮",
     "raveReviewsDesc": "平均评分达4.8分及以上",
     "sales": "（已售{count}件）",
+    "onPlatform": "{years, plural, =0 {新卖家} other {在 EziHubb # 年}}",
     "followShop": "关注店铺",
     "messageSeller": "联系卖家"
   },

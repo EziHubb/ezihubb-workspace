@@ -19,7 +19,7 @@ interface RelatedSearches {
 
 // ── Builder ───────────────────────────────────────────────────────────────────
 
-function buildRelatedSearches(product: ProductDto, locale: string): RelatedSearches {
+function buildRelatedSearches(product: ProductDto, locale: string, storeLogoUrl: string | null): RelatedSearches {
   const tags = product.tags ?? [];
 
   // Derive material keyword from attributes
@@ -34,7 +34,7 @@ function buildRelatedSearches(product: ProductDto, locale: string): RelatedSearc
     {
       label:    storeName,
       href:     storeSlug ? `/${locale}/shops/${storeSlug}` : `/${locale}/search`,
-      imageUrl: null,
+      imageUrl: storeLogoUrl,
     },
     ...tags.slice(0, 3).map((t) => ({
       label:    t.name,
@@ -57,13 +57,15 @@ function buildRelatedSearches(product: ProductDto, locale: string): RelatedSearc
 interface ExploreRelatedSearchesProps {
   product: ProductDto;
   locale:  string;
+  /** Real shop logo, when the store has one — null/undefined falls back to the initial-letter chip. */
+  storeLogoUrl?: string | null;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function ExploreRelatedSearches({ product, locale }: ExploreRelatedSearchesProps) {
+export function ExploreRelatedSearches({ product, locale, storeLogoUrl = null }: ExploreRelatedSearchesProps) {
   const t = useTranslations('product.pdp');
-  const { featured, keywords } = buildRelatedSearches(product, locale);
+  const { featured, keywords } = buildRelatedSearches(product, locale, storeLogoUrl);
 
   if (featured.length === 0 && keywords.length === 0) return null;
 

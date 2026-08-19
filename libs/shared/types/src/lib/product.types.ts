@@ -73,7 +73,14 @@ export interface ProductListItemDto {
   isPersonalizable: boolean;
   isFeatured: boolean;
   soldCount: number;
-  soldCount24h?: number;
+  /**
+   * Rolling 24h demand signal (Redis counter, apps/api IN_DEMAND_KEY) — powers
+   * the "In-demand"/"bought recently" badges. Was declared as `soldCount24h`,
+   * a name neither the LIST nor DETAIL endpoint has ever sent; the real field
+   * is `inDemandCount`. Renamed to match — the badges were silently dead on
+   * both the PDP and search cards until now.
+   */
+  inDemandCount?: number;
   // Flat fields, matching exactly what the API actually sends (see
   // apps/api/src/modules/products/dto/product-list-item.dto.ts) — this type
   // previously declared a nested `primaryCategory: {name,slug}` and

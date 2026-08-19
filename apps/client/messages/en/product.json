@@ -166,6 +166,7 @@
     "raveReviewsTitle": "Rave reviews",
     "raveReviewsDesc": "Average review rating is 4.8 or higher",
     "sales": "({count} sales)",
+    "onPlatform": "{years, plural, =0 {New seller} one {# year on EziHubb} other {# years on EziHubb}}",
     "followShop": "Follow shop",
     "messageSeller": "Message seller"
   },

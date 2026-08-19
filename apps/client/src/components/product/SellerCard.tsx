@@ -2,11 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
 import { Star, Heart, MessageCircle, Package, HandCoins } from 'lucide-react';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import type { ProductDto } from '@ezihubb/types';
+import type { StoreSummaryDto } from '../../app/[locale]/(storefront)/products/[slug]/page';
+import { fmtRating, safeNum } from '@ezihubb/utils';
 import { MessageShopModal } from '../messages/MessageShopModal';
 import { MakeOfferModal } from './MakeOfferModal';
 
@@ -41,12 +44,21 @@ function ShopLink({
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface SellerCardProps {
-  product: ProductDto;
+  product:       ProductDto;
+  /** From GET /stores/{slug}, fetched by the page — null while unavailable/failed. */
+  storeSummary?: StoreSummaryDto | null;
+}
+
+// ── Years on platform ─────────────────────────────────────────────────────────
+
+function yearsSince(iso: string): number {
+  const ms = Date.now() - new Date(iso).getTime();
+  return Math.floor(ms / (365.25 * 24 * 60 * 60 * 1000));
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function SellerCard({ product }: SellerCardProps) {
+export function SellerCard({ product, storeSummary = null }: SellerCardProps) {
   const t = useTranslations('product.sellerCard');
   const sellerBadges = useSellerBadges();
   const [isMessageOpen, setIsMessageOpen] = useState(false);
@@ -84,12 +96,14 @@ export function SellerCard({ product }: SellerCardProps) {
       {/* ── SELLER PROFILE ── */}
       <div className="flex items-start gap-4 mb-6">
 
-        {/* Avatar — clickable when store slug is available */}
+        {/* Avatar — real shop logo when set, else initials. Clickable when store slug is available */}
         <ShopLink
           href={storeHref}
-          className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center text-xl font-bold text-primary flex-shrink-0 hover:opacity-80 transition-opacity"
+          className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center text-xl font-bold text-primary flex-shrink-0 hover:opacity-80 transition-opacity overflow-hidden"
         >
-          {initials}
+          {storeSummary?.logoUrl ? (
+            <Image src={storeSummary.logoUrl} alt={storeName} width={56} height={56} className="w-full h-full object-cover" />
+          ) : initials}
         </ShopLink>
 
         {/* Info */}
@@ -106,13 +120,18 @@ export function SellerCard({ product }: SellerCardProps) {
           </ShopLink>
 
           <div className="flex items-center gap-3 mt-1 text-sm text-muted flex-wrap">
-            <span className="flex items-center gap-1">
-              <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-              4.9
-              {product.soldCount > 0 && (
-                <span>{t('sales', { count: product.soldCount.toLocaleString() })}</span>
-              )}
-            </span>
+            {storeSummary && storeSummary.rating > 0 && (
+              <span className="flex items-center gap-1">
+                <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                {fmtRating(storeSummary.rating)}
+              </span>
+            )}
+            {storeSummary && storeSummary.totalOrders > 0 && (
+              <span>{t('sales', { count: safeNum(storeSummary.totalOrders).toLocaleString() })}</span>
+            )}
+            {storeSummary && (
+              <span>{t('onPlatform', { years: yearsSince(storeSummary.createdAt) })}</span>
+            )}
           </div>
         </div>
 

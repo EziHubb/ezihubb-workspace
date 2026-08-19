@@ -20,7 +20,7 @@ import { MobileStickyCartBar } from './MobileStickyCartBar';
 import { toast } from '../../lib/store/toast.store';
 import { useCurrency } from '../../lib/currency/currency-context';
 import { analytics } from '../../lib/analytics';
-import type { ProductDto, ReviewSummaryDto } from '@ezihubb/types';
+import type { ProductDto, ProductVariantDto, ReviewSummaryDto } from '@ezihubb/types';
 import { fmtRating, safeNum } from '@ezihubb/utils';
 
 // ── Date helpers (no date-fns) ────────────────────────────────────────────────
@@ -272,22 +272,65 @@ function RatingRow({
 
 // ── VariantDropdown ───────────────────────────────────────────────────────────
 
+// Variants carry a price per full option combination, not per single option
+// value — so "Embroidered Hat (510,193đ)" only resolves to one number when
+// every OTHER already-picked group narrows it down to a single price. With
+// groups still unpicked (or a group, like Size here, that spans many prices),
+// show the min–max range across the matching variants instead of a false-
+// precise single figure.
+function priceRangeForValue(
+  variants:    ProductVariantDto[],
+  optionName:  string,
+  value:       string,
+  allSelected: Record<string, string>,
+): { min: number; max: number } | null {
+  const matches = variants.filter((v) => {
+    if (v.options?.[optionName] !== value) return false;
+    return Object.entries(allSelected).every(
+      ([k, val]) => k === optionName || !val || v.options?.[k] === val,
+    );
+  });
+  if (matches.length === 0) return null;
+  const prices = matches.map((v) => v.price);
+  return { min: Math.min(...prices), max: Math.max(...prices) };
+}
+
 function VariantDropdown({
   label,
+  optionName,
   values,
   selected,
   onChange,
   hasError,
   id,
+  variants,
+  allSelected,
 }: {
   label:    string;
+  optionName: string;
   values:   string[];
   selected: string;
   onChange: (v: string) => void;
   hasError?: boolean;
   id?:       string;
+  variants:   ProductVariantDto[];
+  allSelected: Record<string, string>;
 }) {
   const t = useTranslations('product.purchasePanel');
+  const { format } = useCurrency();
+
+  const priceLabels = useMemo(() => {
+    const labels: Record<string, string> = {};
+    for (const v of values) {
+      const range = priceRangeForValue(variants, optionName, v, allSelected);
+      if (!range) continue;
+      labels[v] = range.min === range.max
+        ? format(range.min)
+        : `${format(range.min)}–${format(range.max)}`;
+    }
+    return labels;
+  }, [values, variants, optionName, allSelected, format]);
+
   return (
     <div id={id}>
       <label className="text-sm font-medium block mb-1.5">
@@ -312,7 +355,9 @@ function VariantDropdown({
         >
           <option value="">{t('selectOptionPlaceholder')}</option>
           {values.map((v) => (
-            <option key={v} value={v}>{v}</option>
+            <option key={v} value={v}>
+              {priceLabels[v] ? `${v} (${priceLabels[v]})` : v}
+            </option>
           ))}
         </select>
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
@@ -599,8 +644,8 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
     <div className="lg:sticky lg:top-4 space-y-4">
 
       {/* ── IN-DEMAND BADGE ── */}
-      {(product.soldCount24h ?? 0) >= 2 && (
-        <InDemandBadge count={product.soldCount24h!} />
+      {(product.inDemandCount ?? 0) >= 2 && (
+        <InDemandBadge count={product.inDemandCount!} />
       )}
 
       {/* ── FEATURED BADGE ── */}
@@ -651,12 +696,15 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
               key={opt.name}
               id={`variant-${opt.name}`}
               label={opt.name}
+              optionName={opt.name}
               values={opt.values}
               selected={selectedOptions[opt.name] ?? ''}
               onChange={(v) => {
                 setSelectedOptions((prev) => ({ ...prev, [opt.name]: v }));
               }}
               hasError={hasAttemptedSubmit && !selectedOptions[opt.name]}
+              variants={product.variants}
+              allSelected={selectedOptions}
             />
           ))}
         </div>

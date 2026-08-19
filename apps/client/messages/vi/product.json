@@ -166,6 +166,7 @@
     "raveReviewsTitle": "Đánh giá xuất sắc",
     "raveReviewsDesc": "Điểm đánh giá trung bình từ 4.8 trở lên",
     "sales": "({count} lượt bán)",
+    "onPlatform": "{years, plural, =0 {Người bán mới} other {# năm trên EziHubb}}",
     "followShop": "Theo dõi shop",
     "messageSeller": "Nhắn tin cho người bán"
   },

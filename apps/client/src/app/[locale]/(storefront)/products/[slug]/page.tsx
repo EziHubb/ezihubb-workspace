@@ -5,7 +5,7 @@ import { getTranslations } from 'next-intl/server';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { buildAlternates } from '../../../../../lib/seo';
-import type { ProductDto, ProductListItemDto, ReviewSummaryDto } from '@ezihubb/types';
+import type { ProductDto, ProductListItemDto, ReviewSummaryDto, CategoryDto } from '@ezihubb/types';
 import type { PaginatedResponse } from '@ezihubb/types';
 import { ProductBreadcrumb } from '../../../../../components/product/ProductBreadcrumb';
 import type { BreadcrumbItem } from '../../../../../components/product/ProductBreadcrumb';
@@ -28,24 +28,69 @@ import { warnIfRejected } from '../../../../../lib/warn-if-rejected';
 
 export const revalidate = 30;
 
+// ── Store summary (public GET /stores/{slug}) ──────────────────────────────────
+// Minimal subset of what that endpoint returns — just what SellerCard and
+// ExploreRelatedSearches need. Already public/wired (used by the shop page),
+// just never fetched from the PDP before.
+export interface StoreSummaryDto {
+  rating:      number;
+  totalOrders: number;
+  createdAt:   string;
+  logoUrl:     string | null;
+}
+
 // ── Extended product type ─────────────────────────────────────────────────────
-// Keep this export — ProductPageInteractive imports it from here.
 export interface ProductDetailDto extends ProductDto {
   richDescription?: string;
   shippingNote?: string;
+  /**
+   * The DETAIL endpoint (GET /products/{slug}) nests the category here instead
+   * of the flat categoryId/categoryName/categorySlug that ProductDto declares —
+   * that flat shape only actually holds on the LIST endpoint. Reading
+   * `product.categoryName` on this type was silently `undefined` on every PDP
+   * render (breadcrumb, related-search keywords, analytics). Normalized onto
+   * the flat fields right after fetch below so every existing reader of
+   * ProductDto.categoryName/Slug gets real values instead of quietly nothing.
+   */
+  category?: { id: string; name: string; slug: string };
 }
 
 // ── Breadcrumbs ───────────────────────────────────────────────────────────────
 
 const BASE = 'https://ezihubb.com';
 
-function buildBreadcrumbs(product: ProductDetailDto, locale: string, homeLabel: string): BreadcrumbItem[] {
+/** DFS from the category tree root(s) down to `targetId`; [] if not found. */
+function findCategoryPath(tree: CategoryDto[], targetId: string): CategoryDto[] {
+  for (const node of tree) {
+    if (node.id === targetId) return [node];
+    const childPath = findCategoryPath(node.children ?? [], targetId);
+    if (childPath.length > 0) return [node, ...childPath];
+  }
+  return [];
+}
+
+function buildBreadcrumbs(
+  product: ProductDetailDto,
+  categoryTree: CategoryDto[],
+  locale: string,
+  homeLabel: string,
+): BreadcrumbItem[] {
   const prefix = locale !== 'en' ? `/${locale}` : '';
+  const categoryId = product.category?.id ?? product.categoryId;
+  const categoryPath = categoryId ? findCategoryPath(categoryTree, categoryId) : [];
+
+  // Tree lookup failed (fetch error, or category not in the visible tree) —
+  // fall back to the single leaf level we already normalized onto the product,
+  // same behaviour as before this fix, rather than dropping category entirely.
+  const categoryCrumbs = categoryPath.length > 0
+    ? categoryPath.map((c) => ({ name: c.name, href: `${prefix}/search?category=${c.slug}` }))
+    : product.categoryName
+      ? [{ name: product.categoryName, href: `${prefix}/search?category=${product.categorySlug}` }]
+      : [];
+
   return [
     { name: homeLabel, href: `${prefix}/` },
-    ...(product.categoryName
-      ? [{ name: product.categoryName, href: `${prefix}/search?category=${product.categorySlug}` }]
-      : []),
+    ...categoryCrumbs,
     { name: product.name, href: `${prefix}/products/${product.slug}` },
   ];
 }
@@ -133,7 +178,7 @@ export default async function ProductDetailPage({
   const { locale, slug } = await params;
   const localeHeaders = { 'X-Locale': locale };
 
-  const [productRes, reviewSummaryRes, relatedRes, moreFromShopRes, qaRes] =
+  const [productRes, reviewSummaryRes, relatedRes, moreFromShopRes, qaRes, categoryTreeRes] =
     await Promise.allSettled([
       apiClient.get<ProductDetailDto>(API_ROUTES.PRODUCTS.DETAIL(slug), {
         next: { revalidate: 30 },
@@ -154,10 +199,26 @@ export default async function ProductDetailPage({
       apiClient.get<QAItem[]>(API_ROUTES.PRODUCTS.QA(slug), {
         next: { revalidate: 60 },
       }),
+      // Full tree (not just level 1) so the breadcrumb can walk a leaf category
+      // back up to its ancestors — changes rarely, cached an hour.
+      apiClient.get<CategoryDto[]>(API_ROUTES.CATALOG.CATEGORIES, {
+        next: { revalidate: 3600 },
+      }),
     ]);
 
   if (productRes.status === 'rejected') notFound();
   const product = productRes.value;
+
+  // See the ProductDetailDto.category doc comment — DETAIL nests category
+  // where ProductDto/the LIST endpoint declare it flat. Normalize once here
+  // so every existing reader of product.categoryName/categorySlug/categoryId
+  // downstream (breadcrumb, ExploreRelatedSearches keywords, analytics
+  // viewItem) gets the real value instead of silent undefined.
+  if (product.category) {
+    product.categoryId   = product.category.id;
+    product.categoryName = product.category.name;
+    product.categorySlug = product.category.slug;
+  }
 
   // productRes already 404s above; the rest are optional sections that quietly
   // disappear on failure. Log which one broke and why — otherwise a missing
@@ -166,6 +227,7 @@ export default async function ProductDetailPage({
   warnIfRejected('product:related',       API_ROUTES.PRODUCTS.RELATED(slug),        relatedRes);
   warnIfRejected('product:moreFromShop',  API_ROUTES.PRODUCTS.LIST,                 moreFromShopRes);
   warnIfRejected('product:qa',            API_ROUTES.PRODUCTS.QA(slug),             qaRes);
+  warnIfRejected('product:categoryTree',  API_ROUTES.CATALOG.CATEGORIES,            categoryTreeRes);
 
   const reviewSummary = reviewSummaryRes.status === 'fulfilled'
     ? reviewSummaryRes.value : null;
@@ -177,6 +239,17 @@ export default async function ProductDetailPage({
     ? moreFromShopRes.value.data : [];
 
   const initialQAs = qaRes.status === 'fulfilled' ? qaRes.value : [];
+
+  const categoryTree = categoryTreeRes.status === 'fulfilled' ? categoryTreeRes.value : [];
+
+  // Depends on `product.store.slug`, so it can't join the parallel batch above.
+  // Mirrors the existing `getTranslations` sequential await below — a second,
+  // independent optional fetch, not a restructure of the batch itself.
+  const storeSummary = product.store?.slug
+    ? await apiClient
+        .get<StoreSummaryDto>(API_ROUTES.STORES.DETAIL(product.store.slug), { next: { revalidate: 300 } })
+        .catch(() => null)
+    : null;
 
   // FAQPage structured data — only published answered Q&As
   const faqStructuredData = initialQAs.length > 0 ? {
@@ -192,7 +265,7 @@ export default async function ProductDetailPage({
   } : null;
 
   const tNav = await getTranslations({ locale, namespace: 'nav' });
-  const breadcrumbs = buildBreadcrumbs(product, locale, tNav('home'));
+  const breadcrumbs = buildBreadcrumbs(product, categoryTree, locale, tNav('home'));
   const absoluteCrumbs = breadcrumbs.map((b) => ({
     name: b.name,
     url:  b.href.startsWith('http') ? b.href : `${BASE}${b.href}`,
@@ -246,7 +319,7 @@ export default async function ProductDetailPage({
         <ProductQandA productSlug={slug} initialQAs={initialQAs} />
 
         {/* ── SELLER CARD ── */}
-        <SellerCard product={product} />
+        <SellerCard product={product} storeSummary={storeSummary} />
 
         {/* ── MORE FROM THIS SHOP ── */}
         {moreFromShop.length > 0 && (
@@ -259,7 +332,7 @@ export default async function ProductDetailPage({
         )}
 
         {/* ── EXPLORE RELATED SEARCHES ── */}
-        <ExploreRelatedSearches product={product} locale={locale} />
+        <ExploreRelatedSearches product={product} locale={locale} storeLogoUrl={storeSummary?.logoUrl ?? null} />
 
         {/* ── LISTED INFO FOOTER ── */}
         <ListedInfoFooter
