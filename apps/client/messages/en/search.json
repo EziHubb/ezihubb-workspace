@@ -74,5 +74,7 @@
   "moreLikeThis": "More like this",
   "rating": "Rating",
   "ratingAndUp": "{stars} stars & up",
-  "anyRating": "Any rating"
+  "anyRating": "Any rating",
+  "category": "Category",
+  "allCategories": "All categories"
 }

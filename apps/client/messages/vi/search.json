@@ -74,5 +74,7 @@
   "moreLikeThis": "Xem thêm tương tự",
   "rating": "Đánh giá",
   "ratingAndUp": "Từ {stars} sao trở lên",
-  "anyRating": "Mọi mức đánh giá"
+  "anyRating": "Mọi mức đánh giá",
+  "category": "Danh mục",
+  "allCategories": "Tất cả danh mục"
 }

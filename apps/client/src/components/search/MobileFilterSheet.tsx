@@ -3,10 +3,13 @@
 import { X } from 'lucide-react';
 import { SearchFilterSidebar } from './SearchFilterSidebar';
 import type { SearchFacets } from './SearchFilterSidebar';
+import type { CategoryDto } from '@ezihubb/types';
 
 interface MobileFilterSheetProps {
   filters: Record<string, string | undefined>;
   facets?: SearchFacets;
+  /** Same tree the desktop sidebar gets — both render the same component. */
+  categories: CategoryDto[];
   onFilterChange: (key: string, value: string | null) => void;
   onClearAll: () => void;
   onClose: () => void;
@@ -15,6 +18,7 @@ interface MobileFilterSheetProps {
 export function MobileFilterSheet({
   filters,
   facets,
+  categories,
   onFilterChange,
   onClearAll,
   onClose,
@@ -47,6 +51,7 @@ export function MobileFilterSheet({
           <SearchFilterSidebar
             filters={filters}
             facets={facets}
+            categories={categories}
             onFilterChange={onFilterChange}
             onClearAll={onClearAll}
           />

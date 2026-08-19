@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
-import type { ProductListItemDto } from '@ezihubb/types';
+import type { CategoryDto, ProductListItemDto } from '@ezihubb/types';
 import { analytics } from '../../../../lib/analytics';
 
 import { SearchTopBar } from '../../../../components/search/SearchTopBar';
@@ -123,6 +123,17 @@ export function SearchPageClient() {
     placeholderData: (prev) => prev,
   });
 
+  // Category tree for the sidebar drill-down. One request for the whole
+  // tree: the endpoint returns every level in a single Redis-cached
+  // response, so fetching level by level would add round trips for data
+  // that already arrived. Long staleTime — a taxonomy of 130 nodes does
+  // not move during a browsing session.
+  const { data: categories } = useQuery({
+    queryKey: ['catalog', 'categories'],
+    queryFn:  () => apiClient.get<CategoryDto[]>(API_ROUTES.CATALOG.CATEGORIES),
+    staleTime: 30 * 60_000,
+  });
+
   // ── Analytics logging ─────────────────────────────────────────────────────
 
   const loggedRef = useRef('');
@@ -200,6 +211,7 @@ export function SearchPageClient() {
             <SearchFilterSidebar
               filters={filters}
               facets={data?.facets}
+              categories={categories ?? []}
               onFilterChange={updateFilter}
               onClearAll={clearAllFilters}
             />
@@ -250,6 +262,7 @@ export function SearchPageClient() {
         <MobileFilterSheet
           filters={filters}
           facets={data?.facets}
+          categories={categories ?? []}
           onFilterChange={updateFilter}
           onClearAll={clearAllFilters}
           onClose={() => setSidebarOpen(false)}

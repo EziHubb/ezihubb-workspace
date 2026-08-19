@@ -49,12 +49,44 @@ it: price and offers before attribute filters, shop reputation last.
 The first four are open by default. Opening every group makes a column nobody
 scrolls to the bottom of; closing every group hides what is even on offer.
 
+### Category drill-down
+
+Built as a hierarchy, not a flat list: production has 130 categories across
+three levels (6 / 23 / 101), so a flat list of roots narrows nothing useful
+and a flat list of everything is unreadable.
+
+- Clicking any node filters by that node **and everything under it**. This
+  required an API change: the filter used to match one exact `categoryId`,
+  and since 101 of the 130 categories are leaves, clicking a parent returned
+  nothing at all. See the commit on `search.service.ts`.
+- The URL carries only `?category=<slug>` — the parameter the API already
+  takes. The open branch is rebuilt by walking `parentId` in the tree that is
+  already loaded, so pasting a link opens the right branch without duplicating
+  the path into the address bar.
+- Ancestor rows are the way back up; there is no separate back button, and no
+  horizontal breadcrumb, because the column is 220px wide.
+- Counts are rolled up from descendants. `productCount` from the API counts
+  only listings filed directly against a node, so almost every parent reports
+  zero on its own. With branch filtering in place the rolled-up number now
+  matches what clicking actually returns.
+- Nothing is hidden for reading zero. A genuinely empty branch says zero
+  honestly, and hiding branches would make the taxonomy change shape as stock
+  moves.
+- The whole tree is fetched in one request: the endpoint returns every level
+  in a single Redis-cached response.
+
 ### Counts
 
 Shown only for groups whose counts come from the server's facets — colours,
 materials, styles, occasion, holiday, recipient, plus free-shipping and
 on-sale. Groups without facet data (price, item type, rating, star seller)
 show no number at all rather than a fabricated one.
+
+Category is the exception: its numbers come from the category tree's own
+`productCount`, rolled up over descendants, not from the search facets. They
+therefore describe the whole catalogue rather than the current result set —
+unlike every other count here, they do not shrink as other filters are
+applied.
 
 Two known limitations in the facet data itself, both server-side:
 
@@ -82,7 +114,6 @@ reason, not for lack of time:
 
 | Group | What is missing |
 |---|---|
-| Category | `category` is accepted by `SearchQueryDto`, but the reference renders a hierarchical drill-down and the sidebar has no category list to render. Needs a decision on flat list vs full hierarchy plus a category fetch — see the open question below. |
 | Ready to dispatch in | No filter parameter for processing time. `Product.processingDays` exists; `SearchQueryDto` does not accept it. |
 | Sent from / Deliver to | No country or city filter parameter, and no shipping-origin data on the product to filter by. |
 | Sustainable features | No such field on the model. |

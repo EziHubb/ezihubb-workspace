@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { ChevronDown, Check } from 'lucide-react';
+import type { CategoryDto } from '@ezihubb/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,8 @@ export interface SearchFacets {
 interface Props {
   filters: Record<string, string | undefined>;
   facets?: SearchFacets;
+  /** Full category tree, fetched once by the page. Empty until it arrives. */
+  categories: CategoryDto[];
   onFilterChange: (key: string, value: string | null) => void;
   onClearAll: () => void;
 }
@@ -45,6 +48,111 @@ export const STANDARD_COLORS = [
   { name: 'Pink',   hex: '#F9A8D4' }, { name: 'Purple', hex: '#7C3AED' },
   { name: 'Red',    hex: '#DC2626' }, { name: 'White',  hex: '#FFFFFF' },
 ];
+
+// ── Category tree ─────────────────────────────────────────────────────────────
+
+/**
+ * Total listings in a category *including* its descendants.
+ *
+ * productCount from the API counts only listings filed directly against that
+ * node, and 101 of the 130 categories are leaves — so almost every parent
+ * reports 0 on its own. Rolling the children up makes a parent's number match
+ * what clicking it actually returns, now that the API filters by branch
+ * rather than by one exact id.
+ */
+function rollUpCount(cat: CategoryDto): number {
+  return (cat.productCount ?? 0) + (cat.children ?? []).reduce((n, c) => n + rollUpCount(c), 0);
+}
+
+/**
+ * Path from a root category down to `slug`, or null if it is not in this
+ * subtree. Used to rebuild the open branch from the URL alone: the URL
+ * carries only the selected slug — the API parameter that already exists —
+ * and the path is derived here from the tree that is already loaded, rather
+ * than being duplicated into the address bar.
+ */
+function findPath(cats: CategoryDto[], slug: string): CategoryDto[] | null {
+  for (const cat of cats) {
+    if (cat.slug === slug) return [cat];
+    const sub = findPath(cat.children ?? [], slug);
+    if (sub) return [cat, ...sub];
+  }
+  return null;
+}
+
+function CategoryTreeFilter({
+  categories,
+  selectedSlug,
+  onSelect,
+}: {
+  categories:   CategoryDto[];
+  selectedSlug: string | undefined;
+  onSelect:     (slug: string | null) => void;
+}) {
+  const t = useTranslations('search');
+  const path = selectedSlug ? findPath(categories, selectedSlug) : null;
+
+  // Children of whatever is selected — the next level down to drill into.
+  // With nothing selected we are at the roots.
+  const level = path?.length ? (path[path.length - 1].children ?? []) : categories;
+
+  return (
+    <div className="space-y-0.5">
+      {/* The ancestor rows ARE the way back up: clicking one collapses to that
+          level. A separate "back" control would duplicate what the path
+          already shows, in a 220px column that has no room to spare — which
+          is also why this is an indented list rather than a horizontal
+          breadcrumb. */}
+      <button
+        type="button"
+        onClick={() => onSelect(null)}
+        className={`block text-left w-full py-1 hover:text-primary transition-colors ${
+          !selectedSlug ? 'font-semibold text-secondary' : 'text-primary'
+        }`}
+      >
+        {t('allCategories')}
+      </button>
+
+      {(path ?? []).map((cat, i) => {
+        const isCurrent = i === (path?.length ?? 0) - 1;
+        return (
+          <button
+            key={cat.id}
+            type="button"
+            onClick={() => onSelect(cat.slug)}
+            style={{ paddingLeft: `${(i + 1) * 12}px` }}
+            className={`block text-left w-full py-1 hover:text-primary transition-colors ${
+              isCurrent ? 'font-semibold text-secondary' : 'text-primary'
+            }`}
+          >
+            {cat.name}
+          </button>
+        );
+      })}
+
+      {/* Nothing is hidden for having a zero count: with roll-up a genuinely
+          empty branch reads 0 honestly, and hiding branches would make the
+          taxonomy change shape as stock moves. */}
+      {level.map((cat) => {
+        const count = rollUpCount(cat);
+        return (
+          <button
+            key={cat.id}
+            type="button"
+            onClick={() => onSelect(cat.slug)}
+            style={{ paddingLeft: `${((path?.length ?? 0) + 1) * 12}px` }}
+            className="flex items-center justify-between gap-2 text-left w-full py-1 text-primary hover:text-primary-dark transition-colors"
+          >
+            <span className="truncate">{cat.name}</span>
+            {count > 0 && (
+              <span className="text-xs text-muted tabular-nums shrink-0">{count.toLocaleString()}</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 // ── FilterSection (collapsible) ───────────────────────────────────────────────
 
@@ -279,7 +387,7 @@ function MoreFiltersSection({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function SearchFilterSidebar({ filters, facets, onFilterChange, onClearAll }: Props) {
+export function SearchFilterSidebar({ filters, facets, categories, onFilterChange, onClearAll }: Props) {
   const t = useTranslations('search');
   const hasActiveFilters = Object.keys(filters).some(
     (k) => !['q', 'page', 'limit', 'sort'].includes(k),
@@ -308,6 +416,18 @@ export function SearchFilterSidebar({ filters, facets, onFilterChange, onClearAl
           attribute filters, shop reputation last.
           The first four are open by default. Opening everything makes a
           column nobody scrolls; closing everything hides what is on offer. */}
+
+      {/* ── Category ── first: the biggest single narrowing step, and the
+          first thing a shopper thinks in. */}
+      {categories.length > 0 && (
+        <FilterSection title={t('category')} defaultOpen>
+          <CategoryTreeFilter
+            categories={categories}
+            selectedSlug={filters.category}
+            onSelect={(slug) => onFilterChange('category', slug)}
+          />
+        </FilterSection>
+      )}
 
       {/* ── Price ── */}
       <FilterSection title={t('price')} defaultOpen>
@@ -368,7 +488,7 @@ export function SearchFilterSidebar({ filters, facets, onFilterChange, onClearAl
           sidebar simply never exposed it. No counts: facets carry no rating
           buckets, and inventing one client-side would be a number nobody
           could reconcile with the results. */}
-      <FilterSection title={t('rating')} defaultOpen>
+      <FilterSection title={t('rating')}>
         {([4, 3, 2] as const).map((stars) => (
           <label
             key={stars}

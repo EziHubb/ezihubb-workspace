@@ -74,5 +74,7 @@
   "moreLikeThis": "查看相似商品",
   "rating": "评分",
   "ratingAndUp": "{stars} 星及以上",
-  "anyRating": "不限评分"
+  "anyRating": "不限评分",
+  "category": "分类",
+  "allCategories": "全部分类"
 }
