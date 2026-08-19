@@ -12,7 +12,17 @@ export interface ProductCardLabels {
   personalizeNow?:   string;
   addToCart?:        string;
   /** e.g. "By {name}" — receives the store name. */
-  byStore?:          (name: string) => string;
+  /**
+   * Template containing {name}, e.g. "By {name}" — NOT a function.
+   *
+   * It used to be (name) => string, which meant any Server Component
+   * building this object could not pass it to ProductCard at all: React
+   * cannot serialise a function across that boundary. The homepage crashed
+   * with "Functions cannot be passed directly to Client Components" the day
+   * the catalogue got its first published products, because until then the
+   * card branch never rendered. A plain string cannot fail that way.
+   */
+  byStore?:          string;
   /** Prefix shown before the price when isPriceRange is true (e.g. "From", "低至"). */
   fromPrice?:        string;
 }
@@ -51,7 +61,7 @@ const defaultLabels: Required<ProductCardLabels> = {
   removeFromWishlist: 'Remove from wishlist',
   personalizeNow:     'Personalize Now',
   addToCart:          'Add to Cart',
-  byStore:            (name) => `By ${name}`,
+  byStore:            'By {name}',
   fromPrice:          'From',
 };
 
@@ -156,7 +166,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             className="block text-xs text-muted hover:text-primary transition-colors mb-1 truncate"
             onClick={(e) => e.stopPropagation()}
           >
-            {L.byStore(storeName)}
+            {L.byStore.replace('{name}', storeName)}
           </Link>
         )}
 

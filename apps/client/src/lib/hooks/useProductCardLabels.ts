@@ -13,7 +13,10 @@ export function useProductCardLabels() {
     removeFromWishlist: tCommon('removeFromWishlist'),
     personalizeNow:     tActions('personalize'),
     addToCart:          tActions('addToCart'),
-    byStore:            (name: string) => tCommon('byStore', { name }),
+    // .raw() keeps this a plain string — ProductCard substitutes {name}.
+    // Kept identical to the two Server Components that build the same object;
+    // a closure here cannot cross a Server -> Client boundary.
+    byStore:            tCommon.raw('byStore') as string,
     fromPrice:          tCommon('fromPrice'),
   };
 

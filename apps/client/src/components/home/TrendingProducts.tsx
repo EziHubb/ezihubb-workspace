@@ -28,7 +28,9 @@ export async function TrendingProducts({ products, locale, viewAllLabel }: Trend
     removeFromWishlist: tCommon('removeFromWishlist'),
     personalizeNow:     tActions('personalize'),
     addToCart:          tActions('addToCart'),
-    byStore:            (name: string) => tCommon('byStore', { name }),
+    // .raw() so this stays a plain string: ProductCard substitutes {name}.
+    // A closure here cannot cross the Server -> Client boundary.
+    byStore:            tCommon.raw('byStore') as string,
   };
 
   const badgeLabels: Record<ProductBadgeVariant, string> = {
