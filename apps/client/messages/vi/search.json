@@ -82,5 +82,7 @@
   "closeRecentlyViewed": "Đóng mục vừa xem",
   "relatedSearches": "Tìm kiếm liên quan",
   "customizableIdeas": "Ý tưởng có thể cá nhân hoá",
-  "byStore": "Bởi {name}"
+  "byStore": "Bởi {name}",
+  "showMore": "Xem thêm {count}",
+  "showLess": "Thu gọn"
 }

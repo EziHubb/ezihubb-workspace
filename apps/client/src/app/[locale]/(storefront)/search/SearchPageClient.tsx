@@ -217,8 +217,22 @@ export function SearchPageClient() {
             `sticky top-16` holds it in view while the grid moves, and once it
             is taller than the viewport it scrolls away like everything else.
             Being longer than the results list is fine and expected. */}
-        {filtersOpen && (
-          <aside className="hidden lg:block w-[220px] flex-shrink-0 pt-4 pr-4 sticky top-16 self-start">
+        {/* Animated collapse rather than an unmount. Width and opacity are
+            transitioned on an outer wrapper while the inner column keeps a
+            fixed 220px, so the sidebar content does not reflow or squash on
+            the way out — only the space it occupies changes, and the grid
+            reflows alongside it.
+            The wrapper stays mounted so the filter state inside it (which
+            accordions are open, how far a Show-more list is expanded) is not
+            thrown away every time the panel is toggled. */}
+        <div
+          aria-hidden={!filtersOpen}
+          className={[
+            'hidden lg:block flex-shrink-0 overflow-hidden transition-all duration-300 ease-out',
+            filtersOpen ? 'w-[236px] opacity-100' : 'w-0 opacity-0',
+          ].join(' ')}
+        >
+          <aside className="w-[220px] pt-4 pr-4 sticky top-16 self-start">
             <SearchFilterSidebar
               filters={filters}
               facets={data?.facets}
@@ -227,7 +241,7 @@ export function SearchPageClient() {
               onClearAll={clearAllFilters}
             />
           </aside>
-        )}
+        </div>
 
         {/* PRODUCT GRID */}
         <main className="flex-1 min-w-0 pt-4 pb-16">

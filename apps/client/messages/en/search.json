@@ -82,5 +82,7 @@
   "closeRecentlyViewed": "Close recently viewed",
   "relatedSearches": "Related searches",
   "customizableIdeas": "Personalisable ideas",
-  "byStore": "By {name}"
+  "byStore": "By {name}",
+  "showMore": "Show {count} more",
+  "showLess": "Show less"
 }

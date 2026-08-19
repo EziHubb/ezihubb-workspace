@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { ChevronDown, Check } from 'lucide-react';
 import type { CategoryDto } from '@ezihubb/types';
@@ -154,6 +154,39 @@ function CategoryTreeFilter({
   );
 }
 
+// ── ShowMoreList ──────────────────────────────────────────────────────────────
+
+/**
+ * Caps a long option list and reveals the rest on demand.
+ *
+ * Long facet groups used to be truncated with `.slice(0, 6)` and no control,
+ * so options past the sixth were unreachable — a shopper filtering by a
+ * material outside the top six simply could not. The reference caps its lists
+ * the same way but always pairs the cap with a toggle.
+ */
+function ShowMoreList({ items, initial = 6 }: { items: React.ReactNode[]; initial?: number }) {
+  const t = useTranslations('search');
+  const [expanded, setExpanded] = useState(false);
+  const overflow = items.length - initial;
+
+  return (
+    <>
+      {(expanded ? items : items.slice(0, initial)).map((node, i) => (
+        <Fragment key={i}>{node}</Fragment>
+      ))}
+      {overflow > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="text-xs text-primary underline underline-offset-2 hover:text-primary-dark transition-colors mt-1"
+        >
+          {expanded ? t('showLess') : t('showMore', { count: overflow })}
+        </button>
+      )}
+    </>
+  );
+}
+
 // ── FilterSection (collapsible) ───────────────────────────────────────────────
 
 function FilterSection({
@@ -178,7 +211,24 @@ function FilterSection({
           className={`w-3.5 h-3.5 text-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
-      {isOpen && <div className="mt-3 space-y-0.5">{children}</div>}
+      {/* Height animated with the grid-rows 0fr -> 1fr trick: pure CSS, no
+          measuring the content in JS, and it works for a panel whose height
+          is not known ahead of time (a facet list changes length with the
+          result set).
+          Content stays mounted — collapsing a group must not discard how far
+          its Show-more list was expanded. `invisible` keeps the collapsed
+          panel out of the tab order and away from screen readers while the
+          animation still has something to animate. */}
+      <div
+        className={[
+          'grid transition-[grid-template-rows,opacity] duration-200 ease-out',
+          isOpen ? 'grid-rows-[1fr] opacity-100 mt-3' : 'grid-rows-[0fr] opacity-0 invisible',
+        ].join(' ')}
+      >
+        <div className="overflow-hidden">
+          <div className="space-y-0.5">{children}</div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -295,33 +345,72 @@ function PriceRangeFilter({
 
 // ── ColorSwatchFilter ─────────────────────────────────────────────────────────
 
+/**
+ * One row per colour: checkbox, swatch, name — as in the reference, and
+ * capped with a "show more" toggle like the other long groups.
+ *
+ * Was a 6-across grid of unlabelled circles. Two problems with that: a colour
+ * has to be guessed from a dot, which is guesswork for anyone who cannot
+ * distinguish those hues, and a grid of swatches gives no hint that more than
+ * one can be picked.
+ *
+ * Multi-select, which the checkbox shape now implies. The API has always
+ * accepted it — `colors` is documented as comma-separated — so this is the
+ * control finally matching what the endpoint could already do.
+ */
 function ColorSwatchFilter({
   selected,
   onChange,
 }: {
+  /** Comma-separated, straight from the URL. */
   selected: string | undefined;
-  onChange: (color: string | null) => void;
+  onChange: (colors: string | null) => void;
 }) {
+  const active = (selected ?? '').split(',').filter(Boolean);
+
+  const toggle = (name: string) => {
+    const next = active.includes(name)
+      ? active.filter((c) => c !== name)
+      : [...active, name];
+    onChange(next.length ? next.join(',') : null);
+  };
+
   return (
-    <div className="grid grid-cols-6 gap-2">
-      {STANDARD_COLORS.map((color) => (
-        <button
+    <ShowMoreList
+      items={STANDARD_COLORS.map((color) => (
+        <label
           key={color.name}
-          type="button"
-          title={color.name}
-          onClick={() => onChange(selected === color.name ? null : color.name)}
-          className={[
-            'w-7 h-7 rounded-full border-2 transition-all hover:scale-110',
-            selected === color.name
-              ? 'border-secondary ring-2 ring-secondary/30 scale-110'
-              : color.name === 'White'
-              ? 'border-border hover:border-muted'
-              : 'border-transparent hover:border-border',
-          ].join(' ')}
-          style={{ backgroundColor: color.hex }}
-        />
+          className="flex items-center gap-2 py-1.5 cursor-pointer group"
+        >
+          <div
+            className={[
+              'w-4 h-4 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0',
+              active.includes(color.name)
+                ? 'bg-secondary border-secondary'
+                : 'border-border group-hover:border-secondary',
+            ].join(' ')}
+          >
+            {active.includes(color.name) && (
+              <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+            )}
+          </div>
+          <input
+            type="checkbox"
+            className="sr-only"
+            checked={active.includes(color.name)}
+            onChange={() => toggle(color.name)}
+          />
+          <span
+            aria-hidden="true"
+            className="w-4 h-4 rounded-full border border-border shrink-0"
+            style={{ backgroundColor: color.hex }}
+          />
+          <span className="text-secondary text-sm group-hover:text-primary transition-colors">
+            {color.name}
+          </span>
+        </label>
       ))}
-    </div>
+    />
   );
 }
 
@@ -528,30 +617,34 @@ export function SearchFilterSidebar({ filters, facets, categories, onFilterChang
       {/* ── Style (from facets) ── */}
       {(facets?.styles?.length ?? 0) > 0 && (
         <FilterSection title={t('style')}>
-          {facets!.styles!.map((s) => (
-            <FilterCheckbox
-              key={s.value}
-              label={s.value}
-              count={s.count}
-              checked={filters['attr[Style]'] === s.value}
-              onChange={(v) => onFilterChange('attr[Style]', v ? s.value : null)}
-            />
-          ))}
+          <ShowMoreList
+            items={facets!.styles!.map((s) => (
+              <FilterCheckbox
+                key={s.value}
+                label={s.value}
+                count={s.count}
+                checked={filters['attr[Style]'] === s.value}
+                onChange={(v) => onFilterChange('attr[Style]', v ? s.value : null)}
+              />
+            ))}
+          />
         </FilterSection>
       )}
 
       {/* ── Material (from facets) ── */}
       {(facets?.materials?.length ?? 0) > 0 && (
         <FilterSection title={t('material')}>
-          {facets!.materials!.slice(0, 6).map((m) => (
-            <FilterCheckbox
-              key={m.value}
-              label={m.value}
-              count={m.count}
-              checked={filters['attr[Material]'] === m.value}
-              onChange={(v) => onFilterChange('attr[Material]', v ? m.value : null)}
-            />
-          ))}
+          <ShowMoreList
+            items={facets!.materials!.map((m) => (
+              <FilterCheckbox
+                key={m.value}
+                label={m.value}
+                count={m.count}
+                checked={filters['attr[Material]'] === m.value}
+                onChange={(v) => onFilterChange('attr[Material]', v ? m.value : null)}
+              />
+            ))}
+          />
         </FilterSection>
       )}
 
