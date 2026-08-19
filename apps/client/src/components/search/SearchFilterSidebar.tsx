@@ -622,6 +622,47 @@ export function SearchFilterSidebar({ filters, facets, categories, onFilterChang
         )}
       </FilterSection>
 
+      {/* ── When made ──
+          Radios: a listing is one or the other, and the API takes a single
+          enum value. The field is nullable and unanswered on every existing
+          listing, so this narrows nothing until sellers fill it in — which is
+          the honest state, not a bug. */}
+      <FilterSection title={t('whenMade')}>
+        {(['RECENTLY_MADE', 'VINTAGE'] as const).map((v) => (
+          <label
+            key={v}
+            className="flex items-center gap-2 py-1.5 cursor-pointer hover:text-secondary"
+          >
+            <input
+              type="radio"
+              name="whenMade"
+              checked={filters.whenMade === v}
+              onChange={() => onFilterChange('whenMade', v)}
+              className="accent-primary"
+            />
+            <span className="text-secondary text-sm">{t(`whenMadeOptions.${v}`)}</span>
+          </label>
+        ))}
+        {filters.whenMade && (
+          <button
+            type="button"
+            onClick={() => onFilterChange('whenMade', null)}
+            className="text-xs text-primary hover:underline mt-1"
+          >
+            {t('anyWhenMade')}
+          </button>
+        )}
+      </FilterSection>
+
+      {/* ── Ordering options ── */}
+      <FilterSection title={t('orderingOptions')}>
+        <FilterCheckbox
+          label={t('giftWrapping')}
+          checked={filters.giftWrapping === 'true'}
+          onChange={(v) => onFilterChange('giftWrapping', v ? 'true' : null)}
+        />
+      </FilterSection>
+
       {/* ── Ready to dispatch ──
           Radios, not checkboxes: the API takes one upper bound, and "1 day"
           is already contained in "1-3 days", so two boxes ticked together

@@ -12,6 +12,7 @@ import {
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
+import { WhenMade } from '@prisma/client';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 import { ProductSortBy } from '../../products/dto/product-query.dto';
 
@@ -146,6 +147,29 @@ export class SearchQueryDto extends PaginationDto {
   @IsString()
   @MaxLength(2)
   shipsFrom?: string;
+
+  /**
+   * When the item was made — the only one of the three provenance fields on
+   * Product that separates vintage from everything else.
+   *
+   * Deliberately not a parallel "listing type": HANDMADE and MADE_TO_ORDER
+   * already live in Product.howItWasMade, and repeating them would let one
+   * listing claim to be two different things with nothing to reconcile them.
+   *
+   * Orthogonal to `itemType`, which is about fulfilment (ready to ship / made
+   * to order / digital) — a vintage listing is still one of those.
+   */
+  @ApiPropertyOptional({ enum: WhenMade })
+  @IsOptional()
+  @IsEnum(WhenMade)
+  whenMade?: WhenMade;
+
+  /** Only listings whose seller offers gift wrapping. */
+  @ApiPropertyOptional({ description: 'Gift wrapping offered' })
+  @IsOptional()
+  @IsBoolean()
+  @Transform(toBoolean)
+  giftWrapping?: boolean;
 
   @ApiPropertyOptional({
     description: 'Attribute filters (bracket notation) — e.g. attr[Material]=Bamboo',

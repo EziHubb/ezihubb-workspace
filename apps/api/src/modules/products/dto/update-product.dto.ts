@@ -118,6 +118,14 @@ export class UpdateProductDto extends BaseUpdateProductDto {
   @IsOptional() @IsEnum(['MADE_TO_ORDER','HANDMADE','ASSEMBLED','ALTERED','CURATED_SET','NATURAL_MATERIAL'])
   howItWasMade?: 'MADE_TO_ORDER' | 'HANDMADE' | 'ASSEMBLED' | 'ALTERED' | 'CURATED_SET' | 'NATURAL_MATERIAL';
 
+  @ApiPropertyOptional({ enum: ['RECENTLY_MADE','VINTAGE'] })
+  @IsOptional() @IsEnum(['RECENTLY_MADE','VINTAGE'])
+  whenMade?: 'RECENTLY_MADE' | 'VINTAGE';
+
+  @ApiPropertyOptional({ description: 'Seller offers gift wrapping on this listing' })
+  @IsOptional() @IsBoolean()
+  giftWrappingAvailable?: boolean;
+
   @ApiPropertyOptional({ enum: ['AUTOMATIC','MANUAL'] })
   @IsOptional() @IsEnum(['AUTOMATIC','MANUAL'])
   renewalType?: 'AUTOMATIC' | 'MANUAL';

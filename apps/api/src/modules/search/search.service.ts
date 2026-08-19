@@ -471,6 +471,8 @@ export class SearchService {
     if (query.colors)                      filters['colors']       = query.colors;
     if (query.maxProcessingDays !== undefined) filters['maxProcessingDays'] = query.maxProcessingDays;
     if (query.shipsFrom)                   filters['shipsFrom']    = query.shipsFrom;
+    if (query.whenMade)                    filters['whenMade']     = query.whenMade;
+    if (query.giftWrapping)                filters['giftWrapping'] = true;
     if (query.attr && Object.keys(query.attr).length) filters['attr'] = query.attr;
     return filters;
   }
@@ -537,6 +539,9 @@ export class SearchService {
     // Product has no origin of its own; the shop it belongs to does.
     // Uppercased because Store.country is an ISO alpha-2 code and the query
     // string is whatever the caller typed.
+    if (query.whenMade) where.whenMade = query.whenMade;
+    if (query.giftWrapping) where.giftWrappingAvailable = true;
+
     if (query.shipsFrom) {
       where.store = { country: query.shipsFrom.toUpperCase() };
     }

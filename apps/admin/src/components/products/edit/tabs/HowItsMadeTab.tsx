@@ -9,7 +9,7 @@ import {
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import type {
-  ProductEditFormValues, WhoMadeIt, HowItWasMade,
+  ProductEditFormValues, WhoMadeIt, HowItWasMade, WhenMade,
 } from '../types';
 import { RadioGroupWithDesc }    from '../RadioGroupWithDesc';
 import { CheckboxGroupWithDesc } from '../CheckboxGroupWithDesc';
@@ -246,6 +246,21 @@ const WHO_MADE_OPTIONS: { value: WhoMadeIt; label: string }[] = [
   { value: 'ANOTHER_COMPANY', label: 'Another company or person' },
 ];
 
+const WHEN_MADE_OPTIONS: { value: WhenMade; label: string; desc: string; examples: string }[] = [
+  {
+    value:    'RECENTLY_MADE',
+    label:    'It was made recently',
+    desc:     'Made within roughly the last twenty years.',
+    examples: 'Examples: anything this shop or its partners produced.',
+  },
+  {
+    value:    'VINTAGE',
+    label:    'It is vintage',
+    desc:     'At least twenty years old. Buyers filter on this, so only choose it if the item genuinely is.',
+    examples: 'Examples: a 1970s enamel pin, a mid-century serving dish.',
+  },
+];
+
 const HOW_MADE_OPTIONS: { value: HowItWasMade; label: string; desc: string; examples: string }[] = [
   {
     value:    'MADE_TO_ORDER',
@@ -303,7 +318,7 @@ const TOOL_OPTIONS: { value: string; label: string; desc?: string; examples?: st
 // ─── Main tab ─────────────────────────────────────────────────────────────────
 
 export function HowItsMadeTab() {
-  const { watch, setValue } = useFormContext<ProductEditFormValues>();
+  const { watch, setValue, register } = useFormContext<ProductEditFormValues>();
 
   const partnerIds = watch('productionPartnerIds') ?? [];
 
@@ -326,6 +341,34 @@ export function HowItsMadeTab() {
             {/* What is it? */}
             <FormField label="What is it?" required>
               <RadioGroupWithDesc name="howItWasMade" options={HOW_MADE_OPTIONS} />
+            </FormField>
+
+            {/* When was it made? — third leg of the provenance trio, sitting
+                with the other two rather than in a group of its own. Not
+                marked required: it is nullable on the model, and forcing an
+                answer on every existing listing would collect guesses rather
+                than facts. */}
+            <FormField label="When was it made?">
+              <RadioGroupWithDesc name="whenMade" options={WHEN_MADE_OPTIONS} />
+            </FormField>
+
+            {/* Gift wrapping — buyer-facing ordering option, filterable in
+                search. Distinct from the gift-wrap choice a buyer makes at
+                checkout; this is whether it can be offered at all. */}
+            <FormField label="Gift wrapping">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  {...register('giftWrappingAvailable')}
+                  className="mt-1 accent-primary"
+                />
+                <span className="text-sm text-secondary">
+                  I offer gift wrapping for this item
+                  <span className="block text-muted text-xs mt-0.5">
+                    Shoppers can filter for items that can be gift wrapped.
+                  </span>
+                </span>
+              </label>
             </FormField>
 
             {/* What tools? */}

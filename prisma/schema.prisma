@@ -970,6 +970,10 @@ model Product {
   isActive            Boolean                  @default(true)
   status              ProductStatus            @default(ACTIVE)
   productType         ProductType              @default(PHYSICAL)
+  /// Whether the seller offers gift wrapping for this listing. Distinct from
+  /// Order.giftWrapping, which records what a buyer chose at checkout — this
+  /// is whether the option can be offered at all.
+  giftWrappingAvailable Boolean                @default(false)
   isFeatured          Boolean                  @default(false)
   viewCount           Int                      @default(0)
   soldCount           Int                      @default(0)
@@ -1020,6 +1024,9 @@ model Product {
   // ── TAB: How It's Made ──────────────────────────────────────────────────────
   whoMadeIt            WhoMadeIt?
   howItWasMade         HowItWasMade?
+  /// Optional, like the two above it — an unanswered question stays
+  /// unanswered rather than being defaulted into a claim the seller never made.
+  whenMade             WhenMade?
   toolsUsed            String[] // "handheld" | "computerized" | "3d-printing" | "none"
   productionPartnerIds String[] // cuid references to ProductionPartner records
   hsCode               String? // Harmonised System tariff code for customs
@@ -1120,6 +1127,25 @@ enum PrintSide {
 enum ProductType {
   PHYSICAL
   DIGITAL
+}
+
+/// Third leg of the listing-provenance trio, alongside WhoMadeIt and
+/// HowItWasMade. Answers "when was it made", which is the only one of the
+/// three that separates vintage from everything else.
+///
+/// Deliberately NOT a parallel "listing type" enum. HANDMADE and
+/// MADE_TO_ORDER already live in HowItWasMade; repeating them here would let
+/// one listing claim to be two different things with nothing to reconcile
+/// them.
+///
+/// Two values, not a decade scale: the only question the search filter has to
+/// answer is vintage or not, and a finer scale would be data sellers have to
+/// enter and nobody would filter on.
+enum WhenMade {
+  /// Within roughly the last twenty years.
+  RECENTLY_MADE
+  /// Twenty years old or more.
+  VINTAGE
 }
 
 model ProductImage {

@@ -43,6 +43,10 @@ const EMPTY_DEFAULTS: ProductEditFormValues = {
   returnPolicy:         'NO_RETURNS',
   whoMadeIt:            'I_DID',
   howItWasMade:         'MADE_TO_ORDER',
+  // Left unset: an unanswered provenance question stays unanswered rather
+  // than defaulting into a claim the seller never made.
+  whenMade:             null,
+  giftWrappingAvailable: false,
   toolsUsed:            [],
   productionPartnerIds: [],
   hsCode:               '',
@@ -166,6 +170,8 @@ export function buildDefaultValues(
     // How It's Made
     whoMadeIt:            product.whoMadeIt            ?? 'I_DID',
     howItWasMade:         product.howItWasMade         ?? 'MADE_TO_ORDER',
+    whenMade:             product.whenMade             ?? null,
+    giftWrappingAvailable: product.giftWrappingAvailable ?? false,
     toolsUsed:            safeArr(product.toolsUsed),
     productionPartnerIds: safeArr(product.productionPartnerIds),
     hsCode:               safeStr(product.hsCode),

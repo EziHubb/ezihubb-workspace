@@ -908,7 +908,7 @@ export class ProductsService {
       // ── New scalar fields from product-edit schema ──
       'domesticGlobalPricing', 'quantity', 'trackInventory', 'lowStockThreshold', 'isAdsEnabled', 'hsCode',
       'titleCharCount', 'thumbnailCropData',
-      'returnPolicy', 'whoMadeIt', 'howItWasMade', 'renewalType',
+      'returnPolicy', 'whoMadeIt', 'howItWasMade', 'whenMade', 'giftWrappingAvailable', 'renewalType',
       'width', 'height', 'dimensionUnit',
       // Array fields (assigned directly below)
     ];

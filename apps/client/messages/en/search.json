@@ -88,5 +88,13 @@
   "readyToDispatch": "Ready to dispatch",
   "dispatchWithin": "Within {days} day(s)",
   "anyDispatchTime": "Any dispatch time",
-  "shipsFrom": "Ships from"
+  "shipsFrom": "Ships from",
+  "orderingOptions": "Ordering options",
+  "giftWrapping": "Gift wrapping available",
+  "whenMade": "When it was made",
+  "anyWhenMade": "Any age",
+  "whenMadeOptions": {
+    "RECENTLY_MADE": "Recently made",
+    "VINTAGE": "Vintage (20+ years)"
+  }
 }

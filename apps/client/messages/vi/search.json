@@ -88,5 +88,13 @@
   "readyToDispatch": "Sẵn sàng gửi trong",
   "dispatchWithin": "Trong {days} ngày",
   "anyDispatchTime": "Mọi thời gian gửi",
-  "shipsFrom": "Gửi từ"
+  "shipsFrom": "Gửi từ",
+  "orderingOptions": "Tuỳ chọn đặt hàng",
+  "giftWrapping": "Có gói quà",
+  "whenMade": "Thời điểm chế tác",
+  "anyWhenMade": "Mọi thời điểm",
+  "whenMadeOptions": {
+    "RECENTLY_MADE": "Mới chế tác",
+    "VINTAGE": "Hàng cũ (trên 20 năm)"
+  }
 }

@@ -88,5 +88,13 @@
   "readyToDispatch": "备货时间",
   "dispatchWithin": "{days} 天内",
   "anyDispatchTime": "不限备货时间",
-  "shipsFrom": "发货地"
+  "shipsFrom": "发货地",
+  "orderingOptions": "订购选项",
+  "giftWrapping": "提供礼品包装",
+  "whenMade": "制作年代",
+  "anyWhenMade": "不限年代",
+  "whenMadeOptions": {
+    "RECENTLY_MADE": "近期制作",
+    "VINTAGE": "复古（20 年以上）"
+  }
 }

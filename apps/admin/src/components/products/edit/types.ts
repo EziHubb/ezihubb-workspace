@@ -2,6 +2,8 @@
 
 export type WhoMadeIt     = 'I_DID' | 'SHOP_MEMBER' | 'ANOTHER_COMPANY';
 export type HowItWasMade  = 'MADE_TO_ORDER' | 'HANDMADE' | 'ASSEMBLED' | 'ALTERED' | 'CURATED_SET' | 'NATURAL_MATERIAL';
+/** Third provenance field. Optional on the model — an unanswered question stays unanswered. */
+export type WhenMade      = 'RECENTLY_MADE' | 'VINTAGE';
 export type ReturnPolicy  = 'NO_RETURNS' | 'RETURNS_ACCEPTED' | 'EXCHANGES_ONLY';
 export type RenewalType   = 'AUTOMATIC' | 'MANUAL';
 export type ProductType   = 'PHYSICAL' | 'DIGITAL';
@@ -63,6 +65,8 @@ export interface ProductEditFormValues {
   // How It's Made tab
   whoMadeIt:             WhoMadeIt;
   howItWasMade:          HowItWasMade;
+  whenMade?:             WhenMade | null;
+  giftWrappingAvailable: boolean;
   toolsUsed:             string[];
   productionPartnerIds:  string[];
   hsCode:                string;
@@ -237,6 +241,8 @@ export interface AdminProductDto {
   returnPolicy?:        ReturnPolicy;
   whoMadeIt?:           WhoMadeIt;
   howItWasMade?:        HowItWasMade;
+  whenMade?:            WhenMade | null;
+  giftWrappingAvailable?: boolean;
   toolsUsed?:           string[];
   productionPartnerIds?: string[];
   hsCode?:              string;
