@@ -223,3 +223,46 @@ One behavioural difference worth noting before anyone builds it: in the
 reference the action row (`+ Add to cart` / `More like this`) is **always
 visible**, on every card, not revealed on hover. Ours is hover-only. Not
 changed yet — it affects how much vertical space every card needs.
+
+## Star Seller badge — what it would take
+
+The reference puts a small badge after the shop name on each card. We do not
+render it, and the gap is not simply "no data" — it is that the two things
+that could back it disagree.
+
+`SearchQueryDto.starSeller` already exists as a filter, and the API resolves
+it as `where.soldCount >= 50` — a **product-level** sales threshold
+(`search.service.ts:540`). The reference badge is a **shop-level** status.
+Filtering by "star seller" therefore currently means "this listing sold 50+",
+not "this shop is a star seller", which is a different claim.
+
+`Store` carries three fields that could serve a real shop-level badge:
+`verifiedAt`, `rating`, `totalOrders`, plus an unused `scoreBadge` string.
+
+To build the badge, in order:
+
+1. Decide what earns it — verified, or a rating/volume threshold, or the
+   existing `scoreBadge`. This is a policy decision, not an implementation
+   one; putting a trust marker on a shop makes a promise to buyers.
+2. Expose the resulting flag on the store fragment already embedded in
+   `ProductListItemDto` (which today carries only `id`, `name`, `slug`).
+3. Render it, and at the same time reconcile the `starSeller` filter so the
+   filter and the badge mean the same thing. Shipping the badge while the
+   filter still keys on product `soldCount` would leave two different
+   definitions of the same word visible on one page.
+
+## Digital-download label — blocked
+
+The reference marks digital listings on the card. `Product.productType`
+(`PHYSICAL | DIGITAL`) exists, and `SearchQueryDto` already accepts
+`itemType: 'digital'` as a filter, so the concept is fully present server-side.
+
+It cannot be rendered yet: `productType` is **not** in the API's
+`ProductListItemDto` and none of the three mappers emit it, so it never
+reaches the client. Note that `libs/shared/types` **does** declare
+`productType?: 'PHYSICAL' | 'DIGITAL'` on the client-side type — a field that
+is always `undefined` at runtime. Reading it and rendering nothing would look
+like a styling bug rather than a missing field.
+
+Needs `productType` added to `ProductListItemDto` plus the same three mappers
+that `primaryColors` needed.

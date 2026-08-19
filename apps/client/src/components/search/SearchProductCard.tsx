@@ -206,26 +206,28 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
           container, so hovering covered the bottom of the product photo,
           which is the one thing the shopper is looking at. The row keeps a
           reserved height so the grid does not jump as the mouse crosses it. */}
-      <div className="order-last mt-2 h-8">
-        <div
-          className={[
-            'flex gap-2 transition-opacity duration-200',
-            isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none',
-          ].join(' ')}
-        >
+      <div className="order-last mt-2 h-9">
+        <div className="flex gap-2 items-stretch h-full">
+          {/* Always visible, on every card and every device.
+              This was hover-only, which meant nobody on a touch screen could
+              ever reach either control — hover does not exist there, so the
+              feature was simply absent for those users. The reference shows
+              them permanently too.
+              Fixed row height so a card's total height does not depend on
+              pointer state and the grid cannot shift under the cursor. */}
           {!product.isPersonalizable ? (
             <button
               type="button"
               onClick={handleAddToCart}
               disabled={cartLoading}
-              className="flex-1 bg-white rounded-full py-1.5 text-xs font-medium text-secondary hover:bg-primary hover:text-white transition-colors shadow-sm text-center disabled:opacity-50"
+              className="flex-1 border border-border rounded-full text-xs font-medium text-secondary hover:border-secondary hover:bg-secondary hover:text-white transition-colors text-center flex items-center justify-center disabled:opacity-50"
             >
               {t('addToCart')}
             </button>
           ) : (
             <Link
               href={productHref}
-              className="flex-1 bg-white rounded-full py-1.5 text-xs font-medium text-secondary hover:bg-primary hover:text-white transition-colors shadow-sm text-center"
+              className="flex-1 border border-border rounded-full text-xs font-medium text-secondary hover:border-secondary hover:bg-secondary hover:text-white transition-colors text-center flex items-center justify-center"
             >
               {t('personalize')}
             </Link>
@@ -240,7 +242,7 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
           <Link
             href={`/${locale}/search?category=${encodeURIComponent(product.categorySlug ?? '')}`}
             onClick={(e) => e.stopPropagation()}
-            className="flex-1 bg-white rounded-full py-1.5 text-xs font-medium text-secondary hover:bg-secondary hover:text-white transition-colors shadow-sm text-center"
+            className="flex-1 border border-border rounded-full text-xs font-medium text-secondary hover:border-secondary hover:bg-secondary hover:text-white transition-colors text-center flex items-center justify-center"
           >
             {t('moreLikeThis')}
           </Link>
