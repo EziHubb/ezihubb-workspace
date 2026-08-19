@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, Param, Post, Query, Req } from '@nestjs/common';
+import { Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
@@ -9,10 +9,16 @@ import { ProductResponseDto } from './dto/product-response.dto';
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ParseCuidPipe } from '../../common/pipes/parse-cuid.pipe';
 import { TranslatableResponse } from '../../common/interceptors/i18n.interceptor';
 
 @ApiTags('Products')
+// Class-level guard: recently-viewed and :id/viewed read @CurrentUser() and
+// had no guard, so an unauthenticated caller got a 200 and shared one Redis
+// key (user:undefined:viewed) with every other anonymous visitor. The four
+// browse routes carry @Public(), which JwtAuthGuard honours.
+@UseGuards(JwtAuthGuard)
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
@@ -44,7 +50,7 @@ export class ProductsController {
   @ApiOperation({ summary: 'Last 8 products viewed by the authenticated user' })
   @ApiResponse({ status: 200, type: [ProductListItemDto] })
   getRecentlyViewed(
-    @CurrentUser('id') userId: string,
+    @CurrentUser('sub') userId: string,
   ): Promise<ProductListItemDto[]> {
     return this.productsService.getRecentlyViewed(userId);
   }
@@ -80,7 +86,7 @@ export class ProductsController {
   @ApiResponse({ status: 204 })
   trackViewed(
     @Param('id', ParseCuidPipe) productId: string,
-    @CurrentUser('id') userId: string,
+    @CurrentUser('sub') userId: string,
   ): Promise<void> {
     return this.productsService.trackViewed(productId, userId);
   }

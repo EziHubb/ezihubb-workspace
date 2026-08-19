@@ -8,6 +8,7 @@ import {
   Post,
   Query,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
@@ -20,8 +21,14 @@ import { RequestPayoutDto } from './dto/request-payout.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @ApiTags('Affiliates')
+// Class-level guard: the five me/* routes below read @CurrentUser() and had
+// no guard at all, so req.user was undefined and each one 500'd on user.sub
+// — the whole affiliate portal, payout requests included. The four public
+// routes carry @Public(), which JwtAuthGuard honours.
+@UseGuards(JwtAuthGuard)
 @Controller('affiliates')
 export class AffiliatesController {
   constructor(

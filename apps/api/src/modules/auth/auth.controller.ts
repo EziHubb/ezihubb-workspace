@@ -33,6 +33,7 @@ import { RefreshPayload } from './strategies/jwt-refresh.strategy';
 import { JwtPayload } from './strategies/jwt.strategy';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { JwtRefreshGuard } from '../../common/guards/jwt-refresh.guard';
 import { OriginCheckGuard } from '../../common/guards/origin-check.guard';
 import { AuthGuard } from '@nestjs/passport';
@@ -41,6 +42,13 @@ import { Throttle } from '@nestjs/throttler';
 import { AuditLogService } from '../../common/services/audit-log.service';
 
 @ApiTags('Auth')
+// Guard at CLASS level, not per-method. Without it nothing populates
+// req.user, so every @CurrentUser() route here returned undefined and died
+// on user.sub with a 500 — logout among them, which meant the refresh
+// cookie was never cleared and the user stayed signed in. @Public() below is
+// read by JwtAuthGuard itself, so the 10 genuinely public routes are
+// unaffected; a new route added here is now protected by default.
+@UseGuards(JwtAuthGuard)
 @Controller('auth')
 export class AuthController {
   constructor(
