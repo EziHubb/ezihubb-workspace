@@ -472,7 +472,35 @@ export class SearchService {
         where: { slug: query.category },
         select: { id: true },
       });
-      if (cat) where.categoryId = cat.id;
+      // Matches the whole branch, not just the exact category. Products are
+      // almost always filed against leaf categories — 101 of the 130
+      // categories are leaves — so an exact id match meant clicking any
+      // parent returned nothing at all, which reads as a broken filter rather
+      // than an empty category.
+      //
+      // One round trip via a recursive CTE. Deliberately not built from
+      // CatalogService's cached tree: that would couple search to catalog,
+      // and the cached tree is hardcoded to three levels by its nested
+      // `include`, so a fourth level would be silently dropped here. The CTE
+      // has no depth assumption.
+      //
+      // Product.categoryId and Category.parentId are both indexed. Worst case
+      // today is ~101 ids in the IN list, which Postgres serves as a bitmap
+      // index scan.
+      //
+      // Unknown slug still falls through with no category filter applied,
+      // exactly as before — unchanged on purpose.
+      if (cat) {
+        const branch = await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+          WITH RECURSIVE branch AS (
+            SELECT id FROM "Category" WHERE id = ${cat.id}
+            UNION ALL
+            SELECT c.id FROM "Category" c JOIN branch b ON c."parentId" = b.id
+          )
+          SELECT id FROM branch
+        `);
+        where.categoryId = { in: branch.map((r) => r.id) };
+      }
     }
 
     if (query.collection) {
