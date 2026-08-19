@@ -54,9 +54,24 @@ function buildBreadcrumbs(product: ProductDetailDto, locale: string, homeLabel: 
 
 export async function generateStaticParams() {
   const locales = ['en', 'vi'] as const;
+  // Pre-renders the 48 best-selling listings, not the whole catalogue.
+  //
+  // This used to ask for `fields=slug` and `limit=200`. Neither is accepted:
+  // ProductQueryDto has no `fields`, and PaginationDto caps limit at 48, so
+  // every request 400'd, the catch below swallowed it, and NOTHING was
+  // pre-rendered at all — silently, for as long as it has been there.
+  //
+  // Deliberately not paginating to exhaustion. generateStaticParams only
+  // controls what is built ahead of time; anything absent still renders
+  // on demand and is then cached, so the long tail loses nothing but a first
+  // visit. Walking the whole catalogue would make build time grow with the
+  // catalogue — at 10k listings that is 200+ build-time requests and 20k
+  // pre-rendered pages across locales — to pre-build pages almost nobody
+  // opens. Sorted by sales so the 48 that are built are the 48 most likely to
+  // be hit.
   const res = await apiClient
     .get<PaginatedResponse<{ slug: string }>>(API_ROUTES.PRODUCTS.LIST, {
-      params: { fields: 'slug', limit: 200, isActive: true },
+      params: { sort: 'bestseller', limit: 48, isActive: true },
       next: { revalidate: 3600 },
     })
     .catch(() => ({ data: [] as { slug: string }[] }));

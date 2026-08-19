@@ -2417,6 +2417,18 @@ export class ProductsService {
     }
     if (query.isFeatured !== undefined) where.isFeatured = query.isFeatured;
     if (query.isPersonalizable !== undefined) where.isPersonalizable = query.isPersonalizable;
+
+    // Same shape SearchService already uses for its own `collection` filter —
+    // resolve the slug, then match through the CollectionProduct join table.
+    // An unknown slug leaves the filter off entirely rather than returning
+    // nothing, matching how `category` behaves a few lines down.
+    if (query.collectionSlug) {
+      const col = await this.prisma.collection.findUnique({
+        where:  { slug: query.collectionSlug },
+        select: { id: true },
+      });
+      if (col) where.collections = { some: { collectionId: col.id } };
+    }
     // Explicit id set (storefront "Featured items" honouring the seller's
     // Shop Home picks). Combines with every other filter below — notably
     // isActive/status — so an id the seller pinned and later archived simply

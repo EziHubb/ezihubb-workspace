@@ -102,6 +102,19 @@ export class ProductQueryDto extends PaginationDto {
   isPersonalizable?: boolean;
 
   /**
+   * Collection slug. The collection page has always sent this; the DTO never
+   * declared it, so every one of those requests was rejected with a 400 and
+   * each collection rendered as empty.
+   *
+   * Slug rather than id, matching `category` — the URL already carries the
+   * slug, so resolving it here keeps ids out of the address bar.
+   */
+  @ApiPropertyOptional({ description: 'Filter to products in this collection' })
+  @IsOptional()
+  @IsString()
+  collectionSlug?: string;
+
+  /**
    * Fetch an explicit set of products by id. Used by the storefront's
    * "Featured items" strip to render exactly the listings a seller pinned in
    * Shop Home (`Store.featuredProductIds`) instead of whatever carries the
