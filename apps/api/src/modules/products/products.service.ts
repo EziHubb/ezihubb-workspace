@@ -677,6 +677,11 @@ export class ProductsService {
         compareAtPrice: dto.compareAtPrice,
         isPersonalizable: dto.isPersonalizable ?? true,
         isActive: dto.isActive ?? true,
+        // Paired with isActive — same rule as updateForStore and the
+        // publish/unpublish bulk action. Without it, creating with
+        // isActive:false left status on its ACTIVE schema default and the
+        // listing was counted under the "Active" tab while being invisible.
+        status: (dto.isActive ?? true) ? ProductStatus.ACTIVE : ProductStatus.INACTIVE,
         productType: dto.productType ?? ProductType.PHYSICAL,
         isFeatured: dto.isFeatured ?? false,
         processingDays: dto.processingDays ?? 3,
@@ -1692,6 +1697,13 @@ export class ProductsService {
         compareAtPrice: source.compareAtPrice,
         isPersonalizable: source.isPersonalizable,
         isActive: false,
+        // A duplicate starts unpublished, so status must say so too. Left on
+        // the ACTIVE schema default it showed up under the "Active" tab
+        // immediately after copying — same pairing rule as everywhere else.
+        // DRAFT rather than INACTIVE: this listing has never been published,
+        // which is exactly what DRAFT means here, and it keeps the copy out of
+        // buyer-facing queries on both conditions instead of just isActive.
+        status: ProductStatus.DRAFT,
         isFeatured: false,
         processingDays: source.processingDays,
         categoryId: source.categoryId,
