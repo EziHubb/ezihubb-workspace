@@ -71,11 +71,12 @@ function MiniProductCard({
 // ── MoreFromShop ──────────────────────────────────────────────────────────────
 
 interface MoreFromShopProps {
-  products: ProductListItemDto[];
-  locale:   string;
+  products:   ProductListItemDto[];
+  locale:     string;
+  storeSlug?: string | null;
 }
 
-export function MoreFromShop({ products, locale }: MoreFromShopProps) {
+export function MoreFromShop({ products, locale, storeSlug }: MoreFromShopProps) {
   const t = useTranslations('product.pdp');
   if (safeArr(products).length === 0) return null;
 
@@ -84,7 +85,7 @@ export function MoreFromShop({ products, locale }: MoreFromShopProps) {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-secondary">{t('moreFromShop')}</h2>
         <Link
-          href={`/${locale}/search`}
+          href={storeSlug ? `/${locale}/shops/${storeSlug}` : `/${locale}/search`}
           className="text-sm text-primary hover:underline"
         >
           {t('visitShop')}

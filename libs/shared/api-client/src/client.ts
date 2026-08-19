@@ -5,13 +5,20 @@ export interface RequestOptions extends RequestInit {
 }
 
 // Strip trailing /api/v1 so the env var works correctly regardless of whether
-// it was set to "https://api.example.com" or "https://api.example.com/api/v1".
-// The path prefix is added explicitly in each client function below.
-let baseUrl = (process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002')
-  .replace(/\/api\/v1\/?$/, '');
+// it was set to "https://api.example.com" or "https://api.example.com/api/v1"
+// — apps/client/.env.local.example documents the latter form, so any caller
+// that skips this (as apps/client/src/lib/api.ts's setBaseUrl() call once
+// did) doubles the prefix into .../api/v1/api/v1/... and 404s every request.
+// Centralized here, in setBaseUrl itself, so no caller can bypass it by
+// assigning the raw env value directly.
+function stripApiV1Suffix(url: string): string {
+  return url.replace(/\/api\/v1\/?$/, '');
+}
+
+let baseUrl = stripApiV1Suffix(process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002');
 
 export function setBaseUrl(url: string): void {
-  baseUrl = url;
+  baseUrl = stripApiV1Suffix(url);
 }
 
 // ── Token provider (registered by auth store) ─────────────────────────────────

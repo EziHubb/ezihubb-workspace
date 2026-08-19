@@ -43,11 +43,18 @@ export interface StoreSummaryDto {
 
 const BASE = 'https://ezihubb.com';
 
-/** DFS from the category tree root(s) down to `targetId`; [] if not found. */
-function findCategoryPath(tree: CategoryDto[], targetId: string): CategoryDto[] {
+/**
+ * DFS from the category tree root(s) down to `targetId`; [] if not found.
+ * `visited` guards against a cyclic parentId — the API has had that exact
+ * data bug before (see the category-branch-CTE fix) — so a corrupt tree
+ * degrades to "no ancestor path found" instead of hanging the whole page.
+ */
+function findCategoryPath(tree: CategoryDto[], targetId: string, visited = new Set<string>()): CategoryDto[] {
   for (const node of tree) {
+    if (visited.has(node.id)) continue;
+    visited.add(node.id);
     if (node.id === targetId) return [node];
-    const childPath = findCategoryPath(node.children ?? [], targetId);
+    const childPath = findCategoryPath(node.children ?? [], targetId, visited);
     if (childPath.length > 0) return [node, ...childPath];
   }
   return [];
@@ -159,7 +166,7 @@ export default async function ProductDetailPage({
   const { locale, slug } = await params;
   const localeHeaders = { 'X-Locale': locale };
 
-  const [productRes, reviewSummaryRes, relatedRes, moreFromShopRes, qaRes, categoryTreeRes] =
+  const [productRes, reviewSummaryRes, relatedRes, qaRes, categoryTreeRes] =
     await Promise.allSettled([
       apiClient.get<ProductDetailDto>(API_ROUTES.PRODUCTS.DETAIL(slug), {
         next: { revalidate: 30 },
@@ -169,11 +176,6 @@ export default async function ProductDetailPage({
         next: { revalidate: 60 },
       }),
       apiClient.get<ProductListItemDto[]>(API_ROUTES.PRODUCTS.RELATED(slug), {
-        next: { revalidate: 300 },
-        headers: localeHeaders,
-      }),
-      apiClient.get<PaginatedResponse<ProductListItemDto>>(API_ROUTES.PRODUCTS.LIST, {
-        params: { sort: 'bestseller', limit: 4 },
         next: { revalidate: 300 },
         headers: localeHeaders,
       }),
@@ -195,7 +197,6 @@ export default async function ProductDetailPage({
   // "Related products" block looks the same as a product with no relatives.
   warnIfRejected('product:reviewSummary', API_ROUTES.PRODUCTS.REVIEW_SUMMARY(slug), reviewSummaryRes);
   warnIfRejected('product:related',       API_ROUTES.PRODUCTS.RELATED(slug),        relatedRes);
-  warnIfRejected('product:moreFromShop',  API_ROUTES.PRODUCTS.LIST,                 moreFromShopRes);
   warnIfRejected('product:qa',            API_ROUTES.PRODUCTS.QA(slug),             qaRes);
   warnIfRejected('product:categoryTree',  API_ROUTES.CATALOG.CATEGORIES,            categoryTreeRes);
 
@@ -205,21 +206,38 @@ export default async function ProductDetailPage({
   const relatedProducts = relatedRes.status === 'fulfilled'
     ? relatedRes.value : [];
 
-  const moreFromShop = moreFromShopRes.status === 'fulfilled'
-    ? moreFromShopRes.value.data : [];
-
   const initialQAs = qaRes.status === 'fulfilled' ? qaRes.value : [];
 
   const categoryTree = categoryTreeRes.status === 'fulfilled' ? categoryTreeRes.value : [];
 
-  // Depends on `product.store.slug`, so it can't join the parallel batch above.
-  // Mirrors the existing `getTranslations` sequential await below — a second,
-  // independent optional fetch, not a restructure of the batch itself.
-  const storeSummary = product.store?.slug
-    ? await apiClient
-        .get<StoreSummaryDto>(API_ROUTES.STORES.DETAIL(product.store.slug), { next: { revalidate: 300 } })
-        .catch(() => null)
-    : null;
+  // Both depend on `product.store.slug`, so neither can join the parallel
+  // batch above — fetched together here instead, right after `product`
+  // resolves. Was previously a plain bestseller list with no store filter at
+  // all ("more from this shop" wasn't actually scoped to the shop); the LIST
+  // endpoint already supports `storeSlug`, just wasn't being passed. A
+  // product with no store at all (rare — see the API's own fallback comment
+  // on this) simply skips both, no warning logged for a non-error case.
+  const storeSlug = product.store?.slug;
+  const [storeSummary, moreFromShopProducts] = storeSlug
+    ? await Promise.all([
+        apiClient
+          .get<StoreSummaryDto>(API_ROUTES.STORES.DETAIL(storeSlug), { next: { revalidate: 300 } })
+          .catch((e) => { warnIfRejected('product:storeSummary', API_ROUTES.STORES.DETAIL(storeSlug), { status: 'rejected', reason: e }); return null; }),
+        apiClient
+          .get<PaginatedResponse<ProductListItemDto>>(API_ROUTES.PRODUCTS.LIST, {
+            params: { storeSlug, sort: 'bestseller', limit: 5 },
+            next: { revalidate: 300 },
+            headers: localeHeaders,
+          })
+          .then((r) => r.data)
+          .catch((e) => { warnIfRejected('product:moreFromShop', API_ROUTES.PRODUCTS.LIST, { status: 'rejected', reason: e }); return [] as ProductListItemDto[]; }),
+      ])
+    : [null, [] as ProductListItemDto[]];
+
+  // Exclude the listing the buyer is already looking at, then cap to 4 —
+  // fetched 5 above so excluding self still leaves a full row when the shop
+  // has enough other listings.
+  const moreFromShop = moreFromShopProducts.filter((p) => p.id !== product.id).slice(0, 4);
 
   // FAQPage structured data — only published answered Q&As
   const faqStructuredData = initialQAs.length > 0 ? {
@@ -293,7 +311,7 @@ export default async function ProductDetailPage({
 
         {/* ── MORE FROM THIS SHOP ── */}
         {moreFromShop.length > 0 && (
-          <MoreFromShop products={moreFromShop} locale={locale} />
+          <MoreFromShop products={moreFromShop} locale={locale} storeSlug={storeSlug} />
         )}
 
         {/* ── YOU MAY ALSO LIKE ── */}

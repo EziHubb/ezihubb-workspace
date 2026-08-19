@@ -43,11 +43,16 @@ function buildRelatedSearches(product: ProductDetailDto, locale: string, storeLo
     })),
   ];
 
-  const keywords = [
-    ...tags.slice(0, 6).map((t) => t.name),
-    product.category.name,
-    ...(materialAttr ? [materialAttr.value] : []),
-  ].filter(Boolean) as string[];
+  // Dedupe — a tag can legitimately share a name with the category (or, rarer,
+  // with another tag by data entry error); duplicate React keys below would
+  // silently drop one of the pills instead of just showing a repeat.
+  const keywords = [...new Set(
+    [
+      ...tags.slice(0, 6).map((t) => t.name),
+      product.category.name,
+      ...(materialAttr ? [materialAttr.value] : []),
+    ].filter(Boolean) as string[],
+  )];
 
   return { featured, keywords };
 }
