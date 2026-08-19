@@ -135,17 +135,25 @@ export const useAuthStore = create<AuthStore>()(
 
       logout: async () => {
         const token = get().accessToken;
-        try {
-          await apiClient.post(
-            API_ROUTES.AUTH.LOGOUT,
-            {},
-            {
-              token: token ?? undefined,
-            },
-          );
-        } catch {
-          /* best-effort */
-        }
+        // Deliberately NOT wrapped in try/catch, and the local wipe below is
+        // deliberately AFTER the await. Only the server can revoke the refresh
+        // token and clear the httpOnly refresh cookie, so if this call fails
+        // the user is still signed in — clearing local state anyway would only
+        // hide that. It is what the old `catch { /* best-effort */ }` did, and
+        // it hid a real bug for months: /auth/logout had no JwtAuthGuard, so it
+        // 500'd on every single call, the error was swallowed, the UI redirected
+        // home, and the next page load silently signed the user back in from the
+        // surviving cookie. Callers must catch this and tell the user rather
+        // than pretend the sign-out worked.
+        // An expired access token is not a failure path here: apiClient
+        // auto-refreshes on 401 and retries once before it throws.
+        await apiClient.post(
+          API_ROUTES.AUTH.LOGOUT,
+          {},
+          {
+            token: token ?? undefined,
+          },
+        );
         syncToken(null);
         set({ user: null, accessToken: null });
         getCartStore()?.clearCart();

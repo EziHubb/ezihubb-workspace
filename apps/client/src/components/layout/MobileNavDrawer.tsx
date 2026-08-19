@@ -10,6 +10,7 @@ import { signOut } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { queryKeys } from '@ezihubb/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
+import { toast } from '../../lib/store/toast.store';
 import { SearchInput } from '../search/SearchInput';
 import { LocaleSwitcher } from './LocaleSwitcher';
 import type { MegaMenuTab } from '../../types/mega-menu';
@@ -128,7 +129,15 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
 
   const handleSignOut = async () => {
     onClose();
-    await authLogout();
+    try {
+      await authLogout();
+    } catch {
+      // Same contract as Navbar's handler — see the comment there. A failed
+      // logout leaves the session alive server-side, so never render the
+      // signed-out UI for it.
+      toast.error(t('signOutFailed'), { description: t('signOutFailedHint') });
+      return;
+    }
     qc.setQueryData(queryKeys.profile(), null);
     qc.clear();
     await signOut({ redirect: false });

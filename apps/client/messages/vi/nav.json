@@ -16,6 +16,8 @@
   "profile": "Hồ sơ",
   "sellerHub": "Kênh người bán",
   "signOut": "Đăng xuất",
+  "signOutFailed": "Chưa đăng xuất được",
+  "signOutFailedHint": "Bạn vẫn đang đăng nhập. Kiểm tra kết nối và thử lại.",
   "signIn": "Đăng nhập",
   "shop": "Mua sắm",
   "createAccount": "Tạo tài khoản",

@@ -16,6 +16,8 @@
   "profile": "Profile",
   "sellerHub": "Seller Hub",
   "signOut": "Sign Out",
+  "signOutFailed": "Couldn't sign you out",
+  "signOutFailedHint": "You are still signed in. Check your connection and try again.",
   "signIn": "Sign In",
   "shop": "Shop",
   "createAccount": "Create Account",

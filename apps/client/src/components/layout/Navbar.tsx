@@ -13,6 +13,7 @@ import { useWishlist, queryKeys } from '@ezihubb/api-client';
 import { signOut } from 'next-auth/react';
 import { useCartStore } from '../../lib/store/cart.store';
 import { useAuthStore } from '../../lib/store/auth.store';
+import { toast } from '../../lib/store/toast.store';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -65,7 +66,16 @@ function UserMenu({ locale }: { locale: string }) {
 
   const handleSignOut = async () => {
     setOpen(false);
-    await authLogout();
+    try {
+      await authLogout();
+    } catch {
+      // Stay signed in and stay on the page. The server still holds a valid
+      // refresh token, so clearing the UI would tell the user they are signed
+      // out while their session is very much alive — the worst outcome on a
+      // shared computer. Say so instead and let them retry.
+      toast.error(t('signOutFailed'), { description: t('signOutFailedHint') });
+      return;
+    }
     qc.setQueryData(queryKeys.profile(), null);
     qc.clear();
     await signOut({ redirect: false });

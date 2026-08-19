@@ -16,6 +16,8 @@
   "profile": "个人资料",
   "sellerHub": "卖家中心",
   "signOut": "退出登录",
+  "signOutFailed": "退出登录失败",
+  "signOutFailedHint": "您仍处于登录状态。请检查网络连接后重试。",
   "signIn": "登录",
   "shop": "购物",
   "createAccount": "创建账户",
