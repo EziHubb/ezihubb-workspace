@@ -71,5 +71,8 @@
     "body": "Something went wrong on our side, not with your search. Your filters are still applied.",
     "retry": "Try again"
   },
-  "moreLikeThis": "More like this"
+  "moreLikeThis": "More like this",
+  "rating": "Rating",
+  "ratingAndUp": "{stars} stars & up",
+  "anyRating": "Any rating"
 }

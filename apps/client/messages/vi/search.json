@@ -71,5 +71,8 @@
     "body": "Lỗi từ phía chúng tôi, không phải do từ khoá của bạn. Bộ lọc bạn chọn vẫn được giữ nguyên.",
     "retry": "Thử lại"
   },
-  "moreLikeThis": "Xem thêm tương tự"
+  "moreLikeThis": "Xem thêm tương tự",
+  "rating": "Đánh giá",
+  "ratingAndUp": "Từ {stars} sao trở lên",
+  "anyRating": "Mọi mức đánh giá"
 }

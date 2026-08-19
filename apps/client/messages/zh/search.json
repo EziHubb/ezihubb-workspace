@@ -71,5 +71,8 @@
     "body": "这是我们这边的问题，与您的搜索无关。您选择的筛选条件仍然保留。",
     "retry": "重试"
   },
-  "moreLikeThis": "查看相似商品"
+  "moreLikeThis": "查看相似商品",
+  "rating": "评分",
+  "ratingAndUp": "{stars} 星及以上",
+  "anyRating": "不限评分"
 }

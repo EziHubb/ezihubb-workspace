@@ -301,6 +301,26 @@ export function SearchFilterSidebar({ filters, facets, onFilterChange, onClearAl
         )}
       </div>
 
+      {/* Group order is ours, not the reference's: the reference images have
+          no overlap between screenshots so their vertical order could not be
+          recovered from them. Ordered by how much each one narrows a result
+          set and how many shoppers touch it — price and offers before
+          attribute filters, shop reputation last.
+          The first four are open by default. Opening everything makes a
+          column nobody scrolls; closing everything hides what is on offer. */}
+
+      {/* ── Price ── */}
+      <FilterSection title={t('price')} defaultOpen>
+        <PriceRangeFilter
+          min={filters.minPrice ? Number(filters.minPrice) : undefined}
+          max={filters.maxPrice ? Number(filters.maxPrice) : undefined}
+          onChange={(min, max) => {
+            onFilterChange('minPrice', min !== undefined ? String(min) : null);
+            onFilterChange('maxPrice', max !== undefined ? String(max) : null);
+          }}
+        />
+      </FilterSection>
+
       {/* ── Special offers ── */}
       <FilterSection title={t('specialOffers')} defaultOpen>
         <FilterCheckbox
@@ -343,16 +363,38 @@ export function SearchFilterSidebar({ filters, facets, onFilterChange, onClearAl
         ))}
       </FilterSection>
 
-      {/* ── Price ── */}
-      <FilterSection title={t('price')} defaultOpen>
-        <PriceRangeFilter
-          min={filters.minPrice ? Number(filters.minPrice) : undefined}
-          max={filters.maxPrice ? Number(filters.maxPrice) : undefined}
-          onChange={(min, max) => {
-            onFilterChange('minPrice', min !== undefined ? String(min) : null);
-            onFilterChange('maxPrice', max !== undefined ? String(max) : null);
-          }}
-        />
+      {/* ── Rating ──
+          Uses minRating, which SearchQueryDto already accepts (1-5) — the
+          sidebar simply never exposed it. No counts: facets carry no rating
+          buckets, and inventing one client-side would be a number nobody
+          could reconcile with the results. */}
+      <FilterSection title={t('rating')} defaultOpen>
+        {([4, 3, 2] as const).map((stars) => (
+          <label
+            key={stars}
+            className="flex items-center gap-2 py-1.5 cursor-pointer hover:text-secondary"
+          >
+            <input
+              type="radio"
+              name="minRating"
+              checked={filters.minRating === String(stars)}
+              onChange={() => onFilterChange('minRating', String(stars))}
+              className="accent-primary"
+            />
+            <span className="text-secondary text-sm">
+              {t('ratingAndUp', { stars })}
+            </span>
+          </label>
+        ))}
+        {filters.minRating && (
+          <button
+            type="button"
+            onClick={() => onFilterChange('minRating', null)}
+            className="text-xs text-primary hover:underline mt-1"
+          >
+            {t('anyRating')}
+          </button>
+        )}
       </FilterSection>
 
       {/* ── Color ── */}
@@ -360,15 +402,6 @@ export function SearchFilterSidebar({ filters, facets, onFilterChange, onClearAl
         <ColorSwatchFilter
           selected={filters.color}
           onChange={(color) => onFilterChange('color', color)}
-        />
-      </FilterSection>
-
-      {/* ── Star Seller ── */}
-      <FilterSection title={t('starSeller')}>
-        <FilterCheckbox
-          label={t('starSellerShopsOnly')}
-          checked={filters.starSeller === 'true'}
-          onChange={(v) => onFilterChange('starSeller', v ? 'true' : null)}
         />
       </FilterSection>
 
@@ -402,12 +435,27 @@ export function SearchFilterSidebar({ filters, facets, onFilterChange, onClearAl
         </FilterSection>
       )}
 
-      {/* ── More filters (Occasion, Holiday, Recipient, Hat type) ── */}
+      {/* ── More filters (Occasion, Holiday, Recipient, Hat type) ──
+          "Celebration" from the reference is not a separate group here: it
+          lists the same things our Holiday facet already holds
+          (Halloween, Christmas, Mother's Day...), and splitting one set of
+          holidayTags across two headings would give the shopper two places to
+          look for one thing. Product decision, not reference parity. */}
       <MoreFiltersSection
         filters={filters}
         facets={facets}
         onFilterChange={onFilterChange}
       />
+
+      {/* ── Star Seller ── last: the narrowest filter here and the one
+          fewest shoppers reach for. */}
+      <FilterSection title={t('starSeller')}>
+        <FilterCheckbox
+          label={t('starSellerShopsOnly')}
+          checked={filters.starSeller === 'true'}
+          onChange={(v) => onFilterChange('starSeller', v ? 'true' : null)}
+        />
+      </FilterSection>
     </div>
   );
 }
