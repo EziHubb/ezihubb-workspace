@@ -85,7 +85,16 @@ function subscribe(cb: () => void): () => void {
 }
 
 function getSnapshot():    readonly ToastItem[] { return _toasts; }
-function getServerSnapshot(): readonly ToastItem[] { return []; }
+
+// `[]` here would allocate a fresh array on every call. useSyncExternalStore
+// compares getServerSnapshot()'s result by reference during hydration to
+// decide whether the store changed — a new reference every time reads as
+// "changed every time", which is exactly the "The result of getServerSnapshot
+// should be cached" warning, and destabilizes hydration for whatever's
+// rendered near <ToastContainer/> (mounted once, in the root layout, so on
+// every page) rather than just the toasts themselves.
+const EMPTY_TOASTS: readonly ToastItem[] = [];
+function getServerSnapshot(): readonly ToastItem[] { return EMPTY_TOASTS; }
 
 /** React hook — subscribes to the module-level store. */
 export function useToasts(): readonly ToastItem[] {

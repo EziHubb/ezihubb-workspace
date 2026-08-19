@@ -16,6 +16,7 @@ import { BreadcrumbStructuredData } from '../../../../../components/seo/Breadcru
 import { BackToResults } from '../../../../../components/product/BackToResults';
 import { ProductGalleryColumn } from '../../../../../components/product/ProductGalleryColumn';
 import { ProductPurchasePanel } from '../../../../../components/product/ProductPurchasePanel';
+import { ProductPurchasePanelBoundary } from '../../../../../components/product/ProductPurchasePanelBoundary';
 import { ReviewsSection } from '../../../../../components/product/ReviewsSection';
 import { SellerCard } from '../../../../../components/product/SellerCard';
 import { MoreFromShop } from '../../../../../components/product/MoreFromShop';
@@ -290,11 +291,13 @@ export default async function ProductDetailPage({
         {/* ── MAIN 2-COL ── */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-6 lg:gap-8 mb-12">
           <ProductGalleryColumn product={product} />
-          <ProductPurchasePanel
-            product={product}
-            reviewSummary={reviewSummary}
-            locale={locale}
-          />
+          <ProductPurchasePanelBoundary>
+            <ProductPurchasePanel
+              product={product}
+              reviewSummary={reviewSummary}
+              locale={locale}
+            />
+          </ProductPurchasePanelBoundary>
         </div>
 
         {/* ── REVIEWS ── */}
