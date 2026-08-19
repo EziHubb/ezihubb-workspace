@@ -81,5 +81,6 @@
   "recentlyViewed": "最近浏览",
   "closeRecentlyViewed": "关闭最近浏览",
   "relatedSearches": "相关搜索",
-  "customizableIdeas": "可定制灵感"
+  "customizableIdeas": "可定制灵感",
+  "byStore": "来自 {name}"
 }

@@ -81,5 +81,6 @@
   "recentlyViewed": "Vừa xem",
   "closeRecentlyViewed": "Đóng mục vừa xem",
   "relatedSearches": "Tìm kiếm liên quan",
-  "customizableIdeas": "Ý tưởng có thể cá nhân hoá"
+  "customizableIdeas": "Ý tưởng có thể cá nhân hoá",
+  "byStore": "Bởi {name}"
 }

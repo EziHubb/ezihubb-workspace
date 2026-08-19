@@ -16,7 +16,7 @@ export function SearchProductGrid({ products, isPending, searchTerm }: SearchPro
   return (
     <div
       className={[
-        'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4',
+        'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 2xl:gap-[22px]',
         isPending ? 'opacity-60 pointer-events-none' : '',
       ].join(' ')}
     >
@@ -36,7 +36,7 @@ export function SearchProductGrid({ products, isPending, searchTerm }: SearchPro
 
 export function SearchGridSkeleton() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 2xl:gap-[22px]">
       {Array.from({ length: 48 }).map((_, i) => (
         <div key={i}>
           <div className="aspect-square rounded-2xl bg-[#F0EDEA] animate-pulse mb-2.5" />

@@ -201,7 +201,11 @@ export function SearchPageClient() {
         isLoading={isFetching}
       />
 
-      <div className="flex max-w-[1400px] mx-auto">
+      {/* Fluid up to a cap, not a fixed width. Measured on both references:
+          content is 1241px at a 1280 viewport and 1706px at 1920 — i.e.
+          viewport minus ~20px each side, capped at 1706. A hard max-w-1400
+          left 260px of dead margin on each side at 1920. */}
+      <div className="flex w-full max-w-[1746px] mx-auto px-5">
         {/* LEFT SIDEBAR (desktop) — collapsible, hidden on mobile.
             Mobile keeps its own bottom sheet and is unaffected by this
             toggle: on a small screen the filters are never taking space
@@ -226,7 +230,7 @@ export function SearchPageClient() {
         )}
 
         {/* PRODUCT GRID */}
-        <main className="flex-1 min-w-0 px-4 pt-4 pb-16">
+        <main className="flex-1 min-w-0 pt-4 pb-16">
           {isLoading ? (
             <SearchGridSkeleton />
           ) : isError ? (

@@ -178,3 +178,48 @@ so far, none of them yet decided:
 The substantive difference is that the reference separates "browse the
 taxonomy" from "curated entry points", while ours merges them into one row.
 Needs a screenshot of the full header before deciding anything.
+
+## Measured layout
+
+From the reference images, by pixel analysis rather than estimate. Two
+viewports were measured so the numbers are not over-fitted to one width:
+
+| | @1280 | @1920 |
+|---|---|---|
+| Columns | 4 | 4 |
+| Card width | 299px | 410px |
+| Grid gap | ~15px | 22px |
+| Content width | 1241px | 1706px |
+| Side margin | ~20px | 107px |
+| Image | 299 x 374 | 410 x 512 |
+
+The image is **4:5 portrait at both widths** (374/299 = 1.251,
+512/410 = 1.249). It was `aspect-square`, which is the single biggest reason
+the grid did not look like the reference.
+
+The container is **fluid with a cap**, not a fixed max-width: viewport minus
+about 20px each side, capped near 1706px of content. A hard `max-w-[1400px]`
+left 260px of dead margin on each side at 1920.
+
+Gap is not constant across widths, so it steps: 16px, rising to 22px at 2xl.
+
+Card text is **one line for the title**, and rating and shop share **one
+line** — `4.8 ★ (329) By ShopName`. Fixed line counts are what keep a row of
+cards aligned; a two-line title pushes one card's price and buttons below its
+neighbours'.
+
+## Seen in the reference, not built
+
+Recorded from the 1280px captures. None of these are in progress.
+
+| Element | Can we build it? |
+|---|---|
+| Quick-filter chip strip with horizontal scroll arrow | **No data.** Already decided against — these are keyword suggestions from behavioural data we do not collect. |
+| "Etsy's Picks" strip above the grid (6 small cards + "See more") | **Partly.** We have `isFeatured` on Product, so an editorial strip is buildable, but nothing curates it today and the label would be ours. |
+| "Did you mean the shop X?" line | **Partly.** Store search exists; nothing currently cross-searches shops from a product query. |
+| "Digital download" label on digital cards | **Yes.** `ProductQueryDto` already has `itemType: 'digital'` and the product carries `productType`. Purely a card-rendering addition. |
+
+One behavioural difference worth noting before anyone builds it: in the
+reference the action row (`+ Add to cart` / `More like this`) is **always
+visible**, on every card, not revealed on hover. Ours is hover-only. Not
+changed yet — it affects how much vertical space every card needs.

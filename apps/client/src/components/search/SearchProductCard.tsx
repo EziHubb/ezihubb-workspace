@@ -147,7 +147,9 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
       onMouseLeave={handleMouseLeave}
     >
       {/* IMAGE CONTAINER */}
-      <div className="relative aspect-square rounded-2xl overflow-hidden bg-[#F5F1EB] mb-2.5">
+      {/* 4:5 portrait, measured off both references: 299x374 @1280 and
+          410x512 @1920 — the same ratio at both widths. Was aspect-square. */}
+      <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-[#F5F1EB] mb-2.5">
         <Link href={productHref}>
           <img
             src={activeImage}
@@ -277,23 +279,43 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
           );
         })()}
 
-        {product.store?.slug ? (
-          <Link
-            href={`/${locale}/shops/${product.store.slug}`}
-            className="block text-xs text-muted hover:text-primary transition-colors truncate"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {product.store.name}
-          </Link>
-        ) : (
-          <p className="text-xs text-muted truncate">{product.store?.name ?? 'EziHubb'}</p>
-        )}
-
+        {/* Title — ONE line, ellipsised. Measured off the 1280px reference:
+            every card there is a single line, and a fixed line count is what
+            keeps the row of cards aligned. Two lines let a long name push one
+            card's price and buttons below its neighbours'. */}
         <Link href={productHref}>
-          <p className="text-sm text-secondary line-clamp-2 leading-snug hover:underline hover:text-primary transition-colors">
+          <p className="text-sm text-secondary truncate leading-snug hover:underline hover:text-primary transition-colors">
             {product.name}
           </p>
         </Link>
+
+        {/* Rating and shop share ONE line, as in the reference: 4.8 ★ (329) By
+            ShopName. They were on separate lines, which cost a whole row of
+            height per card for two short fragments.
+            Fixed height even when empty so cards with no reviews line up with
+            cards that have them. */}
+        <div className="flex items-center gap-1 h-4 text-xs text-muted min-w-0">
+          {ratingCount > 0 && (
+            <>
+              <span className="font-semibold text-secondary tabular-nums">{fmtRating(avg)}</span>
+              <Star className="w-2.5 h-2.5 shrink-0" fill="#FBBF24" color="#FBBF24" />
+              <span className="shrink-0">({compactCount(ratingCount)})</span>
+            </>
+          )}
+          {product.store?.slug ? (
+            <Link
+              href={`/${locale}/shops/${product.store.slug}`}
+              className="truncate hover:text-primary transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {t('byStore', { name: product.store.name })}
+            </Link>
+          ) : (
+            product.store?.name && (
+              <span className="truncate">{t('byStore', { name: product.store.name })}</span>
+            )
+          )}
+        </div>
 
         {/* Price */}
         <div className="flex items-baseline gap-1.5 flex-wrap">
@@ -312,31 +334,6 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
             </>
           )}
         </div>
-
-        {/* Rating — hidden entirely with no reviews rather than printing
-            "0 ★ (0)", which reads as a bad score instead of no data. */}
-        {ratingCount > 0 && (
-          <div className="flex items-center gap-1">
-            {/* Numeric average first, as in the reference: a shopper reads
-                "4.9" faster than they count filled stars. */}
-            <span className="text-xs font-semibold text-secondary tabular-nums">
-              {fmtRating(avg)}
-            </span>
-            <div className="flex gap-0.5">
-              {[1, 2, 3, 4, 5].map((s) => (
-                <Star
-                  key={s}
-                  className="w-2.5 h-2.5"
-                  fill={s <= Math.round(avg) ? '#FBBF24' : 'transparent'}
-                  color={s <= Math.round(avg) ? '#FBBF24' : '#E5E7EB'}
-                />
-              ))}
-            </div>
-            <span className="text-xs text-muted">
-              ({compactCount(ratingCount)})
-            </span>
-          </div>
-        )}
 
         <p className="text-xs text-muted">{t('freeShipping')}</p>
       </div>

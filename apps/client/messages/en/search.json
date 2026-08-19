@@ -81,5 +81,6 @@
   "recentlyViewed": "Recently viewed",
   "closeRecentlyViewed": "Close recently viewed",
   "relatedSearches": "Related searches",
-  "customizableIdeas": "Personalisable ideas"
+  "customizableIdeas": "Personalisable ideas",
+  "byStore": "By {name}"
 }

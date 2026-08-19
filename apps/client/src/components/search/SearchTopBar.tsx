@@ -95,7 +95,7 @@ export function SearchTopBar({
 
   return (
     <div className="sticky top-16 z-20 bg-background/95 backdrop-blur-sm border-b border-border">
-      <div className="max-w-[1400px] mx-auto px-4 py-3">
+      <div className="w-full max-w-[1746px] mx-auto px-5 py-3">
 
         {/* Row 1: filter toggle (mobile) + result count + sort */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
