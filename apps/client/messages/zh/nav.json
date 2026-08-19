@@ -13,6 +13,8 @@
   "allProducts": "全部商品",
   "viewAll": "查看全部 {category}",
   "myOrders": "我的订单",
+  "messages": "消息",
+  "offers": "专属优惠",
   "profile": "个人资料",
   "sellerHub": "卖家中心",
   "signOut": "退出登录",
@@ -24,5 +26,10 @@
   "selectLanguage": "选择语言",
   "megaMenu": {
     "ariaLabel": "商品分类"
-  }
+  },
+  "tipSearch": "搜索",
+  "tipWishlist": "收藏",
+  "tipCart": "购物车",
+  "tipSellerHub": "我的店铺",
+  "tipAccount": "我的账户"
 }

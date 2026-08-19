@@ -7,8 +7,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import {
   Search, Heart, ShoppingBag, Menu,
-  ChevronDown, Package, Settings, LogOut, Store,
+  ChevronDown, Package, Settings, LogOut, Store, MessageSquare, Tag,
 } from 'lucide-react';
+import { Tooltip } from '@ezihubb/ui';
 import { useWishlist, queryKeys } from '@ezihubb/api-client';
 import { signOut } from 'next-auth/react';
 import { useCartStore } from '../../lib/store/cart.store';
@@ -100,11 +101,19 @@ function UserMenu({ locale }: { locale: string }) {
 
   return (
     <div className="relative hidden md:block" ref={menuRef}>
+      {/* Suppressed while the menu is open: focus stays on this button after
+          the click, so the tooltip would otherwise sit on top of the menu it
+          just opened.
+          This was also the only control in the row with no accessible name —
+          the avatar image alt is decorative, and vanishes entirely when the
+          user has no photo and only initials render. */}
+      <Tooltip label={t('tipAccount')} disabled={open}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="true"
+        aria-label={t('tipAccount')}
         className="flex items-center gap-2"
       >
         <div className="w-8 h-8 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center">
@@ -122,6 +131,7 @@ function UserMenu({ locale }: { locale: string }) {
         </div>
         <ChevronDown className={`w-3.5 h-3.5 text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
+      </Tooltip>
 
       {open && (
         <div className="absolute right-0 top-full mt-2 w-52 bg-surface border border-border rounded-card shadow-floating z-50 py-1 overflow-hidden">
@@ -132,12 +142,21 @@ function UserMenu({ locale }: { locale: string }) {
             <p className="text-xs text-muted truncate">{profile.email}</p>
           </div>
           {[
-            { icon: Package,  label: t('myOrders'), href: `/${locale}/account/orders`,  newTab: false },
-            { icon: Settings, label: t('profile'),  href: `/${locale}/account/profile`, newTab: false },
+            { icon: Package,       label: t('myOrders'), href: `/${locale}/account/orders`,   newTab: false },
+            // Both of these already have real pages; the menu simply never
+            // linked to them. Every entry here must point at a route that
+            // exists — a menu item leading to a blank page is worse than a
+            // missing one.
+            { icon: MessageSquare, label: t('messages'), href: `/${locale}/account/messages`, newTab: false },
+            { icon: Tag,           label: t('offers'),   href: `/${locale}/account/offers`,   newTab: false },
+            { icon: Settings,      label: t('profile'),  href: `/${locale}/account/profile`,  newTab: false },
             // "Open a Shop" is intentionally not offered here — the storefront
             // must not present as a multi-seller marketplace (Pinterest merchant
             // policy). Existing sellers still get a link to their own Seller Hub.
             ...(isSeller ? [{ icon: Store, label: t('sellerHub'), href: adminUrl, newTab: true }] : []),
+            // Deliberately absent: a balance/credit entry, and a gift-registry
+            // entry. Buyers have no wallet in this system — SellerLedgerEntry
+            // is shop-scoped — and there is no registry feature at all.
           ].map(({ icon: Icon, label, href, newTab }) => (
             <Link
               key={label}
@@ -258,14 +277,21 @@ export function Navbar({ menuData }: NavbarProps = {}) {
 
             {/* Right: icons + user */}
             <div className="flex items-center gap-1.5 md:gap-2.5 ml-auto lg:ml-0 shrink-0">
-              {/* Mobile search icon */}
-              <Link
-                href={`/${locale}/search`}
-                aria-label={t('search')}
-                className="lg:hidden min-h-11 min-w-11 flex items-center justify-center hover:bg-muted/10 rounded-full transition-colors"
-              >
-                <Search className="w-5 h-5 text-secondary" />
-              </Link>
+              {/* Mobile search icon.
+                  Every icon-only control in this row is wrapped in Tooltip:
+                  the icons carry no visible text, so hover/focus is the only
+                  place their meaning can appear. aria-label stays on each
+                  trigger — Tooltip adds aria-describedby rather than replacing
+                  the accessible name. */}
+              <Tooltip label={t('tipSearch')}>
+                <Link
+                  href={`/${locale}/search`}
+                  aria-label={t('search')}
+                  className="lg:hidden min-h-11 min-w-11 flex items-center justify-center hover:bg-muted/10 rounded-full transition-colors"
+                >
+                  <Search className="w-5 h-5 text-secondary" />
+                </Link>
+              </Tooltip>
 
               {/* Language picker — desktop only */}
               <div className="hidden md:block">
@@ -273,25 +299,29 @@ export function Navbar({ menuData }: NavbarProps = {}) {
               </div>
 
               {/* Wishlist — desktop only */}
-              <Link
-                href={`/${locale}/account/wishlist`}
-                aria-label={`${t('wishlist')}${wishlistCount > 0 ? ` (${wishlistCount})` : ''}`}
-                className="hidden md:flex relative p-2 hover:bg-muted/10 rounded-full transition-colors"
-              >
-                <Heart className="w-5 h-5 text-secondary" />
-                <Badge count={wishlistCount} />
-              </Link>
+              <Tooltip label={t('tipWishlist')}>
+                <Link
+                  href={`/${locale}/account/wishlist`}
+                  aria-label={`${t('wishlist')}${wishlistCount > 0 ? ` (${wishlistCount})` : ''}`}
+                  className="hidden md:flex relative p-2 hover:bg-muted/10 rounded-full transition-colors"
+                >
+                  <Heart className="w-5 h-5 text-secondary" />
+                  <Badge count={wishlistCount} />
+                </Link>
+              </Tooltip>
 
               {/* Cart — desktop drawer / mobile link */}
-              <button
-                type="button"
-                onClick={openDrawer}
-                aria-label={`${t('cart')}${cartCount > 0 ? ` (${cartCount})` : ''}`}
-                className="hidden md:flex relative p-2 hover:bg-muted/10 rounded-full transition-colors"
-              >
-                <ShoppingBag className="w-5 h-5 text-secondary" />
-                <Badge count={cartCount} />
-              </button>
+              <Tooltip label={t('tipCart')}>
+                <button
+                  type="button"
+                  onClick={openDrawer}
+                  aria-label={`${t('cart')}${cartCount > 0 ? ` (${cartCount})` : ''}`}
+                  className="hidden md:flex relative p-2 hover:bg-muted/10 rounded-full transition-colors"
+                >
+                  <ShoppingBag className="w-5 h-5 text-secondary" />
+                  <Badge count={cartCount} />
+                </button>
+              </Tooltip>
               <Link
                 href={`/${locale}/cart`}
                 aria-label={`${t('cart')}${cartCount > 0 ? ` (${cartCount})` : ''}`}
@@ -305,15 +335,17 @@ export function Navbar({ menuData }: NavbarProps = {}) {
                   Hub), never as a public "open a shop" invite — see the
                   matching note in UserMenu above. */}
               {isSeller && (
-              <Link
-                href={adminUrl_}
-                aria-label={t('sellerHub')}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hidden md:flex relative p-2 hover:bg-muted/10 rounded-full transition-colors"
-              >
-                <Store className="w-5 h-5 text-secondary" />
-              </Link>
+              <Tooltip label={t('tipSellerHub')}>
+                <Link
+                  href={adminUrl_}
+                  aria-label={t('sellerHub')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hidden md:flex relative p-2 hover:bg-muted/10 rounded-full transition-colors"
+                >
+                  <Store className="w-5 h-5 text-secondary" />
+                </Link>
+              </Tooltip>
               )}
 
               <UserMenu locale={locale} />

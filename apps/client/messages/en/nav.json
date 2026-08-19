@@ -13,6 +13,8 @@
   "allProducts": "All Products",
   "viewAll": "View all {category}",
   "myOrders": "My Orders",
+  "messages": "Messages",
+  "offers": "Special offers",
   "profile": "Profile",
   "sellerHub": "Seller Hub",
   "signOut": "Sign Out",
@@ -24,5 +26,10 @@
   "selectLanguage": "Select language",
   "megaMenu": {
     "ariaLabel": "Product categories"
-  }
+  },
+  "tipSearch": "Search",
+  "tipWishlist": "Saved items",
+  "tipCart": "Basket",
+  "tipSellerHub": "Your shop",
+  "tipAccount": "Your account"
 }

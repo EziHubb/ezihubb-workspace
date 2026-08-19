@@ -13,6 +13,8 @@
   "allProducts": "Tất cả sản phẩm",
   "viewAll": "Xem tất cả {category}",
   "myOrders": "Đơn hàng của tôi",
+  "messages": "Tin nhắn",
+  "offers": "Ưu đãi dành cho bạn",
   "profile": "Hồ sơ",
   "sellerHub": "Kênh người bán",
   "signOut": "Đăng xuất",
@@ -24,5 +26,10 @@
   "selectLanguage": "Chọn ngôn ngữ",
   "megaMenu": {
     "ariaLabel": "Danh mục sản phẩm"
-  }
+  },
+  "tipSearch": "Tìm kiếm",
+  "tipWishlist": "Đã lưu",
+  "tipCart": "Giỏ hàng",
+  "tipSellerHub": "Cửa hàng của bạn",
+  "tipAccount": "Tài khoản của bạn"
 }
