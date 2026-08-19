@@ -10,6 +10,7 @@ const cookieParser = require('cookie-parser');
 
 import { AppModule } from './app/app.module';
 import { PartnerCatalogModule } from './modules/partner-api/partner-catalog.module';
+import { ScopedValidationPipe } from './common/pipes/scoped-validation.pipe';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { RequestIdInterceptor } from './common/interceptors/request-id.interceptor';
@@ -177,14 +178,10 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
 
   // ── Global pipes ──────────────────────────────────────────────────────────
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      transformOptions: { enableImplicitConversion: true },
-    }),
-  );
+  // Strict for bodies, forgiving for query strings in production only.
+  // The asymmetry is deliberate and explained in the pipe itself and in
+  // docs/validation-pipe.md — do not collapse it back into one setting.
+  app.useGlobalPipes(new ScopedValidationPipe());
 
   // ── Global filters ────────────────────────────────────────────────────────
   app.useGlobalFilters(new HttpExceptionFilter());
