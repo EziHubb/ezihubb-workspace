@@ -340,13 +340,17 @@ export class AdminProductsController {
     let result: Record<string, unknown>;
 
     switch (dto.action) {
-      case 'publish':
-        await this.prisma.product.updateMany({
-          where: { id: { in: dto.ids } },
-          data:  { status: ProductStatus.ACTIVE, isActive: true },
-        });
-        result = { updated: dto.ids.length, action: 'published' };
+      case 'publish': {
+        // Delegates to the service so publishing bills identically here and on
+        // the seller's PATCH /:id/status. It runs the listing-fee ledger rows
+        // and the status flip inside one transaction: if any part fails,
+        // nothing in the batch is published and nothing is billed. Listings
+        // already charged (republished, or billed under the old create-time
+        // behaviour) are skipped by productId. See docs/listing-fee.md.
+        const { published, charged } = await this.productsService.publishProducts(dto.ids);
+        result = { updated: published, charged, action: 'published' };
         break;
+      }
 
       case 'unpublish':
         await this.prisma.product.updateMany({

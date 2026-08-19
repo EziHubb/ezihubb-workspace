@@ -490,33 +490,91 @@ export class ProductsService {
     return this.findByIdAdmin(product.id);
   }
 
-  /** Etsy-style listing fee — charged once per product created, mirrored as a SellerLedgerEntry. */
-  private async chargeListingFee(storeId: string, productId: string): Promise<void> {
-    try {
-      const settings = await this.prisma.platformSettings.findUnique({ where: { id: 'singleton' } });
-      const listingFee = Number(settings?.listingFee ?? PLATFORM_FEE_DEFAULTS.listingFee);
-      if (listingFee <= 0) return;
-      const vatOnFeesRate = Number(settings?.vatOnFeesRate ?? PLATFORM_FEE_DEFAULTS.vatOnFeesRate);
-      const vat = Math.round(listingFee * vatOnFeesRate * 100) / 100;
+  /**
+   * Publish listings and bill them, atomically.
+   *
+   * THE ONLY place that turns a listing live. Both entry points — the
+   * publish/unpublish bulk action and the seller's PATCH /:id/status — call
+   * this, because splitting the rule across call sites is exactly what caused
+   * the isActive/status desyncs documented in docs/listing-fee.md.
+   *
+   * All-or-nothing by design: ledger rows and the status flip share one
+   * transaction, so a failure anywhere leaves nothing published and nothing
+   * billed. Publishing 200 listings where one fails rolls back all 200 rather
+   * than leaving a seller charged for listings that never went live.
+   *
+   * The fee is per listing, not per publish: unpublish -> republish, and any
+   * listing already billed under the old create-time behaviour, are skipped by
+   * the productId guard below.
+   *
+   * Takes ids only, no storeId — a platform-context SUPER_ADMIN can bulk
+   * publish across several shops at once, so each product's own storeId
+   * decides which ledger the fee lands in.
+   */
+  async publishProducts(ids: string[]): Promise<{ published: number; charged: number }> {
+    if (!ids.length) return { published: 0, charged: 0 };
 
-      const entries: Prisma.SellerLedgerEntryCreateManyInput[] = [{
-        storeId,
-        type:        'LISTING_FEE',
-        amount:      -listingFee,
-        description: `Listing fee — product ${productId}`,
-      }];
-      if (vat > 0) {
-        entries.push({
-          storeId,
-          type:        'VAT',
-          amount:      -vat,
-          description: `VAT: listing — product ${productId}`,
-        });
+    return this.prisma.$transaction(async (tx) => {
+      const products = await tx.product.findMany({
+        where:  { id: { in: ids } },
+        select: { id: true, storeId: true },
+      });
+
+      // storeId is nullable: platform-owned listings have no shop to bill.
+      const billable = products.filter(
+        (p): p is { id: string; storeId: string } => p.storeId !== null,
+      );
+
+      // One query for the whole batch, served by the
+      // (storeId, productId, type) index added in 20260820000000.
+      const already = await tx.sellerLedgerEntry.findMany({
+        where:  { type: 'LISTING_FEE', productId: { in: billable.map((p) => p.id) } },
+        select: { productId: true },
+      });
+      const alreadyCharged = new Set(already.map((e) => e.productId));
+      const toCharge = billable.filter((p) => !alreadyCharged.has(p.id));
+
+      if (toCharge.length) {
+        const settings = await tx.platformSettings.findUnique({ where: { id: 'singleton' } });
+        const listingFee = Number(settings?.listingFee ?? PLATFORM_FEE_DEFAULTS.listingFee);
+
+        if (listingFee > 0) {
+          const vatRate = Number(settings?.vatOnFeesRate ?? PLATFORM_FEE_DEFAULTS.vatOnFeesRate);
+          const vat = Math.round(listingFee * vatRate * 100) / 100;
+
+          const entries: Prisma.SellerLedgerEntryCreateManyInput[] = [];
+          for (const p of toCharge) {
+            entries.push({
+              storeId:     p.storeId,
+              productId:   p.id,
+              type:        'LISTING_FEE',
+              amount:      -listingFee,
+              description: `Listing fee — product ${p.id}`,
+            });
+            if (vat > 0) {
+              entries.push({
+                storeId:     p.storeId,
+                productId:   p.id,
+                type:        'VAT',
+                amount:      -vat,
+                description: `VAT: listing — product ${p.id}`,
+              });
+            }
+          }
+          // No try/catch: a ledger failure must abort the publish. The old
+          // create-time charge swallowed errors, which silently lost revenue
+          // with nothing to reconcile against.
+          await tx.sellerLedgerEntry.createMany({ data: entries });
+        }
       }
-      await this.prisma.sellerLedgerEntry.createMany({ data: entries });
-    } catch (err) {
-      this.logger.error(`Failed to charge listing fee for product ${productId}: ${(err as Error).message}`);
-    }
+
+      await tx.product.updateMany({
+        where: { id: { in: ids } },
+        data:  { status: ProductStatus.ACTIVE, isActive: true },
+      });
+
+      return { published: ids.length, charged: toCharge.length };
+    });
   }
 
   private async resolveTagNames(names: string[]): Promise<string[]> {
@@ -728,8 +786,12 @@ export class ProductsService {
 
     await this.redis.invalidatePattern('products:list:*');
 
-    if (storeId) {
-      await this.chargeListingFee(storeId, product.id);
+    // Bill only if this create published the listing straight away. An
+    // inactive create is a draft and costs nothing until it goes live —
+    // publishProducts() charges it then, and its productId guard stops it
+    // being charged twice.
+    if (storeId && (dto.isActive ?? true)) {
+      await this.publishProducts([product.id]);
     }
 
     // fire-and-forget
@@ -2486,10 +2548,20 @@ export class ProductsService {
         basePrice:   0,
         categoryId:  placeholder.id,
         isActive:    false,
+        // Explicit, because Product.status defaults to ACTIVE in the schema.
+        // Leaving it off meant every unfinished draft was stored as ACTIVE and
+        // getStats() — which counts by `status` alone — reported them as live
+        // listings while showing draft: 0. Storefront queries were unaffected
+        // (they filter isActive), so this only ever surfaced as wrong numbers
+        // on the seller dashboard.
+        status:      ProductStatus.DRAFT,
         storeId,
       },
     });
-    await this.chargeListingFee(storeId, product.id);
+    // No fee here. Creating a draft is free — it is billed on publish, by
+    // publishProducts(). Charging at this point meant a seller who opened the
+    // create form and closed the tab paid for a listing that never existed;
+    // that happened twice in production. See docs/listing-fee.md.
     return this.findByIdAdmin(product.id);
   }
 
@@ -2519,10 +2591,27 @@ export class ProductsService {
         compareAtPrice:   dto.compareAtPrice,
         categoryId:       dto.categoryId,
         processingDays:   dto.processingDays,
-        isActive:         dto.isActive,
+        // Publishing is NOT done here — see below. Only the unpublish
+        // direction is, because it neither bills nor needs a transaction.
+        // `isActive` and `status` must move together: every buyer-facing query
+        // goes through buildWhereClause, which requires BOTH isActive: true and
+        // status != DRAFT, so flipping isActive alone would leave a listing
+        // that reads as published but never appears on the storefront.
+        ...(dto.isActive === false && {
+          isActive: false,
+          status:   ProductStatus.INACTIVE,
+        }),
         shippingProfileId: dto.shippingProfileId,
       },
     });
+
+    // Publishing goes through the shared path so this endpoint bills exactly
+    // like the bulk action does — one rule, one implementation. It also runs
+    // the ledger write and the status flip in a single transaction, which a
+    // plain update here could not.
+    if (dto.isActive === true) {
+      await this.publishProducts([id]);
+    }
 
     // fire-and-forget
     this.moderationService?.queueProductModeration(id).catch((e) => this.logger.error('mod queue failed', e));
