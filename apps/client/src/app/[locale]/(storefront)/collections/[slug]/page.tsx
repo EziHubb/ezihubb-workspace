@@ -137,6 +137,20 @@ export default async function CollectionPage({
       return null;
     });
 
+  // apiClient unwraps the { success, data } envelope, so this endpoint hands
+  // back the array itself — `relatedRes.data` is undefined. Reading
+  // `.data.length` off it threw during render and every /collections/* page
+  // served the error boundary instead of the collection, behind an HTTP 200
+  // that made it look fine to any status-code check.
+  //
+  // Normalised rather than assumed: generateStaticParams in this same file
+  // already guards the identical call with Array.isArray, so the shape has
+  // been ambiguous here before and one of the two call sites was simply
+  // missed.
+  const related: CollectionDto[] = Array.isArray(relatedRes)
+    ? relatedRes
+    : (relatedRes?.data ?? []);
+
   // Urgency: show if endDate is within 7 days
   let urgencyDays: number | null = null;
   let urgencyDate: string | null = null;
@@ -201,9 +215,9 @@ export default async function CollectionPage({
         tags={[]}
       />
 
-      {relatedRes && relatedRes.data.length > 0 && (
+      {related.length > 0 && (
         <RelatedCollections
-          collections={relatedRes.data.filter((c) => c.slug !== slug)}
+          collections={related.filter((c) => c.slug !== slug)}
           currentSlug={slug}
           locale={locale}
         />
