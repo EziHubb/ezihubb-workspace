@@ -63,5 +63,13 @@
   "inputPlaceholder": "Search gifts, mugs, canvas prints…",
   "clearSearch": "Clear search",
   "suggestions": "Search suggestions",
-  "trendingSearches": "Trending searches"
+  "trendingSearches": "Trending searches",
+  "showFilters": "Show filters",
+  "hideFilters": "Hide filters",
+  "error": {
+    "title": "We couldn't load these results",
+    "body": "Something went wrong on our side, not with your search. Your filters are still applied.",
+    "retry": "Try again"
+  },
+  "moreLikeThis": "More like this"
 }

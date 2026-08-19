@@ -63,5 +63,13 @@
   "inputPlaceholder": "Tìm quà tặng, ly, tranh canvas…",
   "clearSearch": "Xóa tìm kiếm",
   "suggestions": "Gợi ý tìm kiếm",
-  "trendingSearches": "Tìm kiếm phổ biến"
+  "trendingSearches": "Tìm kiếm phổ biến",
+  "showFilters": "Hiện bộ lọc",
+  "hideFilters": "Ẩn bộ lọc",
+  "error": {
+    "title": "Chưa tải được kết quả",
+    "body": "Lỗi từ phía chúng tôi, không phải do từ khoá của bạn. Bộ lọc bạn chọn vẫn được giữ nguyên.",
+    "retry": "Thử lại"
+  },
+  "moreLikeThis": "Xem thêm tương tự"
 }

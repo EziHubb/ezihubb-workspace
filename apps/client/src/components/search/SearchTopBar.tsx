@@ -20,6 +20,9 @@ interface SearchTopBarProps {
   onClearFilter: (key: string) => void;
   onClearAll: () => void;
   onOpenSidebar: () => void;
+  /** Desktop only — collapses the filter column to give the grid its width. */
+  onToggleFilters: () => void;
+  filtersOpen: boolean;
   isLoading: boolean;
 }
 
@@ -73,6 +76,8 @@ export function SearchTopBar({
   onClearFilter,
   onClearAll,
   onOpenSidebar,
+  onToggleFilters,
+  filtersOpen,
   isLoading,
 }: SearchTopBarProps) {
   const t = useTranslations('search');
@@ -95,8 +100,26 @@ export function SearchTopBar({
         {/* Row 1: filter toggle (mobile) + result count + sort */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
 
-          {/* Left: mobile filter button + result count */}
+          {/* Left: filter buttons + result count */}
           <div className="flex items-center gap-3">
+            {/* Desktop: collapse/expand the filter column. Separate control
+                from the mobile one below — mobile opens a sheet, desktop
+                reclaims grid width, and they are never both visible. */}
+            <button
+              type="button"
+              onClick={onToggleFilters}
+              aria-expanded={filtersOpen}
+              className="hidden lg:flex items-center gap-1.5 border border-border rounded-full px-3 py-1.5 text-sm text-secondary hover:border-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              {filtersOpen ? t('hideFilters') : t('showFilters')}
+              {!filtersOpen && chips.length > 0 && (
+                <span className="w-4 h-4 bg-primary text-white rounded-full text-[10px] flex items-center justify-center leading-none">
+                  {chips.length}
+                </span>
+              )}
+            </button>
+
             <button
               type="button"
               onClick={onOpenSidebar}

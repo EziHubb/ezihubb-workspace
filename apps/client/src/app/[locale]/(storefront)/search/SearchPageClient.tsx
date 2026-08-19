@@ -16,6 +16,7 @@ import {
   SearchPagination,
 } from '../../../../components/search/SearchProductGrid';
 import { SearchNoResults } from '../../../../components/search/SearchNoResults';
+import { SearchError } from '../../../../components/search/SearchError';
 import { RelatedSearches } from '../../../../components/search/RelatedSearches';
 import { ShopCustomizableIdeas } from '../../../../components/search/ShopCustomizableIdeas';
 import { RecentlyViewedPanel } from '../../../../components/search/RecentlyViewedPanel';
@@ -98,6 +99,12 @@ export function SearchPageClient() {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Desktop filter column, open by default: filters are the primary way to
+  // narrow a result set, and hiding them behind a click would bury them.
+  // Deliberately component state, not a URL param — the filters themselves
+  // live in the URL so links stay shareable, but whether the panel is
+  // expanded is a viewing preference and has no business in a shared link.
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const [isPending, startTransition] = useTransition();
 
   const filters = parseFilters(searchParams);
@@ -106,7 +113,7 @@ export function SearchPageClient() {
 
   // ── Data fetch ───────────────────────────────────────────────────────────────
 
-  const { data, isLoading, isFetching, isFetched } = useQuery({
+  const { data, isLoading, isFetching, isFetched, isError, refetch } = useQuery({
     queryKey: ['search', 'results', filters],
     queryFn: () =>
       apiClient.get<SearchResponse>(API_ROUTES.SEARCH.QUERY, {
@@ -178,24 +185,37 @@ export function SearchPageClient() {
         onClearFilter={clearFilter}
         onClearAll={clearAllFilters}
         onOpenSidebar={() => setSidebarOpen(true)}
+        onToggleFilters={() => setFiltersOpen((o) => !o)}
+        filtersOpen={filtersOpen}
         isLoading={isFetching}
       />
 
       <div className="flex max-w-[1400px] mx-auto">
-        {/* LEFT SIDEBAR (desktop) — hidden on mobile */}
-        <aside className="hidden lg:block w-[220px] flex-shrink-0 pt-4 pr-4 sticky top-16 h-[calc(100vh-64px)] overflow-y-auto">
-          <SearchFilterSidebar
-            filters={filters}
-            facets={data?.facets}
-            onFilterChange={updateFilter}
-            onClearAll={clearAllFilters}
-          />
-        </aside>
+        {/* LEFT SIDEBAR (desktop) — collapsible, hidden on mobile.
+            Mobile keeps its own bottom sheet and is unaffected by this
+            toggle: on a small screen the filters are never taking space
+            from the grid in the first place. */}
+        {filtersOpen && (
+          <aside className="hidden lg:block w-[220px] flex-shrink-0 pt-4 pr-4 sticky top-16 h-[calc(100vh-64px)] overflow-y-auto">
+            <SearchFilterSidebar
+              filters={filters}
+              facets={data?.facets}
+              onFilterChange={updateFilter}
+              onClearAll={clearAllFilters}
+            />
+          </aside>
+        )}
 
         {/* PRODUCT GRID */}
         <main className="flex-1 min-w-0 px-4 pt-4 pb-16">
           {isLoading ? (
             <SearchGridSkeleton />
+          ) : isError ? (
+            /* Checked BEFORE the empty case: a failed request also yields
+               zero results, and telling someone "nothing matched your search"
+               when the server is down sends them off rewording a query that
+               was never the problem. */
+            <SearchError onRetry={() => refetch()} />
           ) : (data?.data?.length ?? 0) === 0 ? (
             <SearchNoResults query={trimmedQ || undefined} />
           ) : (

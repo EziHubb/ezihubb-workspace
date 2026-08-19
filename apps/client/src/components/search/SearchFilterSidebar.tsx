@@ -31,7 +31,13 @@ interface Props {
 
 // ── Color swatches ────────────────────────────────────────────────────────────
 
-const STANDARD_COLORS = [
+/**
+ * Exported so SearchProductCard's swatch strip resolves colour names against
+ * exactly the same table the colour filter uses. A second copy would drift:
+ * a shopper could filter by a colour whose swatch renders a different shade
+ * on the card, or none at all.
+ */
+export const STANDARD_COLORS = [
   { name: 'Beige',  hex: '#D4B896' }, { name: 'Black',  hex: '#1A1A1A' },
   { name: 'Blue',   hex: '#3B82F6' }, { name: 'Brown',  hex: '#78350F' },
   { name: 'Gold',   hex: '#EAB308' }, { name: 'Gray',   hex: '#9CA3AF' },

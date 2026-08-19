@@ -83,6 +83,13 @@ export interface ProductListItemDto {
   categoryId: string;
   categoryName: string;
   categorySlug: string;
+  /**
+   * Colour tags, used for the swatch strip on a listing card. Optional
+   * because responses produced before the API started returning it simply
+   * omit the key — callers must treat `undefined` as "no swatches", never as
+   * an error.
+   */
+  primaryColors?: string[];
   images: ProductImageDto[];
   averageRating: number | null;
   reviewCount: number;

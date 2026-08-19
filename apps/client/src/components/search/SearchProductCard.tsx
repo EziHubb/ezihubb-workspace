@@ -9,6 +9,7 @@ import type { ProductListItemDto } from '@ezihubb/types';
 import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { useCartStore } from '../../lib/store/cart.store';
 import { useAuthStore } from '../../lib/store/auth.store';
+import { STANDARD_COLORS } from './SearchFilterSidebar';
 import { fmtAmount, safeArr, safeNum } from '@ezihubb/utils';
 
 // ── Badge logic ───────────────────────────────────────────────────────────────
@@ -198,11 +199,54 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
             </Link>
           )}
 
+          {/* "More like this" — the reference pairs it with the primary
+              action. Points at the existing search page filtered by this
+              product's category rather than a per-product recommendation
+              endpoint: /products/:slug/related exists but is a page-level
+              fetch, and firing one request per card in a 48-item grid to
+              populate a link is not worth it. */}
+          <Link
+            href={`/${locale}/search?category=${encodeURIComponent(product.categorySlug ?? '')}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex-1 bg-white rounded-full py-1.5 text-xs font-medium text-secondary hover:bg-secondary hover:text-white transition-colors shadow-sm text-center"
+          >
+            {t('moreLikeThis')}
+          </Link>
+
         </div>
       </div>
 
       {/* CARD INFO */}
       <div className="space-y-0.5 px-0.5">
+        {/* Colour swatches — sits directly under the image, as in the
+            reference. Purely informative: these are not filter controls, so
+            they are not focusable and carry no click handler. The list is
+            capped at 7 with a "+N" overflow so a product tagged with a dozen
+            colours cannot push the title out of the card.
+            Unknown colour names are dropped rather than rendered grey: a
+            swatch showing the wrong colour is worse than a missing one. */}
+        {(() => {
+          const swatches = (product.primaryColors ?? [])
+            .map((name) => STANDARD_COLORS.find((c) => c.name.toLowerCase() === name.toLowerCase()))
+            .filter((c): c is (typeof STANDARD_COLORS)[number] => Boolean(c));
+          if (swatches.length === 0) return null;
+          const shown = swatches.slice(0, 7);
+          const extra = swatches.length - shown.length;
+          return (
+            <div className="flex items-center gap-1 pb-0.5" aria-hidden="true">
+              {shown.map((c) => (
+                <span
+                  key={c.name}
+                  title={c.name}
+                  className="w-3 h-3 rounded-full border border-border shrink-0"
+                  style={{ backgroundColor: c.hex }}
+                />
+              ))}
+              {extra > 0 && <span className="text-[10px] text-muted leading-none">+{extra}</span>}
+            </div>
+          );
+        })()}
+
         {product.store?.slug ? (
           <Link
             href={`/${locale}/shops/${product.store.slug}`}
