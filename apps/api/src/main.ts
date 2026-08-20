@@ -150,7 +150,13 @@ async function bootstrap() {
           if (!origin || allowedOrigins.has(origin)) {
             callback(null, true);
           } else {
-            callback(new Error(`Origin ${origin} not allowed by CORS`), false);
+            // Reject without an Error: the `cors` package forwards a truthy
+            // first arg to Express's error chain, which this app has no
+            // handler for — it fell through to the generic 500 filter, so
+            // any request carrying an arbitrary Origin header (trivial to
+            // send outside a browser) crashed the API with ERR_INTERNAL
+            // instead of a normal, silent CORS rejection.
+            callback(null, false);
           }
         },
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
