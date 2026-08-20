@@ -54,12 +54,13 @@ function Illustration() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function NotFound() {
-  const [trending, t, tCommon, tActions, tBadge, locale] = await Promise.all([
+  const [trending, t, tCommon, tActions, tBadge, tSearch, locale] = await Promise.all([
     getTrending(),
     getTranslations('errors'),
     getTranslations('common'),
     getTranslations('product.actions'),
     getTranslations('search.badge'),
+    getTranslations('search'),
     getLocale(),
   ]);
 
@@ -71,6 +72,7 @@ export default async function NotFound() {
     // .raw() so this stays a plain string: ProductCard substitutes {name}.
     // A closure here cannot cross the Server -> Client boundary.
     byStore:            tCommon.raw('byStore') as string,
+    digitalDownload:    tSearch('digitalDownload'),
   };
 
   const badgeLabels: Record<ProductBadgeVariant, string> = {
@@ -152,6 +154,7 @@ export default async function NotFound() {
                 badge={product.badge}
                 badgeLabel={product.badge ? badgeLabels[product.badge] : undefined}
                 isPersonalizable={product.isPersonalizable}
+                isDigital={product.productType === 'DIGITAL'}
                 locale={locale}
                 labels={cardLabels}
               />

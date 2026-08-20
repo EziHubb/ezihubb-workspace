@@ -45,6 +45,7 @@ function RelatedProductCard({
   locale:  string;
 }) {
   const t          = useTranslations('product.pdp');
+  const tPanel     = useTranslations('product.purchasePanel');
   const tSearch    = useTranslations('search');
   const addItem    = useCartStore((s) => s.addItem);
   const openDrawer = useCartStore((s) => s.openDrawer);
@@ -76,6 +77,11 @@ function RelatedProductCard({
 
         {/* Name */}
         <p className="text-xs text-secondary line-clamp-2 leading-snug">{product.name}</p>
+
+        {/* Digital download label — Etsy shows this on every digital listing's card */}
+        {product.productType === 'DIGITAL' && (
+          <p className="text-[10px] text-muted mt-0.5">{tPanel('digitalDownload')}</p>
+        )}
 
         {/* Price */}
         <p className="text-sm font-bold text-secondary mt-0.5">

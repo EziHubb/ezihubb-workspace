@@ -12,6 +12,9 @@ import {
   RotateCcw,
   MapPin,
   ShieldCheck,
+  Download,
+  FileText,
+  Ban,
 } from 'lucide-react';
 import type { ProductDetailDto } from '@ezihubb/types';
 
@@ -86,17 +89,26 @@ export function Accordion({
 // ── 1. Item Details ───────────────────────────────────────────────────────────
 
 export function ItemDetailsAccordion({ product }: { product: ProductDetailDto }) {
-  const t = useTranslations('product.accordions');
+  const t      = useTranslations('product.accordions');
+  const tPanel = useTranslations('product.purchasePanel');
   // Derive materials from attributes if the seller populated a Material field
   const materialAttr = (product.attributes ?? []).find(
     (a) => a.key.toLowerCase() === 'material' || a.key.toLowerCase() === 'materials',
   );
 
+  const isDigital    = product.productType === 'DIGITAL';
+  const digitalFiles = product.digitalFiles ?? [];
+  const extOf = (mime: string) => mime.split('/').pop()?.split('+')[0]?.toUpperCase() ?? 'FILE';
+  const fileTypeSummary = digitalFiles.length
+    ? [...new Set(digitalFiles.map((f) => extOf(f.mimeType)))].join(', ')
+    : null;
+
   return (
     <Accordion title={t('itemDetails')} defaultOpen>
       <div className="space-y-3">
 
-        {/* Highlights */}
+        {/* Highlights — Etsy groups "Digital download" + file type here,
+            alongside the maker/material bullets, not in a separate block. */}
         <div>
           <p className="font-medium text-xs uppercase tracking-wide text-muted mb-2">
             {t('highlights')}
@@ -110,6 +122,22 @@ export function ItemDetailsAccordion({ product }: { product: ProductDetailDto })
               <li className="flex items-center gap-2">
                 <Leaf className="w-4 h-4 text-green-600 shrink-0" />
                 <span>{t('materials', { value: materialAttr.value })}</span>
+              </li>
+            )}
+            {isDigital && (
+              <li className="flex items-center gap-2">
+                <Download className="w-4 h-4 text-secondary shrink-0" />
+                <span>{tPanel('digitalDownload')}</span>
+              </li>
+            )}
+            {isDigital && fileTypeSummary && (
+              <li className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-secondary shrink-0" />
+                <span>
+                  {digitalFiles.length > 1
+                    ? tPanel('digitalFileTypes', { types: fileTypeSummary, count: digitalFiles.length })
+                    : tPanel('digitalFileType', { types: fileTypeSummary })}
+                </span>
               </li>
             )}
           </ul>
@@ -179,6 +207,32 @@ export function ShippingReturnsAccordion({ product }: { product: ProductDetailDt
         <div className="flex items-start gap-2">
           <MapPin className="w-4 h-4 text-secondary mt-0.5 shrink-0" />
           <p>{t.rich('shipsFrom', { strong: (chunks) => <strong>{chunks}</strong> })}</p>
+        </div>
+      </div>
+    </Accordion>
+  );
+}
+
+// ── 2b. Delivery (digital — replaces Shipping & Returns in the same slot) ─────
+
+export function DigitalDeliveryAccordion() {
+  const t      = useTranslations('product.accordions');
+  const tPanel = useTranslations('product.purchasePanel');
+
+  return (
+    <Accordion title={t('delivery')}>
+      <div className="space-y-3">
+        <div className="flex items-start gap-2">
+          <Download className="w-4 h-4 text-secondary mt-0.5 shrink-0" />
+          <div>
+            <p className="font-medium">{t('instantDownloadTitle')}</p>
+            <p className="text-xs text-muted mt-0.5">{t('instantDownloadBody')}</p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2">
+          <Ban className="w-4 h-4 text-secondary mt-0.5 shrink-0" />
+          <p className="text-xs text-muted">{tPanel('nonRefundable')}</p>
         </div>
       </div>
     </Accordion>

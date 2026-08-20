@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import {
   Star, CheckCircle2, Clock, ShoppingCart,
-  Loader2, Plus, ChevronDown, Download, FileText, Users,
+  Loader2, Plus, ChevronDown, Users,
 } from 'lucide-react';
 import { ShareButton } from './ShareButton';
 import {
   ItemDetailsAccordion,
   ShippingReturnsAccordion,
+  DigitalDeliveryAccordion,
   PurchaseProtectionAccordion,
   FAQsAccordion,
   MeetYourSellersAccordion,
@@ -201,40 +202,6 @@ function DeliveryInfo({ processingDays }: { processingDays: number }) {
         <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
         <span>{t('returnsAccepted')}</span>
       </div>
-    </div>
-  );
-}
-
-// ── DigitalDownloadInfo (Etsy-style "Digital download" info card) ────────────
-
-function DigitalDownloadInfo({ files }: { files: { mimeType: string }[] }) {
-  const t = useTranslations('product.purchasePanel');
-  const extOf = (mime: string) => mime.split('/').pop()?.split('+')[0]?.toUpperCase() ?? 'FILE';
-  const typeSummary = files.length
-    ? [...new Set(files.map((f) => extOf(f.mimeType)))].join(', ')
-    : null;
-
-  return (
-    <div className="space-y-1.5 text-sm">
-      <div className="flex items-center gap-2 text-secondary">
-        <Download className="w-4 h-4 text-primary flex-shrink-0" />
-        <span className="font-medium">{t('digitalDownload')}</span>
-      </div>
-      {typeSummary && (
-        <div className="flex items-center gap-2 text-secondary">
-          <FileText className="w-4 h-4 flex-shrink-0" />
-          <span>
-            {files.length > 1
-              ? t('digitalFileTypes', { types: typeSummary, count: files.length })
-              : t('digitalFileType', { types: typeSummary })}
-          </span>
-        </div>
-      )}
-      <div className="flex items-center gap-2 text-secondary">
-        <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-        <span>{t('instantDownload')}</span>
-      </div>
-      <p className="text-xs text-muted pl-6">{t('nonRefundable')}</p>
     </div>
   );
 }
@@ -671,9 +638,10 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       />
 
       {/* ── DELIVERY INFO ── */}
-      {product.productType === 'DIGITAL' ? (
-        <DigitalDownloadInfo files={product.digitalFiles ?? []} />
-      ) : (
+      {/* Digital: Etsy shows nothing inline here — "Instant Download" only
+          appears in the Delivery accordion below, alongside "Digital
+          download" in Item details' highlights. */}
+      {product.productType !== 'DIGITAL' && (
         <DeliveryInfo processingDays={product.processingDays ?? 3} />
       )}
 
@@ -764,7 +732,9 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       {/* ── ACCORDIONS ── */}
       <div className="border border-border rounded-2xl overflow-hidden divide-y divide-border">
         <ItemDetailsAccordion product={product} />
-        {product.productType !== 'DIGITAL' && <ShippingReturnsAccordion product={product} />}
+        {product.productType === 'DIGITAL'
+          ? <DigitalDeliveryAccordion />
+          : <ShippingReturnsAccordion product={product} />}
         <PurchaseProtectionAccordion />
         <FAQsAccordion />
         <MeetYourSellersAccordion />

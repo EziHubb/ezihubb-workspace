@@ -22,6 +22,7 @@ export async function TrendingProducts({ products, locale, viewAllLabel }: Trend
   const tCommon  = await getTranslations({ locale, namespace: 'common' });
   const tActions = await getTranslations({ locale, namespace: 'product.actions' });
   const tBadge   = await getTranslations({ locale, namespace: 'search.badge' });
+  const tSearch  = await getTranslations({ locale, namespace: 'search' });
 
   const cardLabels: ProductCardLabels = {
     addToWishlist:      tCommon('addToWishlist'),
@@ -31,6 +32,7 @@ export async function TrendingProducts({ products, locale, viewAllLabel }: Trend
     // .raw() so this stays a plain string: ProductCard substitutes {name}.
     // A closure here cannot cross the Server -> Client boundary.
     byStore:            tCommon.raw('byStore') as string,
+    digitalDownload:    tSearch('digitalDownload'),
   };
 
   const badgeLabels: Record<ProductBadgeVariant, string> = {
@@ -83,6 +85,7 @@ export async function TrendingProducts({ products, locale, viewAllLabel }: Trend
                       badge={badge}
                       badgeLabel={badge ? badgeLabels[badge] : undefined}
                       isPersonalizable={product.isPersonalizable}
+                      isDigital={product.productType === 'DIGITAL'}
                       locale={locale}
                       labels={cardLabels}
                     />

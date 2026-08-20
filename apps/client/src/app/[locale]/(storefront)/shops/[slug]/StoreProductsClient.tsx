@@ -229,6 +229,7 @@ function ProductGrid({
           badge={product.badge}
           badgeLabel={product.badge ? badgeLabels[product.badge] : undefined}
           isPersonalizable={product.isPersonalizable}
+          isDigital={product.productType === 'DIGITAL'}
           isWishlisted={wishlistedIds.has(product.id)}
           onWishlistToggle={onWishlistToggle}
           locale={locale}
@@ -404,6 +405,7 @@ export function StoreProductsClient({
                     badge={product.badge}
                     badgeLabel={product.badge ? badgeLabels[product.badge] : undefined}
                     isPersonalizable={product.isPersonalizable}
+                    isDigital={product.productType === 'DIGITAL'}
                     isWishlisted={wishlistedIds.has(product.id)}
                     onWishlistToggle={handleWishlistToggle}
                     locale={locale}

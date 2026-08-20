@@ -91,6 +91,7 @@ export function ProductGrid({ products, locale, isLoading = false }: ProductGrid
           badge={product.badge}
           badgeLabel={product.badge ? badgeLabels[product.badge] : undefined}
           isPersonalizable={product.isPersonalizable}
+          isDigital={product.productType === 'DIGITAL'}
           isWishlisted={wishlistedIds.has(product.id)}
           onWishlistToggle={handleWishlistToggle}
           storeName={product.store?.name}

@@ -25,6 +25,8 @@ export interface ProductCardLabels {
   byStore?:          string;
   /** Prefix shown before the price when isPriceRange is true (e.g. "From", "低至"). */
   fromPrice?:        string;
+  /** Shown under the title when isDigital is true (e.g. "Digital download"). */
+  digitalDownload?:  string;
 }
 
 export interface ProductCardProps {
@@ -44,6 +46,7 @@ export interface ProductCardProps {
   /** Translated badge text — overrides the built-in English default (e.g. "Bestseller"). */
   badgeLabel?:      string;
   isPersonalizable?: boolean;
+  isDigital?:       boolean;
   isWishlisted?:    boolean;
   currency?:        string;
   /** BCP-47 locale for price formatting (e.g. "vi", "zh"). Default: "en-US". */
@@ -63,6 +66,7 @@ const defaultLabels: Required<ProductCardLabels> = {
   addToCart:          'Add to Cart',
   byStore:            'By {name}',
   fromPrice:          'From',
+  digitalDownload:    'Digital download',
 };
 
 function formatPrice(amount: number, currency = 'USD', locale = 'en-US'): string {
@@ -82,6 +86,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   badge,
   badgeLabel,
   isPersonalizable = false,
+  isDigital        = false,
   isWishlisted     = false,
   currency         = 'USD',
   locale           = 'en-US',
@@ -168,6 +173,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           >
             {L.byStore.replace('{name}', storeName)}
           </Link>
+        )}
+
+        {isDigital && (
+          <p className="text-xs text-muted mb-1">{L.digitalDownload}</p>
         )}
 
         {rating !== undefined && (

@@ -140,6 +140,7 @@ export function NoResults({ query, onSearch }: NoResultsProps) {
                   reviewCount={product.reviewCount}
                   badge={product.badge}
                   isPersonalizable={product.isPersonalizable}
+                  isDigital={product.productType === 'DIGITAL'}
                 />
               ))}
         </div>

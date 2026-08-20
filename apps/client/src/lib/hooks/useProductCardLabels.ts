@@ -7,6 +7,7 @@ export function useProductCardLabels() {
   const tCommon  = useTranslations('common');
   const tActions = useTranslations('product.actions');
   const tBadge   = useTranslations('search.badge');
+  const tSearch  = useTranslations('search');
 
   const labels: ProductCardLabels = {
     addToWishlist:      tCommon('addToWishlist'),
@@ -18,6 +19,7 @@ export function useProductCardLabels() {
     // a closure here cannot cross a Server -> Client boundary.
     byStore:            tCommon.raw('byStore') as string,
     fromPrice:          tCommon('fromPrice'),
+    digitalDownload:    tSearch('digitalDownload'),
   };
 
   const badgeLabels: Record<ProductBadgeVariant, string> = {

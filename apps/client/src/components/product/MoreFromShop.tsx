@@ -38,6 +38,7 @@ function MiniProductCard({
   product: ProductListItemDto;
   locale:  string;
 }) {
+  const tPanel = useTranslations('product.purchasePanel');
   return (
     <Link
       href={`/${locale}/products/${product.slug}`}
@@ -53,6 +54,9 @@ function MiniProductCard({
         />
       </div>
       <p className="text-sm text-secondary line-clamp-2 leading-snug">{product.name}</p>
+      {product.productType === 'DIGITAL' && (
+        <p className="text-xs text-muted mt-0.5">{tPanel('digitalDownload')}</p>
+      )}
       <p className="text-sm font-semibold text-secondary mt-0.5">
         {fmtAmount(product.basePrice)}
       </p>
