@@ -99,12 +99,14 @@ export function SearchPageClient() {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // Desktop filter column, open by default: filters are the primary way to
-  // narrow a result set, and hiding them behind a click would bury them.
-  // Deliberately component state, not a URL param — the filters themselves
-  // live in the URL so links stay shareable, but whether the panel is
-  // expanded is a viewing preference and has no business in a shared link.
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  // Desktop filter column, CLOSED by default — the grid gets the full width
+  // and the shopper opens filters when they want to narrow, which is what the
+  // reference does too. The toggle carries a count when filters are applied,
+  // so a collapsed panel never hides an active filter silently.
+  // Deliberately component state, not a URL param: the filters themselves
+  // live in the URL so links stay shareable, but whether the panel is open is
+  // a viewing preference and has no business in someone else's link.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const filters = parseFilters(searchParams);
@@ -201,11 +203,16 @@ export function SearchPageClient() {
         isLoading={isFetching}
       />
 
-      {/* Fluid up to a cap, not a fixed width. Measured on both references:
-          content is 1241px at a 1280 viewport and 1706px at 1920 — i.e.
-          viewport minus ~20px each side, capped at 1706. A hard max-w-1400
-          left 260px of dead margin on each side at 1920. */}
-      <div className="flex w-full max-w-[1746px] mx-auto px-5">
+      {/* Fluid up to a cap, not a fixed width — a hard max-w-1400 left 260px
+          of dead margin on each side at 1920.
+          The gutter is stepped, not fixed. Above the cap the centring margin
+          supplies the breathing room on its own, but between roughly 1024 and
+          1746 nothing is centring anything, so a flat 20px gutter put the grid
+          hard against the window edge — which is exactly how it looked at the
+          ~1536px width most of these screens actually run at. lg:px-12 gives
+          that band a 48px gutter instead; below lg the sidebar is gone and the
+          grid needs the width more than the margin, so it stays at px-6. */}
+      <div className="flex w-full max-w-[1746px] mx-auto px-6 lg:px-12">
         {/* LEFT SIDEBAR (desktop) — collapsible, hidden on mobile.
             Mobile keeps its own bottom sheet and is unaffected by this
             toggle: on a small screen the filters are never taking space
@@ -217,22 +224,31 @@ export function SearchPageClient() {
             `sticky top-16` holds it in view while the grid moves, and once it
             is taller than the viewport it scrolls away like everything else.
             Being longer than the results list is fine and expected. */}
-        {/* Animated collapse rather than an unmount. Width and opacity are
-            transitioned on an outer wrapper while the inner column keeps a
-            fixed 220px, so the sidebar content does not reflow or squash on
-            the way out — only the space it occupies changes, and the grid
-            reflows alongside it.
-            The wrapper stays mounted so the filter state inside it (which
-            accordions are open, how far a Show-more list is expanded) is not
-            thrown away every time the panel is toggled. */}
+        {/* Slides in and out like a drawer, rather than fading in place.
+            Two transforms working together: the outer wrapper animates the
+            width so the grid reflows into the freed space, and the inner
+            column slides horizontally so the panel appears to travel off the
+            left edge instead of being squeezed flat. Fading alone read as the
+            panel blinking out; sliding shows where it went, which is what
+            makes it obvious it can be brought back.
+            The inner column keeps a fixed 220px throughout, so its content
+            never reflows mid-animation. The wrapper stays mounted so the state
+            inside it — which accordions are open, how far a Show-more list is
+            expanded — survives a toggle instead of being thrown away. */}
         <div
           aria-hidden={!filtersOpen}
           className={[
-            'hidden lg:block flex-shrink-0 overflow-hidden transition-all duration-300 ease-out',
-            filtersOpen ? 'w-[236px] opacity-100' : 'w-0 opacity-0',
+            'hidden lg:block flex-shrink-0 overflow-hidden transition-[width] duration-300 ease-out',
+            filtersOpen ? 'w-[236px]' : 'w-0',
           ].join(' ')}
         >
-          <aside className="w-[220px] pt-4 pr-4 sticky top-16 self-start">
+          <aside
+            className={[
+              'w-[220px] pt-4 pr-4 sticky top-16 self-start',
+              'transition-transform duration-300 ease-out',
+              filtersOpen ? 'translate-x-0' : '-translate-x-full',
+            ].join(' ')}
+          >
             <SearchFilterSidebar
               filters={filters}
               facets={data?.facets}

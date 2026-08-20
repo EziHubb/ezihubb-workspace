@@ -37,7 +37,7 @@ export function ShopCustomizableIdeas({ query }: ShopCustomizableIdeasProps) {
   if (products.length === 0) return null;
 
   return (
-    <section className="max-w-[1400px] mx-auto px-4 py-8 border-t border-border">
+    <section className="w-full max-w-[1746px] mx-auto px-6 lg:px-12 py-8 border-t border-border">
       <h2 className="font-semibold text-secondary mb-4">{t('customizableIdeas')}</h2>
       <div className="flex gap-4 overflow-x-auto pb-2">
         {products.map((product) => (

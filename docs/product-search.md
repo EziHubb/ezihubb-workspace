@@ -46,7 +46,16 @@ is not a case of ignoring the reference, there was nothing to read.
 Ordered by how much a group narrows a result set and how many shoppers touch
 it: price and offers before attribute filters, shop reputation last.
 
-The first four are open by default. Opening every group makes a column nobody
+The filter column itself is **collapsed by default**, and slides in from the
+left when opened rather than fading in place — the wrapper animates its width
+so the grid reflows, while the panel translates, so it reads as arriving from
+off-screen instead of materialising. Collapsed is safe here only because the
+toggle carries a count badge and the top bar keeps a row of active-filter
+chips: an applied filter is always visible with the panel shut. Whether the
+panel is open is component state, never a URL param — the filters belong in
+the URL so links stay shareable, but a viewing preference does not.
+
+Within the panel, the first four groups are open by default. Opening every group makes a column nobody
 scrolls to the bottom of; closing every group hides what is even on offer.
 
 ### Category drill-down
@@ -112,13 +121,20 @@ places to look for one thing. Product decision, not reference parity.
 Each of these appears in the reference and was left out for a concrete
 reason, not for lack of time:
 
-| Group | What is missing |
+Four of the six rows below have since been built, and are kept here so the
+reasoning is not lost. Corrected on 2026-08-20 — an earlier revision claimed
+"no such field on the model" for sustainability, which was wrong:
+`Product.sustainability String[]` had existed all along. That claim came from
+memory instead of from reading the schema. Every entry below is grepped.
+
+| Group | Status |
 |---|---|
-| Ready to dispatch in | No filter parameter for processing time. `Product.processingDays` exists; `SearchQueryDto` does not accept it. |
-| Sent from / Deliver to | No country or city filter parameter, and no shipping-origin data on the product to filter by. |
-| Sustainable features | No such field on the model. |
-| Ordering options (gift wrap, gift cards) | No such fields on the model. |
-| Item type: Vintage | No such field on the model. |
+| Ready to dispatch in | **Built.** `SearchQueryDto.maxProcessingDays`, filtering the `Product.processingDays` that already existed. |
+| Sent from | **Built.** `SearchQueryDto.shipsFrom` joins through `Store.country` — the origin lives on the shop, not the listing. "Deliver to" is still absent: it needs a shipping-rate lookup per destination, not a column. |
+| Item type: Vintage | **Built.** `Product.whenMade` (`RECENTLY_MADE` / `VINTAGE`), nullable so existing listings stay unclassified rather than being silently declared one or the other. |
+| Ordering options: gift wrap | **Built.** `Product.giftWrappingAvailable` — deliberately distinct from `Order.giftWrapping`, which records what a buyer chose at checkout. |
+| Sustainable features | **Not built.** The field exists (`Product.sustainability String[]`, plus a `"sustainability"` attribute type) but nothing writes to it, and `SearchQueryDto` has no parameter for it. A filter over a column that is empty in every row renders an empty group — this needs seller input first, not a query parameter. |
+| Ordering options: gift cards | **Not built, and not a listing attribute.** Gift cards here are a checkout payment instrument (`Order.giftCardCode` / `giftCardAmount`), not something a product can be filtered by. |
 
 ## Backlog
 
@@ -143,8 +159,12 @@ hides while the hover preview plays, so there is never a "play" control on
 top of something already playing. Also needs `prefers-reduced-motion` to
 disable autoplay, and a guarantee that only one video plays at a time.
 
-Deferred because production currently has no published products, so there is
-nothing to see and no way to verify any of it.
+The original reason for deferring — production had no published listings, so
+there was nothing to see — no longer holds: there are live products now. The
+remaining blocker is the real one and is unchanged: `videoUrls` is on
+`ProductResponseDto` (the detail payload) but **not** on
+`ProductListItemDto`, so the grid never receives it. Adding it there plus the
+mappers is the prerequisite for any of the above.
 
 ## Empty is not always broken
 
@@ -163,7 +183,7 @@ listings have zero approved reviews.
 **Pagination missing.** By design: `SearchPagination` returns null at
 `totalPages <= 1`, and four results at 48 per page is one page.
 
-## Backlog
+## Header — not yet compared
 
 **Header comparison.** The reference only captured the search field, so there
 is not enough of it to judge the rest of the header against. Differences noted
@@ -197,9 +217,20 @@ The image is **4:5 portrait at both widths** (374/299 = 1.251,
 512/410 = 1.249). It was `aspect-square`, which is the single biggest reason
 the grid did not look like the reference.
 
-The container is **fluid with a cap**, not a fixed max-width: viewport minus
-about 20px each side, capped near 1706px of content. A hard `max-w-[1400px]`
-left 260px of dead margin on each side at 1920.
+The container is **fluid with a cap**, not a fixed max-width, capped near
+1706px of content. A hard `max-w-[1400px]` left 260px of dead margin on each
+side at 1920.
+
+The gutter is **stepped, not the flat 20px** the two columns above suggest.
+Those two measurements are both taken where something else was already
+supplying the margin — at 1920 the cap is doing it, at 1280 there is barely
+any width to give away. Between them, from roughly 1024 to 1746, the cap is
+inactive and 20px is all there is, which put the grid hard against the window
+edge. That band includes ~1536px, the effective CSS width of a 1920 screen at
+the 125% display scaling Windows sets by default — so it is where most of
+these screens actually sit, not an edge case. Hence `px-6 lg:px-12`: 48px of
+gutter through the whole uncapped band. Below `lg` the sidebar is gone and
+the grid needs width more than margin, so it stays at 24px.
 
 Gap is not constant across widths, so it steps: 16px, rising to 22px at 2xl.
 
@@ -217,12 +248,13 @@ Recorded from the 1280px captures. None of these are in progress.
 | Quick-filter chip strip with horizontal scroll arrow | **No data.** Already decided against — these are keyword suggestions from behavioural data we do not collect. |
 | "Etsy's Picks" strip above the grid (6 small cards + "See more") | **Partly.** We have `isFeatured` on Product, so an editorial strip is buildable, but nothing curates it today and the label would be ours. |
 | "Did you mean the shop X?" line | **Partly.** Store search exists; nothing currently cross-searches shops from a product query. |
-| "Digital download" label on digital cards | **Yes.** `ProductQueryDto` already has `itemType: 'digital'` and the product carries `productType`. Purely a card-rendering addition. |
+| "Digital download" label on digital cards | **Built.** See the section below. |
 
-One behavioural difference worth noting before anyone builds it: in the
-reference the action row (`+ Add to cart` / `More like this`) is **always
-visible**, on every card, not revealed on hover. Ours is hover-only. Not
-changed yet — it affects how much vertical space every card needs.
+The action row (`+ Add to cart` / `More like this`) is **always visible** on
+every card, matching the reference — it was hover-only and was changed. It is
+pinned to the bottom of the card via `order-last` with a fixed `h-9`, so every
+card in a row reserves the same vertical space for it and the rows stay
+aligned.
 
 ## Star Seller badge — what it would take
 
@@ -251,18 +283,11 @@ To build the badge, in order:
    filter still keys on product `soldCount` would leave two different
    definitions of the same word visible on one page.
 
-## Digital-download label — blocked
+## Digital-download label — built
 
-The reference marks digital listings on the card. `Product.productType`
-(`PHYSICAL | DIGITAL`) exists, and `SearchQueryDto` already accepts
-`itemType: 'digital'` as a filter, so the concept is fully present server-side.
-
-It cannot be rendered yet: `productType` is **not** in the API's
-`ProductListItemDto` and none of the three mappers emit it, so it never
-reaches the client. Note that `libs/shared/types` **does** declare
-`productType?: 'PHYSICAL' | 'DIGITAL'` on the client-side type — a field that
-is always `undefined` at runtime. Reading it and rendering nothing would look
-like a styling bug rather than a missing field.
-
-Needs `productType` added to `ProductListItemDto` plus the same three mappers
-that `primaryColors` needed.
+Shipped. `productType` is now on `ProductListItemDto` and emitted by the
+mappers, and both `SearchProductCard` and the shared `ProductCard` render the
+marker. The stale hazard this section used to warn about — `libs/shared/types`
+declaring `productType` on the client type while the API never sent it, so the
+field read `undefined` at runtime and rendered nothing — is closed: the field
+is now populated end to end.
