@@ -10,6 +10,7 @@ import {
 } from '../../common/services/redis.service';
 import { SearchQueryDto, SearchSortBy, ItemType } from './dto/search-query.dto';
 import { ProductSortBy } from '../products/dto/product-query.dto';
+import { toProductVideoDto, type ProductVideoRow } from '../products/product-video.mapper';
 import { ProductListItemDto } from '../products/dto/product-list-item.dto';
 import {
   PaginatedResult,
@@ -52,6 +53,14 @@ export interface SearchResultDto extends PaginatedResult<ProductListItemDto> {
   appliedFilters: Record<string, unknown>;
   correctedQuery: string | null;
 }
+
+/**
+ * How many matching products the facet counts are derived from.
+ *
+ * Above this the counts UNDER-REPORT: they describe this many matches, not
+ * every match. Raising it costs one wider id scan per search.
+ */
+const FACET_SAMPLE_SIZE = 500;
 
 @Injectable()
 export class SearchService {
@@ -383,10 +392,20 @@ export class SearchService {
       occasion: [], holiday: [], recipient: [], countries: [],
     };
     try {
+      // Facets are computed from the matching ids rather than in SQL, because
+      // the filter is a Prisma where-object that cannot be handed to raw SQL.
+      //
+      // The cap makes counts APPROXIMATE above FACET_SAMPLE_SIZE matches, which
+      // is a known trade-off. The orderBy is not optional though: without it
+      // Postgres gives no ordering guarantee, so two identical requests could
+      // sample two different subsets and print two different counts for the
+      // same filter. A stable undercount is a limitation; a count that changes
+      // when you reload is a bug.
       const matching = await this.prisma.product.findMany({
         where,
         select: { id: true },
-        take: 500,
+        orderBy: { id: 'asc' },
+        take: FACET_SAMPLE_SIZE,
       });
       const ids = matching.map((p) => p.id);
       if (!ids.length) return empty;
@@ -654,6 +673,13 @@ export class SearchService {
     return {
       category: { select: { id: true, name: true, slug: true } },
       images: { where: { isPrimary: true }, select: { url: true }, take: 1 },
+      // The card renders "By {shop}" off this. It was absent from both the
+      // include and the mapper, so `store` arrived undefined on every search
+      // result and the shop line silently rendered nothing — the card guards
+      // with `product.store?.name && ...`, so it degraded instead of throwing.
+      // /products returned it all along; only the search path was missing it.
+      store: { select: { id: true, name: true, slug: true } },
+      videos: { orderBy: { sortOrder: 'asc' as const } },
       _count: {
         select: { reviews: { where: { status: 'APPROVED' as const } } },
       },
@@ -676,6 +702,8 @@ export class SearchService {
       // be widened — no extra database work.
       primaryColors: string[];
       productType: string;
+      store: { id: string; name: string; slug: string } | null;
+      videos: ProductVideoRow[];
       isPersonalizable: boolean;
       isFeatured: boolean;
       isActive: boolean;
@@ -737,6 +765,11 @@ export class SearchService {
         // ProductListItemDto.primaryColors. Free: `include` already fetched it.
         primaryColors: p.primaryColors ?? [],
         productType: p.productType,
+        videos: (p.videos ?? []).map(toProductVideoDto),
+        storeId:   p.store?.id   ?? null,
+        storeName: p.store?.name ?? null,
+        storeSlug: p.store?.slug ?? null,
+        store:     p.store       ?? null,
         isPersonalizable: p.isPersonalizable,
         isFeatured: p.isFeatured,
         isActive: p.isActive,

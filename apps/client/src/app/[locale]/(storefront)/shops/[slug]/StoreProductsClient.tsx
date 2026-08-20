@@ -12,6 +12,7 @@ import { useAuthStore } from '../../../../../lib/store/auth.store';
 import { usePaginationLabels } from '../../../../../lib/hooks/usePaginationLabels';
 import { useProductCardLabels } from '../../../../../lib/hooks/useProductCardLabels';
 import type { ProductListItemDto } from '@ezihubb/types';
+import { deriveProductBadge } from '../../../../../lib/product-badge';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -226,8 +227,8 @@ function ProductGrid({
           compareAtPrice={product.compareAtPrice ?? undefined}
           rating={product.averageRating ?? undefined}
           reviewCount={product.reviewCount}
-          badge={product.badge}
-          badgeLabel={product.badge ? badgeLabels[product.badge] : undefined}
+          badge={deriveProductBadge(product)}
+          badgeLabel={(() => { const b = deriveProductBadge(product); return b ? badgeLabels[b] : undefined; })()}
           isPersonalizable={product.isPersonalizable}
           isDigital={product.productType === 'DIGITAL'}
           isWishlisted={wishlistedIds.has(product.id)}
@@ -402,8 +403,8 @@ export function StoreProductsClient({
                     compareAtPrice={product.compareAtPrice ?? undefined}
                     rating={product.averageRating ?? undefined}
                     reviewCount={product.reviewCount}
-                    badge={product.badge}
-                    badgeLabel={product.badge ? badgeLabels[product.badge] : undefined}
+                    badge={deriveProductBadge(product)}
+                    badgeLabel={(() => { const b = deriveProductBadge(product); return b ? badgeLabels[b] : undefined; })()}
                     isPersonalizable={product.isPersonalizable}
                     isDigital={product.productType === 'DIGITAL'}
                     isWishlisted={wishlistedIds.has(product.id)}

@@ -256,6 +256,27 @@ pinned to the bottom of the card via `order-last` with a fixed `h-9`, so every
 card in a row reserves the same vertical space for it and the rows stay
 aligned.
 
+## Star Seller badge — blocked on a column nothing writes
+
+A threshold on shop rating was chosen, then withdrawn: **`Store.rating` is
+never written.** Every reference to it across the API is a read
+(`select`, `orderBy`); no code path computes or updates it, so it sits at its
+`@default(0)` forever. Production confirms it — the only live store reports
+`rating = 0`.
+
+Gating a badge on `rating >= 4.8` would therefore ship a badge that can never
+appear and a filter that always returns nothing. Same shape as the
+sustainability field: the column exists, so the code type-checks and the query
+runs, and the feature is silently dead.
+
+`Store.totalOrders` IS maintained (incremented on payment), so a
+volume-only threshold would work today. A rating threshold needs the rating to
+be computed first — aggregated from approved reviews per store, either as a
+maintained column or on read.
+
+The section below, written before that was checked, describes the original
+plan and still holds for everything except the rating half.
+
 ## Star Seller badge — what it would take
 
 The reference puts a small badge after the shop name on each card. We do not

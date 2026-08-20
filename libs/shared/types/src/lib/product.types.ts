@@ -98,6 +98,12 @@ export interface ProductListItemDto {
   /** Colour tags for the swatch strip on a listing card. */
   primaryColors: string[];
   productType: 'PHYSICAL' | 'DIGITAL';
+  /**
+   * Videos on this listing. Usually EMPTY — most listings have none, so the
+   * empty case is normal, not a loading state. Cards fall back to the still
+   * image rather than reserving space for a player that never arrives.
+   */
+  videos?: ProductVideoDto[];
   isPersonalizable: boolean;
   isFeatured: boolean;
   isActive: boolean;
@@ -118,14 +124,6 @@ export interface ProductListItemDto {
   storeName?: string | null;
   storeSlug?: string | null;
   store?: { id: string; name: string; slug: string } | null;
-  /**
-   * Not present on ProductListItemDto (product-list-item.dto.ts) at all —
-   * every read of `.badge` across the search/listing cards is on data that
-   * never carries it. Left declared (several live components still read it)
-   * but this is a known-dead field, same bug class as the ones fixed in this
-   * file, out of scope for the PDP work that prompted this pass. See backlog.
-   */
-  badge?: 'bestseller' | 'new' | 'sale' | 'hot';
 }
 
 export interface DigitalFileDto {

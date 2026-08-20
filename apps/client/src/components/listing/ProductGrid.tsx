@@ -9,6 +9,7 @@ import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { useProductCardLabels } from '../../lib/hooks/useProductCardLabels';
 import type { ProductListItemDto } from '@ezihubb/types';
+import { deriveProductBadge } from '../../lib/product-badge';
 
 interface ProductGridProps {
   products:   ProductListItemDto[];
@@ -88,8 +89,8 @@ export function ProductGrid({ products, locale, isLoading = false }: ProductGrid
           isPriceRange={hasPriceRange}
           rating={product.averageRating ?? undefined}
           reviewCount={product.reviewCount}
-          badge={product.badge}
-          badgeLabel={product.badge ? badgeLabels[product.badge] : undefined}
+          badge={deriveProductBadge(product)}
+          badgeLabel={(() => { const b = deriveProductBadge(product); return b ? badgeLabels[b] : undefined; })()}
           isPersonalizable={product.isPersonalizable}
           isDigital={product.productType === 'DIGITAL'}
           isWishlisted={wishlistedIds.has(product.id)}

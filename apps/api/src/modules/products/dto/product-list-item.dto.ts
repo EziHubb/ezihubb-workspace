@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ProductVideoDto } from './product-response.dto';
 
 export class ProductListItemDto {
   @ApiProperty() id: string;
@@ -36,6 +37,15 @@ export class ProductListItemDto {
    * Mapped in the same THREE places as primaryColors.
    */
   @ApiProperty() productType: string;
+  /**
+   * Videos on this listing, for the card's play affordance and hover preview.
+   * Usually empty — most listings have none, so consumers must treat the empty
+   * case as normal rather than as a loading state.
+   *
+   * Mapped in the same THREE places as primaryColors, via
+   * `toProductVideoDto` so the shape cannot drift between them.
+   */
+  @ApiProperty({ type: [ProductVideoDto] }) videos: ProductVideoDto[];
   @ApiProperty() isPersonalizable: boolean;
   @ApiProperty() isFeatured: boolean;
   @ApiProperty() isActive: boolean;

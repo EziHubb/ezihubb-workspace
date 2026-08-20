@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient, queryKeys } from '@ezihubb/api-client';
 import { ProductCard, ProductCardSkeleton } from '@ezihubb/ui';
 import type { PaginatedResponse, ProductListItemDto } from '@ezihubb/types';
+import { deriveProductBadge } from '../../lib/product-badge';
 
 const FALLBACK_SEARCHES = [
   'custom mug',
@@ -138,7 +139,7 @@ export function NoResults({ query, onSearch }: NoResultsProps) {
                   compareAtPrice={product.compareAtPrice ?? undefined}
                   rating={product.averageRating ?? undefined}
                   reviewCount={product.reviewCount}
-                  badge={product.badge}
+                  badge={deriveProductBadge(product)}
                   isPersonalizable={product.isPersonalizable}
                   isDigital={product.productType === 'DIGITAL'}
                 />

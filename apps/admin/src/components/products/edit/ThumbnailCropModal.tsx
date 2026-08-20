@@ -20,7 +20,7 @@ const PREVIEW_SIZES: { label: string; ratio: number; w: number; h: number }[] = 
 ];
 
 const PRESET_CROPS: { label: string; aspect: number; desc: string }[] = [
-  { label: 'Square',   aspect: 1,     desc: '1:1 — Etsy search grid' },
+  { label: 'Square',   aspect: 1,     desc: '1:1 — Search grid'      },
   { label: 'Portrait', aspect: 3 / 4, desc: '3:4 — Category pages'   },
   { label: 'Wide',     aspect: 4 / 3, desc: '4:3 — Recommended'      },
 ];

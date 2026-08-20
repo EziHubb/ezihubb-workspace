@@ -6,6 +6,7 @@ import { ProductCard } from '@ezihubb/ui';
 import type { ProductBadgeVariant, ProductCardLabels } from '@ezihubb/ui';
 import { BackButton } from './BackButton';
 import { API_BASE } from '../../lib/api-client';
+import { deriveProductBadge } from '../../lib/product-badge';
 
 // A 404-status response indexable by default (inherited from the locale
 // layout) confused Search Console into pairing this thin fallback content
@@ -151,8 +152,8 @@ export default async function NotFound() {
                 compareAtPrice={product.compareAtPrice ?? undefined}
                 rating={product.averageRating ?? undefined}
                 reviewCount={product.reviewCount}
-                badge={product.badge}
-                badgeLabel={product.badge ? badgeLabels[product.badge] : undefined}
+                badge={deriveProductBadge(product)}
+                badgeLabel={(() => { const b = deriveProductBadge(product); return b ? badgeLabels[b] : undefined; })()}
                 isPersonalizable={product.isPersonalizable}
                 isDigital={product.productType === 'DIGITAL'}
                 locale={locale}

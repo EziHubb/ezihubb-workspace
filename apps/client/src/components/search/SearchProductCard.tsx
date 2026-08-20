@@ -10,6 +10,7 @@ import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { useCartStore } from '../../lib/store/cart.store';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { STANDARD_COLORS } from './SearchFilterSidebar';
+import { CardVideoOverlay } from './CardVideoOverlay';
 import { fmtAmount, fmtRating, safeArr, safeNum } from '@ezihubb/utils';
 
 /**
@@ -37,17 +38,18 @@ function getProductBadge(t: Translator, product: ProductListItemDto) {
       style: 'bg-[#FFF0EC] text-primary',
     };
   }
-  if (product.soldCount > 1000 || product.badge === 'bestseller') {
+  // The `|| product.badge === '...'` half of each of these used to sit here and
+  // could never be true: the API has no `badge` field. The `new` branch had no
+  // other condition at all, so it was pure dead code — deriving it would mean
+  // choosing how many days counts as new, which is a merchandising call.
+  if (product.soldCount > 1000) {
     return { label: t('badge.bestseller'), style: 'bg-yellow-100 text-yellow-800' };
   }
-  if (product.compareAtPrice || product.badge === 'sale') {
+  if (product.compareAtPrice) {
     return { label: t('badge.sale'), style: 'bg-green-100 text-green-700' };
   }
-  if (product.isFeatured || product.badge === 'hot') {
+  if (product.isFeatured) {
     return { label: t('badge.editorsPick'), style: 'bg-purple-100 text-purple-700' };
-  }
-  if (product.badge === 'new') {
-    return { label: t('badge.new'), style: 'bg-blue-100 text-blue-700' };
   }
   return null;
 }
@@ -137,6 +139,11 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
       ? Math.round((1 - safeNum(displayPrice) / safeNum(product.compareAtPrice)) * 100)
       : 0;
 
+  // First clip only. The card has room for one preview, a listing is capped at
+  // two videos server-side, and picking the first keeps the card consistent
+  // with the gallery, which orders by the same sortOrder.
+  const cardVideo = safeArr(product.videos)[0];
+
   return (
     <div
       // flex column so the action row can sit last via `order-last`, keeping
@@ -158,6 +165,17 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
             className="w-full h-full object-cover transition-all duration-500"
           />
         </Link>
+
+        {/* Video preview, layered over the still image. Only rendered when the
+            listing actually has a clip — most do not, and an always-mounted
+            overlay would put a play button on cards with nothing to play. */}
+        {cardVideo && (
+          <CardVideoOverlay
+            src={cardVideo.url}
+            poster={cardVideo.thumbnailUrls[0]}
+            hovered={isHovered}
+          />
+        )}
 
         {/* Image dot indicators */}
         {safeArr(product.images).length > 1 && isHovered && (

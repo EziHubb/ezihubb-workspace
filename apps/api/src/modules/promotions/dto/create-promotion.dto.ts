@@ -18,7 +18,7 @@ import {
 import { DiscountType, PromotionScope } from '@prisma/client';
 
 export class CreatePromotionDto {
-  @ApiPropertyOptional({ example: 'SUMMER20', description: 'Required unless autoApply is true (an Etsy-style "sale" has no buyer-entered code)' })
+  @ApiPropertyOptional({ example: 'SUMMER20', description: 'Required unless autoApply is true (a storewide sale has no buyer-entered code)' })
   @IsOptional()
   @IsString()
   @MinLength(1)
@@ -79,7 +79,7 @@ export class CreatePromotionDto {
   @IsString()
   storeId?: string;
 
-  @ApiPropertyOptional({ default: false, description: 'Etsy "Set up a sale" — silently applied at the best-price calculation, no buyer code entry.' })
+  @ApiPropertyOptional({ default: false, description: 'Storewide sale — silently applied at the best-price calculation, no buyer code entry.' })
   @IsOptional()
   @IsBoolean()
   autoApply?: boolean;

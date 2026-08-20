@@ -14,7 +14,12 @@ interface TrendingProductsProps {
 function deriveBadge(product: ProductListItemDto) {
   if (product.soldCount > 100) return 'bestseller' as const;
   if (!product.soldCount)       return 'new'        as const;
-  return product.badge;
+  // Was `return product.badge` — a field the API never sends, so this always
+  // returned undefined. Kept as an explicit undefined rather than deriving
+  // something new here: this component uses its own thresholds (>100) which
+  // differ from the search card (>1000), and reconciling them is a
+  // merchandising decision, not a mechanical one.
+  return undefined;
 }
 
 export async function TrendingProducts({ products, locale, viewAllLabel }: TrendingProductsProps) {

@@ -36,6 +36,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { mapEtsyVariationSummaryToVariants } from './etsy-variation-summary.mapper';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductListItemDto } from './dto/product-list-item.dto';
+import { toProductVideoDto, type ProductVideoRow } from './product-video.mapper';
 import {
   ProductResponseDto,
   VariantResponseDto,
@@ -144,6 +145,7 @@ export class ProductsService {
           },
           _count: { select: { reviews: { where: { status: 'APPROVED' } } } },
           store: { select: { id: true, name: true, slug: true } },
+          videos: { orderBy: { sortOrder: 'asc' as const } },
         },
       }),
       this.prisma.product.count({ where }),
@@ -210,6 +212,7 @@ export class ProductsService {
           // toListItems.
           primaryColors: p.primaryColors ?? [],
           productType: p.productType,
+          videos: (p.videos ?? []).map(toProductVideoDto),
           isPersonalizable: p.isPersonalizable,
           isFeatured: p.isFeatured,
           isActive: p.isActive,
@@ -2307,37 +2310,12 @@ export class ProductsService {
     }
   }
 
-  /**
-   * Seconds -> ISO 8601 duration (`10.4` becomes `PT10.4S`).
-   *
-   * The number is what we store, because it is comparable; this string is
-   * produced only at the response boundary, where it is the shape
-   * schema.org/VideoObject expects for video markup.
-   */
-  private toIso8601Duration(seconds: number | null): string | null {
-    if (seconds === null || !Number.isFinite(seconds)) return null;
-    const rounded = Math.round(seconds * 10) / 10;
-    return `PT${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}S`;
-  }
-
-  private toVideoDto(v: {
-    id: string;
-    url: string;
-    posterUrl: string | null;
-    posterSquareUrl: string | null;
-    durationSeconds: number | null;
-    createdAt: Date;
-  }): ProductVideoDto {
-    return {
-      id:            v.id,
-      url:           v.url,
-      // Ordered by intent: the gallery poster first, then the card-sized
-      // square. Empty when the clip predates poster extraction (a backfilled
-      // row) or when extraction failed — never a placeholder URL that 404s.
-      thumbnailUrls: [v.posterUrl, v.posterSquareUrl].filter((u): u is string => !!u),
-      duration:      this.toIso8601Duration(v.durationSeconds),
-      uploadedAt:    v.createdAt.toISOString(),
-    };
+  // Video row -> DTO lives in ./product-video.mapper so this service and
+  // SearchService share ONE implementation. The three list mappers in this
+  // file have a documented history of drifting when a field is added to one
+  // and missed in the others; a shared function cannot drift from itself.
+  private toVideoDto(v: ProductVideoRow): ProductVideoDto {
+    return toProductVideoDto(v);
   }
 
   async listVideos(productId: string): Promise<ProductVideoDto[]> {
@@ -2957,6 +2935,7 @@ export class ProductsService {
       // be widened — no extra database work.
       primaryColors: string[];
       productType: string;
+      videos?: ProductVideoRow[];
       isPersonalizable: boolean;
       isFeatured: boolean;
       isActive: boolean;
@@ -3022,6 +3001,7 @@ export class ProductsService {
       // ProductListItemDto.primaryColors. Free: `include` already fetched it.
       primaryColors: p.primaryColors ?? [],
       productType: p.productType,
+      videos: (p.videos ?? []).map(toProductVideoDto),
       isPersonalizable: p.isPersonalizable,
       isFeatured: p.isFeatured,
       isActive: p.isActive,
