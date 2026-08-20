@@ -42,6 +42,7 @@ import {
   ProductImageResponseDto,
   ProductTagResponseDto,
   DigitalFileResponseDto,
+  ProductVideoDto,
 } from './dto/product-response.dto';
 import {
   PaginatedResult,
@@ -50,7 +51,7 @@ import {
 import { AutoTranslateService } from '../translations/auto-translate.service';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import { writeFile, unlink } from 'fs/promises';
+import { writeFile, unlink, readFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join, extname } from 'path';
 import { randomUUID } from 'crypto';
@@ -76,6 +77,12 @@ const VIDEO_MAX_BYTES = 20 * 1024 * 1024; // generous ceiling — a compliant ~1
 const VIDEO_MAX_DURATION_SECONDS = 10;
 const VIDEO_DURATION_TOLERANCE_SECONDS = 0.5; // encoder/container rounding
 const MAX_VIDEOS_PER_PRODUCT = 2;
+// Poster frames are stored objects here, not CDN transforms, so each size is a
+// real file we generate at upload. 105px square matches the card slot; the
+// full-size frame keeps the clip's own aspect ratio for the gallery.
+const VIDEO_POSTER_SQUARE_PX = 105;
+// Seek past the opening frame, which is very often black or mid-fade.
+const VIDEO_POSTER_SEEK_SECONDS = 1;
 const ALLOWED_DIGITAL_FILE_MIMETYPES = new Set([
   'image/png',
   'image/jpeg',
@@ -256,6 +263,7 @@ export class ProductsService {
         // Print files are never shown to shoppers — only MOCKUP rows belong
         // on the public PDP.
         images: { where: { type: ProductImageType.MOCKUP }, orderBy: { sortOrder: 'asc' } },
+        videos: { orderBy: { sortOrder: 'asc' } },
         // Metadata only (filename/mimeType/size) — storageKey is never selected
         // here, so it can never leak into the public product response.
         digitalFiles: {
@@ -1012,6 +1020,7 @@ export class ProductsService {
         category:          { select: { id: true, name: true, slug: true } },
         variants:          { orderBy: { sortOrder: 'asc' } },
         images:            { orderBy: { sortOrder: 'asc' } },
+        videos:            { orderBy: { sortOrder: 'asc' } },
         tags:              { include: { tag: { select: { id: true, name: true, slug: true } } } },
         collections:       { include: { collection: { select: { id: true, name: true, slug: true } } } },
         processingProfile: true,
@@ -2196,15 +2205,36 @@ export class ProductsService {
    * unthrottled host). A client-declared duration can't be trusted, so this
    * is the only source of truth for enforcing the length cap.
    */
-  private async getVideoDurationSeconds(buffer: Buffer, originalName: string): Promise<number> {
-    const tmpPath = join(tmpdir(), `video-check-${randomUUID()}${extname(originalName)}`);
+  /**
+   * Writes the upload to a temp file once and hands the path to `fn`.
+   *
+   * ffprobe and ffmpeg both need a real seekable file — neither reads a
+   * container reliably from a pipe, because both have to jump to the moov
+   * atom to find the stream layout. Duration probing used to write its own
+   * temp copy; extracting poster frames as well would have meant writing the
+   * same 20 MB buffer to disk twice per upload, so both now share one copy.
+   */
+  private async withTempVideo<T>(
+    buffer: Buffer,
+    originalName: string,
+    fn: (path: string) => Promise<T>,
+  ): Promise<T> {
+    const tmpPath = join(tmpdir(), `video-${randomUUID()}${extname(originalName)}`);
     await writeFile(tmpPath, buffer);
+    try {
+      return await fn(tmpPath);
+    } finally {
+      await unlink(tmpPath).catch(() => undefined);
+    }
+  }
+
+  private async probeDurationSeconds(path: string, originalName: string): Promise<number> {
     try {
       const { stdout } = await execFileAsync('ffprobe', [
         '-v', 'error',
         '-show_entries', 'format=duration',
         '-of', 'json',
-        tmpPath,
+        path,
       ]);
       const parsed = JSON.parse(stdout) as { format?: { duration?: string } };
       const duration = Number(parsed.format?.duration);
@@ -2215,15 +2245,113 @@ export class ProductsService {
         code: 'ERR_INVALID_VIDEO',
         message: `${originalName}: could not read this file as a video — is it a valid MP4, WebM, or MOV?`,
       });
-    } finally {
-      await unlink(tmpPath).catch(() => undefined);
     }
+  }
+
+  /**
+   * Pulls two JPEG poster frames out of the clip: one full size keeping the
+   * original aspect ratio, one square-cropped for grid cards.
+   *
+   * Seeks a little way in rather than taking frame 0 — the opening frame of a
+   * clip is very often black or a fade-in, which makes a poster that looks
+   * like a broken image. Clamped to the midpoint so a very short clip cannot
+   * seek past its own end.
+   *
+   * Best-effort by design: a clip whose duration probed fine but whose first
+   * frames will not decode still uploads, just without a poster. Failing the
+   * whole upload over a missing thumbnail is a worse outcome than a video
+   * that falls back to the product image.
+   */
+  private async extractPosterFrames(
+    path: string,
+    durationSeconds: number,
+  ): Promise<{ full: Buffer | null; square: Buffer | null }> {
+    const seek = Math.min(VIDEO_POSTER_SEEK_SECONDS, durationSeconds / 2);
+    const fullPath   = join(tmpdir(), `poster-${randomUUID()}.jpg`);
+    const squarePath = join(tmpdir(), `poster-sq-${randomUUID()}.jpg`);
+
+    // -ss BEFORE -i is input seeking: ffmpeg jumps straight to the nearest
+    // keyframe instead of decoding from the start and discarding frames.
+    const run = (out: string, filter: string[]) =>
+      execFileAsync('ffmpeg', [
+        '-v', 'error',
+        '-ss', String(seek),
+        '-i', path,
+        '-frames:v', '1',
+        ...filter,
+        '-q:v', '3',
+        '-y', out,
+      ]);
+
+    try {
+      await run(fullPath, []);
+      // scale-then-crop: grow until the SHORTER side reaches the target, then
+      // take the centre square. Cropping first would throw away the edges of
+      // a wide clip before scaling ever saw them.
+      await run(squarePath, [
+        '-vf',
+        `scale=${VIDEO_POSTER_SQUARE_PX}:${VIDEO_POSTER_SQUARE_PX}:force_original_aspect_ratio=increase,crop=${VIDEO_POSTER_SQUARE_PX}:${VIDEO_POSTER_SQUARE_PX}`,
+      ]);
+      const [full, square] = await Promise.all([readFile(fullPath), readFile(squarePath)]);
+      return { full, square };
+    } catch (e) {
+      this.logger.warn(
+        `Poster extraction failed, uploading video without one: ${(e as Error).message}`,
+      );
+      return { full: null, square: null };
+    } finally {
+      await Promise.all([
+        unlink(fullPath).catch(() => undefined),
+        unlink(squarePath).catch(() => undefined),
+      ]);
+    }
+  }
+
+  /**
+   * Seconds -> ISO 8601 duration (`10.4` becomes `PT10.4S`).
+   *
+   * The number is what we store, because it is comparable; this string is
+   * produced only at the response boundary, where it is the shape
+   * schema.org/VideoObject expects for video markup.
+   */
+  private toIso8601Duration(seconds: number | null): string | null {
+    if (seconds === null || !Number.isFinite(seconds)) return null;
+    const rounded = Math.round(seconds * 10) / 10;
+    return `PT${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}S`;
+  }
+
+  private toVideoDto(v: {
+    id: string;
+    url: string;
+    posterUrl: string | null;
+    posterSquareUrl: string | null;
+    durationSeconds: number | null;
+    createdAt: Date;
+  }): ProductVideoDto {
+    return {
+      id:            v.id,
+      url:           v.url,
+      // Ordered by intent: the gallery poster first, then the card-sized
+      // square. Empty when the clip predates poster extraction (a backfilled
+      // row) or when extraction failed — never a placeholder URL that 404s.
+      thumbnailUrls: [v.posterUrl, v.posterSquareUrl].filter((u): u is string => !!u),
+      duration:      this.toIso8601Duration(v.durationSeconds),
+      uploadedAt:    v.createdAt.toISOString(),
+    };
+  }
+
+  async listVideos(productId: string): Promise<ProductVideoDto[]> {
+    const videos = await this.prisma.productVideo.findMany({
+      where: { productId },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    });
+    return videos.map((v) => this.toVideoDto(v));
   }
 
   async uploadVideo(
     productId: string,
     file: Express.Multer.File,
-  ): Promise<{ url: string; videoUrls: string[] }> {
+  ): Promise<{ url: string; videoUrls: string[]; video: ProductVideoDto }> {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
       select: { videoUrls: true },
@@ -2231,6 +2359,11 @@ export class ProductsService {
     if (!product)
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
 
+    if (!file?.buffer)
+      throw new BadRequestException({
+        code: 'ERR_NO_FILE',
+        message: 'No video file was uploaded — send it as multipart field "video".',
+      });
     if (!ALLOWED_VIDEO_MIMETYPES.has(file.mimetype))
       throw new BadRequestException({
         code: 'ERR_INVALID_FILE_TYPE',
@@ -2242,55 +2375,155 @@ export class ProductsService {
         message: `${file.originalname}: max ${VIDEO_MAX_BYTES / (1024 * 1024)} MB per video`,
       });
 
-    const existingUrls = product.videoUrls ?? [];
-    if (existingUrls.length >= MAX_VIDEOS_PER_PRODUCT)
+    // Counted off ProductVideo, not off the legacy videoUrls array: the row
+    // table is the source of truth now, and counting the deprecated mirror
+    // would let the limit drift the moment the two disagree.
+    const existingCount = await this.prisma.productVideo.count({ where: { productId } });
+    if (existingCount >= MAX_VIDEOS_PER_PRODUCT)
       throw new BadRequestException({
         code: 'ERR_TOO_MANY_VIDEOS',
         message: `Only ${MAX_VIDEOS_PER_PRODUCT} videos allowed per product — remove one first.`,
       });
 
-    const duration = await this.getVideoDurationSeconds(file.buffer, file.originalname);
-    if (duration > VIDEO_MAX_DURATION_SECONDS + VIDEO_DURATION_TOLERANCE_SECONDS)
-      throw new BadRequestException({
-        code: 'ERR_VIDEO_TOO_LONG',
-        message: `${file.originalname}: video is ${duration.toFixed(1)}s — max ${VIDEO_MAX_DURATION_SECONDS}s allowed.`,
-      });
+    const { duration, posters } = await this.withTempVideo(
+      file.buffer,
+      file.originalname,
+      async (path) => {
+        const probed = await this.probeDurationSeconds(path, file.originalname);
+        if (probed > VIDEO_MAX_DURATION_SECONDS + VIDEO_DURATION_TOLERANCE_SECONDS)
+          throw new BadRequestException({
+            code: 'ERR_VIDEO_TOO_LONG',
+            message: `${file.originalname}: video is ${probed.toFixed(1)}s — max ${VIDEO_MAX_DURATION_SECONDS}s allowed.`,
+          });
+        return { duration: probed, posters: await this.extractPosterFrames(path, probed) };
+      },
+    );
 
     const key = this.storage.generateKey(`products/${productId}/videos`, file.originalname);
     const url = await this.storage.uploadFile(file.buffer, key, file.mimetype);
 
-    const updated = await this.prisma.product.update({
-      where: { id: productId },
-      data: { videoUrls: { push: url } },
-      select: { videoUrls: true, slug: true },
-    });
+    const posterUrl = posters.full
+      ? await this.storage.uploadFile(
+          posters.full,
+          this.storage.generateKey(`products/${productId}/videos`, 'poster.jpg'),
+          'image/jpeg',
+        )
+      : null;
+    const posterSquareUrl = posters.square
+      ? await this.storage.uploadFile(
+          posters.square,
+          this.storage.generateKey(`products/${productId}/videos`, 'poster-sq.jpg'),
+          'image/jpeg',
+        )
+      : null;
+
+    const [video, updated] = await this.prisma.$transaction([
+      this.prisma.productVideo.create({
+        data: {
+          productId,
+          url,
+          posterUrl,
+          posterSquareUrl,
+          durationSeconds: duration,
+          sortOrder: existingCount,
+        },
+      }),
+      // Deprecated mirror, kept in step so partners still reading videoUrls
+      // see the new clip. Written in the same transaction as the row so the
+      // two cannot diverge on a partial failure.
+      this.prisma.product.update({
+        where: { id: productId },
+        data: { videoUrls: { push: url } },
+        select: { videoUrls: true, slug: true },
+      }),
+    ]);
     await this.redis.del(CacheKeys.product(updated.slug));
 
-    return { url, videoUrls: updated.videoUrls };
+    return { url, videoUrls: updated.videoUrls, video: this.toVideoDto(video) };
   }
 
+  /** Deletes every stored object behind one video row, best-effort. */
+  private async purgeVideoObjects(v: {
+    url: string;
+    posterUrl: string | null;
+    posterSquareUrl: string | null;
+  }): Promise<void> {
+    const urls = [v.url, v.posterUrl, v.posterSquareUrl].filter((u): u is string => !!u);
+    await Promise.all(
+      urls.map((u) => {
+        const key = this.storage.extractKey(u);
+        return this.storage
+          .deleteFile(key)
+          .catch((e: Error) =>
+            this.logger.warn(`R2 delete failed for video key "${key}": ${e.message}`),
+          );
+      }),
+    );
+  }
+
+  async deleteVideoById(productId: string, videoId: string): Promise<void> {
+    const video = await this.prisma.productVideo.findFirst({
+      where: { id: videoId, productId },
+    });
+    if (!video)
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Video not found' });
+    await this.removeVideoRow(productId, video);
+  }
+
+  /** Legacy entry point — deletes by URL rather than by row id. */
   async deleteVideo(productId: string, url: string): Promise<void> {
+    const video = await this.prisma.productVideo.findFirst({ where: { productId, url } });
+    if (video) {
+      await this.removeVideoRow(productId, video);
+      return;
+    }
+
+    // No row for this URL, but the deprecated array may still carry it (a clip
+    // uploaded before this table existed that somehow missed the backfill).
+    // Drop it from the array so the caller's delete is not silently a no-op.
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
-      select: { videoUrls: true },
+      select: { videoUrls: true, slug: true },
     });
     if (!product)
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
-    const remaining = (product.videoUrls ?? []).filter((u) => u !== url);
+    if (!product.videoUrls.includes(url))
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Video not found' });
 
-    const updated = await this.prisma.product.update({
+    await this.prisma.product.update({
       where: { id: productId },
-      data: { videoUrls: { set: remaining } },
-      select: { slug: true },
+      data: { videoUrls: { set: product.videoUrls.filter((u) => u !== url) } },
     });
+    await this.redis.del(CacheKeys.product(product.slug));
+    await this.purgeVideoObjects({ url, posterUrl: null, posterSquareUrl: null });
+  }
+
+  private async removeVideoRow(
+    productId: string,
+    video: { id: string; url: string; posterUrl: string | null; posterSquareUrl: string | null },
+  ): Promise<void> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { videoUrls: true, slug: true },
+    });
+    if (!product)
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+
+    const [, updated] = await this.prisma.$transaction([
+      this.prisma.productVideo.delete({ where: { id: video.id } }),
+      this.prisma.product.update({
+        where: { id: productId },
+        data: { videoUrls: { set: product.videoUrls.filter((u) => u !== video.url) } },
+        select: { slug: true },
+      }),
+    ]);
     await this.redis.del(CacheKeys.product(updated.slug));
 
-    const key = this.storage.extractKey(url);
-    await this.storage
-      .deleteFile(key)
-      .catch((e: Error) =>
-        this.logger.warn(`R2 delete failed for video key "${key}": ${e.message}`),
-      );
+    // Storage cleanup runs AFTER the row is gone, and never inside the
+    // transaction: an object-store timeout must not roll back a delete the
+    // caller already saw succeed. A leaked object is cheap; a video that
+    // reappears after being deleted is not.
+    await this.purgeVideoObjects(video);
   }
 
   // ─── MongoDB product detail CRUD ──────────────────────────────────────────
@@ -2697,6 +2930,7 @@ export class ProductsService {
       category: { select: { id: true, name: true, slug: true } },
       variants: { orderBy: { sortOrder: 'asc' as const } },
       images: { orderBy: { sortOrder: 'asc' as const } },
+      videos: { orderBy: { sortOrder: 'asc' as const } },
       digitalFiles: { orderBy: { sortOrder: 'asc' as const } },
       tags: {
         include: { tag: { select: { id: true, name: true, slug: true } } },
@@ -2853,6 +3087,14 @@ export class ProductsService {
         variantId: string | null;
       }[];
       videoUrls?: string[];
+      videos?: {
+        id: string;
+        url: string;
+        posterUrl: string | null;
+        posterSquareUrl: string | null;
+        durationSeconds: number | null;
+        createdAt: Date;
+      }[];
       tags: { tag: { id: string; name: string; slug: string } }[];
       _count: { reviews: number };
     },
@@ -2910,7 +3152,11 @@ export class ProductsService {
         sortOrder: f.sortOrder,
         variantId: f.variantId,
       })) ?? [],
-      videoUrls: product.videoUrls ?? [],
+      videos: (product.videos ?? []).map((v) => this.toVideoDto(v)),
+      // Deprecated mirror. Derived from the rows when they are loaded so the two
+      // agree, falling back to the stored array for callers whose query did not
+      // include the relation.
+      videoUrls: product.videos?.length ? product.videos.map((v) => v.url) : (product.videoUrls ?? []),
       tags: product.tags.map((pt) => ({
         id: pt.tag.id,
         name: pt.tag.name,

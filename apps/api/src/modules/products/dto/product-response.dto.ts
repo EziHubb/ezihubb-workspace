@@ -11,6 +11,31 @@ export class VariantResponseDto {
   @ApiProperty() sortOrder: number;
 }
 
+/**
+ * One product video and the metadata derived from it at upload.
+ *
+ * `thumbnailUrls` is a LIST of stored objects, not a set of transform URLs
+ * built from one asset. Media CDNs derive every size on request from a single
+ * upload; our storage has no transform layer, so each entry here is a real
+ * file that upload generated and delete has to clean up. Order is by intent:
+ * full-size gallery poster first, square card poster second.
+ *
+ * It can be EMPTY. Clips that predate poster extraction, and clips whose
+ * first frames would not decode, have no poster — an empty list is the honest
+ * answer, and callers should fall back to the product image rather than
+ * assume index 0 exists.
+ *
+ * `duration` is ISO 8601 (`PT10S`) to match schema.org/VideoObject, so it can
+ * be dropped straight into video markup. Null when never measured.
+ */
+export class ProductVideoDto {
+  @ApiProperty() id: string;
+  @ApiProperty() url: string;
+  @ApiProperty({ type: [String] }) thumbnailUrls: string[];
+  @ApiPropertyOptional({ example: 'PT10S' }) duration: string | null;
+  @ApiProperty() uploadedAt: string;
+}
+
 export class ProductImageResponseDto {
   @ApiProperty() id: string;
   @ApiProperty() url: string;
@@ -100,7 +125,9 @@ export class ProductResponseDto {
   @ApiProperty({ type: [VariantOptionDto] }) variantOptions: VariantOptionDto[];
   @ApiProperty({ type: [ProductImageResponseDto] }) images: ProductImageResponseDto[];
   @ApiPropertyOptional({ type: [DigitalFileResponseDto] }) digitalFiles?: DigitalFileResponseDto[];
-  @ApiPropertyOptional({ type: [String] }) videoUrls?: string[];
+  @ApiProperty({ type: [ProductVideoDto] }) videos: ProductVideoDto[];
+  /** @deprecated Superseded by `videos`, which carries posters and duration. Still returned so existing integrations keep working. */
+  @ApiPropertyOptional({ type: [String], deprecated: true }) videoUrls?: string[];
   @ApiProperty({ type: [ProductTagResponseDto] }) tags: ProductTagResponseDto[];
   @ApiPropertyOptional() customizationConfig: Record<string, unknown> | null;
   @ApiPropertyOptional() averageRating: number | null;

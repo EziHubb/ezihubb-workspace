@@ -20,6 +20,8 @@ interface MediaItem {
   type:    'image' | 'video';
   url:     string;
   altText?: string;
+  /** Video only: extracted poster frame. Undefined when none was produced. */
+  poster?: string;
 }
 
 function buildMediaItems(product: ProductDetailDto): MediaItem[] {
@@ -27,11 +29,27 @@ function buildMediaItems(product: ProductDetailDto): MediaItem[] {
     ? product.images.map((img) => ({ id: img.id, type: 'image' as const, url: img.url, altText: img.altText ?? undefined }))
     : [{ id: 'ph', type: 'image' as const, url: PLACEHOLDER, altText: product.name }];
 
-  const videos = safeArr(product.videoUrls).map((url, i) => ({
-    id:   `video-${i}`,
-    type: 'video' as const,
-    url,
-  }));
+  // Prefer the structured rows, which carry a real poster frame; fall back to
+  // the deprecated flat array so a product whose payload predates the change
+  // still shows its video, just without a poster.
+  const structured = safeArr(product.videos);
+  const videos = structured.length
+    ? structured.map((v) => ({
+        id:     v.id,
+        type:   'video' as const,
+        url:    v.url,
+        // First entry is the full-size frame; the square one is for cards and
+        // would letterbox badly at gallery size. Undefined when extraction
+        // never ran, which the player treats as "no poster" rather than 404ing
+        // on an empty string.
+        poster: v.thumbnailUrls[0] ?? undefined,
+      }))
+    : safeArr(product.videoUrls).map((url, i) => ({
+        id:     `video-${i}`,
+        type:   'video' as const,
+        url,
+        poster: undefined,
+      }));
 
   // Video slotted right after the primary (first) photo — engaging, but
   // doesn't disturb the seller's chosen primary image as the default slide
@@ -59,10 +77,13 @@ function usePrefersReducedMotion(): boolean {
 
 function VideoSlide({
   url,
+  poster,
   active,
   className,
 }: {
   url:       string;
+  /** Extracted frame, painted while the clip buffers. Undefined = none stored. */
+  poster?:   string;
   active:    boolean;
   className: string;
 }) {
@@ -91,6 +112,7 @@ function VideoSlide({
       <video
         ref={videoRef}
         src={url}
+        poster={poster}
         className="absolute inset-0 w-full h-full object-cover"
         muted={muted}
         loop
@@ -132,7 +154,24 @@ function MediaThumbnail({ item, className }: { item: MediaItem; className: strin
   if (item.type === 'video') {
     return (
       <div className={`relative bg-black ${className}`}>
-        <video src={item.url} className="absolute inset-0 w-full h-full object-cover" muted preload="metadata" />
+        {/* The extracted poster, when there is one. This used to mount a real
+            <video preload="metadata"> purely to show a still frame, which made
+            the browser open a connection and pull the container header for
+            every clip in the strip just to paint a thumbnail. An <img> of a
+            frame we already extracted costs a few KB instead.
+            No poster (a clip predating extraction, or one whose frames would
+            not decode) falls back to the old behaviour rather than showing an
+            empty black box — preload="metadata" is enough to paint a frame. */}
+        {item.poster ? (
+          <img
+            src={item.poster}
+            alt=""
+            loading="lazy"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <video src={item.url} className="absolute inset-0 w-full h-full object-cover" muted preload="metadata" />
+        )}
         <span className="absolute inset-0 flex items-center justify-center bg-black/25">
           <VideoIcon className="w-4 h-4 text-white drop-shadow" />
         </span>
@@ -275,7 +314,7 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
             </button>
 
             {activeItem.type === 'video' ? (
-              <VideoSlide url={activeItem.url} active className="absolute inset-0 w-full h-full" />
+              <VideoSlide url={activeItem.url} poster={activeItem.poster} active className="absolute inset-0 w-full h-full" />
             ) : (
               <img
                 src={activeItem.url}

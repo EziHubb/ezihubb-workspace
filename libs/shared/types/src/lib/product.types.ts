@@ -158,6 +158,25 @@ export interface ProductBundleOfferDto {
 // apps/api/src/modules/products/dto/product-response.dto.ts ProductResponseDto,
 // plus the fields apps/api merges in from MongoDB only when a Mongo detail
 // document exists for the product (richDescription..printSpecs below).
+/**
+ * One product video plus what was derived from it at upload.
+ *
+ * `thumbnailUrls` holds STORED poster files, not transform URLs, so it can
+ * legitimately be empty — clips uploaded before poster extraction existed,
+ * and clips whose opening frames would not decode, have none. Read it
+ * defensively and fall back to the product image; do not index [0] blind.
+ *
+ * `duration` is ISO 8601 (`PT10S`) so it can go straight into
+ * schema.org/VideoObject markup. Null when it was never measured.
+ */
+export interface ProductVideoDto {
+  id: string;
+  url: string;
+  thumbnailUrls: string[];
+  duration: string | null;
+  uploadedAt: string;
+}
+
 export interface ProductDetailDto {
   id: string;
   name: string;
@@ -186,6 +205,8 @@ export interface ProductDetailDto {
   variantOptions: { name: string; values: string[] }[];
   images: ProductImageDto[];
   digitalFiles?: DigitalFileDto[];
+  videos?: ProductVideoDto[];
+  /** @deprecated Superseded by `videos`, which carries poster frames and duration. */
   videoUrls?: string[];
   tags: TagDto[];
   averageRating: number | null;

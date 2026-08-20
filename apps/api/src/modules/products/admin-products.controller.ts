@@ -37,7 +37,7 @@ import { ProductQueryDto } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductResponseDto } from './dto/product-response.dto';
-import { ProductImageResponseDto, DigitalFileResponseDto } from './dto/product-response.dto';
+import { ProductImageResponseDto, DigitalFileResponseDto, ProductVideoDto } from './dto/product-response.dto';
 import { ProductListItemDto } from './dto/product-list-item.dto';
 import { ParseCuidPipe } from '../../common/pipes/parse-cuid.pipe';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
@@ -631,7 +631,7 @@ export class AdminProductsController {
   uploadVideo(
     @Param('id', ParseCuidPipe) id: string,
     @UploadedFile() file: Express.Multer.File,
-  ): Promise<{ url: string; videoUrls: string[] }> {
+  ): Promise<{ url: string; videoUrls: string[]; video: ProductVideoDto }> {
     return this.productsService.uploadVideo(id, file);
   }
 

@@ -953,37 +953,37 @@ model ProductTag {
 // ─── Product ─────────────────────────────────────────────────────────────────
 
 model Product {
-  id                  String                   @id @default(cuid())
-  name                String
-  slug                String
-  sku                 String                   @unique
-  description         String
-  shortDescription    String?
+  id                    String                   @id @default(cuid())
+  name                  String
+  slug                  String
+  sku                   String                   @unique
+  description           String
+  shortDescription      String?
   // Postgres-generated (STORED, auto-maintained on every insert/update — see
   // migration 20260813140000). Prisma can't model tsvector natively; marking
   // it Unsupported keeps it visible in introspection without Prisma Client
   // trying to read/write it — search.service.ts touches it only via raw SQL.
-  searchVector        Unsupported("tsvector")? @map("search_vector")
-  basePrice           Decimal                  @db.Decimal(10, 2)
-  compareAtPrice      Decimal?                 @db.Decimal(10, 2)
-  isPersonalizable    Boolean                  @default(true)
-  isActive            Boolean                  @default(true)
-  status              ProductStatus            @default(ACTIVE)
-  productType         ProductType              @default(PHYSICAL)
+  searchVector          Unsupported("tsvector")? @map("search_vector")
+  basePrice             Decimal                  @db.Decimal(10, 2)
+  compareAtPrice        Decimal?                 @db.Decimal(10, 2)
+  isPersonalizable      Boolean                  @default(true)
+  isActive              Boolean                  @default(true)
+  status                ProductStatus            @default(ACTIVE)
+  productType           ProductType              @default(PHYSICAL)
   /// Whether the seller offers gift wrapping for this listing. Distinct from
   /// Order.giftWrapping, which records what a buyer chose at checkout — this
   /// is whether the option can be offered at all.
-  giftWrappingAvailable Boolean                @default(false)
-  isFeatured          Boolean                  @default(false)
-  viewCount           Int                      @default(0)
-  soldCount           Int                      @default(0)
-  processingDays      Int                      @default(3)
-  categoryId          String
-  category            Category                 @relation(fields: [categoryId], references: [id])
-  customizationConfig Json?
-  deletedAt           DateTime?
-  createdAt           DateTime                 @default(now())
-  updatedAt           DateTime                 @updatedAt
+  giftWrappingAvailable Boolean                  @default(false)
+  isFeatured            Boolean                  @default(false)
+  viewCount             Int                      @default(0)
+  soldCount             Int                      @default(0)
+  processingDays        Int                      @default(3)
+  categoryId            String
+  category              Category                 @relation(fields: [categoryId], references: [id])
+  customizationConfig   Json?
+  deletedAt             DateTime?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
 
   moderationStatus ModerationStatus @default(PENDING)
   lastModeratedAt  DateTime?
@@ -1040,12 +1040,18 @@ model Product {
   expiresAt     DateTime? // only relevant when renewalType = MANUAL
 
   // ── TAB: Photo & Video ──────────────────────────────────────────────────────
-  videoUrls         String[] // up to 2 hosted video URLs
+  /// DEPRECATED — superseded by the `videos` relation, which carries the
+  /// poster frames and duration this bare array cannot. Still written and
+  /// still returned by the API so existing partner integrations reading
+  /// `videoUrls` keep working; it is derived from `videos` on the way out.
+  /// Remove only after partners have been given notice.
+  videoUrls         String[]
   thumbnailCropData Json? // { x, y, width, height } for thumbnail crop
 
   // ── Relations ───────────────────────────────────────────────────────────────
   variants            ProductVariant[]
   images              ProductImage[]
+  videos              ProductVideo[]
   collections         CollectionProduct[]
   tags                ProductTag[]
   wishlistItems       WishlistItem[]
@@ -1161,6 +1167,39 @@ model ProductImage {
 
   @@index([productId])
   @@index([productId, type, printSide])
+}
+
+/// One uploaded product video plus the metadata derived from it at upload time.
+///
+/// Poster frames are REAL STORED FILES here, not URL transformations. Media
+/// CDNs that derive every size from one asset on request make a thumbnail list
+/// almost free; our storage is plain R2/S3 behind a static CDN with no
+/// transform layer, so each variant is a separate object that upload has to
+/// produce and delete has to clean up.
+///
+/// `durationSeconds` is stored as a number, not as an ISO 8601 string, so it
+/// stays comparable — "clips under 5s" is a query, not a string scan. The
+/// ISO 8601 form (PT10S) is produced at the response boundary.
+///
+/// Both the duration and the poster columns are NULLABLE on purpose: rows
+/// backfilled from the old `Product.videoUrls` array have no poster frame and
+/// no known duration, and inventing a 0 there would be a lie that renders as
+/// a real value. Null means "never measured" and the API surfaces it as null.
+model ProductVideo {
+  id              String   @id @default(cuid())
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url             String
+  /// Full-size poster frame, original aspect ratio — for the gallery.
+  posterUrl       String?
+  /// Square centre-cropped poster — for grid cards, where shipping the
+  /// full-size frame would waste bandwidth on the densest screen we have.
+  posterSquareUrl String?
+  durationSeconds Float?
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  @@index([productId])
 }
 
 // A digital product's deliverable file (design file, PNG/SVG/PDF/etc — never

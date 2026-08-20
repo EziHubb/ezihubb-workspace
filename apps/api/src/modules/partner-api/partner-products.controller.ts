@@ -10,11 +10,12 @@ import {
   Post,
   Query,
   Req,
+  UploadedFile,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiOperation, ApiResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { memoryStorage } from 'multer';
 import type { Request } from 'express';
@@ -26,7 +27,7 @@ import { ProductsService } from '../products/products.service';
 import { ProductQueryDto } from '../products/dto/product-query.dto';
 import { CreateProductDto } from '../products/dto/create-product.dto';
 import { UpdateProductDto } from '../products/dto/update-product.dto';
-import { ProductImageResponseDto, DigitalFileResponseDto } from '../products/dto/product-response.dto';
+import { ProductImageResponseDto, DigitalFileResponseDto, ProductVideoDto } from '../products/dto/product-response.dto';
 import { AttachImagesDto, ReorderImagesDto, AttachPrintFileDto, UploadDigitalFilesDto, ReorderDigitalFilesDto } from '../products/dto/product-image.dto';
 
 @Controller('partner/products')
@@ -215,5 +216,60 @@ export class PartnerProductsController {
   ) {
     await this.productsService.findByIdForStore(id, req.store.id);
     return this.productsService.reorderDigitalFiles(id, dto.orderedIds);
+  }
+
+  // ─── Videos ────────────────────────────────────────────────────────────────
+  //
+  // Same limits as the seller UI enforces, applied in the service rather than
+  // here, so a partner integration cannot get a laxer deal than a human
+  // uploading through the dashboard: MP4/WebM/MOV, <= 20 MB, <= 10 seconds,
+  // at most 2 per product. Poster frames are extracted server-side — a partner
+  // uploads one file and gets the thumbnails back, it never supplies them.
+
+  @Get(':id/videos')
+  @ApiOperation({ summary: 'List the videos on a product' })
+  @ApiResponse({ status: 200, type: [ProductVideoDto] })
+  async listVideos(
+    @Req() req: Request & { store: Store },
+    @Param('id') id: string,
+  ): Promise<ProductVideoDto[]> {
+    await this.productsService.findByIdForStore(id, req.store.id);
+    return this.productsService.listVideos(id);
+  }
+
+  @Post(':id/videos')
+  @UseInterceptors(FileInterceptor('video', { storage: memoryStorage() }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { video: { type: 'string', format: 'binary' } } } })
+  @ApiOperation({
+    summary:
+      'Upload a product video (MP4/WebM/MOV, max 10s, max 20 MB, max 2 per product). ' +
+      'Poster frames and duration are derived server-side and returned in the response.',
+  })
+  @ApiResponse({ status: 201, type: ProductVideoDto })
+  @HttpCode(HttpStatus.CREATED)
+  async uploadVideo(
+    @Req() req: Request & { store: Store },
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<ProductVideoDto> {
+    await this.productsService.findByIdForStore(id, req.store.id);
+    // Returns only the created video, not the whole legacy envelope the admin
+    // route still hands back — a new API surface has no reason to inherit a
+    // deprecated field.
+    const { video } = await this.productsService.uploadVideo(id, file);
+    return video;
+  }
+
+  @Delete(':id/videos/:videoId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a product video and its poster frames' })
+  async deleteVideo(
+    @Req() req: Request & { store: Store },
+    @Param('id') id: string,
+    @Param('videoId') videoId: string,
+  ): Promise<void> {
+    await this.productsService.findByIdForStore(id, req.store.id);
+    await this.productsService.deleteVideoById(id, videoId);
   }
 }
