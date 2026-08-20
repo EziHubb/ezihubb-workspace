@@ -83,6 +83,7 @@
     "pleaseSelectRating": "Vui lòng chọn số sao đánh giá.",
     "reviewTooShort": "Nội dung đánh giá phải có ít nhất 10 ký tự.",
     "pleaseSelectOrder": "Vui lòng chọn đơn hàng cho đánh giá này.",
+    "photosFailedButReviewSaved": "Đánh giá của bạn đã được lưu, nhưng không tải được ảnh lên.",
     "failedToSubmit": "Gửi đánh giá thất bại",
     "signIn": "Đăng nhập",
     "toWriteReview": "để viết đánh giá",

@@ -8,7 +8,7 @@ import {
   Star, Sparkles, Award, Heart, Truck, Check, ThumbsUp, Camera, X,
 } from 'lucide-react';
 import { useReviews } from '@ezihubb/api-client';
-import { apiClient } from '@ezihubb/api-client';
+import { apiClient, apiFetch } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { useQueryClient } from '@tanstack/react-query';
@@ -252,8 +252,14 @@ function WriteReviewForm({
   const [body,        setBody]        = useState('');
   const [orderId,     setOrderId]     = useState('');
   const [reviewables, setReviewables] = useState<ReviewableProduct[]>([]);
+  // Preview URLs (blob:) for what the shopper sees before submitting, and the
+  // actual Files kept alongside them. Both are needed: a blob: URL cannot be
+  // uploaded, and a File cannot be rendered in an <img> without one.
   const [imageUrls,   setImageUrls]   = useState<string[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  // No ''uploading'' state here any more: selecting a file only stages it, which
+  // is synchronous. The actual upload happens at submit and is covered by
+  // isSubmitting, so a spinner on the picker would never be true.
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error,       setError]       = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -273,24 +279,41 @@ function WriteReviewForm({
     } catch { /* non-critical */ }
   };
 
-  const handleFiles = async (files: FileList) => {
-    if (imageUrls.length >= 5) return;
-    setIsUploading(true);
-    try {
-      const toUpload = Array.from(files).slice(0, 5 - imageUrls.length);
-      const uploaded: string[] = [];
-      for (const file of toUpload) {
-        const formData = new FormData();
-        formData.append('images', file);
-        // We use a temporary reviewId-less approach: just attach after submit
-        uploaded.push(URL.createObjectURL(file));
-        // Store the actual File objects for post-submit upload
-        (file as File & { _blob?: Blob })._blob = file;
-      }
-      setImageUrls((prev) => [...prev, ...uploaded]);
-    } finally {
-      setIsUploading(false);
+  // Photos are attached AFTER the review exists, because the upload endpoint is
+  // POST /reviews/:reviewId/images — it needs an id to attach to. So selecting a
+  // file here only stages it; nothing is sent until submit.
+  //
+  // This previously built a FormData, appended the file, and then never sent it
+  // anywhere — only the blob: preview was kept. The shopper saw their photos
+  // "attached" and they were silently discarded on submit, and lost entirely on
+  // reload, since a blob: URL does not outlive the page.
+  const handleFiles = (files: FileList) => {
+    const room = 5 - pendingFiles.length;
+    if (room <= 0) return;
+
+    const accepted: File[] = [];
+    const previews: string[] = [];
+    for (const file of Array.from(files).slice(0, room)) {
+      // Mirrors the server's own limits (reviews.controller.ts) so a file that
+      // would be rejected is caught before the shopper writes a whole review.
+      if (file.size > REVIEW_IMAGE_MAX_BYTES) continue;
+      if (!REVIEW_IMAGE_TYPES.includes(file.type)) continue;
+      accepted.push(file);
+      previews.push(URL.createObjectURL(file));
     }
+    if (!accepted.length) return;
+
+    setPendingFiles((prev) => [...prev, ...accepted]);
+    setImageUrls((prev) => [...prev, ...previews]);
+  };
+
+  const removeImage = (i: number) => {
+    // blob: URLs are held by the document until revoked; dropping the state
+    // reference alone leaks the decoded image for the life of the page.
+    const url = imageUrls[i];
+    if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+    setImageUrls((p) => p.filter((_, j) => j !== i));
+    setPendingFiles((p) => p.filter((_, j) => j !== i));
   };
 
   const handleSubmit = async () => {
@@ -300,15 +323,38 @@ function WriteReviewForm({
     setError('');
     setIsSubmitting(true);
     try {
-      await apiClient.post(
+      const created = await apiClient.post<{ id: string }>(
         API_ROUTES.PRODUCTS.REVIEWS(productSlug),
         { orderId, rating, title: title || undefined, body },
         { token: accessToken ?? undefined },
       );
+
+      // Attach staged photos to the review that now exists. Sent through
+      // apiFetch rather than apiClient: apiClient JSON.stringify's every body,
+      // so it cannot carry multipart at all.
+      //
+      // A failed photo upload does NOT fail the submit — the review itself is
+      // already saved, and throwing here would show an error for something that
+      // did succeed, and invite a resubmit that would duplicate it.
+      if (created?.id && pendingFiles.length) {
+        const form = new FormData();
+        // Field name must be "images": FilesInterceptor('images', 5).
+        for (const file of pendingFiles) form.append('images', file);
+        try {
+          await apiFetch(API_ROUTES.REVIEWS.UPLOAD_IMAGES(created.id), {
+            method: 'POST',
+            body: form as unknown as BodyInit,
+          });
+        } catch {
+          setError(t('photosFailedButReviewSaved'));
+        }
+      }
       queryClient.invalidateQueries({ queryKey: queryKeys.reviews(productSlug, {}) });
       queryClient.invalidateQueries({ queryKey: queryKeys.reviewSummary(productSlug) });
       setIsOpen(false);
-      setRating(0); setTitle(''); setBody(''); setOrderId(''); setImageUrls([]);
+      setRating(0); setTitle(''); setBody(''); setOrderId('');
+      imageUrls.forEach((u) => { if (u.startsWith('blob:')) URL.revokeObjectURL(u); });
+      setImageUrls([]); setPendingFiles([]);
       onSuccess();
     } catch (e: unknown) {
       const msg = (e as { message?: string })?.message ?? t('failedToSubmit');
@@ -430,7 +476,7 @@ function WriteReviewForm({
               <Image src={url} alt="" fill sizes="64px" className="object-cover" />
               <button
                 type="button"
-                onClick={() => setImageUrls((p) => p.filter((_, j) => j !== i))}
+                onClick={() => removeImage(i)}
                 className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 rounded-full flex items-center justify-center text-white"
               >
                 <X className="w-2.5 h-2.5" />
@@ -438,7 +484,7 @@ function WriteReviewForm({
             </div>
           ))}
           {imageUrls.length < 5 && (
-            <label className={`w-16 h-16 border-2 border-dashed border-border rounded-xl flex items-center justify-center cursor-pointer hover:border-primary hover:text-primary transition-colors ${isUploading ? 'opacity-50 cursor-wait' : ''}`}>
+            <label className={`w-16 h-16 border-2 border-dashed border-border rounded-xl flex items-center justify-center cursor-pointer hover:border-primary hover:text-primary transition-colors`}>
               <Camera className="w-5 h-5 text-muted" />
               <input
                 ref={fileRef}
@@ -446,7 +492,7 @@ function WriteReviewForm({
                 accept="image/jpeg,image/png,image/webp"
                 multiple
                 className="sr-only"
-                disabled={isUploading}
+                disabled={imageUrls.length >= 5}
                 onChange={(e) => e.target.files && handleFiles(e.target.files)}
               />
             </label>
@@ -488,6 +534,10 @@ interface Props {
   productSlug:   string;
   reviewSummary: ReviewSummaryDto | null;
 }
+
+/** Mirrors MAX_IMAGE_SIZE / ALLOWED_IMAGE_TYPES in reviews.controller.ts. */
+const REVIEW_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const REVIEW_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
   const t = useTranslations('product.etsyReviews');

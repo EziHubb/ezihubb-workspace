@@ -83,6 +83,7 @@
     "pleaseSelectRating": "Please select a star rating.",
     "reviewTooShort": "Review text must be at least 10 characters.",
     "pleaseSelectOrder": "Please select the order for this review.",
+    "photosFailedButReviewSaved": "Your review was saved, but the photos could not be uploaded.",
     "failedToSubmit": "Failed to submit review",
     "signIn": "Sign in",
     "toWriteReview": "to write a review",

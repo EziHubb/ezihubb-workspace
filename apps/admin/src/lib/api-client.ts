@@ -77,6 +77,32 @@ adminApi.interceptors.request.use(async (config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   const storeContext = getStoreContext();
   if (storeContext) config.headers[STORE_CONTEXT_HEADER] = storeContext;
+
+  // A FormData body must NOT go out with the instance's JSON content-type.
+  //
+  // axios ≥1 does more than mislabel it — transformRequest reads:
+  //
+  //     if (isFormData) {
+  //       return hasJSONContentType ? JSON.stringify(formDataToJSON(data)) : data;
+  //     }
+  //
+  // so with `Content-Type: application/json` set as an instance default, every
+  // FormData upload is silently CONVERTED to JSON. A File has no enumerable own
+  // properties, so the payload the server receives is `{"video":{}}` — a valid
+  // JSON request carrying no file at all. Multer then finds no multipart body
+  // and the handler's file argument is undefined.
+  //
+  // That failed quietly: it looked like a server-side upload bug rather than a
+  // header default, because the request succeeded at the transport level and
+  // arrived at the right route with valid auth.
+  //
+  // Deleting the header here lets the browser set `multipart/form-data` with
+  // its own boundary, which is the one thing application code cannot do itself
+  // (the boundary must match the encoded body).
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    config.headers.delete('Content-Type');
+  }
+
   return config;
 });
 

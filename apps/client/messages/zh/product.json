@@ -83,6 +83,7 @@
     "pleaseSelectRating": "请选择星级评分。",
     "reviewTooShort": "评价内容至少需要10个字符。",
     "pleaseSelectOrder": "请为该评价选择订单。",
+    "photosFailedButReviewSaved": "您的评价已保存，但照片上传失败。",
     "failedToSubmit": "评价提交失败",
     "signIn": "登录",
     "toWriteReview": "以撰写评价",

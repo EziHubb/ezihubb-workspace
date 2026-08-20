@@ -114,13 +114,25 @@ async function refreshTokens(): Promise<string | null> {
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { params, headers: extraHeaders, ...rest } = options;
 
+  // A FormData body must go out WITHOUT a content-type of our choosing.
+  //
+  // multipart requires a boundary token that has to match the encoded body,
+  // and only the runtime that serialises the body knows it. Sending
+  // `application/json` over a FormData body — which this did for every upload
+  // through this helper — produces a request the server cannot parse: multer
+  // finds no multipart body and the handler sees no file.
+  //
+  // It failed quietly, because the request itself succeeded: right URL, valid
+  // auth, 2xx-shaped round trip, no file.
+  const isFormDataBody = typeof FormData !== 'undefined' && rest.body instanceof FormData;
+
   const doFetch = async (withAuth: boolean): Promise<Response> => {
     const authHeader = withAuth ? getAuthHeader() : {};
     return fetch(buildUrl(path, params), {
       credentials: 'include',
       ...rest,
       headers: {
-        'Content-Type': 'application/json',
+        ...(isFormDataBody ? {} : { 'Content-Type': 'application/json' }),
         Accept:         'application/json',
         ...authHeader,
         ...getLocaleHeader(),

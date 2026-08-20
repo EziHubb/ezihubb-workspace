@@ -37,7 +37,42 @@ const MAX_PHOTOS = 20;
 const MAX_VIDEOS = 2;
 const VIDEO_MAX_DURATION_SECONDS = 10;
 const VIDEO_MAX_BYTES = 20 * 1024 * 1024;
-const VIDEO_ACCEPT = 'video/mp4,video/webm,video/quicktime';
+const VIDEO_MIME_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
+const VIDEO_EXTENSIONS = ['.mp4', '.webm', '.mov'];
+
+/**
+ * Both MIME types and extensions, on purpose.
+ *
+ * A MIME-only `accept` relies on the OS knowing the mapping, and Windows in
+ * particular often reports nothing for `.mov` — which greys out a file the
+ * server would happily take. Listing the extensions as well makes the picker
+ * filter on either signal.
+ */
+const VIDEO_ACCEPT = [...VIDEO_EXTENSIONS, ...VIDEO_MIME_TYPES].join(',');
+
+/**
+ * `accept` only filters the file dialog — it is a hint, not a constraint. Every
+ * OS picker offers an "All files" escape, so a non-video can still arrive here.
+ *
+ * Matches on EITHER signal, because browsers disagree about `.mov`: some report
+ * `video/quicktime`, some report an empty string. Requiring the MIME type alone
+ * would reject a valid clip on those browsers.
+ *
+ * This is an affordance, not a security control — the server enforces the same
+ * list in ProductsService.uploadVideo and is what actually decides.
+ */
+function isAcceptedVideo(file: File): boolean {
+  // A reported type is the stronger signal, so when there is one it decides —
+  // including when it disagrees with the extension. Falling through to the
+  // extension here would accept a PDF renamed to .mp4.
+  if (file.type) return VIDEO_MIME_TYPES.includes(file.type);
+
+  // Empty type means the browser could not work it out, not that the file is
+  // bad. Windows commonly reports nothing for .mov, and rejecting on that
+  // would block a clip the server accepts. Extension is the only signal left.
+  const name = file.name.toLowerCase();
+  return VIDEO_EXTENSIONS.some((ext) => name.endsWith(ext));
+}
 
 // ── Video upload helpers ──────────────────────────────────────────────────────
 
@@ -288,6 +323,17 @@ function VideoSlot({
 
   const handleFileSelected = async (file: File) => {
     setError(null);
+
+    // Checked before anything else. Without this, a PDF picked through the
+    // dialog's "All files" option fell through to the duration probe and came
+    // back as "Could not read this file as a video" — technically true, but it
+    // reads like the video is corrupt rather than like the wrong file was
+    // chosen, which sends people off re-exporting a clip that was never the
+    // problem.
+    if (!isAcceptedVideo(file)) {
+      setError('Only MP4, WebM, or MOV video files can be uploaded.');
+      return;
+    }
 
     if (file.size > VIDEO_MAX_BYTES) {
       setError(`Max ${VIDEO_MAX_BYTES / (1024 * 1024)} MB per video.`);
