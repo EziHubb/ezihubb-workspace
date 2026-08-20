@@ -46,6 +46,28 @@ function fmtDate(date: Date, locale: string): string {
   return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
 }
 
+// Sellers often enter variant option names/values in ALL CAPS ("SIZE",
+// "ADULT TEE - XS") — display-only transform, the raw string is still what's
+// used for matching/selection everywhere else.
+//
+// Size tokens are preserved rather than title-cased. A plain title-case turns
+// "XS" into "Xs" and "2XL" into "2xl", which is wrong on the one variant almost
+// every apparel listing has — the shopper picks a size from this dropdown, and
+// "2xl" reads like a typo. A token is left alone when it is already all-caps
+// and either contains a digit ("2XL", "3XL") or is built only from the letters
+// sizes use ("S", "XL", "XXL", "XXXL").
+//
+// Deliberately narrow. It does not try to protect every acronym — "USB-C" still
+// becomes "Usb-c" — because guessing which all-caps words are meaningful in
+// free text is not solvable, and sizes are the case that actually occurs here.
+function toTitleCase(s: string): string {
+  return s.replace(/\S+/g, (word) => {
+    const isAllCaps = word === word.toUpperCase() && /[A-Z]/.test(word);
+    if (isAllCaps && (/\d/.test(word) || /^[XSML]{1,4}$/.test(word))) return word;
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  });
+}
+
 // ── Field type from ProductDetailDto['customization'] ───────────────────────────────
 
 type CustomField = NonNullable<ProductDetailDto['customization']>['fields'][number];
@@ -301,7 +323,7 @@ function VariantDropdown({
   return (
     <div id={id}>
       <label className="text-sm font-medium block mb-1.5">
-        {label} <span className="text-red-500">*</span>
+        {toTitleCase(label)} <span className="text-red-500">*</span>
       </label>
       {hasError && !selected && (
         <p className="text-xs text-red-500 mb-1">{t('pleaseSelectOption')}</p>
@@ -311,7 +333,7 @@ function VariantDropdown({
           value={selected}
           onChange={(e) => onChange(e.target.value)}
           className={[
-            'w-full appearance-none border rounded-lg px-3 py-2.5 text-sm bg-white pr-8',
+            'w-full appearance-none border rounded-[8px] px-3 py-2.5 text-sm bg-white pr-8',
             'cursor-pointer transition-colors focus:outline-none focus:ring-2',
             selected
               ? 'border-primary text-secondary focus:ring-primary/20'
@@ -323,7 +345,7 @@ function VariantDropdown({
           <option value="">{t('selectOptionPlaceholder')}</option>
           {values.map((v) => (
             <option key={v} value={v}>
-              {priceLabels[v] ? `${v} (${priceLabels[v]})` : v}
+              {priceLabels[v] ? `${toTitleCase(v)} (${priceLabels[v]})` : toTitleCase(v)}
             </option>
           ))}
         </select>
@@ -351,7 +373,7 @@ function QuantityDropdown({
         <select
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="w-full appearance-none border border-border rounded-lg px-3 py-2.5 text-sm bg-white pr-8 cursor-pointer text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="w-full appearance-none border border-border rounded-[8px] px-3 py-2.5 text-sm bg-white pr-8 cursor-pointer text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
           {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
             <option key={n} value={n}>{n}</option>
@@ -610,7 +632,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="lg:sticky lg:top-4 space-y-4">
+    <div className="lg:sticky lg:top-4 space-y-3">
 
       {/* ── IN-DEMAND BADGE ── */}
       {(product.inDemandCount ?? 0) >= 2 && (

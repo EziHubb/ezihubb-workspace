@@ -289,7 +289,7 @@ export default async function ProductDetailPage({
         </div>
 
         {/* ── MAIN 2-COL ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-6 lg:gap-8 mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-5 lg:gap-6 mb-8">
           <ProductGalleryColumn product={product} />
           <ProductPurchasePanelBoundary>
             <ProductPurchasePanel

@@ -68,7 +68,7 @@ export function Accordion({
         type="button"
         onClick={() => setIsOpen((o) => !o)}
         aria-expanded={isOpen}
-        className="w-full flex items-center justify-between px-4 py-3.5 text-sm font-medium text-secondary hover:bg-[#FAFAF8] transition-colors text-left"
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-secondary hover:bg-[#FAFAF8] transition-colors text-left"
       >
         {title}
         <ChevronDown
@@ -78,7 +78,7 @@ export function Accordion({
         />
       </button>
       {isOpen && (
-        <div className="px-4 pb-4 text-sm text-secondary">
+        <div className="px-4 pb-3.5 text-sm text-secondary">
           {children}
         </div>
       )}
