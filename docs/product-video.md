@@ -129,6 +129,83 @@ The POST returns the created `ProductVideoDto` alone, not the legacy
 `{ url, videoUrls, video }` envelope the admin route still hands back. A new
 API surface has no reason to inherit a deprecated field.
 
+## Attaching a video that is hosted elsewhere
+
+```
+POST /partner/products/:id/videos/from-url
+POST /admin/products/:id/videos/from-url
+```
+
+Takes the source payload verbatim — snake_case field names, unlike the rest of
+the API, because the point is that a caller can pass what they already have
+without reshaping it. The ValidationPipe whitelists by declared name, so these
+names have to match the incoming spelling exactly or they would be stripped in
+silence:
+
+```json
+{
+  "url": "https://<allowed-host>/video/abc.mp4",
+  "thumbnail_urls": ["https://<allowed-host>/abc_105.jpg", "https://<allowed-host>/abc.jpg"],
+  "duration": "PT10S",
+  "uploaded_at": "2026-08-09T07:52:56-04:00"
+}
+```
+
+Nothing is fetched, uploaded or transcoded. The URLs are stored as given, so
+none of it is verified: the duration is whatever the caller says, the poster is
+whatever they point at, and the media can change or vanish afterwards without
+us knowing. That is a fair trade for a trusted source and would not be for
+arbitrary input — which is why the host allowlist is the gate, not a garnish.
+
+### thumbnail_urls order is REVERSED between request and response
+
+| | Order |
+|---|---|
+| Request `thumbnail_urls` | **[square, full-size]** |
+| Response `thumbnailUrls` | **[full-size, square]** |
+
+The request follows the source payload, which lists the small square crop
+first. The response cannot: the gallery and the card both take index 0 as the
+poster, and a 105px square stretched to gallery size looks like a broken image.
+Reversing the response to match would have silently changed the poster on every
+listing that already had one. The asymmetry is resolved once, in
+`attachVideoFromUrl`, where the columns are named rather than positional.
+
+### Host allowlist
+
+`PARTNER_MEDIA_HOST_ALLOWLIST` — comma-separated hostnames. Matching is on the
+full hostname and exact: `example.com` grants neither `sub.example.com` nor
+`example.com.attacker.net`.
+
+- **Unset** falls back to a seeded default (currently `v.etsystatic.com`).
+- **Set but empty** denies everything, which is how you switch the endpoint off
+  without a code change. `??` only falls back on an absent variable, so this
+  distinction is real and deliberate.
+
+Every URL in the payload is checked, posters included — a poster renders on the
+card and the gallery exactly as the video does, so letting one in from an
+unvetted host through a side door would defeat the gate.
+
+Adding a host is a trust decision, not a config tweak: our product pages will
+hotlink that infrastructure, so its operator controls whether the media stays
+up, can serve different bytes later under the same URL, and sees a request from
+every shopper who loads the page.
+
+### Why URLs into our own storage are refused
+
+Not tidiness. Deleting a video calls `storage.extractKey(url)` and removes the
+resulting object, and `extractKey` returns the URL unchanged when it does not
+recognise the host — so deleting an external video removes nothing. But a URL
+pointing INTO our own CDN resolves to a real key. Without this check a partner
+could attach another store's video URL to their own product, delete it, and
+destroy that store's object. Anything in our storage must arrive through the
+upload endpoint, which knows who owns it.
+
+Deletion now also skips object storage entirely for any URL we do not host, via
+`StorageService.isOwnStorageUrl`. That method must keep mirroring
+`extractKey`: if they disagree we either leak an object we own or reach for one
+we do not.
+
 ## Not done
 
 - **`ProductListItemDto` still has no videos.** The search/grid payload carries

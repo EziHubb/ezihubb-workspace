@@ -57,7 +57,7 @@ import {
   CustomizationTemplateDto,
   SetAttributesDto,
 } from './dto/create-product-detail.dto';
-import { ReorderImagesDto, AttachImagesDto, DeleteVideoDto, GeneratePrintFileDto, ApprovePrintFileDto, AttachPrintFileDto, UploadDigitalFilesDto, ReorderDigitalFilesDto } from './dto/product-image.dto';
+import { ReorderImagesDto, AttachImagesDto, DeleteVideoDto, GeneratePrintFileDto, ApprovePrintFileDto, AttachPrintFileDto, UploadDigitalFilesDto, ReorderDigitalFilesDto , AttachVideoDto } from './dto/product-image.dto';
 
 // ── Variation DTOs ────────────────────────────────────────────────────────────
 
@@ -633,6 +633,18 @@ export class AdminProductsController {
     @UploadedFile() file: Express.Multer.File,
   ): Promise<{ url: string; videoUrls: string[]; video: ProductVideoDto }> {
     return this.productsService.uploadVideo(id, file);
+  }
+
+  // POST /admin/products/:id/videos/from-url
+  @Post(':id/videos/from-url')
+  @ApiOperation({ summary: '[Admin] Attach an already-hosted video by URL (no upload). Host must be allowlisted server-side.' })
+  @ApiResponse({ status: 201, type: ProductVideoDto })
+  @HttpCode(HttpStatus.CREATED)
+  attachVideo(
+    @Param('id', ParseCuidPipe) id: string,
+    @Body() dto: AttachVideoDto,
+  ): Promise<ProductVideoDto> {
+    return this.productsService.attachVideoFromUrl(id, dto);
   }
 
   // DELETE /admin/products/:id/videos

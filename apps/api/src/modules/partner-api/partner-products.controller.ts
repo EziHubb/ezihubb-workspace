@@ -28,7 +28,7 @@ import { ProductQueryDto } from '../products/dto/product-query.dto';
 import { CreateProductDto } from '../products/dto/create-product.dto';
 import { UpdateProductDto } from '../products/dto/update-product.dto';
 import { ProductImageResponseDto, DigitalFileResponseDto, ProductVideoDto } from '../products/dto/product-response.dto';
-import { AttachImagesDto, ReorderImagesDto, AttachPrintFileDto, UploadDigitalFilesDto, ReorderDigitalFilesDto } from '../products/dto/product-image.dto';
+import { AttachImagesDto, ReorderImagesDto, AttachPrintFileDto, UploadDigitalFilesDto, ReorderDigitalFilesDto, AttachVideoDto } from '../products/dto/product-image.dto';
 
 @Controller('partner/products')
 @UseGuards(ApiKeyGuard, ApiKeyThrottlerGuard)
@@ -259,6 +259,24 @@ export class PartnerProductsController {
     // deprecated field.
     const { video } = await this.productsService.uploadVideo(id, file);
     return video;
+  }
+
+  @Post(':id/videos/from-url')
+  @ApiOperation({
+    summary:
+      'Attach a video that is already hosted elsewhere. Nothing is fetched or ' +
+      'uploaded — the URLs are stored as given, so the caller owns their accuracy. ' +
+      'The host must be on the server-side allowed media host list.',
+  })
+  @ApiResponse({ status: 201, type: ProductVideoDto })
+  @HttpCode(HttpStatus.CREATED)
+  async attachVideo(
+    @Req() req: Request & { store: Store },
+    @Param('id') id: string,
+    @Body() dto: AttachVideoDto,
+  ): Promise<ProductVideoDto> {
+    await this.productsService.findByIdForStore(id, req.store.id);
+    return this.productsService.attachVideoFromUrl(id, dto);
   }
 
   @Delete(':id/videos/:videoId')

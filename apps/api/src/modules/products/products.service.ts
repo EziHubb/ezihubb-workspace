@@ -37,6 +37,7 @@ import { mapEtsyVariationSummaryToVariants } from './etsy-variation-summary.mapp
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductListItemDto } from './dto/product-list-item.dto';
 import { toProductVideoDto, type ProductVideoRow } from './product-video.mapper';
+import { checkExternalMediaUrl, parseIso8601Duration } from './external-video';
 import {
   ProductResponseDto,
   VariantResponseDto,
@@ -2326,6 +2327,105 @@ export class ProductsService {
     return videos.map((v) => this.toVideoDto(v));
   }
 
+  /**
+   * Records a video that is already hosted somewhere else. Nothing is fetched,
+   * nothing is uploaded, nothing is transcoded — the URLs are stored as given.
+   *
+   * The trade that buys: we cannot verify any of it. The duration is whatever
+   * the caller says, the poster is whatever they point at, and the media can
+   * change or disappear afterwards without us knowing. That is acceptable for
+   * a trusted, allowlisted source and would not be for arbitrary input, which
+   * is why the host allowlist is the gate rather than a nice-to-have.
+   */
+  async attachVideoFromUrl(
+    productId: string,
+    dto: {
+      url: string;
+      thumbnail_urls?: string[];
+      duration?: string;
+      uploaded_at?: string;
+    },
+  ): Promise<ProductVideoDto> {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { slug: true },
+    });
+    if (!product)
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+
+    const isOwn = (u: string) => this.storage.isOwnStorageUrl(u);
+
+    // Every URL goes through the same gate, posters included: a poster is
+    // rendered on the card and the gallery just as the video is, so allowing
+    // one from an unvetted host through a side door would defeat the point.
+    for (const candidate of [dto.url, ...(dto.thumbnail_urls ?? [])]) {
+      const check = checkExternalMediaUrl(candidate, isOwn);
+      if (!check.ok) {
+        throw new BadRequestException({
+          code: check.reason,
+          message:
+            check.reason === 'ERR_MEDIA_URL_OWN_STORAGE'
+              ? 'That URL points at our own storage — upload the file instead of attaching it by URL.'
+              : check.reason === 'ERR_MEDIA_HOST_NOT_ALLOWED'
+                ? `Host "${check.host}" is not on the allowed media host list.`
+                : 'Media URLs must be absolute https URLs.',
+        });
+      }
+    }
+
+    const existingCount = await this.prisma.productVideo.count({ where: { productId } });
+    if (existingCount >= MAX_VIDEOS_PER_PRODUCT)
+      throw new BadRequestException({
+        code: 'ERR_TOO_MANY_VIDEOS',
+        message: `Only ${MAX_VIDEOS_PER_PRODUCT} videos allowed per product — remove one first.`,
+      });
+
+    // Incoming order is [square, full-size]; the columns are named, so the
+    // asymmetry with the response order is resolved once, here, rather than
+    // being carried around as a convention nobody remembers.
+    const [square, full] = dto.thumbnail_urls ?? [];
+
+    let createdAt: Date | undefined;
+    if (dto.uploaded_at) {
+      const parsed = new Date(dto.uploaded_at);
+      if (Number.isNaN(parsed.getTime()))
+        throw new BadRequestException({
+          code: 'ERR_VALIDATION',
+          message: 'uploaded_at is not a valid date.',
+        });
+      // A future timestamp would sort ahead of everything and read as nonsense
+      // in any "uploaded" column. Small clock skew is tolerated.
+      if (parsed.getTime() > Date.now() + 60_000)
+        throw new BadRequestException({
+          code: 'ERR_VALIDATION',
+          message: 'uploaded_at cannot be in the future.',
+        });
+      createdAt = parsed;
+    }
+
+    const [video, updated] = await this.prisma.$transaction([
+      this.prisma.productVideo.create({
+        data: {
+          productId,
+          url: dto.url,
+          posterUrl: full ?? null,
+          posterSquareUrl: square ?? null,
+          durationSeconds: parseIso8601Duration(dto.duration),
+          sortOrder: existingCount,
+          ...(createdAt ? { createdAt } : {}),
+        },
+      }),
+      this.prisma.product.update({
+        where: { id: productId },
+        data: { videoUrls: { push: dto.url } },
+        select: { slug: true },
+      }),
+    ]);
+    await this.redis.del(CacheKeys.product(updated.slug));
+
+    return this.toVideoDto(video);
+  }
+
   async uploadVideo(
     productId: string,
     file: Express.Multer.File,
@@ -2426,7 +2526,14 @@ export class ProductsService {
     posterUrl: string | null;
     posterSquareUrl: string | null;
   }): Promise<void> {
-    const urls = [v.url, v.posterUrl, v.posterSquareUrl].filter((u): u is string => !!u);
+    // Only objects we host. A video attached by URL lives on someone else's
+    // infrastructure — there is nothing of ours to delete, and extractKey()
+    // returns such a URL unchanged, so without this filter we would issue a
+    // delete for a "key" that is really a foreign URL.
+    const urls = [v.url, v.posterUrl, v.posterSquareUrl]
+      .filter((u): u is string => !!u)
+      .filter((u) => this.storage.isOwnStorageUrl(u));
+
     await Promise.all(
       urls.map((u) => {
         const key = this.storage.extractKey(u);

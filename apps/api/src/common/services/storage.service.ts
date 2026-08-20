@@ -138,6 +138,20 @@ export class StorageService {
   }
 
   /** Extract the storage key from a full URL */
+  /**
+   * True when this URL points at an object we host.
+   *
+   * Mirrors `extractKey`'s matching exactly, and must keep doing so: callers
+   * use this to decide whether a delete should touch object storage at all.
+   * If the two ever disagree, either we skip deleting something we own (a
+   * leak) or we try to delete something we do not (see the cross-store hazard
+   * documented in external-video.ts).
+   */
+  isOwnStorageUrl(url: string): boolean {
+    if (this.cdnUrl && url.startsWith(this.cdnUrl)) return true;
+    return url.startsWith(`https://${this.bucket}.s3.amazonaws.com/`);
+  }
+
   extractKey(url: string): string {
     if (this.cdnUrl && url.startsWith(this.cdnUrl)) {
       return url.slice(this.cdnUrl.length).replace(/^\//, '');
