@@ -358,7 +358,26 @@ else
     if echo "$BUILD_TARGETS" | grep -qw migrate; then
         echo ""
         echo -e "${YELLOW}Running pending database migrations (against RDS)...${NC}"
-        $SSH "cd '$DEPLOY_PATH' && $DC run --rm migrate" || echo -e "${YELLOW}⚠ Migration step failed or had nothing to apply — check logs above.${NC}"
+        # Aborts the deploy on failure, on purpose.
+        #
+        # This used to end in `|| echo "⚠ Migration step failed or had nothing
+        # to apply"`, which swallowed the exit code: a migration that failed
+        # printed a warning and the deploy carried straight on to restart the
+        # apps. New code then ran against a schema that had not been migrated,
+        # and the run still ended with "✓ Deploy complete!".
+        #
+        # The old message also conflated two very different outcomes — a real
+        # failure and "nothing to apply" — so even a human reading the log
+        # could not tell which had happened. `prisma migrate deploy` exits 0
+        # when there is nothing pending, so a non-zero code here always means
+        # a genuine failure.
+        if ! $SSH "cd '$DEPLOY_PATH' && $DC run --rm migrate"; then
+            echo -e "${RED}✗ Migration failed — aborting before any app restarts.${NC}"
+            echo -e "${YELLOW}  The running containers are untouched and still serving the previous release.${NC}"
+            echo -e "${YELLOW}  Fix the migration, then re-run this script.${NC}"
+            exit 1
+        fi
+        echo -e "${GREEN}✓ Migrations applied${NC}"
     fi
 
     # ── Phase 4: restart every changed app service in one compose call ─────
