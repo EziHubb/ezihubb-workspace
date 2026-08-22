@@ -103,7 +103,7 @@ export function SearchTopBar({
   ] as const;
 
   return (
-    <div className="sticky top-16 z-20 bg-background/95 backdrop-blur-sm border-b border-border">
+    <div className="sticky top-[var(--header-offset)] z-20 bg-background/95 backdrop-blur-sm border-b border-border">
       <div className="w-full max-w-[1746px] mx-auto px-6 lg:px-12 py-3">
 
         {/* Row 1: filter toggle (mobile) + result count + sort */}

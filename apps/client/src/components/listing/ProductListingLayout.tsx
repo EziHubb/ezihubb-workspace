@@ -125,7 +125,7 @@ export function ProductListingLayout({
       </header>
 
       {/* ── Mobile: sticky toolbar ─────────────────────────────────────────── */}
-      <div className="md:hidden sticky top-16 z-30 bg-background/95 backdrop-blur-sm border-b border-border -mx-4 px-4 py-3 mb-4 flex items-center justify-between gap-3">
+      <div className="md:hidden sticky top-[var(--header-offset)] z-30 bg-background/95 backdrop-blur-sm border-b border-border -mx-4 px-4 py-3 mb-4 flex items-center justify-between gap-3">
         <button
           type="button"
           onClick={() => setSheetOpen(true)}

@@ -244,7 +244,7 @@ export function SearchPageClient() {
         >
           <aside
             className={[
-              'w-[220px] pt-4 pr-4 sticky top-16 self-start',
+              'w-[220px] pt-4 pr-4 sticky top-[var(--header-offset)] self-start',
               'transition-transform duration-300 ease-out',
               filtersOpen ? 'translate-x-0' : '-translate-x-full',
             ].join(' ')}

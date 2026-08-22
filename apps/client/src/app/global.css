@@ -3,6 +3,19 @@
 @tailwind utilities;
 
 :root {
+  /* How far the viewport top is from the first usable content pixel.
+     StickyHeader overwrites this with the header's measured height, and
+     with 0 while the header is hidden; sticky elements further down the page
+     offset by it instead of hard-coding a number.
+
+     Declared here rather than as a Tailwind arbitrary-value fallback so the
+     utility stays comma-free — top-[var(--header-offset,64px)] is a parser
+     risk, and if the class were dropped the element would silently stop
+     being sticky at all.
+
+     64px is the mobile header height, which is what these offsets assumed
+     before, so any page without a StickyHeader behaves exactly as it did. */
+  --header-offset: 64px;
   /* Theme CSS vars — overridden server-side via <style> tag from DB settings */
   --c-primary: 232 93 63;
   --c-primary-dark: #C44A2E;
