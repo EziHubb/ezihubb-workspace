@@ -36,12 +36,15 @@ export function StickyHeader({ children }: { children: React.ReactNode }) {
       // Ignore sub-pixel and rubber-band jitter. Without this, a trackpad's
       // tiny oscillations flip the header back and forth while the page is
       // effectively still.
-      if (Math.abs(delta) < 6) return;
+      if (Math.abs(delta) < 4) return;
 
-      // Never hidden near the top. Otherwise the first flick of the wheel
-      // takes the header away before the reader has scrolled past anything,
-      // which reads as the page eating its own navigation.
-      if (y < 120) {
+      // Never hidden right at the top, so the first flick of the wheel does not
+      // take the navigation away before the reader has scrolled past anything.
+      //
+      // 60, not 120: on a product page the gallery starts within the first
+      // screenful, so waiting for 120px meant the header was still there at the
+      // exact moment its space was needed most.
+      if (y < 60) {
         setHidden(false);
       } else {
         setHidden(delta > 0);
