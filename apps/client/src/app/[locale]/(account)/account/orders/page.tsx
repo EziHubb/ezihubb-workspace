@@ -252,7 +252,7 @@ export default function OrdersPage() {
 
       {/* Empty state */}
       {!isLoading && orders.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+        <div className="flex flex-col items-center justify-center py-12 text-center gap-4">
           <ShoppingBag className="w-14 h-14 text-muted/30" aria-hidden />
           <div>
             <p className="font-semibold text-secondary text-base">{t('orders.empty.noOrders')}</p>

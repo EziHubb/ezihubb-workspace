@@ -356,7 +356,7 @@ export default function WishlistPage() {
 
       {/* Empty state */}
       {!isLoading && items.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+        <div className="flex flex-col items-center justify-center py-12 text-center gap-4">
           <HeartOff className="w-14 h-14 text-muted/30" aria-hidden />
           <div>
             <p className="font-semibold text-secondary text-base">{t('nothingSaved')}</p>

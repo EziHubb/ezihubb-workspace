@@ -91,7 +91,7 @@ export default function MyOffersPage() {
       )}
 
       {!isLoading && offers.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+        <div className="flex flex-col items-center justify-center py-12 text-center gap-4">
           <HandCoins className="w-14 h-14 text-muted/30" aria-hidden />
           <p className="text-sm text-muted">{t('empty')}</p>
         </div>
