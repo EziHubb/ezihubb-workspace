@@ -21,10 +21,10 @@ import {
   JOBS,
   QUEUES,
   SendEmailJobData,
-  OrderConfirmedJobData,
   DEFAULT_JOB_OPTIONS,
-  FULFILLMENT_JOB_OPTIONS,
 } from '../../queue/queue.constants';
+import { EventBusService } from '../../queue/event-bus.service';
+import { DOMAIN_EVENTS } from '../../queue/domain-events';
 import {
   CreatePaymentIntentDto,
   PaymentIntentResponseDto,
@@ -34,9 +34,7 @@ import {
   PaymentResponseDto,
   GiftCardResponseDto,
 } from './dto/payment-response.dto';
-import { AnalyticsService } from '../analytics/analytics.service';
 import { CommissionService } from '../affiliates/commission.service';
-import { LowStockService } from '../products/low-stock.service';
 
 const WEBHOOK_IDEMPOTENCY_TTL = 24 * 60 * 60; // 24 hours in seconds
 const REFUND_WINDOW_DAYS = 60;
@@ -50,12 +48,9 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly config: ConfigService,
-    private readonly analyticsService: AnalyticsService,
     private readonly commissionService: CommissionService,
-    private readonly lowStockService: LowStockService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
-    @InjectQueue(QUEUES.ORDER_PROCESSING) private readonly orderQueue: Queue,
-    @InjectQueue(QUEUES.FULFILLMENT) private readonly fulfillmentQueue: Queue,
+    private readonly eventBus: EventBusService,
   ) {
     const secretKey = config.get<string>('STRIPE_SECRET_KEY') ?? '';
     this.stripe = new Stripe(secretKey, {
@@ -289,162 +284,23 @@ export class PaymentsService {
       }
     });
 
-    // ── Confirm StoreOrders and notify sellers ─────────────────────────────
-    this.confirmStoreOrders(payment.orderId).catch((err: Error) =>
-      this.logger.error(`StoreOrder confirmation failed for order ${payment.orderId}: ${err.message}`),
-    );
-
-    // Queue notifications outside transaction
-    const customerEmail =
-      payment.order.guestEmail ??
-      (await this.getUserEmail(payment.order.userId));
-    if (customerEmail) {
-      await this.emailQueue.add(
-        JOBS.SEND_EMAIL,
-        {
-          to: customerEmail,
-          template: 'order-confirmed',
-          subject: `Order ${payment.order.orderNumber} Confirmed`,
-          data: { orderNumber: payment.order.orderNumber },
-        } satisfies SendEmailJobData,
-        DEFAULT_JOB_OPTIONS,
-      );
-
-      if (payment.order.isDigital) {
-        const shopUrl = this.config.get<string>('NEXT_PUBLIC_URL') ?? 'https://ezihubb.com';
-        await this.emailQueue.add(
-          JOBS.SEND_EMAIL,
-          {
-            to: customerEmail,
-            template: 'digital-download-ready',
-            subject: `Your files are ready — Order ${payment.order.orderNumber}`,
-            data: {
-              orderNumber: payment.order.orderNumber,
-              downloadUrl: `${shopUrl.replace(/\/$/, '')}/orders/${payment.order.orderNumber}`,
-              year: new Date().getFullYear(),
-            },
-          } satisfies SendEmailJobData,
-          DEFAULT_JOB_OPTIONS,
-        );
-      }
-    }
-
-    await this.orderQueue.add(
-      JOBS.ORDER_CONFIRMED,
-      {
-        orderId: payment.orderId,
-        orderNumber: payment.order.orderNumber,
-        customerEmail: customerEmail ?? '',
-      } satisfies OrderConfirmedJobData,
-      DEFAULT_JOB_OPTIONS,
-    );
-
-    // Fire-and-forget commission — must not throw or block the webhook response
-    this.commissionService
-      .createForOrder(payment.orderId)
-      .catch((err: Error) =>
-        this.logger.error(`Commission creation failed for order ${payment.orderId}: ${err.message}`),
-      );
-
-    // Fire-and-forget low-stock inventory check
-    this.lowStockService
-      .checkAfterOrder(payment.orderId)
-      .catch((err: Error) =>
-        this.logger.warn(`Low-stock check failed for order ${payment.orderId}: ${err.message}`),
-      );
-
-    // Fire-and-forget analytics — must not throw or block the webhook response
-    this.prisma.order
-      .findUnique({
-        where: { id: payment.orderId },
-        select: {
-          orderNumber: true,
-          total: true,
-          items: { select: { productId: true, productName: true, quantity: true, unitPrice: true } },
-        },
-      })
-      .then((o) => {
-        if (!o) return;
-        const orderData = {
-          id: payment.orderId,
-          orderNumber: o.orderNumber,
-          total: Number(o.total),
-          items: o.items.map((i) => ({ productId: i.productId ?? '', quantity: i.quantity })),
-        };
-        return Promise.all([
-          this.analyticsService.trackOrderConfirmed(orderData),
-          this.analyticsService.sendToGA4(payment.orderId, [
-            {
-              name: 'purchase',
-              params: {
-                transaction_id: o.orderNumber,
-                value: Number(o.total),
-                currency: 'USD',
-                items: o.items.map((i) => ({
-                  item_id:   i.productId,
-                  item_name: i.productName,
-                  price:     Number(i.unitPrice),
-                  quantity:  i.quantity,
-                })),
-              },
-            },
-          ]),
-        ]);
-      })
-      .catch((err: Error) =>
-        this.logger.warn(`Analytics tracking failed for order ${payment.orderId}: ${err.message}`),
-      );
+    // ── Publish, and stop knowing who cares ────────────────────────────────
+    //
+    // This used to be seven calls: two emails, three queue adds and two bare
+    // promises, each naming a specific consumer. Every new side effect meant
+    // editing the payment webhook — the most critical path in the system — and
+    // the four bare promises had no retry at all, so a transient failure lost
+    // the work permanently with only a log line. Two of them moved money.
+    //
+    // Now one event goes out and the routing table in domain-events.ts decides
+    // the rest. Adding a consumer no longer touches this file.
+    //
+    // Awaited, not fire-and-forget: if the event cannot be queued we want the
+    // webhook to fail so Stripe redelivers it. Swallowing that would put us
+    // back where we started, with side effects silently not happening.
+    await this.eventBus.publish(DOMAIN_EVENTS.ORDER_PAID, payment.orderId);
   }
 
-  // ─── StoreOrder confirmation (fire-and-forget after payment) ────────────
-
-  private async confirmStoreOrders(orderId: string): Promise<void> {
-    const storeOrders = await this.prisma.storeOrder.findMany({
-      where:   { orderId },
-      include: { store: { include: { owner: { select: { email: true, firstName: true } } } } },
-    });
-
-    for (const so of storeOrders) {
-      // Both writes must land together — a crash between them would confirm
-      // the order without crediting the store's stats, or vice versa.
-      await this.prisma.$transaction([
-        this.prisma.storeOrder.update({
-          where: { id: so.id },
-          data:  { status: 'CONFIRMED' },
-        }),
-        this.prisma.store.update({
-          where: { id: so.storeId },
-          data:  {
-            totalOrders:   { increment: 1 },
-            totalRevenue:  { increment: Number(so.sellerEarnings) },
-          },
-        }),
-      ]);
-
-      // Notify seller of new order
-      if (so.store.owner?.email) {
-        await this.emailQueue.add(JOBS.SEND_EMAIL, {
-          to:       so.store.owner.email,
-          template: 'new-store-order',
-          subject:  `New order for ${so.store.name}`,
-          data: {
-            firstName:  so.store.owner.firstName,
-            storeName:  so.store.name,
-            orderId:    so.id,
-            earnings:   Number(so.sellerEarnings).toFixed(2),
-          },
-        }, DEFAULT_JOB_OPTIONS);
-      }
-
-      // Push to a connected fulfillment provider (e.g. Printify) if any of this
-      // store's items are mapped — no-op inside the job if none are.
-      await this.fulfillmentQueue.add(
-        JOBS.PUSH_STORE_ORDER,
-        { storeOrderId: so.id },
-        FULFILLMENT_JOB_OPTIONS,
-      );
-    }
-  }
 
   private async onPaymentIntentFailed(
     intent: any,
@@ -1068,56 +924,19 @@ export class PaymentsService {
           }
         });
 
-        // ── Fire-and-forget: email ──────────────────────────────────────────
-        const customer = payment.order.user;
-        const customerEmail = customer?.email ?? (payment.order as any).guestEmail as string | null;
-        if (customerEmail) {
-          await this.emailQueue.add(
-            JOBS.SEND_EMAIL,
-            {
-              to:       customerEmail,
-              template: 'order-confirmation',
-              subject:  `Order confirmed — #${payment.order.orderNumber}`,
-              data: {
-                firstName:   customer?.firstName ?? 'there',
-                orderNumber: payment.order.orderNumber,
-                total:       Number(payment.order.total).toFixed(2),
-                shopUrl:     process.env['NEXT_PUBLIC_URL'] ?? '',
-              },
-            } satisfies SendEmailJobData,
-            DEFAULT_JOB_OPTIONS,
-          );
-
-          if (payment.order.isDigital) {
-            const shopUrl = process.env['NEXT_PUBLIC_URL'] ?? 'https://ezihubb.com';
-            await this.emailQueue.add(
-              JOBS.SEND_EMAIL,
-              {
-                to: customerEmail,
-                template: 'digital-download-ready',
-                subject: `Your files are ready — Order ${payment.order.orderNumber}`,
-                data: {
-                  orderNumber: payment.order.orderNumber,
-                  downloadUrl: `${shopUrl.replace(/\/$/, '')}/orders/${payment.order.orderNumber}`,
-                  year: new Date().getFullYear(),
-                },
-              } satisfies SendEmailJobData,
-              DEFAULT_JOB_OPTIONS,
-            );
-          }
-        }
-        await this.orderQueue.add(
-          JOBS.ORDER_CONFIRMED,
-          { orderId: payment.orderId, orderNumber: payment.order.orderNumber, customerEmail: customerEmail ?? '' } satisfies OrderConfirmedJobData,
-          DEFAULT_JOB_OPTIONS,
-        );
-
-        // ── Fire-and-forget: commission ─────────────────────────────────────
-        this.commissionService
-          .createForOrder(payment.orderId)
-          .catch((err: Error) =>
-            this.logger.error(`PayPal commission failed for order ${payment.orderId}: ${err.message}`),
-          );
+        // Same event as the Stripe path, so PayPal orders get the same six
+        // subscribers. They did not before: this branch sent the buyer emails,
+        // queued ORDER_CONFIRMED and kicked off commission, but never called
+        // confirmStoreOrders — so a PayPal order left every seller's StoreOrder
+        // unconfirmed and their totalOrders/totalRevenue uncredited, and never
+        // sent the seller their "new order" mail or pushed to fulfilment.
+        // Low-stock and analytics were missing too, so PayPal revenue never
+        // reached GA4.
+        //
+        // That gap is the whole argument for publishing rather than listing
+        // consumers: two publishers of one event drifted into two different
+        // sets of side effects, and nothing failed loudly enough to notice.
+        await this.eventBus.publish(DOMAIN_EVENTS.ORDER_PAID, payment.orderId);
 
         this.logger.log(`PayPal CAPTURE.COMPLETED: order ${payment.orderId} CONFIRMED`);
         break;

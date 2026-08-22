@@ -10,6 +10,8 @@ export const QUEUES = {
   MODERATION:           'moderation',
   ORDER_TRACKING:       'order-tracking',
   FULFILLMENT:          'fulfillment',
+  /** The broker. Publishers post one event here; DomainEventProcessor fans it out. */
+  DOMAIN_EVENTS:        'domain-events',
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
@@ -26,6 +28,13 @@ export const JOBS = {
   // Order
   ORDER_CONFIRMED:      'order-confirmed',
   ORDER_AUTO_COMPLETE:  'order-auto-complete',
+  // Post-payment fan-out. These four used to run as bare promises with a
+  // .catch(log) straight off the Stripe webhook: no retry, no dead-letter, so
+  // a transient failure lost the work permanently and left only a log line.
+  // Two of them move money (seller revenue, affiliate commission).
+  CONFIRM_STORE_ORDERS:     'confirm-store-orders',
+  TRACK_ORDER_ANALYTICS:    'track-order-analytics',
+  NOTIFY_BUYER_ORDER_PAID:  'notify-buyer-order-paid',
 
   // Scheduled (paired with cron triggers)
   DAILY_REVIEW_REMINDERS:    'daily-review-reminders',
@@ -38,6 +47,7 @@ export const JOBS = {
 
   // Low stock
   DAILY_LOW_STOCK_SCAN: 'daily-low-stock-scan',
+  CHECK_ORDER_LOW_STOCK: 'check-order-low-stock',
 
   // Translations
   TRANSLATE_ENTITY: 'translate-entity',
@@ -45,6 +55,9 @@ export const JOBS = {
   // Moderation
   CHECK_TEXT:  'check-text',
   CHECK_IMAGE: 'check-image',
+
+  // Affiliate
+  CREATE_ORDER_COMMISSION: 'create-order-commission',
 
   // Order Tracking
   POLL_CARRIER_STATUS:    'poll-carrier-status',
@@ -55,6 +68,7 @@ export const JOBS = {
 } as const;
 
 export type JobName = (typeof JOBS)[keyof typeof JOBS];
+
 
 /** Default BullMQ job options applied to every queue */
 export const DEFAULT_JOB_OPTIONS = {
@@ -102,6 +116,11 @@ export interface OrderConfirmedJobData {
 }
 
 export interface OrderAutoCompleteJobData {
+  orderId: string;
+}
+
+/** Shared by the post-payment fan-out jobs, which all key off one order. */
+export interface OrderIdJobData {
   orderId: string;
 }
 

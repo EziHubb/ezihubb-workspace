@@ -38,6 +38,12 @@ export class LowStockProcessor extends WorkerHost implements OnModuleInit {
   async process(job: Job): Promise<void> {
     if (job.name === JOBS.DAILY_LOW_STOCK_SCAN) {
       await this.lowStockService.dailyScan();
+    } else if (job.name === JOBS.CHECK_ORDER_LOW_STOCK) {
+      // Was a bare promise off the Stripe webhook. Read-and-alert, so a repeat
+      // run costs at most a duplicate alert and never duplicate data.
+      await this.lowStockService.checkAfterOrder(
+        (job.data as { orderId: string }).orderId,
+      );
     } else {
       this.logger.warn(`Unknown low-stock job: ${job.name}`);
     }
