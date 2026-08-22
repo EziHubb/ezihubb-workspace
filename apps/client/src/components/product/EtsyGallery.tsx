@@ -8,6 +8,7 @@ import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { safeArr } from '@ezihubb/utils';
 import type { ProductDetailDto } from '@ezihubb/types';
+import { useVariationPhoto } from './VariationPhotoContext';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -213,6 +214,26 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
 
   const [activeIndex,  setActiveIndex]  = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  // Bring forward the photo the shopper's chosen option is linked to.
+  //
+  // Resolved here rather than in the buy panel because only the gallery knows
+  // where a photo sits in `media` — videos are interleaved, so a position
+  // worked out from `product.images` alone would land on the wrong slide.
+  //
+  // A missing id is left alone on purpose: options without a linked photo
+  // should not yank the gallery back to the first slide, which would undo
+  // whatever the shopper was looking at.
+  const { focusedImageId, focusSeq } = useVariationPhoto();
+  useEffect(() => {
+    if (!focusedImageId) return;
+    const i = media.findIndex((m) => m.type === 'image' && m.id === focusedImageId);
+    if (i >= 0) setActiveIndex(i);
+  // Keyed on the counter, not the id: re-picking the option that is already
+  // focused has to bring its photo back, and the id alone would not have moved.
+  // `media` is rebuilt from props every render, so it cannot be a dependency.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusSeq]);
 
   const t        = useTranslations('product.gallery');
   const locale   = useLocale();

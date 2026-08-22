@@ -18,15 +18,18 @@ interface VariantImagePickerProps {
 }
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
+// Exported because two callers need the same picker on different commit rules:
+// the summary table saves the moment you choose, while the Manage Variations
+// modal has to hold the choice in its draft until Apply. This component knows
+// nothing about either — it just reports the chosen image through onSelect.
 
-function VariantImagePickerModal({
+export function VariantImagePickerModal({
   option,
   productImages,
   onSelect,
   onClose,
 }: {
   option:        VariationOption;
-  productId:     string;
   productImages: ProductImage[];
   onSelect:      (imageId: string | null) => Promise<void>;
   onClose:       () => void;
@@ -239,7 +242,6 @@ export function VariantImagePicker({
       {isOpen && (
         <VariantImagePickerModal
           option={option}
-          productId={productId}
           productImages={productImages}
           onSelect={handleSelect}
           onClose={() => setIsOpen(false)}

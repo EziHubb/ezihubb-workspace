@@ -156,6 +156,11 @@ class ApplyVariationsDto {
 
   @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => VariantEditDto)
   variantEdits?: VariantEditDto[];
+
+  // Which group's options carry linked photos, or null for none. Sent on every
+  // Apply, including as null — omitting it has to keep the stored value, which
+  // is why "off" is an explicit null rather than a missing field.
+  @IsOptional() @IsString() photoGroupId?: string | null;
 }
 
 class ReorderIdsDto {

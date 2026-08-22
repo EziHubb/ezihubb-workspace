@@ -22,6 +22,26 @@
 
 <!-- nx configuration end-->
 
+# Never commit, push or deploy unasked
+
+**Wait for the user to say so. Every time.**
+
+Finishing a task, verifying it, and even fixing a live production bug are not
+permission. Neither is the user saying "ok" to something else in the same
+message. The instruction must name the action: commit, push, deploy — or an
+obvious equivalent like "ship it".
+
+This is not a formality. Reviewing a diff before it goes out is the user's job,
+and taking it away by committing first makes their review a post-mortem.
+
+When work is ready, stop and say so: what changed, what was verified, what was
+not. Leave it in the working tree. If it fixes something urgent, say that
+plainly and let them decide — urgency is an argument for asking clearly, not for
+skipping the ask.
+
+The one thing that does not need asking: **do not leave the working tree dirty
+with debris.** Delete temp scripts and scratch files as you go.
+
 # Redeploy flow
 
 When asked to "deploy" (or "commit + push + deploy"), run these steps in order.

@@ -30,6 +30,10 @@ interface ProductStats {
 const PAGE_SIZE      = 20;
 const VIEW_LS_KEY    = 'mlh_admin_products_view';
 
+// Module scope, not an inline arrow: this feeds react-table's `getRowId`, and a
+// new function identity on every render invalidates its row-model memoisation.
+const productRowId = (p: AdminProduct) => p.id;
+
 const SORT_OPTIONS = [
   { value: 'newest',    label: 'Newest first' },
   { value: 'price_asc', label: 'Price: low to high' },
@@ -141,6 +145,26 @@ function ProductsPageInner() {
   const from     = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const to       = Math.min(page * PAGE_SIZE, total);
   const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  // Selection is a list of ids; the list under it changes without asking —
+  // a delete, an archive, a status tab, a search, a new page. Anything picked
+  // that is no longer listed still counted towards the bulk bar and was still
+  // sent to the bulk endpoint, so the Archived tab could read "4" with nothing
+  // on screen and Publish would then publish four listings nobody could see.
+  //
+  // Reconciling against what actually loaded, rather than clearing on every
+  // action, means deleting one of four still leaves the other three picked.
+  // Switching tabs drops everything on its own, because none of those ids are
+  // in the new list — no special case needed for it.
+  useEffect(() => {
+    const live = new Set(products.map((p) => p.id));
+    setSelectedIds((prev) => {
+      const next = prev.filter((id) => live.has(id));
+      return next.length === prev.length ? prev : next;
+    });
+  // `products` is rebuilt every render; `data` is the thing that actually changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   // ── Actions ──────────────────────────────────────────────────────────────────
 
@@ -605,6 +629,7 @@ function ProductsPageInner() {
             selectable
             pagination={{ page, limit: PAGE_SIZE, total, onPageChange: setPage }}
             onSelectionChange={(rows) => setSelectedIds(rows.map((r) => r.id))}
+            getRowId={productRowId}
             emptyTitle="No products found"
             emptyDesc="Create your first product to get started."
           />

@@ -17,6 +17,7 @@ import { BackToResults } from '../../../../../components/product/BackToResults';
 import { ProductGalleryColumn } from '../../../../../components/product/ProductGalleryColumn';
 import { ProductPurchasePanel } from '../../../../../components/product/ProductPurchasePanel';
 import { ProductPurchasePanelBoundary } from '../../../../../components/product/ProductPurchasePanelBoundary';
+import { VariationPhotoProvider } from '../../../../../components/product/VariationPhotoContext';
 import { ReviewsSection } from '../../../../../components/product/ReviewsSection';
 import { SellerCard } from '../../../../../components/product/SellerCard';
 import { MoreFromShop } from '../../../../../components/product/MoreFromShop';
@@ -289,16 +290,21 @@ export default async function ProductDetailPage({
         </div>
 
         {/* ── MAIN 2-COL ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-5 lg:gap-6 mb-8">
-          <ProductGalleryColumn product={product} />
-          <ProductPurchasePanelBoundary>
-            <ProductPurchasePanel
-              product={product}
-              reviewSummary={reviewSummary}
-              locale={locale}
-            />
-          </ProductPurchasePanelBoundary>
-        </div>
+        {/* The provider has to sit above BOTH columns: picking an option in the
+            panel moves the gallery, and this page is a Server Component, so
+            there is nowhere lower to hold that shared state. */}
+        <VariationPhotoProvider>
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px] gap-5 lg:gap-6 mb-8">
+            <ProductGalleryColumn product={product} />
+            <ProductPurchasePanelBoundary>
+              <ProductPurchasePanel
+                product={product}
+                reviewSummary={reviewSummary}
+                locale={locale}
+              />
+            </ProductPurchasePanelBoundary>
+          </div>
+        </VariationPhotoProvider>
 
         {/* ── REVIEWS ── */}
         <ReviewsSection

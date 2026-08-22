@@ -23,6 +23,7 @@ import { useCurrency } from '../../lib/currency/currency-context';
 import { analytics } from '../../lib/analytics';
 import type { ProductDetailDto, ProductVariantDto, ReviewSummaryDto } from '@ezihubb/types';
 import { fmtRating, safeNum } from '@ezihubb/utils';
+import { useVariationPhoto } from './VariationPhotoContext';
 
 // ── Date helpers (no date-fns) ────────────────────────────────────────────────
 
@@ -513,6 +514,9 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
   const addItem    = useCartStore((s) => s.addItem);
   const openDrawer = useCartStore((s) => s.openDrawer);
 
+  const { focusImage }   = useVariationPhoto();
+  const variationPhotos  = product.variationPhotos;
+
   // Fire viewItem once on mount
   useEffect(() => {
     analytics.viewItem({
@@ -700,6 +704,14 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
               selected={selectedOptions[opt.name] ?? ''}
               onChange={(v) => {
                 setSelectedOptions((prev) => ({ ...prev, [opt.name]: v }));
+                // Only the one variation the seller linked photos to moves the
+                // gallery, and only for options that actually have one — an
+                // unlinked option leaves the shopper on the slide they were
+                // already looking at rather than snapping back to the first.
+                if (variationPhotos?.groupName === opt.name) {
+                  const imageId = variationPhotos.imageIdByValue[v];
+                  if (imageId) focusImage(imageId);
+                }
               }}
               hasError={hasAttemptedSubmit && !selectedOptions[opt.name]}
               variants={product.variants}

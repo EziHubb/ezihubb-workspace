@@ -1266,6 +1266,23 @@ model VariationSettings {
   enableVariations Boolean  @default(false)
   variesBy         String[] // names of active VariationGroup dimensions
   skuPrefix        String? // e.g. "MLH-MUG" → variants become "MLH-MUG-RED-M"
+  // Which VariationGroup's options carry linked photos — at most one per
+  // product, so a shopper picking "Black" can never be shown two competing
+  // photos. A single pointer rather than a flag on each group: it makes "two
+  // groups linked at once" unrepresentable instead of an invariant some
+  // future code path has to remember to enforce.
+  //
+  // Turning photo linking off just clears this. The per-option
+  // VariationOption.imageId values are deliberately left alone, so switching
+  // it back on restores exactly what the seller had picked before — nothing
+  // here ever deletes their work.
+  //
+  // Soft reference, no FK, for the same reason VariationOption.imageId has
+  // none — and one more: applyVariations() deletes every group and recreates
+  // it with the same id inside one transaction, so an onDelete: SetNull would
+  // wipe this pointer on every Apply. applyVariations() nulls it explicitly
+  // instead, and only when the group is really gone.
+  photoGroupId     String?
 }
 
 // ─── Processing Profiles ──────────────────────────────────────────────────────

@@ -100,6 +100,12 @@ export interface VariationSettings {
   /** Encoded flags: 'price:<groupId>' | 'processing' | 'quantity' | 'sku' */
   variesBy:         string[];
   skuPrefix?:       string;
+  /**
+   * VariationGroup.id whose options carry linked photos, or null for none.
+   * At most one group per product, so a shopper picking an option can never
+   * be shown two competing photos.
+   */
+  photoGroupId?:    string | null;
 }
 
 export interface VariationGroup {
@@ -164,6 +170,12 @@ export interface ApplyVariationsPayload {
   }[];
   variesBy:      string[];
   variantEdits?: VariantEditPatch[];
+  /**
+   * Which group's options carry linked photos, or null for none. Always sent,
+   * null included — the server treats a missing field as "leave it alone", so
+   * omitting it could never turn photo linking off.
+   */
+  photoGroupId?: string | null;
 }
 
 // ── API shapes (what we receive from the server) ──────────────────────────────

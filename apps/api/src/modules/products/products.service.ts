@@ -264,6 +264,8 @@ export class ProductsService {
           orderBy: { sortOrder: 'asc' },
           include: { options: { orderBy: { sortOrder: 'asc' } } },
         },
+        // Only for photoGroupId — which variation's options carry photos.
+        variationSettings: true,
         // Print files are never shown to shoppers — only MOCKUP rows belong
         // on the public PDP.
         images: { where: { type: ProductImageType.MOCKUP }, orderBy: { sortOrder: 'asc' } },
@@ -367,10 +369,35 @@ export class ProductsService {
       values: g.options.map((o) => o.name),
     })) ?? [];
 
+    // Photo linking — at most one group, and only the options that carry a
+    // photo. Keyed by name to match `variantOptions` above, so the storefront
+    // resolves a selection without learning any new identifier.
+    //
+    // An assignment can outlive the photo it names: VariationOption.imageId is
+    // a soft reference, so deleting a listing photo leaves the id behind.
+    // Filtering against the images actually being returned stops a stale id
+    // from reaching the gallery, where it would quietly match nothing. It also
+    // covers a subtler case — PRINT_FILE images are excluded from this response
+    // entirely, so an option pointing at one must not be advertised either.
+    const linkedGroupId  = product.variationSettings?.photoGroupId ?? null;
+    const linkedGroup    = linkedGroupId
+      ? product.variationGroups.find((g) => g.id === linkedGroupId)
+      : undefined;
+    const liveImageIds   = new Set(product.images.map((img) => img.id));
+    const imageIdByValue = Object.fromEntries(
+      (linkedGroup?.options ?? [])
+        .filter((o) => !!o.imageId && liveImageIds.has(o.imageId))
+        .map((o) => [o.name, o.imageId as string]),
+    );
+    const variationPhotos = linkedGroup && Object.keys(imageIdByValue).length > 0
+      ? { groupName: linkedGroup.name, imageIdByValue }
+      : null;
+
     // Merge MongoDB fields on top of the PG response
     return {
       ...base,
       variantOptions,
+      variationPhotos,
       salePromo,
       bundleOffer,
       ...(mongoDetail && {
@@ -1554,16 +1581,29 @@ export class ProductsService {
       // syncVariantsFromGroups() creates it and hands back the id this
       // resolves against.
       variantEdits?: { options: Record<string, string>; price?: number | null; quantity?: number | null; sku?: string | null; isAvailable?: boolean }[];
+      // undefined = leave photo linking as it is; null = switch it off.
+      photoGroupId?: string | null;
     },
   ) {
     const product = await this.prisma.product.findUnique({ where: { id: productId }, select: { basePrice: true } });
     if (!product) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
 
     return this.prisma.$transaction(async (tx) => {
+      const priorSettings = await tx.variationSettings.findUnique({
+        where:  { productId },
+        select: { photoGroupId: true },
+      });
+
+      // Maps whatever id the client sent for a group to the id that group
+      // actually ends up with. Usually the same, but a group added in this very
+      // Apply arrives as a local 'new-…' placeholder and only gets its real id
+      // here — and the photo-linking pointer has to be able to name it.
+      const groupIdMap = new Map<string, string>();
+
       await tx.variationGroup.deleteMany({ where: { productId } });
       for (const g of dto.groups) {
         if (!g.name) continue;
-        await tx.variationGroup.create({
+        const created = await tx.variationGroup.create({
           data: {
             id:          g.id && !g.id.startsWith('new-') ? g.id : undefined,
             productId,
@@ -1586,12 +1626,27 @@ export class ProductsService {
             },
           },
         });
+        if (g.id) groupIdMap.set(g.id, created.id);
       }
+
+      // Photo linking survives an Apply only if its group did. Nulling a
+      // pointer to a deleted group here — rather than leaving it dangling — is
+      // what keeps "at most one group is linked, and it exists" true without a
+      // foreign key, which this table cannot use (see schema.prisma).
+      //
+      // `undefined` means the caller said nothing about photo linking, so the
+      // stored choice carries over; `null` is an explicit switch-off.
+      const requestedPhotoGroup = dto.photoGroupId === undefined
+        ? priorSettings?.photoGroupId ?? null
+        : dto.photoGroupId;
+      const photoGroupId = requestedPhotoGroup
+        ? groupIdMap.get(requestedPhotoGroup) ?? null
+        : null;
 
       await tx.variationSettings.upsert({
         where:  { productId },
-        create: { productId, enableVariations: dto.groups.length > 0, variesBy: dto.variesBy },
-        update: { enableVariations: dto.groups.length > 0, variesBy: dto.variesBy },
+        create: { productId, enableVariations: dto.groups.length > 0, variesBy: dto.variesBy, photoGroupId },
+        update: { enableVariations: dto.groups.length > 0, variesBy: dto.variesBy, photoGroupId },
       });
 
       const keyToId = await this.syncVariantsFromGroups(tx, productId, Number(product.basePrice));

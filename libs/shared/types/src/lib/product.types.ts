@@ -201,6 +201,20 @@ export interface ProductDetailDto {
   store: { id: string; name: string; slug: string } | null;
   variants: ProductVariantDto[];
   variantOptions: { name: string; values: string[] }[];
+  /**
+   * The one variation whose options are tied to listing photos, when the seller
+   * set one up — picking such an option brings its photo forward in the
+   * gallery. Null (or absent) whenever nothing is linked.
+   *
+   * `groupName` matches a `variantOptions[].name` and `imageIdByValue` is keyed
+   * by option name, so a selection resolves without any extra identifier. Only
+   * options with a photo that still exists are listed, so a missing key means
+   * "leave the gallery where it is".
+   */
+  variationPhotos?: {
+    groupName: string;
+    imageIdByValue: Record<string, string>;
+  } | null;
   images: ProductImageDto[];
   digitalFiles?: DigitalFileDto[];
   videos?: ProductVideoDto[];

@@ -31,6 +31,13 @@ interface DataTableProps<T> {
   selectable?:        boolean;
   bulkActions?:       React.ReactNode;
   onSelectionChange?: (selectedRows: T[]) => void;
+  /**
+   * Stable identity for a row. Without it selection is keyed by row index,
+   * which cannot survive the data changing underneath it and so gets thrown
+   * away instead. Pass this whenever rows have an id and selection should
+   * follow the rows rather than their positions.
+   */
+  getRowId?:          (row: T) => string;
   emptyTitle?:        string;
   emptyDesc?:         string;
 }
@@ -46,6 +53,7 @@ export function DataTable<T>({
   selectable        = false,
   bulkActions,
   onSelectionChange,
+  getRowId,
   emptyTitle        = 'No data',
   emptyDesc         = 'Nothing to show here yet.',
 }: DataTableProps<T>) {
@@ -91,14 +99,36 @@ export function DataTable<T>({
     getSortedRowModel:    getSortedRowModel(),
     manualPagination:     true,
     enableRowSelection:   selectable,
+    ...(getRowId ? { getRowId: (row: T) => getRowId(row) } : {}),
   });
 
-  // Reset selection whenever the displayed page changes so stale index-keyed
-  // selections from a previous page never silently target different rows.
+  // Selection goes stale the moment `data` changes, and nothing about it looks
+  // stale: deleting the first row shifts every index up by one, and changing
+  // the filter replaces the rows outright while the old indices stay perfectly
+  // valid-looking. Either way the checkboxes end up standing for rows nobody
+  // picked — or, when the new list is empty, for nothing at all while the bulk
+  // bar still shows a count and still submits those ids.
+  //
+  // With `getRowId` the surviving rows keep their selection and only the
+  // departed ones are dropped, so deleting one of four leaves three selected.
+  // Without it there is no way to know which index still means what, and the
+  // only safe move is to drop the lot.
   useEffect(() => {
-    setRowSelection({});
+    setRowSelection((prev) => {
+      const keys = Object.keys(prev);
+      if (!getRowId) return keys.length === 0 ? prev : {};
+
+      const live = new Set(data.map(getRowId));
+      const next: RowSelectionState = {};
+      for (const key of keys) {
+        if (live.has(key)) next[key] = prev[key];
+      }
+      // Returning `prev` unchanged keeps this from re-rendering, and from
+      // re-firing onSelectionChange, on every background refetch.
+      return Object.keys(next).length === keys.length ? prev : next;
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination?.page]);
+  }, [data]);
 
   useEffect(() => {
     if (onSelectionChange) {

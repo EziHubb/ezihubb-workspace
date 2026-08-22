@@ -6,16 +6,17 @@ import Image from 'next/image';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   X, Plus, Trash2, Pencil, ChevronLeft,
-  ArrowRight, AlignLeft, Palette, LayoutGrid, Layers,
+  ArrowRight, AlignLeft, Palette, LayoutGrid, Layers, ImageIcon,
 } from 'lucide-react';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { Toggle } from './primitives/Toggle';
 import { FilterSelect } from '../../ui/FilterSelect';
 import { VariantComboGrid } from './VariantComboGrid';
+import { VariantImagePickerModal } from './VariantImagePicker';
 import type {
   VariationGroup, VariationSettings, ProductVariantRow,
-  VariantEditPatch, ApplyVariationsPayload,
+  VariantEditPatch, ApplyVariationsPayload, ProductImage, VariationOption,
 } from './types';
 import { pricedGroupIds } from './helpers';
 
@@ -549,13 +550,104 @@ function AddVariationGroupSheet({
 // no server fetch, no per-action API call. Every add/remove just reports the
 // updated group back up via onChange().
 
-function EditVariationGroupSheet({
-  group, onChange, onClose,
+// One row of the options list. Splitting it out keeps the photo cell — which
+// owns a modal of its own — from re-rendering every sibling row.
+function OptionRow({
+  option, showPhoto, productImages, onPick, onRemove,
 }: {
-  group:     VariationGroup;
-  onChange:  (group: VariationGroup) => void;
-  onClose:   () => void;
+  option:        VariationOption;
+  showPhoto:     boolean;
+  productImages: ProductImage[];
+  onPick:        (imageId: string | null) => void;
+  onRemove:      () => void;
 }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const assigned = productImages.find((img) => img.id === option.imageId);
+
+  return (
+    <div className="flex items-center gap-2.5 px-3 py-2.5 border border-border rounded-lg">
+      {/* Reordering is not wired up yet — see the sheet's note. Rendering a
+          grab handle that does nothing would be worse than rendering none. */}
+      {option.colorHex && !showPhoto && (
+        <div
+          className="w-5 h-5 rounded-full border border-border shrink-0"
+          style={{ backgroundColor: option.colorHex }}
+        />
+      )}
+
+      {showPhoto && (
+        <div className="w-9 h-9 rounded-md overflow-hidden border border-border bg-background relative shrink-0">
+          {assigned ? (
+            <Image src={assigned.url} alt={option.name || option.value} fill className="object-cover" sizes="36px" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <ImageIcon className="w-4 h-4 text-muted/40" />
+            </div>
+          )}
+        </div>
+      )}
+
+      <span className="text-sm flex-1 text-secondary truncate">{option.name || option.value}</span>
+
+      {showPhoto && (
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-secondary border border-border rounded-button hover:border-primary/40 hover:text-primary transition-colors shrink-0"
+        >
+          <ImageIcon className="w-3.5 h-3.5" />
+          Select photo
+        </button>
+      )}
+
+      <button
+        type="button"
+        onClick={onRemove}
+        className="p-1 rounded hover:bg-red-50 text-muted hover:text-red-500 transition-colors shrink-0"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+
+      {pickerOpen && (
+        <VariantImagePickerModal
+          option={option}
+          productImages={productImages}
+          onSelect={async (imageId) => { onPick(imageId); setPickerOpen(false); }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function EditVariationGroupSheet({
+  group, productImages, photoLinked, onTogglePhotos, onChange, onDelete, onClose,
+}: {
+  group:          VariationGroup;
+  productImages:  ProductImage[];
+  photoLinked:    boolean;
+  /** Reports intent only — the parent owns the confirm dialogs and the pointer. */
+  onTogglePhotos: (on: boolean) => void;
+  onChange:       (group: VariationGroup) => void;
+  onDelete:       () => void;
+  onClose:        () => void;
+}) {
+  const setOptionImage = (optionId: string, imageId: string | null) => {
+    const img = productImages.find((i) => i.id === imageId);
+    onChange({
+      ...group,
+      options: group.options.map((o) =>
+        o.id === optionId
+          // imageUrl is denormalised alongside imageId so the storefront can
+          // render the thumbnail without joining back to the photo list.
+          // undefined rather than null to match VariationOption; Apply creates
+          // the row fresh, so an absent value lands as NULL either way.
+          ? { ...o, imageId, imageUrl: img?.url ?? undefined }
+          : o,
+      ),
+    });
+  };
+
   const addOption = (opt: { value: string; colorHex?: string }) => {
     onChange({
       ...group,
@@ -600,27 +692,40 @@ function EditVariationGroupSheet({
           </button>
         </div>
 
-        <div className="px-5 py-5 space-y-4">
+        <div className="px-5 py-5 space-y-5">
+          {/* Photo linking */}
+          <div className="flex items-center gap-3">
+            <Toggle checked={photoLinked} onChange={onTogglePhotos} />
+            <span className="text-sm font-medium text-secondary">Link photos to this variation</span>
+          </div>
+
+          <div className="border-t border-border" />
+
           {/* Existing options */}
-          <div className="space-y-2">
-            {group.options.map((opt) => (
-              <div key={opt.id} className="flex items-center gap-2.5 px-3 py-2.5 border border-border rounded-lg">
-                {group.displayType === 'color_swatch' && (
-                  <div
-                    className="w-5 h-5 rounded-full border border-border shrink-0"
-                    style={{ backgroundColor: opt.colorHex ?? '#E5E7EB' }}
-                  />
-                )}
-                <span className="text-sm flex-1 text-secondary">{opt.name || opt.value}</span>
-                <button
-                  type="button"
-                  onClick={() => removeOption(opt.id)}
-                  className="p-1 rounded hover:bg-red-50 text-muted hover:text-red-500 transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm font-semibold text-secondary">Options</span>
+              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-secondary text-white text-[11px] font-semibold">
+                {group.options.length}
+              </span>
+            </div>
+            <p className="text-xs text-muted leading-relaxed mb-3">
+              Shoppers pick from these. Options taken from the suggested list show up in
+              filters; custom ones won&apos;t.
+            </p>
+
+            <div className="space-y-2">
+              {group.options.map((opt) => (
+                <OptionRow
+                  key={opt.id}
+                  option={opt}
+                  showPhoto={photoLinked}
+                  productImages={productImages}
+                  onPick={(imageId) => setOptionImage(opt.id, imageId)}
+                  onRemove={() => removeOption(opt.id)}
+                />
+              ))}
+            </div>
           </div>
 
           {/* Add more */}
@@ -639,7 +744,12 @@ function EditVariationGroupSheet({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 px-5 py-4 border-t border-border">
+        <div className="flex items-center justify-between gap-2 px-5 py-4 border-t border-border">
+          <button type="button" onClick={onDelete}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-red-600 rounded-button hover:bg-red-50 transition-colors">
+            <Trash2 className="w-4 h-4" />
+            Delete variation
+          </button>
           <button type="button" onClick={onClose}
             className="px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors">
             Done
@@ -654,13 +764,15 @@ function EditVariationGroupSheet({
 
 interface ManageVariationsModalProps {
   productId: string;
+  /** The listing's photos, for linking one to each option. */
+  productImages: ProductImage[];
   isOpen:    boolean;
   onClose:   () => void;
   onSaved:   () => void;
 }
 
 export function ManageVariationsModal({
-  productId, isOpen, onClose, onSaved,
+  productId, productImages, isOpen, onClose, onSaved,
 }: ManageVariationsModalProps) {
   const qc = useQueryClient();
   const { confirm } = useDialog();
@@ -670,35 +782,38 @@ export function ManageVariationsModal({
   const [applyError,     setApplyError]     = useState<string | null>(null);
 
   // ── Server state — fetched once per open, used only to seed the draft ──────
-  // Gated on `isFetched`, not `isLoading` — in TanStack Query v5,
-  // `isLoading = isPending && isFetching`, and on the very first render right
-  // after `isOpen` flips true (queries going enabled:false → enabled:true),
-  // the fetch hasn't been kicked off as a state update yet: `isPending` is
-  // true but `isFetching` is still false, so `isLoading` reads `false` with
-  // `data` still `undefined`. Seeding on that would lock the draft to empty
-  // arrays via `seededRef` before the real data ever arrives. `isFetched`
-  // only flips true once a fetch has actually completed, so it can't race.
-  const { data: serverGroups = [], isFetched: groupsFetched } = useQuery<VariationGroup[]>({
+  // Gated on `isSuccess`, and specifically not on `isLoading`: in TanStack
+  // Query v5 `isLoading = isPending && isFetching`, and on the first render
+  // after `isOpen` flips true (queries going enabled:false → enabled:true) the
+  // fetch has not been kicked off as a state update yet — `isPending` is true
+  // but `isFetching` is still false, so `isLoading` reads `false` while `data`
+  // is still undefined. Seeding there would lock the draft to empty arrays via
+  // `seededRef` before the real data ever arrived.
+  //
+  // `isSuccess` rather than `isFetched` for a second reason: a fetch that
+  // finished by failing counts as fetched, and an empty draft is not a
+  // harmless placeholder here — Apply replaces the whole tree, so committing
+  // one deletes every group and setting the seller had.
+  const { data: serverGroups = [], isSuccess: groupsLoaded } = useQuery<VariationGroup[]>({
     queryKey: ['variation-groups', productId],
     queryFn:  () => api.get<VariationGroup[]>(API_ROUTES.ADMIN.PRODUCT_VARIATIONS(productId)),
     enabled:   isOpen,
     staleTime: 30_000,
   });
 
-  const { data: serverSettings, isFetched: settingsFetched } = useQuery<VariationSettings>({
+  // No try/catch swallowing the failure here any more. The endpoint already
+  // answers 200 with defaults when a product has no settings row, so the only
+  // thing a catch could hide is a real failure — and pretending "no settings"
+  // after one is destructive: Apply replaces the stored values wholesale, so a
+  // blank draft would wipe the seller's price-varies flags and photo link.
+  const { data: serverSettings, isSuccess: settingsLoaded } = useQuery<VariationSettings>({
     queryKey: ['variation-settings', productId],
-    queryFn:  async () => {
-      try {
-        return await api.get<VariationSettings>(API_ROUTES.ADMIN.PRODUCT_VARIATION_SETTINGS(productId));
-      } catch {
-        return { enableVariations: true, variesBy: [] };
-      }
-    },
+    queryFn:  () => api.get<VariationSettings>(API_ROUTES.ADMIN.PRODUCT_VARIATION_SETTINGS(productId)),
     enabled:   isOpen,
     staleTime: 30_000,
   });
 
-  const { data: serverVariants = [], isFetched: variantsFetched } = useQuery<ProductVariantRow[]>({
+  const { data: serverVariants = [], isSuccess: variantsLoaded } = useQuery<ProductVariantRow[]>({
     queryKey: ['product-variant-list', productId],
     queryFn:  () => api.get<ProductVariantRow[]>(API_ROUTES.ADMIN.PRODUCT_VARIATION_VARIANTS(productId)),
     enabled:   isOpen,
@@ -710,21 +825,56 @@ export function ManageVariationsModal({
   const [draftGroups,   setDraftGroups]   = useState<VariationGroup[]>([]);
   const [draftVariesBy, setDraftVariesBy] = useState<string[]>([]);
   const [variantEdits,  setVariantEdits]  = useState<Record<string, VariantEditPatch>>({});
+  // At most one group at a time, which is why this is one id rather than a flag
+  // per group: two groups linked at once would mean two different photos
+  // competing to be shown for a single selection.
+  const [draftPhotoGroupId, setDraftPhotoGroupId] = useState<string | null>(null);
   const seededRef = useRef(false);
 
+  // `isSuccess`, not `isFetched`: a fetch that finished by failing is still
+  // "fetched", and seeding from that would hand Apply an empty draft — which,
+  // because Apply replaces the whole tree, deletes every group the seller has.
   useEffect(() => {
     if (!isOpen) { seededRef.current = false; return; }
     if (seededRef.current) return;
-    if (!groupsFetched || !settingsFetched || !variantsFetched) return;
+    if (!groupsLoaded || !settingsLoaded || !variantsLoaded) return;
     setDraftGroups(serverGroups);
     setDraftVariesBy(serverSettings?.variesBy ?? []);
+    setDraftPhotoGroupId(serverSettings?.photoGroupId ?? null);
     setVariantEdits({});
     setApplyError(null);
     seededRef.current = true;
-  }, [isOpen, groupsFetched, settingsFetched, variantsFetched, serverGroups, serverSettings]);
+  }, [isOpen, groupsLoaded, settingsLoaded, variantsLoaded, serverGroups, serverSettings]);
 
   const deleteGroup = async (groupId: string) => {
     setDraftGroups((gs) => gs.filter((g) => g.id !== groupId));
+    // The pointer must not outlive the group it names.
+    setDraftPhotoGroupId((cur) => (cur === groupId ? null : cur));
+  };
+
+  // Both directions of this toggle destroy something the seller can see, so
+  // both ask first. Neither actually erases an assignment: switching off, or
+  // moving the link to another group, only moves the pointer — every
+  // option.imageId stays put, so turning it back on brings the photos back.
+  const togglePhotoLinking = async (group: VariationGroup, on: boolean) => {
+    if (!on) {
+      const ok = await confirm(
+        `This will unlink your photos for ${group.name} options.`,
+        { title: 'Turn off photo linking?', confirmLabel: 'Continue' },
+      );
+      if (ok) setDraftPhotoGroupId(null);
+      return;
+    }
+
+    const current = draftGroups.find((g) => g.id === draftPhotoGroupId);
+    if (current && current.id !== group.id) {
+      const ok = await confirm(
+        `Photos are linked to ${current.name} right now. They'll be unlinked, and you'll need to pick photos for ${group.name}.`,
+        { title: `Link photos to ${group.name}?`, confirmLabel: 'Continue' },
+      );
+      if (!ok) return;
+    }
+    setDraftPhotoGroupId(group.id);
   };
 
   const editingGroup = draftGroups.find((g) => g.id === editingGroupId) ?? null;
@@ -755,6 +905,9 @@ export function ManageVariationsModal({
         })),
         variesBy:     draftVariesBy,
         variantEdits: Object.values(variantEdits),
+        // Always sent, null included — the server reads a missing field as
+        // "leave it alone", so omitting it could never switch linking off.
+        photoGroupId: draftPhotoGroupId,
       };
       await api.post(API_ROUTES.ADMIN.PRODUCT_VARIATIONS_APPLY(productId), payload);
 
@@ -913,7 +1066,16 @@ export function ManageVariationsModal({
       {editingGroup && (
         <EditVariationGroupSheet
           group={editingGroup}
+          productImages={productImages}
+          photoLinked={draftPhotoGroupId === editingGroup.id}
+          onTogglePhotos={(on) => togglePhotoLinking(editingGroup, on)}
           onChange={(updated) => setDraftGroups((gs) => gs.map((g) => (g.id === updated.id ? updated : g)))}
+          onDelete={async () => {
+            if (await confirm(`Delete "${editingGroup.name}" and all its options?`, { confirmLabel: 'Delete', destructive: true })) {
+              deleteGroup(editingGroup.id);
+              setEditingGroupId(null);
+            }
+          }}
           onClose={() => setEditingGroupId(null)}
         />
       )}

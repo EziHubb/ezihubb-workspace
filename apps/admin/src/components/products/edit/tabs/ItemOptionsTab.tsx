@@ -275,6 +275,31 @@ function VariationOptionRow({
   );
 }
 
+/**
+ * The listing photos a shopper can actually be shown.
+ *
+ * PRINT_FILE rows are production artwork and are filtered out of the public
+ * product response entirely, so offering one here would let a seller link a
+ * photo that resolves to nothing on the storefront — with no error anywhere to
+ * explain why that option shows no picture.
+ */
+function shopperVisibleImages(images: ProductImage[] | undefined): ProductImage[] {
+  return (images ?? []).filter((img) => img.type === 'MOCKUP');
+}
+
+// Shared by the section header and the summary table below it: the header has
+// to know whether any variations exist before it can decide which button to
+// offer, and that answer must be the same one the table is rendering from.
+// Same query key, so react-query serves both from one request.
+function useVariationGroups(productId: string) {
+  return useQuery<VariationGroup[]>({
+    queryKey: ['variation-groups', productId],
+    queryFn:  () => api.get<VariationGroup[]>(`/admin/products/${productId}/variations`),
+    enabled:  !!productId,
+    staleTime: 30_000,
+  });
+}
+
 function VariationsSummaryTable({
   product,
   onManage,
@@ -284,14 +309,9 @@ function VariationsSummaryTable({
 }) {
   const qc = useQueryClient();
 
-  const { data: groups = [], isLoading } = useQuery<VariationGroup[]>({
-    queryKey: ['variation-groups', product.id],
-    queryFn:  () => api.get<VariationGroup[]>(`/admin/products/${product.id}/variations`),
-    enabled:  !!product.id,
-    staleTime: 30_000,
-  });
+  const { data: groups = [], isLoading } = useVariationGroups(product.id);
 
-  const { data: settings } = useQuery<VariationSettings>({
+  const { data: settings, isLoading: settingsLoading } = useQuery<VariationSettings>({
     queryKey: ['variation-settings', product.id],
     queryFn:  async () => {
       try {
@@ -309,7 +329,10 @@ function VariationsSummaryTable({
     qc.invalidateQueries({ queryKey: ['variation-groups', product.id] });
   };
 
-  if (isLoading) {
+  // Waits on the settings too, not just the groups: whether there is a photo
+  // column at all comes from settings, so rendering on groups alone drew the
+  // table without it and then shifted every row sideways a moment later.
+  if (isLoading || settingsLoading) {
     return <div className="h-24 bg-muted/5 rounded-lg animate-pulse" />;
   }
 
@@ -345,10 +368,11 @@ function VariationsSummaryTable({
         </p>
       )}
       {groups.map((group) => {
-        const showPhoto =
-          group.displayType === 'color_swatch' ||
-          group.displayType === 'image' ||
-          (product.images ?? []).length > 0;
+        // Only the group the seller actually linked photos to. This used to be
+        // "any group, as long as the listing has photos at all", which put a
+        // photo column on every variation whether or not photos meant anything
+        // for it — and gave the seller no way to say they didn't.
+        const showPhoto = settings?.photoGroupId === group.id;
         return (
           <div key={group.id}>
             <div className="flex items-baseline gap-2 mb-2">
@@ -370,7 +394,7 @@ function VariationsSummaryTable({
                       key={opt.id}
                       option={opt}
                       showPhoto={showPhoto}
-                      productImages={product.images ?? []}
+                      productImages={shopperVisibleImages(product.images)}
                       productId={product.id}
                       onToggle={(available) => updateOption(group.id, opt.id, { isAvailable: available })}
                     />
@@ -392,6 +416,18 @@ interface ItemOptionsTabProps { product: AdminProductDto }
 export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
   const [variationsModalOpen, setVariationsModalOpen] = useState(false);
 
+  // "Manage variations" and "Add variations" open the same modal, so showing
+  // both at once gave the same action two names and two places to click. The
+  // header keeps Manage only once there is something to manage; until then the
+  // empty state's Add is the only way in.
+  //
+  // isSuccess, not `groups.length > 0`: while the request is in flight the data
+  // is [] and Manage would be wrong to show, but so would committing to the
+  // empty state — the table renders a skeleton for that moment and the header
+  // stays bare rather than flashing a button that is about to be replaced.
+  const { data: variationGroups = [], isSuccess: variationsLoaded } = useVariationGroups(product.id);
+  const hasVariations = variationsLoaded && variationGroups.length > 0;
+
   return (
     <div className="max-w-[1040px] mx-auto px-6 py-8 space-y-6">
       <div>
@@ -405,14 +441,16 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
           title="Variations"
           description="Add options like colour, size, or material that may affect your available inventory quantities."
           action={
-            <button
-              type="button"
-              onClick={() => setVariationsModalOpen(true)}
-              className="flex items-center gap-1.5 text-sm font-semibold border border-border rounded-button px-3 py-2 text-secondary hover:border-primary/40 hover:text-primary transition-colors"
-            >
-              <Settings className="w-4 h-4" />
-              Manage variations
-            </button>
+            hasVariations ? (
+              <button
+                type="button"
+                onClick={() => setVariationsModalOpen(true)}
+                className="flex items-center gap-1.5 text-sm font-semibold border border-border rounded-button px-3 py-2 text-secondary hover:border-primary/40 hover:text-primary transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Manage variations
+              </button>
+            ) : undefined
           }
         >
           <VariationsSummaryTable product={product} onManage={() => setVariationsModalOpen(true)} />
@@ -513,6 +551,7 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
 
       {/* Variations modal — ManageVariationsModal */}
       <ManageVariationsModal
+        productImages={shopperVisibleImages(product.images)}
         productId={product.id}
         isOpen={variationsModalOpen}
         onClose={() => setVariationsModalOpen(false)}

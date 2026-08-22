@@ -80,6 +80,18 @@ export class VariantOptionDto {
   @ApiProperty({ type: [String] }) values: string[];
 }
 
+export class VariationPhotosDto {
+  /** Matches one `variantOptions[].name`, i.e. the dropdown that drives the gallery. */
+  @ApiProperty() groupName: string;
+  /**
+   * Option name → ProductImage.id. Only options the seller actually assigned a
+   * photo to appear here, so a lookup miss means "leave the gallery alone"
+   * rather than "show nothing".
+   */
+  @ApiProperty({ type: Object, additionalProperties: { type: 'string' } })
+  imageIdByValue: Record<string, string>;
+}
+
 export class BundlePartnerProductDto {
   @ApiProperty() id: string;
   @ApiProperty() name: string;
@@ -123,6 +135,17 @@ export class ProductResponseDto {
   @ApiPropertyOptional({ type: () => ProductStoreDto }) store: ProductStoreDto | null;
   @ApiProperty({ type: [VariantResponseDto] }) variants: VariantResponseDto[];
   @ApiProperty({ type: [VariantOptionDto] }) variantOptions: VariantOptionDto[];
+  /**
+   * The one variation whose options are tied to listing photos, if the seller
+   * set one up — so picking an option can bring its photo forward in the
+   * gallery. Null when nothing is linked, which is the common case.
+   *
+   * Deliberately not the whole VariationGroup tree: this carries only what the
+   * gallery needs, keyed the same way `variantOptions` is (group name → option
+   * name), so no new identifier scheme leaks into the public payload.
+   */
+  @ApiPropertyOptional({ type: () => VariationPhotosDto, nullable: true })
+  variationPhotos?: VariationPhotosDto | null;
   @ApiProperty({ type: [ProductImageResponseDto] }) images: ProductImageResponseDto[];
   @ApiPropertyOptional({ type: [DigitalFileResponseDto] }) digitalFiles?: DigitalFileResponseDto[];
   @ApiProperty({ type: [ProductVideoDto] }) videos: ProductVideoDto[];
