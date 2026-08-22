@@ -303,9 +303,25 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
         {/* Main image area */}
         <div className="flex-1 min-w-0">
 
-          {/* Main media — click to open lightbox */}
+          {/* Main media — click to open lightbox.
+
+              Square, but capped by viewport HEIGHT rather than sized by column
+              width. The gallery column is ~1000px wide on a large screen, so
+              `aspect-square` alone made the image ~1000px tall inside a ~880px
+              viewport — taller than the screen, so no amount of hiding the
+              header could bring the whole thing into view.
+
+              The cap goes on max-width, not max-height. With an aspect ratio
+              set, capping the width lets the height follow and the box stays
+              square; capping the height instead leaves the width alone and
+              squashes it into a letterbox.
+
+              180px covers the header plus the breadcrumb above it, so the
+              image fits with the header still on screen — the state the page
+              loads in. `mx-auto` centres it once it is narrower than its
+              column. */}
           <div
-            className={`relative aspect-square rounded-2xl overflow-hidden bg-[#F5F1EB] ${activeItem.type === 'image' ? 'cursor-zoom-in' : ''}`}
+            className={`relative aspect-square max-w-[calc(100vh-180px)] mx-auto rounded-2xl overflow-hidden bg-[#F5F1EB] ${activeItem.type === 'image' ? 'cursor-zoom-in' : ''}`}
             onClick={() => { if (activeItem.type === 'image') setLightboxOpen(true); }}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
