@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { buildAlternates } from '../../../../lib/seo';
 import Link from 'next/link';
 import type { CollectionDto } from '@ezihubb/types';
 import { OccasionCard } from '../../../../components/occasions/OccasionCard';
@@ -11,10 +12,19 @@ export async function generateStaticParams() {
   return [{ locale: 'en' }, { locale: 'vi' }];
 }
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
   return {
     title:       'Gift Ideas by Occasion',
     description: 'Find the perfect personalized gift for every occasion — birthdays, anniversaries, holidays, and more.',
+    // Needs the locale, which is why this now takes params at all: the
+    // canonical has to name the locale actually served (/en/occasions), not a
+    // bare path that would 307 to one.
+    alternates: buildAlternates('/occasions', locale),
   };
 }
 

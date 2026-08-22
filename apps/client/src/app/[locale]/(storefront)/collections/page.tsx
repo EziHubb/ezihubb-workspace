@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { buildAlternates } from '../../../../lib/seo';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { CollectionDto } from '@ezihubb/types';
@@ -22,6 +23,11 @@ export async function generateMetadata({
       ? 'Bộ Sưu Tập | EziHubb'
       : 'Collections | EziHubb',
     description: 'Explore our curated gift collections — seasonal, occasion-based, and themed.',
+    // Without this the page inherited the layout's buildAlternates('/'),
+    // declaring itself a duplicate of the locale homepage — while the sitemap
+    // simultaneously listed it as a URL to index. Google resolves that in
+    // favour of the canonical, so the page was asking to be dropped.
+    alternates: buildAlternates('/collections', locale),
   };
 }
 

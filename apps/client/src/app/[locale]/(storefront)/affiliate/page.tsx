@@ -1,4 +1,6 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+import { buildAlternates } from '../../../../lib/seo';
 import { getTranslations, getLocale } from 'next-intl/server';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -15,6 +17,15 @@ interface AffiliateSettings {
   minPayoutAmount:  number;
   lockDays:         number;
   isEnabled:        boolean;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { alternates: buildAlternates('/affiliate', locale) };
 }
 
 export default async function AffiliateLandingPage() {
