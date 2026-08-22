@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { DevBullModule } from '../../queue/dev-bull.module';
 import { NotificationsService } from './notifications.service';
-import { NotificationsController, NewsletterController } from './notifications.controller';
+import { NotificationsController, NewsletterController, NotificationFeedController } from './notifications.controller';
 import { FcmService } from './fcm.service';
 import { PushService } from './push.service';
 import { QUEUES } from '../../queue/queue.constants';
@@ -12,7 +12,7 @@ import { QUEUES } from '../../queue/queue.constants';
       ? [BullModule.registerQueue({ name: QUEUES.EMAIL })]
       : [DevBullModule.forQueues([QUEUES.EMAIL])]),
   ],
-  controllers: [NotificationsController, NewsletterController],
+  controllers: [NotificationFeedController, NotificationsController, NewsletterController],
   providers: [NotificationsService, FcmService, PushService],
   exports: [NotificationsService, FcmService, PushService],
 })

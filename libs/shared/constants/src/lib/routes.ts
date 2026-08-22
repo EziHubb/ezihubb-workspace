@@ -188,6 +188,12 @@ export const API_ROUTES = {
   NOTIFICATIONS: {
     CONTACT:       '/notifications/contact',
     PRODUCT_READY: '/notifications/product-ready',
+    // Feed for the signed-in buyer. All four are behind JwtAuthGuard and
+    // scoped to the token's own user — none of them takes a user id.
+    LIST:          '/notifications',
+    UNREAD_COUNT:  '/notifications/unread-count',
+    READ_ALL:      '/notifications/read-all',
+    READ:          (id: string) => `/notifications/${id}/read`,
   },
 
   NEWSLETTER: {

@@ -10,6 +10,7 @@ import {
   ChevronDown, Package, Settings, LogOut, Store, MessageSquare, Tag,
 } from 'lucide-react';
 import { Tooltip } from '@ezihubb/ui';
+import { NotificationBell } from './NotificationBell';
 import { useWishlist, queryKeys } from '@ezihubb/api-client';
 import { signOut } from 'next-auth/react';
 import { useCartStore } from '../../lib/store/cart.store';
@@ -135,12 +136,20 @@ function UserMenu({ locale }: { locale: string }) {
 
       {open && (
         <div className="absolute right-0 top-full mt-2 w-52 bg-surface border border-border rounded-card shadow-floating z-50 py-1 overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-border">
+          {/* The header row is a link now, not a static block. In the
+              reference the name doubles as "view your profile", and a
+              non-interactive block at the top of a menu of links is the one
+              place people click expecting something to happen. */}
+          <Link
+            href={`/${locale}/account/profile`}
+            onClick={() => setOpen(false)}
+            className="block px-4 py-2.5 border-b border-border hover:bg-muted/5 transition-colors"
+          >
             <p className="font-semibold text-secondary text-sm truncate">
               {profile.firstName} {profile.lastName}
             </p>
-            <p className="text-xs text-muted truncate">{profile.email}</p>
-          </div>
+            <p className="text-xs text-muted truncate">{t('viewProfile')}</p>
+          </Link>
           {[
             { icon: Package,       label: t('myOrders'), href: `/${locale}/account/orders`,   newTab: false },
             // Both of these already have real pages; the menu simply never
@@ -309,6 +318,31 @@ export function Navbar({ menuData }: NavbarProps = {}) {
                   <Badge count={wishlistCount} />
                 </Link>
               </Tooltip>
+
+              {/* Notifications — signed-in only. The feed endpoints are
+                  authenticated, so rendering the bell for a guest would give
+                  them a control whose every request 401s. */}
+              {user && <NotificationBell />}
+
+              {/* Shop Manager — a top-level shortcut for people who already
+                  have a shop, matching the reference. Deliberately NOT an
+                  "open a shop" invitation: the storefront must not present as
+                  a multi-seller marketplace (Pinterest merchant policy), which
+                  is why this renders only when isSeller is already true and
+                  never prompts anyone else to become one. */}
+              {isSeller && (
+                <Tooltip label={t('shopManager')}>
+                  <a
+                    href={adminUrl_}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={t('shopManager')}
+                    className="hidden md:flex p-2 hover:bg-muted/10 rounded-full transition-colors"
+                  >
+                    <Store className="w-5 h-5 text-secondary" />
+                  </a>
+                </Tooltip>
+              )}
 
               {/* Cart — desktop drawer / mobile link */}
               <Tooltip label={t('tipCart')}>

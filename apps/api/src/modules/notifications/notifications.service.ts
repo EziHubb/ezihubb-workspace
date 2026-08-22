@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../prisma/prisma.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
@@ -41,6 +42,7 @@ export class NotificationsService {
   constructor(
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async queueEmail(options: QueueEmailOptions): Promise<void> {
@@ -259,6 +261,98 @@ export class NotificationsService {
       subject:  'Welcome to the EziHubb newsletter!',
       template: EmailTemplate.NEWSLETTER_WELCOME,
       data:     { firstName: firstName ?? 'Friend', shopUrl, year: new Date().getFullYear() },
+    });
+  }
+
+  // ─── Buyer notification feed ───────────────────────────────────────────────
+  //
+  // The Notification table has existed with the right shape all along —
+  // isRead, readAt, and indexes on [userId, isRead] and [userId, createdAt],
+  // which is a feed schema and nothing else. There was simply no way to read
+  // it: the controller exposed no GET at all, so rows could only ever go in.
+
+  /**
+   * One page of the caller's own notifications.
+   *
+   * userId comes from the JWT and is applied in the WHERE clause, never from
+   * a parameter. There is no notification id in the route for a reason — a
+   * caller must not be able to name someone else's row.
+   */
+  async listForUser(userId: string, opts: { limit?: number; before?: Date } = {}) {
+    // Number.isFinite before clamping, not just ?? — the controller parses this
+    // from a query string, so `?limit=abc` arrives as NaN. NaN survives both
+    // Math.max and Math.min unchanged, so it would have reached Prisma as
+    // `take: NaN` and thrown, turning a malformed query parameter into a 500.
+    // A bad value falls back to the default rather than being rejected: the
+    // caller asked for "some notifications", and the page size is not the part
+    // worth failing the request over.
+    const requested = Number(opts.limit);
+    const limit = Number.isFinite(requested)
+      ? Math.min(Math.max(Math.trunc(requested), 1), 50)
+      : 20;
+    const items = await this.prisma.notification.findMany({
+      where: { userId, ...(opts.before ? { createdAt: { lt: opts.before } } : {}) },
+      orderBy: { createdAt: 'desc' },
+      // One extra row decides hasMore without a second count query.
+      take: limit + 1,
+    });
+    const hasMore = items.length > limit;
+    return { items: hasMore ? items.slice(0, limit) : items, hasMore };
+  }
+
+  /** Unread count for the bell badge. */
+  async unreadCount(userId: string): Promise<number> {
+    return this.prisma.notification.count({ where: { userId, isRead: false } });
+  }
+
+  /**
+   * Marks one notification read.
+   *
+   * updateMany with userId in the WHERE, not findUnique-then-update: the
+   * ownership check and the write are one statement, so there is no window
+   * between them and no way to touch a row belonging to someone else. A
+   * count of 0 means "not yours, or does not exist" — deliberately the same
+   * answer, so this cannot be used to probe which ids exist.
+   */
+  async markRead(userId: string, notificationId: string): Promise<void> {
+    await this.prisma.notification.updateMany({
+      where: { id: notificationId, userId, isRead: false },
+      data:  { isRead: true, readAt: new Date() },
+    });
+  }
+
+  /** Marks every unread notification read. Returns how many changed. */
+  async markAllRead(userId: string): Promise<{ updated: number }> {
+    const { count } = await this.prisma.notification.updateMany({
+      where: { userId, isRead: false },
+      data:  { isRead: true, readAt: new Date() },
+    });
+    return { updated: count };
+  }
+
+  /**
+   * Creates a notification for one user.
+   *
+   * The single entry point for writing to this table, so callers cannot
+   * repeat the mistake the product-availability handler made: it passed
+   * `userId: null as any`, which the cast hid from the compiler and the
+   * non-null foreign key rejected at runtime. Every insert failed.
+   */
+  async createForUser(input: {
+    userId: string;
+    type:   string;
+    title:  string;
+    body:   string;
+    data?:  Record<string, unknown>;
+  }): Promise<void> {
+    await this.prisma.notification.create({
+      data: {
+        userId: input.userId,
+        type:   input.type,
+        title:  input.title,
+        body:   input.body,
+        ...(input.data ? { data: input.data as object } : {}),
+      },
     });
   }
 }

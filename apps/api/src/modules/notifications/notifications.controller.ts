@@ -1,13 +1,15 @@
 import {
-  Body, Controller, HttpCode, HttpStatus, Post,
+  Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { Throttle } from '@nestjs/throttler';
 import {
   IsEmail, IsEnum, IsOptional, IsString, MaxLength, MinLength,
 } from 'class-validator';
 import { NotificationsService } from './notifications.service';
-import { PrismaService } from '../../prisma/prisma.service';
 
 const CONTACT_SUBJECTS = [
   'general',
@@ -37,12 +39,70 @@ class NewsletterSubscribeDto {
   @IsOptional() @IsString() @MaxLength(100) firstName?: string;
 }
 
+/**
+ * The signed-in buyer's own notification feed.
+ *
+ * Split from NotificationsController, which is entirely anonymous (contact
+ * form, newsletter, availability requests). Keeping them in one class would
+ * mean a file where some routes are public and some are not, and the next
+ * person adding a route would have to notice which kind they were writing.
+ * Here the guard is on the class, so a new route is authenticated by default.
+ */
+@ApiTags('notifications')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@Controller('notifications')
+export class NotificationFeedController {
+  constructor(private readonly notifications: NotificationsService) {}
+
+  @Get()
+  @ApiOperation({ summary: "List the signed-in user's notifications, newest first" })
+  async list(
+    @CurrentUser() user: JwtPayload,
+    @Query('limit') limit?: string,
+    @Query('before') before?: string,
+  ) {
+    // No userId parameter anywhere: the only identity this endpoint accepts
+    // is the one in the token.
+    const beforeDate = before ? new Date(before) : undefined;
+    return this.notifications.listForUser(user.sub, {
+      limit:  limit ? Number(limit) : undefined,
+      before: beforeDate && !Number.isNaN(beforeDate.getTime()) ? beforeDate : undefined,
+    });
+  }
+
+  @Get('unread-count')
+  @ApiOperation({ summary: 'Unread notification count for the bell badge' })
+  async unreadCount(@CurrentUser() user: JwtPayload): Promise<{ count: number }> {
+    return { count: await this.notifications.unreadCount(user.sub) };
+  }
+
+  // Declared BEFORE :id/read, or "read-all" would be captured as an id.
+  @Patch('read-all')
+  @ApiOperation({ summary: 'Mark every notification read' })
+  async markAllRead(@CurrentUser() user: JwtPayload): Promise<{ updated: number }> {
+    return this.notifications.markAllRead(user.sub);
+  }
+
+  @Patch(':id/read')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Mark one notification read' })
+  async markRead(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ): Promise<void> {
+    // Ownership is enforced inside the same UPDATE, so an id belonging to
+    // someone else simply matches nothing. 204 either way — telling the
+    // caller which ids exist would be an enumeration oracle.
+    await this.notifications.markRead(user.sub, id);
+  }
+}
+
 @ApiTags('notifications')
 @Controller('notifications')
 export class NotificationsController {
   constructor(
     private readonly notificationsService: NotificationsService,
-    private readonly prisma: PrismaService,
   ) {}
 
   // Unauthenticated, and it sends mail to the platform inbox. The global
@@ -70,14 +130,24 @@ export class NotificationsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Subscribe to product availability notification' })
   async productReady(@Body() dto: ProductReadyDto) {
-    await this.prisma.notification.create({
-      data: {
-        userId:  null as any,
-        type:    'PRODUCT_READY',
-        title:   'Product availability request',
-        body:    `${dto.email} wants to be notified when ${dto.productName ?? dto.productId} is available`,
-        data:    { email: dto.email, productId: dto.productId },
-      },
+    // Mailed to the platform inbox rather than written to Notification.
+    //
+    // This used to insert a row with `userId: null as any`. Notification.userId
+    // is a non-null foreign key, so the cast hid the problem from the compiler
+    // and Postgres rejected every insert — this endpoint returned 500 for every
+    // caller, verified against production. It went unnoticed because no client
+    // code calls it yet.
+    //
+    // The right fix is not to make the column nullable. A row here has no user
+    // by nature: it is an anonymous shopper asking to hear about a restock, so
+    // it is inbound correspondence, not an entry in anybody's notification
+    // feed. Widening the column to fit it would have made the feed table hold
+    // two unrelated kinds of record, distinguishable only by a null.
+    await this.notificationsService.sendContactMessage({
+      name:    dto.email,
+      email:   dto.email,
+      subject: 'Product availability request',
+      message: `${dto.email} wants to be notified when ${dto.productName ?? dto.productId} is back in stock (product ${dto.productId}).`,
     });
     return { success: true };
   }

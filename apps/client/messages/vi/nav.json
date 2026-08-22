@@ -31,5 +31,13 @@
   "tipWishlist": "Đã lưu",
   "tipCart": "Giỏ hàng",
   "tipSellerHub": "Cửa hàng của bạn",
-  "tipAccount": "Tài khoản của bạn"
+  "tipAccount": "Tài khoản của bạn",
+  "shopManager": "Quản lý cửa hàng",
+  "viewProfile": "Xem hồ sơ của bạn",
+  "notifications": {
+    "tip": "Thông báo",
+    "title": "Thông báo",
+    "empty": "Chưa có thông báo nào.",
+    "markAllRead": "Đánh dấu đã đọc hết"
+  }
 }

@@ -31,5 +31,13 @@
   "tipWishlist": "收藏",
   "tipCart": "购物车",
   "tipSellerHub": "我的店铺",
-  "tipAccount": "我的账户"
+  "tipAccount": "我的账户",
+  "shopManager": "店铺管理",
+  "viewProfile": "查看您的个人资料",
+  "notifications": {
+    "tip": "通知",
+    "title": "通知",
+    "empty": "暂无通知。",
+    "markAllRead": "全部标为已读"
+  }
 }

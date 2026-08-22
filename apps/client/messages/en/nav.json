@@ -31,5 +31,13 @@
   "tipWishlist": "Saved items",
   "tipCart": "Basket",
   "tipSellerHub": "Your shop",
-  "tipAccount": "Your account"
+  "tipAccount": "Your account",
+  "shopManager": "Shop Manager",
+  "viewProfile": "View your profile",
+  "notifications": {
+    "tip": "Notifications",
+    "title": "Notifications",
+    "empty": "No notifications yet.",
+    "markAllRead": "Mark all read"
+  }
 }
