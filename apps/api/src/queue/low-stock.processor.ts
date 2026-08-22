@@ -3,6 +3,7 @@ import { InjectQueue, Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullm
 import { Job, Queue } from 'bullmq';
 import { LowStockService } from '../modules/products/low-stock.service';
 import { QUEUES, JOBS } from './queue.constants';
+import { reportDeadJob } from './dead-job-alert';
 
 @Processor(QUEUES.LOW_STOCK)
 export class LowStockProcessor extends WorkerHost implements OnModuleInit {
@@ -55,9 +56,13 @@ export class LowStockProcessor extends WorkerHost implements OnModuleInit {
   }
 
   @OnWorkerEvent('failed')
-  onFailed(job: Job, error: Error): void {
+  async onFailed(job: Job, error: Error): Promise<void> {
     this.logger.error(
-      `Low-stock job failed: id=${job.id} name=${job.name} — ${error.message}`,
+      `Low-stock job failed: id=${job.id} name=${job.name} attempt=${job.attemptsMade} — ${error.message}`,
     );
+
+    // Marked but not mailed: a missed low-stock alert costs a notification,
+    // not money, so it belongs on a dashboard rather than in someone's inbox.
+    await reportDeadJob(job, error, { logger: this.logger });
   }
 }

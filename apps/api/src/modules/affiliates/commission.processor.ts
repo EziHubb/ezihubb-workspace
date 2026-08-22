@@ -1,14 +1,18 @@
-import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
+import { InjectQueue, OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { Job } from 'bullmq';
+import { Job, Queue } from 'bullmq';
 import { CommissionService } from './commission.service';
 import { JOBS, QUEUES } from '../../queue/queue.constants';
+import { reportDeadJob } from '../../queue/dead-job-alert';
 
 @Processor(QUEUES.AFFILIATE_COMMISSION)
 export class CommissionProcessor extends WorkerHost {
   private readonly logger = new Logger(CommissionProcessor.name);
 
-  constructor(private readonly commissionService: CommissionService) {
+  constructor(
+    private readonly commissionService: CommissionService,
+    @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
+  ) {
     super();
   }
 
@@ -42,9 +46,15 @@ export class CommissionProcessor extends WorkerHost {
    * affiliate asks.
    */
   @OnWorkerEvent('failed')
-  onFailed(job: Job, error: Error): void {
+  async onFailed(job: Job, error: Error): Promise<void> {
     this.logger.error(
-      `Commission job failed: id=${job?.id} name=${job?.name} order=${job?.data?.orderId} — ${error.message}`,
+      `Commission job failed: id=${job?.id} name=${job?.name} order=${job?.data?.orderId} attempt=${job?.attemptsMade} — ${error.message}`,
     );
+
+    // Only once the retries are gone. The 'failed' event fires on every
+    // attempt, so alerting here unconditionally would page on blips that the
+    // next attempt fixes — and an alert that cries wolf gets muted, which is
+    // worse than not having one.
+    await reportDeadJob(job, error, { logger: this.logger, emailQueue: this.emailQueue });
   }
 }

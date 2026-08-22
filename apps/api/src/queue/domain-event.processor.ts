@@ -12,6 +12,7 @@ import {
   type DomainEvent,
   type DomainEventPayload,
 } from './domain-events';
+import { reportDeadJob } from './dead-job-alert';
 
 /**
  * The broker.
@@ -37,6 +38,7 @@ export class DomainEventProcessor extends WorkerHost {
     @InjectQueue(QUEUES.ORDER_PROCESSING) orderQueue: Queue,
     @InjectQueue(QUEUES.AFFILIATE_COMMISSION) commissionQueue: Queue,
     @InjectQueue(QUEUES.LOW_STOCK) lowStockQueue: Queue,
+    @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
   ) {
     super();
     this.queues = {
@@ -87,9 +89,20 @@ export class DomainEventProcessor extends WorkerHost {
   }
 
   @OnWorkerEvent('failed')
-  onFailed(job: Job, error: Error): void {
+  async onFailed(job: Job, error: Error): Promise<void> {
     this.logger.error(
-      `Event dispatch failed: event=${job?.name} id=${job?.id} — ${error.message}`,
+      `Event dispatch failed: event=${job?.name} id=${job?.id} attempt=${job?.attemptsMade} — ${error.message}`,
     );
+
+    // Always critical, regardless of which event it was. A dispatch that dies
+    // permanently means NO subscriber ran: for order.paid that is a paid order
+    // with no seller credit, no commission, no emails and no fulfilment — the
+    // single worst failure the queue can produce, and the one least likely to
+    // be noticed, because nothing errors anywhere else.
+    await reportDeadJob(job, error, {
+      logger: this.logger,
+      emailQueue: this.emailQueue,
+      isCritical: true,
+    });
   }
 }

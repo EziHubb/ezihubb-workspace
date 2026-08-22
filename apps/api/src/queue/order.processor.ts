@@ -13,6 +13,7 @@ import {
 } from './queue.constants';
 import { OrderStatus } from '@prisma/client';
 import { AnalyticsService } from '../modules/analytics/analytics.service';
+import { reportDeadJob } from './dead-job-alert';
 
 @Processor(QUEUES.ORDER_PROCESSING)
 export class OrderProcessor extends WorkerHost {
@@ -279,10 +280,16 @@ export class OrderProcessor extends WorkerHost {
   }
 
   @OnWorkerEvent('failed')
-  onFailed(job: Job, error: Error): void {
+  async onFailed(job: Job, error: Error): Promise<void> {
     this.logger.error(
       `Order job failed: id=${job.id} name=${job.name} attempt=${job.attemptsMade} — ${error.message}`,
     );
+
+    // This queue carries confirm-store-orders, so a permanent failure here can
+    // mean a seller was never credited for an order that was paid for.
+    // reportDeadJob decides which names warrant a mail; everything else just
+    // gets the marker.
+    await reportDeadJob(job, error, { logger: this.logger, emailQueue: this.emailQueue });
   }
 
   /**
