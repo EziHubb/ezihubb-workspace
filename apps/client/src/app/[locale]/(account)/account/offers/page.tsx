@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { HandCoins, Check, X } from 'lucide-react';
+import { HandCoins, Check, X, Copy } from 'lucide-react';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { useToast } from '@ezihubb/ui';
@@ -21,6 +21,15 @@ interface BuyerOfferDto {
   status:        OfferStatus;
   expiresAt:     string;
   createdAt:     string;
+  /**
+   * Set only on an ACCEPTED offer. Accepting does not change the listing
+   * price — it mints a single-use code scoped to this buyer and this product,
+   * so without this the green "accepted" badge is all the buyer gets and the
+   * code exists only in an email.
+   */
+  code:          string | null;
+  codeExpiresAt: string | null;
+  codeUsed:      boolean;
   product: {
     name:      string;
     slug:      string;
@@ -114,6 +123,35 @@ export default function MyOffersPage() {
                   )}
                   {(offer.status === 'PENDING' || offer.status === 'COUNTERED') && (
                     <p className="text-[11px] text-muted mt-0.5">{t('expires', { date: new Date(offer.expiresAt).toLocaleDateString(locale) })}</p>
+                  )}
+
+                  {/* The redeemable half of an accepted offer. Accepting does
+                      not change the listing price — it mints a single-use code
+                      scoped to this buyer and this product. It is emailed too,
+                      but a filtered or deleted mail used to be the only copy,
+                      which left an "accepted" offer with no way to redeem it. */}
+                  {offer.status === 'ACCEPTED' && offer.code && (
+                    <div className="mt-1.5 flex items-center flex-wrap gap-x-2 gap-y-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const code = offer.code;
+                          if (code) navigator.clipboard?.writeText(code);
+                        }}
+                        title={t('copyCode')}
+                        className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-dashed border-green-500 bg-green-50 text-[11px] font-mono font-semibold text-green-800 hover:bg-green-100 transition-colors"
+                      >
+                        {offer.code}
+                        <Copy className="w-3 h-3" />
+                      </button>
+                      {offer.codeUsed ? (
+                        <span className="text-[11px] text-muted">{t('codeUsed')}</span>
+                      ) : offer.codeExpiresAt ? (
+                        <span className="text-[11px] text-muted">
+                          {t('codeExpires', { date: new Date(offer.codeExpiresAt).toLocaleDateString(locale) })}
+                        </span>
+                      ) : null}
+                    </div>
                   )}
                 </div>
 

@@ -154,12 +154,65 @@ export class BuyerOffersService {
     return offer;
   }
 
+  /**
+   * The buyer's offers, each accepted one carrying the code it produced.
+   *
+   * Accepting an offer does not change the listing price — it mints a
+   * single-use Promotion scoped to that buyer and that product. Without the
+   * code, an ACCEPTED offer is worth nothing, and this endpoint used to return
+   * only the offer row: the buyer saw a green "accepted" badge on the page
+   * built to track offers, while the one thing that made it redeemable existed
+   * solely in an email. A missed or filtered mail left them with no way back to
+   * it.
+   *
+   * The link is the promotion's description, which acceptOffer writes as
+   * `buyer-offer:<offerId>`. That is a string join rather than a foreign key —
+   * not ideal, but it is the link that already exists, and adding a real column
+   * would be a migration for data that is already recoverable.
+   */
   async listMyOffers(buyerId: string) {
     await this.expireStale({ buyerId });
-    return this.prisma.buyerOffer.findMany({
+
+    const offers = await this.prisma.buyerOffer.findMany({
       where: { buyerId },
       orderBy: { createdAt: 'desc' },
       include: { product: { select: { name: true, slug: true, basePrice: true, images: { where: { isPrimary: true }, take: 1, select: { url: true } } } } },
+    });
+
+    const acceptedIds = offers.filter((o) => o.status === 'ACCEPTED').map((o) => o.id);
+    if (acceptedIds.length === 0) {
+      return offers.map((o) => ({ ...o, code: null, codeExpiresAt: null, codeUsed: false }));
+    }
+
+    // One query for every accepted offer rather than one per row.
+    const promos = await this.prisma.promotion.findMany({
+      where: { description: { in: acceptedIds.map((id) => `buyer-offer:${id}`) } },
+      select: {
+        code: true,
+        description: true,
+        expiresAt: true,
+        // Promotion has no usage counter of its own; redemption lives in
+        // PromotionUsage, so presence of a row is what "already used" means.
+        _count: { select: { usages: true } },
+      },
+    });
+
+    const byOfferId = new Map(
+      promos
+        .filter((pr) => pr.description?.startsWith('buyer-offer:'))
+        .map((pr) => [pr.description!.slice('buyer-offer:'.length), pr]),
+    );
+
+    return offers.map((o) => {
+      const pr = byOfferId.get(o.id);
+      return {
+        ...o,
+        // Null rather than absent for offers with no code, so the client has
+        // one shape to render instead of two.
+        code:          pr?.code ?? null,
+        codeExpiresAt: pr?.expiresAt ?? null,
+        codeUsed:      (pr?._count.usages ?? 0) > 0,
+      };
     });
   }
 
