@@ -620,8 +620,15 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
         quantity,
         customizationData: null,
       });
+      // No success toast here: the drawer slides open showing the item, its
+      // quantity and the new subtotal, which says everything the toast said and
+      // proves it rather than asserting it. The toast also rendered on top of
+      // the drawer's own heading, so the two pieces of feedback fought for the
+      // same corner of the screen.
+      //
+      // Kept on the paths that do NOT open the drawer (BuyTogetherCard and both
+      // wishlist flows) — there the toast is the only sign anything happened.
       openDrawer();
-      toast.success(tPanel('addedToCart'));
     } catch {
       toast.error(tPanel('couldNotAddToCart'));
     } finally {
