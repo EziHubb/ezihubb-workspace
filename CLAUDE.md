@@ -22,6 +22,78 @@
 
 <!-- nx configuration end-->
 
+# Redeploy flow
+
+When asked to "deploy" (or "commit + push + deploy"), run these steps in order.
+Do not skip a step because the change looks small — most of them exist because
+skipping them once hid a real failure.
+
+**1. Verify before committing.** `pnpm nx run api:build`, `api:test`,
+`run-many -t lint`, and `npx tsc --noEmit` for whichever of client/admin changed.
+
+Capture the exit code WITHOUT a pipe. `npx tsc … | head -5; echo $?` reports
+`head`'s status, not tsc's, and will read as `0` while tsc is failing. Redirect
+to a file, echo `$?`, then read the file.
+
+The client is not built locally on Windows — a Next build hits `os error 1314`
+(symlink privilege), which cannot happen in CI's Linux container. `tsc --noEmit`
+is the local stand-in.
+
+**2. Review the diff for scope.** Read `git status --short` and `git diff --stat`
+before committing.
+
+**Never `git add -A` or `git add <dir>`.** A parallel Claude session often has
+its own files staged in the index; a bare `git commit` takes the WHOLE index,
+including theirs. Commit with the pathspec form — `git commit -m … -- <paths>` —
+which commits only the listed paths and leaves the rest of the index untouched.
+Untracked files must be `git add`ed first (pathspec cannot reach them), then
+named in the same pathspec commit.
+
+**3. Commit with Conventional Commits.** The prefix is not cosmetic: the admin
+build version is computed from these messages (see below), so `feat:` vs `fix:`
+decides the version bump.
+
+**4. Push, then wait for BOTH workflows.** A push triggers `CI` and
+`Build & Push Docker Images` as separate runs. `gh run list --limit 2` finds
+them; `gh run watch <id> --exit-status` blocks on each.
+
+Then check every job's conclusion, not just the run's:
+`gh run view <id> --json conclusion,jobs`. `skipped` is normal and correct — CI
+only rebuilds images whose files changed, and `deploy.sh` pulls `:latest` for the
+rest.
+
+**5. Deploy.** `bash scripts/deploy.sh` from the local machine. It SSHes in,
+pulls, pulls images from GHCR, runs migrations, then restarts.
+
+Migrations run BEFORE any app restarts and now abort the deploy on failure. Do
+not weaken that back into a warning: it previously ended in `|| echo`, so a
+failed migration printed a warning, the apps restarted against an unmigrated
+schema, and the run still finished with "✓ Deploy complete!".
+
+**6. Verify against production data — never trust "✓ Deploy complete".** The
+script prints that even when things are wrong. Pick an oracle that can actually
+distinguish success from failure:
+
+- Hit the API and assert on a FIELD, not a status code (`curl … | node -e …`).
+- For a new route, `401` proves it is registered; `404` proves it is not. Always
+  probe a deliberately bogus sibling path as a control — without it, a server
+  returning `401` for everything looks like success.
+- Prefer an oracle that can fail. Counting a word that also appears in the i18n
+  bundle, or in the site name, cannot fail and proves nothing.
+- Storefront product grids are client-fetched, so product data is absent from
+  the initial HTML. Curling the page cannot verify them; query the API instead.
+
+**7. Report what was NOT verified.** State plainly which parts are unproven —
+e.g. anything needing an authenticated session or data that does not exist in
+production yet. "Build passed" is not evidence that the logic is right.
+
+## Things that need a human
+
+- **nginx config** (`scripts/nginx-ezihubb.conf`) is a manual one-time template.
+  `deploy.sh` never installs it, so editing it changes nothing on production.
+- **Production SSH writes** are blocked by the sandbox classifier. Stop and say
+  which command was blocked and why; never work around it.
+
 # Admin build version
 
 The admin app's sidebar heading shows `v<X.Y.Z>` right under "Admin Panel"/"Seller Hub", for `SUPER_ADMIN` sessions only — lets support confirm which release is actually live in production without SSHing into the server. It is **fully automatic**; never hand-edit a version number anywhere.
