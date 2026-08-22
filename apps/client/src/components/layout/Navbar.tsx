@@ -12,6 +12,7 @@ import {
 import { Tooltip } from '@ezihubb/ui';
 import { NotificationBell } from './NotificationBell';
 import { Badge } from './HeaderBadge';
+import { ViewportPortal } from './ViewportPortal';
 import { useWishlist, queryKeys } from '@ezihubb/api-client';
 import { signOut } from 'next-auth/react';
 import { useCartStore } from '../../lib/store/cart.store';
@@ -407,16 +408,24 @@ export function Navbar({ menuData }: NavbarProps = {}) {
         </div>
       </nav>
 
-      {/* Cart drawer */}
-      <CartDrawer />
+      {/* Both drawers cover the viewport, so they are portalled to body rather
+          than left inside the header. StickyHeader animates with a transform,
+          and a transformed ancestor becomes the containing block for
+          position:fixed descendants — which turned the drawers' "fixed" from
+          "the viewport" into "the header box", and parked the closed cart panel
+          outside it wide enough to give every page a horizontal scrollbar. */}
+      <ViewportPortal>
+        {/* Cart drawer */}
+        <CartDrawer />
 
-      {/* Mobile full-screen nav drawer */}
-      <MobileNavDrawer
-        isOpen={mobileOpen}
-        onClose={() => setMobileOpen(false)}
-        tabs={tabs}
-        locale={locale}
-      />
+        {/* Mobile full-screen nav drawer */}
+        <MobileNavDrawer
+          isOpen={mobileOpen}
+          onClose={() => setMobileOpen(false)}
+          tabs={tabs}
+          locale={locale}
+        />
+      </ViewportPortal>
     </>
   );
 }
