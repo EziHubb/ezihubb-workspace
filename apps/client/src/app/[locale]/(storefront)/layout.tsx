@@ -1,6 +1,7 @@
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { Navbar } from '../../../components/layout/Navbar';
+import { StickyHeader } from '../../../components/layout/StickyHeader';
 import { Footer } from '../../../components/layout/Footer';
 import { MobileBottomNav } from '../../../components/layout/MobileBottomNav';
 import { CampaignBannerBar } from '../../../components/campaign/CampaignBannerBar';
@@ -24,11 +25,14 @@ export default async function StorefrontLayout({
 
   return (
     <>
-      {/* Sticky header: campaign banner (when active) + navbar */}
-      <div className="sticky top-0 z-50">
+      {/* Sticky header: campaign banner (when active) + navbar.
+          StickyHeader slides it out of view on scroll-down and brings it back
+          on scroll-up, so a long page (the product gallery especially) gets
+          the ~112px back instead of carrying navigation nobody is using. */}
+      <StickyHeader>
         <CampaignBannerBar campaign={activeCampaign} />
         <Navbar menuData={menuData} />
-      </div>
+      </StickyHeader>
       <main className="min-h-screen">
         {children}
       </main>
