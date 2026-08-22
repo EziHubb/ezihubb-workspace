@@ -749,33 +749,18 @@ export class PaymentsService {
       });
     });
 
-    // Gift card confirmed order — create commission if affiliated
-    this.commissionService
-      .createForOrder(orderId)
-      .catch((err: Error) =>
-        this.logger.error(`Commission creation failed for gift-card order ${orderId}: ${err.message}`),
-      );
-
-    if (order.isDigital) {
-      const customerEmail = order.guestEmail ?? (await this.getUserEmail(order.userId));
-      if (customerEmail) {
-        const shopUrl = this.config.get<string>('NEXT_PUBLIC_URL') ?? 'https://ezihubb.com';
-        await this.emailQueue.add(
-          JOBS.SEND_EMAIL,
-          {
-            to: customerEmail,
-            template: 'digital-download-ready',
-            subject: `Your files are ready — Order ${order.orderNumber}`,
-            data: {
-              orderNumber: order.orderNumber,
-              downloadUrl: `${shopUrl.replace(/\/$/, '')}/orders/${order.orderNumber}`,
-              year: new Date().getFullYear(),
-            },
-          } satisfies SendEmailJobData,
-          DEFAULT_JOB_OPTIONS,
-        );
-      }
-    }
+    // Third publisher of the same event, and it had the third different list
+    // of side effects. This branch confirmed the order and then did only two
+    // things: create the affiliate commission, and mail the download link for a
+    // digital order.
+    //
+    // So an order paid entirely with a gift card never confirmed any seller's
+    // StoreOrder, never credited their totalOrders/totalRevenue, never sent
+    // them a "new order" mail, never pushed to fulfilment, never sent the buyer
+    // an order-confirmed mail, and never reached analytics. Same shape as the
+    // PayPal gap, in a third place — which is what listing consumers by hand
+    // costs once there is more than one way to pay.
+    await this.eventBus.publish(DOMAIN_EVENTS.ORDER_PAID, orderId);
   }
 
   private async deductGiftCard(

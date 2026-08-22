@@ -2,6 +2,7 @@ import {
   Body, Controller, HttpCode, HttpStatus, Post,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import {
   IsEmail, IsEnum, IsOptional, IsString, MaxLength, MinLength,
 } from 'class-validator';
@@ -44,6 +45,10 @@ export class NotificationsController {
     private readonly prisma: PrismaService,
   ) {}
 
+  // Unauthenticated, and it sends mail to the platform inbox. The global
+  // throttle is 300/min, which would let one IP deliver 300 emails a minute —
+  // matching the limit auth.controller already uses for the same reason.
+  @Throttle({ default: { ttl: 900_000, limit: 3 } })   // 3 per 15 min
   @Post('contact')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Submit a contact form message' })
@@ -58,6 +63,9 @@ export class NotificationsController {
     return { success: true };
   }
 
+  // Takes an arbitrary email address from an anonymous caller, so without a
+  // tight limit it is a way to sign a victim up repeatedly.
+  @Throttle({ default: { ttl: 900_000, limit: 5 } })   // 5 per 15 min
   @Post('product-ready')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Subscribe to product availability notification' })
@@ -74,6 +82,7 @@ export class NotificationsController {
     return { success: true };
   }
 
+  @Throttle({ default: { ttl: 900_000, limit: 3 } })   // 3 per 15 min
   @Post('newsletter')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Subscribe to newsletter' })
@@ -88,6 +97,7 @@ export class NotificationsController {
 export class NewsletterController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
+  @Throttle({ default: { ttl: 900_000, limit: 3 } })   // 3 per 15 min
   @Post('subscribe')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Subscribe to newsletter (canonical path)' })
