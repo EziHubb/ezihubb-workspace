@@ -152,8 +152,20 @@ function VideoSlide({
 
 function MediaThumbnail({ item, className }: { item: MediaItem; className: string }) {
   if (item.type === 'video') {
+    // `absolute inset-0` on the wrapper, not `relative`.
+    //
+    // Its only children are absolutely positioned, so as a `relative` box it
+    // had no content to give it height and collapsed to zero — and `h-full`
+    // inside a zero-high parent is zero. DevTools showed the poster loading
+    // fine at 880x1280 and rendering at 73x0: the image was never the problem,
+    // the box around it was.
+    //
+    // Filling the button gives the children a real box, the same one the image
+    // branch gets by being the button's direct child. It still establishes a
+    // containing block, since `absolute` is not `static`, so `inset-0` on the
+    // img and on the scrim still resolves against it.
     return (
-      <div className={`relative bg-black ${className}`}>
+      <div className={`absolute inset-0 bg-black ${className}`}>
         {/* The extracted poster, when there is one. This used to mount a real
             <video preload="metadata"> purely to show a still frame, which made
             the browser open a connection and pull the container header for
