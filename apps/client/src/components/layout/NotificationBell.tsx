@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Bell, ChevronDown, Check } from 'lucide-react';
+import { Bell, Check } from 'lucide-react';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { Tooltip } from '@ezihubb/ui';
 import { useAuthQuery, useAuthMutation } from '../../lib/hooks/useAuthQuery';
+import { Badge } from './HeaderBadge';
 
 interface NotificationDto {
   id:        string;
@@ -74,21 +75,26 @@ export function NotificationBell() {
 
   return (
     <div className="relative hidden md:block" ref={ref}>
+      {/* Same padding and glyph size as the wishlist and cart buttons, so the
+          three read as one set of circles.
+
+          The reference draws a caret beside its bell, and this had one. It was
+          dropped: `p-2` plus a `w-3` caret measured 50px against the
+          neighbours' 36px, so `rounded-full` produced a pill sitting in a row
+          of circles and the gaps either side stopped matching. Every icon in
+          the reference carries a caret, which is why it reads as even there;
+          here only the avatar does, and that is a different kind of control.
+          The unread badge already signals this one holds state. */}
       <Tooltip label={t('tip')} disabled={open}>
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-label={unread > 0 ? `${t('tip')} (${unread})` : t('tip')}
           aria-expanded={open}
-          className="flex items-center gap-0.5 p-2 hover:bg-muted/10 rounded-full transition-colors relative"
+          className="relative flex p-2 hover:bg-muted/10 rounded-full transition-colors"
         >
           <Bell className="w-5 h-5 text-secondary" />
-          {unread > 0 && (
-            <span className="absolute top-1 right-1.5 min-w-[16px] h-4 px-1 bg-primary text-white text-[10px] font-semibold rounded-full flex items-center justify-center leading-none">
-              {unread > 99 ? '99+' : unread}
-            </span>
-          )}
-          <ChevronDown className={`w-3 h-3 text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
+          <Badge count={unread} />
         </button>
       </Tooltip>
 

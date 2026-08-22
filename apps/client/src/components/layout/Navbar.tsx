@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Tooltip } from '@ezihubb/ui';
 import { NotificationBell } from './NotificationBell';
+import { Badge } from './HeaderBadge';
 import { useWishlist, queryKeys } from '@ezihubb/api-client';
 import { signOut } from 'next-auth/react';
 import { useCartStore } from '../../lib/store/cart.store';
@@ -25,17 +26,6 @@ import { MegaMenu } from './MegaMenu';
 import { MobileNavDrawer } from './MobileNavDrawer';
 import { LocaleSwitcher } from './LocaleSwitcher';
 import type { MegaMenuTab } from '../../types/mega-menu';
-
-// ── Badge ─────────────────────────────────────────────────────────────────────
-
-function Badge({ count }: { count: number }) {
-  if (count <= 0) return null;
-  return (
-    <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center tabular-nums pointer-events-none">
-      {count > 99 ? '99+' : count}
-    </span>
-  );
-}
 
 // ── User Menu (desktop) ───────────────────────────────────────────────────────
 
