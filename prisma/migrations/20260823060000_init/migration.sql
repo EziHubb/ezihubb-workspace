@@ -1,3 +1,16 @@
+-- Squashed baseline. Replaces the 32 migrations dated 2026-08-11 → 2026-08-23,
+-- which were collapsed when production was reset: nothing was running on the
+-- old history any more, so keeping 31 incremental steps only preserved the
+-- order in which a schema nobody had shipped yet was discovered.
+--
+-- Generated from prisma/schema.prisma with
+--   prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script
+-- so it is the schema itself, not a replay of how the schema was reached.
+--
+-- Any database created before 2026-08-23 cannot apply this file — it is an
+-- empty-to-current script and every CREATE would collide. Those databases are
+-- gone; if one turns up, restore it from a snapshot rather than migrating it.
+
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
@@ -20,6 +33,9 @@ CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'PAID', 'FAILED', 'REFUNDED', 'P
 CREATE TYPE "DiscountType" AS ENUM ('PERCENTAGE', 'FIXED_AMOUNT', 'FREE_SHIPPING');
 
 -- CreateEnum
+CREATE TYPE "PromotionScope" AS ENUM ('SHOP_WIDE', 'SPECIFIC_LISTINGS');
+
+-- CreateEnum
 CREATE TYPE "ReviewStatus" AS ENUM ('PENDING', 'APPROVED', 'HIDDEN');
 
 -- CreateEnum
@@ -35,7 +51,13 @@ CREATE TYPE "RenewalType" AS ENUM ('AUTOMATIC', 'MANUAL');
 CREATE TYPE "ProcessingProfileType" AS ENUM ('MADE_TO_ORDER', 'READY_TO_SHIP');
 
 -- CreateEnum
+CREATE TYPE "ShippingChargeType" AS ENUM ('FIXED', 'FREE');
+
+-- CreateEnum
 CREATE TYPE "ReturnPolicy" AS ENUM ('NO_RETURNS', 'RETURNS_ACCEPTED', 'EXCHANGES_ONLY');
+
+-- CreateEnum
+CREATE TYPE "DimensionUnit" AS ENUM ('CM', 'IN', 'MM', 'M');
 
 -- CreateEnum
 CREATE TYPE "ProductStatus" AS ENUM ('DRAFT', 'ACTIVE', 'INACTIVE', 'ARCHIVED');
@@ -50,22 +72,46 @@ CREATE TYPE "CommissionStatus" AS ENUM ('PENDING', 'CONFIRMED', 'APPROVED', 'PAI
 CREATE TYPE "PayoutStatus" AS ENUM ('REQUESTED', 'PROCESSING', 'PAID', 'REJECTED');
 
 -- CreateEnum
-CREATE TYPE "ReferralCommissionStatus" AS ENUM ('PENDING', 'CONFIRMED', 'PAID', 'CANCELLED');
-
--- CreateEnum
-CREATE TYPE "ReferralPayoutStatus" AS ENUM ('REQUESTED', 'PROCESSING', 'PAID', 'REJECTED');
-
--- CreateEnum
 CREATE TYPE "StoreStatus" AS ENUM ('PENDING', 'ACTIVE', 'SUSPENDED', 'REJECTED');
 
 -- CreateEnum
-CREATE TYPE "SellerLedgerEntryType" AS ENUM ('SALE', 'TRANSACTION_FEE', 'PAYMENT_PROCESSING_FEE', 'REGULATORY_FEE', 'LISTING_FEE', 'ADJUSTMENT');
+CREATE TYPE "SellerLedgerEntryType" AS ENUM ('SALE', 'TRANSACTION_FEE', 'PAYMENT_PROCESSING_FEE', 'REGULATORY_FEE', 'LISTING_FEE', 'ADJUSTMENT', 'VAT', 'DEPOSIT_FEE', 'SHARE_SAVE_REFUND', 'OFFSITE_ADS_FEE');
+
+-- CreateEnum
+CREATE TYPE "LinkClickKind" AS ENUM ('SHARE_SAVE', 'OFFSITE_AD');
+
+-- CreateEnum
+CREATE TYPE "TargetedOfferTrigger" AS ENUM ('INTERESTED_SHOPPER', 'THANK_YOU', 'ABANDONED_BASKET', 'FAVOURITED_ITEM');
+
+-- CreateEnum
+CREATE TYPE "SocialPlatform" AS ENUM ('FACEBOOK', 'PINTEREST', 'X');
+
+-- CreateEnum
+CREATE TYPE "SocialConnectionStatus" AS ENUM ('CONNECTED', 'DISCONNECTED');
+
+-- CreateEnum
+CREATE TYPE "BuyerOfferStatus" AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'COUNTERED');
+
+-- CreateEnum
+CREATE TYPE "OffersScope" AS ENUM ('ALL_LISTINGS', 'SPECIFIC_LISTINGS');
+
+-- CreateEnum
+CREATE TYPE "DepositSchedule" AS ENUM ('WEEKLY', 'BIWEEKLY', 'MONTHLY');
+
+-- CreateEnum
+CREATE TYPE "SellerType" AS ENUM ('INDIVIDUAL', 'BUSINESS');
 
 -- CreateEnum
 CREATE TYPE "SellerPayoutStatus" AS ENUM ('PENDING', 'PROCESSING', 'PAID', 'FAILED');
 
 -- CreateEnum
 CREATE TYPE "CategoryScope" AS ENUM ('PLATFORM', 'STORE');
+
+-- CreateEnum
+CREATE TYPE "StoreSubscriptionStatus" AS ENUM ('ACTIVE', 'PAST_DUE', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "StoreSubscriptionCycle" AS ENUM ('MONTHLY', 'ANNUAL');
 
 -- CreateEnum
 CREATE TYPE "ProductImageType" AS ENUM ('MOCKUP', 'PRINT_FILE');
@@ -75,6 +121,9 @@ CREATE TYPE "PrintSide" AS ENUM ('FRONT', 'BACK', 'SLEEVE', 'HOOD');
 
 -- CreateEnum
 CREATE TYPE "ProductType" AS ENUM ('PHYSICAL', 'DIGITAL');
+
+-- CreateEnum
+CREATE TYPE "WhenMade" AS ENUM ('RECENTLY_MADE', 'VINTAGE');
 
 -- CreateEnum
 CREATE TYPE "ConversationStatus" AS ENUM ('OPEN', 'PENDING', 'RESOLVED', 'SPAM');
@@ -111,6 +160,7 @@ CREATE TABLE "User" (
     "firstName" TEXT,
     "lastName" TEXT,
     "avatarUrl" TEXT,
+    "phone" TEXT,
     "role" "Role" NOT NULL DEFAULT 'CUSTOMER',
     "isEmailVerified" BOOLEAN NOT NULL DEFAULT false,
     "provider" "Provider" NOT NULL DEFAULT 'EMAIL',
@@ -127,13 +177,6 @@ CREATE TABLE "User" (
     "isSeller" BOOLEAN NOT NULL DEFAULT false,
     "storeId" TEXT,
     "permissions" JSONB,
-    "referralCode" TEXT,
-    "referredByUserId" TEXT,
-    "referralDepth" INTEGER NOT NULL DEFAULT 0,
-    "totalReferrals" INTEGER NOT NULL DEFAULT 0,
-    "referralBalance" DECIMAL(10,2) NOT NULL DEFAULT 0,
-    "referralEarned" DECIMAL(10,2) NOT NULL DEFAULT 0,
-    "referralTierId" TEXT,
     "wishlistShareToken" TEXT,
     "wishlistIsPublic" BOOLEAN NOT NULL DEFAULT false,
     "wishlistName" VARCHAR(100),
@@ -239,6 +282,9 @@ CREATE TABLE "Store" (
     "verifiedAt" TIMESTAMP(3),
     "approvedById" TEXT,
     "fulfillmentMode" "StoreFulfillmentMode" NOT NULL DEFAULT 'AUTOMATIC',
+    "processesOnSaturday" BOOLEAN NOT NULL DEFAULT false,
+    "processesOnSunday" BOOLEAN NOT NULL DEFAULT false,
+    "deliveryUpgradesEnabled" BOOLEAN NOT NULL DEFAULT false,
     "totalProducts" INTEGER NOT NULL DEFAULT 0,
     "totalOrders" INTEGER NOT NULL DEFAULT 0,
     "totalRevenue" DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -255,8 +301,125 @@ CREATE TABLE "Store" (
     "scoreResponse" INTEGER,
     "scoreBadge" TEXT,
     "scoreLastCalculatedAt" TIMESTAMP(3),
+    "currency" VARCHAR(3) NOT NULL DEFAULT 'USD',
+    "stripeCustomerId" TEXT,
+    "autoBillingEnabled" BOOLEAN NOT NULL DEFAULT true,
+    "shareSaveEnabled" BOOLEAN NOT NULL DEFAULT false,
+    "shareSaveJoinedAt" TIMESTAMP(3),
+    "offsiteAdsOptedOut" BOOLEAN NOT NULL DEFAULT false,
+    "offersEnabled" BOOLEAN NOT NULL DEFAULT false,
+    "offersScope" "OffersScope" NOT NULL DEFAULT 'ALL_LISTINGS',
+    "offersMaxDiscountPercent" DECIMAL(5,2),
+    "tagline" TEXT,
+    "location" TEXT,
+    "colorTheme" TEXT,
+    "announcement" TEXT,
+    "announcementUpdatedAt" TIMESTAMP(3),
+    "aboutHeadline" TEXT,
+    "aboutVideoUrl" TEXT,
+    "aboutPhotoUrls" TEXT[],
+    "ownerBio" TEXT,
+    "featuredProductIds" TEXT[],
+    "featuredLayout" TEXT,
+    "socialLinks" JSONB,
 
     CONSTRAINT "Store_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StoreFaq" (
+    "id" TEXT NOT NULL,
+    "storeId" TEXT NOT NULL,
+    "question" TEXT NOT NULL,
+    "answer" TEXT NOT NULL,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "StoreFaq_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StoreSubscription" (
+    "id" TEXT NOT NULL,
+    "storeId" TEXT NOT NULL,
+    "status" "StoreSubscriptionStatus" NOT NULL DEFAULT 'ACTIVE',
+    "cycle" "StoreSubscriptionCycle" NOT NULL,
+    "priceAtPurchase" DECIMAL(10,2) NOT NULL,
+    "currentPeriodStart" TIMESTAMP(3) NOT NULL,
+    "currentPeriodEnd" TIMESTAMP(3) NOT NULL,
+    "cancelAtPeriodEnd" BOOLEAN NOT NULL DEFAULT false,
+    "cancelledAt" TIMESTAMP(3),
+    "paymentProvider" TEXT DEFAULT 'MANUAL',
+    "externalSubscriptionId" TEXT,
+    "grantedByUserId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "StoreSubscription_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StoreBankAccount" (
+    "id" TEXT NOT NULL,
+    "storeId" TEXT NOT NULL,
+    "accountHolderName" TEXT NOT NULL,
+    "bankName" TEXT NOT NULL,
+    "accountNumberEncrypted" TEXT NOT NULL,
+    "accountNumberLast4" TEXT NOT NULL,
+    "country" VARCHAR(2) NOT NULL,
+    "depositSchedule" "DepositSchedule" NOT NULL DEFAULT 'WEEKLY',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "StoreBankAccount_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StoreBillingCard" (
+    "id" TEXT NOT NULL,
+    "storeId" TEXT NOT NULL,
+    "stripePaymentMethodId" TEXT NOT NULL,
+    "fingerprint" TEXT,
+    "brand" TEXT NOT NULL,
+    "last4" TEXT NOT NULL,
+    "expMonth" INTEGER NOT NULL,
+    "expYear" INTEGER NOT NULL,
+    "cardholderName" TEXT NOT NULL,
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "StoreBillingCard_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StoreTaxInfo" (
+    "id" TEXT NOT NULL,
+    "storeId" TEXT NOT NULL,
+    "sellerType" "SellerType" NOT NULL DEFAULT 'INDIVIDUAL',
+    "fullLegalName" TEXT NOT NULL,
+    "taxpayerIdEncrypted" TEXT,
+    "dateOfBirth" TIMESTAMP(3),
+    "country" VARCHAR(2) NOT NULL,
+    "streetAddress" TEXT NOT NULL,
+    "flatOther" TEXT,
+    "city" TEXT NOT NULL,
+    "province" TEXT,
+    "postCode" TEXT,
+    "phone" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "StoreTaxInfo_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StoreFollow" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "storeId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "StoreFollow_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -266,6 +429,7 @@ CREATE TABLE "StoreOrder" (
     "storeId" TEXT NOT NULL,
     "status" "OrderStatus" NOT NULL DEFAULT 'PENDING_PAYMENT',
     "subtotal" DECIMAL(10,2) NOT NULL,
+    "discountAmount" DECIMAL(10,2) NOT NULL DEFAULT 0,
     "shippingCost" DECIMAL(10,2) NOT NULL DEFAULT 0,
     "platformFee" DECIMAL(10,2) NOT NULL,
     "sellerEarnings" DECIMAL(10,2) NOT NULL,
@@ -275,9 +439,11 @@ CREATE TABLE "StoreOrder" (
     "shippedAt" TIMESTAMP(3),
     "deliveredAt" TIMESTAMP(3),
     "sellerNotes" TEXT,
+    "deliveryUpgradeRequested" BOOLEAN NOT NULL DEFAULT false,
     "payoutId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "visitorId" TEXT,
 
     CONSTRAINT "StoreOrder_pkey" PRIMARY KEY ("id")
 );
@@ -310,10 +476,66 @@ CREATE TABLE "SellerLedgerEntry" (
     "type" "SellerLedgerEntryType" NOT NULL,
     "amount" DECIMAL(10,2) NOT NULL,
     "description" TEXT NOT NULL,
+    "productId" TEXT,
     "payoutId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "SellerLedgerEntry_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StoreLinkClick" (
+    "id" TEXT NOT NULL,
+    "storeId" TEXT NOT NULL,
+    "kind" "LinkClickKind" NOT NULL,
+    "visitorId" TEXT NOT NULL,
+    "sharerId" TEXT,
+    "productId" TEXT,
+    "source" TEXT,
+    "convertedAt" TIMESTAMP(3),
+    "orderId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "StoreLinkClick_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "TargetedOfferCampaign" (
+    "id" TEXT NOT NULL,
+    "storeId" TEXT NOT NULL,
+    "trigger" "TargetedOfferTrigger" NOT NULL,
+    "discountType" "DiscountType" NOT NULL,
+    "discountValue" DECIMAL(10,2) NOT NULL,
+    "expiresAfterDays" INTEGER NOT NULL DEFAULT 3,
+    "lookbackDays" INTEGER NOT NULL DEFAULT 7,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "TargetedOfferCampaign_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StoreSocialConnection" (
+    "id" TEXT NOT NULL,
+    "storeId" TEXT NOT NULL,
+    "platform" "SocialPlatform" NOT NULL,
+    "status" "SocialConnectionStatus" NOT NULL DEFAULT 'DISCONNECTED',
+    "connectedAt" TIMESTAMP(3),
+
+    CONSTRAINT "StoreSocialConnection_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SocialPost" (
+    "id" TEXT NOT NULL,
+    "storeId" TEXT NOT NULL,
+    "content" TEXT NOT NULL,
+    "imageUrl" TEXT,
+    "platforms" "SocialPlatform"[],
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "SocialPost_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -325,17 +547,15 @@ CREATE TABLE "PlatformSettings" (
     "listingFee" DECIMAL(10,2) NOT NULL DEFAULT 0.20,
     "regulatoryFeeRate" DECIMAL(5,4) NOT NULL DEFAULT 0.0124,
     "regulatoryFeeCountries" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "vatOnFeesRate" DECIMAL(5,4) NOT NULL DEFAULT 0.10,
+    "offsiteAdsFeeRate" DECIMAL(5,4) NOT NULL DEFAULT 0.15,
     "platformName" TEXT NOT NULL DEFAULT 'EziHubb',
     "allowPublicRegistration" BOOLEAN NOT NULL DEFAULT false,
     "minPayoutAmount" DECIMAL(10,2) NOT NULL DEFAULT 100.00,
     "payoutSchedule" TEXT NOT NULL DEFAULT 'monthly',
     "maintenanceMode" BOOLEAN NOT NULL DEFAULT false,
-    "freeShippingEnabled" BOOLEAN NOT NULL DEFAULT false,
-    "freeShippingMinAmount" DECIMAL(10,2) NOT NULL DEFAULT 50.00,
-    "freeShippingZoneIds" TEXT[] DEFAULT ARRAY[]::TEXT[],
-    "defaultProcessingDays" INTEGER NOT NULL DEFAULT 2,
-    "showEstimatedDelivery" BOOLEAN NOT NULL DEFAULT true,
-    "showCarrierInCheckout" BOOLEAN NOT NULL DEFAULT true,
+    "plusMonthlyPrice" DECIMAL(10,2) NOT NULL DEFAULT 5.00,
+    "plusAnnualPrice" DECIMAL(10,2),
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "PlatformSettings_pkey" PRIMARY KEY ("id")
@@ -420,12 +640,14 @@ CREATE TABLE "Product" (
     "sku" TEXT NOT NULL,
     "description" TEXT NOT NULL,
     "shortDescription" TEXT,
+    "search_vector" tsvector,
     "basePrice" DECIMAL(10,2) NOT NULL,
     "compareAtPrice" DECIMAL(10,2),
     "isPersonalizable" BOOLEAN NOT NULL DEFAULT true,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "status" "ProductStatus" NOT NULL DEFAULT 'ACTIVE',
     "productType" "ProductType" NOT NULL DEFAULT 'PHYSICAL',
+    "giftWrappingAvailable" BOOLEAN NOT NULL DEFAULT false,
     "isFeatured" BOOLEAN NOT NULL DEFAULT false,
     "viewCount" INTEGER NOT NULL DEFAULT 0,
     "soldCount" INTEGER NOT NULL DEFAULT 0,
@@ -447,6 +669,9 @@ CREATE TABLE "Product" (
     "recipientTags" TEXT[],
     "styles" TEXT[],
     "sustainability" TEXT[],
+    "width" DECIMAL(8,2),
+    "height" DECIMAL(8,2),
+    "dimensionUnit" "DimensionUnit",
     "domesticGlobalPricing" BOOLEAN NOT NULL DEFAULT false,
     "quantity" INTEGER,
     "trackInventory" BOOLEAN NOT NULL DEFAULT false,
@@ -456,6 +681,7 @@ CREATE TABLE "Product" (
     "shippingProfileId" TEXT,
     "whoMadeIt" "WhoMadeIt",
     "howItWasMade" "HowItWasMade",
+    "whenMade" "WhenMade",
     "toolsUsed" TEXT[],
     "productionPartnerIds" TEXT[],
     "hsCode" TEXT,
@@ -476,8 +702,10 @@ CREATE TABLE "ProductVariant" (
     "productId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "options" JSONB NOT NULL,
-    "price" DECIMAL(10,2) NOT NULL,
+    "price" DECIMAL(10,2),
+    "quantity" INTEGER,
     "sku" TEXT,
+    "isAvailable" BOOLEAN NOT NULL DEFAULT true,
     "isDefault" BOOLEAN NOT NULL DEFAULT false,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "lowStockThreshold" INTEGER,
@@ -497,6 +725,20 @@ CREATE TABLE "ProductImage" (
     "printSide" "PrintSide",
 
     CONSTRAINT "ProductImage_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ProductVideo" (
+    "id" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "url" TEXT NOT NULL,
+    "posterUrl" TEXT,
+    "posterSquareUrl" TEXT,
+    "durationSeconds" DOUBLE PRECISION,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ProductVideo_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -548,6 +790,7 @@ CREATE TABLE "VariationSettings" (
     "enableVariations" BOOLEAN NOT NULL DEFAULT false,
     "variesBy" TEXT[],
     "skuPrefix" TEXT,
+    "photoGroupId" TEXT,
 
     CONSTRAINT "VariationSettings_pkey" PRIMARY KEY ("id")
 );
@@ -560,6 +803,7 @@ CREATE TABLE "ProcessingProfile" (
     "minDays" INTEGER NOT NULL DEFAULT 3,
     "maxDays" INTEGER NOT NULL DEFAULT 7,
     "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "storeId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -570,9 +814,10 @@ CREATE TABLE "ProcessingProfile" (
 CREATE TABLE "ShippingProfile" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "type" TEXT NOT NULL DEFAULT 'fixed',
     "activeListings" INTEGER NOT NULL DEFAULT 0,
     "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "originCountry" VARCHAR(2) NOT NULL DEFAULT 'VN',
+    "originPostalCode" TEXT NOT NULL DEFAULT '',
     "storeId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -585,10 +830,12 @@ CREATE TABLE "ShippingProfileMethod" (
     "id" TEXT NOT NULL,
     "profileId" TEXT NOT NULL,
     "destinationType" TEXT NOT NULL,
-    "carrier" TEXT,
+    "carrierService" TEXT NOT NULL DEFAULT 'OTHER',
+    "carrierName" TEXT,
+    "chargeType" "ShippingChargeType" NOT NULL DEFAULT 'FIXED',
     "minDays" INTEGER NOT NULL,
     "maxDays" INTEGER NOT NULL,
-    "price" DECIMAL(10,2) NOT NULL,
+    "price" DECIMAL(10,2),
     "extraItemPrice" DECIMAL(10,2),
 
     CONSTRAINT "ShippingProfileMethod_pkey" PRIMARY KEY ("id")
@@ -658,6 +905,7 @@ CREATE TABLE "CartItem" (
     "unitPrice" DECIMAL(10,2) NOT NULL,
     "customizationData" JSONB,
     "previewUrl" TEXT,
+    "searchTerm" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "storeId" TEXT,
 
@@ -705,8 +953,6 @@ CREATE TABLE "Order" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "affiliateId" TEXT,
     "affiliateDiscountAmount" DECIMAL(10,2),
-    "referralUserId" TEXT,
-    "referralDiscountAmount" DECIMAL(10,2),
     "easypostShipmentId" TEXT,
     "labelUrl" TEXT,
     "labelPurchasedAt" TIMESTAMP(3),
@@ -726,6 +972,8 @@ CREATE TABLE "OrderItem" (
     "unitPrice" DECIMAL(10,2) NOT NULL,
     "customizationData" JSONB,
     "previewUrl" TEXT,
+    "searchTerm" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "productName" TEXT NOT NULL,
     "variantName" TEXT,
     "productSlug" TEXT,
@@ -818,7 +1066,7 @@ CREATE TABLE "GiftCardUsage" (
 -- CreateTable
 CREATE TABLE "Promotion" (
     "id" TEXT NOT NULL,
-    "code" TEXT NOT NULL,
+    "code" TEXT,
     "type" "DiscountType" NOT NULL,
     "value" DECIMAL(10,2) NOT NULL,
     "minOrderAmount" DECIMAL(10,2),
@@ -831,8 +1079,22 @@ CREATE TABLE "Promotion" (
     "description" TEXT,
     "storeId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "autoApply" BOOLEAN NOT NULL DEFAULT false,
+    "scope" "PromotionScope" NOT NULL DEFAULT 'SHOP_WIDE',
+    "country" TEXT,
+    "termsAndConditions" TEXT,
+    "targetUserId" TEXT,
 
     CONSTRAINT "Promotion_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PromotionProduct" (
+    "id" TEXT NOT NULL,
+    "promotionId" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+
+    CONSTRAINT "PromotionProduct_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -847,27 +1109,48 @@ CREATE TABLE "PromotionUsage" (
 );
 
 -- CreateTable
-CREATE TABLE "ShippingZone" (
+CREATE TABLE "BundleOffer" (
     "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "countries" TEXT[],
+    "storeId" TEXT NOT NULL,
+    "discountPercent" DECIMAL(5,2) NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "ShippingZone_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "BundleOffer_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "ShippingMethod" (
+CREATE TABLE "BundleOfferProduct" (
     "id" TEXT NOT NULL,
-    "zoneId" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "carrier" TEXT,
-    "price" DECIMAL(10,2) NOT NULL,
-    "freeShippingOver" DECIMAL(10,2),
-    "minDays" INTEGER NOT NULL,
-    "maxDays" INTEGER NOT NULL,
-    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "bundleOfferId" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
 
-    CONSTRAINT "ShippingMethod_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "BundleOfferProduct_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StoreOfferListing" (
+    "id" TEXT NOT NULL,
+    "storeId" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+
+    CONSTRAINT "StoreOfferListing_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "BuyerOffer" (
+    "id" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "buyerId" TEXT NOT NULL,
+    "storeId" TEXT NOT NULL,
+    "offeredPrice" DECIMAL(10,2) NOT NULL,
+    "counterPrice" DECIMAL(10,2),
+    "status" "BuyerOfferStatus" NOT NULL DEFAULT 'PENDING',
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "BuyerOffer_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -1079,74 +1362,6 @@ CREATE TABLE "AffiliatePayout" (
 );
 
 -- CreateTable
-CREATE TABLE "ReferralSettings" (
-    "id" TEXT NOT NULL DEFAULT 'singleton',
-    "level1Rate" DECIMAL(5,4) NOT NULL DEFAULT 0.10,
-    "level2Rate" DECIMAL(5,4) NOT NULL DEFAULT 0.05,
-    "level3Rate" DECIMAL(5,4) NOT NULL DEFAULT 0.01,
-    "buyerDiscountRate" DECIMAL(5,4) NOT NULL DEFAULT 0.05,
-    "buyerDiscountEnabled" BOOLEAN NOT NULL DEFAULT true,
-    "minPayoutAmount" DECIMAL(10,2) NOT NULL DEFAULT 50.00,
-    "lockDays" INTEGER NOT NULL DEFAULT 14,
-    "isEnabled" BOOLEAN NOT NULL DEFAULT true,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "ReferralSettings_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "ReferralTier" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "minReferrals" INTEGER NOT NULL,
-    "minEarned" DECIMAL(10,2) NOT NULL,
-    "commissionBonus" DECIMAL(5,4) NOT NULL DEFAULT 0,
-    "badgeColor" TEXT NOT NULL DEFAULT '#888888',
-    "badgeIcon" TEXT NOT NULL DEFAULT 'ti-star',
-    "sortOrder" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "ReferralTier_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "ReferralCommission" (
-    "id" TEXT NOT NULL,
-    "earnerId" TEXT NOT NULL,
-    "orderId" TEXT NOT NULL,
-    "buyerId" TEXT NOT NULL,
-    "level" INTEGER NOT NULL,
-    "rate" DECIMAL(5,4) NOT NULL,
-    "baseAmount" DECIMAL(10,2) NOT NULL,
-    "amount" DECIMAL(10,2) NOT NULL,
-    "status" "ReferralCommissionStatus" NOT NULL DEFAULT 'PENDING',
-    "confirmedAt" TIMESTAMP(3),
-    "cancelledAt" TIMESTAMP(3),
-    "cancelReason" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "ReferralCommission_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "ReferralPayout" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "amount" DECIMAL(10,2) NOT NULL,
-    "status" "ReferralPayoutStatus" NOT NULL DEFAULT 'REQUESTED',
-    "paymentMethod" TEXT NOT NULL,
-    "paymentDetail" TEXT NOT NULL,
-    "adminNotes" TEXT,
-    "processedAt" TIMESTAMP(3),
-    "processedById" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "ReferralPayout_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "AppSettings" (
     "id" TEXT NOT NULL,
     "key" TEXT NOT NULL,
@@ -1226,7 +1441,7 @@ CREATE TABLE "ModerationSettings" (
     "strikeLimitHigh" INTEGER NOT NULL DEFAULT 3,
     "strikeLimitCritical" INTEGER NOT NULL DEFAULT 1,
     "strikeWindowDays" INTEGER NOT NULL DEFAULT 30,
-    "maxDailyApiCalls" INTEGER NOT NULL DEFAULT 10000,
+    "maxDailyApiCalls" INTEGER NOT NULL DEFAULT 500,
     "maxCostPerDayUsd" DECIMAL(10,2) NOT NULL DEFAULT 50.00,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -1377,14 +1592,48 @@ CREATE TABLE "Campaign" (
     CONSTRAINT "Campaign_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "SearchTermDailyStat" (
+    "id" TEXT NOT NULL,
+    "term" TEXT NOT NULL,
+    "date" TEXT NOT NULL,
+    "searches" INTEGER NOT NULL DEFAULT 0,
+    "resultsCount" INTEGER NOT NULL DEFAULT 0,
+    "clicks" INTEGER NOT NULL DEFAULT 0,
+    "purchases" INTEGER NOT NULL DEFAULT 0,
+    "category" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "SearchTermDailyStat_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SavedSearchTerm" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "term" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "SavedSearchTerm_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "RelatedTermFeedback" (
+    "id" TEXT NOT NULL,
+    "sourceTerm" TEXT NOT NULL,
+    "relatedTerm" TEXT NOT NULL,
+    "helpfulCount" INTEGER NOT NULL DEFAULT 0,
+    "notHelpfulCount" INTEGER NOT NULL DEFAULT 0,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "RelatedTermFeedback_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_cartEmailToken_key" ON "User"("cartEmailToken");
-
--- CreateIndex
-CREATE UNIQUE INDEX "User_referralCode_key" ON "User"("referralCode");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_wishlistShareToken_key" ON "User"("wishlistShareToken");
@@ -1444,6 +1693,42 @@ CREATE INDEX "Store_status_idx" ON "Store"("status");
 CREATE INDEX "Store_ownerId_idx" ON "Store"("ownerId");
 
 -- CreateIndex
+CREATE INDEX "StoreFaq_storeId_idx" ON "StoreFaq"("storeId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StoreSubscription_storeId_key" ON "StoreSubscription"("storeId");
+
+-- CreateIndex
+CREATE INDEX "StoreSubscription_status_currentPeriodEnd_idx" ON "StoreSubscription"("status", "currentPeriodEnd");
+
+-- CreateIndex
+CREATE INDEX "StoreSubscription_grantedByUserId_idx" ON "StoreSubscription"("grantedByUserId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StoreBankAccount_storeId_key" ON "StoreBankAccount"("storeId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StoreBillingCard_stripePaymentMethodId_key" ON "StoreBillingCard"("stripePaymentMethodId");
+
+-- CreateIndex
+CREATE INDEX "StoreBillingCard_storeId_idx" ON "StoreBillingCard"("storeId");
+
+-- CreateIndex
+CREATE INDEX "StoreBillingCard_storeId_fingerprint_idx" ON "StoreBillingCard"("storeId", "fingerprint");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StoreTaxInfo_storeId_key" ON "StoreTaxInfo"("storeId");
+
+-- CreateIndex
+CREATE INDEX "StoreFollow_storeId_idx" ON "StoreFollow"("storeId");
+
+-- CreateIndex
+CREATE INDEX "StoreFollow_userId_idx" ON "StoreFollow"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StoreFollow_userId_storeId_key" ON "StoreFollow"("userId", "storeId");
+
+-- CreateIndex
 CREATE INDEX "StoreOrder_orderId_idx" ON "StoreOrder"("orderId");
 
 -- CreateIndex
@@ -1451,6 +1736,9 @@ CREATE INDEX "StoreOrder_storeId_idx" ON "StoreOrder"("storeId");
 
 -- CreateIndex
 CREATE INDEX "StoreOrder_status_idx" ON "StoreOrder"("status");
+
+-- CreateIndex
+CREATE INDEX "StoreOrder_visitorId_idx" ON "StoreOrder"("visitorId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "StoreOrder_orderId_storeId_key" ON "StoreOrder"("orderId", "storeId");
@@ -1466,6 +1754,27 @@ CREATE INDEX "SellerPayout_period_idx" ON "SellerPayout"("period");
 
 -- CreateIndex
 CREATE INDEX "SellerLedgerEntry_storeId_payoutId_idx" ON "SellerLedgerEntry"("storeId", "payoutId");
+
+-- CreateIndex
+CREATE INDEX "SellerLedgerEntry_storeId_productId_type_idx" ON "SellerLedgerEntry"("storeId", "productId", "type");
+
+-- CreateIndex
+CREATE INDEX "StoreLinkClick_storeId_kind_createdAt_idx" ON "StoreLinkClick"("storeId", "kind", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "StoreLinkClick_visitorId_createdAt_idx" ON "StoreLinkClick"("visitorId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "TargetedOfferCampaign_isActive_idx" ON "TargetedOfferCampaign"("isActive");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "TargetedOfferCampaign_storeId_trigger_key" ON "TargetedOfferCampaign"("storeId", "trigger");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StoreSocialConnection_storeId_platform_key" ON "StoreSocialConnection"("storeId", "platform");
+
+-- CreateIndex
+CREATE INDEX "SocialPost_storeId_createdAt_idx" ON "SocialPost"("storeId", "createdAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Category_slug_key" ON "Category"("slug");
@@ -1552,6 +1861,9 @@ CREATE INDEX "ProductImage_productId_idx" ON "ProductImage"("productId");
 CREATE INDEX "ProductImage_productId_type_printSide_idx" ON "ProductImage"("productId", "type", "printSide");
 
 -- CreateIndex
+CREATE INDEX "ProductVideo_productId_idx" ON "ProductVideo"("productId");
+
+-- CreateIndex
 CREATE INDEX "DigitalFile_productId_idx" ON "DigitalFile"("productId");
 
 -- CreateIndex
@@ -1562,6 +1874,9 @@ CREATE INDEX "VariationOption_groupId_idx" ON "VariationOption"("groupId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "VariationSettings_productId_key" ON "VariationSettings"("productId");
+
+-- CreateIndex
+CREATE INDEX "ProcessingProfile_storeId_idx" ON "ProcessingProfile"("storeId");
 
 -- CreateIndex
 CREATE INDEX "ShippingProfile_storeId_idx" ON "ShippingProfile"("storeId");
@@ -1607,9 +1922,6 @@ CREATE INDEX "Order_createdAt_idx" ON "Order"("createdAt");
 
 -- CreateIndex
 CREATE INDEX "Order_affiliateId_idx" ON "Order"("affiliateId");
-
--- CreateIndex
-CREATE INDEX "Order_referralUserId_idx" ON "Order"("referralUserId");
 
 -- CreateIndex
 CREATE INDEX "OrderItem_orderId_idx" ON "OrderItem"("orderId");
@@ -1666,6 +1978,18 @@ CREATE INDEX "Promotion_isActive_idx" ON "Promotion"("isActive");
 CREATE INDEX "Promotion_storeId_idx" ON "Promotion"("storeId");
 
 -- CreateIndex
+CREATE INDEX "Promotion_autoApply_idx" ON "Promotion"("autoApply");
+
+-- CreateIndex
+CREATE INDEX "Promotion_targetUserId_idx" ON "Promotion"("targetUserId");
+
+-- CreateIndex
+CREATE INDEX "PromotionProduct_productId_idx" ON "PromotionProduct"("productId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PromotionProduct_promotionId_productId_key" ON "PromotionProduct"("promotionId", "productId");
+
+-- CreateIndex
 CREATE INDEX "PromotionUsage_promotionId_idx" ON "PromotionUsage"("promotionId");
 
 -- CreateIndex
@@ -1675,7 +1999,31 @@ CREATE INDEX "PromotionUsage_userId_idx" ON "PromotionUsage"("userId");
 CREATE INDEX "PromotionUsage_orderId_idx" ON "PromotionUsage"("orderId");
 
 -- CreateIndex
-CREATE INDEX "ShippingMethod_zoneId_idx" ON "ShippingMethod"("zoneId");
+CREATE INDEX "BundleOffer_storeId_idx" ON "BundleOffer"("storeId");
+
+-- CreateIndex
+CREATE INDEX "BundleOffer_isActive_idx" ON "BundleOffer"("isActive");
+
+-- CreateIndex
+CREATE INDEX "BundleOfferProduct_productId_idx" ON "BundleOfferProduct"("productId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "BundleOfferProduct_bundleOfferId_productId_key" ON "BundleOfferProduct"("bundleOfferId", "productId");
+
+-- CreateIndex
+CREATE INDEX "StoreOfferListing_productId_idx" ON "StoreOfferListing"("productId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StoreOfferListing_storeId_productId_key" ON "StoreOfferListing"("storeId", "productId");
+
+-- CreateIndex
+CREATE INDEX "BuyerOffer_storeId_status_idx" ON "BuyerOffer"("storeId", "status");
+
+-- CreateIndex
+CREATE INDEX "BuyerOffer_productId_idx" ON "BuyerOffer"("productId");
+
+-- CreateIndex
+CREATE INDEX "BuyerOffer_buyerId_idx" ON "BuyerOffer"("buyerId");
 
 -- CreateIndex
 CREATE INDEX "Review_productId_status_idx" ON "Review"("productId", "status");
@@ -1783,27 +2131,6 @@ CREATE INDEX "AffiliatePayout_affiliateId_idx" ON "AffiliatePayout"("affiliateId
 CREATE INDEX "AffiliatePayout_status_idx" ON "AffiliatePayout"("status");
 
 -- CreateIndex
-CREATE INDEX "ReferralCommission_earnerId_idx" ON "ReferralCommission"("earnerId");
-
--- CreateIndex
-CREATE INDEX "ReferralCommission_orderId_idx" ON "ReferralCommission"("orderId");
-
--- CreateIndex
-CREATE INDEX "ReferralCommission_buyerId_idx" ON "ReferralCommission"("buyerId");
-
--- CreateIndex
-CREATE INDEX "ReferralCommission_status_idx" ON "ReferralCommission"("status");
-
--- CreateIndex
-CREATE UNIQUE INDEX "ReferralCommission_earnerId_orderId_key" ON "ReferralCommission"("earnerId", "orderId");
-
--- CreateIndex
-CREATE INDEX "ReferralPayout_userId_idx" ON "ReferralPayout"("userId");
-
--- CreateIndex
-CREATE INDEX "ReferralPayout_status_idx" ON "ReferralPayout"("status");
-
--- CreateIndex
 CREATE UNIQUE INDEX "AppSettings_key_key" ON "AppSettings"("key");
 
 -- CreateIndex
@@ -1875,11 +2202,26 @@ CREATE INDEX "Campaign_isActive_idx" ON "Campaign"("isActive");
 -- CreateIndex
 CREATE INDEX "Campaign_season_idx" ON "Campaign"("season");
 
--- AddForeignKey
-ALTER TABLE "User" ADD CONSTRAINT "User_referredByUserId_fkey" FOREIGN KEY ("referredByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- CreateIndex
+CREATE INDEX "SearchTermDailyStat_date_idx" ON "SearchTermDailyStat"("date");
 
--- AddForeignKey
-ALTER TABLE "User" ADD CONSTRAINT "User_referralTierId_fkey" FOREIGN KEY ("referralTierId") REFERENCES "ReferralTier"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- CreateIndex
+CREATE INDEX "SearchTermDailyStat_category_date_idx" ON "SearchTermDailyStat"("category", "date");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SearchTermDailyStat_term_date_key" ON "SearchTermDailyStat"("term", "date");
+
+-- CreateIndex
+CREATE INDEX "SavedSearchTerm_userId_idx" ON "SavedSearchTerm"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SavedSearchTerm_userId_term_key" ON "SavedSearchTerm"("userId", "term");
+
+-- CreateIndex
+CREATE INDEX "RelatedTermFeedback_sourceTerm_idx" ON "RelatedTermFeedback"("sourceTerm");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RelatedTermFeedback_sourceTerm_relatedTerm_key" ON "RelatedTermFeedback"("sourceTerm", "relatedTerm");
 
 -- AddForeignKey
 ALTER TABLE "FcmToken" ADD CONSTRAINT "FcmToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -1906,6 +2248,30 @@ ALTER TABLE "WishlistItem" ADD CONSTRAINT "WishlistItem_productId_fkey" FOREIGN 
 ALTER TABLE "Store" ADD CONSTRAINT "Store_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "StoreFaq" ADD CONSTRAINT "StoreFaq_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoreSubscription" ADD CONSTRAINT "StoreSubscription_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoreSubscription" ADD CONSTRAINT "StoreSubscription_grantedByUserId_fkey" FOREIGN KEY ("grantedByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoreBankAccount" ADD CONSTRAINT "StoreBankAccount_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoreBillingCard" ADD CONSTRAINT "StoreBillingCard_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoreTaxInfo" ADD CONSTRAINT "StoreTaxInfo_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoreFollow" ADD CONSTRAINT "StoreFollow_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoreFollow" ADD CONSTRAINT "StoreFollow_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "StoreOrder" ADD CONSTRAINT "StoreOrder_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -1925,6 +2291,18 @@ ALTER TABLE "SellerLedgerEntry" ADD CONSTRAINT "SellerLedgerEntry_storeOrderId_f
 
 -- AddForeignKey
 ALTER TABLE "SellerLedgerEntry" ADD CONSTRAINT "SellerLedgerEntry_payoutId_fkey" FOREIGN KEY ("payoutId") REFERENCES "SellerPayout"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoreLinkClick" ADD CONSTRAINT "StoreLinkClick_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TargetedOfferCampaign" ADD CONSTRAINT "TargetedOfferCampaign_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoreSocialConnection" ADD CONSTRAINT "StoreSocialConnection_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SocialPost" ADD CONSTRAINT "SocialPost_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Category" ADD CONSTRAINT "Category_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -1972,6 +2350,9 @@ ALTER TABLE "ProductVariant" ADD CONSTRAINT "ProductVariant_productId_fkey" FORE
 ALTER TABLE "ProductImage" ADD CONSTRAINT "ProductImage_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "ProductVideo" ADD CONSTRAINT "ProductVideo_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "DigitalFile" ADD CONSTRAINT "DigitalFile_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -1985,6 +2366,9 @@ ALTER TABLE "VariationOption" ADD CONSTRAINT "VariationOption_groupId_fkey" FORE
 
 -- AddForeignKey
 ALTER TABLE "VariationSettings" ADD CONSTRAINT "VariationSettings_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProcessingProfile" ADD CONSTRAINT "ProcessingProfile_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ShippingProfile" ADD CONSTRAINT "ShippingProfile_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -2026,9 +2410,6 @@ ALTER TABLE "Order" ADD CONSTRAINT "Order_userId_fkey" FOREIGN KEY ("userId") RE
 ALTER TABLE "Order" ADD CONSTRAINT "Order_affiliateId_fkey" FOREIGN KEY ("affiliateId") REFERENCES "AffiliateAccount"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Order" ADD CONSTRAINT "Order_referralUserId_fkey" FOREIGN KEY ("referralUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -2059,13 +2440,40 @@ ALTER TABLE "GiftCardUsage" ADD CONSTRAINT "GiftCardUsage_orderId_fkey" FOREIGN 
 ALTER TABLE "Promotion" ADD CONSTRAINT "Promotion_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "PromotionProduct" ADD CONSTRAINT "PromotionProduct_promotionId_fkey" FOREIGN KEY ("promotionId") REFERENCES "Promotion"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PromotionProduct" ADD CONSTRAINT "PromotionProduct_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "PromotionUsage" ADD CONSTRAINT "PromotionUsage_promotionId_fkey" FOREIGN KEY ("promotionId") REFERENCES "Promotion"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "PromotionUsage" ADD CONSTRAINT "PromotionUsage_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ShippingMethod" ADD CONSTRAINT "ShippingMethod_zoneId_fkey" FOREIGN KEY ("zoneId") REFERENCES "ShippingZone"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "BundleOffer" ADD CONSTRAINT "BundleOffer_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BundleOfferProduct" ADD CONSTRAINT "BundleOfferProduct_bundleOfferId_fkey" FOREIGN KEY ("bundleOfferId") REFERENCES "BundleOffer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BundleOfferProduct" ADD CONSTRAINT "BundleOfferProduct_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoreOfferListing" ADD CONSTRAINT "StoreOfferListing_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StoreOfferListing" ADD CONSTRAINT "StoreOfferListing_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BuyerOffer" ADD CONSTRAINT "BuyerOffer_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BuyerOffer" ADD CONSTRAINT "BuyerOffer_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BuyerOffer" ADD CONSTRAINT "BuyerOffer_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Review" ADD CONSTRAINT "Review_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -2110,18 +2518,6 @@ ALTER TABLE "AffiliateCommission" ADD CONSTRAINT "AffiliateCommission_orderId_fk
 ALTER TABLE "AffiliatePayout" ADD CONSTRAINT "AffiliatePayout_affiliateId_fkey" FOREIGN KEY ("affiliateId") REFERENCES "AffiliateAccount"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ReferralCommission" ADD CONSTRAINT "ReferralCommission_earnerId_fkey" FOREIGN KEY ("earnerId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "ReferralCommission" ADD CONSTRAINT "ReferralCommission_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "ReferralCommission" ADD CONSTRAINT "ReferralCommission_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "ReferralPayout" ADD CONSTRAINT "ReferralPayout_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "StrikeRecord" ADD CONSTRAINT "StrikeRecord_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -2150,4 +2546,7 @@ ALTER TABLE "StoreOrderFulfillment" ADD CONSTRAINT "StoreOrderFulfillment_connec
 
 -- AddForeignKey
 ALTER TABLE "ApiKey" ADD CONSTRAINT "ApiKey_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SavedSearchTerm" ADD CONSTRAINT "SavedSearchTerm_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
