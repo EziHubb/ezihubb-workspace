@@ -24,7 +24,7 @@ import { type Crop } from 'react-image-crop';
 import {
   GripVertical, Trash2, Pencil, X,
   HelpCircle, Film, ImagePlus, Crop as CropIcon,
-  Check, VideoOff,
+  Check,
 } from 'lucide-react';
 import type { ProductEditFormValues, AdminProductDto, ProductImage } from '../types';
 import { ThumbnailCropModal } from '../ThumbnailCropModal';
@@ -249,7 +249,7 @@ function SortableImageSlot({
       ref={setNodeRef}
       style={style}
       className={[
-        'group relative rounded-xl overflow-hidden border-2 bg-background aspect-square select-none',
+        'group relative rounded-lg overflow-hidden border bg-background aspect-square select-none',
         isDragging ? 'border-primary shadow-lg' : 'border-border',
       ].join(' ')}
     >
@@ -259,25 +259,25 @@ function SortableImageSlot({
           alt={altText || 'Product image'}
           fill
           className="object-cover pointer-events-none"
-          sizes="160px"
+          sizes="(max-width: 1280px) 20vw, 140px"
           draggable={false}
         />
       )}
 
       {/* Featured badge */}
       {isFeatured && (
-        <span className="absolute top-2 left-2 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow-sm z-10">
+        <span className="absolute top-1.5 left-1.5 bg-primary text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm z-10">
           Featured
         </span>
       )}
 
       {/* Hover controls */}
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-      <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+      <div className="absolute top-1.5 right-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
         <button
           type="button"
           onClick={() => onEditAlt(altText)}
-          className="p-1.5 bg-black/60 rounded-lg text-white hover:bg-black/80 backdrop-blur-sm"
+          className="p-1 bg-black/60 rounded-md text-white hover:bg-black/80 backdrop-blur-sm"
           title="Edit alt text"
         >
           <Pencil className="w-3 h-3" />
@@ -285,7 +285,7 @@ function SortableImageSlot({
         <button
           type="button"
           onClick={onRemove}
-          className="p-1.5 bg-black/60 rounded-lg text-white hover:bg-red-600/80 backdrop-blur-sm"
+          className="p-1 bg-black/60 rounded-md text-white hover:bg-red-600/80 backdrop-blur-sm"
           title="Remove"
         >
           <Trash2 className="w-3 h-3" />
@@ -307,6 +307,41 @@ function SortableImageSlot({
 }
 
 // ─── Video slot (direct file upload, ≤10s clips) ──────────────────────────────
+
+/**
+ * One uploaded video, sized like a photo tile.
+ *
+ * Videos used to share a single tile with an inner scrollbar, so two clips
+ * were two postage stamps stacked in a box smaller than any of the photos
+ * beside them. A video is a piece of media like the rest — it gets a slot.
+ */
+function VideoTile({
+  url, index, onRemove,
+}: {
+  url:      string;
+  index:    number;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="aspect-square rounded-lg border border-border bg-black relative overflow-hidden group">
+      <video src={url} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+
+      <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-semibold">
+        <Film className="w-3 h-3" />
+        Video {index + 1}
+      </span>
+
+      <button
+        type="button"
+        onClick={onRemove}
+        className="absolute top-1.5 right-1.5 p-1 bg-black/60 rounded-md text-white opacity-0 group-hover:opacity-100 transition-opacity"
+        title="Remove video"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
 
 function VideoSlot({
   productId,
@@ -368,52 +403,44 @@ function VideoSlot({
     await deleteVideoFile(productId, url).catch(() => undefined);
   };
 
+  // Every video gets its own tile, then one "add" tile while there is room —
+  // so two videos read as two, and one video sits beside an invitation to add
+  // the second rather than hiding inside a scrollbox with it.
   return (
-    <div className="aspect-square rounded-xl border-2 border-border bg-background/80 flex flex-col p-2.5 gap-2 overflow-hidden">
-      <div className="flex items-center justify-between shrink-0">
-        <span className="text-xs font-semibold text-secondary flex items-center gap-1">
-          <Film className="w-3.5 h-3.5 text-primary" /> Videos
-        </span>
-        <span className="text-[10px] text-muted">{videoUrls.length}/{MAX_VIDEOS}</span>
-      </div>
+    <>
+      {videoUrls.map((url, i) => (
+        <VideoTile key={url} url={url} index={i} onRemove={() => handleRemove(url)} />
+      ))}
 
-      <div className="flex-1 space-y-1.5 overflow-y-auto">
-        {videoUrls.map((url) => (
-          <div key={url} className="relative rounded-lg overflow-hidden border border-border bg-black aspect-video group">
-            <video src={url} className="w-full h-full object-cover" muted playsInline preload="metadata" />
-            <button
-              type="button"
-              onClick={() => handleRemove(url)}
-              className="absolute top-1 right-1 p-1 bg-black/60 rounded text-white opacity-0 group-hover:opacity-100 transition-opacity"
-              title="Remove"
-            >
-              <Trash2 className="w-3 h-3" />
-            </button>
-          </div>
-        ))}
-
-        {remaining > 0 && (
+      {remaining > 0 && (
+        <div className="aspect-square rounded-lg border border-dashed border-border bg-background/60 flex flex-col items-center justify-center gap-1.5 px-1 text-center">
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
-            className="w-full py-2 rounded-lg border-2 border-dashed border-border text-muted hover:border-primary/50 hover:text-primary hover:bg-primary/3 disabled:opacity-40 transition-all flex items-center justify-center gap-1.5 text-[11px] font-semibold"
+            className="flex flex-col items-center gap-1.5 text-muted hover:text-primary disabled:opacity-40 transition-colors"
           >
-            {uploading ? (
-              <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Film className="w-3.5 h-3.5" />
-            )}
-            {uploading ? 'Checking & uploading…' : `Add video (${remaining} left)`}
+            <span className="w-7 h-7 rounded-full bg-muted/10 flex items-center justify-center">
+              {uploading ? (
+                <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Film className="w-3.5 h-3.5" />
+              )}
+            </span>
+            <span className="leading-tight">
+              <span className="block text-[11px] font-semibold text-secondary">
+                {uploading ? 'Uploading…' : 'Add video'}
+              </span>
+              <span className="block text-[10px] text-muted">
+                {uploading ? 'Checking' : `${remaining} left`}
+              </span>
+            </span>
           </button>
-        )}
-      </div>
 
-      {error && (
-        <p className="text-[10px] text-red-600 flex items-start gap-1 shrink-0">
-          <VideoOff className="w-3 h-3 shrink-0 mt-0.5" />
-          {error}
-        </p>
+          {error && (
+            <p className="text-[9px] text-red-600 leading-tight px-1">{error}</p>
+          )}
+        </div>
       )}
 
       <input
@@ -427,7 +454,7 @@ function VideoSlot({
           e.target.value = '';
         }}
       />
-    </div>
+    </>
   );
 }
 
@@ -452,18 +479,18 @@ function AddPhotosSlot({
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={uploading}
-        className="aspect-square rounded-xl border-2 border-dashed border-border bg-background/80 flex flex-col items-center justify-center gap-2 text-muted hover:border-primary/50 hover:text-primary hover:bg-primary/3 disabled:opacity-40 disabled:cursor-not-allowed transition-all group"
+        className="aspect-square rounded-lg border border-dashed border-border bg-background/80 flex flex-col items-center justify-center gap-1.5 px-1 text-muted hover:border-primary/50 hover:text-primary hover:bg-primary/3 disabled:opacity-40 disabled:cursor-not-allowed transition-all group"
       >
         {uploading ? (
-          <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-muted/10 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
-            <ImagePlus className="w-4 h-4" />
+          <div className="w-7 h-7 rounded-full bg-muted/10 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+            <ImagePlus className="w-3.5 h-3.5" />
           </div>
         )}
-        <div className="text-center">
-          <p className="text-xs font-semibold">{uploading ? 'Uploading…' : 'Add photos'}</p>
-          {!uploading && <p className="text-[11px] text-muted/60">{remaining} remaining</p>}
+        <div className="text-center leading-tight">
+          <p className="text-[11px] font-semibold">{uploading ? 'Uploading…' : 'Add photos'}</p>
+          {!uploading && <p className="text-[10px] text-muted/60">{remaining} left</p>}
         </div>
       </button>
       <input
@@ -570,7 +597,13 @@ function DraggablePhotoGrid({
       >
         <SortableContext items={imageIds} strategy={rectSortingStrategy}>
           {/* 5-column grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {/* Sized so a full listing — 20 photos, 2 videos — is one screenful
+              rather than something to scroll through while hunting for the one
+              to delete. Eight columns puts a tile at roughly 135px on a wide
+              screen: small enough to see the whole set at once, still large
+              enough to tell two mockups of the same shirt apart. The ramp down
+              keeps tiles from collapsing to thumbnails on narrow windows. */}
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2.5">
             {/* Slot 0: Featured image */}
             {imageIds.length > 0 && imageMap[imageIds[0]] && (
               <SortableImageSlot
@@ -583,7 +616,9 @@ function DraggablePhotoGrid({
               />
             )}
 
-            {/* Fixed slot 1: Video */}
+            {/* Video slots — one tile per uploaded video, plus an add tile
+                while there is room. Renders a fragment of siblings, so they
+                flow as grid cells next to the photos rather than nesting. */}
             <VideoSlot productId={productId} videoUrls={videoUrls} onChange={onVideosChange} />
 
             {/* Slots 2..n: remaining photos */}

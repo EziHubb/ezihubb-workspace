@@ -6,19 +6,19 @@ import Image from 'next/image';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   X, Plus, Trash2, Pencil,
-  Layers, ImageIcon, GripVertical, ChevronDown,
+  Layers, ImageIcon, GripVertical, ChevronDown, Check,
 } from 'lucide-react';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { Toggle } from './primitives/Toggle';
 import { FilterSelect } from '../../ui/FilterSelect';
-import { VariantComboGrid } from './VariantComboGrid';
 import { VariantImagePickerModal } from './VariantImagePicker';
 import type {
   VariationGroup, VariationSettings, ProductVariantRow,
   VariantEditPatch, ApplyVariationsPayload, ProductImage,
 } from './types';
 import { pricedGroupIds } from './helpers';
+import { ModalPortal } from './ModalPortal';
 
 // ─── Settings helpers ─────────────────────────────────────────────────────────
 // Settings are encoded in `variesBy: string[]` to avoid a new migration.
@@ -68,6 +68,32 @@ const OPTION_SUGGESTIONS: Record<string, string[]> = {
   'Secondary colour': COLOUR_NAMES,
 };
 
+// ─── Dimension variations ─────────────────────────────────────────────────────
+// Width / Height / Depth are measurements, so "3" alone says nothing. The
+// seller picks a unit once and every option carries it.
+//
+// The unit is baked into the option name ("1 Centimetres") rather than stored
+// in its own column, which is what the reference displays and what avoids a
+// migration for a field only these three variation types would ever use. The
+// cost is that reopening the editor has to read the unit back off the options
+// — see unitOf() — so a group whose options were named by hand may not resolve
+// to a unit. That degrades to "no unit chosen", never to a wrong one.
+const MEASUREMENT_UNITS = ['Centimetres', 'Feet', 'Inches', 'Metres', 'Millimetres', 'Yards'];
+const DIMENSION_TYPES   = ['Width', 'Height', 'Depth'];
+
+function isDimensionType(name: string): boolean {
+  return DIMENSION_TYPES.includes(name);
+}
+
+/** The unit every option shares, or '' when they disagree or have none. */
+function unitOf(optionNames: string[]): string {
+  if (optionNames.length === 0) return '';
+  const units = optionNames.map(
+    (n) => MEASUREMENT_UNITS.find((u) => n.endsWith(` ${u}`)) ?? '',
+  );
+  return units.every((u) => u && u === units[0]) ? units[0] : '';
+}
+
 /**
  * Swatch colour for a colour option, derived from its name.
  *
@@ -84,10 +110,12 @@ const COLOUR_HEX: Record<string, string> = {
 };
 
 function OptionCombobox({
-  taken, suggestions, onAdd,
+  taken, suggestions, unit, onAdd,
 }: {
   taken:       string[];
   suggestions: string[];
+  /** Appended to whatever is typed, and shown inside the box as a hint. */
+  unit?:       string;
   onAdd:       (v: string) => void;
 }) {
   const [input, setInput] = useState('');
@@ -99,8 +127,12 @@ function OptionCombobox({
 
   const commit = (raw: string) => {
     const t = raw.trim();
-    if (!t || takenLower.includes(t.toLowerCase())) return;
-    onAdd(t);
+    if (!t) return;
+    // The unit is part of the stored name, so uniqueness has to be judged on
+    // the finished label — otherwise "1" and "1 Centimetres" look different.
+    const full = unit ? `${t} ${unit}` : t;
+    if (takenLower.includes(full.toLowerCase())) return;
+    onAdd(full);
     setInput('');
     setOpen(false);
   };
@@ -112,19 +144,26 @@ function OptionCombobox({
   return (
     <div className="flex items-start gap-3">
       <div className="relative flex-1">
-        <input
-          value={input}
-          onChange={(e) => { setInput(e.target.value); setOpen(true); }}
-          onFocus={() => setOpen(true)}
-          // A click on a suggestion fires after blur, so closing is deferred.
-          onBlur={() => setTimeout(() => setOpen(false), 120)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') { e.preventDefault(); commit(input); }
-            if (e.key === 'Escape') setOpen(false);
-          }}
-          placeholder="Enter an option…"
-          className={inputCls}
-        />
+        {/* The unit is a sibling of the input inside one box that looks like a
+            field, rather than text positioned over it — the font is not
+            monospace, so any attempt to compute where the typed text ends
+            would drift. */}
+        <div className="flex items-center gap-2 px-3 py-2 border border-border rounded-button bg-background focus-within:ring-2 focus-within:ring-primary/20">
+          <input
+            value={input}
+            onChange={(e) => { setInput(e.target.value); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            // A click on a suggestion fires after blur, so closing is deferred.
+            onBlur={() => setTimeout(() => setOpen(false), 120)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); commit(input); }
+              if (e.key === 'Escape') setOpen(false);
+            }}
+            placeholder="Enter an option…"
+            className="flex-1 min-w-0 bg-transparent text-sm outline-none placeholder:text-muted"
+          />
+          {unit && <span className="text-sm text-muted shrink-0">{unit}</span>}
+        </div>
 
         {suggestions.length > 0 && (
           <button
@@ -170,11 +209,13 @@ function OptionCombobox({
 // ─── VariationGroupCard ───────────────────────────────────────────────────────
 
 function VariationGroupCard({
-  group, onEdit, onDelete,
+  group, productImages, onEdit, onDelete,
 }: {
-  group:    VariationGroup;
-  onEdit:   () => void;
-  onDelete: () => void;
+  group:         VariationGroup;
+  /** For resolving an option's linked photo from its imageId. */
+  productImages: ProductImage[];
+  onEdit:        () => void;
+  onDelete:      () => void;
 }) {
   return (
     <div className="border border-border rounded-xl p-4 bg-background">
@@ -198,32 +239,52 @@ function VariationGroupCard({
         </div>
       </div>
 
-      {/* Option pills / swatches */}
+      {/* Option pills — with the linked photo when there is one.
+          This used to render a thumbnail only for colour variations, so a
+          seller who linked photos to "Width" saw plain pills here and had no
+          way to tell from the outside that the work had landed.
+          The photo is resolved from imageId, not imageUrl: the summary-table
+          picker writes only imageId, so imageUrl is empty for anything
+          assigned there and the swatch won by default. */}
       <div className="flex flex-wrap gap-2">
-        {group.options.map((opt) =>
-          group.displayType === 'color_swatch' ? (
-            <div key={opt.id} className="flex items-center gap-1.5">
-              {opt.imageUrl ? (
-                <div className="w-6 h-6 rounded-full overflow-hidden border border-border relative">
-                  <Image src={opt.imageUrl} alt={opt.value} fill className="object-cover" sizes="24px" />
-                </div>
-              ) : (
-                <div
-                  className="w-6 h-6 rounded-full border border-border"
-                  style={{ backgroundColor: opt.colorHex ?? '#E5E7EB' }}
+        {group.options.map((opt) => {
+          const photo = opt.imageId
+            ? productImages.find((img) => img.id === opt.imageId)?.url ?? opt.imageUrl
+            : opt.imageUrl;
+          const label = opt.name || opt.value;
+
+          if (photo) {
+            return (
+              <span key={opt.id} className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 border border-border rounded-full bg-surface">
+                <span className="w-5 h-5 rounded-full overflow-hidden border border-border relative shrink-0">
+                  <Image src={photo} alt={label} fill className="object-cover" sizes="20px" />
+                </span>
+                <span className="text-xs text-secondary">{label}</span>
+              </span>
+            );
+          }
+
+          if (opt.colorHex) {
+            return (
+              <span key={opt.id} className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 border border-border rounded-full bg-surface">
+                <span
+                  className="w-5 h-5 rounded-full border border-border shrink-0"
+                  style={{ backgroundColor: opt.colorHex }}
                 />
-              )}
-              <span className="text-xs text-secondary">{opt.name || opt.value}</span>
-            </div>
-          ) : (
+                <span className="text-xs text-secondary">{label}</span>
+              </span>
+            );
+          }
+
+          return (
             <span
               key={opt.id}
               className="px-2.5 py-1 text-xs border border-border rounded-full text-secondary bg-surface"
             >
-              {opt.name || opt.value}
+              {label}
             </span>
-          ),
-        )}
+          );
+        })}
         {group.options.length === 0 && (
           <span className="text-xs text-muted italic">No options yet</span>
         )}
@@ -295,7 +356,9 @@ function VariationSettingsToggles({
           checked={pricingOn}
           onChange={(on) => onChange(setPricedGroups(variesBy, on ? allIds : []))}
         />
-        <span className="text-sm font-medium text-secondary">Prices vary for each</span>
+        {/* The subject is bold, "vary" is not — it reads as a list of things
+            that can vary rather than four unrelated sentences. */}
+        <span className="text-sm text-secondary"><span className="font-semibold">Prices</span> vary</span>
         {showGroupPicker && (
           <FilterSelect
             value={pickerValue}
@@ -307,16 +370,16 @@ function VariationSettingsToggles({
       </div>
 
       {[
-        { key: 'processing', label: 'Processing profiles vary' },
-        { key: 'quantity',   label: 'Quantities vary'          },
-        { key: 'sku',        label: 'SKUs vary'                },
-      ].map(({ key, label }) => (
+        { key: 'processing', subject: 'Processing profiles' },
+        { key: 'quantity',   subject: 'Quantities'          },
+        { key: 'sku',        subject: 'SKUs'                },
+      ].map(({ key, subject }) => (
         <div key={key} className="flex items-center gap-3">
           <Toggle
             checked={hasSetting(variesBy, key)}
             onChange={(on) => onChange(setSetting(variesBy, key, on))}
           />
-          <span className="text-sm font-medium text-secondary">{label}</span>
+          <span className="text-sm text-secondary"><span className="font-semibold">{subject}</span> vary</span>
         </div>
       ))}
     </div>
@@ -369,8 +432,25 @@ function AddVariationGroupSheet({
   // highlight), so keying rows by index makes React hand that state to whatever
   // option shifts into the slot when one above it is removed.
   const [options,   setOptions]   = useState<{ id: string; value: string; colorHex?: string; imageId?: string | null }[]>([]);
+  const [unit,      setUnitState] = useState('');
 
-  const available = SUGGESTED_NAMES.filter((n) => !existingGroupNames.includes(n));
+  // Changing the unit rewrites the options that already carry the old one, so
+  // a seller who picks Inches after typing three Centimetres values gets the
+  // measurements they entered rather than a list they have to retype.
+  const setUnit = (next: string) => {
+    setUnitState(next);
+    setOptions((prev) => prev.map((o) => {
+      const bare = MEASUREMENT_UNITS.reduce(
+        (acc, u) => (acc.endsWith(` ${u}`) ? acc.slice(0, -(u.length + 1)) : acc),
+        o.value,
+      );
+      return { ...o, value: next ? `${bare} ${next}` : bare };
+    }));
+  };
+
+  // Types already in use stay on the list, ticked and disabled, rather than
+  // disappearing: a list that silently loses entries makes the seller wonder
+  // whether the option ever existed. Showing it as done answers that.
 
   // Colour variations get swatches; everything else is a plain dropdown. The
   // seller used to be asked this outright, which is a rendering detail they
@@ -435,7 +515,7 @@ function AddVariationGroupSheet({
   if (groupName === null) {
     return (
       <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4" onClick={onClose}>
-        <div className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-[560px]" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-[640px]" onClick={(e) => e.stopPropagation()}>
           <div className="px-6 pt-6 pb-2">
             <h4 className="text-lg font-bold text-secondary">What type of variation is it?</h4>
             <p className="text-sm text-muted mt-1.5 leading-relaxed">
@@ -446,16 +526,26 @@ function AddVariationGroupSheet({
 
           <div className="px-6 py-5">
             <div className="flex flex-wrap gap-2.5">
-              {available.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  onClick={() => { setIsCustom(false); setGroupName(name); }}
-                  className="px-4 py-2.5 text-sm text-secondary bg-muted/10 hover:bg-muted/20 rounded-full transition-colors"
-                >
-                  {name}
-                </button>
-              ))}
+              {SUGGESTED_NAMES.map((name) => {
+                const used = existingGroupNames.includes(name);
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    disabled={used}
+                    onClick={() => { setIsCustom(false); setGroupName(name); }}
+                    className={[
+                      'inline-flex items-center gap-1.5 px-4 py-2.5 text-sm rounded-full transition-colors',
+                      used
+                        ? 'text-muted/60 bg-muted/5 cursor-not-allowed'
+                        : 'text-secondary bg-muted/10 hover:bg-muted/20',
+                    ].join(' ')}
+                  >
+                    {used && <Check className="w-3.5 h-3.5" />}
+                    {name}
+                  </button>
+                );
+              })}
             </div>
 
             <button
@@ -481,7 +571,11 @@ function AddVariationGroupSheet({
   // ── Step 2: the same editor the Edit sheet uses ─────────────────────────────
   return (
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-[560px] max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+      {/* No overflow on the card and none on the body: the option combobox
+          drops a suggestion list below itself, and any scrolling ancestor
+          clips it. Only the options list scrolls, and it caps its own height —
+          see VariationOptionsEditor. */}
+      <div className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-[640px] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 pt-6 pb-1 shrink-0">
           {isCustom ? (
             <h4 className="text-lg font-bold text-secondary">Custom variation</h4>
@@ -493,7 +587,7 @@ function AddVariationGroupSheet({
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 pb-2">
+        <div className="px-6 pb-2">
           {isCustom && (
             <div className="pt-4">
               <label className="block text-sm font-semibold text-secondary mb-1.5">
@@ -521,6 +615,9 @@ function AddVariationGroupSheet({
               productImages={productImages}
               variationName={trimmedName || 'this variation'}
               suggestOptions={!isCustom}
+              needsUnit={!isCustom && isDimensionType(trimmedName)}
+              unit={unit}
+              onUnitChange={setUnit}
               onToggleLinkPhotos={onToggleLinkPhotos}
               onAddOption={addOption}
               onRemoveOption={removeOption}
@@ -671,6 +768,7 @@ function OptionRow({
  */
 function VariationOptionsEditor({
   displayType, options, linkPhotos, productImages, variationName, suggestOptions,
+  needsUnit, unit, onUnitChange,
   onToggleLinkPhotos, onAddOption, onRemoveOption, onPickImage, onReorder,
 }: {
   displayType:        DisplayType;
@@ -682,6 +780,10 @@ function VariationOptionsEditor({
   variationName:      string;
   /** Suggested values exist for the named types; a custom variation has none. */
   suggestOptions:     boolean;
+  /** Set for Width/Height/Depth, where every option needs a measurement unit. */
+  needsUnit:          boolean;
+  unit:               string;
+  onUnitChange:       (unit: string) => void;
   onToggleLinkPhotos: (on: boolean) => void;
   onAddOption:        (opt: { value: string; colorHex?: string }) => void;
   onRemoveOption:     (key: string) => void;
@@ -699,6 +801,11 @@ function VariationOptionsEditor({
 
       <div className="border-t border-border" />
 
+      {/* A measurement variation has nothing to offer until its unit is known:
+          "3" is not an option a shopper can read. So the whole Options block
+          waits, rather than collecting values that would have to be rewritten
+          the moment a unit is picked. */}
+      {needsUnit && !unit ? null : (
       <div>
         <div className="flex items-center gap-2 mb-1">
           <span className="text-sm font-semibold text-secondary">Options</span>
@@ -707,8 +814,9 @@ function VariationOptionsEditor({
           </span>
         </div>
         <p className="text-xs text-muted leading-relaxed mb-3">
-          Shoppers pick from these. Options taken from the suggested list show up in
-          filters; custom ones won&apos;t.
+          {needsUnit
+            ? 'Buyers can choose from the following options.'
+            : 'Shoppers pick from these. Options taken from the suggested list show up in filters; custom ones won’t.'}
         </p>
 
         {/* One input for every variation type, colours included — the reference
@@ -719,6 +827,7 @@ function VariationOptionsEditor({
           <OptionCombobox
             taken={options.map((o) => o.label)}
             suggestions={suggestOptions ? (OPTION_SUGGESTIONS[variationName] ?? []) : []}
+            unit={needsUnit ? unit : undefined}
             onAdd={(v) => onAddOption({
               value:    v,
               colorHex: displayType === 'color_swatch' ? COLOUR_HEX[v.trim().toLowerCase()] : undefined,
@@ -726,7 +835,17 @@ function VariationOptionsEditor({
           />
         </div>
 
-        <div className="space-y-2">
+        {/* The only scrolling region in the modal. Keeping it here rather than
+            on the whole body is what lets the combobox's suggestion list hang
+            below the input without being clipped — and it keeps the input and
+            the footer in place no matter how many options there are.
+            min-h reserves room so an empty variation does not open as a
+            cramped sliver; the list is where a seller is about to work. */}
+        {/* 40vh, not more: the card is deliberately uncapped so the suggestion
+            list can hang past its edge, which means the list's ceiling is the
+            only thing keeping the footer on screen. Fixed chrome runs ~340px,
+            so 40vh keeps Done reachable down to a ~600px viewport. */}
+        <div className="space-y-2 min-h-[7rem] max-h-[40vh] overflow-y-auto">
           {options.map((opt, i) => (
             <OptionRow
               key={opt.key}
@@ -750,6 +869,28 @@ function VariationOptionsEditor({
           ))}
         </div>
       </div>
+      )}
+
+      {/* Unit sits below the options, not above: it is set once and then left
+          alone, while the list above it is where the work happens. */}
+      {needsUnit && (
+        <>
+          {options.length > 0 && <div className="border-t border-border" />}
+          <div>
+            <label className="block text-sm font-semibold text-secondary mb-1.5">Unit</label>
+            <select
+              value={unit}
+              onChange={(e) => onUnitChange(e.target.value)}
+              className={inputCls}
+            >
+              <option value="">Select a unit</option>
+              {MEASUREMENT_UNITS.map((u) => (
+                <option key={u} value={u}>{u}</option>
+              ))}
+            </select>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -804,6 +945,23 @@ function EditVariationGroupSheet({
     onChange({ ...group, options: group.options.filter((o) => o.id !== optionId) });
   };
 
+  // Same rewrite as the Add sheet: switching unit re-labels the measurements
+  // already entered instead of stranding them under the old one.
+  const changeUnit = (next: string) => {
+    onChange({
+      ...group,
+      options: group.options.map((o) => {
+        const current = o.name || o.value;
+        const bare = MEASUREMENT_UNITS.reduce(
+          (acc, u) => (acc.endsWith(` ${u}`) ? acc.slice(0, -(u.length + 1)) : acc),
+          current,
+        );
+        const name = next ? `${bare} ${next}` : bare;
+        return { ...o, name, value: name.toLowerCase().replace(/\s+/g, '-') };
+      }),
+    });
+  };
+
   // sortOrder is rewritten from the array position, so the order the seller
   // sees is the order that gets saved.
   const reorderOptions = (fromId: string, toId: string) => {
@@ -823,19 +981,16 @@ function EditVariationGroupSheet({
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-[440px]" onClick={(e) => e.stopPropagation()}>
+      {/* Same width as the Add sheet — it is the same editor, and two sizes for
+          one screen reads as two screens. */}
+      <div className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-[640px]" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <div>
-            <h4 className="font-semibold text-secondary">{group.name}</h4>
-            <p className="text-xs text-muted mt-0.5">Variation</p>
-          </div>
-          <button type="button" onClick={onClose} className="p-1.5 rounded hover:bg-muted/10 text-muted">
-            <X className="w-4 h-4" />
-          </button>
+        <div className="px-6 pt-6 pb-1">
+          <h4 className="text-lg font-bold text-secondary">{group.name}</h4>
+          <p className="text-xs text-muted mt-0.5">Variation</p>
         </div>
 
-        <div className="px-5 py-5">
+        <div className="px-6 pt-4 pb-2">
         <VariationOptionsEditor
           displayType={group.displayType as DisplayType}
           options={group.options.map((o) => ({
@@ -848,6 +1003,9 @@ function EditVariationGroupSheet({
           productImages={productImages}
           variationName={group.name}
           suggestOptions={SUGGESTED_NAMES.includes(group.name)}
+          needsUnit={isDimensionType(group.name)}
+          unit={unitOf(group.options.map((o) => o.name || o.value))}
+          onUnitChange={changeUnit}
           onToggleLinkPhotos={onTogglePhotos}
           onAddOption={addOption}
           onRemoveOption={removeOption}
@@ -856,15 +1014,15 @@ function EditVariationGroupSheet({
         />
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-2 px-5 py-4 border-t border-border">
+        {/* Footer — matches the Add sheet: pill buttons, no divider rule. */}
+        <div className="flex items-center justify-between gap-3 px-6 py-4">
           <button type="button" onClick={onDelete}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-red-600 rounded-button hover:bg-red-50 transition-colors">
+            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-red-600 rounded-full hover:bg-red-50 transition-colors">
             <Trash2 className="w-4 h-4" />
             Delete variation
           </button>
           <button type="button" onClick={onClose}
-            className="px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors">
+            className="px-6 py-2.5 bg-secondary hover:bg-secondary/90 text-white text-sm font-bold rounded-full transition-colors">
             Done
           </button>
         </div>
@@ -926,7 +1084,11 @@ export function ManageVariationsModal({
     staleTime: 30_000,
   });
 
-  const { data: serverVariants = [], isSuccess: variantsLoaded } = useQuery<ProductVariantRow[]>({
+  // Fetched but not read: the per-combination grid that displayed these rows
+  // has been taken out of this modal, and only the settled/failed signal is
+  // still wanted — a draft must not seed while any of its sources is in
+  // flight or errored. Dropping the query would also drop that guarantee.
+  const { isSuccess: variantsLoaded } = useQuery<ProductVariantRow[]>({
     queryKey: ['product-variant-list', productId],
     queryFn:  () => api.get<ProductVariantRow[]>(API_ROUTES.ADMIN.PRODUCT_VARIATION_VARIANTS(productId)),
     enabled:   isOpen,
@@ -1073,12 +1235,12 @@ export function ManageVariationsModal({
   const isLoading = !seededRef.current;
 
   return (
-    <>
+    <ModalPortal>
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
         {/* Modal */}
         <div
-          className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-[540px] max-h-[85vh] flex flex-col"
+          className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-[640px] max-h-[85vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -1115,6 +1277,7 @@ export function ManageVariationsModal({
                     <VariationGroupCard
                       key={group.id}
                       group={group}
+                      productImages={productImages}
                       onEdit={() => setEditingGroupId(group.id)}
                       onDelete={async () => {
                         if (await confirm(`Delete "${group.name}" group and all its options?`, { confirmLabel: 'Delete', destructive: true })) {
@@ -1125,22 +1288,24 @@ export function ManageVariationsModal({
                   ))}
                 </div>
 
-                {/* Add variation button (max 2 groups) */}
+                {/* Add variation (max 2 groups) — a pill sized to its label,
+                    not a full-width dashed placeholder. The dashed box read as
+                    an empty drop target sitting under real content. */}
                 {draftGroups.length < 2 && (
                   <button
                     type="button"
                     onClick={() => setAddingGroup(true)}
-                    className="w-full py-3 text-sm font-semibold text-primary border-2 border-dashed border-primary/30 rounded-xl hover:border-primary/60 hover:bg-primary/3 transition-all flex items-center justify-center gap-2"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-secondary border border-secondary/40 rounded-full hover:border-secondary transition-colors"
                   >
                     <Plus className="w-4 h-4" />
                     Add a variation
                   </button>
                 )}
 
-                {/* Divider */}
-                <div className="border-t border-border pt-4">
-                  <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-4">Variation settings</p>
-
+                {/* The toggles need no heading — each one names its own
+                    subject, and a "VARIATION SETTINGS" label above them just
+                    repeated the modal's title in smaller type. */}
+                <div className="border-t border-border pt-5">
                   <VariationSettingsToggles
                     settings={{ enableVariations: true, variesBy: draftVariesBy }}
                     groups={draftGroups}
@@ -1148,15 +1313,6 @@ export function ManageVariationsModal({
                   />
                 </div>
 
-                {/* Combo price/quantity/SKU/visibility grid — mirrors Etsy's
-                    per-combination table exactly (not a per-option delta). */}
-                <VariantComboGrid
-                  groups={draftGroups}
-                  variesBy={draftVariesBy}
-                  variants={serverVariants}
-                  edits={variantEdits}
-                  onEditsChange={setVariantEdits}
-                />
               </>
             )}
 
@@ -1220,6 +1376,6 @@ export function ManageVariationsModal({
           onClose={() => setEditingGroupId(null)}
         />
       )}
-    </>
+    </ModalPortal>
   );
 }

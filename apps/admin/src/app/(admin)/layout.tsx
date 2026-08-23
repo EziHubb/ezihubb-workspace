@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { headers, cookies } from 'next/headers';
 import { authOptions } from '../../lib/auth.options';
 import { AdminSidebar, AdminMobileNav } from '../../components/layout/AdminSidebar';
-import { GetHelpButton } from '../../components/layout/GetHelpButton';
+// import { GetHelpButton } from '../../components/layout/GetHelpButton'; // temporarily unmounted — see below
 import { STORE_CONTEXT_COOKIE } from '../../lib/store-context';
 import { isActingAsShopOwner, resolveInStoreMode } from '../../lib/store-context-shared';
 import { PLATFORM_ONLY_PREFIXES, SELF_SERVICE_PREFIXES } from '../../lib/route-categories';
@@ -148,7 +148,11 @@ export default async function AdminLayout({
         </main>
       </div>
 
-      <GetHelpButton />
+      {/* Temporarily hidden across the admin: it is fixed to the bottom-right
+          and sat on top of the listing editor's Publish button, which is worse
+          than not having a help affordance at all. Bring it back once it can
+          get out of the way of the page's own actions. */}
+      {/* <GetHelpButton /> */}
     </div>
   );
 }

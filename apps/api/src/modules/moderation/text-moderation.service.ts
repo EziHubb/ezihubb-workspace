@@ -42,7 +42,13 @@ export class TextModerationService {
 
   constructor(private readonly config: ConfigService) {
     this.apiKey  = this.config.get<string>('ANTHROPIC_API_KEY') ?? '';
-    this.baseUrl = 'https://api.anthropic.com/v1/messages';
+
+    // Follows ANTHROPIC_BASE_URL like the title suggester does. Leaving this
+    // one hardcoded would have sent moderation to Anthropic and titles to the
+    // gateway off a single key — one of them failing auth, and the split
+    // impossible to spot from either service's own code.
+    const root = (this.config.get<string>('ANTHROPIC_BASE_URL') ?? 'https://api.anthropic.com').replace(/\/+$/, '');
+    this.baseUrl = `${root}/v1/messages`;
   }
 
   async checkText(content: string): Promise<ModerationResult> {

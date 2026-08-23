@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useFormContext } from 'react-hook-form';
+import { useQuery } from '@tanstack/react-query';
 import {
   Smile, Lightbulb, Sparkles, Check, X,
   AlertCircle, Package, Download,
@@ -278,6 +279,18 @@ export function ItemDetailsTab() {
   const [suggestion,     setSuggestion]     = useState<string | null>(null);
   const [suggestError,   setSuggestError]   = useState<string | null>(null);
 
+  // The suggestion prompt asks for the category and the request DTO accepts it,
+  // but nothing was sending it — so every suggestion was written without
+  // knowing whether the item is an ornament or a t-shirt.
+  //
+  // Same query key CategoryPickerCard already uses, so this is served from the
+  // react-query cache rather than being a second request for the same row.
+  const { data: category } = useQuery<{ name: string }>({
+    queryKey: ['category', categoryId],
+    queryFn:  () => api.get<{ name: string }>(API_ROUTES.ADMIN.CATEGORY(categoryId)),
+    enabled:  !!categoryId,
+  });
+
   const fetchTitleSuggestion = async () => {
     setSuggestLoading(true);
     setSuggestError(null);
@@ -285,7 +298,11 @@ export function ItemDetailsTab() {
     try {
       const res = await api.post<{ suggestedTitle: string }>(
         API_ROUTES.ADMIN.PRODUCT_TITLE_SUGGESTION,
-        { name: title.trim(), description: description || undefined },
+        {
+          name:         title.trim(),
+          description:  description || undefined,
+          categoryName: category?.name || undefined,
+        },
       );
       setSuggestion(res.suggestedTitle);
     } catch (e: unknown) {
