@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useServerStoreMode } from './server-store-mode';
 import { useSession } from 'next-auth/react';
 
 // Lets a SUPER_ADMIN who also owns a store switch into that store's scope —
@@ -93,7 +94,26 @@ export function useAdminMode(): AdminMode {
   const isSuperAdmin = role === 'SUPER_ADMIN';
   const activeStoreContext = useStoreContext();
   const canSwitchToOwnStore = isSuperAdmin && !!ownStoreId;
-  const inStoreMode = canSwitchToOwnStore && activeStoreContext === ownStoreId;
+
+  /**
+   * The server's answer wins whenever there is one.
+   *
+   * This used to recompute the mode from `document.cookie` alone, in parallel
+   * with the layout and every Server Component doing the same from
+   * `cookies()`. Two independent answers to one question is a contradiction
+   * waiting to be rendered — and it was: the seller's navigation beside the
+   * platform dashboard, because the client said "my store" and the server that
+   * rendered the page said "platform".
+   *
+   * Deferring here cannot make the mode wrong: whatever the server decided is
+   * what the page below already reflects and what the API scoped its answers
+   * by. The cookie read stays as the fallback for anything rendered outside
+   * the provider.
+   */
+  const serverInStoreMode = useServerStoreMode();
+  const cookieInStoreMode = canSwitchToOwnStore && activeStoreContext === ownStoreId;
+  const inStoreMode = serverInStoreMode ?? cookieInStoreMode;
+
   const isPlatformContext = isSuperAdmin && !inStoreMode;
 
   useEffect(() => {

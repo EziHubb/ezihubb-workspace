@@ -6,6 +6,7 @@ import { AdminSidebar, AdminMobileNav } from '../../components/layout/AdminSideb
 // import { GetHelpButton } from '../../components/layout/GetHelpButton'; // temporarily unmounted — see below
 import { STORE_CONTEXT_COOKIE } from '../../lib/store-context';
 import { isActingAsShopOwner, resolveInStoreMode } from '../../lib/store-context-shared';
+import { ServerStoreModeProvider } from '../../lib/server-store-mode';
 import { PLATFORM_ONLY_PREFIXES, SELF_SERVICE_PREFIXES } from '../../lib/route-categories';
 
 // ── Route guard helpers ───────────────────────────────────────────────────────
@@ -136,6 +137,10 @@ export default async function AdminLayout({
   if (target) redirect(target);
 
   return (
+    // The sidebar and every client page below read the mode from here rather
+    // than recomputing it from the cookie. One answer, decided where the page
+    // content was decided, so the two halves cannot contradict each other.
+    <ServerStoreModeProvider inStoreMode={inStoreMode}>
     <div className="flex h-screen bg-background overflow-hidden">
       {/* Desktop sidebar */}
       <AdminSidebar />
@@ -154,5 +159,6 @@ export default async function AdminLayout({
           get out of the way of the page's own actions. */}
       {/* <GetHelpButton /> */}
     </div>
+    </ServerStoreModeProvider>
   );
 }
