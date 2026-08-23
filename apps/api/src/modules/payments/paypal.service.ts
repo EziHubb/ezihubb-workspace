@@ -234,14 +234,33 @@ export class PaypalService {
 
   /**
    * Verifies the PayPal webhook signature via the PayPal API.
-   * Returns true (bypass) when PAYPAL_WEBHOOK_ID is not set (dev/sandbox with ngrok).
+   *
+   * Outside production, a missing PAYPAL_WEBHOOK_ID skips verification so a
+   * local tunnel can be used without registering a webhook. In production a
+   * missing id rejects the event instead — see the comment at the check.
    */
   async verifyWebhookSignature(
     headers: Record<string, string | string[] | undefined>,
     rawBody: string,
   ): Promise<boolean> {
+    // Fails closed in production. This used to return `true` whenever
+    // PAYPAL_WEBHOOK_ID was missing — convenient locally, and an open door
+    // everywhere else: a forged POST to /webhooks/paypal was accepted and
+    // processed, so anyone who knew a PayPal order id could mark a payment
+    // captured. That was live, and it was demonstrated by posting an invented
+    // CHECKOUT.ORDER.APPROVED and watching the handler log that it had
+    // "approved" an order that does not exist.
+    //
+    // A missing id in production is a misconfiguration, not permission to
+    // trust unsigned money events.
     if (!this.webhookId) {
-      this.logger.warn('PAYPAL_WEBHOOK_ID not set — skipping webhook signature verification');
+      // process.env, not ConfigService: this must not depend on how the config
+      // module happens to be wired. A failure to read it has to mean "reject".
+      if (process.env['NODE_ENV'] === 'production') {
+        this.logger.error('PAYPAL_WEBHOOK_ID is not set — rejecting webhook. Set it to the id from the PayPal dashboard.');
+        return false;
+      }
+      this.logger.warn('PAYPAL_WEBHOOK_ID not set — skipping signature verification (non-production only)');
       return true;
     }
 
