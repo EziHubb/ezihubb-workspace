@@ -214,6 +214,17 @@ export const API_ROUTES = {
 
     // ── Orders ───────────────────────────────────────────────────────────────
     ORDERS:               '/admin/orders',
+
+    // ── Seller order workflow ────────────────────────────────────────────────
+    // Separate from ORDERS above: that list is Order-shaped and platform-wide,
+    // these are StoreOrder-shaped and always scoped to one shop's pipeline.
+    ORDER_PROGRESS_STEPS:        '/admin/order-progress/steps',
+    ORDER_PROGRESS_QUEUE:        '/admin/order-progress/orders',
+    ORDER_PROGRESS_DESTINATIONS: '/admin/order-progress/destinations',
+    ORDER_PROGRESS_MOVE:         '/admin/order-progress/move',
+    ORDER_PROGRESS_SHIP_BY:      (storeOrderId: string) => `/admin/order-progress/${storeOrderId}/ship-by-date`,
+    ORDER_PROGRESS_GIFT:         (storeOrderId: string) => `/admin/order-progress/${storeOrderId}/gift`,
+
     ORDER:                (id: string) => `/admin/orders/${id}`,
     ORDER_STATUS:         (id: string) => `/admin/orders/${id}/status`,
     ORDER_TRACKING:       (id: string) => `/admin/orders/${id}/tracking`,

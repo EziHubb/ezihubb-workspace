@@ -425,6 +425,7 @@ model Store {
   products           Product[]
   categories         Category[]
   storeOrders        StoreOrder[]
+  progressSteps      OrderProgressStep[]
   ledgerEntries      SellerLedgerEntry[]
   payouts            SellerPayout[]
   shopSections       ShopSection[]
@@ -675,6 +676,21 @@ model StoreOrder {
   // this stays false until that flow is built; the field/filter itself is
   // no longer decorative.
   deliveryUpgradeRequested Boolean                 @default(false)
+
+  /// Where the seller is up to in their own workflow. Nullable because a
+  /// StoreOrder exists from the moment checkout starts, before it is paid for
+  /// and before it belongs in anyone's queue; the pipeline begins at NEW once
+  /// payment lands.
+  progressStepId String?
+  progressStep   OrderProgressStep? @relation(fields: [progressStepId], references: [id])
+
+  /// The date the seller has promised to dispatch by. Seeded at checkout from
+  /// the product's processing time and editable afterwards, because a promise
+  /// that cannot be moved is one a seller will simply miss instead. Null means
+  /// no estimate was ever set, which the Orders filters treat as its own case
+  /// rather than folding into "overdue".
+  shipByDate DateTime?
+
   payoutId                 String?
   payout                   SellerPayout?           @relation(fields: [payoutId], references: [id])
   items                    OrderItem[]
@@ -693,6 +709,49 @@ model StoreOrder {
   @@index([storeId])
   @@index([status])
   @@index([visitorId])
+  @@index([storeId, shipByDate])
+  @@index([progressStepId])
+}
+
+/// A step in one shop's own order workflow.
+///
+/// `StoreOrder.status` says what the PLATFORM knows about an order — paid,
+/// cancelled, refunded, disputed. This says where the SELLER is up to, in
+/// their own words: a print shop's steps are not a jeweller's, and neither
+/// maps onto a fixed enum. Sellers add, rename, reorder and delete the middle
+/// steps freely.
+///
+/// The two ends are not theirs to change. NEW is where an order arrives and
+/// COMPLETED is the only step with meaning outside the shop — reaching it
+/// moves `StoreOrder.status` to COMPLETED and is what the buyer is told
+/// about. Everything between is private bookkeeping.
+model OrderProgressStep {
+  id      String                @id @default(cuid())
+  storeId String
+  store   Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name    String                @db.VarChar(60)
+  kind    OrderProgressStepKind @default(CUSTOM)
+
+  /// Position in the pipeline. Deliberately NOT unique per store: the editor
+  /// saves the whole list at once, and renumbering rows inside one
+  /// transaction collides on any per-statement unique check.
+  sortOrder Int
+
+  storeOrders StoreOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storeId, sortOrder])
+}
+
+enum OrderProgressStepKind {
+  /// Locked first step — where a paid order lands.
+  NEW
+  /// Seller-defined. The only kind that can be renamed, reordered or deleted.
+  CUSTOM
+  /// Locked last step — reaching it completes the order for the buyer too.
+  COMPLETED
 }
 
 model SellerPayout {

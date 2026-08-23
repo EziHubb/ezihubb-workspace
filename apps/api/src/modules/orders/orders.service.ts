@@ -65,6 +65,9 @@ const CART_INCLUDE_FOR_CHECKOUT = {
           deletedAt: true,
           storeId: true,
           shippingProfileId: true,
+          // Seeds StoreOrder.shipByDate at checkout — see where the store
+          // order is created.
+          processingDays: true,
           images: {
             where: { type: 'MOCKUP' as const },
             orderBy: { isPrimary: 'desc' as const },
@@ -623,11 +626,29 @@ export class OrdersService {
 
           const fees = calculateOrderFees(discountedSubtotal, storeShippingCost, storeCountryMap.get(storeId), feeSettings);
 
+          // The dispatch promise, from the slowest item in this store's part
+          // of the order — the parcel cannot leave before the last thing in it
+          // is made. Calendar days, not business days: the seller can move the
+          // date afterwards, and a promise that quietly stretches over
+          // weekends is one the buyer did not agree to.
+          //
+          // Null for a digital order: there is no parcel to dispatch, and a
+          // date on one would age into "Overdue" and raise an alarm about work
+          // that does not exist.
+          const processingDays = Math.max(
+            ...items.map((item) => item.product.processingDays ?? 0),
+            0,
+          );
+          const shipByDate = newOrder.isDigital
+            ? null
+            : new Date(Date.now() + processingDays * 24 * 60 * 60 * 1000);
+
           const storeOrder = await tx.storeOrder.create({
             data: {
               orderId:        newOrder.id,
               storeId,
               status:         OrderStatus.PENDING_PAYMENT,
+              shipByDate,
               subtotal:       roundedSubtotal,
               discountAmount: storeDiscount,
               platformFee:    fees.totalFees,
