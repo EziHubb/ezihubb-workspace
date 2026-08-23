@@ -1,8 +1,11 @@
 ﻿import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { AnthropicService, DEFAULT_ANTHROPIC_MODEL } from '../../common/services/anthropic.service';
 import type { ModerationResult } from './dto/moderation-result.dto';
 
-const MODEL = 'claude-haiku-4-5';
+// Recorded on the moderation row so a later review knows which model judged
+// it. Reads the shared default rather than naming a model this service no
+// longer chooses.
+const MODEL = DEFAULT_ANTHROPIC_MODEL;
 
 const SYSTEM_PROMPT = `You are a content moderation AI for EziHubb, a handmade goods marketplace.
 Analyze the following content and return ONLY a JSON object.
@@ -37,52 +40,25 @@ Return ONLY this JSON, no other text:
 @Injectable()
 export class TextModerationService {
   private readonly logger = new Logger(TextModerationService.name);
-  private readonly apiKey:  string;
-  private readonly baseUrl: string;
 
-  constructor(private readonly config: ConfigService) {
-    this.apiKey  = this.config.get<string>('ANTHROPIC_API_KEY') ?? '';
-
-    // Follows ANTHROPIC_BASE_URL like the title suggester does. Leaving this
-    // one hardcoded would have sent moderation to Anthropic and titles to the
-    // gateway off a single key — one of them failing auth, and the split
-    // impossible to spot from either service's own code.
-    const root = (this.config.get<string>('ANTHROPIC_BASE_URL') ?? 'https://api.anthropic.com').replace(/\/+$/, '');
-    this.baseUrl = `${root}/v1/messages`;
-  }
+  constructor(private readonly anthropic: AnthropicService) {}
 
   async checkText(content: string): Promise<ModerationResult> {
     const start = Date.now();
 
     try {
-      const res = await fetch(this.baseUrl, {
-        method:  'POST',
-        headers: {
-          'x-api-key':         this.apiKey,
-          'anthropic-version': '2023-06-01',
-          'content-type':      'application/json',
-        },
-        body: JSON.stringify({
-          model:      MODEL,
-          max_tokens: 300,
-          system:     SYSTEM_PROMPT,
-          messages:   [{ role: 'user', content }],
-        }),
-        signal: AbortSignal.timeout(15_000),
+      const { data: parsed, usage } = await this.anthropic.jsonWithUsage<ModerationResult>({
+        system:    SYSTEM_PROMPT,
+        content,
+        maxTokens: 300,
+        timeoutMs: 15_000,
       });
-
-      if (!res.ok) {
-        throw new Error(`Claude API error ${res.status}`);
-      }
-
-      const json: { content: { type: string; text: string }[] } = await res.json();
-      const text = json.content.find((c) => c.type === 'text')?.text ?? '';
-      const parsed = JSON.parse(text) as ModerationResult;
 
       return {
         ...parsed,
         latencyMs:    Date.now() - start,
         modelVersion: MODEL,
+        costUsd:      usage.costUsd,
       };
     } catch (err) {
       this.logger.error('Text moderation failed', err);
@@ -95,6 +71,9 @@ export class TextModerationService {
         sellerMessage: null,
         latencyMs:     Date.now() - start,
         modelVersion:  MODEL,
+        // The call failed, so nothing was consumed — charging the tracker's
+        // fallback here would bill the budget for a call that produced nothing.
+        costUsd:       0,
       };
     }
   }

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { AnthropicService } from '../../common/services/anthropic.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
 
@@ -28,15 +28,11 @@ const TRADEMARK_BLOCKLIST = new Set([
 @Injectable()
 export class IPScanService {
   private readonly logger = new Logger(IPScanService.name);
-  private readonly anthropicKey: string;
-
   constructor(
-    private readonly prisma:  PrismaService,
-    private readonly redis:   RedisService,
-    private readonly config:  ConfigService,
-  ) {
-    this.anthropicKey = this.config.get<string>('ANTHROPIC_API_KEY') ?? '';
-  }
+    private readonly prisma:    PrismaService,
+    private readonly redis:     RedisService,
+    private readonly anthropic: AnthropicService,
+  ) {}
 
   async scanDesignForIP(dto: {
     imageUrl:   string;
@@ -144,17 +140,16 @@ export class IPScanService {
     confidence:     number;
     reasoning:      string | null;
   }> {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:  'POST',
-      headers: {
-        'x-api-key':         this.anthropicKey,
-        'anthropic-version': '2023-06-01',
-        'content-type':      'application/json',
-      },
-      body: JSON.stringify({
-        model:      'claude-haiku-4-5',
-        max_tokens: 400,
-        system: `You are an IP/trademark detection AI for a handmade goods marketplace.
+    return this.anthropic.json<{
+      detectedBrands: string[];
+      detectedIP:     string[];
+      possibleIP:     boolean;
+      confidence:     number;
+      reasoning:      string | null;
+    }>({
+      maxTokens: 400,
+      timeoutMs: 20_000,
+      system: `You are an IP/trademark detection AI for a handmade goods marketplace.
 Analyze this image and return ONLY valid JSON with these fields:
 {
   "detectedBrands": ["brand names found, e.g. Nike, Disney"],
@@ -165,28 +160,11 @@ Analyze this image and return ONLY valid JSON with these fields:
 }
 Flag: logos, brand names, licensed characters, celebrity faces, famous artworks.
 Do NOT flag: generic designs, abstract art, custom illustrations, text without brand marks.`,
-        messages: [{
-          role:    'user',
-          content: [{
-            type:   'image',
-            source: { type: 'base64', media_type: mediaType, data: base64 },
-          }],
-        }],
-      }),
-      signal: AbortSignal.timeout(20_000),
+      content: [{
+        type:   'image',
+        source: { type: 'base64', media_type: mediaType, data: base64 },
+      }],
     });
-
-    if (!res.ok) throw new Error(`Claude API error ${res.status}`);
-
-    const json: { content: { type: string; text: string }[] } = await res.json();
-    const text = json.content.find(c => c.type === 'text')?.text ?? '{}';
-    return JSON.parse(text) as {
-      detectedBrands: string[];
-      detectedIP:     string[];
-      possibleIP:     boolean;
-      confidence:     number;
-      reasoning:      string | null;
-    };
   }
 
   private async getTrademarkRules(): Promise<string[]> {

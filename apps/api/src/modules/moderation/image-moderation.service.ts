@@ -1,8 +1,11 @@
 ﻿import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { AnthropicService, DEFAULT_ANTHROPIC_MODEL } from '../../common/services/anthropic.service';
 import type { ModerationResult } from './dto/moderation-result.dto';
 
-const MODEL = 'claude-haiku-4-5';
+// Recorded on the moderation row so a later review knows which model judged
+// it. Reads the shared default rather than naming one this service no longer
+// chooses.
+const MODEL = DEFAULT_ANTHROPIC_MODEL;
 
 const IMAGE_SYSTEM = `You are an image moderation AI for EziHubb, a handmade goods marketplace.
 Analyze this image and return ONLY a JSON object.
@@ -31,13 +34,7 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 @Injectable()
 export class ImageModerationService {
   private readonly logger = new Logger(ImageModerationService.name);
-  private readonly apiKey:  string;
-  private readonly baseUrl: string;
-
-  constructor(private readonly config: ConfigService) {
-    this.apiKey  = this.config.get<string>('ANTHROPIC_API_KEY') ?? '';
-    this.baseUrl = 'https://api.anthropic.com/v1/messages';
-  }
+  constructor(private readonly anthropic: AnthropicService) {}
 
   async checkImage(imageUrl: string): Promise<ModerationResult> {
     const start = Date.now();
@@ -56,35 +53,17 @@ export class ImageModerationService {
       const contentType  = imgRes.headers.get('content-type') ?? 'image/jpeg';
       const base64       = Buffer.from(buffer).toString('base64');
 
-      const res = await fetch(this.baseUrl, {
-        method:  'POST',
-        headers: {
-          'x-api-key':         this.apiKey,
-          'anthropic-version': '2023-06-01',
-          'content-type':      'application/json',
-        },
-        body: JSON.stringify({
-          model:      MODEL,
-          max_tokens: 300,
-          system:     IMAGE_SYSTEM,
-          messages: [{
-            role:    'user',
-            content: [{
-              type:   'image',
-              source: { type: 'base64', media_type: contentType, data: base64 },
-            }],
-          }],
-        }),
-        signal: AbortSignal.timeout(20_000),
+      const { data: parsed, usage } = await this.anthropic.jsonWithUsage<ModerationResult>({
+        system:  IMAGE_SYSTEM,
+        content: [{
+          type:   'image',
+          source: { type: 'base64', media_type: contentType, data: base64 },
+        }],
+        maxTokens: 300,
+        timeoutMs: 20_000,
       });
 
-      if (!res.ok) throw new Error(`Claude API error ${res.status}`);
-
-      const json: { content: { type: string; text: string }[] } = await res.json();
-      const text   = json.content.find((c) => c.type === 'text')?.text ?? '';
-      const parsed = JSON.parse(text) as ModerationResult;
-
-      return { ...parsed, latencyMs: Date.now() - start, modelVersion: MODEL };
+      return { ...parsed, latencyMs: Date.now() - start, modelVersion: MODEL, costUsd: usage.costUsd };
     } catch (err) {
       this.logger.error('Image moderation failed', err);
       return this.cleanResult(Date.now() - start);
@@ -92,6 +71,9 @@ export class ImageModerationService {
   }
 
   private cleanResult(latencyMs: number): ModerationResult {
-    return { verdict: 'CLEAN', categories: [], confidence: 0, reasoning: null, sellerMessage: null, latencyMs, modelVersion: MODEL };
+    // costUsd 0, not absent: this path returns without calling the API at all
+    // (image too large, fetch failed), and the tracker's fallback would
+    // otherwise bill the daily budget for a call that never happened.
+    return { verdict: 'CLEAN', categories: [], confidence: 0, reasoning: null, sellerMessage: null, latencyMs, modelVersion: MODEL, costUsd: 0 };
   }
 }
