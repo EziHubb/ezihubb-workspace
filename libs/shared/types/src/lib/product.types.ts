@@ -215,6 +215,12 @@ export interface ProductDetailDto {
     groupName: string;
     imageIdByValue: Record<string, string>;
   } | null;
+  /**
+   * Outside workshops that help make this item — the disclosure half of "who
+   * made it". Empty when the seller makes everything themselves, which is the
+   * common case, so the storefront hides the section rather than saying "none".
+   */
+  productionPartners?: { id: string; name: string; location: string | null }[];
   images: ProductImageDto[];
   digitalFiles?: DigitalFileDto[];
   videos?: ProductVideoDto[];

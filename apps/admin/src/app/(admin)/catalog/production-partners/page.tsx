@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Factory, Pencil, Trash2, X, Check } from 'lucide-react';
+import { Factory, Pencil, Trash2 } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -111,7 +111,7 @@ export default function ProductionPartnersPage() {
     <>
       <AdminPageHeader
         title="Production Partners"
-        subtitle="Manage production partners — used for transparency disclosures on product listings"
+        subtitle="Outside workshops sellers can credit on a listing — shown to buyers under Item details"
         queryKey={['admin-partners']}
       />
 

@@ -393,11 +393,28 @@ export class ProductsService {
       ? { groupName: linkedGroup.name, imageIdByValue }
       : null;
 
+    // Production partners — the disclosure half of "who made it".
+    //
+    // Product.productionPartnerIds is a plain String[] with no foreign key, so
+    // the names have to be looked up separately. Querying by the ids that are
+    // actually there also silently drops any that no longer resolve: the
+    // partner list is admin-managed and a deleted one leaves its id behind on
+    // every listing that chose it, and a blank line on a product page is worse
+    // than one fewer line.
+    const partnerIds = product.productionPartnerIds ?? [];
+    const productionPartners = partnerIds.length
+      ? await this.prisma.productionPartner.findMany({
+          where:  { id: { in: partnerIds } },
+          select: { id: true, name: true, location: true },
+        })
+      : [];
+
     // Merge MongoDB fields on top of the PG response
     return {
       ...base,
       variantOptions,
       variationPhotos,
+      productionPartners,
       salePromo,
       bundleOffer,
       ...(mongoDetail && {

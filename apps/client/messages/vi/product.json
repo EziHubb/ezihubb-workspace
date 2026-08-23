@@ -198,6 +198,7 @@
     "itemDetails": "Chi tiết sản phẩm",
     "highlights": "Điểm nổi bật",
     "madeBy": "Sản xuất bởi EziHubb",
+    "madeWithPartners": "Có sự tham gia của xưởng sản xuất: {names}",
     "materials": "Chất liệu: {value}",
     "shippingAndReturns": "Chính sách vận chuyển và đổi trả",
     "processingTime": "Thời gian xử lý",

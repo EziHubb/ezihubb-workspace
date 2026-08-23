@@ -198,6 +198,7 @@
     "itemDetails": "Item details",
     "highlights": "Highlights",
     "madeBy": "Made by EziHubb",
+    "madeWithPartners": "Made with production partners: {names}",
     "materials": "Materials: {value}",
     "shippingAndReturns": "Shipping and return policies",
     "processingTime": "Processing time",

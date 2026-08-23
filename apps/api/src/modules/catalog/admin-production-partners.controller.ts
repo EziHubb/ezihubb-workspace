@@ -53,7 +53,33 @@ export class AdminProductionPartnersController {
   @Roles(Role.SUPER_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete production partner' })
+  /**
+   * Deleting a partner also removes its id from every listing that named it.
+   *
+   * Product.productionPartnerIds is a plain String[] with no foreign key, so
+   * nothing does this automatically: the id would simply stay behind. That was
+   * invisible while the field was never read, but the storefront now discloses
+   * these names on the product page, and a dangling id is a listing claiming a
+   * partner that no longer exists.
+   *
+   * One transaction, so a listing can never be left pointing at a partner the
+   * delete has already removed.
+   */
   async delete(@Param('id') id: string) {
-    await this.prisma.productionPartner.delete({ where: { id } });
+    await this.prisma.$transaction(async (tx) => {
+      const affected = await tx.product.findMany({
+        where:  { productionPartnerIds: { has: id } },
+        select: { id: true, productionPartnerIds: true },
+      });
+
+      for (const p of affected) {
+        await tx.product.update({
+          where: { id: p.id },
+          data:  { productionPartnerIds: p.productionPartnerIds.filter((pid) => pid !== id) },
+        });
+      }
+
+      await tx.productionPartner.delete({ where: { id } });
+    });
   }
 }

@@ -198,6 +198,7 @@
     "itemDetails": "商品详情",
     "highlights": "亮点",
     "madeBy": "由 EziHubb 制作",
+    "madeWithPartners": "生产合作方：{names}",
     "materials": "材质：{value}",
     "shippingAndReturns": "配送与退换政策",
     "processingTime": "制作时间",

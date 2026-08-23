@@ -80,6 +80,12 @@ export class VariantOptionDto {
   @ApiProperty({ type: [String] }) values: string[];
 }
 
+export class ProductionPartnerDto {
+  @ApiProperty() id: string;
+  @ApiProperty() name: string;
+  @ApiPropertyOptional({ nullable: true }) location: string | null;
+}
+
 export class VariationPhotosDto {
   /** Matches one `variantOptions[].name`, i.e. the dropdown that drives the gallery. */
   @ApiProperty() groupName: string;
@@ -146,6 +152,15 @@ export class ProductResponseDto {
    */
   @ApiPropertyOptional({ type: () => VariationPhotosDto, nullable: true })
   variationPhotos?: VariationPhotosDto | null;
+
+  /**
+   * Outside workshops that help make this item, resolved from
+   * Product.productionPartnerIds. Empty when the seller makes everything
+   * themselves — which is the common case, and why the storefront hides the
+   * section rather than showing "none".
+   */
+  @ApiPropertyOptional({ type: [ProductionPartnerDto] })
+  productionPartners?: ProductionPartnerDto[];
   @ApiProperty({ type: [ProductImageResponseDto] }) images: ProductImageResponseDto[];
   @ApiPropertyOptional({ type: [DigitalFileResponseDto] }) digitalFiles?: DigitalFileResponseDto[];
   @ApiProperty({ type: [ProductVideoDto] }) videos: ProductVideoDto[];

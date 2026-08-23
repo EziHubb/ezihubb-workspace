@@ -15,6 +15,7 @@ import {
   Download,
   FileText,
   Ban,
+  Factory,
 } from 'lucide-react';
 import type { ProductDetailDto } from '@ezihubb/types';
 
@@ -96,6 +97,7 @@ export function ItemDetailsAccordion({ product }: { product: ProductDetailDto })
     (a) => a.key.toLowerCase() === 'material' || a.key.toLowerCase() === 'materials',
   );
 
+  const productionPartners = product.productionPartners ?? [];
   const isDigital    = product.productType === 'DIGITAL';
   const digitalFiles = product.digitalFiles ?? [];
   const extOf = (mime: string) => mime.split('/').pop()?.split('+')[0]?.toUpperCase() ?? 'FILE';
@@ -118,6 +120,22 @@ export function ItemDetailsAccordion({ product }: { product: ProductDetailDto })
               <User className="w-4 h-4 text-secondary shrink-0" />
               <span>{t('madeBy')}</span>
             </li>
+            {/* Production partners, right after who made it — that is the
+                claim this qualifies. Hidden entirely when there are none,
+                since most sellers make everything themselves and "no partners"
+                is not a fact a shopper needs stated. */}
+            {productionPartners.length > 0 && (
+              <li className="flex items-start gap-2">
+                <Factory className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
+                <span>
+                  {t('madeWithPartners', {
+                    names: productionPartners
+                      .map((p) => (p.location ? `${p.name} (${p.location})` : p.name))
+                      .join(', '),
+                  })}
+                </span>
+              </li>
+            )}
             {materialAttr && (
               <li className="flex items-center gap-2">
                 <Leaf className="w-4 h-4 text-green-600 shrink-0" />
