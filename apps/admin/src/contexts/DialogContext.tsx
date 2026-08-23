@@ -29,6 +29,15 @@ interface DialogContextValue {
   confirm: (message: string, opts?: ConfirmOptions) => Promise<boolean>;
   prompt:  (message: string, opts?: PromptOptions)  => Promise<string | null>;
   preview: (url: string, title?: string)            => Promise<void>;
+  /**
+   * True while a dialog is on screen.
+   *
+   * Anything else that closes on Escape has to check this. Escape is handled
+   * here on `window` without preventDefault, so a sheet listening for it
+   * receives the same keypress and closes itself underneath the dialog the
+   * user was actually dismissing — taking whatever they had typed with it.
+   */
+  isOpen: boolean;
 }
 
 // ── Context ───────────────────────────────────────────────────────────────────
@@ -96,7 +105,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <DialogContext.Provider value={{ alert, confirm, prompt, preview }}>
+    <DialogContext.Provider value={{ alert, confirm, prompt, preview, isOpen: state !== null }}>
       {children}
       {state && <AppDialog state={state} />}
     </DialogContext.Provider>

@@ -20,12 +20,14 @@ import { SendMessageDto } from './dto/send-message.dto';
 import { UpdateConversationStatusDto } from './dto/update-conversation-status.dto';
 import { MessagesService } from './messages.service';
 import { InboxService } from './inbox.service';
+import { SnippetsService } from './snippets.service';
 import {
   BulkConversationDto,
   CreateLabelDto,
   SetAutoReplyDto,
   SetBuyerNoteDto,
   SetConversationLabelsDto,
+  SnippetDto,
 } from './dto/inbox.dto';
 import { StoreContextService } from '../../common/services/store-context.service';
 
@@ -34,6 +36,7 @@ export class AdminMessagesController {
   constructor(
     private readonly messagesService: MessagesService,
     private readonly inbox:          InboxService,
+    private readonly snippets:       SnippetsService,
     private readonly storeContext:   StoreContextService,
   ) {}
 
@@ -177,5 +180,42 @@ export class AdminMessagesController {
     // never depends on the client also clearing the date.
     const until = dto.enabled === false || !dto.activeUntil ? null : new Date(dto.activeUntil);
     return this.inbox.setAutoReply(target, dto.message, until);
+  }
+
+  // ── Snippets ───────────────────────────────────────────────────────────────
+  // Saved message bodies the seller inserts by hand. Not the away-message
+  // above: nothing here ever sends itself.
+
+  @Get('snippets')
+  @ApiOperation({ summary: "A shop's saved message bodies" })
+  async listSnippets(@Req() req: Request, @Query('storeId') storeId?: string) {
+    return this.snippets.list(await this.storeFor(req, storeId));
+  }
+
+  @Post('snippets')
+  @ApiOperation({ summary: 'Save a new snippet' })
+  async createSnippet(@Req() req: Request, @Body() dto: SnippetDto, @Query('storeId') storeId?: string) {
+    return this.snippets.create(await this.storeFor(req, storeId), dto.title, dto.body);
+  }
+
+  @Patch('snippets/:snippetId')
+  @ApiOperation({ summary: 'Rename or rewrite a snippet' })
+  async updateSnippet(
+    @Req() req: Request,
+    @Param('snippetId') snippetId: string,
+    @Body() dto: SnippetDto,
+    @Query('storeId') storeId?: string,
+  ) {
+    return this.snippets.update(await this.storeFor(req, storeId), snippetId, dto.title, dto.body);
+  }
+
+  @Delete('snippets/:snippetId')
+  @ApiOperation({ summary: 'Delete a snippet' })
+  async deleteSnippet(
+    @Req() req: Request,
+    @Param('snippetId') snippetId: string,
+    @Query('storeId') storeId?: string,
+  ) {
+    return this.snippets.remove(await this.storeFor(req, storeId), snippetId);
   }
 }

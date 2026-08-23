@@ -73,3 +73,18 @@ export class SetAutoReplyDto {
   @IsBoolean()
   enabled?: boolean;
 }
+
+/** Create or rename one of a shop's saved message bodies. */
+export class SnippetDto {
+  @ApiProperty({ description: 'What the seller picks it out of the list by' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  title!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(5000)
+  body!: string;
+}

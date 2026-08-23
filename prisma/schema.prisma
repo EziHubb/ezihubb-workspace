@@ -438,6 +438,7 @@ model Store {
   conversationLabels ConversationLabel[]
   buyerNotes         BuyerNote[]
   autoReply          StoreAutoReply?
+  messageSnippets    MessageSnippet[]
 
   // ── Performance Score (NFT-03) ────────────────────────────────────────────
   performanceScore      Int?
@@ -2081,6 +2082,27 @@ model StoreAutoReply {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// A reusable message body the shop keeps to hand — the seller picks one
+/// instead of retyping the same reply. Distinct from StoreAutoReply, which
+/// sends itself: a snippet is only ever inserted deliberately, and is edited
+/// in the composer before it goes anywhere.
+model MessageSnippet {
+  id      String @id @default(cuid())
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  /// What the seller picks it out of the list by.
+  title String @db.VarChar(120)
+  body  String @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Two snippets with the same name are indistinguishable in the menu.
+  @@unique([storeId, title])
+  @@index([storeId])
 }
 
 model Message {

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Search, Loader2 } from 'lucide-react';
+import { ChevronDown, CircleCheckBig, Pencil, Search, Loader2 } from 'lucide-react';
 import { API_ROUTES } from '@ezihubb/constants';
 import { api, adminApi } from '../../../lib/api-client';
 import { useAdminMode } from '../../../lib/store-context';
@@ -12,6 +12,7 @@ import { OrderQueueCard } from '../../../components/orders/queue/OrderQueueCard'
 import { QueueFilters } from '../../../components/orders/queue/QueueFilters';
 import { ProgressStepsModal } from '../../../components/orders/queue/ProgressStepsModal';
 import { UpdateProgressMenu } from '../../../components/orders/queue/UpdateProgressMenu';
+import { OrderPanel } from '../../../components/orders/panel/OrderPanel';
 import {
   EMPTY_FILTERS,
   type ProgressStep,
@@ -115,6 +116,8 @@ export default function OrdersPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editorOpen,   setEditorOpen]   = useState(false);
   const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
+  /** StoreOrder id of the open detail panel, or null when none is. */
+  const [panelId,      setPanelId]      = useState<string | null>(null);
 
   // A shop owner never sends storeId — the server ignores it for them anyway.
   const scope = isPlatformContext && storeId ? storeId : undefined;
@@ -167,6 +170,10 @@ export default function OrdersPage() {
     // Cancelling or completing changes which orders are in the queue, and the
     // destination counts are drawn from exactly that set.
     qc.invalidateQueries({ queryKey: ['order-destinations'] });
+    // The detail panel can be open on an order this just moved — a bulk
+    // "Complete order" over a selection that includes it, say. Left alone it
+    // would keep offering to complete an order that is already done.
+    qc.invalidateQueries({ queryKey: ['order-panel'] });
   };
 
   /**
@@ -225,6 +232,19 @@ export default function OrdersPage() {
   const orders  = queueQuery.data?.data ?? [];
   const groups  = useMemo(() => groupByShipBy(orders), [orders]);
   const totalPages = queueQuery.data?.pagination.totalPages ?? 1;
+
+  /** The end of the pipeline. Undefined until the steps have loaded, which is
+   *  what disables "Complete order" rather than firing a move with no target. */
+  const completeStepId = steps.find((s) => s.kind === 'COMPLETED')?.id;
+
+  const allOnPageSelected = orders.length > 0 && orders.every((o) => selected.has(o.id));
+
+  const toggleAllOnPage = () =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const o of orders) { if (allOnPageSelected) next.delete(o.id); else next.add(o.id); }
+      return next;
+    });
 
   const toggle = (id: string, on: boolean) =>
     setSelected((prev) => {
@@ -330,17 +350,41 @@ export default function OrdersPage() {
       </div>
 
       <div className="mb-3 flex items-center gap-3">
-        <span className="rounded-full border border-border px-3 py-1.5 text-sm text-secondary">
-          {selected.size} selected
-        </span>
+        <label className="flex cursor-pointer items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm text-secondary">
+          <input
+            type="checkbox"
+            checked={allOnPageSelected}
+            onChange={toggleAllOnPage}
+            disabled={orders.length === 0}
+            aria-label="Select every order on this page"
+            className="h-4 w-4 rounded border-border"
+          />
+          {selected.size}
+        </label>
+
+        <button
+          type="button"
+          disabled={selected.size === 0 || !completeStepId || moveOrders.isPending}
+          onClick={() => completeStepId && moveOrders.mutate({ ids: [...selected], toStepId: completeStepId })}
+          className="flex items-center gap-2 rounded-full border border-border px-4 py-1.5 text-sm text-secondary disabled:opacity-50"
+        >
+          <CircleCheckBig className="h-4 w-4" aria-hidden="true" />
+          Complete order
+        </button>
+
+        {/* The remaining steps live behind this rather than beside "Complete
+            order": completing is the move a seller makes all day, and the rest
+            are the exceptions. */}
         <div className="relative">
           <button
             type="button"
             disabled={selected.size === 0}
             onClick={() => setBulkMenuOpen((v) => !v)}
-            className="rounded-full border border-border px-3 py-1.5 text-sm text-secondary disabled:opacity-50"
+            aria-haspopup="menu"
+            className="flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-sm text-secondary disabled:opacity-50"
           >
-            Update progress
+            More actions
+            <ChevronDown className="h-4 w-4" aria-hidden="true" />
           </button>
           {bulkMenuOpen && selected.size > 0 && (
             <UpdateProgressMenu
@@ -410,6 +454,7 @@ export default function OrdersPage() {
                     steps={steps}
                     selected={selected.has(order.id)}
                     onSelect={(on) => toggle(order.id, on)}
+                    onOpen={() => setPanelId(order.id)}
                     onMoveToStep={(toStepId) => moveOrders.mutate({ ids: [order.id], toStepId })}
                     onEditShipBy={() => editShipBy(order)}
                     onToggleGift={() => setGift.mutate({ id: order.id, isGift: !order.isGift })}
@@ -451,6 +496,38 @@ export default function OrdersPage() {
           onChange={(next) => changeView(() => setFilters(next))}
         />
       </div>
+
+      {panelId && (
+        <OrderPanel
+          // Keyed on the id so opening a different order remounts rather than
+          // showing the previous order's tab and scroll position while the new
+          // one loads.
+          key={panelId}
+          storeOrderId={panelId}
+          storeQuery={qs()}
+          completeStepId={completeStepId}
+          onClose={() => setPanelId(null)}
+          onChanged={refetchAll}
+          // Both look the order up in the current page of the queue, because
+          // both reuse the list's own handlers. The order can be missing —
+          // the list refetches while the panel stays open, and a filter or
+          // page change can drop it. Saying so beats a button that does
+          // nothing: an earlier version of this returned silently.
+          onEditShipBy={(id) => {
+            const target = orders.find((o) => o.id === id);
+            if (target) void editShipBy(target);
+            else void dialog.alert('This order is no longer in the list below — clear the filters to edit its dispatch date.');
+          }}
+          onToggleGift={(id, isGift) => setGift.mutate({ id, isGift })}
+          onCancel={(orderId, orderNumber) => {
+            const target = orders.find((o) => o.orderId === orderId);
+            if (target) void cancelOrder(target);
+            else void dialog.alert(`Order #${orderNumber} is no longer in the list below — clear the filters to cancel it.`);
+          }}
+          onRefund={() => dialog.alert('Refunds are issued from the order page.')}
+          onPrint={(orderId, orderNumber) => printPackingSlip(orderId, orderNumber, dialog.alert)}
+        />
+      )}
 
       {editorOpen && (
         <ProgressStepsModal

@@ -15,7 +15,7 @@ import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtDateTime } from '../../../../lib/fmt';
 import { useDialog } from '../../../../contexts/DialogContext';
-import type { OrderDetail, OrderItem } from '../../../../components/orders/OrderDrawer';
+import type { OrderDetail, OrderItem } from '../../../../components/orders/types';
 
 // ── Timeline (same as drawer) ─────────────────────────────────────────────────
 

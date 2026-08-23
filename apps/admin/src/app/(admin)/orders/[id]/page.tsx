@@ -6,7 +6,7 @@ import { API_ROUTES } from '@ezihubb/constants';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { fmtDate, fmtAmount } from '../../../../lib/fmt';
 import { OrderStatusBadge } from '../../../../components/orders/OrderStatusBadge';
-import type { OrderDetail } from '../../../../components/orders/OrderDrawer';
+import type { OrderDetail } from '../../../../components/orders/types';
 import { OrderDetailContent } from './OrderDetailContent';
 
 export const dynamic = 'force-dynamic';

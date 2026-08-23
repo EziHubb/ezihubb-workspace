@@ -23,6 +23,8 @@ interface Props {
   steps:     ProgressStep[];
   selected:  boolean;
   onSelect:  (checked: boolean) => void;
+  /** Opens the detail panel over the queue. */
+  onOpen:    () => void;
   onMoveToStep:   (stepId: string) => void;
   onEditShipBy:   () => void;
   onToggleGift:   () => void;
@@ -65,7 +67,7 @@ function variantLines(snapshot: Record<string, unknown> | null): [string, string
 }
 
 export function OrderQueueCard({
-  order, steps, selected, onSelect,
+  order, steps, selected, onSelect, onOpen,
   onMoveToStep, onEditShipBy, onToggleGift, onCancel, onRefund, onPrint,
 }: Props) {
   const [showShipTo, setShowShipTo] = useState(true);
@@ -101,20 +103,29 @@ export function OrderQueueCard({
 
       {/* ── What was bought ─────────────────────────────────────────────── */}
       <div className="min-w-0 flex-1">
+        {/* Buttons, not links: the order opens as a sheet over the queue, so
+            the seller keeps their filters, scroll position and selection. The
+            deep link to /orders/[id] is still in the panel itself, for anyone
+            who needs to send one. */}
         <div className="flex items-center gap-2">
-          <Link
-            href={`/orders/${order.orderId}`}
+          <button
+            type="button"
+            onClick={onOpen}
             className="text-sm font-semibold text-secondary underline underline-offset-2 hover:text-primary"
           >
             {order.buyer.name ?? 'Guest'}
-          </Link>
+          </button>
           {order.isGift && <Gift className="h-4 w-4 text-muted" aria-label="Marked as a gift" />}
         </div>
 
         <div className="mt-0.5 flex items-center gap-2 text-sm">
-          <Link href={`/orders/${order.orderId}`} className="text-muted underline underline-offset-2">
+          <button
+            type="button"
+            onClick={onOpen}
+            className="text-muted underline underline-offset-2 hover:text-secondary"
+          >
             #{order.orderNumber}
-          </Link>
+          </button>
           <span className="font-medium text-secondary">{money(order.total)}</span>
         </div>
 

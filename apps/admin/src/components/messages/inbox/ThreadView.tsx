@@ -18,6 +18,40 @@ import { buyerNameOf } from './types';
 
 const dayKey = (iso: string) => new Date(iso).toDateString();
 
+/** next/image throws during render on a src that is neither absolute nor
+ *  root-relative, and a throw here would take the whole inbox down. */
+const renderableSrc = (url: string): boolean =>
+  url.startsWith('/') || url.startsWith('http://') || url.startsWith('https://');
+
+/**
+ * Images attached to a message.
+ *
+ * Each opens full size in a new tab: the thumbnail is enough to recognise a
+ * design, not enough to approve one.
+ */
+function MessageAttachments({ urls }: { urls: string[] | undefined }) {
+  const usable = (urls ?? []).filter(renderableSrc);
+  if (!usable.length) return null;
+
+  return (
+    <ul className="mt-2 flex flex-wrap gap-2">
+      {usable.map((url) => (
+        <li key={url}>
+          <a href={url} target="_blank" rel="noopener noreferrer">
+            <Image
+              src={url}
+              alt="Attachment"
+              width={80}
+              height={80}
+              className="h-20 w-20 rounded object-cover hover:opacity-80"
+            />
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 const dayLabel = (iso: string) => {
   const d = new Date(iso);
   const today = new Date();
@@ -82,6 +116,10 @@ function Bubble({ message, buyerName }: { message: ThreadMessage; buyerName: str
           }`}
         >
           <p className="whitespace-pre-wrap break-words">{withLinks(message.body)}</p>
+          {/* Images were carried on every message but never drawn here, so a
+              design sent to a buyer for approval was visible to them and
+              invisible to the seller who sent it. */}
+          <MessageAttachments urls={message.attachmentUrls} />
           {message.attachedProduct && <ProductCard product={message.attachedProduct} />}
         </div>
         <p className="mt-1 text-xs text-muted">{timeLabel(message.createdAt)}</p>

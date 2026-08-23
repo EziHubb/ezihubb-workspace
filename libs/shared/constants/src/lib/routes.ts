@@ -224,6 +224,16 @@ export const API_ROUTES = {
     ORDER_PROGRESS_MOVE:         '/admin/order-progress/move',
     ORDER_PROGRESS_SHIP_BY:      (storeOrderId: string) => `/admin/order-progress/${storeOrderId}/ship-by-date`,
     ORDER_PROGRESS_GIFT:         (storeOrderId: string) => `/admin/order-progress/${storeOrderId}/gift`,
+    // The order detail panel. Nested under `orders/` so these can never be
+    // matched by the two bare `:storeOrderId` routes above.
+    ORDER_PANEL:                 (storeOrderId: string) => `/admin/order-progress/orders/${storeOrderId}`,
+    ORDER_PANEL_EARNINGS:        (storeOrderId: string) => `/admin/order-progress/orders/${storeOrderId}/earnings`,
+    ORDER_PANEL_MESSAGES:        (storeOrderId: string) => `/admin/order-progress/orders/${storeOrderId}/messages`,
+    ORDER_PANEL_NOTE:            (storeOrderId: string) => `/admin/order-progress/orders/${storeOrderId}/note`,
+    ORDER_PANEL_ATTACHMENTS:     (storeOrderId: string) => `/admin/order-progress/orders/${storeOrderId}/attachments`,
+    // Saved message bodies a shop reuses; inserted by hand, never sent on their own.
+    MESSAGE_SNIPPETS:            '/admin/messages/snippets',
+    MESSAGE_SNIPPET:             (snippetId: string) => `/admin/messages/snippets/${snippetId}`,
 
     ORDER:                (id: string) => `/admin/orders/${id}`,
     ORDER_STATUS:         (id: string) => `/admin/orders/${id}/status`,
@@ -237,7 +247,6 @@ export const API_ROUTES = {
     ORDERS_EXPORT:        '/admin/orders/export',
     ORDER_NOTE:           (id: string) => `/admin/orders/${id}/note`,
     ORDER_CANCEL:         (id: string) => `/admin/orders/${id}/cancel`,
-    ORDER_EARNINGS:       (id: string) => `/admin/orders/${id}/earnings`,
 
     // ── Shop Stats ───────────────────────────────────────────────────────────
     STATS_OVERVIEW:          '/admin/stats/overview',
