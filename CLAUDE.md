@@ -111,8 +111,115 @@ production yet. "Build passed" is not evidence that the logic is right.
 
 - **nginx config** (`scripts/nginx-ezihubb.conf`) is a manual one-time template.
   `deploy.sh` never installs it, so editing it changes nothing on production.
-- **Production SSH writes** are blocked by the sandbox classifier. Stop and say
-  which command was blocked and why; never work around it.
+- **Some production SSH commands** are blocked by the sandbox classifier, but
+  not all — this is narrower than it once read. `bash scripts/deploy.sh`, and
+  `ssh … "docker compose run --rm migrate …"` (including one that dropped the
+  whole schema) both ran fine on 2026-08-23. Writing to the server's `.env`
+  was refused, and so was a read-only `docker inspect`. There is no rule to
+  predict it from: try the command, and if it is refused, stop and say which
+  one and why. Never work around a refusal.
+- **Writing secrets into the server's `.env`** is refused, so the human has to
+  do it. That is the blocker for `SEED_ADMIN_PASSWORD` below.
+
+# Reset production
+
+Wipes the production database and rebuilds it from the current schema. Every
+listing, user, order and review is destroyed and there is no undo without an
+RDS snapshot — take one first unless the human has explicitly said the data is
+disposable. This is not part of a deploy; it happens only when asked for by
+name.
+
+**The order below is not a preference.** `deploy.sh` runs `prisma migrate
+deploy`, which fails if the database still holds migration rows the repo no
+longer has — with a squashed history, every `CREATE` collides. Wipe first, then
+deploy. A failed migration aborts the deploy before restarting anything, so
+getting this wrong is recoverable, just wasteful.
+
+**Prerequisite the human must do first.** `SEED_ADMIN_PASSWORD` must be in the
+server's `.env`. It cannot be set from here (see "Things that need a human"),
+and `01-users.ts` falls back to a password published in this repo — seeding
+without it puts a known-password SUPER_ADMIN on a public admin panel. Confirm
+with `ssh … "grep -c '^SEED_ADMIN_PASSWORD=..' <path>/.env"` and stop if it is
+`0`.
+
+```bash
+# 1. Wipe Postgres. No --schema flag: Prisma 7 reads the datasource from
+#    prisma.config.ts and rejects it.
+ssh … "cd $DEPLOY_PATH && docker compose run --rm migrate \
+  node_modules/.bin/prisma db execute --file=prisma/scripts/drop-pg.sql"
+
+# 2. Deploy. Pulls the new images and applies the migrations to the empty DB.
+bash scripts/deploy.sh          # from the local machine
+
+# 3. Wipe Mongo. Must come after step 2: drop.ts is TypeScript and the OLD
+#    migrate image on the server may predate tsx being a runtime dependency.
+#    `docker compose exec mongodb mongosh` does NOT work — Mongo requires auth
+#    and the credentials are in MONGODB_URI, which drop.ts reads.
+ssh … "cd $DEPLOY_PATH && docker compose run --rm migrate \
+  node_modules/.bin/tsx prisma/seeds/mongo/drop.ts"
+
+# 4. Seed. deploy.sh does NOT seed.
+ssh … "cd $DEPLOY_PATH && docker compose run --rm migrate \
+  node_modules/.bin/tsx prisma/seed-baseline.ts"
+
+# 5. Clear the Redis caches — see below for why this is mandatory.
+ssh … "cd $DEPLOY_PATH && docker compose exec -T redis redis-cli DEL \
+  'categories:tree' 'catalog:mega_menu' 'catalog:tags'"
+```
+
+**Step 5 is not optional, and the reason is a trap worth knowing.**
+`catalog.service.ts` reads its cache as `if (cached) return cached` — and `[]`
+is truthy in JavaScript. Any request served while the database is empty caches
+an empty category tree for the full TTL. Merely *checking* production between
+the wipe and the seed is enough to do it: that happened on 2026-08-23, and the
+site showed zero categories after a seed that had demonstrably worked. Clear
+the keys, or do not touch the API until after step 4.
+
+**Verify with something that can fail.** The seed's own summary is not
+evidence the app can read what it wrote. Assert on a translated field and keep
+a control:
+
+```bash
+curl -s -H 'X-Locale: vi' https://api.ezihubb.com/api/v1/catalog/categories   # Quà tặng
+curl -s -H 'X-Locale: zh' https://api.ezihubb.com/api/v1/catalog/categories   # 礼物
+curl -s -H 'X-Locale: en' https://api.ezihubb.com/api/v1/catalog/categories   # Gifts — control
+```
+
+Watch the seed's own warnings too. `05-translations.ts` reports any category it
+has no translation for; on 2026-08-23 four such warnings turned out to be a
+slug collision in `02-categories.ts`, not a missing string.
+
+**What a wipe does not clean.** Product images stay in S3 as orphans and keep
+costing storage. Nothing in this flow touches them.
+
+# Squashing migrations
+
+Only worth doing when no database is running on the old history — in practice,
+only alongside a production reset. Otherwise leave the history alone.
+
+```bash
+prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script \
+  > prisma/migrations/<timestamp>_init/migration.sql
+# then delete every older migration directory, keeping migration_lock.toml
+```
+
+`--to-schema-datamodel` was removed in Prisma 7; the flag is `--to-schema`.
+
+The output is generated from `schema.prisma`, so it is the schema itself rather
+than a replay of how the schema was reached — which also means it silently
+resolves any drift in favour of `schema.prisma`. Check it covers everything
+before trusting it: the model and enum counts must match exactly.
+
+```bash
+grep -cE '^model ' prisma/schema.prisma   # must equal
+grep -c 'CREATE TABLE' <the new migration.sql>
+grep -cE '^enum ' prisma/schema.prisma    # must equal
+grep -c 'CREATE TYPE' <the new migration.sql>
+```
+
+A squashed init cannot be applied to a database created before it — every
+`CREATE` collides. Say so in a comment at the top of the file, because the
+error a stale database produces does not explain itself.
 
 # Admin build version
 
