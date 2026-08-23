@@ -878,10 +878,13 @@ function VariationOptionsEditor({
           {options.length > 0 && <div className="border-t border-border" />}
           <div>
             <label className="block text-sm font-semibold text-secondary mb-1.5">Unit</label>
+            {/* Sized to its content, not to the modal. `inputCls` carries
+                w-full, which stretched a control whose longest value is
+                "Millimetres" across the full 640px card. */}
             <select
               value={unit}
               onChange={(e) => onUnitChange(e.target.value)}
-              className={inputCls}
+              className="w-52 px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="">Select a unit</option>
               {MEASUREMENT_UNITS.map((u) => (
