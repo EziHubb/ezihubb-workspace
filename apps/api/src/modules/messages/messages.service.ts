@@ -10,9 +10,18 @@ import { ConversationStatus, SenderType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushService } from '../notifications/push.service';
+import type { AdminConversationFolder } from './dto/admin-conversation-query.dto';
 import { AdminConversationQueryDto } from './dto/admin-conversation-query.dto';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { SendMessageDto } from './dto/send-message.dto';
+
+/** Not in the working inbox: filed away, junk, or deleted. One list so the
+ *  folder filter and the folder counts cannot drift apart. */
+const OUT_OF_INBOX: ConversationStatus[] = [
+  ConversationStatus.ARCHIVED,
+  ConversationStatus.SPAM,
+  ConversationStatus.TRASHED,
+];
 
 const CONVERSATION_INCLUDE = {
   messages: {
@@ -117,6 +126,7 @@ export class MessagesService {
           senderId,
           body: dto.body,
           attachmentUrls: dto.attachmentUrls ?? [],
+          attachedProductId: dto.attachedProductId ?? null,
         },
       }),
       this.prisma.conversation.update({
@@ -126,7 +136,11 @@ export class MessagesService {
           lastMessageAt: new Date(),
           ...(isCustomer
             ? { unreadByAdmin: { increment: 1 } }
-            : { unreadByCustomer: { increment: 1 } }),
+            // Set on every shop reply, not only the first: it is a flag, and
+            // writing it unconditionally is cheaper than reading it to decide.
+            // Without this the Sent folder and the reply arrow on each inbox
+            // row would only ever reflect the migration's backfill.
+            : { unreadByCustomer: { increment: 1 }, hasSellerReplied: true }),
         },
       }),
     ]);
@@ -199,24 +213,56 @@ export class MessagesService {
     return { success: true };
   }
 
+  /**
+   * Turns a folder name into a filter.
+   *
+   * Trash is the only folder that shows trashed threads, and every other one
+   * excludes them — including "All", which means "everything still in the
+   * mailbox". A bin that leaks into every view is not a bin.
+   */
+  private folderWhere(folder: AdminConversationFolder = 'inbox') {
+    const notTrashed = { status: { not: ConversationStatus.TRASHED } };
+
+    switch (folder) {
+      case 'trash':   return { status: ConversationStatus.TRASHED };
+      case 'spam':    return { status: ConversationStatus.SPAM };
+      case 'starred': return { ...notTrashed, isStarred: true };
+      case 'unread':  return { ...notTrashed, unreadByAdmin: { gt: 0 } };
+      case 'sent':    return { ...notTrashed, hasSellerReplied: true };
+      // A thread attached to an order is help with that order; one without is
+      // from someone who has not bought yet. The order link is the only real
+      // signal either way.
+      case 'order_help':         return { ...notTrashed, orderId: { not: null } };
+      case 'prospective_buyers': return { ...notTrashed, orderId: null };
+      case 'from_platform':      return { ...notTrashed, messages: { some: { senderType: SenderType.SYSTEM } } };
+      case 'all':     return notTrashed;
+      case 'inbox':
+      default:
+        // The working folder: not filed away, not junk, not deleted.
+        return { status: { notIn: OUT_OF_INBOX } };
+    }
+  }
+
   async adminListConversations(query: AdminConversationQueryDto, storeId?: string) {
-    const { status, search, folder, page = 1, limit = 20 } = query;
+    const { status, search, folder, labelIds, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
     const where = {
       ...(storeId !== undefined && { storeId }),
+      ...this.folderWhere(folder),
+      // An explicit status overrides the folder's own — used by the status
+      // dropdown, which is a different control from the folder list.
       ...(status && { status }),
-      // "From potential buyers" — a general inquiry with no order attached
-      // yet is the closest real signal we have for "hasn't purchased".
-      // "From platform" — any conversation carrying a SYSTEM-authored
-      // message (Message.senderType already distinguishes CUSTOMER/SHOP/
-      // SYSTEM, so this needs no new schema).
-      ...(folder === 'prospective_buyers' && { orderId: null }),
-      ...(folder === 'from_platform' && { messages: { some: { senderType: 'SYSTEM' as const } } }),
+      // AND, not OR: picking two labels means threads carrying both, which is
+      // how a label filter narrows rather than widens.
+      ...(labelIds?.length && {
+        AND: labelIds.map((id) => ({ labels: { some: { labelId: id } } })),
+      }),
       ...(search && {
         OR: [
           { subject: { contains: search, mode: 'insensitive' as const } },
           { guestEmail: { contains: search, mode: 'insensitive' as const } },
+          { lastMessage: { contains: search, mode: 'insensitive' as const } },
           { user: { email: { contains: search, mode: 'insensitive' as const } } },
         ],
       }),
@@ -229,8 +275,9 @@ export class MessagesService {
         take: limit,
         orderBy: { lastMessageAt: 'desc' },
         include: {
-          user: { select: { id: true, firstName: true, lastName: true, email: true } },
+          user: { select: { id: true, firstName: true, lastName: true, email: true, avatarUrl: true } },
           order: { select: { id: true, orderNumber: true } },
+          labels: { include: { label: { select: { id: true, name: true, color: true } } } },
           _count: { select: { messages: true } },
         },
       }),
@@ -238,20 +285,95 @@ export class MessagesService {
     ]);
 
     return {
-      items,
+      items: items.map((c) => ({ ...c, labels: c.labels.map((l) => l.label) })),
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  /**
+   * The number beside each folder in the sidebar.
+   *
+   * Counted in one round trip rather than ten: the folders are all filters
+   * over the same small set of columns, so a single fetch of those columns and
+   * a pass in memory beats ten COUNT queries a shop hits on every inbox open.
+   * Threads carrying a SYSTEM message are the one folder that cannot be
+   * answered from those columns, so it gets its own count.
+   */
+  async adminFolderCounts(storeId?: string) {
+    const scope     = storeId !== undefined ? { storeId } : {};
+    const notTrashed = { ...scope, status: { not: ConversationStatus.TRASHED } };
+
+    // Counted in the database, one indexed COUNT per folder.
+    //
+    // An earlier version fetched every conversation's columns and tallied them
+    // in memory to save round trips. That is fine at ten threads and quietly
+    // terrible at fifty thousand: the inbox is opened constantly, and the cost
+    // grows with the shop's whole history rather than with what is on screen.
+    // Ten small counts in one transaction is the cheaper trade at every size
+    // that matters.
+    const [inbox, starred, orderHelp, prospective, fromPlatform, sent, all, unread, spam, trash] =
+      await this.prisma.$transaction([
+        this.prisma.conversation.count({ where: { ...scope, status: { notIn: OUT_OF_INBOX } } }),
+        this.prisma.conversation.count({ where: { ...notTrashed, isStarred: true } }),
+        this.prisma.conversation.count({ where: { ...notTrashed, orderId: { not: null } } }),
+        this.prisma.conversation.count({ where: { ...notTrashed, orderId: null } }),
+        this.prisma.conversation.count({ where: { ...notTrashed, messages: { some: { senderType: SenderType.SYSTEM } } } }),
+        this.prisma.conversation.count({ where: { ...notTrashed, hasSellerReplied: true } }),
+        this.prisma.conversation.count({ where: notTrashed }),
+        this.prisma.conversation.count({ where: { ...notTrashed, unreadByAdmin: { gt: 0 } } }),
+        this.prisma.conversation.count({ where: { ...scope, status: ConversationStatus.SPAM } }),
+        this.prisma.conversation.count({ where: { ...scope, status: ConversationStatus.TRASHED } }),
+      ]);
+
+    return {
+      inbox, starred, order_help: orderHelp, prospective_buyers: prospective,
+      from_platform: fromPlatform, sent, all, unread, spam, trash,
     };
   }
 
   async adminGetConversation(conversationId: string, storeId?: string) {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
-      include: CONVERSATION_INCLUDE,
+      include: {
+        ...CONVERSATION_INCLUDE,
+        // The shop side needs more than the buyer's view: the product card on
+        // a shared listing, and the thread's labels for the detail toolbar.
+        // Price comes from the product row, live, so a card never quotes a
+        // price the shop has since changed.
+        messages: {
+          orderBy: { createdAt: 'asc' as const },
+          take: 100,
+          include: {
+            attachedProduct: {
+              select: {
+                id: true, name: true, slug: true, basePrice: true, compareAtPrice: true,
+                images: { where: { isPrimary: true }, select: { url: true }, take: 1 },
+              },
+            },
+          },
+        },
+        labels: { include: { label: { select: { id: true, name: true, color: true } } } },
+      },
     });
     if (!conversation || (storeId !== undefined && conversation.storeId !== storeId)) {
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
     }
-    return conversation;
+
+    return {
+      ...conversation,
+      labels: conversation.labels.map((l) => l.label),
+      messages: conversation.messages.map((m) => ({
+        ...m,
+        attachedProduct: m.attachedProduct && {
+          id:   m.attachedProduct.id,
+          name: m.attachedProduct.name,
+          slug: m.attachedProduct.slug,
+          price:        Number(m.attachedProduct.basePrice),
+          compareAtPrice: m.attachedProduct.compareAtPrice ? Number(m.attachedProduct.compareAtPrice) : null,
+          imageUrl:     m.attachedProduct.images[0]?.url ?? null,
+        },
+      })),
+    };
   }
 
   async adminUpdateStatus(conversationId: string, status: ConversationStatus, storeId?: string) {

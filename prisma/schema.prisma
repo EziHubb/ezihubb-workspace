@@ -435,6 +435,9 @@ model Store {
   bundleOffers       BundleOffer[]
   reviews            Review[]            @relation("StoreReviews")
   conversations      Conversation[]
+  conversationLabels ConversationLabel[]
+  buyerNotes         BuyerNote[]
+  autoReply          StoreAutoReply?
 
   // ── Performance Score (NFT-03) ────────────────────────────────────────────
   performanceScore      Int?
@@ -1116,6 +1119,7 @@ model Product {
   wishlistItems       WishlistItem[]
   cartItems           CartItem[]
   orderItems          OrderItem[]
+  messageAttachments  Message[]           @relation("MessageAttachedProduct")
   customizationDrafts CustomizationDraft[]
   reviews             Review[]
   questions           ProductQuestion[]
@@ -1927,6 +1931,8 @@ enum ConversationStatus {
   PENDING // waiting for customer reply
   RESOLVED // marked done by admin
   SPAM // marked as spam
+  ARCHIVED // filed away, out of the inbox but not deleted
+  TRASHED // in the bin, recoverable until purged
 }
 
 enum SenderType {
@@ -1962,6 +1968,24 @@ model Conversation {
   unreadByAdmin    Int @default(0)
   unreadByCustomer Int @default(0)
 
+  /// Starring is a separate axis from status on purpose: a starred thread is
+  /// still in the inbox, and folding it into `status` would make starring
+  /// something that files the thread away.
+  isStarred Boolean @default(false)
+
+  /// Where ARCHIVED and TRASHED came from, so "move back to inbox" has a
+  /// target. `status` is a single field, so filing a thread otherwise
+  /// overwrites whether it had been resolved — and restoring it would have to
+  /// guess. Null whenever `status` is not ARCHIVED or TRASHED.
+  statusBeforeFiling ConversationStatus?
+
+  /// Drives both the reply arrow on each row and the Sent folder. Denormalised
+  /// rather than derived: the alternative is an EXISTS over every thread's
+  /// messages on every inbox render.
+  hasSellerReplied Boolean @default(false)
+
+  labels ConversationLabelLink[]
+
   messages Message[]
 
   createdAt DateTime @default(now())
@@ -1972,6 +1996,91 @@ model Conversation {
   @@index([status])
   @@index([lastMessageAt])
   @@index([storeId])
+  // The inbox is always "this shop, newest first, in this folder".
+  @@index([storeId, status, lastMessageAt])
+  @@index([storeId, isStarred])
+}
+
+/// A label a shop invents for its own inbox.
+///
+/// Seller-defined rather than a fixed enum: what one shop files under
+/// "Custom order" another calls "Commission", and neither is the platform's
+/// business. Deliberately separate from the system-assigned chip on a thread
+/// that came in as help with an order — that one is derived from the thread
+/// having an order attached, and a seller must not be able to rename or
+/// delete it out from under the folder that depends on it.
+model ConversationLabel {
+  id      String @id @default(cuid())
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name    String @db.VarChar(40)
+
+  /// Token name from the app palette, not a raw hex value — the inbox chips
+  /// have to keep working when the theme changes.
+  color String @default("muted")
+
+  links ConversationLabelLink[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, name])
+  @@index([storeId])
+}
+
+model ConversationLabelLink {
+  conversationId String
+  conversation   Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  labelId        String
+  label          ConversationLabel @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([conversationId, labelId])
+  @@index([labelId])
+}
+
+/// A shop's private note about one buyer.
+///
+/// Attached to the buyer, not to a thread: a note like "prefers tracked
+/// postage" is true of the person, and repeating it on every conversation
+/// would mean updating it in several places or trusting the newest one.
+/// Never shown to the buyer.
+model BuyerNote {
+  id      String @id @default(cuid())
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  /// The buyer's user id, or `guest:<email>` when there is no account. One
+  /// column rather than two nullable ones, because a note has exactly one
+  /// subject and a pair of partial unique indexes would not say so.
+  buyerKey String
+
+  body String @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, buyerKey])
+}
+
+/// Temporary away-message for a shop.
+///
+/// Only the dated kind is modelled here. The reference also offers a weekly
+/// schedule, but the screenshot never opens it, and inventing office-hours
+/// semantics would bake a guess into the schema.
+model StoreAutoReply {
+  storeId String @id
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  message String @db.Text
+
+  /// Null means off. A date rather than a boolean so the shop cannot leave
+  /// itself silently auto-replying for months — it lapses on its own.
+  activeUntil DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Message {
@@ -1986,6 +2095,13 @@ model Message {
   body           String   @db.Text
   attachmentUrls String[] // up to 3 image attachments
 
+  /// A listing shared inside the message, rendered as a card with its current
+  /// price. Referenced live rather than snapshotted so the card cannot quote a
+  /// price the shop no longer offers; SetNull because a delisted product must
+  /// not take the conversation with it.
+  attachedProductId String?
+  attachedProduct   Product? @relation("MessageAttachedProduct", fields: [attachedProductId], references: [id], onDelete: SetNull)
+
   isRead Boolean   @default(false)
   readAt DateTime?
 
@@ -1995,6 +2111,7 @@ model Message {
 
   @@index([conversationId])
   @@index([createdAt])
+  @@index([attachedProductId])
 }
 
 // ─── Audit Log ───────────────────────────────────────────────────────────────

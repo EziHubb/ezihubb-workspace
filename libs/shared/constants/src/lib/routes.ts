@@ -377,6 +377,16 @@ export const API_ROUTES = {
     CONVERSATION_STATUS:  (id: string) => `/admin/messages/conversations/${id}/status`,
     CONVERSATION_READ:    (id: string) => `/admin/messages/conversations/${id}/read`,
 
+    // ── Inbox ────────────────────────────────────────────────────────────────
+    MESSAGE_FOLDERS:      '/admin/messages/folders',
+    CONVERSATIONS_BULK:   '/admin/messages/conversations/bulk',
+    MESSAGE_LABELS:       '/admin/messages/labels',
+    MESSAGE_LABEL:        (labelId: string) => `/admin/messages/labels/${labelId}`,
+    CONVERSATION_LABELS:  (id: string) => `/admin/messages/conversations/${id}/labels`,
+    CONVERSATION_BUYER:   (id: string) => `/admin/messages/conversations/${id}/buyer`,
+    CONVERSATION_BUYER_NOTE: (id: string) => `/admin/messages/conversations/${id}/buyer/note`,
+    MESSAGE_AUTO_REPLY:   '/admin/messages/auto-reply',
+
     // ── Affiliates ───────────────────────────────────────────────────────────
     AFFILIATES:           '/admin/affiliates',
     AFFILIATE:            (id: string) => `/admin/affiliates/${id}`,
