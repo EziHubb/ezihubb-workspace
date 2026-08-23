@@ -1,665 +1,506 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import Image from 'next/image';
-import Link from 'next/link';
-import {
-  Search, Download, Package, ChevronDown, X, SlidersHorizontal,
-  Check, Filter, RefreshCw, ThumbsUp, ThumbsDown,
-} from 'lucide-react';
-import { subDays, addDays } from 'date-fns';
-import { OrderStatusBadge } from '../../../components/orders/OrderStatusBadge';
-import { FilterSelect } from '../../../components/ui/FilterSelect';
-import { OrderDetailPanel } from '../../../components/orders/OrderDetailPanel';
-import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
-import type { OrderDetail } from '../../../components/orders/OrderDrawer';
-import { api, adminApi } from '../../../lib/api-client';
+import { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Pencil, Search, Loader2 } from 'lucide-react';
 import { API_ROUTES } from '@ezihubb/constants';
-import { fmtDate, unwrapArr } from '../../../lib/fmt';
+import { api, adminApi } from '../../../lib/api-client';
+import { useAdminMode } from '../../../lib/store-context';
 import { useDialog } from '../../../contexts/DialogContext';
+import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
+import { OrderQueueCard } from '../../../components/orders/queue/OrderQueueCard';
+import { QueueFilters } from '../../../components/orders/queue/QueueFilters';
+import { ProgressStepsModal } from '../../../components/orders/queue/ProgressStepsModal';
+import { UpdateProgressMenu } from '../../../components/orders/queue/UpdateProgressMenu';
+import {
+  EMPTY_FILTERS,
+  type ProgressStep,
+  type QueueFilterState,
+  type QueueOrder,
+  type QueueResponse,
+} from '../../../components/orders/queue/types';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+/**
+ * The seller's order queue.
+ *
+ * Tabs are the shop's own workflow steps, not order statuses. Cancellation and
+ * refunds stay off the pipeline and live in each order's menu — a seller can
+ * rename a step, and the record of a refund is not theirs to rename.
+ *
+ * SUPER_ADMIN in platform context has no shop of their own to show, so the
+ * page asks them to pick one rather than merging every shop's steps into a
+ * meaningless set of tabs.
+ */
 
-interface OrderRow {
-  id:            string;
-  orderNumber:   string;
-  status:        string;
-  total:         number;
-  itemCount:     number;
-  createdAt:     string;
-  imageUrl?:     string | null;
-  previewUrl?:   string | null;
-  shippingName:  string;
-  shippingCity:  string;
-  shippingCountry: string;
-  shippingMethod: string;
-  shippingCost:  number;
-  customer?: {
-    id: string;
-    firstName?: string | null;
-    lastName?:  string | null;
-    email: string;
-  } | null;
+const QK = {
+  steps:        (storeId?: string) => ['order-progress-steps', storeId] as const,
+  queue:        (storeId: string | undefined, q: unknown) => ['order-queue', storeId, q] as const,
+  destinations: (storeId?: string) => ['order-destinations', storeId] as const,
+};
+
+/**
+ * Downloads the packing slip.
+ *
+ * Not `window.open` on the route: these constants are API paths, so the
+ * browser would resolve them against the admin app's own origin and arrive
+ * without the bearer token. Fetching as a blob goes through the same
+ * authenticated client as everything else on the page.
+ */
+async function printPackingSlip(orderId: string, orderNumber: string, onError: (msg: string) => void) {
+  try {
+    const res  = await adminApi.get(API_ROUTES.ADMIN.ORDER_PACKING_SLIP(orderId), { responseType: 'blob' });
+    const url  = URL.createObjectURL(res.data as Blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `packing-slip-${orderNumber}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    onError((e as Error).message);
+  }
 }
 
-interface OrdersResponse {
-  data: OrderRow[];
-  pagination: { total: number; page: number; limit: number; totalPages: number };
-  statusCounts?: Record<string, number>;
+/**
+ * Ship-by dates are handled as calendar days in the viewer's own timezone.
+ *
+ * `new Date('2026-09-05')` is parsed as UTC midnight, which renders as the 4th
+ * anywhere west of Greenwich — type a date, save it, watch the day before come
+ * back. Anchoring at local noon keeps the intended day intact in every zone
+ * and on both sides of a DST switch.
+ */
+const isoToDateInput = (iso: string) => {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+const dateInputToIso = (value: string) => new Date(`${value}T12:00:00`).toISOString();
+
+/** Groups consecutive orders under one ship-by heading, the way the list reads
+ *  when scrolled. Server-side sorting guarantees they arrive adjacent. */
+function groupByShipBy(orders: QueueOrder[]): { label: string; orders: QueueOrder[] }[] {
+  const groups: { label: string; orders: QueueOrder[] }[] = [];
+  for (const order of orders) {
+    const label = order.shipByDate
+      ? `Ship by ${new Date(order.shipByDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
+      : 'No ship-by estimate';
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.orders.push(order);
+    else groups.push({ label, orders: [order] });
+  }
+  return groups;
 }
-
-// ── Status tab config ─────────────────────────────────────────────────────────
-
-const STATUS_TABS = [
-  { key: '',             label: 'All'          },
-  { key: 'CONFIRMED',    label: 'New'          },
-  { key: 'IN_PRODUCTION',label: 'In Production'},
-  { key: 'SHIPPED',      label: 'Shipped'      },
-  { key: 'DELIVERED',    label: 'Delivered'    },
-  { key: 'COMPLETED',    label: 'Completed'    },
-  { key: 'CANCELLED',    label: 'Cancelled'    },
-] as const;
-
-// ── Date presets ──────────────────────────────────────────────────────────────
-
-function toISO(d: Date) { return d.toISOString().slice(0, 10); }
-
-const DATE_PRESETS = [
-  { key: 'today',    label: 'Today',        range: () => { const t = new Date(); return { from: toISO(t), to: toISO(t) }; } },
-  { key: 'last7',    label: 'Last 7 days',  range: () => ({ from: toISO(subDays(new Date(), 6)), to: toISO(new Date()) }) },
-  { key: 'last30',   label: 'Last 30 days', range: () => ({ from: toISO(subDays(new Date(), 29)), to: toISO(new Date()) }) },
-  { key: 'dispatch', label: 'Dispatch soon', range: () => ({ from: toISO(new Date()), to: toISO(addDays(new Date(), 3)) }) },
-];
-
-// ── CSV export ────────────────────────────────────────────────────────────────
-
-async function exportCSV(params: URLSearchParams) {
-  const res  = await adminApi.get(`${API_ROUTES.ADMIN.ORDERS_EXPORT}?${params.toString()}`, { responseType: 'blob' });
-  const blob = res.data as Blob;
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ── Dispatch estimate ─────────────────────────────────────────────────────────
-
-function dispatchByDate(createdAt: string): string {
-  const d = addDays(new Date(createdAt), 3);
-  return fmtDate(d.toISOString());
-}
-
-function isDispatchOverdue(createdAt: string): boolean {
-  return addDays(new Date(createdAt), 3) < new Date();
-}
-
-// ── Bulk status dropdown ──────────────────────────────────────────────────────
-
-function BulkStatusDropdown({ selectedIds, onDone }: { selectedIds: string[]; onDone: () => void }) {
-  const [open, setOpen]   = useState(false);
-  const [saving, setSaving] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const { alert } = useDialog();
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const STATUSES = [
-    { status: 'PENDING_PAYMENT',  label: 'Mark as Pending Payment'  },
-    { status: 'CONFIRMED',        label: 'Mark as Confirmed'        },
-    { status: 'IN_PRODUCTION',    label: 'Start Production'         },
-    { status: 'SHIPPED',          label: 'Mark as Shipped'          },
-    { status: 'DELIVERED',        label: 'Mark as Delivered'        },
-    { status: 'COMPLETED',        label: 'Mark as Completed'        },
-    { status: 'CANCELLED',        label: 'Cancel orders'            },
-    { status: 'REFUND_REQUESTED', label: 'Mark Refund Requested'    },
-    { status: 'REFUNDED',         label: 'Mark as Refunded'         },
-    { status: 'DISPUTED',         label: 'Mark as Disputed'         },
-  ];
-
-  const updateAll = async (status: string) => {
-    setSaving(true);
-    setOpen(false);
-    try {
-      await Promise.all(
-        selectedIds.map((id) => api.patch(API_ROUTES.ADMIN.ORDER_STATUS(id), { status })),
-      );
-      onDone();
-    } catch (err) {
-      await alert((err as Error).message || 'Could not update the selected orders.', { variant: 'error' });
-    } finally { setSaving(false); }
-  };
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        disabled={saving || !selectedIds.length}
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-button hover:bg-primary-dark disabled:opacity-50 transition-colors"
-      >
-        {saving ? 'Updating…' : 'Update progress'}
-        <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && (
-        <div className="absolute z-50 top-full mt-2 left-0 min-w-[200px] bg-surface border border-border/60 rounded-card shadow-floating p-1.5 animate-fade-in origin-top">
-          {STATUSES.map((s) => (
-            <button
-              key={s.status}
-              type="button"
-              onClick={() => updateAll(s.status)}
-              className="w-full text-left px-3 py-2 text-sm text-secondary rounded-button hover:bg-muted/8 transition-colors"
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Order row ─────────────────────────────────────────────────────────────────
-
-function OrderRow({
-  order,
-  selected,
-  onToggle,
-  onClick,
-}: {
-  order:    OrderRow;
-  selected: boolean;
-  onToggle: () => void;
-  onClick:  () => void;
-}) {
-  const thumb = order.imageUrl ?? order.previewUrl;
-  const name  = order.customer
-    ? [order.customer.firstName, order.customer.lastName].filter(Boolean).join(' ') || order.customer.email
-    : order.shippingName || 'Guest';
-  const overdue = ['PENDING_PAYMENT', 'CONFIRMED', 'IN_PRODUCTION'].includes(order.status) && isDispatchOverdue(order.createdAt);
-
-  return (
-    <div
-      className={[
-        'flex items-start gap-3 px-4 py-3.5 border-b border-border last:border-0 hover:bg-muted/4 cursor-pointer transition-colors group',
-        selected ? 'bg-primary/4' : '',
-      ].join(' ')}
-      onClick={onClick}
-    >
-      {/* Checkbox */}
-      <div
-        className="mt-0.5 shrink-0"
-        onClick={(e) => { e.stopPropagation(); onToggle(); }}
-      >
-        <div className={[
-          'w-4 h-4 rounded border-2 flex items-center justify-center transition-colors cursor-pointer',
-          selected ? 'bg-primary border-primary' : 'border-border hover:border-primary/50 bg-background',
-        ].join(' ')}>
-          {selected && <Check className="w-2.5 h-2.5 text-white" />}
-        </div>
-      </div>
-
-      {/* Thumbnail */}
-      <div className="w-14 h-14 rounded-lg overflow-hidden bg-background border border-border shrink-0">
-        {thumb ? (
-          <Image src={thumb} alt={order.orderNumber} width={56} height={56} className="object-cover w-full h-full" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Package className="w-5 h-5 text-border" />
-          </div>
-        )}
-      </div>
-
-      {/* Main info */}
-      <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-x-4 gap-y-0.5">
-        {/* Col 1: order + buyer */}
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-mono text-sm font-semibold text-primary">#{order.orderNumber}</span>
-            <OrderStatusBadge status={order.status} size="sm" />
-          </div>
-          <p className="text-sm font-medium text-secondary mt-0.5 truncate">{name}</p>
-          <p className="text-xs text-muted">
-            {order.shippingCity}{order.shippingCountry ? `, ${order.shippingCountry}` : ''}
-          </p>
-          <p className="text-xs text-muted mt-0.5">
-            {order.itemCount} item{order.itemCount !== 1 ? 's' : ''} · {fmtDate(order.createdAt)}
-          </p>
-        </div>
-
-        {/* Col 2: dispatch */}
-        <div className="text-right sm:text-left sm:min-w-[110px]">
-          <p className="text-xs text-muted">Dispatch by</p>
-          <p className={`text-sm font-semibold ${overdue ? 'text-error' : 'text-secondary'}`}>
-            {dispatchByDate(order.createdAt)}
-          </p>
-          <p className="text-xs text-muted mt-0.5 truncate max-w-[140px]">{order.shippingMethod}</p>
-        </div>
-
-        {/* Col 3: total */}
-        <div className="text-right sm:min-w-[80px]">
-          <p className="text-sm font-bold text-secondary tabular-nums">${Number(order.total).toFixed(2)}</p>
-          {order.shippingCost > 0 && (
-            <p className="text-xs text-muted">+${Number(order.shippingCost).toFixed(2)} ship</p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Filter sidebar ────────────────────────────────────────────────────────────
-
-interface Filters {
-  datePreset:  string;
-  country:     string;
-  giftOnly:    boolean;
-  withNotes:   boolean;
-}
-
-function FilterSidebar({
-  filters,
-  onChange,
-  onClear,
-}: {
-  filters:  Filters;
-  onChange: (f: Partial<Filters>) => void;
-  onClear:  () => void;
-}) {
-  const hasFilters = !!filters.datePreset || !!filters.country || filters.giftOnly || filters.withNotes;
-
-  return (
-    <div className="w-full lg:w-64 shrink-0 bg-surface border border-border rounded-card p-4 self-start lg:sticky top-4 space-y-5">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-bold text-secondary flex items-center gap-2">
-          <Filter className="w-4 h-4 text-muted" /> Filters
-        </p>
-        {hasFilters && (
-          <button type="button" onClick={onClear} className="text-xs text-muted hover:text-error underline">
-            Reset filters
-          </button>
-        )}
-      </div>
-
-      {/* Dispatch date */}
-      <div>
-        <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">Dispatch date</p>
-        <div className="space-y-1">
-          {DATE_PRESETS.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              onClick={() => onChange({ datePreset: filters.datePreset === p.key ? '' : p.key })}
-              className={[
-                'w-full text-left px-3 py-1.5 text-sm rounded-button transition-colors',
-                filters.datePreset === p.key
-                  ? 'bg-primary/10 text-primary font-semibold'
-                  : 'text-secondary hover:bg-muted/8',
-              ].join(' ')}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Destination — real Etsy also offers "Everywhere else" (i.e. not the top
-          2 countries), which needs a NOT-IN filter the orders API doesn't support
-          yet (only equality on a single country); left out rather than faked. */}
-      <div>
-        <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">Destination</p>
-        <div className="space-y-1">
-          {[
-            { value: '',   label: 'All' },
-            { value: 'VN', label: 'Vietnam' },
-            { value: 'US', label: 'United States' },
-          ].map((d) => (
-            <button
-              key={d.value}
-              type="button"
-              onClick={() => onChange({ country: d.value })}
-              className={[
-                'w-full text-left px-3 py-1.5 text-sm rounded-button transition-colors',
-                filters.country === d.value
-                  ? 'bg-primary/10 text-primary font-semibold'
-                  : 'text-secondary hover:bg-muted/8',
-              ].join(' ')}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Order attributes */}
-      <div>
-        <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">Order attributes</p>
-        <div className="space-y-2">
-          {[
-            { key: 'giftOnly',  label: 'Gift orders only'   },
-            { key: 'withNotes', label: 'Orders with notes'  },
-          ].map(({ key, label }) => (
-            <label key={key} className="flex items-center gap-2 cursor-pointer group">
-              <div
-                onClick={() => onChange({ [key]: !filters[key as keyof Filters] })}
-                className={[
-                  'w-4 h-4 rounded border-2 flex items-center justify-center transition-colors shrink-0',
-                  filters[key as keyof Filters]
-                    ? 'bg-primary border-primary'
-                    : 'border-border group-hover:border-primary/50 bg-background',
-                ].join(' ')}
-              >
-                {filters[key as keyof Filters] && <Check className="w-2.5 h-2.5 text-white" />}
-              </div>
-              <span className="text-sm text-secondary">{label}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function OrdersPage() {
-  const [page,          setPage]          = useState(1);
-  const [activeTab,     setActiveTab]     = useState('');
-  const [search,        setSearch]        = useState('');
-  const [debouncedSearch, setDebounced]   = useState('');
-  const [selected,      setSelected]      = useState<Set<string>>(new Set());
-  const [selectedOrder, setSelectedOrder] = useState<OrderDetail | null>(null);
-  const [exporting,     setExporting]     = useState(false);
-  const [showFilters,   setShowFilters]   = useState(true);
-  const [filters,       setFilters]       = useState<Filters>({
-    datePreset: '', country: '', giftOnly: false, withNotes: false,
-  });
+  const { isPlatformContext, isReady } = useAdminMode();
+  const dialog = useDialog();
+  const qc = useQueryClient();
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [storeId,  setStoreId]  = useState<string>('');
+  const [stepId,   setStepId]   = useState<string>('');
+  const [filters,  setFilters]  = useState<QueueFilterState>(EMPTY_FILTERS);
+  const [search,   setSearch]   = useState('');
+  const [page,     setPage]     = useState(1);
+  const [limit,    setLimit]    = useState(20);
+  const [sort,     setSort]     = useState<'shipBy' | 'newest' | 'oldest' | 'total'>('shipBy');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [editorOpen,   setEditorOpen]   = useState(false);
+  const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
 
-  // Debounce search
-  useEffect(() => {
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setDebounced(search), 300);
-    return () => clearTimeout(debounceRef.current);
-  }, [search]);
+  // A shop owner never sends storeId — the server ignores it for them anyway.
+  const scope = isPlatformContext && storeId ? storeId : undefined;
+  const canLoad = isReady && (!isPlatformContext || Boolean(storeId));
 
-  // Reset page on filter change
-  useEffect(() => { setPage(1); }, [activeTab, debouncedSearch, filters]);
-
-  // Build query params
-  const buildParams = useCallback(() => {
+  const qs = (extra: Record<string, string | number | boolean | undefined> = {}) => {
     const p = new URLSearchParams();
-    p.set('page',  String(page));
-    p.set('limit', '20');
-    if (activeTab)        p.set('status', activeTab);
-    if (debouncedSearch)  p.set('search', debouncedSearch);
-    if (filters.country)  p.set('country', filters.country);
-    if (filters.giftOnly) p.set('isGift', 'true');
-    if (filters.datePreset) {
-      const preset = DATE_PRESETS.find((d) => d.key === filters.datePreset);
-      if (preset) {
-        const range = preset.range();
-        p.set('from', range.from);
-        p.set('to',   range.to);
-      }
+    if (scope) p.set('storeId', scope);
+    for (const [k, v] of Object.entries(extra)) {
+      if (v !== undefined && v !== '' && v !== false) p.set(k, String(v));
     }
-    return p;
-  }, [page, activeTab, debouncedSearch, filters]);
+    const s = p.toString();
+    return s ? `?${s}` : '';
+  };
 
-  // Fetch orders
-  const { data, isLoading, refetch } = useQuery<OrdersResponse>({
-    queryKey: ['admin-orders', page, activeTab, debouncedSearch, filters],
-    queryFn:  () => api.get<OrdersResponse>(`${API_ROUTES.ADMIN.ORDERS}?${buildParams()}`),
+  const stepsQuery = useQuery({
+    queryKey: QK.steps(scope),
+    enabled:  canLoad,
+    queryFn:  () => api.get<ProgressStep[]>(`${API_ROUTES.ADMIN.ORDER_PROGRESS_STEPS}${qs()}`),
   });
 
-  const orders       = unwrapArr<OrderRow>(data?.data ?? data);
-  const pagination   = (data as { pagination?: { page: number; limit: number; total: number } } | null)?.pagination;
-  const statusCounts = data?.statusCounts ?? {};
-  const totalCount   = Object.values(statusCounts).reduce((a, b) => a + b, 0);
+  const destinationsQuery = useQuery({
+    queryKey: QK.destinations(scope),
+    enabled:  canLoad,
+    queryFn:  () => api.get<{ country: string; count: number }[]>(
+      `${API_ROUTES.ADMIN.ORDER_PROGRESS_DESTINATIONS}${qs()}`,
+    ),
+  });
 
-  // Open order detail
-  const openOrder = useCallback(async (order: OrderRow) => {
-    const detail = await api.get<OrderDetail>(API_ROUTES.ADMIN.ORDER(order.id));
-    setSelectedOrder(detail);
-  }, []);
+  const queueParams = { stepId, page, limit, sort, search, ...filters };
+  const queueQuery = useQuery({
+    queryKey: QK.queue(scope, queueParams),
+    enabled:  canLoad,
+    queryFn:  () => api.get<QueueResponse>(
+      `${API_ROUTES.ADMIN.ORDER_PROGRESS_QUEUE}${qs({
+        stepId, page, limit, sort, search,
+        shipBy:      filters.shipBy === 'all' ? undefined : filters.shipBy,
+        destination: filters.destination,
+        hasNote:          filters.hasNote,
+        isGift:           filters.isGift,
+        isPersonalized:   filters.isPersonalized,
+        upgradeRequested: filters.upgradeRequested,
+      })}`,
+    ),
+  });
 
-  // Toggle row selection
-  const toggleRow = useCallback((id: string) => {
+  const refetchAll = () => {
+    qc.invalidateQueries({ queryKey: ['order-queue'] });
+    qc.invalidateQueries({ queryKey: ['order-progress-steps'] });
+    // Cancelling or completing changes which orders are in the queue, and the
+    // destination counts are drawn from exactly that set.
+    qc.invalidateQueries({ queryKey: ['order-destinations'] });
+  };
+
+  /**
+   * Every change to what the list shows goes through here.
+   *
+   * Selection is by id and the bulk bar acts on whatever is in it — including
+   * rows scrolled off, filtered out, or on another tab. Leaving a selection
+   * behind after the view changes means the count reads one thing while
+   * "Update progress" does another, which is how a seller moves orders they
+   * cannot see. Page resets for the same reason: page 3 of the old filter is
+   * rarely page 3 of the new one.
+   */
+  /** Same reasoning, but keeps the page number the caller asked for. */
+  const goToPage = (next: number) => {
+    setPage(next);
+    setSelected(new Set());
+    setBulkMenuOpen(false);
+  };
+
+  const changeView = (apply: () => void) => {
+    apply();
+    setPage(1);
+    setSelected(new Set());
+    setBulkMenuOpen(false);
+  };
+
+  const saveSteps = useMutation({
+    mutationFn: (steps: { id?: string; name: string }[]) =>
+      api.put(`${API_ROUTES.ADMIN.ORDER_PROGRESS_STEPS}${qs()}`, { steps }),
+    onSuccess: () => { setEditorOpen(false); refetchAll(); },
+    onError:   (e: Error) => dialog.alert(e.message),
+  });
+
+  const moveOrders = useMutation({
+    mutationFn: ({ ids, toStepId }: { ids: string[]; toStepId: string }) =>
+      api.post(`${API_ROUTES.ADMIN.ORDER_PROGRESS_MOVE}${qs()}`, { storeOrderIds: ids, stepId: toStepId }),
+    onSuccess: () => { setSelected(new Set()); refetchAll(); },
+    onError:   (e: Error) => dialog.alert(e.message),
+  });
+
+  const setShipBy = useMutation({
+    mutationFn: ({ id, date }: { id: string; date: string | null }) =>
+      api.patch(`${API_ROUTES.ADMIN.ORDER_PROGRESS_SHIP_BY(id)}${qs()}`, { shipByDate: date }),
+    onSuccess: refetchAll,
+    onError:   (e: Error) => dialog.alert(e.message),
+  });
+
+  const setGift = useMutation({
+    mutationFn: ({ id, isGift }: { id: string; isGift: boolean }) =>
+      api.patch(`${API_ROUTES.ADMIN.ORDER_PROGRESS_GIFT(id)}${qs()}`, { isGift }),
+    onSuccess: refetchAll,
+    onError:   (e: Error) => dialog.alert(e.message),
+  });
+
+  const steps   = useMemo(() => stepsQuery.data ?? [], [stepsQuery.data]);
+  const orders  = queueQuery.data?.data ?? [];
+  const groups  = useMemo(() => groupByShipBy(orders), [orders]);
+  const totalPages = queueQuery.data?.pagination.totalPages ?? 1;
+
+  const toggle = (id: string, on: boolean) =>
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (on) next.add(id); else next.delete(id);
       return next;
     });
-  }, []);
 
-  const toggleAll = () => {
-    if (selected.size === orders.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(orders.map((o) => o.id)));
+  const selectGroup = (groupOrders: QueueOrder[]) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const allOn = groupOrders.every((o) => next.has(o.id));
+      for (const o of groupOrders) { if (allOn) next.delete(o.id); else next.add(o.id); }
+      return next;
+    });
+
+  const editShipBy = async (order: QueueOrder) => {
+    const current = order.shipByDate ? isoToDateInput(order.shipByDate) : '';
+    const answer = await dialog.prompt(
+      'Ship by date — use YYYY-MM-DD, or leave it empty to clear the estimate.',
+      { title: 'Update ship by date', defaultValue: current, placeholder: 'YYYY-MM-DD' },
+    );
+    if (answer === null) return;
+    const trimmed = answer.trim();
+    if (trimmed && !/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return dialog.alert('Enter the date as YYYY-MM-DD.');
+    }
+    setShipBy.mutate({ id: order.id, date: trimmed ? dateInputToIso(trimmed) : null });
+  };
+
+  const cancelOrder = async (order: QueueOrder) => {
+    const ok = await dialog.confirm(
+      `Cancel order #${order.orderNumber}? The buyer is notified, and this cannot be undone from here.`,
+      { title: 'Cancel order', confirmLabel: 'Cancel order', destructive: true },
+    );
+    if (!ok) return;
+    try {
+      await api.post(API_ROUTES.ADMIN.ORDER_CANCEL(order.orderId), {});
+      refetchAll();
+    } catch (e) {
+      dialog.alert((e as Error).message);
     }
   };
 
-  const allSelected = orders.length > 0 && selected.size === orders.length;
+  if (!isReady) {
+    return <div className="p-8 text-sm text-muted">Loading…</div>;
+  }
 
-  const updateFilters = (partial: Partial<Filters>) => setFilters((f) => ({ ...f, ...partial }));
-  const clearFilters  = () => setFilters({ datePreset: '', country: '', giftOnly: false, withNotes: false });
-
-  const activeFilterCount = (filters.datePreset ? 1 : 0) + (filters.country ? 1 : 0) + (filters.giftOnly ? 1 : 0) + (filters.withNotes ? 1 : 0);
+  if (isPlatformContext && !storeId) {
+    return (
+      <div className="p-8">
+        <AdminPageHeader title="Orders" subtitle="Pick a shop to see its order queue" />
+        <StorePicker onPick={setStoreId} />
+      </div>
+    );
+  }
 
   return (
-    <>
-      <AdminPageHeader
-        title="Orders"
-        subtitle={pagination ? `${pagination.total} total orders` : undefined}
-        queryKey={['admin-orders']}
-      />
-
-      {/* Search + toolbar */}
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <div className="relative flex-1 min-w-0 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
+    <div className="p-6">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <AdminPageHeader title="Orders" />
+        <label className="relative w-80">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+          <span className="sr-only">Search your orders</span>
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Order # or email…"
-            className="w-full pl-8 pr-3 py-2 text-sm border border-border rounded-button bg-surface focus:outline-none focus:ring-1 focus:ring-primary/30"
+            onChange={(e) => changeView(() => setSearch(e.target.value))}
+            placeholder="Search your orders"
+            className="w-full rounded-full border border-border bg-surface py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
-          {search && (
-            <button
-              type="button"
-              onClick={() => { setSearch(''); setDebounced(''); }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-muted/10 rounded-full"
-            >
-              <X className="w-3.5 h-3.5 text-muted" />
-            </button>
+        </label>
+      </div>
+
+      {/* ── Bulk bar ─────────────────────────────────────────────────────── */}
+      <div className="mb-3 flex items-center gap-3">
+        {/* Sort and page size sit here rather than in the filter rail: they
+            change how the same set of orders is presented, not which orders
+            are in it. */}
+        <label className="ml-auto flex items-center gap-2 text-sm text-muted">
+          Sort by
+          <select
+            value={sort}
+            onChange={(e) => changeView(() => setSort(e.target.value as typeof sort))}
+            className="rounded-full border border-border bg-surface px-3 py-1.5 text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="shipBy">Ship by date</option>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="total">Order total</option>
+          </select>
+        </label>
+
+        <select
+          value={limit}
+          aria-label="Orders per page"
+          onChange={(e) => changeView(() => setLimit(Number(e.target.value)))}
+          className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20"
+        >
+          {[20, 50, 100].map((n) => (
+            <option key={n} value={n}>{n} orders per page</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="mb-3 flex items-center gap-3">
+        <span className="rounded-full border border-border px-3 py-1.5 text-sm text-secondary">
+          {selected.size} selected
+        </span>
+        <div className="relative">
+          <button
+            type="button"
+            disabled={selected.size === 0}
+            onClick={() => setBulkMenuOpen((v) => !v)}
+            className="rounded-full border border-border px-3 py-1.5 text-sm text-secondary disabled:opacity-50"
+          >
+            Update progress
+          </button>
+          {bulkMenuOpen && selected.size > 0 && (
+            <UpdateProgressMenu
+              steps={steps}
+              align="left"
+              onPick={(toStepId) => {
+                setBulkMenuOpen(false);
+                moveOrders.mutate({ ids: [...selected], toStepId });
+              }}
+              onClose={() => setBulkMenuOpen(false)}
+            />
           )}
         </div>
+      </div>
 
-        <FilterSelect
-          value={activeTab}
-          onChange={(v) => { setActiveTab(v); setSelected(new Set()); }}
-          options={STATUS_TABS.map((tab) => {
-            const count = tab.key ? (statusCounts[tab.key] ?? 0) : totalCount;
-            return { value: tab.key, label: count > 0 ? `${tab.label} (${count})` : tab.label };
-          })}
-          className="w-auto"
-        />
-
+      {/* ── Pipeline tabs ────────────────────────────────────────────────── */}
+      <div className="mb-4 flex items-center gap-1 border-b border-border">
+        <TabButton label="All" count={undefined} active={stepId === ''} onClick={() => changeView(() => setStepId(''))} />
+        {steps.map((s) => (
+          <TabButton
+            key={s.id}
+            label={s.name}
+            count={s.orderCount}
+            active={stepId === s.id}
+            onClick={() => changeView(() => setStepId(s.id))}
+          />
+        ))}
         <button
           type="button"
-          onClick={() => setShowFilters((v) => !v)}
-          className={[
-            'flex items-center gap-1.5 text-sm font-medium border rounded-button px-3 py-2 transition-colors',
-            showFilters
-              ? 'bg-primary/8 border-primary/30 text-primary'
-              : 'border-border text-secondary hover:border-primary/40',
-          ].join(' ')}
+          onClick={() => setEditorOpen(true)}
+          aria-label="Customise progress steps"
+          className="ml-2 rounded-full p-1.5 text-muted hover:bg-background hover:text-secondary"
         >
-          <SlidersHorizontal className="w-4 h-4" />
-          Filters
-          {activeFilterCount > 0 && (
-            <span className="ml-1 bg-primary text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-              {activeFilterCount}
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          disabled={exporting}
-          onClick={async () => {
-            setExporting(true);
-            // eslint-disable-next-line @typescript-eslint/no-empty-function -- swallow so setExporting(false) below still runs
-            await exportCSV(buildParams()).catch(() => {});
-            setExporting(false);
-          }}
-          className="flex items-center gap-1.5 text-sm font-medium text-secondary border border-border rounded-button px-3 py-2 hover:border-primary/40 disabled:opacity-50 transition-colors"
-        >
-          <Download className="w-4 h-4" />
-          {exporting ? 'Exporting…' : 'Export CSV'}
+          <Pencil className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
 
-      {/* Main content: list + sidebar */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start">
-        {/* Orders list */}
-        <div className="flex-1 min-w-0 bg-surface border border-border rounded-card overflow-hidden">
-          {/* Bulk action bar */}
-          <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-background/60">
-            {/* Select all */}
-            <div
-              onClick={toggleAll}
-              className={[
-                'w-4 h-4 rounded border-2 flex items-center justify-center transition-colors cursor-pointer shrink-0',
-                allSelected ? 'bg-primary border-primary' : 'border-border hover:border-primary/50 bg-background',
-              ].join(' ')}
-            >
-              {allSelected && <Check className="w-2.5 h-2.5 text-white" />}
-              {selected.size > 0 && !allSelected && <div className="w-2 h-0.5 bg-primary rounded" />}
+      <div className="flex gap-6">
+        <div className="min-w-0 flex-1">
+          {queueQuery.isLoading ? (
+            <div className="flex items-center gap-2 py-16 text-sm text-muted">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Loading orders…
             </div>
-
-            {selected.size > 0 ? (
-              <>
-                <span className="text-sm font-medium text-primary">{selected.size} selected</span>
-                <BulkStatusDropdown
-                  selectedIds={[...selected]}
-                  onDone={() => { setSelected(new Set()); refetch(); }}
-                />
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await exportCSV(new URLSearchParams({ ids: [...selected].join(',') }));
-                  }}
-                  className="flex items-center gap-1.5 text-xs font-medium text-secondary border border-border rounded-button px-3 py-1.5 hover:border-primary/40 transition-colors"
-                >
-                  <Download className="w-3.5 h-3.5" /> Export
-                </button>
-              </>
-            ) : (
-              <span className="text-sm text-muted">
-                {isLoading ? 'Loading…' : `${pagination?.total ?? 0} orders`}
-              </span>
-            )}
-          </div>
-
-          {/* Rows */}
-          {isLoading ? (
-            <div className="py-16 text-center text-sm text-muted">Loading orders…</div>
-          ) : orders.length === 0 ? (
-            <div className="py-16 text-center px-4">
-              <Package className="w-10 h-10 text-border mx-auto mb-3" />
-              <p className="text-secondary font-medium mb-1">
-                {activeFilterCount > 0 || activeTab || debouncedSearch ? 'No orders found' : 'No orders here right now'}
-              </p>
-              {(activeFilterCount > 0 || activeTab || debouncedSearch) && (
-                <p className="text-sm text-muted">Try adjusting your filters or search term.</p>
-              )}
-              <div className="max-w-sm mx-auto text-left bg-background border border-border rounded-card p-4 flex items-start gap-3 mt-6">
-                <RefreshCw className="w-8 h-8 text-primary shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-secondary">Are your processing times accurate?</p>
-                  <p className="text-xs text-muted mt-1">
-                    Make sure they accurately reflect how long it takes you to fulfil orders. This gives buyers an idea of when they&apos;ll receive their order.
-                  </p>
-                  <Link
-                    href="/settings/delivery"
-                    className="inline-block mt-3 px-3.5 py-1.5 bg-secondary hover:bg-secondary/90 text-white text-xs font-bold rounded-pill transition-colors"
-                  >
-                    Review processing times
-                  </Link>
-                  <div className="flex items-center gap-2 mt-3 text-xs text-muted">
-                    <span>Was this tip helpful?</span>
-                    <button type="button" className="p-1 rounded hover:bg-muted/10" aria-label="Yes"><ThumbsUp className="w-3.5 h-3.5" /></button>
-                    <button type="button" className="p-1 rounded hover:bg-muted/10" aria-label="No"><ThumbsDown className="w-3.5 h-3.5" /></button>
-                  </div>
-                </div>
-              </div>
-            </div>
+          ) : queueQuery.isError ? (
+            <p className="py-16 text-sm text-error">Could not load orders. {(queueQuery.error as Error).message}</p>
+          ) : groups.length === 0 ? (
+            <p className="py-16 text-center text-sm text-muted">No orders match these filters.</p>
           ) : (
-            orders.map((order) => (
-              <OrderRow
-                key={order.id}
-                order={order}
-                selected={selected.has(order.id)}
-                onToggle={() => toggleRow(order.id)}
-                onClick={() => openOrder(order)}
-              />
+            groups.map((group, gi) => (
+              <section key={`${group.label}-${gi}`} className="mb-6 overflow-hidden rounded-card border border-border bg-surface">
+                <header className="flex items-center gap-3 bg-background px-5 py-3">
+                  <h2 className="text-sm font-semibold text-secondary">{group.label}</h2>
+                  <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-muted">{group.orders.length}</span>
+                  <button
+                    type="button"
+                    onClick={() => selectGroup(group.orders)}
+                    className="text-sm text-muted underline underline-offset-2 hover:text-secondary"
+                  >
+                    Select all
+                  </button>
+                </header>
+
+                {group.orders.map((order) => (
+                  <OrderQueueCard
+                    key={order.id}
+                    order={order}
+                    steps={steps}
+                    selected={selected.has(order.id)}
+                    onSelect={(on) => toggle(order.id, on)}
+                    onMoveToStep={(toStepId) => moveOrders.mutate({ ids: [order.id], toStepId })}
+                    onEditShipBy={() => editShipBy(order)}
+                    onToggleGift={() => setGift.mutate({ id: order.id, isGift: !order.isGift })}
+                    onCancel={() => cancelOrder(order)}
+                    onRefund={() => dialog.alert('Refunds are issued from the order page.')}
+                    onPrint={() => printPackingSlip(order.orderId, order.orderNumber, dialog.alert)}
+                  />
+                ))}
+              </section>
             ))
           )}
 
-          {/* Pagination */}
-          {pagination && pagination.total > pagination.limit && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-              <p className="text-xs text-muted">
-                Page {pagination.page} · {pagination.total} orders
-              </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  disabled={pagination.page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                  className="px-3 py-1.5 text-xs border border-border rounded-button text-secondary disabled:opacity-40 hover:border-primary/40 transition-colors"
-                >
-                  ← Previous
-                </button>
-                <button
-                  type="button"
-                  disabled={pagination.page * pagination.limit >= pagination.total}
-                  onClick={() => setPage((p) => p + 1)}
-                  className="px-3 py-1.5 text-xs border border-border rounded-button text-secondary disabled:opacity-40 hover:border-primary/40 transition-colors"
-                >
-                  Next →
-                </button>
-              </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 py-4 text-sm">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => goToPage(page - 1)}
+                className="rounded-full border border-border px-4 py-1.5 disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="text-muted">Page {page} of {totalPages}</span>
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => goToPage(page + 1)}
+                className="rounded-full border border-border px-4 py-1.5 disabled:opacity-50"
+              >
+                Next
+              </button>
             </div>
           )}
         </div>
 
-        {/* Filter sidebar */}
-        {showFilters && (
-          <FilterSidebar filters={filters} onChange={updateFilters} onClear={clearFilters} />
-        )}
+        <QueueFilters
+          value={filters}
+          destinations={destinationsQuery.data ?? []}
+          onChange={(next) => changeView(() => setFilters(next))}
+        />
       </div>
 
-      {/* Order detail panel */}
-      {selectedOrder && (
-        <OrderDetailPanel
-          order={selectedOrder}
-          onClose={() => setSelectedOrder(null)}
-          onUpdate={() => { refetch(); setSelectedOrder(null); }}
+      {editorOpen && (
+        <ProgressStepsModal
+          steps={steps}
+          saving={saveSteps.isPending}
+          onClose={() => setEditorOpen(false)}
+          onSave={async (next) => { await saveSteps.mutateAsync(next); }}
         />
       )}
-    </>
+    </div>
+  );
+}
+
+function TabButton({
+  label, count, active, onClick,
+}: { label: string; count?: number; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? 'page' : undefined}
+      className={`flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm ${
+        active
+          ? 'border-secondary font-semibold text-secondary'
+          : 'border-transparent text-muted hover:text-secondary'
+      }`}
+    >
+      {label}
+      {count !== undefined && count > 0 && <span className="text-xs text-muted">{count}</span>}
+    </button>
+  );
+}
+
+/** SUPER_ADMIN store chooser. A pipeline belongs to one shop, so the queue
+ *  cannot render until one is named. */
+function StorePicker({ onPick }: { onPick: (id: string) => void }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['stores-for-order-queue'],
+    queryFn:  () => api.get<{ data: { id: string; name: string }[] }>(`${API_ROUTES.ADMIN.STORES}?limit=100`),
+  });
+
+  if (isLoading) return <p className="mt-6 text-sm text-muted">Loading shops…</p>;
+
+  const stores = data?.data ?? [];
+  if (!stores.length) return <p className="mt-6 text-sm text-muted">No shops yet.</p>;
+
+  return (
+    <ul className="mt-6 max-w-md divide-y divide-border rounded-card border border-border bg-surface">
+      {stores.map((s) => (
+        <li key={s.id}>
+          <button
+            type="button"
+            onClick={() => onPick(s.id)}
+            className="w-full px-4 py-3 text-left text-sm text-secondary hover:bg-background"
+          >
+            {s.name}
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
