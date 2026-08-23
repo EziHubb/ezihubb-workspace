@@ -15,6 +15,7 @@ import { IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
 import { Request } from 'express';
 import { PaymentsService } from './payments.service';
 import { PaypalService } from './paypal.service';
+import { OrderPayerService } from './order-payer.service';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { CreateRefundDto } from './dto/create-refund.dto';
 import { PurchaseGiftCardDto } from './dto/purchase-gift-card.dto';
@@ -50,27 +51,41 @@ export class PaymentsController {
     private readonly paymentsService: PaymentsService,
     private readonly paypalService:   PaypalService,
     private readonly auditLog:        AuditLogService,
+    private readonly orderPayer:      OrderPayerService,
   ) {}
 
+  // OptionalAuthGuard, not JwtAuthGuard: checkout supports guests, so
+  // demanding a token here would lock them out of paying entirely. Who may
+  // act on the order is decided by OrderPayerService instead — see its
+  // comment for why an order with an account behind it is treated
+  // differently from a guest one.
   @Post('create-intent')
+  @UseGuards(OptionalAuthGuard)
   @ApiOperation({ summary: 'Create a Stripe PaymentIntent for an order' })
-  async createIntent(@Body() dto: CreatePaymentIntentDto) {
+  async createIntent(@Body() dto: CreatePaymentIntentDto, @CurrentUser() user?: JwtPayload) {
+    await this.orderPayer.assertMayPayForOrder(dto.orderId, user?.sub);
     return this.paymentsService.createPaymentIntent(dto);
   }
 
   // ─── PayPal ──────────────────────────────────────────────────────────────────
 
   @Post('paypal/create-order')
+  @UseGuards(OptionalAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a PayPal order for checkout — returns paypalOrderId for JS SDK' })
-  async paypalCreateOrder(@Body() dto: PaypalCreateOrderDto) {
+  async paypalCreateOrder(@Body() dto: PaypalCreateOrderDto, @CurrentUser() user?: JwtPayload) {
+    await this.orderPayer.assertMayPayForOrder(dto.orderId, user?.sub);
     return this.paypalService.createOrder(dto.orderId, dto.returnUrl, dto.cancelUrl);
   }
 
   @Post('paypal/capture')
+  @UseGuards(OptionalAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Capture a PayPal order after the payer approves it' })
-  async paypalCapture(@Body() dto: PaypalCaptureDto) {
+  async paypalCapture(@Body() dto: PaypalCaptureDto, @CurrentUser() user?: JwtPayload) {
+    // Resolved through the PayPal order id, since that is all the SDK hands
+    // back on approval — the internal order id never reaches the browser here.
+    await this.orderPayer.assertMayCapture(dto.paypalOrderId, user?.sub);
     await this.paypalService.captureOrder(dto.paypalOrderId);
     return { captured: true };
   }

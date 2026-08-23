@@ -3,6 +3,7 @@ import { PaymentsController } from './payments.controller';
 import { WebhooksController } from './webhooks.controller';
 import { PaymentsService } from './payments.service';
 import { PaypalService } from './paypal.service';
+import { OrderPayerService } from './order-payer.service';
 import { QueueModule } from '../../queue/queue.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { AffiliatesModule } from '../affiliates/affiliates.module';
@@ -11,7 +12,7 @@ import { ProductsModule } from '../products/products.module';
 @Module({
   imports: [QueueModule, AnalyticsModule, AffiliatesModule, ProductsModule],
   controllers: [PaymentsController, WebhooksController],
-  providers: [PaymentsService, PaypalService],
+  providers: [OrderPayerService, PaymentsService, PaypalService],
   exports: [PaymentsService, PaypalService],
 })
 export class PaymentsModule {}
