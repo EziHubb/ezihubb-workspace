@@ -32,6 +32,15 @@ import {
  * meaningless set of tabs.
  */
 
+/**
+ * The platform's pagination ceiling, from PaginationDto on the API side.
+ *
+ * Named here rather than written as a literal at each call site: the page-size
+ *selector and the shop picker both have to stay under it, and a bare number
+ * gives the next person nothing to check against.
+ */
+const MAX_PAGE_LIMIT = 48;
+
 const QK = {
   steps:        (storeId?: string) => ['order-progress-steps', storeId] as const,
   queue:        (storeId: string | undefined, q: unknown) => ['order-queue', storeId, q] as const,
@@ -101,7 +110,7 @@ export default function OrdersPage() {
   const [filters,  setFilters]  = useState<QueueFilterState>(EMPTY_FILTERS);
   const [search,   setSearch]   = useState('');
   const [page,     setPage]     = useState(1);
-  const [limit,    setLimit]    = useState(20);
+  const [limit,    setLimit]    = useState(24);
   const [sort,     setSort]     = useState<'shipBy' | 'newest' | 'oldest' | 'total'>('shipBy');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editorOpen,   setEditorOpen]   = useState(false);
@@ -314,7 +323,7 @@ export default function OrdersPage() {
           onChange={(e) => changeView(() => setLimit(Number(e.target.value)))}
           className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
-          {[20, 50, 100].map((n) => (
+          {[12, 24, MAX_PAGE_LIMIT].map((n) => (
             <option key={n} value={n}>{n} orders per page</option>
           ))}
         </select>
@@ -475,18 +484,36 @@ function TabButton({
   );
 }
 
-/** SUPER_ADMIN store chooser. A pipeline belongs to one shop, so the queue
- *  cannot render until one is named. */
+/**
+ * SUPER_ADMIN store chooser. A pipeline belongs to one shop, so the queue
+ * cannot render until one is named.
+ *
+ * `limit` is the platform ceiling from PaginationDto, not a number picked to
+ * feel large. Asking for more is rejected outright — this asked for 100 and
+ * got a validation error, which the page then reported as "No shops yet":
+ * a failed request and an empty list looked identical.
+ */
 function StorePicker({ onPick }: { onPick: (id: string) => void }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['stores-for-order-queue'],
-    queryFn:  () => api.get<{ data: { id: string; name: string }[] }>(`${API_ROUTES.ADMIN.STORES}?limit=100`),
+    queryFn:  () => api.get<{
+      data: { id: string; name: string }[];
+      pagination?: { total: number };
+    }>(`${API_ROUTES.ADMIN.STORES}?limit=${MAX_PAGE_LIMIT}`),
   });
 
   if (isLoading) return <p className="mt-6 text-sm text-muted">Loading shops…</p>;
 
+  // Distinct from the empty case on purpose. Reporting a broken request as
+  // "no shops" sends someone looking for missing data instead of a bug.
+  if (isError) {
+    return <p className="mt-6 text-sm text-error">Could not load shops. {(error as Error).message}</p>;
+  }
+
   const stores = data?.data ?? [];
   if (!stores.length) return <p className="mt-6 text-sm text-muted">No shops yet.</p>;
+
+  const total = data?.pagination?.total ?? stores.length;
 
   return (
     <ul className="mt-6 max-w-md divide-y divide-border rounded-card border border-border bg-surface">
@@ -501,6 +528,13 @@ function StorePicker({ onPick }: { onPick: (id: string) => void }) {
           </button>
         </li>
       ))}
+      {total > stores.length && (
+        // Said out loud rather than silently truncated: a SUPER_ADMIN looking
+        // for a shop that is not listed needs to know the list is partial.
+        <li className="px-4 py-3 text-xs text-muted">
+          Showing the first {stores.length} of {total} shops.
+        </li>
+      )}
     </ul>
   );
 }

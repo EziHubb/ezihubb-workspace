@@ -302,7 +302,10 @@ export class OrderProgressService {
    */
   async listQueue(storeId: string, query: OrderQueueQueryDto) {
     const page  = query.page  ?? 1;
-    const limit = Math.min(query.limit ?? 20, 100);
+    // PaginationDto already rejects anything above 48, so this is a floor for
+    // a missing value, not a second ceiling. It said 100 before, which read as
+    // if the endpoint accepted 100 — it never could.
+    const limit = query.limit ?? 24;
 
     // Place stragglers here too, not only in listStepsWithCounts. The page
     // fires both requests at once, so relying on the other one having landed

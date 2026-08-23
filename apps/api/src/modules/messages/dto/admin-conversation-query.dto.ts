@@ -62,11 +62,13 @@ export class AdminConversationQueryDto {
   @Min(1)
   page?: number = 1;
 
-  @ApiPropertyOptional({ default: 20 })
+  /** Same ceiling as PaginationDto. Two different caps inside one admin app
+   *  is how a page-size selector ends up offering a value the API rejects. */
+  @ApiPropertyOptional({ default: 24, maximum: 48 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(100)
-  limit?: number = 20;
+  @Max(48)
+  limit?: number = 24;
 }
