@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean, IsInt, Min, MaxLength, MinLength, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsInt, Min, MaxLength, MinLength, IsDateString, IsArray, ArrayMaxSize } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 
@@ -54,4 +54,23 @@ export class CreateCollectionDto {
   @IsOptional()
   @IsDateString()
   endDate?: string;
+
+  /**
+   * The listings in this collection, in the order they should appear — array
+   * position becomes CollectionProduct.sortOrder.
+   *
+   * Ids only. The admin editor holds name/price/image for each row it shows,
+   * but sending those back would let a client state a price the catalogue
+   * disagrees with; everything displayed is read from the Product record.
+   *
+   * On update, omitting the field leaves the current products alone, while
+   * sending an array replaces the set — the editor always shows the full list,
+   * so a partial update has no meaning here.
+   */
+  @ApiPropertyOptional({ type: [String], description: 'Product ids, in display order' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(500)
+  productIds?: string[];
 }

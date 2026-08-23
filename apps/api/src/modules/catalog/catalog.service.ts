@@ -29,6 +29,17 @@ export type { CollectionResponseDto };
 const MEGA_MENU_CACHE_KEY = 'catalog:mega_menu';
 const MEGA_MENU_TTL = 600; // 10 minutes
 
+/**
+ * First occurrence wins, so the caller's ordering survives.
+ *
+ * CollectionProduct is keyed on (collectionId, productId), so a repeated id —
+ * easy to produce by adding the same listing twice in the editor — would make
+ * the whole write fail on a unique violation rather than being ignored.
+ */
+function dedupe(ids: string[]): string[] {
+  return [...new Set(ids)];
+}
+
 @Injectable()
 export class CatalogService {
   private readonly logger = new Logger(CatalogService.name);
@@ -508,6 +519,17 @@ export class CatalogService {
         sortOrder: dto.sortOrder ?? 0,
         startDate: dto.startDate ? new Date(dto.startDate) : null,
         endDate: dto.endDate ? new Date(dto.endDate) : null,
+        // Array position is the display order. Created inline so a collection
+        // and its listings arrive in one write — the editor sends both at once
+        // and a half-created collection is not a state worth being able to
+        // reach.
+        ...(dto.productIds?.length
+          ? {
+              products: {
+                create: dedupe(dto.productIds).map((productId, i) => ({ productId, sortOrder: i })),
+              },
+            }
+          : {}),
       },
       include: { _count: { select: { products: true } } },
     });
@@ -528,7 +550,7 @@ export class CatalogService {
       sortOrder: collection.sortOrder,
       startDate: collection.startDate,
       endDate: collection.endDate,
-      productCount: 0,
+      productCount: collection._count.products,
       createdAt: collection.createdAt,
     };
   }
@@ -555,10 +577,29 @@ export class CatalogService {
       data['slug'] = await this.resolveUniqueSlug(dto.name, 'collection', id);
     }
 
-    const collection = await this.prisma.collection.update({
-      where: { id },
-      data,
-      include: { _count: { select: { products: true } } },
+    // Replace-the-set, in one transaction with the field update: the editor
+    // always holds the complete list, so "add these" has no meaning — and a
+    // delete that lands without its matching create would empty a live
+    // collection on the storefront.
+    //
+    // undefined means the caller said nothing about products, which is what a
+    // PATCH from anywhere but this editor looks like.
+    const collection = await this.prisma.$transaction(async (tx) => {
+      if (dto.productIds !== undefined) {
+        await tx.collectionProduct.deleteMany({ where: { collectionId: id } });
+        if (dto.productIds.length > 0) {
+          await tx.collectionProduct.createMany({
+            data: dedupe(dto.productIds).map((productId, i) => ({ collectionId: id, productId, sortOrder: i })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      return tx.collection.update({
+        where: { id },
+        data,
+        include: { _count: { select: { products: true } } },
+      });
     });
 
     if (dto.name !== undefined || dto.description !== undefined) {

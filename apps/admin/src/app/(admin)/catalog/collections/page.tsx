@@ -7,7 +7,7 @@ import {
   ChevronLeft, ChevronRight, Eye, EyeOff, Package,
 } from 'lucide-react';
 import Image from 'next/image';
-import { Select } from '@ezihubb/ui';
+import { Select, Toggle } from '@ezihubb/ui';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -39,6 +39,11 @@ interface Collection {
   products?:   ProductSnippet[];
   createdAt:   string;
 }
+
+/** What the slide-over sends to the API: collection fields plus the ordered
+ *  product ids. Distinct from `Collection`, which is what the API sends back —
+ *  that carries product snapshots for rendering and no id list. */
+type CollectionSavePayload = Omit<Partial<Collection>, 'products'> & { productIds?: string[] };
 
 // ── Slug helper ───────────────────────────────────────────────────────────────
 
@@ -154,7 +159,7 @@ function CollectionSlideOver({
 }: {
   collection: Collection | 'new';
   onClose:    () => void;
-  onSave:     (data: Partial<Collection>) => Promise<void>;
+  onSave:     (data: CollectionSavePayload) => Promise<void>;
   onDelete?:  (id: string) => Promise<void>;
 }) {
   const { confirm } = useDialog();
@@ -207,7 +212,11 @@ function CollectionSlideOver({
         isActive:    form.isActive,
         startDate:   form.startDate || undefined,
         endDate:     form.endDate   || undefined,
-        products:    form.products,
+        // Ids in display order, not the product snapshots this form renders
+        // from. The API rejected `products` outright — and even once accepted,
+        // returning a name and price the server already owns is how the two
+        // drift apart.
+        productIds:  form.products.map((p) => p.id),
       });
     } catch (e: unknown) {
       setError((e as Error).message ?? 'Save failed');
@@ -335,15 +344,18 @@ function CollectionSlideOver({
               </div>
             </div>
 
-            {/* Active toggle */}
+            {/* Active toggle — the shared component, not a local copy.
+                The hand-rolled one here sized its track 40×20 with a 16px knob
+                moved by transform alone: the knob overhung the track's rounded
+                right edge in the on state, so the control read as a solid pill
+                with nothing in it. It was also the only toggle in the admin
+                painted with `primary` rather than the platform's black. */}
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setField('isActive', !form.isActive)}
-                className={`relative w-10 h-5 rounded-full transition-colors ${form.isActive ? 'bg-primary' : 'bg-border'}`}
-              >
-                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.isActive ? 'translate-x-5' : 'translate-x-0.5'}`} />
-              </button>
+              <Toggle
+                checked={form.isActive}
+                onChange={(v) => setField('isActive', v)}
+                ariaLabel="Visible in store"
+              />
               <span className="text-sm text-secondary flex items-center gap-1.5">
                 {form.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                 {form.isActive ? 'Active (visible in store)' : 'Inactive (hidden)'}
@@ -472,7 +484,7 @@ export default function CollectionsPage() {
   const totalPages  = data?.pages ?? 1;
   const total       = data?.total ?? 0;
 
-  const handleSave = async (payload: Partial<Collection>) => {
+  const handleSave = async (payload: CollectionSavePayload) => {
     if (payload.id) {
       await api.patch(API_ROUTES.ADMIN.COLLECTION(payload.id), payload);
     } else {
