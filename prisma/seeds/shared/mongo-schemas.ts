@@ -1,3 +1,13 @@
+/**
+ * Mongoose models the seed needs — which is now only the mega-menu.
+ *
+ * A ProductDetail model used to live here too, for the demo product seed. It
+ * was never the real one: the API owns
+ * apps/api/src/modules/catalog/schemas/product-detail.schema.ts, and a second
+ * definition of the same collection is a schema that can drift from the one
+ * actually serving traffic. It went with the seed that used it.
+ */
+
 import mongoose, { Schema, model, Model } from 'mongoose';
 
 // ── CategoryMenu ──────────────────────────────────────────────────────────────
@@ -55,34 +65,4 @@ try {
   CategoryMenuModel = mongoose.model<ICategoryMenu>('CategoryMenu');
 } catch {
   CategoryMenuModel = model<ICategoryMenu>('CategoryMenu', categoryMenuSchema);
-}
-
-// ── ProductDetail ─────────────────────────────────────────────────────────────
-
-export interface IProductDetail {
-  productId: string;
-  attributes:     { key: string; value: string; filterable: boolean; unit?: string }[];
-  variantOptions: { name: string; values: string[] }[];
-  richDescription?: string;
-  printSpecs?: { minDPI: number; maxFileSize: number; acceptedFormats: string[] };
-  customization?: object;
-}
-
-const productDetailSchema = new Schema<IProductDetail>(
-  {
-    productId:      { type: String, required: true, unique: true },
-    attributes:     [{ key: String, value: String, filterable: Boolean, unit: String, _id: false }],
-    variantOptions: [{ name: String, values: [String], _id: false }],
-    richDescription: String,
-    printSpecs:     { minDPI: Number, maxFileSize: Number, acceptedFormats: [String] },
-    customization:  { type: Object, default: undefined },
-  },
-  { collection: 'product_details', timestamps: true },
-);
-
-export let ProductDetailModel: Model<IProductDetail>;
-try {
-  ProductDetailModel = mongoose.model<IProductDetail>('ProductDetail');
-} catch {
-  ProductDetailModel = model<IProductDetail>('ProductDetail', productDetailSchema);
 }

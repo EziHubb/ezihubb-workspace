@@ -135,9 +135,20 @@ NestJS API (port 3002)
 
 ## 5. Seed
 
-`prisma/seed.ts` is a thin orchestrator (delegates to `seeds/pg/` and `seeds/mongo/`):
+`prisma/seed-baseline.ts` is the only seed. It creates the reference data a
+freshly-migrated database needs and nothing else, so it is safe to run anywhere:
 - Runs: `pnpm db:seed` (= `prisma db seed --schema=prisma/schema.prisma`, reads from `.env`)
-- `prisma/seeds/pg/index.ts` — runs 20 numbered PostgreSQL seed files in dependency order (users → categories → collections → processing/shipping profiles → shop sections → store → products → collection links → promotions → shipping zones → attribute values → affiliates → addresses → orders → conversations → reviews → gift cards → wishlists/Q&A)
-- `prisma/seeds/mongo/index.ts` — seeds `category_menus` (derived from PG category tree) and `product_details`; connects with a DNS override (`dns.setServers(['8.8.8.8','1.1.1.1'])`) and retry logic
+- PostgreSQL, in dependency order: `01-users` (SUPER_ADMIN only) → `02-categories` → `03-collections` (occasion shells, no products) → `04-stores` (PlatformSettings singleton + the default EziHubb store, owned by the admin)
+- `prisma/seeds/mongo/index.ts` — seeds `category_menus` only (derived from PG category tree); `product_details` is written by the API, not seeded. Connects with a DNS override (`dns.setServers(['8.8.8.8','1.1.1.1'])`) and retry logic. Failure is non-fatal: Postgres is already correct without the derived menu.
 - `prisma/seeds/shared/` — `prisma-client.ts` (shared PrismaClient/pool instance), `mongo-schemas.ts`
-- Standalone runs: `pnpm db:seed:pg`, `pnpm db:seed:mongo`, `pnpm db:fresh` (drop → migrate → seed)
+- Standalone runs: `pnpm db:seed:mongo`, `pnpm db:fresh` (drop → migrate → seed)
+- Set `SEED_ADMIN_PASSWORD` before seeding anything that matters — the fallback in `01-users.ts` is published in this repo.
+
+A second seed (`prisma/seed.ts` → `seeds/pg/index.ts`, 18 numbered files) once
+held a full demo dataset: fake products, orders, reviews, eight `@test.com`
+customers with passwords written into the source, seven gift cards worth
+$617.50, and five live discount codes. In a public repo those are working
+credentials and redeemable codes shipped alongside the code, one mistyped
+`DATABASE_URL` from a real database. It had also been broken since the shipping
+schema changed under it, so it was removed rather than repaired. Do not
+reintroduce a demo seed that writes credentials or balances as literals.

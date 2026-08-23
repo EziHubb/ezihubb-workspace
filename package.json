@@ -16,7 +16,6 @@
     "db:migrate:prod": "prisma migrate deploy --schema=prisma/schema.prisma",
     "db:seed": "prisma db seed --schema=prisma/schema.prisma",
     "db:seed:baseline": "pnpm exec tsx prisma/seed-baseline.ts",
-    "db:seed:pg": "pnpm exec tsx prisma/seeds/pg/index.ts",
     "db:seed:mongo": "pnpm exec tsx prisma/seeds/mongo/index.ts",
     "db:drop:pg": "node scripts/guard-destructive-db.cjs && prisma db execute --file=prisma/scripts/drop-pg.sql",
     "db:drop:mongo": "pnpm exec tsx prisma/seeds/mongo/drop.ts",
@@ -97,11 +96,12 @@
     "sharp": "^0.34.5",
     "stripe": "^22.1.1",
     "tslib": "^2.3.0",
+    "tsx": "^4.22.4",
     "zod": "^4.4.3",
     "zustand": "^5.0.5"
   },
   "prisma": {
-    "seed": "node node_modules/.bin/tsx prisma/seed.ts"
+    "seed": "node node_modules/.bin/tsx prisma/seed-baseline.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -189,7 +189,6 @@
     "tailwindcss": "^3.4.19",
     "ts-jest": "^29.4.0",
     "ts-node": "10.9.1",
-    "tsx": "^4.22.4",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.40.0",
     "webpack-cli": "^5.1.4"

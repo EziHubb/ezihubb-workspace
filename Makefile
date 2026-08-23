@@ -48,10 +48,10 @@ db-migrate: ## Run pending migrations
 db-migrate-deploy: ## Apply migrations (production-safe, no interactive prompts)
 	pnpm exec prisma migrate deploy --schema=prisma/schema.prisma
 
-db-seed: ## Seed database with full demo data (dev/staging only — fake products, orders, reviews, test users)
-	pnpm exec ts-node prisma/seed.ts
+db-seed: ## Seed baseline data (admin user, store + platform settings, categories, collections, mega-menu)
+	pnpm exec ts-node prisma/seed-baseline.ts
 
-db-seed-baseline: ## Seed only production-safe baseline data (admin user, categories, shipping zones)
+db-seed-baseline: ## Alias of db-seed, kept for existing muscle memory
 	pnpm exec ts-node prisma/seed-baseline.ts
 
 db-reset: ## Drop all tables and re-run migrations + seed

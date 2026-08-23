@@ -52,10 +52,10 @@ ezihubb-workspace/
 │   │                        canva/memberships/creator-dna/trends/pricing/design-licensing/
 │   │                        drops/bundles — was later removed to keep the site a pure
 │   │                        e-commerce platform. No spec docs remain for these.)
-│   ├── seed.ts           → Thin orchestrator — delegates to seeds/pg/ and seeds/mongo/
+│   ├── seed-baseline.ts  → The only seed — reference data a fresh DB needs, safe anywhere
 │   └── seeds/
-│       ├── pg/           → 20 numbered PostgreSQL seed files + index.ts
-│       ├── mongo/        → MongoDB seed files (product_details, category_menus) + index.ts
+│       ├── pg/           → 4 seed files: admin user, categories, collections, store
+│       ├── mongo/        → 1 seed file (category_menus mega-menu) + index.ts + drop.ts
 │       └── shared/       → prisma-client.ts, mongo-schemas.ts (shared helpers)
 ├── prisma.config.ts      → Prisma 7 adapter config (repo root, not inside prisma/)
 └── .claude/specs/        → Module specifications (this directory)

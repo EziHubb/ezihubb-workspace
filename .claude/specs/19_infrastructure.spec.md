@@ -17,10 +17,10 @@ ezihubb-workspace/
   prisma/
     schema.prisma      # 100+ models (grew far past the original 21 as
                         # marketplace features were added)
-    seed.ts             # thin orchestrator → delegates to seeds/pg/ + seeds/mongo/
+    seed-baseline.ts    # the only seed — reference data a fresh DB needs, safe anywhere
     seeds/
-      pg/               # 21 numbered PostgreSQL seed files + index.ts
-      mongo/            # MongoDB seed files (product_details, category_menus) + index.ts
+      pg/               # 4 seed files: admin user, categories, collections, store
+      mongo/            # 1 seed file (category_menus mega-menu) + index.ts + drop.ts
       shared/           # prisma-client.ts, mongo-schemas.ts
   prisma.config.ts   # repo root, NOT inside prisma/
   .claude/specs/   # This directory
