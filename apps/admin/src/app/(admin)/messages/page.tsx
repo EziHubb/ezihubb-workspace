@@ -1,511 +1,472 @@
-﻿'use client';
+'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useAdminMode } from '../../../lib/store-context';
-import Link from 'next/link';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, Check, RefreshCw } from 'lucide-react';
-import { api } from '../../../lib/api-client';
+import { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  Archive, Loader2, MailOpen, Mail, Search, ShieldAlert, Star, Tag, Trash2, Undo2, X,
+} from 'lucide-react';
 import { API_ROUTES } from '@ezihubb/constants';
-import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
-import type { ConversationDto, ConversationWithMessagesDto } from '@ezihubb/types';
+import { api } from '../../../lib/api-client';
+import { useAdminMode } from '../../../lib/store-context';
 import { useDialog } from '../../../contexts/DialogContext';
+import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
+import { ConversationList } from '../../../components/messages/inbox/ConversationList';
+import { ThreadView } from '../../../components/messages/inbox/ThreadView';
+import { BuyerPanel } from '../../../components/messages/inbox/BuyerPanel';
+import { AutoReplyMenu } from '../../../components/messages/inbox/AutoReplyMenu';
+import {
+  FOLDERS, FOLDER_LABELS, LABEL_CHIP,
+  type AutoReply, type BulkAction, type BuyerPanel as BuyerPanelData,
+  type ConversationDetail, type ConversationLabel, type ConversationListResponse,
+  type ConversationRow, type Folder, type FolderCounts,
+} from '../../../components/messages/inbox/types';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+/**
+ * The shop's inbox.
+ *
+ * Folders on the left, threads in the middle, the open conversation and who
+ * wrote it on the right. Folders are queries the server answers, not a field
+ * on the thread, so the counts beside them and the list under them can never
+ * disagree.
+ */
 
-interface AdminConvList {
-  items: ConversationDto[];
-  meta:  { total: number; page: number; limit: number; totalPages: number };
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatRelativeTime(dateStr: string | null): string {
-  if (!dateStr) return '';
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const min  = Math.floor(diff / 60_000);
-  const hr   = Math.floor(diff / 3_600_000);
-  const day  = Math.floor(diff / 86_400_000);
-  if (min < 1)  return 'just now';
-  if (min < 60) return `${min}m ago`;
-  if (hr  < 24) return `${hr}h ago`;
-  if (day < 7)  return `${day}d ago`;
-  return new Date(dateStr).toLocaleDateString();
-}
-
-function formatTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function customerLabel(conv: ConversationDto): string {
-  if (conv.user) {
-    const name = `${conv.user.firstName ?? ''} ${conv.user.lastName ?? ''}`.trim();
-    return name || conv.user.email;
-  }
-  return conv.guestName ?? conv.guestEmail ?? 'Guest';
-}
-
-// ── Status dot ────────────────────────────────────────────────────────────────
-
-function ConvStatusDot({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    OPEN:     'bg-green-500',
-    PENDING:  'bg-amber-500',
-    RESOLVED: 'bg-gray-300',
-    SPAM:     'bg-red-400',
-  };
-  return <div className={`w-2 h-2 rounded-full flex-shrink-0 ${colors[status] ?? 'bg-gray-300'}`} />;
-}
-
-// ── Conversation list item ────────────────────────────────────────────────────
-
-function AdminConversationItem({
-  conversation: conv,
-  isSelected,
-  onClick,
-}: {
-  conversation: ConversationDto;
-  isSelected:   boolean;
-  onClick:      () => void;
-}) {
-  const hasUnread = conv.unreadByAdmin > 0;
-  const name      = customerLabel(conv);
-
-  return (
-    <button
-      onClick={onClick}
-      className={[
-        'w-full text-left p-4 hover:bg-[#FAFAF8] transition-colors relative',
-        isSelected ? 'bg-primary/5 border-l-[3px] border-primary' : 'border-l-[3px] border-transparent',
-      ].join(' ')}
-    >
-      <div className="flex gap-3">
-        <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold flex-shrink-0">
-          {(name[0] ?? 'G').toUpperCase()}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-1">
-            <span className={`text-sm truncate ${hasUnread ? 'font-bold' : 'font-medium'} text-secondary`}>
-              {name}
-            </span>
-            <span className="text-[10px] text-muted flex-shrink-0">
-              {formatRelativeTime(conv.lastMessageAt)}
-            </span>
-          </div>
-          {conv.order && (
-            <p className="text-xs text-muted">Order #{conv.order.orderNumber}</p>
-          )}
-          <p className={`text-xs mt-0.5 truncate ${hasUnread ? 'font-semibold text-secondary' : 'text-muted'}`}>
-            {conv.lastMessage}
-          </p>
-        </div>
-        <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
-          <ConvStatusDot status={conv.status} />
-          {hasUnread && (
-            <div className="w-4 h-4 bg-primary rounded-full flex items-center justify-center text-white text-[9px] font-bold">
-              {conv.unreadByAdmin > 9 ? '9+' : conv.unreadByAdmin}
-            </div>
-          )}
-        </div>
-      </div>
-    </button>
-  );
-}
-
-// ── Message bubble ────────────────────────────────────────────────────────────
-
-function AdminMessageBubble({ msg }: { msg: ConversationWithMessagesDto['messages'][number] }) {
-  if (msg.senderType === 'SYSTEM') {
-    return (
-      <div className="text-center text-xs text-muted py-2">
-        <span className="bg-white px-3 py-1 rounded-full border">{msg.body}</span>
-      </div>
-    );
-  }
-  const isShop = msg.senderType === 'SHOP';
-  return (
-    <div className={`flex gap-2 ${isShop ? 'flex-row-reverse' : 'flex-row'}`}>
-      <div className={[
-        'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-1',
-        isShop ? 'bg-primary/20 text-primary' : 'bg-[#E5E7EB] text-secondary',
-      ].join(' ')}>
-        {isShop ? 'ML' : 'C'}
-      </div>
-      <div className={[
-        'max-w-[75%] rounded-2xl px-4 py-2.5 text-sm',
-        isShop
-          ? 'bg-primary text-white rounded-tr-sm'
-          : 'bg-white text-secondary rounded-tl-sm shadow-sm',
-      ].join(' ')}>
-        <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-        {msg.attachmentUrls?.length > 0 && (
-          <div className="flex gap-1.5 mt-2 flex-wrap">
-            {msg.attachmentUrls.map((url, i) => (
-              <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                <img src={url} alt="Attachment" className="w-20 h-20 rounded-lg object-cover hover:opacity-80" />
-              </a>
-            ))}
-          </div>
-        )}
-        <p className={`text-[10px] mt-1 ${isShop ? 'text-white/70' : 'text-muted'}`}>
-          {formatTime(msg.createdAt)}
-          {isShop && msg.isRead && <span className="ml-1">✓✓</span>}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ── Message thread ────────────────────────────────────────────────────────────
-
-function AdminMessageThread({
-  conversationId,
-  onStatusChange,
-}: {
-  conversationId: string;
-  onStatusChange: () => void;
-}) {
-  const [replyText,   setReplyText]   = useState('');
-  const [isSending,   setIsSending]   = useState(false);
-  const [statusMsg,   setStatusMsg]   = useState('');
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const queryClient = useQueryClient();
-  const { alert } = useDialog();
-
-  const { data: conv, isLoading } = useQuery<ConversationWithMessagesDto>({
-    queryKey: ['admin-conversation', conversationId],
-    queryFn:  () => api.get<ConversationWithMessagesDto>(API_ROUTES.ADMIN.CONVERSATION(conversationId)),
-    refetchInterval: 15_000,
-    enabled: !!conversationId,
-  });
-
+/** Delays a value so a fast typist causes one request, not twenty. */
+function useDebounced<T>(value: T, ms: number): T {
+  const [settled, setSettled] = useState(value);
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conv?.messages?.length]);
-
-  const sendReply = async () => {
-    const body = replyText.trim();
-    if (!body || isSending) return;
-    setIsSending(true);
-    try {
-      await api.post(API_ROUTES.ADMIN.CONVERSATION_MESSAGES(conversationId), { body });
-      setReplyText('');
-      queryClient.invalidateQueries({ queryKey: ['admin-conversation', conversationId] });
-      queryClient.invalidateQueries({ queryKey: ['admin-conversations'] });
-    } catch (err) {
-      await alert((err as Error).message || 'Could not send the message.', { variant: 'error' });
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const updateStatus = async (status: string) => {
-    try {
-      await api.patch(API_ROUTES.ADMIN.CONVERSATION_STATUS(conversationId), { status });
-      queryClient.invalidateQueries({ queryKey: ['admin-conversation', conversationId] });
-      onStatusChange();
-      setStatusMsg(`Marked as ${status.toLowerCase()}`);
-      setTimeout(() => setStatusMsg(''), 2500);
-    } catch (err) {
-      await alert((err as Error).message || 'Could not update conversation status.', { variant: 'error' });
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
-  const name = conv ? customerLabel(conv) : '';
-
-  return (
-    <>
-      {/* Thread header */}
-      <div className="flex items-center gap-3 px-5 py-3.5 border-b bg-white flex-shrink-0">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-secondary">{name}</span>
-            {conv?.user?.email && (
-              <span className="text-xs text-muted">{conv.user.email}</span>
-            )}
-            {conv?.order && (
-              <Link
-                href={`/orders/${conv.order.id}`}
-                className="text-xs text-primary hover:underline bg-primary/10 px-2 py-0.5 rounded-full"
-              >
-                Order #{conv.order.orderNumber}
-              </Link>
-            )}
-          </div>
-          {conv?.subject && (
-            <p className="text-xs text-muted mt-0.5">{conv.subject}</p>
-          )}
-        </div>
-
-        {/* Status actions */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {statusMsg && (
-            <span className="text-xs text-green-600 font-medium">{statusMsg}</span>
-          )}
-          {conv?.status !== 'RESOLVED' ? (
-            <button
-              type="button"
-              onClick={() => updateStatus('RESOLVED')}
-              className="flex items-center gap-1 text-xs font-medium text-green-700 border border-green-200 hover:bg-green-50 px-3 py-1.5 rounded-button transition-colors"
-            >
-              <Check className="w-3.5 h-3.5" />
-              Resolve
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => updateStatus('OPEN')}
-              className="flex items-center gap-1 text-xs font-medium text-secondary border border-border hover:border-primary/40 px-3 py-1.5 rounded-button transition-colors"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Reopen
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => updateStatus('SPAM')}
-            className="text-xs text-red-500 hover:text-red-700 hover:underline"
-          >
-            Spam
-          </button>
-          {conv?.user && (
-            <Link
-              href={`/customers/${conv.user.id}`}
-              target="_blank"
-              className="text-xs text-muted hover:text-secondary hover:underline"
-            >
-              Customer profile ↗
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-[#FAFAF8]">
-        {conv?.messages?.map((msg) => (
-          <AdminMessageBubble key={msg.id} msg={msg} />
-        ))}
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Reply box */}
-      <div className="p-4 border-t bg-white flex-shrink-0">
-        <div className="border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/20">
-          <textarea
-            value={replyText}
-            onChange={(e) => setReplyText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) sendReply();
-            }}
-            placeholder="Type a reply... (Cmd+Enter to send)"
-            rows={3}
-            className="w-full px-4 py-3 text-sm resize-none outline-none bg-white"
-          />
-          <div className="flex items-center justify-between px-4 py-2.5 bg-[#F9FAFB] border-t">
-            <p className="text-xs text-muted">
-              Sending as <span className="font-medium">EziHubb</span>
-            </p>
-            <button
-              type="button"
-              disabled={!replyText.trim() || isSending}
-              onClick={sendReply}
-              className="flex items-center gap-1.5 text-xs font-semibold bg-primary text-white px-3 py-1.5 rounded-button hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
-              {isSending ? (
-                <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              ) : (
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              )}
-              Send reply
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
-  );
+    const t = setTimeout(() => setSettled(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return settled;
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+const QK = {
+  list:    (s: string | undefined, q: unknown) => ['messages-list', s, q] as const,
+  folders: (s?: string) => ['message-folders', s] as const,
+  labels:  (s?: string) => ['message-labels', s] as const,
+  thread:  (id: string | null) => ['message-thread', id] as const,
+  buyer:   (id: string | null) => ['message-buyer', id] as const,
+  auto:    (s?: string) => ['message-auto-reply', s] as const,
+};
 
-export default function AdminMessagesPage() {
-  const router = useRouter();
+export default function MessagesPage() {
   const { isPlatformContext, isReady } = useAdminMode();
-  const searchParams = useSearchParams();
-  const [selectedId,    setSelectedId]    = useState<string | null>(null);
-  const [statusFilter,  setStatusFilter]  = useState('');
-  const [search,        setSearch]        = useState('');
-  const [debouncedSearch, setDebounced]   = useState('');
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const queryClient = useQueryClient();
+  const dialog = useDialog();
+  const qc = useQueryClient();
 
-  // Debounce search — same pattern as orders page
-  useEffect(() => {
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setDebounced(search), 300);
-    return () => clearTimeout(debounceRef.current);
-  }, [search]);
+  const [folder,   setFolder]   = useState<Folder>('inbox');
+  const [search,   setSearch]   = useState('');
+  const [page,     setPage]     = useState(1);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [labelMenuOpen, setLabelMenuOpen] = useState(false);
 
-  // Messages are per-store customer conversations — not a platform-wide concept.
-  // A SUPER_ADMIN viewing "Platform" has no store to scope this page to, so
-  // send them somewhere useful instead of a broken/empty inbox.
-  useEffect(() => {
-    if (isPlatformContext) router.replace('/dashboard');
-  }, [isPlatformContext, router]);
+  // Shop owners never send a storeId; the server ignores it for them. A
+  // platform-context SUPER_ADMIN reads every shop's threads, which is a
+  // support job — but the shop-owned writes below need a store, so they are
+  // disabled in that mode rather than guessing one.
+  //
+  // The scope still has to reach the query keys. The server picks the shop off
+  // a cookie the sidebar switcher writes, so a SUPER_ADMIN toggling between
+  // Platform and My Store changes what every one of these endpoints returns
+  // while the keys stay identical — and React Query would serve one context's
+  // threads under the other.
+  const scope = isPlatformContext ? 'platform' : 'own-store';
+  const canWriteShopData = !isPlatformContext;
 
-  // Unfiltered query — always fetches everything for accurate badge/tab counts.
-  // queryKey starts with 'admin-conversations' so existing invalidateQueries calls cover it.
-  // Must wait for isReady too — while the session is still resolving,
-  // isPlatformContext defaults to false (not "known false"), so gating on
-  // just !isPlatformContext would fire this before we actually know (same
-  // race condition already fixed in marketing/sales/page.tsx's bundlesQuery).
-  const { data: allData } = useQuery<AdminConvList>({
-    queryKey: ['admin-conversations', 'counts'],
-    queryFn:  () => api.get<AdminConvList>(`${API_ROUTES.ADMIN.CONVERSATIONS}?limit=100`),
-    enabled:  isReady && !isPlatformContext,
-    refetchInterval: 30_000,
-    staleTime: 10_000,
-  });
+  // One request per keystroke otherwise, and this search reaches across every
+  // thread's last message.
+  const debouncedSearch = useDebounced(search, 300);
 
-  const { data, isLoading } = useQuery<AdminConvList>({
-    queryKey: ['admin-conversations', statusFilter, debouncedSearch],
+  const listQuery = useQuery({
+    queryKey: QK.list(scope, { folder, search: debouncedSearch, page }),
+    enabled:  isReady,
     queryFn:  () => {
-      const params = new URLSearchParams();
-      if (statusFilter)    params.set('status', statusFilter);
-      if (debouncedSearch) params.set('search', debouncedSearch);
-      return api.get<AdminConvList>(`${API_ROUTES.ADMIN.CONVERSATIONS}?${params.toString()}`);
+      const p = new URLSearchParams({ folder, page: String(page), limit: '20' });
+      if (debouncedSearch) p.set('search', debouncedSearch);
+      return api.get<ConversationListResponse>(`${API_ROUTES.ADMIN.CONVERSATIONS}?${p}`);
     },
-    enabled:  isReady && !isPlatformContext,
-    refetchInterval: 30_000,
   });
 
-  const conversations   = data?.items ?? [];
-  const allConversations = allData?.items ?? [];
-  const unreadTotal     = allConversations.filter((c) => c.unreadByAdmin > 0).length;
-  const openCount       = allConversations.filter((c) => c.status === 'OPEN').length;
-  const pendingCount    = allConversations.filter((c) => c.status === 'PENDING').length;
-  const resolvedCount   = allConversations.filter((c) => c.status === 'RESOLVED').length;
+  const foldersQuery = useQuery({
+    queryKey: QK.folders(scope),
+    enabled:  isReady,
+    queryFn:  () => api.get<FolderCounts>(API_ROUTES.ADMIN.MESSAGE_FOLDERS),
+  });
 
-  // Auto-select from orderId query param
+  const labelsQuery = useQuery({
+    queryKey: QK.labels(scope),
+    enabled:  isReady && canWriteShopData,
+    queryFn:  () => api.get<ConversationLabel[]>(API_ROUTES.ADMIN.MESSAGE_LABELS),
+  });
+
+  const threadQuery = useQuery({
+    queryKey: QK.thread(activeId),
+    enabled:  Boolean(activeId),
+    queryFn:  () => api.get<ConversationDetail>(API_ROUTES.ADMIN.CONVERSATION(activeId!)),
+  });
+
+  const buyerQuery = useQuery({
+    queryKey: QK.buyer(activeId),
+    enabled:  Boolean(activeId) && canWriteShopData,
+    queryFn:  () => api.get<BuyerPanelData>(API_ROUTES.ADMIN.CONVERSATION_BUYER(activeId!)),
+  });
+
+  const autoReplyQuery = useQuery({
+    queryKey: QK.auto(scope),
+    enabled:  isReady && canWriteShopData,
+    queryFn:  () => api.get<AutoReply>(API_ROUTES.ADMIN.MESSAGE_AUTO_REPLY),
+  });
+
+  const refetchLists = () => {
+    qc.invalidateQueries({ queryKey: ['messages-list'] });
+    qc.invalidateQueries({ queryKey: ['message-folders'] });
+  };
+
+  /**
+   * Anything that changes which threads are on screen clears the selection.
+   *
+   * The toolbar acts on ids, so a selection left over from another folder
+   * would archive threads the seller can no longer see — the count would say
+   * one thing and the action do another.
+   */
+  const changeView = (apply: () => void) => {
+    apply();
+    setPage(1);
+    setSelected(new Set());
+    setLabelMenuOpen(false);
+  };
+
+  const bulk = useMutation({
+    mutationFn: ({ ids, action }: { ids: string[]; action: BulkAction }) =>
+      api.post(API_ROUTES.ADMIN.CONVERSATIONS_BULK, { conversationIds: ids, action }),
+    onSuccess: () => {
+      setSelected(new Set());
+      refetchLists();
+      qc.invalidateQueries({ queryKey: ['message-thread'] });
+    },
+    onError: (e: Error) => dialog.alert(e.message),
+  });
+
+  /**
+   * Starring is its own mutation, not a `bulk` call.
+   *
+   * `bulk` clears the selection when it succeeds, which is right for filing —
+   * those threads have left the folder. Starring leaves them exactly where
+   * they are, so wiping a half-built selection because someone starred one row
+   * is just losing their work.
+   */
+  const toggleStar = useMutation({
+    mutationFn: ({ id, starred }: { id: string; starred: boolean }) =>
+      api.post(API_ROUTES.ADMIN.CONVERSATIONS_BULK, {
+        conversationIds: [id],
+        action: starred ? 'unstar' : 'star',
+      }),
+    onSuccess: () => {
+      refetchLists();
+      qc.invalidateQueries({ queryKey: ['message-thread'] });
+    },
+    onError: (e: Error) => dialog.alert(e.message),
+  });
+
+  const sendReply = useMutation({
+    mutationFn: (body: string) =>
+      api.post(API_ROUTES.ADMIN.CONVERSATION_MESSAGES(activeId!), { body }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QK.thread(activeId) });
+      refetchLists();
+    },
+    onError: (e: Error) => dialog.alert(e.message),
+  });
+
+  const saveNote = useMutation({
+    mutationFn: (body: string) =>
+      api.put(API_ROUTES.ADMIN.CONVERSATION_BUYER_NOTE(activeId!), { body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.buyer(activeId) }),
+    onError:   (e: Error) => dialog.alert(e.message),
+  });
+
+  const setLabels = useMutation({
+    mutationFn: (labelIds: string[]) =>
+      api.put(API_ROUTES.ADMIN.CONVERSATION_LABELS(activeId!), { labelIds }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: QK.thread(activeId) }); refetchLists(); },
+    onError:   (e: Error) => dialog.alert(e.message),
+  });
+
+  const createLabel = useMutation({
+    mutationFn: (name: string) => api.post(API_ROUTES.ADMIN.MESSAGE_LABELS, { name }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['message-labels'] }),
+    onError:   (e: Error) => dialog.alert(e.message),
+  });
+
+  const saveAutoReply = useMutation({
+    mutationFn: ({ message, activeUntil }: { message: string; activeUntil: string | null }) =>
+      api.put(API_ROUTES.ADMIN.MESSAGE_AUTO_REPLY, { message, activeUntil, enabled: activeUntil !== null }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['message-auto-reply'] }),
+    onError:   (e: Error) => dialog.alert(e.message),
+  });
+
+  const rows    = useMemo(() => listQuery.data?.items ?? [], [listQuery.data]);
+
+  /**
+   * Restore appears whenever something filed is selected, not only inside
+   * Trash and Spam.
+   *
+   * Archived threads have no folder of their own — the reference offers
+   * Archive as an action, not a place — so they surface under All. Gating
+   * Restore on the folder meant archiving was a one-way trip: the thread was
+   * visible in All with no way to bring it back.
+   */
+  const anyFiledSelected = useMemo(
+    () => rows.some((r) => selected.has(r.id) && ['ARCHIVED', 'TRASHED', 'SPAM'].includes(r.status)),
+    [rows, selected],
+  );
+  const counts  = foldersQuery.data;
+  const allLabels = labelsQuery.data ?? [];
+  const thread  = threadQuery.data ?? null;
+  const total   = listQuery.data?.meta.totalPages ?? 1;
+
+  // Opening a thread marks it read; the badge must follow immediately or the
+  // seller sees an unread count for a message they are looking at.
   useEffect(() => {
-    const orderId = searchParams.get('orderId');
-    if (orderId && conversations.length > 0) {
-      const conv = conversations.find((c) => c.orderId === orderId);
-      if (conv) setSelectedId(conv.id);
-    }
-  }, [searchParams, conversations]);
+    if (!activeId) return;
+    api.post(API_ROUTES.ADMIN.CONVERSATION_READ(activeId), {})
+      .then(() => refetchLists())
+      .catch(() => undefined);
+    // refetchLists is stable enough for this effect's purpose; re-running on
+    // every render would fire a read request per render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId]);
+
+  const toggleSelect = (id: string, on: boolean) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id); else next.delete(id);
+      return next;
+    });
+
+  const act = (action: BulkAction) => {
+    if (!selected.size) return;
+    bulk.mutate({ ids: [...selected], action });
+  };
+
+  const addLabel = async () => {
+    const name = await dialog.prompt('Name the new label', { title: 'New label', placeholder: 'Custom order' });
+    if (name?.trim()) createLabel.mutate(name.trim());
+  };
+
+  if (!isReady) return <div className="p-8 text-sm text-muted">Loading…</div>;
+
+  const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
 
   return (
-    /* Break out of main's p-6 lg:p-8 to fill full height */
-    <div className="flex -mx-6 -my-6 lg:-mx-8 lg:-my-8 bg-white" style={{ height: 'calc(100vh - 64px)' }}>
-
-      {/* ── Left: Conversation list ── */}
-      <div className="w-[340px] flex-shrink-0 border-r flex flex-col overflow-hidden">
-
-        {/* Header */}
-        <div className="px-4 py-3 border-b">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-secondary">Messages</h2>
-            {unreadTotal > 0 && (
-              <span className="bg-primary text-white text-xs font-bold rounded-full px-2 py-0.5">
-                {unreadTotal} unread
-              </span>
-            )}
-          </div>
-
-          {/* Search */}
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
+    <div className="flex h-[calc(100vh-4rem)] flex-col p-6">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <AdminPageHeader title="Messages" />
+        <div className="flex items-center gap-3">
+          <label className="relative w-72">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+            <span className="sr-only">Search your messages</span>
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search customer, order..."
-              className="w-full border rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              onChange={(e) => changeView(() => setSearch(e.target.value))}
+              placeholder="Search your messages"
+              className="w-full rounded-full border border-border bg-surface py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
-          </div>
+          </label>
 
-          {/* Status filter tabs */}
-          <div className="flex gap-1 overflow-x-auto pb-0.5">
-            {[
-              { value: '',         label: 'All'     },
-              { value: 'OPEN',     label: openCount    > 0 ? `Open (${openCount})`     : 'Open'     },
-              { value: 'PENDING',  label: pendingCount > 0 ? `Pending (${pendingCount})`: 'Pending'  },
-              { value: 'RESOLVED', label: resolvedCount > 0 ? `Resolved (${resolvedCount})` : 'Resolved' },
-            ].map((tab) => (
-              <button
-                key={tab.value}
-                onClick={() => setStatusFilter(tab.value)}
-                className={[
-                  'flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors',
-                  statusFilter === tab.value
-                    ? 'bg-secondary text-white'
-                    : 'text-muted hover:text-secondary hover:bg-[#F3F4F6]',
-                ].join(' ')}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* List */}
-        <div className="flex-1 overflow-y-auto divide-y">
-          {isLoading ? (
-            Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="p-4 animate-pulse">
-                <div className="flex gap-3">
-                  <div className="w-9 h-9 bg-gray-100 rounded-full flex-shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-3 bg-gray-100 rounded w-2/3" />
-                    <div className="h-3 bg-gray-100 rounded w-full" />
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : conversations.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted">
-              No conversations to see here!
-            </div>
-          ) : (
-            conversations.map((conv) => (
-              <AdminConversationItem
-                key={conv.id}
-                conversation={conv}
-                isSelected={selectedId === conv.id}
-                onClick={() => setSelectedId(conv.id)}
-              />
-            ))
+          {canWriteShopData && autoReplyQuery.data && (
+            <AutoReplyMenu
+              value={autoReplyQuery.data}
+              saving={saveAutoReply.isPending}
+              onSave={async (message, activeUntil) => { await saveAutoReply.mutateAsync({ message, activeUntil }); }}
+            />
           )}
         </div>
       </div>
 
-      {/* ── Right: Thread ── */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {selectedId ? (
-          <AdminMessageThread
-            conversationId={selectedId}
-            onStatusChange={() => queryClient.invalidateQueries({ queryKey: ['admin-conversations'] })}
-          />
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-            <svg className="w-16 h-16 text-muted mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-            </svg>
-            <p className="font-medium text-secondary mb-1">Select a conversation</p>
-            <p className="text-sm text-muted">Click any message on the left to start reading</p>
+      <div className="flex min-h-0 flex-1 gap-5">
+        {/* ── Folders ──────────────────────────────────────────────────── */}
+        <nav className="w-56 shrink-0 space-y-0.5" aria-label="Mail folders">
+          {FOLDERS.map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => changeView(() => { setFolder(f); setActiveId(null); })}
+              aria-current={folder === f ? 'page' : undefined}
+              className={`flex w-full items-center justify-between rounded-button px-3 py-2 text-left text-sm ${
+                folder === f ? 'bg-background font-semibold text-secondary' : 'text-muted hover:bg-background/60'
+              }`}
+            >
+              {FOLDER_LABELS[f]}
+              {counts && counts[f] > 0 && <span className="text-xs">{counts[f]}</span>}
+            </button>
+          ))}
+        </nav>
+
+        {/* ── List ─────────────────────────────────────────────────────── */}
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface">
+          <div className="flex flex-wrap items-center gap-1 border-b border-border px-4 py-2">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={(e) => setSelected(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())}
+              aria-label="Select all conversations on this page"
+              className="mr-2 h-4 w-4 rounded border-border"
+            />
+            <ToolbarButton icon={Trash2}     label="Trash"       onClick={() => act('trash')}   disabled={!selected.size} />
+            <ToolbarButton icon={Mail}       label="Mark unread" onClick={() => act('unread')}  disabled={!selected.size} />
+            <ToolbarButton icon={MailOpen}   label="Mark read"   onClick={() => act('read')}    disabled={!selected.size} />
+            <ToolbarButton icon={ShieldAlert} label="Spam"       onClick={() => act('spam')}    disabled={!selected.size} />
+            <ToolbarButton icon={Archive}    label="Archive"     onClick={() => act('archive')} disabled={!selected.size} />
+            {anyFiledSelected && (
+              <ToolbarButton icon={Undo2} label="Restore" onClick={() => act('restore')} disabled={!selected.size} />
+            )}
+
+            {canWriteShopData && (
+              <div className="relative ml-auto">
+                <button
+                  type="button"
+                  onClick={() => setLabelMenuOpen((v) => !v)}
+                  aria-expanded={labelMenuOpen}
+                  className="flex items-center gap-1.5 rounded-button px-2.5 py-1.5 text-sm text-muted hover:bg-background hover:text-secondary"
+                >
+                  <Tag className="h-4 w-4" aria-hidden="true" /> Labels
+                </button>
+                {labelMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setLabelMenuOpen(false)} />
+                    <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-card border border-border bg-surface py-2 shadow-lg">
+                      {allLabels.length === 0 && <p className="px-4 py-2 text-xs text-muted">No labels yet.</p>}
+                      {allLabels.map((l) => (
+                        <span key={l.id} className="flex items-center justify-between px-4 py-1.5 text-sm">
+                          <span className={`rounded px-2 py-0.5 text-xs ${LABEL_CHIP[l.color]}`}>{l.name}</span>
+                          <span className="text-xs text-muted">{l._count?.links ?? 0}</span>
+                        </span>
+                      ))}
+                      <div className="my-1 border-t border-border" />
+                      <button
+                        type="button"
+                        onClick={() => { setLabelMenuOpen(false); void addLabel(); }}
+                        className="w-full px-4 py-2 text-left text-sm text-primary hover:bg-background"
+                      >
+                        New label
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {listQuery.isLoading ? (
+              <p className="flex items-center gap-2 px-5 py-16 text-sm text-muted">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Loading…
+              </p>
+            ) : listQuery.isError ? (
+              <p className="px-5 py-16 text-sm text-error">{(listQuery.error as Error).message}</p>
+            ) : (
+              <ConversationList
+                rows={rows}
+                selected={selected}
+                activeId={activeId}
+                compact={Boolean(activeId)}
+                onSelect={toggleSelect}
+                onOpen={setActiveId}
+                onToggleStar={(row) => toggleStar.mutate({ id: row.id, starred: row.isStarred })}
+              />
+            )}
+          </div>
+
+          {total > 1 && (
+            <div className="flex items-center justify-center gap-4 border-t border-border py-3 text-sm">
+              <button type="button" disabled={page <= 1} onClick={() => { setPage(page - 1); setSelected(new Set()); }} className="rounded-full border border-border px-4 py-1.5 disabled:opacity-50">Previous</button>
+              <span className="text-muted">Page {page} of {total}</span>
+              <button type="button" disabled={page >= total} onClick={() => { setPage(page + 1); setSelected(new Set()); }} className="rounded-full border border-border px-4 py-1.5 disabled:opacity-50">Next</button>
+            </div>
+          )}
+        </section>
+
+        {/* ── Thread + buyer ───────────────────────────────────────────── */}
+        {activeId && (
+          <section className="flex min-h-0 w-[42rem] shrink-0 overflow-hidden rounded-card border border-border bg-surface">
+            {threadQuery.isLoading || !thread ? (
+              <p className="flex items-center gap-2 p-6 text-sm text-muted">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Loading conversation…
+              </p>
+            ) : (
+              <>
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                  <div className="flex items-center gap-1 border-b border-border px-4 py-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleStar.mutate({ id: thread.id, starred: thread.isStarred })}
+                      aria-pressed={thread.isStarred}
+                      aria-label={thread.isStarred ? 'Unstar conversation' : 'Star conversation'}
+                      className="p-1.5 text-muted hover:text-warning"
+                    >
+                      <Star className={`h-4 w-4 ${thread.isStarred ? 'fill-warning text-warning' : ''}`} aria-hidden="true" />
+                    </button>
+                    <ToolbarButton icon={Trash2}      label="Trash"   onClick={() => { bulk.mutate({ ids: [thread.id], action: 'trash' }); setActiveId(null); }} />
+                    <ToolbarButton icon={Mail}        label="Unread"  onClick={() => { bulk.mutate({ ids: [thread.id], action: 'unread' }); setActiveId(null); }} />
+                    <ToolbarButton icon={ShieldAlert} label="Spam"    onClick={() => { bulk.mutate({ ids: [thread.id], action: 'spam' }); setActiveId(null); }} />
+                    <ToolbarButton icon={Archive}     label="Archive" onClick={() => { bulk.mutate({ ids: [thread.id], action: 'archive' }); setActiveId(null); }} />
+                    <button
+                      type="button"
+                      onClick={() => setActiveId(null)}
+                      aria-label="Close conversation"
+                      className="ml-auto p-1.5 text-muted hover:text-secondary"
+                    >
+                      <X className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+
+                  <ThreadView
+                    conversation={thread}
+                    sending={sendReply.isPending}
+                    onSend={async (body) => { await sendReply.mutateAsync(body); }}
+                  />
+                </div>
+
+                {canWriteShopData && (
+                  <BuyerPanel
+                    buyer={buyerQuery.data ?? null}
+                    labels={thread.labels}
+                    allLabels={allLabels}
+                    savingNote={saveNote.isPending}
+                    onSaveNote={async (body) => { await saveNote.mutateAsync(body); }}
+                    onToggleLabel={(labelId) => {
+                      const has  = thread.labels.some((l) => l.id === labelId);
+                      const next = has
+                        ? thread.labels.filter((l) => l.id !== labelId).map((l) => l.id)
+                        : [...thread.labels.map((l) => l.id), labelId];
+                      setLabels.mutate(next);
+                    }}
+                  />
+                )}
+              </>
+            )}
+          </section>
         )}
       </div>
     </div>
+  );
+}
+
+function ToolbarButton({
+  icon: Icon, label, onClick, disabled,
+}: { icon: typeof Trash2; label: string; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={label}
+      className="flex items-center gap-1.5 rounded-button px-2.5 py-1.5 text-sm text-muted hover:bg-background hover:text-secondary disabled:opacity-40 disabled:hover:bg-transparent"
+    >
+      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <span className="hidden lg:inline">{label}</span>
+    </button>
   );
 }
