@@ -13,12 +13,15 @@ import { useSession } from 'next-auth/react';
 // Components that fetch data server-side via `serverApi()` — a value that
 // only lived in localStorage would be invisible to those requests, so the
 // switcher would silently do nothing on any server-rendered page.
-export const STORE_CONTEXT_COOKIE = 'ezihubb-store-context';
+// Imported, not declared here, and deliberately not re-exported: see the note
+// on the constants in store-context-shared.ts. Anything server-side must take
+// them from that module, or it gets a client reference instead of the string.
+import { STORE_CONTEXT_COOKIE } from './store-context-shared';
+
 const COOKIE_NAME = STORE_CONTEXT_COOKIE;
 const CHANGE_EVENT = 'ezihubb-store-context-change';
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
-export const STORE_CONTEXT_HEADER = 'X-Store-Context';
 
 export function getStoreContext(): string | null {
   if (typeof document === 'undefined') return null;

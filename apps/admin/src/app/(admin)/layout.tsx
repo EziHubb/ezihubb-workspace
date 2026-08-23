@@ -4,8 +4,7 @@ import { headers, cookies } from 'next/headers';
 import { authOptions } from '../../lib/auth.options';
 import { AdminSidebar, AdminMobileNav } from '../../components/layout/AdminSidebar';
 // import { GetHelpButton } from '../../components/layout/GetHelpButton'; // temporarily unmounted — see below
-import { STORE_CONTEXT_COOKIE } from '../../lib/store-context';
-import { isActingAsShopOwner, resolveInStoreMode } from '../../lib/store-context-shared';
+import { isActingAsShopOwner, resolveInStoreMode, STORE_CONTEXT_COOKIE } from '../../lib/store-context-shared';
 import { ServerStoreModeProvider } from '../../lib/server-store-mode';
 import { PLATFORM_ONLY_PREFIXES, SELF_SERVICE_PREFIXES } from '../../lib/route-categories';
 

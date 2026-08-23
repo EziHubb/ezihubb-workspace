@@ -2,7 +2,11 @@ import axios, { AxiosRequestConfig, AxiosError } from 'axios';
 import { getSession } from 'next-auth/react';
 import { getServerSession } from 'next-auth';
 import { authOptions } from './auth.options';
-import { getStoreContext, STORE_CONTEXT_HEADER, STORE_CONTEXT_COOKIE } from './store-context';
+import { getStoreContext } from './store-context';
+// Constants from the shared module, never from store-context: serverApi()
+// below reads the cookie, and a 'use client' export reaches it as a client
+// reference rather than the string. See store-context-shared.ts.
+import { STORE_CONTEXT_HEADER, STORE_CONTEXT_COOKIE } from './store-context-shared';
 
 // ── Base URL ──────────────────────────────────────────────────────────────────
 
