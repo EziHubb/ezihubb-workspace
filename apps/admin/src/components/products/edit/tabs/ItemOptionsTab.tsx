@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  X, Plus, Settings,
+  X, Plus, Settings, Lock,
 } from 'lucide-react';
 import { Select } from '@ezihubb/ui';
 import { api } from '../../../../lib/api-client';
@@ -20,6 +20,7 @@ import { ManageVariationsModal } from '../ManageVariationsModal';
 import { CustomOptionsEditor } from '../CustomOptionsEditor';
 import { AttributeSearchSelect } from '../AttributeSearchSelect';
 import { ShowMoreAttributes } from '../ShowMoreAttributes';
+import { useListingImages } from '../ListingImagesContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 // VariationOption, VariationGroup, VariationSettings are re-exported from types.ts
@@ -229,12 +230,14 @@ function VariationOptionRow({
   showPhoto,
   productImages,
   productId,
+  variationName,
   onToggle,
 }: {
   option:        VariationOption;
   showPhoto:     boolean;
   productImages: ProductImage[];
   productId:     string;
+  variationName: string;
   onToggle:      (available: boolean) => void;
 }) {
   return (
@@ -246,6 +249,7 @@ function VariationOptionRow({
             option={option}
             productId={productId}
             productImages={productImages}
+            variationName={variationName}
           />
         </td>
       )}
@@ -283,8 +287,26 @@ function VariationOptionRow({
  * photo that resolves to nothing on the storefront — with no error anywhere to
  * explain why that option shows no picture.
  */
-function shopperVisibleImages(images: ProductImage[] | undefined): ProductImage[] {
-  return (images ?? []).filter((img) => img.type === 'MOCKUP');
+function shopperVisibleImages(images: ProductImage[]): ProductImage[] {
+  return images.filter((img) => img.type === 'MOCKUP');
+}
+
+/**
+ * Variations need photos and a category before they mean anything: options are
+ * linked to photos, and the category decides which variation types are offered
+ * and which of them shoppers can filter on. Letting someone build variations
+ * first only produces work they have to redo.
+ */
+function useVariationReadiness() {
+  const images = shopperVisibleImages(useListingImages());
+  const { watch } = useFormContext<ProductEditFormValues>();
+  const categoryId = watch('primaryCategoryId');
+
+  const missing: string[] = [];
+  if (images.length === 0) missing.push('at least one photo');
+  if (!categoryId)         missing.push('a category');
+
+  return { images, ready: missing.length === 0, missing };
 }
 
 // Shared by the section header and the summary table below it: the header has
@@ -302,12 +324,19 @@ function useVariationGroups(productId: string) {
 
 function VariationsSummaryTable({
   product,
+  ready,
   onManage,
 }: {
   product:  AdminProductDto;
+  /** False while the listing still lacks photos or a category. */
+  ready:    boolean;
   onManage: () => void;
 }) {
   const qc = useQueryClient();
+
+  // Resolved from the form, not from `product.images` — the latter is a server
+  // snapshot that never sees photos uploaded during this session.
+  const listingImages = shopperVisibleImages(useListingImages());
 
   const { data: groups = [], isLoading } = useVariationGroups(product.id);
 
@@ -349,7 +378,8 @@ function VariationsSummaryTable({
         <button
           type="button"
           onClick={onManage}
-          className="ml-auto flex items-center gap-1.5 text-sm font-semibold text-primary border border-primary/30 hover:bg-primary/5 px-3 py-2 rounded-button transition-colors shrink-0"
+          disabled={!ready}
+          className="ml-auto flex items-center gap-1.5 text-sm font-semibold text-primary border border-primary/30 hover:bg-primary/5 px-3 py-2 rounded-button transition-colors shrink-0 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
         >
           <Plus className="w-4 h-4" />
           Add variations
@@ -393,8 +423,9 @@ function VariationsSummaryTable({
                     <VariationOptionRow
                       key={opt.id}
                       option={opt}
+                      variationName={group.name}
                       showPhoto={showPhoto}
-                      productImages={shopperVisibleImages(product.images)}
+                      productImages={listingImages}
                       productId={product.id}
                       onToggle={(available) => updateOption(group.id, opt.id, { isAvailable: available })}
                     />
@@ -428,6 +459,8 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
   const { data: variationGroups = [], isSuccess: variationsLoaded } = useVariationGroups(product.id);
   const hasVariations = variationsLoaded && variationGroups.length > 0;
 
+  const { ready, missing, images: listingImages } = useVariationReadiness();
+
   return (
     <div className="max-w-[1040px] mx-auto px-6 py-8 space-y-6">
       <div>
@@ -441,7 +474,7 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
           title="Variations"
           description="Add options like colour, size, or material that may affect your available inventory quantities."
           action={
-            hasVariations ? (
+            hasVariations && ready ? (
               <button
                 type="button"
                 onClick={() => setVariationsModalOpen(true)}
@@ -453,7 +486,28 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
             ) : undefined
           }
         >
-          <VariationsSummaryTable product={product} onManage={() => setVariationsModalOpen(true)} />
+          {/* Blocked rather than merely disabled: a greyed-out button that never
+              says why is the thing that sends people to support. Existing
+              variations still render below so nothing looks lost. */}
+          {!ready && (
+            <div className="flex items-start gap-3 p-4 mb-4 rounded-lg border border-border bg-muted/5">
+              <Lock className="w-4 h-4 text-muted mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-secondary">
+                  Add {missing.join(' and ')} first
+                </p>
+                <p className="text-sm text-muted mt-0.5">
+                  Variations are tied to your photos, and the category decides which
+                  variation types buyers can filter on.
+                </p>
+              </div>
+            </div>
+          )}
+          <VariationsSummaryTable
+            product={product}
+            ready={ready}
+            onManage={() => setVariationsModalOpen(true)}
+          />
         </TabSection>
 
         {/* ── Custom options ────────────────────────────────────────────── */}
@@ -551,7 +605,7 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
 
       {/* Variations modal — ManageVariationsModal */}
       <ManageVariationsModal
-        productImages={shopperVisibleImages(product.images)}
+        productImages={listingImages}
         productId={product.id}
         isOpen={variationsModalOpen}
         onClose={() => setVariationsModalOpen(false)}

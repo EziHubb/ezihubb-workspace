@@ -21,6 +21,7 @@ import type { AdminProductDto, AdminProductDetailDto, ProductEditFormValues } fr
 import { PhotoVideoTab }      from './tabs/PhotoVideoTab';
 import { ItemDetailsTab }     from './tabs/ItemDetailsTab';
 import { ItemOptionsTab }     from './tabs/ItemOptionsTab';
+import { ListingImagesProvider } from './ListingImagesContext';
 import { PricingShippingTab } from './tabs/PricingShippingTab';
 import { HowItsMadeTab }      from './tabs/HowItsMadeTab';
 import { SettingsTab }        from './tabs/SettingsTab';
@@ -144,8 +145,16 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
   // containing block needs to span the FULL scrollable content, and reaching
   // across a negative-margin-bled boundary into an ancestor scroll container
   // was exactly what made the tab nav/footer fail to stay pinned.
-  useEffect(() => {
-    setScrollContainer(scrollAreaRef.current);
+  //
+  // A callback ref, not a mount effect. In create mode this component returns
+  // an "Initializing…" block while the draft is being set up, so the scroll
+  // region is not in the tree on first mount: a `useEffect(…, [])` read a null
+  // ref, stored null, and never ran again. scrollToSection() bails out when
+  // the container is null, which is why every tab in the New listing page was
+  // inert while the same tabs worked fine when editing an existing listing.
+  const attachScrollArea = useCallback((el: HTMLDivElement | null) => {
+    scrollAreaRef.current = el;
+    setScrollContainer(el);
   }, []);
 
   const scrollToSection = useCallback((id: TabId) => {
@@ -354,6 +363,10 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
 
   return (
     <FormProvider {...form}>
+      {/* Inside the form provider because useListingImages() resolves the
+          `imageIds` field; seeded from the server snapshot, then topped up by
+          whatever the Photo & Video tab attaches during the session. */}
+      <ListingImagesProvider initialImages={product?.images ?? []}>
       {/* h-full alone leaves a gap at the bottom equal to 2× the parent's
           padding: the negative margin shifts this box up to bleed into
           <main>'s padding, but margin never changes an element's own height,
@@ -368,7 +381,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
             the full height (breadcrumb+title+nav+all sections) instead of just
             the short header wrapper — that mismatch was why the nav detached
             and scrolled away instead of staying pinned. */}
-        <div ref={scrollAreaRef} className="flex-1 min-h-0 overflow-y-auto">
+        <div ref={attachScrollArea} className="flex-1 min-h-0 overflow-y-auto">
 
           {/* Breadcrumb + title scroll away with the page; only the tab strip below stays pinned — matches Etsy's Shop Manager listing editor. */}
           <div className="bg-surface">
@@ -666,6 +679,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
           </div>
         )}
       </div>
+      </ListingImagesProvider>
     </FormProvider>
   );
 }

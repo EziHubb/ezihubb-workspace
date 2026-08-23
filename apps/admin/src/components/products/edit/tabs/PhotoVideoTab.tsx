@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import type { ProductEditFormValues, AdminProductDto, ProductImage } from '../types';
 import { ThumbnailCropModal } from '../ThumbnailCropModal';
+import { useListingImagesMap } from '../ListingImagesContext';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 
@@ -738,13 +739,10 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
   const [altEditTarget,  setAltEditTarget]  = useState<{ id: string; current: string } | null>(null);
   const [showCropModal,  setShowCropModal]  = useState(false);
 
-  // Newly attached images not yet in product.images (added during this session)
-  const [localImages, setLocalImages] = useState<ProductImage[]>([]);
-
-  // Build lookup map: initial server images + images added this session
-  const imageMap = Object.fromEntries(
-    [...(product.images ?? []), ...localImages].map((img) => [img.id, img]),
-  );
+  // Images attached this session live in the shell's provider, not in local
+  // state, so every other tab can resolve them too — the variation photo
+  // picker in Item Options reads the same map.
+  const { byId: imageMap, registerImages } = useListingImagesMap();
 
   const primaryImage = imageIds[0] ? imageMap[imageIds[0]] : null;
 
@@ -762,10 +760,10 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
   const handleCropApply = (crop: Crop) => setValue('thumbnailCropData', crop as unknown as Record<string, number>, { shouldDirty: true });
 
   const handleImagesAdded = (images: { id: string; url: string }[]) => {
-    // Keep a local copy so imageMap can resolve the new IDs immediately
-    setLocalImages((prev) => [
-      ...prev,
-      ...images.map((img, i) => ({
+    // Register with the shell so these ids resolve immediately — here and in
+    // every other tab that needs to show the listing's photos.
+    registerImages(
+      images.map((img, i) => ({
         id:        img.id,
         url:       img.url,
         isPrimary: imageIds.length === 0 && i === 0,
@@ -774,7 +772,7 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
         type:      'MOCKUP' as const,
         printSide: null,
       } satisfies ProductImage)),
-    ]);
+    );
     setValue('imageIds', [...imageIds, ...images.map((img) => img.id)], { shouldDirty: true });
   };
 

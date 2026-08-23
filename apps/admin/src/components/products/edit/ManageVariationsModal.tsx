@@ -5,8 +5,8 @@ import { useDialog } from '../../../contexts/DialogContext';
 import Image from 'next/image';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  X, Plus, Trash2, Pencil, ChevronLeft,
-  ArrowRight, AlignLeft, Palette, LayoutGrid, Layers, ImageIcon,
+  X, Plus, Trash2, Pencil,
+  Layers, ImageIcon, GripVertical, ChevronDown,
 } from 'lucide-react';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -16,7 +16,7 @@ import { VariantComboGrid } from './VariantComboGrid';
 import { VariantImagePickerModal } from './VariantImagePicker';
 import type {
   VariationGroup, VariationSettings, ProductVariantRow,
-  VariantEditPatch, ApplyVariationsPayload, ProductImage, VariationOption,
+  VariantEditPatch, ApplyVariationsPayload, ProductImage,
 } from './types';
 import { pricedGroupIds } from './helpers';
 
@@ -55,87 +55,111 @@ type DisplayType = 'dropdown' | 'color_swatch' | 'button' | 'image';
 
 const inputCls = 'w-full px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted';
 
-// ─── Tag input (text pills) ───────────────────────────────────────────────────
+// ─── OptionCombobox ───────────────────────────────────────────────────────────
+// Type a value, or pick one from the suggestions for this variation type.
+//
+// The suggestions are the point: an option taken from this list is one buyers
+// can filter by, and a typed-in one is not. Offering both from a single control
+// keeps that from being a decision the seller has to understand up front.
+const COLOUR_NAMES = ['Black', 'White', 'Grey', 'Beige', 'Brown', 'Red', 'Orange', 'Yellow', 'Green', 'Blue', 'Purple', 'Pink', 'Gold', 'Silver'];
 
-function TagInput({
-  values, onAdd, placeholder,
+const OPTION_SUGGESTIONS: Record<string, string[]> = {
+  'Primary colour':   COLOUR_NAMES,
+  'Secondary colour': COLOUR_NAMES,
+};
+
+/**
+ * Swatch colour for a colour option, derived from its name.
+ *
+ * The seller is never asked to pick a hex: colour variations use the same
+ * "Enter an option…" box as every other type, so a recognised name is the only
+ * signal available — and the one they already gave. An unrecognised name simply
+ * gets no swatch rather than a wrong one.
+ */
+const COLOUR_HEX: Record<string, string> = {
+  black: '#000000', white: '#FFFFFF', grey: '#9CA3AF', beige: '#E8DCC8',
+  brown: '#8B5E3C', red: '#DC2626', orange: '#EA580C', yellow: '#EAB308',
+  green: '#16A34A', blue: '#2563EB', purple: '#7C3AED', pink: '#EC4899',
+  gold: '#D4AF37', silver: '#C0C0C0',
+};
+
+function OptionCombobox({
+  taken, suggestions, onAdd,
 }: {
-  values: string[];
-  onAdd:  (v: string) => void;
-  placeholder?: string;
+  taken:       string[];
+  suggestions: string[];
+  onAdd:       (v: string) => void;
 }) {
   const [input, setInput] = useState('');
+  const [open,  setOpen]  = useState(false);
 
-  const commit = () => {
-    const t = input.trim();
-    if (t && !values.includes(t)) onAdd(t);
+  // Case-insensitive: "black" and "Black" are the same option to a shopper, and
+  // letting both in produces two variant combinations that mean one thing.
+  const takenLower = taken.map((t) => t.toLowerCase());
+
+  const commit = (raw: string) => {
+    const t = raw.trim();
+    if (!t || takenLower.includes(t.toLowerCase())) return;
+    onAdd(t);
     setInput('');
+    setOpen(false);
   };
 
-  return (
-    <div className="flex items-center gap-2">
-      <input
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit(); } }}
-        placeholder={placeholder ?? 'Type a value, press Enter…'}
-        className={`${inputCls} flex-1`}
-      />
-      <button
-        type="button"
-        onClick={commit}
-        disabled={!input.trim()}
-        className="px-3 py-2 text-sm font-semibold text-primary border border-primary/30 rounded-button hover:bg-primary/5 disabled:opacity-30 transition-colors"
-      >
-        Add
-      </button>
-    </div>
+  const remaining = suggestions.filter(
+    (s) => !takenLower.includes(s.toLowerCase()) && s.toLowerCase().includes(input.trim().toLowerCase()),
   );
-}
-
-// ─── ColorOptionInput ─────────────────────────────────────────────────────────
-
-function ColorOptionInput({
-  onAdd,
-}: {
-  onAdd: (opt: { value: string; colorHex: string }) => void;
-}) {
-  const [name, setName] = useState('');
-  const [hex,  setHex]  = useState('#E85D3F');
-
-  const commit = () => {
-    const t = name.trim();
-    if (!t) return;
-    onAdd({ value: t, colorHex: hex });
-    setName('');
-  };
 
   return (
-    <div className="flex items-end gap-2">
-      <div>
-        <label className="block text-[11px] text-muted uppercase tracking-wide mb-1">Colour</label>
+    <div className="flex items-start gap-3">
+      <div className="relative flex-1">
         <input
-          type="color"
-          value={hex}
-          onChange={(e) => setHex(e.target.value)}
-          className="w-10 h-10 cursor-pointer rounded-lg border border-border"
-        />
-      </div>
-      <div className="flex-1">
-        <label className="block text-[11px] text-muted uppercase tracking-wide mb-1">Name</label>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit(); } }}
-          placeholder="e.g. Khaki"
+          value={input}
+          onChange={(e) => { setInput(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          // A click on a suggestion fires after blur, so closing is deferred.
+          onBlur={() => setTimeout(() => setOpen(false), 120)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); commit(input); }
+            if (e.key === 'Escape') setOpen(false);
+          }}
+          placeholder="Enter an option…"
           className={inputCls}
         />
+
+        {suggestions.length > 0 && (
+          <button
+            type="button"
+            tabIndex={-1}
+            onMouseDown={(e) => { e.preventDefault(); setOpen((o) => !o); }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-secondary transition-colors"
+            aria-label="Show suggested options"
+          >
+            <ChevronDown className="w-4 h-4" />
+          </button>
+        )}
+
+        {open && remaining.length > 0 && (
+          <ul className="absolute z-10 left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-surface border border-border rounded-lg shadow-lg py-1">
+            {remaining.map((s) => (
+              <li key={s}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); commit(s); }}
+                  className="w-full text-left px-3 py-2 text-sm text-secondary hover:bg-muted/10 transition-colors"
+                >
+                  {s}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
+
       <button
         type="button"
-        onClick={commit}
-        disabled={!name.trim()}
-        className="px-3 py-2 text-sm font-semibold text-primary border border-primary/30 rounded-button hover:bg-primary/5 disabled:opacity-30 transition-colors mb-0.5"
+        onClick={() => commit(input)}
+        disabled={!input.trim()}
+        className="px-3 py-2 text-sm font-semibold text-secondary hover:text-primary disabled:text-muted/50 disabled:cursor-not-allowed transition-colors"
       >
         Add
       </button>
@@ -306,49 +330,89 @@ function VariationSettingsToggles({
 
 const SUGGESTED_NAMES = ['Primary colour', 'Width', 'Height', 'Depth', 'Secondary colour'];
 
-const DISPLAY_TYPES: { type: DisplayType; label: string; icon: React.ElementType }[] = [
-  { type: 'dropdown',     label: 'Dropdown',        icon: AlignLeft   },
-  { type: 'color_swatch', label: 'Color swatches',  icon: Palette     },
-  { type: 'button',       label: 'Text buttons',    icon: LayoutGrid  },
-];
+// The display type is no longer asked for: it follows from the variation type,
+// which is a rendering detail the seller has no basis to decide before they
+// have even named their options.
 
+/**
+ * Picking a variation type, then describing it.
+ *
+ * Picking a type is not a decision worth its own confirm step: choosing a chip
+ * goes straight to the editor, and "Custom variation" goes to the same editor
+ * with a name field on top. The previous "select, then press Next, then a
+ * differently-shaped Add options screen" made two screens out of what is one
+ * decision — and the second of them had no photo linking at all.
+ */
 function AddVariationGroupSheet({
   existingGroupNames,
   nextSortOrder,
+  productImages,
+  linkPhotos,
+  onToggleLinkPhotos,
   onAdd,
   onClose,
 }: {
   existingGroupNames: string[];
   nextSortOrder:      number;
+  productImages:      ProductImage[];
+  /** Owned by the parent, which also owns the "only one variation" warning. */
+  linkPhotos:         boolean;
+  onToggleLinkPhotos: (on: boolean) => void;
   onAdd:               (group: VariationGroup) => void;
   onClose:             () => void;
 }) {
-  const [step,             setStep]             = useState<1 | 2>(1);
-  const [groupName,        setGroupName]        = useState('');
-  const [showCustomInput,  setShowCustomInput]  = useState(false);
-  const [displayType,      setDisplayType]      = useState<DisplayType>('dropdown');
-  const [options,          setOptions]          = useState<{ value: string; colorHex?: string }[]>([]);
+  // null = still on the type picker. '' = custom, name not typed yet.
+  const [groupName, setGroupName] = useState<string | null>(null);
+  const [isCustom,  setIsCustom]  = useState(false);
+  // Each pending option carries its own id rather than being addressed by array
+  // position: OptionRow holds state of its own (an open photo picker, a drag
+  // highlight), so keying rows by index makes React hand that state to whatever
+  // option shifts into the slot when one above it is removed.
+  const [options,   setOptions]   = useState<{ id: string; value: string; colorHex?: string; imageId?: string | null }[]>([]);
 
   const available = SUGGESTED_NAMES.filter((n) => !existingGroupNames.includes(n));
 
-  const pickName = (n: string) => {
-    setGroupName(n);
-    setDisplayType(n.toLowerCase().includes('colour') || n.toLowerCase().includes('color') ? 'color_swatch' : 'dropdown');
-  };
+  // Colour variations get swatches; everything else is a plain dropdown. The
+  // seller used to be asked this outright, which is a rendering detail they
+  // have no way to have an opinion about yet.
+  const displayType: DisplayType =
+    !isCustom && (groupName ?? '').toLowerCase().includes('colour') ? 'color_swatch' : 'dropdown';
 
   const addOption = (opt: { value: string; colorHex?: string }) => {
-    setOptions((prev) => [...prev, opt]);
+    setOptions((prev) =>
+      prev.some((o) => o.value.toLowerCase() === opt.value.toLowerCase())
+        ? prev
+        : [...prev, { id: newLocalId(), ...opt }],
+    );
   };
+  const removeOption   = (id: string) => setOptions((prev) => prev.filter((o) => o.id !== id));
+  const setOptionImage = (id: string, imageId: string | null) =>
+    setOptions((prev) => prev.map((o) => (o.id === id ? { ...o, imageId } : o)));
+  const reorder = (fromId: string, toId: string) =>
+    setOptions((prev) => {
+      const from = prev.findIndex((o) => o.id === fromId);
+      const to   = prev.findIndex((o) => o.id === toId);
+      if (from < 0 || to < 0 || from === to) return prev;
+      const next = [...prev];
+      next.splice(to, 0, ...next.splice(from, 1));
+      return next;
+    });
 
-  const removeOption = (i: number) => {
-    setOptions((prev) => prev.filter((_, idx) => idx !== i));
-  };
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, [onClose]);
+
+  const trimmedName = (groupName ?? '').trim();
+  const canSave     = trimmedName.length > 0 && options.length > 0;
 
   const handleCreate = () => {
+    if (!canSave) return;
     onAdd({
       id:          newLocalId(),
       productId:   '',
-      name:        groupName.trim(),
+      name:        trimmedName,
       displayType,
       sortOrder:   nextSortOrder,
       options: options.map((o, i) => ({
@@ -357,187 +421,134 @@ function AddVariationGroupSheet({
         name:        o.value,
         value:       o.value.toLowerCase().replace(/\s+/g, '-'),
         colorHex:    o.colorHex,
+        // Only carried when linking is on, so turning it off before saving
+        // cannot smuggle an assignment into an unlinked variation.
+        imageId:     linkPhotos ? o.imageId ?? null : null,
+        imageUrl:    linkPhotos ? productImages.find((img) => img.id === o.imageId)?.url : undefined,
         sortOrder:   i,
         isAvailable: true,
       })),
     });
   };
 
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onClose]);
+  // ── Step 1: which type ──────────────────────────────────────────────────────
+  if (groupName === null) {
+    return (
+      <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4" onClick={onClose}>
+        <div className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-[560px]" onClick={(e) => e.stopPropagation()}>
+          <div className="px-6 pt-6 pb-2">
+            <h4 className="text-lg font-bold text-secondary">What type of variation is it?</h4>
+            <p className="text-sm text-muted mt-1.5 leading-relaxed">
+              You can add up to 2 variations. Pick one of these types so buyers can filter by
+              it — a custom variation works too, but it won&apos;t appear in filters.
+            </p>
+          </div>
 
-  return (
-    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-[440px]" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h4 className="font-semibold text-secondary">
-            {step === 1 ? 'What type of variation is it?' : `Add options for "${groupName}"`}
-          </h4>
-          <button type="button" onClick={onClose} className="p-1.5 rounded hover:bg-muted/10 text-muted">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="px-5 py-5 space-y-4">
-          {/* ── Step 1: Name + Display Type ── */}
-          {step === 1 && (
-            <>
-              <p className="text-sm text-muted leading-relaxed">
-                You can add up to 2 variations. Use the variation types listed here for peak
-                discoverability. You can add a custom variation, but buyers won&apos;t see the
-                option in filters.
-              </p>
-
-              {/* Suggested names */}
-              <div className="flex flex-wrap gap-2">
-                {available.map((name) => (
-                  <button
-                    key={name}
-                    type="button"
-                    onClick={() => { pickName(name); setShowCustomInput(false); }}
-                    className={[
-                      'px-3 py-1.5 text-sm rounded-full border-2 transition-colors',
-                      groupName === name && !showCustomInput
-                        ? 'border-primary bg-primary/5 text-primary font-semibold'
-                        : 'border-border text-muted hover:border-primary/40 hover:text-secondary',
-                    ].join(' ')}
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
-
-              {/* Create your own */}
-              {!showCustomInput ? (
+          <div className="px-6 py-5">
+            <div className="flex flex-wrap gap-2.5">
+              {available.map((name) => (
                 <button
+                  key={name}
                   type="button"
-                  onClick={() => { setShowCustomInput(true); setGroupName(''); }}
-                  className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                  onClick={() => { setIsCustom(false); setGroupName(name); }}
+                  className="px-4 py-2.5 text-sm text-secondary bg-muted/10 hover:bg-muted/20 rounded-full transition-colors"
                 >
-                  <Plus className="w-4 h-4" /> Create your own
+                  {name}
                 </button>
-              ) : (
-                <input
-                  value={groupName}
-                  onChange={(e) => setGroupName(e.target.value)}
-                  placeholder="Name your own variation…"
-                  autoFocus
-                  className={inputCls}
-                />
-              )}
+              ))}
+            </div>
 
-              {/* Display type — only if not a colour variation */}
-              {groupName && !groupName.toLowerCase().includes('colour') && !groupName.toLowerCase().includes('color') && (
-                <div>
-                  <p className="text-xs text-muted mb-2">How should options be displayed?</p>
-                  <div className="flex gap-2">
-                    {DISPLAY_TYPES.map(({ type, label, icon: Icon }) => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setDisplayType(type)}
-                        className={[
-                          'flex-1 py-2.5 text-xs border-2 rounded-lg flex flex-col items-center gap-1.5 transition-all',
-                          displayType === type
-                            ? 'border-primary bg-primary/5 text-primary font-semibold'
-                            : 'border-border text-muted hover:border-primary/40',
-                        ].join(' ')}
-                      >
-                        <Icon className="w-4 h-4" />
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* ── Step 2: Add options ── */}
-          {step === 2 && (
-            <>
-              <p className="text-sm text-muted">
-                Add the {groupName.toLowerCase()} options buyers can choose from.
-              </p>
-
-              {/* Current options */}
-              {options.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {options.map((opt, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 border border-border rounded-full text-sm text-secondary"
-                    >
-                      {opt.colorHex && (
-                        <span className="w-3.5 h-3.5 rounded-full border border-border shrink-0" style={{ backgroundColor: opt.colorHex }} />
-                      )}
-                      {opt.value}
-                      <button type="button" onClick={() => removeOption(i)} className="text-muted hover:text-red-500 transition-colors">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Input */}
-              {displayType === 'color_swatch' ? (
-                <ColorOptionInput onAdd={(o) => addOption({ value: o.value, colorHex: o.colorHex })} />
-              ) : (
-                <TagInput
-                  values={options.map((o) => o.value)}
-                  onAdd={(v) => addOption({ value: v })}
-                  placeholder={groupName === 'Size' ? 'e.g. Small, Medium, Large' : 'e.g. Option 1'}
-                />
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between px-5 py-4 border-t border-border">
-          {step === 2 ? (
-            <button type="button" onClick={() => setStep(1)}
-              className="flex items-center gap-1 text-sm font-medium text-muted hover:text-secondary transition-colors">
-              <ChevronLeft className="w-4 h-4" /> Back
+            <button
+              type="button"
+              onClick={() => { setIsCustom(true); setGroupName(''); }}
+              className="flex items-center gap-2 mt-5 text-sm font-semibold text-secondary hover:text-primary transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Create your own
             </button>
-          ) : (
+          </div>
+
+          <div className="px-6 py-4 border-t border-border">
             <button type="button" onClick={onClose}
-              className="text-sm font-medium text-muted hover:text-secondary transition-colors">
+              className="text-sm font-semibold text-secondary hover:text-primary transition-colors">
               Cancel
             </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Step 2: the same editor the Edit sheet uses ─────────────────────────────
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-[560px] max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 pt-6 pb-1 shrink-0">
+          {isCustom ? (
+            <h4 className="text-lg font-bold text-secondary">Custom variation</h4>
+          ) : (
+            <>
+              <h4 className="text-lg font-bold text-secondary">{trimmedName}</h4>
+              <p className="text-xs text-muted mt-0.5">Variation</p>
+            </>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 pb-2">
+          {isCustom && (
+            <div className="pt-4">
+              <label className="block text-sm font-semibold text-secondary mb-1.5">
+                Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                autoFocus
+                className={inputCls}
+              />
+            </div>
           )}
 
-          <div className="flex gap-2">
-            {step === 2 && (
-              <button type="button" onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-muted border border-border rounded-button hover:border-primary/40 transition-colors">
-                Cancel
-              </button>
+          <div className="pt-4">
+            <VariationOptionsEditor
+              displayType={displayType}
+              options={options.map((o) => ({
+                key:      o.id,
+                label:    o.value,
+                colorHex: o.colorHex,
+                imageId:  o.imageId ?? null,
+              }))}
+              linkPhotos={linkPhotos}
+              productImages={productImages}
+              variationName={trimmedName || 'this variation'}
+              suggestOptions={!isCustom}
+              onToggleLinkPhotos={onToggleLinkPhotos}
+              onAddOption={addOption}
+              onRemoveOption={removeOption}
+              onPickImage={setOptionImage}
+              onReorder={reorder}
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 px-6 py-4 shrink-0">
+          <button type="button" onClick={onClose}
+            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold text-muted rounded-full hover:bg-muted/10 transition-colors">
+            Cancel
+          </button>
+          <div className="flex items-center gap-3">
+            {!canSave && (
+              <span className="text-sm text-muted">
+                {trimmedName.length === 0 ? 'Name this variation' : 'Add at least 1 option'}
+              </span>
             )}
-            {step === 1 ? (
-              <button
-                type="button"
-                onClick={() => setStep(2)}
-                disabled={!groupName.trim()}
-                className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button disabled:opacity-40 transition-colors"
-              >
-                Next <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleCreate}
-                disabled={options.length === 0}
-                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button disabled:opacity-40 transition-colors"
-              >
-                Save
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={!canSave}
+              className="px-6 py-2.5 bg-secondary hover:bg-secondary/90 text-white text-sm font-bold rounded-full disabled:bg-muted/40 disabled:cursor-not-allowed transition-colors"
+            >
+              Done
+            </button>
           </div>
         </div>
       </div>
@@ -553,32 +564,57 @@ function AddVariationGroupSheet({
 // One row of the options list. Splitting it out keeps the photo cell — which
 // owns a modal of its own — from re-rendering every sibling row.
 function OptionRow({
-  option, showPhoto, productImages, onPick, onRemove,
+  label, colorHex, imageId, showPhoto, productImages, variationName,
+  index, onDropAt, onPick, onRemove,
 }: {
-  option:        VariationOption;
+  label:         string;
+  colorHex?:     string;
+  imageId:       string | null;
   showPhoto:     boolean;
   productImages: ProductImage[];
+  variationName: string;
+  index:         number;
+  onDropAt:      (fromIndex: number) => void;
   onPick:        (imageId: string | null) => void;
   onRemove:      () => void;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
-  const assigned = productImages.find((img) => img.id === option.imageId);
+  const [dragOver,   setDragOver]   = useState(false);
+  const assigned = productImages.find((img) => img.id === imageId);
 
   return (
-    <div className="flex items-center gap-2.5 px-3 py-2.5 border border-border rounded-lg">
-      {/* Reordering is not wired up yet — see the sheet's note. Rendering a
-          grab handle that does nothing would be worse than rendering none. */}
-      {option.colorHex && !showPhoto && (
+    <div
+      // Native HTML5 drag rather than a library: the list is short, the rows
+      // are plain, and dnd-kit would be a second reordering system in this app
+      // for no gain here.
+      draggable
+      onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(index)); e.dataTransfer.effectAllowed = 'move'; }}
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        const from = Number(e.dataTransfer.getData('text/plain'));
+        if (Number.isInteger(from) && from !== index) onDropAt(from);
+      }}
+      className={[
+        'flex items-center gap-2.5 px-3 py-2.5 border rounded-lg bg-surface transition-colors',
+        dragOver ? 'border-primary' : 'border-border',
+      ].join(' ')}
+    >
+      <GripVertical className="w-4 h-4 text-muted/60 shrink-0 cursor-grab active:cursor-grabbing" />
+
+      {colorHex && !showPhoto && (
         <div
           className="w-5 h-5 rounded-full border border-border shrink-0"
-          style={{ backgroundColor: option.colorHex }}
+          style={{ backgroundColor: colorHex }}
         />
       )}
 
       {showPhoto && (
         <div className="w-9 h-9 rounded-md overflow-hidden border border-border bg-background relative shrink-0">
           {assigned ? (
-            <Image src={assigned.url} alt={option.name || option.value} fill className="object-cover" sizes="36px" />
+            <Image src={assigned.url} alt={label} fill className="object-cover" sizes="36px" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <ImageIcon className="w-4 h-4 text-muted/40" />
@@ -587,7 +623,7 @@ function OptionRow({
         </div>
       )}
 
-      <span className="text-sm flex-1 text-secondary truncate">{option.name || option.value}</span>
+      <span className="text-sm flex-1 text-secondary truncate">{label}</span>
 
       {showPhoto && (
         <button
@@ -610,12 +646,110 @@ function OptionRow({
 
       {pickerOpen && (
         <VariantImagePickerModal
-          option={option}
+          // A stand-in: the picker only reads name/value/imageId, and an option
+          // being added has no id yet. Passing a made-up id would be worse.
+          option={{ id: '', groupId: '', name: label, value: label, imageId, sortOrder: 0, isAvailable: true }}
           productImages={productImages}
-          onSelect={async (imageId) => { onPick(imageId); setPickerOpen(false); }}
+          variationName={variationName}
+          onSelect={async (picked) => { onPick(picked); setPickerOpen(false); }}
           onClose={() => setPickerOpen(false)}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * The one options editor, shared by adding a variation and editing one.
+ *
+ * They used to be two different screens: the Add flow ended in a pill list with
+ * no photo linking at all, so a seller had to save, reopen a differently-shaped
+ * Edit modal, and only then could link photos. Same job, two looks, one of them
+ * missing half the controls. Callers still own their own header and footer —
+ * Add needs Back/Save, Edit needs Delete/Done — but everything between them is
+ * this.
+ */
+function VariationOptionsEditor({
+  displayType, options, linkPhotos, productImages, variationName, suggestOptions,
+  onToggleLinkPhotos, onAddOption, onRemoveOption, onPickImage, onReorder,
+}: {
+  displayType:        DisplayType;
+  /** `key` is a VariationOption.id when editing, an index while adding. */
+  options:            { key: string; label: string; colorHex?: string; imageId: string | null }[];
+  linkPhotos:         boolean;
+  productImages:      ProductImage[];
+  /** Shown in the photo picker so the seller knows what they are choosing for. */
+  variationName:      string;
+  /** Suggested values exist for the named types; a custom variation has none. */
+  suggestOptions:     boolean;
+  onToggleLinkPhotos: (on: boolean) => void;
+  onAddOption:        (opt: { value: string; colorHex?: string }) => void;
+  onRemoveOption:     (key: string) => void;
+  onPickImage:        (key: string, imageId: string | null) => void;
+  onReorder:          (fromKey: string, toKey: string) => void;
+}) {
+  // No padding of its own — the Add sheet already sits inside a padded body,
+  // and nesting one inside the other doubled the inset.
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <Toggle checked={linkPhotos} onChange={onToggleLinkPhotos} />
+        <span className="text-sm font-medium text-secondary">Link photos to this variation</span>
+      </div>
+
+      <div className="border-t border-border" />
+
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-sm font-semibold text-secondary">Options</span>
+          <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-secondary text-white text-[11px] font-semibold">
+            {options.length}
+          </span>
+        </div>
+        <p className="text-xs text-muted leading-relaxed mb-3">
+          Shoppers pick from these. Options taken from the suggested list show up in
+          filters; custom ones won&apos;t.
+        </p>
+
+        {/* One input for every variation type, colours included — the reference
+            has no separate colour picker, and a swatch colour can be derived
+            from a recognised colour name without asking. Input above the list,
+            so a long list never pushes it off-screen. */}
+        <div className="mb-3">
+          <OptionCombobox
+            taken={options.map((o) => o.label)}
+            suggestions={suggestOptions ? (OPTION_SUGGESTIONS[variationName] ?? []) : []}
+            onAdd={(v) => onAddOption({
+              value:    v,
+              colorHex: displayType === 'color_swatch' ? COLOUR_HEX[v.trim().toLowerCase()] : undefined,
+            })}
+          />
+        </div>
+
+        <div className="space-y-2">
+          {options.map((opt, i) => (
+            <OptionRow
+              key={opt.key}
+              label={opt.label}
+              colorHex={opt.colorHex}
+              imageId={opt.imageId}
+              showPhoto={linkPhotos}
+              productImages={productImages}
+              variationName={variationName}
+              index={i}
+              // The index arrives from the drag payload, so it is only as
+              // trustworthy as the DOM was when the drag started — a row
+              // removed mid-drag would index past the end and throw.
+              onDropAt={(fromIndex) => {
+                const from = options[fromIndex];
+                if (from) onReorder(from.key, opt.key);
+              }}
+              onPick={(imageId) => onPickImage(opt.key, imageId)}
+              onRemove={() => onRemoveOption(opt.key)}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -670,6 +804,17 @@ function EditVariationGroupSheet({
     onChange({ ...group, options: group.options.filter((o) => o.id !== optionId) });
   };
 
+  // sortOrder is rewritten from the array position, so the order the seller
+  // sees is the order that gets saved.
+  const reorderOptions = (fromId: string, toId: string) => {
+    const from = group.options.findIndex((o) => o.id === fromId);
+    const to   = group.options.findIndex((o) => o.id === toId);
+    if (from < 0 || to < 0 || from === to) return;
+    const next = [...group.options];
+    next.splice(to, 0, ...next.splice(from, 1));
+    onChange({ ...group, options: next.map((o, i) => ({ ...o, sortOrder: i })) });
+  };
+
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', h);
@@ -682,65 +827,33 @@ function EditVariationGroupSheet({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
-            <h4 className="font-semibold text-secondary">Edit &quot;{group.name}&quot;</h4>
-            <p className="text-xs text-muted mt-0.5">
-              {group.options.length} option{group.options.length !== 1 ? 's' : ''} configured
-            </p>
+            <h4 className="font-semibold text-secondary">{group.name}</h4>
+            <p className="text-xs text-muted mt-0.5">Variation</p>
           </div>
           <button type="button" onClick={onClose} className="p-1.5 rounded hover:bg-muted/10 text-muted">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="px-5 py-5 space-y-5">
-          {/* Photo linking */}
-          <div className="flex items-center gap-3">
-            <Toggle checked={photoLinked} onChange={onTogglePhotos} />
-            <span className="text-sm font-medium text-secondary">Link photos to this variation</span>
-          </div>
-
-          <div className="border-t border-border" />
-
-          {/* Existing options */}
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-semibold text-secondary">Options</span>
-              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-secondary text-white text-[11px] font-semibold">
-                {group.options.length}
-              </span>
-            </div>
-            <p className="text-xs text-muted leading-relaxed mb-3">
-              Shoppers pick from these. Options taken from the suggested list show up in
-              filters; custom ones won&apos;t.
-            </p>
-
-            <div className="space-y-2">
-              {group.options.map((opt) => (
-                <OptionRow
-                  key={opt.id}
-                  option={opt}
-                  showPhoto={photoLinked}
-                  productImages={productImages}
-                  onPick={(imageId) => setOptionImage(opt.id, imageId)}
-                  onRemove={() => removeOption(opt.id)}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Add more */}
-          <div>
-            <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">Add more options</p>
-            {group.displayType === 'color_swatch' ? (
-              <ColorOptionInput onAdd={(o) => addOption({ value: o.value, colorHex: o.colorHex })} />
-            ) : (
-              <TagInput
-                values={group.options.map((o) => o.value)}
-                onAdd={(v) => addOption({ value: v })}
-                placeholder="Type a value, press Enter…"
-              />
-            )}
-          </div>
+        <div className="px-5 py-5">
+        <VariationOptionsEditor
+          displayType={group.displayType as DisplayType}
+          options={group.options.map((o) => ({
+            key:      o.id,
+            label:    o.name || o.value,
+            colorHex: o.colorHex,
+            imageId:  o.imageId ?? null,
+          }))}
+          linkPhotos={photoLinked}
+          productImages={productImages}
+          variationName={group.name}
+          suggestOptions={SUGGESTED_NAMES.includes(group.name)}
+          onToggleLinkPhotos={onTogglePhotos}
+          onAddOption={addOption}
+          onRemoveOption={removeOption}
+          onPickImage={setOptionImage}
+          onReorder={reorderOptions}
+        />
         </div>
 
         {/* Footer */}
@@ -856,6 +969,26 @@ export function ManageVariationsModal({
   // both ask first. Neither actually erases an assignment: switching off, or
   // moving the link to another group, only moves the pointer — every
   // option.imageId stays put, so turning it back on brings the photos back.
+  // The Add sheet can turn linking on before the group it applies to exists,
+  // so the intent is held here until onAdd hands over a real id.
+  const [pendingLinkPhotos, setPendingLinkPhotos] = useState(false);
+
+  const togglePendingLinkPhotos = async (on: boolean) => {
+    if (!on) { setPendingLinkPhotos(false); return; }
+
+    // Same one-variation rule as the Edit sheet, asked before the seller
+    // spends time picking photos rather than after.
+    const current = draftGroups.find((g) => g.id === draftPhotoGroupId);
+    if (current) {
+      const ok = await confirm(
+        `Photos are linked to ${current.name} right now. They'll be unlinked, and you'll need to pick photos for this variation instead.`,
+        { title: 'Move photo linking here?', confirmLabel: 'Continue' },
+      );
+      if (!ok) return;
+    }
+    setPendingLinkPhotos(true);
+  };
+
   const togglePhotoLinking = async (group: VariationGroup, on: boolean) => {
     if (!on) {
       const ok = await confirm(
@@ -1054,11 +1187,19 @@ export function ManageVariationsModal({
         <AddVariationGroupSheet
           existingGroupNames={draftGroups.map((g) => g.name)}
           nextSortOrder={draftGroups.length}
+          productImages={productImages}
+          linkPhotos={pendingLinkPhotos}
+          onToggleLinkPhotos={togglePendingLinkPhotos}
           onAdd={(group) => {
             setDraftGroups((gs) => [...gs, group]);
+            // The group only gets its id here, so the pointer can only be
+            // aimed once it exists. Toggling during the add flow records the
+            // intent; this is where it becomes the actual link.
+            if (pendingLinkPhotos) setDraftPhotoGroupId(group.id);
+            setPendingLinkPhotos(false);
             setAddingGroup(false);
           }}
-          onClose={() => setAddingGroup(false)}
+          onClose={() => { setPendingLinkPhotos(false); setAddingGroup(false); }}
         />
       )}
 

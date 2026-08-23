@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Check, ImageOff, X, ImagePlus } from 'lucide-react';
+import { Check, ImageOff, ImagePlus } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../lib/api-client';
 import type { ProductImage } from './types';
@@ -12,6 +12,8 @@ import { useDialog } from '../../../contexts/DialogContext';
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface VariantImagePickerProps {
+  /** Variation this option belongs to, for the picker subtitle. */
+  variationName?: string;
   option:        VariationOption;
   productId:     string;
   productImages: ProductImage[];
@@ -26,13 +28,16 @@ interface VariantImagePickerProps {
 export function VariantImagePickerModal({
   option,
   productImages,
+  variationName,
   onSelect,
   onClose,
 }: {
-  option:        VariationOption;
-  productImages: ProductImage[];
-  onSelect:      (imageId: string | null) => Promise<void>;
-  onClose:       () => void;
+  option:         VariationOption;
+  productImages:  ProductImage[];
+  /** Prefixes the subtitle, so "Circle" reads as "Shape: Circle". */
+  variationName?: string;
+  onSelect:       (imageId: string | null) => Promise<void>;
+  onClose:        () => void;
 }) {
   const [saving, setSaving] = useState<string | null>(null);
 
@@ -61,27 +66,18 @@ export function VariantImagePickerModal({
       >
         {/* Modal */}
         <div
-          className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-lg"
+          className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-            <div>
-              <h4 className="font-semibold text-secondary">
-                Photo for <span className="text-primary">"{option.name || option.value}"</span>
-              </h4>
-              <p className="text-xs text-muted mt-0.5">
-                Select which product photo represents this variant.
-                This photo will show when buyers choose "{option.name || option.value}".
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-button hover:bg-muted/10 text-muted transition-colors shrink-0 ml-3"
-            >
-              <X className="w-4 h-4" />
-            </button>
+          <div className="px-6 pt-6 pb-1">
+            <h4 className="text-lg font-bold text-secondary">Link a photo to this option</h4>
+            <p className="text-sm text-muted mt-0.5">
+              {variationName ? `${variationName}: ` : ''}{option.name || option.value}
+            </p>
+            <p className="text-sm text-secondary mt-4">
+              Choose the photo you want to show buyers when they view this option.
+            </p>
           </div>
 
           {/* Grid */}
@@ -93,26 +89,7 @@ export function VariantImagePickerModal({
                 <p className="text-xs mt-1">Upload photos in the Photo & Video tab first.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {/* "None" option */}
-                <button
-                  type="button"
-                  onClick={() => pick(null)}
-                  disabled={saving !== null}
-                  className={[
-                    'aspect-square rounded-lg border-2 flex flex-col items-center justify-center gap-1.5 text-xs font-medium transition-all',
-                    option.imageId == null
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-dashed border-border text-muted hover:border-primary/50 hover:text-secondary',
-                  ].join(' ')}
-                >
-                  {saving === '__none__'
-                    ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    : <ImageOff className="w-5 h-5 opacity-60" />
-                  }
-                  None
-                </button>
-
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                 {/* Product images */}
                 {productImages.map((img) => {
                   const isSelected = option.imageId === img.id;
@@ -165,16 +142,34 @@ export function VariantImagePickerModal({
                 })}
               </div>
             )}
+
+            {/* Clearing the link is its own affordance below the grid, not a
+                tile inside it — it is not one of the photos. */}
+            {productImages.length > 0 && (
+              <button
+                type="button"
+                onClick={() => pick(null)}
+                disabled={saving !== null}
+                className={[
+                  'mt-5 px-6 py-2.5 text-sm font-semibold rounded-full border-2 transition-colors',
+                  option.imageId == null
+                    ? 'border-secondary text-secondary'
+                    : 'border-border text-secondary hover:border-secondary',
+                ].join(' ')}
+              >
+                {saving === '__none__' ? 'Removing…' : 'None'}
+              </button>
+            )}
           </div>
 
           {/* Footer */}
-          <div className="px-5 pb-4 flex justify-end">
+          <div className="px-6 pb-6">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-muted border border-border rounded-button hover:border-primary/40 transition-colors"
+              className="text-sm font-semibold text-secondary hover:text-primary transition-colors"
             >
-              Close
+              Cancel
             </button>
           </div>
         </div>
@@ -189,6 +184,7 @@ export function VariantImagePicker({
   option,
   productId,
   productImages,
+  variationName,
 }: VariantImagePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const qc = useQueryClient();
@@ -243,6 +239,7 @@ export function VariantImagePicker({
         <VariantImagePickerModal
           option={option}
           productImages={productImages}
+          variationName={variationName}
           onSelect={handleSelect}
           onClose={() => setIsOpen(false)}
         />
