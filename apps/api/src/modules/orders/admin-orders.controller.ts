@@ -198,9 +198,9 @@ export class AdminOrdersController {
     return result;
   }
 
-  @Get(':id/earnings')
-  @ApiOperation({ summary: 'Get earnings breakdown for an order (fees, net earnings)' })
-  async getEarnings(@Param('id') id: string) {
-    return this.ordersService.getEarnings(id);
-  }
+  // GET :id/earnings is gone. It was Order-scoped behind a guard that only
+  // checks the caller is one of the order's vendors, so a split basket showed
+  // one shop another shop's money — see the note in orders.service.ts.
+  // The seller-facing replacement is
+  // GET /admin/order-progress/orders/:storeOrderId/earnings.
 }

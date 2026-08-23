@@ -1380,35 +1380,18 @@ export class OrdersService {
     return this.mapToDto(updated);
   }
 
-  async getEarnings(id: string): Promise<Record<string, unknown>> {
-    const order = await this.prisma.order.findUnique({
-      where: { id },
-      include: { payment: true },
-    });
-    if (!order) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Order not found' });
-
-    const subtotal         = Number(order.subtotal);
-    const shippingCost     = Number(order.shippingCost);
-    const discountAmount   = Number(order.discountAmount);
-    const affiliateDisc    = Number(order.affiliateDiscountAmount ?? 0);
-    const total            = Number(order.total);
-
-    // Platform fees (5% transaction + 3%+$0.25 payment processing)
-    const transactionFee   = Math.round(total * 0.05 * 100) / 100;
-    const processingFee    = Math.round((total * 0.03 + 0.25) * 100) / 100;
-    const netEarnings      = Math.round((total - transactionFee - processingFee) * 100) / 100;
-
-    return {
-      buyerPaid:         total,
-      itemRevenue:       subtotal,
-      shippingRevenue:   shippingCost,
-      couponDiscount:    discountAmount,
-      affiliateDiscount: affiliateDisc,
-      transactionFee,
-      processingFee,
-      netEarnings,
-    };
-  }
+  // `getEarnings(orderId)` was removed, along with GET /admin/orders/:id/earnings.
+  //
+  // It answered for the whole Order while OrderOwnershipGuard only asks "is
+  // this shop ONE of its vendors" — so on a basket split across shops it
+  // handed one seller the other seller's revenue. It also hardcoded 5% and
+  // 3%+$0.25, while real fees come from PlatformSettings (6.5% / 5% plus a
+  // regulatory fee and VAT), so the numbers did not match what anyone is paid
+  // either.
+  //
+  // SellerOrderDetailService.getEarnings(storeId, storeOrderId) replaces it:
+  // scoped to one StoreOrder, and read from SellerLedgerEntry, which is what
+  // payouts are actually batched from.
 
   private async mapToDto(
     order: Prisma.OrderGetPayload<{ include: typeof ORDER_INCLUDE }>,
