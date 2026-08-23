@@ -48,6 +48,32 @@ export class ModerationService {
 
   // ── Queue helpers ─────────────────────────────────────────────────────────
 
+  /**
+   * Has this exact content already been cleared?
+   *
+   * The workers ask the same question before spending a call, so this changes
+   * no outcome — it just stops the job being created at all. Product saves are
+   * where that matters: moderation is re-queued on every update, and a seller
+   * editing one field re-enqueues the title, the description and up to five
+   * images, all unchanged. Those jobs went through the queue, woke a worker,
+   * read Redis and exited. Now they are never made.
+   *
+   * Must hash exactly as the workers do — a full sha256 of the same string —
+   * or the key never matches and this silently saves nothing. (Note the
+   * truncated hash below is a BullMQ job id, a different thing.)
+   *
+   * A Redis failure means "not cleared": the job is queued and the worker
+   * decides. Losing the cache should cost money, never coverage.
+   */
+  private async alreadyCleared(content: string): Promise<boolean> {
+    try {
+      const hash = crypto.createHash('sha256').update(content).digest('hex');
+      return (await this.redis.get(CONTENT_HASH_KEY(hash))) === 'CLEAN';
+    } catch {
+      return false;
+    }
+  }
+
   async queueProductModeration(productId: string): Promise<void> {
     try {
       const product = await this.prisma.product.findUnique({
@@ -61,11 +87,13 @@ export class ModerationService {
         { fieldName: 'description', content: product.description },
       ];
       for (const { fieldName, content } of textJobs) {
+        if (await this.alreadyCleared(content)) continue;
         await this.queue.add(JOBS.CHECK_TEXT, {
           entityType: 'Product', entityId: productId, fieldName, content, storeId: product.storeId,
         }, { ...DEFAULT_JOB_OPTIONS, jobId: `mod_product_${productId}_${fieldName}` });
       }
       for (const img of product.images) {
+        if (await this.alreadyCleared(img.url)) continue;
         const hash = crypto.createHash('sha256').update(img.url).digest('hex').slice(0, 12);
         await this.queue.add(JOBS.CHECK_IMAGE, {
           entityType: 'Product', entityId: productId, imageUrl: img.url, storeId: product.storeId,
@@ -90,6 +118,7 @@ export class ModerationService {
       ];
       for (const { fieldName, content } of fields) {
         if (!content) continue;
+        if (await this.alreadyCleared(content)) continue;
         await this.queue.add(JOBS.CHECK_TEXT, {
           entityType: 'Store', entityId: storeId, fieldName, content, storeId,
         }, { ...DEFAULT_JOB_OPTIONS, jobId: `mod_store_${storeId}_${fieldName}` });
@@ -218,12 +247,14 @@ export class ModerationService {
       return;
     }
 
-    // Check daily limit
+    // Two daily ceilings: a call count and a spend budget. Both defer rather
+    // than fail, so a busy day delays moderation instead of dropping it.
     const calls = parseInt(await this.redis.get(DAILY_CALLS_KEY()) ?? '0', 10);
     if (calls >= settings.maxDailyApiCalls) {
       this.logger.warn('Daily API call limit reached, deferring moderation');
       return;
     }
+    if (await this.isOverDailyCostBudget(settings.maxCostPerDayUsd)) return;
 
     // Quick keyword pre-check
     const rules = await this.getActiveRules();
@@ -254,6 +285,7 @@ export class ModerationService {
 
     const calls = parseInt(await this.redis.get(DAILY_CALLS_KEY()) ?? '0', 10);
     if (calls >= settings.maxDailyApiCalls) return;
+    if (await this.isOverDailyCostBudget(settings.maxCostPerDayUsd)) return;
 
     const result = await this.imageService.checkImage(dto.imageUrl);
     await this.trackApiUsage(result);
@@ -630,13 +662,47 @@ export class ModerationService {
     return rules;
   }
 
+  /**
+   * Records what a check actually cost against today's counters.
+   *
+   * The amount comes from the token counts the API reported, carried on the
+   * result. It used to be a flat $0.001 for every call regardless — roughly
+   * seven times under for a text check and more than ten for an image one, so
+   * the figure the budget was measured against bore no relation to the bill.
+   *
+   * Falls back to the flat estimate only when a result carries no cost, which
+   * means a gateway did not report usage.
+   */
   private async trackApiUsage(result: ModerationResult) {
-    const callsKey = DAILY_CALLS_KEY();
-    const costKey  = DAILY_COST_KEY();
-    await this.redis.increment(callsKey, 86400);
-    const cost = 0.001;
+    await this.redis.increment(DAILY_CALLS_KEY(), 86400);
+
+    const costKey = DAILY_COST_KEY();
+    const cost    = result.costUsd ?? 0.001;
     const existingCost = await this.redis.get<number>(costKey) ?? 0;
     await this.redis.set(costKey, existingCost + cost, 86400);
+  }
+
+  /**
+   * True when today's spend has reached the configured ceiling.
+   *
+   * ModerationSettings.maxCostPerDayUsd has been editable in the admin since
+   * this table existed, and was read by nothing — an admin could set a $50 cap
+   * and watch it be ignored, which is worse than having no field at all.
+   *
+   * Checked alongside the call ceiling rather than replacing it: the call count
+   * is exact, while spend depends on a gateway reporting token usage, so the
+   * two ceilings fail in different ways and neither is asked to cover for the
+   * other.
+   */
+  private async isOverDailyCostBudget(maxCostPerDayUsd: unknown): Promise<boolean> {
+    const budget = Number(maxCostPerDayUsd);
+    if (!Number.isFinite(budget) || budget <= 0) return false;
+
+    const spent = Number(await this.redis.get<number>(DAILY_COST_KEY()) ?? 0);
+    if (spent < budget) return false;
+
+    this.logger.warn(`Daily moderation cost budget reached ($${spent.toFixed(2)} of $${budget.toFixed(2)}) — deferring`);
+    return true;
   }
 
   private async notifyAdminCritical(entityType: string, entityId: string, result: ModerationResult) {

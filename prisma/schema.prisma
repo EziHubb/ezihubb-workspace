@@ -2190,7 +2190,12 @@ model ModerationSettings {
   strikeLimitCritical Int     @default(1)
   strikeWindowDays    Int     @default(30)
 
-  maxDailyApiCalls Int     @default(10000)
+  // 500, not 10000: at roughly $0.01 an image check that old ceiling allowed
+  // ~$100 a day to be spent before anything stopped it. 500 is well above
+  // normal traffic and caps a runaway — a bulk import or an edit loop — at
+  // around $6. Raise it deliberately in Moderation → Settings if a real
+  // catalogue import needs the headroom.
+  maxDailyApiCalls Int     @default(500)
   maxCostPerDayUsd Decimal @default(50.00) @db.Decimal(10, 2)
 
   updatedAt DateTime @updatedAt
