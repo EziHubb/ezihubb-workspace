@@ -168,11 +168,33 @@ const NAV_SECTIONS: NavSection[] = [
 // isPlatformContext branch itself: a SUPER_ADMIN administering the marketplace
 // gets NAV_SECTIONS and never sees this section.
 
+/**
+ * The seller's navigation, as one flat list.
+ *
+ * Order follows the reference shop manager: Dashboard, Products, Messages,
+ * Orders, Search visibility, Stats, Customer service stats, Policy
+ * violations, Marketing, Finances, Settings. Products is "Listings" there and
+ * Store Settings is "Settings"; the three entries we have no equivalent for
+ * (Search, Apps, Help) are simply absent rather than stubbed.
+ *
+ * No group headings. They were Manage / Marketing / Finance / Setup, and two
+ * of the four labelled a single item — a heading over one row is a divider
+ * with extra words. A seller scanning for "Orders" reads eleven labels either
+ * way; the headings only made the column taller.
+ *
+ * Reviews is ours alone — the reference has no top-level equivalent. Placed
+ * beside Customer service stats because both are the buyer's verdict on the
+ * shop, rather than wedged into the order-management run above it.
+ */
 function getShopNavSections(): NavSection[] {
-  const sections: NavSection[] = [
+  return [
     {
       items: [
         { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        { label: 'Products',  href: '/products',  icon: ShoppingBag     },
+        { label: 'Messages',  href: '/messages',  icon: MessageSquare   },
+        { label: 'Orders',    href: '/orders',    icon: ShoppingCart    },
+        { label: 'Search visibility', href: '/search-visibility', icon: ScanSearch },
         {
           label: 'Stats', href: '/stats', icon: BarChart2,
           children: [
@@ -180,23 +202,9 @@ function getShopNavSections(): NavSection[] {
             { label: 'Marketplace Insights', href: '/stats/listings', icon: BarChart2  },
           ],
         },
-        { label: 'Search visibility',      href: '/search-visibility',      icon: ScanSearch     },
         { label: 'Customer service stats', href: '/customer-service-stats', icon: HeartHandshake },
-        { label: 'Policy violations',      href: '/policy-violations',      icon: ShieldAlert     },
-      ],
-    },
-    {
-      title: 'Manage',
-      items: [
-        { label: 'Products', href: '/products', icon: ShoppingBag },
-        { label: 'Orders',   href: '/orders',   icon: ShoppingCart },
-        { label: 'Reviews',  href: '/reviews',  icon: Star         },
-        { label: 'Messages', href: '/messages', icon: MessageSquare },
-      ],
-    },
-    {
-      title: 'Marketing',
-      items: [
+        { label: 'Reviews',                href: '/reviews',                icon: Star           },
+        { label: 'Policy violations',      href: '/policy-violations',      icon: ShieldAlert    },
         {
           label: 'Marketing', href: '/marketing/sales', icon: Megaphone,
           children: [
@@ -206,41 +214,28 @@ function getShopNavSections(): NavSection[] {
             { label: 'Offsite Ads',         href: '/marketing/offsite-ads', icon: Radio        },
           ],
         },
-      ],
-    },
-    {
-      title: 'Finance',
-      items: [
         {
           label: 'Finances', href: '/finances', icon: Wallet,
           children: [
-            { label: 'Payment account',          href: '/finances',                   icon: Landmark },
-            { label: 'Monthly statements',       href: '/finances/statements',         icon: History  },
-            { label: 'Payment settings',         href: '/finances/payment-settings',   icon: CreditCard },
-            { label: 'Legal and tax information', href: '/finances/tax-information',   icon: FileText },
+            { label: 'Payment account',           href: '/finances',                  icon: Landmark   },
+            { label: 'Monthly statements',        href: '/finances/statements',       icon: History    },
+            { label: 'Payment settings',          href: '/finances/payment-settings', icon: CreditCard },
+            { label: 'Legal and tax information', href: '/finances/tax-information',  icon: FileText   },
+          ],
+        },
+        {
+          label: 'Store Settings', href: '/settings/shop-home', icon: Settings,
+          children: [
+            { label: 'Shop Home',    href: '/settings/shop-home',   icon: Store    },
+            { label: 'Delivery',     href: '/settings/delivery',    icon: Truck    },
+            { label: 'Fulfillment',  href: '/settings/fulfillment', icon: Plug     },
+            { label: 'API Keys',     href: '/settings/api-keys',    icon: KeyRound },
+            { label: 'Ezihubb Plus', href: '/settings/plus',        icon: Sparkles },
           ],
         },
       ],
     },
   ];
-
-  sections.push({
-    title: 'Setup',
-    items: [
-      {
-        label: 'Store Settings', href: '/settings/shop-home', icon: Settings,
-        children: [
-          { label: 'Shop Home',   href: '/settings/shop-home',   icon: Store        },
-          { label: 'Delivery',    href: '/settings/delivery',    icon: Truck        },
-          { label: 'Fulfillment', href: '/settings/fulfillment',  icon: Plug         },
-          { label: 'API Keys',    href: '/settings/api-keys',     icon: KeyRound     },
-          { label: 'Ezihubb Plus', href: '/settings/plus',        icon: Sparkles     },
-        ],
-      },
-    ],
-  });
-
-  return sections;
 }
 
 // ── Shared data hook ──────────────────────────────────────────────────────────
