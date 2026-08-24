@@ -7,7 +7,7 @@ import {
   BadRequestException,
   Optional,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, PlatformSettings } from '@prisma/client';
 import { ModerationService } from '../moderation/moderation.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -564,20 +564,59 @@ export class StoresService {
 
   // ─── Platform Settings ────────────────────────────────────────────────────
 
+  /**
+   * Every Decimal column on this row, as plain numbers.
+   *
+   * Prisma serialises Decimal to a JSON *string*, and returning the raw row
+   * handed every caller `"0.05"` where the type said `number`. Arithmetic then
+   * behaved in whichever way JavaScript felt like: `price * "0.05"` coerces
+   * and works, but `thatResult + "0.25"` concatenates, so the admin's
+   * estimated-earnings preview showed "$NaN to $NaN" and expanding it threw
+   * "toFixed is not a function" on the one field that never went through
+   * arithmetic at all.
+   *
+   * Converted here rather than in each of the three consumers: this is the
+   * boundary where the shape stops being Prisma's and starts being the API's,
+   * and a caller cannot reasonably be expected to know which fields are
+   * Decimal underneath.
+   *
+   * `plusAnnualPrice` stays nullable — null means "no annual price set" and
+   * must not collapse to 0, which is a real price.
+   */
+  private toPlatformSettingsDto(row: PlatformSettings) {
+    return {
+      ...row,
+      transactionFeeRate:        Number(row.transactionFeeRate),
+      paymentProcessingFeeRate:  Number(row.paymentProcessingFeeRate),
+      paymentProcessingFixedFee: Number(row.paymentProcessingFixedFee),
+      listingFee:                Number(row.listingFee),
+      regulatoryFeeRate:         Number(row.regulatoryFeeRate),
+      vatOnFeesRate:             Number(row.vatOnFeesRate),
+      offsiteAdsFeeRate:         Number(row.offsiteAdsFeeRate),
+      minPayoutAmount:           Number(row.minPayoutAmount),
+      plusMonthlyPrice:          Number(row.plusMonthlyPrice),
+      plusAnnualPrice:           row.plusAnnualPrice === null ? null : Number(row.plusAnnualPrice),
+    };
+  }
+
   async getPlatformSettings() {
-    return this.prisma.platformSettings.upsert({
+    const row = await this.prisma.platformSettings.upsert({
       where:  { id: 'singleton' },
       update: {},
       create: { id: 'singleton' },
     });
+    return this.toPlatformSettingsDto(row);
   }
 
   async updatePlatformSettings(dto: UpdatePlatformSettingsDto) {
-    return this.prisma.platformSettings.upsert({
+    const row = await this.prisma.platformSettings.upsert({
       where:  { id: 'singleton' },
       update: dto,
       create: { id: 'singleton', ...dto },
     });
+    // Same shape as the GET: a client that re-reads the response after saving
+    // must not get strings back where the read gave it numbers.
+    return this.toPlatformSettingsDto(row);
   }
 
   // ─── Admin: Seller Payouts ────────────────────────────────────────────────

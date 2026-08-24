@@ -51,8 +51,50 @@ function calcEarnings(price: number, rates: FeeRates): {
   return { platformFee, paymentFee, listingFee, net };
 }
 
-function fmt(n: number, decimals = 2): string {
-  return n.toFixed(decimals);
+/**
+ * Coerces before formatting, and never throws.
+ *
+ * This used to be `n.toFixed(decimals)` on a value typed `number`, and the
+ * type was wrong: the platform-settings endpoint returned Prisma Decimals,
+ * which serialise as strings. `"0.2".toFixed` is not a function, so opening
+ * the fee breakdown threw and the error boundary replaced the whole product
+ * editor with "Something went wrong".
+ *
+ * The real fix is at the API boundary (StoresService.toPlatformSettingsDto),
+ * and the rates are coerced again below. This guard is the last resort: a
+ * number formatter should never be able to take a page down, whatever it is
+ * handed.
+ */
+function fmt(n: unknown, decimals = 2): string {
+  const value = Number(n);
+  return Number.isFinite(value) ? value.toFixed(decimals) : '—';
+}
+
+/**
+ * The four rates as real numbers, whatever the API sent.
+ *
+ * `settings ?? DEFAULT_RATES` alone was not enough: the defaults only apply
+ * when the request has not resolved. Once it resolves with string values, the
+ * component was doing `price * rate + fixedFee` — where the multiplication
+ * coerces and the addition CONCATENATES — so the estimate read "$NaN".
+ */
+function toRates(settings: Partial<FeeRates> | undefined): FeeRates {
+  if (!settings) return DEFAULT_RATES;
+  const pick = (value: unknown, fallback: number) => {
+    // null and '' are checked before Number(), because Number(null) is 0 and
+    // Number('') is 0 — both finite, so a missing rate would sail past the
+    // guard and be charged as 0%. That reads as MORE earnings than the seller
+    // will actually receive, which is the wrong direction to be wrong in.
+    if (value === null || value === undefined || value === '') return fallback;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+  };
+  return {
+    transactionFeeRate:        pick(settings.transactionFeeRate,        DEFAULT_RATES.transactionFeeRate),
+    paymentProcessingFeeRate:  pick(settings.paymentProcessingFeeRate,  DEFAULT_RATES.paymentProcessingFeeRate),
+    paymentProcessingFixedFee: pick(settings.paymentProcessingFixedFee, DEFAULT_RATES.paymentProcessingFixedFee),
+    listingFee:                pick(settings.listingFee,                DEFAULT_RATES.listingFee),
+  };
 }
 
 // ── Sub-component: fee row ────────────────────────────────────────────────────
@@ -87,10 +129,13 @@ export function EstimatedEarningsRow({
 
   const { data: settings } = useQuery({
     queryKey:  ['admin-platform-settings'],
-    queryFn:   () => api.get<FeeRates>(API_ROUTES.ADMIN.PLATFORM_SETTINGS),
+    // Partial: this endpoint returns the whole PlatformSettings row, and
+    // nothing guarantees these four fields arrive as numbers — toRates below
+    // is what makes that safe.
+    queryFn:   () => api.get<Partial<FeeRates>>(API_ROUTES.ADMIN.PLATFORM_SETTINGS),
     staleTime: 5 * 60_000,
   });
-  const rates = settings ?? DEFAULT_RATES;
+  const rates = toRates(settings);
 
   const price = Number(basePrice) || 0;
 
