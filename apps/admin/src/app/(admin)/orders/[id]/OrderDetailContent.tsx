@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Select } from '@ezihubb/ui';
 import { StatusSelect } from '../../../../components/orders/OrderStatusBadge';
+import { useAdminMode } from '../../../../lib/store-context';
 import { CustomizationPreviewModal } from '../../../../components/orders/CustomizationPreviewModal';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -50,6 +51,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail }) {
   const qc = useQueryClient();
+  const { isPlatformContext } = useAdminMode();
   const { confirm, preview, alert } = useDialog();
   const { data: order = initialOrder } = useQuery({
     queryKey: ['admin-order', initialOrder.id],
@@ -184,7 +186,10 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
               {order.customer?.phone && <p className="text-sm text-muted">{order.customer.phone}</p>}
             </div>
           </div>
-          {order.customer?.id && (
+          {/* /customers is PLATFORM_ONLY, and this page is reachable by a shop
+              owner as well, so the link is offered only where it can actually
+              be followed. */}
+          {order.customer?.id && isPlatformContext && (
             <Link href={`/customers/${order.customer.id}`} className="text-xs text-primary hover:underline">
               View Customer Profile →
             </Link>

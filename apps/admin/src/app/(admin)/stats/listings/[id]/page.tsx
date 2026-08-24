@@ -475,7 +475,7 @@ export default function ListingStatsDetailPage({
             <div className="flex items-start justify-between gap-3">
               <h1 className="text-lg font-semibold text-secondary leading-snug line-clamp-2">{p.name}</h1>
               <a
-                href={`/en/products/${p.slug}`}
+                href={`${process.env.NEXT_PUBLIC_CLIENT_URL ?? 'http://localhost:3000'}/products/${p.slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 text-xs text-muted border border-border rounded-button px-2.5 py-1.5 hover:border-primary/40 hover:text-primary transition-colors shrink-0"

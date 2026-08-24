@@ -259,7 +259,7 @@ function RegisterForm() {
                 Terms of Service
               </Link>{' '}
               and{' '}
-              <Link href={`/${locale}/pages/privacy`} className="text-primary underline underline-offset-2" target="_blank">
+              <Link href={`/${locale}/pages/privacy-policy`} className="text-primary underline underline-offset-2" target="_blank">
                 Privacy Policy
               </Link>
             </span>

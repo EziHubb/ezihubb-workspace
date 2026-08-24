@@ -69,12 +69,30 @@ export function ShopOwnerHome({ shopHealth, revenueThisMonth, ordersThisMonth, s
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [activityFilter, setActivityFilter] = useState<typeof ACTIVITY_FILTERS[number]>('All');
 
-  const checklistItems: { key: keyof ShopHealthChecklist; label: string; desc?: string; href: string }[] = [
-    { key: 'shopName',    label: 'Shop name added',   href: '/settings' },
-    { key: 'logo',        label: 'Logo added',        href: '/settings' },
-    { key: 'banner',      label: 'Banner added',      href: '/settings' },
-    { key: 'story',       label: 'Share your story',  desc: 'Tell buyers about who you are, what inspires you, and how you create', href: '/settings' },
-    { key: 'sellerPhoto', label: 'Upload a seller photo', desc: 'Introduce yourself with a friendly, clear photo', href: '/settings' },
+  /**
+   * All five pointed at `/settings`, which is the PLATFORM settings page —
+   * SMTP, email templates, admin accounts, flush-the-cache. Its "Store Logo"
+   * and "Shop Banner" fields belong to the marketplace, not to this shop, so
+   * a seller following "Logo added" was sent to change the wrong site's logo
+   * and every request they made there would 403.
+   *
+   * The seller's own shop page is /settings/shop-home, which is where the
+   * name, logo, banner and story actually live.
+   */
+  const checklistItems: { key: keyof ShopHealthChecklist; label: string; desc?: string; href: string; external?: boolean }[] = [
+    { key: 'shopName',    label: 'Shop name added',   href: '/settings/shop-home' },
+    { key: 'logo',        label: 'Logo added',        href: '/settings/shop-home' },
+    { key: 'banner',      label: 'Banner added',      href: '/settings/shop-home' },
+    { key: 'story',       label: 'Share your story',  desc: 'Tell buyers about who you are, what inspires you, and how you create', href: '/settings/shop-home' },
+    // The seller photo is the USER's avatar, not a shop field, and nothing in
+    // this app edits it — the only page that uploads it is the storefront
+    // account profile. Linked across rather than left pointing at a page that
+    // cannot change it.
+    {
+      key: 'sellerPhoto', label: 'Upload a seller photo', external: true,
+      desc: 'Introduce yourself with a friendly, clear photo',
+      href: `${process.env.NEXT_PUBLIC_CLIENT_URL ?? 'http://localhost:3000'}/account/profile`,
+    },
   ];
   const doneCount = checklistItems.filter((c) => shopHealth.checklist[c.key]).length;
   const riskFactors = (shopHealth.listingsNeedingTitleWork > 0 ? 1 : 0) + (doneCount < checklistItems.length ? 1 : 0);
@@ -109,7 +127,10 @@ export function ShopOwnerHome({ shopHealth, revenueThisMonth, ordersThisMonth, s
       desc:  'Nothing can be bought until at least one listing is active',
     },
     {
-      key: 'shopSection', blocking: false, href: '/catalog/shop-sections',
+      // /catalog/shop-sections is the PLATFORM catalog tool — /catalog is
+      // PLATFORM_ONLY in route-categories. Sellers manage their own sections
+      // from the Add/Manage section modals on shop-home.
+      key: 'shopSection', blocking: false, href: '/settings/shop-home',
       label: 'Group items into shop sections',
       desc:  'Optional, but it gives shoppers a way to browse once you have more than a handful of items',
     },
@@ -214,17 +235,33 @@ export function ShopOwnerHome({ shopHealth, revenueThisMonth, ordersThisMonth, s
               <div className="bg-surface border border-border rounded-card divide-y divide-border overflow-hidden">
                 {checklistItems.map((item) => {
                   const done = shopHealth.checklist[item.key];
-                  return (
-                    <Link key={item.key} href={item.href} className="flex items-start gap-3 px-4 py-3.5 hover:bg-background transition-colors">
+                  const rowClass = 'flex items-start gap-3 px-4 py-3.5 hover:bg-background transition-colors';
+                  const inner = (
+                    <>
                       {done ? (
                         <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
                       ) : (
                         <Circle className="w-5 h-5 text-border shrink-0 mt-0.5" strokeDasharray="3 3" />
                       )}
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-secondary">{item.label} →</p>
+                        <p className="text-sm font-semibold text-secondary">
+                          {item.label} {item.external ? <ExternalLink className="inline w-3.5 h-3.5 align-text-top" /> : '→'}
+                        </p>
                         {!done && item.desc && <p className="text-xs text-muted mt-0.5">{item.desc}</p>}
                       </div>
+                    </>
+                  );
+
+                  // A plain anchor for the storefront: next/link would render
+                  // one anyway for an absolute URL, but without the new tab or
+                  // the noopener that sending someone to another origin needs.
+                  return item.external ? (
+                    <a key={item.key} href={item.href} target="_blank" rel="noopener noreferrer" className={rowClass}>
+                      {inner}
+                    </a>
+                  ) : (
+                    <Link key={item.key} href={item.href} className={rowClass}>
+                      {inner}
                     </Link>
                   );
                 })}

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Download, Gift, NotebookPen, Plus } from 'lucide-react';
 import { Avatar } from '../../messages/inbox/Avatar';
 import { OrderMessaging } from './OrderMessaging';
+import { useAdminMode } from '../../../lib/store-context';
 import type { OrderPanelDetail, OrderPanelThread, PanelItem } from './types';
 
 /**
@@ -63,6 +64,7 @@ export function OrderDetailsTab({
   detail, thread, threadLoading, threadError, sending, savingNote,
   onSendMessage, onSaveNote, onUploadAttachments, storeQuery, autoOpenMessaging,
 }: Props) {
+  const { isPlatformContext } = useAdminMode();
   const buyerName = detail.buyer.name ?? 'Guest';
 
   return (
@@ -100,15 +102,20 @@ export function OrderDetailsTab({
             <p className="truncate text-xs text-muted">{detail.buyer.email}</p>
           )}
           {/* Only for an account. A guest has no order history to show, and a
-              link that lands on an empty list is worse than no link. */}
-          {detail.buyer.id ? (
+              link that lands on an empty list is worse than no link.
+
+              Platform context only: /customers is PLATFORM_ONLY, so offering
+              it to a shop owner sends them to a page the route guard blocks
+              and whose API would 403 anyway. They keep the name and email;
+              they just are not handed a door that is locked. */}
+          {detail.buyer.id && isPlatformContext ? (
             <Link
               href={`/customers/${detail.buyer.id}`}
               className="text-xs text-muted underline underline-offset-2 hover:text-secondary"
             >
               Order history
             </Link>
-          ) : (
+          ) : detail.buyer.id ? null : (
             <span className="text-xs text-muted">Guest checkout</span>
           )}
         </div>
@@ -271,13 +278,21 @@ function ItemRow({ item }: { item: PanelItem }) {
       <div className="flex min-w-0 flex-1 gap-3">
         <Thumb url={item.imageUrl} size={48} />
         <div className="min-w-0">
+          {/* The storefront listing, not an admin route. /products/<slug> does
+              not exist in this app — the only admin product page is
+              /products/[id]/edit, and this is a slug, not an id — so the old
+              link 404'd on every row. Same shape ProductEditShell's "View"
+              already uses; the locale prefix is added by the storefront's own
+              middleware. */}
           {item.slug ? (
-            <Link
-              href={`/products/${item.slug}`}
+            <a
+              href={`${process.env.NEXT_PUBLIC_CLIENT_URL ?? 'http://localhost:3000'}/products/${item.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-sm font-medium text-secondary underline underline-offset-2 hover:text-primary"
             >
               {item.name}
-            </Link>
+            </a>
           ) : (
             <p className="text-sm font-medium text-secondary">{item.name}</p>
           )}
