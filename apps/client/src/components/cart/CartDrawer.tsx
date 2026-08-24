@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useCart, useMutateCart } from '@ezihubb/api-client';
 import { fmtAmount, fmtFixed, safeNum, safeArr } from '@ezihubb/utils';
 
@@ -12,6 +12,7 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
+  const locale = useLocale();
   const t = useTranslations('cart');
   const { data: cart, isLoading } = useCart();
   const { updateItem, removeItem } = useMutateCart();
@@ -75,7 +76,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
               <p className="text-sm font-medium text-secondary">{t('drawer.empty')}</p>
-              <Link href="/search" onClick={onClose} className="text-sm text-primary hover:underline">
+              <Link href={`/${locale}/search`} onClick={onClose} className="text-sm text-primary hover:underline">
                 {t('drawer.browseProducts')}
               </Link>
             </div>
@@ -101,7 +102,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
                   <div className="flex flex-1 flex-col gap-1 min-w-0">
                     <Link
-                      href={`/products/${item.productSlug}`}
+                      href={`/${locale}/products/${item.productSlug}`}
                       onClick={onClose}
                       className="text-sm font-medium text-secondary truncate hover:text-primary"
                     >
@@ -182,7 +183,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             </div>
             <p className="text-xs text-muted">{t('drawer.shippingNote')}</p>
             <Link
-              href="/checkout"
+              href={`/${locale}/checkout`}
               onClick={onClose}
               className="block w-full rounded-button bg-primary py-3 text-center text-sm font-semibold text-white hover:bg-primary-dark transition-colors"
               data-testid="checkout-button"

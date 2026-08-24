@@ -172,7 +172,7 @@ export default async function ReturnsPage({
         </p>
         <div className="flex flex-wrap gap-3">
           <Link
-            href="/account/orders"
+            href={`/${locale}/account/orders`}
             className="inline-flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-primary-dark transition-colors"
           >
             <Package className="w-4 h-4" />

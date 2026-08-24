@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { Modal, ModalHeader, ModalBody, Button } from '@ezihubb/ui';
 import { apiClient } from '@ezihubb/api-client';
@@ -28,6 +28,7 @@ interface FormValues {
 }
 
 export function MessageShopModal({ isOpen, onClose, context }: Props) {
+  const locale = useLocale();
   const tCommon = useTranslations('common');
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.accessToken);
@@ -81,7 +82,7 @@ export function MessageShopModal({ isOpen, onClose, context }: Props) {
               {user ? (
                 <>
                   Check your{' '}
-                  <Link href="/account/messages" className="text-primary hover:underline" onClick={handleClose}>
+                  <Link href={`/${locale}/account/messages`} className="text-primary hover:underline" onClick={handleClose}>
                     message inbox
                   </Link>{' '}
                   for our reply.

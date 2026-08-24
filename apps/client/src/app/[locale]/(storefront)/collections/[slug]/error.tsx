@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 export default function CollectionError({
@@ -12,6 +12,7 @@ export default function CollectionError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const locale = useLocale();
   const t = useTranslations('errors');
   const tCommon = useTranslations('common');
 
@@ -39,7 +40,7 @@ export default function CollectionError({
           {tCommon('retry')}
         </button>
         <Link
-          href="/collections"
+          href={`/${locale}/collections`}
           className="text-sm text-primary hover:underline underline-offset-2"
         >
           {t('browseAllCollections')}

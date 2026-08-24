@@ -157,6 +157,7 @@ export default async function NotFound() {
                 isPersonalizable={product.isPersonalizable}
                 isDigital={product.productType === 'DIGITAL'}
                 locale={locale}
+                basePath={`/${locale}`}
                 labels={cardLabels}
               />
             ))}

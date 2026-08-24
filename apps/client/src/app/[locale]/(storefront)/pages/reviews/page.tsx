@@ -234,7 +234,7 @@ export default async function ReviewsPage({
               {/* Product name */}
               <p className="text-xs text-muted mt-2 truncate">
                 {t('purchased')}{' '}
-                <Link href={`/products/${review.product.slug}`} className="hover:text-primary transition-colors">
+                <Link href={`/${locale}/products/${review.product.slug}`} className="hover:text-primary transition-colors">
                   {review.product.name}
                 </Link>
               </p>
@@ -255,7 +255,7 @@ export default async function ReviewsPage({
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {topProducts.map((product) => (
-              <Link key={product.id} href={`/products/${product.slug}`} className="group text-center">
+              <Link key={product.id} href={`/${locale}/products/${product.slug}`} className="group text-center">
                 <div className="aspect-square rounded-xl overflow-hidden mb-2 bg-[#F5F1EB]">
                   {product.images?.[0]?.url && (
                     /* eslint-disable-next-line @next/next/no-img-element */

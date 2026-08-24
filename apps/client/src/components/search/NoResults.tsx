@@ -131,6 +131,7 @@ export function NoResults({ query, onSearch }: NoResultsProps) {
                   id={product.id}
                   slug={product.slug}
                   name={product.name}
+                  basePath={`/${locale}`}
                   imageUrl={
                     product.images?.[0]?.url ??
                     'https://placehold.co/400x500.png?text=No+Image'

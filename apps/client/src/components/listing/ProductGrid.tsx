@@ -98,6 +98,7 @@ export function ProductGrid({ products, locale, isLoading = false }: ProductGrid
           storeName={product.store?.name}
           storeSlug={product.store?.slug}
           locale={cardLocale}
+          basePath={`/${locale}`}
           labels={cardLabels}
         />
         );

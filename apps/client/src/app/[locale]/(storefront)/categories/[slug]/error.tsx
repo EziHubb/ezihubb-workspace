@@ -4,7 +4,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 export default function CategoryError({
@@ -14,6 +14,7 @@ export default function CategoryError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const locale = useLocale();
   const t = useTranslations('errors');
   const tCommon = useTranslations('common');
 
@@ -41,7 +42,7 @@ export default function CategoryError({
           {tCommon('retry')}
         </button>
         <Link
-          href="/search"
+          href={`/${locale}/search`}
           className="text-sm text-primary hover:underline underline-offset-2"
         >
           {t('browseAllProducts')}

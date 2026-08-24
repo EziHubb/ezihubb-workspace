@@ -241,6 +241,7 @@ function WriteReviewForm({
   onSuccess:   () => void;
 }) {
   const t            = useTranslations('product.etsyReviews');
+  const locale       = useLocale();
   const user         = useAuthStore((s) => s.user);
   const accessToken  = useAuthStore((s) => s.accessToken);
   const queryClient  = useQueryClient();
@@ -368,7 +369,7 @@ function WriteReviewForm({
     return (
       <div className="mt-4 py-4 border border-dashed border-border rounded-2xl text-center">
         <p className="text-sm text-muted">
-          <Link href="/login" className="text-primary hover:underline font-medium">{t('signIn')}</Link>{' '}
+          <Link href={`/${locale}/login`} className="text-primary hover:underline font-medium">{t('signIn')}</Link>{' '}
           {t('toWriteReview')}
         </p>
       </div>

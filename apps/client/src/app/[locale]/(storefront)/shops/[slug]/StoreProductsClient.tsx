@@ -234,6 +234,7 @@ function ProductGrid({
           isWishlisted={wishlistedIds.has(product.id)}
           onWishlistToggle={onWishlistToggle}
           locale={locale}
+          basePath={`/${locale}`}
           labels={labels}
         />
       ))}
@@ -410,6 +411,7 @@ export function StoreProductsClient({
                     isWishlisted={wishlistedIds.has(product.id)}
                     onWishlistToggle={handleWishlistToggle}
                     locale={locale}
+                    basePath={`/${locale}`}
                     labels={cardLabels}
                   />
                 ))}

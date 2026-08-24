@@ -51,6 +51,27 @@ export interface ProductCardProps {
   currency?:        string;
   /** BCP-47 locale for price formatting (e.g. "vi", "zh"). Default: "en-US". */
   locale?:          string;
+  /**
+   * Prefix for every link this card renders — "/en" on the localised
+   * storefront, "" where routes are not prefixed.
+   *
+   * Required, deliberately. It used to be absent and the hrefs were written
+   * bare, so every card linked to "/products/…" and the storefront's locale
+   * middleware answered each one with a 307 to "/{locale}/products/…". Users
+   * never noticed (their cookie carried the locale through the redirect) but
+   * Googlebot has no cookie: it saw a redirect on every product link on the
+   * site and reported them as "Page with redirect" instead of indexing them.
+   *
+   * Passing `locale` was the obvious-looking fix and is the wrong one — that
+   * prop is a BCP-47 tag for Intl.NumberFormat ("en-US"), not a route
+   * segment, and would have produced "/en-US/products/…". They are separate
+   * values, so this is a separate prop.
+   *
+   * Not optional with a "" default: a default is what let ten call sites
+   * silently omit it for as long as they did. TypeScript now stops the next
+   * one.
+   */
+  basePath:         string;
   onWishlistToggle?: (id: string) => void;
   onAddToCart?:     (id: string) => void;
   storeName?:       string | null;
@@ -90,6 +111,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   isWishlisted     = false,
   currency         = 'USD',
   locale           = 'en-US',
+  basePath,
   onWishlistToggle,
   onAddToCart,
   storeName,
@@ -97,6 +119,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   labels,
 }) => {
   const L = { ...defaultLabels, ...labels };
+  // Built once so the two product links below cannot drift apart.
+  const productHref = `${basePath}/products/${slug}`;
   const [hovered, setHovered] = useState(false);
   const discount =
     compareAtPrice && compareAtPrice > basePrice
@@ -110,7 +134,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       onMouseLeave={() => setHovered(false)}
     >
       {/* ── Image ──────────────────────────────────────────────────────────── */}
-      <Link href={`/products/${slug}`} className="block relative aspect-[4/5] bg-background overflow-hidden">
+      <Link href={productHref} className="block relative aspect-[4/5] bg-background overflow-hidden">
         <Image
           src={imageUrl}
           alt={name}
@@ -160,14 +184,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
       {/* ── Info ───────────────────────────────────────────────────────────── */}
       <div className="p-4">
-        <Link href={`/products/${slug}`}>
+        <Link href={productHref}>
           <h3 className="text-sm font-medium text-secondary line-clamp-2 mb-1 hover:text-primary transition-colors">
             {name}
           </h3>
         </Link>
         {storeName && storeSlug && (
           <Link
-            href={`/shops/${storeSlug}`}
+            href={`${basePath}/shops/${storeSlug}`}
             className="block text-xs text-muted hover:text-primary transition-colors mb-1 truncate"
             onClick={(e) => e.stopPropagation()}
           >

@@ -153,7 +153,7 @@ export default async function PaymentsPage({
         <h2 className="text-xl font-bold text-secondary mb-2">{t('cta.title')}</h2>
         <p className="text-sm text-muted mb-5">{t('cta.subtitle')}</p>
         <Link
-          href="/open-shop"
+          href={`/${locale}/open-shop`}
           className="inline-flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-6 py-2.5 rounded-full text-sm font-semibold transition-colors"
         >
           {t('cta.button')}

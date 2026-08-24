@@ -133,7 +133,7 @@ export default async function OurStoryPage({
           {t('cta.subtitle')}
         </p>
         <Link
-          href="/search"
+          href={`/${locale}/search`}
           className="inline-flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-full font-semibold hover:bg-primary-dark transition-colors"
         >
           {t('cta.button')}

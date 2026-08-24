@@ -92,6 +92,7 @@ export async function TrendingProducts({ products, locale, viewAllLabel }: Trend
                       isPersonalizable={product.isPersonalizable}
                       isDigital={product.productType === 'DIGITAL'}
                       locale={locale}
+                      basePath={`/${locale}`}
                       labels={cardLabels}
                     />
                   </div>

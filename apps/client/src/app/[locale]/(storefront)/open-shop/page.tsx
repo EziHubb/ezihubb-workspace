@@ -126,6 +126,7 @@ function ApplicationForm({
   token:     string;
   onSuccess: () => void;
 }) {
+  const locale = useLocale();
   const [form, setForm]   = useState({ name: '', slug: '', description: '' });
   const [error, setError] = useState<string | null>(null);
 
@@ -229,7 +230,7 @@ function ApplicationForm({
 
       <p className="text-xs text-center text-gray-400">
         By submitting, you agree to our{' '}
-        <a href="/terms" className="underline hover:text-gray-600">Seller Terms</a>.
+        <a href={`/${locale}/pages/terms`} className="underline hover:text-gray-600">Seller Terms</a>.
       </p>
     </form>
   );
