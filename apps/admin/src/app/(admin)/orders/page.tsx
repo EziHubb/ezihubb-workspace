@@ -118,6 +118,10 @@ export default function OrdersPage() {
   const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
   /** StoreOrder id of the open detail panel, or null when none is. */
   const [panelId,      setPanelId]      = useState<string | null>(null);
+  /** Whether the panel was opened by the message icon, which lands on the
+   *  conversation rather than the top of the order. Always set alongside
+   *  panelId so the two can never disagree about why the panel is open. */
+  const [focusMessaging, setFocusMessaging] = useState(false);
 
   // A shop owner never sends storeId — the server ignores it for them anyway.
   const scope = isPlatformContext && storeId ? storeId : undefined;
@@ -454,7 +458,8 @@ export default function OrdersPage() {
                     steps={steps}
                     selected={selected.has(order.id)}
                     onSelect={(on) => toggle(order.id, on)}
-                    onOpen={() => setPanelId(order.id)}
+                    onOpen={() => { setPanelId(order.id); setFocusMessaging(false); }}
+                    onOpenMessages={() => { setPanelId(order.id); setFocusMessaging(true); }}
                     onMoveToStep={(toStepId) => moveOrders.mutate({ ids: [order.id], toStepId })}
                     onEditShipBy={() => editShipBy(order)}
                     onToggleGift={() => setGift.mutate({ id: order.id, isGift: !order.isGift })}
@@ -506,7 +511,8 @@ export default function OrdersPage() {
           storeOrderId={panelId}
           storeQuery={qs()}
           completeStepId={completeStepId}
-          onClose={() => setPanelId(null)}
+          focusMessaging={focusMessaging}
+          onClose={() => { setPanelId(null); setFocusMessaging(false); }}
           onChanged={refetchAll}
           // Both look the order up in the current page of the queue, because
           // both reuse the list's own handlers. The order can be missing —

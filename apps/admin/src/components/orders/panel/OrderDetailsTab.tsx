@@ -55,11 +55,13 @@ interface Props {
   onUploadAttachments: (files: File[]) => Promise<{ name: string; url: string }[]>;
   /** Scopes the snippet library to the right shop. */
   storeQuery:  string;
+  /** Opens the composer straight away — see OrderMessaging. */
+  autoOpenMessaging?: boolean;
 }
 
 export function OrderDetailsTab({
   detail, thread, threadLoading, threadError, sending, savingNote,
-  onSendMessage, onSaveNote, onUploadAttachments, storeQuery,
+  onSendMessage, onSaveNote, onUploadAttachments, storeQuery, autoOpenMessaging,
 }: Props) {
   const buyerName = detail.buyer.name ?? 'Guest';
 
@@ -158,6 +160,7 @@ export function OrderDetailsTab({
           onSend={onSendMessage}
           onUpload={onUploadAttachments}
           storeQuery={storeQuery}
+          autoOpen={autoOpenMessaging}
         />
       )}
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { CornerUpLeft, ImagePlus, MessageSquare, Loader2, X } from 'lucide-react';
 import { Avatar } from '../../messages/inbox/Avatar';
@@ -29,6 +29,15 @@ interface Props {
   onUpload:    (files: File[]) => Promise<{ name: string; url: string }[]>;
   /** Scopes the snippet library to the right shop. */
   storeQuery:  string;
+  /**
+   * Opens the composer and scrolls here as soon as this mounts.
+   *
+   * Set when the seller arrived by the message icon on the queue card rather
+   * than by opening the order: they asked for the conversation, so landing
+   * them on the order's meta with the thread somewhere below is not what they
+   * asked for.
+   */
+  autoOpen?:   boolean;
 }
 
 /**
@@ -54,6 +63,7 @@ const fmtDate = (iso: string) =>
 
 export function OrderMessaging({
   messages, buyerName, buyerAvatar, shopName, orderUrl, sending, onSend, onUpload, storeQuery,
+  autoOpen = false,
 }: Props) {
   const [composing, setComposing] = useState(false);
   const [body, setBody]           = useState('');
@@ -61,6 +71,8 @@ export function OrderMessaging({
   const [attachError, setAttachError] = useState<string | null>(null);
   const [uploading, setUploading]     = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  const bodyRef    = useRef<HTMLTextAreaElement>(null);
 
   /**
    * `seedUrl` is false when replying to something the buyer wrote: they are
@@ -71,6 +83,31 @@ export function OrderMessaging({
     setComposing(true);
     if (seedUrl && !body) setBody(`${orderUrl}\n\n`);
   };
+
+  /**
+   * Runs once, on the mount that follows the thread loading — this component
+   * is not rendered while the request is in flight, so there is no earlier
+   * mount to fire on.
+   *
+   * `open(true)` rather than `open(messages.length === 0)`: the icon on the
+   * queue card is the same affordance as the "Message buyer" button below,
+   * and that one seeds the order link either way. Two entry points that
+   * behave differently would be the bug, not the fix.
+   */
+  useEffect(() => {
+    if (!autoOpen) return;
+    open(true);
+    sectionRef.current?.scrollIntoView({ block: 'center' });
+    // Deliberately mount-only: re-running would reopen a composer the seller
+    // had closed, every time the parent re-rendered.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Focus follows the composer opening, however it was opened. Without it the
+  // box appears and the seller still has to click into it.
+  useEffect(() => {
+    if (composing) bodyRef.current?.focus();
+  }, [composing]);
 
   /**
    * Appended rather than substituted for what is already there.
@@ -132,7 +169,7 @@ export function OrderMessaging({
   };
 
   return (
-    <section className="rounded-card border border-border bg-surface">
+    <section ref={sectionRef} className="rounded-card border border-border bg-surface">
       {messages.length > 0 && (
         <ul className="divide-y divide-border">
           {messages.map((m) => {
@@ -205,6 +242,7 @@ export function OrderMessaging({
           <label className="sr-only" htmlFor="order-message-body">Message to the buyer</label>
           <textarea
             id="order-message-body"
+            ref={bodyRef}
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={5}

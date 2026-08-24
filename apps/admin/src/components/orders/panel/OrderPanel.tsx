@@ -36,6 +36,12 @@ interface Props {
   onCancel:     (orderId: string, orderNumber: string) => void;
   onRefund:     () => void;
   onPrint:      (orderId: string, orderNumber: string) => void;
+  /**
+   * Set when the panel was opened by the message icon rather than by the card
+   * itself: the composer opens and scrolls into view instead of leaving the
+   * seller at the top of the order.
+   */
+  focusMessaging?: boolean;
 }
 
 const QK = {
@@ -50,6 +56,7 @@ const fmtDate = (iso: string | null) =>
 export function OrderPanel({
   storeOrderId, storeQuery, completeStepId,
   onClose, onChanged, onEditShipBy, onToggleGift, onCancel, onRefund, onPrint,
+  focusMessaging,
 }: Props) {
   const qc = useQueryClient();
   const dialog = useDialog();
@@ -336,6 +343,7 @@ export function OrderPanel({
                   onSaveNote={(note) => saveNote.mutate(note)}
                   onUploadAttachments={uploadAttachments}
                   storeQuery={storeQuery}
+                  autoOpenMessaging={focusMessaging}
                 />
               </div>
 

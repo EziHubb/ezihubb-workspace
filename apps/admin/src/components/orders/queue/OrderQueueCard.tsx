@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import {
   CalendarClock, ChevronDown, ChevronUp, CircleCheckBig, Copy, Gift,
   MessageSquare, MoreVertical, Printer, Tag, XCircle, Undo2,
@@ -25,6 +24,8 @@ interface Props {
   onSelect:  (checked: boolean) => void;
   /** Opens the detail panel over the queue. */
   onOpen:    () => void;
+  /** The same panel, opened straight onto the buyer conversation. */
+  onOpenMessages: () => void;
   onMoveToStep:   (stepId: string) => void;
   onEditShipBy:   () => void;
   onToggleGift:   () => void;
@@ -67,7 +68,7 @@ function variantLines(snapshot: Record<string, unknown> | null): [string, string
 }
 
 export function OrderQueueCard({
-  order, steps, selected, onSelect, onOpen,
+  order, steps, selected, onSelect, onOpen, onOpenMessages,
   onMoveToStep, onEditShipBy, onToggleGift, onCancel, onRefund, onPrint,
 }: Props) {
   const [showShipTo, setShowShipTo] = useState(true);
@@ -246,8 +247,20 @@ export function OrderQueueCard({
           )}
         </div>
 
-        <Link
-          href={`/messages?orderId=${order.orderId}`}
+        {/* A button, not a link to /messages?orderId=...
+            That href was never handled: the inbox reads a folder, a search and
+            a page from the URL and nothing else, so the parameter was dropped
+            and the seller landed on an unfiltered inbox — the icon looked like
+            it worked and went nowhere useful.
+
+            The conversation already has a working home in the order panel,
+            keyed on the same (orderId, storeId) row the inbox shows. Opening
+            that beats teaching a second screen how to turn an order into a
+            conversation, which would be a second way to create the same
+            thread. */}
+        <button
+          type="button"
+          onClick={onOpenMessages}
           title="Message buyer"
           aria-label="Message buyer"
           className="relative rounded-full p-1.5 text-secondary hover:bg-background"
@@ -259,7 +272,7 @@ export function OrderQueueCard({
               aria-label="Has a note from the buyer"
             />
           )}
-        </Link>
+        </button>
 
         <div className="relative">
           <button
