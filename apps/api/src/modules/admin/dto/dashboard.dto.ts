@@ -37,6 +37,19 @@ export class TopProductDto {
 /** Powers the Dashboard "search visibility" banner + shop-completeness
  *  checklist + "Top tasks" widgets, and is reused as-is by the dedicated
  *  /search-visibility and /customer-service-stats pages. */
+/**
+ * The counts the sidebar shows beside Orders and Messages.
+ *
+ * Both mean "newly arrived and not looked at", not "unfinished" — a badge that
+ * stays lit while work is in progress is one the seller stops reading.
+ */
+export class NavBadgesDto {
+  /** Threads with something unread, matching the inbox's own Unread folder. */
+  unreadMessages!:  number;
+  /** Orders sitting on the queue's first step, or not yet placed on one. */
+  ordersToProcess!: number;
+}
+
 export class ShopHealthDto {
   /** Already-fetched by the same `store.findUnique` the checklist booleans derive
    *  from — exposed as-is so the Dashboard header can render a real greeting

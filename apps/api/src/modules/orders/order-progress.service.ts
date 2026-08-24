@@ -25,7 +25,7 @@ const COMPLETED_SORT_ORDER = 1000;
  * so a refunded order appeared under "All" with no step and was missing from
  * every individual tab — present and unreachable at the same time.
  */
-const OFF_QUEUE_STATUSES = [
+export const OFF_QUEUE_STATUSES = [
   OrderStatus.PENDING_PAYMENT,
   OrderStatus.CANCELLED,
   OrderStatus.REFUNDED,

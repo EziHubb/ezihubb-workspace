@@ -14,6 +14,7 @@ import {
   RevenueChartPointDto,
   TopProductDto,
   ShopHealthDto,
+  NavBadgesDto,
 } from './dto/dashboard.dto';
 import { ReviewResponseDto } from '../reviews/dto/review-response.dto';
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
@@ -51,6 +52,14 @@ export class AdminController {
   async getKPIs(@Req() req: Request): Promise<DashboardKPIsDto> {
     const context = await this.storeContext.resolve(req);
     return this.adminService.getDashboardKPIs(context.storeId ?? undefined);
+  }
+
+  @Get('nav-badges')
+  @ApiOperation({ summary: 'Unread-message and unprocessed-order counts for the sidebar — shop owner only' })
+  async getNavBadges(@Req() req: Request): Promise<NavBadgesDto> {
+    const context = await this.storeContext.resolve(req);
+    const storeId = this.storeContext.requireStoreId(context);
+    return this.adminService.getNavBadges(storeId);
   }
 
   @Get('shop-health')

@@ -11,9 +11,11 @@ import {
   RevenueChartPointDto,
   TopProductDto,
   ShopHealthDto,
+  NavBadgesDto,
 } from './dto/dashboard.dto';
 import { ReviewResponseDto } from '../reviews/dto/review-response.dto';
-import { OrderStatus, ReviewStatus, StoreStatus } from '@prisma/client';
+import { ConversationStatus, OrderProgressStepKind, OrderStatus, ReviewStatus, StoreStatus } from '@prisma/client';
+import { OFF_QUEUE_STATUSES } from '../orders/order-progress.service';
 
 @Injectable()
 export class AdminService {
@@ -364,6 +366,51 @@ export class AdminService {
    *  /customer-service-stats — a single aggregation over signals that
    *  already exist (Store profile fields, PerformanceScoreService's score
    *  fields, Conversation unread counts) rather than a new scoring engine. */
+  /**
+   * The two numbers the sidebar puts beside Orders and Messages.
+   *
+   * Its own endpoint rather than reusing the inbox's folder counts: the
+   * sidebar renders on every page and polls, and adminFolderCounts runs ten
+   * COUNTs to answer ten folders when a badge needs one of them.
+   *
+   * Both filters are copied from the screens they point at, not invented.
+   * Unread uses the Unread folder's own predicate, and orders use the queue's
+   * OFF_QUEUE_STATUSES — a badge that disagrees with the screen it links to is
+   * worse than no badge, because the seller trusts the badge and goes looking
+   * for work that is not there.
+   */
+  async getNavBadges(storeId: string): Promise<NavBadgesDto> {
+    const [unreadMessages, ordersToProcess] = await Promise.all([
+      this.prisma.conversation.count({
+        where: {
+          storeId,
+          status:        { not: ConversationStatus.TRASHED },
+          unreadByAdmin: { gt: 0 },
+        },
+      }),
+      // "Not processed yet" means newly arrived, the way unread means newly
+      // arrived — not "everything unfinished". An order part-way through the
+      // seller's own pipeline is being worked on, and a badge that stays lit
+      // through production is one the seller learns to ignore.
+      //
+      // progressStepId is null until someone opens the queue, which is what
+      // assigns it, so an order that has not been looked at yet counts either
+      // way round.
+      this.prisma.storeOrder.count({
+        where: {
+          storeId,
+          status: { notIn: [...OFF_QUEUE_STATUSES] },
+          OR: [
+            { progressStepId: null },
+            { progressStep: { kind: OrderProgressStepKind.NEW } },
+          ],
+        },
+      }),
+    ]);
+
+    return { unreadMessages, ordersToProcess };
+  }
+
   async getShopHealth(storeId: string): Promise<ShopHealthDto> {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },

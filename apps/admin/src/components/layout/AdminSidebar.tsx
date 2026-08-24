@@ -267,9 +267,43 @@ function useNavData() {
     })),
   [pendingData]);
 
+  /**
+   * The counts beside Orders and Messages in the shop-owner nav.
+   *
+   * One request rather than reusing the inbox's folder endpoint, which answers
+   * ten folders with ten COUNTs — this renders on every page and polls.
+   *
+   * Only while acting as a shop owner: the endpoint requires a store, so a
+   * platform-context SUPER_ADMIN would get a 400 on every page load, and
+   * there is no one store whose unread count would mean anything to them.
+   */
+  const { data: badges } = useQuery<{ unreadMessages: number; ordersToProcess: number }>({
+    queryKey: ['sidebar-nav-badges'],
+    queryFn:  () => api.get<{ unreadMessages: number; ordersToProcess: number }>(
+      API_ROUTES.ADMIN.DASHBOARD_NAV_BADGES,
+    ),
+    enabled:  isReady && !isPlatformContext,
+    staleTime:       60_000,
+    refetchInterval: 120_000,
+  });
+
   // No longer role-dependent: this branch only renders for someone already
   // acting as a shop owner (see getShopNavSections' own note).
-  const shopNavSections = useMemo(() => getShopNavSections(), []);
+  const shopNavSections = useMemo(() => {
+    const sections = getShopNavSections();
+    if (!badges) return sections;
+    // Rebuilt rather than mutated: getShopNavSections returns fresh objects,
+    // but writing into them would still make the badge depend on the order
+    // React happened to render in.
+    return sections.map((section) => ({
+      ...section,
+      items: section.items.map((item) => {
+        if (item.href === '/orders')   return { ...item, badge: badges.ordersToProcess };
+        if (item.href === '/messages') return { ...item, badge: badges.unreadMessages };
+        return item;
+      }),
+    }));
+  }, [badges]);
   // While the session is still loading, `role` is '' (see useAdminMode) — which
   // is neither 'SUPER_ADMIN' nor 'ADMIN', so isPlatformContext computes false
   // and a SUPER_ADMIN would briefly render the shop-owner nav before snapping

@@ -204,6 +204,7 @@ export const API_ROUTES = {
     // ── Dashboard ────────────────────────────────────────────────────────────
     DASHBOARD_KPIS:      '/admin/dashboard/kpis',
     DASHBOARD_SHOP_HEALTH: '/admin/dashboard/shop-health',
+    DASHBOARD_NAV_BADGES:  '/admin/dashboard/nav-badges',
     DASHBOARD_REVENUE:   '/admin/dashboard/revenue',
     DASHBOARD_BY_STATUS: '/admin/dashboard/orders-by-status',
     DASHBOARD_TOP:       '/admin/dashboard/top-products',
