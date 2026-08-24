@@ -117,7 +117,7 @@
         "other": "其他"
       },
       "orderNumberLabel": "订单号",
-      "orderNumberPlaceholder": "例如：MLH-2024-04521",
+      "orderNumberPlaceholder": "例如：EZH-123456",
       "orderNumberHint": "您可以在确认邮件或 账户 → 我的订单 中找到该编号。",
       "messageLabel": "留言内容",
       "messagePlaceholder": "请告诉我们可以如何帮助您…",

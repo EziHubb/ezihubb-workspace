@@ -2,7 +2,7 @@
   "pageTitle": "Track Your Order",
   "pageSubtitle": "Enter your order number and email to see the latest status.",
   "orderNumberLabel": "Order Number",
-  "orderNumberPlaceholder": "e.g. MLH-2024-04521",
+  "orderNumberPlaceholder": "e.g. EZH-123456",
   "emailLabel": "Email Address",
   "emailPlaceholder": "Email used at checkout",
   "trackButton": "Track Order",

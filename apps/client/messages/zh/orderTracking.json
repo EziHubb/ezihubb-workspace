@@ -2,7 +2,7 @@
   "pageTitle": "追踪订单",
   "pageSubtitle": "输入订单号和邮箱查看最新状态。",
   "orderNumberLabel": "订单号",
-  "orderNumberPlaceholder": "例如 MLH-2024-04521",
+  "orderNumberPlaceholder": "例如 EZH-123456",
   "emailLabel": "邮箱地址",
   "emailPlaceholder": "结账时使用的邮箱",
   "trackButton": "追踪订单",

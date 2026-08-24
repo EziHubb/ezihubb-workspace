@@ -117,7 +117,7 @@
         "other": "Other"
       },
       "orderNumberLabel": "Order Number",
-      "orderNumberPlaceholder": "e.g. MLH-2024-04521",
+      "orderNumberPlaceholder": "e.g. EZH-123456",
       "orderNumberHint": "Find this in your confirmation email or Account → My Orders.",
       "messageLabel": "Message",
       "messagePlaceholder": "Tell us how we can help…",

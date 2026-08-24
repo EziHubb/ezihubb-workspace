@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { AlertTriangle, ArrowLeft, Search } from 'lucide-react';
@@ -17,12 +18,20 @@ function maskEmail(email: string): string {
   return `${email[0]}***${email.slice(at)}`;
 }
 
-/** Auto-format order number as user types: MLH-2024-00042 */
+/**
+ * Formats typing into the current order-number shape: EZH-123456.
+ *
+ * The previous version inserted a second dash at seven characters, for the old
+ * MLH-<year>-<00001> numbers. Left alone it would have turned a pasted
+ * "EZH-123456" into "EZH-1234-56" and the lookup would never have matched.
+ *
+ * Old MLH numbers still type through: they are longer, so the tail simply
+ * stays after the first dash rather than being re-grouped.
+ */
 function formatOrderNumber(raw: string): string {
   const clean = raw.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 12);
-  if (clean.length <= 3)  return clean;
-  if (clean.length <= 7)  return `${clean.slice(0, 3)}-${clean.slice(3)}`;
-  return `${clean.slice(0, 3)}-${clean.slice(3, 7)}-${clean.slice(7)}`;
+  if (clean.length <= 3) return clean;
+  return `${clean.slice(0, 3)}-${clean.slice(3)}`;
 }
 
 function isValidEmail(email: string): boolean {
@@ -38,8 +47,14 @@ interface SearchFormProps {
 
 function SearchForm({ onSuccess, locale }: SearchFormProps) {
   const t = useTranslations('orderTracking');
-  const [orderNumber, setOrderNumber] = useState('');
-  const [email,       setEmail]       = useState('');
+  // Seeded from the query string so the link on the order-success page and
+  // in the confirmation email lands on a form that is already filled in.
+  // Read once as the initial state rather than in an effect: an effect would
+  // render an empty form first and then overwrite whatever the buyer had
+  // started typing.
+  const params = useSearchParams();
+  const [orderNumber, setOrderNumber] = useState(() => formatOrderNumber(params.get('orderNumber') ?? ''));
+  const [email,       setEmail]       = useState(() => params.get('email') ?? '');
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ orderNumber?: string; email?: string }>({});
@@ -115,7 +130,7 @@ function SearchForm({ onSuccess, locale }: SearchFormProps) {
         <form onSubmit={handleSubmit} noValidate className="p-6 space-y-4">
           <Input
             label="Order Number *"
-            placeholder="e.g. MLH-2024-04521"
+            placeholder="e.g. EZH-123456"
             value={orderNumber}
             onChange={handleOrderNumberChange}
             error={fieldErrors.orderNumber}
