@@ -217,6 +217,28 @@ grep -cE '^enum ' prisma/schema.prisma    # must equal
 grep -c 'CREATE TYPE' <the new migration.sql>
 ```
 
+**Counting models and enums is not enough, and this has already cost a
+production outage.** Those two counts only cover what a Prisma schema can
+describe. Sequences, functions, triggers, extensions, views — anything created
+by hand in an older migration — are invisible to `schema.prisma`, so
+`migrate diff` never emits them and the squash drops them without a word.
+
+`order_number_seq` went that way in the 2026-08-23 squash. Nothing failed at
+migrate time; the database simply came up with zero sequences, and the first
+checkout after the rebuild died on `SELECT NEXTVAL('order_number_seq')` with a
+500. No order could be placed at all.
+
+So before trusting a squash, also search the CODE for objects it will not
+carry, and re-add each one as its own migration afterwards:
+
+```bash
+# Anything the app expects to exist but Prisma cannot declare.
+grep -rnoE "NEXTVAL\('[a-z_]+'\)|CREATE EXTENSION|CREATE (OR REPLACE )?FUNCTION|CREATE TRIGGER|MATERIALIZED VIEW|to_tsvector" apps/api/src
+# And what the live database actually holds, which is the real answer:
+#   SELECT relname FROM pg_class WHERE relkind = 'S';   -- sequences
+#   SELECT extname FROM pg_extension;
+```
+
 A squashed init cannot be applied to a database created before it — every
 `CREATE` collides. Say so in a comment at the top of the file, because the
 error a stale database produces does not explain itself.
