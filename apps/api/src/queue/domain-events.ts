@@ -60,6 +60,26 @@ export const EVENT_SUBSCRIBERS: Record<DomainEvent, EventSubscriber[]> = {
 };
 
 /**
+ * Builds a BullMQ custom job id.
+ *
+ * The separator is not cosmetic: BullMQ rejects any custom id containing ':'
+ * with "Custom Id cannot contain :", because that character separates its own
+ * Redis keys. Every id here used to be joined with ':', so `queue.add` threw
+ * before the job was ever created.
+ *
+ * Nothing degraded quietly — it took the caller down with it. The Stripe
+ * webhook answered 500, ORDER_PAID was never published, and none of its six
+ * subscribers ran: each seller's StoreOrder stayed PENDING_PAYMENT and so
+ * never appeared in their Orders queue, no seller notification went out, and
+ * no analytics or commission were recorded. Paid orders simply vanished.
+ *
+ * Colons in the parts themselves are stripped too, since an id assembled from
+ * caller-supplied values must not be able to reintroduce the same failure.
+ */
+export const jobIdOf = (...parts: (string | number)[]): string =>
+  parts.map((p) => String(p).replace(/:/g, '-')).join('--');
+
+/**
  * Deterministic id for a dispatched subscriber job.
  *
  * This is what makes the dispatcher safe to retry. Fan-out is not atomic: it
@@ -69,4 +89,4 @@ export const EVENT_SUBSCRIBERS: Record<DomainEvent, EventSubscriber[]> = {
  * dispatcher having to track how far it got.
  */
 export const subscriberJobId = (event: DomainEvent, job: JobName, entityId: string) =>
-  `${event}:${job}:${entityId}`;
+  jobIdOf(event, job, entityId);

@@ -1,6 +1,7 @@
 import type { Logger } from '@nestjs/common';
 import type { Job, Queue } from 'bullmq';
 import { DEFAULT_JOB_OPTIONS, JOBS } from './queue.constants';
+import { jobIdOf } from './domain-events';
 
 /**
  * Marker for a job that has exhausted every retry.
@@ -85,7 +86,9 @@ export async function reportDeadJob(
       },
       // Its own jobId, so a job failing repeatedly across deploys does not
       // mail the same alert again and again.
-      { ...DEFAULT_JOB_OPTIONS, jobId: `dead-job-alert:${job.queueName}:${job.id}` },
+      // Same ':' trap as the event bus — and worse here, because a throw while
+      // reporting a dead job would hide the failure it was sent to report.
+      { ...DEFAULT_JOB_OPTIONS, jobId: jobIdOf('dead-job-alert', job.queueName, job.id ?? '') },
     )
     // Never let alerting failure mask the original failure — that error is the
     // one worth keeping, and throwing here would replace it.

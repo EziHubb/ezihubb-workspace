@@ -3,6 +3,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { DEFAULT_JOB_OPTIONS, QUEUES } from './queue.constants';
 import type { DomainEvent, DomainEventPayload } from './domain-events';
+import { jobIdOf } from './domain-events';
 
 /**
  * The only thing a publisher needs.
@@ -32,7 +33,9 @@ export class EventBusService {
     await this.events.add(
       event,
       { entityId } satisfies DomainEventPayload,
-      { ...DEFAULT_JOB_OPTIONS, jobId: `${event}:${entityId}` },
+      // jobIdOf, not a template string: BullMQ rejects ':' in a custom id, and
+      // this one threw on every publish. Same dedupe key, legal characters.
+      { ...DEFAULT_JOB_OPTIONS, jobId: jobIdOf(event, entityId) },
     );
     this.logger.log(`Published ${event} (${entityId})`);
   }
