@@ -317,6 +317,7 @@ export const API_ROUTES = {
     ATTRIBUTES:           (type: string) => `/admin/attributes/${type}`,
     SHOP_SECTIONS:        '/admin/shop-sections',
     SHOP_SECTION:         (id: string) => `/admin/shop-sections/${id}`,
+    SHOP_SECTIONS_REORDER: '/admin/shop-sections/reorder',
     PRODUCTION_PARTNERS:  '/admin/production-partners',
     PRODUCTION_PARTNER:   (id: string) => `/admin/production-partners/${id}`,
     ADMIN_TAGS:           '/admin/tags',

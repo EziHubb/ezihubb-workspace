@@ -1,20 +1,18 @@
 'use client';
 
+import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
-import { useQuery } from '@tanstack/react-query';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Settings2 } from 'lucide-react';
 import { addMonths } from 'date-fns';
 import { Select } from '@ezihubb/ui';
 import { fmtDate } from '../../../../lib/fmt';
-import { api } from '../../../../lib/api-client';
-import { API_ROUTES } from '@ezihubb/constants';
 import type { ProductEditFormValues, RenewalType } from '../types';
 import { RelatedProductsPicker } from '../RelatedProductsPicker';
 import { Toggle } from '../primitives/Toggle';
+import { ManageSectionsModal, useShopSections } from '../../../shop-home/ManageSectionsModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface ShopSection { id: string; name: string; sortOrder: number }
 
 // ── Layout primitives ─────────────────────────────────────────────────────────
 
@@ -157,11 +155,11 @@ export function SettingsTab({ productId, initialRelatedIds }: { productId?: stri
   const renewalType   = watch('renewalType')     ?? 'AUTOMATIC';
   const expiresAt     = watch('expiresAt' as keyof ProductEditFormValues) as string | null | undefined;
 
-  const { data: sections = [] } = useQuery<ShopSection[]>({
-    queryKey: ['shop-sections'],
-    queryFn:  () => api.get<ShopSection[]>(API_ROUTES.ADMIN.SHOP_SECTIONS),
-    staleTime: 10 * 60_000,
-  });
+  // The shared hook, so this dropdown and the Shop Home rail read ONE cache
+  // entry. They used to hit the same endpoint under different query keys, so a
+  // section created in one place stayed invisible in the other until a reload.
+  const { data: sections = [] } = useShopSections();
+  const [sectionsModalOpen, setSectionsModalOpen] = useState(false);
 
   return (
     <div className="max-w-[1040px] mx-auto px-6 py-8">
@@ -186,14 +184,27 @@ export function SettingsTab({ productId, initialRelatedIds }: { productId?: stri
                     options={sections.map((s) => ({ value: s.id, label: s.name }))}
                   />
                 </div>
-                <a
-                  href="/catalog/categories"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                {/*
+                  Opens the manager in place instead of navigating.
+
+                  It used to be a link to /catalog/categories — the wrong page
+                  (that is the platform's category taxonomy, not this shop's
+                  sections) and one a seller cannot open at all, since
+                  /catalog is PLATFORM_ONLY.
+
+                  A link was the wrong shape regardless: this sits inside a
+                  product form that is usually mid-edit, and sending the
+                  seller away to add a section would cost them their unsaved
+                  changes. The new section appears in the dropdown as soon as
+                  it is saved, because both read the same query cache.
+                */}
+                <button
+                  type="button"
+                  onClick={() => setSectionsModalOpen(true)}
                   className="text-sm text-primary hover:underline underline-offset-2 flex items-center gap-1"
                 >
-                  Manage sections <ExternalLink className="w-3 h-3" />
-                </a>
+                  <Settings2 className="w-3 h-3" /> Manage sections
+                </button>
               </div>
             </FormField>
 
@@ -258,6 +269,10 @@ export function SettingsTab({ productId, initialRelatedIds }: { productId?: stri
           </div>
         </TabSection>
       </div>
+
+      {sectionsModalOpen && (
+        <ManageSectionsModal onClose={() => setSectionsModalOpen(false)} />
+      )}
     </div>
   );
 }

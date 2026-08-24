@@ -16,6 +16,9 @@ import { fmtNum, fmtDate } from '../../../../lib/fmt';
 import { useDialog } from '../../../../contexts/DialogContext';
 import { ListingPicker, type PickedProduct } from '../../../../components/marketing/ListingPicker';
 import { ReloadButton } from '../../../../components/ui/ReloadButton';
+import {
+  ManageSectionsModal, EditSectionModal, useShopSections,
+} from '../../../../components/shop-home/ManageSectionsModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -152,6 +155,8 @@ export default function ShopHomeEditorPage() {
   const [locationDraft,   setLocationDraft]   = useState('');
   const [itemsSearch,     setItemsSearch]     = useState('');
   const [itemsSort,       setItemsSort]       = useState<ItemsSort>('recent');
+  /** 'add' opens the single-section form directly; 'manage' opens the list. */
+  const [sectionsModal,   setSectionsModal]   = useState<'add' | 'manage' | null>(null);
   const [editingAnnouncement, setEditingAnnouncement] = useState(false);
   const [announcementDraft, setAnnouncementDraft] = useState('');
   const [showFeaturedPicker, setShowFeaturedPicker] = useState(false);
@@ -319,6 +324,11 @@ export default function ShopHomeEditorPage() {
   };
 
   const products = useMemo(() => productsQuery.data?.data ?? [], [productsQuery.data]);
+
+  // Separate from the products query on purpose: this endpoint already counts
+  // the listings in each section, so the rail can show them without widening
+  // what adminGetStoreProducts selects.
+  const { data: shopSections = [] } = useShopSections();
   // Search + sort are done client-side on the already-fetched page of
   // products — no extra request, and no API change (the payload already
   // carries createdAt; only the TS interface was missing it).
@@ -620,14 +630,44 @@ export default function ShopHomeEditorPage() {
               <Search className="w-4 h-4 text-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
-            {/* Only "All" is shown. "On sale" and per-section counts need
-                compareAtPrice / shopSectionId, which adminGetStoreProducts
-                does not select — deliberately not added here (UI-only task);
-                tracked in docs/etsy-ui-audit.md. */}
+            {/* "On sale" still needs compareAtPrice from adminGetStoreProducts,
+                which it does not select — see docs/etsy-ui-audit.md. Section
+                counts do NOT need it: GET /admin/shop-sections already returns
+                _count.products per section, so the rail can list them without
+                touching the products query at all. */}
             <div className="mt-4">
               <div className="flex items-center justify-between py-2 text-sm">
                 <span className="text-secondary font-medium">All</span>
                 <span className="text-muted">{products.length}</span>
+              </div>
+
+              {shopSections.map((s) => (
+                <div key={s.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                  <span className="min-w-0 truncate text-secondary">{s.name}</span>
+                  <span className="shrink-0 text-muted">{s._count.products}</span>
+                </div>
+              ))}
+
+              {/* Both entry points sit with the sections themselves: a seller
+                  looking at the rail and wondering how to change it should not
+                  have to go looking for the control elsewhere. */}
+              <div className="mt-2 flex items-center gap-3 border-t border-border pt-3">
+                <button
+                  type="button"
+                  onClick={() => setSectionsModal('add')}
+                  className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add section
+                </button>
+                {shopSections.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSectionsModal('manage')}
+                    className="text-sm text-muted hover:text-secondary hover:underline"
+                  >
+                    Manage
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1286,6 +1326,15 @@ export default function ShopHomeEditorPage() {
       </Modal>
 
       {/* ── Featured picker ──────────────────────────────────────────────── */}
+      {/* 'add' skips straight to the form — the rail's Add button should not
+          make the seller walk through the list first. Both paths close to the
+          same place. */}
+      {sectionsModal === 'manage' && (
+        <ManageSectionsModal onClose={() => setSectionsModal(null)} />
+      )}
+      {sectionsModal === 'add' && (
+        <EditSectionModal section={null} onClose={() => setSectionsModal(null)} />
+      )}
       {showFeaturedPicker && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowFeaturedPicker(false)}>
           <div className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-lg p-5" onClick={(e) => e.stopPropagation()}>
