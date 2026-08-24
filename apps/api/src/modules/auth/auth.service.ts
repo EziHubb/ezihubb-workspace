@@ -63,12 +63,7 @@ export class AuthService {
     });
 
     // Link any guest orders placed with this email before account creation
-    this.prisma.order.updateMany({
-      where: { guestEmail: dto.email.toLowerCase(), userId: null },
-      data:  { userId: user.id },
-    }).catch((err: Error) =>
-      this.logger.error(`Failed to link guest orders for ${dto.email}: ${err.message}`),
-    );
+    this.linkGuestOrders(user.id, dto.email);
 
     // Queue verification email (fire-and-forget)
     await this.enqueueVerificationEmail(user.id, user.email, user.firstName ?? '').catch((err) =>
@@ -123,6 +118,19 @@ export class AuthService {
 
     // Clear failed attempts on success
     await this.redis.del(lockKey);
+
+    // Claim any guest orders placed with this email.
+    //
+    // register() already did this, but only there — so it worked for someone
+    // who checked out as a guest and THEN signed up, and never for someone who
+    // already had an account. Their paid orders sat with userId: null and "My
+    // Orders" showed nothing, which is exactly what happened in production.
+    //
+    // Safe at this point, and safer than at registration: the password has
+    // just been verified, so the account is proven, whereas register() links
+    // on a bare claim to the address. Fire-and-forget on purpose — a failure
+    // here must never block a valid sign-in, and the next login retries it.
+    this.linkGuestOrders(user.id, user.email);
 
     // Admin/SUPER_ADMIN with TOTP enabled → issue partial token
     if ((ADMIN_ROLES as readonly string[]).includes(user.role) && user.totpEnabled) {
@@ -564,6 +572,32 @@ export class AuthService {
   }
 
   // ─── Private helpers ───────────────────────────────────────────────────────
+
+  /**
+   * Attaches guest orders placed with this email to the account.
+   *
+   * One implementation, called from both register() and login(), because the
+   * rule ("an order placed with your address belongs to you") has to hold
+   * however the session started — it lived only in register() before, so
+   * anyone who already had an account never got their guest orders.
+   *
+   * Only ever claims rows still unowned (`userId: null`), so it cannot move an
+   * order away from another account. Deliberately not awaited: linking is a
+   * convenience, and a database hiccup must not turn a valid sign-in into a
+   * failure.
+   */
+  private linkGuestOrders(userId: string, email: string): void {
+    this.prisma.order.updateMany({
+      where: { guestEmail: email.toLowerCase(), userId: null },
+      data:  { userId },
+    })
+      .then(({ count }) => {
+        if (count > 0) this.logger.log(`Linked ${count} guest order(s) to ${email}`);
+      })
+      .catch((err: Error) =>
+        this.logger.error(`Failed to link guest orders for ${email}: ${err.message}`),
+      );
+  }
 
   private signPartialToken(userId: string, email: string, role: string): string {
     const secret = this.config.get<string>('jwt.accessSecret');
