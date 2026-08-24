@@ -1,11 +1,12 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { OrderStatus, Prisma, ProductType, Promotion } from '@prisma/client';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomInt } from 'crypto';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
@@ -92,6 +93,8 @@ const ORDER_INCLUDE = {
 
 const CANCEL_WINDOW_MS   = 2 * 60 * 60 * 1_000; // 2 hours
 const GIFT_WRAPPING_PRICE = 4.99;
+/** Retries before giving up on finding a free order number. */
+const ORDER_NUMBER_ATTEMPTS = 5;
 
 @Injectable()
 export class OrdersService {
@@ -1342,14 +1345,40 @@ export class OrdersService {
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
+  /**
+   * "EZH-123456" — six random digits, no sequence.
+   *
+   * The old format was MLH-<year>-<00001> from a Postgres sequence, which made
+   * every order number guessable and leaked the shop's total order count to
+   * anyone who placed one. Random removes both.
+   *
+   * `randomInt` from node:crypto, not Math.random: order numbers are quoted in
+   * the tracking form beside an email, so they should not be predictable from
+   * one another.
+   *
+   * Retried on collision rather than trusted. A million values is small enough
+   * that birthday collisions arrive far sooner than intuition suggests, and
+   * `orderNumber` is UNIQUE — an unhandled clash would abort a checkout that
+   * had already taken payment. The retry runs inside the caller's transaction,
+   * so the read and the eventual insert see the same snapshot.
+   */
   private async generateOrderNumber(
     tx: Prisma.TransactionClient,
   ): Promise<string> {
-    const [{ nextval }] = await tx.$queryRaw<
-      [{ nextval: bigint }]
-    >`SELECT NEXTVAL('order_number_seq')`;
-    const year = new Date().getFullYear();
-    return `MLH-${year}-${Number(nextval).toString().padStart(5, '0')}`;
+    for (let attempt = 0; attempt < ORDER_NUMBER_ATTEMPTS; attempt++) {
+      const candidate = `EZH-${randomInt(0, 1_000_000).toString().padStart(6, '0')}`;
+      const taken = await tx.order.findUnique({
+        where:  { orderNumber: candidate },
+        select: { id: true },
+      });
+      if (!taken) return candidate;
+    }
+    // Better than returning a number that will fail the unique index further
+    // in, where the message would say nothing about what actually went wrong.
+    throw new ConflictException({
+      code:    'ERR_ORDER_NUMBER',
+      message: 'Could not allocate an order number. Please try again.',
+    });
   }
 
   // ─── Admin helpers ───────────────────────────────────────────────────────
