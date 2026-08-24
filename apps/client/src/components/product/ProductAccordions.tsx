@@ -21,27 +21,63 @@ import type { ProductDetailDto } from '@ezihubb/types';
 
 // ── ProductDescription ────────────────────────────────────────────────────────
 
-function ProductDescription({
-  description,
-  fullDescription,
-}: {
-  description:     string;
-  fullDescription: string;
-}) {
+/**
+ * Roughly how much of a description fits in the collapsed box.
+ *
+ * Deliberately a little UNDER what actually fits. Any character count is an
+ * approximation of a height in a column whose width varies, and the two error
+ * directions are not equal: guessing high hides text with no way to reach it,
+ * while guessing low shows the toggle on a description that was not clipped.
+ * The second is a wasted click; the first loses content.
+ */
+const COLLAPSED_CHARS = 200;
+
+function ProductDescription({ description }: { description: string }) {
   const t = useTranslations('product.accordions');
   const [isExpanded, setIsExpanded] = useState(false);
-  const isLong = description.length > 200;
+
+  /**
+   * Measured against the WHOLE description.
+   *
+   * This used to read `description.length > 200` where `description` was
+   * already `fullDescription.slice(0, 200)` — a string that cannot be longer
+   * than 200 — so the condition was never true. The "Learn more about this
+   * item" button therefore never rendered and everything past the 200th
+   * character was unreachable on the page.
+   */
+  const isLong    = description.length > COLLAPSED_CHARS;
+  const collapsed = isLong && !isExpanded;
 
   return (
     <div>
-      <p className="text-sm text-secondary whitespace-pre-line leading-relaxed">
-        {isExpanded ? fullDescription : description.slice(0, 200)}
-        {isLong && !isExpanded && '…'}
-      </p>
+      {/*
+        The full text is always in the DOM and the collapse is done in CSS.
+        Slicing the string was what cut "~ Welcome" into "~ Welcom" mid-word,
+        and it also meant only the first 200 characters of every product
+        description were ever served to a crawler.
+
+        Faded with a mask rather than a gradient overlay: the accordion sets
+        no background of its own, so an overlay would have to guess the card
+        colour and would show as a grey band the moment that guess was wrong.
+        A mask fades the text itself, whatever is behind it.
+      */}
+      <div
+        className={collapsed ? 'overflow-hidden max-h-32' : undefined}
+        style={collapsed ? {
+          maskImage:       'linear-gradient(to bottom, black 55%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)',
+        } : undefined}
+      >
+        <p className="text-sm text-secondary whitespace-pre-line leading-relaxed">
+          {description}
+        </p>
+      </div>
+
       {isLong && (
         <button
           type="button"
           onClick={() => setIsExpanded((e) => !e)}
+          aria-expanded={isExpanded}
           className="text-sm text-primary hover:underline mt-2"
         >
           {isExpanded ? t('showLess') : t('learnMore')}
@@ -161,12 +197,17 @@ export function ItemDetailsAccordion({ product }: { product: ProductDetailDto })
           </ul>
         </div>
 
-        {/* Description with "Learn more" expand */}
-        {(product.shortDescription || product.description) && (
-          <ProductDescription
-            description={product.shortDescription ?? product.description.slice(0, 200)}
-            fullDescription={product.description}
-          />
+        {/*
+          Always the full description, never shortDescription.
+
+          Item details is where a buyer goes to read everything about the
+          listing, so a seller-written summary standing in for the real text
+          left the rest of it with nowhere to appear. shortDescription is not
+          lost — it still backs the page metadata, the sitemap image caption
+          and the quick-view modal, which is where a summary belongs.
+        */}
+        {product.description && (
+          <ProductDescription description={product.description} />
         )}
 
         {/* Attribute table */}
