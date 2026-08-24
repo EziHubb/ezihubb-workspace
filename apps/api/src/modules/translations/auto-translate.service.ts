@@ -9,6 +9,7 @@ import {
   type TranslationMap,
 } from './translation.service';
 import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
+import { jobIdOf } from '../../queue/domain-events';
 import { AnthropicService } from '../../common/services/anthropic.service';
 
 // Locales that receive automatic translation (never 'en')
@@ -53,7 +54,7 @@ export class AutoTranslateService {
     this.translationQueue
       .add(JOBS.TRANSLATE_ENTITY, jobData, {
         ...DEFAULT_JOB_OPTIONS,
-        jobId: `translate:${entityType}:${entityId}:${Date.now()}`,
+        jobId: jobIdOf('translate', entityType, entityId, Date.now()),
       })
       .catch((err: Error) =>
         this.logger.warn(

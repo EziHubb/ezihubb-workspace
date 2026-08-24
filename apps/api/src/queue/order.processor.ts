@@ -14,6 +14,7 @@ import {
 import { OrderStatus } from '@prisma/client';
 import { AnalyticsService } from '../modules/analytics/analytics.service';
 import { reportDeadJob } from './dead-job-alert';
+import { jobIdOf } from './domain-events';
 
 @Processor(QUEUES.ORDER_PROCESSING)
 export class OrderProcessor extends WorkerHost {
@@ -108,7 +109,7 @@ export class OrderProcessor extends WorkerHost {
           subject: `Order confirmed: ${order.orderNumber}`,
           data: { orderNumber: order.orderNumber, orderId, year: new Date().getFullYear() },
         },
-        { ...DEFAULT_JOB_OPTIONS, jobId: `order-confirmation-mail:${orderId}` },
+        { ...DEFAULT_JOB_OPTIONS, jobId: jobIdOf('order-confirmation-mail', orderId) },
       );
     }
   }
@@ -146,7 +147,7 @@ export class OrderProcessor extends WorkerHost {
         subject: `Order ${order.orderNumber} Confirmed`,
         data: { orderNumber: order.orderNumber },
       },
-      { ...DEFAULT_JOB_OPTIONS, jobId: `order-paid-mail:${orderId}` },
+      { ...DEFAULT_JOB_OPTIONS, jobId: jobIdOf('order-paid-mail', orderId) },
     );
 
     if (order.isDigital) {
@@ -163,7 +164,7 @@ export class OrderProcessor extends WorkerHost {
             year: new Date().getFullYear(),
           },
         },
-        { ...DEFAULT_JOB_OPTIONS, jobId: `digital-download-mail:${orderId}` },
+        { ...DEFAULT_JOB_OPTIONS, jobId: jobIdOf('digital-download-mail', orderId) },
       );
     }
   }
@@ -357,7 +358,7 @@ export class OrderProcessor extends WorkerHost {
             orderId:   so.id,
             earnings:  Number(so.sellerEarnings).toFixed(2),
           },
-        }, { ...DEFAULT_JOB_OPTIONS, jobId: `store-order-email:${so.id}` });
+        }, { ...DEFAULT_JOB_OPTIONS, jobId: jobIdOf('store-order-email', so.id) });
       }
 
       // A duplicate push here would place a second REAL print order with the
@@ -365,7 +366,7 @@ export class OrderProcessor extends WorkerHost {
       await this.fulfillmentQueue.add(
         JOBS.PUSH_STORE_ORDER,
         { storeOrderId: so.id },
-        { ...FULFILLMENT_JOB_OPTIONS, jobId: `store-order-fulfil:${so.id}` },
+        { ...FULFILLMENT_JOB_OPTIONS, jobId: jobIdOf('store-order-fulfil', so.id) },
       );
     }
   }
