@@ -174,7 +174,11 @@ function ProfilePickerModal<T extends { id: string }>({
 }) {
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-md"
+      {/* Wider and taller than the default dialog: each row carries a name, a
+          charge badge, an origin and a listing count, which wrapped onto three
+          cramped lines at max-w-md. The list itself grows to 60vh so more than
+          three profiles are visible without scrolling. */}
+      <div className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-xl"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
@@ -185,7 +189,7 @@ function ProfilePickerModal<T extends { id: string }>({
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="px-5 py-3 space-y-2 max-h-80 overflow-y-auto">
+        <div className="px-5 py-4 space-y-2 max-h-[60vh] overflow-y-auto">
           {onCreateNew && (
             <button type="button" onClick={onCreateNew}
               className="w-full flex items-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed border-border hover:border-primary/40 text-primary transition-colors">
@@ -366,18 +370,41 @@ function ShippingProfileCard({
               Change
             </button>
           )}
-          {/* Platform-default profiles (storeId: null) are read-only for
-              sellers — the backend rejects edits on them regardless, so this
-              only appears for an owned profile or when nothing is selected
-              yet (where it starts the create flow instead). */}
-          {(!selected || selected.storeId !== null) && (
+          {/*
+            With nothing selected this opens the PICKER, not the create form.
+
+            It used to call setEditing('new') while the label read "Select
+            delivery option" — so a seller who already had delivery profiles
+            was dropped straight into "Create delivery option" and had no way
+            to reach the existing ones: "Change" is the only other route to
+            the picker and it only renders once something is already selected.
+            The picker carries its own "Create new", so creating is still one
+            click away from here.
+
+            Matches ProcessingProfileCard, whose button opens its picker in
+            both states.
+          */}
+          {selected ? (
+            /* Editing is hidden for platform-default profiles (storeId: null)
+               — the backend rejects saving them, so offering the form would
+               only waste the seller's time. */
+            selected.storeId !== null && (
+              <button
+                type="button"
+                onClick={() => setEditing(selected)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-secondary bg-muted/10 hover:bg-muted/15 rounded-full px-3 py-2 transition-colors"
+              >
+                <Pencil className="w-3 h-3" />
+                Edit
+              </button>
+            )
+          ) : (
             <button
               type="button"
-              onClick={() => (selected ? setEditing(selected) : setEditing('new'))}
-              className="flex items-center gap-1.5 text-xs font-semibold text-secondary bg-muted/10 hover:bg-muted/15 rounded-full px-3 py-2 transition-colors"
+              onClick={() => setShowPicker(true)}
+              className="text-xs font-semibold text-secondary bg-muted/10 hover:bg-muted/15 rounded-full px-4 py-2.5 transition-colors"
             >
-              <Pencil className="w-3 h-3" />
-              {selected ? 'Edit' : 'Select delivery option'}
+              Select delivery option
             </button>
           )}
         </div>
