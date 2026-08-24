@@ -168,11 +168,25 @@ export class GpsrInfoDto {
 // ── Root DTO ──────────────────────────────────────────────────────────────────
 
 export class CreateProductDetailDto {
-  /** Links to PostgreSQL Product.id */
-  @ApiProperty()
+  /**
+   * Links to PostgreSQL Product.id — supplied by the URL, not the body.
+   *
+   * Optional, and it matters. It used to be required, but the only endpoint
+   * that takes this DTO is PUT /admin/products/:id/detail, whose service
+   * queries Mongo by the `productId` PARAMETER and never reads this field at
+   * all. The controller's `dto.productId = id` could not help either: the
+   * global ValidationPipe validates the body before the handler runs, so a
+   * body without it was rejected with "productId should not be empty" before
+   * that line was ever reached.
+   *
+   * The product editor's save path did not send it, so every edit to an
+   * existing listing failed validation; the create path happened to send it
+   * and worked, which is why this only ever broke editing.
+   */
+  @ApiPropertyOptional({ description: 'Ignored — the URL parameter is authoritative' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  productId: string;
+  productId?: string;
 
   @ApiPropertyOptional({ description: 'Rich HTML product description' })
   @IsOptional()

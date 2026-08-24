@@ -672,16 +672,24 @@ export class AdminProductsController {
     return this.productsService.getProductDetail(id);
   }
 
-  // PUT /admin/products/:id/detail
+  // PUT|PATCH /admin/products/:id/detail
+  //
+  // Both verbs, one handler. The service $sets only the fields present in the
+  // body, so this has always behaved as a partial update whatever it was
+  // called — and GPSRModal was already calling PATCH against a PUT-only route,
+  // which meant saving GPSR information silently did nothing.
+  //
+  // No `dto.productId = id` here any more: the service queries by the `id`
+  // parameter and never read that field, and assigning it after the fact could
+  // not have satisfied validation anyway — the pipe runs first.
   @Put(':id/detail')
-  @ApiOperation({ summary: '[Admin] Upsert full MongoDB product detail' })
+  @Patch(':id/detail')
+  @ApiOperation({ summary: '[Admin] Upsert MongoDB product detail (partial — only fields present are written)' })
   @ApiResponse({ status: 200 })
   upsertProductDetail(
     @Param('id', ParseCuidPipe) id: string,
     @Body() dto: CreateProductDetailDto,
   ) {
-    // Force productId to match URL param
-    dto.productId = id;
     return this.productsService.upsertProductDetail(id, dto);
   }
 
