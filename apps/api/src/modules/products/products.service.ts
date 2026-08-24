@@ -64,6 +64,32 @@ const execFileAsync = promisify(execFile);
 const IN_DEMAND_KEY = (productId: string) => `product:demand:${productId}`;
 const VIEW_LOCK_KEY = (slug: string, lockId: string) =>
   `product:view:lock:${slug}:${lockId}`;
+/**
+ * A compare-at price must sit above the price actually charged, or the "was
+ * $X" badge is a lie. Absent is fine — most listings are not on sale.
+ *
+ * `null` counts as absent. It did not, and that was the bug: the check read
+ * `compareAtPrice !== undefined`, which `null` passes, and JavaScript then
+ * coerced it to 0 for the comparison — `null <= 27.29` is `true`, even though
+ * `null == 0` is `false`. So every listing WITHOUT a sale price was rejected
+ * with "compareAtPrice must be greater than basePrice", and the editor
+ * refused to publish it. The admin form sends `compareAtPrice: null` for
+ * exactly that case, so this hit every ordinary product.
+ *
+ * Shared by create() and update() so the two cannot drift; they had already
+ * grown slightly different conditions around the same message.
+ */
+function assertCompareAtPrice(compareAtPrice?: number | null, basePrice?: number | null): void {
+  if (compareAtPrice === undefined || compareAtPrice === null) return;
+  if (basePrice === undefined || basePrice === null) return;
+  if (compareAtPrice <= basePrice) {
+    throw new BadRequestException({
+      code: 'ERR_VALIDATION',
+      message: 'compareAtPrice must be greater than basePrice',
+    });
+  }
+}
+
 const ALLOWED_IMAGE_MIMETYPES = new Set([
   'image/jpeg',
   'image/png',
@@ -739,15 +765,7 @@ export class ProductsService {
   }
 
   async create(dto: CreateProductDto, storeId?: string): Promise<ProductResponseDto> {
-    if (
-      dto.compareAtPrice !== undefined &&
-      dto.compareAtPrice <= dto.basePrice
-    ) {
-      throw new BadRequestException({
-        code: 'ERR_VALIDATION',
-        message: 'compareAtPrice must be greater than basePrice',
-      });
-    }
+    assertCompareAtPrice(dto.compareAtPrice, dto.basePrice);
 
     // Accept Etsy's listing-page price-range summary as an alternative to
     // `variants` — `variants` (if provided) always wins, so a caller
@@ -895,16 +913,7 @@ export class ProductsService {
   async update(id: string, dto: UpdateProductDto): Promise<ProductResponseDto> {
     await this.requireProduct(id);
 
-    if (
-      dto.compareAtPrice !== undefined &&
-      dto.basePrice !== undefined &&
-      dto.compareAtPrice <= dto.basePrice
-    ) {
-      throw new BadRequestException({
-        code: 'ERR_VALIDATION',
-        message: 'compareAtPrice must be greater than basePrice',
-      });
-    }
+    assertCompareAtPrice(dto.compareAtPrice, dto.basePrice);
 
     // Block publish while any visible variation combination is still missing
     // a price — matches Etsy's own "fill in every row before you can publish"
