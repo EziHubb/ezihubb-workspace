@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { ArrayMaxSize, IsArray, IsNotEmpty, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsNotEmpty, IsOptional, IsString, IsUrl, MaxLength, MinLength } from 'class-validator';
 
 /** Bodies for the order detail panel's two write actions. */
 
@@ -36,4 +36,18 @@ export class SendOrderMessageDto {
   @ArrayMaxSize(3)
   @IsUrl({ require_tld: false }, { each: true })
   attachmentUrls?: string[];
+
+  /**
+   * Idempotency key — see SendMessageDto, which this mirrors.
+   *
+   * Declared here because bodies are validated with forbidNonWhitelisted: an
+   * undeclared field is a 400, not a silently ignored one, so the field has to
+   * exist on every DTO whose endpoint reaches MessagesService.sendMessage.
+   */
+  @ApiPropertyOptional({ description: 'Client-chosen id; a repeat returns the stored message rather than duplicating it' })
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  @MaxLength(64)
+  clientMessageId?: string;
 }

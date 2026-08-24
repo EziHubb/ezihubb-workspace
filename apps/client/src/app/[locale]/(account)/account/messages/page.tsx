@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@ezihubb/api-client';
-import { API_ROUTES } from '@ezihubb/constants';
+import { API_ROUTES, newClientMessageId } from '@ezihubb/constants';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
+import { useConversationStream } from '../../../../../lib/realtime';
 import type { ConversationDto, ConversationWithMessagesDto } from '@ezihubb/types';
 import { MessageShopModal } from '../../../../../components/messages/MessageShopModal';
 
@@ -204,8 +205,19 @@ function MessageThread({
       apiClient.get<ConversationWithMessagesDto>(API_ROUTES.MESSAGES.CONVERSATION(conversationId), {
         token: token ?? undefined,
       }),
-    refetchInterval: 15_000,
+    // Was 15s. The socket now delivers within a second, so this is a safety
+    // net for the case where the socket never connected — a corporate proxy
+    // that blocks the upgrade, say — not the primary path. Left in rather than
+    // removed: silently falling back to a dead thread is the worse failure.
+    refetchInterval: 60_000,
     enabled: !!conversationId,
+  });
+
+  // Same invalidate-don't-splice reasoning as the seller inbox: the pushed row
+  // is the raw record, this query returns it shaped for the page.
+  useConversationStream(conversationId, () => {
+    queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
+    queryClient.invalidateQueries({ queryKey: ['conversations'] });
   });
 
   useEffect(() => {
@@ -216,10 +228,16 @@ function MessageThread({
     const body = newMessage.trim();
     if (!body || isSending) return;
     setIsSending(true);
+    // Minted here, before the request goes out, so a retry of THIS message
+    // carries the same key and the server recognises it instead of writing a
+    // second copy. Generating it inside the request would defeat the point.
+    const clientMessageId = newClientMessageId();
     try {
-      await apiClient.post(API_ROUTES.MESSAGES.CONVERSATION_MESSAGES(conversationId), { body }, {
-        token: token ?? undefined,
-      });
+      await apiClient.post(
+        API_ROUTES.MESSAGES.CONVERSATION_MESSAGES(conversationId),
+        { body, clientMessageId },
+        { token: token ?? undefined },
+      );
       setNewMessage('');
       queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });

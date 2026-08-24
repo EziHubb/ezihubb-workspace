@@ -5,9 +5,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Archive, Loader2, MailOpen, Mail, Search, ShieldAlert, Star, Tag, Trash2, Undo2, X,
 } from 'lucide-react';
-import { API_ROUTES } from '@ezihubb/constants';
+import { API_ROUTES, newClientMessageId } from '@ezihubb/constants';
 import { api } from '../../../lib/api-client';
 import { useAdminMode } from '../../../lib/store-context';
+import { useConversationStream, usePresence, presenceLabel } from '../../../lib/realtime';
 import { useDialog } from '../../../contexts/DialogContext';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { ConversationList } from '../../../components/messages/inbox/ConversationList';
@@ -171,7 +172,12 @@ export default function MessagesPage() {
 
   const sendReply = useMutation({
     mutationFn: (body: string) =>
-      api.post(API_ROUTES.ADMIN.CONVERSATION_MESSAGES(activeId!), { body }),
+      // A fresh key per press, reused by any retry of that same press, so a
+      // timed-out reply cannot land twice in the buyer's thread.
+      api.post(API_ROUTES.ADMIN.CONVERSATION_MESSAGES(activeId!), {
+        body,
+        clientMessageId: newClientMessageId(),
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QK.thread(activeId) });
       refetchLists();
@@ -225,6 +231,23 @@ export default function MessagesPage() {
   const allLabels = labelsQuery.data ?? [];
   const thread  = threadQuery.data ?? null;
   const total   = listQuery.data?.meta.totalPages ?? 1;
+
+  // ── Realtime ───────────────────────────────────────────────────────────
+  // Invalidate rather than append the pushed message: the row the socket
+  // carries is the raw record, while the thread query returns it shaped for
+  // this screen. Splicing the two together is how the list ends up holding
+  // two subtly different kinds of message. One extra fetch on a message that
+  // has already arrived is cheap.
+  useConversationStream(activeId, () => {
+    qc.invalidateQueries({ queryKey: QK.thread(activeId) });
+    refetchLists();
+  });
+
+  // Guests have no account and so no presence; only a signed-in buyer can be
+  // online in any meaningful sense.
+  const buyerUserId = thread?.user?.id ?? null;
+  const presence    = usePresence(buyerUserId ? [buyerUserId] : []);
+  const buyerPresence = buyerUserId ? presence.get(buyerUserId) : undefined;
 
   // Opening a thread marks it read; the badge must follow immediately or the
   // seller sees an unread count for a message they are looking at.
@@ -305,7 +328,12 @@ export default function MessagesPage() {
         </nav>
 
         {/* ── List ─────────────────────────────────────────────────────── */}
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface">
+        {/* min-w-[18rem], not min-w-0: with the thread open this column was
+            free to collapse to nothing, and at that width its toolbar wrapped
+            onto three lines and the rows overflowed. A floor here makes the
+            browser take the space out of the thread column instead, which has
+            far more room to give. */}
+        <section className="flex min-h-0 min-w-[18rem] flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface">
           <div className="flex flex-wrap items-center gap-1 border-b border-border px-4 py-2">
             <input
               type="checkbox"
@@ -388,9 +416,12 @@ export default function MessagesPage() {
           )}
         </section>
 
-        {/* ── Thread + buyer ───────────────────────────────────────────── */}
+        {/* ── Thread + buyer ─────────────────────────────────────────────
+            42rem is the preferred width, not a floor. It used to be shrink-0,
+            so on anything narrower than about 1900px it kept all 672px and
+            the list column paid for it. */}
         {activeId && (
-          <section className="flex min-h-0 w-[42rem] shrink-0 overflow-hidden rounded-card border border-border bg-surface">
+          <section className="flex min-h-0 w-[42rem] min-w-0 flex-[1.4] overflow-hidden rounded-card border border-border bg-surface">
             {threadQuery.isLoading || !thread ? (
               <p className="flex items-center gap-2 p-6 text-sm text-muted">
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Loading conversation…
@@ -432,6 +463,8 @@ export default function MessagesPage() {
                 {canWriteShopData && (
                   <BuyerPanel
                     buyer={buyerQuery.data ?? null}
+                    presence={presenceLabel(buyerPresence)}
+                    online={buyerPresence?.online ?? false}
                     labels={thread.labels}
                     allLabels={allLabels}
                     savingNote={saveNote.isPending}

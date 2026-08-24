@@ -136,6 +136,7 @@ export class AdminOrderProgressController {
       user.sub,
       dto.body,
       dto.attachmentUrls ?? [],
+      dto.clientMessageId,
     );
   }
 

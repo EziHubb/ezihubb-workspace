@@ -492,6 +492,7 @@ export class SellerOrderDetailService {
     senderId:       string,
     body:           string,
     attachmentUrls: string[] = [],
+    clientMessageId?: string,
   ) {
     const row = await this.owned(storeId, storeOrderId);
 
@@ -534,7 +535,7 @@ export class SellerOrderDetailService {
       conversation.id,
       SenderType.SHOP,
       senderId,
-      { body, attachmentUrls },
+      { body, attachmentUrls, clientMessageId },
       storeId,
     );
   }

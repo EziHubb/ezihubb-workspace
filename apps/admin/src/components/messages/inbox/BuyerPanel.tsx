@@ -19,9 +19,16 @@ interface Props {
   savingNote: boolean;
   onSaveNote:   (body: string) => Promise<void>;
   onToggleLabel: (labelId: string) => void;
+  /** "Online" / "Last seen 5m ago". Empty or absent for a guest, who has no
+   *  account and therefore no presence to report. */
+  presence?: string;
+  /** Drives the dot's colour. Separate from the label so the two cannot drift. */
+  online?:   boolean;
 }
 
-export function BuyerPanel({ buyer, labels, allLabels, savingNote, onSaveNote, onToggleLabel }: Props) {
+export function BuyerPanel({
+  buyer, labels, allLabels, savingNote, onSaveNote, onToggleLabel, presence, online,
+}: Props) {
   const [editing, setEditing] = useState(false);
   const [draft,   setDraft]   = useState('');
   const [picking, setPicking] = useState(false);
@@ -39,9 +46,30 @@ export function BuyerPanel({ buyer, labels, allLabels, savingNote, onSaveNote, o
   const assigned = new Set(labels.map((l) => l.id));
 
   return (
-    <aside className="w-72 shrink-0 space-y-5 border-l border-border px-5 py-5 text-sm" aria-label="About this buyer">
+    // Hidden below 2xl. It is 288px of context sitting beside the conversation
+    // itself, and on a narrower screen those pixels are the difference between
+    // a readable thread and a squeezed one. Nothing here is unavailable
+    // elsewhere — the buyer's name and note are on the thread and the order.
+    <aside
+      className="hidden w-72 shrink-0 space-y-5 border-l border-border px-5 py-5 text-sm 2xl:block"
+      aria-label="About this buyer"
+    >
       <div className="flex items-start justify-between gap-3">
-        <h2 className="font-semibold text-secondary">{buyer.name}</h2>
+        <div className="min-w-0">
+          <h2 className="font-semibold text-secondary">{buyer.name}</h2>
+          {/* Rendered only when there is something true to say. A guest has no
+              account, so "Offline" would be a claim about someone who cannot
+              be online rather than a fact about them. */}
+          {presence && (
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${online ? 'bg-success' : 'bg-border'}`}
+                aria-hidden="true"
+              />
+              {presence}
+            </p>
+          )}
+        </div>
         <Avatar name={buyer.name} src={buyer.avatarUrl} size={40} />
       </div>
 

@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CalendarClock, Gift, Loader2, MoreHorizontal, Printer, Undo2, X, XCircle,
 } from 'lucide-react';
-import { API_ROUTES } from '@ezihubb/constants';
+import { API_ROUTES, newClientMessageId } from '@ezihubb/constants';
 import { api } from '../../../lib/api-client';
 import { toast } from '../../../lib/store/toast.store';
 import { useDialog } from '../../../contexts/DialogContext';
@@ -134,7 +134,12 @@ export function OrderPanel({
 
   const sendMessage = useMutation({
     mutationFn: (payload: { body: string; attachmentUrls: string[] }) =>
-      api.post(`${API_ROUTES.ADMIN.ORDER_PANEL_MESSAGES(storeOrderId)}${storeQuery}`, payload),
+      api.post(`${API_ROUTES.ADMIN.ORDER_PANEL_MESSAGES(storeOrderId)}${storeQuery}`, {
+        ...payload,
+        // The same idempotency key every other send path uses — this endpoint
+        // reaches MessagesService.sendMessage like the rest of them.
+        clientMessageId: newClientMessageId(),
+      }),
     onSuccess: () => {
       toast.success('Message sent');
       qc.invalidateQueries({ queryKey: QK.thread(storeOrderId) });

@@ -78,7 +78,16 @@ export function ConversationList({
             >
               <Avatar name={name} src={row.user?.avatarUrl} />
 
-              <span className={`w-40 shrink-0 truncate text-sm ${unread ? 'font-semibold text-secondary' : 'text-secondary'}`}>
+              {/* Fixed 160px only in the wide layout, where it lines the
+                  previews up into a column. In compact mode the preview is
+                  gone and the row is a few hundred pixels wide, so a name
+                  that refuses to shrink overflows its button and prints on
+                  top of the timestamp beside it. */}
+              <span
+                className={`truncate text-sm ${compact ? 'min-w-0 flex-1' : 'w-40 shrink-0'} ${
+                  unread ? 'font-semibold text-secondary' : 'text-secondary'
+                }`}
+              >
                 {name}
               </span>
 

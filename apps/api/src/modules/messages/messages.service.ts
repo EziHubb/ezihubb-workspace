@@ -6,8 +6,9 @@ import {
   Optional,
 } from '@nestjs/common';
 import { ModerationService } from '../moderation/moderation.service';
-import { ConversationStatus, SenderType } from '@prisma/client';
+import { Prisma, ConversationStatus, SenderType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushService } from '../notifications/push.service';
 import type { AdminConversationFolder } from './dto/admin-conversation-query.dto';
@@ -40,6 +41,13 @@ export class MessagesService {
     private readonly prisma:         PrismaService,
     private readonly notifications:  NotificationsService,
     private readonly pushService:    PushService,
+    /**
+     * Optional so this service still constructs where the gateway is not
+     * wired — unit tests, and the CLI paths that import it for seeding. A
+     * missing gateway costs the live push and nothing else; the message is
+     * already committed by the time it would be used.
+     */
+    @Optional() private readonly realtime?: RealtimeGateway,
     @Optional() private readonly moderationService?: ModerationService,
   ) {}
 
@@ -118,7 +126,23 @@ export class MessagesService {
 
     const isCustomer = senderType === SenderType.CUSTOMER;
 
-    const [message] = await this.prisma.$transaction([
+    // A retry that carries the key of an attempt which actually landed returns
+    // that message untouched — no second row, no second unread, no second
+    // notification. Checked before the write as the common case; the unique
+    // index below is what makes it correct when two retries race.
+    if (dto.clientMessageId) {
+      const existing = await this.prisma.message.findUnique({
+        where: {
+          conversationId_clientMessageId: {
+            conversationId,
+            clientMessageId: dto.clientMessageId,
+          },
+        },
+      });
+      if (existing) return existing;
+    }
+
+    const write = () => this.prisma.$transaction([
       this.prisma.message.create({
         data: {
           conversationId,
@@ -127,6 +151,7 @@ export class MessagesService {
           body: dto.body,
           attachmentUrls: dto.attachmentUrls ?? [],
           attachedProductId: dto.attachedProductId ?? null,
+          clientMessageId: dto.clientMessageId ?? null,
         },
       }),
       this.prisma.conversation.update({
@@ -144,6 +169,39 @@ export class MessagesService {
         },
       }),
     ]);
+
+    /**
+     * The check above is the fast path; this is the correct one.
+     *
+     * Two retries can both find nothing and both go on to insert. The unique
+     * index on (conversationId, clientMessageId) lets exactly one win, and the
+     * loser lands here — where the right answer is the row the winner wrote,
+     * not an error. The whole transaction rolls back with it, so the loser also
+     * leaves no extra unread behind.
+     */
+    let message: Awaited<ReturnType<typeof write>>[0];
+    try {
+      [message] = await write();
+    } catch (e) {
+      const isDuplicate =
+        dto.clientMessageId &&
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002';
+      if (!isDuplicate) throw e;
+
+      const winner = await this.prisma.message.findUnique({
+        where: {
+          conversationId_clientMessageId: {
+            conversationId,
+            clientMessageId: dto.clientMessageId as string,
+          },
+        },
+      });
+      // Only when it is genuinely absent: a P2002 from some other unique index
+      // would otherwise be swallowed and reported as a message that vanished.
+      if (!winner) throw e;
+      return winner;
+    }
 
     // fire-and-forget
     this.moderationService?.queueMessageModeration(message.id).catch((e) => this.logger.error('mod queue failed', e));
@@ -172,6 +230,15 @@ export class MessagesService {
           this.logger.warn(`Push notify failed for conversation ${conversationId}: ${String(err)}`),
         );
     }
+
+    // Last, and only after the transaction above has committed: a socket
+    // delivery is not undoable, so emitting earlier would let a rolled-back
+    // message appear in someone's thread and stay there until they reloaded.
+    //
+    // Every sender reaches this method — the buyer's endpoint, the seller's
+    // inbox reply, and the order panel all delegate here — so this one call
+    // covers all of them without a second emit site to keep in step.
+    this.realtime?.emitMessage(conversationId, message);
 
     return message;
   }

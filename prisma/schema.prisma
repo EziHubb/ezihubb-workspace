@@ -287,6 +287,12 @@ model User {
   adminTags   String[]
   isActive    Boolean   @default(true)
   lastLoginAt DateTime?
+  /// When this user's last socket disconnected, so "offline 5 minutes ago" can
+  /// still be answered after an API restart — presence itself lives in Redis
+  /// and is deliberately lost when the process dies. Written only on the
+  /// transition to fully offline, not per socket, so a browser refresh (which
+  /// disconnects and reconnects) does not write on every page load.
+  lastSeenAt  DateTime?
 
   @@index([email])
 }
@@ -2114,6 +2120,19 @@ model Message {
   senderType SenderType
   senderId   String? // userId if customer, adminId if shop
 
+  /// Chosen by the sender's browser before the request leaves, so a retry
+  /// carries the same value as the attempt it is retrying.
+  ///
+  /// Without it a request that timed out mid-flight is indistinguishable from
+  /// one that never arrived: the buyer presses send again and the thread gets
+  /// the message twice. That needs no scale at all to happen — one person on a
+  /// flaky connection is enough.
+  ///
+  /// Nullable, and unique only WITH conversationId: Postgres allows repeated
+  /// NULLs in a unique index, so every message written before this existed,
+  /// and any future path that does not supply one, still insert freely.
+  clientMessageId String?
+
   body           String   @db.Text
   attachmentUrls String[] // up to 3 image attachments
 
@@ -2131,6 +2150,7 @@ model Message {
 
   moderationStatus ModerationStatus @default(CLEAN)
 
+  @@unique([conversationId, clientMessageId])
   @@index([conversationId])
   @@index([createdAt])
   @@index([attachedProductId])

@@ -1,5 +1,6 @@
 ﻿import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import * as https from 'https';
@@ -269,6 +270,21 @@ async function bootstrap() {
   });
 
   Logger.log(`Partner API docs → http://localhost:${process.env.PORT ?? '3002'}/partner/docs`, 'Bootstrap');
+
+  // ── Realtime ──────────────────────────────────────────────────────────────
+  // Attached before listen(): the adapter has to be in place when the gateway's
+  // server is created, and createIOServer runs during listen().
+  const socketAdapter = new RedisIoAdapter(app);
+  const redisConnected = await socketAdapter.connect(
+    process.env['REDIS_URL'] ?? 'redis://localhost:6379',
+  );
+  app.useWebSocketAdapter(socketAdapter);
+  Logger.log(
+    redisConnected
+      ? 'Realtime: socket.io with Redis adapter'
+      : 'Realtime: socket.io single-instance (no Redis adapter)',
+    'Bootstrap',
+  );
 
   // ── Graceful shutdown ─────────────────────────────────────────────────────
   app.enableShutdownHooks();

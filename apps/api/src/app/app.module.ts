@@ -16,6 +16,7 @@ import secretsConfig from '../config/secrets.config';
 import { PrismaModule } from '../prisma/prisma.module';
 import { CommonModule } from '../common/common.module';
 import { QueueModule } from '../queue/queue.module';
+import { RealtimeModule } from '../modules/realtime/realtime.module';
 import { AuthModule } from '../modules/auth/auth.module';
 import { UsersModule } from '../modules/users/users.module';
 import { CatalogModule } from '../modules/catalog/catalog.module';
@@ -134,6 +135,7 @@ import { I18nInterceptor } from '../common/interceptors/i18n.interceptor';
     MongoDBModule,
     CommonModule,
     QueueModule,
+    RealtimeModule,
 
     // ── Feature modules ───────────────────────────────────────────────────────
     AuthModule,
