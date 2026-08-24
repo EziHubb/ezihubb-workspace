@@ -13,7 +13,7 @@ import {
   ShopHealthDto,
 } from './dto/dashboard.dto';
 import { ReviewResponseDto } from '../reviews/dto/review-response.dto';
-import { OrderStatus, ReviewStatus } from '@prisma/client';
+import { OrderStatus, ReviewStatus, StoreStatus } from '@prisma/client';
 
 @Injectable()
 export class AdminService {
@@ -368,7 +368,7 @@ export class AdminService {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
       select: {
-        name: true, slug: true, logoUrl: true, bannerUrl: true, description: true,
+        name: true, slug: true, logoUrl: true, bannerUrl: true, description: true, status: true,
         performanceScore: true, scoreShipping: true, scoreRefund: true, scoreReview: true, scoreResponse: true, scoreBadge: true,
         owner: { select: { avatarUrl: true } },
       },
@@ -381,6 +381,7 @@ export class AdminService {
     const [
       activeListingNames, overdueOrders, ordersToSendToday,
       helpRequests, soldOutListings, inactiveListings,
+      deliveryProfiles, processingProfiles, shopSections,
     ] = await Promise.all([
       // A title under 40 characters is unlikely to carry enough descriptive
       // keywords to surface well in search — a simple, honest heuristic
@@ -399,6 +400,12 @@ export class AdminService {
       this.prisma.conversation.count({ where: { storeId, status: 'OPEN', unreadByAdmin: { gt: 0 } } }),
       this.prisma.product.count({ where: { storeId, status: 'ACTIVE', deletedAt: null, trackInventory: true, quantity: 0 } }),
       this.prisma.product.count({ where: { storeId, status: 'INACTIVE', deletedAt: null } }),
+      // Counted, not fetched: the guide only asks whether any exist. `take: 1`
+      // on a findMany would do too, but count keeps the three setup signals
+      // reading the same way.
+      this.prisma.shippingProfile.count({ where: { storeId } }),
+      this.prisma.processingProfile.count({ where: { storeId } }),
+      this.prisma.shopSection.count({ where: { storeId } }),
     ]);
     const listingsNeedingTitleWork = activeListingNames.filter((p) => p.name.length < 40).length;
 
@@ -414,6 +421,16 @@ export class AdminService {
         story:       !!store?.description,
         sellerPhoto: !!store?.owner?.avatarUrl,
       },
+      setup: {
+        firstListing:      activeListingNames.length > 0,
+        deliveryProfile:   deliveryProfiles   > 0,
+        processingProfile: processingProfiles > 0,
+        shopSection:       shopSections       > 0,
+      },
+      // A missing store reads as not approved rather than approved: the guide
+      // errs towards telling the seller their shop cannot sell yet, which is
+      // recoverable, over claiming it can when we could not confirm it.
+      shopApproved: store?.status === StoreStatus.ACTIVE,
       listingsNeedingTitleWork,
       performanceScore: store?.performanceScore ?? null,
       scoreShipping:    store?.scoreShipping    ?? null,

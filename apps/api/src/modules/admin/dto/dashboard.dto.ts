@@ -52,6 +52,35 @@ export class ShopHealthDto {
     story:       boolean;
     sellerPhoto: boolean;
   };
+  /**
+   * What still stands between this shop and its first sale.
+   *
+   * Separate from `checklist`, which is about how the shop LOOKS. These are
+   * the things that decide whether it can transact at all: a listing with no
+   * delivery profile has no shipping price to quote at checkout, and a shop
+   * still awaiting review cannot be bought from however finished it looks.
+   *
+   * Booleans only, no copy or links — the same contract `checklist` already
+   * uses. Wording belongs with the component that renders it.
+   */
+  setup!: {
+    /** At least one ACTIVE, non-deleted listing. */
+    firstListing:      boolean;
+    /** At least one shipping profile, without which checkout cannot quote. */
+    deliveryProfile:   boolean;
+    /** At least one processing profile — drives the dispatch estimate. */
+    processingProfile: boolean;
+    /** At least one shop section. Organisational, not blocking. */
+    shopSection:       boolean;
+  };
+  /**
+   * Whether the shop is approved to sell.
+   *
+   * Deliberately NOT a member of `setup`: nothing the seller does moves it, so
+   * rendering it as an unticked task would be telling them to do something
+   * they cannot. It is a status the guide reports, not a step it assigns.
+   */
+  shopApproved!: boolean;
   /** Count of active listings whose title is short enough to likely hurt search (< 40 chars). */
   listingsNeedingTitleWork!: number;
   performanceScore!: number | null;

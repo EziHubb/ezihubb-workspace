@@ -88,6 +88,9 @@ interface ShopHealth {
   shopLogoUrl:    string | null;
   activeListings: number;
   checklist: { shopName: boolean; logo: boolean; banner: boolean; story: boolean; sellerPhoto: boolean };
+  /** What blocks a sale, as opposed to how the shop looks — see ShopOwnerHome. */
+  setup: { firstListing: boolean; deliveryProfile: boolean; processingProfile: boolean; shopSection: boolean };
+  shopApproved: boolean;
   listingsNeedingTitleWork: number;
   performanceScore: number | null;
   topTasks: { overdueOrders: number; ordersToSendToday: number; helpRequests: number; soldOutListings: number; inactiveListings: number };

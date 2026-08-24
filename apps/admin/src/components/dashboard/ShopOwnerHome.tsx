@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
-  AlertOctagon, CheckCircle2, Circle, ExternalLink, ClipboardCheck,
+  AlertOctagon, CheckCircle2, Circle, Clock, ExternalLink, ClipboardCheck,
 } from 'lucide-react';
 import { fmtAmount } from '../../lib/fmt';
 
@@ -16,12 +16,28 @@ interface ShopHealthChecklist {
   sellerPhoto: boolean;
 }
 
+/**
+ * What decides whether the shop can transact, as opposed to how it looks.
+ *
+ * Kept apart from ShopHealthChecklist on purpose: the two are rendered as
+ * different sections, and folding them together would put "add a banner"
+ * beside "you have no delivery profile so checkout cannot quote a price".
+ */
+interface ShopSetupSteps {
+  firstListing:      boolean;
+  deliveryProfile:   boolean;
+  processingProfile: boolean;
+  shopSection:       boolean;
+}
+
 interface ShopHealth {
   shopName:       string | null;
   shopSlug:       string | null;
   shopLogoUrl:    string | null;
   activeListings: number;
   checklist:      ShopHealthChecklist;
+  setup:          ShopSetupSteps;
+  shopApproved:   boolean;
   listingsNeedingTitleWork: number;
   topTasks: {
     overdueOrders:     number;
@@ -62,6 +78,47 @@ export function ShopOwnerHome({ shopHealth, revenueThisMonth, ordersThisMonth, s
   ];
   const doneCount = checklistItems.filter((c) => shopHealth.checklist[c.key]).length;
   const riskFactors = (shopHealth.listingsNeedingTitleWork > 0 ? 1 : 0) + (doneCount < checklistItems.length ? 1 : 0);
+
+  /**
+   * Ordered by what blocks a sale hardest, not by how easy it is.
+   *
+   * Delivery comes before the first listing because a listing published
+   * without a profile cannot be quoted at checkout — telling the seller to
+   * publish first sends them back to edit every listing afterwards.
+   *
+   * `blocking` marks a step that stops money changing hands. Shop sections
+   * are organisation, so the guide asks for them without claiming the shop is
+   * broken until they exist.
+   */
+  const setupSteps: {
+    key: keyof ShopSetupSteps; label: string; desc: string; href: string; blocking: boolean;
+  }[] = [
+    {
+      key: 'deliveryProfile', blocking: true, href: '/settings/delivery',
+      label: 'Set up delivery',
+      desc:  'Checkout needs a delivery profile before it can quote a shipping price for your items',
+    },
+    {
+      key: 'processingProfile', blocking: true, href: '/settings/delivery',
+      label: 'Set your processing time',
+      desc:  'How long you take to make and dispatch an order — buyers see this as a delivery estimate',
+    },
+    {
+      key: 'firstListing', blocking: true, href: '/products/new',
+      label: 'Publish your first listing',
+      desc:  'Nothing can be bought until at least one listing is active',
+    },
+    {
+      key: 'shopSection', blocking: false, href: '/catalog/shop-sections',
+      label: 'Group items into shop sections',
+      desc:  'Optional, but it gives shoppers a way to browse once you have more than a handful of items',
+    },
+  ];
+  const setupDone     = setupSteps.filter((s) => shopHealth.setup[s.key]).length;
+  const blockersLeft  = setupSteps.filter((s) => s.blocking && !shopHealth.setup[s.key]).length;
+  // "Nothing to do" has to mean both lists, or the advisor congratulates a
+  // seller who still has an empty shop page.
+  const allSettled    = setupDone === setupSteps.length && doneCount === checklistItems.length;
 
   return (
     <>
@@ -223,12 +280,101 @@ export function ShopOwnerHome({ shopHealth, revenueThisMonth, ordersThisMonth, s
             </div>
           </div>
 
+          {/* ── Shop advisor ───────────────────────────────────────────────
+              This used to render the "nothing to do" panel unconditionally —
+              it congratulated a brand-new shop that had no listing, no
+              delivery profile and no way to take an order. The steps below
+              are read from the same tables the checkout reads, so the advice
+              cannot drift from what actually blocks a sale. */}
           <div className="mb-8">
-            <h2 className="font-display text-lg font-bold text-secondary mb-3">Shop advisor</h2>
-            <div className="bg-[#F3F1EC] rounded-card py-12 flex flex-col items-center justify-center text-center gap-3">
-              <ClipboardCheck className="w-8 h-8 text-muted" />
-              <p className="text-sm text-secondary">Nice! There&apos;s nothing you need to do right now.</p>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="font-display text-lg font-bold text-secondary">Shop advisor</h2>
+                {!allSettled && (
+                  <p className="text-xs text-muted mt-0.5">
+                    {blockersLeft > 0
+                      ? `${blockersLeft} thing${blockersLeft !== 1 ? 's' : ''} still stop${blockersLeft === 1 ? 's' : ''} your shop taking an order`
+                      : 'Your shop can take orders. A couple of finishing touches left.'}
+                  </p>
+                )}
+              </div>
+              {!allSettled && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="w-20 h-1 bg-border rounded-full overflow-hidden">
+                    <div className="h-full bg-secondary" style={{ width: `${(setupDone / setupSteps.length) * 100}%` }} />
+                  </div>
+                  <span className="text-xs font-semibold text-muted">{setupDone}/{setupSteps.length}</span>
+                </div>
+              )}
             </div>
+
+            {/* Reported, never ticked: approval is not something the seller
+                can go and do, so it is stated rather than assigned. */}
+            {!shopHealth.shopApproved && (
+              <div className="mb-3 flex items-start gap-3 rounded-card border border-warning/30 bg-warning/5 px-4 py-3">
+                <Clock className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-secondary">Your shop is still being reviewed</p>
+                  <p className="text-xs text-muted mt-0.5">
+                    Buyers cannot order yet. Getting the steps below done now means you can sell the moment it is approved.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {allSettled ? (
+              <div className="bg-[#F3F1EC] rounded-card py-12 flex flex-col items-center justify-center text-center gap-3">
+                <ClipboardCheck className="w-8 h-8 text-muted" />
+                <p className="text-sm text-secondary">Nice! There&apos;s nothing you need to do right now.</p>
+              </div>
+            ) : (
+              <div className="bg-surface border border-border rounded-card divide-y divide-border overflow-hidden">
+                {setupSteps.map((step) => {
+                  const done = shopHealth.setup[step.key];
+                  return (
+                    <Link
+                      key={step.key}
+                      href={step.href}
+                      className="flex items-start gap-3 px-4 py-3.5 hover:bg-background transition-colors"
+                    >
+                      {done ? (
+                        <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
+                      ) : (
+                        <Circle className="w-5 h-5 text-border shrink-0 mt-0.5" strokeDasharray="3 3" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-secondary">
+                          {step.label} →
+                          {!done && step.blocking && (
+                            <span className="ml-2 rounded-pill bg-warning/10 px-2 py-0.5 text-[11px] font-semibold text-warning align-middle">
+                              Blocks orders
+                            </span>
+                          )}
+                        </p>
+                        {!done && <p className="text-xs text-muted mt-0.5">{step.desc}</p>}
+                      </div>
+                    </Link>
+                  );
+                })}
+
+                {/* Pointed at rather than repeated: these five have their own
+                    section above, and listing them twice would read as ten
+                    outstanding tasks when there are only five. */}
+                {doneCount < checklistItems.length && (
+                  <div className="flex items-start gap-3 px-4 py-3.5">
+                    <Circle className="w-5 h-5 text-border shrink-0 mt-0.5" strokeDasharray="3 3" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-secondary">
+                        Finish customising your shop ({doneCount}/{checklistItems.length})
+                      </p>
+                      <p className="text-xs text-muted mt-0.5">
+                        The shop page buyers land on is still missing a few things — see the section above.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </>
       ) : (
