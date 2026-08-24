@@ -126,7 +126,13 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
   const TABS = tabsFor(mode, productType);
 
   const [activeTab,  setActiveTab]  = useState<TabId>(ALL_TABS[0].id);
-  const [isDirty,    setIsDirty]    = useState(false);
+  /**
+   * Straight from react-hook-form, which diffs the live values against
+   * `defaultValues` — so putting a field back the way it was clears it again.
+   * The baseline is set at mount above and re-set by `form.reset()` after a
+   * save or a discard.
+   */
+  const { isDirty } = form.formState;
   const [saved,      setSaved]      = useState(false);
   const [saveError,  setSaveError]  = useState<string | null>(null);
 
@@ -231,8 +237,23 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
 
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
 
+  /**
+   * Clears the "Saved" flag once the seller starts editing again.
+   *
+   * Dirtiness is NOT tracked here any more. This used to also call
+   * setIsDirty(true), which made it a one-way latch: `form.watch` fires on
+   * every keystroke and the handler never compared anything, so touching a
+   * field once left the form marked dirty for the rest of its life. Choosing
+   * "Digital download" and then choosing "Physical product" again put every
+   * value back exactly as loaded, and the footer still insisted there were
+   * unsaved changes.
+   *
+   * react-hook-form already answers this properly — `formState.isDirty`
+   * compares the live values against `defaultValues` and goes back to false
+   * when they match again.
+   */
   useEffect(() => {
-    const sub = form.watch(() => { setIsDirty(true); setSaved(false); setSaveError(null); });
+    const sub = form.watch(() => { setSaved(false); setSaveError(null); });
     return () => sub.unsubscribe();
   }, [form]);
 
@@ -251,7 +272,11 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
       api.patch(API_ROUTES.ADMIN.PRODUCT(product!.id), extractPrismaFields(data)),
       api.put(API_ROUTES.ADMIN.PRODUCT_DETAIL(product!.id), extractMongoFields(data)),
     ]);
-    setIsDirty(false);
+    // Re-baseline rather than clearing a flag: what was just saved IS the new
+    // "no unsaved changes" state, so `isDirty` must be measured against it. A
+    // bare flag reset would have gone true again on the next keystroke even if
+    // the seller typed the saved value back.
+    form.reset(data);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
@@ -319,8 +344,8 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
     if (mode === 'create' && draftId) {
       setShowLeaveDialog(true);
     } else {
+      // reset() already restores the baseline and clears isDirty with it.
       form.reset(buildDefaultValues(product, detail));
-      setIsDirty(false);
       setSaveError(null);
     }
   };
