@@ -682,8 +682,13 @@ export class AdminProductsController {
   // No `dto.productId = id` here any more: the service queries by the `id`
   // parameter and never read that field, and assigning it after the fact could
   // not have satisfied validation anyway — the pipe runs first.
+  // Two handlers, not one method carrying both decorators. Stacking @Put and
+  // @Patch looks like it should work and silently does not: Nest reads a
+  // single METHOD_METADATA per handler, decorators apply bottom-up, and the
+  // upper one wins — so PATCH went on answering 404 while PUT worked. Caught
+  // by probing the deployed route rather than by the type-checker, which has
+  // nothing to say about it.
   @Put(':id/detail')
-  @Patch(':id/detail')
   @ApiOperation({ summary: '[Admin] Upsert MongoDB product detail (partial — only fields present are written)' })
   @ApiResponse({ status: 200 })
   upsertProductDetail(
@@ -691,6 +696,16 @@ export class AdminProductsController {
     @Body() dto: CreateProductDetailDto,
   ) {
     return this.productsService.upsertProductDetail(id, dto);
+  }
+
+  @Patch(':id/detail')
+  @ApiOperation({ summary: '[Admin] Same as PUT — GPSRModal and other partial savers use PATCH' })
+  @ApiResponse({ status: 200 })
+  patchProductDetail(
+    @Param('id', ParseCuidPipe) id: string,
+    @Body() dto: CreateProductDetailDto,
+  ) {
+    return this.upsertProductDetail(id, dto);
   }
 
   // POST /admin/products/:id/variants
