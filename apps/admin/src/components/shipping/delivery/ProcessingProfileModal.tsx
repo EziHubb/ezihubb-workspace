@@ -97,6 +97,23 @@ export function ProcessingProfileModal({ profile, submitLabel, onClose, onSaved 
               Are your items made to order, or ready to dispatch? <span className="text-red-500">*</span>
             </p>
             <p className="text-xs text-muted mb-3">These details help us know how you prepare items when receiving an order.</p>
+
+            {/*
+              Same warning as DeliveryProfileModal, and for the same reason: a
+              processing profile belongs to the shop, so editing it here takes
+              effect immediately and for every listing on it — unlike the rest
+              of the product editor, which waits for "Publish changes".
+
+              No count, unlike the delivery one. This endpoint does not return
+              how many listings use a processing profile, and a number I cannot
+              read is not one worth printing.
+            */}
+            {isEdit && (
+              <p className="rounded-card border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-secondary mb-3">
+                Saved straight away, and applied to every listing already using this processing
+                profile — not only the one you are editing.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"

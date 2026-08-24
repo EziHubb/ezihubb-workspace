@@ -288,6 +288,25 @@ export function DeliveryProfileModal({ profile, submitLabel, entityLabel = 'deli
             We use these settings to calculate postage costs and estimated delivery dates for buyers.
           </p>
 
+          {/*
+            A delivery profile belongs to the shop, not to whichever listing
+            happens to be open — so saving here takes effect at once, and it
+            takes effect for every listing already using it.
+
+            That is the right behaviour (a shop-wide object cannot sensibly
+            wait on one listing's "Publish changes", and Discard would then
+            silently drop it) but it is not what the surrounding page implies,
+            since everything else in the product editor waits for Publish.
+            Said out loud, with the number, rather than left to be discovered.
+          */}
+          {isEdit && (profile?.activeListings ?? 0) > 0 && (
+            <p className="rounded-card border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-secondary">
+              Saved straight away, and applied to the{' '}
+              <strong>{profile!.activeListings} listing{profile!.activeListings === 1 ? '' : 's'}</strong>{' '}
+              already using this {entityLabel} — not only the one you are editing.
+            </p>
+          )}
+
           {/* Origin */}
           <div className="grid grid-cols-2 gap-4">
             <div>
