@@ -168,6 +168,20 @@ function ProcessingProfilesSection() {
 
 // ── Delivery (shipping) profiles section ──────────────────────────────────────
 
+/**
+ * Column widths shared by the table's header and its rows.
+ *
+ * Named rather than repeated, because the header and the rows are two
+ * separate flex groups both pushed right by `justify-between`: the moment one
+ * side's last cell is a different width from the other's, every column to its
+ * left slides out of line. That is exactly what happened — the header's last
+ * cell was the "Create profile" button (~150px) while each row ended in a
+ * 68px icon strip, so both labels sat about 80px left of their own numbers.
+ */
+const COL_ORIGIN   = 'w-20';
+const COL_LISTINGS = 'w-24';
+const COL_ACTIONS  = 'w-[68px]';
+
 function DeliveryProfilesSection() {
   const qc = useQueryClient();
   const { confirm, alert } = useDialog();
@@ -196,11 +210,32 @@ function DeliveryProfilesSection() {
 
   return (
     <div>
-      <h3 className="font-semibold text-secondary text-lg mb-1">Delivery profiles</h3>
-      <p className="text-sm text-muted mb-3 max-w-2xl">
-        Delivery profiles can be used for multiple listings with similar postage costs. This helps save time if
-        you want to add new items to your shop or update multiple listings at once.
-      </p>
+      {/* "Create profile" belongs beside the section title, not in the table
+          header: it acts on the whole section rather than on a column, and
+          sitting in the header row it dictated that column's width and pushed
+          the headings out of line with their values. */}
+      <div className="flex items-start justify-between gap-4 mb-3">
+        <div className="min-w-0">
+          <h3 className="font-semibold text-secondary text-lg mb-1">Delivery profiles</h3>
+          <p className="text-sm text-muted max-w-2xl">
+            Delivery profiles can be used for multiple listings with similar postage costs. This helps save time if
+            you want to add new items to your shop or update multiple listings at once.
+          </p>
+        </div>
+        {/* Hidden while the list is empty — the empty state below carries its
+            own button, and two identical ones on screen is a worse offer. */}
+        {!isLoading && profiles.length > 0 && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="shrink-0"
+            leftIcon={<Plus className="w-4 h-4" />}
+            onClick={() => setModalProfile('new')}
+          >
+            Create profile
+          </Button>
+        )}
+      </div>
 
       {isLoading && <div className="h-16 bg-muted/5 rounded-lg animate-pulse" />}
 
@@ -218,11 +253,11 @@ function DeliveryProfilesSection() {
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background">
             <span className="text-xs font-semibold text-muted uppercase tracking-wide">Profile</span>
             <div className="flex items-center gap-8">
-              <span className="w-20 text-right text-xs font-semibold text-muted uppercase tracking-wide">Origin</span>
-              <span className="w-24 text-right text-xs font-semibold text-muted uppercase tracking-wide">Active listings</span>
-              <Button variant="secondary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={() => setModalProfile('new')}>
-                Create profile
-              </Button>
+              <span className={`${COL_ORIGIN} text-right text-xs font-semibold text-muted uppercase tracking-wide`}>Origin</span>
+              <span className={`${COL_LISTINGS} text-right text-xs font-semibold text-muted uppercase tracking-wide`}>Active listings</span>
+              {/* Stands in for each row's action buttons so both numeric
+                  columns sit directly above their values. */}
+              <div className={COL_ACTIONS} aria-hidden="true" />
             </div>
           </div>
 
@@ -241,12 +276,12 @@ function DeliveryProfilesSection() {
                   </div>
                 </div>
                 <div className="flex items-center gap-8 shrink-0">
-                  <span className="w-20 text-right text-sm text-secondary tabular-nums">{p.originPostalCode || '—'}</span>
-                  <span className="w-24 text-right text-sm text-secondary tabular-nums">{p.activeListings}</span>
+                  <span className={`${COL_ORIGIN} text-right text-sm text-secondary tabular-nums`}>{p.originPostalCode || '—'}</span>
+                  <span className={`${COL_LISTINGS} text-right text-sm text-secondary tabular-nums`}>{p.activeListings}</span>
                   {/* Platform-default profiles (storeId: null) are read-only for sellers —
                       the backend rejects edits/deletes on them regardless. */}
                   {p.storeId !== null ? (
-                    <div className="flex items-center gap-1 w-[68px] justify-end">
+                    <div className={`flex items-center gap-1 justify-end ${COL_ACTIONS}`}>
                       <button type="button" onClick={() => setModalProfile(p)} className="p-2 rounded hover:bg-primary/10 text-muted hover:text-primary transition-colors">
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
@@ -257,7 +292,7 @@ function DeliveryProfilesSection() {
                       )}
                     </div>
                   ) : (
-                    <div className="w-[68px]" />
+                    <div className={COL_ACTIONS} />
                   )}
                 </div>
               </div>
