@@ -412,7 +412,7 @@ function EmailTemplateEditor({
 
   // Simple Handlebars-like preview renderer (replaces known vars with placeholders)
   const previewHtml = body
-    .replace(/\{\{orderNumber\}\}/g, 'MLH-00123')
+    .replace(/\{\{orderNumber\}\}/g, 'EZH-123456')
     .replace(/\{\{customerName\}\}/g, 'Sarah Johnson')
     .replace(/\{\{firstName\}\}/g, 'Sarah')
     .replace(/\{\{total\}\}/g, '$55.98')

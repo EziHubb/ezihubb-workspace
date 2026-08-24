@@ -62,7 +62,7 @@ export class PaypalService {
   }
 
   /**
-   * Creates a PayPal order for the given MLH order ID.
+   * Creates a PayPal order for the given EziHubb order ID.
    * Returns the PayPal order ID and the payer approval URL.
    */
   async createOrder(

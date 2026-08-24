@@ -101,7 +101,7 @@ function DateRangePicker() {
 // ── Notifications ─────────────────────────────────────────────────────────────
 
 const MOCK_NOTIFICATIONS = [
-  { id: 1, text: 'New order #MLH-2026-00341 received',     time: '2m ago',  unread: true  },
+  { id: 1, text: 'New order #EZH-403418 received',     time: '2m ago',  unread: true  },
   { id: 2, text: '3 reviews pending approval',             time: '15m ago', unread: true  },
   { id: 3, text: 'Low stock: Custom Mug (2 left)',         time: '1h ago',  unread: false },
   { id: 4, text: 'Promo WELCOME10 used 50 times today',   time: '2h ago',  unread: false },

@@ -615,7 +615,7 @@ export function PricingShippingTab({ product, onSwitchTab, isDigital }: PricingS
               <input
                 {...register('sku', { maxLength: 32 })}
                 className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 font-mono"
-                placeholder="MLH-XXXX"
+                placeholder="EZH-XXXX"
                 maxLength={32}
               />
               <p className="text-xs text-muted mt-1 tabular-nums">{sku.length}/32</p>
