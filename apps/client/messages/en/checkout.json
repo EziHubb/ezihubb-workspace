@@ -95,6 +95,7 @@
   },
 
   "paymentForm": {
+    "methodLabel": "Payment method",
     "cardTab": "Credit / Debit Card",
     "paypalTab": "PayPal",
     "securePayments": "Payments are encrypted and secure",

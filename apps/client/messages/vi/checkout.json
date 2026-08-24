@@ -95,6 +95,7 @@
   },
 
   "paymentForm": {
+    "methodLabel": "Phương thức thanh toán",
     "cardTab": "Thẻ tín dụng / ghi nợ",
     "paypalTab": "PayPal",
     "securePayments": "Thanh toán được mã hóa và bảo mật",

@@ -95,6 +95,7 @@
   },
 
   "paymentForm": {
+    "methodLabel": "支付方式",
     "cardTab": "信用卡 / 借记卡",
     "paypalTab": "PayPal",
     "securePayments": "支付已加密，安全可靠",
