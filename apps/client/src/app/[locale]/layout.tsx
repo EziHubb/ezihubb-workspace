@@ -11,6 +11,7 @@ import { buildAlternates } from '../../lib/seo';
 import { ReactQueryProvider } from '../../components/providers/ReactQueryProvider';
 import { NextAuthProvider } from '../../components/providers/NextAuthProvider';
 import { ToastContainer } from '../../components/ui/ToastContainer';
+import { InboxToasts } from '../../components/messages/InboxToasts';
 import { WebVitals } from '../../components/providers/WebVitals';
 import { CookieConsentBanner } from '../../components/analytics/CookieConsentBanner';
 import { MetaPixel } from '../../components/analytics/MetaPixel';
@@ -177,6 +178,9 @@ export default async function LocaleLayout({
             <AffiliateTracker />
             {/* Module-level toast store — call toast.success/error anywhere, including outside React */}
             <ToastContainer />
+            {/* Announces a shop reply on any page. Renders nothing, and opens
+                no socket, for a visitor who is not signed in. */}
+            <InboxToasts />
             {/* Core Web Vitals reporting — logs in dev, sends to analytics in prod */}
             <WebVitals />
             <CookieConsentBanner />

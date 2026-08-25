@@ -79,10 +79,25 @@ export interface ThreadMessage {
   attachmentUrls:  string[];
   attachedProduct: AttachedProduct | null;
   createdAt:       string;
+  /** Set when the shop withdrew it. `body` and `attachmentUrls` come back
+   *  empty with it — the row keeps its text in the database, not in the API. */
+  deletedAt:       string | null;
 }
 
 export interface ConversationDetail extends ConversationRow {
+  /** The NEWEST page, oldest-first. Walk backwards with `oldestMessageId`. */
   messages: ThreadMessage[];
+  /** Whether anything lies before `messages[0]`. */
+  hasMoreMessages?: boolean;
+  /** Cursor for the next page back: send as `before`. */
+  oldestMessageId?: string | null;
+}
+
+/** One page of older messages, oldest-first. */
+export interface MessagePage {
+  messages: ThreadMessage[];
+  hasMoreMessages: boolean;
+  oldestMessageId: string | null;
 }
 
 export interface BuyerPanel {
@@ -92,7 +107,21 @@ export interface BuyerPanel {
   location:       string | null;
   note:           string | null;
   isFirstContact: boolean;
-  threadCount:    number;
+  orders:         BuyerOrder[];
+  /** Length of `orders`, which the API caps — not a lifetime total. */
+  orderCount:     number;
+}
+
+/** One of the buyer's orders with THIS shop, as the panel lists them. */
+export interface BuyerOrder {
+  storeOrderId: string;
+  orderId:      string;
+  orderNumber:  string;
+  status:       string;
+  itemCount:    number;
+  /** What this shop earns on it. Already a number — the API converts the Decimal. */
+  total:        number;
+  createdAt:    string;
 }
 
 export interface AutoReply {

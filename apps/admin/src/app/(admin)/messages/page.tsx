@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Archive, Loader2, MailOpen, Mail, Search, ShieldAlert, Star, Tag, Trash2, Undo2, X,
@@ -20,6 +20,7 @@ import {
   type AutoReply, type BulkAction, type BuyerPanel as BuyerPanelData,
   type ConversationDetail, type ConversationLabel, type ConversationListResponse,
   type ConversationRow, type Folder, type FolderCounts,
+  type MessagePage, type ThreadMessage,
 } from '../../../components/messages/inbox/types';
 
 /**
@@ -30,6 +31,59 @@ import {
  * on the thread, so the counts beside them and the list under them can never
  * disagree.
  */
+
+const byOldest = (a: ThreadMessage, b: ThreadMessage) =>
+  a.createdAt === b.createdAt
+    ? a.id.localeCompare(b.id)
+    : a.createdAt.localeCompare(b.createdAt);
+
+/**
+ * Everything the reader has seen, merged with the live newest window.
+ *
+ * Accumulating rather than concatenating "older pages + window" is what makes
+ * a sliding window safe. The API returns the newest hundred, so on a thread of
+ * a hundred and one a single new message pushes the oldest OUT of the window.
+ * Concatenated, that message would belong to neither list and disappear from
+ * the middle of a conversation the reader was in. Keyed by id, it stays: the
+ * window only ever replaces a message with a fresher copy of itself.
+ *
+ * A ref, not state, so a refetch that changed nothing does not re-render the
+ * thread; `tick` is what says the ref moved.
+ */
+function useThreadMessages(conversationId: string | null, newest: ThreadMessage[] | undefined) {
+  const seen = useRef(new Map<string, ThreadMessage>());
+  const [tick, setTick] = useState(0);
+
+  // Cleared during render, not in an effect, so the previous buyer's messages
+  // are never painted under the next one's name for a frame.
+  const currentId = useRef(conversationId);
+  if (currentId.current !== conversationId) {
+    currentId.current = conversationId;
+    seen.current = new Map();
+  }
+
+  useEffect(() => {
+    if (!newest?.length) return;
+    for (const m of newest) seen.current.set(m.id, m);
+    setTick((n) => n + 1);
+  }, [newest]);
+
+  const prepend = (older: ThreadMessage[]) => {
+    for (const m of older) seen.current.set(m.id, m);
+    setTick((n) => n + 1);
+  };
+
+  /** Drops everything outside the live window — used after a withdrawal, since
+   *  a page fetched earlier still carries the text that was taken back. */
+  const reset = () => {
+    seen.current = new Map();
+    setTick((n) => n + 1);
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const messages = useMemo(() => [...seen.current.values()].sort(byOldest), [tick]);
+  return { messages, prepend, reset };
+}
 
 /** Delays a value so a fast typist causes one request, not twenty. */
 function useDebounced<T>(value: T, ms: number): T {
@@ -60,6 +114,28 @@ export default function MessagesPage() {
   const [page,     setPage]     = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  /**
+   * `?c=<id>` opens a thread directly — the order panel's "Open full
+   * conversation" link, and a URL a seller can keep.
+   *
+   * Read off window rather than through useSearchParams: that hook forces the
+   * page under a Suspense boundary or the Next build fails, and this is a
+   * one-shot read on mount that needs neither. Written back with
+   * history.replaceState for the same reason — no navigation, no re-render,
+   * just an address bar that matches what is on screen.
+   */
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('c');
+    if (id) setActiveId(id);
+  }, []);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (activeId) url.searchParams.set('c', activeId);
+    else url.searchParams.delete('c');
+    window.history.replaceState(null, '', url);
+  }, [activeId]);
   const [labelMenuOpen, setLabelMenuOpen] = useState(false);
 
   // Shop owners never send a storeId; the server ignores it for them. A
@@ -106,6 +182,59 @@ export default function MessagesPage() {
     enabled:  Boolean(activeId),
     queryFn:  () => api.get<ConversationDetail>(API_ROUTES.ADMIN.CONVERSATION(activeId!)),
   });
+
+  const thread0 = threadQuery.data;
+  const { messages: threadMessages, prepend, reset: resetPages } =
+    useThreadMessages(activeId, thread0?.messages);
+
+  /**
+   * Where the next page back starts.
+   *
+   * Seeded from the thread's own response and then owned here, because that
+   * response's cursor is the oldest message in the WINDOW — which walks
+   * forwards as the thread grows, while this has to keep walking back.
+   */
+  const [cursor, setCursor] = useState<{ before: string | null; hasMore: boolean } | null>(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+
+  useEffect(() => { setCursor(null); setLoadingOlder(false); }, [activeId]);
+
+  useEffect(() => {
+    if (!thread0 || cursor) return;
+    setCursor({ before: thread0.oldestMessageId ?? null, hasMore: thread0.hasMoreMessages ?? false });
+  }, [thread0, cursor]);
+
+  const loadOlder = async () => {
+    if (!activeId || !cursor?.before || loadingOlder) return;
+    setLoadingOlder(true);
+    try {
+      const page = await api.get<MessagePage>(
+        `${API_ROUTES.ADMIN.CONVERSATION_MESSAGES(activeId)}?before=${encodeURIComponent(cursor.before)}`,
+      );
+      prepend(page.messages);
+      setCursor({ before: page.oldestMessageId, hasMore: page.hasMoreMessages });
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
+
+  /**
+   * A withdrawal invalidates history this page is holding.
+   *
+   * Pages already loaded were fetched before the shop took the message back,
+   * so they still carry its text. Dropping them falls back to the live
+   * window, which does not.
+   */
+  const withdrawnIds = useRef<string | null>(null);
+  useEffect(() => {
+    const ids = thread0?.messages?.filter((m) => m.deletedAt).map((m) => m.id).join(',') ?? '';
+    if (withdrawnIds.current !== null && withdrawnIds.current !== ids) {
+      resetPages();
+      setCursor({ before: thread0?.oldestMessageId ?? null, hasMore: thread0?.hasMoreMessages ?? false });
+    }
+    withdrawnIds.current = ids;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thread0?.messages]);
 
   const buyerQuery = useQuery({
     queryKey: QK.buyer(activeId),
@@ -182,6 +311,15 @@ export default function MessagesPage() {
       qc.invalidateQueries({ queryKey: QK.thread(activeId) });
       refetchLists();
     },
+    onError: (e: Error) => dialog.alert(e.message),
+  });
+
+  const deleteMessage = useMutation({
+    mutationFn: (messageId: string) => api.delete(API_ROUTES.ADMIN.MESSAGE_DELETE(messageId)),
+    // No optimistic update: withdrawing is irreversible and the buyer sees it
+    // too, so the thread should show what the server actually accepted rather
+    // than what was asked for.
+    onSuccess: () => { qc.invalidateQueries({ queryKey: QK.thread(activeId) }); refetchLists(); },
     onError: (e: Error) => dialog.alert(e.message),
   });
 
@@ -327,13 +465,21 @@ export default function MessagesPage() {
           ))}
         </nav>
 
-        {/* ── List ─────────────────────────────────────────────────────── */}
-        {/* min-w-[18rem], not min-w-0: with the thread open this column was
-            free to collapse to nothing, and at that width its toolbar wrapped
-            onto three lines and the rows overflowed. A floor here makes the
-            browser take the space out of the thread column instead, which has
-            far more room to give. */}
-        <section className="flex min-h-0 min-w-[18rem] flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface">
+        {/* ── List ─────────────────────────────────────────────────────────
+            Replaced by the thread rather than squeezed beside it.
+
+            Three columns at once never fitted: the list, the conversation and
+            the buyer panel were each given a share of what is left after the
+            folders, and every one of them ended up too narrow — the list's
+            toolbar wrapped onto three lines, its rows printed the name on top
+            of the timestamp, and the thread's own toolbar ran under the buyer
+            panel. Capping widths only moved which column paid.
+
+            Reading a thread and scanning the list are different tasks, so the
+            screen shows one at a time and each gets the whole width. Returning
+            is the X in the thread's toolbar, or any folder on the left. */}
+        {!activeId && (
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface">
           <div className="flex flex-wrap items-center gap-1 border-b border-border px-4 py-2">
             <input
               type="checkbox"
@@ -399,7 +545,10 @@ export default function MessagesPage() {
                 rows={rows}
                 selected={selected}
                 activeId={activeId}
-                compact={Boolean(activeId)}
+                // Never compact any more: the list is only on screen when it
+                // has the full width, so hiding the message preview to save
+                // room would be throwing away the column that makes the list
+                // worth scanning.
                 onSelect={toggleSelect}
                 onOpen={setActiveId}
                 onToggleStar={(row) => toggleStar.mutate({ id: row.id, starred: row.isStarred })}
@@ -415,13 +564,13 @@ export default function MessagesPage() {
             </div>
           )}
         </section>
+        )}
 
         {/* ── Thread + buyer ─────────────────────────────────────────────
-            42rem is the preferred width, not a floor. It used to be shrink-0,
-            so on anything narrower than about 1900px it kept all 672px and
-            the list column paid for it. */}
+            Takes the width the list gave up, so no fixed size is needed: it
+            was 42rem with shrink-0, which is what starved the list beside it. */}
         {activeId && (
-          <section className="flex min-h-0 w-[42rem] min-w-0 flex-[1.4] overflow-hidden rounded-card border border-border bg-surface">
+          <section className="flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-card border border-border bg-surface">
             {threadQuery.isLoading || !thread ? (
               <p className="flex items-center gap-2 p-6 text-sm text-muted">
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Loading conversation…
@@ -455,8 +604,24 @@ export default function MessagesPage() {
 
                   <ThreadView
                     conversation={thread}
+                    messages={threadMessages}
+                    hasMoreOlder={cursor?.hasMore ?? false}
+                    loadingOlder={loadingOlder}
+                    onLoadOlder={loadOlder}
                     sending={sendReply.isPending}
                     onSend={async (body) => { await sendReply.mutateAsync(body); }}
+                    // Only where this viewer may write to the shop. A
+                    // platform-context SUPER_ADMIN is reading someone else's
+                    // inbox for support, and the server would refuse anyway —
+                    // offering the control would just produce an error.
+                    onDeleteMessage={canWriteShopData ? (id) => {
+                      void dialog
+                        .confirm(
+                          'Withdraw this message? The buyer will see that a message was withdrawn.',
+                          { destructive: true },
+                        )
+                        .then((ok) => { if (ok) deleteMessage.mutate(id); });
+                    } : undefined}
                   />
                 </div>
 

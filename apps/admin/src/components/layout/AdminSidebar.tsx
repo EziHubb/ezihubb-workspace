@@ -4,10 +4,12 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { setStoreContext, useAdminMode } from '../../lib/store-context';
+import { useInboxNotifications, isConversationOpen } from '../../lib/realtime';
+import { toast } from '../../lib/store/toast.store';
 import {
   LayoutDashboard, ShoppingCart, ShoppingBag, FolderOpen,
   Tag, Layers, Users, BadgePercent, Star, Truck,
@@ -248,6 +250,7 @@ function useNavData() {
   const initials = name.split(' ').map((n) => n[0] ?? '').slice(0, 2).join('').toUpperCase();
 
   const { role, ownStoreId, canSwitchToOwnStore, inStoreMode, isPlatformContext, isReady } = useAdminMode();
+  const qc = useQueryClient();
 
   const { data: pendingData } = useQuery<{ count: number }>({
     queryKey: ['sidebar-affiliate-pending'],
@@ -285,6 +288,30 @@ function useNavData() {
     enabled:  isReady && !isPlatformContext,
     staleTime:       60_000,
     refetchInterval: 120_000,
+  });
+
+  /**
+   * A customer wrote — say so, and refresh the badge now rather than on the
+   * next poll.
+   *
+   * The sidebar is the right place for both: it is mounted on every page, so
+   * a seller working on listings still hears about a message, and it already
+   * owns the badge query this invalidates.
+   */
+  useInboxNotifications((payload) => {
+    qc.invalidateQueries({ queryKey: ['sidebar-nav-badges'] });
+    // The inbox's own queries too, so a seller sitting on the Messages page
+    // sees the list move rather than only the number beside it.
+    qc.invalidateQueries({ queryKey: ['messages-list'] });
+    qc.invalidateQueries({ queryKey: ['message-folders'] });
+
+    // The refreshes above run either way — the counts are wrong the moment
+    // the message lands. The toast is only for a message the seller cannot
+    // already see: announcing one they are reading is noise, and noise is how
+    // a notification stops being read at all.
+    if (!isConversationOpen(payload.conversationId)) {
+      toast.info(`${payload.from}: ${payload.preview}`);
+    }
   });
 
   // No longer role-dependent: this branch only renders for someone already

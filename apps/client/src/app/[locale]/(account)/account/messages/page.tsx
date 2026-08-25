@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES, newClientMessageId } from '@ezihubb/constants';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
-import { useConversationStream } from '../../../../../lib/realtime';
-import type { ConversationDto, ConversationWithMessagesDto } from '@ezihubb/types';
+import { useConversationStream, usePresence, presenceLabel } from '../../../../../lib/realtime';
+import type { ConversationDto, ConversationWithMessagesDto, MessagePageDto } from '@ezihubb/types';
+import { ShopAvatar } from '../../../../../components/messages/ShopAvatar';
 import { MessageShopModal } from '../../../../../components/messages/MessageShopModal';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -97,6 +99,10 @@ function ConversationListItem({
   const t = useTranslations('account.messages');
   const locale = useLocale();
   const hasUnread = conv.unreadByCustomer > 0;
+  // The shop's own name, not a literal. Every row said "EziHubb" whichever
+  // shop the thread was with — harmless on a one-shop marketplace and wrong
+  // the day there are two.
+  const shopName = conv.store?.name ?? 'Shop';
   return (
     <button
       onClick={onClick}
@@ -106,13 +112,11 @@ function ConversationListItem({
       ].join(' ')}
     >
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
-          ML
-        </div>
+        <ShopAvatar name={shopName} src={conv.store?.logoUrl} size={40} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
-            <span className={`text-sm text-secondary ${hasUnread ? 'font-semibold' : 'font-medium'}`}>
-              EziHubb
+            <span className={`truncate text-sm text-secondary ${hasUnread ? 'font-semibold' : 'font-medium'}`}>
+              {shopName}
             </span>
             <span className="text-xs text-muted flex-shrink-0 ml-2">
               {formatRelativeTime(conv.lastMessageAt, locale, t)}
@@ -135,11 +139,38 @@ function ConversationListItem({
 
 // ── MessageBubble ─────────────────────────────────────────────────────────────
 
-function MessageBubble({ message: msg, isOwn }: {
+function MessageBubble({ message: msg, isOwn, shopName, shopLogoUrl }: {
   message: ConversationWithMessagesDto['messages'][number];
   isOwn:   boolean;
+  shopName:    string;
+  shopLogoUrl: string | null;
 }) {
+  const t = useTranslations('account.messages');
   const locale = useLocale();
+
+  /**
+   * A withdrawn message keeps its place, without its text.
+   *
+   * The buyer may already have read it, so removing the bubble entirely would
+   * quietly rewrite a conversation they were part of — and leave them
+   * wondering whether they had imagined it. Saying so is the honest version.
+   */
+  if (msg.deletedAt) {
+    return (
+      <div className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+        {/* Holds the avatar's column so the pill lines up with the bubbles
+            above and below it instead of sliding left where the picture was. */}
+        {!isOwn && <div className="w-7 h-7 shrink-0" />}
+        {/* Outline, not a filled bubble. A withdrawn message is a note about
+            the conversation rather than part of it, and giving it the same
+            solid shape as real messages makes an absence look like content. */}
+        <span className="max-w-[80%] rounded-full border border-border px-4 py-2 text-sm italic text-muted">
+          {t('messageWithdrawn')}
+        </span>
+      </div>
+    );
+  }
+
   const isSystem = msg.senderType === 'SYSTEM';
   if (isSystem) {
     return (
@@ -154,9 +185,7 @@ function MessageBubble({ message: msg, isOwn }: {
   return (
     <div className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
       {!isOwn && (
-        <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold flex-shrink-0 mt-1">
-          ML
-        </div>
+        <div className="mt-1"><ShopAvatar name={shopName} src={shopLogoUrl} size={28} /></div>
       )}
       <div className={[
         'max-w-[80%] rounded-2xl px-4 py-2.5 text-sm',
@@ -183,6 +212,70 @@ function MessageBubble({ message: msg, isOwn }: {
   );
 }
 
+// ── Paging backwards through a thread ────────────────────────────────────────
+
+type ThreadMessage = ConversationWithMessagesDto['messages'][number];
+
+const byOldest = (a: ThreadMessage, b: ThreadMessage) =>
+  a.createdAt === b.createdAt
+    ? a.id.localeCompare(b.id)
+    : a.createdAt.localeCompare(b.createdAt);
+
+/**
+ * Everything the reader has seen, merged with the live newest window.
+ *
+ * Accumulating rather than concatenating two lists is what makes a sliding
+ * window safe. The API returns the newest hundred, so on a thread of a hundred
+ * and one, a single new message pushes the oldest one OUT of the window. If
+ * the render were `olderPagesFetched + window`, that message would belong to
+ * neither and vanish from the middle of a conversation the reader was in.
+ * Keyed by id and merged, it stays: the window only ever overwrites a message
+ * with a fresher copy of itself.
+ *
+ * The store is a ref, not state, so a refetch that changes nothing does not
+ * re-render the whole thread; `tick` is what says the ref moved.
+ */
+function useThreadMessages(conversationId: string, newest: ThreadMessage[] | undefined) {
+  const seen = useRef(new Map<string, ThreadMessage>());
+  const [tick, setTick] = useState(0);
+
+  // A different thread is a different history. Cleared synchronously during
+  // render rather than in an effect, so the previous buyer's messages are
+  // never painted under the new one's name for a frame.
+  const currentId = useRef(conversationId);
+  if (currentId.current !== conversationId) {
+    currentId.current = conversationId;
+    seen.current = new Map();
+  }
+
+  useEffect(() => {
+    if (!newest?.length) return;
+    for (const m of newest) seen.current.set(m.id, m);
+    setTick((n) => n + 1);
+  }, [newest]);
+
+  const prepend = (older: ThreadMessage[]) => {
+    for (const m of older) seen.current.set(m.id, m);
+    setTick((n) => n + 1);
+  };
+
+  /** Drops everything outside the live window. Used when a message is
+   *  withdrawn: a copy held here predates the withdrawal and would go on
+   *  showing text the shop has taken back. */
+  const reset = () => {
+    seen.current = new Map();
+    setTick((n) => n + 1);
+  };
+
+  const messages = useMemo(
+    () => [...seen.current.values()].sort(byOldest),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tick],
+  );
+
+  return { messages, prepend, reset };
+}
+
 // ── MessageThread ─────────────────────────────────────────────────────────────
 
 function MessageThread({
@@ -193,10 +286,14 @@ function MessageThread({
   onBack:         () => void;
 }) {
   const t = useTranslations('account.messages');
+  const locale = useLocale();
   const token = useAuthStore((s) => s.accessToken);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const paneRef   = useRef<HTMLDivElement>(null);
+  /** Pane height captured just before a page of older messages is prepended. */
+  const pendingScroll = useRef<number | null>(null);
   const queryClient = useQueryClient();
 
   const { data: conv, isLoading } = useQuery<ConversationWithMessagesDto>({
@@ -213,6 +310,49 @@ function MessageThread({
     enabled: !!conversationId,
   });
 
+  const { messages, prepend, reset } = useThreadMessages(conversationId, conv?.messages);
+
+  /**
+   * Where the next page back starts.
+   *
+   * Seeded from the thread's own response and then owned here, because the
+   * response's cursor is the oldest message in the WINDOW — it walks forwards
+   * as the thread grows, while this has to keep walking backwards.
+   */
+  const [cursor, setCursor]   = useState<{ before: string | null; hasMore: boolean } | null>(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+
+  useEffect(() => {
+    setCursor(null);
+    setLoadingOlder(false);
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!conv || cursor) return;
+    setCursor({ before: conv.oldestMessageId ?? null, hasMore: conv.hasMoreMessages ?? false });
+  }, [conv, cursor]);
+
+  const loadOlder = async () => {
+    if (!cursor?.before || loadingOlder) return;
+    setLoadingOlder(true);
+    // Measured before the fetch resolves, so the layout effect below has the
+    // height the pane had while the reader was looking at it.
+    pendingScroll.current = paneRef.current?.scrollHeight ?? null;
+    try {
+      const page = await apiClient.get<MessagePageDto>(
+        `${API_ROUTES.MESSAGES.CONVERSATION_MESSAGES(conversationId)}?before=${encodeURIComponent(cursor.before)}`,
+        { token: token ?? undefined },
+      );
+      prepend(page.messages);
+      setCursor({ before: page.oldestMessageId, hasMore: page.hasMoreMessages });
+    } catch {
+      // Leave the cursor where it was so the button stays and can be retried.
+      pendingScroll.current = null;
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
+
   // Same invalidate-don't-splice reasoning as the seller inbox: the pushed row
   // is the raw record, this query returns it shaped for the page.
   useConversationStream(conversationId, () => {
@@ -220,9 +360,110 @@ function MessageThread({
     queryClient.invalidateQueries({ queryKey: ['conversations'] });
   });
 
+  /**
+   * A withdrawal invalidates history this component is holding.
+   *
+   * Pages already loaded were fetched before the shop took the message back,
+   * so they still carry its text. Dropping them sends the thread back to the
+   * live window, which does not.
+   */
+  const lastDeleted = useRef<string | null>(null);
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const withdrawn = conv?.messages?.filter((m) => m.deletedAt).map((m) => m.id).join(',') ?? '';
+    if (lastDeleted.current !== null && lastDeleted.current !== withdrawn) {
+      reset();
+      setCursor({ before: conv?.oldestMessageId ?? null, hasMore: conv?.hasMoreMessages ?? false });
+    }
+    lastDeleted.current = withdrawn;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conv?.messages]);
+
+  // The shop page, in the buyer's own locale. Falls back to the shops index
+  // when a conversation predates the store link rather than rendering a link
+  // to /shops/undefined.
+  const shopHref = conv?.store?.slug ? `/${locale}/shops/${conv.store.slug}` : `/${locale}/shops`;
+  const shopName = conv?.store?.name ?? 'Shop';
+
+  // Presence is per user, and a shop is online when its owner is. The server
+  // only answers for people the buyer already shares a conversation with,
+  // which this is.
+  const ownerId = conv?.store?.ownerId ?? null;
+  const presence = usePresence(ownerId ? [ownerId] : []);
+  const shopPresence      = ownerId ? presence.get(ownerId) : undefined;
+  const shopPresenceLabel = presenceLabel(shopPresence);
+  const shopOnline        = shopPresence?.online ?? false;
+
+  /**
+   * Scrolls the message pane, not the page.
+   *
+   * scrollIntoView walks up to whichever ancestor can scroll, and while the
+   * thread had no bounded height that was the window — opening a conversation
+   * threw the whole page down past the footer. Setting scrollTop on the pane
+   * itself cannot escape it, whatever the surrounding layout does.
+   *
+   * 'auto' on the first paint and 'smooth' afterwards: animating a jump the
+   * reader did not ask for reads as the page moving under them.
+   *
+   * Keyed on the WINDOW's length, not the rendered one. Loading older messages
+   * grows the rendered list too, and sharing a trigger would answer "show me
+   * what came before" by throwing the reader back to the bottom.
+   */
+  const firstScroll = useRef(true);
+  useEffect(() => {
+    const pane = paneRef.current;
+    if (!pane) return;
+    pane.scrollTo({ top: pane.scrollHeight, behavior: firstScroll.current ? 'auto' : 'smooth' });
+    firstScroll.current = false;
   }, [conv?.messages?.length]);
+
+  /**
+   * Keeps the reader where they were when a page is prepended.
+   *
+   * Content added ABOVE the viewport moves everything below it down by exactly
+   * the height added, and the browser leaves scrollTop alone — so the message
+   * being read jumps off screen. Adding the same delta back puts it under the
+   * same pixel it was under before.
+   *
+   * useLayoutEffect, not useEffect: after paint is one frame too late and the
+   * jump is visible.
+   */
+  useLayoutEffect(() => {
+    const pane = paneRef.current;
+    const before = pendingScroll.current;
+    if (!pane || before === null) return;
+    pendingScroll.current = null;
+    pane.scrollTop += pane.scrollHeight - before;
+  }, [messages]);
+
+  /**
+   * Opening a thread reads it.
+   *
+   * Nothing called this before, so unreadByCustomer never returned to zero:
+   * the sidebar kept a badge for messages the buyer was looking at, and the
+   * shop's own double tick never appeared because the messages were never
+   * marked read either.
+   */
+  useEffect(() => {
+    if (!conversationId || !token) return;
+    // Gated on there being something unread, not on the message count: the
+    // count also moves when the buyer sends, which would post a mark-read on
+    // every keystroke-ending Enter for messages that were already read.
+    //
+    // It is also what makes this self-terminating. Marking read sets the
+    // count to zero, the refetch below carries that back, and the effect stops
+    // — where a length-based dependency would keep firing on its own refetch.
+    if (!conv?.unreadByCustomer) return;
+
+    apiClient
+      .post(API_ROUTES.MESSAGES.CONVERSATION_READ(conversationId), {}, { token })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
+      })
+      // Silent: failing to clear a badge is not worth an error over a thread
+      // the buyer is reading, and the next arriving message tries again.
+      .catch(() => undefined);
+  }, [conversationId, token, conv?.unreadByCustomer, queryClient]);
 
   const sendMessage = async () => {
     const body = newMessage.trim();
@@ -259,30 +500,84 @@ function MessageThread({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold">
-            ML
-          </div>
+        {/* The avatar and name link to the shop.
+            A buyer looking at a conversation with a shop reasonably expects
+            the shop's own picture to take them there; it was inert markup.
+            One anchor around both, so the whole block is the target rather
+            than a 32px circle. */}
+        <Link
+          href={shopHref}
+          className="flex items-center gap-2 flex-1 min-w-0 rounded-lg -m-1 p-1 hover:bg-background transition-colors"
+        >
+          <ShopAvatar name={shopName} src={conv?.store?.logoUrl} size={32} />
           <div className="min-w-0">
-            <p className="text-sm font-medium text-secondary">EziHubb</p>
-            {conv?.order && (
-              <p className="text-xs text-muted">{t('orderNumber', { number: conv.order.orderNumber })}</p>
+            <p className="text-sm font-medium text-secondary truncate">{shopName}</p>
+            {/* Presence under the name, the way every messaging tool puts it.
+                Rendered only when there is something true to say — a shop with
+                no account behind it has no presence, and "Offline" would be a
+                claim rather than a fact. */}
+            {shopPresenceLabel && (
+              <p className="flex items-center gap-1.5 text-xs text-muted">
+                <span
+                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${shopOnline ? 'bg-success' : 'bg-border'}`}
+                  aria-hidden="true"
+                />
+                {shopPresenceLabel}
+              </p>
             )}
           </div>
-        </div>
+        </Link>
+        {/* Its own anchor, outside the shop's.
+            It used to sit inside that link, which made the order number part
+            of the shop's target — clicking the thing that looks most like a
+            link went somewhere else entirely. There is one thread per shop
+            now, so this is the order the conversation was last about rather
+            than what the thread IS about; the buyer's own order list is where
+            the rest of them are. */}
+        {conv?.order && (
+          <Link
+            href={`/${locale}/account/orders/${conv.order.orderNumber}`}
+            className="hidden sm:block shrink-0 font-mono text-xs text-muted hover:text-primary hover:underline"
+          >
+            {t('orderNumber', { number: conv.order.orderNumber })}
+          </Link>
+        )}
         <ConversationStatusBadge status={conv?.status} />
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Messages.
+          min-h-0 is what makes overflow-y-auto work at all: a flex child's
+          default min-height is its content, so without it this pane refuses to
+          shrink, grows past the frame, and the page scrolls instead of the
+          thread — which is what pushed the composer down below the footer. */}
+      <div ref={paneRef} className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Explicit, not infinite scroll on reaching the top. Reaching the top
+            is also what happens when someone flicks the pane hard, and paging
+            on that turns an overshoot into a fetch nobody asked for. A button
+            is one deliberate tap and cannot fire by accident. */}
+        {cursor?.hasMore && !isLoading && (
+          <div className="flex justify-center pb-2">
+            <button
+              type="button"
+              onClick={loadOlder}
+              disabled={loadingOlder}
+              className="rounded-full border border-border px-4 py-1.5 text-xs text-muted hover:bg-background disabled:opacity-50"
+            >
+              {loadingOlder ? t('loadingOlder') : t('loadOlder')}
+            </button>
+          </div>
+        )}
+
         {isLoading ? (
           <MessageSkeleton count={3} />
         ) : (
-          conv?.messages?.map((msg) => (
+          messages.map((msg) => (
             <MessageBubble
               key={msg.id}
               message={msg}
               isOwn={msg.senderType === 'CUSTOMER'}
+              shopName={shopName}
+              shopLogoUrl={conv?.store?.logoUrl ?? null}
             />
           ))
         )}
@@ -366,7 +661,16 @@ export default function MessagesPage() {
   const convList = conversations ?? [];
 
   return (
-    <div className="flex h-full -mx-4 md:mx-0 min-h-[600px]">
+    // A bounded, framed box rather than a bare region that grows.
+    //
+    // It was `h-full min-h-[600px]`: h-full resolves against a parent with no
+    // height of its own, so the box simply took its content's height and the
+    // panes inside could never scroll — a long thread ran down the page and
+    // left the composer stranded under the footer, with a wide empty band
+    // above it on short threads. A viewport-relative height gives the panes
+    // something to scroll inside, and the border makes the chat read as one
+    // object instead of floating text on the page.
+    <div className="flex h-[calc(100vh-14rem)] min-h-[26rem] overflow-hidden rounded-card border border-border bg-surface">
       {/* ── Conversation list ── */}
       <div className={[
         'w-full md:w-[320px] md:flex-shrink-0 border-r flex flex-col',

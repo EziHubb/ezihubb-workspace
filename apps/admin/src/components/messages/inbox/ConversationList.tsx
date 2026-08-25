@@ -23,12 +23,10 @@ interface Props {
   onSelect:   (id: string, checked: boolean) => void;
   onOpen:     (id: string) => void;
   onToggleStar: (row: ConversationRow) => void;
-  /** Compact hides the preview column — used when a thread is open beside it. */
-  compact?:   boolean;
 }
 
 export function ConversationList({
-  rows, selected, activeId, onSelect, onOpen, onToggleStar, compact,
+  rows, selected, activeId, onSelect, onOpen, onToggleStar,
 }: Props) {
   if (!rows.length) {
     return <p className="px-5 py-16 text-center text-sm text-muted">Nothing in this folder.</p>;
@@ -78,40 +76,38 @@ export function ConversationList({
             >
               <Avatar name={name} src={row.user?.avatarUrl} />
 
-              {/* Fixed 160px only in the wide layout, where it lines the
-                  previews up into a column. In compact mode the preview is
-                  gone and the row is a few hundred pixels wide, so a name
-                  that refuses to shrink overflows its button and prints on
-                  top of the timestamp beside it. */}
+              {/* Fixed 160px, so the previews beside it line up into a column
+                  instead of starting at a different offset on every row. Safe
+                  now that the list always has the full width: it used to share
+                  the row with an open thread, and there a name that refused to
+                  shrink overflowed its button and printed over the timestamp. */}
               <span
-                className={`truncate text-sm ${compact ? 'min-w-0 flex-1' : 'w-40 shrink-0'} ${
+                className={`w-40 shrink-0 truncate text-sm ${
                   unread ? 'font-semibold text-secondary' : 'text-secondary'
                 }`}
               >
                 {name}
               </span>
 
-              {!compact && (
-                <span className="min-w-0 flex-1">
-                  <span className={`block truncate text-sm ${unread ? 'font-medium text-secondary' : 'text-muted'}`}>
-                    {row.lastMessage ?? row.subject ?? 'No messages yet'}
-                  </span>
-                  {(row.labels.length > 0 || row.orderId) && (
-                    <span className="mt-1 flex flex-wrap items-center gap-1">
-                      {row.orderId && (
-                        <span className="rounded px-1.5 py-0.5 text-xs bg-warning/10 text-warning">
-                          Order help
-                        </span>
-                      )}
-                      {row.labels.map((l) => (
-                        <span key={l.id} className={`rounded px-1.5 py-0.5 text-xs ${LABEL_CHIP[l.color]}`}>
-                          {l.name}
-                        </span>
-                      ))}
-                    </span>
-                  )}
+              <span className="min-w-0 flex-1">
+                <span className={`block truncate text-sm ${unread ? 'font-medium text-secondary' : 'text-muted'}`}>
+                  {row.lastMessage ?? row.subject ?? 'No messages yet'}
                 </span>
-              )}
+                {(row.labels.length > 0 || row.orderId) && (
+                  <span className="mt-1 flex flex-wrap items-center gap-1">
+                    {row.orderId && (
+                      <span className="rounded px-1.5 py-0.5 text-xs bg-warning/10 text-warning">
+                        Order help
+                      </span>
+                    )}
+                    {row.labels.map((l) => (
+                      <span key={l.id} className={`rounded px-1.5 py-0.5 text-xs ${LABEL_CHIP[l.color]}`}>
+                        {l.name}
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </span>
             </button>
 
             <span className="flex shrink-0 items-center gap-2 text-xs text-muted">

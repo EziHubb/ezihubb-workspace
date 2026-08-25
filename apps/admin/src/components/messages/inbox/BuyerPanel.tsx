@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Globe, Plus } from 'lucide-react';
+import { fmtAmount, fmtDate } from '@ezihubb/utils';
 import { Avatar } from './Avatar';
 import { LABEL_CHIP, type BuyerPanel as BuyerPanelData, type ConversationLabel } from './types';
 
@@ -11,6 +13,27 @@ import { LABEL_CHIP, type BuyerPanel as BuyerPanelData, type ConversationLabel }
  * Everything here is private to the shop. The note especially: it is about the
  * buyer, follows them across every thread, and is never shown to them.
  */
+
+/**
+ * Every OrderStatus, not the five the store-detail page happens to colour.
+ * A status with no entry falls through to neutral grey, which reads as "no
+ * information" — the wrong thing to say about an order that was REFUNDED.
+ */
+const ORDER_STATUS_CHIP: Record<string, string> = {
+  PENDING_PAYMENT:  'bg-gray-100 text-gray-600',
+  CONFIRMED:        'bg-blue-100 text-blue-700',
+  IN_PRODUCTION:    'bg-amber-100 text-amber-700',
+  SHIPPED:          'bg-purple-100 text-purple-700',
+  DELIVERED:        'bg-green-100 text-green-700',
+  COMPLETED:        'bg-green-100 text-green-700',
+  CANCELLED:        'bg-red-100 text-red-700',
+  REFUND_REQUESTED: 'bg-orange-100 text-orange-700',
+  REFUNDED:         'bg-orange-100 text-orange-700',
+  DISPUTED:         'bg-red-100 text-red-700',
+};
+
+/** How many order rows show before "Show all". */
+const ORDERS_COLLAPSED = 3;
 
 interface Props {
   buyer:     BuyerPanelData | null;
@@ -32,6 +55,7 @@ export function BuyerPanel({
   const [editing, setEditing] = useState(false);
   const [draft,   setDraft]   = useState('');
   const [picking, setPicking] = useState(false);
+  const [allOrders, setAllOrders] = useState(false);
 
   // Reset when the panel switches buyer, otherwise one buyer's half-typed note
   // appears under the next one's name.
@@ -39,19 +63,30 @@ export function BuyerPanel({
     setDraft(buyer?.note ?? '');
     setEditing(false);
     setPicking(false);
+    setAllOrders(false);
   }, [buyer?.buyerKey, buyer?.note]);
 
   if (!buyer) return null;
 
   const assigned = new Set(labels.map((l) => l.id));
+  // Defensive: this panel is rendered from cached API data, and a client left
+  // open across the deploy that added `orders` still holds a payload without
+  // it. `.map` on undefined would blank the whole thread, not just this list.
+  const orders  = buyer.orders ?? [];
+  const shown   = allOrders ? orders : orders.slice(0, ORDERS_COLLAPSED);
+  // The buyer's real total. Falls back to what was actually sent so a cached
+  // payload from before this field existed still counts what it can see.
+  const total   = buyer.orderCount ?? orders.length;
 
   return (
-    // Hidden below 2xl. It is 288px of context sitting beside the conversation
-    // itself, and on a narrower screen those pixels are the difference between
-    // a readable thread and a squeezed one. Nothing here is unavailable
-    // elsewhere — the buyer's name and note are on the thread and the order.
+    // Shown from xl up. It was 2xl while the list still shared this row and
+    // 288px here came straight out of the conversation; now the list steps
+    // aside when a thread opens, so the space is there. Still hidden on a
+    // genuinely narrow window, where the thread needs every pixel — nothing
+    // here is unavailable elsewhere, the buyer's name and note also being on
+    // the thread and the order.
     <aside
-      className="hidden w-72 shrink-0 space-y-5 border-l border-border px-5 py-5 text-sm 2xl:block"
+      className="hidden w-72 shrink-0 space-y-5 border-l border-border px-5 py-5 text-sm xl:block"
       aria-label="About this buyer"
     >
       <div className="flex items-start justify-between gap-3">
@@ -80,11 +115,74 @@ export function BuyerPanel({
         </p>
       )}
 
-      <p className="text-muted">
-        {buyer.isFirstContact
-          ? "This buyer hasn't messaged you before"
-          : `${buyer.threadCount} conversations with your shop`}
-      </p>
+      {buyer.isFirstContact && (
+        <p className="text-muted">This buyer hasn&apos;t messaged you before</p>
+      )}
+
+      {/* ── Orders ────────────────────────────────────────────────────────────
+          There is one thread per buyer now, so "which order is this about?"
+          has no single answer — it is this list. Each row goes to the order,
+          so a seller answering "where is my parcel?" is one click from the
+          tracking rather than hunting the Orders page for a number the buyer
+          may not have quoted. */}
+      <section>
+        <h3 className="mb-2 font-semibold text-secondary">
+          Orders{total > 0 && ` (${total})`}
+        </h3>
+
+        {orders.length === 0 ? (
+          <p className="text-muted">No orders with your shop yet.</p>
+        ) : (
+          <>
+            <ul className="space-y-1.5">
+              {shown.map((o) => (
+                <li key={o.storeOrderId}>
+                  <Link
+                    href={`/orders/${o.orderId}`}
+                    className="block rounded-button border border-border px-2.5 py-2 hover:border-primary/40 hover:bg-primary/5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate font-mono text-xs font-medium text-secondary">
+                        {o.orderNumber}
+                      </span>
+                      <span
+                        className={`shrink-0 rounded-pill px-1.5 py-0.5 text-[10px] font-semibold ${
+                          ORDER_STATUS_CHIP[o.status] ?? 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        {o.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted">
+                      {fmtDate(o.createdAt)} · {o.itemCount} {o.itemCount === 1 ? 'item' : 'items'} · {fmtAmount(o.total)}
+                    </p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+
+            {orders.length > ORDERS_COLLAPSED && (
+              <button
+                type="button"
+                onClick={() => setAllOrders((v) => !v)}
+                aria-expanded={allOrders}
+                className="mt-2 text-xs font-semibold text-primary hover:underline"
+              >
+                {allOrders ? 'Show less' : `Show ${orders.length - ORDERS_COLLAPSED} more`}
+              </button>
+            )}
+
+            {/* Said out loud rather than left as a silent truncation, so a
+                seller looking at ten rows under a heading that says forty is
+                not left wondering where the other thirty went. */}
+            {total > orders.length && allOrders && (
+              <p className="mt-2 text-xs text-muted">
+                Showing the {orders.length} most recent.
+              </p>
+            )}
+          </>
+        )}
+      </section>
 
       {/* ── Private note ──────────────────────────────────────────────────── */}
       <section>

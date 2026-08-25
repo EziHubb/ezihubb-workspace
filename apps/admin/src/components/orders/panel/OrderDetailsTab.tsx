@@ -156,6 +156,7 @@ export function OrderDetailsTab({
       ) : (
         <OrderMessaging
           messages={thread?.messages ?? []}
+          conversationId={thread?.conversationId ?? null}
           buyerName={buyerName}
           buyerAvatar={detail.buyer.avatarUrl}
           shopName={detail.shop.name}

@@ -120,6 +120,8 @@ export interface PanelMessage {
   attachmentUrls: string[];
   createdAt:      string;
   isRead:         boolean;
+  /** Set when the shop withdrew it; the body comes back empty with it. */
+  deletedAt?: string | null;
 }
 
 export interface OrderPanelThread {

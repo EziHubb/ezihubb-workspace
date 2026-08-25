@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { CornerUpLeft, ImagePlus, MessageSquare, Loader2, X } from 'lucide-react';
@@ -10,14 +11,22 @@ import type { PanelMessage } from './types';
 /**
  * The conversation about this order, inside the order panel.
  *
- * Deliberately the same thread the Messages inbox shows — it is one
- * conversation row keyed on (orderId, storeId), not a second private channel.
- * A seller who answers here and a seller who answers in the inbox are
- * answering the same buyer in the same place.
+ * Deliberately the same thread the Messages inbox shows — one conversation row
+ * keyed on (storeId, buyer), not a second private channel. A seller who
+ * answers here and a seller who answers in the inbox are answering the same
+ * buyer in the same place.
+ *
+ * Which also means what is listed here is the shop's whole history with this
+ * person, not the part of it about this order. There is no per-order thread
+ * left to show: that is what produced five identical-looking conversations for
+ * a buyer with five orders.
  */
 
 interface Props {
   messages:    PanelMessage[];
+  /** The thread this order belongs to, for the link out to the inbox. Null
+   *  until anyone has written. */
+  conversationId: string | null;
   buyerName:   string;
   buyerAvatar: string | null;
   shopName:    string;
@@ -62,7 +71,7 @@ const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 
 export function OrderMessaging({
-  messages, buyerName, buyerAvatar, shopName, orderUrl, sending, onSend, onUpload, storeQuery,
+  messages, conversationId, buyerName, buyerAvatar, shopName, orderUrl, sending, onSend, onUpload, storeQuery,
   autoOpen = false,
 }: Props) {
   const [composing, setComposing] = useState(false);
@@ -198,8 +207,21 @@ export function OrderMessaging({
                       </button>
                     )}
                   </div>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-secondary">{m.body}</p>
-                  {m.attachmentUrls.filter(renderable).length > 0 && (
+                  {/* A withdrawn message shows that it was withdrawn, not what
+                      it said. The panel and the inbox render the same thread,
+                      so a seller who takes a message back in one must not
+                      still find it here — and the buyer already sees the
+                      withdrawn form. */}
+                  {m.deletedAt ? (
+                    <p className="mt-1">
+                      <span className="inline-block rounded-full border border-border px-3 py-1.5 text-sm italic text-muted">
+                        You withdrew a message
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-secondary">{m.body}</p>
+                  )}
+                  {!m.deletedAt && m.attachmentUrls.filter(renderable).length > 0 && (
                     <ul className="mt-2 flex flex-wrap gap-2">
                       {m.attachmentUrls.filter(renderable).map((url) => (
                         <li key={url}>
@@ -222,13 +244,29 @@ export function OrderMessaging({
       )}
 
       {!composing ? (
-        <div className="flex items-center gap-3 px-4 py-4">
+        <div className="flex flex-wrap items-center gap-3 px-4 py-4">
           <MessageSquare className="h-5 w-5 shrink-0 text-muted" aria-hidden="true" />
+          {/* "with this buyer", not "about this order". There is one thread per
+              buyer now, so what is counted here is the shop's whole history
+              with them — saying "about this order" would promise a filter that
+              does not exist. */}
           <p className="min-w-0 flex-1 text-sm text-muted">
             {messages.length === 0
-              ? 'No messages about this order yet'
-              : `${messages.length} message${messages.length === 1 ? '' : 's'} about this order`}
+              ? 'No messages with this buyer yet'
+              : `${messages.length} message${messages.length === 1 ? '' : 's'} with this buyer`}
           </p>
+          {/* The way out to the full thread.
+              This panel caps at the newest hundred and has no way back through
+              them; the inbox does. Without this the seller had to leave, open
+              Messages, and find the buyer by name. */}
+          {conversationId && (
+            <Link
+              href={`/messages?c=${conversationId}`}
+              className="shrink-0 text-sm font-medium text-primary hover:underline"
+            >
+              Open full conversation
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => open(true)}

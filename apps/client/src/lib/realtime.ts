@@ -52,6 +52,25 @@ let retryTimer: ReturnType<typeof setTimeout> | null = null;
 let retryDelay = RETRY_BASE_MS;
 let teardownTimer: ReturnType<typeof setTimeout> | null = null;
 
+/**
+ * Which conversation is on screen right now, if any.
+ *
+ * Module-level because the two components that need it are nowhere near each
+ * other in the tree: the thread sets it, and the sidebar — mounted on every
+ * page — reads it to decide whether a toast is worth showing. Announcing a
+ * message the reader is already looking at is how people learn to ignore
+ * toasts entirely.
+ *
+ * Set by useConversationStream rather than by each caller, so there is nothing
+ * extra to remember and it cannot drift from what is actually rendered.
+ */
+let openConversationId: string | null = null;
+
+/** True while this conversation is the one on screen. */
+export function isConversationOpen(conversationId: string): boolean {
+  return openConversationId !== null && openConversationId === conversationId;
+}
+
 function apiOrigin(): string {
   const base = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3002';
   // The REST base may carry /api/v1; the socket namespace hangs off the origin.
@@ -150,8 +169,7 @@ export function useSocket(): Socket | null {
  * anything sent during the gap was delivered to a room this socket had already
  * left, and is simply gone. Without a fetch on reconnect the thread stays
  * silently stale until something else happens to refresh it, which on the
- * seller's inbox is nothing at all: it has no polling. The storefront does
- * poll, but only once a minute.
+ * seller's inbox is nothing at all: it has no polling.
  *
  * Firing on the first connect too is deliberate and harmless — the query it
  * triggers has usually just run, and paying one redundant fetch is cheaper
@@ -167,6 +185,19 @@ export function useConversationStream(
   const handler = useRef(onChanged);
   handler.current = onChanged;
 
+  // Registered separately from the socket effect: it has to hold even before
+  // the socket connects, and it has to be released on unmount whether the
+  // socket ever came up or not.
+  useEffect(() => {
+    if (!conversationId) return;
+    openConversationId = conversationId;
+    return () => {
+      // Guarded: a fast switch between threads can run this cleanup after the
+      // next one has already claimed the slot.
+      if (openConversationId === conversationId) openConversationId = null;
+    };
+  }, [conversationId]);
+
   useEffect(() => {
     if (!sock || !conversationId) return;
 
@@ -181,10 +212,18 @@ export function useConversationStream(
     if (sock.connected) join();
     sock.on('connect', join);
     sock.on(RT_SERVER.MESSAGE_NEW, onNew);
+    // Read receipts and withdrawals change what the thread should show just as
+    // much as a new message does, and the caller's response is the same:
+    // refetch. Routing them through one callback keeps the caller from having
+    // to know which kind of change it was.
+    sock.on(RT_SERVER.MESSAGES_READ, onNew);
+    sock.on(RT_SERVER.MESSAGE_DELETED, onNew);
 
     return () => {
       sock.off('connect', join);
       sock.off(RT_SERVER.MESSAGE_NEW, onNew);
+      sock.off(RT_SERVER.MESSAGES_READ, onNew);
+      sock.off(RT_SERVER.MESSAGE_DELETED, onNew);
       if (sock.connected) sock.emit(RT_CLIENT.LEAVE_CONVERSATION, { conversationId });
     };
   }, [sock, conversationId]);
@@ -233,6 +272,32 @@ export function usePresence(userIds: string[]): Map<string, PresenceState> {
   }, [sock, key]);
 
   return state;
+}
+
+/**
+ * Anything arriving for this person, on any page.
+ *
+ * Listens on the per-user room the gateway joins at connect, not on a
+ * conversation room — the caller is typically the sidebar, which is mounted
+ * everywhere and has joined no thread. Without this its badge only moved on
+ * the two-minute poll, so a seller watching the screen saw nothing happen
+ * when a customer wrote to them.
+ */
+export function useInboxNotifications(
+  onIncoming: (payload: { conversationId: string; from: string; preview: string }) => void,
+): void {
+  const sock = useSocket();
+  const handler = useRef(onIncoming);
+  handler.current = onIncoming;
+
+  useEffect(() => {
+    if (!sock) return;
+    const onEvent = (payload: { conversationId: string; from: string; preview: string }) => {
+      if (payload?.conversationId) handler.current(payload);
+    };
+    sock.on(RT_SERVER.INBOX_CHANGED, onEvent);
+    return () => { sock.off(RT_SERVER.INBOX_CHANGED, onEvent); };
+  }, [sock]);
 }
 
 /** "Online" / "Last seen 5 minutes ago" — one place so both apps read alike. */
