@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { attachmentLabel, isImageAttachment } from '@ezihubb/utils';
+import { ImageLightbox } from './ImageLightbox';
 
 /**
  * What was attached to a message, on the buyer's side.
@@ -15,6 +17,12 @@ const renderable = (url: string): boolean =>
   url.startsWith('/') || url.startsWith('http://') || url.startsWith('https://');
 
 export function MessageAttachments({ urls, isOwn }: { urls: string[] | undefined; isOwn: boolean }) {
+  // Which image the viewer has open, as an index into `images` below. Kept
+  // here rather than in the bubble so each message browses only its own
+  // attachments — a viewer scoped to the whole thread would step from one
+  // message's photos into another's.
+  const [open, setOpen] = useState<number | null>(null);
+
   const usable = (urls ?? []).filter(renderable);
   if (!usable.length) return null;
 
@@ -23,16 +31,22 @@ export function MessageAttachments({ urls, isOwn }: { urls: string[] | undefined
 
   return (
     <>
+      <ImageLightbox urls={images} index={open} onClose={() => setOpen(null)} onIndex={setOpen} />
+
       {images.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
-          {images.map((url) => (
-            <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+          {images.map((url, i) => (
+            // A button, not a link. It used to be an anchor to the file on the
+            // bucket, so clicking a photo replaced the whole page with a bare
+            // image on another origin and took the thread, the draft and the
+            // scroll position with it.
+            <button key={url} type="button" onClick={() => setOpen(i)} aria-label="Open attachment">
               {/* Plain img, not next/image: these are user uploads on a bucket
                   that would each need a remotePatterns entry, and a thumbnail
                   in a chat is not worth a config file nobody will update. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={url} alt="Attachment" className="h-20 w-20 rounded-lg object-cover hover:opacity-80" />
-            </a>
+            </button>
           ))}
         </div>
       )}

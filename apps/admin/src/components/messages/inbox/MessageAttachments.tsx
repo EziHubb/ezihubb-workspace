@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import { FileText } from 'lucide-react';
 import { attachmentLabel, isImageAttachment } from '@ezihubb/utils';
+import { ImageLightbox } from './ImageLightbox';
 
 /**
  * What was attached to a message.
@@ -19,6 +21,10 @@ const renderable = (url: string): boolean =>
   url.startsWith('/') || url.startsWith('http://') || url.startsWith('https://');
 
 export function MessageAttachments({ urls }: { urls: string[] | undefined }) {
+  // Scoped to this message's own attachments — a viewer keyed to the whole
+  // thread would step from one message's photos into another's.
+  const [open, setOpen] = useState<number | null>(null);
+
   const usable = (urls ?? []).filter(renderable);
   if (!usable.length) return null;
 
@@ -27,13 +33,16 @@ export function MessageAttachments({ urls }: { urls: string[] | undefined }) {
 
   return (
     <>
+      <ImageLightbox urls={images} index={open} onClose={() => setOpen(null)} onIndex={setOpen} />
+
       {images.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-2">
-          {images.map((url) => (
+          {images.map((url, i) => (
             <li key={url}>
-              {/* Opens full size in a new tab: the thumbnail is enough to
-                  recognise a design, not enough to approve one. */}
-              <a href={url} target="_blank" rel="noopener noreferrer">
+              {/* Opens in place. It was a link to the file on the bucket, so
+                  approving a design meant leaving the inbox for a bare image
+                  on another origin and finding the way back. */}
+              <button type="button" onClick={() => setOpen(i)} aria-label="Open attachment">
                 <Image
                   src={url}
                   alt="Attachment"
@@ -41,7 +50,7 @@ export function MessageAttachments({ urls }: { urls: string[] | undefined }) {
                   height={80}
                   className="h-20 w-20 rounded object-cover hover:opacity-80"
                 />
-              </a>
+              </button>
             </li>
           ))}
         </ul>
