@@ -254,18 +254,21 @@ export class RealtimeGateway
       return true;
     }
 
-    const now  = Date.now();
-    const last = socket.data['typingAt'] as number | undefined;
-    // The floor applies within one thread, not across a switch. Someone who
-    // moves to another conversation and types straight away would otherwise
-    // have that first packet eaten, and the client — which believes it has
-    // announced itself — would not say so again until the next heartbeat,
-    // leaving the other side with no indicator for seconds.
-    const sameThread = activeIn === conversationId;
+    const now = Date.now();
+    // Two separate facts, deliberately. `typingIn` is "does this socket
+    // currently claim a draft", and it is cleared by a stop. `typingThread`
+    // is "which thread was last rate-limited", and it is NOT — because a
+    // client that clears its box and retypes sends stop, start, stop, start,
+    // and if the floor reset with every stop the pair would be unlimited.
+    // Keeping them apart still lets a real move to another conversation
+    // announce itself at once, which is the case the floor must not eat.
+    const sameThread = socket.data['typingThread'] === conversationId;
+    const last       = socket.data['typingAt'] as number | undefined;
     if (sameThread && last !== undefined && now - last < TYPING_MIN_INTERVAL_MS) return false;
 
-    socket.data['typingAt'] = now;
-    socket.data['typingIn'] = conversationId;
+    socket.data['typingAt']     = now;
+    socket.data['typingThread'] = conversationId;
+    socket.data['typingIn']     = conversationId;
     return true;
   }
 

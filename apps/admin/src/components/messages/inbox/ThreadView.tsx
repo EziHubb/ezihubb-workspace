@@ -229,7 +229,7 @@ export function ThreadView({
   messages, hasMoreOlder, loadingOlder, onLoadOlder,
 }: Props) {
   const [draft, setDraft] = useState('');
-  const { someoneTyping, notifyTyping, notifyStopped } = useTyping(conversation.id);
+  const { someoneTyping } = useTyping(conversation.id, draft, sending);
   const [attachments, setAttachments] = useState<{ name: string; url: string }[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [uploading, setUploading]     = useState(false);
@@ -350,10 +350,6 @@ export function ThreadView({
     if ((!body && attachments.length === 0) || sending) return;
     // Cleared only after the send resolves, so a failure leaves the text in
     // the box to try again rather than losing what was typed.
-    // Before awaiting the send, not after: the buyer should stop seeing
-    // "typing" the moment the message is on its way, not once the round trip
-    // has come back.
-    notifyStopped();
     await onSend(body, attachments.map((a) => a.url));
     setDraft('');
     setAttachments([]);
@@ -414,18 +410,24 @@ export function ThreadView({
           </section>
         ))}
 
-        {/* Sits at the foot of the list, in the spot the reply will occupy, so
-            the thread does not jump when the message actually lands. */}
-        {someoneTyping && <TypingIndicator label={buyerName} className="px-1 pt-1" />}
       </div>
+
+      {/* Deliberately outside the scrolling pane above. Inside it, the
+          indicator appearing only made the content taller than the viewport,
+          below wherever the reader happened to be — and nothing scrolls them
+          to it, so a shop sitting at the newest message never saw it. */}
+      {someoneTyping && (
+        <div className="flex-shrink-0 px-6 pb-1">
+          <TypingIndicator label={buyerName} />
+        </div>
+      )}
 
       <div className="border-t border-border px-6 py-4">
         <label className="sr-only" htmlFor="reply">Reply to {buyerName}</label>
         <textarea
           id="reply"
           value={draft}
-          onChange={(e) => { setDraft(e.target.value); notifyTyping(); }}
-          onBlur={notifyStopped}
+          onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             // Enter sends, Shift+Enter makes a new line — the convention every
             // messaging tool uses, so muscle memory works.

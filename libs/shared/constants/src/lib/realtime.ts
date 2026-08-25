@@ -19,12 +19,17 @@ export const RT_CLIENT = {
   /** Ask whether some users are online. Payload: { userIds: string[] } */
   PRESENCE_QUERY:     'presence:query',
   /**
-   * "I am / am no longer composing in this thread."
+   * "I have / no longer have an unsent draft in this thread."
    * Payload: { conversationId, typing: boolean }
    *
-   * Repeated while typing continues rather than sent once, because the only
-   * reliable way to clear the indicator on the other side is for it to stop
-   * hearing this — see TYPING_EXPIRY_MS.
+   * Reports the state of the box, not keystrokes. Someone who writes a line
+   * and then stops to think is still composing a message to you, and an
+   * indicator that vanished after a pause was reporting their typing speed
+   * rather than the thing the reader cares about.
+   *
+   * Repeated while the draft stands rather than sent once, because the only
+   * reliable way to clear it on the other side is for that side to stop
+   * hearing it — see TYPING_EXPIRY_MS.
    */
   TYPING:             'conversation:typing',
 } as const;
@@ -70,12 +75,12 @@ export const RT_SERVER = {
 } as const;
 
 /**
- * How often a client that is still typing re-announces itself.
+ * How often a client holding an unsent draft re-announces itself.
  *
  * The indicator is cleared by silence rather than by a message, so this is
  * really "how stale the other side's view is allowed to get while the truth
- * has not changed". Every keystroke would be one packet per character for no
- * added meaning.
+ * has not changed". Driving it on a timer rather than on keystrokes also
+ * means a long draft costs the same as a short one.
  */
 export const TYPING_HEARTBEAT_MS = 2_500;
 
@@ -83,22 +88,14 @@ export const TYPING_HEARTBEAT_MS = 2_500;
  * How long a receiver keeps showing "typing…" without hearing a refresh.
  *
  * This is the part that must not be skipped. An explicit "stopped" covers the
- * polite exits — sent the message, blurred the box, closed the thread — but
+ * polite exits — the draft was sent or cleared, the thread was closed — but
  * none of them run when the tab is killed, the laptop lid closes, or the
  * connection drops mid-word. In every one of those the last thing the other
  * side heard was "typing", and without an expiry it would display that
  * forever. Comfortably above the heartbeat so an ordinary late packet does
- * not blink the indicator off while the person is still typing.
+ * not blink the indicator off while a draft still stands.
  */
 export const TYPING_EXPIRY_MS = 6_000;
-
-/**
- * How long a client waits after the last keystroke before saying it stopped.
- *
- * Long enough to survive thinking mid-sentence, short enough that the other
- * side is not told someone is typing when they have wandered off.
- */
-export const TYPING_IDLE_MS = 3_000;
 
 /**
  * Server-side floor between two accepted "typing: true" packets from one

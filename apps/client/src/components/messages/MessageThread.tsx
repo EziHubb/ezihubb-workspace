@@ -290,8 +290,8 @@ export function MessageThread({
   const locale = useLocale();
   const token = useAuthStore((s) => s.accessToken);
   const [newMessage, setNewMessage] = useState('');
-  const { someoneTyping, notifyTyping, notifyStopped } = useTyping(conversationId);
   const [isSending, setIsSending] = useState(false);
+  const { someoneTyping } = useTyping(conversationId, newMessage, isSending);
   const [attachments, setAttachments] = useState<{ name: string; url: string }[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [uploading, setUploading]     = useState(false);
@@ -536,9 +536,6 @@ export function MessageThread({
     // carries the same key and the server recognises it instead of writing a
     // second copy. Generating it inside the request would defeat the point.
     const clientMessageId = newClientMessageId();
-    // Before the request, not after it resolves: the shop should stop seeing
-    // "typing" as the message leaves, not a round trip later.
-    notifyStopped();
     try {
       await apiClient.post(
         API_ROUTES.MESSAGES.CONVERSATION_MESSAGES(conversationId),
@@ -667,10 +664,19 @@ export function MessageThread({
               />
             ))
           )}
-          {someoneTyping && <TypingIndicator label={shopName} className="px-1 pb-1" />}
           <div ref={bottomRef} />
         </div>
       </div>
+
+      {/* Deliberately outside the scrolling pane. Inside it, the indicator
+          appearing simply made the content taller than the viewport, below
+          wherever the reader happened to be — visible only if they scrolled
+          down to find it, which nobody does for something they cannot see. */}
+      {someoneTyping && (
+        <div className="flex-shrink-0 px-4 pb-1">
+          <TypingIndicator label={shopName} />
+        </div>
+      )}
 
       {/* Input */}
       {conv?.status !== 'RESOLVED' ? (
@@ -738,7 +744,6 @@ export function MessageThread({
               value={newMessage}
               onChange={(e) => {
                 setNewMessage(e.target.value);
-                notifyTyping();
                 e.target.style.height = 'auto';
                 e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
               }}
@@ -748,7 +753,6 @@ export function MessageThread({
                   sendMessage();
                 }
               }}
-              onBlur={notifyStopped}
               ref={inputRef}
               placeholder={t('typePlaceholder')}
               rows={1}

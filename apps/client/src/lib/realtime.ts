@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from './store/auth.store';
 import { io, type Socket } from 'socket.io-client';
 import {
@@ -9,7 +9,6 @@ import {
   RT_SERVER,
   TYPING_EXPIRY_MS,
   TYPING_HEARTBEAT_MS,
-  TYPING_IDLE_MS,
   type PresenceState,
 } from '@ezihubb/constants';
 
@@ -328,21 +327,35 @@ export function presenceLabel(p: PresenceState | undefined): string {
 /**
  * The "…is typing" channel for one open thread, both directions.
  *
- * Returns what to render and the two calls the composer makes. The caller
- * never touches the socket or the timing rules, so the client and the shop
- * cannot drift into announcing themselves differently.
+ * Takes the draft rather than keystroke callbacks, because the thing worth
+ * showing is "there is an unsent message for you", not "a key went down in
+ * the last few seconds". Someone who writes a line and stops to think is
+ * still composing; the old callback version dropped the indicator after a
+ * pause and so reported typing speed instead.
+ *
+ * Deriving it from the draft also removes every chance for the two apps to
+ * wire it differently — there is no call to forget on a code path, and the
+ * box going empty after a send clears the indicator by itself.
+ *
+ * Whitespace does not count. A box holding only spaces is an empty box, and
+ * announcing it would light the other side up over nothing.
  *
  * Authorisation is not re-checked here: the server accepts a typing packet
  * only from a socket already in the conversation room, and that room was
- * joined through the permission check in useConversationMessages. A thread
- * this user may not read is one whose room they are not in, so their typing
- * goes nowhere.
+ * joined through the permission check in useConversationStream. A thread this
+ * user may not read is one whose room they are not in, so their typing goes
+ * nowhere.
+ *
+ * @param suspended Pass true while a send is in flight, so the indicator drops
+ *                  as the message leaves rather than a round trip later. If
+ *                  the send fails the draft survives and this goes false
+ *                  again, which resumes the announcement on its own.
  */
-export function useTyping(conversationId: string | null): {
-  someoneTyping: boolean;
-  notifyTyping:  () => void;
-  notifyStopped: () => void;
-} {
+export function useTyping(
+  conversationId: string | null,
+  draft: string,
+  suspended = false,
+): { someoneTyping: boolean } {
   const sock = useSocket();
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
 
@@ -394,55 +407,31 @@ export function useTyping(conversationId: string | null): {
   }, [sock, conversationId]);
 
   // ── Sending ─────────────────────────────────────────────────────────────
-  const lastSentAt = useRef(0);
-  const announced  = useRef(false);
-  const idleTimer  = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // One effect, keyed on a boolean, rather than a throttle plus an idle timer.
+  // Entering the state announces it and starts the heartbeat; leaving it — the
+  // draft sent, cleared, reduced to spaces, or the thread closed — runs the
+  // cleanup, which is the single place a stop is emitted.
+  const composing = !suspended && draft.trim().length > 0;
 
-  const emitTyping = useCallback(
-    (typing: boolean) => {
-      if (!sock || !conversationId) return;
-      sock.emit(RT_CLIENT.TYPING, { conversationId, typing });
-    },
-    [sock, conversationId],
-  );
-
-  const notifyStopped = useCallback(() => {
-    if (idleTimer.current) clearTimeout(idleTimer.current);
-    idleTimer.current = undefined;
-    if (!announced.current) return;
-    announced.current = false;
-    lastSentAt.current = 0;
-    emitTyping(false);
-  }, [emitTyping]);
-
-  /**
-   * Called on every keystroke, but emits at most once per heartbeat — a packet
-   * per character would say nothing the first one did not.
-   */
-  const notifyTyping = useCallback(() => {
-    const now = Date.now();
-    if (!announced.current || now - lastSentAt.current >= TYPING_HEARTBEAT_MS) {
-      announced.current  = true;
-      lastSentAt.current = now;
-      emitTyping(true);
-    }
-    if (idleTimer.current) clearTimeout(idleTimer.current);
-    idleTimer.current = setTimeout(notifyStopped, TYPING_IDLE_MS);
-  }, [emitTyping, notifyStopped]);
-
-  // Leaving the thread while mid-word is the common case, not an edge one:
-  // people navigate away from a half-written message all the time. `emitTyping`
-  // is rebuilt when conversationId changes, so this cleanup still holds the
-  // previous thread's id and stops typing in the thread actually left.
   useEffect(() => {
-    return () => {
-      if (idleTimer.current) clearTimeout(idleTimer.current);
-      if (announced.current) {
-        announced.current = false;
-        emitTyping(false);
-      }
-    };
-  }, [emitTyping]);
+    if (!sock || !conversationId || !composing) return;
 
-  return { someoneTyping: typingUsers.length > 0, notifyTyping, notifyStopped };
+    const announce = () => sock.emit(RT_CLIENT.TYPING, { conversationId, typing: true });
+
+    // Immediately, then on the heartbeat for as long as the draft stands. The
+    // repeat is not decoration: the receiver clears by expiry, so silence for
+    // TYPING_EXPIRY_MS is how it learns the draft is gone, and a sender that
+    // announced once would be forgotten while still holding an unsent message.
+    announce();
+    const beat = setInterval(announce, TYPING_HEARTBEAT_MS);
+
+    return () => {
+      clearInterval(beat);
+      // conversationId is captured, so switching threads stops typing in the
+      // thread actually left rather than the one just opened.
+      sock.emit(RT_CLIENT.TYPING, { conversationId, typing: false });
+    };
+  }, [sock, conversationId, composing]);
+
+  return { someoneTyping: typingUsers.length > 0 };
 }
