@@ -35,10 +35,17 @@ export function TypingIndicator({ label, className }: TypingIndicatorProps) {
           <span
             key={delay}
             style={{ animationDelay: `${delay}ms` }}
+            // bg-muted, and at full opacity. This read `bg-muted-foreground/70`
+            // — a token this design system does not define, so Tailwind emitted
+            // no rule at all and the dots rendered transparent: the indicator
+            // was working end to end and simply could not be seen. The opacity
+            // belongs to the keyframe, which already fades 0.4 -> 1; a second
+            // static fade on top only flattened it.
+            //
             // motion-reduce drops the movement but keeps the dots visible, so
             // the indicator still says what it says to someone who has asked
             // the system for less animation.
-            className="h-1.5 w-1.5 rounded-full bg-muted-foreground/70 animate-typing-dot motion-reduce:animate-none"
+            className="h-1.5 w-1.5 rounded-full bg-muted animate-typing-dot motion-reduce:animate-none"
           />
         ))}
       </div>
