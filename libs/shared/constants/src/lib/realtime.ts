@@ -24,6 +24,24 @@ export const RT_CLIENT = {
 export const RT_SERVER = {
   /** A message was created in a conversation this socket has joined. */
   MESSAGE_NEW:      'message:new',
+  /**
+   * The other side opened the thread and read what was waiting.
+   *
+   * Carries who read rather than which messages: the reader marks everything
+   * outstanding at once, so a list of ids would be the same information in a
+   * form the sender has to diff against what it already has.
+   */
+  MESSAGES_READ:    'message:read',
+  /** A message was withdrawn by the shop. Payload: { conversationId, messageId } */
+  MESSAGE_DELETED:  'message:deleted',
+  /**
+   * Something arrived for you, wherever you are in the app.
+   *
+   * Addressed to the person rather than to a conversation, because the badge
+   * and the toast are rendered by the sidebar — which is on every page and has
+   * joined no conversation room. Payload: { conversationId, from, preview }
+   */
+  INBOX_CHANGED:    'inbox:changed',
   /** Someone's online state changed. */
   PRESENCE_UPDATE:  'presence:update',
   /** Answer to PRESENCE_QUERY — the full state for the ids that were asked for. */

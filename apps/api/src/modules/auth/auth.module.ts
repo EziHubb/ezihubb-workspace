@@ -11,6 +11,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { UsersModule } from '../users/users.module';
+import { MessagesModule } from '../messages/messages.module';
 import { QUEUES } from '../../queue/queue.constants';
 
 @Module({
@@ -22,6 +23,10 @@ import { QUEUES } from '../../queue/queue.constants';
       ? [BullModule.registerQueue({ name: QUEUES.EMAIL })]
       : [DevBullModule.forQueues([QUEUES.EMAIL])]),
     UsersModule,
+    // Registering hands a buyer the threads they wrote as a guest. Safe to
+    // import rather than circular: nothing MessagesModule pulls in reaches
+    // back to AuthModule.
+    MessagesModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, TotpService, JwtStrategy, JwtRefreshStrategy, GoogleStrategy],

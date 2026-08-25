@@ -24,14 +24,101 @@ const OUT_OF_INBOX: ConversationStatus[] = [
   ConversationStatus.TRASHED,
 ];
 
+/**
+ * The window of a thread that comes back on one fetch.
+ *
+ * It has to be taken from the NEWEST end. Reading ascending and capping was
+ * fine while a thread was one order long; it is not now that a thread is a
+ * whole relationship, where the 101st message means the buyer stops seeing
+ * anything said this year and the shop answers a question that is off screen.
+ * Fetched descending and reversed, so the order on the wire is still oldest
+ * first and no renderer had to change.
+ */
+const MESSAGE_WINDOW = 100;
+
+/** Default size of a "load older" page. Smaller than the first window: the
+ *  reader has already decided to go digging, and a smaller page scrolls back
+ *  to where they were with less of a jump. */
+const MESSAGE_PAGE = 50;
+
+const oldestFirst = <T extends { createdAt: Date }>(messages: T[]): T[] =>
+  [...messages].reverse();
+
+/**
+ * One extra row, so "is there more" is an answer rather than a guess.
+ *
+ * Taking exactly the window size and reporting `length === window` is wrong on
+ * the thread that happens to hold exactly 100 messages: the client would offer
+ * "load earlier", fetch nothing, and offer it again. Asking for one more and
+ * throwing it away costs a single row and makes the flag exact.
+ */
+const TAKE_WITH_PROBE = MESSAGE_WINDOW + 1;
+
 const CONVERSATION_INCLUDE = {
   messages: {
-    orderBy: { createdAt: 'asc' as const },
-    take: 100,
+    orderBy: { createdAt: 'desc' as const },
+    take: TAKE_WITH_PROBE,
   },
   user: { select: { id: true, firstName: true, lastName: true, email: true, avatarUrl: true } },
   order: { select: { id: true, orderNumber: true } },
+  /**
+   * The shop the buyer is talking to.
+   *
+   * `slug` so the storefront can link its name and picture back to the shop
+   * page — a buyer expects the shop's avatar to be a way in, and it was inert
+   * markup. `ownerId` because presence is per user: the shop is "online" when
+   * the person who owns it is, and the buyer may query exactly that id (they
+   * share this conversation, which is what visibleTo authorises on).
+   */
+  store: { select: { id: true, name: true, slug: true, logoUrl: true, ownerId: true } },
 };
+
+/**
+ * Empties out what the shop took back, on the way out of the API.
+ *
+ * The row keeps its body in the database — a moderation report about a message
+ * that no longer exists is unanswerable, and the shop should not be able to
+ * erase what it said. But "hidden by the renderer" is not hidden: the text was
+ * still in the JSON, so anyone who opened the network tab could read a message
+ * that had been withdrawn from them, which is the entire thing the feature is
+ * supposed to prevent.
+ *
+ * Attachments go the same way. A withdrawn message whose picture still loads
+ * has not been withdrawn.
+ */
+function redactWithdrawn<T extends { deletedAt?: Date | null; body?: string; attachmentUrls?: string[] }>(
+  messages: T[],
+): T[] {
+  return messages.map((m) =>
+    m.deletedAt ? { ...m, body: '', attachmentUrls: [] } : m,
+  );
+}
+
+/**
+ * Turns a newest-first fetch of `size + 1` rows into what a thread renders.
+ *
+ * One place, because the three things it does have to happen together and in
+ * this order: drop the probe row, put the page back into oldest-first, and
+ * redact. Getting the probe out AFTER reversing would delete the oldest
+ * message on the page instead of the extra one.
+ */
+function messageWindow<T extends { id: string; createdAt: Date; deletedAt?: Date | null; body?: string; attachmentUrls?: string[] }>(
+  rows: T[],
+  size: number,
+): { messages: T[]; hasMoreMessages: boolean; oldestMessageId: string | null } {
+  const hasMoreMessages = rows.length > size;
+  const page = hasMoreMessages ? rows.slice(0, size) : rows;
+  const messages = redactWithdrawn(oldestFirst(page));
+  return {
+    messages,
+    hasMoreMessages,
+    // The cursor for the next page, handed back rather than left for the
+    // client to derive: it is the id of the oldest row it now holds, and a
+    // client that computed it from a list it had re-sorted would send the
+    // wrong end.
+    oldestMessageId: messages[0]?.id ?? null,
+  };
+}
 
 @Injectable()
 export class MessagesService {
@@ -51,6 +138,195 @@ export class MessagesService {
     @Optional() private readonly moderationService?: ModerationService,
   ) {}
 
+  /**
+   * The one thread between a shop and a buyer.
+   *
+   * A thread used to be created per order, so a buyer with five orders from the
+   * same shop had five of them — all captioned with the same shop name, none
+   * carrying the history. The order is now context ON the thread rather than
+   * the thing that identifies it, which is also what lets "their other orders"
+   * be answerable at all.
+   *
+   * Guests are keyed on a lower-cased email, matching the partial unique index
+   * the migration installs. Without the same casing rule on both sides the
+   * database would reject a row this method thought was new.
+   */
+  /**
+   * May this caller act as the buyer on this thread?
+   *
+   * The rule this replaces was `callerId && thread.userId && they differ`,
+   * which let both halves through when either side was null: any signed-in
+   * account could read — and write into — any GUEST thread, buyer's email and
+   * order numbers included. Nothing published a conversation id and the global
+   * rate limit makes guessing one impractical, so it was never an open door;
+   * it was an unlocked one.
+   *
+   * A guest thread stays readable without a session, because that is how a
+   * guest reaches their own: they have no account to sign in to. What changes
+   * is that being signed in as SOMEONE ELSE is no longer a way in. Once a
+   * guest registers, linkGuestConversations gives their threads a userId and
+   * this first branch is what protects them from then on.
+   */
+  private assertBuyerAccess(
+    conversation: { userId: string | null },
+    callerId: string | null,
+  ): void {
+    const denied = conversation.userId
+      ? conversation.userId !== callerId
+      : callerId !== null;
+    if (denied) {
+      throw new ForbiddenException({ code: 'ERR_FORBIDDEN', message: 'Access denied' });
+    }
+  }
+
+  /**
+   * Hands a new account the threads it wrote as a guest.
+   *
+   * Without this, registering LOSES the conversation: assertBuyerAccess above
+   * refuses a signed-in caller on a thread with no userId, and the buyer would
+   * watch their own history become unreachable the moment they made an
+   * account.
+   *
+   * Merging, not just relabelling, because the partial unique index means a
+   * buyer who already has a thread with the shop cannot simply have a second
+   * one relabelled onto them — the update would take a P2002. This is the same
+   * fold the one_conversation_per_buyer migration performs, at the one other
+   * moment two threads can turn out to be the same person.
+   *
+   * Returns how many were linked. Never throws: registration must not fail
+   * because a fold did.
+   */
+  async linkGuestConversations(userId: string, email: string): Promise<number> {
+    try {
+      const guestThreads = await this.prisma.conversation.findMany({
+        where:  { guestEmail: email.toLowerCase(), userId: null },
+        select: { id: true, storeId: true },
+      });
+      if (!guestThreads.length) return 0;
+
+      let linked = 0;
+      for (const guest of guestThreads) {
+        // A thread with no shop is outside the unique index, so nothing can
+        // collide with it and there is nothing to fold into.
+        const keeper = guest.storeId
+          ? await this.prisma.conversation.findFirst({
+              where:  { storeId: guest.storeId, userId },
+              select: { id: true },
+            })
+          : null;
+
+        if (keeper) await this.foldConversation(guest.id, keeper.id);
+        else {
+          await this.prisma.conversation.update({
+            where: { id: guest.id },
+            // guestEmail is left in place: it is how the shop reached them and
+            // is part of the record. The guest index only binds rows with a
+            // null userId, so it stops applying here anyway.
+            data:  { userId },
+          });
+        }
+        linked++;
+      }
+
+      this.logger.log(`Linked ${linked} guest conversation(s) to ${email}`);
+      return linked;
+    } catch (err) {
+      this.logger.error(`Failed to link guest conversations for ${email}: ${String(err)}`);
+      return 0;
+    }
+  }
+
+  /** Moves everything from one thread onto another and deletes the source. */
+  private async foldConversation(fromId: string, intoId: string): Promise<void> {
+    const [from, into] = await this.prisma.$transaction([
+      this.prisma.conversation.findUniqueOrThrow({ where: { id: fromId } }),
+      this.prisma.conversation.findUniqueOrThrow({ where: { id: intoId } }),
+    ]);
+
+    // Labels first: the link table's key is composite, so moving one the
+    // keeper already carries would violate it. Insert what is missing, then
+    // drop the originals — the same order the migration uses.
+    const links = await this.prisma.conversationLabelLink.findMany({
+      where:  { conversationId: fromId },
+      select: { labelId: true },
+    });
+
+    await this.prisma.$transaction([
+      this.prisma.conversationLabelLink.createMany({
+        data: links.map((l) => ({ conversationId: intoId, labelId: l.labelId })),
+        skipDuplicates: true,
+      }),
+      this.prisma.conversationLabelLink.deleteMany({ where: { conversationId: fromId } }),
+      this.prisma.message.updateMany({
+        where: { conversationId: fromId },
+        data:  { conversationId: intoId },
+      }),
+      this.prisma.conversation.update({
+        where: { id: intoId },
+        data: {
+          // Counters add up rather than being kept: taking only the keeper's
+          // would silently mark the other thread's unread messages as read.
+          unreadByAdmin:    into.unreadByAdmin    + from.unreadByAdmin,
+          unreadByCustomer: into.unreadByCustomer + from.unreadByCustomer,
+          isStarred:        into.isStarred        || from.isStarred,
+          hasSellerReplied: into.hasSellerReplied || from.hasSellerReplied,
+          ...(from.lastMessageAt && (!into.lastMessageAt || from.lastMessageAt > into.lastMessageAt)
+            ? { lastMessageAt: from.lastMessageAt, lastMessage: from.lastMessage }
+            : {}),
+          ...(into.orderId ? {} : { orderId: from.orderId }),
+        },
+      }),
+      this.prisma.conversation.delete({ where: { id: fromId } }),
+    ]);
+  }
+
+  async openThreadWithBuyer(
+    storeId:  string,
+    buyer:    { userId?: string | null; guestEmail?: string | null; guestName?: string | null },
+    orderId?: string | null,
+    subject?: string | null,
+  ) {
+    return this.findOrCreateConversation(storeId, buyer, orderId, subject);
+  }
+
+  private async findOrCreateConversation(
+    storeId:  string,
+    buyer:    { userId?: string | null; guestEmail?: string | null; guestName?: string | null },
+    orderId?: string | null,
+    subject?: string | null,
+  ) {
+    const userId     = buyer.userId ?? null;
+    const guestEmail = userId ? null : (buyer.guestEmail?.toLowerCase() ?? null);
+
+    const existing = await this.prisma.conversation.findFirst({
+      where: userId ? { storeId, userId } : { storeId, userId: null, guestEmail },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (existing) {
+      // The order the thread is "about" follows the latest thing said, so the
+      // panel beside it shows what the buyer most recently wrote in about
+      // rather than whichever order happened to start the thread years ago.
+      if (orderId && existing.orderId !== orderId) {
+        return this.prisma.conversation.update({
+          where: { id: existing.id },
+          data:  { orderId },
+        });
+      }
+      return existing;
+    }
+
+    return this.prisma.conversation.create({
+      data: {
+        storeId,
+        ...(userId ? { userId } : { guestEmail, guestName: buyer.guestName ?? null }),
+        ...(orderId ? { orderId } : {}),
+        subject: subject ?? null,
+        status:  ConversationStatus.OPEN,
+      },
+    });
+  }
+
   async createConversation(userId: string | null, dto: CreateConversationDto) {
     const { orderId, subject, guestEmail, guestName, body, ..._ } = dto;
 
@@ -65,32 +341,76 @@ export class MessagesService {
       if (storeOrders.length === 1) storeId = storeOrders[0].storeId;
     }
 
-    const conversation = await this.prisma.conversation.create({
-      data: {
-        ...(userId && { userId }),
-        ...(orderId && { orderId }),
-        ...(storeId && { storeId }),
-        subject,
-        guestEmail: userId ? undefined : guestEmail,
-        guestName:  userId ? undefined : guestName,
-        status: ConversationStatus.OPEN,
-        lastMessage: body,
-        lastMessageAt: new Date(),
-        unreadByAdmin: 1,
-        messages: {
-          create: {
-            senderType: SenderType.CUSTOMER,
-            senderId: userId ?? null,
-            body,
+    /**
+     * Find-or-create, not create.
+     *
+     * Writing a fresh row here is what produced a thread per order. It is also
+     * now a database error: the partial unique index on (storeId, userId) and
+     * (storeId, lower(guestEmail)) would reject the second one, so a buyer
+     * writing to a shop they had messaged before would simply fail.
+     *
+     * Without a store there is nothing to key on — a general enquiry that
+     * matched no single shop — so those keep the old behaviour and stand alone.
+     */
+    const thread = storeId
+      ? await this.findOrCreateConversation(
+          storeId,
+          { userId, guestEmail, guestName },
+          orderId,
+          subject,
+        )
+      : await this.prisma.conversation.create({
+          data: {
+            ...(userId && { userId }),
+            ...(orderId && { orderId }),
+            subject,
+            // Lower-cased on the way in even here, where no unique index
+            // depends on it. One casing rule for the column, so a row written
+            // by this branch is still findable by every lookup that assumes
+            // the other one.
+            guestEmail: userId ? undefined : guestEmail?.toLowerCase(),
+            guestName:  userId ? undefined : guestName,
+            status: ConversationStatus.OPEN,
           },
+        });
+
+    // The message and the thread's own counters, in one write, so a failure
+    // cannot leave a thread claiming an unread message it does not have.
+    const [, conversation] = await this.prisma.$transaction([
+      this.prisma.message.create({
+        data: {
+          conversationId: thread.id,
+          senderType: SenderType.CUSTOMER,
+          senderId: userId ?? null,
+          body,
         },
-      },
-      include: {
-        ...CONVERSATION_INCLUDE,
-        user:  { select: { id: true, firstName: true, lastName: true, email: true, avatarUrl: true } },
-        order: { select: { id: true, orderNumber: true } },
-      },
-    });
+      }),
+      this.prisma.conversation.update({
+        where: { id: thread.id },
+        data: {
+          lastMessage: body,
+          lastMessageAt: new Date(),
+          unreadByAdmin: { increment: 1 },
+          /**
+           * Reopens a thread the shop had resolved or filed: a new question is
+           * not answered just because the last one was.
+           *
+           * Except spam. Marking a sender as spam is a decision about the
+           * person, not about one message, and writing again is exactly what
+           * a spammer does — letting the next message undo it would put them
+           * back in the inbox and make the button pointless.
+           */
+          ...(thread.status === ConversationStatus.SPAM
+            ? {}
+            : { status: ConversationStatus.OPEN }),
+        },
+        include: {
+          ...CONVERSATION_INCLUDE,
+          user:  { select: { id: true, firstName: true, lastName: true, email: true, avatarUrl: true } },
+          order: { select: { id: true, orderNumber: true } },
+        },
+      }),
+    ]);
 
     // Notify admin of new conversation (fire-and-forget)
     this.notifications.sendNewMessageNotification({
@@ -102,7 +422,10 @@ export class MessagesService {
       orderId:        conversation.orderId ?? undefined,
     }).catch((err: unknown) => this.logger.warn(`Email notification failed: ${String(err)}`));
 
-    return conversation;
+    // This is now a find-or-create, so what comes back can be a thread with
+    // years of history on it rather than the one message just written — and
+    // any of those may have been withdrawn.
+    return { ...conversation, ...messageWindow(conversation.messages, MESSAGE_WINDOW) };
   }
 
   /** storeId only supplied for the admin/shop-reply path — undefined for customer-facing calls (no store ownership concept there). */
@@ -118,6 +441,9 @@ export class MessagesService {
       include: {
         user:  { select: { email: true, firstName: true } },
         order: { select: { orderNumber: true } },
+        // ownerId is who a buyer's message is addressed to, and name is what
+        // the buyer's own toast says it came from.
+        store: { select: { name: true, ownerId: true } },
       },
     });
     if (!conversation || (storeId !== undefined && conversation.storeId !== storeId)) {
@@ -125,6 +451,16 @@ export class MessagesService {
     }
 
     const isCustomer = senderType === SenderType.CUSTOMER;
+
+    /**
+     * Writing as the buyer needs the same proof as reading as the buyer.
+     *
+     * Locking the read and leaving the write open would have been worse than
+     * leaving both: anyone reaching a thread could put words in the buyer's
+     * mouth, in a place the shop reads as coming from them. SHOP and SYSTEM
+     * are scoped by `storeId` above and by the admin guards before that.
+     */
+    if (isCustomer) this.assertBuyerAccess(conversation, senderId);
 
     // A retry that carries the key of an attempt which actually landed returns
     // that message untouched — no second row, no second unread, no second
@@ -240,6 +576,26 @@ export class MessagesService {
     // covers all of them without a second emit site to keep in step.
     this.realtime?.emitMessage(conversationId, message);
 
+    // And to the recipient personally, so their sidebar badge and toast fire
+    // wherever they are — the conversation room only reaches people who
+    // currently have the thread open.
+    //
+    // A buyer's message goes to whoever owns the shop; the shop's goes to the
+    // buyer. A guest conversation has no account on the buyer side, so there
+    // is nobody to address and it is skipped rather than guessed at.
+    const recipientId = isCustomer ? conversation.store?.ownerId : conversation.userId;
+    if (recipientId) {
+      this.realtime?.emitInboxChanged(recipientId, {
+        conversationId,
+        from: isCustomer
+          ? (conversation.user?.firstName ?? conversation.guestName ?? 'A customer')
+          : (conversation.store?.name ?? 'The shop'),
+        // Trimmed here rather than in the client: this crosses the wire to
+        // every open tab, and a 5,000-character body would too.
+        preview: dto.body.slice(0, 120),
+      });
+    }
+
     return message;
   }
 
@@ -249,6 +605,11 @@ export class MessagesService {
       orderBy: { lastMessageAt: 'desc' },
       include: {
         order: { select: { id: true, orderNumber: true } },
+        // Every row names the shop it is with, so this has to come back here
+        // and not only on the thread. Without it the list falls through to its
+        // placeholder and prints "Shop" beside a blank circle on every row —
+        // which is what it did while the name was a hard-coded literal.
+        store: { select: { id: true, name: true, slug: true, logoUrl: true, ownerId: true } },
         _count: { select: { messages: true } },
       },
     });
@@ -261,11 +622,9 @@ export class MessagesService {
     });
     if (!conversation) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
 
-    if (userId && conversation.userId && conversation.userId !== userId) {
-      throw new ForbiddenException({ code: 'ERR_FORBIDDEN', message: 'Access denied' });
-    }
+    this.assertBuyerAccess(conversation, userId);
 
-    return conversation;
+    return { ...conversation, ...messageWindow(conversation.messages, MESSAGE_WINDOW) };
   }
 
   async markCustomerRead(conversationId: string) {
@@ -277,6 +636,10 @@ export class MessagesService {
       where: { conversationId, senderType: { not: SenderType.CUSTOMER }, isRead: false },
       data: { isRead: true, readAt: new Date() },
     });
+
+    // Tells the shop its messages have been seen, so the double tick updates
+    // while both sides are looking at the thread instead of on the next fetch.
+    this.realtime?.emitRead(conversationId, 'CUSTOMER');
     return { success: true };
   }
 
@@ -407,9 +770,12 @@ export class MessagesService {
         // a shared listing, and the thread's labels for the detail toolbar.
         // Price comes from the product row, live, so a card never quotes a
         // price the shop has since changed.
+        // Newest end, same as CONVERSATION_INCLUDE — this overrides it, so a
+        // fix applied only there would leave the seller's own inbox stuck on
+        // the oldest hundred.
         messages: {
-          orderBy: { createdAt: 'asc' as const },
-          take: 100,
+          orderBy: { createdAt: 'desc' as const },
+          take: TAKE_WITH_PROBE,
           include: {
             attachedProduct: {
               select: {
@@ -426,10 +792,17 @@ export class MessagesService {
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
     }
 
+    // Redacted on this side too. The shop knows what it withdrew, but the
+    // inbox and the order panel both render it as withdrawn, and a body
+    // nobody is allowed to show has no reason to leave the database.
+    const window = messageWindow(conversation.messages, MESSAGE_WINDOW);
+
     return {
       ...conversation,
       labels: conversation.labels.map((l) => l.label),
-      messages: conversation.messages.map((m) => ({
+      hasMoreMessages: window.hasMoreMessages,
+      oldestMessageId: window.oldestMessageId,
+      messages: window.messages.map((m) => ({
         ...m,
         attachedProduct: m.attachedProduct && {
           id:   m.attachedProduct.id,
@@ -443,6 +816,90 @@ export class MessagesService {
     };
   }
 
+  /**
+   * The page of messages immediately older than `before`.
+   *
+   * The thread endpoints hand back the newest window and say whether anything
+   * lies behind it; this is how the reader walks backwards through the rest.
+   * Split out rather than folded into those endpoints as an offset, because a
+   * thread grows at the end while it is being read — see MessagePageQueryDto.
+   *
+   * `storeId` scopes it for a shop the same way the rest of the admin surface
+   * does; `userId` does it for a buyer. Exactly one of them is meaningful per
+   * caller, and both are checked here rather than in the controllers so a new
+   * route cannot forget.
+   */
+  async getMessagePage(
+    conversationId: string,
+    cursor: { before?: string; limit?: number },
+    viewer: { storeId?: string; userId?: string | null; forShop: boolean },
+  ) {
+    const conversation = await this.prisma.conversation.findUnique({
+      where:  { id: conversationId },
+      select: { id: true, storeId: true, userId: true },
+    });
+    if (!conversation) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
+    }
+    if (viewer.forShop) {
+      if (viewer.storeId !== undefined && conversation.storeId !== viewer.storeId) {
+        throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
+      }
+    } else {
+      // Same rule as getConversation, deliberately: two routes onto the same
+      // thread that disagreed about who may read it would mean the stricter
+      // one is decoration.
+      this.assertBuyerAccess(conversation, viewer.userId ?? null);
+    }
+
+    const size = cursor.limit ?? MESSAGE_PAGE;
+    const rows = await this.prisma.message.findMany({
+      where: { conversationId },
+      // id as a tiebreaker, not decoration. Two messages written in the same
+      // millisecond — a system message beside the one that triggered it — sort
+      // arbitrarily on createdAt alone, and an unstable sort under a cursor
+      // repeats one row and drops another.
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: size + 1,
+      ...(cursor.before ? { cursor: { id: cursor.before }, skip: 1 } : {}),
+      ...(viewer.forShop
+        ? {
+            include: {
+              attachedProduct: {
+                select: {
+                  id: true, name: true, slug: true, basePrice: true, compareAtPrice: true,
+                  images: { where: { isPrimary: true }, select: { url: true }, take: 1 },
+                },
+              },
+            },
+          }
+        : {}),
+    });
+
+    const window = messageWindow(rows, size);
+    return {
+      messages: window.messages.map((m) => {
+        const p = (m as { attachedProduct?: {
+          id: string; name: string; slug: string;
+          basePrice: Prisma.Decimal; compareAtPrice: Prisma.Decimal | null;
+          images: { url: string }[];
+        } | null }).attachedProduct;
+        if (p === undefined) return m;
+        return {
+          ...m,
+          attachedProduct: p && {
+            id: p.id, name: p.name, slug: p.slug,
+            price: Number(p.basePrice),
+            compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
+            imageUrl: p.images[0]?.url ?? null,
+          },
+        };
+      }),
+      hasMoreMessages: window.hasMoreMessages,
+      oldestMessageId: window.oldestMessageId,
+    };
+  }
+
   async adminUpdateStatus(conversationId: string, status: ConversationStatus, storeId?: string) {
     const exists = await this.prisma.conversation.findUnique({ where: { id: conversationId }, select: { id: true, storeId: true } });
     if (!exists || (storeId !== undefined && exists.storeId !== storeId)) {
@@ -452,6 +909,100 @@ export class MessagesService {
     return this.prisma.conversation.update({
       where: { id: conversationId },
       data: { status },
+    });
+  }
+
+  /**
+   * Withdraws a message the shop sent.
+   *
+   * Shop messages only. A seller deleting what a buyer wrote would be editing
+   * the record of a conversation they are a party to — and the buyer would
+   * have no way to tell it had happened.
+   *
+   * Soft: the row and its body stay IN THE DATABASE, so a moderation report
+   * about the message remains answerable and the shop cannot erase what it
+   * said. Neither side is sent the text again — see redactWithdrawn. The
+   * bubble stays in place saying it was withdrawn, because the buyer may
+   * already have read it and closing the gap would rewrite a conversation
+   * they were part of.
+   */
+  async deleteMessage(messageId: string, adminUserId: string, storeId?: string) {
+    const message = await this.prisma.message.findUnique({
+      where:  { id: messageId },
+      select: {
+        id: true, senderType: true, deletedAt: true,
+        conversation: { select: { id: true, storeId: true } },
+      },
+    });
+    if (!message) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Message not found' });
+    }
+    // Scoped for a shop owner; a platform SUPER_ADMIN passes no storeId.
+    if (storeId !== undefined && message.conversation.storeId !== storeId) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Message not found' });
+    }
+    if (message.senderType !== SenderType.SHOP) {
+      throw new ForbiddenException({
+        code:    'ERR_FORBIDDEN',
+        message: 'Only the shop\'s own messages can be withdrawn',
+      });
+    }
+    // Already withdrawn: return rather than throw. A double click is not an
+    // error, and the second one asked for a state that already holds.
+    if (message.deletedAt) return { success: true };
+
+    await this.prisma.message.update({
+      where: { id: messageId },
+      data:  { deletedAt: new Date(), deletedBy: adminUserId },
+    });
+
+    await this.refreshPreview(message.conversation.id);
+
+    this.realtime?.emitDeleted(message.conversation.id, messageId);
+    return { success: true };
+  }
+
+  /**
+   * Re-derives the thread's one-line preview from what is still visible.
+   *
+   * `lastMessage` is a copy of a body, kept on the conversation so the inbox
+   * list does not have to join. Withdrawing the newest message left that copy
+   * behind: the bubble said "Message withdrawn" while the list beside it, and
+   * the buyer's own list, went on printing the text it was meant to take back.
+   *
+   * The unread counter goes with it. A withdrawn message is not something the
+   * buyer still has to read, and leaving it counted means a badge promising
+   * something that is no longer there.
+   */
+  private async refreshPreview(conversationId: string): Promise<void> {
+    const latest = await this.prisma.message.findFirst({
+      where:   { conversationId, deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      select:  { body: true, createdAt: true },
+    });
+
+    const unreadByCustomer = await this.prisma.message.count({
+      where: {
+        conversationId,
+        senderType: { not: SenderType.CUSTOMER },
+        isRead: false,
+        deletedAt: null,
+      },
+    });
+
+    await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        // Null rather than an empty string when everything has been withdrawn:
+        // the list already renders "No messages yet" for null.
+        lastMessage: latest?.body ?? null,
+        // Only moved when there is still something to point at. Postgres sorts
+        // NULLS FIRST on a DESC order, so nulling it would send a thread whose
+        // every message had been withdrawn to the top of the inbox — the one
+        // place a withdrawn thread has no business being.
+        ...(latest ? { lastMessageAt: latest.createdAt } : {}),
+        unreadByCustomer,
+      },
     });
   }
 
@@ -470,6 +1021,8 @@ export class MessagesService {
       where: { conversationId, senderType: SenderType.CUSTOMER, isRead: false },
       data: { isRead: true, readAt: new Date() },
     });
+
+    this.realtime?.emitRead(conversationId, 'SHOP');
     return { success: true };
   }
 }

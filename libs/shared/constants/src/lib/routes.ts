@@ -387,6 +387,7 @@ export const API_ROUTES = {
     CONVERSATION_MESSAGES: (id: string) => `/admin/messages/conversations/${id}/messages`,
     CONVERSATION_STATUS:  (id: string) => `/admin/messages/conversations/${id}/status`,
     CONVERSATION_READ:    (id: string) => `/admin/messages/conversations/${id}/read`,
+    MESSAGE_DELETE:       (id: string) => `/admin/messages/messages/${id}`,
 
     // ── Inbox ────────────────────────────────────────────────────────────────
     MESSAGE_FOLDERS:      '/admin/messages/folders',

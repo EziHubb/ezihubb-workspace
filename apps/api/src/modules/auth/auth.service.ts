@@ -22,6 +22,7 @@ import { AuthResponseDto } from './dto/auth-response.dto';
 import { TotpRequiredResponseDto, TotpSetupResponseDto } from './dto/totp.dto';
 import { TotpService } from './totp.service';
 import { GoogleProfile } from './strategies/google.strategy';
+import { MessagesService } from '../messages/messages.service';
 
 const BCRYPT_ROUNDS = 12;
 const LOGIN_LOCK_KEY = (email: string) => `auth:login:${email}`;
@@ -41,6 +42,7 @@ export class AuthService {
     private readonly redis: RedisService,
     private readonly totpService: TotpService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
+    private readonly messages: MessagesService,
   ) {}
 
   // ─── Registration ──────────────────────────────────────────────────────────
@@ -64,6 +66,16 @@ export class AuthService {
 
     // Link any guest orders placed with this email before account creation
     this.linkGuestOrders(user.id, dto.email);
+
+    /**
+     * Conversations too — and awaited, unlike the orders beside it.
+     *
+     * The thread endpoints now refuse a signed-in caller on a thread with no
+     * userId, and register() hands back a session immediately. Left to the
+     * background, the buyer could land on their inbox inside the gap and be
+     * told their own history is forbidden.
+     */
+    await this.messages.linkGuestConversations(user.id, dto.email);
 
     // Queue verification email (fire-and-forget)
     await this.enqueueVerificationEmail(user.id, user.email, user.firstName ?? '').catch((err) =>
@@ -131,6 +143,9 @@ export class AuthService {
     // on a bare claim to the address. Fire-and-forget on purpose — a failure
     // here must never block a valid sign-in, and the next login retries it.
     this.linkGuestOrders(user.id, user.email);
+    // The backfill for anyone who registered before conversations were linked
+    // at all. Fire-and-forget for the same reason as the line above it.
+    void this.messages.linkGuestConversations(user.id, user.email);
 
     // Admin/SUPER_ADMIN with TOTP enabled → issue partial token
     if ((ADMIN_ROLES as readonly string[]).includes(user.role) && user.totpEnabled) {

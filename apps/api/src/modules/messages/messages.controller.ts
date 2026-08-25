@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -13,6 +14,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { CreateConversationDto } from './dto/create-conversation.dto';
+import { MessagePageQueryDto } from './dto/message-page-query.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { MessagesService } from './messages.service';
 
@@ -46,6 +48,28 @@ export class MessagesController {
     @CurrentUser() user: JwtPayload | undefined,
   ) {
     return this.messagesService.getConversation(id, user?.sub ?? null);
+  }
+
+  /**
+   * Older messages, a page at a time.
+   *
+   * The conversation endpoint returns the newest window and a flag saying
+   * whether anything lies behind it. This is how the reader walks back — the
+   * thread is a whole relationship with a shop now, not one order, so loading
+   * all of it on open is not an option.
+   */
+  @Get('conversations/:id/messages')
+  @UseGuards(OptionalAuthGuard)
+  @ApiOperation({ summary: 'Page backwards through a conversation' })
+  async getMessagePage(
+    @Param('id') id: string,
+    @Query() query: MessagePageQueryDto,
+    @CurrentUser() user: JwtPayload | undefined,
+  ) {
+    return this.messagesService.getMessagePage(id, query, {
+      userId:  user?.sub ?? null,
+      forShop: false,
+    });
   }
 
   @Post('conversations/:id/messages')

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ConversationStatus, Prisma } from '@prisma/client';
+import { SenderType, ConversationStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 /**
@@ -26,6 +26,14 @@ const FILED: readonly ConversationStatus[] = [
   ConversationStatus.TRASHED,
   ConversationStatus.SPAM,
 ];
+
+/**
+ * How many of a buyer's orders the thread panel lists.
+ *
+ * A capped list, not the whole history: the panel is context for the reply in
+ * front of the seller, and the Orders page is where a full history belongs.
+ */
+const BUYER_ORDERS_SHOWN = 10;
 
 export type BulkAction =
   | 'star' | 'unstar'
@@ -240,17 +248,6 @@ export class InboxService {
     });
   }
 
-  /** How many threads this buyer has had with this shop — drives "hasn't messaged you before". */
-  countBuyerThreads(storeId: string, userId: string | null, guestEmail: string | null) {
-    if (!userId && !guestEmail) return Promise.resolve(0);
-    return this.prisma.conversation.count({
-      where: {
-        storeId,
-        ...(userId ? { userId } : { guestEmail }),
-      },
-    });
-  }
-
   /** Everything the right-hand panel shows about the buyer on one thread. */
   async buyerPanel(storeId: string, conversationId: string) {
     const convo = await this.prisma.conversation.findFirst({
@@ -272,9 +269,57 @@ export class InboxService {
     if (!convo) throw new NotFoundException('Conversation not found');
 
     const buyerKey = this.buyerKeyFor(convo.userId, convo.guestEmail);
-    const [note, threadCount] = await Promise.all([
+
+    // Shared by the list and the total so the two can never disagree about
+    // whose orders they are counting.
+    const ordersWhere = {
+      storeId,
+      order: convo.userId
+        ? { userId: convo.userId }
+        : { guestEmail: convo.guestEmail ?? undefined },
+    };
+
+    const [note, buyerMessages, orders, orderCount] = await Promise.all([
       buyerKey ? this.getBuyerNote(storeId, buyerKey) : null,
-      this.countBuyerThreads(storeId, convo.userId, convo.guestEmail),
+      /**
+       * Counted from THIS thread's messages, not from how many threads exist.
+       *
+       * There is one thread per buyer now, so a thread count is always 1 and
+       * "hasn't messaged you before" would be permanently true — the panel
+       * would greet a regular customer as a stranger on every reply.
+       */
+      this.prisma.message.count({
+        where: { conversationId, senderType: SenderType.CUSTOMER },
+      }),
+      /**
+       * Their orders with THIS shop, newest first.
+       *
+       * The reason the thread is no longer keyed on an order: a buyer with
+       * five of them had five threads and the seller could not see the
+       * relationship. Here it is, in one list, on the thread that is now about
+       * the person.
+       *
+       * Capped: a long-standing customer's whole order history is not what
+       * this panel is for, and the page it links to is.
+       */
+      this.prisma.storeOrder.findMany({
+        where:   ordersWhere,
+        orderBy: { createdAt: 'desc' },
+        take: BUYER_ORDERS_SHOWN,
+        select: {
+          id: true, status: true, sellerEarnings: true, createdAt: true,
+          order: { select: { id: true, orderNumber: true } },
+          _count: { select: { items: true } },
+        },
+      }),
+      /**
+       * The real total, not the length of the capped list above.
+       *
+       * "How many times has this person bought from me" is the question the
+       * panel is answering, and a list that stops at ten would answer it with
+       * "ten" for a buyer on their fortieth order.
+       */
+      this.prisma.storeOrder.count({ where: ordersWhere }),
     ]);
 
     const place = convo.user?.addresses?.[0];
@@ -288,9 +333,20 @@ export class InboxService {
       // about who is writing, not a place to surface someone's street.
       location: place ? [place.city, place.state, place.country].filter(Boolean).join(', ') : null,
       note: note?.body ?? null,
-      // 1 means this thread and no other.
-      isFirstContact: threadCount <= 1,
-      threadCount,
+      // Their first message, not their first thread.
+      isFirstContact: buyerMessages <= 1,
+      orders: orders.map((o) => ({
+        storeOrderId: o.id,
+        orderId:      o.order.id,
+        orderNumber:  o.order.orderNumber,
+        status:       o.status,
+        itemCount:    o._count.items,
+        // Decimal serialises as a string over JSON, and a UI that formats it
+        // as currency would print "$12.34.00". Converted at the boundary.
+        total:        Number(o.sellerEarnings),
+        createdAt:    o.createdAt.toISOString(),
+      })),
+      orderCount,
     };
   }
 

@@ -457,25 +457,65 @@ export class SellerOrderDetailService {
     return uploaded;
   }
 
-  /** The thread about this order, or an empty one when nobody has written. */
+  /**
+   * The thread with this order's buyer.
+   *
+   * Keyed on the buyer, not the order: there is one conversation per (shop,
+   * buyer) now, so opening any of their orders shows the same history rather
+   * than a fragment of it that starts wherever that order did.
+   */
   async getThread(storeId: string, storeOrderId: string) {
     const row = await this.owned(storeId, storeOrderId);
+    const order = await this.prisma.order.findUniqueOrThrow({
+      where:  { id: row.orderId },
+      select: { userId: true, guestEmail: true },
+    });
+
+    /**
+     * An order with neither an account nor a guest email has no buyer to key
+     * on, and the guard is not theoretical: `guestEmail: undefined` is not a
+     * filter to Prisma, it is an absent one — the where would collapse to
+     * "any guest thread in this shop" and hand the seller a different buyer's
+     * conversation on the order panel.
+     */
+    if (!order.userId && !order.guestEmail) {
+      return { conversationId: null, messages: [] };
+    }
 
     const conversation = await this.prisma.conversation.findFirst({
-      where:   { orderId: row.orderId, storeId },
+      where: order.userId
+        ? { storeId, userId: order.userId }
+        : { storeId, userId: null, guestEmail: order.guestEmail!.toLowerCase() },
       include: {
+        // Newest hundred, reversed below. It used to be every message with no
+        // cap, which was survivable while a thread was one order long — a
+        // thread is now the shop's whole history with this buyer, and the
+        // order panel would load all of it to show the last few.
         messages: {
-          orderBy: { createdAt: 'asc' },
+          orderBy: { createdAt: 'desc' },
+          take: 100,
           select: {
             id: true, senderType: true, body: true, attachmentUrls: true,
             createdAt: true, isRead: true,
+            // Without this an explicit select silently drops it, and a message
+            // the shop withdrew renders here in full — the one place that
+            // still showed the text it was meant to take back.
+            deletedAt: true,
           },
         },
       },
     });
     if (!conversation) return { conversationId: null, messages: [] };
 
-    return { conversationId: conversation.id, messages: conversation.messages };
+    return {
+      conversationId: conversation.id,
+      // The text of a withdrawn message never leaves the API. The renderer
+      // here already hides it, but hidden-by-the-renderer is still shipped —
+      // it sat in the JSON for anyone who opened the network tab.
+      messages: [...conversation.messages]
+        .reverse()
+        .map((m) => (m.deletedAt ? { ...m, body: '', attachmentUrls: [] } : m)),
+    };
   }
 
   /**
@@ -514,22 +554,16 @@ export class SellerOrderDetailService {
       select: { id: true, orderNumber: true, userId: true, guestEmail: true, shippingName: true },
     });
 
-    let conversation = await this.prisma.conversation.findFirst({
-      where: { orderId: order.id, storeId },
-    });
-
-    if (!conversation) {
-      conversation = await this.prisma.conversation.create({
-        data: {
-          orderId:    order.id,
-          storeId,
-          userId:     order.userId,
-          guestEmail: order.userId ? null : order.guestEmail,
-          guestName:  order.userId ? null : order.shippingName,
-          subject:    `Order #${order.orderNumber}`,
-        },
-      });
-    }
+    // One thread per (shop, buyer). Delegated so the key, the lower-casing of
+    // a guest email, and the "latest order becomes the context" rule live in
+    // one place — a second copy here is how the two would drift and start
+    // violating the unique index from opposite directions.
+    const conversation = await this.messages.openThreadWithBuyer(
+      storeId,
+      { userId: order.userId, guestEmail: order.guestEmail, guestName: order.shippingName },
+      order.id,
+      `Order #${order.orderNumber}`,
+    );
 
     return this.messages.sendMessage(
       conversation.id,

@@ -248,6 +248,44 @@ export class RealtimeGateway
   }
 
   /**
+   * The other side has read what was waiting.
+   *
+   * Sent to the whole conversation room including the reader's own sockets:
+   * a seller with the inbox open in two tabs should see both stop showing the
+   * thread as unread, and filtering the sender out would cost a lookup to save
+   * one cheap message.
+   */
+  emitRead(conversationId: string, readerType: 'CUSTOMER' | 'SHOP'): void {
+    if (!this.server) return;
+    this.server
+      .to(this.room(conversationId))
+      .emit(RT_SERVER.MESSAGES_READ, { conversationId, readerType });
+  }
+
+  /**
+   * Tells one person their inbox changed, wherever they are in the app.
+   *
+   * Separate from emitMessage, which goes to the conversation room: a socket
+   * only joins that room while the thread is open, so the sidebar — which is
+   * mounted on every page and has joined nothing — would never hear about a
+   * message and its badge would sit stale until the next poll. The per-user
+   * room is joined at connect, so this reaches every tab that person has open
+   * whatever page they are on.
+   */
+  emitInboxChanged(userId: string, payload: { conversationId: string; from: string; preview: string }): void {
+    if (!this.server) return;
+    this.server.to(`user:${userId}`).emit(RT_SERVER.INBOX_CHANGED, payload);
+  }
+
+  /** A message was withdrawn by the shop. */
+  emitDeleted(conversationId: string, messageId: string): void {
+    if (!this.server) return;
+    this.server
+      .to(this.room(conversationId))
+      .emit(RT_SERVER.MESSAGE_DELETED, { conversationId, messageId });
+  }
+
+  /**
    * Tells only the sockets that asked about this user.
    *
    * The audience is built by onPresenceQuery, which joins a socket to

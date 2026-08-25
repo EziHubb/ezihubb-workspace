@@ -16,6 +16,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
 import { AdminConversationQueryDto } from './dto/admin-conversation-query.dto';
+import { MessagePageQueryDto } from './dto/message-page-query.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { UpdateConversationStatusDto } from './dto/update-conversation-status.dto';
 import { MessagesService } from './messages.service';
@@ -52,6 +53,21 @@ export class AdminMessagesController {
   async getConversation(@Req() req: Request, @Param('id') id: string) {
     const context = await this.storeContext.resolve(req);
     return this.messagesService.adminGetConversation(id, context.storeId ?? undefined);
+  }
+
+  /** Older messages, a page at a time — see the buyer-side twin for why. */
+  @Get('conversations/:id/messages')
+  @ApiOperation({ summary: 'Page backwards through a conversation' })
+  async getMessagePage(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Query() query: MessagePageQueryDto,
+  ) {
+    const context = await this.storeContext.resolve(req);
+    return this.messagesService.getMessagePage(id, query, {
+      storeId: context.storeId ?? undefined,
+      forShop: true,
+    });
   }
 
   @Post('conversations/:id/messages')
@@ -94,6 +110,24 @@ export class AdminMessagesController {
   private async storeFor(req: Request, requestedStoreId?: string): Promise<string> {
     const context = await this.storeContext.resolve(req);
     return this.storeContext.resolveTargetStoreId(context, requestedStoreId);
+  }
+
+  /**
+   * Declared before any `conversations/:id/...` route would be a problem only
+   * if it shared their shape — it does not, the segment is `messages`. Kept
+   * beside the conversation routes rather than under one, because a message
+   * id is enough to find its thread and nesting it would let the two
+   * disagree.
+   */
+  @Delete('messages/:messageId')
+  @ApiOperation({ summary: "Withdraw one of the shop's own messages" })
+  async deleteMessage(
+    @Req() req: Request,
+    @Param('messageId') messageId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const context = await this.storeContext.resolve(req);
+    return this.messagesService.deleteMessage(messageId, user.sub, context.storeId ?? undefined);
   }
 
   @Get('folders')

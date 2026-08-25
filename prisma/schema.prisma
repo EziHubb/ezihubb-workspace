@@ -2006,6 +2006,16 @@ model Conversation {
   // The inbox is always "this shop, newest first, in this folder".
   @@index([storeId, status, lastMessageAt])
   @@index([storeId, isStarred])
+
+  /// ONE conversation per (shop, buyer). Enforced by two PARTIAL unique
+  /// indexes that Prisma cannot express and therefore does not know about:
+  ///   Conversation_store_user_key   (storeId, userId)         WHERE both set
+  ///   Conversation_store_guest_key  (storeId, lower(guestEmail)) WHERE guest
+  /// They live in 20260825061330_one_conversation_per_buyer.
+  ///
+  /// "prisma migrate deploy" does not check drift, so this holds in production
+  /// — but "prisma migrate dev" will offer to drop them as unknown objects,
+  /// and accepting that would silently restore a thread per order.
 }
 
 /// A label a shop invents for its own inbox.
@@ -2145,6 +2155,22 @@ model Message {
 
   isRead Boolean   @default(false)
   readAt DateTime?
+
+  /// When the shop withdrew this message.
+  ///
+  /// Soft, not a DELETE. The buyer may already have read it, so the honest
+  /// thing to show them is that something was withdrawn rather than a gap
+  /// where a message used to be — and a moderation report about a message
+  /// that no longer exists is unanswerable.
+  ///
+  /// The body is left in place HERE: it is the evidence. The API stops
+  /// sending it the moment this is set — see redactWithdrawn in
+  /// messages.service.ts. Leaving that to the renderer was not enough; the
+  /// text still travelled in the JSON.
+  deletedAt DateTime?
+  /// Which admin withdrew it. No FK — the same reason senderId has none, and
+  /// an admin being removed must not erase the record of what they did.
+  deletedBy String?
 
   createdAt DateTime @default(now())
 
