@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { X, CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react';
+import { Avatar } from '../messages/inbox/Avatar';
 import { useToasts, toast as toastApi } from '../../lib/store/toast.store';
 import type { ToastItem, ToastType } from '../../lib/store/toast.store';
 
@@ -77,7 +78,14 @@ function Toast({ t }: { t: ToastItem }) {
         styles.border,
       ].join(' ')}
     >
-      <span className="mt-0.5">{styles.icon}</span>
+      {/* The sender, when the caller named one; the type glyph otherwise.
+          Severity is still carried by the border and text colour, so nothing
+          is lost by giving the icon slot to a face. */}
+      <span className="mt-0.5">
+        {t.avatarName || t.avatarUrl
+          ? <Avatar name={t.avatarName ?? ''} src={t.avatarUrl ?? null} size={20} />
+          : styles.icon}
+      </span>
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-secondary leading-snug">{t.message}</p>

@@ -5,6 +5,16 @@ import { useSyncExternalStore } from 'react';
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 export interface ToastOptions {
+  /**
+   * Show this person instead of the type glyph.
+   *
+   * A message from a customer arriving under a generic info icon says only
+   * "something happened". Their face says who, which is the part the seller
+   * acts on. `avatarName` drives the initials fallback, because most accounts
+   * have no picture and a blank circle is worse than two letters.
+   */
+  avatarUrl?:   string | null;
+  avatarName?:  string;
   duration?:    number;
   description?: string;
   action?: {

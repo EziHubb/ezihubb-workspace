@@ -39,7 +39,7 @@ export const RT_SERVER = {
    *
    * Addressed to the person rather than to a conversation, because the badge
    * and the toast are rendered by the sidebar — which is on every page and has
-   * joined no conversation room. Payload: { conversationId, from, preview }
+   * joined no conversation room. Payload: { conversationId, from, preview, avatarUrl }
    */
   INBOX_CHANGED:    'inbox:changed',
   /** Someone's online state changed. */

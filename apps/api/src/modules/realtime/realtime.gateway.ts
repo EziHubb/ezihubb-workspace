@@ -272,7 +272,10 @@ export class RealtimeGateway
    * room is joined at connect, so this reaches every tab that person has open
    * whatever page they are on.
    */
-  emitInboxChanged(userId: string, payload: { conversationId: string; from: string; preview: string }): void {
+  emitInboxChanged(
+    userId: string,
+    payload: { conversationId: string; from: string; preview: string; avatarUrl?: string | null },
+  ): void {
     if (!this.server) return;
     this.server.to(`user:${userId}`).emit(RT_SERVER.INBOX_CHANGED, payload);
   }

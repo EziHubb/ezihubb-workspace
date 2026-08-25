@@ -310,7 +310,10 @@ function useNavData() {
     // already see: announcing one they are reading is noise, and noise is how
     // a notification stops being read at all.
     if (!isConversationOpen(payload.conversationId)) {
-      toast.info(`${payload.from}: ${payload.preview}`);
+      toast.info(`${payload.from}: ${payload.preview}`, {
+        avatarUrl:  payload.avatarUrl ?? null,
+        avatarName: payload.from,
+      });
     }
   });
 

@@ -287,7 +287,7 @@ export function usePresence(userIds: string[]): Map<string, PresenceState> {
  * when a customer wrote to them.
  */
 export function useInboxNotifications(
-  onIncoming: (payload: { conversationId: string; from: string; preview: string }) => void,
+  onIncoming: (payload: { conversationId: string; from: string; preview: string; avatarUrl?: string | null }) => void,
 ): void {
   const sock = useSocket();
   const handler = useRef(onIncoming);
@@ -295,7 +295,7 @@ export function useInboxNotifications(
 
   useEffect(() => {
     if (!sock) return;
-    const onEvent = (payload: { conversationId: string; from: string; preview: string }) => {
+    const onEvent = (payload: { conversationId: string; from: string; preview: string; avatarUrl?: string | null }) => {
       if (payload?.conversationId) handler.current(payload);
     };
     sock.on(RT_SERVER.INBOX_CHANGED, onEvent);
