@@ -120,7 +120,7 @@ export class AdminMessagesController {
    * disagree.
    */
   @Delete('messages/:messageId')
-  @ApiOperation({ summary: "Withdraw one of the shop's own messages" })
+  @ApiOperation({ summary: "Unsend one of the shop's own messages" })
   async deleteMessage(
     @Req() req: Request,
     @Param('messageId') messageId: string,

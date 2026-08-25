@@ -79,7 +79,7 @@ export interface ThreadMessage {
   attachmentUrls:  string[];
   attachedProduct: AttachedProduct | null;
   createdAt:       string;
-  /** Set when the shop withdrew it. `body` and `attachmentUrls` come back
+  /** Set when the shop unsent it. `body` and `attachmentUrls` come back
    *  empty with it — the row keeps its text in the database, not in the API. */
   deletedAt:       string | null;
 }

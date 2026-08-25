@@ -62,26 +62,39 @@ function useThreadMessages(conversationId: string | null, newest: ThreadMessage[
     seen.current = new Map();
   }
 
-  useEffect(() => {
-    if (!newest?.length) return;
-    for (const m of newest) seen.current.set(m.id, m);
-    setTick((n) => n + 1);
-  }, [newest]);
+  /**
+   * Merged during render, NOT in an effect — and this is a bug fix, not a
+   * style choice.
+   *
+   * It used to be a useEffect keyed on `newest`. Effects run in declaration
+   * order, so on the render where a thread first arrived carrying an unsent
+   * message, this one filled the map and the reset below it emptied the map
+   * again a moment later. Nothing refilled it: React Query hands back the SAME
+   * array reference while the data is unchanged, so the effect's dependency
+   * never moved again and the thread stayed blank until someone wrote in it.
+   * Merging here cannot lose that race, because the render that follows a
+   * reset performs the merge itself.
+   *
+   * Writing to the ref during render is safe here specifically because the
+   * write is idempotent: the same `newest` merged twice leaves the same map.
+   */
+  if (newest) for (const m of newest) seen.current.set(m.id, m);
 
   const prepend = (older: ThreadMessage[]) => {
     for (const m of older) seen.current.set(m.id, m);
     setTick((n) => n + 1);
   };
 
-  /** Drops everything outside the live window — used after a withdrawal, since
-   *  a page fetched earlier still carries the text that was taken back. */
+  /** Drops everything outside the live window — used after a message is
+   *  unsent, since a page fetched earlier still carries the text that was
+   *  taken back. The next render restores the window from `newest`. */
   const reset = () => {
     seen.current = new Map();
     setTick((n) => n + 1);
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const messages = useMemo(() => [...seen.current.values()].sort(byOldest), [tick]);
+  const messages = useMemo(() => [...seen.current.values()].sort(byOldest), [newest, tick, conversationId]);
   return { messages, prepend, reset };
 }
 
@@ -219,20 +232,20 @@ export default function MessagesPage() {
   };
 
   /**
-   * A withdrawal invalidates history this page is holding.
+   * An unsend invalidates history this page is holding.
    *
    * Pages already loaded were fetched before the shop took the message back,
    * so they still carry its text. Dropping them falls back to the live
    * window, which does not.
    */
-  const withdrawnIds = useRef<string | null>(null);
+  const unsentIds = useRef<string | null>(null);
   useEffect(() => {
     const ids = thread0?.messages?.filter((m) => m.deletedAt).map((m) => m.id).join(',') ?? '';
-    if (withdrawnIds.current !== null && withdrawnIds.current !== ids) {
+    if (unsentIds.current !== null && unsentIds.current !== ids) {
       resetPages();
       setCursor({ before: thread0?.oldestMessageId ?? null, hasMore: thread0?.hasMoreMessages ?? false });
     }
-    withdrawnIds.current = ids;
+    unsentIds.current = ids;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [thread0?.messages]);
 
@@ -316,7 +329,7 @@ export default function MessagesPage() {
 
   const deleteMessage = useMutation({
     mutationFn: (messageId: string) => api.delete(API_ROUTES.ADMIN.MESSAGE_DELETE(messageId)),
-    // No optimistic update: withdrawing is irreversible and the buyer sees it
+    // No optimistic update: unsending is irreversible and the buyer sees it
     // too, so the thread should show what the server actually accepted rather
     // than what was asked for.
     onSuccess: () => { qc.invalidateQueries({ queryKey: QK.thread(activeId) }); refetchLists(); },
@@ -617,7 +630,7 @@ export default function MessagesPage() {
                     onDeleteMessage={canWriteShopData ? (id) => {
                       void dialog
                         .confirm(
-                          'Withdraw this message? The buyer will see that a message was withdrawn.',
+                          'Unsend this message? The buyer will see that a message was unsent.',
                           { destructive: true },
                         )
                         .then((ok) => { if (ok) deleteMessage.mutate(id); });

@@ -32,7 +32,7 @@ export const RT_SERVER = {
    * form the sender has to diff against what it already has.
    */
   MESSAGES_READ:    'message:read',
-  /** A message was withdrawn by the shop. Payload: { conversationId, messageId } */
+  /** A message was unsent by the shop. Payload: { conversationId, messageId } */
   MESSAGE_DELETED:  'message:deleted',
   /**
    * Something arrived for you, wherever you are in the app.

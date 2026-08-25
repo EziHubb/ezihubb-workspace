@@ -280,7 +280,7 @@
     "shiftEnterHint": "Shift+Enter 换行",
     "resolvedNotice": "此对话已解决。",
     "reopen": "重新打开",
-    "messageWithdrawn": "店铺已撤回一条消息",
+    "messageUnsent": "店铺已撤回一条消息",
     "loadOlder": "加载更早的消息",
     "loadingOlder": "加载中…",
     "justNow": "刚刚",

@@ -149,7 +149,7 @@ function MessageBubble({ message: msg, isOwn, shopName, shopLogoUrl }: {
   const locale = useLocale();
 
   /**
-   * A withdrawn message keeps its place, without its text.
+   * An unsent message keeps its place, without its text.
    *
    * The buyer may already have read it, so removing the bubble entirely would
    * quietly rewrite a conversation they were part of — and leave them
@@ -161,11 +161,11 @@ function MessageBubble({ message: msg, isOwn, shopName, shopLogoUrl }: {
         {/* Holds the avatar's column so the pill lines up with the bubbles
             above and below it instead of sliding left where the picture was. */}
         {!isOwn && <div className="w-7 h-7 shrink-0" />}
-        {/* Outline, not a filled bubble. A withdrawn message is a note about
+        {/* Outline, not a filled bubble. An unsent message is a note about
             the conversation rather than part of it, and giving it the same
             solid shape as real messages makes an absence look like content. */}
         <span className="max-w-[80%] rounded-full border border-border px-4 py-2 text-sm italic text-muted">
-          {t('messageWithdrawn')}
+          {t('messageUnsent')}
         </span>
       </div>
     );
@@ -248,20 +248,32 @@ function useThreadMessages(conversationId: string, newest: ThreadMessage[] | und
     seen.current = new Map();
   }
 
-  useEffect(() => {
-    if (!newest?.length) return;
-    for (const m of newest) seen.current.set(m.id, m);
-    setTick((n) => n + 1);
-  }, [newest]);
+  /**
+   * Merged during render, NOT in an effect — and this is a bug fix, not a
+   * style choice.
+   *
+   * It used to be a useEffect keyed on `newest`. Effects run in declaration
+   * order, so on the render where a thread first arrived carrying an unsent
+   * message, this one filled the map and the reset below it emptied the map
+   * again a moment later. Nothing refilled it: React Query hands back the SAME
+   * array reference while the data is unchanged, so the effect's dependency
+   * never moved again and the thread stayed blank until someone wrote in it.
+   * Merging here cannot lose that race, because the render that follows a
+   * reset performs the merge itself.
+   *
+   * Writing to the ref during render is safe here specifically because the
+   * write is idempotent: the same `newest` merged twice leaves the same map.
+   */
+  if (newest) for (const m of newest) seen.current.set(m.id, m);
 
   const prepend = (older: ThreadMessage[]) => {
     for (const m of older) seen.current.set(m.id, m);
     setTick((n) => n + 1);
   };
 
-  /** Drops everything outside the live window. Used when a message is
-   *  withdrawn: a copy held here predates the withdrawal and would go on
-   *  showing text the shop has taken back. */
+  /** Drops everything outside the live window. Used when a message is unsent:
+   *  a copy held here predates that and would go on showing text the shop has
+   *  taken back. The next render restores the window from `newest`. */
   const reset = () => {
     seen.current = new Map();
     setTick((n) => n + 1);
@@ -270,7 +282,7 @@ function useThreadMessages(conversationId: string, newest: ThreadMessage[] | und
   const messages = useMemo(
     () => [...seen.current.values()].sort(byOldest),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tick],
+    [newest, tick, conversationId],
   );
 
   return { messages, prepend, reset };
@@ -294,6 +306,10 @@ function MessageThread({
   const paneRef   = useRef<HTMLDivElement>(null);
   /** Pane height captured just before a page of older messages is prepended. */
   const pendingScroll = useRef<number | null>(null);
+  /** Armed by sendMessage, consumed by the layout effect below. A flag rather
+   *  than a scroll call, because the send resolves a render before the
+   *  refetch that actually puts the message in the list. */
+  const stickToBottom = useRef(false);
   const queryClient = useQueryClient();
 
   const { data: conv, isLoading } = useQuery<ConversationWithMessagesDto>({
@@ -361,7 +377,7 @@ function MessageThread({
   });
 
   /**
-   * A withdrawal invalidates history this component is holding.
+   * An unsend invalidates history this component is holding.
    *
    * Pages already loaded were fetched before the shop took the message back,
    * so they still carry its text. Dropping them sends the thread back to the
@@ -369,12 +385,12 @@ function MessageThread({
    */
   const lastDeleted = useRef<string | null>(null);
   useEffect(() => {
-    const withdrawn = conv?.messages?.filter((m) => m.deletedAt).map((m) => m.id).join(',') ?? '';
-    if (lastDeleted.current !== null && lastDeleted.current !== withdrawn) {
+    const unsent = conv?.messages?.filter((m) => m.deletedAt).map((m) => m.id).join(',') ?? '';
+    if (lastDeleted.current !== null && lastDeleted.current !== unsent) {
       reset();
       setCursor({ before: conv?.oldestMessageId ?? null, hasMore: conv?.hasMoreMessages ?? false });
     }
-    lastDeleted.current = withdrawn;
+    lastDeleted.current = unsent;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conv?.messages]);
 
@@ -429,8 +445,19 @@ function MessageThread({
    */
   useLayoutEffect(() => {
     const pane = paneRef.current;
+    if (!pane) return;
+
+    // Checked first: the two are mutually exclusive, and a reply sent while an
+    // older page happened to be loading must still land at the bottom.
+    if (stickToBottom.current) {
+      stickToBottom.current = false;
+      pendingScroll.current = null;
+      pane.scrollTop = pane.scrollHeight;
+      return;
+    }
+
     const before = pendingScroll.current;
-    if (!pane || before === null) return;
+    if (before === null) return;
     pendingScroll.current = null;
     pane.scrollTop += pane.scrollHeight - before;
   }, [messages]);
@@ -480,6 +507,10 @@ function MessageThread({
         { token: token ?? undefined },
       );
       setNewMessage('');
+      // Land on what was just sent. The length-keyed effect above cannot be
+      // relied on for this: once a thread fills the window its length stops
+      // changing, and sending would leave the reader wherever they were.
+      stickToBottom.current = true;
       queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     } finally {

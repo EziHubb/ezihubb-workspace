@@ -280,7 +280,7 @@
     "shiftEnterHint": "Shift+Enter for new line",
     "resolvedNotice": "This conversation has been resolved.",
     "reopen": "Reopen",
-    "messageWithdrawn": "The shop withdrew a message",
+    "messageUnsent": "The shop unsent a message",
     "loadOlder": "Load earlier messages",
     "loadingOlder": "Loading…",
     "justNow": "just now",

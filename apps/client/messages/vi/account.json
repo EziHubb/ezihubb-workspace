@@ -280,7 +280,7 @@
     "shiftEnterHint": "Shift+Enter để xuống dòng",
     "resolvedNotice": "Cuộc trò chuyện này đã được giải quyết.",
     "reopen": "Mở lại",
-    "messageWithdrawn": "Shop đã thu hồi một tin nhắn",
+    "messageUnsent": "Shop đã thu hồi một tin nhắn",
     "loadOlder": "Xem tin nhắn cũ hơn",
     "loadingOlder": "Đang tải…",
     "justNow": "vừa xong",

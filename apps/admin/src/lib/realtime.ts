@@ -215,7 +215,7 @@ export function useConversationStream(
     if (sock.connected) join();
     sock.on('connect', join);
     sock.on(RT_SERVER.MESSAGE_NEW, onNew);
-    // Read receipts and withdrawals change what the thread should show just as
+    // Read receipts and unsends change what the thread should show just as
     // much as a new message does, and the caller's response is the same:
     // refetch. Routing them through one callback keeps the caller from having
     // to know which kind of change it was.

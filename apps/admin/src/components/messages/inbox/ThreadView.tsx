@@ -105,21 +105,21 @@ function Bubble({ message, buyerName, buyerAvatar, onDelete, viewerIsShop }: {
   /** The buyer's real picture. Avatar already supported it; only this caller
    *  never passed it, so every bubble fell back to initials. */
   buyerAvatar: string | null;
-  /** Absent when withdrawing is not available — a platform-context admin
+  /** Absent when unsending is not available — a platform-context admin
    *  reading someone else's shop, for instance. */
   onDelete?: (messageId: string) => void;
   /** False for a platform admin reading another shop's inbox — changes who
-   *  a withdrawal is attributed to. */
+   *  an unsend is attributed to. */
   viewerIsShop: boolean;
 }) {
   const fromShop = message.senderType === 'SHOP';
 
   /**
-   * A withdrawn message keeps its place in the thread.
+   * An unsent message keeps its place in the thread.
    *
    * The body is not rendered, but the bubble stays: the buyer may already have
    * read it, and quietly closing the gap would rewrite a conversation they
-   * were part of. Saying "withdrawn" is the honest version of deleting.
+   * were part of. Saying "unsent" is the honest version of deleting.
    */
   if (message.deletedAt) {
     return (
@@ -128,16 +128,16 @@ function Bubble({ message, buyerName, buyerAvatar, onDelete, viewerIsShop }: {
             around it rather than sliding left into where the picture was. */}
         {!fromShop && <div className="h-7 w-7 shrink-0" aria-hidden="true" />}
         <div className={`max-w-[36rem] ${fromShop ? 'text-right' : ''}`}>
-          {/* An outline pill, not a filled bubble. A withdrawal is a note
+          {/* An outline pill, not a filled bubble. An unsend is a note
               about the conversation rather than part of it, and giving an
               absence the same solid shape as a real message makes it read as
               content. */}
           <span className="inline-block rounded-full border border-border px-4 py-2 text-left text-sm italic text-muted">
-            {/* Only the shop can withdraw, and only its own — so "you" is
+            {/* Only the shop can unsend, and only its own — so "you" is
                 accurate wherever this can be triggered. A platform admin
                 reading someone else's inbox gets the third person, because
                 there it would not be. */}
-            {viewerIsShop ? 'You withdrew a message' : 'The shop withdrew a message'}
+            {viewerIsShop ? 'You unsent a message' : 'The shop unsent a message'}
           </span>
           <p className="mt-1 text-xs text-muted">{timeLabel(message.createdAt)}</p>
         </div>
@@ -173,12 +173,12 @@ function Bubble({ message, buyerName, buyerAvatar, onDelete, viewerIsShop }: {
             <button
               type="button"
               onClick={() => onDelete(message.id)}
-              // Revealed on hover rather than always shown: withdrawing is
+              // Revealed on hover rather than always shown: unsending is
               // rare and irreversible, and a delete button beside every line
               // invites the click it should discourage.
               className="opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100 hover:text-error"
             >
-              Withdraw
+              Unsend
             </button>
           )}
           <span>{timeLabel(message.createdAt)}</span>
@@ -192,7 +192,7 @@ interface Props {
   conversation: ConversationDetail;
   sending:      boolean;
   onSend:       (body: string) => Promise<void>;
-  /** Withdraws one of the shop's own messages. Omitted where the viewer may
+  /** Unsends one of the shop's own messages. Omitted where the viewer may
    *  not write to this shop, which hides the control entirely. */
   onDeleteMessage?: (messageId: string) => void;
   /**
@@ -230,6 +230,14 @@ export function ThreadView({
   }, [conversation.id]);
 
   /**
+   * Set by submit(), consumed by the layout effect that watches `messages`.
+   *
+   * A flag rather than a scroll call, because the two events are a render
+   * apart: the send resolves, then the refetch arrives, then the list grows.
+   */
+  const stickToBottom = useRef(false);
+
+  /**
    * Keeps the reader in place when a page is prepended.
    *
    * Content added above the viewport pushes everything below it down by
@@ -249,8 +257,19 @@ export function ThreadView({
   };
   useLayoutEffect(() => {
     const pane = paneRef.current;
+    if (!pane) return;
+
+    // Checked first: the two are mutually exclusive, and a reply sent while an
+    // older page happened to be loading must still land at the bottom.
+    if (stickToBottom.current) {
+      stickToBottom.current = false;
+      heightBeforeLoad.current = null;
+      pane.scrollTop = pane.scrollHeight;
+      return;
+    }
+
     const before = heightBeforeLoad.current;
-    if (!pane || before === null) return;
+    if (before === null) return;
     heightBeforeLoad.current = null;
     pane.scrollTop += pane.scrollHeight - before;
   }, [messages]);
@@ -270,6 +289,15 @@ export function ThreadView({
     // the box to try again rather than losing what was typed.
     await onSend(body);
     setDraft('');
+    /**
+     * Land on what was just sent.
+     *
+     * Armed rather than scrolled here: onSend resolves when the server has the
+     * message, and the refetch that puts it in the list has not rendered yet —
+     * scrolling now would move to the bottom of a thread that is still one
+     * message short. The layout effect below fires once the list grows.
+     */
+    stickToBottom.current = true;
   };
 
   return (

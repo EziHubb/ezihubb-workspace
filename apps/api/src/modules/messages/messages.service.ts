@@ -80,13 +80,13 @@ const CONVERSATION_INCLUDE = {
  * that no longer exists is unanswerable, and the shop should not be able to
  * erase what it said. But "hidden by the renderer" is not hidden: the text was
  * still in the JSON, so anyone who opened the network tab could read a message
- * that had been withdrawn from them, which is the entire thing the feature is
+ * that had been unsent from them, which is the entire thing the feature is
  * supposed to prevent.
  *
- * Attachments go the same way. A withdrawn message whose picture still loads
- * has not been withdrawn.
+ * Attachments go the same way. An unsent message whose picture still loads
+ * has not been unsent.
  */
-function redactWithdrawn<T extends { deletedAt?: Date | null; body?: string; attachmentUrls?: string[] }>(
+function redactUnsent<T extends { deletedAt?: Date | null; body?: string; attachmentUrls?: string[] }>(
   messages: T[],
 ): T[] {
   return messages.map((m) =>
@@ -108,7 +108,7 @@ function messageWindow<T extends { id: string; createdAt: Date; deletedAt?: Date
 ): { messages: T[]; hasMoreMessages: boolean; oldestMessageId: string | null } {
   const hasMoreMessages = rows.length > size;
   const page = hasMoreMessages ? rows.slice(0, size) : rows;
-  const messages = redactWithdrawn(oldestFirst(page));
+  const messages = redactUnsent(oldestFirst(page));
   return {
     messages,
     hasMoreMessages,
@@ -424,7 +424,7 @@ export class MessagesService {
 
     // This is now a find-or-create, so what comes back can be a thread with
     // years of history on it rather than the one message just written — and
-    // any of those may have been withdrawn.
+    // any of those may have been unsent.
     return { ...conversation, ...messageWindow(conversation.messages, MESSAGE_WINDOW) };
   }
 
@@ -792,8 +792,8 @@ export class MessagesService {
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
     }
 
-    // Redacted on this side too. The shop knows what it withdrew, but the
-    // inbox and the order panel both render it as withdrawn, and a body
+    // Redacted on this side too. The shop knows what it unsent, but the
+    // inbox and the order panel both render it as unsent, and a body
     // nobody is allowed to show has no reason to leave the database.
     const window = messageWindow(conversation.messages, MESSAGE_WINDOW);
 
@@ -913,7 +913,7 @@ export class MessagesService {
   }
 
   /**
-   * Withdraws a message the shop sent.
+   * Unsends a message the shop sent.
    *
    * Shop messages only. A seller deleting what a buyer wrote would be editing
    * the record of a conversation they are a party to — and the buyer would
@@ -921,8 +921,8 @@ export class MessagesService {
    *
    * Soft: the row and its body stay IN THE DATABASE, so a moderation report
    * about the message remains answerable and the shop cannot erase what it
-   * said. Neither side is sent the text again — see redactWithdrawn. The
-   * bubble stays in place saying it was withdrawn, because the buyer may
+   * said. Neither side is sent the text again — see redactUnsent. The
+   * bubble stays in place saying it was unsent, because the buyer may
    * already have read it and closing the gap would rewrite a conversation
    * they were part of.
    */
@@ -944,10 +944,10 @@ export class MessagesService {
     if (message.senderType !== SenderType.SHOP) {
       throw new ForbiddenException({
         code:    'ERR_FORBIDDEN',
-        message: 'Only the shop\'s own messages can be withdrawn',
+        message: 'Only the shop\'s own messages can be unsent',
       });
     }
-    // Already withdrawn: return rather than throw. A double click is not an
+    // Already unsent: return rather than throw. A double click is not an
     // error, and the second one asked for a state that already holds.
     if (message.deletedAt) return { success: true };
 
@@ -966,11 +966,11 @@ export class MessagesService {
    * Re-derives the thread's one-line preview from what is still visible.
    *
    * `lastMessage` is a copy of a body, kept on the conversation so the inbox
-   * list does not have to join. Withdrawing the newest message left that copy
-   * behind: the bubble said "Message withdrawn" while the list beside it, and
+   * list does not have to join. Unsending the newest message left that copy
+   * behind: the bubble said "Message unsent" while the list beside it, and
    * the buyer's own list, went on printing the text it was meant to take back.
    *
-   * The unread counter goes with it. A withdrawn message is not something the
+   * The unread counter goes with it. An unsent message is not something the
    * buyer still has to read, and leaving it counted means a badge promising
    * something that is no longer there.
    */
@@ -993,13 +993,13 @@ export class MessagesService {
     await this.prisma.conversation.update({
       where: { id: conversationId },
       data: {
-        // Null rather than an empty string when everything has been withdrawn:
+        // Null rather than an empty string when everything has been unsent:
         // the list already renders "No messages yet" for null.
         lastMessage: latest?.body ?? null,
         // Only moved when there is still something to point at. Postgres sorts
         // NULLS FIRST on a DESC order, so nulling it would send a thread whose
-        // every message had been withdrawn to the top of the inbox — the one
-        // place a withdrawn thread has no business being.
+        // every message had been unsent to the top of the inbox — the one
+        // place an unsent thread has no business being.
         ...(latest ? { lastMessageAt: latest.createdAt } : {}),
         unreadByCustomer,
       },

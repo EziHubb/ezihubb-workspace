@@ -12,7 +12,7 @@ export interface MessageDto {
   readAt:          string | null;
   createdAt:       string;
   /**
-   * Set when the shop withdrew this message.
+   * Set when the shop unsent this message.
    *
    * `body` and `attachmentUrls` come back empty with it — the row keeps its
    * text in the database, where a moderation report about it stays

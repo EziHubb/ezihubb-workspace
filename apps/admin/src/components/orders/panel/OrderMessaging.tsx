@@ -207,15 +207,15 @@ export function OrderMessaging({
                       </button>
                     )}
                   </div>
-                  {/* A withdrawn message shows that it was withdrawn, not what
+                  {/* An unsent message shows that it was unsent, not what
                       it said. The panel and the inbox render the same thread,
                       so a seller who takes a message back in one must not
                       still find it here — and the buyer already sees the
-                      withdrawn form. */}
+                      unsent form. */}
                   {m.deletedAt ? (
                     <p className="mt-1">
                       <span className="inline-block rounded-full border border-border px-3 py-1.5 text-sm italic text-muted">
-                        You withdrew a message
+                        You unsent a message
                       </span>
                     </p>
                   ) : (

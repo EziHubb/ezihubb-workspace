@@ -277,7 +277,7 @@ export class RealtimeGateway
     this.server.to(`user:${userId}`).emit(RT_SERVER.INBOX_CHANGED, payload);
   }
 
-  /** A message was withdrawn by the shop. */
+  /** A message was unsent by the shop. */
   emitDeleted(conversationId: string, messageId: string): void {
     if (!this.server) return;
     this.server

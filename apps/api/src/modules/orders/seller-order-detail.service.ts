@@ -498,7 +498,7 @@ export class SellerOrderDetailService {
             id: true, senderType: true, body: true, attachmentUrls: true,
             createdAt: true, isRead: true,
             // Without this an explicit select silently drops it, and a message
-            // the shop withdrew renders here in full — the one place that
+            // the shop unsent renders here in full — the one place that
             // still showed the text it was meant to take back.
             deletedAt: true,
           },
@@ -509,7 +509,7 @@ export class SellerOrderDetailService {
 
     return {
       conversationId: conversation.id,
-      // The text of a withdrawn message never leaves the API. The renderer
+      // The text of an unsent message never leaves the API. The renderer
       // here already hides it, but hidden-by-the-renderer is still shipped —
       // it sat in the JSON for anyone who opened the network tab.
       messages: [...conversation.messages]
