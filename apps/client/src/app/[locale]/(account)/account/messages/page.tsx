@@ -10,6 +10,9 @@ import { useAuthStore } from '../../../../../lib/store/auth.store';
 import { useConversationStream, usePresence, presenceLabel } from '../../../../../lib/realtime';
 import type { ConversationDto, ConversationWithMessagesDto, MessagePageDto } from '@ezihubb/types';
 import { ShopAvatar } from '../../../../../components/messages/ShopAvatar';
+import { MessageAttachments } from '../../../../../components/messages/MessageAttachments';
+import { LinkPreviewCard } from '../../../../../components/messages/LinkPreviewCard';
+import { firstLinkIn } from '@ezihubb/utils';
 import { MessageShopModal } from '../../../../../components/messages/MessageShopModal';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -30,6 +33,14 @@ function formatRelativeTime(
   if (day < 7)  return t('daysAgo', { count: day });
   return new Date(dateStr).toLocaleDateString(locale);
 }
+
+/** Mirrors MESSAGE_ATTACHMENT_MIMETYPES and MAX_MESSAGE_ATTACHMENTS on the
+ *  API. Duplicated rather than shared because the server is the authority and
+ *  this copy exists only to fail fast in the browser. */
+const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf']);
+const ACCEPT = '.jpg,.jpeg,.png,.webp,.gif,.pdf';
+const MAX_ATTACHMENTS = 3;
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 function formatTime(dateStr: string, locale: string): string {
   return new Date(dateStr).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
@@ -139,14 +150,18 @@ function ConversationListItem({
 
 // ── MessageBubble ─────────────────────────────────────────────────────────────
 
-function MessageBubble({ message: msg, isOwn, shopName, shopLogoUrl }: {
+function MessageBubble({ message: msg, conversationId, isOwn, shopName, shopLogoUrl }: {
   message: ConversationWithMessagesDto['messages'][number];
+  conversationId: string;
   isOwn:   boolean;
   shopName:    string;
   shopLogoUrl: string | null;
 }) {
   const t = useTranslations('account.messages');
   const locale = useLocale();
+  // Only the first link gets a card. Five links in one message would otherwise
+  // be five outbound fetches and a wall of cards taller than the thread.
+  const link = msg.deletedAt ? null : firstLinkIn(msg.body);
 
   /**
    * An unsent message keeps its place, without its text.
@@ -187,26 +202,26 @@ function MessageBubble({ message: msg, isOwn, shopName, shopLogoUrl }: {
       {!isOwn && (
         <div className="mt-1"><ShopAvatar name={shopName} src={shopLogoUrl} size={28} /></div>
       )}
-      <div className={[
-        'max-w-[80%] rounded-2xl px-4 py-2.5 text-sm',
-        isOwn
-          ? 'bg-primary text-white rounded-tr-sm'
-          : 'bg-[#F3F4F6] text-secondary rounded-tl-sm',
-      ].join(' ')}>
-        <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.body}</p>
-        {msg.attachmentUrls?.length > 0 && (
-          <div className="flex gap-1.5 mt-2 flex-wrap">
-            {msg.attachmentUrls.map((url, i) => (
-              <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                <img src={url} alt="Attachment" className="w-20 h-20 rounded-lg object-cover hover:opacity-80" />
-              </a>
-            ))}
-          </div>
-        )}
-        <p className={`text-[10px] mt-1 ${isOwn ? 'text-white/70' : 'text-muted'}`}>
-          {formatTime(msg.createdAt, locale)}
-          {isOwn && msg.isRead && <span className="ml-1">✓✓</span>}
-        </p>
+      {/* A column, so the preview card can sit under the bubble rather than
+          beside it, and both stay on the sender's side of the thread. */}
+      <div className={`flex min-w-0 flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
+        <div className={[
+          'max-w-[80%] rounded-2xl px-4 py-2.5 text-sm',
+          isOwn
+            ? 'bg-primary text-white rounded-tr-sm'
+            : 'bg-[#F3F4F6] text-secondary rounded-tl-sm',
+        ].join(' ')}>
+          <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.body}</p>
+          <MessageAttachments urls={msg.attachmentUrls} isOwn={isOwn} />
+          <p className={`text-[10px] mt-1 ${isOwn ? 'text-white/70' : 'text-muted'}`}>
+            {formatTime(msg.createdAt, locale)}
+            {isOwn && msg.isRead && <span className="ml-1">✓✓</span>}
+          </p>
+        </div>
+        {/* Outside the bubble: the card is about the link rather than part of
+            what was typed, and inside the buyer's own bubble it would inherit
+            a primary-coloured background it was never designed against. */}
+        {link && <LinkPreviewCard conversationId={conversationId} url={link} />}
       </div>
     </div>
   );
@@ -302,6 +317,10 @@ function MessageThread({
   const token = useAuthStore((s) => s.accessToken);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [attachments, setAttachments] = useState<{ name: string; url: string }[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const [uploading, setUploading]     = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const paneRef   = useRef<HTMLDivElement>(null);
   /** Pane height captured just before a page of older messages is prepended. */
@@ -492,9 +511,50 @@ function MessageThread({
       .catch(() => undefined);
   }, [conversationId, token, conv?.unreadByCustomer, queryClient]);
 
+  /**
+   * Checked in the browser before anything is uploaded, so the buyer is told
+   * why a file was refused rather than waiting for a request that cannot
+   * succeed. The server enforces all of it again — this copy is courtesy.
+   */
+  const pickFiles = async (picked: FileList | null) => {
+    if (!picked?.length) return;
+    const files = Array.from(picked);
+    if (fileInput.current) fileInput.current.value = '';
+
+    const room = MAX_ATTACHMENTS - attachments.length;
+    if (files.length > room) {
+      return setAttachError(t('tooManyAttachments', { count: MAX_ATTACHMENTS }));
+    }
+    // Checked before any upload starts, so a bad second file does not leave
+    // the first already uploaded and half the pick applied.
+    const tooBig = files.find((f) => f.size > MAX_FILE_BYTES);
+    if (tooBig) return setAttachError(t('attachmentTooLarge', { name: tooBig.name }));
+    const wrongType = files.find((f) => !ALLOWED_TYPES.has(f.type));
+    if (wrongType) return setAttachError(t('attachmentWrongType', { name: wrongType.name }));
+
+    setAttachError(null);
+    setUploading(true);
+    try {
+      const form = new FormData();
+      for (const file of files) form.append('files', file);
+      const uploaded = await apiClient.post<{ name: string; url: string }[]>(
+        API_ROUTES.MESSAGES.CONVERSATION_ATTACHMENTS(conversationId),
+        form,
+        { token: token ?? undefined },
+      );
+      setAttachments((prev) => [...prev, ...uploaded]);
+    } catch (e) {
+      setAttachError((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const sendMessage = async () => {
     const body = newMessage.trim();
-    if (!body || isSending) return;
+    // Attachments alone are a message — a photo of a problem does not need a
+    // covering note.
+    if ((!body && attachments.length === 0) || isSending) return;
     setIsSending(true);
     // Minted here, before the request goes out, so a retry of THIS message
     // carries the same key and the server recognises it instead of writing a
@@ -503,10 +563,11 @@ function MessageThread({
     try {
       await apiClient.post(
         API_ROUTES.MESSAGES.CONVERSATION_MESSAGES(conversationId),
-        { body, clientMessageId },
+        { body, clientMessageId, attachmentUrls: attachments.map((a) => a.url) },
         { token: token ?? undefined },
       );
       setNewMessage('');
+      setAttachments([]);
       // Land on what was just sent. The length-keyed effect above cannot be
       // relied on for this: once a thread fills the window its length stops
       // changing, and sending would leave the reader wherever they were.
@@ -606,6 +667,7 @@ function MessageThread({
             <MessageBubble
               key={msg.id}
               message={msg}
+              conversationId={conversationId}
               isOwn={msg.senderType === 'CUSTOMER'}
               shopName={shopName}
               shopLogoUrl={conv?.store?.logoUrl ?? null}
@@ -618,7 +680,55 @@ function MessageThread({
       {/* Input */}
       {conv?.status !== 'RESOLVED' ? (
         <div className="p-4 border-t flex-shrink-0">
+          {attachError && <p className="mb-2 text-xs text-error">{attachError}</p>}
+
+          {/* Uploaded before the message is sent, so the buyer sees each file
+              land and a failed send does not take the upload with it. */}
+          {attachments.length > 0 && (
+            <ul className="mb-2 flex flex-wrap gap-2">
+              {attachments.map((a) => (
+                <li key={a.url} className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-secondary">
+                  <span className="max-w-[10rem] truncate">{a.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setAttachments((prev) => prev.filter((x) => x.url !== a.url))}
+                    aria-label={t('removeAttachment')}
+                    className="text-muted hover:text-error"
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
           <div className="flex gap-2">
+            <input
+              ref={fileInput}
+              type="file"
+              multiple
+              accept={ACCEPT}
+              className="hidden"
+              onChange={(e) => void pickFiles(e.target.files)}
+            />
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              disabled={uploading || attachments.length >= MAX_ATTACHMENTS}
+              aria-label={t('attachFile')}
+              className="w-10 h-10 rounded-xl border flex items-center justify-center text-muted hover:bg-background disabled:opacity-50 self-end"
+            >
+              {uploading ? (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                </svg>
+              )}
+            </button>
             <textarea
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
@@ -634,7 +744,7 @@ function MessageThread({
             />
             <button
               onClick={sendMessage}
-              disabled={!newMessage.trim() || isSending}
+              disabled={(!newMessage.trim() && attachments.length === 0) || isSending || uploading}
               className="w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center hover:bg-primary/90 transition-colors disabled:opacity-50 self-end"
               aria-label={t('sendMessage')}
             >

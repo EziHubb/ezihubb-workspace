@@ -313,11 +313,12 @@ export default function MessagesPage() {
   });
 
   const sendReply = useMutation({
-    mutationFn: (body: string) =>
+    mutationFn: ({ body, attachmentUrls }: { body: string; attachmentUrls: string[] }) =>
       // A fresh key per press, reused by any retry of that same press, so a
       // timed-out reply cannot land twice in the buyer's thread.
       api.post(API_ROUTES.ADMIN.CONVERSATION_MESSAGES(activeId!), {
         body,
+        attachmentUrls,
         clientMessageId: newClientMessageId(),
       }),
     onSuccess: () => {
@@ -326,6 +327,20 @@ export default function MessagesPage() {
     },
     onError: (e: Error) => dialog.alert(e.message),
   });
+
+  /**
+   * Uploaded before the message that carries them, against the conversation
+   * rather than an order — the inbox has threads that belong to no order at
+   * all, and the order panel's endpoint could not serve them.
+   */
+  const uploadAttachments = async (files: File[]) => {
+    const form = new FormData();
+    for (const file of files) form.append('files', file);
+    return api.post<{ name: string; url: string }[]>(
+      API_ROUTES.ADMIN.CONVERSATION_ATTACHMENTS(activeId!),
+      form,
+    );
+  };
 
   const deleteMessage = useMutation({
     mutationFn: (messageId: string) => api.delete(API_ROUTES.ADMIN.MESSAGE_DELETE(messageId)),
@@ -622,7 +637,10 @@ export default function MessagesPage() {
                     loadingOlder={loadingOlder}
                     onLoadOlder={loadOlder}
                     sending={sendReply.isPending}
-                    onSend={async (body) => { await sendReply.mutateAsync(body); }}
+                    onSend={async (body, attachmentUrls) => {
+                      await sendReply.mutateAsync({ body, attachmentUrls });
+                    }}
+                    onUpload={uploadAttachments}
                     // Only where this viewer may write to the shop. A
                     // platform-context SUPER_ADMIN is reading someone else's
                     // inbox for support, and the server would refuse anyway —

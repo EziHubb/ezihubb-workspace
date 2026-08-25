@@ -141,6 +141,8 @@ export const API_ROUTES = {
     CONVERSATIONS:         '/messages/conversations',
     CONVERSATION:          (id: string) => `/messages/conversations/${id}`,
     CONVERSATION_MESSAGES: (id: string) => `/messages/conversations/${id}/messages`,
+    CONVERSATION_ATTACHMENTS:   (id: string) => `/messages/conversations/${id}/attachments`,
+    CONVERSATION_LINK_PREVIEW:  (id: string) => `/messages/conversations/${id}/link-preview`,
     CONVERSATION_READ:     (id: string) => `/messages/conversations/${id}/read`,
   },
 
@@ -385,6 +387,8 @@ export const API_ROUTES = {
     CONVERSATIONS:        '/admin/messages/conversations',
     CONVERSATION:         (id: string) => `/admin/messages/conversations/${id}`,
     CONVERSATION_MESSAGES: (id: string) => `/admin/messages/conversations/${id}/messages`,
+    CONVERSATION_ATTACHMENTS:   (id: string) => `/admin/messages/conversations/${id}/attachments`,
+    CONVERSATION_LINK_PREVIEW:  (id: string) => `/admin/messages/conversations/${id}/link-preview`,
     CONVERSATION_STATUS:  (id: string) => `/admin/messages/conversations/${id}/status`,
     CONVERSATION_READ:    (id: string) => `/admin/messages/conversations/${id}/read`,
     MESSAGE_DELETE:       (id: string) => `/admin/messages/messages/${id}`,

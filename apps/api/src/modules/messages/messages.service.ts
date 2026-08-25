@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -8,6 +9,7 @@ import {
 import { ModerationService } from '../moderation/moderation.service';
 import { Prisma, ConversationStatus, SenderType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { StorageService } from '../../common/services/storage.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushService } from '../notifications/push.service';
@@ -35,6 +37,24 @@ const OUT_OF_INBOX: ConversationStatus[] = [
  * first and no renderer had to change.
  */
 const MESSAGE_WINDOW = 100;
+
+/**
+ * What may be attached to a message.
+ *
+ * Wider than the product-image allowlist on purpose — a buyer sending a brief
+ * and a seller sending a proof both mean a PDF, and refusing one made the
+ * feature answer a different question than the one people had.
+ *
+ * SVG is deliberately absent and must stay absent. It is an image to a
+ * renderer and a script host to a browser, and these files are served from our
+ * own origin to the other party in the conversation.
+ */
+const MESSAGE_ATTACHMENT_MIMETYPES = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf',
+]);
+export const MESSAGE_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+/** Matches Message.attachmentUrls' documented ceiling and both composers'. */
+export const MAX_MESSAGE_ATTACHMENTS = 3;
 
 /** Default size of a "load older" page. Smaller than the first window: the
  *  reader has already decided to go digging, and a smaller page scrolls back
@@ -126,6 +146,7 @@ export class MessagesService {
 
   constructor(
     private readonly prisma:         PrismaService,
+    private readonly storage:        StorageService,
     private readonly notifications:  NotificationsService,
     private readonly pushService:    PushService,
     /**
@@ -138,19 +159,6 @@ export class MessagesService {
     @Optional() private readonly moderationService?: ModerationService,
   ) {}
 
-  /**
-   * The one thread between a shop and a buyer.
-   *
-   * A thread used to be created per order, so a buyer with five orders from the
-   * same shop had five of them — all captioned with the same shop name, none
-   * carrying the history. The order is now context ON the thread rather than
-   * the thing that identifies it, which is also what lets "their other orders"
-   * be answerable at all.
-   *
-   * Guests are keyed on a lower-cased email, matching the partial unique index
-   * the migration installs. Without the same casing rule on both sides the
-   * database would reject a row this method thought was new.
-   */
   /**
    * May this caller act as the buyer on this thread?
    *
@@ -177,6 +185,90 @@ export class MessagesService {
     if (denied) {
       throw new ForbiddenException({ code: 'ERR_FORBIDDEN', message: 'Access denied' });
     }
+  }
+
+  /**
+   * One gate for every route that reaches into a thread from outside.
+   *
+   * Both sides are here rather than one rule per endpoint, because the routes
+   * that read a thread, page through it, attach a file to it and unfurl a link
+   * in it all have to agree about who may. Somewhere for a new route to plug
+   * into is what stops the next one inventing a fifth answer.
+   */
+  async assertThreadAccess(
+    conversationId: string,
+    viewer: { storeId?: string; userId?: string | null; forShop: boolean },
+  ): Promise<{ id: string; storeId: string | null; userId: string | null }> {
+    const conversation = await this.prisma.conversation.findUnique({
+      where:  { id: conversationId },
+      select: { id: true, storeId: true, userId: true },
+    });
+    if (!conversation) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
+    }
+    if (viewer.forShop) {
+      // Not-found rather than forbidden: a shop asking about another shop's
+      // thread should not learn that the id exists.
+      if (viewer.storeId !== undefined && conversation.storeId !== viewer.storeId) {
+        throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
+      }
+    } else {
+      this.assertBuyerAccess(conversation, viewer.userId ?? null);
+    }
+    return conversation;
+  }
+
+  /**
+   * Files attached to a message, uploaded before the message that carries them.
+   *
+   * Two steps rather than one multipart send: the composer shows a thumbnail
+   * as soon as each file lands, and a message that fails to send does not take
+   * the upload with it. The cost is that a file picked and then abandoned stays
+   * in the bucket — cheaper than making the seller upload twice.
+   */
+  async uploadAttachments(
+    conversationId: string,
+    files: Express.Multer.File[],
+    viewer: { storeId?: string; userId?: string | null; forShop: boolean },
+  ): Promise<{ name: string; url: string }[]> {
+    await this.assertThreadAccess(conversationId, viewer);
+
+    if (!files?.length) {
+      throw new BadRequestException({ code: 'ERR_VALIDATION', message: 'No file was uploaded' });
+    }
+    if (files.length > MAX_MESSAGE_ATTACHMENTS) {
+      throw new BadRequestException({
+        code:    'ERR_VALIDATION',
+        message: `Up to ${MAX_MESSAGE_ATTACHMENTS} files per message`,
+      });
+    }
+
+    // Validated in full before the first upload, so a rejected second file
+    // cannot leave the first one orphaned in the bucket.
+    for (const file of files) {
+      if (!MESSAGE_ATTACHMENT_MIMETYPES.has(file.mimetype)) {
+        throw new BadRequestException({
+          code:    'ERR_INVALID_FILE_TYPE',
+          message: `${file.originalname}: only images and PDFs can be attached`,
+        });
+      }
+      if (file.size > MESSAGE_ATTACHMENT_MAX_BYTES) {
+        throw new BadRequestException({
+          code:    'ERR_FILE_TOO_LARGE',
+          message: `${file.originalname}: max 10 MB per file`,
+        });
+      }
+    }
+
+    const uploaded: { name: string; url: string }[] = [];
+    for (const file of files) {
+      // Keyed on the conversation, not the uploader: it is the one thing both
+      // sides of a thread share, so a guest's upload lands beside the shop's.
+      const key = this.storage.generateKey(`messages/${conversationId}`, file.originalname);
+      const url = await this.storage.uploadFile(file.buffer, key, file.mimetype);
+      uploaded.push({ name: file.originalname, url });
+    }
+    return uploaded;
   }
 
   /**
@@ -280,6 +372,19 @@ export class MessagesService {
     ]);
   }
 
+  /**
+   * The one thread between a shop and a buyer.
+   *
+   * A thread used to be created per order, so a buyer with five orders from the
+   * same shop had five of them — all captioned with the same shop name, none
+   * carrying the history. The order is now context ON the thread rather than
+   * the thing that identifies it, which is also what lets "their other orders"
+   * be answerable at all.
+   *
+   * Guests are keyed on a lower-cased email, matching the partial unique index
+   * the migration installs. Without the same casing rule on both sides the
+   * database would reject a row this method thought was new.
+   */
   async openThreadWithBuyer(
     storeId:  string,
     buyer:    { userId?: string | null; guestEmail?: string | null; guestName?: string | null },
@@ -834,23 +939,7 @@ export class MessagesService {
     cursor: { before?: string; limit?: number },
     viewer: { storeId?: string; userId?: string | null; forShop: boolean },
   ) {
-    const conversation = await this.prisma.conversation.findUnique({
-      where:  { id: conversationId },
-      select: { id: true, storeId: true, userId: true },
-    });
-    if (!conversation) {
-      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
-    }
-    if (viewer.forShop) {
-      if (viewer.storeId !== undefined && conversation.storeId !== viewer.storeId) {
-        throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
-      }
-    } else {
-      // Same rule as getConversation, deliberately: two routes onto the same
-      // thread that disagreed about who may read it would mean the stricter
-      // one is decoration.
-      this.assertBuyerAccess(conversation, viewer.userId ?? null);
-    }
+    await this.assertThreadAccess(conversationId, viewer);
 
     const size = cursor.limit ?? MESSAGE_PAGE;
     const rows = await this.prisma.message.findMany({

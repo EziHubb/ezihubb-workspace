@@ -8,18 +8,24 @@ import {
   Put,
   Query,
   Req,
+  UploadedFiles,
+  UseInterceptors,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { ApiOperation } from '@nestjs/swagger';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
 import { SenderType } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
 import { AdminConversationQueryDto } from './dto/admin-conversation-query.dto';
+import { LinkPreviewQueryDto } from './dto/link-preview-query.dto';
 import { MessagePageQueryDto } from './dto/message-page-query.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { UpdateConversationStatusDto } from './dto/update-conversation-status.dto';
-import { MessagesService } from './messages.service';
+import { MAX_MESSAGE_ATTACHMENTS, MESSAGE_ATTACHMENT_MAX_BYTES, MessagesService } from './messages.service';
+import { LinkPreviewService } from './link-preview.service';
 import { InboxService } from './inbox.service';
 import { SnippetsService } from './snippets.service';
 import {
@@ -39,6 +45,7 @@ export class AdminMessagesController {
     private readonly inbox:          InboxService,
     private readonly snippets:       SnippetsService,
     private readonly storeContext:   StoreContextService,
+    private readonly linkPreviews:   LinkPreviewService,
   ) {}
 
   @Get('conversations')
@@ -65,6 +72,43 @@ export class AdminMessagesController {
   ) {
     const context = await this.storeContext.resolve(req);
     return this.messagesService.getMessagePage(id, query, {
+      storeId: context.storeId ?? undefined,
+      forShop: true,
+    });
+  }
+
+  /** The shop's twin of the buyer-side upload — same service, same limits. */
+  @Post('conversations/:id/attachments')
+  @UseInterceptors(FilesInterceptor('files', MAX_MESSAGE_ATTACHMENTS, {
+    storage: memoryStorage(),
+    limits:  { fileSize: MESSAGE_ATTACHMENT_MAX_BYTES },
+  }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { files: { type: 'array', items: { type: 'string', format: 'binary' } } } } })
+  @ApiOperation({ summary: 'Upload files to attach to a reply (images/PDF, max 10 MB each)' })
+  async uploadAttachments(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
+    const context = await this.storeContext.resolve(req);
+    return this.messagesService.uploadAttachments(id, files, {
+      storeId: context.storeId ?? undefined,
+      forShop: true,
+    });
+  }
+
+  /** Unfurls a link sent in this thread. See LinkPreviewService for why the
+   *  conversation id is part of the request and not decoration. */
+  @Get('conversations/:id/link-preview')
+  @ApiOperation({ summary: 'Preview card for a link sent in this conversation' })
+  async linkPreview(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Query() query: LinkPreviewQueryDto,
+  ) {
+    const context = await this.storeContext.resolve(req);
+    return this.linkPreviews.previewFor(id, query.url, {
       storeId: context.storeId ?? undefined,
       forShop: true,
     });

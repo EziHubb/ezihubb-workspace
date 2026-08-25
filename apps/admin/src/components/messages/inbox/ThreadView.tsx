@@ -3,10 +3,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Send, ShieldCheck } from 'lucide-react';
+import { Loader2, Paperclip, Send, ShieldCheck, X } from 'lucide-react';
 import { Avatar } from './Avatar';
+import { MessageAttachments } from './MessageAttachments';
+import { LinkPreviewCard } from './LinkPreviewCard';
 import type { AttachedProduct, ConversationDetail, ThreadMessage } from './types';
 import { buyerNameOf } from './types';
+import { firstLinkIn } from '@ezihubb/utils';
 
 /**
  * One conversation, oldest message first.
@@ -18,39 +21,13 @@ import { buyerNameOf } from './types';
 
 const dayKey = (iso: string) => new Date(iso).toDateString();
 
-/** next/image throws during render on a src that is neither absolute nor
- *  root-relative, and a throw here would take the whole inbox down. */
-const renderableSrc = (url: string): boolean =>
-  url.startsWith('/') || url.startsWith('http://') || url.startsWith('https://');
-
-/**
- * Images attached to a message.
- *
- * Each opens full size in a new tab: the thumbnail is enough to recognise a
- * design, not enough to approve one.
- */
-function MessageAttachments({ urls }: { urls: string[] | undefined }) {
-  const usable = (urls ?? []).filter(renderableSrc);
-  if (!usable.length) return null;
-
-  return (
-    <ul className="mt-2 flex flex-wrap gap-2">
-      {usable.map((url) => (
-        <li key={url}>
-          <a href={url} target="_blank" rel="noopener noreferrer">
-            <Image
-              src={url}
-              alt="Attachment"
-              width={80}
-              height={80}
-              className="h-20 w-20 rounded object-cover hover:opacity-80"
-            />
-          </a>
-        </li>
-      ))}
-    </ul>
-  );
-}
+/** Mirrors MESSAGE_ATTACHMENT_MIMETYPES and MAX_MESSAGE_ATTACHMENTS on the
+ *  API. Duplicated rather than shared because the server is the authority and
+ *  this copy exists only to fail fast in the browser. */
+const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf']);
+const ACCEPT = '.jpg,.jpeg,.png,.webp,.gif,.pdf';
+const MAX_ATTACHMENTS = 3;
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 const dayLabel = (iso: string) => {
   const d = new Date(iso);
@@ -99,8 +76,9 @@ function ProductCard({ product }: { product: AttachedProduct }) {
   );
 }
 
-function Bubble({ message, buyerName, buyerAvatar, onDelete, viewerIsShop }: {
+function Bubble({ message, conversationId, buyerName, buyerAvatar, onDelete, viewerIsShop }: {
   message: ThreadMessage;
+  conversationId: string;
   buyerName: string;
   /** The buyer's real picture. Avatar already supported it; only this caller
    *  never passed it, so every bubble fell back to initials. */
@@ -113,6 +91,9 @@ function Bubble({ message, buyerName, buyerAvatar, onDelete, viewerIsShop }: {
   viewerIsShop: boolean;
 }) {
   const fromShop = message.senderType === 'SHOP';
+  // Only the first link gets a card. Five links in one message would otherwise
+  // be five outbound fetches and a wall of cards taller than the thread.
+  const link = message.deletedAt ? null : firstLinkIn(message.body);
 
   /**
    * An unsent message keeps its place in the thread.
@@ -165,6 +146,10 @@ function Bubble({ message, buyerName, buyerAvatar, onDelete, viewerIsShop }: {
           <MessageAttachments urls={message.attachmentUrls} />
           {message.attachedProduct && <ProductCard product={message.attachedProduct} />}
         </div>
+        {/* Under the bubble, not inside it: the card is about the link rather
+            than part of what was typed, and a preview that grew the bubble
+            would make a one-line message look like a paragraph. */}
+        {link && <LinkPreviewCard conversationId={conversationId} url={link} />}
         <p className={`mt-1 flex items-center gap-2 text-xs text-muted ${fromShop ? 'justify-end' : ''}`}>
           {/* Shop messages only, and only where a handler was supplied. The
               server enforces the same rule — a seller editing what the buyer
@@ -191,7 +176,9 @@ function Bubble({ message, buyerName, buyerAvatar, onDelete, viewerIsShop }: {
 interface Props {
   conversation: ConversationDetail;
   sending:      boolean;
-  onSend:       (body: string) => Promise<void>;
+  onSend:       (body: string, attachmentUrls: string[]) => Promise<void>;
+  /** Uploads the picked files and resolves to their public URLs. */
+  onUpload:     (files: File[]) => Promise<{ name: string; url: string }[]>;
   /** Unsends one of the shop's own messages. Omitted where the viewer may
    *  not write to this shop, which hides the control entirely. */
   onDeleteMessage?: (messageId: string) => void;
@@ -209,10 +196,14 @@ interface Props {
 }
 
 export function ThreadView({
-  conversation, sending, onSend, onDeleteMessage,
+  conversation, sending, onSend, onUpload, onDeleteMessage,
   messages, hasMoreOlder, loadingOlder, onLoadOlder,
 }: Props) {
   const [draft, setDraft] = useState('');
+  const [attachments, setAttachments] = useState<{ name: string; url: string }[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const [uploading, setUploading]     = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
   const buyerName = buyerNameOf(conversation);
   const paneRef = useRef<HTMLDivElement>(null);
 
@@ -282,13 +273,56 @@ export function ThreadView({
     else groups.push({ label: key, messages: [m] });
   }
 
+  /**
+   * Mirrors the API's own limits, so the composer refuses a file rather than
+   * letting the seller wait for a request that cannot succeed.
+   *
+   * The size check matters beyond politeness: multer enforces the same ceiling
+   * by aborting mid-stream, and nothing maps its error to an HTTP status, so
+   * an oversized file comes back as a bare 500.
+   */
+  const pickFiles = async (picked: FileList | null) => {
+    if (!picked?.length) return;
+    const files = Array.from(picked);
+    if (fileInput.current) fileInput.current.value = '';
+
+    const room = MAX_ATTACHMENTS - attachments.length;
+    if (files.length > room) {
+      return setAttachError(
+        room === 0
+          ? `Up to ${MAX_ATTACHMENTS} files per message.`
+          : `Only ${room} more file${room === 1 ? '' : 's'} can be attached.`,
+      );
+    }
+
+    // Checked before any upload starts, so a bad second file does not leave
+    // the first already uploaded and half the pick applied.
+    const tooBig = files.find((f) => f.size > MAX_FILE_BYTES);
+    if (tooBig) return setAttachError(`${tooBig.name} is over 10 MB.`);
+    const wrongType = files.find((f) => !ALLOWED_TYPES.has(f.type));
+    if (wrongType) return setAttachError(`${wrongType.name} is not an image or a PDF.`);
+
+    setAttachError(null);
+    setUploading(true);
+    try {
+      const uploaded = await onUpload(files);
+      setAttachments((prev) => [...prev, ...uploaded]);
+    } catch (e) {
+      setAttachError((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const submit = async () => {
     const body = draft.trim();
-    if (!body || sending) return;
+    // Attachments alone are a message — a proof does not need a covering note.
+    if ((!body && attachments.length === 0) || sending) return;
     // Cleared only after the send resolves, so a failure leaves the text in
     // the box to try again rather than losing what was typed.
-    await onSend(body);
+    await onSend(body, attachments.map((a) => a.url));
     setDraft('');
+    setAttachments([]);
     /**
      * Land on what was just sent.
      *
@@ -327,6 +361,7 @@ export function ThreadView({
                 <Bubble
                   key={m.id}
                   message={m}
+                  conversationId={conversation.id}
                   buyerName={buyerName}
                   buyerAvatar={conversation.user?.avatarUrl ?? null}
                   onDelete={onDeleteMessage}
@@ -354,16 +389,63 @@ export function ThreadView({
           className="w-full rounded-card border border-border bg-surface px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
 
+        {attachError && <p className="mt-2 text-xs text-error">{attachError}</p>}
+
+        {/* Uploaded before the message is sent, so the seller sees each file
+            land and a failed send does not take the upload with it. */}
+        {attachments.length > 0 && (
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {attachments.map((a) => (
+              <li
+                key={a.url}
+                className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-secondary"
+              >
+                <span className="max-w-[12rem] truncate">{a.name}</span>
+                <button
+                  type="button"
+                  onClick={() => setAttachments((prev) => prev.filter((x) => x.url !== a.url))}
+                  aria-label={`Remove ${a.name}`}
+                  className="text-muted hover:text-error"
+                >
+                  <X className="h-3 w-3" aria-hidden="true" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
         {/* Send on its own row, the notice on the one below.
             Side by side they competed for the same line: the notice is a full
             sentence, so it wrapped to four or five lines and then ran under
             the button. Stacking costs one row and cannot collide at any
             width. */}
-        <div className="mt-3 flex justify-end">
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <input
+            ref={fileInput}
+            type="file"
+            multiple
+            accept={ACCEPT}
+            className="hidden"
+            onChange={(e) => void pickFiles(e.target.files)}
+          />
+          <button
+            type="button"
+            onClick={() => fileInput.current?.click()}
+            disabled={uploading || attachments.length >= MAX_ATTACHMENTS}
+            className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-secondary hover:bg-background disabled:opacity-50"
+          >
+            {uploading
+              ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              : <Paperclip className="h-4 w-4" aria-hidden="true" />}
+            {uploading ? 'Uploading…' : 'Attach'}
+          </button>
+
           <button
             type="button"
             onClick={submit}
-            disabled={sending || !draft.trim()}
+            // Attachments alone are a message. Requiring text as well would
+            // make sending a proof mean typing something first.
+            disabled={sending || uploading || (!draft.trim() && attachments.length === 0)}
             className="flex items-center gap-2 rounded-full bg-secondary px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
           >
             <Send className="h-4 w-4" aria-hidden="true" />

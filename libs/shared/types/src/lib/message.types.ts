@@ -67,3 +67,17 @@ export interface MessagePageDto {
   hasMoreMessages: boolean;
   oldestMessageId: string | null;
 }
+
+/**
+ * The card shown under a message that contains a link.
+ *
+ * Every field is nullable because a page may advertise none of them; the API
+ * returns null for the whole preview rather than a card with nothing on it.
+ */
+export interface LinkPreviewDto {
+  url:         string;
+  title:       string | null;
+  description: string | null;
+  image:       string | null;
+  siteName:    string | null;
+}
