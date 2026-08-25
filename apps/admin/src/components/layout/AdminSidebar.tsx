@@ -68,9 +68,9 @@ const NAV_SECTIONS: NavSection[] = [
     title: 'Commerce',
     items: [
       {
-        label: 'Products', href: '/products', icon: ShoppingBag,
+        label: 'Listings', href: '/products', icon: ShoppingBag,
         children: [
-          { label: 'All Products', href: '/products',     icon: ShoppingBag },
+          { label: 'All Listings', href: '/products',     icon: ShoppingBag },
           { label: 'SEO Audit',    href: '/products/seo', icon: Globe       },
         ],
       },
@@ -173,11 +173,15 @@ const NAV_SECTIONS: NavSection[] = [
 /**
  * The seller's navigation, as one flat list.
  *
- * Order follows the reference shop manager: Dashboard, Products, Messages,
+ * Order follows the reference shop manager: Dashboard, Listings, Messages,
  * Orders, Search visibility, Stats, Customer service stats, Policy
- * violations, Marketing, Finances, Settings. Products is "Listings" there and
- * Store Settings is "Settings"; the three entries we have no equivalent for
- * (Search, Apps, Help) are simply absent rather than stubbed.
+ * violations, Marketing, Finances, Settings. Store Settings is "Settings"
+ * there; the three entries we have no equivalent for (Search, Apps, Help)
+ * are simply absent rather than stubbed.
+ *
+ * The nav reads "Listings", which is also the heading the products page
+ * itself already rendered — the two had disagreed, so the tab and the page
+ * it opened were named different things.
  *
  * No group headings. They were Manage / Marketing / Finance / Setup, and two
  * of the four labelled a single item — a heading over one row is a divider
@@ -193,7 +197,7 @@ function getShopNavSections(): NavSection[] {
     {
       items: [
         { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-        { label: 'Products',  href: '/products',  icon: ShoppingBag     },
+        { label: 'Listings',   href: '/products',  icon: ShoppingBag     },
         { label: 'Messages',  href: '/messages',  icon: MessageSquare   },
         { label: 'Orders',    href: '/orders',    icon: ShoppingCart    },
         { label: 'Search visibility', href: '/search-visibility', icon: ScanSearch },
