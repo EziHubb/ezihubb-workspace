@@ -94,7 +94,12 @@ export function SellerCard({ product, storeSummary = null }: SellerCardProps) {
     <section className="mt-12 pt-8 border-t border-border">
 
       {/* ── SELLER PROFILE ── */}
-      <div className="flex items-start gap-4 mb-6">
+      {/* flex-wrap, because the actions beside this cannot shrink and their
+          labels are long once translated. Without it the row had no way to
+          give: the button group held its intrinsic width, the name column was
+          crushed to almost nothing — wrapping one word per line and spilling
+          over the buttons — and the group still ran off the side of a phone. */}
+      <div className="flex flex-wrap items-start gap-4 mb-6">
 
         {/* Avatar — real shop logo when set, else initials. Clickable when store slug is available */}
         <ShopLink
@@ -135,8 +140,12 @@ export function SellerCard({ product, storeSummary = null }: SellerCardProps) {
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-2 flex-shrink-0">
+        {/* Actions.
+            Wraps internally too: on a narrow screen these three pills do not
+            fit on one line even with the whole width to themselves. Not
+            flex-shrink-0 any more — refusing to shrink is what pushed the cost
+            onto the text beside it. */}
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             className="flex items-center gap-1.5 border border-border rounded-full px-3 py-1.5 text-sm text-secondary hover:bg-[#F3F4F6] transition-colors"
