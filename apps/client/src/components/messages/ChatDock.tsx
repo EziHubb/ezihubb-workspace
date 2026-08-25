@@ -96,7 +96,7 @@ export function ChatDock() {
         <div
           className="
             fixed inset-0 z-50 flex flex-col bg-surface
-            md:inset-auto md:bottom-4 md:right-4 md:h-[560px] md:w-[380px]
+            md:inset-auto md:bottom-4 md:right-4 md:h-[600px] md:max-h-[calc(100vh-2rem)] md:w-[400px]
             md:rounded-card md:border md:border-border md:shadow-floating md:overflow-hidden
           "
           role="dialog"
@@ -163,8 +163,13 @@ export function ChatDock() {
 
       {/* Picker — what the launcher opens when nothing is docked yet. */}
       {picking && !isOpen && (
-        <div className="fixed bottom-36 right-4 z-50 w-[280px] overflow-hidden rounded-card border border-border bg-surface shadow-floating md:bottom-20">
-          <div className="flex items-center justify-between border-b border-border px-3 py-2">
+        // A height of its own rather than one inherited from the list. Sized by
+        // content, a single conversation collapsed the whole thing into a
+        // ~180px stub that read as a rendering error rather than a panel.
+        // max-h keeps that fixed height honest on a short viewport, where
+        // 380px plus the launcher below it would not fit.
+        <div className="fixed bottom-36 right-4 z-50 flex h-[380px] max-h-[calc(100vh-11rem)] w-[320px] flex-col overflow-hidden rounded-card border border-border bg-surface shadow-floating md:bottom-20">
+          <div className="flex flex-shrink-0 items-center justify-between border-b border-border px-3 py-2">
             <span className="text-sm font-medium text-secondary">{t('title')}</span>
             <button
               type="button"
@@ -179,9 +184,9 @@ export function ChatDock() {
           </div>
 
           {list.length === 0 ? (
-            <p className="px-3 py-6 text-center text-sm text-muted">{t('empty')}</p>
+            <p className="flex flex-1 items-center justify-center px-3 text-center text-sm text-muted">{t('empty')}</p>
           ) : (
-            <ul className="max-h-[320px] overflow-y-auto">
+            <ul className="flex-1 overflow-y-auto overscroll-contain">
               {list.slice(0, PICKER_LIMIT).map((c) => (
                 <li key={c.id}>
                   <button
@@ -206,7 +211,7 @@ export function ChatDock() {
           <Link
             href="/account/messages"
             onClick={() => setPicking(false)}
-            className="block border-t border-border px-3 py-2 text-center text-xs text-primary hover:underline"
+            className="block flex-shrink-0 border-t border-border px-3 py-2 text-center text-xs text-primary hover:underline"
           >
             {t('viewAll')}
           </Link>
