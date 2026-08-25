@@ -141,7 +141,7 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
                 autoCapitalize="characters"
                 spellCheck={false}
                 aria-label={t('couponPlaceholder')}
-                className="flex-1 px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                className="flex-1 min-w-0 px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
               />
               <button
                 type="button"

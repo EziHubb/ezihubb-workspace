@@ -61,7 +61,7 @@ export function NewsletterSection({
                 placeholder={placeholder}
                 required
                 disabled={subscribe.isPending}
-                className="flex-1 px-4 py-3 rounded-button bg-white/10 border border-white/20 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white/40 disabled:opacity-60"
+                className="flex-1 min-w-0 px-4 py-3 rounded-button bg-white/10 border border-white/20 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white/40 disabled:opacity-60"
               />
               <button
                 type="submit"

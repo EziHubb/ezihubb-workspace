@@ -212,7 +212,7 @@ export default function AffiliatePayoutsPage() {
                   min={MIN_PAYOUT}
                   max={balance}
                   step="0.01"
-                  className="flex-1 border border-border rounded-button px-4 py-2.5 text-sm text-secondary bg-background placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-colors"
+                  className="flex-1 min-w-0 border border-border rounded-button px-4 py-2.5 text-sm text-secondary bg-background placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-colors"
                 />
                 <button
                   type="button"

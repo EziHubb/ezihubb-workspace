@@ -26,7 +26,7 @@ export function CampaignBannerBar({ campaign }: { campaign: CampaignData | null 
       className="w-full h-10 flex items-center px-4 md:px-8 gap-3"
       style={{ background: gradient }}
     >
-      <p className="text-white text-xs font-medium flex-1 text-center truncate">
+      <p className="text-white text-xs font-medium flex-1 min-w-0 text-center truncate">
         {campaign.bannerText}
       </p>
       {campaign.ctaLabel && campaign.ctaHref && (
