@@ -35,7 +35,12 @@ export default async function AccountLayout({
   return (
     <>
       <Navbar menuData={menuData} />
-      <main className="pt-16 md:pt-[112px] min-h-screen">
+      {/* Each step matches what the navbar actually occupies at that width.
+          112px is the tall row (72px) plus the category strip (h-10), but that
+          strip is `hidden lg:flex` — so between md and lg it was reserving
+          40px for a row that is not on screen, and the page began with a band
+          of nothing. */}
+      <main className="pt-16 md:pt-[72px] lg:pt-[112px] min-h-screen">
         <AccountLayoutClient>{children}</AccountLayoutClient>
       </main>
       <div className="pb-16 md:pb-0">
