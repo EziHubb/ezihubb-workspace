@@ -56,3 +56,15 @@ export function firstLinkIn(body: string): string | null {
   // ending in a full stop.
   return match[0].replace(/[.,;:!?)\]]+$/, '');
 }
+
+/**
+ * Is this message nothing but a link?
+ *
+ * When it is, and a preview card renders, the raw URL underneath is the same
+ * information twice — and the ugly copy of the two, since an unbroken
+ * hundred-character address is what forces a thread to scroll sideways.
+ * A message that says something AND carries a link keeps both.
+ */
+export function isOnlyLink(body: string, link: string | null): boolean {
+  return !!link && body.trim() === link;
+}

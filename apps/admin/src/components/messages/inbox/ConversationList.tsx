@@ -2,6 +2,7 @@
 
 import { CornerUpLeft, Star } from 'lucide-react';
 import { Avatar } from './Avatar';
+import { firstLinkIn, isOnlyLink } from '@ezihubb/utils';
 import {
   LABEL_CHIP, buyerNameOf, relativeTime,
   type ConversationRow,
@@ -15,6 +16,25 @@ import {
  * already replied. Both come from the row's own data, so the list never has to
  * ask the server what it already knows.
  */
+
+/**
+ * The one line a row shows for its last message.
+ *
+ * A message that is nothing but a URL used to read as a truncated address —
+ * "https://ezihubb.com/en/products/princ…" — which says nothing about which
+ * shop or which thing. The host is the part that survives truncation with its
+ * meaning intact.
+ */
+function previewOf(lastMessage: string | null): string | null {
+  if (!lastMessage) return null;
+  const link = firstLinkIn(lastMessage);
+  if (!isOnlyLink(lastMessage, link)) return lastMessage;
+  try {
+    return `🔗 ${new URL(link!).hostname.replace(/^www\./, '')}`;
+  } catch {
+    return lastMessage;
+  }
+}
 
 interface Props {
   rows:       ConversationRow[];
@@ -91,7 +111,7 @@ export function ConversationList({
 
               <span className="min-w-0 flex-1">
                 <span className={`block truncate text-sm ${unread ? 'font-medium text-secondary' : 'text-muted'}`}>
-                  {row.lastMessage ?? row.subject ?? 'No messages yet'}
+                  {previewOf(row.lastMessage) ?? row.subject ?? 'No messages yet'}
                 </span>
                 {(row.labels.length > 0 || row.orderId) && (
                   <span className="mt-1 flex flex-wrap items-center gap-1">

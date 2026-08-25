@@ -6,10 +6,10 @@ import Link from 'next/link';
 import { Loader2, Paperclip, Send, ShieldCheck, X } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { MessageAttachments } from './MessageAttachments';
-import { LinkPreviewCard } from './LinkPreviewCard';
+import { LinkPreviewCard, useLinkPreview } from './LinkPreviewCard';
 import type { AttachedProduct, ConversationDetail, ThreadMessage } from './types';
 import { buyerNameOf } from './types';
-import { firstLinkIn } from '@ezihubb/utils';
+import { firstLinkIn, isOnlyLink } from '@ezihubb/utils';
 
 /**
  * One conversation, oldest message first.
@@ -94,6 +94,20 @@ function Bubble({ message, conversationId, buyerName, buyerAvatar, onDelete, vie
   // Only the first link gets a card. Five links in one message would otherwise
   // be five outbound fetches and a wall of cards taller than the thread.
   const link = message.deletedAt ? null : firstLinkIn(message.body);
+  /**
+   * A message that is nothing but a link becomes the card alone.
+   *
+   * The address and the card said the same thing twice, and the address was
+   * the half that broke the layout: a hundred unbroken characters is what a
+   * product URL looks like. Held until the preview actually arrives, so a
+   * link that turns out to have no card still shows the link.
+   */
+  const { data: preview } = useLinkPreview(conversationId, link);
+  // Attachments and the product card live inside the bubble, so dropping it
+  // would take them with it — a message can be a bare link AND carry a file.
+  const cardReplacesBody =
+    !!preview && isOnlyLink(message.body, link)
+    && !message.attachmentUrls?.length && !message.attachedProduct;
 
   /**
    * An unsent message keeps its place in the thread.
@@ -105,9 +119,11 @@ function Bubble({ message, conversationId, buyerName, buyerAvatar, onDelete, vie
   if (message.deletedAt) {
     return (
       <div className={`flex gap-2 ${fromShop ? 'flex-row-reverse' : ''}`}>
-        {/* Holds the avatar's column so the pill lines up with the bubbles
-            around it rather than sliding left into where the picture was. */}
-        {!fromShop && <div className="h-7 w-7 shrink-0" aria-hidden="true" />}
+        {/* The real picture, not a spacer.
+            It was a blank of the same size, which lined the pill up correctly
+            and lost the one thing the row still has to say: who this was
+            from. A message being unsent does not make it anonymous. */}
+        {!fromShop && <Avatar name={buyerName} src={buyerAvatar} size={28} />}
         <div className={`max-w-[36rem] ${fromShop ? 'text-right' : ''}`}>
           {/* An outline pill, not a filled bubble. An unsend is a note
               about the conversation rather than part of it, and giving an
@@ -129,23 +145,34 @@ function Bubble({ message, conversationId, buyerName, buyerAvatar, onDelete, vie
   return (
     <div className={`group flex gap-2 ${fromShop ? 'flex-row-reverse' : ''}`}>
       {!fromShop && <Avatar name={buyerName} src={buyerAvatar} size={28} />}
-      <div className={`max-w-[36rem] ${fromShop ? 'text-right' : ''}`}>
-        <div
-          className={`inline-block rounded-card border px-4 py-3 text-left text-sm ${
-            fromShop
-              ? 'border-primary/20 bg-primary/5 text-secondary'
-              : message.senderType === 'SYSTEM'
-                ? 'border-border bg-background text-muted'
-                : 'border-border bg-surface text-secondary'
-          }`}
-        >
-          <p className="whitespace-pre-wrap break-words">{withLinks(message.body)}</p>
-          {/* Images were carried on every message but never drawn here, so a
-              design sent to a buyer for approval was visible to them and
-              invisible to the seller who sent it. */}
-          <MessageAttachments urls={message.attachmentUrls} />
-          {message.attachedProduct && <ProductCard product={message.attachedProduct} />}
-        </div>
+      <div className={`min-w-0 max-w-[36rem] ${fromShop ? 'text-right' : ''}`}>
+        {/* The bubble goes away entirely when the card has replaced its text.
+            Keeping it would leave a bordered shape holding nothing, floating
+            above the card it was meant to introduce. */}
+        {!cardReplacesBody && (
+          <div
+            className={`inline-block max-w-full rounded-card border px-4 py-3 text-left text-sm ${
+              fromShop
+                ? 'border-primary/20 bg-primary/5 text-secondary'
+                : message.senderType === 'SYSTEM'
+                  ? 'border-border bg-background text-muted'
+                  : 'border-border bg-surface text-secondary'
+            }`}
+          >
+            {/* [overflow-wrap:anywhere], not break-words. They look alike and
+                differ in the one way that matters here: break-word leaves the
+                element's min-content width at the full length of the longest
+                unbreakable run, so a bare URL still forced this column wide
+                enough to push the whole thread sideways. anywhere lets the
+                break count toward min-content, which is what stops it. */}
+            <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{withLinks(message.body)}</p>
+            {/* Images were carried on every message but never drawn here, so a
+                design sent to a buyer for approval was visible to them and
+                invisible to the seller who sent it. */}
+            <MessageAttachments urls={message.attachmentUrls} />
+            {message.attachedProduct && <ProductCard product={message.attachedProduct} />}
+          </div>
+        )}
         {/* Under the bubble, not inside it: the card is about the link rather
             than part of what was typed, and a preview that grew the bubble
             would make a one-line message look like a paragraph. */}

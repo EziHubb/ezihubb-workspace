@@ -11,8 +11,8 @@ import { useConversationStream, usePresence, presenceLabel } from '../../../../.
 import type { ConversationDto, ConversationWithMessagesDto, MessagePageDto } from '@ezihubb/types';
 import { ShopAvatar } from '../../../../../components/messages/ShopAvatar';
 import { MessageAttachments } from '../../../../../components/messages/MessageAttachments';
-import { LinkPreviewCard } from '../../../../../components/messages/LinkPreviewCard';
-import { firstLinkIn } from '@ezihubb/utils';
+import { LinkPreviewCard, useLinkPreview } from '../../../../../components/messages/LinkPreviewCard';
+import { firstLinkIn, isOnlyLink } from '@ezihubb/utils';
 import { MessageShopModal } from '../../../../../components/messages/MessageShopModal';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -41,6 +41,11 @@ const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/g
 const ACCEPT = '.jpg,.jpeg,.png,.webp,.gif,.pdf';
 const MAX_ATTACHMENTS = 3;
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+/** Hostname without "www.", for the one-line summary of a link-only message. */
+function hostOf(url: string): string {
+  try { return new URL(url.trim()).hostname.replace(/^www\./, ''); } catch { return url; }
+}
 
 function formatTime(dateStr: string, locale: string): string {
   return new Date(dateStr).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
@@ -136,8 +141,14 @@ function ConversationListItem({
           {conv.order && (
             <p className="text-xs text-muted">{t('orderNumber', { number: conv.order.orderNumber })}</p>
           )}
+          {/* A row whose last message is a bare URL used to read
+              "https://ezihubb.com/en/products/princ…" — a truncation that
+              says nothing about which shop or which thing. The host is the
+              part that survives truncation with meaning intact. */}
           <p className={`text-xs mt-0.5 truncate ${hasUnread ? 'font-medium text-secondary' : 'text-muted'}`}>
-            {conv.lastMessage}
+            {conv.lastMessage && isOnlyLink(conv.lastMessage, firstLinkIn(conv.lastMessage))
+              ? `🔗 ${hostOf(conv.lastMessage)}`
+              : conv.lastMessage}
           </p>
         </div>
         {hasUnread && (
@@ -162,6 +173,19 @@ function MessageBubble({ message: msg, conversationId, isOwn, shopName, shopLogo
   // Only the first link gets a card. Five links in one message would otherwise
   // be five outbound fetches and a wall of cards taller than the thread.
   const link = msg.deletedAt ? null : firstLinkIn(msg.body);
+  /**
+   * A message that is nothing but a link becomes the card alone.
+   *
+   * The address and the card said the same thing twice, and the address was
+   * the half that broke the layout: a hundred unbroken characters is what a
+   * product URL looks like. Held until the preview actually arrives, so a
+   * link that turns out to have no card still shows the link.
+   */
+  const { data: preview } = useLinkPreview(conversationId, link);
+  // Attachments live inside the bubble, so dropping it would take them with
+  // it — a message can be a bare link AND carry a file.
+  const cardReplacesBody =
+    !!preview && isOnlyLink(msg.body, link) && !msg.attachmentUrls?.length;
 
   /**
    * An unsent message keeps its place, without its text.
@@ -173,9 +197,13 @@ function MessageBubble({ message: msg, conversationId, isOwn, shopName, shopLogo
   if (msg.deletedAt) {
     return (
       <div className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
-        {/* Holds the avatar's column so the pill lines up with the bubbles
-            above and below it instead of sliding left where the picture was. */}
-        {!isOwn && <div className="w-7 h-7 shrink-0" />}
+        {/* The real picture, not a spacer.
+            It was a blank of the same size, which lined the pill up correctly
+            and lost the one thing the row still has to say: who this was
+            from. A message being unsent does not make it anonymous. */}
+        {!isOwn && (
+          <div className="mt-1"><ShopAvatar name={shopName} src={shopLogoUrl} size={28} /></div>
+        )}
         {/* Outline, not a filled bubble. An unsent message is a note about
             the conversation rather than part of it, and giving it the same
             solid shape as real messages makes an absence look like content. */}
@@ -203,25 +231,59 @@ function MessageBubble({ message: msg, conversationId, isOwn, shopName, shopLogo
         <div className="mt-1"><ShopAvatar name={shopName} src={shopLogoUrl} size={28} /></div>
       )}
       {/* A column, so the preview card can sit under the bubble rather than
-          beside it, and both stay on the sender's side of the thread. */}
-      <div className={`flex min-w-0 flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
-        <div className={[
-          'max-w-[80%] rounded-2xl px-4 py-2.5 text-sm',
-          isOwn
-            ? 'bg-primary text-white rounded-tr-sm'
-            : 'bg-[#F3F4F6] text-secondary rounded-tl-sm',
-        ].join(' ')}>
-          <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.body}</p>
-          <MessageAttachments urls={msg.attachmentUrls} isOwn={isOwn} />
-          <p className={`text-[10px] mt-1 ${isOwn ? 'text-white/70' : 'text-muted'}`}>
-            {formatTime(msg.createdAt, locale)}
-            {isOwn && msg.isRead && <span className="ml-1">✓✓</span>}
-          </p>
-        </div>
+          beside it, and both stay on the sender's side of the thread.
+
+          The width cap lives HERE and not on the bubble. On the bubble it was
+          80% of this wrapper — and this wrapper sizes itself from its content,
+          which is the bubble. A circular constraint, which the browser settles
+          by shrinking to the narrowest thing that fits: "heyy" became three
+          lines with the clock wrapped under it. Capping the wrapper against
+          the row, which has a real width, leaves the bubble free to be as
+          wide as its text. */}
+      <div className={`flex min-w-0 max-w-[80%] flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
+        {/* The bubble goes away entirely when the card has replaced its text.
+            Keeping it would leave a coloured shape holding nothing but a
+            clock, floating above the card it was meant to introduce. */}
+        {!cardReplacesBody && (
+          <div className={[
+            // w-fit so a short message is a short bubble rather than a column
+            // stretched to the cap above.
+            'w-fit rounded-2xl px-3.5 py-2 text-sm',
+            isOwn
+              ? 'bg-primary text-white rounded-br-sm'
+              : 'bg-[#F3F4F6] text-secondary rounded-bl-sm',
+          ].join(' ')}>
+            {/* [overflow-wrap:anywhere], not break-words. They look alike and
+                differ in the one way that matters here: break-word leaves the
+                element's min-content width at the full length of the longest
+                unbreakable run, so a bare URL still forced this flex item wide
+                enough to push the whole thread sideways. anywhere lets the
+                break count toward min-content, which is what stops it. */}
+            <p className="whitespace-pre-wrap leading-relaxed [overflow-wrap:anywhere]">{msg.body}</p>
+            <MessageAttachments urls={msg.attachmentUrls} isOwn={isOwn} />
+            {/* nowrap and its own line: the clock is six characters that must
+                never be what decides how wide a bubble is, and never break in
+                half across two lines. */}
+            <p className={`mt-0.5 whitespace-nowrap text-right text-[10px] ${isOwn ? 'text-white/70' : 'text-muted'}`}>
+              {formatTime(msg.createdAt, locale)}
+              {isOwn && msg.isRead && <span className="ml-1">✓✓</span>}
+            </p>
+          </div>
+        )}
+
         {/* Outside the bubble: the card is about the link rather than part of
             what was typed, and inside the buyer's own bubble it would inherit
             a primary-coloured background it was never designed against. */}
         {link && <LinkPreviewCard conversationId={conversationId} url={link} />}
+
+        {/* The clock lives on the card once the bubble is gone, so a
+            link-only message still says when it was sent. */}
+        {cardReplacesBody && (
+          <p className="mt-0.5 whitespace-nowrap px-1 text-[10px] text-muted">
+            {formatTime(msg.createdAt, locale)}
+            {isOwn && msg.isRead && <span className="ml-1">✓✓</span>}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -321,6 +383,7 @@ function MessageThread({
   const [attachError, setAttachError] = useState<string | null>(null);
   const [uploading, setUploading]     = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const inputRef  = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const paneRef   = useRef<HTMLDivElement>(null);
   /** Pane height captured just before a page of older messages is prepended. */
@@ -568,6 +631,9 @@ function MessageThread({
       );
       setNewMessage('');
       setAttachments([]);
+      // Clearing the value does not fire onChange, so the box would keep the
+      // height it grew to and sit three lines tall over an empty placeholder.
+      if (inputRef.current) inputRef.current.style.height = 'auto';
       // Land on what was just sent. The length-keyed effect above cannot be
       // relied on for this: once a thread fills the window its length stops
       // changing, and sending would leave the reader wherever they were.
@@ -680,8 +746,6 @@ function MessageThread({
       {/* Input */}
       {conv?.status !== 'RESOLVED' ? (
         <div className="p-4 border-t flex-shrink-0">
-          {attachError && <p className="mb-2 text-xs text-error">{attachError}</p>}
-
           {/* Uploaded before the message is sent, so the buyer sees each file
               land and a failed send does not take the upload with it. */}
           {attachments.length > 0 && (
@@ -702,7 +766,13 @@ function MessageThread({
             </ul>
           )}
 
-          <div className="flex gap-2">
+          {/* One bar, not three controls in a row.
+              The attach button, the box and Send used to be separate boxed
+              elements with their own borders, which read as a toolbar rather
+              than a place to type. Here the border belongs to the bar and the
+              buttons sit inside it, so the whole thing is one target and the
+              focus ring lands on the bar. */}
+          <div className="flex items-end gap-1.5 rounded-2xl border border-border bg-surface px-2 py-1.5 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15">
             <input
               ref={fileInput}
               type="file"
@@ -716,51 +786,78 @@ function MessageThread({
               onClick={() => fileInput.current?.click()}
               disabled={uploading || attachments.length >= MAX_ATTACHMENTS}
               aria-label={t('attachFile')}
-              className="w-10 h-10 rounded-xl border flex items-center justify-center text-muted hover:bg-background disabled:opacity-50 self-end"
+              className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-background hover:text-secondary disabled:opacity-40"
             >
               {uploading ? (
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
               ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                 </svg>
               )}
             </button>
+
+            {/* rows={1} plus the height reset in onChange: the box starts one
+                line tall and grows with what is typed, up to a cap, instead of
+                reserving two lines for a message that is usually one. The
+                reset to 'auto' first is what lets it shrink again on delete —
+                scrollHeight never goes down on its own. */}
             <textarea
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={(e) => {
+                setNewMessage(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   sendMessage();
                 }
               }}
+              ref={inputRef}
               placeholder={t('typePlaceholder')}
-              rows={2}
-              className="flex-1 border rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+              rows={1}
+              className="min-w-0 flex-1 resize-none border-0 bg-transparent px-1 py-1.5 text-sm leading-relaxed text-secondary placeholder:text-muted focus:outline-none focus:ring-0"
             />
+
             <button
               onClick={sendMessage}
               disabled={(!newMessage.trim() && attachments.length === 0) || isSending || uploading}
-              className="w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center hover:bg-primary/90 transition-colors disabled:opacity-50 self-end"
               aria-label={t('sendMessage')}
+              // Grey until there is something to send, rather than a washed-out
+              // primary: a faded brand colour reads as "broken", not "not yet".
+              className={[
+                'mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors',
+                (!newMessage.trim() && attachments.length === 0) || isSending || uploading
+                  ? 'bg-border/60 text-muted'
+                  : 'bg-primary text-white hover:bg-primary/90',
+              ].join(' ')}
             >
               {isSending ? (
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
               ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
               )}
             </button>
           </div>
-          <p className="text-xs text-muted mt-1">{t('shiftEnterHint')}</p>
+          {/* Under the bar, and only what is true right now: the upload error
+              when there is one, otherwise the Enter hint — and that only once
+              the person has started typing. A permanent line of instructions
+              under an empty composer is furniture. */}
+          {attachError ? (
+            <p className="mt-1.5 px-2 text-[11px] text-error">{attachError}</p>
+          ) : newMessage.length > 0 ? (
+            <p className="mt-1.5 px-2 text-[11px] text-muted">{t('shiftEnterHint')}</p>
+          ) : null}
         </div>
       ) : (
         <div className="p-4 border-t text-center">
