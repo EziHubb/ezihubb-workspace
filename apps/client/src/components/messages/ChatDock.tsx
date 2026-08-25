@@ -102,61 +102,62 @@ export function ChatDock() {
           role="dialog"
           aria-label={t('title')}
         >
-          {/* Head row — switching between docked conversations without
-              collapsing first, the way the row of heads works on Android. */}
-          <div className="flex items-center gap-2 border-b border-border px-3 py-2 flex-shrink-0">
-            {docked.map((c) => {
-              const isActive = c.id === activeId;
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setActive(c.id)}
-                  aria-label={shopNameOf(c)}
-                  aria-current={isActive ? 'true' : undefined}
-                  className={[
-                    'relative rounded-full transition',
-                    isActive ? 'ring-2 ring-primary' : 'opacity-60 hover:opacity-100',
-                  ].join(' ')}
-                >
-                  <ShopAvatar name={shopNameOf(c)} src={c.store?.logoUrl} size={28} />
-                  {c.unreadByCustomer > 0 && !isActive && (
-                    <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-error ring-2 ring-surface" />
-                  )}
-                </button>
-              );
-            })}
+          {/* One header, not two. The dock used to stack a bar of its own on
+              top of the thread's, which put the shop's avatar on screen twice
+              a few pixels apart. Its controls now live inside the thread's own
+              header, and the only other docked conversations appear there as
+              small avatars to switch to — the active one is already the
+              header, so repeating it was the duplication itself.
 
-            <div className="ml-auto flex items-center gap-1">
-              <button
-                type="button"
-                onClick={collapse}
-                aria-label={t('minimise')}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-muted/10 hover:text-secondary"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeWidth={2} d="M5 12h14" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                onClick={() => closeConversation(activeConv.id)}
-                aria-label={t('close')}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-muted/10 hover:text-secondary"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* MessageThread returns a fragment and sizes itself from this
-              column, which is why the frame is set here and not by it. */}
+              No kebab here: report and delete stay on the inbox page. Getting
+              rid of a conversation for good should not be one stray tap away
+              inside a box floating over whatever the buyer was shopping for. */}
           <MessageThread
             key={activeConv.id}
             conversationId={activeConv.id}
             onBack={() => closeConversation(activeConv.id)}
+            showMenu={false}
+            headerActions={
+              <div className="flex flex-shrink-0 items-center gap-1">
+                {docked
+                  .filter((c) => c.id !== activeConv.id)
+                  .map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setActive(c.id)}
+                      aria-label={shopNameOf(c)}
+                      className="relative rounded-full opacity-60 transition hover:opacity-100"
+                    >
+                      <ShopAvatar name={shopNameOf(c)} src={c.store?.logoUrl} size={24} />
+                      {c.unreadByCustomer > 0 && (
+                        <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-error ring-2 ring-surface" />
+                      )}
+                    </button>
+                  ))}
+
+                <button
+                  type="button"
+                  onClick={collapse}
+                  aria-label={t('minimise')}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-muted/10 hover:text-secondary"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeWidth={2} d="M5 12h14" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => closeConversation(activeConv.id)}
+                  aria-label={t('close')}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-muted/10 hover:text-secondary"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            }
           />
         </div>
       )}
