@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -205,6 +205,14 @@ function MessageBubble({ message: msg, conversationId, isOwn, shopName, shopLogo
 
 type ThreadMessage = ConversationWithMessagesDto['messages'][number];
 
+/** A message on screen that the server has not confirmed yet. */
+interface PendingMessage {
+  clientMessageId: string;
+  body:            string;
+  attachmentUrls:  string[];
+  createdAt:       string;
+}
+
 const byOldest = (a: ThreadMessage, b: ThreadMessage) =>
   a.createdAt === b.createdAt
     ? a.id.localeCompare(b.id)
@@ -255,8 +263,16 @@ function useThreadMessages(conversationId: string, newest: ThreadMessage[] | und
    */
   if (newest) for (const m of newest) seen.current.set(m.id, m);
 
-  const prepend = (older: ThreadMessage[]) => {
-    for (const m of older) seen.current.set(m.id, m);
+  /**
+   * Adds messages by id; the sort below puts them where they belong.
+   *
+   * Used both for a page of older messages and for one that has just arrived
+   * over the socket — the map does not care which, and the second case is why
+   * a new message no longer costs a fetch to display something the push had
+   * already delivered in full.
+   */
+  const merge = (incoming: ThreadMessage[]) => {
+    for (const m of incoming) seen.current.set(m.id, m);
     setTick((n) => n + 1);
   };
 
@@ -274,7 +290,7 @@ function useThreadMessages(conversationId: string, newest: ThreadMessage[] | und
     [newest, tick, conversationId],
   );
 
-  return { messages, prepend, reset };
+  return { messages, prepend: merge, merge, reset };
 }
 
 // ── MessageThread ─────────────────────────────────────────────────────────────
@@ -282,15 +298,43 @@ function useThreadMessages(conversationId: string, newest: ThreadMessage[] | und
 export function MessageThread({
   conversationId,
   onBack,
+  showMenu = true,
+  headerActions,
 }: {
   conversationId: string;
   onBack:         () => void;
+  /**
+   * The report/delete kebab. On by default; the floating dock turns it off,
+   * because clearing a conversation away for good is not a thing to offer in
+   * a 400px box floating over a shopping page — it belongs on the inbox, where
+   * the buyer can see the whole list they are editing.
+   */
+  showMenu?: boolean;
+  /**
+   * Rendered at the end of the header. The dock puts its minimise and close
+   * controls here rather than in a bar of its own, so an embedded thread has
+   * ONE header instead of the dock's stacked on top of this one — which put
+   * the shop's avatar on screen twice, a few pixels apart.
+   */
+  headerActions?: ReactNode;
 }) {
   const t = useTranslations('account.messages');
   const locale = useLocale();
   const token = useAuthStore((s) => s.accessToken);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  /**
+   * Messages drawn before the server has confirmed them.
+   *
+   * Sending used to cost two round trips before anything appeared: the POST,
+   * and then a refetch of the whole thread to read back what had just been
+   * sent. The sender was waiting on a server to be told what they had typed.
+   *
+   * Matched to the real row by clientMessageId — the id cannot do it, because
+   * there is no id until the server answers, which is the entire wait being
+   * removed here.
+   */
+  const [pending, setPending] = useState<PendingMessage[]>([]);
   const { someoneTyping } = useTyping(conversationId, newMessage, isSending);
   const [attachments, setAttachments] = useState<{ name: string; url: string }[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
@@ -321,7 +365,7 @@ export function MessageThread({
     enabled: !!conversationId,
   });
 
-  const { messages, prepend, reset } = useThreadMessages(conversationId, conv?.messages);
+  const { messages, prepend, merge, reset } = useThreadMessages(conversationId, conv?.messages);
 
   /**
    * Where the next page back starts.
@@ -366,7 +410,13 @@ export function MessageThread({
 
   // Same invalidate-don't-splice reasoning as the seller inbox: the pushed row
   // is the raw record, this query returns it shaped for the page.
-  useConversationStream(conversationId, () => {
+  useConversationStream(conversationId, (incoming) => {
+    // The push carries the whole row. Merging it is what makes an arriving
+    // message appear at once instead of after a fetch for something already
+    // in hand. The invalidate below still runs as the safety net for a read
+    // receipt, an unsend, or a socket that never connected.
+    if (incoming) merge([incoming as ThreadMessage]);
+
     queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
     queryClient.invalidateQueries({ queryKey: ['conversations'] });
   });
@@ -526,6 +576,24 @@ export function MessageThread({
     }
   };
 
+  /**
+   * Drop optimistic bubbles once the real row is on screen.
+   *
+   * Returning the previous array unchanged when there is nothing to drop is
+   * what keeps this from looping: it runs on every change to `messages`, and
+   * a fresh array would be a new render and another run.
+   */
+  const confirmedKeys = useMemo(
+    () => new Set(messages.map((m) => m.clientMessageId).filter(Boolean) as string[]),
+    [messages],
+  );
+  useEffect(() => {
+    setPending((prev) => {
+      const next = prev.filter((p) => !confirmedKeys.has(p.clientMessageId));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [confirmedKeys]);
+
   const sendMessage = async () => {
     const body = newMessage.trim();
     // Attachments alone are a message — a photo of a problem does not need a
@@ -536,23 +604,40 @@ export function MessageThread({
     // carries the same key and the server recognises it instead of writing a
     // second copy. Generating it inside the request would defeat the point.
     const clientMessageId = newClientMessageId();
+    const urls  = attachments.map((a) => a.url);
+    // Kept for the failure path, which puts the composer back as it was.
+    const sentAttachments = attachments;
+
+    // Drawn before the request, not after it. Everything below this line is
+    // bookkeeping the sender no longer waits to watch.
+    setPending((prev) => [...prev, { clientMessageId, body, attachmentUrls: urls, createdAt: new Date().toISOString() }]);
+    setNewMessage('');
+    setAttachments([]);
+    // Clearing the value does not fire onChange, so the box would keep the
+    // height it grew to and sit three lines tall over an empty placeholder.
+    if (inputRef.current) inputRef.current.style.height = 'auto';
+
     try {
       await apiClient.post(
         API_ROUTES.MESSAGES.CONVERSATION_MESSAGES(conversationId),
-        { body, clientMessageId, attachmentUrls: attachments.map((a) => a.url) },
+        { body, clientMessageId, attachmentUrls: urls },
         { token: token ?? undefined },
       );
-      setNewMessage('');
-      setAttachments([]);
-      // Clearing the value does not fire onChange, so the box would keep the
-      // height it grew to and sit three lines tall over an empty placeholder.
-      if (inputRef.current) inputRef.current.style.height = 'auto';
       // Land on what was just sent. The length-keyed effect above cannot be
       // relied on for this: once a thread fills the window its length stops
       // changing, and sending would leave the reader wherever they were.
       stickToBottom.current = true;
       queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    } catch (e) {
+      // The bubble goes and the text comes back. Drawing it early must not
+      // turn a failed send into a message the sender believes they sent, and
+      // the composer holding it is how they retry — which is what the box did
+      // before any of this drew anything.
+      setPending((prev) => prev.filter((x) => x.clientMessageId !== clientMessageId));
+      setNewMessage(body);
+      setAttachments(sentAttachments);
+      setAttachError((e as Error).message);
     } finally {
       setIsSending(false);
     }
@@ -603,18 +688,22 @@ export function MessageThread({
             answering a question nobody asked — while the two things a person
             actually wants from a thread, reporting it and clearing it away,
             had nowhere to live. */}
-        <ThreadMenu
-          conversationId={conversationId}
-          onHidden={() => {
-            // Closing the thread is not enough: the row stays in the list
-            // beside a toast saying it was removed, which reads as the delete
-            // having failed. The list is a separate query and has to be told.
-            queryClient.invalidateQueries({ queryKey: ['conversations'] });
-            onBack();
-          }}
-        />
+        {showMenu && (
+          <ThreadMenu
+            conversationId={conversationId}
+            onHidden={() => {
+              // Closing the thread is not enough: the row stays in the list
+              // beside a toast saying it was removed, which reads as the delete
+              // having failed. The list is a separate query and has to be told.
+              queryClient.invalidateQueries({ queryKey: ['conversations'] });
+              onBack();
+            }}
+          />
+        )}
 
         <ConversationStatusBadge status={conv?.status} />
+
+        {headerActions}
       </div>
 
       {/* Messages.
@@ -664,6 +753,28 @@ export function MessageThread({
               />
             ))
           )}
+
+          {/* Sent, not yet confirmed. Rendered after the real messages because
+              it is always the newest thing in the thread, and dimmed so the
+              difference between "on your screen" and "delivered" stays
+              visible — an optimistic bubble that looked identical would be a
+              claim the client cannot make yet. */}
+          {pending.map((p) => (
+            <div key={p.clientMessageId} className="flex justify-end">
+              <div className="max-w-[80%] min-w-0 opacity-60">
+                {p.body && (
+                  <div className="rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-sm text-white break-words [overflow-wrap:anywhere]">
+                    {p.body}
+                  </div>
+                )}
+                {p.attachmentUrls.length > 0 && (
+                  <MessageAttachments urls={p.attachmentUrls} isOwn />
+                )}
+                <p className="mt-1 text-right text-xs text-muted">{t('messageSending')}</p>
+              </div>
+            </div>
+          ))}
+
           <div ref={bottomRef} />
         </div>
       </div>

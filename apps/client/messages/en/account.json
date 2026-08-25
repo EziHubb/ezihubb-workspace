@@ -314,7 +314,8 @@
       "close": "Close",
       "minimise": "Minimise",
       "viewAll": "View all messages"
-    }
+    },
+    "messageSending": "Sending…"
   },
   "wishlist": {
     "pageTitle": "Wishlist",

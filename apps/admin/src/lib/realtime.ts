@@ -11,6 +11,7 @@ import {
   TYPING_HEARTBEAT_MS,
   type PresenceState,
 } from '@ezihubb/constants';
+import type { MessageDto } from '@ezihubb/types';
 
 /**
  * How long to wait before re-attempting a connection the server refused.
@@ -182,7 +183,16 @@ export function useSocket(): Socket | null {
  */
 export function useConversationStream(
   conversationId: string | null,
-  onChanged: () => void,
+  /**
+   * Called when something about this thread changed.
+   *
+   * Receives the new message when there is one, because the gateway already
+   * sends the whole row and the caller was answering it with a fetch for what
+   * it had just been handed — a round trip to learn what was in the packet.
+   * Called with nothing for a read receipt or an unsend, where the caller does
+   * still have to go and look.
+   */
+  onChanged: (message?: MessageDto) => void,
 ): void {
   const sock = useSocket();
   // Through a ref so a caller passing an inline arrow does not tear down and
@@ -210,8 +220,8 @@ export function useConversationStream(
       sock.emit(RT_CLIENT.JOIN_CONVERSATION, { conversationId });
       handler.current();
     };
-    const onNew = (payload: { conversationId: string }) => {
-      if (payload?.conversationId === conversationId) handler.current();
+    const onNew = (payload: { conversationId: string; message?: MessageDto }) => {
+      if (payload?.conversationId === conversationId) handler.current(payload.message);
     };
 
     if (sock.connected) join();

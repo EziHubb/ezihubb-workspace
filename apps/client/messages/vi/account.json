@@ -314,7 +314,8 @@
       "close": "Đóng",
       "minimise": "Thu gọn",
       "viewAll": "Xem tất cả tin nhắn"
-    }
+    },
+    "messageSending": "Đang gửi…"
   },
   "wishlist": {
     "pageTitle": "Danh sách yêu thích",

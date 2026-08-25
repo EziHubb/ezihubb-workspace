@@ -20,6 +20,17 @@ export interface MessageDto {
    * enough on its own: the text was still in the JSON.
    */
   deletedAt?:      string | null;
+  /**
+   * The key the sender minted for this send attempt.
+   *
+   * Already the server's idempotency key; it is exposed because it is also the
+   * only thing that can match a message drawn optimistically to the row that
+   * came back for it. Ids cannot: the client has none until the server answers.
+   *
+   * Null for anything written before the field existed, and for messages the
+   * server created itself.
+   */
+  clientMessageId?: string | null;
 }
 
 export interface ConversationDto {

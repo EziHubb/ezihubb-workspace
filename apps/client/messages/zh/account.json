@@ -314,7 +314,8 @@
       "close": "关闭",
       "minimise": "最小化",
       "viewAll": "查看全部消息"
-    }
+    },
+    "messageSending": "发送中…"
   },
   "wishlist": {
     "pageTitle": "心愿单",
