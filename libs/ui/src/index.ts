@@ -17,4 +17,5 @@ export * from './lib/components/Skeleton/Skeleton';
 export * from './lib/components/Textarea/Textarea';
 export * from './lib/components/Toast/Toast';
 export * from './lib/components/Toggle/Toggle';
+export * from './lib/components/TypingIndicator/TypingIndicator';
 export * from './lib/components/Tooltip/Tooltip';

@@ -18,6 +18,15 @@ export const RT_CLIENT = {
   LEAVE_CONVERSATION: 'conversation:leave',
   /** Ask whether some users are online. Payload: { userIds: string[] } */
   PRESENCE_QUERY:     'presence:query',
+  /**
+   * "I am / am no longer composing in this thread."
+   * Payload: { conversationId, typing: boolean }
+   *
+   * Repeated while typing continues rather than sent once, because the only
+   * reliable way to clear the indicator on the other side is for it to stop
+   * hearing this — see TYPING_EXPIRY_MS.
+   */
+  TYPING:             'conversation:typing',
 } as const;
 
 /** Server → client. */
@@ -48,7 +57,56 @@ export const RT_SERVER = {
   PRESENCE_STATE:   'presence:state',
   /** A join was refused. Payload: { conversationId, reason } */
   JOIN_DENIED:      'conversation:denied',
+  /**
+   * The other party started or stopped composing.
+   * Payload: { conversationId, userId, typing: boolean }
+   *
+   * A different name from the client's TYPING even though the direction alone
+   * would disambiguate them: one socket is both a sender and a receiver, so
+   * sharing the string would make a client's own emit indistinguishable from
+   * an echo in a network log, which is exactly when you are reading one.
+   */
+  TYPING_UPDATE:    'conversation:typing:update',
 } as const;
+
+/**
+ * How often a client that is still typing re-announces itself.
+ *
+ * The indicator is cleared by silence rather than by a message, so this is
+ * really "how stale the other side's view is allowed to get while the truth
+ * has not changed". Every keystroke would be one packet per character for no
+ * added meaning.
+ */
+export const TYPING_HEARTBEAT_MS = 2_500;
+
+/**
+ * How long a receiver keeps showing "typing…" without hearing a refresh.
+ *
+ * This is the part that must not be skipped. An explicit "stopped" covers the
+ * polite exits — sent the message, blurred the box, closed the thread — but
+ * none of them run when the tab is killed, the laptop lid closes, or the
+ * connection drops mid-word. In every one of those the last thing the other
+ * side heard was "typing", and without an expiry it would display that
+ * forever. Comfortably above the heartbeat so an ordinary late packet does
+ * not blink the indicator off while the person is still typing.
+ */
+export const TYPING_EXPIRY_MS = 6_000;
+
+/**
+ * How long a client waits after the last keystroke before saying it stopped.
+ *
+ * Long enough to survive thinking mid-sentence, short enough that the other
+ * side is not told someone is typing when they have wandered off.
+ */
+export const TYPING_IDLE_MS = 3_000;
+
+/**
+ * Server-side floor between two accepted "typing: true" packets from one
+ * socket. Well under TYPING_HEARTBEAT_MS, so an honest client never trips it,
+ * while a hostile one cannot turn a keystroke into an unbounded room
+ * broadcast.
+ */
+export const TYPING_MIN_INTERVAL_MS = 500;
 
 /** One user's presence, as both the query answer and the push carry it. */
 export interface PresenceState {

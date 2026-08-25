@@ -1,12 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuthStore } from './store/auth.store';
 import { io, type Socket } from 'socket.io-client';
 import {
   REALTIME_NAMESPACE,
   RT_CLIENT,
   RT_SERVER,
+  TYPING_EXPIRY_MS,
+  TYPING_HEARTBEAT_MS,
+  TYPING_IDLE_MS,
   type PresenceState,
 } from '@ezihubb/constants';
 
@@ -320,4 +323,126 @@ export function presenceLabel(p: PresenceState | undefined): string {
   return days < 7
     ? `Last seen ${days}d ago`
     : `Last seen ${new Date(p.lastSeenAt).toLocaleDateString()}`;
+}
+
+/**
+ * The "…is typing" channel for one open thread, both directions.
+ *
+ * Returns what to render and the two calls the composer makes. The caller
+ * never touches the socket or the timing rules, so the client and the shop
+ * cannot drift into announcing themselves differently.
+ *
+ * Authorisation is not re-checked here: the server accepts a typing packet
+ * only from a socket already in the conversation room, and that room was
+ * joined through the permission check in useConversationMessages. A thread
+ * this user may not read is one whose room they are not in, so their typing
+ * goes nowhere.
+ */
+export function useTyping(conversationId: string | null): {
+  someoneTyping: boolean;
+  notifyTyping:  () => void;
+  notifyStopped: () => void;
+} {
+  const sock = useSocket();
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+
+  // ── Receiving ───────────────────────────────────────────────────────────
+  // One expiry timer per person. The server never sends a "still typing" that
+  // this does not restart, so a sender who vanishes mid-word — closed tab,
+  // dropped connection, closed lid — stops the indicator by simply going
+  // quiet. Nothing else covers that case: every explicit stop needs the
+  // sender to still be there to send it.
+  const expiries = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  useEffect(() => {
+    if (!sock || !conversationId) return;
+
+    // Captured once instead of reaching through the ref on each use. The Map
+    // is created with the ref and never replaced, so the two are the same
+    // object — but the cleanup below reads it after the component may have
+    // moved on, and a local makes it plain which Map is being cleared.
+    const timers = expiries.current;
+
+    const forget = (userId: string) => {
+      const timer = timers.get(userId);
+      if (timer) clearTimeout(timer);
+      timers.delete(userId);
+      setTypingUsers((prev) => (prev.includes(userId) ? prev.filter((id) => id !== userId) : prev));
+    };
+
+    const onUpdate = (payload: { conversationId?: string; userId?: string; typing?: boolean }) => {
+      if (payload?.conversationId !== conversationId) return;
+      const userId = payload?.userId;
+      if (typeof userId !== 'string') return;
+
+      if (!payload.typing) { forget(userId); return; }
+
+      const running = timers.get(userId);
+      if (running) clearTimeout(running);
+      timers.set(userId, setTimeout(() => forget(userId), TYPING_EXPIRY_MS));
+      setTypingUsers((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
+    };
+
+    sock.on(RT_SERVER.TYPING_UPDATE, onUpdate);
+    return () => {
+      sock.off(RT_SERVER.TYPING_UPDATE, onUpdate);
+      // Switching threads must not carry the old thread's indicator across.
+      for (const timer of timers.values()) clearTimeout(timer);
+      timers.clear();
+      setTypingUsers([]);
+    };
+  }, [sock, conversationId]);
+
+  // ── Sending ─────────────────────────────────────────────────────────────
+  const lastSentAt = useRef(0);
+  const announced  = useRef(false);
+  const idleTimer  = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const emitTyping = useCallback(
+    (typing: boolean) => {
+      if (!sock || !conversationId) return;
+      sock.emit(RT_CLIENT.TYPING, { conversationId, typing });
+    },
+    [sock, conversationId],
+  );
+
+  const notifyStopped = useCallback(() => {
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    idleTimer.current = undefined;
+    if (!announced.current) return;
+    announced.current = false;
+    lastSentAt.current = 0;
+    emitTyping(false);
+  }, [emitTyping]);
+
+  /**
+   * Called on every keystroke, but emits at most once per heartbeat — a packet
+   * per character would say nothing the first one did not.
+   */
+  const notifyTyping = useCallback(() => {
+    const now = Date.now();
+    if (!announced.current || now - lastSentAt.current >= TYPING_HEARTBEAT_MS) {
+      announced.current  = true;
+      lastSentAt.current = now;
+      emitTyping(true);
+    }
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    idleTimer.current = setTimeout(notifyStopped, TYPING_IDLE_MS);
+  }, [emitTyping, notifyStopped]);
+
+  // Leaving the thread while mid-word is the common case, not an edge one:
+  // people navigate away from a half-written message all the time. `emitTyping`
+  // is rebuilt when conversationId changes, so this cleanup still holds the
+  // previous thread's id and stops typing in the thread actually left.
+  useEffect(() => {
+    return () => {
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+      if (announced.current) {
+        announced.current = false;
+        emitTyping(false);
+      }
+    };
+  }, [emitTyping]);
+
+  return { someoneTyping: typingUsers.length > 0, notifyTyping, notifyStopped };
 }

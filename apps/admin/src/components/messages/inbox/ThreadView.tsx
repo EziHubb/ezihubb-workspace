@@ -10,6 +10,8 @@ import { LinkPreviewCard, useLinkPreview } from './LinkPreviewCard';
 import type { AttachedProduct, ConversationDetail, ThreadMessage } from './types';
 import { buyerNameOf } from './types';
 import { firstLinkIn, isOnlyLink } from '@ezihubb/utils';
+import { TypingIndicator } from '@ezihubb/ui';
+import { useTyping } from '../../../lib/realtime';
 
 /**
  * One conversation, oldest message first.
@@ -227,6 +229,7 @@ export function ThreadView({
   messages, hasMoreOlder, loadingOlder, onLoadOlder,
 }: Props) {
   const [draft, setDraft] = useState('');
+  const { someoneTyping, notifyTyping, notifyStopped } = useTyping(conversation.id);
   const [attachments, setAttachments] = useState<{ name: string; url: string }[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [uploading, setUploading]     = useState(false);
@@ -347,6 +350,10 @@ export function ThreadView({
     if ((!body && attachments.length === 0) || sending) return;
     // Cleared only after the send resolves, so a failure leaves the text in
     // the box to try again rather than losing what was typed.
+    // Before awaiting the send, not after: the buyer should stop seeing
+    // "typing" the moment the message is on its way, not once the round trip
+    // has come back.
+    notifyStopped();
     await onSend(body, attachments.map((a) => a.url));
     setDraft('');
     setAttachments([]);
@@ -406,6 +413,10 @@ export function ThreadView({
             </div>
           </section>
         ))}
+
+        {/* Sits at the foot of the list, in the spot the reply will occupy, so
+            the thread does not jump when the message actually lands. */}
+        {someoneTyping && <TypingIndicator label={buyerName} className="px-1 pt-1" />}
       </div>
 
       <div className="border-t border-border px-6 py-4">
@@ -413,7 +424,8 @@ export function ThreadView({
         <textarea
           id="reply"
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => { setDraft(e.target.value); notifyTyping(); }}
+          onBlur={notifyStopped}
           onKeyDown={(e) => {
             // Enter sends, Shift+Enter makes a new line — the convention every
             // messaging tool uses, so muscle memory works.

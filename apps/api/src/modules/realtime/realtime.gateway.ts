@@ -17,6 +17,7 @@ import {
   REALTIME_NAMESPACE,
   RT_CLIENT,
   RT_SERVER,
+  TYPING_MIN_INTERVAL_MS,
 } from '@ezihubb/constants';
 import { Role } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -194,6 +195,78 @@ export class RealtimeGateway
     if (typeof body?.conversationId === 'string') {
       await socket.leave(this.room(body.conversationId));
     }
+  }
+
+  /**
+   * Relays "someone is composing" to the rest of the thread.
+   *
+   * Nothing is persisted and nothing is read: typing is worth exactly as much
+   * as the moment it describes, so a row written for it would be stale before
+   * the transaction closed.
+   */
+  @SubscribeMessage(RT_CLIENT.TYPING)
+  onTyping(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody() body: { conversationId?: string; typing?: boolean },
+  ): void {
+    const user = socket.data['user'] as SocketUser | undefined;
+    if (!user) return;
+
+    const conversationId = body?.conversationId;
+    if (typeof conversationId !== 'string') return;
+
+    // Authorised by room membership rather than another mayRead(). Being in
+    // the room IS the record that this socket passed mayRead when it joined,
+    // so asking the database again would put a query on the keystroke path to
+    // re-learn something already decided — and this handler runs far more
+    // often than the join that gated it.
+    if (!socket.rooms.has(this.room(conversationId))) return;
+
+    const typing = body?.typing === true;
+    if (!this.allowTyping(socket, conversationId, typing)) return;
+
+    // `.except` the sender's own per-user room, not merely the sending socket.
+    // socket.to() omits just this one connection, so the same person with the
+    // thread open in a second tab would sit and watch themselves type.
+    socket
+      .to(this.room(conversationId))
+      .except(`user:${user.userId}`)
+      .emit(RT_SERVER.TYPING_UPDATE, { conversationId, userId: user.userId, typing });
+  }
+
+  /**
+   * Rate-limits one socket's typing packets.
+   *
+   * Starts are throttled to TYPING_MIN_INTERVAL_MS. Stops are not throttled by
+   * time — a stop dropped for being too soon after a start would leave the
+   * other side showing "typing…" until the expiry, which happens for real
+   * every time someone types one character and immediately hits send. Instead
+   * a stop is only accepted from a socket this server currently believes is
+   * typing in that thread, which bounds stops by the starts that precede them
+   * without ever delaying a genuine one.
+   */
+  private allowTyping(socket: Socket, conversationId: string, typing: boolean): boolean {
+    const activeIn = socket.data['typingIn'] as string | undefined;
+
+    if (!typing) {
+      if (activeIn !== conversationId) return false;
+      socket.data['typingIn'] = undefined;
+      return true;
+    }
+
+    const now  = Date.now();
+    const last = socket.data['typingAt'] as number | undefined;
+    // The floor applies within one thread, not across a switch. Someone who
+    // moves to another conversation and types straight away would otherwise
+    // have that first packet eaten, and the client — which believes it has
+    // announced itself — would not say so again until the next heartbeat,
+    // leaving the other side with no indicator for seconds.
+    const sameThread = activeIn === conversationId;
+    if (sameThread && last !== undefined && now - last < TYPING_MIN_INTERVAL_MS) return false;
+
+    socket.data['typingAt'] = now;
+    socket.data['typingIn'] = conversationId;
+    return true;
   }
 
   @SubscribeMessage(RT_CLIENT.PRESENCE_QUERY)

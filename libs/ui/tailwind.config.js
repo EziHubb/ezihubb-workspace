@@ -103,12 +103,21 @@ module.exports = {
           '0%':   { opacity: '0', transform: 'translateY(4px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        // One dot of the typing indicator. The rest of the cycle is spent at
+        // the resting position so that three dots sharing this animation on
+        // staggered delays read as a wave travelling left to right, rather
+        // than as three dots bobbing more or less together.
+        'typing-dot': {
+          '0%, 60%, 100%': { transform: 'translateY(0)',     opacity: '0.4' },
+          '30%':           { transform: 'translateY(-4px)',  opacity: '1'   },
+        },
       },
       animation: {
         shimmer:          'shimmer 1.5s infinite linear',
         'slide-up':       'slide-up 0.3s ease-out',
         'fade-in':        'fade-in 0.15s ease-out',
         'slide-in-right': 'slide-in-right 0.25s ease-out',
+        'typing-dot':     'typing-dot 1.2s infinite ease-in-out',
       },
     },
   },
