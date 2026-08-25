@@ -31,25 +31,75 @@ export function StickyHeader({ children }: { children: React.ReactNode }) {
   const [animate, setAnimate] = useState(true);
   const boxRef = useRef<HTMLDivElement>(null);
 
-  // Publish the header's real height, or 0 while it is hidden, so sticky
-  // elements below can offset by what is actually there rather than by a
-  // constant that was wrong on desktop and wronger once this started hiding.
+  // Publish where the header's bottom edge actually is, so sticky elements
+  // below can offset by what is on screen rather than by a constant that was
+  // wrong on desktop and wronger once this started hiding.
   //
-  // A ResizeObserver rather than a one-off measurement: the header grows and
-  // shrinks with the campaign banner and at the mobile breakpoint.
+  // The measurement is the visible bottom edge, not the height, and it is
+  // sampled every frame while the slide is running. Publishing the final
+  // height the moment `hidden` flipped made the offset a step change against a
+  // 300ms animation, and the two were plainly out of step: scrolling back up,
+  // the filter bar dropped its full height instantly and left a band of bare
+  // page at the top for the header to arrive into a third of a second later.
+  // Scrolling down it did the reverse and slid up underneath the header.
+  //
+  // getBoundingClientRect().bottom is exactly "how much room is taken at the
+  // top" and, unlike the height, it is correct mid-slide: 0 when parked above
+  // the viewport, the full height when in place, and every value between while
+  // it moves. The bar below therefore tracks the header frame for frame with
+  // no transition of its own to keep in sync.
+  //
+  // A ResizeObserver too: the header grows and shrinks with the campaign
+  // banner and at the mobile breakpoint.
   useEffect(() => {
     const el = boxRef.current;
     if (!el) return;
 
+    let raf = 0;
+    let last = -1;
+
     const publish = () => {
-      const h = hidden ? 0 : el.getBoundingClientRect().height;
-      document.documentElement.style.setProperty(HEADER_OFFSET_VAR, `${Math.round(h)}px`);
+      // Never negative: guards the case where a future layout lets the sticky
+      // container's own box scroll away.
+      const bottom = Math.round(Math.max(0, el.getBoundingClientRect().bottom));
+      // Only on a real change — each write invalidates style for every element
+      // reading the variable, and most frames of a settled header are identical.
+      if (bottom === last) return;
+      last = bottom;
+      document.documentElement.style.setProperty(HEADER_OFFSET_VAR, `${bottom}px`);
+    };
+
+    const follow = () => {
+      publish();
+      raf = requestAnimationFrame(follow);
+    };
+
+    const stopFollowing = (e?: TransitionEvent) => {
+      // Only this element's own transform, not a transition bubbling up from
+      // something inside the header.
+      if (e && (e.target !== el || e.propertyName !== 'transform')) return;
+      cancelAnimationFrame(raf);
+      raf = 0;
+      publish();
     };
 
     publish();
+    raf = requestAnimationFrame(follow);
+    // Sampling stops when the slide does. The timeout is the backstop for the
+    // cases where no transitionend ever arrives — reduced motion, or a tab
+    // backgrounded mid-slide.
+    const backstop = setTimeout(() => stopFollowing(), 500);
+    el.addEventListener('transitionend', stopFollowing);
+
     const ro = new ResizeObserver(publish);
     ro.observe(el);
-    return () => ro.disconnect();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(backstop);
+      el.removeEventListener('transitionend', stopFollowing);
+      ro.disconnect();
+    };
   }, [hidden]);
 
   useEffect(() => {
