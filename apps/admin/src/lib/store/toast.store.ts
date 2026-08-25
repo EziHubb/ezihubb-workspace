@@ -68,14 +68,18 @@ function addToast(type: ToastType, message: string, options: ToastOptions = {}):
   const duration = options.duration ?? DEFAULT_DURATION[type];
 
   // max 3 toasts — drop oldest first
+  // Options are spread, not listed field by field. Listing them meant every
+  // new option had to be remembered here too — and TypeScript cannot catch the
+  // omission, because ToastItem's extra fields are all optional, so leaving one
+  // out is perfectly valid to the compiler and silently invisible at runtime.
+  // The avatar added for message toasts was dropped exactly this way.
   _toasts = [..._toasts.slice(-2), {
+    ...options,
     id,
     type,
     message,
-    description: options.description,
-    action:      options.action,
     duration,
-    createdAt:   Date.now(),
+    createdAt: Date.now(),
   }];
 
   notify();
