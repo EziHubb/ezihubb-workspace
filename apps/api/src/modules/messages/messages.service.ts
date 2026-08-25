@@ -435,7 +435,19 @@ export class MessagesService {
   async createConversation(userId: string | null, dto: CreateConversationDto) {
     const { orderId, subject, guestEmail, guestName, body, ..._ } = dto;
 
-    // Resolve storeId from the order's storeOrders (single-store orders only)
+    /**
+     * Which shop, from the order if there is one and from the caller if not.
+     *
+     * The order is preferred because it is the stronger claim — it is a fact
+     * about a purchase rather than something the browser said. The fallback is
+     * what "Message seller" on a product page needs: it has a shop and no
+     * order, and without it every such message landed on a conversation with
+     * no store, which no shop's inbox can see.
+     *
+     * Verified to exist before it is used. An id that names nothing would sail
+     * past the foreign key as `undefined` and recreate the same orphan this is
+     * here to prevent.
+     */
     let storeId: string | undefined;
     if (orderId) {
       const storeOrders = await this.prisma.storeOrder.findMany({
@@ -444,6 +456,16 @@ export class MessagesService {
         take:   2,
       });
       if (storeOrders.length === 1) storeId = storeOrders[0].storeId;
+    }
+    if (!storeId && dto.storeId) {
+      const store = await this.prisma.store.findUnique({
+        where:  { id: dto.storeId },
+        select: { id: true },
+      });
+      if (!store) {
+        throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Shop not found' });
+      }
+      storeId = store.id;
     }
 
     /**

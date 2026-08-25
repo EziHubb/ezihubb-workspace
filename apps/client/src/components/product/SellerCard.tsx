@@ -190,7 +190,11 @@ export function SellerCard({ product, storeSummary = null }: SellerCardProps) {
       <MessageShopModal
         isOpen={isMessageOpen}
         onClose={() => setIsMessageOpen(false)}
-        context={{ productName: product.name }}
+        // storeId, not just the product name: the name only shapes the
+        // subject line, while this is what tells the API which shop the
+        // message is for. Without it the thread was created with no store and
+        // never appeared in any seller's inbox.
+        context={{ productName: product.name, storeId: product.store?.id }}
       />
     </section>
   );

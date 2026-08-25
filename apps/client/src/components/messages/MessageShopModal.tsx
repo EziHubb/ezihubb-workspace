@@ -17,6 +17,16 @@ interface Props {
     orderId?:      string;
     orderNumber?:  string;
     productName?:  string;
+    /**
+     * The shop being written to, when no order names one.
+     *
+     * Without it the API had nothing to key the thread on: the conversation
+     * was created with a null store, which the shop's own inbox filters out
+     * entirely — so the message reached nobody — and started a fresh thread
+     * every time, because the one-thread-per-buyer index only binds rows that
+     * have a store.
+     */
+    storeId?:      string;
   };
 }
 
@@ -49,6 +59,7 @@ export function MessageShopModal({ isOpen, onClose, context }: Props) {
   const onSubmit = async (data: FormValues) => {
     await apiClient.post<ConversationDto>(API_ROUTES.MESSAGES.CONVERSATIONS, {
       orderId:    context?.orderId,
+      storeId:    context?.storeId,
       subject:    data.subject || undefined,
       body:       data.message,
       guestEmail: user ? undefined : data.guestEmail || undefined,
