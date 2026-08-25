@@ -306,6 +306,14 @@
       "OFF_PLATFORM": "诱导在 EziHubb 之外付款",
       "INAPPROPRIATE": "不当内容",
       "OTHER": "其他"
+    },
+    "dock": {
+      "open": "消息",
+      "title": "消息",
+      "empty": "暂无对话",
+      "close": "关闭",
+      "minimise": "最小化",
+      "viewAll": "查看全部消息"
     }
   },
   "wishlist": {

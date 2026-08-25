@@ -306,6 +306,14 @@
       "OFF_PLATFORM": "Rủ thanh toán ngoài EziHubb",
       "INAPPROPRIATE": "Nội dung không phù hợp",
       "OTHER": "Lý do khác"
+    },
+    "dock": {
+      "open": "Tin nhắn",
+      "title": "Tin nhắn",
+      "empty": "Chưa có cuộc trò chuyện nào",
+      "close": "Đóng",
+      "minimise": "Thu gọn",
+      "viewAll": "Xem tất cả tin nhắn"
     }
   },
   "wishlist": {

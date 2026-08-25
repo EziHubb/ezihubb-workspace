@@ -12,6 +12,7 @@ import { ReactQueryProvider } from '../../components/providers/ReactQueryProvide
 import { NextAuthProvider } from '../../components/providers/NextAuthProvider';
 import { ToastContainer } from '../../components/ui/ToastContainer';
 import { InboxToasts } from '../../components/messages/InboxToasts';
+import { ChatDock } from '../../components/messages/ChatDock';
 import { WebVitals } from '../../components/providers/WebVitals';
 import { CookieConsentBanner } from '../../components/analytics/CookieConsentBanner';
 import { MetaPixel } from '../../components/analytics/MetaPixel';
@@ -181,6 +182,9 @@ export default async function LocaleLayout({
             {/* Announces a shop reply on any page. Renders nothing, and opens
                 no socket, for a visitor who is not signed in. */}
             <InboxToasts />
+            {/* Floating conversation dock. Renders nothing for a signed-out
+                visitor, and nothing on the inbox page itself. */}
+            <ChatDock />
             {/* Core Web Vitals reporting — logs in dev, sends to analytics in prod */}
             <WebVitals />
             <CookieConsentBanner />

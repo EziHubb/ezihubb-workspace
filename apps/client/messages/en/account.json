@@ -306,6 +306,14 @@
       "OFF_PLATFORM": "Asking to pay outside EziHubb",
       "INAPPROPRIATE": "Inappropriate content",
       "OTHER": "Something else"
+    },
+    "dock": {
+      "open": "Messages",
+      "title": "Messages",
+      "empty": "No conversations yet",
+      "close": "Close",
+      "minimise": "Minimise",
+      "viewAll": "View all messages"
     }
   },
   "wishlist": {
