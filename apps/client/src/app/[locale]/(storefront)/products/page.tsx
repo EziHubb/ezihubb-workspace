@@ -1,3 +1,4 @@
+import { categoryGiftTitle } from '@ezihubb/utils';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { SearchPageClient } from '../search/SearchPageClient';
@@ -33,13 +34,16 @@ export async function generateMetadata({
 
   const seasonLabel = season ? SEASON_LABELS[season] : null;
 
+  // No "| EziHubb" here: the root layout's metadata template is
+  // `%s | ${siteName}` and appends it already. Spelling it out again is what
+  // produced "All Personalized Gifts | EziHubb | EziHubb" in Google's results.
   const title = q
-    ? `"${q}" Products | EziHubb`
+    ? `"${q}" Products`
     : seasonLabel
-      ? `${seasonLabel} Personalized Gifts | EziHubb`
+      ? `${seasonLabel} Personalized Gifts`
       : category
-        ? `${category} Gifts | EziHubb`
-        : 'All Personalized Gifts | EziHubb';
+        ? categoryGiftTitle(category)
+        : 'All Personalized Gifts';
 
   const description = season && SEASON_DESC[season]
     ? SEASON_DESC[season]

@@ -201,7 +201,7 @@
     "steps": {
       "browse": {
         "title": "Browse & Choose a Product",
-        "desc": "Explore our catalog of 120+ personalized products — from custom mugs and canvas prints to hoodies, ornaments, and more. Filter by occasion, recipient, or category to find the perfect match.",
+        "desc": "Explore our catalog of personalized products — from custom mugs and canvas prints to hoodies, ornaments, and more. Filter by occasion, recipient, or category to find the perfect match.",
         "tip": "Use the \"Occasions\" menu to find gifts for specific events like birthdays or anniversaries."
       },
       "personalize": {

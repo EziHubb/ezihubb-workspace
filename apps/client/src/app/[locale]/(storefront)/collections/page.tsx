@@ -19,9 +19,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   return {
-    title:       locale === 'vi'
-      ? 'Bộ Sưu Tập | EziHubb'
-      : 'Collections | EziHubb',
+    // No "| EziHubb" — the root layout's title template appends it, and
+    // saying it here produced "Collections | EziHubb | EziHubb".
+    title:       locale === 'vi' ? 'Bộ Sưu Tập' : 'Collections',
     description: 'Explore our curated gift collections — seasonal, occasion-based, and themed.',
     // Without this the page inherited the layout's buildAlternates('/'),
     // declaring itself a duplicate of the locale homepage — while the sitemap

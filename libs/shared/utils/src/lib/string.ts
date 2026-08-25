@@ -55,3 +55,30 @@ export function isBlank(val: string | null | undefined): boolean {
 export function padStart(val: string | number, length: number, fill = '0'): string {
   return String(val).padStart(length, fill);
 }
+
+/**
+ * A category slug as the noun phrase a page title should use.
+ *
+ * Slugs arrive from a query string, so a title built by interpolating one
+ * directly read "gifts Gifts | EziHubb": lower-cased, and saying the same word
+ * twice because the caller appended "Gifts" of its own. Returning the finished
+ * phrase keeps that decision in one place — three call sites were each about
+ * to make it, and a helper that returned only the label would still have let
+ * "gifts" become "Gifts Gifts".
+ */
+export function categoryGiftTitle(slug: string): string {
+  const words = slug
+    .replace(/[-_]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase());
+
+  if (!words.length) return 'Gifts';
+  // Already ends in the noun we would append, so append nothing.
+  if (/^gifts?$/i.test(words[words.length - 1])) {
+    words[words.length - 1] = 'Gifts';
+    return words.join(' ');
+  }
+  return `${words.join(' ')} Gifts`;
+}
