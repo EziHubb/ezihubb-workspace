@@ -168,7 +168,7 @@ export function SellerCard({ product, storeSummary = null }: SellerCardProps) {
               className="flex items-center gap-1.5 border border-border rounded-full px-3 py-1.5 text-sm text-secondary hover:bg-[#F3F4F6] transition-colors"
             >
               <HandCoins className="w-4 h-4" />
-              Make an offer
+              {t('makeOffer')}
             </button>
           )}
         </div>

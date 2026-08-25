@@ -40,7 +40,7 @@ export function MakeOfferModal({ productId, productName, basePrice, onClose }: M
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-[420px]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="font-bold text-secondary flex items-center gap-2">
-            <HandCoins className="w-4 h-4 text-primary" /> Make an offer
+            <HandCoins className="w-4 h-4 text-primary" /> {t('makeOffer')}
           </h2>
           <button type="button" onClick={onClose} className="p-1.5 rounded-full hover:bg-[#F3F4F6] text-muted transition-colors">
             <X className="w-4 h-4" />
@@ -49,15 +49,15 @@ export function MakeOfferModal({ productId, productName, basePrice, onClose }: M
 
         {sent ? (
           <div className="px-6 py-8 text-center">
-            <p className="text-sm text-secondary">Your offer has been sent to the seller.</p>
-            <p className="text-xs text-muted mt-1">You'll hear back within 48 hours — check your email.</p>
-            <button type="button" onClick={onClose} className="mt-4 px-5 py-2 bg-primary text-white text-sm font-semibold rounded-full">Done</button>
+            <p className="text-sm text-secondary">{t('offerSent')}</p>
+            <p className="text-xs text-muted mt-1">{t('offerFollowUp')}</p>
+            <button type="button" onClick={onClose} className="mt-4 px-5 py-2 bg-primary text-white text-sm font-semibold rounded-full">{t('done')}</button>
           </div>
         ) : (
           <div className="px-6 py-5 space-y-4">
-            <p className="text-sm text-muted">{productName} — listed at ${basePrice.toFixed(2)}</p>
+            <p className="text-sm text-muted">{t('listedAt', { name: productName, price: `${basePrice.toFixed(2)}` })}</p>
             <div>
-              <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Your offer</label>
+              <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">{t('yourOffer')}</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
                 <input
@@ -76,7 +76,7 @@ export function MakeOfferModal({ productId, productName, basePrice, onClose }: M
               disabled={submitting || !amount}
               className="w-full py-2.5 bg-primary hover:bg-primary/90 text-white text-sm font-bold rounded-full transition-colors disabled:opacity-50"
             >
-              {submitting ? 'Sending…' : 'Send offer'}
+              {submitting ? t('sendingOffer') : t('sendOffer')}
             </button>
           </div>
         )}

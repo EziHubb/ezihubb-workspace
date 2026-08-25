@@ -79,7 +79,13 @@
     "responseFrom": "来自 EziHubb 的回复",
     "markedAsHelpful": "已标记为有用",
     "helpfulQuestion": "有帮助吗？",
-    "ratingLabels": { "1": "差", "2": "一般", "3": "好", "4": "很好", "5": "非常好" },
+    "ratingLabels": {
+      "1": "差",
+      "2": "一般",
+      "3": "好",
+      "4": "很好",
+      "5": "非常好"
+    },
     "pleaseSelectRating": "请选择星级评分。",
     "reviewTooShort": "评价内容至少需要10个字符。",
     "pleaseSelectOrder": "请为该评价选择订单。",
@@ -169,7 +175,15 @@
     "sales": "（已售{count}件）",
     "onPlatform": "{years, plural, =0 {新卖家} other {在 EziHubb # 年}}",
     "followShop": "关注店铺",
-    "messageSeller": "联系卖家"
+    "messageSeller": "联系卖家",
+    "makeOffer": "出价",
+    "offerSent": "您的出价已发送给卖家。",
+    "offerFollowUp": "您将在 48 小时内收到回复 — 请查看邮箱。",
+    "done": "完成",
+    "listedAt": "{name} — 标价 {price}",
+    "yourOffer": "您的出价",
+    "sendingOffer": "发送中…",
+    "sendOffer": "发送出价"
   },
   "shippingReturns": {
     "productionTime": "制作时间：{days} 个工作日",

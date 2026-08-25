@@ -79,7 +79,13 @@
     "responseFrom": "Response from EziHubb",
     "markedAsHelpful": "Marked as helpful",
     "helpfulQuestion": "Helpful?",
-    "ratingLabels": { "1": "Poor", "2": "Fair", "3": "Good", "4": "Very good", "5": "Excellent" },
+    "ratingLabels": {
+      "1": "Poor",
+      "2": "Fair",
+      "3": "Good",
+      "4": "Very good",
+      "5": "Excellent"
+    },
     "pleaseSelectRating": "Please select a star rating.",
     "reviewTooShort": "Review text must be at least 10 characters.",
     "pleaseSelectOrder": "Please select the order for this review.",
@@ -169,7 +175,15 @@
     "sales": "({count} sales)",
     "onPlatform": "{years, plural, =0 {New seller} one {# year on EziHubb} other {# years on EziHubb}}",
     "followShop": "Follow shop",
-    "messageSeller": "Message seller"
+    "messageSeller": "Message seller",
+    "makeOffer": "Make an offer",
+    "offerSent": "Your offer has been sent to the seller.",
+    "offerFollowUp": "You'll hear back within 48 hours — check your email.",
+    "done": "Done",
+    "listedAt": "{name} — listed at {price}",
+    "yourOffer": "Your offer",
+    "sendingOffer": "Sending…",
+    "sendOffer": "Send offer"
   },
   "shippingReturns": {
     "productionTime": "Production time: {days} business days",

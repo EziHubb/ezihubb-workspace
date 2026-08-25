@@ -79,7 +79,13 @@
     "responseFrom": "Phản hồi từ EziHubb",
     "markedAsHelpful": "Đã đánh dấu hữu ích",
     "helpfulQuestion": "Hữu ích?",
-    "ratingLabels": { "1": "Kém", "2": "Tạm được", "3": "Tốt", "4": "Rất tốt", "5": "Xuất sắc" },
+    "ratingLabels": {
+      "1": "Kém",
+      "2": "Tạm được",
+      "3": "Tốt",
+      "4": "Rất tốt",
+      "5": "Xuất sắc"
+    },
     "pleaseSelectRating": "Vui lòng chọn số sao đánh giá.",
     "reviewTooShort": "Nội dung đánh giá phải có ít nhất 10 ký tự.",
     "pleaseSelectOrder": "Vui lòng chọn đơn hàng cho đánh giá này.",
@@ -169,7 +175,15 @@
     "sales": "({count} lượt bán)",
     "onPlatform": "{years, plural, =0 {Người bán mới} other {# năm trên EziHubb}}",
     "followShop": "Theo dõi shop",
-    "messageSeller": "Nhắn tin cho người bán"
+    "messageSeller": "Nhắn tin cho người bán",
+    "makeOffer": "Đề nghị giá",
+    "offerSent": "Đề nghị của bạn đã được gửi tới người bán.",
+    "offerFollowUp": "Bạn sẽ nhận được phản hồi trong vòng 48 giờ — hãy kiểm tra email.",
+    "done": "Xong",
+    "listedAt": "{name} — đang niêm yết {price}",
+    "yourOffer": "Giá bạn đề nghị",
+    "sendingOffer": "Đang gửi…",
+    "sendOffer": "Gửi đề nghị"
   },
   "shippingReturns": {
     "productionTime": "Thời gian sản xuất: {days} ngày làm việc",
