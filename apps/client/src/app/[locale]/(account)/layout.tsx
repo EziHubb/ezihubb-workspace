@@ -35,12 +35,13 @@ export default async function AccountLayout({
   return (
     <>
       <Navbar menuData={menuData} />
-      {/* Each step matches what the navbar actually occupies at that width.
-          112px is the tall row (72px) plus the category strip (h-10), but that
-          strip is `hidden lg:flex` — so between md and lg it was reserving
-          40px for a row that is not on screen, and the page began with a band
-          of nothing. */}
-      <main className="pt-16 md:pt-[72px] lg:pt-[112px] min-h-screen">
+      {/* No top padding, because the navbar above is not fixed.
+          It is a plain `w-full` element in normal flow, so it already occupies
+          its own 112px — and `pt-[112px]` here was reserving that height a
+          SECOND time. Every account page opened with 224px of nothing.
+          If the navbar is ever made fixed or sticky, this padding has to come
+          back with it. */}
+      <main className="min-h-screen">
         <AccountLayoutClient>{children}</AccountLayoutClient>
       </main>
       <div className="pb-16 md:pb-0">
