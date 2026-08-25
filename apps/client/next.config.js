@@ -51,7 +51,10 @@ const nextConfig = {
     optimizePackageImports: [
       '@ezihubb/ui', 'lucide-react', 'recharts', '@tanstack/react-table', 'date-fns',
     ],
-    turbopackUseSystemTlsCerts: true,
+    // `turbopackUseSystemTlsCerts` lived here until Next 16.2 removed it.
+    // It was a dev-time convenience for Turbopack behind a TLS-intercepting
+    // proxy and never affected a production build; the replacement, if it is
+    // ever needed again, is the standard NODE_EXTRA_CA_CERTS env var.
   },
 };
 
