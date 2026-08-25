@@ -59,7 +59,6 @@
       "cancelErrorToast": "Failed to cancel order"
     }
   },
-
   "profile": {
     "title": "Profile & Password",
     "sections": {
@@ -106,7 +105,6 @@
       "settingPassword": "Setting…"
     }
   },
-
   "addresses": {
     "title": "Address Book",
     "addAddress": "Add Address",
@@ -155,7 +153,6 @@
       "failedToSave": "Failed to save address"
     }
   },
-
   "loyalty": {
     "title": "Loyalty Points",
     "subtitle": "Earn 10 points for every $1 spent. Redeem 100 points = $1 off your next order.",
@@ -185,7 +182,6 @@
       }
     }
   },
-
   "coins": {
     "title": "Coin Balance",
     "subtitle": "Earn coins on every purchase and redeem them for discounts.",
@@ -214,7 +210,6 @@
     "balanceLabel": "Balance After:",
     "coinsUnit": "coins"
   },
-
   "vip": {
     "title": "VIP Status",
     "subtitle": "Your exclusive member benefits based on rolling 90-day spend.",
@@ -234,7 +229,6 @@
     "signInSub": "Unlock exclusive benefits as you shop.",
     "signInBtn": "Sign In"
   },
-
   "sidebar": {
     "aria": "Account navigation",
     "myOrders": "My Orders",
@@ -245,7 +239,6 @@
     "myOffers": "My Offers",
     "signOut": "Sign Out"
   },
-
   "offers": {
     "title": "My Offers",
     "empty": "You haven't made any offers yet.",
@@ -266,7 +259,6 @@
       "COUNTERED": "Countered"
     }
   },
-
   "messages": {
     "title": "Messages",
     "noMessages": "No messages yet",
@@ -296,9 +288,26 @@
       "pending": "Pending",
       "resolved": "Resolved",
       "spam": "Spam"
+    },
+    "threadActions": "Conversation actions",
+    "reportConversation": "Report conversation",
+    "deleteConversation": "Delete conversation",
+    "conversationRemoved": "Conversation removed from your list",
+    "reportSent": "Thanks — someone will look at this",
+    "reportReason": "Reason",
+    "reportNotePlaceholder": "Anything else we should know? (optional)",
+    "sendReport": "Send report",
+    "sending": "Sending…",
+    "cancel": "Cancel",
+    "reportReasons": {
+      "SPAM": "Spam",
+      "HARASSMENT": "Harassment or abuse",
+      "SCAM": "Scam or fraud",
+      "OFF_PLATFORM": "Asking to pay outside EziHubb",
+      "INAPPROPRIATE": "Inappropriate content",
+      "OTHER": "Something else"
     }
   },
-
   "wishlist": {
     "pageTitle": "Wishlist",
     "removeAria": "Remove from wishlist",

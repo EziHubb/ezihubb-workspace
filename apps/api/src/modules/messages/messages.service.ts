@@ -7,7 +7,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { ModerationService } from '../moderation/moderation.service';
-import { Prisma, ConversationStatus, SenderType } from '@prisma/client';
+import { Prisma, ConversationStatus, ConversationReportReason, SenderType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services/storage.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
@@ -566,11 +566,15 @@ export class MessagesService {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: {
-        user:  { select: { email: true, firstName: true } },
+        // avatarUrl and logoUrl are what the recipient's toast shows in place
+        // of a generic glyph. An explicit select drops every field it does not
+        // name, which is exactly what this compiled against before they were
+        // added — and the compiler is the only thing that says so.
+        user:  { select: { email: true, firstName: true, avatarUrl: true } },
         order: { select: { orderNumber: true } },
         // ownerId is who a buyer's message is addressed to, and name is what
         // the buyer's own toast says it came from.
-        store: { select: { name: true, ownerId: true } },
+        store: { select: { name: true, ownerId: true, logoUrl: true } },
       },
     });
     if (!conversation || (storeId !== undefined && conversation.storeId !== storeId)) {
@@ -628,7 +632,15 @@ export class MessagesService {
             // writing it unconditionally is cheaper than reading it to decide.
             // Without this the Sent folder and the reply arrow on each inbox
             // row would only ever reflect the migration's backfill.
-            : { unreadByCustomer: { increment: 1 }, hasSellerReplied: true }),
+            : {
+                unreadByCustomer: { increment: 1 },
+                hasSellerReplied: true,
+                // A thread the buyer had cleared from their list comes back
+                // when there is something new in it. Otherwise "delete" would
+                // quietly mute the shop for good, and a buyer waiting on an
+                // answer would never learn it had arrived.
+                hiddenByCustomerAt: null,
+              }),
         },
       }),
     ]);
@@ -720,15 +732,98 @@ export class MessagesService {
         // Trimmed here rather than in the client: this crosses the wire to
         // every open tab, and a 5,000-character body would too.
         preview: dto.body.slice(0, 120),
+        // The sender's own picture, so the toast can show who wrote rather
+        // than a generic info glyph. Null for a guest, who has no account and
+        // therefore no avatar — the toast falls back to their initials.
+        avatarUrl: isCustomer
+          ? (conversation.user?.avatarUrl ?? null)
+          : (conversation.store?.logoUrl ?? null),
       });
     }
 
     return message;
   }
 
+  /**
+   * Takes a thread off the buyer's own list.
+   *
+   * Not a delete, and the distinction is the whole design. The shop is the
+   * other party to this conversation and keeps its copy — the same reason
+   * unsending a message blanks it rather than dropping the row. A buyer who
+   * could destroy the record could also destroy the evidence in a dispute
+   * they started.
+   *
+   * The flag clears itself when the shop writes again, so this behaves the way
+   * people expect from a messenger: it clears the list until there is
+   * something new to say, rather than muting the shop for good.
+   */
+  async hideForBuyer(conversationId: string, userId: string | null) {
+    const conversation = await this.prisma.conversation.findUnique({
+      where:  { id: conversationId },
+      select: { id: true, userId: true },
+    });
+    if (!conversation) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
+    }
+    this.assertBuyerAccess(conversation, userId);
+
+    await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data:  { hiddenByCustomerAt: new Date() },
+    });
+    return { success: true };
+  }
+
+  /**
+   * A buyer saying this conversation is a problem.
+   *
+   * One open report per person per thread. Enforced here rather than by a
+   * unique index, because the index would also refuse a legitimate SECOND
+   * report months later about something new — the thing being limited is
+   * piling on while the first is still unread, not ever reporting twice.
+   *
+   * Reporting does not hide the thread. Those are separate decisions and a
+   * buyer may well want to keep reading while someone looks at it.
+   */
+  async reportConversation(
+    conversationId: string,
+    userId: string | null,
+    reason: ConversationReportReason,
+    note?: string,
+  ) {
+    const conversation = await this.prisma.conversation.findUnique({
+      where:  { id: conversationId },
+      select: { id: true, userId: true },
+    });
+    if (!conversation) {
+      throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
+    }
+    this.assertBuyerAccess(conversation, userId);
+
+    const open = await this.prisma.conversationReport.findFirst({
+      where:  { conversationId, reportedById: userId, resolvedAt: null },
+      select: { id: true },
+    });
+    if (open) {
+      throw new BadRequestException({
+        code:    'ERR_ALREADY_REPORTED',
+        message: 'You have already reported this conversation. Someone is looking at it.',
+      });
+    }
+
+    const report = await this.prisma.conversationReport.create({
+      data: { conversationId, reportedById: userId, reason, note: note?.trim() || null },
+      select: { id: true, createdAt: true },
+    });
+    this.logger.warn(`Conversation ${conversationId} reported (${reason}) — report ${report.id}`);
+    return { success: true, reportId: report.id };
+  }
+
   async getMyConversations(userId: string) {
     return this.prisma.conversation.findMany({
-      where: { userId },
+      // A hidden thread stays hidden until the shop writes again, which is
+      // what clears the flag in sendMessage.
+      where: { userId, hiddenByCustomerAt: null },
       orderBy: { lastMessageAt: 'desc' },
       include: {
         order: { select: { id: true, orderNumber: true } },

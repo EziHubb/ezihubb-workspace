@@ -14,6 +14,7 @@ import { MessageAttachments } from '../../../../../components/messages/MessageAt
 import { LinkPreviewCard, useLinkPreview } from '../../../../../components/messages/LinkPreviewCard';
 import { firstLinkIn, isOnlyLink } from '@ezihubb/utils';
 import { MessageShopModal } from '../../../../../components/messages/MessageShopModal';
+import { ThreadMenu } from '../../../../../components/messages/ThreadMenu';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -685,21 +686,13 @@ function MessageThread({
             )}
           </div>
         </Link>
-        {/* Its own anchor, outside the shop's.
-            It used to sit inside that link, which made the order number part
-            of the shop's target — clicking the thing that looks most like a
-            link went somewhere else entirely. There is one thread per shop
-            now, so this is the order the conversation was last about rather
-            than what the thread IS about; the buyer's own order list is where
-            the rest of them are. */}
-        {conv?.order && (
-          <Link
-            href={`/${locale}/account/orders/${conv.order.orderNumber}`}
-            className="hidden sm:block shrink-0 font-mono text-xs text-muted hover:text-primary hover:underline"
-          >
-            {t('orderNumber', { number: conv.order.orderNumber })}
-          </Link>
-        )}
+        {/* The order number used to sit here. It named ONE order on a thread
+            that now spans every order this buyer has with the shop, so it was
+            answering a question nobody asked — while the two things a person
+            actually wants from a thread, reporting it and clearing it away,
+            had nowhere to live. */}
+        <ThreadMenu conversationId={conversationId} onHidden={onBack} />
+
         <ConversationStatusBadge status={conv?.status} />
       </div>
 

@@ -59,7 +59,6 @@
       "cancelErrorToast": "Không thể hủy đơn hàng"
     }
   },
-
   "profile": {
     "title": "Hồ sơ & Mật khẩu",
     "sections": {
@@ -106,7 +105,6 @@
       "settingPassword": "Đang đặt…"
     }
   },
-
   "addresses": {
     "title": "Sổ địa chỉ",
     "addAddress": "Thêm địa chỉ",
@@ -155,7 +153,6 @@
       "failedToSave": "Không thể lưu địa chỉ"
     }
   },
-
   "loyalty": {
     "title": "Điểm tích lũy",
     "subtitle": "Kiếm 10 điểm cho mỗi $1 chi tiêu. Đổi 100 điểm = giảm $1 cho đơn hàng tiếp theo.",
@@ -185,7 +182,6 @@
       }
     }
   },
-
   "coins": {
     "title": "Số dư xu",
     "subtitle": "Kiếm xu với mỗi đơn hàng và đổi lấy giảm giá.",
@@ -214,7 +210,6 @@
     "balanceLabel": "Số dư sau:",
     "coinsUnit": "xu"
   },
-
   "vip": {
     "title": "VIP",
     "subtitle": "Quyền lợi thành viên độc quyền dựa trên chi tiêu 90 ngày gần nhất.",
@@ -234,7 +229,6 @@
     "signInSub": "Mở khóa quyền lợi độc quyền khi mua sắm.",
     "signInBtn": "Đăng nhập"
   },
-
   "sidebar": {
     "aria": "Điều hướng tài khoản",
     "myOrders": "Đơn hàng của tôi",
@@ -245,7 +239,6 @@
     "myOffers": "Đề nghị của tôi",
     "signOut": "Đăng xuất"
   },
-
   "offers": {
     "title": "Đề nghị của tôi",
     "empty": "Bạn chưa gửi đề nghị nào.",
@@ -266,7 +259,6 @@
       "COUNTERED": "Đã đề nghị lại"
     }
   },
-
   "messages": {
     "title": "Tin nhắn",
     "noMessages": "Chưa có tin nhắn nào",
@@ -296,9 +288,26 @@
       "pending": "Đang chờ",
       "resolved": "Đã giải quyết",
       "spam": "Spam"
+    },
+    "threadActions": "Tuỳ chọn hội thoại",
+    "reportConversation": "Báo cáo hội thoại",
+    "deleteConversation": "Xoá hội thoại",
+    "conversationRemoved": "Đã xoá hội thoại khỏi danh sách của bạn",
+    "reportSent": "Cảm ơn — chúng tôi sẽ xem xét",
+    "reportReason": "Lý do",
+    "reportNotePlaceholder": "Còn điều gì chúng tôi nên biết? (không bắt buộc)",
+    "sendReport": "Gửi báo cáo",
+    "sending": "Đang gửi…",
+    "cancel": "Huỷ",
+    "reportReasons": {
+      "SPAM": "Spam",
+      "HARASSMENT": "Quấy rối hoặc lăng mạ",
+      "SCAM": "Lừa đảo",
+      "OFF_PLATFORM": "Rủ thanh toán ngoài EziHubb",
+      "INAPPROPRIATE": "Nội dung không phù hợp",
+      "OTHER": "Lý do khác"
     }
   },
-
   "wishlist": {
     "pageTitle": "Danh sách yêu thích",
     "removeAria": "Xóa khỏi danh sách yêu thích",

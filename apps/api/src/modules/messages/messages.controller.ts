@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -20,6 +21,7 @@ import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { LinkPreviewQueryDto } from './dto/link-preview-query.dto';
 import { MessagePageQueryDto } from './dto/message-page-query.dto';
+import { ReportConversationDto } from './dto/report-conversation.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { MAX_MESSAGE_ATTACHMENTS, MESSAGE_ATTACHMENT_MAX_BYTES, MessagesService } from './messages.service';
 import { LinkPreviewService } from './link-preview.service';
@@ -130,6 +132,34 @@ export class MessagesController {
     @CurrentUser() user: JwtPayload | undefined,
   ) {
     return this.messagesService.sendMessage(id, SenderType.CUSTOMER, user?.sub ?? null, dto);
+  }
+
+  /**
+   * Removes a thread from the buyer's own list.
+   *
+   * DELETE reads as destroy, and this deliberately is not one — the shop keeps
+   * its copy. The verb still fits what the CALLER is doing, which is removing
+   * it from their list; the service comment carries the rest.
+   */
+  @Delete('conversations/:id')
+  @UseGuards(OptionalAuthGuard)
+  @ApiOperation({ summary: "Remove a conversation from the buyer's list" })
+  async hideConversation(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload | undefined,
+  ) {
+    return this.messagesService.hideForBuyer(id, user?.sub ?? null);
+  }
+
+  @Post('conversations/:id/report')
+  @UseGuards(OptionalAuthGuard)
+  @ApiOperation({ summary: 'Report a conversation for review' })
+  async reportConversation(
+    @Param('id') id: string,
+    @Body() dto: ReportConversationDto,
+    @CurrentUser() user: JwtPayload | undefined,
+  ) {
+    return this.messagesService.reportConversation(id, user?.sub ?? null, dto.reason, dto.note);
   }
 
   @Post('conversations/:id/read')

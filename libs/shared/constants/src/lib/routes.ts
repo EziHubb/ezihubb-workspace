@@ -143,6 +143,8 @@ export const API_ROUTES = {
     CONVERSATION_MESSAGES: (id: string) => `/messages/conversations/${id}/messages`,
     CONVERSATION_ATTACHMENTS:   (id: string) => `/messages/conversations/${id}/attachments`,
     CONVERSATION_LINK_PREVIEW:  (id: string) => `/messages/conversations/${id}/link-preview`,
+    CONVERSATION_HIDE:          (id: string) => `/messages/conversations/${id}`,
+    CONVERSATION_REPORT:        (id: string) => `/messages/conversations/${id}/report`,
     CONVERSATION_READ:     (id: string) => `/messages/conversations/${id}/read`,
   },
 

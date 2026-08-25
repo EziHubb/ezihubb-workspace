@@ -59,7 +59,6 @@
       "cancelErrorToast": "取消订单失败"
     }
   },
-
   "profile": {
     "title": "个人资料与密码",
     "sections": {
@@ -106,7 +105,6 @@
       "settingPassword": "设置中…"
     }
   },
-
   "addresses": {
     "title": "地址簿",
     "addAddress": "添加地址",
@@ -155,7 +153,6 @@
       "failedToSave": "地址保存失败"
     }
   },
-
   "loyalty": {
     "title": "积分",
     "subtitle": "每消费 $1 获得 10 积分。兑换 100 积分 = 下单立减 $1。",
@@ -185,7 +182,6 @@
       }
     }
   },
-
   "coins": {
     "title": "金币余额",
     "subtitle": "每次购物赚取金币，并兑换折扣。",
@@ -214,7 +210,6 @@
     "balanceLabel": "操作后余额：",
     "coinsUnit": "枚"
   },
-
   "vip": {
     "title": "VIP 状态",
     "subtitle": "基于近90天消费的专属会员权益。",
@@ -234,7 +229,6 @@
     "signInSub": "购物即可解锁专属权益。",
     "signInBtn": "登录"
   },
-
   "sidebar": {
     "aria": "账户导航",
     "myOrders": "我的订单",
@@ -245,7 +239,6 @@
     "myOffers": "我的还价",
     "signOut": "退出登录"
   },
-
   "offers": {
     "title": "我的还价",
     "empty": "您还没有发出任何还价。",
@@ -266,7 +259,6 @@
       "COUNTERED": "已还价"
     }
   },
-
   "messages": {
     "title": "消息",
     "noMessages": "暂无消息",
@@ -296,9 +288,26 @@
       "pending": "待处理",
       "resolved": "已解决",
       "spam": "垃圾信息"
+    },
+    "threadActions": "会话操作",
+    "reportConversation": "举报会话",
+    "deleteConversation": "删除会话",
+    "conversationRemoved": "已从您的列表中移除该会话",
+    "reportSent": "感谢反馈——我们会尽快查看",
+    "reportReason": "原因",
+    "reportNotePlaceholder": "还有什么需要我们了解的？（选填）",
+    "sendReport": "提交举报",
+    "sending": "提交中…",
+    "cancel": "取消",
+    "reportReasons": {
+      "SPAM": "垃圾信息",
+      "HARASSMENT": "骚扰或辱骂",
+      "SCAM": "诈骗",
+      "OFF_PLATFORM": "诱导在 EziHubb 之外付款",
+      "INAPPROPRIATE": "不当内容",
+      "OTHER": "其他"
     }
   },
-
   "wishlist": {
     "pageTitle": "心愿单",
     "removeAria": "从心愿单中移除",

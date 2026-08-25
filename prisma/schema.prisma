@@ -663,17 +663,17 @@ model StoreFollow {
 }
 
 model StoreOrder {
-  id                       String                  @id @default(cuid())
+  id                       String      @id @default(cuid())
   orderId                  String
-  order                    Order                   @relation(fields: [orderId], references: [id])
+  order                    Order       @relation(fields: [orderId], references: [id])
   storeId                  String
-  store                    Store                   @relation(fields: [storeId], references: [id])
-  status                   OrderStatus             @default(PENDING_PAYMENT)
-  subtotal                 Decimal                 @db.Decimal(10, 2)
-  discountAmount           Decimal                 @default(0) @db.Decimal(10, 2)
-  shippingCost             Decimal                 @default(0) @db.Decimal(10, 2)
-  platformFee              Decimal                 @db.Decimal(10, 2)
-  sellerEarnings           Decimal                 @db.Decimal(10, 2)
+  store                    Store       @relation(fields: [storeId], references: [id])
+  status                   OrderStatus @default(PENDING_PAYMENT)
+  subtotal                 Decimal     @db.Decimal(10, 2)
+  discountAmount           Decimal     @default(0) @db.Decimal(10, 2)
+  shippingCost             Decimal     @default(0) @db.Decimal(10, 2)
+  platformFee              Decimal     @db.Decimal(10, 2)
+  sellerEarnings           Decimal     @db.Decimal(10, 2)
   trackingNumber           String?
   trackingUrl              String?
   carrier                  String?
@@ -685,7 +685,7 @@ model StoreOrder {
   // real. No buyer-facing upgrade-selection UI exists yet at checkout, so
   // this stays false until that flow is built; the field/filter itself is
   // no longer decorative.
-  deliveryUpgradeRequested Boolean                 @default(false)
+  deliveryUpgradeRequested Boolean     @default(false)
 
   /// Where the seller is up to in their own workflow. Nullable because a
   /// StoreOrder exists from the moment checkout starts, before it is paid for
@@ -701,13 +701,13 @@ model StoreOrder {
   /// rather than folding into "overdue".
   shipByDate DateTime?
 
-  payoutId                 String?
-  payout                   SellerPayout?           @relation(fields: [payoutId], references: [id])
-  items                    OrderItem[]
-  fulfillments             StoreOrderFulfillment[]
-  ledgerEntries            SellerLedgerEntry[]
-  createdAt                DateTime                @default(now())
-  updatedAt                DateTime                @updatedAt
+  payoutId      String?
+  payout        SellerPayout?           @relation(fields: [payoutId], references: [id])
+  items         OrderItem[]
+  fulfillments  StoreOrderFulfillment[]
+  ledgerEntries SellerLedgerEntry[]
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
 
   // The buyer's `ezihubb_visitor` cookie at checkout time — lets Offsite Ads
   // cross-reference an external-referrer click logged on a DIFFERENT store's
@@ -1126,7 +1126,7 @@ model Product {
   wishlistItems       WishlistItem[]
   cartItems           CartItem[]
   orderItems          OrderItem[]
-  messageAttachments  Message[]           @relation("MessageAttachedProduct")
+  messageAttachments  Message[]                   @relation("MessageAttachedProduct")
   customizationDrafts CustomizationDraft[]
   reviews             Review[]
   questions           ProductQuestion[]
@@ -1991,21 +1991,22 @@ model Conversation {
   /// messages on every inbox render.
   hasSellerReplied Boolean @default(false)
 
-  labels ConversationLabelLink[]
+  /// When the BUYER removed this thread from their own list.
+  ///
+  /// Not a delete. The shop is the other party to the conversation and keeps
+  /// its copy — the same reason unsending a message blanks it rather than
+  /// erasing the row. Cleared when the shop writes again, so "delete" behaves
+  /// the way every messenger behaves: it clears the list until there is
+  /// something new to say.
+  hiddenByCustomerAt DateTime?
+
+  labels  ConversationLabelLink[]
+  reports ConversationReport[]
 
   messages Message[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([orderId])
-  @@index([status])
-  @@index([lastMessageAt])
-  @@index([storeId])
-  // The inbox is always "this shop, newest first, in this folder".
-  @@index([storeId, status, lastMessageAt])
-  @@index([storeId, isStarred])
 
   /// ONE conversation per (shop, buyer). Enforced by two PARTIAL unique
   /// indexes that Prisma cannot express and therefore does not know about:
@@ -2016,6 +2017,15 @@ model Conversation {
   /// "prisma migrate deploy" does not check drift, so this holds in production
   /// — but "prisma migrate dev" will offer to drop them as unknown objects,
   /// and accepting that would silently restore a thread per order.
+
+  @@index([userId])
+  @@index([orderId])
+  @@index([status])
+  @@index([lastMessageAt])
+  @@index([storeId])
+  // The inbox is always "this shop, newest first, in this folder".
+  @@index([storeId, status, lastMessageAt])
+  @@index([storeId, isStarred])
 }
 
 /// A label a shop invents for its own inbox.
@@ -2727,4 +2737,54 @@ model RelatedTermFeedback {
 
   @@unique([sourceTerm, relatedTerm])
   @@index([sourceTerm])
+}
+
+/// Why a buyer reported a conversation.
+///
+/// OFF_PLATFORM is here because it is the one a marketplace cares about most
+/// and the one a generic "inappropriate" would hide: a seller steering the
+/// deal to bank transfer takes the order, the fee and the buyer protection
+/// with it.
+enum ConversationReportReason {
+  SPAM
+  HARASSMENT
+  SCAM
+  OFF_PLATFORM
+  INAPPROPRIATE
+  OTHER
+}
+
+/// A person saying a conversation is a problem.
+///
+/// Deliberately NOT folded into ModerationLog. That model records what an
+/// automated check concluded — confidence, provider, model version, cost per
+/// call — and a human report has none of those. Writing one in would mean
+/// inventing the numbers, which both poisons the moderation analytics and
+/// makes "a buyer complained" indistinguishable from "the classifier scored
+/// this zero".
+model ConversationReport {
+  id String @id @default(cuid())
+
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  /// Null for a guest, who has no account. The conversation still identifies
+  /// them, so the report is never anonymous to a reviewer.
+  reportedById String?
+
+  reason ConversationReportReason
+  note   String?                  @db.Text
+
+  /// Unresolved while null. A second report from the same person is refused
+  /// while one is still open — see reportConversation — rather than blocked
+  /// by a unique index, which would also refuse a legitimate later report
+  /// about something new.
+  resolvedAt DateTime?
+  reviewedBy String?
+  adminNotes String?   @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId])
+  @@index([resolvedAt, createdAt])
 }
