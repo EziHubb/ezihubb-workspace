@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Archive, Loader2, MailOpen, Mail, Search, ShieldAlert, Star, Tag, Trash2, Undo2, X,
@@ -12,7 +12,7 @@ import { useConversationStream, usePresence, presenceLabel } from '../../../lib/
 import { useDialog } from '../../../contexts/DialogContext';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { ConversationList } from '../../../components/messages/inbox/ConversationList';
-import { ThreadView } from '../../../components/messages/inbox/ThreadView';
+import { ThreadView, type PendingReply } from '../../../components/messages/inbox/ThreadView';
 import { BuyerPanel } from '../../../components/messages/inbox/BuyerPanel';
 import { AutoReplyMenu } from '../../../components/messages/inbox/AutoReplyMenu';
 import {
@@ -264,6 +264,11 @@ export default function MessagesPage() {
   const refetchLists = () => {
     qc.invalidateQueries({ queryKey: ['messages-list'] });
     qc.invalidateQueries({ queryKey: ['message-folders'] });
+    // The sidebar's unread count is derived from the same thing these lists
+    // are, but it is a separate query owned by AdminSidebar, so refreshing
+    // these left it stale. Marking a thread read cleared the folder counts and
+    // left "Messages 1" sitting in the nav beside the message being read.
+    qc.invalidateQueries({ queryKey: ['sidebar-nav-badges'] });
   };
 
   /**
@@ -312,21 +317,51 @@ export default function MessagesPage() {
     onError: (e: Error) => dialog.alert(e.message),
   });
 
+  /**
+   * Replies drawn before the server has confirmed them.
+   *
+   * Sending cost two round trips before anything appeared — the POST, then a
+   * refetch of the thread to read back what had just been sent. Matched to the
+   * real row by clientMessageId, because there is no id until the server
+   * answers and that wait is the thing being removed.
+   */
+  const [pending, setPending] = useState<PendingReply[]>([]);
+
   const sendReply = useMutation({
-    mutationFn: ({ body, attachmentUrls }: { body: string; attachmentUrls: string[] }) =>
-      // A fresh key per press, reused by any retry of that same press, so a
-      // timed-out reply cannot land twice in the buyer's thread.
+    // The key is minted by the caller now, not in here: the optimistic bubble
+    // has to carry the same one to be matched against the row that comes back.
+    mutationFn: ({ body, attachmentUrls, clientMessageId }: PendingReply) =>
       api.post(API_ROUTES.ADMIN.CONVERSATION_MESSAGES(activeId!), {
         body,
         attachmentUrls,
-        clientMessageId: newClientMessageId(),
+        clientMessageId,
       }),
+    onMutate: (vars) => { setPending((prev) => [...prev, vars]); },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QK.thread(activeId) });
       refetchLists();
     },
-    onError: (e: Error) => dialog.alert(e.message),
+    onError: (e: Error, vars) => {
+      // The bubble goes; drawing early must not leave the seller believing a
+      // failed reply was sent.
+      setPending((prev) => prev.filter((x) => x.clientMessageId !== vars.clientMessageId));
+      dialog.alert(e.message);
+    },
   });
+
+  /** Drop optimistic bubbles once the real row is on screen. Returning the
+   *  previous array unchanged when there is nothing to drop stops this looping
+   *  on its own output. */
+  const confirmedKeys = useMemo(
+    () => new Set(threadMessages.map((m) => m.clientMessageId).filter(Boolean) as string[]),
+    [threadMessages],
+  );
+  useEffect(() => {
+    setPending((prev) => {
+      const next = prev.filter((x) => !confirmedKeys.has(x.clientMessageId));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [confirmedKeys]);
 
   /**
    * Uploaded before the message that carries them, against the conversation
@@ -405,6 +440,13 @@ export default function MessagesPage() {
   // two subtly different kinds of message. One extra fetch on a message that
   // has already arrived is cheap.
   useConversationStream(activeId, () => {
+    // Deliberately NOT merging the pushed row here, unlike the storefront.
+    // The gateway emits the message as it was written, with no relations, and
+    // this view's ThreadMessage needs attachedProduct — merging the bare row
+    // would put a message on screen with its product card missing until a
+    // refetch replaced it. The seller's own reply is already instant via the
+    // optimistic bubble; a buyer's message costs one fetch, which is the
+    // honest price until the gateway includes the relation.
     qc.invalidateQueries({ queryKey: QK.thread(activeId) });
     refetchLists();
   });
@@ -415,17 +457,35 @@ export default function MessagesPage() {
   const presence    = usePresence(buyerUserId ? [buyerUserId] : []);
   const buyerPresence = buyerUserId ? presence.get(buyerUserId) : undefined;
 
-  // Opening a thread marks it read; the badge must follow immediately or the
-  // seller sees an unread count for a message they are looking at.
-  useEffect(() => {
+  /**
+   * Reaching the newest message marks the thread read.
+   *
+   * This used to fire on open, which said the seller had seen a message the
+   * instant they clicked the row — even if they went straight up into history,
+   * and even for messages that arrived while they were reading further back.
+   *
+   * ThreadView reports every scroll that ends at the foot, so the guard is
+   * here: one request per (thread, newest message) and no more. Without it a
+   * reader resting at the bottom would post a read on every scroll event.
+   */
+  const lastRead = useRef<string | null>(null);
+
+  const markSeen = useCallback(() => {
     if (!activeId) return;
+    const newest = threadMessages[threadMessages.length - 1]?.id ?? '';
+    const key    = `${activeId}:${newest}`;
+    if (lastRead.current === key) return;
+    lastRead.current = key;
+
     api.post(API_ROUTES.ADMIN.CONVERSATION_READ(activeId), {})
       .then(() => refetchLists())
-      .catch(() => undefined);
-    // refetchLists is stable enough for this effect's purpose; re-running on
-    // every render would fire a read request per render.
+      // Cleared on failure so the next scroll to the foot tries again rather
+      // than leaving the thread unread for good.
+      .catch(() => { lastRead.current = null; });
+    // refetchLists is recreated every render and depending on it would rebuild
+    // this callback each time, which re-runs the listener effect in ThreadView.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeId]);
+  }, [activeId, threadMessages]);
 
   const toggleSelect = (id: string, on: boolean) =>
     setSelected((prev) => {
@@ -631,6 +691,8 @@ export default function MessagesPage() {
                   </div>
 
                   <ThreadView
+                    onSeenLatest={markSeen}
+                    pending={pending}
                     conversation={thread}
                     messages={threadMessages}
                     hasMoreOlder={cursor?.hasMore ?? false}
@@ -638,7 +700,12 @@ export default function MessagesPage() {
                     onLoadOlder={loadOlder}
                     sending={sendReply.isPending}
                     onSend={async (body, attachmentUrls) => {
-                      await sendReply.mutateAsync({ body, attachmentUrls });
+                      // Minted here so the optimistic bubble and the request
+                      // carry the same key, and a retry of this press still
+                      // lands once.
+                      await sendReply.mutateAsync({
+                        body, attachmentUrls, clientMessageId: newClientMessageId(),
+                      });
                     }}
                     onUpload={uploadAttachments}
                     // Only where this viewer may write to the shop. A

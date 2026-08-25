@@ -222,14 +222,63 @@ interface Props {
   hasMoreOlder: boolean;
   loadingOlder: boolean;
   onLoadOlder:  () => Promise<void>;
+  /**
+   * The newest message is on screen — the reader is at the foot of the thread.
+   *
+   * Fires on every scroll that ends up there, and again whenever a new message
+   * arrives while the reader is already there. Deliberately chatty: the caller
+   * knows which message it last acted on and can tell a repeat from news,
+   * which this component cannot.
+   */
+  onSeenLatest?: () => void;
+  /** Replies drawn ahead of the server's confirmation. */
+  pending?: PendingReply[];
+}
+
+/** A reply on screen that the server has not confirmed yet. */
+export interface PendingReply {
+  clientMessageId: string;
+  body:            string;
+  attachmentUrls:  string[];
 }
 
 export function ThreadView({
   conversation, sending, onSend, onUpload, onDeleteMessage,
-  messages, hasMoreOlder, loadingOlder, onLoadOlder,
+  messages, hasMoreOlder, loadingOlder, onLoadOlder, onSeenLatest, pending = [],
 }: Props) {
   const [draft, setDraft] = useState('');
   const { someoneTyping } = useTyping(conversation.id, draft, sending);
+
+  /**
+   * Report when the foot of the thread is actually on screen.
+   *
+   * Opening a thread used to be what marked it read, which claimed the seller
+   * had seen a message the moment the row was clicked — including when they
+   * immediately scrolled up into history, or when a new one arrived while they
+   * were reading further back. Reaching the newest message is the thing that
+   * means "read", so that is what gets reported.
+   *
+   * Re-runs on messages.length so a message arriving while the reader is
+   * already at the foot counts too, without them having to move.
+   */
+  useEffect(() => {
+    const pane = paneRef.current;
+    if (!pane || !onSeenLatest) return;
+
+    const check = () => {
+      // A few pixels of slack. A programmatic scroll to the bottom often lands
+      // a fraction short, and sub-pixel layout means an exact comparison is
+      // false as often as it is true — while a reader that close is plainly
+      // looking at the last message.
+      if (pane.scrollHeight - pane.scrollTop - pane.clientHeight <= 24) onSeenLatest();
+    };
+
+    // Once now, because opening a thread scrolls to the bottom on its own and
+    // that may already have happened by the time this runs.
+    check();
+    pane.addEventListener('scroll', check, { passive: true });
+    return () => pane.removeEventListener('scroll', check);
+  }, [onSeenLatest, messages.length]);
   const [attachments, setAttachments] = useState<{ name: string; url: string }[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [uploading, setUploading]     = useState(false);
@@ -348,11 +397,20 @@ export function ThreadView({
     const body = draft.trim();
     // Attachments alone are a message — a proof does not need a covering note.
     if ((!body && attachments.length === 0) || sending) return;
-    // Cleared only after the send resolves, so a failure leaves the text in
-    // the box to try again rather than losing what was typed.
-    await onSend(body, attachments.map((a) => a.url));
+    const urls = attachments.map((a) => a.url);
+    // Cleared before the request, not after. The reply is already on screen as
+    // a pending bubble by the time this returns, and a box that stayed full
+    // until the round trip finished was the whole reason replying felt slow.
+    // A failure restores it below.
     setDraft('');
     setAttachments([]);
+    try {
+      await onSend(body, urls);
+    } catch {
+      setDraft(body);
+      setAttachments(attachments);
+      return;
+    }
     /**
      * Land on what was just sent.
      *
@@ -410,6 +468,25 @@ export function ThreadView({
           </section>
         ))}
 
+        {/* Sent, not yet confirmed. Always the newest thing in the thread, so
+            it goes last; dimmed so "on your screen" stays distinguishable from
+            "delivered" — a bubble that looked identical would be a claim this
+            side cannot make until the server answers. */}
+        {pending.map((p) => (
+          <div key={p.clientMessageId} className="flex justify-end">
+            <div className="min-w-0 max-w-[80%] opacity-60">
+              {p.body && (
+                <div className="rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-sm text-white [overflow-wrap:anywhere]">
+                  {p.body}
+                </div>
+              )}
+              {p.attachmentUrls.length > 0 && (
+                <MessageAttachments urls={p.attachmentUrls} />
+              )}
+              <p className="mt-1 text-right text-xs text-muted">Sending…</p>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Deliberately outside the scrolling pane above. Inside it, the

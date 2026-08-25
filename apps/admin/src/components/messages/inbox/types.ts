@@ -82,6 +82,9 @@ export interface ThreadMessage {
   /** Set when the shop unsent it. `body` and `attachmentUrls` come back
    *  empty with it — the row keeps its text in the database, not in the API. */
   deletedAt:       string | null;
+  /** The key the sender minted, used to match an optimistic bubble to the row
+   *  that came back for it. Null for anything the server wrote itself. */
+  clientMessageId?: string | null;
 }
 
 export interface ConversationDetail extends ConversationRow {
