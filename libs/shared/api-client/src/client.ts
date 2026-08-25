@@ -226,9 +226,27 @@ async function apiRequest<T>(path: string, options: ApiClientOptions = {}): Prom
     });
   }
 
+  /**
+   * FormData goes out as itself, with no content-type of our choosing.
+   *
+   * This path did two separate fatal things to an upload. It set
+   * `application/json`, which destroys the multipart boundary — that token has
+   * to match the encoded body and only the runtime that serialises the body
+   * knows it. And then `JSON.stringify` turned the FormData object into the
+   * two-character string "{}", so the file never left the browser at all.
+   *
+   * The server's side of that is "No file was uploaded": multer finds no
+   * multipart body, the handler is called with an empty array, and the request
+   * otherwise looks perfect — right URL, valid auth, clean round trip.
+   *
+   * apiFetch above and the admin axios instance both already guard this, each
+   * with its own note. This was the third copy and the one nobody had fixed.
+   */
+  const isFormDataBody = typeof FormData !== 'undefined' && body instanceof FormData;
+
   const doFetch = (authToken?: string): Promise<Response> => {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...(isFormDataBody ? {} : { 'Content-Type': 'application/json' }),
       ...(authToken ? { Authorization: `Bearer ${authToken}` } : getAuthHeader()),
       ...getLocaleHeader(),
       ...(init.headers as Record<string, string>),
@@ -237,7 +255,9 @@ async function apiRequest<T>(path: string, options: ApiClientOptions = {}): Prom
       credentials: 'include',
       ...init,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: isFormDataBody
+        ? (body as FormData)
+        : body !== undefined ? JSON.stringify(body) : undefined,
     });
   };
 
