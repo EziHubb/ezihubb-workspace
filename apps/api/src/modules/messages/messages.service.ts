@@ -563,6 +563,25 @@ export class MessagesService {
     dto: SendMessageDto,
     storeId?: string,
   ) {
+    /**
+     * Say something, or attach something. One of the two.
+     *
+     * The DTO used to demand a non-empty body, which made a photo on its own
+     * an invalid message — while both composers offer exactly that. Checked
+     * here because it is the only place that sees the body and the
+     * attachments together; a per-field validator can only ever see one.
+     *
+     * Before the conversation is even read: nothing about this depends on
+     * which thread it is, and rejecting it names the actual problem instead of
+     * a bare "Validation failed".
+     */
+    if (!dto.body?.trim() && (dto.attachmentUrls?.length ?? 0) === 0) {
+      throw new BadRequestException({
+        code:    'ERR_EMPTY_MESSAGE',
+        message: 'Write a message or attach a file.',
+      });
+    }
+
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: {

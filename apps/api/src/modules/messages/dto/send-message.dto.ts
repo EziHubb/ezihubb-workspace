@@ -2,9 +2,22 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsArray, IsOptional, IsString, IsUrl, MaxLength, MinLength } from 'class-validator';
 
 export class SendMessageDto {
-  @ApiProperty()
+  /**
+   * May be empty when the message carries attachments.
+   *
+   * This had @MinLength(1), which rejected a message that was nothing but a
+   * photo — both composers offer exactly that and describe it as a message in
+   * their own comments, so the UI allowed what the API refused and the sender
+   * got "Validation failed" with nothing naming the field.
+   *
+   * The real rule is "say something OR attach something", which no per-field
+   * decorator can express: @ValidateIf would skip @IsString and @MaxLength
+   * along with @MinLength, leaving body unchecked whenever a file was
+   * attached. It is enforced in MessagesService.sendMessage instead, where
+   * both halves are in scope.
+   */
+  @ApiProperty({ required: false, description: 'Empty is allowed when attachmentUrls is not' })
   @IsString()
-  @MinLength(1)
   @MaxLength(5000)
   body: string;
 
