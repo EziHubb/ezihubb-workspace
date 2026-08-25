@@ -53,7 +53,32 @@ export default function middleware(req: NextRequest) {
   // state, creating a redirect loop.
   const response = intlMiddleware(req);
   applyAttributionCookies(response, req, ref, searchParams);
+  declareLocaleVary(response);
   return response;
+}
+
+/**
+ * Say out loud that the locale redirect depends on who is asking.
+ *
+ * `/pages/faq` does not have one destination. It sends an English reader to
+ * `/en/pages/faq`, a Vietnamese one to `/vi/...` and a Chinese one to
+ * `/zh/...`, chosen from Accept-Language and the NEXT_LOCALE cookie — and it
+ * said none of that. Any cache between us and the reader was therefore free to
+ * store one visitor's answer and hand it to the next, which is how a
+ * Vietnamese buyer ends up on the English site with no way back.
+ *
+ * Nothing is caching it today (Cloudflare reports DYNAMIC), so this is a fuse
+ * rather than a fire. It is also the reason the redirect stays a 307: a 308
+ * would tell Google and every browser that the mapping is permanent, and it
+ * is not — it is per-reader. "Page with redirect" in Search Console is the
+ * correct outcome for these URLs; the prefixed target is what gets indexed.
+ */
+function declareLocaleVary(response: NextResponse): void {
+  const existing = response.headers.get('Vary');
+  const needed = ['Accept-Language', 'Cookie'];
+  const have = new Set((existing ?? '').split(',').map((v) => v.trim().toLowerCase()).filter(Boolean));
+  const merged = [...(existing ? [existing] : []), ...needed.filter((h) => !have.has(h.toLowerCase()))];
+  if (merged.length) response.headers.set('Vary', merged.join(', '));
 }
 
 export const config = {

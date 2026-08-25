@@ -25,22 +25,82 @@ interface SlugItem {
   level?:     number;
 }
 
-async function fetchApi<T>(path: string): Promise<T[]> {
+/**
+ * The API answers in two shapes and this has to handle both.
+ *
+ * Unpaginated lists (categories, collections, tags) come back as
+ * `{ data: [...] }`. Paginated ones (products) come back as
+ * `{ data: { data: [...], pagination } }`, so `body.data` is an OBJECT — and
+ * the old `body.data ?? body` handed that object back as if it were the array.
+ */
+function unwrap<T>(body: unknown): { items: T[]; hasNext: boolean } {
+  const outer = (body as { data?: unknown })?.data ?? body;
+  if (Array.isArray(outer)) return { items: outer as T[], hasNext: false };
+
+  const inner = (outer as { data?: unknown; pagination?: { hasNext?: boolean } } | null);
+  if (Array.isArray(inner?.data)) {
+    return { items: inner.data as T[], hasNext: !!inner.pagination?.hasNext };
+  }
+  return { items: [], hasNext: false };
+}
+
+/**
+ * A failure here empties a whole section of the sitemap, so it says so.
+ *
+ * It used to swallow everything into `[]`. That is why nobody noticed the
+ * product fetch had been asking for `limit=500` against an API that rejects
+ * anything over 48: it 400'd on every build, returned no products, and the
+ * sitemap was served with a 200 and every product page missing from it.
+ */
+async function fetchPage<T>(path: string): Promise<{ items: T[]; hasNext: boolean }> {
+  const url = `${API_ORIGIN}/api/v1${path}`;
   try {
     // Next.js aborts an entire static route after 60s. A slow/unreachable
     // API (e.g. from a CI build runner) would otherwise hang past that
     // budget instead of hitting the fallback below — bound each request
-    // well under it so all 4 parallel fetches always resolve in time.
-    const res = await fetch(`${API_ORIGIN}/api/v1${path}`, {
+    // well under it so all fetches always resolve in time.
+    const res = await fetch(url, {
       next:   { revalidate: 3600 },
       signal: AbortSignal.timeout(10_000),
     });
-    if (!res.ok) return [];
-    const body = await res.json();
-    return (body.data ?? body ?? []) as T[];
-  } catch {
-    return [];
+    if (!res.ok) {
+      console.warn(`[sitemap] ${res.status} from ${path} — that section will be empty`);
+      return { items: [], hasNext: false };
+    }
+    return unwrap<T>(await res.json());
+  } catch (err) {
+    console.warn(`[sitemap] ${path} failed: ${String(err)} — that section will be empty`);
+    return { items: [], hasNext: false };
   }
+}
+
+async function fetchApi<T>(path: string): Promise<T[]> {
+  return (await fetchPage<T>(path)).items;
+}
+
+/** The API's own ceiling. Asking for more is a 400, not a smaller page. */
+const API_PAGE_LIMIT = 48;
+/** Sitemaps may hold 50,000 URLs; this is well under it and bounds the build. */
+const MAX_PRODUCT_PAGES = 40;
+
+/**
+ * Every active product, a page at a time.
+ *
+ * One request asking for all of them is what broke: the limit is capped at 48
+ * server-side, and over-asking fails the whole call rather than returning the
+ * first 48.
+ */
+async function fetchAllProducts(): Promise<ProductItem[]> {
+  const all: ProductItem[] = [];
+  for (let page = 1; page <= MAX_PRODUCT_PAGES; page++) {
+    const { items, hasNext } = await fetchPage<ProductItem>(
+      `${API_ROUTES.PRODUCTS.LIST}?fields=slug,updatedAt,images,name,shortDescription`
+      + `&limit=${API_PAGE_LIMIT}&page=${page}&isActive=true`,
+    );
+    all.push(...items);
+    if (!hasNext || !items.length) break;
+  }
+  return all;
 }
 
 // ── Sitemap ───────────────────────────────────────────────────────────────────
@@ -48,7 +108,7 @@ async function fetchApi<T>(path: string): Promise<T[]> {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // All fetches in parallel — individual failures yield empty arrays, never crash
   const [products, categories, collections, tags] = await Promise.all([
-    fetchApi<ProductItem>(`${API_ROUTES.PRODUCTS.LIST}?fields=slug,updatedAt,images,name,shortDescription&limit=500&isActive=true`),
+    fetchAllProducts(),
     fetchApi<SlugItem>(`${API_ROUTES.CATALOG.CATEGORIES}?isVisible=true&fields=slug,updatedAt,level`),
     fetchApi<SlugItem>(`${API_ROUTES.CATALOG.COLLECTIONS}?isActive=true&fields=slug,updatedAt`),
     fetchApi<SlugItem>(`${API_ROUTES.CATALOG.TAGS}?isFeatured=true&fields=slug`),
