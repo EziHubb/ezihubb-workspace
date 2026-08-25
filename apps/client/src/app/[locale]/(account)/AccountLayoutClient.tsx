@@ -63,7 +63,7 @@ export default function AccountLayoutClient({
 
   return (
     <ToastProvider dismissLabel={t('dismissNotification')}>
-      <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-6 md:py-8">
+      <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-4 md:py-6">
 
         {/* ── Mobile header bar ──────────────────────────────────────────── */}
         <div className="md:hidden flex items-center gap-3 mb-6">
@@ -84,7 +84,7 @@ export default function AccountLayoutClient({
         </div>
 
         {/* ── Main 2-col layout ──────────────────────────────────────────── */}
-        <div className="flex gap-8 items-start">
+        <div className="flex gap-6 items-start">
           {/* Desktop sidebar */}
           <div className="hidden md:block w-[260px] shrink-0">
             <AccountSidebar profile={profile} />

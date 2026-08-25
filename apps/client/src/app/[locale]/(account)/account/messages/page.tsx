@@ -708,7 +708,13 @@ function MessageThread({
           default min-height is its content, so without it this pane refuses to
           shrink, grows past the frame, and the page scrolls instead of the
           thread — which is what pushed the composer down below the footer. */}
-      <div ref={paneRef} className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
+      {/* A column with mt-auto on the message stack, so a short thread sits on
+          the composer instead of floating in the middle of an empty pane —
+          which is what every messaging app does and what the eye expects.
+          `justify-end` would do it too, but it breaks scrolling once the
+          thread is taller than the pane; mt-auto stops applying on its own the
+          moment the content fills the space. */}
+      <div ref={paneRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-4">
         {/* Explicit, not infinite scroll on reaching the top. Reaching the top
             is also what happens when someone flicks the pane hard, and paging
             on that turns an overshoot into a fetch nobody asked for. A button
@@ -726,21 +732,26 @@ function MessageThread({
           </div>
         )}
 
-        {isLoading ? (
-          <MessageSkeleton count={3} />
-        ) : (
-          messages.map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              conversationId={conversationId}
-              isOwn={msg.senderType === 'CUSTOMER'}
-              shopName={shopName}
-              shopLogoUrl={conv?.store?.logoUrl ?? null}
-            />
-          ))
-        )}
-        <div ref={bottomRef} />
+        {/* mt-auto lives here rather than on the pane: it pushes this stack to
+            the bottom while the "load earlier" button above stays put at the
+            top, which is the arrangement a reader expects. */}
+        <div className="mt-auto min-w-0 space-y-4">
+          {isLoading ? (
+            <MessageSkeleton count={3} />
+          ) : (
+            messages.map((msg) => (
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                conversationId={conversationId}
+                isOwn={msg.senderType === 'CUSTOMER'}
+                shopName={shopName}
+                shopLogoUrl={conv?.store?.logoUrl ?? null}
+              />
+            ))
+          )}
+          <div ref={bottomRef} />
+        </div>
       </div>
 
       {/* Input */}
@@ -908,7 +919,7 @@ export default function MessagesPage() {
     // above it on short threads. A viewport-relative height gives the panes
     // something to scroll inside, and the border makes the chat read as one
     // object instead of floating text on the page.
-    <div className="flex h-[calc(100vh-14rem)] min-h-[26rem] overflow-hidden rounded-card border border-border bg-surface">
+    <div className="flex h-[calc(100vh-11rem)] min-h-[30rem] overflow-hidden rounded-card border border-border bg-surface">
       {/* ── Conversation list ── */}
       <div className={[
         'w-full md:w-[320px] md:flex-shrink-0 border-r flex flex-col',
@@ -950,9 +961,17 @@ export default function MessagesPage() {
         )}
       </div>
 
-      {/* ── Message thread ── */}
+      {/* ── Message thread ──
+          min-w-0 is what keeps this column inside the frame, and it is not
+          optional. A flex item defaults to min-width:auto, which means it
+          refuses to shrink below its content's min-content width — and a link
+          preview card's title carries `truncate`, so its min-content width is
+          the WHOLE title. Without this the column grew past the frame and the
+          parent's overflow-hidden simply cut the conversation off at the right
+          edge: header, messages and composer all clipped. Truncation cannot
+          rescue a container nothing is constraining. */}
       <div className={[
-        'flex-1 flex flex-col',
+        'flex-1 min-w-0 flex flex-col',
         selectedId ? 'flex' : 'hidden md:flex',
       ].join(' ')}>
         {selectedId ? (

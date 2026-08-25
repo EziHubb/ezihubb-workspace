@@ -361,9 +361,17 @@ export function ThreadView({
     stickToBottom.current = true;
   };
 
+  /*
+   * min-w-0 for the same reason the storefront needs it: a flex item defaults
+   * to min-width:auto and refuses to shrink below its content's min-content
+   * width, and a link preview card's title carries `truncate` — so its
+   * min-content width is the WHOLE title. Without this the column grows past
+   * its frame and the conversation gets clipped at the right edge.
+   * Truncation cannot rescue a container nothing is constraining.
+   */
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div ref={paneRef} className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-5">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div ref={paneRef} className="min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto px-6 py-5">
         {/* Explicit, not infinite scroll on reaching the top. Reaching the top
             is also what a hard flick does, and paging on that turns an
             overshoot into a fetch nobody asked for. */}
