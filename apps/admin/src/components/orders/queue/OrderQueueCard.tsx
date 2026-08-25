@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { UpdateProgressMenu } from './UpdateProgressMenu';
 import type { ProgressStep, QueueOrder } from './types';
+import { CompleteOrderModal } from './CompleteOrderModal';
+import { OrderStatusBadge } from '../OrderStatusBadge';
 
 /**
  * One store order, as the seller works it.
@@ -16,6 +18,27 @@ import type { ProgressStep, QueueOrder } from './types';
  * right. The action rail sits outside both — it belongs to the order, not to
  * either half of it.
  */
+
+/**
+ * The left stripe per status.
+ *
+ * Deliberately the same colour family as OrderStatusBadge's chip, so the
+ * stripe and the label never disagree about what a colour means. Anything
+ * unmapped gets no stripe rather than a grey one — an unknown status should
+ * look unknown, not resolved.
+ */
+const STATUS_ACCENT: Record<string, string> = {
+  PENDING_PAYMENT:  'border-l-yellow-400',
+  CONFIRMED:        'border-l-blue-400',
+  IN_PRODUCTION:    'border-l-purple-400',
+  SHIPPED:          'border-l-cyan-400',
+  DELIVERED:        'border-l-teal-400',
+  COMPLETED:        'border-l-green-500',
+  CANCELLED:        'border-l-red-400',
+  REFUND_REQUESTED: 'border-l-orange-400',
+  REFUNDED:         'border-l-gray-400',
+  DISPUTED:         'border-l-red-500',
+};
 
 interface Props {
   order:     QueueOrder;
@@ -27,6 +50,9 @@ interface Props {
   /** The same panel, opened straight onto the buyer conversation. */
   onOpenMessages: () => void;
   onMoveToStep:   (stepId: string) => void;
+  /** Fired once an order has been dispatched, so the queue can refetch. The
+   *  modal talks to the API itself, so this is the only signal it can send. */
+  onCompleted:    () => void;
   onEditShipBy:   () => void;
   onToggleGift:   () => void;
   onCancel:       () => void;
@@ -69,11 +95,13 @@ function variantLines(snapshot: Record<string, unknown> | null): [string, string
 
 export function OrderQueueCard({
   order, steps, selected, onSelect, onOpen, onOpenMessages,
-  onMoveToStep, onEditShipBy, onToggleGift, onCancel, onRefund, onPrint,
+  onMoveToStep,
+  onCompleted, onEditShipBy, onToggleGift, onCancel, onRefund, onPrint,
 }: Props) {
   const [showShipTo, setShowShipTo] = useState(true);
   const [menuOpen,   setMenuOpen]   = useState(false);
   const [progressOpen, setProgressOpen] = useState(false);
+  const [completeOpen, setCompleteOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const overdue = order.shipByDate ? new Date(order.shipByDate) < new Date(new Date().toDateString()) : false;
@@ -93,7 +121,10 @@ export function OrderQueueCard({
   };
 
   return (
-    <div className="flex gap-4 border-b border-border px-5 py-5 last:border-b-0">
+    // The stripe is for peripheral vision and the badge below is for certainty.
+    // The queue rendered every order identically, so telling a cancelled order
+    // from one waiting to ship meant opening each in turn.
+    <div className={`flex gap-4 border-b border-l-4 border-border px-5 py-5 last:border-b-0 ${STATUS_ACCENT[order.status] ?? 'border-l-transparent'}`}>
       <input
         type="checkbox"
         checked={selected}
@@ -128,6 +159,10 @@ export function OrderQueueCard({
             #{order.orderNumber}
           </button>
           <span className="font-medium text-secondary">{money(order.total)}</span>
+          {/* The label the stripe cannot give. A colour alone is a code the
+              reader has to learn, and is invisible to anyone who cannot
+              separate these hues. */}
+          <OrderStatusBadge status={order.status} size="sm" />
         </div>
 
         {order.couponCode && (
@@ -230,9 +265,9 @@ export function OrderQueueCard({
         <div className="relative">
           <button
             type="button"
-            onClick={() => { setProgressOpen((v) => !v); setMenuOpen(false); }}
-            title="Update progress"
-            aria-label="Update progress"
+            onClick={() => { setCompleteOpen(true); setMenuOpen(false); setProgressOpen(false); }}
+            title="Complete order"
+            aria-label="Complete order"
             className="rounded-full p-1.5 text-secondary hover:bg-background"
           >
             <CircleCheckBig className="h-5 w-5" aria-hidden="true" />
@@ -246,6 +281,23 @@ export function OrderQueueCard({
             />
           )}
         </div>
+
+        {/* Dispatching is where the tracking number comes from, so this asks
+            for it instead of silently advancing the status the way the check
+            icon used to. */}
+        {completeOpen && (
+          <CompleteOrderModal
+            order={{
+              id:          order.id,
+              orderNumber: order.orderNumber,
+              buyerName:   order.buyer.name ?? 'Guest',
+              itemCount:   order.items.length,
+              total:       money(order.total),
+            }}
+            onClose={() => setCompleteOpen(false)}
+            onDone={() => { setCompleteOpen(false); onCompleted(); }}
+          />
+        )}
 
         {/* A button, not a link to /messages?orderId=...
             That href was never handled: the inbox reads a folder, a search and

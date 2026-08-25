@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength, IsDateString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class MarkShippedDto {
@@ -25,4 +25,15 @@ export class MarkShippedDto {
   @IsString()
   @MaxLength(500)
   note?: string;
+  /**
+   * When the carrier actually receives it, which is not always now.
+   *
+   * A shop that packs on Friday for a Monday collection was previously stamped
+   * with the moment they pressed the button, so the buyer's tracking email
+   * claimed a dispatch that had not happened. Optional — omitted means now.
+   */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  dispatchedAt?: string;
 }

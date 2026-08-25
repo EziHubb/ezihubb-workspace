@@ -1227,7 +1227,11 @@ export class OrdersService {
           trackingNumber: dto.trackingNumber,
           trackingUrl,
           ...(trackerId && { trackerId }),
-          shippedAt:      now,
+          // The date the seller says the carrier gets it, not the moment they
+          // pressed the button. A shop packing on Friday for a Monday
+          // collection was stamped Friday, and the buyer's tracking email
+          // claimed a dispatch that had not happened yet.
+          shippedAt:      dto.dispatchedAt ? new Date(dto.dispatchedAt) : now,
         },
         include: ORDER_INCLUDE,
       });

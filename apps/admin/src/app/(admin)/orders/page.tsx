@@ -461,6 +461,7 @@ export default function OrdersPage() {
                     onOpen={() => { setPanelId(order.id); setFocusMessaging(false); }}
                     onOpenMessages={() => { setPanelId(order.id); setFocusMessaging(true); }}
                     onMoveToStep={(toStepId) => moveOrders.mutate({ ids: [order.id], toStepId })}
+                    onCompleted={() => { setSelected(new Set()); refetchAll(); }}
                     onEditShipBy={() => editShipBy(order)}
                     onToggleGift={() => setGift.mutate({ id: order.id, isGift: !order.isGift })}
                     onCancel={() => cancelOrder(order)}
