@@ -105,10 +105,25 @@ services:
         NEXT_PUBLIC_GA_ID: ${NEXT_PUBLIC_GA_ID}
         NEXT_PUBLIC_GTM_ID: ${NEXT_PUBLIC_GTM_ID}
         NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID}
-        NEXT_PUBLIC_PINTEREST_TAG_ID: ${NEXT_PUBLIC_PINTEREST_TAG_ID}
+        # :- makes the empty default explicit. Pinterest tracking is genuinely
+        # optional — PinterestTag.tsx returns null without a tag id — so an
+        # absent value is a valid state, and the bare ${...} form was printing
+        # a warning on every single compose invocation for a non-problem. The
+        # Firebase vars below deliberately do NOT get this treatment: blank
+        # there means push is silently dead, and that warning is worth having.
+        NEXT_PUBLIC_PINTEREST_TAG_ID: ${NEXT_PUBLIC_PINTEREST_TAG_ID:-}
         NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION}
         NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN}
         NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+        # Firebase web push. Same three-place rule as every other NEXT_PUBLIC_*:
+        # Dockerfile ARG, here, and the CI build-args. Miss one and the value
+        # is inlined as an empty string with no error.
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
+        NEXT_PUBLIC_FIREBASE_VAPID_KEY: ${NEXT_PUBLIC_FIREBASE_VAPID_KEY}
     container_name: ezihubb_client
     restart: unless-stopped
     depends_on:

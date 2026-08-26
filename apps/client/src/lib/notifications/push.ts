@@ -40,7 +40,11 @@ export async function initPushNotifications(): Promise<string | null> {
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') return null;
 
-    // Register the service worker (dynamic route injects env vars)
+    // Idempotent: ServiceWorkerRegistrar already registers this exact script
+    // and scope for every visitor, and register() returns the existing
+    // registration rather than creating a second one. Kept here rather than
+    // awaiting navigator.serviceWorker.ready, which never resolves at all if
+    // that registration failed.
     const registration = await navigator.serviceWorker.register(
       '/firebase-messaging-sw.js',
       { scope: '/' },

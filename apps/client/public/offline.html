@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offline — EziHubb</title>
+<!--
+  Served by the service worker when a page load fails. Everything is inline on
+  purpose: this file has to render with no network at all, so it cannot pull a
+  stylesheet, a font or an image. The icon below is the one asset the worker
+  precaches alongside this page.
+-->
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: #FDFCFB; color: #2F2A26;
+    padding: 24px;
+  }
+  main { text-align: center; max-width: 22rem; }
+  img { width: 72px; height: 72px; border-radius: 18px; }
+  h1 { font-size: 1.375rem; margin: 20px 0 8px; font-weight: 700; }
+  p  { font-size: 0.9375rem; line-height: 1.6; margin: 0; color: #6B6259; }
+  button {
+    margin-top: 24px; padding: 11px 28px; border: 0; border-radius: 999px;
+    background: #E85D3F; color: #fff;
+    font-size: 0.9375rem; font-weight: 600; font-family: inherit;
+    cursor: pointer;
+  }
+  button:hover { opacity: .9; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1C1917; color: #F5F3F1; }
+    p    { color: #A8A29E; }
+  }
+</style>
+</head>
+<body>
+  <main>
+    <img src="/android-chrome-192x192.png" alt="">
+    <h1>You are offline</h1>
+    <p>EziHubb needs a connection to load shops and listings. Check your network and try again.</p>
+    <button type="button" onclick="location.reload()">Try again</button>
+  </main>
+</body>
+</html>

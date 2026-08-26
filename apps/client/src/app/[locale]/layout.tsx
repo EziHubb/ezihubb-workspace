@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 import { Inter, Playfair_Display } from 'next/font/google';
 import Script from 'next/script';
@@ -21,6 +21,7 @@ import { OrganizationStructuredData } from '../../components/seo/OrganizationStr
 import { WebsiteStructuredData } from '../../components/seo/WebsiteStructuredData';
 import { AffiliateTracker } from '../../components/providers/AffiliateTracker';
 import { ApiLocaleSync } from '../../components/providers/ApiLocaleSync';
+import { ServiceWorkerRegistrar } from '../../components/providers/ServiceWorkerRegistrar';
 import { CurrencyProvider } from '../../lib/currency/currency-context';
 import '../global.css';
 
@@ -41,6 +42,17 @@ export const dynamic = 'force-dynamic';
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
+
+/**
+ * themeColor lives here, not in metadata: Next moved it to the viewport
+ * export and warns on the old placement. It paints the browser chrome and
+ * the splash screen of the installed app.
+ */
+export const viewport: Viewport = {
+  themeColor: '#E85D3F',
+  width: 'device-width',
+  initialScale: 1,
+};
 
 export async function generateMetadata({
   params,
@@ -97,8 +109,28 @@ export async function generateMetadata({
       apple: '/apple-touch-icon.png',
     },
     manifest: '/site.webmanifest',
+    // iOS ignores the manifest's display mode and reads these instead.
+    // Not cosmetic: iOS only delivers web push to a site the user has added
+    // to the Home Screen, so without standalone capability there is no way
+    // to receive a notification on an iPhone at all.
+    appleWebApp: {
+      capable: true,
+      title: 'EziHubb',
+      statusBarStyle: 'default',
+    },
     verification: {
       google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+      other: {
+        // Pinterest domain verification. Hardcoded on purpose, unlike the
+        // Google one above: the token is public by design (it is served in the
+        // HTML to anyone), it never changes, and routing it through a
+        // NEXT_PUBLIC_* var would add a fourth place it can silently go blank
+        // — which is exactly what happened to NEXT_PUBLIC_PINTEREST_TAG_ID,
+        // present in the Dockerfile and compose but missing from CI, so it
+        // builds as an empty string with only a warning. A verification tag
+        // that quietly disappears un-verifies the domain.
+        'p:domain_verify': '6d886686d601fe034f8c0f0153593cce',
+      },
     },
     alternates: buildAlternates('/', locale),
   };
@@ -187,6 +219,8 @@ export default async function LocaleLayout({
             <ChatDock />
             {/* Core Web Vitals reporting — logs in dev, sends to analytics in prod */}
             <WebVitals />
+            {/* Registers the service worker for everyone, signed in or not */}
+            <ServiceWorkerRegistrar />
             <CookieConsentBanner />
             <Suspense fallback={null}><MetaPixel /></Suspense>
             <Suspense fallback={null}><PinterestTag /></Suspense>

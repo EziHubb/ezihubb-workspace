@@ -10,6 +10,14 @@
 *.pem
 *.key
 
+# Google/Firebase service-account keys. These grant send-as-the-project rights
+# and this repo is public, so a single commit is a full compromise — the key
+# would have to be revoked in the Firebase console, not just deleted here.
+# The console names the download <project>-firebase-adminsdk-<hash>.json.
+*firebase-adminsdk*.json
+*service-account*.json
+*serviceAccount*.json
+
 # Deployment secrets (server IP/user, DB passwords) — never commit these
 scripts/.deploy-config
 
