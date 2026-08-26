@@ -263,14 +263,19 @@ export function ThreadView({
    */
   useEffect(() => {
     const pane = paneRef.current;
-    if (!pane || !onSeenLatest) return;
+    // Not gated on onSeenLatest: the listener also records whether the
+    // reader is at the foot, which the scroll behaviour needs whether or not
+    // anyone asked to be told about it.
+    if (!pane) return;
 
     const check = () => {
+      wasNearBottom.current =
+        pane.scrollHeight - pane.scrollTop - pane.clientHeight <= 96;
       // A few pixels of slack. A programmatic scroll to the bottom often lands
       // a fraction short, and sub-pixel layout means an exact comparison is
       // false as often as it is true — while a reader that close is plainly
       // looking at the last message.
-      if (pane.scrollHeight - pane.scrollTop - pane.clientHeight <= 24) onSeenLatest();
+      if (pane.scrollHeight - pane.scrollTop - pane.clientHeight <= 24) onSeenLatest?.();
     };
 
     // Once now, because opening a thread scrolls to the bottom on its own and
@@ -306,6 +311,10 @@ export function ThreadView({
    * apart: the send resolves, then the refetch arrives, then the list grows.
    */
   const stickToBottom = useRef(false);
+  // Whether the reader was at the foot before the list last changed. Read in
+  // the layout effect, which runs after the DOM has already grown and so
+  // cannot measure this for itself.
+  const wasNearBottom = useRef(true);
 
   /**
    * Keeps the reader in place when a page is prepended.
@@ -339,10 +348,19 @@ export function ThreadView({
     }
 
     const before = heightBeforeLoad.current;
-    if (before === null) return;
-    heightBeforeLoad.current = null;
-    pane.scrollTop += pane.scrollHeight - before;
-  }, [messages]);
+    if (before !== null) {
+      heightBeforeLoad.current = null;
+      pane.scrollTop += pane.scrollHeight - before;
+      return;
+    }
+
+    // An arriving message follows the reader down only if they were already
+    // at the foot. Someone who has scrolled up to find an order number does
+    // not want the thread yanked away mid-sentence.
+    if (wasNearBottom.current) pane.scrollTop = pane.scrollHeight;
+    // pending.length too: the optimistic bubble is what makes a reply feel
+    // instant, and it is not part of `messages`.
+  }, [messages, pending.length]);
 
   const groups: { label: string; messages: ThreadMessage[] }[] = [];
   for (const m of messages) {
@@ -410,6 +428,11 @@ export function ThreadView({
     // A failure restores it below.
     setDraft('');
     setAttachments([]);
+    // Armed before the request, not after it. The pending bubble is on
+    // screen the moment onSend is called, so waiting for the server to
+    // answer before arming meant the thread sat still while the reply the
+    // seller had just written was below the fold.
+    stickToBottom.current = true;
     try {
       await onSend(body, urls);
     } catch {
@@ -417,15 +440,9 @@ export function ThreadView({
       setAttachments(attachments);
       return;
     }
-    /**
-     * Land on what was just sent.
-     *
-     * Armed rather than scrolled here: onSend resolves when the server has the
-     * message, and the refetch that puts it in the list has not rendered yet —
-     * scrolling now would move to the bottom of a thread that is still one
-     * message short. The layout effect below fires once the list grows.
-     */
-    stickToBottom.current = true;
+    // Nothing to do on success: the pending bubble already carried the view
+    // down, and the layout effect runs again when the confirmed message
+    // replaces it.
   };
 
   /*

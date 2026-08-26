@@ -536,20 +536,39 @@ export function MessageThread({
    * threw the whole page down past the footer. Setting scrollTop on the pane
    * itself cannot escape it, whatever the surrounding layout does.
    *
-   * 'auto' on the first paint and 'smooth' afterwards: animating a jump the
-   * reader did not ask for reads as the page moving under them.
-   *
    * Keyed on the WINDOW's length, not the rendered one. Loading older messages
    * grows the rendered list too, and sharing a trigger would answer "show me
    * what came before" by throwing the reader back to the bottom.
+   *
+   * pending.length is in there because it is the whole point: a sent message
+   * is on screen as an optimistic bubble immediately, but conv.messages only
+   * grows once the server answers. Keyed on the confirmed list alone, the
+   * thread sat still for a round trip while the reply the reader had just
+   * written waited below the fold — which is what made sending feel slow.
+   *
+   * useLayoutEffect, not useEffect: this runs before the browser paints, so
+   * the new message is never shown at the old scroll position first.
+   *
+   * Instant for your own message, animated for one that arrives. Smoothly
+   * animating to a message you just sent yourself is time spent watching the
+   * thread travel; a message from the shop reads better if the movement
+   * shows where it came from. The first paint is instant either way.
    */
-  const firstScroll = useRef(true);
-  useEffect(() => {
+  const firstScroll  = useRef(true);
+  const lastPending  = useRef(0);
+  useLayoutEffect(() => {
     const pane = paneRef.current;
     if (!pane) return;
-    pane.scrollTo({ top: pane.scrollHeight, behavior: firstScroll.current ? 'auto' : 'smooth' });
+
+    const own = pending.length > lastPending.current;
+    lastPending.current = pending.length;
+
+    pane.scrollTo({
+      top: pane.scrollHeight,
+      behavior: firstScroll.current || own ? 'auto' : 'smooth',
+    });
     firstScroll.current = false;
-  }, [conv?.messages?.length]);
+  }, [conv?.messages?.length, pending.length]);
 
   /**
    * Keeps the reader where they were when a page is prepended.
