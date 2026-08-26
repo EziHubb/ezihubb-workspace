@@ -64,6 +64,41 @@ export interface SearchResultDto extends PaginatedResult<ProductListItemDto> {
  */
 const FACET_SAMPLE_SIZE = 500;
 
+/**
+ * What "free shipping" means, in one place.
+ *
+ * The card badge is derived from the listing's shipping profile — a profile is
+ * free only when it has at least one method and every one of them is free. The
+ * search filter and its facet count were still keying off a `free-shipping`
+ * TAG, which nothing keeps in step with the profiles, so a shopper could tick
+ * the filter and get back cards that do not claim free shipping, or miss
+ * listings that do.
+ *
+ * `some: {}` is load-bearing: `every` is vacuously true for a profile with no
+ * methods at all, and such a profile cannot price anything — checkout
+ * hard-errors on it. That is unresolvable, not free.
+ */
+const FREE_SHIPPING_WHERE: Prisma.ProductWhereInput = {
+  shippingProfile: {
+    methods: {
+      some: {},
+      every: {
+        OR: [
+          { chargeType: 'FREE' },
+          {
+            AND: [
+              { price: 0 },
+              // extraItemPrice falls back to price when unset, matching
+              // ShippingService.freeShippingListingIds.
+              { OR: [{ extraItemPrice: 0 }, { extraItemPrice: null }] },
+            ],
+          },
+        ],
+      },
+    },
+  },
+};
+
 @Injectable()
 export class SearchService {
   private readonly logger = new Logger(SearchService.name);
@@ -413,7 +448,7 @@ export class SearchService {
       const ids = matching.map((p) => p.id);
       if (!ids.length) return empty;
 
-      const [colors, materials, styles, occasion, holiday, recipient, countries, countsRaw] =
+      const [colors, materials, styles, occasion, holiday, recipient, countries, saleRaw, freeShipping] =
         await Promise.all([
           this.prisma.$queryRaw<FacetItem[]>(Prisma.sql`
             SELECT unnest("primaryColors") AS value, COUNT(*)::int AS count
@@ -455,19 +490,20 @@ export class SearchService {
             WHERE p.id = ANY(${ids}) AND s.country IS NOT NULL
             GROUP BY s.country ORDER BY count DESC LIMIT 20
           `),
-          this.prisma.$queryRaw<Array<{ freeShipping: number; onSale: number }>>(Prisma.sql`
-            SELECT
-              COUNT(CASE WHEN "compareAtPrice" IS NOT NULL THEN 1 END)::int AS "onSale",
-              COUNT(CASE WHEN EXISTS (
-                SELECT 1 FROM "ProductTag" pt
-                JOIN "Tag" tg ON tg.id = pt."tagId"
-                WHERE pt."productId" = p.id AND tg.slug = 'free-shipping'
-              ) THEN 1 END)::int AS "freeShipping"
+          this.prisma.$queryRaw<Array<{ onSale: number }>>(Prisma.sql`
+            SELECT COUNT(CASE WHEN "compareAtPrice" IS NOT NULL THEN 1 END)::int AS "onSale"
             FROM "Product" p WHERE p.id = ANY(${ids})
           `),
+          // Counted through Prisma with the very object the filter pushes, so
+          // the number beside the checkbox and the results behind it cannot
+          // drift. Hand-written SQL here would be a second definition of
+          // "free" to keep in step with the first.
+          this.prisma.product.count({
+            where: { AND: [{ id: { in: ids } }, FREE_SHIPPING_WHERE] },
+          }),
         ]);
 
-      const counts = countsRaw[0] ?? { freeShipping: 0, onSale: 0 };
+      const counts = { onSale: saleRaw[0]?.onSale ?? 0, freeShipping };
       return { ...counts, colors, materials, styles, occasion, holiday, recipient, countries };
     } catch (err) {
       this.logger.warn('Facet computation failed', err);
@@ -581,7 +617,7 @@ export class SearchService {
     }
 
     if (query.freeShipping) {
-      andConditions.push({ tags: { some: { tag: { slug: 'free-shipping' } } } });
+      andConditions.push(FREE_SHIPPING_WHERE);
     }
 
     if (query.minPrice !== undefined || query.maxPrice !== undefined) {

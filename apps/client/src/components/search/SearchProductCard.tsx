@@ -36,7 +36,11 @@ function getProductBadge(t: Translator, product: ProductListItemDto) {
   if ((product.inDemandCount ?? 0) >= 10) {
     return {
       label: t('badge.inCarts', { count: product.inDemandCount ?? 0 }),
-      style: 'bg-[#FFF0EC] text-primary',
+      // primary-light, not the hex it happens to default to. The layout
+      // overwrites --c-primary-light at runtime from the shop's theme, so the
+      // frozen hex left this chip orange while the text beside it followed
+      // the theme away.
+      style: 'bg-primary-light text-primary',
     };
   }
   // The `|| product.badge === '...'` half of each of these used to sit here and

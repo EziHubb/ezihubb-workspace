@@ -665,7 +665,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
 
       {/* ── FEATURED BADGE ── */}
       {product.isFeatured && (
-        <div className="inline-flex items-center gap-1.5 bg-[#FFF0EC] text-primary text-xs font-medium px-2.5 py-1 rounded-full">
+        <div className="inline-flex items-center gap-1.5 bg-primary-light text-primary text-xs font-medium px-2.5 py-1 rounded-full">
           <Star className="w-3 h-3 fill-primary" />
           {tPanel('editorsPick')}
         </div>

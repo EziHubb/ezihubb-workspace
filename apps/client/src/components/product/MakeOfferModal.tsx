@@ -15,7 +15,8 @@ interface MakeOfferModalProps {
 }
 
 export function MakeOfferModal({ productId, productName, basePrice, onClose }: MakeOfferModalProps) {
-  const t = useTranslations('product.sellerCard');
+  const t  = useTranslations('product.sellerCard');
+  const tc = useTranslations('common');
   const [amount, setAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
@@ -42,7 +43,12 @@ export function MakeOfferModal({ productId, productName, basePrice, onClose }: M
           <h2 className="font-bold text-secondary flex items-center gap-2">
             <HandCoins className="w-4 h-4 text-primary" /> {t('makeOffer')}
           </h2>
-          <button type="button" onClick={onClose} className="p-1.5 rounded-full hover:bg-[#F3F4F6] text-muted transition-colors">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={tc('close')}
+            className="p-1.5 rounded-full hover:bg-[#F3F4F6] text-muted transition-colors"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -55,10 +61,22 @@ export function MakeOfferModal({ productId, productName, basePrice, onClose }: M
           </div>
         ) : (
           <div className="px-6 py-5 space-y-4">
+            {/* The listed price is shown in the base currency, with its
+                symbol, because the offer below is denominated in the base
+                currency too — the number in that input goes to the API
+                unconverted. It used to render as a bare figure with no
+                symbol at all, which told a shopper nothing about the unit.
+
+                Deliberately NOT useCurrency().format(): that converts USD
+                into the shopper's selected currency. Showing a converted
+                figure beside an input the API reads as USD is how someone
+                offers 600,000 dong and is charged 600,000 dollars. */}
             <p className="text-sm text-muted">{t('listedAt', { name: productName, price: `${basePrice.toFixed(2)}` })}</p>
             <div>
               <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">{t('yourOffer')}</label>
               <div className="relative">
+                {/* Base currency, matching what the API stores and what the
+                    guard above compares against. See the note on listedAt. */}
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
                 <input
                   type="number" min={0.01} max={basePrice - 0.01} step={0.01}

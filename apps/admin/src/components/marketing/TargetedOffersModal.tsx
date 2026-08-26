@@ -165,7 +165,7 @@ export function TargetedOffersModal({ onClose, focusTrigger }: TargetedOffersMod
                 >
                   <div className="flex items-center gap-3 p-4">
                     <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${c.isActive ? 'bg-primary/10 text-primary' : 'bg-muted/10 text-muted'}`}>
-                      <Icon className="w-4.5 h-4.5" />
+                      <Icon className="w-4 h-4" />
                     </div>
                     {/* Opens the settings without switching the campaign on.
                         The toggle beside it is the thing that goes live. */}

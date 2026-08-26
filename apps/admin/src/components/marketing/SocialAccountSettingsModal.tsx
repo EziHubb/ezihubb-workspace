@@ -68,7 +68,7 @@ export function SocialAccountSettingsModal({ onClose }: SocialAccountSettingsMod
               return (
                 <div key={platform} className="flex items-center gap-3 p-3 border border-border rounded-card">
                   <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${meta.color}`}>
-                    <Icon className="w-4.5 h-4.5" />
+                    <Icon className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-secondary">{meta.label}</p>
