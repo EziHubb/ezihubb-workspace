@@ -16,6 +16,7 @@ import { ChatDock } from '../../components/messages/ChatDock';
 import { WebVitals } from '../../components/providers/WebVitals';
 import { CookieConsentBanner } from '../../components/analytics/CookieConsentBanner';
 import { PushPermissionPrompt } from '../../components/notifications/PushPermissionPrompt';
+import { AppBadge } from '../../components/notifications/AppBadge';
 import { MetaPixel } from '../../components/analytics/MetaPixel';
 import { PinterestTag } from '../../components/analytics/PinterestTag';
 import { OrganizationStructuredData } from '../../components/seo/OrganizationStructuredData';
@@ -230,6 +231,9 @@ export default async function LocaleLayout({
             {/* Renders only once the cookie bar is answered — they share
                 the same strip at the bottom of the page. */}
             <PushPermissionPrompt />
+            {/* Writes the unread count onto the installed app icon. Renders
+                nothing; the worker owns the same badge while the app is closed. */}
+            <AppBadge />
             <Suspense fallback={null}><MetaPixel /></Suspense>
             <Suspense fallback={null}><PinterestTag /></Suspense>
           </CurrencyProvider>

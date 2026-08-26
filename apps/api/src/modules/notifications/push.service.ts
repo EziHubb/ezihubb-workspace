@@ -63,12 +63,40 @@ export class PushService {
     });
   }
 
+  /**
+ * Unread messages across everything this user is part of.
+   *
+   * Read from the denormalised per-conversation counter rather than counted
+   * off the messages table, because that counter is what the inbox and the
+   * sidebar already display — a second definition would let the number on the
+   * app icon disagree with the number inside the app.
+   *
+   * Called after the write that incremented it, so it already includes the
+   * message being announced.
+   */
+  private async unreadTotal(userId: string): Promise<number> {
+    const agg = await this.prisma.conversation.aggregate({
+      // hiddenByCustomerAt mirrors getMyConversations, which is what feeds the
+      // list the buyer actually sees. Summing over every conversation instead
+      // would count threads they have hidden, and the figure on the app icon
+      // would exceed anything they could find inside the app to clear it.
+      where: { userId, hiddenByCustomerAt: null },
+      _sum:  { unreadByCustomer: true },
+    });
+    return agg._sum.unreadByCustomer ?? 0;
+  }
+
   async notifyNewMessage(userId: string, conversationId: string): Promise<void> {
+    // Carried in the payload because the worker that draws the badge runs
+    // with the app closed and has no session to ask. Sent as a string: FCM
+    // data values are strings, and a number here would be coerced silently.
+    const unreadCount = await this.unreadTotal(userId);
+
     await this.sendToUser(userId, {
       title:       'EziHubb replied 💬',
       body:        'You have a new message from the shop',
       clickAction: '/account/messages',
-      data:        { type: 'new_message', conversationId },
+      data:        { type: 'new_message', conversationId, unreadCount: String(unreadCount) },
     });
   }
 

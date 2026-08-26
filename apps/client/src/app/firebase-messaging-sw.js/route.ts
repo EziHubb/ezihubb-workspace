@@ -110,6 +110,24 @@ try {
     const messaging = firebase.messaging();
 
     messaging.onBackgroundMessage((payload) => {
+      // The count on the app icon, drawn here because this is the only code
+      // that runs while the app is closed — which is exactly when the badge
+      // matters. The number arrives in the payload; the worker has no
+      // session with which to go and ask for it.
+      //
+      // Feature-detected rather than assumed: iOS 16.4+ and desktop Chrome
+      // support this, Chrome on Android does not implement it at all, and an
+      // unguarded call there would throw inside the push handler and take the
+      // notification down with it.
+      const unread = Number((payload.data || {}).unreadCount);
+      if ('setAppBadge' in self.navigator && Number.isFinite(unread)) {
+        const write = unread > 0
+          ? self.navigator.setAppBadge(unread)
+          : self.navigator.clearAppBadge();
+        // A rejected badge write must never cost us the notification itself.
+        Promise.resolve(write).catch(() => {});
+      }
+
       const notification = payload.notification || {};
       self.registration.showNotification(notification.title || 'EziHubb', {
         body: notification.body || '',
@@ -135,6 +153,12 @@ try {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  // Opening from the notification is the user going to read it. The page
+  // will set the real figure once it loads; this stops the old number
+  // sitting on the icon for the seconds in between.
+  if ('clearAppBadge' in self.navigator) {
+    Promise.resolve(self.navigator.clearAppBadge()).catch(() => {});
+  }
   const target = (event.notification.data && event.notification.data.clickAction) || '/';
 
   // Focus a tab we already have rather than stacking up new windows, and wrap
