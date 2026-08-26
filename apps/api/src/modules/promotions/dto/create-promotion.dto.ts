@@ -109,3 +109,25 @@ export class CreatePromotionDto {
 }
 
 export class UpdatePromotionDto extends PartialType(CreatePromotionDto) {}
+
+/**
+ * What PATCH accepts: every updatable field, plus the active toggle.
+ *
+ * A real class, and that is the whole point. The route used to be typed
+ * `UpdatePromotionDto & { isActive?: boolean }`, and an intersection is a
+ * TypeScript type with no runtime identity — `design:paramtypes` emits
+ * `Object`, so ValidationPipe saw a plain object, decided there was nothing to
+ * validate, and skipped BOTH validation and transformation for the entire
+ * endpoint.
+ *
+ * The visible symptom was a 500 on saving a sale: `@Type(() => Date)` never
+ * ran, so the date-only string the admin sends reached Prisma untouched and it
+ * refused a value that was not a full ISO-8601 DateTime. The invisible half was
+ * worse — nothing else on this route was being checked either.
+ */
+export class PatchPromotionDto extends UpdatePromotionDto {
+  @ApiPropertyOptional({ description: 'Pause or resume the promotion' })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}

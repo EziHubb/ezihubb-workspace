@@ -16,7 +16,7 @@ import {
 import type { Request } from 'express';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PromotionsService } from './promotions.service';
-import { CreatePromotionDto, UpdatePromotionDto } from './dto/create-promotion.dto';
+import { CreatePromotionDto, UpdatePromotionDto , PatchPromotionDto } from './dto/create-promotion.dto';
 import { ValidateCouponDto } from './dto/validate-coupon.dto';
 import {
   CouponValidationResultDto,
@@ -117,7 +117,7 @@ export class PromotionsController {
   async patch(
     @Req() req: Request,
     @Param('id') id: string,
-    @Body() dto: UpdatePromotionDto & { isActive?: boolean },
+    @Body() dto: PatchPromotionDto,
   ): Promise<PromotionResponseDto> {
     const context = await this.storeContext.resolve(req);
     return this.promotionsService.patch(id, dto, context.storeId ?? undefined);
