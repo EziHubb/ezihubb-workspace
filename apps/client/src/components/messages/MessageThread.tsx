@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
+import { Fragment, useState, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -39,6 +39,37 @@ function formatTime(dateStr: string, locale: string): string {
   return new Date(dateStr).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 }
 
+/** Longer than this between two messages and the thread gets a marker. */
+const SEPARATOR_GAP_MS = 60 * 60 * 1000;
+
+/**
+ * A centred date, the way every messaging app paces a long thread.
+ *
+ * Grouping alone removes the repetition but leaves no sense of when any of
+ * it happened — a screen of replies could be from this morning or from
+ * March. Drawn on the first message, on a change of day, and after an hour
+ * of silence, so the marks land where the conversation actually paused.
+ *
+ * Formatted through Intl with the active locale, so it needs no translation
+ * strings of its own and reads correctly in all three.
+ */
+function needsDateMark(prev: ThreadMessage | undefined, msg: ThreadMessage): boolean {
+  if (!prev) return true;
+  const a = new Date(prev.createdAt);
+  const b = new Date(msg.createdAt);
+  if (a.toDateString() !== b.toDateString()) return true;
+  return b.getTime() - a.getTime() >= SEPARATOR_GAP_MS;
+}
+
+function formatDateMark(dateStr: string, locale: string): string {
+  const d = new Date(dateStr);
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  if (sameDay) return time;
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' }) + ' · ' + time;
+}
+
 function MessageSkeleton({ count }: { count: number }) {
   return (
     <div className="space-y-4 animate-pulse">
@@ -73,18 +104,51 @@ function ConversationStatusBadge({ status }: { status?: string }) {
 
 // ── MessageBubble ─────────────────────────────────────────────────────────────
 
-function MessageBubble({ message: msg, conversationId, isOwn, shopName, shopLogoUrl }: {
-  message: ConversationWithMessagesDto['messages'][number];
+/**
+ * Whether two adjacent messages belong to the same run.
+ *
+ * Same sender, and close enough in time that presenting them as one
+ * utterance is honest. Without the time rule, three replies at 14:14, 14:19
+ * and 14:20 would collapse into one group showing only the last clock, and
+ * the five-minute pause between the first two would vanish from the record.
+ *
+ * SYSTEM notices never join a run — they are about the conversation rather
+ * than part of it.
+ */
+const GROUP_WINDOW_MS = 5 * 60 * 1000;
+
+function sameGroup(a?: ThreadMessage, b?: ThreadMessage): boolean {
+  if (!a || !b) return false;
+  if (a.senderType === 'SYSTEM' || b.senderType === 'SYSTEM') return false;
+  if (a.senderType !== b.senderType) return false;
+  const gap = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  return Number.isFinite(gap) && gap >= 0 && gap < GROUP_WINDOW_MS;
+}
+
+function MessageBubble({
+  message: msg, conversationId, isOwn, shopName, shopLogoUrl,
+  isFirstOfGroup, isLastOfGroup,
+}: {
+  message: ThreadMessage;
   conversationId: string;
   isOwn:   boolean;
   shopName:    string;
   shopLogoUrl: string | null;
+  /** First of a run from the same sender — carries the gap above it. */
+  isFirstOfGroup: boolean;
+  /** Last of that run — carries the avatar, the clock and the tail. */
+  isLastOfGroup:  boolean;
 }) {
   const t = useTranslations('account.messages');
   const locale = useLocale();
   // Only the first link gets a card. Five links in one message would otherwise
   // be five outbound fetches and a wall of cards taller than the thread.
   const link = msg.deletedAt ? null : firstLinkIn(msg.body);
+  // A run reads as one utterance, so the messages inside it sit almost
+  // touching and the air goes between runs instead. space-y-4 on the list
+  // spent the same 16px everywhere, which is what made a thread of
+  // one-word replies look like a list of unrelated notices.
+  const groupGap = isFirstOfGroup ? 'mt-4 first:mt-0' : 'mt-0.5';
   /**
    * A message that is nothing but a link becomes the card alone.
    *
@@ -108,13 +172,14 @@ function MessageBubble({ message: msg, conversationId, isOwn, shopName, shopLogo
    */
   if (msg.deletedAt) {
     return (
-      <div className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
-        {/* The real picture, not a spacer.
-            It was a blank of the same size, which lined the pill up correctly
-            and lost the one thing the row still has to say: who this was
-            from. A message being unsent does not make it anonymous. */}
-        {!isOwn && (
-          <div className="mt-1"><ShopAvatar name={shopName} src={shopLogoUrl} size={28} /></div>
+      <div className={`flex gap-2 ${groupGap} ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+        {/* The real picture, and only on the message that closes the run —
+            with a blank of the same width holding the others in line. Drawn
+            on every message it repeated the same face seven times down a
+            phone screen and ate the width the bubbles needed. */}
+        {!isOwn && (isLastOfGroup
+          ? <div className="mt-1"><ShopAvatar name={shopName} src={shopLogoUrl} size={28} /></div>
+          : <div className="w-7 shrink-0" aria-hidden="true" />
         )}
         {/* Outline, not a filled bubble. An unsent message is a note about
             the conversation rather than part of it, and giving it the same
@@ -138,9 +203,10 @@ function MessageBubble({ message: msg, conversationId, isOwn, shopName, shopLogo
   }
 
   return (
-    <div className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
-      {!isOwn && (
-        <div className="mt-1"><ShopAvatar name={shopName} src={shopLogoUrl} size={28} /></div>
+    <div className={`flex gap-2 ${groupGap} ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+      {!isOwn && (isLastOfGroup
+        ? <div className="mt-1"><ShopAvatar name={shopName} src={shopLogoUrl} size={28} /></div>
+        : <div className="w-7 shrink-0" aria-hidden="true" />
       )}
       {/* A column, so the preview card can sit under the bubble rather than
           beside it, and both stay on the sender's side of the thread.
@@ -161,9 +227,11 @@ function MessageBubble({ message: msg, conversationId, isOwn, shopName, shopLogo
             // w-fit so a short message is a short bubble rather than a column
             // stretched to the cap above.
             'w-fit rounded-2xl px-3.5 py-2 text-sm',
-            isOwn
-              ? 'bg-primary text-white rounded-br-sm'
-              : 'bg-[#F3F4F6] text-secondary rounded-bl-sm',
+            isOwn ? 'bg-primary text-white' : 'bg-[#F3F4F6] text-secondary',
+            // The flattened corner is the tail. Only the message that ends
+            // the run gets one; giving every bubble a tail is what stops a
+            // run from reading as a run.
+            isLastOfGroup ? (isOwn ? 'rounded-br-sm' : 'rounded-bl-sm') : '',
           ].join(' ')}>
             {/* [overflow-wrap:anywhere], not break-words. They look alike and
                 differ in the one way that matters here: break-word leaves the
@@ -173,13 +241,19 @@ function MessageBubble({ message: msg, conversationId, isOwn, shopName, shopLogo
                 break count toward min-content, which is what stops it. */}
             <p className="whitespace-pre-wrap leading-relaxed [overflow-wrap:anywhere]">{msg.body}</p>
             <MessageAttachments urls={msg.attachmentUrls} isOwn={isOwn} />
-            {/* nowrap and its own line: the clock is six characters that must
-                never be what decides how wide a bubble is, and never break in
-                half across two lines. */}
-            <p className={`mt-0.5 whitespace-nowrap text-right text-[10px] ${isOwn ? 'text-white/70' : 'text-muted'}`}>
-              {formatTime(msg.createdAt, locale)}
-              {isOwn && msg.isRead && <span className="ml-1">✓✓</span>}
-            </p>
+            {/* Once per run, on the message that ends it. On every bubble it
+                turned a one-character reply into a two-line block, because
+                the clock is six characters on a line of its own — which is
+                exactly what a column of tiny square bubbles was.
+
+                nowrap stays: those six characters must never decide how wide
+                a bubble is, nor break in half across two lines. */}
+            {isLastOfGroup && (
+              <p className={`mt-0.5 whitespace-nowrap text-right text-[10px] ${isOwn ? 'text-white/70' : 'text-muted'}`}>
+                {formatTime(msg.createdAt, locale)}
+                {isOwn && msg.isRead && <span className="ml-1">✓✓</span>}
+              </p>
+            )}
           </div>
         )}
 
@@ -738,19 +812,30 @@ export function MessageThread({
         {/* mt-auto lives here rather than on the pane: it pushes this stack to
             the bottom while the "load earlier" button above stays put at the
             top, which is the arrangement a reader expects. */}
-        <div className="mt-auto min-w-0 space-y-4">
+        {/* No space-y here any more: a uniform gap cannot tell a run of
+            replies from two separate ones, so each row now carries its own
+            margin and decides which of the two it is. */}
+        <div className="mt-auto min-w-0">
           {isLoading ? (
             <MessageSkeleton count={3} />
           ) : (
-            messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                conversationId={conversationId}
-                isOwn={msg.senderType === 'CUSTOMER'}
-                shopName={shopName}
-                shopLogoUrl={conv?.store?.logoUrl ?? null}
-              />
+            messages.map((msg, i) => (
+              <Fragment key={msg.id}>
+                {needsDateMark(messages[i - 1], msg) && (
+                  <p className="py-3 text-center text-[11px] font-medium text-muted">
+                    {formatDateMark(msg.createdAt, locale)}
+                  </p>
+                )}
+                <MessageBubble
+                  message={msg}
+                  conversationId={conversationId}
+                  isOwn={msg.senderType === 'CUSTOMER'}
+                  shopName={shopName}
+                  shopLogoUrl={conv?.store?.logoUrl ?? null}
+                  isFirstOfGroup={!sameGroup(messages[i - 1], msg)}
+                  isLastOfGroup={!sameGroup(msg, messages[i + 1])}
+                />
+              </Fragment>
             ))
           )}
 
