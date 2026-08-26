@@ -15,7 +15,7 @@ import { PromotionStatsDrawer } from '../../../../components/promotions/Promotio
 import { SetUpSaleModal, type SaleFormData } from '../../../../components/marketing/SetUpSaleModal';
 import { OrderMinimumModal, type OrderMinimumFormData, type OrderMinimumPromotion } from '../../../../components/marketing/OrderMinimumModal';
 import { BuyTogetherModal, type BundleFormData, type BundleOffer } from '../../../../components/marketing/BuyTogetherModal';
-import { TargetedOffersModal } from '../../../../components/marketing/TargetedOffersModal';
+import { TargetedOffersModal, type TargetedOfferTrigger } from '../../../../components/marketing/TargetedOffersModal';
 import { BuyerOffersPanel } from '../../../../components/marketing/BuyerOffersPanel';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
@@ -144,7 +144,9 @@ export default function MarketingSalesPage() {
   const [statsFor, setStatsFor] = useState<Promotion | null>(null);
 
   const [bundleModal, setBundleModal] = useState<BundleOffer | null | 'new'>(null);
-  const [targetedOffersOpen, setTargetedOffersOpen] = useState(false);
+  // Holds WHICH offer was clicked, not merely that the modal is open — four
+  // cards led here and it could not tell them apart.
+  const [targetedOffersOpen, setTargetedOffersOpen] = useState<TargetedOfferTrigger | null>(null);
   const [orderMinModal, setOrderMinModal] = useState<OrderMinimumPromotion | null | 'new'>(null);
   const [buyerOffersOpen, setBuyerOffersOpen] = useState(false);
 
@@ -541,10 +543,10 @@ export default function MarketingSalesPage() {
                   <p className="text-sm text-muted mt-0.5">Create an offer to motivate interested shoppers automatically, or create a promo code to share with anyone you like.</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  <EntryCard icon={Eye}          title="Interested shopper offer" desc="Send an offer when someone shows early interest in your items." onClick={() => setTargetedOffersOpen(true)} />
-                  <EntryCard icon={ShoppingCart} title="Abandoned basket offer"   desc="Send an offer when someone leaves an item from your shop in their basket." onClick={() => setTargetedOffersOpen(true)} />
-                  <EntryCard icon={PackageCheck} title="Thank you offer"          desc="Send an offer to a buyer after their order dispatches, to thank them." onClick={() => setTargetedOffersOpen(true)} />
-                  <EntryCard icon={Heart}        title="Favourited item offer"    desc="Send an offer when someone favourites one of your items." onClick={() => setTargetedOffersOpen(true)} />
+                  <EntryCard icon={Eye}          title="Interested shopper offer" desc="Send an offer when someone shows early interest in your items." onClick={() => setTargetedOffersOpen('INTERESTED_SHOPPER')} />
+                  <EntryCard icon={ShoppingCart} title="Abandoned basket offer"   desc="Send an offer when someone leaves an item from your shop in their basket." onClick={() => setTargetedOffersOpen('ABANDONED_BASKET')} />
+                  <EntryCard icon={PackageCheck} title="Thank you offer"          desc="Send an offer to a buyer after their order dispatches, to thank them." onClick={() => setTargetedOffersOpen('THANK_YOU')} />
+                  <EntryCard icon={Heart}        title="Favourited item offer"    desc="Send an offer when someone favourites one of your items." onClick={() => setTargetedOffersOpen('FAVOURITED_ITEM')} />
                   <EntryCard icon={Tag}          title="Promo code"               desc="Share your code with customers — they apply it for a discount at checkout." onClick={() => setCouponModal('new')} />
                 </div>
               </section>
@@ -736,7 +738,10 @@ export default function MarketingSalesPage() {
 
       {/* Let buyers make offers */}
       {buyerOffersOpen && (
-        <Modal isOpen onClose={() => setBuyerOffersOpen(false)} size="md">
+        // lg, matching the sale and targeted-offer modals this sits beside.
+        // They all open from the same grid of cards and read as peers, so a
+        // narrower one looks like a different kind of thing.
+        <Modal isOpen onClose={() => setBuyerOffersOpen(false)} size="lg">
           <ModalHeroHeader
             icon={<HandCoins className="w-7 h-7" />}
             title="Let buyers make offers"
@@ -754,7 +759,9 @@ export default function MarketingSalesPage() {
       )}
 
       {/* Targeted offers modal */}
-      {targetedOffersOpen && <TargetedOffersModal onClose={() => setTargetedOffersOpen(false)} />}
+      {targetedOffersOpen && (
+        <TargetedOffersModal focusTrigger={targetedOffersOpen} onClose={() => setTargetedOffersOpen(null)} />
+      )}
 
       {/* Stats drawer */}
       {statsFor && !statsFor.autoApply && (

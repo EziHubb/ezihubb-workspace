@@ -180,7 +180,7 @@ export function PromotionModal({ promotion, isPlatformContext, onClose, onSave }
   };
 
   return (
-    <Modal isOpen onClose={onClose} size="md">
+    <Modal isOpen onClose={onClose} size="lg">
       <ModalHeroHeader
         icon={<Tag className="w-7 h-7" />}
         title={isEdit ? `Edit ${promotion.code}` : 'Create a promo code'}

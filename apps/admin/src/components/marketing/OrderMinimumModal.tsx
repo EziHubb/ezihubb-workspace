@@ -107,7 +107,7 @@ export function OrderMinimumModal({ promotion, onClose, onSave }: OrderMinimumMo
 
   if (step === 1) {
     return (
-      <Modal isOpen onClose={onClose} size="md">
+      <Modal isOpen onClose={onClose} size="lg">
         <div className="px-6 py-6">
           <h2 className="font-display text-xl font-bold text-secondary">Here&apos;s how discounts with order minimums work</h2>
           <p className="text-sm text-muted mt-2 leading-relaxed">
@@ -139,7 +139,7 @@ export function OrderMinimumModal({ promotion, onClose, onSave }: OrderMinimumMo
   }
 
   return (
-    <Modal isOpen onClose={onClose} size="md">
+    <Modal isOpen onClose={onClose} size="lg">
       <ModalHeroHeader
         icon={<ShoppingBag className="w-7 h-7" />}
         title={isEdit ? 'Edit discount' : 'Create your discount'}
