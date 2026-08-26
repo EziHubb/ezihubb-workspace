@@ -108,7 +108,16 @@ export function OrderMinimumModal({ promotion, onClose, onSave }: OrderMinimumMo
   if (step === 1) {
     return (
       <Modal isOpen onClose={onClose} size="lg">
-        <div className="px-6 py-6">
+        {/* This step had no scroll container at all, so its content — the
+            explanation plus a 280px preview card — ran past the shell's
+            max-h-[90vh] and, because the shell is overflow-hidden, the footer
+            below was simply clipped off. Cancel and Next were half off the
+            bottom edge with no way to reach them.
+
+            min-h-0 as well as overflow-y-auto: a flex child's default
+            min-height is its content, so without it this pane refuses to
+            shrink and scrolls nothing. */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-6">
           <h2 className="font-display text-xl font-bold text-secondary">Here&apos;s how discounts with order minimums work</h2>
           <p className="text-sm text-muted mt-2 leading-relaxed">
             You choose the discount and the minimum shoppers have to buy to get it — this can be a number of items or how much they spend.
@@ -147,7 +156,10 @@ export function OrderMinimumModal({ promotion, onClose, onSave }: OrderMinimumMo
         band="periwinkle"
         onClose={onClose}
       />
-      <div className="overflow-y-auto">
+      {/* Same min-h-0 as step 1. This one scrolled only because its form
+          happens to be shorter than the cap; on a short window it would have
+          clipped its footer the same way. */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="px-6 py-5 space-y-5">
           <Field label="Discount name" required hint="Shown to you only, to track this offer">
             <input

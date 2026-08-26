@@ -188,7 +188,10 @@ export function PromotionModal({ promotion, isPlatformContext, onClose, onSave }
         band="periwinkle"
         onClose={onClose}
       />
-      <div className="overflow-y-auto">
+      {/* min-h-0 as well: a flex child defaults to min-height:auto, so
+       *  without it this pane will not shrink and the footer below gets
+       *  pushed out of the shell, which is overflow-hidden. */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {/* Body */}
         <div className="px-6 py-5 space-y-5">
 
