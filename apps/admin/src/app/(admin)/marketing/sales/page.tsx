@@ -19,6 +19,7 @@ import { TargetedOffersModal } from '../../../../components/marketing/TargetedOf
 import { BuyerOffersPanel } from '../../../../components/marketing/BuyerOffersPanel';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { startOfLocalDayISO, endOfLocalDayISO } from '../../../../lib/promo-dates';
 import { fmtAmount, fmtDate, fmtNum } from '../../../../lib/fmt';
 import { useDialog } from '../../../../contexts/DialogContext';
 import { FilterSelect } from '../../../../components/ui/FilterSelect';
@@ -241,8 +242,10 @@ export default function MarketingSalesPage() {
       scope:               data.scope,
       productIds:          data.scope === 'SPECIFIC_LISTINGS' ? data.productIds : undefined,
       country:             data.country || undefined,
-      startsAt:            data.startsAt || undefined,
-      expiresAt:           data.expiresAt || undefined,
+      // The seller picked days; only this side knows which timezone those
+      // days belong to. See lib/promo-dates.
+      startsAt:            startOfLocalDayISO(data.startsAt),
+      expiresAt:           endOfLocalDayISO(data.expiresAt),
       termsAndConditions:  data.termsAndConditions || undefined,
     };
     if (id) {
@@ -263,8 +266,8 @@ export default function MarketingSalesPage() {
       scope:           'SHOP_WIDE',
       minOrderAmount:  data.minOrderAmount,
       country:         data.country || undefined,
-      startsAt:        data.startsAt || undefined,
-      expiresAt:       data.expiresAt || undefined,
+      startsAt:        startOfLocalDayISO(data.startsAt),
+      expiresAt:       endOfLocalDayISO(data.expiresAt),
     };
     if (id) {
       await api.patch(API_ROUTES.ADMIN.PROMOTION(id), payload);
@@ -380,12 +383,27 @@ export default function MarketingSalesPage() {
     },
     {
       id:     'expires',
-      header: 'Expires',
-      size:   110,
-      cell:   ({ row }: { row: { original: Promotion } }) =>
-        row.original.expiresAt
-          ? <span className="text-xs text-muted">{fmtDate(row.original.expiresAt)}</span>
-          : <span className="text-xs text-muted italic">Never</span>,
+      header: 'Runs',
+      size:   150,
+      /**
+       * Both ends of the window, not just the expiry.
+       *
+       * A sale can sit here reading "Scheduled" with no way to see WHEN it
+       * starts, which is the one thing that explains why prices have not
+       * moved. Showing the expiry alone answered the question nobody was
+       * asking.
+       */
+      cell: ({ row }: { row: { original: Promotion } }) => {
+        const p = row.original;
+        return (
+          <div className="text-xs text-muted leading-tight">
+            {p.startsAt && (
+              <div>{getStatus(p) === 'SCHEDULED' ? 'Starts ' : 'From '}{fmtDate(p.startsAt)}</div>
+            )}
+            <div>{p.expiresAt ? `Until ${fmtDate(p.expiresAt)}` : <span className="italic">Never expires</span>}</div>
+          </div>
+        );
+      },
     },
     {
       id:     'status',
@@ -423,9 +441,10 @@ export default function MarketingSalesPage() {
             {!p.autoApply && (
               <ActionBtn icon={Copy} label="Duplicate" onClick={() => handleDuplicate(p)} />
             )}
-            {status !== 'EXPIRED' && (
-              <ActionBtn icon={Trash2} label="Delete" onClick={() => handleDelete(p)} variant="danger" />
-            )}
+            {/* Delete is offered for every status, EXPIRED included. It used to be
+                hidden once a sale expired, which is exactly when a seller wants
+                it gone — an expired sale had no way off the list at all. */}
+            <ActionBtn icon={Trash2} label="Delete" onClick={() => handleDelete(p)} variant="danger" />
           </div>
         );
       },
