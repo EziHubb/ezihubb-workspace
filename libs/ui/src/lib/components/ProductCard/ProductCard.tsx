@@ -227,7 +227,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         )}
 
         <div className="flex items-center gap-2 flex-wrap">
-          <span className={['text-sm font-semibold', sale ? 'text-success' : 'text-secondary'].join(' ')}>
+          {/* Same rule as the search card, and the same token — these two had
+              drifted onto different greens, one of them the success colour,
+              which says "that worked" rather than "this is on sale". */}
+          <span className={['text-sm font-semibold', sale ? 'text-badge-sale' : 'text-secondary'].join(' ')}>
             {/* No "from" alongside a sale: the sale price is the listing's own,
                 not the cheapest variant's, so calling it a floor would be a
                 claim the number does not support. */}
@@ -240,7 +243,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 {formatPrice(struckPrice, currency, locale)}
               </span>
               {discount > 0 && (
-                <span className="text-xs font-medium text-error">-{discount}%</span>
+                <span className="text-xs text-muted">-{discount}%</span>
               )}
             </>
           )}

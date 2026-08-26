@@ -347,7 +347,17 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
 
         {/* Price */}
         <div className="flex items-baseline gap-1.5 flex-wrap">
-          <span className={['text-sm font-bold', sale ? 'text-green-700' : 'text-secondary'].join(' ')}>
+          {/* One accent per price row.
+              The sale price and the percentage used to share a colour, so
+              neither led — two things shouting is the same as neither being
+              heard. The price is what a shopper acts on, so it keeps the
+              accent and everything beside it steps back.
+
+              badge-sale (#DC2626) rather than a raw Tailwind green: the design
+              system already declares a colour for exactly this, and the two
+              cards had drifted onto two different greens by inventing their
+              own. 4.83:1 on white, which clears AA. */}
+          <span className={['text-sm font-bold', sale ? 'text-badge-sale' : 'text-secondary'].join(' ')}>
             {/* "From" only without a sale. The sale price is the listing's own,
                 not the cheapest variant's, so calling it a floor would be a
                 claim the number does not support. */}
@@ -359,7 +369,9 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
               <span className="text-xs text-muted line-through">
                 {fmtAmount(struckPrice)}
               </span>
-              <span className="text-xs text-green-700 font-medium">
+              {/* Muted, not a second accent. The struck price beside it
+                  already says a discount is running; this quantifies it. */}
+              <span className="text-xs text-muted">
                 {t('percentOff', { percent: discount })}
               </span>
             </>
