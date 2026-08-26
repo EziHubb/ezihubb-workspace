@@ -155,13 +155,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified:    p.updatedAt ? new Date(p.updatedAt) : new Date(),
       changeFrequency: 'weekly' as const,
       priority:        0.85,
-      ...(p.images && p.images.length > 0 && {
-        images: p.images.slice(0, 5).map((img) => ({
-          url:     img.url,
-          title:   p.name ?? p.slug,
-          caption: p.shortDescription ?? p.name ?? p.slug,
-        })),
-      }),
+      // Plain URL strings. Next's Sitemap type declares `images?: string[]`,
+      // and it was being handed { url, title, caption } objects — which Next
+      // stringified straight into <image:loc>[object Object]</image:loc>.
+      // Search Console rejected eight of them as Invalid URL.
+      //
+      // The return type here IS annotated as MetadataRoute.Sitemap, and it
+      // still did not catch this. Verified by putting the object form back and
+      // rerunning tsc: it exits 0 either way. Object-literal freshness is lost
+      // through .map() and the array spreads that build this list, so nothing
+      // compares the element type against the declaration.
+      //
+      // Which means the compiler is not the guard here. The generated XML is:
+      // an <image:loc> must contain a URL, and the only way to know it does is
+      // to look at the output.
+      //
+      // title and caption are gone because Next has nowhere to put them —
+      // they were never reaching the XML, only breaking the URL that was.
+      images: (p.images ?? []).slice(0, 5).map((img) => img.url),
     })),
 
     // ── Priority 0.75: Category search pages
