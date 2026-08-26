@@ -45,24 +45,29 @@ export class FcmService {
       return { sent: 0, failed: 0, staleTokens: [] };
     }
 
+    // DATA ONLY. A web push carrying a `notification` block is displayed by
+    // the browser automatically, and onBackgroundMessage in our worker then
+    // drew a second one — which is why a single reply arrived twice. Sending
+    // only data leaves exactly one thing capable of putting a notification on
+    // screen, and it is the one that knows the right icon, the right click
+    // target and the unread count for the app badge.
+    //
+    // The trade is real: with no notification block the browser has no
+    // fallback to display if the worker fails, so the worker must always end
+    // up calling showNotification.
+    //
+    // Title and body move into data because that is now the only channel
+    // carrying them. Every value here has to be a string — FCM rejects the
+    // message otherwise — so an absent imageUrl is omitted rather than sent
+    // as undefined.
     const message: MulticastMessage = {
       tokens,
-      notification: {
-        title:    payload.title,
-        body:     payload.body,
-        imageUrl: payload.imageUrl,
-      },
       data: {
         ...(payload.data ?? {}),
+        title: payload.title,
+        body:  payload.body,
+        ...(payload.imageUrl ? { imageUrl: payload.imageUrl } : {}),
         clickAction: payload.clickAction ?? '/',
-      },
-      webpush: {
-        fcmOptions: { link: payload.clickAction ?? '/' },
-        notification: {
-          icon:               '/icons/icon-192x192.png',
-          badge:              '/icons/badge-72x72.png',
-          requireInteraction: false,
-        },
       },
       apns: {
         payload: {

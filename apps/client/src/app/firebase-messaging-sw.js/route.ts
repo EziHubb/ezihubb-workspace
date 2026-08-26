@@ -128,9 +128,23 @@ try {
         Promise.resolve(write).catch(() => {});
       }
 
+      // Read from data, which is now the only place the server puts them:
+      // a notification block would make the browser draw its own copy and we
+      // would be back to two per message. The fallback covers anything still
+      // in flight from before that change.
+      const d = payload.data || {};
       const notification = payload.notification || {};
-      self.registration.showNotification(notification.title || 'EziHubb', {
-        body: notification.body || '',
+      const title = d.title || notification.title || 'EziHubb';
+      const body  = d.body  || notification.body  || '';
+
+      self.registration.showNotification(title, {
+        body,
+        // One live notification per conversation. A shop sending three
+        // replies in a row should update one entry rather than stack three,
+        // and renotify keeps the alert on the replacement so the update is
+        // still noticed.
+        tag: d.conversationId ? 'conv-' + d.conversationId : 'ezihubb',
+        renotify: true,
         // /icons/ never existed. Worse than a 404: the path has no dot in its
         // first segment, so middleware answers 307 to a locale prefix and the
         // notification quietly falls back to the browser's own icon.
