@@ -15,6 +15,7 @@ import { InboxToasts } from '../../components/messages/InboxToasts';
 import { ChatDock } from '../../components/messages/ChatDock';
 import { WebVitals } from '../../components/providers/WebVitals';
 import { CookieConsentBanner } from '../../components/analytics/CookieConsentBanner';
+import { PushPermissionPrompt } from '../../components/notifications/PushPermissionPrompt';
 import { MetaPixel } from '../../components/analytics/MetaPixel';
 import { PinterestTag } from '../../components/analytics/PinterestTag';
 import { OrganizationStructuredData } from '../../components/seo/OrganizationStructuredData';
@@ -163,7 +164,11 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params;
 
-  if (!routing.locales.includes(locale as 'en' | 'vi')) {
+  // Derived from routing.locales rather than spelled out: the literal union
+  // here said 'en' | 'vi' while routing has carried 'zh' for a while, so the
+  // type claimed a locale we ship is impossible. Runtime was unaffected,
+  // which is exactly why it went unnoticed. This form cannot drift again.
+  if (!routing.locales.includes(locale as (typeof routing.locales)[number])) {
     notFound();
   }
 
@@ -222,6 +227,9 @@ export default async function LocaleLayout({
             {/* Registers the service worker for everyone, signed in or not */}
             <ServiceWorkerRegistrar />
             <CookieConsentBanner />
+            {/* Renders only once the cookie bar is answered — they share
+                the same strip at the bottom of the page. */}
+            <PushPermissionPrompt />
             <Suspense fallback={null}><MetaPixel /></Suspense>
             <Suspense fallback={null}><PinterestTag /></Suspense>
           </CurrencyProvider>

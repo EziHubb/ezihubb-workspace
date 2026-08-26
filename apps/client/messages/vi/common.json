@@ -63,5 +63,13 @@
     "message": "Chúng tôi sử dụng cookie để cải thiện trải nghiệm của bạn và phân tích lưu lượng truy cập trang web. Bằng việc tiếp tục, bạn đồng ý với <link>Chính sách bảo mật</link> của chúng tôi.",
     "reject": "Từ chối",
     "acceptAll": "Chấp nhận tất cả"
+  },
+  "pushPrompt": {
+    "title": "Bật thông báo?",
+    "message": "Nhận thông báo ngay khi cửa hàng trả lời bạn, hoặc khi đơn hàng được gửi đi.",
+    "enable": "Bật",
+    "notNow": "Để sau",
+    "enabled": "Đã bật thông báo.",
+    "blocked": "Thông báo đang bị chặn. Bạn có thể bật lại trong cài đặt trình duyệt."
   }
 }

@@ -63,5 +63,13 @@
     "message": "We use cookies to improve your experience and analyze site traffic. By continuing, you agree to our <link>Privacy Policy</link>.",
     "reject": "Reject",
     "acceptAll": "Accept all"
+  },
+  "pushPrompt": {
+    "title": "Turn on notifications?",
+    "message": "Get a notification when a shop replies to you, or when your order ships.",
+    "enable": "Turn on",
+    "notNow": "Not now",
+    "enabled": "Notifications are on.",
+    "blocked": "Notifications are blocked. You can turn them back on in your browser settings."
   }
 }

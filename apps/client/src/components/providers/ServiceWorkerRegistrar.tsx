@@ -5,9 +5,9 @@ import { useEffect } from 'react';
 /**
  * Registers the app's single service worker for every visitor.
  *
- * This used to happen only inside initPushNotifications(), which runs after
- * login and only once notification permission is granted — so a signed-out
- * visitor had no worker at all, and Chrome will not offer to install an app
+ * This used to happen only inside the push bootstrap, which ran after login
+ * and only once notification permission was granted — so a signed-out visitor
+ * had no worker at all, and Chrome will not offer to install an app
  * whose scope has no worker with a fetch handler. Installability has nothing
  * to do with being logged in, so registration cannot hang off auth.
  *

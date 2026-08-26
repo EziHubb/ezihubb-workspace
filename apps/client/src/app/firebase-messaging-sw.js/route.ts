@@ -117,8 +117,10 @@ try {
         // first segment, so middleware answers 307 to a locale prefix and the
         // notification quietly falls back to the browser's own icon.
         icon: '/android-chrome-192x192.png',
-        // No badge until a monochrome 72x72 mask exists — Android renders a
-        // full-colour icon here as a grey blob.
+        // Android reads only this file's alpha channel and tints the result
+        // itself, so it has to be a silhouette. Handing it the full-colour
+        // icon instead renders a grey blob.
+        badge: '/badge-72x72.png',
         data: payload.data,
         actions: [{ action: 'open', title: 'View' }],
       });

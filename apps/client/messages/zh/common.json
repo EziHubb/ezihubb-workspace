@@ -63,5 +63,13 @@
     "message": "我们使用 Cookie 来改善您的体验并分析网站流量。继续使用即表示您同意我们的<link>隐私政策</link>。",
     "reject": "拒绝",
     "acceptAll": "接受全部"
+  },
+  "pushPrompt": {
+    "title": "开启通知？",
+    "message": "店铺回复您或订单发货时，第一时间收到通知。",
+    "enable": "开启",
+    "notNow": "暂不",
+    "enabled": "通知已开启。",
+    "blocked": "通知已被阻止，您可以在浏览器设置中重新开启。"
   }
 }

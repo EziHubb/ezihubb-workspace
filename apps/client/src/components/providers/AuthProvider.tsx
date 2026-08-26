@@ -4,9 +4,7 @@ import { useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { identifyHotjarUser } from '../../lib/analytics/hotjar';
 import { toast } from '../../lib/store/toast.store';
-import { api } from '@ezihubb/api-client';
-import { API_ROUTES } from '@ezihubb/constants';
-import { initPushNotifications, setupForegroundMessages } from '../../lib/notifications/push';
+import { syncPushToken, setupForegroundMessages } from '../../lib/notifications/push';
 
 export function AuthProvider({ children }: { children?: React.ReactNode }) {
   const { data: session } = useSession();
@@ -21,18 +19,17 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  // Register FCM token and set up foreground message handler after login.
+  // Refresh the FCM token and set up the foreground handler after login.
   useEffect(() => {
     if (!userId) return;
 
-    initPushNotifications()
-      .then((token) => {
-        if (!token) return;
-        // eslint-disable-next-line @typescript-eslint/no-empty-function -- best-effort; push notifications are optional
-        api.post(API_ROUTES.USERS.FCM_TOKEN, { token, platform: 'web' }).catch(() => {});
-      })
-      // eslint-disable-next-line @typescript-eslint/no-empty-function -- push notifications are optional, never blocks auth
-      .catch(() => {});
+    // syncPushToken never prompts. This effect used to call the version
+    // that did, so every login fired Notification.requestPermission() with
+    // no gesture behind it — quiet-listed by Chrome, refused by Safari.
+    // Asking is PushPermissionPrompt's job now; this only renews the token
+    // of someone who already said yes, which it must, because FCM tokens
+    // rotate and a stale one silently stops delivering.
+    void syncPushToken();
 
     const unsubscribe = setupForegroundMessages(({ title, body }) => {
       if (title) toast.info(body ? `${title} — ${body}` : title);

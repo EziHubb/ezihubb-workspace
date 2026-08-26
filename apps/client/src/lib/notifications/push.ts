@@ -1,5 +1,7 @@
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage, type Messaging } from 'firebase/messaging';
+import { api } from '@ezihubb/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 
 const firebaseConfig = {
   apiKey:            process.env['NEXT_PUBLIC_FIREBASE_API_KEY'],
@@ -29,38 +31,84 @@ function getMsg(): Messaging | null {
 }
 
 /**
- * Request push permission and return an FCM token, or null if unavailable.
- * Safe to call multiple times — reuses existing token if already granted.
+ * Whether this browser can receive push at all.
+ *
+ * Notably false in an iOS Safari tab: iOS exposes window.Notification only to a
+ * site the user has added to the Home Screen, so on iPhone this stays false
+ * until the app is installed. Callers should treat it as "do not ask", not as
+ * an error.
  */
-export async function initPushNotifications(): Promise<string | null> {
-  if (!isConfigured()) return null;
-  if (!('Notification' in window)) return null;
+export function isPushSupported(): boolean {
+  return (
+    isConfigured() &&
+    typeof window !== 'undefined' &&
+    'Notification' in window &&
+    'serviceWorker' in navigator
+  );
+}
+
+/** 'default' means the browser has not been asked yet. */
+export function pushPermission(): NotificationPermission | 'unsupported' {
+  return isPushSupported() ? Notification.permission : 'unsupported';
+}
+
+/**
+ * Mint an FCM token for the signed-in user and hand it to the API.
+ *
+ * Never prompts — it returns false unless permission is ALREADY granted, which
+ * is what makes it safe to call on page load. Asking is requestPushPermission's
+ * job, and only from a click.
+ */
+export async function syncPushToken(): Promise<boolean> {
+  if (pushPermission() !== 'granted') return false;
 
   try {
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return null;
-
     // Idempotent: ServiceWorkerRegistrar already registers this exact script
     // and scope for every visitor, and register() returns the existing
-    // registration rather than creating a second one. Kept here rather than
-    // awaiting navigator.serviceWorker.ready, which never resolves at all if
-    // that registration failed.
+    // registration rather than creating a second one. Used here rather than
+    // navigator.serviceWorker.ready, which never resolves at all if that
+    // registration failed.
     const registration = await navigator.serviceWorker.register(
       '/firebase-messaging-sw.js',
       { scope: '/' },
     );
 
     const messaging = getMsg();
-    if (!messaging) return null;
+    if (!messaging) return false;
 
     const token = await getToken(messaging, {
-      vapidKey:                process.env['NEXT_PUBLIC_FIREBASE_VAPID_KEY'],
+      vapidKey:                  process.env['NEXT_PUBLIC_FIREBASE_VAPID_KEY'],
       serviceWorkerRegistration: registration,
     });
+    if (!token) return false;
 
-    return token ?? null;
+    await api.post(API_ROUTES.USERS.FCM_TOKEN, { token, platform: 'web' });
+    return true;
   } catch {
-    return null;
+    // Push is optional and must never break the page that called this.
+    return false;
+  }
+}
+
+/**
+ * Ask the browser for notification permission, then register the token.
+ *
+ * MUST be called from a user gesture. This used to run automatically on login,
+ * which cost us twice: Chrome demotes an ungestured request to its quiet UI and
+ * can block the origin permanently, and Safari refuses outright — so on iOS the
+ * dialog never appeared at all. The in-app prompt that calls this is what earns
+ * the gesture, and it also means a user who says no here is never reported to
+ * the browser as a denial we can't undo.
+ */
+export async function requestPushPermission(): Promise<NotificationPermission | 'unsupported'> {
+  if (!isPushSupported()) return 'unsupported';
+
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') await syncPushToken();
+    return permission;
+  } catch {
+    return 'denied';
   }
 }
 
