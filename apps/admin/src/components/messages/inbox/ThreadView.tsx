@@ -396,7 +396,13 @@ export function ThreadView({
   const submit = async () => {
     const body = draft.trim();
     // Attachments alone are a message — a proof does not need a covering note.
-    if ((!body && attachments.length === 0) || sending) return;
+    //
+    // No `|| sending` guard. It used to be safe because the button was greyed
+    // out for the whole round trip; without that, a seller typing a second
+    // reply straight after the first would have had it silently swallowed by a
+    // button that looked ready. Two sends in flight is fine — each carries its
+    // own clientMessageId, which is what the server dedupes on.
+    if (!body && attachments.length === 0) return;
     const urls = attachments.map((a) => a.url);
     // Cleared before the request, not after. The reply is already on screen as
     // a pending bubble by the time this returns, and a box that stayed full
@@ -571,11 +577,16 @@ export function ThreadView({
             onClick={submit}
             // Attachments alone are a message. Requiring text as well would
             // make sending a proof mean typing something first.
-            disabled={sending || uploading || (!draft.trim() && attachments.length === 0)}
+            // Not disabled while sending. The reply is already on screen as a
+            // pending bubble and the box is empty, so there is nothing to send
+            // twice — and a button that greys out for the length of a round
+            // trip is what made replying here feel slower than the storefront,
+            // where the same wait is a 32px spinner nobody notices.
+            disabled={uploading || (!draft.trim() && attachments.length === 0)}
             className="flex items-center gap-2 rounded-full bg-secondary px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
           >
             <Send className="h-4 w-4" aria-hidden="true" />
-            {sending ? 'Sending…' : 'Send'}
+            Send
           </button>
         </div>
 
