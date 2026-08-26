@@ -95,7 +95,10 @@ function useThreadMessages(conversationId: string | null, newest: ThreadMessage[
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const messages = useMemo(() => [...seen.current.values()].sort(byOldest), [newest, tick, conversationId]);
-  return { messages, prepend, reset };
+  // `merge` is `prepend` under a name that says what it does here: the map is
+  // keyed by id and re-sorted by time, so it takes a page of older messages
+  // and a single one that just arrived equally well.
+  return { messages, prepend, merge: prepend, reset };
 }
 
 /** Delays a value so a fast typist causes one request, not twenty. */
@@ -197,7 +200,7 @@ export default function MessagesPage() {
   });
 
   const thread0 = threadQuery.data;
-  const { messages: threadMessages, prepend, reset: resetPages } =
+  const { messages: threadMessages, prepend, merge, reset: resetPages } =
     useThreadMessages(activeId, thread0?.messages);
 
   /**
@@ -439,14 +442,16 @@ export default function MessagesPage() {
   // this screen. Splicing the two together is how the list ends up holding
   // two subtly different kinds of message. One extra fetch on a message that
   // has already arrived is cheap.
-  useConversationStream(activeId, () => {
-    // Deliberately NOT merging the pushed row here, unlike the storefront.
-    // The gateway emits the message as it was written, with no relations, and
-    // this view's ThreadMessage needs attachedProduct — merging the bare row
-    // would put a message on screen with its product card missing until a
-    // refetch replaced it. The seller's own reply is already instant via the
-    // optimistic bubble; a buyer's message costs one fetch, which is the
-    // honest price until the gateway includes the relation.
+  useConversationStream(activeId, (incoming) => {
+    // Merged straight from the packet, as the storefront already did. This
+    // used to refetch instead, because the gateway pushed the raw row and this
+    // view's ThreadMessage needs a flattened attachedProduct — so every
+    // message either side sent cost a full thread fetch before it could be
+    // drawn, and the seller's optimistic bubble sat there through it. The
+    // gateway now sends the flattened shape.
+    if (incoming) merge([incoming as unknown as ThreadMessage]);
+    // Still invalidated: a read receipt or an unsend arrives with no message,
+    // and a socket that never connected has to be caught by something.
     qc.invalidateQueries({ queryKey: QK.thread(activeId) });
     refetchLists();
   });

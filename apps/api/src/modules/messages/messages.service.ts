@@ -114,6 +114,37 @@ function redactUnsent<T extends { deletedAt?: Date | null; body?: string; attach
   );
 }
 
+/** The attached listing as Prisma returns it, before it is flattened. */
+type RawAttachedProduct = {
+  id: string; name: string; slug: string;
+  basePrice: unknown; compareAtPrice: unknown;
+  images: { url: string }[];
+};
+
+/**
+ * Flattens a message's attached listing into the shape the readers expect.
+ *
+ * Prisma hands back `basePrice` as a Decimal and `images` as an array; every
+ * consumer wants `price` as a number and a single `imageUrl`. That conversion
+ * used to be written inline at each read site, which is why the realtime push
+ * did not have it — and a message arriving over the socket was therefore
+ * unusable to the seller's inbox, whose type expects the flattened form. It
+ * answered every push by refetching the whole thread instead.
+ */
+function withMappedProduct<T extends { attachedProduct?: RawAttachedProduct | null }>(m: T) {
+  return {
+    ...m,
+    attachedProduct: m.attachedProduct && {
+      id:   m.attachedProduct.id,
+      name: m.attachedProduct.name,
+      slug: m.attachedProduct.slug,
+      price:          Number(m.attachedProduct.basePrice),
+      compareAtPrice: m.attachedProduct.compareAtPrice ? Number(m.attachedProduct.compareAtPrice) : null,
+      imageUrl:       m.attachedProduct.images[0]?.url ?? null,
+    },
+  };
+}
+
 /**
  * Turns a newest-first fetch of `size + 1` rows into what a thread renders.
  *
@@ -639,6 +670,20 @@ export class MessagesService {
           attachedProductId: dto.attachedProductId ?? null,
           clientMessageId: dto.clientMessageId ?? null,
         },
+        // The row that comes back here is the one pushed over the socket, so
+        // it has to be complete enough to render. It used to be the bare
+        // scalars, which meant the seller's inbox could not use the push at
+        // all — its message type needs attachedProduct — and answered every
+        // arrival by refetching the whole thread instead. One join on send
+        // buys back a round trip on every message either side receives.
+        include: {
+          attachedProduct: {
+            select: {
+              id: true, name: true, slug: true, basePrice: true, compareAtPrice: true,
+              images: { where: { isPrimary: true }, select: { url: true }, take: 1 },
+            },
+          },
+        },
       }),
       this.prisma.conversation.update({
         where: { id: conversationId },
@@ -732,7 +777,11 @@ export class MessagesService {
     // Every sender reaches this method — the buyer's endpoint, the seller's
     // inbox reply, and the order panel all delegate here — so this one call
     // covers all of them without a second emit site to keep in step.
-    this.realtime?.emitMessage(conversationId, message);
+    // Pushed in the shape the readers already expect, not the raw row. The
+    // seller's inbox types attachedProduct as { price, imageUrl }, so a raw
+    // relation on the wire was unusable there and every arriving message cost
+    // a refetch of the whole thread to render.
+    this.realtime?.emitMessage(conversationId, withMappedProduct(message));
 
     // And to the recipient personally, so their sidebar badge and toast fire
     // wherever they are — the conversation room only reaches people who
@@ -1043,17 +1092,7 @@ export class MessagesService {
       labels: conversation.labels.map((l) => l.label),
       hasMoreMessages: window.hasMoreMessages,
       oldestMessageId: window.oldestMessageId,
-      messages: window.messages.map((m) => ({
-        ...m,
-        attachedProduct: m.attachedProduct && {
-          id:   m.attachedProduct.id,
-          name: m.attachedProduct.name,
-          slug: m.attachedProduct.slug,
-          price:        Number(m.attachedProduct.basePrice),
-          compareAtPrice: m.attachedProduct.compareAtPrice ? Number(m.attachedProduct.compareAtPrice) : null,
-          imageUrl:     m.attachedProduct.images[0]?.url ?? null,
-        },
-      })),
+      messages: window.messages.map(withMappedProduct),
     };
   }
 
