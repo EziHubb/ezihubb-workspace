@@ -18,6 +18,8 @@ import {
 } from '../../common/dto/paginated-response.dto';
 import { ProductDetail } from '../catalog/schemas/product-detail.schema';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { withListingSales } from '../products/pricing.util';
+import { ShippingService } from '../shipping/shipping.service';
 
 // Same key AnalyticsService.trackSearch() writes to — previously this
 // service also maintained its own separate 'search:trending' zset via
@@ -72,6 +74,7 @@ export class SearchService {
     private readonly analyticsService: AnalyticsService,
     @InjectModel(ProductDetail.name)
     private readonly productDetailModel: Model<ProductDetail>,
+    private readonly shippingService: ShippingService,
   ) {}
 
   // ─── Full-text search ──────────────────────────────────────────────────────
@@ -713,6 +716,10 @@ export class SearchService {
       soldCount: number;
       _count: { reviews: number };
       createdAt: Date;
+      // Present at runtime: the search query uses Prisma `include`, which
+      // returns every scalar column. Needed because the free-shipping badge is
+      // resolved from the profile, not guessed.
+      shippingProfileId: string | null;
     }[],
   ): Promise<ProductListItemDto[]> {
     const productIds = products.map((p) => p.id);
@@ -745,7 +752,15 @@ export class SearchService {
       ]),
     );
 
-    return Promise.all(
+    const freeShip = await this.shippingService.freeShippingListingIds(
+      products.map((p) => ({ id: p.id, shippingProfileId: p.shippingProfileId })),
+    );
+
+    // withListingSales rather than a `sale:` line inside the map below: the
+    // same shape is built in three separate places and the field is optional,
+    // so a mapper that forgot it would compile and simply never show a
+    // discount. See pricing.util.
+    return withListingSales(this.prisma, await Promise.all(
       products.map(async (p) => ({
         id: p.id,
         name: p.name,
@@ -767,6 +782,7 @@ export class SearchService {
         productType: p.productType,
         videos: (p.videos ?? []).map(toProductVideoDto),
         storeId:   p.store?.id   ?? null,
+        freeShipping: freeShip.has(p.id),
         storeName: p.store?.name ?? null,
         storeSlug: p.store?.slug ?? null,
         store:     p.store       ?? null,
@@ -782,6 +798,6 @@ export class SearchService {
         inDemandCount: (await this.redis.get<number>(IN_DEMAND_KEY(p.id))) ?? 0,
         createdAt: p.createdAt,
       })),
-    );
+    ));
   }
 }

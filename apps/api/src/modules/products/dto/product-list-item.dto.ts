@@ -12,6 +12,15 @@ export class ProductListItemDto {
    *  basePrice is seller-entered and never auto-synced to variant prices — cards should
    *  prefer minPrice (falling back to basePrice) so a stale basePrice can't mislead buyers. */
   @ApiPropertyOptional() minPrice: number | null;
+
+  /** The auto-apply sale in force, or null. Distinct from compareAtPrice,
+   *  which is the seller-typed "was" price and unrelated to any sale. */
+  @ApiPropertyOptional() sale?: { price: number; originalPrice: number; discountPercent: number } | null;
+
+  /** True only when this listing ships free to EVERY destination its profile
+   *  serves. Required so a mapper cannot omit it and quietly print nothing —
+   *  or, as before, print "Free shipping" for everything. */
+  @ApiProperty() freeShipping: boolean;
   @ApiPropertyOptional() maxPrice: number | null;
   @ApiPropertyOptional() primaryImageUrl: string | null;
   @ApiPropertyOptional() primaryImage: string | null;

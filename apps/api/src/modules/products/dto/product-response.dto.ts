@@ -128,6 +128,11 @@ export class ProductResponseDto {
    * itself server-side — never trust a client-displayed price.
    */
   @ApiPropertyOptional() salePromo?: { type: 'PERCENTAGE' | 'FIXED_AMOUNT'; value: number } | null;
+
+  /** True only when this listing ships free to EVERY destination its profile
+   *  serves — the same rule the grid uses, resolved from the profile checkout
+   *  prices from rather than asserted. */
+  @ApiProperty() freeShipping: boolean;
   /** Active "Buy them together" bundle this listing belongs to, if any. */
   @ApiPropertyOptional({ type: () => ProductBundleOfferDto }) bundleOffer?: ProductBundleOfferDto | null;
   @ApiProperty() isPersonalizable: boolean;

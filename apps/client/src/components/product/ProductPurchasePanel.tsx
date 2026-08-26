@@ -197,7 +197,7 @@ function BuyTogetherCard({
 
 // ── DeliveryInfo ──────────────────────────────────────────────────────────────
 
-function DeliveryInfo({ processingDays }: { processingDays: number }) {
+function DeliveryInfo({ processingDays, freeShipping }: { processingDays: number; freeShipping: boolean }) {
   const t      = useTranslations('product.purchasePanel');
   const locale = useLocale();
   const today       = new Date();
@@ -207,10 +207,14 @@ function DeliveryInfo({ processingDays }: { processingDays: number }) {
 
   return (
     <div className="space-y-1.5 text-sm">
-      <div className="flex items-center gap-2 text-secondary">
-        <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-        <span>{t('freeShipping')}</span>
-      </div>
+      {/* Same rule as the grid: claimed only when the shipping profile is free
+          to every destination it serves. */}
+      {freeShipping && (
+        <div className="flex items-center gap-2 text-secondary">
+          <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+          <span>{t('freeShipping')}</span>
+        </div>
+      )}
       <div className="flex items-center gap-2 text-secondary">
         <Clock className="w-4 h-4 flex-shrink-0" />
         <span>
@@ -675,7 +679,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
           appears in the Delivery accordion below, alongside "Digital
           download" in Item details' highlights. */}
       {product.productType !== 'DIGITAL' && (
-        <DeliveryInfo processingDays={product.processingDays ?? 3} />
+        <DeliveryInfo processingDays={product.processingDays ?? 3} freeShipping={product.freeShipping} />
       )}
 
       {/* ── RATING + SHARE ROW ── */}

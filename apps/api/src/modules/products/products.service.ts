@@ -23,7 +23,7 @@ import { StorageService } from '../../common/services/storage.service';
 import { ProductDetail } from '../catalog/schemas/product-detail.schema';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { TargetedOffersService } from '../marketing/targeted-offers.service';
-import { getEffectivePrice } from './pricing.util';
+import { getEffectivePrice, withListingSales } from './pricing.util';
 import { BundleOffersService } from '../promotions/bundle-offers.service';
 import type {
   CreateProductDetailDto,
@@ -58,6 +58,7 @@ import { tmpdir } from 'os';
 import { join, extname } from 'path';
 import { randomUUID } from 'crypto';
 import { PLATFORM_FEE_DEFAULTS } from '../stores/fees.util';
+import { ShippingService } from '../shipping/shipping.service';
 
 const execFileAsync = promisify(execFile);
 
@@ -141,6 +142,7 @@ export class ProductsService {
     private readonly productDetailModel: Model<ProductDetail>,
     private readonly autoTranslate: AutoTranslateService,
     private readonly targetedOffersService: TargetedOffersService,
+    private readonly shippingService: ShippingService,
     private readonly bundleOffersService: BundleOffersService,
     @InjectQueue(QUEUES.IMAGE_PROCESSING) private readonly imageQueue: Queue,
     @Optional() private readonly moderationService?: ModerationService,
@@ -201,6 +203,13 @@ export class ProductsService {
       }),
     ]);
 
+    // Resolved from the shipping profiles, which is what checkout prices
+    // from — a badge computed any other way would eventually contradict the
+    // till. See ShippingService.freeShippingListingIds.
+    const freeShip = await this.shippingService.freeShippingListingIds(
+      products.map((p) => ({ id: p.id, shippingProfileId: p.shippingProfileId })),
+    );
+
     const ratingMap = new Map(
       ratingRows.map((r) => [
         r.productId,
@@ -226,6 +235,7 @@ export class ProductsService {
           sku: p.sku,
           basePrice: Number(p.basePrice),
           compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
+          freeShipping: freeShip.has(p.id),
           minPrice: priceRangeMap.get(p.id)?.min ?? null,
           maxPrice: priceRangeMap.get(p.id)?.max ?? null,
           primaryImageUrl: p.images[0]?.url ?? null,
@@ -258,7 +268,10 @@ export class ProductsService {
         }) satisfies ProductListItemDto,
     );
 
-    return paginatedResponse<ProductListItemDto>(data, page, limit, total);
+    return paginatedResponse<ProductListItemDto>(
+      await withListingSales(this.prisma, data),
+      page, limit, total,
+    );
   }
 
   async getStats(storeId?: string): Promise<{ all: number; active: number; draft: number; inactive: number; archived: number }> {
@@ -385,6 +398,9 @@ export class ProductsService {
       productForMapping as Parameters<typeof this.mapToProductResponse>[0],
       inDemandCount,
       averageRating,
+      (await this.shippingService.freeShippingListingIds([
+        { id: product.id, shippingProfileId: product.shippingProfileId },
+      ])).has(product.id),
     );
 
     // Derive variantOptions from VariationGroup+VariationOption — the admin-configurable source of truth
@@ -907,6 +923,9 @@ export class ProductsService {
       product as Parameters<typeof this.mapToProductResponse>[0],
       0,
       null,
+      (await this.shippingService.freeShippingListingIds([
+        { id: product.id, shippingProfileId: product.shippingProfileId },
+      ])).has(product.id),
     );
   }
 
@@ -1064,6 +1083,9 @@ export class ProductsService {
       product as Parameters<typeof this.mapToProductResponse>[0],
       inDemandCount,
       await this.getAverageRating(id),
+      (await this.shippingService.freeShippingListingIds([
+        { id: product.id, shippingProfileId: product.shippingProfileId },
+      ])).has(product.id),
     );
   }
 
@@ -1101,6 +1123,9 @@ export class ProductsService {
         product as Parameters<typeof this.mapToProductResponse>[0],
         inDemand ?? 0,
         avgRating,
+        (await this.shippingService.freeShippingListingIds([
+          { id: product.id, shippingProfileId: product.shippingProfileId },
+        ])).has(product.id),
       ),
       // ── New extended fields ──
       storeId:              product.storeId,
@@ -1890,6 +1915,9 @@ export class ProductsService {
       product as Parameters<typeof this.mapToProductResponse>[0],
       0,
       null,
+      (await this.shippingService.freeShippingListingIds([
+        { id: product.id, shippingProfileId: product.shippingProfileId },
+      ])).has(product.id),
     );
   }
 
@@ -3133,6 +3161,13 @@ export class ProductsService {
       soldCount: number;
       _count: { reviews: number };
       createdAt: Date;
+      // Same reason as the fields above: every query feeding this uses Prisma
+      // `include`, so storeId is already on the row. Needed because a promotion
+      // belongs to a shop — without it these grids cannot tell which sales apply.
+      storeId: string | null;
+      // Likewise for shipping: the free-shipping badge is resolved from the
+      // profile, so the id has to travel with the row.
+      shippingProfileId: string | null;
     }>,
   ): Promise<ProductListItemDto[]> {
     if (products.length === 0) return [];
@@ -3170,7 +3205,11 @@ export class ProductsService {
       ]),
     );
 
-    return products.map((p) => ({
+    const freeShip = await this.shippingService.freeShippingListingIds(
+      products.map((p) => ({ id: p.id, shippingProfileId: p.shippingProfileId })),
+    );
+
+    const items = products.map((p) => ({
       id: p.id,
       name: p.name,
       slug: p.slug,
@@ -3201,7 +3240,14 @@ export class ProductsService {
       reviewCount: p._count.reviews,
       inDemandCount: inDemandMap.get(p.id) ?? 0,
       createdAt: p.createdAt,
+      storeId: p.storeId,
+      freeShipping: freeShip.has(p.id),
     }));
+
+    // Related, trending and recently-viewed are grids too. Leaving them out
+    // meant a listing could show a sale in search and full price in the
+    // "related" strip on the very same page.
+    return withListingSales(this.prisma, items);
   }
 
   private mapToProductResponse(
@@ -3268,6 +3314,9 @@ export class ProductsService {
     },
     inDemandCount: number,
     averageRating: number | null,
+    /** Resolved by the caller: this mapper is synchronous and the answer needs
+     *  a query. Same reason inDemandCount and averageRating arrive this way. */
+    freeShipping: boolean,
   ): ProductResponseDto {
     return {
       id: product.id,
@@ -3277,6 +3326,7 @@ export class ProductsService {
       description: product.description,
       shortDescription: product.shortDescription,
       basePrice: Number(product.basePrice),
+      freeShipping,
       compareAtPrice: product.compareAtPrice
         ? Number(product.compareAtPrice)
         : null,

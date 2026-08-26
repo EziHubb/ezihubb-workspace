@@ -7,9 +7,11 @@ import {
   ProductDetailSchema,
 } from '../catalog/schemas/product-detail.schema';
 import { AnalyticsModule } from '../analytics/analytics.module';
+import { ShippingModule } from '../shipping/shipping.module';
 
 @Module({
   imports: [
+    ShippingModule,
     MongooseModule.forFeature([
       { name: ProductDetail.name, schema: ProductDetailSchema },
     ]),

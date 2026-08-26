@@ -248,10 +248,12 @@ export function ShippingReturnsAccordion({ product }: { product: ProductDetailDt
           </div>
         </div>
 
-        <div className="flex items-start gap-2">
-          <Truck className="w-4 h-4 text-secondary mt-0.5 shrink-0" />
-          <p>{t('freeShipping')}</p>
-        </div>
+        {product.freeShipping && (
+          <div className="flex items-start gap-2">
+            <Truck className="w-4 h-4 text-secondary mt-0.5 shrink-0" />
+            <p>{t('freeShipping')}</p>
+          </div>
+        )}
 
         <div className="flex items-start gap-2">
           <RotateCcw className="w-4 h-4 text-secondary mt-0.5 shrink-0" />

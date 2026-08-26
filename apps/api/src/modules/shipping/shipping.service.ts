@@ -103,6 +103,53 @@ export class ShippingService {
 
   // ─── Processing & shipping profiles ─────────────────────────────────────────
 
+  /**
+   * Which of these listings ship free to EVERY destination their profile serves.
+   *
+   * The grid has no delivery address — a visitor browsing has not told anyone
+   * where they are — so a badge there cannot say "free to you". It can only
+   * say "free, wherever you are", and that is true just when every method on
+   * the profile costs nothing. A profile that is free domestically and charged
+   * abroad is not free shipping to the person reading it from abroad, and
+   * saying so is the same false promise in a smaller form.
+   *
+   * The cost test mirrors resolveSellerShippingCost above, which is what
+   * checkout actually charges: FREE, or a FIXED method priced at zero with no
+   * per-extra-item surcharge. A badge derived from a different rule than the
+   * till uses is a badge that will eventually contradict it.
+   */
+  async freeShippingListingIds(
+    listings: { id: string; shippingProfileId: string | null }[],
+  ): Promise<Set<string>> {
+    const free = new Set<string>();
+    const profileIds = [...new Set(listings.map((l) => l.shippingProfileId).filter((x): x is string => !!x))];
+    if (profileIds.length === 0) return free;
+
+    const profiles = await this.prisma.shippingProfile.findMany({
+      where:   { id: { in: profileIds } },
+      select:  { id: true, methods: { select: { chargeType: true, price: true, extraItemPrice: true } } },
+    });
+
+    const freeProfiles = new Set(
+      profiles
+        .filter((profile) =>
+          // No methods at all means the profile cannot price anything, which
+          // is unresolvable rather than free — checkout hard-errors on it.
+          profile.methods.length > 0 &&
+          profile.methods.every((m) =>
+            m.chargeType === 'FREE' ||
+            (Number(m.price ?? 0) === 0 && Number(m.extraItemPrice ?? m.price ?? 0) === 0),
+          ),
+        )
+        .map((profile) => profile.id),
+    );
+
+    for (const l of listings) {
+      if (l.shippingProfileId && freeProfiles.has(l.shippingProfileId)) free.add(l.id);
+    }
+    return free;
+  }
+
   async getProcessingProfiles() {
     return this.prisma.processingProfile.findMany({
       orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
