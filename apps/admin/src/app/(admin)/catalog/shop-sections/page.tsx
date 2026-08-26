@@ -129,6 +129,9 @@ export default function ShopSectionsPage() {
               <p className="text-sm text-muted">No sections yet. Create your first above.</p>
             </div>
           ) : (
+            <div className="overflow-x-auto">
+              {/* Scrolls itself rather than the page: a table cannot shrink
+                  below the width of its columns. */}
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-background border-b border-border">
@@ -217,6 +220,7 @@ export default function ShopSectionsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>

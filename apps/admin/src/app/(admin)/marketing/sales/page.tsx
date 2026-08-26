@@ -492,6 +492,9 @@ export default function MarketingSalesPage() {
               {keySales.length === 0 ? (
                 <p className="text-sm text-muted text-center py-8">No sales or promotions found. Set up a sale or create a coupon code below to get started.</p>
               ) : (
+                <div className="overflow-x-auto">
+                  {/* Scrolls itself rather than the page: a table cannot shrink
+                      below the width of its columns. */}
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs font-semibold text-muted border-b border-border">
@@ -520,6 +523,7 @@ export default function MarketingSalesPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           </section>

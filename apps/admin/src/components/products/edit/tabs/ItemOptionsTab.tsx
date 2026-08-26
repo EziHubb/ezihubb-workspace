@@ -410,6 +410,9 @@ function VariationsSummaryTable({
               <span className="text-xs text-muted">{group.options.length} option{group.options.length !== 1 ? 's' : ''}</span>
             </div>
             <div className="relative overflow-visible">
+              <div className="overflow-x-auto">
+                {/* Scrolls itself rather than the page: a table cannot shrink
+                    below the width of its columns. */}
               <table className="w-full text-sm table-auto">
                 <thead>
                   <tr className="border-b border-border">
@@ -432,6 +435,7 @@ function VariationsSummaryTable({
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         );

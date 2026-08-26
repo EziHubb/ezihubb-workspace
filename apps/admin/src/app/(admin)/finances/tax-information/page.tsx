@@ -163,7 +163,7 @@ export default function TaxInformationPage() {
               <label className="block text-xs font-semibold text-secondary mb-1">City</label>
               <input required value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} className={inputCls} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-secondary mb-1">Province (optional)</label>
                 <input value={form.province} onChange={(e) => setForm((f) => ({ ...f, province: e.target.value }))} className={inputCls} />

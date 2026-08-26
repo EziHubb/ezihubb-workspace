@@ -114,7 +114,7 @@ export function ProcessingProfileModal({ profile, submitLabel, onClose, onSaved 
                 profile — not only the one you are editing.
               </p>
             )}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setType('MADE_TO_ORDER')}

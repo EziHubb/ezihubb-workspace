@@ -513,8 +513,11 @@ export default function MessagesPage() {
 
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
 
+  // dvh, not vh: a mobile browser retracting its toolbar leaves a vh box
+  // taller than the screen. p-4 on a phone because 24px each side is 48px of
+  // a 390px width, and this layout has none to give.
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col p-6">
+    <div className="flex h-[calc(100dvh-4rem)] flex-col p-4 md:p-6">
       <div className="mb-4 flex items-center justify-between gap-4">
         <AdminPageHeader title="Messages" />
         <div className="flex items-center gap-3">
@@ -539,16 +542,26 @@ export default function MessagesPage() {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 gap-5">
+      {/* Stacked on a phone, side by side from md. Unconditionally a row,
+          the 224px folder rail and its gap took 244px of a 342px content
+          width and left the message list about 98px wide. */}
+      <div className="flex min-h-0 flex-1 flex-col gap-3 md:flex-row md:gap-5">
         {/* ── Folders ──────────────────────────────────────────────────── */}
-        <nav className="w-56 shrink-0 space-y-0.5" aria-label="Mail folders">
+        {/* A horizontal strip on a phone: ten folders down the side of a
+            small screen is most of the screen. shrink-0 on the nav itself
+            only from md, or the strip refuses to compress and pushes the
+            list off the edge. */}
+        <nav
+          className="-mx-1 flex shrink-0 gap-1 overflow-x-auto px-1 pb-1 md:mx-0 md:w-56 md:flex-col md:gap-0 md:space-y-0.5 md:overflow-visible md:px-0 md:pb-0"
+          aria-label="Mail folders"
+        >
           {FOLDERS.map((f) => (
             <button
               key={f}
               type="button"
               onClick={() => changeView(() => { setFolder(f); setActiveId(null); })}
               aria-current={folder === f ? 'page' : undefined}
-              className={`flex w-full items-center justify-between rounded-button px-3 py-2 text-left text-sm ${
+              className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-button px-3 py-2 text-left text-sm md:w-full md:shrink md:justify-between md:gap-0 ${
                 folder === f ? 'bg-background font-semibold text-secondary' : 'text-muted hover:bg-background/60'
               }`}
             >

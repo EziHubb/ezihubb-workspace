@@ -166,7 +166,7 @@ export default async function CustomerDetailPage({
             </p>
           </div>
 
-          <div className="grid grid-cols-3 text-center gap-2 mt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 text-center gap-2 mt-3">
             {[
               { label: 'Orders',    value: customer.ordersCount },
               { label: 'Avg Order', value: fmtCurrency(customer.avgOrderValue, 0) },

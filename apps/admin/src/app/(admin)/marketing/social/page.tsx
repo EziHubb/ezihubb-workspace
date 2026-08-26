@@ -127,7 +127,7 @@ export default function SocialMediaPage() {
           {!content || content.newestListings.length === 0 ? (
             <p className="text-sm text-muted italic">No listings yet.</p>
           ) : (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {content.newestListings.map((l) => (
                 <div key={l.id} className="bg-surface rounded-card border border-border overflow-hidden group relative">
                   {l.imageUrl ? <img src={l.imageUrl} alt={l.name} className="w-full aspect-square object-cover" /> : <div className="w-full aspect-square bg-muted/10" />}

@@ -53,7 +53,7 @@ function SourcePhotoPicker({ mockups, onPick, onClose }: {
           </button>
         </div>
         <p className="px-5 pt-3 text-xs text-muted">Pick the photo that clearly shows the design — skip size charts or lifestyle shots.</p>
-        <div className="p-5 grid grid-cols-3 gap-3 max-h-80 overflow-y-auto">
+        <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto">
           {mockups.length === 0 && (
             <p className="col-span-3 text-sm text-muted text-center py-6">This product has no photos yet — add one in the Photo tab first.</p>
           )}

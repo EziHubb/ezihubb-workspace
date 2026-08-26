@@ -79,7 +79,7 @@ export default function EzihubbPlusPage() {
           <p className="text-sm text-secondary">{STATUS_COPY[data.displayStatus]}</p>
 
           {data.cycle && (
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border text-sm">
               <div>
                 <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">Billing cycle</p>
                 <p className="text-secondary">{data.cycle === 'MONTHLY' ? 'Monthly' : 'Annual'}</p>

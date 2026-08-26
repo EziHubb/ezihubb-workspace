@@ -196,7 +196,7 @@ export function PaymentDetailDrawer({ payment, onClose, onRefund }: PaymentDetai
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
 
       {/* Panel */}
-      <div className="fixed inset-y-0 right-0 w-[480px] bg-surface border-l border-border shadow-2xl z-50 flex flex-col">
+      <div className="fixed inset-y-0 right-0 w-full max-w-[480px] bg-surface border-l border-border shadow-2xl z-50 flex flex-col">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">

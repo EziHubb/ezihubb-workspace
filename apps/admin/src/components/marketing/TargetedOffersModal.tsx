@@ -186,7 +186,7 @@ export function TargetedOffersModal({ onClose, focusTrigger }: TargetedOffersMod
                   </div>
 
                   {isOpen && (
-                    <div className="px-4 pb-4 pt-1 border-t border-border/60 grid grid-cols-2 gap-3">
+                    <div className="px-4 pb-4 pt-1 border-t border-border/60 grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="col-span-2 flex gap-2">
                         <button type="button" onClick={() => update(c.trigger, { discountType: 'PERCENTAGE' })}
                           className={`flex-1 flex items-center justify-center gap-1 px-3 py-1.5 rounded-button border text-xs font-semibold transition-colors ${c.discountType === 'PERCENTAGE' ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted'}`}>

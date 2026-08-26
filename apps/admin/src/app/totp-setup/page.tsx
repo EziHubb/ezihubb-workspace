@@ -118,7 +118,7 @@ export default function TotpSetupPage() {
             <p className="text-sm text-amber-800 font-medium mb-3">
               Store these backup codes somewhere safe. Each can only be used once if you lose your authenticator.
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {backupCodes.map((c) => (
                 <code key={c} className="bg-white border border-amber-200 rounded px-3 py-1.5 text-sm font-mono text-secondary text-center">
                   {c}

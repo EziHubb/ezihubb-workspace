@@ -89,7 +89,7 @@ export function CustomizationPreviewModal({
               </h4>
               <dl className="space-y-2">
                 {fields.map(([key, value]) => (
-                  <div key={key} className="grid grid-cols-2 gap-4 text-sm">
+                  <div key={key} className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <dt className="font-medium text-muted capitalize">
                       {key.replace(/[_-]/g, ' ')}
                     </dt>

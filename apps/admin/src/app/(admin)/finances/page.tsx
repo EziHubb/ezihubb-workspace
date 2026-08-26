@@ -38,7 +38,7 @@ export default function PaymentAccountPage() {
             <Skeleton className="h-32" />
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <p className="text-sm text-muted mb-1">Current</p>
                   <p className={`font-display text-3xl font-bold ${(overview?.current ?? 0) < 0 ? 'text-error' : 'text-secondary'}`}>
@@ -169,6 +169,9 @@ export default function PaymentAccountPage() {
         </p>
 
         <div className="bg-surface border border-border rounded-card overflow-hidden">
+          <div className="overflow-x-auto">
+            {/* Scrolls itself rather than the page: a table cannot shrink
+                below the width of its columns. */}
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-background/40">
@@ -207,6 +210,7 @@ export default function PaymentAccountPage() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
         <div className="flex justify-center mt-4">
           <Link

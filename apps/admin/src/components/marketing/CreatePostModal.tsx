@@ -118,7 +118,7 @@ export function CreatePostModal({ onClose, onSaved }: CreatePostModalProps) {
 
               {contentChoice === 'listing' && (
                 content.listings.length === 0 ? <p className="text-sm text-muted italic">No listings yet.</p> : (
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                     {content.listings.map((l) => (
                       <button key={l.id} type="button" onClick={() => setSelectedListing(l)}
                         className={`p-2 rounded-card border-2 text-left transition-all ${selectedListing?.id === l.id ? 'border-primary' : 'border-border'}`}>

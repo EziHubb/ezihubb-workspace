@@ -703,7 +703,7 @@ export default function ShopHomeEditorPage() {
             </button>
 
             {(featuredQuery.data?.length ?? 0) > 0 && (
-              <div className="grid grid-cols-4 gap-3 mt-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mt-4">
                 {(featuredQuery.data ?? []).map((p) => (
                   <div key={p.id} className="relative rounded-lg overflow-hidden border-2 border-primary/40 aspect-square bg-muted/10">
                     {p.images?.[0]?.url && <Image src={p.images[0].url} alt={p.name} fill className="object-cover" />}
@@ -1236,7 +1236,7 @@ export default function ShopHomeEditorPage() {
       <Modal isOpen={layoutModalOpen} onClose={() => setLayoutModalOpen(false)} size="lg">
         <ModalHeader onClose={() => setLayoutModalOpen(false)}>Choose featured layout</ModalHeader>
         <ModalBody>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-3">
               <label className="flex items-start gap-2.5 p-3 rounded-lg border border-border cursor-pointer hover:border-secondary/40">
                 <input type="radio" name="featured-layout" checked={featuredLayout === 'standard'} onChange={() => setFeaturedLayout('standard')} className="mt-0.5" />
@@ -1289,7 +1289,7 @@ export default function ShopHomeEditorPage() {
                    preview broke in production). A CSS mock of the real
                    layout — one large tile + four small — is accurate and has
                    nothing to 404. Replace with a designed asset when one exists. */
-                <div className="w-full grid grid-cols-3 grid-rows-2 gap-1.5" aria-label="Mixed grid preview">
+                <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-rows-2 gap-1.5" aria-label="Mixed grid preview">
                   <div className="col-span-1 row-span-2 rounded bg-muted/25" />
                   {Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} className="rounded bg-muted/20 aspect-[4/3]" />

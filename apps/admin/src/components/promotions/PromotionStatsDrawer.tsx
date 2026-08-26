@@ -104,7 +104,7 @@ export function PromotionStatsDrawer({ promotion, onClose }: PromotionStatsDrawe
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
 
       {/* Panel */}
-      <div className="fixed inset-y-0 right-0 w-[480px] bg-surface border-l border-border shadow-2xl z-50 flex flex-col">
+      <div className="fixed inset-y-0 right-0 w-full max-w-[480px] bg-surface border-l border-border shadow-2xl z-50 flex flex-col">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
@@ -206,6 +206,9 @@ export function PromotionStatsDrawer({ promotion, onClose }: PromotionStatsDrawe
                   <p className="text-sm text-muted text-center py-6">No usages recorded yet.</p>
                 ) : (
                   <div className="border border-border rounded-card overflow-hidden">
+                    <div className="overflow-x-auto">
+                      {/* Scrolls itself rather than the page: a table cannot shrink
+                          below the width of its columns. */}
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-border bg-background">
@@ -242,6 +245,7 @@ export function PromotionStatsDrawer({ promotion, onClose }: PromotionStatsDrawe
                         ))}
                       </tbody>
                     </table>
+                    </div>
                   </div>
                 )}
               </div>

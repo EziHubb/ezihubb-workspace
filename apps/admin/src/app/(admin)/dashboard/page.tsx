@@ -393,6 +393,9 @@ export default async function DashboardPage() {
             {topStores.length === 0 ? (
               <div className="px-5 py-8 text-center text-sm text-muted">No data yet.</div>
             ) : (
+              <div className="overflow-x-auto">
+                {/* Scrolls itself rather than the page: a table cannot shrink
+                    below the width of its columns. */}
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-background">
@@ -427,6 +430,7 @@ export default async function DashboardPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </div>

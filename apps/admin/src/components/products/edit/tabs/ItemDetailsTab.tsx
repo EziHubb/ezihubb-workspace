@@ -59,7 +59,7 @@ function EmojiPicker({
   return (
     <div
       ref={ref}
-      className="absolute bottom-full left-0 mb-2 z-30 w-[320px] bg-surface border border-border rounded-card shadow-lg overflow-hidden"
+      className="absolute bottom-full left-0 mb-2 z-30 w-[320px] max-w-[calc(100vw-2rem)] bg-surface border border-border rounded-card shadow-lg overflow-hidden"
     >
       <div className="px-3 pt-3 pb-1 border-b border-border">
         <p className="text-xs font-semibold text-muted uppercase tracking-wide">Insert emoji</p>
@@ -340,7 +340,7 @@ export function ItemDetailsTab() {
             label="Product type"
             hint="Digital products are delivered as instant downloads — no shipping, no fulfillment pipeline."
           >
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {([
                 { value: 'PHYSICAL', label: 'Physical product', sub: 'Shipped to the buyer', icon: Package },
                 { value: 'DIGITAL',  label: 'Digital download',  sub: 'Instant file delivery', icon: Download },

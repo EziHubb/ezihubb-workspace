@@ -145,7 +145,7 @@ export default function StoreSubscriptionPage({ params }: { params: Promise<{ id
         <SubscriptionStatusBadge status={status} label={STATUS_LABELS[status]} />
 
         {sub && (
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">Cycle</p>
               <p className="text-secondary">{sub.cycle === 'MONTHLY' ? 'Monthly' : 'Annual'}</p>

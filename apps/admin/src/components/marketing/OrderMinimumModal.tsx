@@ -211,7 +211,7 @@ export function OrderMinimumModal({ promotion, onClose, onSave }: OrderMinimumMo
             {errors.minOrderAmount && <p className="text-xs text-red-600 mt-1">{errors.minOrderAmount}</p>}
           </Field>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Start date" hint="Optional — starts immediately if blank">
               <input type="date" value={form.startsAt} onChange={(e) => set('startsAt', e.target.value)} className={inputCls} />
             </Field>

@@ -198,6 +198,9 @@ export default function TagsPage() {
               )}
             </div>
           ) : (
+            <div className="overflow-x-auto">
+              {/* Scrolls itself rather than the page: a table cannot shrink
+                  below the width of its columns. */}
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-background border-b border-border">
@@ -281,6 +284,7 @@ export default function TagsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>

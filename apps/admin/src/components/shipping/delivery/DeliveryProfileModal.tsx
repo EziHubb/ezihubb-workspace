@@ -76,7 +76,7 @@ function DestinationRow({
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">Delivery service</label>
           <Select
@@ -115,7 +115,7 @@ function DestinationRow({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 items-end">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
         <div>
           <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">What you'll charge</label>
           <Select
@@ -130,7 +130,7 @@ function DestinationRow({
         </div>
 
         {!isFree && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">One item</label>
               <div className="relative">
@@ -308,7 +308,7 @@ export function DeliveryProfileModal({ profile, submitLabel, entityLabel = 'deli
           )}
 
           {/* Origin */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-secondary mb-1">
                 Country items are dispatched from <span className="text-red-500">*</span>

@@ -285,7 +285,7 @@ function EditPanel({
     <div className="bg-surface border border-border rounded-card p-5 space-y-4">
       <h4 className="font-semibold text-secondary text-sm">Account Settings</h4>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
             Status
@@ -447,7 +447,7 @@ export default function AffiliateDetailPage({
             <h4 className="font-semibold text-secondary text-sm mb-4">
               Application
             </h4>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
               {[
                 { label: 'First name', value: affiliate.firstName ?? '—' },
                 { label: 'Last name', value: affiliate.lastName ?? '—' },
@@ -629,7 +629,7 @@ export default function AffiliateDetailPage({
               </p>
             )}
 
-            <div className="grid grid-cols-2 gap-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               {[
                 { label: 'Balance', value: `${fmtAmount(affiliate.balance)}` },
                 {

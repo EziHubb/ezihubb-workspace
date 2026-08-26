@@ -244,7 +244,7 @@ function CollectionSlideOver({
       />
 
       {/* Panel */}
-      <div className="fixed inset-y-0 right-0 w-[480px] bg-surface border-l border-border shadow-2xl z-50 flex flex-col">
+      <div className="fixed inset-y-0 right-0 w-full max-w-[480px] bg-surface border-l border-border shadow-2xl z-50 flex flex-col">
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
           <button
@@ -298,7 +298,7 @@ function CollectionSlideOver({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Occasion */}
               <div>
                 <label className="block text-xs font-medium text-secondary mb-1.5">Occasion</label>
@@ -549,6 +549,9 @@ export default function CollectionsPage() {
 
       {/* Table */}
       <div className="bg-surface rounded-card border border-border shadow-card overflow-hidden">
+        <div className="overflow-x-auto">
+          {/* Scrolls itself rather than the page: a table cannot shrink
+              below the width of its columns. */}
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left">
@@ -648,6 +651,7 @@ export default function CollectionsPage() {
             }
           </tbody>
         </table>
+        </div>
 
         {/* Pagination */}
         {totalPages > 1 && (

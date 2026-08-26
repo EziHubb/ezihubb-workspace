@@ -275,7 +275,7 @@ export function PromotionModal({ promotion, isPlatformContext, onClose, onSave }
             )}
 
             {/* Min order + Max uses */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Min Order Amount" hint="Leave blank for any order">
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
@@ -303,7 +303,7 @@ export function PromotionModal({ promotion, isPlatformContext, onClose, onSave }
             </div>
 
             {/* Max uses per user + start date */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Max Uses Per Customer" hint="Default: 1">
                 <input
                   type="number"

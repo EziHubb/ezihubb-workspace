@@ -597,7 +597,7 @@ export function PricingShippingTab({ product, onSwitchTab, isDigital }: PricingS
           </div>
 
           {/* Quantity + SKU row */}
-          <div className="grid grid-cols-2 gap-6 mt-6 pt-6 border-t border-border">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6 pt-6 border-t border-border">
             <FormField label="Quantity" hint="Leave empty for unlimited (print-on-demand)">
               <input
                 type="number"

@@ -294,7 +294,7 @@ export function BuyTogetherModal({ bundle, onClose, onSave }: BuyTogetherModalPr
             <div className="mt-5">
               <p className="text-sm font-semibold text-secondary">Add up to {MAX_LISTINGS} listings to offer together</p>
               <p className="text-xs text-muted mt-0.5">Keep in mind all variations will be eligible for the discount.</p>
-              <div className="grid grid-cols-3 gap-3 mt-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
                 {slots.map((p, i) =>
                   p ? (
                     <div key={p.id} className="relative border border-border rounded-card p-2">

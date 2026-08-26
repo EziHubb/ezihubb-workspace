@@ -198,6 +198,9 @@ export default function OffsiteAdsPage() {
               ))}
             </div>
           ) : (
+            <div className="overflow-x-auto">
+              {/* Scrolls itself rather than the page: a table cannot shrink
+                  below the width of its columns. */}
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs font-semibold text-muted border-b border-border">
@@ -214,6 +217,7 @@ export default function OffsiteAdsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>
@@ -225,6 +229,9 @@ export default function OffsiteAdsPage() {
           {data.byChannel.length === 0 ? (
             <p className="text-sm text-muted italic">No channel data yet.</p>
           ) : (
+            <div className="overflow-x-auto">
+              {/* Scrolls itself rather than the page: a table cannot shrink
+                  below the width of its columns. */}
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs font-semibold text-muted border-b border-border">
@@ -241,6 +248,7 @@ export default function OffsiteAdsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 
@@ -250,6 +258,9 @@ export default function OffsiteAdsPage() {
           {data.byListing.length === 0 ? (
             <p className="text-sm text-muted italic">No listing data yet.</p>
           ) : (
+            <div className="overflow-x-auto">
+              {/* Scrolls itself rather than the page: a table cannot shrink
+                  below the width of its columns. */}
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs font-semibold text-muted border-b border-border">
@@ -266,6 +277,7 @@ export default function OffsiteAdsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>

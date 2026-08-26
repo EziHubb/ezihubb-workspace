@@ -305,7 +305,7 @@ export function SetUpSaleModal({ sale, initialProducts = [], onClose, onSave }: 
               </div>
             </Field>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Start date" hint="Optional — starts immediately if blank">
                 <input
                   type="date"
@@ -353,7 +353,7 @@ export function SetUpSaleModal({ sale, initialProducts = [], onClose, onSave }: 
         {step === 2 && (
           <div className="px-6 py-5 space-y-4">
             <p className="text-sm font-bold text-secondary">Which listings are included in your sale?</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button type="button" onClick={() => set('scope', 'SHOP_WIDE')}
                 className={`text-left p-4 rounded-card border-2 transition-colors ${form.scope === 'SHOP_WIDE' ? 'border-secondary bg-secondary/5' : 'border-border hover:border-secondary/40'}`}>
                 <span className="text-sm font-semibold text-secondary block mb-1">All listings</span>

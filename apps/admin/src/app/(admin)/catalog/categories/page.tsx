@@ -227,7 +227,7 @@ function CategoryForm({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Name */}
         <div className="col-span-2">
           <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">

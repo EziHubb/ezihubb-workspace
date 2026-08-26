@@ -142,7 +142,7 @@ function SettingsAccordion({ campaign, onSave }: {
             <span className="text-xs font-medium text-muted">Name</span>
             <input value={form.name} onChange={f('name')} className={inputCls} />
           </label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="space-y-1">
               <span className="text-xs font-medium text-muted">Banner text</span>
               <input value={form.bannerText} onChange={f('bannerText')} className={inputCls} />
@@ -264,7 +264,7 @@ function CreateModal({ onClose, onCreate }: {
             <label className="text-xs font-medium text-muted">Banner text</label>
             <input value={form.bannerText} onChange={f('bannerText')} placeholder="🔥 Up to 50% off — limited time!" className={inputCls} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted">CTA label</label>
               <input value={form.ctaLabel} onChange={f('ctaLabel')} className={inputCls} />

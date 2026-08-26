@@ -95,6 +95,9 @@ export default function ListingsStatsPage() {
       />
 
       <div className="bg-surface border border-border rounded-card overflow-hidden">
+        <div className="overflow-x-auto">
+          {/* Scrolls itself rather than the page: a table cannot shrink
+              below the width of its columns. */}
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/5">
@@ -163,6 +166,7 @@ export default function ListingsStatsPage() {
               )}
           </tbody>
         </table>
+        </div>
 
         {/* Pagination */}
         {totalPages > 1 && (

@@ -276,7 +276,7 @@ function StoreTab() {
     <div className="space-y-5">
       {/* General */}
       <SectionCard title="General">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="col-span-2">
             <FieldLabel required>Store Name</FieldLabel>
             <input value={g('name')} onChange={(e) => setGeneral((s) => ({ ...s, name: e.target.value }))}
@@ -298,7 +298,7 @@ function StoreTab() {
               className={inputCls} placeholder="+1 (555) 000-0000" />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <ImageUpload label="Store Logo" value={general.logoUrl ?? data?.logoUrl}
             size={80} onChange={(v) => setGeneral((s) => ({ ...s, logoUrl: v }))} />
           <ImageUpload label="Favicon" value={general.faviconUrl ?? data?.faviconUrl}
@@ -316,7 +316,7 @@ function StoreTab() {
       {/* Address */}
       <SectionCard title="Business Address">
         <p className="text-xs text-muted -mt-3">Used on invoices and legal documents.</p>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="col-span-2">
             <FieldLabel>Address Line 1</FieldLabel>
             <input value={a('addressLine1')} onChange={(e) => setAddress((s) => ({ ...s, addressLine1: e.target.value }))}
@@ -353,7 +353,7 @@ function StoreTab() {
 
       {/* Currency */}
       <SectionCard title="Currency">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <FieldLabel>Currency</FieldLabel>
             <Select
@@ -586,7 +586,7 @@ function EmailTab() {
     <div className="space-y-5">
       {/* SMTP */}
       <SectionCard title="SMTP Configuration">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="col-span-1">
             <FieldLabel>SMTP Host</FieldLabel>
             <input value={smtp.host} onChange={(e) => setSmtp((s) => ({ ...s, host: e.target.value }))}
@@ -933,6 +933,9 @@ function TeamTab() {
       </div>
 
       <div className="border border-border rounded-card overflow-hidden">
+        <div className="overflow-x-auto">
+          {/* Scrolls itself rather than the page: a table cannot shrink
+              below the width of its columns. */}
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-background">
@@ -990,6 +993,7 @@ function TeamTab() {
             }
           </tbody>
         </table>
+        </div>
       </div>
 
       {inviteOpen && <InviteModal onClose={() => setInviteOpen(false)} onInvite={handleInvite} />}
