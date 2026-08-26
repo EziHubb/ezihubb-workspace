@@ -62,10 +62,27 @@
    * inherit. Keyed on pointer rather than width because the behaviour follows
    * the input device, not the breakpoint.
    */
-  @media (pointer: coarse) {
-    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
-    textarea,
-    select {
+  /* :root is here for specificity, not for scope.
+   *
+   * Tailwind strips its @layer at-rules, so the output is plain source order
+   * plus specificity — and .text-sm is 0-1-0. A bare `textarea` is 0-0-1 and
+   * lost to it, while `input:not([type=...])` happened to reach 0-4-1 and won.
+   * So inputs stopped zooming and textareas did not, which is why the chat
+   * composer — a textarea carrying text-sm — still zoomed after the first
+   * attempt at this. Prefixing lifts all three to at least 0-1-1.
+   *
+   * Safe to apply broadly: nothing in this app declares a form control above
+   * 16px (43 inputs unset, 27 sm, 9 xs, 8 textarea sm, 6 select sm, 1 select
+   * xs, and no text-base or larger anywhere), so max() can only ever raise a
+   * size here, never shrink one that was chosen on purpose.
+   *
+   * (hover: none) sits beside (pointer: coarse) as an OR, so a touch device
+   * that reports only one of the two is still covered.
+   */
+  @media (pointer: coarse), (hover: none) {
+    :root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+    :root textarea,
+    :root select {
       font-size: max(16px, 1rem);
     }
   }
