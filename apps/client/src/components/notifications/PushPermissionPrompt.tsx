@@ -35,6 +35,17 @@ export function PushPermissionPrompt() {
     // nothing to ask a signed-out visitor for.
     if (!userId) return;
     if (!isPushSupported()) return;
+
+    // Touch devices only. On a desktop the bar sits across the bottom of a
+    // wide window for no good reason — the screenshot that prompted this had
+    // it pinned over the footer of a 1080p browser. Matched on pointer rather
+    // than width, the same test the 16px input rule uses, so a phone held in
+    // landscape still counts and a narrow desktop window does not.
+    //
+    // The cost is real and deliberate: desktop Chrome supports web push
+    // perfectly well, and nothing else in the app offers to switch it on, so
+    // desktop users now have no route to it at all.
+    if (!window.matchMedia('(pointer: coarse)').matches) return;
     // 'granted' and 'denied' are both settled — re-asking is impossible in the
     // denied case and pointless in the granted one.
     if (pushPermission() !== 'default') return;
@@ -49,9 +60,15 @@ export function PushPermissionPrompt() {
       // dismissal is better than never being able to offer notifications.
     }
 
-    // Not the instant the page settles. Arriving mid-load reads as a pop-up and
-    // gets dismissed reflexively, which would burn the browser prompt with it.
-    const timer = setTimeout(() => setShow(true), 5000);
+    // Long enough not to arrive mid-load, where it reads as a pop-up and gets
+    // dismissed reflexively — which would burn the browser's own prompt with
+    // it — and short enough that someone who has not decided yet finds out the
+    // option exists while they are still looking at the page.
+    //
+    // Only people who have not answered ever reach this line: the permission
+    // check above returns for both 'granted' and 'denied', so the bar is asked
+    // for exactly once per browser and never again after a decision.
+    const timer = setTimeout(() => setShow(true), 1000);
     return () => clearTimeout(timer);
   }, [userId]);
 
