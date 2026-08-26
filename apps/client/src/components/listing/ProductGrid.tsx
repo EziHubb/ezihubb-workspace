@@ -86,6 +86,7 @@ export function ProductGrid({ products, locale, isLoading = false }: ProductGrid
           }
           basePrice={product.minPrice ?? product.basePrice}
           compareAtPrice={product.compareAtPrice ?? undefined}
+          sale={product.sale ?? null}
           isPriceRange={hasPriceRange}
           rating={product.averageRating ?? undefined}
           reviewCount={product.reviewCount}

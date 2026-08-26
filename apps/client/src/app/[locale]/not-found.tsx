@@ -150,6 +150,7 @@ export default async function NotFound() {
                 }
                 basePrice={product.basePrice}
                 compareAtPrice={product.compareAtPrice ?? undefined}
+                sale={product.sale ?? null}
                 rating={product.averageRating ?? undefined}
                 reviewCount={product.reviewCount}
                 badge={deriveProductBadge(product)}

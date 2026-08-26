@@ -134,8 +134,22 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
   // numbers stay consistent with each other. Suppressing it on ranges, as
   // this used to, hid every discount on any product with variants — which is
   // most of them.
-  const discount =
-    product.compareAtPrice
+  // A running sale wins over compareAtPrice. The two are different claims:
+  // compareAtPrice is a "was" price the seller typed into the listing and
+  // never changes, while a sale is in force right now — and until this looked
+  // at it, a shop could run a sale and have the grid go on quoting full price
+  // while checkout quietly charged less.
+  //
+  // The sale's own figures are used rather than recomputing against
+  // displayPrice: the discount is defined against basePrice, so the struck
+  // price and the percentage both have to describe that same number or they
+  // contradict each other.
+  const sale = product.sale ?? null;
+  const shownPrice   = sale ? sale.price : displayPrice;
+  const struckPrice  = sale ? sale.originalPrice : (product.compareAtPrice ?? null);
+  const discount = sale
+    ? sale.discountPercent
+    : product.compareAtPrice
       ? Math.round((1 - safeNum(displayPrice) / safeNum(product.compareAtPrice)) * 100)
       : 0;
 
@@ -225,15 +239,13 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
           which is the one thing the shopper is looking at. The row keeps a
           reserved height so the grid does not jump as the mouse crosses it. */}
       <div className="order-last mt-2 h-9">
-        <div className="flex gap-2 items-stretch h-full">
-          {/* Always visible, on every card and every device.
-              This was hover-only, which meant nobody on a touch screen could
-              ever reach either control — hover does not exist there, so the
-              feature was simply absent for those users. The reference shows
-              them permanently too.
-              Fixed row height so a card's total height does not depend on
-              pointer state and the grid cannot shift under the cursor. */}
-          {!product.isPersonalizable ? (
+        {/* Only the cart action. "Personalize" and "More like this" are gone:
+            the first was a link to the product page, which tapping the card
+            already does, and the second sent the reader back out to a category
+            search from a card they were already looking at. Cards with nothing
+            to add to a cart now carry no button, and remain clickable. */}
+        {!product.isPersonalizable && (
+          <div className="flex gap-2 items-stretch h-full">
             <button
               type="button"
               onClick={handleAddToCart}
@@ -242,30 +254,8 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
             >
               {t('addToCart')}
             </button>
-          ) : (
-            <Link
-              href={productHref}
-              className="flex-1 border border-border rounded-full text-xs font-medium text-secondary hover:border-secondary hover:bg-secondary hover:text-white transition-colors text-center flex items-center justify-center"
-            >
-              {t('personalize')}
-            </Link>
-          )}
-
-          {/* "More like this" — the reference pairs it with the primary
-              action. Points at the existing search page filtered by this
-              product's category rather than a per-product recommendation
-              endpoint: /products/:slug/related exists but is a page-level
-              fetch, and firing one request per card in a 48-item grid to
-              populate a link is not worth it. */}
-          <Link
-            href={`/${locale}/search?category=${encodeURIComponent(product.categorySlug ?? '')}`}
-            onClick={(e) => e.stopPropagation()}
-            className="flex-1 border border-border rounded-full text-xs font-medium text-secondary hover:border-secondary hover:bg-secondary hover:text-white transition-colors text-center flex items-center justify-center"
-          >
-            {t('moreLikeThis')}
-          </Link>
-
-        </div>
+          </div>
+        )}
       </div>
 
       {/* CARD INFO */}
@@ -357,14 +347,17 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
 
         {/* Price */}
         <div className="flex items-baseline gap-1.5 flex-wrap">
-          <span className="text-sm font-bold text-secondary">
-            {hasPriceRange && <span className="font-normal text-muted">{t('fromPrice')} </span>}
-            {fmtAmount(displayPrice)}
+          <span className={['text-sm font-bold', sale ? 'text-green-700' : 'text-secondary'].join(' ')}>
+            {/* "From" only without a sale. The sale price is the listing's own,
+                not the cheapest variant's, so calling it a floor would be a
+                claim the number does not support. */}
+            {hasPriceRange && !sale && <span className="font-normal text-muted">{t('fromPrice')} </span>}
+            {fmtAmount(shownPrice)}
           </span>
-          {product.compareAtPrice && discount > 0 && (
+          {struckPrice && discount > 0 && (
             <>
               <span className="text-xs text-muted line-through">
-                {fmtAmount(product.compareAtPrice)}
+                {fmtAmount(struckPrice)}
               </span>
               <span className="text-xs text-green-700 font-medium">
                 {t('percentOff', { percent: discount })}
@@ -373,7 +366,12 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
           )}
         </div>
 
-        <p className="text-xs text-muted">{t('freeShipping')}</p>
+        {/* Only when it is actually free everywhere this listing ships. This
+            used to print unconditionally, promising free delivery on every
+            card while checkout charged for it. */}
+        {product.freeShipping && (
+          <p className="text-xs text-muted">{t('freeShipping')}</p>
+        )}
       </div>
     </div>
   );

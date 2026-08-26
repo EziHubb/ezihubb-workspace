@@ -132,3 +132,95 @@ export function applyBestPromo(
   }
   return best;
 }
+
+/**
+ * Sales for a page of listings that may span many shops.
+ *
+ * getEffectivePrices takes one storeId, because a promotion belongs to a shop.
+ * A marketplace grid does not: it mixes shops freely, so the ids have to be
+ * grouped first and the queries run one per shop. Checkout already does this
+ * by hand for a cart; grids and search need the same thing, and duplicating it
+ * a third time is how the three drift apart.
+ */
+export async function getSalesForListings(
+  prisma: PrismaService,
+  listings: { id: string; storeId: string | null }[],
+  shippingCountry?: string | null,
+): Promise<Map<string, { promotionId: string; type: string; value: number; scope: string; country: string | null }[]>> {
+  const byStore = new Map<string, string[]>();
+  for (const l of listings) {
+    if (!l.storeId) continue;                       // platform listings have no shop, so no shop sale
+    const ids = byStore.get(l.storeId) ?? [];
+    ids.push(l.id);
+    byStore.set(l.storeId, ids);
+  }
+
+  const merged = new Map<string, { promotionId: string; type: string; value: number; scope: string; country: string | null }[]>();
+  await Promise.all(
+    [...byStore.entries()].map(async ([storeId, ids]) => {
+      const result = await getEffectivePrices(prisma, ids, storeId, shippingCountry);
+      for (const [productId, promos] of result) merged.set(productId, promos);
+    }),
+  );
+  return merged;
+}
+
+/** What a listing's active sale looks like to a renderer, or null if none applies. */
+export interface ListingSale {
+  /** The price after the discount. */
+  price: number;
+  /** The price before it — the figure to strike through. */
+  originalPrice: number;
+  /** Whole percent off, for the label beside them. */
+  discountPercent: number;
+}
+
+/**
+ * The sale as it should be shown for one listing.
+ *
+ * Anchored to basePrice deliberately. A listing with variants shows a "from"
+ * price built from the cheapest variant, but the sale is defined against the
+ * listing's own price, and quoting a discount against a number the promotion
+ * was not written for is how the percentage stops matching the figures beside
+ * it. Checkout still discounts the actual line — the variant a buyer picked —
+ * so the money charged is right whichever variant they choose.
+ *
+ * Returns null rather than a zero discount when nothing applies, so a caller
+ * cannot accidentally render "0% off".
+ */
+export function listingSale(
+  basePrice: number,
+  promos: { type: string; value: number }[] | undefined,
+): ListingSale | null {
+  const price = applyBestPromo(basePrice, promos);
+  if (!(price < basePrice) || basePrice <= 0) return null;
+  return {
+    price,
+    originalPrice: basePrice,
+    discountPercent: Math.round((1 - price / basePrice) * 100),
+  };
+}
+
+/**
+ * Attaches the running sale to a page of already-mapped listings.
+ *
+ * One call per mapping site rather than a `sale:` line inside each of them.
+ * ProductListItemDto is built in three separate places — findAll,
+ * ProductsService.toListItems and SearchService.toListItems — and the field is
+ * optional, so a site that forgot it would compile perfectly and just never
+ * show a discount. Spreading here means there is nothing to forget.
+ */
+export async function withListingSales<
+  T extends { id: string; storeId: string | null; basePrice: number },
+>(
+  prisma: PrismaService,
+  items: T[],
+  shippingCountry?: string | null,
+): Promise<(T & { sale: ListingSale | null })[]> {
+  if (items.length === 0) return [];
+  const promos = await getSalesForListings(prisma, items, shippingCountry);
+  return items.map((item) => ({
+    ...item,
+    sale: listingSale(item.basePrice, promos.get(item.id)),
+  }));
+}

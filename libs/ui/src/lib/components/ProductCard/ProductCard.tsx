@@ -36,6 +36,15 @@ export interface ProductCardProps {
   imageUrl:         string;
   basePrice:        number;
   compareAtPrice?:  number;
+  /**
+   * The auto-apply sale in force, if any.
+   *
+   * Distinct from compareAtPrice, which is the seller's own "was" price on the
+   * listing and never changes. When both are present this wins: it is the
+   * discount actually running, and a card quoting the other one would show
+   * full price while checkout charged less.
+   */
+  sale?: { price: number; originalPrice: number; discountPercent: number } | null;
   /** Caller passes true when basePrice here is actually the lowest of several
    *  variant prices (not a single fixed price) — prefixes "From " so buyers
    *  don't read it as the flat price of every option. */
@@ -101,6 +110,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   imageUrl,
   basePrice,
   compareAtPrice,
+  sale,
   isPriceRange = false,
   rating,
   reviewCount,
@@ -122,8 +132,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   // Built once so the two product links below cannot drift apart.
   const productHref = `${basePath}/products/${slug}`;
   const [hovered, setHovered] = useState(false);
-  const discount =
-    compareAtPrice && compareAtPrice > basePrice
+  // A running sale takes precedence, and its own figures are used rather than
+  // recomputed: the discount is defined against the listing's basePrice, so
+  // the struck number and the percentage have to describe that same price or
+  // they contradict each other.
+  const shownPrice  = sale ? sale.price : basePrice;
+  const struckPrice = sale ? sale.originalPrice : (compareAtPrice ?? null);
+  const discount = sale
+    ? sale.discountPercent
+    : compareAtPrice && compareAtPrice > basePrice
       ? Math.round((1 - basePrice / compareAtPrice) * 100)
       : 0;
 
@@ -210,14 +227,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         )}
 
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-semibold text-secondary">
-            {isPriceRange && <span className="font-normal text-muted">{L.fromPrice} </span>}
-            {formatPrice(basePrice, currency, locale)}
+          <span className={['text-sm font-semibold', sale ? 'text-success' : 'text-secondary'].join(' ')}>
+            {/* No "from" alongside a sale: the sale price is the listing's own,
+                not the cheapest variant's, so calling it a floor would be a
+                claim the number does not support. */}
+            {isPriceRange && !sale && <span className="font-normal text-muted">{L.fromPrice} </span>}
+            {formatPrice(shownPrice, currency, locale)}
           </span>
-          {!isPriceRange && compareAtPrice && compareAtPrice > basePrice && (
+          {struckPrice && struckPrice > shownPrice && (sale || !isPriceRange) && (
             <>
               <span className="text-xs text-muted line-through">
-                {formatPrice(compareAtPrice, currency, locale)}
+                {formatPrice(struckPrice, currency, locale)}
               </span>
               {discount > 0 && (
                 <span className="text-xs font-medium text-error">-{discount}%</span>

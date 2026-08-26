@@ -75,6 +75,26 @@ export interface CustomizationConfigDto {
 // ever produced (always undefined), and separately a `soldCount24h` the API
 // has only ever sent as `inDemandCount`.
 
+/**
+ * An active auto-apply sale, as it applies to one listing.
+ *
+ * Separate from `compareAtPrice`, which is the seller's own "was" price typed
+ * into the listing and has nothing to do with a running sale. Both can be
+ * present; a renderer showing a strike-through should prefer this one, because
+ * it is the discount actually in force.
+ *
+ * Null when no sale applies — never a zero-percent object, so `sale && …` is
+ * enough to decide whether to render anything.
+ */
+export interface ProductSaleDto {
+  /** The price after the discount. */
+  price: number;
+  /** The price before it — the figure to strike through. */
+  originalPrice: number;
+  /** Whole percent off. */
+  discountPercent: number;
+}
+
 export interface ProductListItemDto {
   id: string;
   name: string;
@@ -82,6 +102,21 @@ export interface ProductListItemDto {
   sku: string;
   basePrice: number;
   compareAtPrice: number | null;
+  /**
+   * True only when this listing ships free to EVERY destination its profile
+   * serves.
+   *
+   * Required, not optional, on purpose: three separate mappers build this
+   * shape, and an optional field is one a mapper can quietly omit while still
+   * compiling. The card used to print "Free shipping" unconditionally, which
+   * promised it on listings whose shipping is charged at the till.
+   *
+   * A grid has no delivery address, so it cannot claim "free to you" — only
+   * "free wherever you are", which is what this answers.
+   */
+  freeShipping: boolean;
+  /** The auto-apply sale in force, or null. Prefer this over compareAtPrice. */
+  sale?: ProductSaleDto | null;
   /** Lowest/highest ProductVariant.price, or null when the product has no variants.
    *  basePrice is seller-entered and never auto-synced to variant prices —
    *  prefer minPrice (falling back to basePrice) so a stale basePrice can't mislead
@@ -184,6 +219,11 @@ export interface ProductDetailDto {
   shortDescription: string | null;
   basePrice: number;
   compareAtPrice: number | null;
+  /** True only when this listing ships free to EVERY destination its profile
+   *  serves. Resolved from that profile — the same source checkout prices from
+   *  — rather than asserted by the renderer, which is what made every listing
+   *  claim free shipping. */
+  freeShipping: boolean;
   /** Etsy "Set up a sale" — the active auto-apply discount's own terms, applied
    *  client-side to whichever price (base or variant) is currently selected.
    *  Null when no sale is active. Checkout always recomputes this itself. */

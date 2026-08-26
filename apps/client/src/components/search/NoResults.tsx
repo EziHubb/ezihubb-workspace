@@ -138,6 +138,7 @@ export function NoResults({ query, onSearch }: NoResultsProps) {
                   }
                   basePrice={product.basePrice}
                   compareAtPrice={product.compareAtPrice ?? undefined}
+                  sale={product.sale ?? null}
                   rating={product.averageRating ?? undefined}
                   reviewCount={product.reviewCount}
                   badge={deriveProductBadge(product)}
