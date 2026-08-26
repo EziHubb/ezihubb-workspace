@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { localDateInputValue } from '../../lib/promo-dates';
 import { Percent, Globe2, Tag, ArrowLeft } from 'lucide-react';
 import { Modal, ModalHeroHeader, Button } from '@ezihubb/ui';
 import { COUNTRIES, countryName, API_ROUTES } from '@ezihubb/constants';
@@ -47,7 +48,10 @@ const MAX_SALE_DAYS = 30;
 // days total — matches Etsy's "Sales can be set to run up to 30 days."
 
 function toISODate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  // Local, not d.toISOString().slice(0,10). That gave the UTC date, so a
+  // seller east of Greenwich was told "today" was yesterday for the first
+  // hours of their own day — and the picker's floor moved with it.
+  return localDateInputValue(d.toISOString());
 }
 function todayISO(): string {
   return toISODate(new Date());
@@ -119,8 +123,8 @@ export function SetUpSaleModal({ sale, initialProducts = [], onClose, onSave }: 
       scope:               sale.scope,
       productIds:          sale.productIds ?? [],
       country:             sale.country ?? '',
-      startsAt:            sale.startsAt ? sale.startsAt.slice(0, 10) : '',
-      expiresAt:           sale.expiresAt ? sale.expiresAt.slice(0, 10) : '',
+      startsAt:            localDateInputValue(sale.startsAt),
+      expiresAt:           localDateInputValue(sale.expiresAt),
       termsAndConditions:  sale.termsAndConditions ?? '',
     } : { ...EMPTY }
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { localDateInputValue } from '../../lib/promo-dates';
 import { Globe2, ShoppingBag } from 'lucide-react';
 import { Modal, ModalHeroHeader, Button } from '@ezihubb/ui';
 import { COUNTRIES } from '@ezihubb/constants';
@@ -78,8 +79,8 @@ export function OrderMinimumModal({ promotion, onClose, onSave }: OrderMinimumMo
       value:            promotion.value,
       minOrderAmount:   promotion.minOrderAmount ?? 0,
       country:          promotion.country ?? '',
-      startsAt:         promotion.startsAt ? promotion.startsAt.slice(0, 10) : '',
-      expiresAt:        promotion.expiresAt ? promotion.expiresAt.slice(0, 10) : '',
+      startsAt:         localDateInputValue(promotion.startsAt),
+      expiresAt:        localDateInputValue(promotion.expiresAt),
     } : { ...EMPTY }
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
