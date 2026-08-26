@@ -144,7 +144,24 @@ export default function MessagesPage() {
     // above it on short threads. A viewport-relative height gives the panes
     // something to scroll inside, and the border makes the chat read as one
     // object instead of floating text on the page.
-    <div className="flex h-[calc(100vh-11rem)] min-h-[30rem] overflow-hidden rounded-card border border-border bg-surface">
+    <div className={[
+      'flex overflow-hidden bg-surface',
+      // Mobile: the card IS the screen, stopping just above the fixed bottom
+      // nav (h-16, z-50). calc(100vh - 11rem) was a guess at how much chrome
+      // sits above — navbar, the account header, page padding — and it guessed
+      // low, so the composer ended up below the fold and under the nav bar.
+      // Anchoring to the viewport instead of subtracting an estimate cannot be
+      // wrong. Only one pane is visible at this width anyway, and the thread
+      // carries its own back button.
+      // 4rem is the nav's own height; env() is the strip below it that the
+      // nav now pads for. Clearing only the 4rem left the composer under
+      // that strip on any phone with a home indicator.
+      'fixed inset-x-0 top-0 bottom-[calc(4rem_+_env(safe-area-inset-bottom))] z-40',
+      // md+: static puts it back in normal flow and drops the offsets with it.
+      // dvh rather than vh so a mobile browser retracting its toolbar does not
+      // leave the box taller than the screen.
+      'md:static md:z-auto md:h-[calc(100dvh-11rem)] md:min-h-[30rem] md:rounded-card md:border md:border-border',
+    ].join(' ')}>
       {/* ── Conversation list ── */}
       <div className={[
         'w-full md:w-[320px] md:flex-shrink-0 border-r flex flex-col',

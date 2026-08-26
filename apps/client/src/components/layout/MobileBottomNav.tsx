@@ -34,7 +34,13 @@ export function MobileBottomNav() {
     ].join(' ');
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+    <div
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border shadow-[0_-4px_12px_rgba(0,0,0,0.06)]"
+      // Installed to the Home Screen, the viewport runs under the home
+      // indicator, so bottom-0 put the tab labels beneath it. Two other bars
+      // in this app already pad for it; this one did not.
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
       <div className="flex items-stretch h-16 max-w-sm mx-auto">
 
         {/* Home */}

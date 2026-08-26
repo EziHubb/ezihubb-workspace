@@ -48,6 +48,27 @@
     background-color: #FAFAF8;
     color: #2D2D2D;
   }
+
+  /* Text-entry controls never go below 16px on a touch device.
+   *
+   * Safari on iOS zooms the whole page in when a field it is focusing has a
+   * font smaller than 16px, and it does not zoom back out. The page is then
+   * wider than the screen, so content scrolls sideways and whatever sat at the
+   * left edge is cut in half — which is exactly what a screenshot of the chat
+   * showed, with the avatars sheared off.
+   *
+   * 44 fields across 24 files were below the threshold, so this belongs here
+   * rather than in 44 className strings that the next new field would not
+   * inherit. Keyed on pointer rather than width because the behaviour follows
+   * the input device, not the breakpoint.
+   */
+  @media (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+    textarea,
+    select {
+      font-size: max(16px, 1rem);
+    }
+  }
 }
 
 @keyframes shake {
