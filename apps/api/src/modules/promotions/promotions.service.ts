@@ -393,6 +393,27 @@ export class PromotionsService {
 
   async remove(id: string, storeId?: string): Promise<void> {
     await this.findOne(id, storeId);
+
+    /**
+     * A promotion that customers actually used cannot be deleted.
+     *
+     * PromotionUsage has no onDelete rule, so the database default (Restrict)
+     * refuses the delete — which surfaced as an unexplained 500. Cascading
+     * instead would be worse than the crash: those rows are what getPageStats
+     * counts revenue and redemptions from, so erasing them silently rewrites
+     * the shop's own reporting history to make a sale look like it never ran.
+     *
+     * So the constraint is right and the answer is to say so. Deactivating
+     * takes it out of circulation and keeps the record.
+     */
+    const used = await this.prisma.promotionUsage.count({ where: { promotionId: id } });
+    if (used > 0) {
+      throw new ConflictException({
+        code:    'ERR_PROMOTION_IN_USE',
+        message: `This promotion has been used ${used} time${used === 1 ? '' : 's'} and cannot be deleted. Deactivate it instead to stop it running.`,
+      });
+    }
+
     await this.prisma.promotion.delete({ where: { id } });
   }
 
