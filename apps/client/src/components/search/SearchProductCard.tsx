@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import type { ProductListItemDto } from '@ezihubb/types';
 import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
+import { PRODUCT_BADGE_CLASSES } from '@ezihubb/ui';
 import { useCartStore } from '../../lib/store/cart.store';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { STANDARD_COLORS } from './SearchFilterSidebar';
@@ -46,7 +47,9 @@ function getProductBadge(t: Translator, product: ProductListItemDto) {
     return { label: t('badge.bestseller'), style: 'bg-yellow-100 text-yellow-800' };
   }
   if (product.compareAtPrice) {
-    return { label: t('badge.sale'), style: 'bg-green-100 text-green-700' };
+    // Tinted badge-sale, not green. The price under this chip is already red;
+    // a green 'Sale' label above a red price read as two unrelated states.
+    return { label: t('badge.sale'), style: PRODUCT_BADGE_CLASSES.sale };
   }
   if (product.isFeatured) {
     return { label: t('badge.editorsPick'), style: 'bg-purple-100 text-purple-700' };

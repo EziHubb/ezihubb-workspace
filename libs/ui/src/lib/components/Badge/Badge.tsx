@@ -7,7 +7,7 @@ export type ProductBadgeVariant = 'bestseller' | 'new' | 'sale' | 'hot';
 export const PRODUCT_BADGE_CLASSES: Record<ProductBadgeVariant, string> = {
   bestseller: 'bg-primary-light text-primary border border-primary/20',
   new:        'bg-purple-50 text-purple-700 border border-purple-200',
-  sale:       'bg-red-50 text-error border border-red-200',
+  sale:       'bg-badge-sale/10 text-badge-sale border border-badge-sale/20',
   hot:        'bg-amber-50 text-warning border border-amber-200',
 };
 

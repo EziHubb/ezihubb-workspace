@@ -100,10 +100,16 @@ function PriceBlock({
 }) {
   const t = useTranslations('product.purchasePanel');
   const { format } = useCurrency();
+  const isSale = discountPercent !== null && discountPercent > 0;
   return (
     <div>
       <div className="flex items-baseline gap-2 flex-wrap">
-        <span className="text-2xl font-bold text-secondary">
+        {/* Same rule as the grid card: a discounted price is red
+            (badge-sale), a plain one is not. The two surfaces used to
+            disagree — the card said red, the detail page said neutral with a
+            green pill beside it, so the same listing changed colour on the
+            way from the grid to the page it links to. */}
+        <span className={['text-2xl font-bold', isSale ? 'text-badge-sale' : 'text-secondary'].join(' ')}>
           {format(price)}
         </span>
         {compareAtPrice && compareAtPrice > price && (
@@ -111,13 +117,16 @@ function PriceBlock({
             {format(compareAtPrice)}
           </span>
         )}
-        {discountPercent !== null && discountPercent > 0 && (
-          <span className="text-sm font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+        {isSale && (
+          /* Muted plain text, not a green pill. Green reads as "good/settled"
+             next to a red price, and the pill gave a secondary number more
+             visual weight than the price itself. */
+          <span className="text-sm text-muted">
             {t('discountOff', { percent: discountPercent })}
           </span>
         )}
       </div>
-      {discountPercent !== null && discountPercent > 0 && (
+      {isSale && (
         <p className="text-xs text-muted mt-0.5">{t('limitedTimeSale')}</p>
       )}
     </div>
@@ -179,7 +188,7 @@ function BuyTogetherCard({
       </div>
 
       <div className="flex items-baseline gap-2">
-        <span className="text-lg font-bold text-secondary">{format(bundleTotal)}</span>
+        <span className="text-lg font-bold text-badge-sale">{format(bundleTotal)}</span>
         <span className="text-sm text-muted line-through">{format(originalTotal)}</span>
       </div>
 

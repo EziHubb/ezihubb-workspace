@@ -147,9 +147,11 @@ export function VariantPicker({ variantOptions, variants, onVariantChange }: Var
             <p className="text-sm font-medium text-error">✗ {t('outOfStock')}</p>
           ) : (activeVariant.compareAtPrice ?? 0) > activeVariant.price ? (
             <p className="flex items-baseline gap-2 text-sm">
-              <span className="font-bold text-primary">{fmtAmount(activeVariant.price)}</span>
+              <span className="font-bold text-badge-sale">{fmtAmount(activeVariant.price)}</span>
               <span className="line-through text-muted text-xs">{fmtAmount(activeVariant.compareAtPrice)}</span>
-              <span className="text-xs font-semibold text-success">
+              {/* Muted, like the percent beside every other sale price. Green
+                  here fought with the red price on the same line. */}
+              <span className="text-xs text-muted">
                 {t('save', { amount: fmtAmount(safeNum(activeVariant.compareAtPrice) - safeNum(activeVariant.price)) })}
               </span>
             </p>

@@ -132,7 +132,8 @@ export function QuickViewModal({
 
               {/* Price */}
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-primary">
+                {/* Same rule as the card this modal opens from. */}
+                <span className={['text-2xl font-bold', product.compareAtPrice && product.compareAtPrice > price ? 'text-badge-sale' : 'text-primary'].join(' ')}>
                   {fmtAmount(price)}
                 </span>
                 {product.compareAtPrice && product.compareAtPrice > price && (
