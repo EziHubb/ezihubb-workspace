@@ -242,7 +242,34 @@ export class OrderProgressService {
 
     await this.prisma.$transaction(async (tx) => {
       await tx.storeOrder.updateMany({ where: { id: { in: ids } }, data });
-      if (completing) await this.completeFinishedOrders(tx, owned.map((o) => o.orderId));
+
+      if (completing) {
+        await this.completeFinishedOrders(tx, owned.map((o) => o.orderId));
+      } else {
+        /**
+         * Moving OUT of the completed step has to undo what moving in did.
+         *
+         * This used to be a one-way sync: the branch above set COMPLETED on
+         * the way in and nothing cleared it on the way back, so an order
+         * pulled from Completed to New kept the status. The queue then
+         * contradicted itself in one row — the tab is filtered on
+         * `progressStepId` and the badge reads `status`, both on this same
+         * record, so the seller saw a "Completed" chip under the New tab.
+         *
+         * CONFIRMED, because that is the only other value this column ever
+         * holds in the queue: the payment processor sets it and this method
+         * sets COMPLETED. Nothing writes SHIPPED or DELIVERED here, so there
+         * is no earlier state to guess at.
+         *
+         * Narrowed to rows that are actually COMPLETED rather than folded
+         * into `data` above: a cancelled or refunded order can sit on a step
+         * too, and blanket-writing CONFIRMED would quietly revive it.
+         */
+        await tx.storeOrder.updateMany({
+          where: { id: { in: ids }, status: OrderStatus.COMPLETED },
+          data:  { status: OrderStatus.CONFIRMED },
+        });
+      }
     });
 
     return { moved: ids.length, stepId: step.id };
