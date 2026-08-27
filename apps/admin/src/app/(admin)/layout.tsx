@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { headers, cookies } from 'next/headers';
 import { authOptions } from '../../lib/auth.options';
 import { AdminSidebar, AdminMobileNav } from '../../components/layout/AdminSidebar';
+import { TabTitleBadge } from '../../components/layout/TabTitleBadge';
 // import { GetHelpButton } from '../../components/layout/GetHelpButton'; // temporarily unmounted — see below
 import { isActingAsShopOwner, resolveInStoreMode, STORE_CONTEXT_COOKIE } from '../../lib/store-context-shared';
 import { ServerStoreModeProvider } from '../../lib/server-store-mode';
@@ -147,7 +148,12 @@ export default async function AdminLayout({
       {/* Right column: mobile top bar + scrollable content */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <AdminMobileNav />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8 min-w-0">
+
+        {/* Renders nothing — it owns the tab title, and lives here so the
+            count survives navigation between admin pages the way the
+            sidebar's own socket listener does. */}
+        <TabTitleBadge />
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-8 min-w-0">
           {children}
         </main>
       </div>
