@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { CornerUpLeft, ImagePlus, MessageSquare, Loader2, X } from 'lucide-react';
+import { ChevronDown, CornerUpLeft, ImagePlus, MessageSquare, Loader2, X } from 'lucide-react';
 import { Avatar } from '../../messages/inbox/Avatar';
 import { SnippetMenu } from './SnippetMenu';
 import type { PanelMessage } from './types';
@@ -70,6 +70,9 @@ const renderable = (url: string): boolean =>
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 
+/** How many of the newest messages the panel shows before being asked. */
+const RECENT_COUNT = 2;
+
 export function OrderMessaging({
   messages, conversationId, buyerName, buyerAvatar, shopName, orderUrl, sending, onSend, onUpload, storeQuery,
   autoOpen = false,
@@ -81,6 +84,27 @@ export function OrderMessaging({
   const [uploading, setUploading]     = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
+
+  /**
+   * Only the tail of the thread, until asked for more.
+   *
+   * This panel is about an ORDER; the conversation is context for it, not the
+   * subject. Printing every message a seller has ever exchanged with this
+   * buyer pushed the order's own details off the screen — and the history is
+   * not even scoped to this order, so most of what it showed had nothing to
+   * do with what the seller opened.
+   *
+   * Two, because the useful context is the last thing said and what it was a
+   * reply to. Everything before that is a thread, and there is already a
+   * thread view to open it in.
+   */
+  const [showAll, setShowAll] = useState(false);
+
+  // `messages` arrives oldest-first, so the newest are at the END — slice from
+  // the tail, not the head. Reading it the other way is how a "recent
+  // messages" panel ends up showing the oldest two.
+  const olderCount      = Math.max(0, messages.length - RECENT_COUNT);
+  const visibleMessages = showAll ? messages : messages.slice(-RECENT_COUNT);
   const bodyRef    = useRef<HTMLTextAreaElement>(null);
 
   /**
@@ -184,9 +208,33 @@ export function OrderMessaging({
 
   return (
     <section ref={sectionRef} className="rounded-card border border-border bg-surface">
+      {olderCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          aria-expanded={showAll}
+          className="flex w-full items-center justify-between gap-3 border-b border-border px-4 py-2.5 text-left hover:bg-background"
+        >
+          <span className="text-sm text-muted">
+            {olderCount} earlier message{olderCount === 1 ? '' : 's'}
+          </span>
+          {/* Deliberately not "full conversation" — that phrase belongs to the
+              link in the footer, which leaves for the inbox. This one only
+              unfolds what is already here, and two controls a few pixels
+              apart must not promise the same thing. */}
+          <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+            {showAll ? 'Show less' : 'Show them'}
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${showAll ? 'rotate-180' : ''}`}
+              aria-hidden="true"
+            />
+          </span>
+        </button>
+      )}
+
       {messages.length > 0 && (
         <ul className="divide-y divide-border">
-          {messages.map((m) => {
+          {visibleMessages.map((m) => {
             const fromShop = m.senderType === 'SHOP';
             return (
               <li key={m.id} className="flex gap-3 px-4 py-4">
