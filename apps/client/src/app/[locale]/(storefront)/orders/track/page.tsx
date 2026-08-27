@@ -169,7 +169,7 @@ function SearchForm({ onSuccess, locale }: SearchFormProps) {
             fullWidth
             size="lg"
             loading={loading}
-            leftIcon={<Search />}
+            leftIcon={<Search className="h-5 w-5" />}
           >
             Track Order
           </Button>

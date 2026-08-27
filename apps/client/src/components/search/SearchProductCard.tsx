@@ -382,11 +382,11 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
           </span>
           {struckPrice && discount > 0 && (
             <>
-              {/* decoration-2 so the rule reads as a deliberate mark rather
-                  than an artefact. The percentage that used to follow it is
+              {/* decoration-1, not 2: at 14px a 2px rule sits ON the digits rather
+                  than through them. The percentage that used to follow it is
                   gone — it is the sticker on the image now, and printing it
                   twice spends the same fact in the weaker place. */}
-              <span className="text-sm text-muted line-through decoration-2">
+              <span className="text-sm text-muted line-through decoration-1">
                 {fmtAmount(struckPrice)}
               </span>
             </>

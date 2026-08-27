@@ -254,9 +254,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </span>
           {struckPrice && struckPrice > shownPrice && (sale || !isPriceRange) && (
             <>
-              {/* decoration-2 so the rule reads at a glance rather than
-                  looking like a rendering artefact on a small figure. */}
-              <span className="text-sm text-muted line-through decoration-2">
+              {/* decoration-1, not 2: at 14px a 2px rule is thick enough to sit ON
+                  the digits rather than through them, which reads as the price being obscured rather than superseded. */}
+              <span className="text-sm text-muted line-through decoration-1">
                 {formatPrice(struckPrice, currency, locale)}
               </span>
             </>

@@ -46,7 +46,7 @@ export function CancelCountdown({ confirmedAt, onCancel, isLoading }: Props) {
         className="border-error text-error hover:bg-red-50 focus-visible:ring-error/30"
         onClick={onCancel}
         loading={isLoading}
-        leftIcon={<AlertTriangle />}
+        leftIcon={<AlertTriangle className="h-4 w-4" />}
       >
         {t('cancelButton')}
       </Button>

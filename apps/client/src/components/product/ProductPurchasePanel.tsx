@@ -113,7 +113,7 @@ function PriceBlock({
           {format(price)}
         </span>
         {compareAtPrice && compareAtPrice > price && (
-          <span className="text-base text-muted line-through decoration-2">
+          <span className="text-base text-muted line-through decoration-1">
             {format(compareAtPrice)}
           </span>
         )}

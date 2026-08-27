@@ -260,7 +260,7 @@ export const ProductCard = memo(function ProductCard({
             </span>
             {/* No percentage here: it is the sticker on the image. */}
             {product.sale && (
-              <span className="text-sm text-muted line-through decoration-2 tabular-nums">
+              <span className="text-sm text-muted line-through decoration-1 tabular-nums">
                 {fmtAmount(product.sale.originalPrice)}
               </span>
             )}
