@@ -108,7 +108,15 @@ export function OrderTrackingCard({ order, guestEmail, onCancel }: OrderTracking
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelError,   setCancelError]   = useState<string | null>(null);
 
+  // The block — tracking number, carrier link — stays for everything from
+  // SHIPPED onwards, including DELIVERED and COMPLETED: a buyer still wants
+  // the carrier's page after the parcel lands.
   const showShipping = isAtLeastShipped(order.status);
+
+  // The banner does not. "On its way" was shown for anything at or past
+  // SHIPPED, so a delivered — and a completed — order told the buyer their
+  // parcel was still travelling. It is true of exactly one status.
+  const inTransit = order.status === 'SHIPPED';
 
   const confirmedAt =
     order.confirmedAt ??
@@ -171,12 +179,14 @@ export function OrderTrackingCard({ order, guestEmail, onCancel }: OrderTracking
         {/* ── Shipping info ── */}
         {!order.isDigital && showShipping && (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-sm px-4 py-3">
-              <Package className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span className="text-sm font-medium text-emerald-700">
-                {t('orderOnItsWay')}
-              </span>
-            </div>
+            {inTransit && (
+              <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-sm px-4 py-3">
+                <Package className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="text-sm font-medium text-emerald-700">
+                  {t('orderOnItsWay')}
+                </span>
+              </div>
+            )}
 
             {order.trackingNumber && (
               <div className="space-y-2">

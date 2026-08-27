@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Check } from 'lucide-react';
 import type { OrderStatus, OrderStatusHistoryDto } from '@ezihubb/types';
@@ -45,12 +45,34 @@ function stepDate(
 
 // ── Step state helpers ────────────────────────────────────────────────────────
 
-type StepState = 'completed' | 'current' | 'upcoming';
+type StepState = 'completed' | 'current' | 'upcoming' | 'skipped';
 
-function getStepState(stepRank: number, currentRank: number): StepState {
-  if (stepRank < currentRank)  return 'completed';
+/**
+ * A tick has to be earned by the history, not inferred from the position.
+ *
+ * This used to answer "completed" for every step ranked below the current
+ * one, which meant an order moved straight to COMPLETED drew green ticks on
+ * In Production, Shipped and Delivered — three things that never happened.
+ * The dates below come from the real history, so those steps showed a tick
+ * with no date under it, which is exactly what gave it away.
+ *
+ * Nothing forces a shop through every step; a shop's pipeline is its own, and
+ * a short one is legitimate. What is not legitimate is telling the buyer their
+ * parcel shipped because the order finished.
+ *
+ * 'skipped' is a past step with nothing recorded for it. It is drawn plainly
+ * rather than as a failure — the order did reach the end, this stage simply
+ * has nothing to report.
+ */
+function getStepState(
+  stepStatus: OrderStatus,
+  stepRank: number,
+  currentRank: number,
+  reached: Set<OrderStatus>,
+): StepState {
   if (stepRank === currentRank) return 'current';
-  return 'upcoming';
+  if (stepRank > currentRank)   return 'upcoming';
+  return reached.has(stepStatus) ? 'completed' : 'skipped';
 }
 
 // ── Vertical timeline ─────────────────────────────────────────────────────────
@@ -58,11 +80,13 @@ function getStepState(stepRank: number, currentRank: number): StepState {
 function VerticalTimeline({
   steps,
   currentRank,
+  reached,
   history,
   locale,
 }: {
   steps: Steps;
   currentRank: number;
+  reached: Set<OrderStatus>;
   history: OrderStatusHistoryDto[];
   locale: string;
 }) {
@@ -71,8 +95,10 @@ function VerticalTimeline({
     <ol className="flex flex-col gap-0">
       {steps.map((step, i) => {
         const rank  = STATUS_RANK[step.status] ?? i;
-        const state = getStepState(rank, currentRank);
-        const date  = state !== 'upcoming' ? stepDate(step.status, history, locale) : null;
+        const state = getStepState(step.status, rank, currentRank, reached);
+        const date  = state === 'completed' || state === 'current'
+          ? stepDate(step.status, history, locale)
+          : null;
         const isLast = i === steps.length - 1;
 
         return (
@@ -95,7 +121,7 @@ function VerticalTimeline({
               <p
                 className={[
                   'text-sm font-semibold leading-8',
-                  state === 'upcoming' ? 'text-muted' : 'text-secondary',
+                  state === 'upcoming' || state === 'skipped' ? 'text-muted' : 'text-secondary',
                 ].join(' ')}
               >
                 {step.label}
@@ -119,11 +145,13 @@ function VerticalTimeline({
 function HorizontalTimeline({
   steps,
   currentRank,
+  reached,
   history,
   locale,
 }: {
   steps: Steps;
   currentRank: number;
+  reached: Set<OrderStatus>;
   history: OrderStatusHistoryDto[];
   locale: string;
 }) {
@@ -131,8 +159,10 @@ function HorizontalTimeline({
     <ol className="flex items-start gap-0 w-full">
       {steps.map((step, i) => {
         const rank   = STATUS_RANK[step.status] ?? i;
-        const state  = getStepState(rank, currentRank);
-        const date   = state !== 'upcoming' ? stepDate(step.status, history, locale) : null;
+        const state  = getStepState(step.status, rank, currentRank, reached);
+        const date   = state === 'completed' || state === 'current'
+          ? stepDate(step.status, history, locale)
+          : null;
         const isLast = i === steps.length - 1;
 
         return (
@@ -143,7 +173,7 @@ function HorizontalTimeline({
                 className={[
                   'flex-1 h-0.5',
                   i === 0 ? 'invisible' : '',
-                  rank <= currentRank ? 'bg-primary' : 'bg-border',
+                  state === 'completed' || state === 'current' ? 'bg-primary' : 'bg-border',
                 ].join(' ')}
               />
               <StepCircle state={state} />
@@ -151,7 +181,7 @@ function HorizontalTimeline({
                 className={[
                   'flex-1 h-0.5',
                   isLast ? 'invisible' : '',
-                  rank < currentRank ? 'bg-primary' : 'bg-border',
+                  state === 'completed' ? 'bg-primary' : 'bg-border',
                 ].join(' ')}
               />
             </div>
@@ -163,7 +193,7 @@ function HorizontalTimeline({
                   'text-xs font-semibold',
                   state === 'current'
                     ? 'text-primary'
-                    : state === 'upcoming'
+                    : state === 'upcoming' || state === 'skipped'
                       ? 'text-muted'
                       : 'text-secondary',
                 ].join(' ')}
@@ -200,6 +230,17 @@ function StepCircle({ state }: { state: StepState }) {
     );
   }
 
+  // A dash, not a dot: it sits BEFORE the current step, where a reader expects
+  // something to have happened, so it has to say "nothing recorded here"
+  // rather than look like a stage still to come.
+  if (state === 'skipped') {
+    return (
+      <div className="w-8 h-8 rounded-full border-2 border-border flex items-center justify-center shrink-0">
+        <div className="w-2.5 h-0.5 rounded-full bg-border" />
+      </div>
+    );
+  }
+
   return (
     <div className="w-8 h-8 rounded-full border-2 border-border flex items-center justify-center shrink-0">
       <div className="w-2 h-2 rounded-full bg-border" />
@@ -223,14 +264,20 @@ export function OrderStatusTimeline({
   const locale = useLocale();
   const steps  = useSteps();
   const currentRank = STATUS_RANK[currentStatus] ?? -1;
+  // What actually happened, straight from the status history. A Set because
+  // both orientations ask about every step and the list is tiny.
+  const reached = useMemo(
+    () => new Set(history.map((h) => h.status)),
+    [history],
+  );
 
   if (orientation === 'horizontal') {
     return (
-      <HorizontalTimeline steps={steps} currentRank={currentRank} history={history} locale={locale} />
+      <HorizontalTimeline steps={steps} currentRank={currentRank} reached={reached} history={history} locale={locale} />
     );
   }
 
   return (
-    <VerticalTimeline steps={steps} currentRank={currentRank} history={history} locale={locale} />
+    <VerticalTimeline steps={steps} currentRank={currentRank} reached={reached} history={history} locale={locale} />
   );
 }
