@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService, CacheKeys, CacheTtl } from '../../common/services/redis.service';
 import { CategoryMenu } from './schemas/category-menu.schema';
@@ -40,6 +41,28 @@ function dedupe(ids: string[]): string[] {
   return [...new Set(ids)];
 }
 
+/**
+ * One row -> one DTO, shared by the storefront list and the admin list so the
+ * two cannot drift into describing the same collection differently.
+ */
+type CollectionRow = Prisma.CollectionGetPayload<{ include: { _count: { select: { products: true } } } }>;
+
+function toCollectionDto(c: CollectionRow): CollectionResponseDto {
+  return {
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+    description: c.description,
+    bannerUrl: c.bannerUrl,
+    occasion: c.occasion,
+    isActive: c.isActive,
+    sortOrder: c.sortOrder,
+    startDate: c.startDate,
+    endDate: c.endDate,
+    productCount: c._count.products,
+    createdAt: c.createdAt,
+  };
+}
 @Injectable()
 export class CatalogService {
   private readonly logger = new Logger(CatalogService.name);
@@ -422,20 +445,64 @@ export class CatalogService {
       orderBy: { sortOrder: 'asc' },
     });
 
-    return collections.map((c): CollectionResponseDto => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      description: c.description,
-      bannerUrl: c.bannerUrl,
-      occasion: c.occasion,
-      isActive: c.isActive,
-      sortOrder: c.sortOrder,
-      startDate: c.startDate,
-      endDate: c.endDate,
-      productCount: c._count.products,
-      createdAt: c.createdAt,
-    }));
+    return collections.map(toCollectionDto);
+  }
+
+  /**
+   * The admin list: paginated, searchable, and NOT limited to the live window.
+   *
+   * Separate from getCollections() for two reasons, both of which the seller
+   * screen depends on.
+   *
+   * It returns { data, total, pages } rather than a bare array. The admin page
+   * has always read data.data / data.total / data.pages while this endpoint
+   * answered with an array — so `data.data` was undefined, safeArr made it an
+   * empty list, and the page reported "0 collections total" over a database
+   * that had plenty. api.get<T>() is typed by its caller, so TypeScript
+   * asserted a shape that never existed and never said a word.
+   *
+   * And it drops the date-window filter. getCollections() hides anything
+   * outside its start/end dates, which is right for a storefront and wrong
+   * here: this screen has a DATE RANGE column and a status filter, both of
+   * which exist to manage collections that are scheduled or finished.
+   *
+   * The q / occasion / isActive / page params were already being sent by the
+   * page and silently ignored, so the filters above the table did nothing.
+   */
+  async getCollectionsAdmin(filters: {
+    page?:     number;
+    limit?:    number;
+    q?:        string;
+    occasion?: string;
+    isActive?: boolean;
+  } = {}): Promise<{ data: CollectionResponseDto[]; total: number; pages: number }> {
+    const page  = Math.max(1, filters.page ?? 1);
+    const limit = Math.min(100, Math.max(1, filters.limit ?? 20));
+
+    const where: Prisma.CollectionWhereInput = {
+      ...(filters.isActive !== undefined ? { isActive: filters.isActive } : {}),
+      ...(filters.occasion ? { occasion: filters.occasion } : {}),
+      ...(filters.q ? { name: { contains: filters.q, mode: 'insensitive' as const } } : {}),
+    };
+
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.collection.findMany({
+        where,
+        include: { _count: { select: { products: true } } },
+        orderBy: { sortOrder: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.collection.count({ where }),
+    ]);
+
+    return {
+      data:  rows.map(toCollectionDto),
+      total,
+      // At least 1, so the pager reads "Page 1 of 1" on an empty list rather
+      // than "Page 1 of 0".
+      pages: Math.max(1, Math.ceil(total / limit)),
+    };
   }
 
   async getCollectionBySlug(

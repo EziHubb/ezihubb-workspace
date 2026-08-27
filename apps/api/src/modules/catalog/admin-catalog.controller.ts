@@ -12,6 +12,7 @@ import {
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CatalogService } from './catalog.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
+import { AdminCollectionQueryDto } from './dto/admin-collection-query.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { CategoryResponseDto } from './dto/category-response.dto';
 import { CreateCollectionDto } from './dto/create-collection.dto';
@@ -89,10 +90,19 @@ export class AdminCatalogController {
 
   // GET /admin/collections
   @Get('collections')
-  @ApiOperation({ summary: '[Admin] List all collections (including inactive)' })
-  @ApiResponse({ status: 200, type: [CollectionResponseDto] })
-  getCollections(): Promise<CollectionResponseDto[]> {
-    return this.catalogService.getCollections({});
+  @ApiOperation({
+    summary:
+      '[Admin] List collections — paginated, searchable, and including ones ' +
+      'outside their live window',
+  })
+  getCollections(@Query() query: AdminCollectionQueryDto) {
+    return this.catalogService.getCollectionsAdmin({
+      page:     query.page,
+      limit:    query.limit,
+      q:        query.q,
+      occasion: query.occasion,
+      isActive: query.isActive,
+    });
   }
 
   // POST /admin/collections

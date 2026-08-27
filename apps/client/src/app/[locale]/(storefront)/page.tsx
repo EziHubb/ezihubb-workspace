@@ -54,7 +54,7 @@ export default async function HomePage({
         params: { sort: 'bestseller', limit: 8, isActive: true },
         headers: localeHeaders,
       }),
-      apiClient.get<PaginatedResponse<CollectionDto>>(API_ROUTES.CATALOG.COLLECTIONS, {
+      apiClient.get<CollectionDto[]>(API_ROUTES.CATALOG.COLLECTIONS, {
         params: { isActive: true, limit: 6 },
         headers: localeHeaders,
       }),
@@ -89,8 +89,12 @@ export default async function HomePage({
   // apiClient auto-unwraps envelope; .value IS the payload, .value.data for paginated arrays
   const trendingProducts =
     trendingRes.status === 'fulfilled' ? (trendingRes.value.data ?? []) : [];
+  // GET /collections answers with a bare array, not a paginated envelope, so
+  // .data on it is undefined and this rendered nothing at all. rootCategories
+  // two lines down already reads the array form; collections was simply filed
+  // under the wrong shape.
   const collections =
-    collectionsRes.status === 'fulfilled' ? (collectionsRes.value.data ?? []) : [];
+    collectionsRes.status === 'fulfilled' ? (collectionsRes.value ?? []) : [];
   const featuredReviews =
     featuredRes.status === 'fulfilled' ? (featuredRes.value.data ?? []) : [];
   const rootCategories =

@@ -21,11 +21,11 @@ type SearchParamValue = string | string[] | undefined;
 export async function generateStaticParams() {
   const locales = ['en', 'vi'] as const;
   try {
-    const res = await apiClient.get<PaginatedResponse<CollectionDto>>(API_ROUTES.CATALOG.COLLECTIONS, {
+    const res = await apiClient.get<CollectionDto[]>(API_ROUTES.CATALOG.COLLECTIONS, {
       params: { isActive: true, limit: 100 },
       next: { revalidate: 3600 },
     });
-    const items = Array.isArray(res) ? res : (res?.data ?? []);
+    const items = res ?? [];
     const slugs = items.map((c: CollectionDto) => c.slug);
     return locales.flatMap((locale) => slugs.map((slug) => ({ locale, slug })));
   } catch {
@@ -125,7 +125,7 @@ export default async function CollectionPage({
   // endpoint makes it disappear with nothing logged. Keep the fallback, log
   // the reason.
   const relatedRes = await apiClient
-    .get<PaginatedResponse<CollectionDto>>(API_ROUTES.CATALOG.COLLECTIONS, {
+    .get<CollectionDto[]>(API_ROUTES.CATALOG.COLLECTIONS, {
       params: { isActive: true, limit: 4, exclude: slug },
       next: { revalidate: 600 },
     })
@@ -137,19 +137,18 @@ export default async function CollectionPage({
       return null;
     });
 
-  // apiClient unwraps the { success, data } envelope, so this endpoint hands
-  // back the array itself — `relatedRes.data` is undefined. Reading
-  // `.data.length` off it threw during render and every /collections/* page
-  // served the error boundary instead of the collection, behind an HTTP 200
-  // that made it look fine to any status-code check.
+  // GET /collections answers with a bare array — apiClient has already
+  // unwrapped the { success, data } envelope — and the generic above now says
+  // so, which is what lets this be a plain read.
   //
-  // Normalised rather than assumed: generateStaticParams in this same file
-  // already guards the identical call with Array.isArray, so the shape has
-  // been ambiguous here before and one of the two call sites was simply
-  // missed.
-  const related: CollectionDto[] = Array.isArray(relatedRes)
-    ? relatedRes
-    : (relatedRes?.data ?? []);
+  // It used to sniff the shape with Array.isArray at runtime, because reading
+  // `.data.length` off the array had thrown during render and served the
+  // error boundary for every /collections/* page behind an HTTP 200. The
+  // sniffing patched this one call site and left the type lying, so the same
+  // mistake survived on the home page and in the admin list, where it showed
+  // as "0 collections total" over a database full of them. The type is the
+  // fix; the guard was the symptom.
+  const related: CollectionDto[] = relatedRes ?? [];
 
   // Urgency: show if endDate is within 7 days
   let urgencyDays: number | null = null;
