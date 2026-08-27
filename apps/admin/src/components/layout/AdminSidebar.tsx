@@ -587,7 +587,17 @@ function SidebarBody({
           >
             <span className="text-white font-bold text-xs">{initials}</span>
           </div>
-          <div className="min-w-0 flex-1">
+          {/* The name block is the way in to /account — password and
+              sessions. A nav entry of its own would have to live in either
+              the platform list or the shop list, and it belongs to neither:
+              it is about the person signed in, not about what they are
+              currently looking at. Beside their own name is where someone
+              looks for it. */}
+          <Link
+            href="/account"
+            title="Your account"
+            className="min-w-0 flex-1 rounded-lg px-1 py-0.5 -mx-1 hover:bg-black/[0.04] transition-colors"
+          >
             <p className="text-secondary text-xs font-semibold truncate leading-tight">{name}</p>
             <p className="text-muted text-[11px] truncate leading-tight mt-0.5">{email}</p>
             <span className={[
@@ -596,7 +606,7 @@ function SidebarBody({
             ].join(' ')}>
               {inStoreMode ? 'Super Admin · My Store' : role === 'SUPER_ADMIN' ? 'Super Admin' : 'Shop Owner'}
             </span>
-          </div>
+          </Link>
           <button
             type="button"
             onClick={() => { setStoreContext(null); signOut({ callbackUrl: '/login' }); }}

@@ -158,6 +158,33 @@ export class AuthController {
     return this.authService.disableTotp(user.sub, dto.code);
   }
 
+  // POST /auth/logout-all
+  @Post('logout-all')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Revoke every refresh token for this account, including this session' })
+  async logoutAll(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ revoked: number }> {
+    const result = await this.authService.logoutAll(user.sub);
+    // This session goes with the rest. Leaving the caller signed in would
+    // mean "everywhere except here", which is a different promise and not the
+    // one the button makes.
+    this.authService.clearRefreshTokenCookie(res);
+    this.auditLog.log({
+      userId:     user.sub,
+      action:     'LOGOUT_ALL',
+      entityType: 'User',
+      entityId:   user.sub,
+      after:      result as unknown as Record<string, unknown>,
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
+    return result;
+  }
+
   // POST /auth/logout
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)

@@ -281,6 +281,33 @@ export class AuthService {
 
   // ─── Logout ────────────────────────────────────────────────────────────────
 
+  /**
+   * Signs the account out of every device, this one included.
+   *
+   * The capability already existed — resetPassword and changePassword both
+   * revoke every token in the same transaction — but only as a side effect of
+   * changing a password. Someone who left a session open on a machine they no
+   * longer have had to change their password to close it.
+   *
+   * NOT instant, and the caller has to say so. Revoking refresh tokens stops
+   * the other devices RENEWING; the access token each one is already holding
+   * is a JWT this cannot reach, and it stays valid until it expires
+   * (JWT_ACCESS_EXPIRES_IN, 1d by default). Making it instant means either a
+   * much shorter access token or a revocation check on every request, and
+   * both are decisions with a cost attached rather than something to slip in
+   * here.
+   *
+   * Returns how many sessions were closed, because "signed out of 3 other
+   * devices" is the only way the caller can tell it did anything.
+   */
+  async logoutAll(userId: string): Promise<{ revoked: number }> {
+    const { count } = await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data:  { revokedAt: new Date() },
+    });
+    return { revoked: count };
+  }
+
   async logout(userId: string, refreshToken: string): Promise<void> {
     const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
     await this.prisma.refreshToken.updateMany({
