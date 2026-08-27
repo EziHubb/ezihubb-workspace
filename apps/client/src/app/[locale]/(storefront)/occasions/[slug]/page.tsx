@@ -13,7 +13,7 @@ export async function generateStaticParams() {
   const locales = ['en', 'vi'] as const;
   try {
     const collections = await fetchList<CollectionDto & { occasion?: string }>(
-      `${API_BASE}/api/v1/catalog/collections?isActive=true`,
+      `${API_BASE}/api/v1/collections?isActive=true`,
       3600,
     );
     // Only pre-render occasion-based collections under /occasions/

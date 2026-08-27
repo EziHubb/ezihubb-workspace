@@ -39,7 +39,7 @@ export default async function CollectionsPage({
   const { locale } = await params;
 
   const collections = await fetchList<CollectionDto & { bannerUrl?: string; imageUrl?: string }>(
-    `${API_BASE}/api/v1/catalog/collections?isActive=true`,
+    `${API_BASE}/api/v1/collections?isActive=true`,
     60,
     locale,
   );

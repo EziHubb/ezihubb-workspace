@@ -37,7 +37,7 @@ export default async function OccasionsPage({
 
   // Fetch collections that have an occasion field set
   const collections = await fetchList<CollectionDto & { occasion?: string }>(
-    `${API_BASE}/api/v1/catalog/collections?isActive=true`,
+    `${API_BASE}/api/v1/collections?isActive=true`,
     60,
     locale,
   );
