@@ -425,6 +425,38 @@ export class MessagesService {
     return this.findOrCreateConversation(storeId, buyer, orderId, subject);
   }
 
+  /**
+   * The platform's own thread with a customer, opened from the admin side.
+   *
+   * storeId stays null on purpose: this is EziHubb talking to the customer,
+   * not a shop. The seller inbox is store-scoped and never sees it; the
+   * platform inbox applies no store filter at all, so it does.
+   *
+   * Find-or-create, and the "find" half is the point. The existing no-store
+   * branch in createConversation writes a fresh row every time, which is why
+   * one customer already has two of these. The partial unique index that
+   * protects shop threads is on (storeId, userId) and does not cover a null
+   * store, so nothing in the database stops a third.
+   *
+   * Registered accounts only. A guest has no stable identity to open a
+   * thread against — they are keyed by an email that anyone can type — and
+   * the caller here is a list of accounts.
+   */
+  async findOrCreatePlatformConversation(userId: string) {
+    const existing = await this.prisma.conversation.findFirst({
+      where:   { storeId: null, userId },
+      orderBy: { createdAt: 'asc' },
+      select:  { id: true },
+    });
+    if (existing) return { conversationId: existing.id, created: false };
+
+    const created = await this.prisma.conversation.create({
+      data:   { userId, status: ConversationStatus.OPEN },
+      select: { id: true },
+    });
+    return { conversationId: created.id, created: true };
+  }
+
   private async findOrCreateConversation(
     storeId:  string,
     buyer:    { userId?: string | null; guestEmail?: string | null; guestName?: string | null },

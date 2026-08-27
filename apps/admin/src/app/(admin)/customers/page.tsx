@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { type ColumnDef } from '@tanstack/react-table';
 import {
   Search, Download, Users, UserPlus, RefreshCw,
-  Eye, X, MapPin, TrendingUp,
+  Eye, X, MapPin, TrendingUp, MessageSquare, Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
@@ -14,6 +15,7 @@ import { DataTable } from '../../../components/data/DataTable';
 import { api, adminApi } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { FilterSelect } from '../../../components/ui/FilterSelect';
+import { toast } from '../../../lib/store/toast.store';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -124,6 +126,50 @@ const JOINED_OPTIONS = [
 const PAGE_SIZE = 15;
 
 // ── Page ──────────────────────────────────────────────────────────────────────
+
+/**
+ * Opens the platform's own thread with a customer and goes to it.
+ *
+ * A component rather than a handler inside the column definitions: those
+ * live in a useMemo with an empty dependency list, so a mutation created in
+ * the page body would be captured on the first render and never replaced.
+ *
+ * The thread is found before it is created — a second click on the same
+ * customer reopens the first conversation instead of starting another. That
+ * matters here specifically: the store-less branch that already existed
+ * writes a fresh row every time, and one account on production is carrying
+ * two of them because of it.
+ */
+function MessageCustomerButton({ userId }: { userId: string }) {
+  const router = useRouter();
+
+  const open = useMutation({
+    mutationFn: () =>
+      api.post<{ conversationId: string; created: boolean }>(
+        API_ROUTES.ADMIN.MESSAGE_WITH_USER,
+        { userId },
+      ),
+    // The inbox reads ?c= on mount and opens that thread, so the redirect
+    // lands the seller straight in the conversation rather than on a list
+    // they then have to search.
+    onSuccess: (r) => router.push(`/messages?c=${r.conversationId}`),
+    onError:   (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <button
+      type="button"
+      disabled={open.isPending}
+      onClick={(e) => { e.stopPropagation(); open.mutate(); }}
+      className="flex items-center gap-1.5 rounded px-2 py-1.5 text-xs font-medium text-secondary transition-colors hover:bg-secondary/5 disabled:opacity-50"
+    >
+      {open.isPending
+        ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+        : <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />}
+      Message
+    </button>
+  );
+}
 
 export default function CustomersPage() {
   const [page,       setPage]       = useState(1);
@@ -252,9 +298,11 @@ export default function CustomersPage() {
     },
     {
       id:   'actions',
-      size: 80,
+      size: 140,
       header: '',
       cell: ({ row }) => (
+        <div className="flex items-center justify-end gap-1">
+        <MessageCustomerButton userId={row.original.id} />
         <Link
           href={`/customers/${row.original.id}`}
           className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary-dark px-2 py-1.5 rounded hover:bg-primary/5 transition-colors"
@@ -263,6 +311,7 @@ export default function CustomersPage() {
           <Eye className="w-3.5 h-3.5" />
           View
         </Link>
+        </div>
       ),
     },
   ], []);

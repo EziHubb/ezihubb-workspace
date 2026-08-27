@@ -1,6 +1,7 @@
 import {
   Body,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -20,6 +21,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
 import { AdminConversationQueryDto } from './dto/admin-conversation-query.dto';
+import { ConversationWithUserDto } from './dto/conversation-with-user.dto';
 import { LinkPreviewQueryDto } from './dto/link-preview-query.dto';
 import { MessagePageQueryDto } from './dto/message-page-query.dto';
 import { SendMessageDto } from './dto/send-message.dto';
@@ -112,6 +114,34 @@ export class AdminMessagesController {
       storeId: context.storeId ?? undefined,
       forShop: true,
     });
+  }
+
+  @Post('conversations/with-user')
+  @ApiOperation({ summary: "Open (or reopen) the platform's own thread with a customer" })
+  async conversationWithUser(
+    @Req() req: Request,
+    @Body() dto: ConversationWithUserDto,
+  ) {
+    /**
+     * Platform seats only, and the check is not a formality.
+     *
+     * A thread with no store is the PLATFORM talking to the customer. A shop
+     * owner opening one would be writing to a customer outside any shop
+     * context — past the store scoping that every other message route in this
+     * controller applies, and into an inbox their own seat cannot even read.
+     *
+     * A SUPER_ADMIN switched into their own store has a storeId here and is
+     * refused too, which is correct: in that seat they are acting as a shop,
+     * and a shop reaches a customer through its own thread.
+     */
+    const context = await this.storeContext.resolve(req);
+    if (!context.isPlatformContext) {
+      throw new ForbiddenException({
+        code: 'ERR_PLATFORM_ONLY',
+        message: 'Only a platform seat can open a conversation on behalf of the platform.',
+      });
+    }
+    return this.messagesService.findOrCreatePlatformConversation(dto.userId);
   }
 
   @Post('conversations/:id/messages')

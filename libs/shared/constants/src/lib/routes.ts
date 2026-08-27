@@ -389,6 +389,7 @@ export const API_ROUTES = {
 
     // ── Messages ─────────────────────────────────────────────────────────────
     CONVERSATIONS:        '/admin/messages/conversations',
+    MESSAGE_WITH_USER:    '/admin/messages/conversations/with-user',
     CONVERSATION:         (id: string) => `/admin/messages/conversations/${id}`,
     CONVERSATION_MESSAGES: (id: string) => `/admin/messages/conversations/${id}/messages`,
     CONVERSATION_ATTACHMENTS:   (id: string) => `/admin/messages/conversations/${id}/attachments`,
