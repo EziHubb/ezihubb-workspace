@@ -86,14 +86,19 @@ export function CompleteOrderModal({ order, onClose, onDone }: {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Complete order"
+      aria-label="Mark as dispatched"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }}
     >
       <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-card bg-surface shadow-xl">
         <div className="flex items-start justify-between border-b border-border px-6 py-5">
           <div>
-            <h2 className="text-xl font-semibold text-secondary">Complete 1 order</h2>
+            {/* Dispatched, not completed: this form takes a tracking number
+                and a carrier and marks the order SHIPPED. Completing an order
+                is moving it to the pipeline's final step, elsewhere. The old
+                heading sent sellers looking for a finished order in a queue
+                that had only just handed it to the courier. */}
+            <h2 className="text-xl font-semibold text-secondary">Mark as dispatched</h2>
             <p className="mt-1 text-sm text-muted">
               Make sure the carrier receives any orders you plan to dispatch by your dispatch date
             </p>
@@ -210,7 +215,7 @@ export function CompleteOrderModal({ order, onClose, onDone }: {
             className="flex items-center gap-2 rounded-full bg-secondary px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
           >
             {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-            {busy ? 'Completing…' : 'Complete order'}
+            {busy ? 'Saving…' : 'Mark as dispatched'}
           </button>
         </div>
       </div>

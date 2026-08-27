@@ -112,7 +112,9 @@ export default function OrdersPage() {
   const [search,   setSearch]   = useState('');
   const [page,     setPage]     = useState(1);
   const [limit,    setLimit]    = useState(24);
-  const [sort,     setSort]     = useState<'shipBy' | 'newest' | 'oldest' | 'total'>('shipBy');
+  // Newest first, not ship-by. A queue is read from the top, and what a
+  // seller opens the page to find is what just came in.
+  const [sort,     setSort]     = useState<'shipBy' | 'newest' | 'oldest' | 'total'>('newest');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editorOpen,   setEditorOpen]   = useState(false);
   const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
@@ -443,9 +445,15 @@ export default function OrdersPage() {
           ) : groups.length === 0 ? (
             <p className="py-16 text-center text-sm text-muted">No orders match these filters.</p>
           ) : (
+            // No overflow-hidden on the section. It was there to keep the
+            // header's fill inside the rounded corners, and it also clipped
+            // the row menu: that menu has five items, and on the last card of
+            // a group the bottom two — Cancel order and Refund — were cut off
+            // by this edge. The corners are handled by rounding the only two
+            // children that actually reach them instead.
             groups.map((group, gi) => (
-              <section key={`${group.label}-${gi}`} className="mb-6 overflow-hidden rounded-card border border-border bg-surface">
-                <header className="flex items-center gap-3 bg-background px-5 py-3">
+              <section key={`${group.label}-${gi}`} className="mb-6 rounded-card border border-border bg-surface">
+                <header className="flex items-center gap-3 rounded-t-card bg-background px-5 py-3">
                   <h2 className="text-sm font-semibold text-secondary">{group.label}</h2>
                   <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-muted">{group.orders.length}</span>
                   <button

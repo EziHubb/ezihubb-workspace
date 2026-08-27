@@ -124,7 +124,9 @@ export function OrderQueueCard({
     // The stripe is for peripheral vision and the badge below is for certainty.
     // The queue rendered every order identically, so telling a cancelled order
     // from one waiting to ship meant opening each in turn.
-    <div className={`flex flex-col gap-4 border-b border-l-4 border-border px-5 py-5 last:border-b-0 sm:flex-row ${STATUS_ACCENT[order.status] ?? 'border-l-transparent'}`}>
+    // last:rounded-b-card so the status stripe on the bottom card follows the
+    // section's rounded corner. The section no longer clips it into shape.
+    <div className={`flex flex-col gap-4 border-b border-l-4 border-border px-5 py-5 last:rounded-b-card last:border-b-0 sm:flex-row ${STATUS_ACCENT[order.status] ?? 'border-l-transparent'}`}>
       <input
         type="checkbox"
         checked={selected}
@@ -268,8 +270,8 @@ export function OrderQueueCard({
           <button
             type="button"
             onClick={() => { setCompleteOpen(true); setMenuOpen(false); setProgressOpen(false); }}
-            title="Complete order"
-            aria-label="Complete order"
+            title="Mark as dispatched"
+            aria-label="Mark as dispatched"
             className="rounded-full p-1.5 text-secondary hover:bg-background"
           >
             <CircleCheckBig className="h-5 w-5" aria-hidden="true" />
