@@ -5,12 +5,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Search, X, Save, Trash2, GripVertical,
   ChevronLeft, ChevronRight, Eye, EyeOff, Package,
-  Loader2, Image as ImageIcon,
+  Loader2,
+  Upload,
 } from 'lucide-react';
 import Image from 'next/image';
 import { Select, Toggle } from '@ezihubb/ui';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
+import { toast } from '../../../../lib/store/toast.store';
 import { API_ROUTES } from '@ezihubb/constants';
 import { fmtFixed, safeArr } from '../../../../lib/fmt';
 import { useDialog } from '../../../../contexts/DialogContext';
@@ -191,6 +193,7 @@ function CollectionSlideOver({
   }));
   const bannerInput = useRef<HTMLInputElement>(null);
   const [bannerBusy, setBannerBusy] = useState(false);
+  const [dragging,   setDragging]   = useState(false);
 
   /**
    * Stores the file and keeps only the URL in the form.
@@ -200,6 +203,17 @@ function CollectionSlideOver({
    * /collections/:id/banner. Nothing is persisted until Save.
    */
   const uploadBanner = async (file: File) => {
+    // Refused here rather than by the server, so a drag-and-drop of the wrong
+    // thing says why immediately instead of after an upload round trip.
+    if (!BANNER_TYPES.includes(file.type)) {
+      toast.error('Banner must be a PNG, JPG or WebP image');
+      return;
+    }
+    if (file.size > BANNER_MAX_MB * 1024 * 1024) {
+      toast.error(`Banner must be under ${BANNER_MAX_MB} MB`);
+      return;
+    }
+
     setBannerBusy(true);
     setError(null);
     try {
@@ -207,7 +221,9 @@ function CollectionSlideOver({
       body.append('file', file);
       const res = await api.post<{ url: string }>(API_ROUTES.ADMIN.COLLECTION_BANNER, body);
       setField('bannerUrl', res.url);
+      toast.success('Banner uploaded');
     } catch (e) {
+      toast.error((e as Error).message);
       setError((e as Error).message);
     } finally {
       setBannerBusy(false);
@@ -339,52 +355,92 @@ function CollectionSlideOver({
               />
             </div>
 
-            {/* Banner. Uploaded to storage on pick and kept in the form as a
-                URL, so it saves with everything else — no separate "save the
-                picture" step, and a new collection can have one before it
-                exists. Remove clears the field; the save sends null and the
-                API writes it through. */}
+            {/* Banner. The file is stored on pick and only its URL is kept
+                in the form, so it saves with every other field — no separate
+                "save the picture" step, and a collection that does not exist
+                yet can still have one. */}
             <div>
               <label className="block text-xs font-medium text-secondary mb-1.5">Banner image</label>
-              <div className="flex items-start gap-3">
-                <div className="relative h-20 w-32 shrink-0 overflow-hidden rounded-button border border-border bg-background">
-                  {form.bannerUrl ? (
-                    <Image src={form.bannerUrl} alt="" fill sizes="128px" className="object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <ImageIcon className="h-5 w-5 text-muted" aria-hidden="true" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <input
-                    ref={bannerInput}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void uploadBanner(file); }}
-                  />
-                  <button
-                    type="button"
-                    disabled={bannerBusy}
-                    onClick={() => bannerInput.current?.click()}
-                    className="inline-flex items-center gap-1.5 rounded-button border border-border px-3 py-1.5 text-xs font-medium text-secondary hover:bg-background disabled:opacity-50"
-                  >
-                    {bannerBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-                    {form.bannerUrl ? 'Replace' : 'Upload'}
-                  </button>
-                  {form.bannerUrl && (
+
+              <input
+                ref={bannerInput}
+                type="file"
+                accept={BANNER_ACCEPT}
+                className="hidden"
+                onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void uploadBanner(file); }}
+              />
+
+              {form.bannerUrl ? (
+                /* A banner is 3:1 on the storefront, so the preview is too —
+                   a square thumbnail hid exactly the cropping a seller needs
+                   to see before publishing. */
+                <div className="group relative aspect-[3/1] w-full overflow-hidden rounded-card border border-border bg-background">
+                  <Image src={form.bannerUrl} alt="" fill sizes="480px" className="object-cover" />
+                  <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/0 opacity-0 transition-all group-hover:bg-black/45 group-hover:opacity-100 focus-within:bg-black/45 focus-within:opacity-100">
+                    <button
+                      type="button"
+                      disabled={bannerBusy}
+                      onClick={() => bannerInput.current?.click()}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-white disabled:opacity-50"
+                    >
+                      <Upload className="h-3.5 w-3.5" aria-hidden="true" /> Replace
+                    </button>
                     <button
                       type="button"
                       disabled={bannerBusy}
                       onClick={() => setField('bannerUrl', '')}
-                      className="text-left text-xs font-medium text-error hover:underline disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-error hover:bg-white disabled:opacity-50"
                     >
-                      Remove
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Remove
                     </button>
+                  </div>
+                  {bannerBusy && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden="true" />
+                    </div>
                   )}
                 </div>
-              </div>
+              ) : (
+                /* Same drop zone the product importer uses, so the two places
+                   in this app that take a file behave the same way. */
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => bannerInput.current?.click()}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); bannerInput.current?.click(); } }}
+                  onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragging(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) void uploadBanner(file);
+                  }}
+                  className={[
+                    'flex aspect-[3/1] w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-card border-2 border-dashed transition-colors',
+                    dragging
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border bg-background hover:border-primary/50',
+                  ].join(' ')}
+                >
+                  {bannerBusy ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden="true" />
+                      <span className="text-xs text-muted">Uploading…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-5 w-5 text-muted" aria-hidden="true" />
+                      <span className="text-xs font-medium text-secondary">
+                        Drop an image here, or click to choose
+                      </span>
+                      <span className="text-[11px] text-muted">
+                        PNG, JPG or WebP · up to {BANNER_MAX_MB} MB · 3:1 works best
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -543,6 +599,11 @@ function CollectionSlideOver({
 // twelve-collection table just scrolled off the bottom of the screen and the
 // pager below it never rendered. The endpoint honours page/limit now, so this
 // is real paging rather than a slice of an already-complete list.
+/** Kept beside the copy that promises them, so the two cannot drift. */
+const BANNER_MAX_MB  = 5;
+const BANNER_ACCEPT  = 'image/png,image/jpeg,image/webp';
+const BANNER_TYPES   = BANNER_ACCEPT.split(',');
+
 const PAGE_SIZE = 10;
 
 export default function CollectionsPage() {
@@ -578,10 +639,29 @@ export default function CollectionsPage() {
   const total       = data?.total ?? 0;
 
   const handleSave = async (payload: CollectionSavePayload) => {
-    if (payload.id) {
-      await api.patch(API_ROUTES.ADMIN.COLLECTION(payload.id), payload);
-    } else {
-      await api.post(API_ROUTES.ADMIN.COLLECTIONS, payload);
+    /**
+     * The id addresses the row; it is not part of it.
+     *
+     * This sent the whole payload as the PATCH body, id included, and body
+     * validation runs with forbidNonWhitelisted — so every edit came back
+     * 400 ERR_VALIDATION, "property id should not exist". Creating worked
+     * only because a new collection has no id and JSON drops undefined.
+     */
+    const { id, ...body } = payload;
+    try {
+      if (id) {
+        await api.patch(API_ROUTES.ADMIN.COLLECTION(id), body);
+        toast.success('Collection updated');
+      } else {
+        await api.post(API_ROUTES.ADMIN.COLLECTIONS, body);
+        toast.success('Collection created');
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+      // Rethrown so the slide-over stays open with the work still in it and
+      // shows the same message beside the fields. Swallowing it here would
+      // close the form and lose what was typed.
+      throw e;
     }
     qc.invalidateQueries({ queryKey: ['admin-collections'] });
     setSlideOver(null);
@@ -590,8 +670,11 @@ export default function CollectionsPage() {
   const handleDelete = async (id: string) => {
     try {
       await api.delete(API_ROUTES.ADMIN.COLLECTION(id));
+      toast.success('Collection deleted');
     } catch (e: unknown) {
-      throw new Error((e as Error).message ?? 'Delete failed');
+      const message = (e as Error).message || 'Delete failed';
+      toast.error(message);
+      throw new Error(message);
     }
     qc.invalidateQueries({ queryKey: ['admin-collections'] });
     setSlideOver(null);

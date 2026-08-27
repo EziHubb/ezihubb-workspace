@@ -64,6 +64,9 @@ function toCollectionDto(c: CollectionRow): CollectionResponseDto {
     createdAt: c.createdAt,
   };
 }
+/** Mirrors what the collections editor offers and promises on screen. */
+const COLLECTION_BANNER_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const COLLECTION_BANNER_MAX_BYTES = 5 * 1024 * 1024;
 @Injectable()
 export class CatalogService {
   private readonly logger = new Logger(CatalogService.name);
@@ -635,6 +638,27 @@ export class CatalogService {
    * — updateCollection writes bannerUrl through when it is explicitly null.
    */
   async uploadCollectionBanner(file: Express.Multer.File): Promise<{ url: string }> {
+    /**
+     * Checked here as well as in the form, because a check the caller can
+     * skip is not a check. The editor refuses the wrong file for a faster
+     * answer; this refuses it because the endpoint has to.
+     *
+     * No other upload in this codebase does either, which is worth knowing
+     * and is not fixed here — it would mean touching every one of them.
+     */
+    if (!COLLECTION_BANNER_TYPES.includes(file.mimetype)) {
+      throw new BadRequestException({
+        code: 'ERR_UNSUPPORTED_IMAGE',
+        message: 'Banner must be a PNG, JPG or WebP image',
+      });
+    }
+    if (file.size > COLLECTION_BANNER_MAX_BYTES) {
+      throw new BadRequestException({
+        code: 'ERR_FILE_TOO_LARGE',
+        message: `Banner must be under ${COLLECTION_BANNER_MAX_BYTES / (1024 * 1024)} MB`,
+      });
+    }
+
     const key = this.storageService.generateKey('collections', file.originalname);
     const url = await this.storageService.uploadFile(file.buffer, key, file.mimetype);
     return { url };
