@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { OrderProgressStepKind, OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { syncOrderStatusFromShops } from './order-status-sync';
 import type { OrderQueueQueryDto, QueueSort, ShipByBucket } from './dto/order-queue.dto';
 
 /**
@@ -243,81 +244,43 @@ export class OrderProgressService {
     await this.prisma.$transaction(async (tx) => {
       await tx.storeOrder.updateMany({ where: { id: { in: ids } }, data });
 
-      if (completing) {
-        await this.completeFinishedOrders(tx, owned.map((o) => o.orderId));
-      } else {
+      if (!completing) {
         /**
-         * Moving OUT of the completed step has to undo what moving in did.
+         * Moving OUT of the completed step has to undo what moving in did,
+         * or the row keeps a Completed badge under whatever tab it landed
+         * on — the tab is filtered on `progressStepId` and the badge reads
+         * `status`, both on this same record.
          *
-         * This used to be a one-way sync: the branch above set COMPLETED on
-         * the way in and nothing cleared it on the way back, so an order
-         * pulled from Completed to New kept the status. The queue then
-         * contradicted itself in one row — the tab is filtered on
-         * `progressStepId` and the badge reads `status`, both on this same
-         * record, so the seller saw a "Completed" chip under the New tab.
+         * Which stage to fall back to is read from what was RECORDED, not
+         * guessed from the position: a shop that has a deliveredAt really
+         * did deliver, and blanket-writing CONFIRMED would erase that. An
+         * order can also be dropped straight into Completed from New, so
+         * assuming DELIVERED would invent a delivery that never happened.
          *
-         * CONFIRMED, because that is the only other value this column ever
-         * holds in the queue: the payment processor sets it and this method
-         * sets COMPLETED. Nothing writes SHIPPED or DELIVERED here, so there
-         * is no earlier state to guess at.
-         *
-         * Narrowed to rows that are actually COMPLETED rather than folded
-         * into `data` above: a cancelled or refunded order can sit on a step
-         * too, and blanket-writing CONFIRMED would quietly revive it.
+         * Three passes, most advanced first, and they are mutually
+         * exclusive: each one leaves its rows no longer COMPLETED, so the
+         * next cannot touch them again.
          */
-        await tx.storeOrder.updateMany({
-          where: { id: { in: ids }, status: OrderStatus.COMPLETED },
-          data:  { status: OrderStatus.CONFIRMED },
-        });
+        const demote = async (where: Prisma.StoreOrderWhereInput, to: OrderStatus) => {
+          await tx.storeOrder.updateMany({
+            where: { id: { in: ids }, status: OrderStatus.COMPLETED, ...where },
+            data:  { status: to },
+          });
+        };
+        await demote({ deliveredAt: { not: null } }, OrderStatus.DELIVERED);
+        await demote({ shippedAt:   { not: null } }, OrderStatus.SHIPPED);
+        await demote({},                             OrderStatus.CONFIRMED);
       }
+
+      // Every move, not only a completing one. Pulling an order back out of
+      // Completed changes what the ORDER is, and the buyer should stop
+      // being told it is finished.
+      await syncOrderStatusFromShops(tx, owned.map((o) => o.orderId));
     });
 
     return { moved: ids.length, stepId: step.id };
   }
 
-  /**
-   * Promotes an Order to COMPLETED once every shop in it has finished.
-   *
-   * Without this, completing the last step would be purely cosmetic. Two
-   * buyer-facing gates read `Order.status`, not `StoreOrder.status`: review
-   * eligibility (reviews.service.ts) and digital download access
-   * (order-downloads.controller.ts). A seller could work every order to the
-   * end of their pipeline and buyers would still be unable to review or
-   * download what they paid for.
-   *
-   * A basket split across shops only completes when all of them are done —
-   * one shop cannot speak for another. Cancelled and refunded parts do not
-   * hold it back; they are settled, just not by delivery.
-   */
-  private async completeFinishedOrders(tx: Prisma.TransactionClient, orderIds: string[]) {
-    const unique = [...new Set(orderIds)];
-
-    for (const orderId of unique) {
-      const outstanding = await tx.storeOrder.count({
-        where: {
-          orderId,
-          status: {
-            notIn: [OrderStatus.COMPLETED, OrderStatus.CANCELLED, OrderStatus.REFUNDED],
-          },
-        },
-      });
-      if (outstanding > 0) continue;
-
-      // updateMany with a status guard, not update: it is a no-op when the
-      // order is already COMPLETED, so re-completing never writes a duplicate
-      // history row.
-      const { count } = await tx.order.updateMany({
-        where: { id: orderId, status: { not: OrderStatus.COMPLETED } },
-        data:  { status: OrderStatus.COMPLETED },
-      });
-
-      if (count) {
-        await tx.orderStatusHistory.create({
-          data: { orderId, status: OrderStatus.COMPLETED, note: 'All shops completed their part' },
-        });
-      }
-    }
-  }
 
   /**
    * The seller's work queue — one row per store order, in dispatch order.

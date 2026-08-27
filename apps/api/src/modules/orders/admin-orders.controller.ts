@@ -136,7 +136,13 @@ export class AdminOrdersController {
     @Body() dto: MarkShippedDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    const result = await this.ordersService.markShipped(id, dto, user.sub);
+    // The caller's shop, so the dispatch lands on THEIR row rather than on
+    // every vendor in the basket. Null for a platform-context SUPER_ADMIN,
+    // who has no shop of their own.
+    const context = await this.storeContext.resolve(req);
+    const result = await this.ordersService.markShipped(
+      id, dto, user.sub, context.isPlatformContext ? null : context.storeId ?? null,
+    );
     this.auditLog.log({
       userId:     user.sub,
       action:     'SHIP',

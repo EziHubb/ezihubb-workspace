@@ -13,6 +13,7 @@ import {
 import { OrderQueueQueryDto } from './dto/order-queue.dto';
 import { SendOrderMessageDto, SetPrivateNoteDto } from './dto/order-detail-panel.dto';
 import { ATTACHMENT_MAX_BYTES, MAX_ATTACHMENTS_PER_MESSAGE, SellerOrderDetailService } from './seller-order-detail.service';
+import { SetOrderStageDto } from './dto/set-order-stage.dto';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
 import { StoreContextService } from '../../common/services/store-context.service';
 import { AuditLogService } from '../../common/services/audit-log.service';
@@ -199,6 +200,21 @@ export class AdminOrderProgressController {
     @Query('storeId') storeId?: string,
   ) {
     return this.progress.setGift(await this.storeFor(req, storeId), storeOrderId, dto.isGift);
+  }
+
+  @Patch(':storeOrderId/stage')
+  @ApiOperation({ summary: "Set the stage this shop's part of an order has reached" })
+  async setStage(
+    @Req() req: Request,
+    @Param('storeOrderId') storeOrderId: string,
+    @Body() dto: SetOrderStageDto,
+    @Query('storeId') storeId?: string,
+  ) {
+    return this.detailService.setStage(
+      await this.storeFor(req, storeId),
+      storeOrderId,
+      dto.status,
+    );
   }
 
   @Patch(':storeOrderId/ship-by-date')

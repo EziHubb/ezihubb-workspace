@@ -31,6 +31,7 @@ import { LinkAttributionService } from '../marketing/link-attribution.service';
 import { SHARE_SAVE_REFUND_RATE } from '../marketing/marketing.constants';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { syncOrderStatusFromShops } from './order-status-sync';
 import { AddTrackingDto } from './dto/add-tracking.dto';
 import { MarkShippedDto } from './dto/mark-shipped.dto';
 import {
@@ -1207,10 +1208,15 @@ export class OrdersService {
     return this.mapToDto(updated);
   }
 
+  /**
+   * @param storeId The caller's shop, or null for a platform-context
+   *                SUPER_ADMIN who is acting for the whole order.
+   */
   async markShipped(
     id: string,
     dto: MarkShippedDto,
     adminId: string,
+    storeId: string | null,
   ): Promise<OrderResponseDto> {
     const order = await this.prisma.order.findUnique({
       where: { id },
@@ -1265,6 +1271,37 @@ export class OrdersService {
           createdBy: adminId,
         },
       });
+
+      /**
+       * The shop's own row, which this never touched.
+       *
+       * StoreOrder carries the same fulfilment columns — status, tracking,
+       * shippedAt — and none of them had ever been written, so the seller's
+       * queue badge still read CONFIRMED after a dispatch. It reads the shop
+       * row, not the order.
+       *
+       * Scoped to the caller's store: one shop must not speak for another. A
+       * platform-context SUPER_ADMIN has no store of their own, so theirs
+       * applies to every shop in the order, which is the only thing "ship
+       * this order" can mean from a platform seat.
+       */
+      await tx.storeOrder.updateMany({
+        where: { orderId: id, ...(storeId ? { storeId } : {}) },
+        data: {
+          status:         OrderStatus.SHIPPED,
+          trackingNumber: dto.trackingNumber,
+          carrier,
+          shippedAt:      dto.dispatchedAt ? new Date(dto.dispatchedAt) : now,
+        },
+      });
+
+      // And the order follows its shops. On a basket split between two
+      // vendors this pulls the order BACK to whatever the other one is still
+      // doing — it is not shipped until they both are. `o` was read before
+      // this, so a multi-shop response can be one refetch behind; the panel
+      // refetches on success.
+      await syncOrderStatusFromShops(tx, [id]);
+
       return o;
     });
 

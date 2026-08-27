@@ -3,6 +3,7 @@ export const API_ROUTES = {
     REGISTER:        '/auth/register',
     LOGIN:           '/auth/login',
     LOGOUT:          '/auth/logout',
+    LOGOUT_ALL:      '/auth/logout-all',
     REFRESH:         '/auth/refresh',
     FORGOT_PASSWORD: '/auth/forgot-password',
     RESET_PASSWORD:  '/auth/reset-password',
@@ -227,6 +228,7 @@ export const API_ROUTES = {
     ORDER_PROGRESS_QUEUE:        '/admin/order-progress/orders',
     ORDER_PROGRESS_DESTINATIONS: '/admin/order-progress/destinations',
     ORDER_PROGRESS_MOVE:         '/admin/order-progress/move',
+    ORDER_STAGE:          (storeOrderId: string) => `/admin/order-progress/${storeOrderId}/stage`,
     ORDER_PROGRESS_SHIP_BY:      (storeOrderId: string) => `/admin/order-progress/${storeOrderId}/ship-by-date`,
     ORDER_PROGRESS_GIFT:         (storeOrderId: string) => `/admin/order-progress/${storeOrderId}/gift`,
     // The order detail panel. Nested under `orders/` so these can never be

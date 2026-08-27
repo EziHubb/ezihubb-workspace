@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { SellerLedgerEntryType, SenderType } from '@prisma/client';
+import { OrderStatus, SellerLedgerEntryType, SenderType } from '@prisma/client';
+import { syncOrderStatusFromShops } from './order-status-sync';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services/storage.service';
 import { ShippingService } from '../shipping/shipping.service';
@@ -89,6 +90,59 @@ export class SellerOrderDetailService {
     });
     if (!row) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Order not found' });
     return row;
+  }
+
+  /**
+   * The stages a seller drives on THEIR share of the order.
+   *
+   * StoreOrder has carried these columns since the schema was written and
+   * nothing ever wrote them: the payment worker set CONFIRMED, the step
+   * machine set COMPLETED, and the whole middle of the lifecycle lived only
+   * on the parent Order. So the seller's queue badge could only ever say
+   * "Confirmed" or "Completed" while the buyer was being told the parcel had
+   * shipped.
+   *
+   * SHIPPED is not settable here. The dispatch form owns it, because it also
+   * stores the tracking number, registers the carrier tracker and emails the
+   * buyer — none of which a bare stage write does. COMPLETED is not settable
+   * either: the progress steps own that, and two owners for one value is the
+   * bug this whole change is undoing.
+   */
+  private static readonly SELLER_STAGES: OrderStatus[] = [
+    OrderStatus.CONFIRMED,
+    OrderStatus.IN_PRODUCTION,
+    OrderStatus.DELIVERED,
+  ];
+
+  async setStage(storeId: string, storeOrderId: string, status: OrderStatus) {
+    if (!SellerOrderDetailService.SELLER_STAGES.includes(status)) {
+      throw new BadRequestException({
+        code: 'ERR_STAGE_NOT_SETTABLE',
+        message:
+          'Use the dispatch form for Shipped, and the Completed step to finish an order.',
+      });
+    }
+
+    const row = await this.owned(storeId, storeOrderId);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.storeOrder.update({
+        where: { id: row.id },
+        data: {
+          status,
+          // Stamped when the stage is first reached and never cleared on the
+          // way back: these are a record of what happened, and moving a card
+          // does not un-deliver a parcel. moveOrders reads them to decide
+          // which stage to fall back to, so erasing them would make it guess.
+          ...(status === OrderStatus.DELIVERED && !row.deliveredAt
+            ? { deliveredAt: new Date() }
+            : {}),
+        },
+      });
+      await syncOrderStatusFromShops(tx, [row.orderId]);
+    });
+
+    return { status };
   }
 
   // ── Order details tab ──────────────────────────────────────────────────────

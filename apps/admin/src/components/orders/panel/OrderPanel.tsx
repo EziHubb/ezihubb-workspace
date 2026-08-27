@@ -9,6 +9,7 @@ import { API_ROUTES, newClientMessageId } from '@ezihubb/constants';
 import { api } from '../../../lib/api-client';
 import { toast } from '../../../lib/store/toast.store';
 import { useDialog } from '../../../contexts/DialogContext';
+import { StatusSelect } from '../OrderStatusBadge';
 import { OrderDetailsTab } from './OrderDetailsTab';
 import { OrderEarningsTab } from './OrderEarningsTab';
 import type { OrderPanelDetail, OrderPanelEarnings, OrderPanelThread } from './types';
@@ -53,7 +54,8 @@ const QK = {
 const fmtDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null;
 
-/** The stages this control may show as its own value without lying. */
+/** The stages a seller drives. COMPLETED, CANCELLED and REFUNDED each have
+ *  their own action and are not set from here. */
 const STAGE_OPTIONS = ['CONFIRMED', 'IN_PRODUCTION', 'SHIPPED', 'DELIVERED'];
 export function OrderPanel({
   storeOrderId, storeQuery, completeStepId,
@@ -200,15 +202,20 @@ export function OrderPanel({
    * webhook, COMPLETED from the step machine — and IN_PRODUCTION from
    * nowhere at all. Going backwards after a mistake was impossible.
    */
+  /**
+   * This shop's own stage, not the order's.
+   *
+   * It used to PATCH the ORDER's status, which on a basket split between two
+   * vendors would have let one shop speak for the other — and which never
+   * matched the badge in the queue, because that badge reads the shop's row.
+   * The order's status is derived from its shops now, so this writes the one
+   * record this panel is actually about and the rest follows.
+   */
   const setOrderStatus = useMutation({
-    // The id travels with the call rather than being asserted off the query
-    // above it. A non-null assertion there would compile and then throw if
-    // this were ever fired before the detail had loaded; this cannot be
-    // called without an id at all.
-    mutationFn: ({ orderId, status }: { orderId: string; status: string }) =>
-      api.patch(API_ROUTES.ADMIN.ORDER_STATUS(orderId), { status }),
+    mutationFn: ({ status }: { status: string }) =>
+      api.patch(`${API_ROUTES.ADMIN.ORDER_STAGE(storeOrderId)}${storeQuery}`, { status }),
     onSuccess: () => {
-      toast.success('Status updated');
+      toast.success('Stage updated');
       qc.invalidateQueries({ queryKey: QK.detail(storeOrderId) });
       onChanged();
     },
@@ -285,41 +292,51 @@ export function OrderPanel({
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2">
-                  {/* The buyer-facing stage. Deliberately NOT offering
-                      COMPLETED: that belongs to the step machine, and the
-                      API refuses it here anyway, so listing it would be a
-                      button that only ever errors.
+                  {/* The shared status picker, the same one the order
+                      detail page uses, so a status looks identical
+                      wherever it appears — a coloured chip, not a line of
+                      plain text in a native menu.
 
-                      SHIPPED is present but never selectable forward. The
-                      dispatch form is what sets it, and that form also
-                      stores the tracking number, registers the carrier
-                      tracker and emails the buyer — none of which a bare
-                      status write does. Offering it here would be a quiet
-                      way to tell a buyer their parcel is moving with
-                      nothing behind it. */}
-                  <label className="sr-only" htmlFor="order-stage">Order stage</label>
-                  <select
-                    id="order-stage"
-                    value={detail.orderStatus}
-                    disabled={setOrderStatus.isPending}
-                    onChange={(e) => setOrderStatus.mutate({ orderId: detail.orderId, status: e.target.value })}
-                    className="rounded-full border border-border bg-surface px-3 py-2 text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
-                  >
-                    <option value="CONFIRMED">Confirmed</option>
-                    <option value="IN_PRODUCTION">In production</option>
-                    <option value="SHIPPED" disabled={detail.orderStatus !== 'SHIPPED'}>
-                      Shipped — use Mark as dispatched
-                    </option>
-                    <option value="DELIVERED">Delivered</option>
-                    {/* Present so the control can show the truth when the
-                        order is past this point, never as a choice. */}
-                    {!STAGE_OPTIONS.includes(detail.orderStatus) && (
-                      <option value={detail.orderStatus} disabled>
-                        {detail.orderStatus}
-                      </option>
-                    )}
-                  </select>
+                      COMPLETED is not offered: it belongs to the step
+                      machine and the API refuses it on this route, so
+                      listing it would be a row that can only ever error.
 
+                      SHIPPED is offered but refused, with the reason shown
+                      beside it. The dispatch form is what sets it, and that
+                      form also stores the tracking number, registers the
+                      carrier tracker and emails the buyer — none of which a
+                      bare status write does. */}
+                  {/* Both statuses, labelled, because the panel carries two
+                      and neither name is obvious on its own. This picker is
+                      THIS SHOP's stage; the line under it is what the buyer
+                      is being told, derived from every shop in the basket.
+                      On a single-shop order the two always agree, which is
+                      exactly why the difference has to be visible on the one
+                      that does not. */}
+                  <div className="w-52">
+                    <p className="mb-1 text-xs font-medium text-muted">This shop</p>
+                    <StatusSelect
+                      value={detail.status}
+                      disabled={setOrderStatus.isPending}
+                      options={STAGE_OPTIONS}
+                      disabledReason={(s) =>
+                        s === 'SHIPPED' && detail.status !== 'SHIPPED'
+                          ? 'use Mark as dispatched'
+                          // Always, including when it IS the current value:
+                          // the API refuses it either way, so an enabled row
+                          // could only ever produce an error toast.
+                          : s === 'COMPLETED'
+                            ? 'use the Completed step'
+                            : undefined
+                      }
+                      onChange={(status) => setOrderStatus.mutate({ status })}
+                    />
+                    {/* Read-only: the buyer's view is the LEAST advanced shop
+                        in the basket, so it is not this shop's to set. */}
+                    <p className="mt-1 truncate text-xs text-muted">
+                      Buyer sees: {detail.orderStatus.replace(/_/g, ' ').toLowerCase()}
+                    </p>
+                  </div>
                   <button
                     type="button"
                     onClick={() => completeOrder.mutate()}

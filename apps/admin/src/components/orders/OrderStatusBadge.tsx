@@ -50,7 +50,35 @@ export function OrderStatusBadge({ status, size = 'md' }: OrderStatusBadgeProps)
 
 // ── StatusSelect ──────────────────────────────────────────────────────────────
 
-export function StatusSelect({ value, onChange }: { value: string; onChange: (s: string) => void }) {
+interface StatusSelectProps {
+  value:     string;
+  onChange:  (s: string) => void;
+  /** Which statuses to offer. Defaults to everything this picker may set. */
+  options?:  string[];
+  /**
+   * A short reason when an option must not be chosen, or undefined when it
+   * may. One prop rather than two: an option is disabled exactly when there
+   * is something to say about why, so the two can never disagree.
+   */
+  disabledReason?: (s: string) => string | undefined;
+  /** Whole control, e.g. while a save is in flight. */
+  disabled?: boolean;
+}
+
+/**
+ * The status picker, shared by the order detail page and the order panel.
+ *
+ * Every option is the real badge — the same coloured chip the order shows
+ * everywhere else — rather than plain text in a native menu, so the list can
+ * be read at a glance and a status looks the same wherever it appears.
+ */
+export function StatusSelect({
+  value,
+  onChange,
+  options = SETTABLE_STATUSES,
+  disabledReason,
+  disabled = false,
+}: StatusSelectProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -68,7 +96,8 @@ export function StatusSelect({ value, onChange }: { value: string; onChange: (s:
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-3 py-2.5 border border-border rounded-button bg-background hover:border-primary/40 transition-colors"
+        disabled={disabled}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 border border-border rounded-button bg-background hover:border-primary/40 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
       >
         <OrderStatusBadge status={value} />
         <ChevronDown className={`w-4 h-4 text-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
@@ -76,20 +105,32 @@ export function StatusSelect({ value, onChange }: { value: string; onChange: (s:
 
       {open && (
         <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-background border border-border/60 rounded-card shadow-floating p-1.5 animate-fade-in origin-top max-h-64 overflow-y-auto">
-          {[...new Set([...SETTABLE_STATUSES, value])].map((s) => (
+          {/* The current value is always listed, even when it is not on offer,
+              so an order sitting on a status this picker cannot set still
+              reads correctly instead of showing someone else's. */}
+          {[...new Set([...options, value])].map((s) => {
+            const reason = disabledReason?.(s);
+            return (
             <button
               key={s}
               type="button"
+              disabled={!!reason}
+              title={reason}
               onClick={() => { onChange(s); setOpen(false); }}
               className={[
                 'w-full flex items-center gap-2.5 px-3 py-2 rounded-button transition-colors',
-                s === value ? 'bg-primary/8' : 'hover:bg-muted/8',
+                s === value ? 'bg-primary/8' : reason ? '' : 'hover:bg-muted/8',
+                reason ? 'cursor-not-allowed opacity-55' : '',
               ].join(' ')}
             >
               <OrderStatusBadge status={s} />
+              {/* Says WHY, beside the badge. A greyed row with no
+                  explanation reads as broken rather than as reserved. */}
+              {reason && <span className="truncate text-xs text-muted">{reason}</span>}
               {s === value && <Check className="w-3.5 h-3.5 text-primary ml-auto shrink-0" />}
             </button>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
