@@ -45,7 +45,10 @@ export interface OrderPanelDetail {
   id:          string;
   orderId:     string;
   orderNumber: string;
+  /** This shop's own state for its share of the basket. */
   status:      string;
+  /** The buyer-facing lifecycle, shared by every shop in the basket. */
+  orderStatus: string;
   step:        { id: string; name: string; kind: StepKind } | null;
   shop:        { id: string; name: string; slug: string };
   orderedAt:   string;

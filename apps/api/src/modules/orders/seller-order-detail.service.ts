@@ -104,7 +104,7 @@ export class SellerOrderDetailService {
         progressStep: { select: { id: true, name: true, kind: true } },
         order: {
           select: {
-            id: true, orderNumber: true, createdAt: true, couponCode: true,
+            id: true, orderNumber: true, status: true, createdAt: true, couponCode: true,
             isGift: true, giftMessage: true, note: true, guestEmail: true,
             shippingName: true, shippingPhone: true, shippingAddress: true,
             shippingCity: true, shippingState: true, shippingZip: true,
@@ -135,7 +135,12 @@ export class SellerOrderDetailService {
       id:          row.id,
       orderId:     row.orderId,
       orderNumber: row.order.orderNumber,
+      // The shop's own state — which of ITS orders in this basket is done.
       status:      row.status,
+      // The buyer-facing lifecycle, a different thing, and what the
+      // panel's status control drives. A basket split across two shops
+      // has one of these and two of the above.
+      orderStatus: row.order.status,
       step:        row.progressStep,
       shop:        row.store,
       orderedAt:   row.order.createdAt,

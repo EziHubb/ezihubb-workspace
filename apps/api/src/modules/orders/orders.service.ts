@@ -1118,6 +1118,28 @@ export class OrdersService {
         message: 'Order not found',
       });
 
+    /**
+     * COMPLETED is owned by the progress-step machine, not by this route.
+     *
+     * This method writes Order.status and nothing else. Setting COMPLETED
+     * here left StoreOrder.status and progressStepId behind, and the
+     * seller's queue reads both — the tab is filtered on the step, the
+     * badge on the status — so one order would contradict itself on
+     * screen. Completing an order means moving it to the pipeline's
+     * COMPLETED step, which sets all three and promotes the parent order
+     * once every shop in the basket is done.
+     *
+     * CANCELLED and REFUNDED stay allowed on purpose: both are in
+     * OFF_QUEUE_STATUSES, so the order leaves the queue entirely and
+     * there is no badge left to disagree with a tab.
+     */
+    if (dto.status === OrderStatus.COMPLETED) {
+      throw new BadRequestException({
+        code: 'ERR_COMPLETE_VIA_STEPS',
+        message: 'Move the order to the Completed step instead of setting the status directly.',
+      });
+    }
+
     const updated = await this.prisma.$transaction(async (tx) => {
       const o = await tx.order.update({
         where: { id },

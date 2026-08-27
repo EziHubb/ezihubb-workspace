@@ -53,6 +53,8 @@ const QK = {
 const fmtDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null;
 
+/** The stages this control may show as its own value without lying. */
+const STAGE_OPTIONS = ['CONFIRMED', 'IN_PRODUCTION', 'SHIPPED', 'DELIVERED'];
 export function OrderPanel({
   storeOrderId, storeQuery, completeStepId,
   onClose, onChanged, onEditShipBy, onToggleGift, onCancel, onRefund, onPrint,
@@ -192,6 +194,27 @@ export function OrderPanel({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  /**
+   * The buyer-facing stage, which nothing else in the seller's tools could
+   * move. SHIPPED arrived from the dispatch form, DELIVERED from the carrier
+   * webhook, COMPLETED from the step machine — and IN_PRODUCTION from
+   * nowhere at all. Going backwards after a mistake was impossible.
+   */
+  const setOrderStatus = useMutation({
+    // The id travels with the call rather than being asserted off the query
+    // above it. A non-null assertion there would compile and then throw if
+    // this were ever fired before the detail had loaded; this cannot be
+    // called without an id at all.
+    mutationFn: ({ orderId, status }: { orderId: string; status: string }) =>
+      api.patch(API_ROUTES.ADMIN.ORDER_STATUS(orderId), { status }),
+    onSuccess: () => {
+      toast.success('Status updated');
+      qc.invalidateQueries({ queryKey: QK.detail(storeOrderId) });
+      onChanged();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const detail = detailQuery.data;
   const isCompleted = detail?.step?.kind === 'COMPLETED';
 
@@ -261,7 +284,42 @@ export function OrderPanel({
                   </button>
                 </div>
 
-                <div className="mt-4 flex items-center gap-2">
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  {/* The buyer-facing stage. Deliberately NOT offering
+                      COMPLETED: that belongs to the step machine, and the
+                      API refuses it here anyway, so listing it would be a
+                      button that only ever errors.
+
+                      SHIPPED is present but never selectable forward. The
+                      dispatch form is what sets it, and that form also
+                      stores the tracking number, registers the carrier
+                      tracker and emails the buyer — none of which a bare
+                      status write does. Offering it here would be a quiet
+                      way to tell a buyer their parcel is moving with
+                      nothing behind it. */}
+                  <label className="sr-only" htmlFor="order-stage">Order stage</label>
+                  <select
+                    id="order-stage"
+                    value={detail.orderStatus}
+                    disabled={setOrderStatus.isPending}
+                    onChange={(e) => setOrderStatus.mutate({ orderId: detail.orderId, status: e.target.value })}
+                    className="rounded-full border border-border bg-surface px-3 py-2 text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                  >
+                    <option value="CONFIRMED">Confirmed</option>
+                    <option value="IN_PRODUCTION">In production</option>
+                    <option value="SHIPPED" disabled={detail.orderStatus !== 'SHIPPED'}>
+                      Shipped — use Mark as dispatched
+                    </option>
+                    <option value="DELIVERED">Delivered</option>
+                    {/* Present so the control can show the truth when the
+                        order is past this point, never as a choice. */}
+                    {!STAGE_OPTIONS.includes(detail.orderStatus) && (
+                      <option value={detail.orderStatus} disabled>
+                        {detail.orderStatus}
+                      </option>
+                    )}
+                  </select>
+
                   <button
                     type="button"
                     onClick={() => completeOrder.mutate()}
