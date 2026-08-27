@@ -221,7 +221,6 @@ export default function ProfilePage() {
           resetPw();
           // Redirect to login after password change
           setTimeout(() => {
-            localStorage.removeItem('access_token');
             window.location.href = '/login';
           }, 2_000);
         },

@@ -13,6 +13,7 @@ import { useCartStore } from '../../../../../lib/store/cart.store';
 import type { OrderDto } from '@ezihubb/types';
 import { analytics } from '../../../../../lib/analytics';
 import { fmtAmount, safeArr } from '@ezihubb/utils';
+import { useAuthStore } from '../../../../../lib/store/auth.store';
 
 // ── Animated checkmark ────────────────────────────────────────────────────────
 
@@ -98,11 +99,25 @@ export default function CheckoutSuccessPage() {
   const closeDrawer  = useCartStore((s) => s.closeDrawer);
   const clearCart    = useCartStore((s) => s.clearCart);
 
-  // Detect guest (no access_token means not logged in)
-  const [isGuest, setIsGuest] = useState(false);
-  useEffect(() => {
-    setIsGuest(!localStorage.getItem('access_token'));
-  }, []);
+  /**
+   * Signed in or not, read from the store the whole app reads.
+   *
+   * This used to be `!localStorage.getItem('access_token')`, and NOTHING in
+   * the codebase has ever written that key — it appears four times, twice as
+   * a read like this one and twice as a removeItem on logout. The access
+   * token is deliberately in-memory only (see auth.store.ts). So the check
+   * answered "guest" for every visitor who ever loaded this page, signed in
+   * or not.
+   *
+   * isAuthReady, not just `user`: the token is restored asynchronously from
+   * the refresh cookie, and `user` is only set once /me has answered with a
+   * live token. Before that the answer is not "guest", it is "not yet" — and
+   * offering to create an account to someone who has one is the exact thing
+   * being fixed, so it must not flash either.
+   */
+  const isAuthReady = useAuthStore((s) => s.isAuthReady);
+  const authUser    = useAuthStore((s) => s.user);
+  const isGuest     = isAuthReady && !authUser;
 
   // Close cart drawer and clear cart data immediately on landing
   useEffect(() => {
@@ -357,7 +372,12 @@ export default function CheckoutSuccessPage() {
 
       {/* CTA buttons */}
       <div className="mt-8 flex flex-col sm:flex-row gap-3">
-        {isGuest ? (
+        {/* Held back until auth has actually resolved, rather than guessing.
+            The two branches go to different places, and the wrong guess is
+            not symmetric: sending a guest to /account/orders bounces them to
+            a login screen from their own confirmation page. Continue Shopping
+            renders throughout, so the row is never empty. */}
+        {!isAuthReady ? null : isGuest ? (
           <Link
             href={`/${locale}/orders/track?orderNumber=${encodeURIComponent(orderNumber)}&email=${encodeURIComponent(guestEmail)}`}
             className="flex-1 flex items-center justify-center gap-2 py-3 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors uppercase tracking-wide"

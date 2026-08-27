@@ -51,7 +51,6 @@ export function AccountSidebar({ profile, onNavigate }: AccountSidebarProps) {
       // Sign out even if the request fails
     }
 
-    localStorage.removeItem('access_token');
     qc.setQueryData(queryKeys.profile(), null);
     qc.clear();
 

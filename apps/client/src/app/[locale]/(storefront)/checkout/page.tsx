@@ -22,6 +22,7 @@ import { analytics }                from '../../../../lib/analytics';
 import { hotjarEvent }              from '../../../../lib/analytics/hotjar';
 import { useCurrency }              from '../../../../lib/currency/currency-context';
 import { fmtAmount, safeNum, safeArr } from '@ezihubb/utils';
+import { useAuthStore }             from '../../../../lib/store/auth.store';
 
 function getCookie(name: string): string | undefined {
   if (typeof document === 'undefined') return undefined;
@@ -192,12 +193,23 @@ export default function CheckoutPage() {
   // Ensure cart is loaded
   useEffect(() => { fetchCart(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Check auth — guests are allowed but we detect login state
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  useEffect(() => {
-    setIsLoggedIn(!!localStorage.getItem('access_token'));
-  }, []);
-
+  /**
+   * Signed in or not, read from the store the whole app reads.
+   *
+   * This used to be `!!localStorage.getItem('access_token')`, and NOTHING
+   * in the codebase has ever written that key — the access token is
+   * deliberately in-memory only (see auth.store.ts). It was therefore
+   * permanently false, so EVERY order, including one placed by a signed-in
+   * customer, was submitted as a guest order carrying a guestEmail and sent
+   * the buyer on to a success URL with ?email= appended.
+   *
+   * isAuthReady, not just `user`: the token is restored asynchronously from
+   * the refresh cookie, and `user` is only set once /me has answered with a
+   * live token. Treating "not yet" as "guest" is what this is fixing.
+   */
+  const isAuthReady = useAuthStore((s) => s.isAuthReady);
+  const authUser    = useAuthStore((s) => s.user);
+  const isLoggedIn  = isAuthReady && !!authUser;
   // ── Checkout state (persists across steps) ─────────────────────────────────
   const [step,             setStep]             = useState<1 | 2 | 3>(1);
   const [completedSteps,   setCompletedSteps]   = useState<number[]>([]);
