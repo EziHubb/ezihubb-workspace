@@ -527,17 +527,24 @@ export default function MessagesPage() {
 
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
 
-  // h-full, not a dvh calculation: <main> is flex-1 inside an h-screen
-  // column, so its content box is already exactly the room this page has —
-  // measured rather than guessed. The old calc() guessed twice and missed
-  // twice: it subtracted 4rem for a mobile bar that is h-14 (3.5rem), and it
-  // did not know <main> has padding of its own, so the box came out ~40px
-  // taller than the space it was given and the page scrolled.
+  // flex-1, not a height. Two earlier versions of this line were both wrong:
+  // h-[calc(100dvh-4rem)] guessed the chrome twice and missed twice — the
+  // mobile bar is h-14, not 4rem, and the calc did not know <main> has
+  // padding — so the box came out ~40px too tall and the page scrolled.
+  // h-full then went the other way and collapsed to content height, leaving
+  // a short card in a full-height layout, because a percentage needs a
+  // SPECIFIED height to resolve against and flex-1 on <main> only gives a
+  // used one.
   //
-  // No padding here either, for the same reason: <main> already applies it,
-  // and adding p-4 on top made 32px of gutter on each side of a 390px phone.
+  // <main> is a flex column now, so this measures nothing and guesses
+  // nothing: it takes the space that is left. min-h-0 because a flex item
+  // will not shrink below its content without it, and the panes inside
+  // scroll.
+  //
+  // No padding here either: <main> already applies it, and adding p-4 on top
+  // made 32px of gutter on each side of a 390px phone.
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="mb-4 flex items-center justify-between gap-4">
         <AdminPageHeader title="Messages" />
         <div className="flex items-center gap-3">

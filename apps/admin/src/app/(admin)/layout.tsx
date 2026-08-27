@@ -57,7 +57,12 @@ export default async function AdminLayout({
             count survives navigation between admin pages the way the
             sidebar's own socket listener does. */}
         <TabTitleBadge />
-        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-8 min-w-0">
+        {/* flex flex-col, so a page that wants to fill the screen can say
+            so with flex-1 instead of a percentage. h-full does not work here:
+            it needs a specified height to resolve against and flex-1 only
+            provides a used one, which is how the inbox ended up as a short
+            card floating in a full-height layout. */}
+        <main className="flex flex-1 flex-col overflow-y-auto p-3 sm:p-4 lg:p-8 min-w-0">
           {children}
         </main>
       </div>
