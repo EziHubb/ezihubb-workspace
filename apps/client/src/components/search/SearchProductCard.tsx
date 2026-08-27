@@ -229,14 +229,21 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
           />
         </button>
 
-        {/* Product badge */}
-        {badge && (
+        {/* A running discount takes this corner outright. The chip that used
+            to sit here said "Sale"; the number says the same thing and how
+            much, and a shopper scanning a grid reads it without stopping.
+            The white ring keeps it off a busy photo. */}
+        {discount > 0 ? (
+          <div className="absolute top-2.5 left-2.5 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-badge-sale text-white shadow-md ring-2 ring-white">
+            <span className="text-[13px] font-extrabold leading-none tracking-tight">-{discount}%</span>
+          </div>
+        ) : badge ? (
           <div
             className={`absolute top-2.5 left-2.5 z-10 px-2 py-0.5 rounded-full text-xs font-medium ${badge.style}`}
           >
             {badge.label}
           </div>
-        )}
+        ) : null}
 
       </div>
 
@@ -364,7 +371,9 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
               system already declares a colour for exactly this, and the two
               cards had drifted onto two different greens by inventing their
               own. 4.83:1 on white, which clears AA. */}
-          <span className={['text-sm font-bold', sale ? 'text-badge-sale' : 'text-secondary'].join(' ')}>
+          {/* The largest thing on the card. The title is text-sm; a price
+              that matched it gave a shopper nothing to land on. */}
+          <span className={[sale ? 'text-lg font-extrabold text-badge-sale' : 'text-base font-bold text-secondary'].join(' ')}>
             {/* "From" only without a sale. The sale price is the listing's own,
                 not the cheapest variant's, so calling it a floor would be a
                 claim the number does not support. */}
@@ -373,13 +382,12 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
           </span>
           {struckPrice && discount > 0 && (
             <>
-              <span className="text-xs text-muted line-through">
+              {/* decoration-2 so the rule reads as a deliberate mark rather
+                  than an artefact. The percentage that used to follow it is
+                  gone — it is the sticker on the image now, and printing it
+                  twice spends the same fact in the weaker place. */}
+              <span className="text-sm text-muted line-through decoration-2">
                 {fmtAmount(struckPrice)}
-              </span>
-              {/* Muted, not a second accent. The struck price beside it
-                  already says a discount is running; this quantifies it. */}
-              <span className="text-xs text-muted">
-                {t('percentOff', { percent: discount })}
               </span>
             </>
           )}

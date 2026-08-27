@@ -301,11 +301,23 @@ function ProductsPageInner() {
       header:      'Price',
       size:        90,
       enableSorting: true,
-      cell:        ({ getValue }) => (
-        <span className="text-sm font-semibold text-secondary tabular-nums">
-          {fmtAmount(getValue() as number | undefined)}
-        </span>
-      ),
+      // row.original, not getValue(): the sale sits beside basePrice on the
+      // row and the accessor only hands over the one number.
+      cell:        ({ row }) => {
+        const { basePrice, sale } = row.original;
+        return (
+          <span className="flex flex-wrap items-baseline gap-x-1.5">
+            <span className={`text-sm font-semibold tabular-nums ${sale ? 'text-badge-sale' : 'text-secondary'}`}>
+              {fmtAmount(sale ? sale.price : basePrice)}
+            </span>
+            {sale && (
+              <span className="text-xs text-muted line-through tabular-nums">
+                {fmtAmount(sale.originalPrice)}
+              </span>
+            )}
+          </span>
+        );
+      },
     },
     {
       accessorKey: 'quantity',

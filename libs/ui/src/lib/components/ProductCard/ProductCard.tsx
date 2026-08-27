@@ -160,11 +160,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
         />
 
-        {badge && (
+        {/* The discount is a sticker on the picture, not a word in the price
+            line. Inline and muted it read as a footnote to the number beside
+            it; here it is the first thing the eye lands on when scanning a
+            grid, which is the only moment it has to do any work.
+
+            It takes the badge slot when a sale is running, rather than
+            sitting beside a "Sale" chip that says the same thing with less
+            information. The ring keeps it legible against a dark photo. */}
+        {discount > 0 ? (
+          <div className="absolute top-3 left-3 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-badge-sale text-white shadow-md ring-2 ring-white">
+            <span className="text-sm font-extrabold leading-none tracking-tight">-{discount}%</span>
+          </div>
+        ) : badge ? (
           <div className="absolute top-3 left-3">
             <Badge variant={badge}>{badgeLabel}</Badge>
           </div>
-        )}
+        ) : null}
 
         {onWishlistToggle && (
           <button
@@ -230,7 +242,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {/* Same rule as the search card, and the same token — these two had
               drifted onto different greens, one of them the success colour,
               which says "that worked" rather than "this is on sale". */}
-          <span className={['text-sm font-semibold', sale ? 'text-badge-sale' : 'text-secondary'].join(' ')}>
+          {/* Largest text on the card, above the title at text-sm. A price is
+              what a shopper is scanning for; it was the same size as
+              everything around it. */}
+          <span className={[sale ? 'text-lg font-extrabold text-badge-sale' : 'text-base font-bold text-secondary'].join(' ')}>
             {/* No "from" alongside a sale: the sale price is the listing's own,
                 not the cheapest variant's, so calling it a floor would be a
                 claim the number does not support. */}
@@ -239,12 +254,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </span>
           {struckPrice && struckPrice > shownPrice && (sale || !isPriceRange) && (
             <>
-              <span className="text-xs text-muted line-through">
+              {/* decoration-2 so the rule reads at a glance rather than
+                  looking like a rendering artefact on a small figure. */}
+              <span className="text-sm text-muted line-through decoration-2">
                 {formatPrice(struckPrice, currency, locale)}
               </span>
-              {discount > 0 && (
-                <span className="text-xs text-muted">-{discount}%</span>
-              )}
             </>
           )}
         </div>

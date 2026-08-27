@@ -113,15 +113,17 @@ function PriceBlock({
           {format(price)}
         </span>
         {compareAtPrice && compareAtPrice > price && (
-          <span className="text-base text-muted line-through">
+          <span className="text-base text-muted line-through decoration-2">
             {format(compareAtPrice)}
           </span>
         )}
         {isSale && (
-          /* Muted plain text, not a green pill. Green reads as "good/settled"
-             next to a red price, and the pill gave a secondary number more
-             visual weight than the price itself. */
-          <span className="text-sm text-muted">
+          /* A solid sale-red pill, the same language as the sticker on the
+             cards that lead here. Muted grey was the opposite mistake to the
+             green pill it replaced: it stated the saving in the quietest
+             voice on the panel. It stays smaller than the price, so the
+             number they pay is still what leads. */
+          <span className="rounded-pill bg-badge-sale px-2 py-0.5 text-xs font-bold text-white">
             {t('discountOff', { percent: discountPercent })}
           </span>
         )}

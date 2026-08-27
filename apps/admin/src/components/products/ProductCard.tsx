@@ -20,6 +20,13 @@ export interface AdminProduct {
   slug:            string;
   basePrice:       number;
   compareAtPrice:  number | null;
+  /** The auto-apply sale in force, or null. Distinct from compareAtPrice,
+   *  which is the seller's own "was" price and unrelated to any sale.
+   *
+   *  The API has been sending this all along; it was absent from this type,
+   *  so the card showed a full price for a listing the storefront was
+   *  already discounting. */
+  sale?:           { price: number; originalPrice: number; discountPercent: number } | null;
   primaryImageUrl: string | null;
   categoryName:    string;
   isActive:        boolean;
@@ -201,6 +208,15 @@ export const ProductCard = memo(function ProductCard({
         </div>
 
         {/* Status badge */}
+        {/* The same sticker the storefront shows, in the one corner this
+            card has free. A seller looking at their grid should see the
+            listing the way a shopper does. */}
+        {product.sale && product.sale.discountPercent > 0 && (
+          <div className="absolute bottom-2 left-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-badge-sale text-white shadow-md ring-2 ring-white">
+            <span className="text-xs font-extrabold leading-none tracking-tight">-{product.sale.discountPercent}%</span>
+          </div>
+        )}
+
         <div className="absolute top-2 right-2">
           <span className={`text-xs font-semibold px-2 py-0.5 rounded-pill ${STATUS_STYLES[product.status] ?? 'bg-gray-100 text-gray-600'}`}>
             {statusLabel}
@@ -234,8 +250,20 @@ export const ProductCard = memo(function ProductCard({
         </p>
 
         <div className="flex items-center justify-between">
-          <span className="text-sm font-bold text-secondary tabular-nums">
-            {fmtAmount(product.basePrice)}
+          {/* Matches the storefront exactly: a discounted price is
+              badge-sale red, the old one is struck and muted, and the
+              percentage is muted text rather than a competing accent. A
+              seller comparing the two views should not see two prices. */}
+          <span className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
+            <span className={`tabular-nums ${product.sale ? 'text-lg font-extrabold text-badge-sale' : 'text-base font-bold text-secondary'}`}>
+              {fmtAmount(product.sale ? product.sale.price : product.basePrice)}
+            </span>
+            {/* No percentage here: it is the sticker on the image. */}
+            {product.sale && (
+              <span className="text-sm text-muted line-through decoration-2 tabular-nums">
+                {fmtAmount(product.sale.originalPrice)}
+              </span>
+            )}
           </span>
           {product.quantity !== null && product.quantity !== undefined ? (
             <span className={`text-xs font-medium tabular-nums ${product.quantity === 0 ? 'text-red-600' : product.quantity < 5 ? 'text-amber-600' : 'text-muted'}`}>
