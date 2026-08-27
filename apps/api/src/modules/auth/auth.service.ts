@@ -508,6 +508,37 @@ export class AuthService {
       });
     }
 
+    /**
+     * Claim anything left behind by a guest checkout on this address.
+     *
+     * register() and login() have always done this; the Google paths never
+     * did, and the effect was visible to sellers rather than to us. An order
+     * placed as a guest keeps `userId: null`, so getOrderThread() looks that
+     * buyer up by `guestEmail` and finds no thread — while the very same
+     * person's account thread sits beside it, full of messages. One customer,
+     * two buyers, and the seller cannot tell they are the same.
+     *
+     * Here rather than in googleLogin()/googleTokenLogin(): both funnel
+     * through this method, so one call covers both and a third entry point
+     * added later cannot forget it.
+     *
+     * The email is safe to key on. This method refuses a profile Google has
+     * not marked verified, which is the same bar login() clears with a
+     * password — and a stronger one than register(), which links on a bare
+     * claim to the address.
+     */
+    this.linkGuestOrders(user.id, user.email);
+    /**
+     * Awaited, matching register() rather than login(). This path is a signup
+     * AND a sign-in, so it has to satisfy the stricter of the two: a brand-new
+     * Google user is handed a session the moment this returns, and a thread
+     * still carrying `userId: null` is refused to a signed-in caller. Left to
+     * the background, they could open their inbox inside that gap and be told
+     * their own history is forbidden. For a returning user it costs one query
+     * that matches nothing.
+     */
+    await this.messages.linkGuestConversations(user.id, user.email);
+
     return user;
   }
 
