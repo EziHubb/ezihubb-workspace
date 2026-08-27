@@ -57,7 +57,7 @@ function PlatformOverview({ keys, isLoading, onPickStore }: {
   const activeKeys = keys.filter((k) => !k.revokedAt);
 
   return (
-    <div className="bg-surface rounded-card border border-border shadow-card p-6 space-y-4">
+    <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6 space-y-4">
       <div>
         <h4 className="font-semibold text-secondary">Platform overview</h4>
         <p className="text-xs text-muted mt-0.5">Every store's active partner API keys, across the whole system.</p>
@@ -235,7 +235,7 @@ export default function ApiKeysSettingsPage() {
               isLoading={isLoading}
               onPickStore={setSelectedStore}
             />
-            <div className="bg-surface rounded-card border border-border shadow-card p-6 space-y-3">
+            <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6 space-y-3">
               <h4 className="font-semibold text-secondary">Manage a specific store</h4>
               <p className="text-xs text-muted -mt-1.5">Pick a store to view, create, or revoke its API keys.</p>
               <StorePicker value={selectedStore} onChange={setSelectedStore} />
@@ -244,7 +244,7 @@ export default function ApiKeysSettingsPage() {
         ) : (
           <>
             {/* Existing keys */}
-            <div className="bg-surface rounded-card border border-border shadow-card p-6 space-y-4">
+            <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6 space-y-4">
               <h4 className="font-semibold text-secondary">Active Keys</h4>
 
               {isLoading && (
@@ -278,7 +278,7 @@ export default function ApiKeysSettingsPage() {
             </div>
 
             {/* Create new */}
-            <div className="bg-surface rounded-card border border-border shadow-card p-6 space-y-5">
+            <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6 space-y-5">
               <h4 className="font-semibold text-secondary">Create a New Key</h4>
               <p className="text-xs text-muted -mt-3">
                 Use a key to let a 3rd-party tool (e.g. Zapier, a bulk-listing app) create, update, and search products via our Partner API.

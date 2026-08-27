@@ -65,7 +65,7 @@ export default function EzihubbPlusPage() {
       {isLoading || !data ? (
         <div className="h-48 bg-surface border border-border rounded-card animate-pulse max-w-xl" />
       ) : (
-        <div className="bg-surface rounded-card border border-border shadow-card p-6 max-w-xl space-y-5">
+        <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6 max-w-xl space-y-5">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-primary-light flex items-center justify-center shrink-0">
               <Sparkles className="w-5 h-5 text-primary" />

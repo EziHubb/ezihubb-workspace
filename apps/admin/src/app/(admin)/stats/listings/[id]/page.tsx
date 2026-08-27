@@ -541,7 +541,7 @@ export default function ListingStatsDetailPage({
       </div>
 
       {/* ── Time series chart ──────────────────────────────────────────────── */}
-      <div className="bg-surface border border-border rounded-card p-6">
+      <div className="bg-surface border border-border rounded-card p-4 sm:p-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-sm font-semibold text-secondary">Performance over time</h2>
           <div className="flex gap-1">
@@ -606,7 +606,7 @@ export default function ListingStatsDetailPage({
 
       {/* ── Conversion funnel ──────────────────────────────────────────────── */}
       {!isLoading && s && (
-        <div className="bg-surface border border-border rounded-card p-6">
+        <div className="bg-surface border border-border rounded-card p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-secondary mb-4">Conversion funnel</h2>
           <div className="space-y-3">
             {[
@@ -640,7 +640,7 @@ export default function ListingStatsDetailPage({
 
       {/* ── Bar chart: views vs orders ──────────────────────────────────────── */}
       {!isLoading && ts.length > 0 && (
-        <div className="bg-surface border border-border rounded-card p-6">
+        <div className="bg-surface border border-border rounded-card p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-secondary mb-4">Views vs Orders</h2>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={ts} margin={{ top: 4, right: 4, bottom: 0, left: -20 }} barGap={2}>
@@ -663,7 +663,7 @@ export default function ListingStatsDetailPage({
 
       {/* ── Reviews summary (distribution) ───────────────────────────────────── */}
       {!isLoading && s && s.reviews > 0 && (
-        <div className="bg-surface border border-border rounded-card p-6">
+        <div className="bg-surface border border-border rounded-card p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-secondary mb-4">Rating distribution</h2>
           <div className="flex items-start gap-8">
             <div className="text-center shrink-0">

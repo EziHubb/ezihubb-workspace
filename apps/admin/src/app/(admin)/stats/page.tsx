@@ -455,7 +455,7 @@ export default function StatsPage() {
 
       {/* ── Time series chart ──────────────────────────────────────────────── */}
       {!ovLoading && overview?.series && overview.series.length > 0 && (
-        <div className="bg-surface border border-border rounded-card p-6">
+        <div className="bg-surface border border-border rounded-card p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-secondary mb-4">Visits over time</h2>
           <TrendChart series={overview.series} />
         </div>

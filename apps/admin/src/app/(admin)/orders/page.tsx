@@ -299,15 +299,18 @@ export default function OrdersPage() {
 
   if (isPlatformContext && !storeId) {
     return (
-      <div className="p-8">
+      <div>
         <AdminPageHeader title="Orders" subtitle="Pick a shop to see its order queue" />
         <StorePicker onPick={setStoreId} />
       </div>
     );
   }
 
+  // No padding of its own: <main> already frames every admin page, and the
+  // p-6 that used to be here doubled up to 40px of gutter on each side of a
+  // phone. Every other page in the app relies on <main> for this.
   return (
-    <div className="p-6">
+    <div>
       <div className="mb-4 flex items-center justify-between gap-4">
         <AdminPageHeader title="Orders" />
         <label className="relative w-80">

@@ -97,7 +97,7 @@ export default function SocialMediaPage() {
       </div>
 
       {/* Hero */}
-      <div className="bg-hero-peach rounded-card p-6 mb-8 flex items-center gap-6">
+      <div className="bg-hero-peach rounded-card p-4 sm:p-6 mb-8 flex items-center gap-6">
         <div className="hidden sm:flex gap-2 shrink-0">
           <span className="w-9 h-9 rounded-full bg-white/60 flex items-center justify-center"><Hash className="w-4 h-4 text-secondary" /></span>
           <span className="w-9 h-9 rounded-full bg-white/60 flex items-center justify-center mt-3"><Heart className="w-4 h-4 text-secondary" /></span>

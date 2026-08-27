@@ -108,7 +108,7 @@ export default function CustomerServiceStatsPage() {
             </div>
           </div>
 
-          <div className="bg-hero-purple rounded-card p-6 text-center">
+          <div className="bg-hero-purple rounded-card p-4 sm:p-6 text-center">
             <p className="text-sm font-bold text-secondary mb-3">Can&apos;t find what you&apos;re looking for?</p>
             <a href="/settings" className="inline-flex items-center px-5 py-2.5 bg-secondary hover:bg-secondary/90 text-white text-sm font-bold rounded-pill transition-colors">
               Try the Help Centre →

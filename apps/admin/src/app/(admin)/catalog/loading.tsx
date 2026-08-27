@@ -45,7 +45,7 @@ export default function CatalogLoading() {
         </div>
 
         {/* Center: form */}
-        <div className="flex-1 bg-surface rounded-card border border-border shadow-card p-6 space-y-4">
+        <div className="flex-1 bg-surface rounded-card border border-border shadow-card p-4 sm:p-6 space-y-4">
           <Shimmer className="h-5 w-48" />
           <div className="space-y-3">
             {[1, 0.7, 1, 0.5, 0.8].map((w, i) => (

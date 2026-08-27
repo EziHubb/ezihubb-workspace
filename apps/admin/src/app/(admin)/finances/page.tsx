@@ -33,7 +33,7 @@ export default function PaymentAccountPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 mb-8">
         {/* Balance card */}
-        <div className="bg-surface border border-border rounded-card p-6">
+        <div className="bg-surface border border-border rounded-card p-4 sm:p-6">
           {ovLoading ? (
             <Skeleton className="h-32" />
           ) : (

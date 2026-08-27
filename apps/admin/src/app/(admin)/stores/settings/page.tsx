@@ -42,7 +42,7 @@ function SectionCard({
   saving?:  boolean;
 }) {
   return (
-    <div className="bg-surface rounded-card border border-border shadow-card p-6 space-y-5">
+    <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6 space-y-5">
       <h4 className="font-semibold text-secondary">{title}</h4>
       {children}
       <div className="pt-1 border-t border-border">

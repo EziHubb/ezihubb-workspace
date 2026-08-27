@@ -167,7 +167,7 @@ function FulfillmentModeCard({ storeId }: { storeId?: string }) {
   };
 
   return (
-    <div className="bg-surface rounded-card border border-border shadow-card p-6 space-y-4">
+    <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6 space-y-4">
       <div>
         <h4 className="font-semibold text-secondary">How do you fulfill orders?</h4>
         <p className="text-xs text-muted mt-0.5">
@@ -234,7 +234,7 @@ function PlatformOverview({ connections, isLoading, onPickStore }: {
   onPickStore: (store: StoreOption) => void;
 }) {
   return (
-    <div className="bg-surface rounded-card border border-border shadow-card p-6 space-y-4">
+    <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6 space-y-4">
       <div>
         <h4 className="font-semibold text-secondary">Platform overview</h4>
         <p className="text-xs text-muted mt-0.5">Every store's connected fulfillment provider, across the whole system.</p>
@@ -389,7 +389,7 @@ export default function FulfillmentSettingsPage() {
               isLoading={isLoading}
               onPickStore={setSelectedStore}
             />
-            <div className="bg-surface rounded-card border border-border shadow-card p-6 space-y-3">
+            <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6 space-y-3">
               <h4 className="font-semibold text-secondary">Manage a specific store</h4>
               <p className="text-xs text-muted -mt-1.5">Pick a store to view, connect, or disconnect its fulfillment provider.</p>
               <StorePicker value={selectedStore} onChange={setSelectedStore} />
@@ -400,7 +400,7 @@ export default function FulfillmentSettingsPage() {
             <FulfillmentModeCard storeId={explicitStoreId} />
 
             {/* Existing connections */}
-            <div className="bg-surface rounded-card border border-border shadow-card p-6 space-y-4">
+            <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6 space-y-4">
               <h4 className="font-semibold text-secondary">Connected Accounts</h4>
 
               {isLoading && (
@@ -445,7 +445,7 @@ export default function FulfillmentSettingsPage() {
             </div>
 
             {/* Connect new */}
-            <div className="bg-surface rounded-card border border-border shadow-card p-6 space-y-5">
+            <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6 space-y-5">
               <h4 className="font-semibold text-secondary">Connect a Provider</h4>
 
               <div>

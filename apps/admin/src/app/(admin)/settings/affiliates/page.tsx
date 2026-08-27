@@ -132,7 +132,7 @@ export default function AffiliateSettingsPage() {
       <div className="max-w-[640px] space-y-6">
 
         {/* Program toggle */}
-        <div className="bg-surface rounded-card border border-border shadow-card p-6">
+        <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6">
           <h4 className="font-semibold text-secondary mb-4">Program Status</h4>
           <Toggle
             checked={isEnabled}
@@ -143,7 +143,7 @@ export default function AffiliateSettingsPage() {
         </div>
 
         {/* Commission rates */}
-        <div className="bg-surface rounded-card border border-border shadow-card p-6 space-y-5">
+        <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6 space-y-5">
           <h4 className="font-semibold text-secondary">Commission Rates</h4>
 
           <div>
@@ -187,7 +187,7 @@ export default function AffiliateSettingsPage() {
         </div>
 
         {/* Tracking & payouts */}
-        <div className="bg-surface rounded-card border border-border shadow-card p-6 space-y-5">
+        <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6 space-y-5">
           <h4 className="font-semibold text-secondary">Tracking &amp; Payouts</h4>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

@@ -537,7 +537,7 @@ export default function CategoriesPage() {
         </div>
 
         {/* CENTER: Form */}
-        <div className="flex-1 bg-surface rounded-card border border-border shadow-card p-6">
+        <div className="flex-1 bg-surface rounded-card border border-border shadow-card p-4 sm:p-6">
           <CategoryForm
             category={selected?.id ? selected : (selected ? { ...selected } : null)}
             parentPath={parentPath}

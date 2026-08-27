@@ -228,7 +228,7 @@ export default function TaxInformationPage() {
           </div>
         </div>
       ) : (
-        <div className="max-w-2xl bg-surface border border-border rounded-card p-6 text-center">
+        <div className="max-w-2xl bg-surface border border-border rounded-card p-4 sm:p-6 text-center">
           <p className="text-sm text-muted mb-3">You haven&apos;t added your legal and tax information yet.</p>
           <button type="button" onClick={startEdit}
             className="px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors">

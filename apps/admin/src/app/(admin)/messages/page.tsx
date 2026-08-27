@@ -513,11 +513,17 @@ export default function MessagesPage() {
 
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
 
-  // dvh, not vh: a mobile browser retracting its toolbar leaves a vh box
-  // taller than the screen. p-4 on a phone because 24px each side is 48px of
-  // a 390px width, and this layout has none to give.
+  // h-full, not a dvh calculation: <main> is flex-1 inside an h-screen
+  // column, so its content box is already exactly the room this page has —
+  // measured rather than guessed. The old calc() guessed twice and missed
+  // twice: it subtracted 4rem for a mobile bar that is h-14 (3.5rem), and it
+  // did not know <main> has padding of its own, so the box came out ~40px
+  // taller than the space it was given and the page scrolled.
+  //
+  // No padding here either, for the same reason: <main> already applies it,
+  // and adding p-4 on top made 32px of gutter on each side of a 390px phone.
   return (
-    <div className="flex h-[calc(100dvh-4rem)] flex-col p-4 md:p-6">
+    <div className="flex h-full flex-col">
       <div className="mb-4 flex items-center justify-between gap-4">
         <AdminPageHeader title="Messages" />
         <div className="flex items-center gap-3">

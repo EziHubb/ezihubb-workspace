@@ -36,7 +36,7 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-surface rounded-card border border-border shadow-card p-6 space-y-5">
+    <div className="bg-surface rounded-card border border-border shadow-card p-4 sm:p-6 space-y-5">
       <h4 className="font-semibold text-secondary">{title}</h4>
       {children}
     </div>
@@ -1090,7 +1090,7 @@ function DangerZoneTab() {
   };
 
   return (
-    <div className="border-2 border-red-200 rounded-card bg-red-50/30 p-6">
+    <div className="border-2 border-red-200 rounded-card bg-red-50/30 p-4 sm:p-6">
       <div className="flex items-start gap-3 mb-5 pb-5 border-b border-red-200">
         <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
         <div>
