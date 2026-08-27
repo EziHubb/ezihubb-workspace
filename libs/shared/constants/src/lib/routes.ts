@@ -320,6 +320,7 @@ export const API_ROUTES = {
     CATEGORY:             (id: string) => `/admin/categories/${id}`,
     COLLECTIONS:          '/admin/collections',
     COLLECTION:           (id: string) => `/admin/collections/${id}`,
+    COLLECTION_BANNER:    '/admin/collections/banner',
     CATALOG_SYNC:         '/admin/catalog/sync-mega-menu',
     ATTRIBUTES:           (type: string) => `/admin/attributes/${type}`,
     SHOP_SECTIONS:        '/admin/shop-sections',

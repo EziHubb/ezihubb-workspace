@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Search, X, Save, Trash2, GripVertical,
   ChevronLeft, ChevronRight, Eye, EyeOff, Package,
+  Loader2, Image as ImageIcon,
 } from 'lucide-react';
 import Image from 'next/image';
 import { Select, Toggle } from '@ezihubb/ui';
@@ -29,7 +30,11 @@ interface Collection {
   name:        string;
   slug:        string;
   description?: string;
-  imageUrl?:   string;
+  // bannerUrl, not imageUrl. The API has always sent bannerUrl; this said
+  // imageUrl, so col.imageUrl was undefined for every collection and the
+  // table drew the placeholder icon on all of them regardless of what had
+  // been uploaded.
+  bannerUrl?:  string | null;
   occasion?:   string;
   sortOrder:   number;
   isActive:    boolean;
@@ -88,8 +93,13 @@ function ProductSearchRow({ onAdd }: { onAdd: (p: ProductSnippet) => void }) {
     if (query.length < 2) { setResults([]); return; }
     setLoading(true);
     try {
-      const data = await api.get<ProductSnippet[]>(API_ROUTES.ADMIN.PRODUCTS, { params: { q: query, limit: 10 } });
-      setResults(data.slice(0, 10));
+      // GET /admin/products answers with { data, pagination }, not a bare
+      // array — calling .slice() on the object threw, the catch below turned
+      // that into an empty list, and the search simply never found anything.
+      const res = await api.get<{ data: ProductSnippet[] }>(API_ROUTES.ADMIN.PRODUCTS, {
+        params: { q: query, limit: 10 },
+      });
+      setResults((res?.data ?? []).slice(0, 10));
     } catch { setResults([]); } finally { setLoading(false); }
   };
 
@@ -143,6 +153,7 @@ interface FormState {
   name:        string;
   slug:        string;
   description: string;
+  bannerUrl:   string;
   occasion:    string;
   sortOrder:   number;
   isActive:    boolean;
@@ -170,6 +181,7 @@ function CollectionSlideOver({
     name:        col?.name        ?? '',
     slug:        col?.slug        ?? '',
     description: col?.description ?? '',
+    bannerUrl:   col?.bannerUrl   ?? '',
     occasion:    col?.occasion    ?? '',
     sortOrder:   col?.sortOrder   ?? 0,
     isActive:    col?.isActive    ?? true,
@@ -177,6 +189,31 @@ function CollectionSlideOver({
     endDate:     col?.endDate     ? col.endDate.slice(0, 10)   : '',
     products:    safeArr(col?.products),
   }));
+  const bannerInput = useRef<HTMLInputElement>(null);
+  const [bannerBusy, setBannerBusy] = useState(false);
+
+  /**
+   * Stores the file and keeps only the URL in the form.
+   *
+   * The upload endpoint touches no collection, so this works before one has
+   * been created — which is the whole reason it is not a POST to
+   * /collections/:id/banner. Nothing is persisted until Save.
+   */
+  const uploadBanner = async (file: File) => {
+    setBannerBusy(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const res = await api.post<{ url: string }>(API_ROUTES.ADMIN.COLLECTION_BANNER, body);
+      setField('bannerUrl', res.url);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBannerBusy(false);
+    }
+  };
+
   const [slugEdited, setSlugEdited] = useState(false);
   const [saving,     setSaving]     = useState(false);
   const [deleting,   setDeleting]   = useState(false);
@@ -207,6 +244,10 @@ function CollectionSlideOver({
         name:        form.name,
         slug:        form.slug,
         description: form.description || undefined,
+        // null, not undefined, when cleared: updateCollection only writes a
+        // field it was given, so undefined would leave the old banner in
+        // place and "remove" would do nothing.
+        bannerUrl:   form.bannerUrl || null,
         occasion:    form.occasion    || undefined,
         sortOrder:   form.sortOrder,
         isActive:    form.isActive,
@@ -296,6 +337,54 @@ function CollectionSlideOver({
                 className="w-full px-3 py-2 text-sm border border-border rounded-button bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted"
                 placeholder="Short description…"
               />
+            </div>
+
+            {/* Banner. Uploaded to storage on pick and kept in the form as a
+                URL, so it saves with everything else — no separate "save the
+                picture" step, and a new collection can have one before it
+                exists. Remove clears the field; the save sends null and the
+                API writes it through. */}
+            <div>
+              <label className="block text-xs font-medium text-secondary mb-1.5">Banner image</label>
+              <div className="flex items-start gap-3">
+                <div className="relative h-20 w-32 shrink-0 overflow-hidden rounded-button border border-border bg-background">
+                  {form.bannerUrl ? (
+                    <Image src={form.bannerUrl} alt="" fill sizes="128px" className="object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <ImageIcon className="h-5 w-5 text-muted" aria-hidden="true" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <input
+                    ref={bannerInput}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void uploadBanner(file); }}
+                  />
+                  <button
+                    type="button"
+                    disabled={bannerBusy}
+                    onClick={() => bannerInput.current?.click()}
+                    className="inline-flex items-center gap-1.5 rounded-button border border-border px-3 py-1.5 text-xs font-medium text-secondary hover:bg-background disabled:opacity-50"
+                  >
+                    {bannerBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+                    {form.bannerUrl ? 'Replace' : 'Upload'}
+                  </button>
+                  {form.bannerUrl && (
+                    <button
+                      type="button"
+                      disabled={bannerBusy}
+                      onClick={() => setField('bannerUrl', '')}
+                      className="text-left text-xs font-medium text-error hover:underline disabled:opacity-50"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -450,7 +539,11 @@ function CollectionSlideOver({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 20;
+// Small enough that the pager is reachable rather than theoretical: at 20 a
+// twelve-collection table just scrolled off the bottom of the screen and the
+// pager below it never rendered. The endpoint honours page/limit now, so this
+// is real paging rather than a slice of an already-complete list.
+const PAGE_SIZE = 10;
 
 export default function CollectionsPage() {
   const qc = useQueryClient();
@@ -597,8 +690,8 @@ export default function CollectionsPage() {
                     {/* Name + image */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        {col.imageUrl
-                          ? <Image src={col.imageUrl} alt={col.name} width={36} height={36} className="w-9 h-9 rounded-lg object-cover border border-border shrink-0" />
+                        {col.bannerUrl
+                          ? <Image src={col.bannerUrl} alt={col.name} width={36} height={36} className="w-9 h-9 rounded-lg object-cover border border-border shrink-0" />
                           : <div className="w-9 h-9 rounded-lg bg-muted/10 flex items-center justify-center shrink-0 border border-border"><Package className="w-4 h-4 text-muted" /></div>
                         }
                         <div className="min-w-0">

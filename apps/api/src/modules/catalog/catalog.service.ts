@@ -9,6 +9,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { StorageService } from '../../common/services/storage.service';
 import { RedisService, CacheKeys, CacheTtl } from '../../common/services/redis.service';
 import { CategoryMenu } from './schemas/category-menu.schema';
 import { ProductDetail } from './schemas/product-detail.schema';
@@ -74,6 +75,7 @@ export class CatalogService {
     private readonly categoryMenuModel: Model<CategoryMenu>,
     @InjectModel(ProductDetail.name)
     private readonly productDetailModel: Model<ProductDetail>,
+    private readonly storageService: StorageService,
     private readonly translationService: TranslationService,
     private readonly autoTranslate: AutoTranslateService,
   ) {}
@@ -620,6 +622,22 @@ export class CatalogService {
       productCount: collection._count.products,
       createdAt: collection.createdAt,
     };
+  }
+
+  /**
+   * Stores a banner and hands back its URL. It does not touch any collection.
+   *
+   * Upload-then-save, rather than a POST to /collections/:id/banner like the
+   * store one: a collection being created has no id yet, and making the editor
+   * save first just to attach a picture would be a worse form for the sake of
+   * a tidier route. The URL comes back, the field goes in the payload, and
+   * create and update handle it identically. Clearing the field is the delete
+   * — updateCollection writes bannerUrl through when it is explicitly null.
+   */
+  async uploadCollectionBanner(file: Express.Multer.File): Promise<{ url: string }> {
+    const key = this.storageService.generateKey('collections', file.originalname);
+    const url = await this.storageService.uploadFile(file.buffer, key, file.mimetype);
+    return { url };
   }
 
   async updateCollection(id: string, dto: UpdateCollectionDto): Promise<CollectionResponseDto> {

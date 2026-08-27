@@ -1,4 +1,7 @@
 import {
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
   Get,
   Post,
   Patch,
@@ -9,6 +12,8 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CatalogService } from './catalog.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -113,6 +118,22 @@ export class AdminCatalogController {
   @ApiResponse({ status: 201, type: CollectionResponseDto })
   createCollection(@Body() dto: CreateCollectionDto): Promise<CollectionResponseDto> {
     return this.catalogService.createCollection(dto);
+  }
+
+  // POST /admin/collections/banner
+  //
+  // Before the :id routes below, and it has to stay there: this and
+  // 'collections/:id' are both two segments, and Nest matches in declaration
+  // order, so a later position would make 'banner' look like an id.
+  @Post('collections/banner')
+  @Roles(Role.SUPER_ADMIN)
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  @ApiOperation({ summary: '[Admin] Upload a collection banner and return its URL' })
+  async uploadCollectionBanner(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException({ code: 'ERR_FILE_REQUIRED', message: 'file is required' });
+    }
+    return this.catalogService.uploadCollectionBanner(file);
   }
 
   // PATCH /admin/collections/:id
