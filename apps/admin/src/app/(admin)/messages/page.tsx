@@ -140,6 +140,20 @@ export default function MessagesPage() {
    * one-shot read on mount that needs neither. Written back with
    * history.replaceState for the same reason — no navigation, no re-render,
    * just an address bar that matches what is on screen.
+   *
+   * The first argument MUST be the existing history.state, and passing null
+   * there was a real bug with a real symptom. The App Router keeps its own
+   * router state in that object; overwriting it with null left the history
+   * entry unrecognisable to Next, so every later navigation to this route
+   * degraded to a full page load. The nginx log showed it plainly: /messages
+   * was the ONLY admin route that ever appeared as a bare document request,
+   * always right after an ?_rsc= navigation that had just been thrown away —
+   * and it is the only route in the app that touches history directly.
+   *
+   * Usually the fallback fired within a couple of seconds and looked like
+   * nothing worse than a slow page. When it did not fire, the address bar
+   * said /messages while the previous page stayed on screen, which is the
+   * "sometimes it refuses to navigate" this was reported as.
    */
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('c');
@@ -150,7 +164,7 @@ export default function MessagesPage() {
     const url = new URL(window.location.href);
     if (activeId) url.searchParams.set('c', activeId);
     else url.searchParams.delete('c');
-    window.history.replaceState(null, '', url);
+    window.history.replaceState(window.history.state, '', url.toString());
   }, [activeId]);
   const [labelMenuOpen, setLabelMenuOpen] = useState(false);
 

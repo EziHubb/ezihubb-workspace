@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from 'next-auth/middleware';
+import { getAdminRouteRedirect } from './lib/route-guard';
+import { resolveInStoreMode, STORE_CONTEXT_COOKIE } from './lib/store-context-shared';
 
 // `apps/admin/src/app/(admin)/layout.tsx` reads the current path server-side
 // via `headers().get('x-pathname')` to run its route guards (blocking a shop
@@ -10,6 +12,25 @@ import { withAuth } from 'next-auth/middleware';
 // null and every one of those guards silently no-ops.
 export default withAuth(
   function middleware(req) {
+    // The route guard, moved here from (admin)/layout.tsx — see route-guard.ts
+    // for why a layout was the wrong place for it. Everything it needs is
+    // already on this request: the path from nextUrl, role and storeId from
+    // the session token withAuth has just validated, and the store-context
+    // cookie the switcher writes.
+    const token   = req.nextauth?.token;
+    const role    = token?.['role'] as string | undefined;
+    const storeId = (token?.['storeId'] as string | null | undefined) ?? null;
+
+    const inStoreMode = resolveInStoreMode(
+      storeId,
+      req.cookies.get(STORE_CONTEXT_COOKIE)?.value ?? null,
+    );
+
+    const target = getAdminRouteRedirect(req.nextUrl.pathname, role, storeId, !inStoreMode);
+    if (target && target !== req.nextUrl.pathname) {
+      return NextResponse.redirect(new URL(target, req.url));
+    }
+
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set('x-pathname', req.nextUrl.pathname);
     return NextResponse.next({ request: { headers: requestHeaders } });
