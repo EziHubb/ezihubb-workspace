@@ -39,6 +39,15 @@ function formatTime(dateStr: string, locale: string): string {
   return new Date(dateStr).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 }
 
+/**
+ * How close to the bottom still counts as "at the bottom".
+ *
+ * Used to decide whether the typing bubble may pull the pane down. One
+ * bubble tall plus a little, so a reader who has scrolled up even slightly
+ * on purpose is left where they are.
+ */
+const NEAR_BOTTOM_PX = 120;
+
 /** Longer than this between two messages and the thread gets a marker. */
 const SEPARATOR_GAP_MS = 60 * 60 * 1000;
 
@@ -556,19 +565,32 @@ export function MessageThread({
    */
   const firstScroll  = useRef(true);
   const lastPending  = useRef(0);
+  const lastCount    = useRef(0);
   useLayoutEffect(() => {
     const pane = paneRef.current;
     if (!pane) return;
 
-    const own = pending.length > lastPending.current;
+    const count = conv?.messages?.length ?? 0;
+    const own   = pending.length > lastPending.current;
+    const grew  = own || count > lastCount.current;
     lastPending.current = pending.length;
+    lastCount.current   = count;
+
+    // The typing bubble appearing is not a reason to drag someone away from
+    // what they are reading. A real message still always wins — that is the
+    // thing they are waiting for — but the placeholder only pulls the pane
+    // down for a reader already at the bottom, where it just appeared.
+    if (!grew && !firstScroll.current) {
+      const gap = pane.scrollHeight - pane.scrollTop - pane.clientHeight;
+      if (gap > NEAR_BOTTOM_PX) return;
+    }
 
     pane.scrollTo({
       top: pane.scrollHeight,
       behavior: firstScroll.current || own ? 'auto' : 'smooth',
     });
     firstScroll.current = false;
-  }, [conv?.messages?.length, pending.length]);
+  }, [conv?.messages?.length, pending.length, someoneTyping]);
 
   /**
    * Keeps the reader where they were when a page is prepended.
@@ -884,19 +906,27 @@ export function MessageThread({
             </div>
           ))}
 
+          {/* In the thread, not a strip above the composer.
+              Outside the pane it sat over the newest message's clock and read
+              as an overlay; the point of a placeholder is to occupy the spot
+              the message will land in, so the thread does not jump when it
+              arrives. Same row shape as an incoming message, avatar and all.
+
+              It can now be scrolled past, which is why the scroll effect
+              watches someoneTyping — but only pulls the pane down for a
+              reader who was already at the bottom. */}
+          {someoneTyping && (
+            <div className="mt-4 flex gap-2">
+              <div className="mt-1">
+                <ShopAvatar name={shopName} src={conv?.store?.logoUrl ?? null} size={28} />
+              </div>
+              <TypingIndicator label={shopName} />
+            </div>
+          )}
+
           <div ref={bottomRef} />
         </div>
       </div>
-
-      {/* Deliberately outside the scrolling pane. Inside it, the indicator
-          appearing simply made the content taller than the viewport, below
-          wherever the reader happened to be — visible only if they scrolled
-          down to find it, which nobody does for something they cannot see. */}
-      {someoneTyping && (
-        <div className="flex-shrink-0 px-4 pb-1">
-          <TypingIndicator label={shopName} />
-        </div>
-      )}
 
       {/* Input */}
       {conv?.status !== 'RESOLVED' ? (

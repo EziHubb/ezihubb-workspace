@@ -377,8 +377,11 @@ export function ThreadView({
     // not want the thread yanked away mid-sentence.
     if (wasNearBottom.current) pane.scrollTop = pane.scrollHeight;
     // pending.length too: the optimistic bubble is what makes a reply feel
-    // instant, and it is not part of `messages`.
-  }, [messages, pending.length]);
+    // instant, and it is not part of `messages`. someoneTyping as well, now
+    // that the indicator lives in the thread and can be scrolled past — the
+    // wasNearBottom gate above already keeps it from yanking a reader who
+    // has scrolled up.
+  }, [messages, pending.length, someoneTyping]);
 
   const groups: { label: string; messages: ThreadMessage[] }[] = [];
   for (const m of messages) {
@@ -533,18 +536,24 @@ export function ThreadView({
             </div>
           </div>
         ))}
+
+        {/* In the thread, not a strip above the composer. Outside the pane it
+            sat over the newest message's clock and read as an overlay; a
+            placeholder should occupy the spot the message will land in, so
+            the thread does not jump when it arrives. Same row shape as an
+            incoming message, avatar and all. */}
+        {someoneTyping && (
+          <div className="flex gap-2">
+            <Avatar name={buyerName} src={conversation.user?.avatarUrl ?? null} size={28} />
+            <TypingIndicator label={buyerName} />
+          </div>
+        )}
       </div>
 
       {/* Deliberately outside the scrolling pane above. Inside it, the
           indicator appearing only made the content taller than the viewport,
           below wherever the reader happened to be — and nothing scrolls them
           to it, so a shop sitting at the newest message never saw it. */}
-      {someoneTyping && (
-        <div className="flex-shrink-0 px-4 pb-1 sm:px-6">
-          <TypingIndicator label={buyerName} />
-        </div>
-      )}
-
       <div className="border-t border-border px-4 py-4 sm:px-6">
         <label className="sr-only" htmlFor="reply">Reply to {buyerName}</label>
         <textarea
