@@ -637,6 +637,11 @@ export function MessageThread({
    */
   const pickFiles = async (picked: FileList | null) => {
     if (!picked?.length) return;
+    // A second pick while the first is still uploading would compute its
+    // room allowance from a stale `attachments`, and both batches would
+    // append. The attach button is disabled while uploading; a paste is
+    // not, so the guard belongs here rather than on the button.
+    if (uploading) return;
     const files = Array.from(picked);
     if (fileInput.current) fileInput.current.value = '';
 
@@ -967,6 +972,20 @@ export function MessageThread({
                   e.preventDefault();
                   sendMessage();
                 }
+              }}
+              // Paste an image straight into the box. A screenshot from the OS
+              // clipboard arrives here as a File and goes through exactly the
+              // same size and type checks the attach button uses.
+              onPaste={(e) => {
+                if (e.clipboardData.files.length === 0) return;
+                // Rich text often travels with a picture of itself (Word, Excel, a
+                // copied web selection). That paste is meant to type the text, so
+                // anything carrying real text is left to the browser.
+                if (e.clipboardData.getData('text/plain')) return;
+                // No preventDefault: a textarea has nothing to insert for a file,
+                // so the default is already a no-op and suppressing it would only
+                // risk swallowing text arriving in the same event.
+                void pickFiles(e.clipboardData.files);
               }}
               ref={inputRef}
               placeholder={t('typePlaceholder')}

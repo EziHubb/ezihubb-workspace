@@ -195,7 +195,25 @@ function Bubble({ message, conversationId, buyerName, buyerAvatar, onDelete, vie
               Unsend
             </button>
           )}
-          <span>{timeLabel(message.createdAt)}</span>
+          <span className="whitespace-nowrap">
+            {timeLabel(message.createdAt)}
+            {/* Shop messages only. A tick on the buyer's own message would
+                be telling the seller that the seller has read it, which is
+                something they can see by looking at it.
+
+                Live without a refetch of its own: markCustomerRead emits a
+                read receipt, useConversationStream routes it through the
+                same callback as a new message, and the window that comes
+                back replaces this row by id in the merge map. */}
+            {fromShop && message.isRead && (
+              <>
+                <span className="ml-1" aria-hidden="true">✓✓</span>
+                {/* The glyph alone says nothing to a screen reader, and a
+                    title attribute is not read out either. */}
+                <span className="sr-only">Seen by the buyer</span>
+              </>
+            )}
+          </span>
         </p>
       </div>
     </div>
@@ -380,6 +398,11 @@ export function ThreadView({
    */
   const pickFiles = async (picked: FileList | null) => {
     if (!picked?.length) return;
+    // A second pick while the first is still uploading would compute its
+    // room allowance from a stale `attachments`, and both batches would
+    // append. The attach button is disabled while uploading; a paste is
+    // not, so the guard belongs here rather than on the button.
+    if (uploading) return;
     const files = Array.from(picked);
     if (fileInput.current) fileInput.current.value = '';
 
@@ -455,7 +478,7 @@ export function ThreadView({
    */
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div ref={paneRef} className="min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto px-6 py-5">
+      <div ref={paneRef} className="min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6">
         {/* Explicit, not infinite scroll on reaching the top. Reaching the top
             is also what a hard flick does, and paging on that turns an
             overshoot into a fetch nobody asked for. */}
@@ -517,12 +540,12 @@ export function ThreadView({
           below wherever the reader happened to be — and nothing scrolls them
           to it, so a shop sitting at the newest message never saw it. */}
       {someoneTyping && (
-        <div className="flex-shrink-0 px-6 pb-1">
+        <div className="flex-shrink-0 px-4 pb-1 sm:px-6">
           <TypingIndicator label={buyerName} />
         </div>
       )}
 
-      <div className="border-t border-border px-6 py-4">
+      <div className="border-t border-border px-4 py-4 sm:px-6">
         <label className="sr-only" htmlFor="reply">Reply to {buyerName}</label>
         <textarea
           id="reply"
@@ -532,6 +555,20 @@ export function ThreadView({
             // Enter sends, Shift+Enter makes a new line — the convention every
             // messaging tool uses, so muscle memory works.
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void submit(); }
+          }}
+          // Paste an image straight into the box. A screenshot from the OS
+          // clipboard arrives here as a File and goes through exactly the
+          // same size and type checks the attach button uses.
+          onPaste={(e) => {
+            if (e.clipboardData.files.length === 0) return;
+            // Rich text often travels with a picture of itself (Word, Excel, a
+            // copied web selection). That paste is meant to type the text, so
+            // anything carrying real text is left to the browser.
+            if (e.clipboardData.getData('text/plain')) return;
+            // No preventDefault: a textarea has nothing to insert for a file,
+            // so the default is already a no-op and suppressing it would only
+            // risk swallowing text arriving in the same event.
+            void pickFiles(e.clipboardData.files);
           }}
           rows={3}
           placeholder="Type your reply"

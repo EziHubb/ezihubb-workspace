@@ -79,6 +79,15 @@ export interface ThreadMessage {
   attachmentUrls:  string[];
   attachedProduct: AttachedProduct | null;
   createdAt:       string;
+  /**
+   * Read by the OTHER side, not by whoever is looking.
+   *
+   * markCustomerRead sets this on every non-CUSTOMER message, so on a SHOP
+   * message it means the buyer has seen it — which is the only direction
+   * worth drawing here. On a CUSTOMER message it means the shop has, which
+   * the shop already knows by virtue of reading it.
+   */
+  isRead:          boolean;
   /** Set when the shop unsent it. `body` and `attachmentUrls` come back
    *  empty with it — the row keeps its text in the database, not in the API. */
   deletedAt:       string | null;
