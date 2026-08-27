@@ -426,7 +426,10 @@ export default function OrdersPage() {
         </button>
       </div>
 
-      <div className="flex gap-6">
+      {/* Stacked below lg, side by side above. The orders come first in the
+          DOM, so on a phone they stay first and the filters fall underneath
+          rather than pushing the list off the bottom of the screen. */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
         <div className="min-w-0 flex-1">
           {queueQuery.isLoading ? (
             <div className="flex items-center gap-2 py-16 text-sm text-muted">

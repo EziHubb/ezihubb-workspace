@@ -124,7 +124,7 @@ export function OrderQueueCard({
     // The stripe is for peripheral vision and the badge below is for certainty.
     // The queue rendered every order identically, so telling a cancelled order
     // from one waiting to ship meant opening each in turn.
-    <div className={`flex gap-4 border-b border-l-4 border-border px-5 py-5 last:border-b-0 ${STATUS_ACCENT[order.status] ?? 'border-l-transparent'}`}>
+    <div className={`flex flex-col gap-4 border-b border-l-4 border-border px-5 py-5 last:border-b-0 sm:flex-row ${STATUS_ACCENT[order.status] ?? 'border-l-transparent'}`}>
       <input
         type="checkbox"
         checked={selected}
@@ -215,7 +215,9 @@ export function OrderQueueCard({
       </div>
 
       {/* ── Where and by when ───────────────────────────────────────────── */}
-      <div className="w-64 shrink-0 text-sm">
+      {/* Under the details on a narrow card rather than beside them: 256px
+          held as shrink-0 left the item list almost nothing to occupy. */}
+      <div className="w-full shrink-0 text-sm sm:w-64">
         <p className={`font-semibold ${overdue ? 'text-error' : 'text-secondary'}`}>
           Ship by {fmtDate(order.shipByDate) ?? 'no estimate'}
         </p>

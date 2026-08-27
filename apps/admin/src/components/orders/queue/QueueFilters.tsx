@@ -34,7 +34,9 @@ export function QueueFilters({ value, destinations, onChange }: Props) {
   const isDirty = JSON.stringify(value) !== JSON.stringify(EMPTY_FILTERS);
 
   return (
-    <aside className="w-60 shrink-0 space-y-7 text-sm" aria-label="Filter orders">
+    // w-full until lg, or the rail keeps its 240px inside a column layout and
+    // leaves a ragged gutter beside every filter group.
+    <aside className="w-full shrink-0 space-y-7 text-sm lg:w-60" aria-label="Filter orders">
       <fieldset>
         <legend className="mb-2 font-semibold text-secondary">Ship by date</legend>
         {SHIP_BY.map((opt) => (

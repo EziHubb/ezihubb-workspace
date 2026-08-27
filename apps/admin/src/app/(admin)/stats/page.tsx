@@ -549,7 +549,7 @@ export default function StatsPage() {
             (funnel ?? []).map((s) => (
               <div key={s.stage} className="flex items-center gap-4 px-5 py-3">
                 <span className="w-36 text-sm text-secondary shrink-0">{s.stage}</span>
-                <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
+                <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-border">
                   <div
                     className="h-full bg-primary rounded-full"
                     style={{ width: `${Math.min(100, safeNum(s.percentage))}%` }}
@@ -577,8 +577,8 @@ export default function StatsPage() {
           ) : (
             attribution.sources.map((s) => (
               <div key={s.key} className="flex items-center gap-4 px-5 py-3">
-                <span className="w-56 text-sm text-secondary shrink-0">{s.label}</span>
-                <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
+                <span className="w-28 shrink-0 truncate text-sm text-secondary sm:w-56">{s.label}</span>
+                <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-border">
                   <div
                     className="h-full bg-primary rounded-full"
                     style={{ width: `${Math.min(100, safeNum(s.percentage))}%` }}
