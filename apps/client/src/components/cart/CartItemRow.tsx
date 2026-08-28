@@ -19,6 +19,26 @@ type CustData = Record<string, unknown>;
 
 function getCustSummary(data: CustData | null | undefined): string | null {
   if (!data) return null;
+  const customOptions = Array.isArray(data.customOptions) ? data.customOptions : [];
+  const optionParts = customOptions.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return [];
+    const option = entry as Record<string, unknown>;
+    const label = typeof option.label === 'string' ? option.label : '';
+    const file = option.file;
+    if (file && typeof file === 'object' && !Array.isArray(file)) {
+      const name = (file as Record<string, unknown>).name;
+      return label && typeof name === 'string' ? [`${label}: ${name}`] : [];
+    }
+    const value = option.value;
+    const printable = Array.isArray(value)
+      ? value.filter((item) => typeof item === 'string').join(', ')
+      : typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+        ? String(value)
+        : '';
+    return label && printable.trim() ? [`${label}: ${printable}`] : [];
+  });
+  if (optionParts.length > 0) return optionParts.slice(0, 3).join(' · ');
+
   const fields = (data as { fields?: Record<string, { type: string; value: string }> }).fields;
   if (!fields) return null;
 

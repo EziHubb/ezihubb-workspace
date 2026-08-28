@@ -329,7 +329,26 @@ export class SellerOrderDetailService {
    */
   private personalizationLines(data: unknown): { label: string; value: string }[] {
     if (!data || typeof data !== 'object' || Array.isArray(data)) return [];
-    return Object.entries(data as Record<string, unknown>)
+    const record = data as Record<string, unknown>;
+    const customOptions = Array.isArray(record['customOptions'])
+      ? record['customOptions']
+      : [];
+    const optionLines = customOptions.flatMap((entry) => {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return [];
+      const option = entry as Record<string, unknown>;
+      const label = typeof option['label'] === 'string' ? option['label'].trim() : '';
+      const value = option['value'];
+      if (!label || option['type'] === 'FILE_UPLOAD') return [];
+      if (Array.isArray(value)) {
+        const printable = value.filter((item) => typeof item === 'string').join(', ').trim();
+        return printable ? [{ label, value: printable }] : [];
+      }
+      if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') return [];
+      return String(value).trim() ? [{ label, value: String(value) }] : [];
+    });
+
+    const legacyLines = Object.entries(record)
+      .filter(([key]) => key !== 'customOptions')
       .filter(([, value]) => (
         (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
         && String(value).trim() !== ''
@@ -340,6 +359,8 @@ export class SellerOrderDetailService {
         FILE_KEYS.has(key.toLowerCase()) && looksLikeFileRef(String(value))
       ))
       .map(([label, value]) => ({ label, value: String(value) }));
+
+    return [...optionLines, ...legacyLines];
   }
 
   /**
@@ -360,10 +381,10 @@ export class SellerOrderDetailService {
     previewUrl: string | null,
   ): { name: string; url: string; isOwn: boolean }[] {
     const files: { name: string; url: string; isOwn: boolean }[] = [];
-    const add = (url: string, fallbackName: string) => {
+    const add = (url: string, fallbackName: string, suppliedName?: string) => {
       if (files.some((f) => f.url === url)) return;
       files.push({
-        name:  url.split('/').pop() || fallbackName,
+        name:  suppliedName?.trim() || url.split('/').pop() || fallbackName,
         url,
         // Root-relative counts too: it resolves against our own origin, so it
         // cannot reach an address the buyer chose. That is the whole test
@@ -374,7 +395,25 @@ export class SellerOrderDetailService {
     };
 
     if (data && typeof data === 'object' && !Array.isArray(data)) {
-      for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+      const record = data as Record<string, unknown>;
+      const customOptions = Array.isArray(record['customOptions'])
+        ? record['customOptions']
+        : [];
+      for (const entry of customOptions) {
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+        const option = entry as Record<string, unknown>;
+        const file = option['file'];
+        if (!file || typeof file !== 'object' || Array.isArray(file)) continue;
+        const fileRecord = file as Record<string, unknown>;
+        const url = fileRecord['url'];
+        if (typeof url !== 'string' || !looksLikeFileRef(url)) continue;
+        const label = typeof option['label'] === 'string' ? option['label'] : 'upload';
+        const name = typeof fileRecord['name'] === 'string' ? fileRecord['name'] : undefined;
+        add(url.trim(), label, name);
+      }
+
+      for (const [key, value] of Object.entries(record)) {
+        if (key === 'customOptions') continue;
         if (!FILE_KEYS.has(key.toLowerCase())) continue;
         for (const url of Array.isArray(value) ? value : [value]) {
           if (typeof url !== 'string' || !looksLikeFileRef(url)) continue;

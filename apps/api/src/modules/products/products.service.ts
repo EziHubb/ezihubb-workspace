@@ -96,6 +96,13 @@ const ALLOWED_IMAGE_MIMETYPES = new Set([
   'image/png',
   'image/webp',
 ]);
+const ALLOWED_CUSTOM_OPTION_IMAGE_MIMETYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+]);
 const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 const ALLOWED_VIDEO_MIMETYPES = new Set([
   'video/mp4',
@@ -466,8 +473,63 @@ export class ProductsService {
         attributes:       mongoDetail.attributes        ?? [],
         mongoVariants:    mongoDetail.variants          ?? [],
         customization:    mongoDetail.customization     ?? null,
+        customOptions:    [...(mongoDetail.customOptions ?? [])]
+          .sort((a, b) => a.sortOrder - b.sortOrder),
         printSpecs:       mongoDetail.printSpecs        ?? null,
       }),
+    };
+  }
+
+  async uploadCustomOptionFile(
+    productId: string,
+    optionId: string,
+    file: Express.Multer.File,
+  ): Promise<{ url: string; name: string; mimeType: string; sizeBytes: number }> {
+    const detail = await this.productDetailModel.findOne({ productId }).lean().exec();
+    const option = detail?.customOptions?.find((item) => item.id === optionId);
+
+    if (!option || option.type !== 'FILE_UPLOAD') {
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'File upload option not found',
+      });
+    }
+
+    const maxFileSizeMB = Math.min(50, Math.max(1, Number(option.maxFileSizeMB) || 10));
+    if (file.size > maxFileSizeMB * 1024 * 1024) {
+      throw new BadRequestException({
+        code: 'ERR_FILE_TOO_LARGE',
+        message: `File must be smaller than ${maxFileSizeMB} MB`,
+      });
+    }
+
+    const extension = extname(file.originalname).toLowerCase();
+    const accepted = option.acceptedFileTypes?.length
+      ? option.acceptedFileTypes
+      : ['image/*'];
+    const isAccepted = accepted.some((rule) => {
+      const parts = rule.split(',').map((part) => part.trim().toLowerCase());
+      return parts.some((part) => (
+        (part === 'image/*' && ALLOWED_CUSTOM_OPTION_IMAGE_MIMETYPES.has(file.mimetype.toLowerCase()))
+        || (part.startsWith('.') && extension === part)
+        || file.mimetype.toLowerCase() === part
+      ));
+    });
+
+    if (!isAccepted) {
+      throw new BadRequestException({
+        code: 'ERR_FILE_TYPE_INVALID',
+        message: 'This file type is not accepted for this option',
+      });
+    }
+
+    const key = this.storage.generateKey('uploads/temp/custom-options', file.originalname);
+    const url = await this.storage.uploadFile(file.buffer, key, file.mimetype);
+    return {
+      url,
+      name: file.originalname,
+      mimeType: file.mimetype,
+      sizeBytes: file.size,
     };
   }
 

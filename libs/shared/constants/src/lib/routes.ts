@@ -109,6 +109,11 @@ export const API_ROUTES = {
     ART_STYLES:      '/customization/art-styles',
   },
 
+  PRODUCT_CUSTOM_OPTIONS: {
+    UPLOAD: (productId: string, optionId: string) =>
+      `/products/${productId}/custom-options/${optionId}/upload`,
+  },
+
   REVIEWS: {
     LIST:          '/reviews',
     SUMMARY:       '/reviews/summary',

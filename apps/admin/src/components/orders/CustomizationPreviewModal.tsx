@@ -26,10 +26,24 @@ export function CustomizationPreviewModal({
     return () => window.removeEventListener('keydown', fn);
   }, [onClose]);
 
-  // Flatten fields for display
-  const fields = Object.entries(customizationData).filter(
-    ([k]) => !['previewUrl', 'templateId'].includes(k),
+  // Flatten both the current custom-options payload and legacy customizer data.
+  const optionFields = Array.isArray(customizationData.customOptions)
+    ? customizationData.customOptions.flatMap((entry) => {
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return [];
+        const option = entry as Record<string, unknown>;
+        const label = typeof option.label === 'string' ? option.label : '';
+        const file = option.file;
+        if (file && typeof file === 'object' && !Array.isArray(file)) {
+          const name = (file as Record<string, unknown>).name;
+          return label && typeof name === 'string' ? [[label, name] as [string, unknown]] : [];
+        }
+        return label ? [[label, option.value] as [string, unknown]] : [];
+      })
+    : [];
+  const legacyFields = Object.entries(customizationData).filter(
+    ([k]) => !['previewUrl', 'templateId', 'customOptions'].includes(k),
   );
+  const fields = [...optionFields, ...legacyFields];
 
   return (
     <>

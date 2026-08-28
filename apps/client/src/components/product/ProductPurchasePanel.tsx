@@ -1,11 +1,10 @@
 ﻿'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import {
   Star, CheckCircle2, Clock, ShoppingCart,
-  Loader2, Plus, ChevronDown, Users,
+  Loader2, Plus, ChevronDown, Users, Paperclip, X,
 } from 'lucide-react';
 import { ShareButton } from './ShareButton';
 import {
@@ -24,6 +23,8 @@ import { analytics } from '../../lib/analytics';
 import type { ProductDetailDto, ProductVariantDto, ReviewSummaryDto } from '@ezihubb/types';
 import { fmtRating, safeNum } from '@ezihubb/utils';
 import { useVariationPhoto } from './VariationPhotoContext';
+import { API_BASE } from '../../lib/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
 
 // ── Date helpers (no date-fns) ────────────────────────────────────────────────
 
@@ -72,6 +73,27 @@ function toTitleCase(s: string): string {
 // ── Field type from ProductDetailDto['customization'] ───────────────────────────────
 
 type CustomField = NonNullable<ProductDetailDto['customization']>['fields'][number];
+type CustomOption = NonNullable<ProductDetailDto['customOptions']>[number];
+
+interface UploadedCustomOptionFile {
+  url: string;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+}
+
+type CustomOptionAnswer = string | string[] | boolean | UploadedCustomOptionFile;
+
+function isUploadedFile(value: CustomOptionAnswer | undefined): value is UploadedCustomOptionFile {
+  return !!value && typeof value === 'object' && !Array.isArray(value) && 'url' in value;
+}
+
+function hasCustomOptionAnswer(value: CustomOptionAnswer | undefined): boolean {
+  if (typeof value === 'string') return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'boolean') return value;
+  return isUploadedFile(value);
+}
 
 // ── InDemandBadge ─────────────────────────────────────────────────────────────
 
@@ -401,6 +423,181 @@ function QuantityDropdown({
   );
 }
 
+// ── CustomOptionsFields ──────────────────────────────────────────────────────
+
+function CustomOptionsFields({
+  options,
+  values,
+  errors,
+  uploadingOptionId,
+  onChange,
+  onFileChange,
+}: {
+  options: ProductDetailDto['customOptions'];
+  values: Record<string, CustomOptionAnswer>;
+  errors: Record<string, string>;
+  uploadingOptionId: string | null;
+  onChange: (optionId: string, value: CustomOptionAnswer) => void;
+  onFileChange: (option: CustomOption, file: File) => void;
+}) {
+  const t = useTranslations('product.purchasePanel');
+
+  if (!options?.length) return null;
+
+  return (
+    <div className="space-y-4 border-t border-border pt-4">
+      <p className="text-sm font-semibold text-secondary">{t('customOptions')}</p>
+      {options.map((option) => {
+        const value = values[option.id];
+        const error = errors[option.id];
+        const inputClass = [
+          'w-full border rounded-lg px-3 py-2.5 text-sm bg-white text-secondary',
+          'focus:outline-none focus:ring-2 focus:ring-primary/20',
+          error ? 'border-red-500' : 'border-border',
+        ].join(' ');
+
+        return (
+          <div id={`custom-option-${option.id}`} key={option.id}>
+            <label className="text-sm font-medium text-secondary block mb-1.5">
+              {option.label}
+              {option.required && <span className="text-red-500 ml-0.5">*</span>}
+            </label>
+            {option.instructionText && (
+              <p className="text-xs text-muted mb-1.5">{option.instructionText}</p>
+            )}
+
+            {option.type === 'TEXT_BOX' && (option.isMultiline ? (
+              <textarea
+                value={typeof value === 'string' ? value : ''}
+                onChange={(event) => onChange(option.id, event.target.value)}
+                placeholder={option.placeholder}
+                maxLength={option.maxLength || 250}
+                rows={4}
+                className={`${inputClass} resize-y`}
+              />
+            ) : (
+              <input
+                type="text"
+                value={typeof value === 'string' ? value : ''}
+                onChange={(event) => onChange(option.id, event.target.value)}
+                placeholder={option.placeholder}
+                maxLength={option.maxLength || 250}
+                className={inputClass}
+              />
+            ))}
+
+            {option.type === 'LIST_OF_OPTIONS' && (option.allowMultiSelect ? (
+              <div className={`space-y-2 rounded-lg border px-3 py-2.5 ${error ? 'border-red-500' : 'border-border'}`}>
+                {option.choices.map((choice) => {
+                  const selected = Array.isArray(value) && value.includes(choice);
+                  return (
+                    <label key={choice} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => {
+                          const current = Array.isArray(value) ? value : [];
+                          onChange(option.id, selected
+                            ? current.filter((item) => item !== choice)
+                            : [...current, choice]);
+                        }}
+                        className="accent-primary"
+                      />
+                      {choice}
+                    </label>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="relative">
+                <select
+                  value={typeof value === 'string' ? value : ''}
+                  onChange={(event) => onChange(option.id, event.target.value)}
+                  className={`${inputClass} appearance-none pr-8`}
+                >
+                  <option value="">{option.placeholder || t('selectOptionPlaceholder')}</option>
+                  {option.choices.map((choice) => <option key={choice} value={choice}>{choice}</option>)}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
+              </div>
+            ))}
+
+            {option.type === 'FILE_UPLOAD' && (
+              isUploadedFile(value) ? (
+                <div className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5">
+                  <Paperclip className="w-4 h-4 text-muted shrink-0" />
+                  <span className="text-sm text-secondary truncate flex-1">{value.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => onChange(option.id, '')}
+                    className="p-1 text-muted hover:text-red-600"
+                    aria-label={t('removeUploadedFile')}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className={`flex items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-4 cursor-pointer hover:border-primary/60 ${error ? 'border-red-500' : 'border-border'}`}>
+                  {uploadingOptionId === option.id
+                    ? <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    : <Paperclip className="w-4 h-4 text-muted" />}
+                  <span className="text-sm font-medium text-secondary">
+                    {uploadingOptionId === option.id ? t('uploadingFile') : t('chooseFile')}
+                  </span>
+                  <input
+                    type="file"
+                    className="sr-only"
+                    disabled={uploadingOptionId !== null}
+                    accept={(option.acceptedFileTypes?.length ? option.acceptedFileTypes : ['image/*']).join(',')}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) onFileChange(option, file);
+                      event.currentTarget.value = '';
+                    }}
+                  />
+                </label>
+              )
+            )}
+
+            {option.type === 'CHECKBOX' && (
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={value === true}
+                  onChange={(event) => onChange(option.id, event.target.checked)}
+                  className="accent-primary"
+                />
+                {option.placeholder || option.label}
+              </label>
+            )}
+
+            {option.type === 'COLOR_SWATCH' && (
+              <input
+                type="color"
+                value={typeof value === 'string' && value ? value : '#000000'}
+                onChange={(event) => onChange(option.id, event.target.value)}
+                className="h-11 w-20 rounded-lg border border-border cursor-pointer"
+              />
+            )}
+
+            {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+            {option.type === 'TEXT_BOX' && option.maxLength > 0 && (
+              <p className="text-xs text-muted text-right mt-0.5">
+                {typeof value === 'string' ? value.length : 0}/{option.maxLength}
+              </p>
+            )}
+            {option.type === 'FILE_UPLOAD' && !isUploadedFile(value) && (
+              <p className="text-xs text-muted mt-1">
+                {t('maxFileSize', { size: option.maxFileSizeMB || 10 })}
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── PersonalizationCollapsible ────────────────────────────────────────────────
 
 function PersonalizationCollapsible({
@@ -525,6 +722,9 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
   const [isAdding,              setIsAdding]              = useState(false);
   const [quantity,              setQuantity]              = useState(1);
   const [hasAttemptedSubmit,    setHasAttemptedSubmit]    = useState(false);
+  const [customOptionValues,    setCustomOptionValues]    = useState<Record<string, CustomOptionAnswer>>({});
+  const [customOptionErrors,    setCustomOptionErrors]    = useState<Record<string, string>>({});
+  const [uploadingOptionId,     setUploadingOptionId]     = useState<string | null>(null);
 
   const addItem    = useCartStore((s) => s.addItem);
   const openDrawer = useCartStore((s) => s.openDrawer);
@@ -607,6 +807,58 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
     (allOptionsSelected && selectedVariant !== null);
 
   const customFields = product.customization?.fields ?? [];
+  const customOptions = product.customOptions ?? [];
+
+  const setCustomOptionValue = (optionId: string, value: CustomOptionAnswer) => {
+    setCustomOptionValues((previous) => ({ ...previous, [optionId]: value }));
+    setCustomOptionErrors((previous) => {
+      if (!previous[optionId]) return previous;
+      const next = { ...previous };
+      delete next[optionId];
+      return next;
+    });
+  };
+
+  const uploadCustomOptionFile = async (option: CustomOption, file: File) => {
+    const maxSizeMB = option.maxFileSizeMB || 10;
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      setCustomOptionErrors((previous) => ({
+        ...previous,
+        [option.id]: tPanel('fileTooLarge', { size: maxSizeMB }),
+      }));
+      return;
+    }
+
+    setUploadingOptionId(option.id);
+    setCustomOptionErrors((previous) => {
+      const next = { ...previous };
+      delete next[option.id];
+      return next;
+    });
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(
+        `${API_BASE}/api/v1${API_ROUTES.PRODUCT_CUSTOM_OPTIONS.UPLOAD(product.id, option.id)}`,
+        { method: 'POST', body: formData, credentials: 'include' },
+      );
+      const body = await response.json() as {
+        data?: UploadedCustomOptionFile;
+        message?: string;
+      } & Partial<UploadedCustomOptionFile>;
+      if (!response.ok) throw new Error(body.message || tPanel('fileUploadFailed'));
+      const uploaded = (body.data ?? body) as UploadedCustomOptionFile;
+      setCustomOptionValue(option.id, uploaded);
+    } catch (error) {
+      setCustomOptionErrors((previous) => ({
+        ...previous,
+        [option.id]: error instanceof Error ? error.message : tPanel('fileUploadFailed'),
+      }));
+    } finally {
+      setUploadingOptionId(null);
+    }
+  };
 
   // ── Add to cart ───────────────────────────────────────────────────────────
 
@@ -630,14 +882,48 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       }
       return;
     }
+    if (uploadingOptionId) {
+      toast.error(tPanel('waitForUpload'));
+      return;
+    }
+
+    const missingCustomOptions = customOptions.filter(
+      (option) => option.required && !hasCustomOptionAnswer(customOptionValues[option.id]),
+    );
+    if (missingCustomOptions.length > 0) {
+      const errors = Object.fromEntries(
+        missingCustomOptions.map((option) => [option.id, tPanel('customOptionRequired')]),
+      );
+      setCustomOptionErrors(errors);
+      document.getElementById(`custom-option-${missingCustomOptions[0].id}`)?.scrollIntoView({
+        behavior: 'smooth', block: 'center',
+      });
+      toast.error(tPanel('completeCustomOptions'));
+      return;
+    }
     if (isAdding) return;
     setIsAdding(true);
     try {
+      const submittedCustomOptions = customOptions
+        .filter((option) => hasCustomOptionAnswer(customOptionValues[option.id]))
+        .map((option) => {
+          const value = customOptionValues[option.id];
+          return isUploadedFile(value)
+            ? { id: option.id, label: option.label, type: option.type, file: value }
+            : {
+                id: option.id,
+                label: option.label,
+                type: option.type,
+                value: typeof value === 'string' ? value.trim() : value,
+              };
+        });
       await addItem({
         productId:         product.id,
         variantId:         selectedVariant?.id ?? null,
         quantity,
-        customizationData: null,
+        customizationData: submittedCustomOptions.length > 0
+          ? { customOptions: submittedCustomOptions }
+          : null,
       });
       // No success toast here: the drawer slides open showing the item, its
       // quantity and the new subtotal, which says everything the toast said and
@@ -746,6 +1032,15 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
         />
       )}
 
+      <CustomOptionsFields
+        options={customOptions}
+        values={customOptionValues}
+        errors={customOptionErrors}
+        uploadingOptionId={uploadingOptionId}
+        onChange={setCustomOptionValue}
+        onFileChange={uploadCustomOptionFile}
+      />
+
       {/* ── QUANTITY ── */}
       <QuantityDropdown value={quantity} onChange={setQuantity} label={t('actions.quantity')} />
 
@@ -753,7 +1048,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       <button
         type="button"
         onClick={handleAddToCart}
-        disabled={isAdding}
+        disabled={isAdding || uploadingOptionId !== null}
         className={[
           'w-full py-3.5 rounded-full font-semibold text-sm transition-all',
           'flex items-center justify-center gap-2',
@@ -800,7 +1095,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       <MobileStickyCartBar
         product={product}
         selectedVariant={selectedVariant}
-        canAddToCart={canAddToCart}
+        canAddToCart={canAddToCart && uploadingOptionId === null}
         onAddToCart={handleAddToCart}
       />
 

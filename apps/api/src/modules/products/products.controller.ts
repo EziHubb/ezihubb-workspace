@@ -1,7 +1,9 @@
-import { Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, Get, HttpCode, Param, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { ProductsService } from './products.service';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { ProductListItemDto } from './dto/product-list-item.dto';
@@ -77,6 +79,28 @@ export class ProductsController {
   @ApiResponse({ status: 200, type: [ProductListItemDto] })
   findRelated(@Param('slug') slug: string): Promise<ProductListItemDto[]> {
     return this.productsService.findRelated(slug);
+  }
+
+  // Guest carts can contain personalization, so this upload is public. The
+  // service validates the file against the exact option configured on the
+  // product before storing it.
+  @Public()
+  @Post(':id/custom-options/:optionId/upload')
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
+  @UseInterceptors(FileInterceptor('file', {
+    storage: memoryStorage(),
+    limits: { fileSize: 50 * 1024 * 1024 },
+  }))
+  @ApiOperation({ summary: 'Upload a buyer file for a product custom option' })
+  uploadCustomOptionFile(
+    @Param('id', ParseCuidPipe) productId: string,
+    @Param('optionId') optionId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException({ code: 'ERR_VALIDATION', message: 'No file provided' });
+    }
+    return this.productsService.uploadCustomOptionFile(productId, optionId, file);
   }
 
   // POST /products/:id/viewed

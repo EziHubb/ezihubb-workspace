@@ -111,6 +111,23 @@ export class ProductBundleOfferDto {
   @ApiProperty({ type: [BundlePartnerProductDto] }) products: BundlePartnerProductDto[];
 }
 
+export class ProductCustomOptionResponseDto {
+  @ApiProperty() id: string;
+  @ApiProperty() sortOrder: number;
+  @ApiProperty({ enum: ['TEXT_BOX', 'LIST_OF_OPTIONS', 'FILE_UPLOAD', 'CHECKBOX', 'COLOR_SWATCH'] })
+  type: string;
+  @ApiProperty() label: string;
+  @ApiProperty() required: boolean;
+  @ApiProperty() instructionText: string;
+  @ApiProperty() placeholder: string;
+  @ApiProperty() maxLength: number;
+  @ApiProperty() isMultiline: boolean;
+  @ApiProperty({ type: [String] }) choices: string[];
+  @ApiProperty() allowMultiSelect: boolean;
+  @ApiProperty({ type: [String] }) acceptedFileTypes: string[];
+  @ApiProperty() maxFileSizeMB: number;
+}
+
 export class ProductResponseDto {
   @ApiProperty() id: string;
   @ApiProperty() name: string;
@@ -166,6 +183,8 @@ export class ProductResponseDto {
    */
   @ApiPropertyOptional({ type: [ProductionPartnerDto] })
   productionPartners?: ProductionPartnerDto[];
+  @ApiPropertyOptional({ type: [ProductCustomOptionResponseDto] })
+  customOptions?: ProductCustomOptionResponseDto[];
   @ApiProperty({ type: [ProductImageResponseDto] }) images: ProductImageResponseDto[];
   @ApiPropertyOptional({ type: [DigitalFileResponseDto] }) digitalFiles?: DigitalFileResponseDto[];
   @ApiProperty({ type: [ProductVideoDto] }) videos: ProductVideoDto[];

@@ -210,6 +210,30 @@ export interface ProductVideoDto {
   uploadedAt: string;
 }
 
+export type ProductCustomOptionType =
+  | 'TEXT_BOX'
+  | 'LIST_OF_OPTIONS'
+  | 'FILE_UPLOAD'
+  | 'CHECKBOX'
+  | 'COLOR_SWATCH';
+
+/** Buyer-provided fields configured in Admin > Product > Item Options. */
+export interface ProductCustomOptionDto {
+  id: string;
+  sortOrder: number;
+  type: ProductCustomOptionType;
+  label: string;
+  required: boolean;
+  instructionText: string;
+  placeholder: string;
+  maxLength: number;
+  isMultiline: boolean;
+  choices: string[];
+  allowMultiSelect: boolean;
+  acceptedFileTypes: string[];
+  maxFileSizeMB: number;
+}
+
 export interface ProductDetailDto {
   id: string;
   name: string;
@@ -280,6 +304,7 @@ export interface ProductDetailDto {
   shippingNote?: string;
   attributes?: ProductAttributeDto[];
   customization?: CustomizationConfigDto | null;
+  customOptions?: ProductCustomOptionDto[];
 }
 
 // ── Backward-compat legacy types ───────────────────────────────────────────────
