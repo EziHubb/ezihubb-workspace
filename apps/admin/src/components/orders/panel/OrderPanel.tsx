@@ -9,7 +9,8 @@ import { API_ROUTES, newClientMessageId } from '@ezihubb/constants';
 import { api } from '../../../lib/api-client';
 import { toast } from '../../../lib/store/toast.store';
 import { useDialog } from '../../../contexts/DialogContext';
-import { StatusSelect } from '../OrderStatusBadge';
+import { OrderProgressSelect } from '../queue/OrderProgressBadge';
+import type { ProgressStep } from '../queue/types';
 import { OrderDetailsTab } from './OrderDetailsTab';
 import { OrderEarningsTab } from './OrderEarningsTab';
 import type { OrderPanelDetail, OrderPanelEarnings, OrderPanelThread } from './types';
@@ -29,6 +30,7 @@ interface Props {
   /** Appended to every request; undefined for a shop owner, who is scoped
    *  server-side regardless of what they send. */
   storeQuery:   string;
+  steps:        ProgressStep[];
   completeStepId: string | undefined;
   onClose:      () => void;
   onChanged:    () => void;
@@ -54,11 +56,8 @@ const QK = {
 const fmtDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null;
 
-/** The stages a seller drives. COMPLETED, CANCELLED and REFUNDED each have
- *  their own action and are not set from here. */
-const STAGE_OPTIONS = ['CONFIRMED', 'IN_PRODUCTION', 'SHIPPED', 'DELIVERED'];
 export function OrderPanel({
-  storeOrderId, storeQuery, completeStepId,
+  storeOrderId, storeQuery, steps, completeStepId,
   onClose, onChanged, onEditShipBy, onToggleGift, onCancel, onRefund, onPrint,
   focusMessaging,
 }: Props) {
@@ -196,26 +195,15 @@ export function OrderPanel({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  /**
-   * The buyer-facing stage, which nothing else in the seller's tools could
-   * move. SHIPPED arrived from the dispatch form, DELIVERED from the carrier
-   * webhook, COMPLETED from the step machine — and IN_PRODUCTION from
-   * nowhere at all. Going backwards after a mistake was impossible.
-   */
-  /**
-   * This shop's own stage, not the order's.
-   *
-   * It used to PATCH the ORDER's status, which on a basket split between two
-   * vendors would have let one shop speak for the other — and which never
-   * matched the badge in the queue, because that badge reads the shop's row.
-   * The order's status is derived from its shops now, so this writes the one
-   * record this panel is actually about and the rest follows.
-   */
-  const setOrderStatus = useMutation({
-    mutationFn: ({ status }: { status: string }) =>
-      api.patch(`${API_ROUTES.ADMIN.ORDER_STAGE(storeOrderId)}${storeQuery}`, { status }),
+  /** Moves this order through the same shop-defined workflow shown as tabs. */
+  const moveOrder = useMutation({
+    mutationFn: ({ stepId }: { stepId: string }) =>
+      api.post(`${API_ROUTES.ADMIN.ORDER_PROGRESS_MOVE}${storeQuery}`, {
+        storeOrderIds: [storeOrderId],
+        stepId,
+      }),
     onSuccess: () => {
-      toast.success('Stage updated');
+      toast.success('Progress updated');
       qc.invalidateQueries({ queryKey: QK.detail(storeOrderId) });
       onChanged();
     },
@@ -292,44 +280,16 @@ export function OrderPanel({
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2">
-                  {/* The shared status picker, the same one the order
-                      detail page uses, so a status looks identical
-                      wherever it appears — a coloured chip, not a line of
-                      plain text in a native menu.
-
-                      COMPLETED is not offered: it belongs to the step
-                      machine and the API refuses it on this route, so
-                      listing it would be a row that can only ever error.
-
-                      SHIPPED is offered but refused, with the reason shown
-                      beside it. The dispatch form is what sets it, and that
-                      form also stores the tracking number, registers the
-                      carrier tracker and emails the buyer — none of which a
-                      bare status write does. */}
-                  {/* Both statuses, labelled, because the panel carries two
-                      and neither name is obvious on its own. This picker is
-                      THIS SHOP's stage; the line under it is what the buyer
-                      is being told, derived from every shop in the basket.
-                      On a single-shop order the two always agree, which is
-                      exactly why the difference has to be visible on the one
-                      that does not. */}
+                  {/* The editable value is the shop's workflow step, matching
+                      the tabs. The technical buyer lifecycle stays read-only
+                      below because dispatch/carrier actions own that value. */}
                   <div className="w-52">
-                    <p className="mb-1 text-xs font-medium text-muted">This shop</p>
-                    <StatusSelect
-                      value={detail.status}
-                      disabled={setOrderStatus.isPending}
-                      options={STAGE_OPTIONS}
-                      disabledReason={(s) =>
-                        s === 'SHIPPED' && detail.status !== 'SHIPPED'
-                          ? 'use Mark as dispatched'
-                          // Always, including when it IS the current value:
-                          // the API refuses it either way, so an enabled row
-                          // could only ever produce an error toast.
-                          : s === 'COMPLETED'
-                            ? 'use the Completed step'
-                            : undefined
-                      }
-                      onChange={(status) => setOrderStatus.mutate({ status })}
+                    <p className="mb-1 text-xs font-medium text-muted">Order progress</p>
+                    <OrderProgressSelect
+                      value={detail.step}
+                      steps={steps}
+                      disabled={moveOrder.isPending}
+                      onChange={(nextStepId) => moveOrder.mutate({ stepId: nextStepId })}
                     />
                     {/* Read-only: the buyer's view is the LEAST advanced shop
                         in the basket, so it is not this shop's to set. */}

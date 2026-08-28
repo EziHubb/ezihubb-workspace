@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Archive, Loader2, MailOpen, Mail, Search, ShieldAlert, Star, Tag, Trash2, Undo2, X,
+  Archive, Inbox, Loader2, MailOpen, Mail, Search, ShieldAlert, Star, Tag, Trash2, X,
 } from 'lucide-react';
 import { API_ROUTES, newClientMessageId } from '@ezihubb/constants';
 import { api } from '../../../lib/api-client';
@@ -130,6 +130,11 @@ export default function MessagesPage() {
   const [page,     setPage]     = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
+  // The last (thread, newest message) successfully submitted as read. Kept
+  // near the bulk mutation because "Mark unread" must invalidate this guard:
+  // otherwise reopening the same unchanged thread is mistaken for a duplicate
+  // read and its unread badge can never clear.
+  const lastRead = useRef<string | null>(null);
 
   /**
    * `?c=<id>` opens a thread directly — the order panel's "Open full
@@ -305,6 +310,11 @@ export default function MessagesPage() {
   const bulk = useMutation({
     mutationFn: ({ ids, action }: { ids: string[]; action: BulkAction }) =>
       api.post(API_ROUTES.ADMIN.CONVERSATIONS_BULK, { conversationIds: ids, action }),
+    onMutate: ({ ids, action }) => {
+      if (action === 'unread' && ids.some((id) => lastRead.current?.startsWith(`${id}:`))) {
+        lastRead.current = null;
+      }
+    },
     onSuccess: () => {
       setSelected(new Set());
       refetchLists();
@@ -432,19 +442,6 @@ export default function MessagesPage() {
 
   const rows    = useMemo(() => listQuery.data?.items ?? [], [listQuery.data]);
 
-  /**
-   * Restore appears whenever something filed is selected, not only inside
-   * Trash and Spam.
-   *
-   * Archived threads have no folder of their own — the reference offers
-   * Archive as an action, not a place — so they surface under All. Gating
-   * Restore on the folder meant archiving was a one-way trip: the thread was
-   * visible in All with no way to bring it back.
-   */
-  const anyFiledSelected = useMemo(
-    () => rows.some((r) => selected.has(r.id) && ['ARCHIVED', 'TRASHED', 'SPAM'].includes(r.status)),
-    [rows, selected],
-  );
   const counts  = foldersQuery.data;
   const allLabels = labelsQuery.data ?? [];
   const thread  = threadQuery.data ?? null;
@@ -487,8 +484,6 @@ export default function MessagesPage() {
    * here: one request per (thread, newest message) and no more. Without it a
    * reader resting at the bottom would post a read on every scroll event.
    */
-  const lastRead = useRef<string | null>(null);
-
   const markSeen = useCallback(() => {
     if (!activeId) return;
     const newest = threadMessages[threadMessages.length - 1]?.id ?? '';
@@ -527,24 +522,16 @@ export default function MessagesPage() {
 
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
 
-  // flex-1, not a height. Two earlier versions of this line were both wrong:
-  // h-[calc(100dvh-4rem)] guessed the chrome twice and missed twice — the
-  // mobile bar is h-14, not 4rem, and the calc did not know <main> has
-  // padding — so the box came out ~40px too tall and the page scrolled.
-  // h-full then went the other way and collapsed to content height, leaving
-  // a short card in a full-height layout, because a percentage needs a
-  // SPECIFIED height to resolve against and flex-1 on <main> only gives a
-  // used one.
-  //
-  // <main> is a flex column now, so this measures nothing and guesses
-  // nothing: it takes the space that is left. min-h-0 because a flex item
-  // will not shrink below its content without it, and the panes inside
-  // scroll.
+  // The layout's <main> has a definite zero flex basis, so this can consume
+  // exactly its remaining content box without guessing at mobile chrome or
+  // padding. Its own h-0/min-h-0 chain prevents a long thread's min-content
+  // height from growing the document; overflow belongs to the list/thread
+  // panes inside instead.
   //
   // No padding here either: <main> already applies it, and adding p-4 on top
   // made 32px of gutter on each side of a 390px phone.
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex h-0 min-h-0 flex-1 flex-col overflow-hidden">
       <div className="mb-4 flex items-center justify-between gap-4">
         <AdminPageHeader title="Messages" />
         <div className="flex items-center gap-3">
@@ -624,11 +611,9 @@ export default function MessagesPage() {
             <ToolbarButton icon={Trash2}     label="Trash"       onClick={() => act('trash')}   disabled={!selected.size} />
             <ToolbarButton icon={Mail}       label="Mark unread" onClick={() => act('unread')}  disabled={!selected.size} />
             <ToolbarButton icon={MailOpen}   label="Mark read"   onClick={() => act('read')}    disabled={!selected.size} />
+            <ToolbarButton icon={Inbox}      label="Move to inbox" onClick={() => act('restore')} disabled={!selected.size} />
             <ToolbarButton icon={ShieldAlert} label="Spam"       onClick={() => act('spam')}    disabled={!selected.size} />
             <ToolbarButton icon={Archive}    label="Archive"     onClick={() => act('archive')} disabled={!selected.size} />
-            {anyFiledSelected && (
-              <ToolbarButton icon={Undo2} label="Restore" onClick={() => act('restore')} disabled={!selected.size} />
-            )}
 
             {canWriteShopData && (
               <div className="relative ml-auto">
@@ -723,6 +708,7 @@ export default function MessagesPage() {
                     </button>
                     <ToolbarButton icon={Trash2}      label="Trash"   onClick={() => { bulk.mutate({ ids: [thread.id], action: 'trash' }); setActiveId(null); }} />
                     <ToolbarButton icon={Mail}        label="Unread"  onClick={() => { bulk.mutate({ ids: [thread.id], action: 'unread' }); setActiveId(null); }} />
+                    <ToolbarButton icon={Inbox}       label="Move to inbox" onClick={() => { bulk.mutate({ ids: [thread.id], action: 'restore' }); setActiveId(null); }} />
                     <ToolbarButton icon={ShieldAlert} label="Spam"    onClick={() => { bulk.mutate({ ids: [thread.id], action: 'spam' }); setActiveId(null); }} />
                     <ToolbarButton icon={Archive}     label="Archive" onClick={() => { bulk.mutate({ ids: [thread.id], action: 'archive' }); setActiveId(null); }} />
                     <button

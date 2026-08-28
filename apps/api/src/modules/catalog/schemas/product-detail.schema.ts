@@ -39,6 +39,7 @@ class CustomOption {
   @Prop({ default: '' }) placeholder!: string;
   @Prop({ default: 250 }) maxLength!: number;
   @Prop({ default: false }) isMultiline!: boolean;
+  @Prop({ default: false }) allowFileUpload!: boolean;
   @Prop({ type: [String], default: [] }) choices!: string[];
   @Prop({ default: false }) allowMultiSelect!: boolean;
   @Prop({ type: [String], default: ['image/*'] }) acceptedFileTypes!: string[];

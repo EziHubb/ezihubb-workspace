@@ -177,6 +177,7 @@ class CustomOptionCreateDto {
   @IsOptional() @IsString() placeholder?: string;
   @IsOptional() @IsNumber() maxLength?: number;
   @IsOptional() @IsBoolean() isMultiline?: boolean;
+  @IsOptional() @IsBoolean() allowFileUpload?: boolean;
   @IsOptional() @IsArray() @IsString({ each: true }) choices?: string[];
   @IsOptional() @IsBoolean() allowMultiSelect?: boolean;
   @IsOptional() @IsArray() @IsString({ each: true }) acceptedFileTypes?: string[];

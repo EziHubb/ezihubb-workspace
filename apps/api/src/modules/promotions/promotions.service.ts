@@ -246,7 +246,153 @@ export class PromotionsService {
       this.prisma.promotion.count({ where }),
     ]);
 
-    return paginatedResponse(promotions.map(this.mapToDto), page, limit, total);
+    const revenueByPromotion = query.autoApply
+      ? await this.getAutoApplyRevenue(promotions)
+      : new Map<string, number>();
+
+    return paginatedResponse(
+      promotions.map((promotion) => ({
+        ...this.mapToDto(promotion),
+        ...(promotion.autoApply
+          ? { revenue: revenueByPromotion.get(promotion.id) ?? 0 }
+          : {}),
+      })),
+      page,
+      limit,
+      total,
+    );
+  }
+
+  /**
+   * Attributes paid line-item revenue to the auto-apply sale that actually
+   * won checkout's best-price comparison.
+   *
+   * Promotions overlap routinely (for example 30% and 50% shop-wide sales).
+   * Summing every order placed inside each sale window would credit the same
+   * purchase twice. Re-running the same winner rule used by checkout assigns
+   * each line to one promotion and also recovers orders created before sale
+   * attribution was exposed in the reporting UI.
+   */
+  private async getAutoApplyRevenue(
+    pagePromotions: Array<{
+      id: string;
+      storeId: string | null;
+      autoApply: boolean;
+    }>,
+  ): Promise<Map<string, number>> {
+    const storeIds = [...new Set(
+      pagePromotions
+        .filter((promotion) => promotion.autoApply && promotion.storeId)
+        .map((promotion) => promotion.storeId as string),
+    )];
+    if (storeIds.length === 0) return new Map();
+
+    // Include competing sales, not only the five rows shown on the page. A
+    // hidden 50% sale must beat a visible 30% sale exactly as it did at
+    // checkout, otherwise both rows claim the same order.
+    const competitors = await this.prisma.promotion.findMany({
+      where: {
+        storeId: { in: storeIds },
+        autoApply: true,
+        type: { in: [DiscountType.PERCENTAGE, DiscountType.FIXED_AMOUNT] },
+      },
+      select: {
+        id: true,
+        storeId: true,
+        type: true,
+        value: true,
+        startsAt: true,
+        expiresAt: true,
+        country: true,
+        scope: true,
+        products: { select: { productId: true } },
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+    if (competitors.length === 0) return new Map();
+
+    const starts = competitors
+      .map((promotion) => promotion.startsAt)
+      .filter((date): date is Date => date !== null);
+    const firstPromotionStart = starts.length
+      ? new Date(Math.min(...starts.map((date) => date.getTime())))
+      : undefined;
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+    const earliestStart = firstPromotionStart && firstPromotionStart > thirtyDaysAgo
+      ? firstPromotionStart
+      : thirtyDaysAgo;
+
+    const items = await this.prisma.orderItem.findMany({
+      where: {
+        storeId: { in: storeIds },
+        order: {
+          createdAt: { gte: earliestStart },
+          payment: { is: { status: 'PAID' } },
+        },
+      },
+      select: {
+        productId: true,
+        quantity: true,
+        unitPrice: true,
+        product: { select: { basePrice: true } },
+        variant: { select: { price: true } },
+        order: { select: { createdAt: true, shippingCountry: true } },
+        storeId: true,
+      },
+    });
+
+    const shownIds = new Set(pagePromotions.map((promotion) => promotion.id));
+    const revenue = new Map<string, number>();
+
+    for (const item of items) {
+      const originalPrice = Number(item.variant?.price ?? item.product?.basePrice ?? item.unitPrice);
+      let winningId: string | null = null;
+      let winningPrice = originalPrice;
+
+      for (const promotion of competitors) {
+        if (promotion.storeId !== item.storeId) continue;
+        if (promotion.startsAt && item.order.createdAt < promotion.startsAt) continue;
+        if (promotion.expiresAt && item.order.createdAt > promotion.expiresAt) continue;
+        if (
+          promotion.country
+          && item.order.shippingCountry
+          && promotion.country.toUpperCase() !== item.order.shippingCountry.toUpperCase()
+        ) continue;
+        if (
+          promotion.scope === PromotionScope.SPECIFIC_LISTINGS
+          && !promotion.products.some((product) => product.productId === item.productId)
+        ) continue;
+
+        const discounted = promotion.type === DiscountType.PERCENTAGE
+          ? originalPrice - Math.round(originalPrice * Number(promotion.value)) / 100
+          : Math.max(0, originalPrice - Number(promotion.value));
+        const rounded = Math.round(Math.max(0, discounted) * 100) / 100;
+        // The window/scope alone is not enough for historical attribution: a
+        // sale may have been paused at the time. The charged unit price is the
+        // immutable checkout snapshot, so only a promotion that reproduces
+        // that price may claim the line.
+        if (Math.abs(rounded - Number(item.unitPrice)) <= 0.01 && rounded < winningPrice) {
+          winningPrice = rounded;
+          winningId = promotion.id;
+        }
+      }
+
+      if (winningId && shownIds.has(winningId)) {
+        revenue.set(
+          winningId,
+          (revenue.get(winningId) ?? 0) + Number(item.unitPrice) * item.quantity,
+        );
+      }
+    }
+
+    return new Map(
+      [...revenue.entries()].map(([promotionId, amount]) => [
+        promotionId,
+        Math.round(amount * 100) / 100,
+      ]),
+    );
   }
 
   /** storeId undefined = platform context (no ownership check); set = must match exactly. */

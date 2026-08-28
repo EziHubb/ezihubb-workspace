@@ -82,17 +82,45 @@ interface UploadedCustomOptionFile {
   sizeBytes: number;
 }
 
-type CustomOptionAnswer = string | string[] | boolean | UploadedCustomOptionFile;
+interface TextWithFileAnswer {
+  text: string;
+  file?: UploadedCustomOptionFile;
+}
+
+type CustomOptionAnswer = string | string[] | boolean | UploadedCustomOptionFile | TextWithFileAnswer;
 
 function isUploadedFile(value: CustomOptionAnswer | undefined): value is UploadedCustomOptionFile {
   return !!value && typeof value === 'object' && !Array.isArray(value) && 'url' in value;
 }
 
-function hasCustomOptionAnswer(value: CustomOptionAnswer | undefined): boolean {
+function isTextWithFileAnswer(value: CustomOptionAnswer | undefined): value is TextWithFileAnswer {
+  return !!value && typeof value === 'object' && !Array.isArray(value) && 'text' in value;
+}
+
+function textAnswerOf(value: CustomOptionAnswer | undefined): string {
+  if (typeof value === 'string') return value;
+  return isTextWithFileAnswer(value) ? value.text : '';
+}
+
+function fileAnswerOf(value: CustomOptionAnswer | undefined): UploadedCustomOptionFile | undefined {
+  if (isUploadedFile(value)) return value;
+  return isTextWithFileAnswer(value) ? value.file : undefined;
+}
+
+function hasAnyCustomOptionAnswer(value: CustomOptionAnswer | undefined): boolean {
   if (typeof value === 'string') return value.trim().length > 0;
   if (Array.isArray(value)) return value.length > 0;
   if (typeof value === 'boolean') return value;
-  return isUploadedFile(value);
+  if (isUploadedFile(value)) return true;
+  return isTextWithFileAnswer(value)
+    && (value.text.trim().length > 0 || isUploadedFile(value.file));
+}
+
+function hasRequiredCustomOptionAnswer(option: CustomOption, value: CustomOptionAnswer | undefined): boolean {
+  if (option.type === 'TEXT_BOX' && option.allowFileUpload) {
+    return textAnswerOf(value).trim().length > 0 && isUploadedFile(fileAnswerOf(value));
+  }
+  return hasAnyCustomOptionAnswer(value);
 }
 
 // ── InDemandBadge ─────────────────────────────────────────────────────────────
@@ -425,6 +453,64 @@ function QuantityDropdown({
 
 // ── CustomOptionsFields ──────────────────────────────────────────────────────
 
+function CompactFileUpload({
+  option,
+  file,
+  uploading,
+  onFileChange,
+  onRemove,
+}: {
+  option: CustomOption;
+  file: UploadedCustomOptionFile | undefined;
+  uploading: boolean;
+  onFileChange: (file: File) => void;
+  onRemove: () => void;
+}) {
+  const t = useTranslations('product.purchasePanel');
+
+  return (
+    <div className="flex min-h-11 items-center gap-2 border-t border-border bg-background/60 px-3 py-2">
+      {file ? (
+        <>
+          <Paperclip className="h-4 w-4 shrink-0 text-primary" />
+          <span className="min-w-0 flex-1 truncate text-xs font-medium text-secondary">{file.name}</span>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="rounded-full p-1 text-muted hover:bg-red-50 hover:text-red-600"
+            aria-label={t('removeUploadedFile')}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </>
+      ) : (
+        <label className={`inline-flex min-w-0 cursor-pointer items-center gap-2 text-xs font-semibold ${uploading ? 'text-muted' : 'text-primary hover:text-primary-dark'}`}>
+          {uploading
+            ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+            : <Paperclip className="h-4 w-4 shrink-0" />}
+          <span>{uploading ? t('uploadingFile') : t('chooseFile')}</span>
+          <input
+            type="file"
+            className="sr-only"
+            disabled={uploading}
+            accept={(option.acceptedFileTypes?.length ? option.acceptedFileTypes : ['image/*']).join(',')}
+            onChange={(event) => {
+              const picked = event.target.files?.[0];
+              if (picked) onFileChange(picked);
+              event.currentTarget.value = '';
+            }}
+          />
+        </label>
+      )}
+      {!file && !uploading && (
+        <span className="ml-auto shrink-0 text-[11px] text-muted">
+          ≤ {option.maxFileSizeMB || 10} MB
+        </span>
+      )}
+    </div>
+  );
+}
+
 function CustomOptionsFields({
   options,
   values,
@@ -450,6 +536,9 @@ function CustomOptionsFields({
       {options.map((option) => {
         const value = values[option.id];
         const error = errors[option.id];
+        const textValue = textAnswerOf(value);
+        const uploadedFile = fileAnswerOf(value);
+        const combinesTextAndFile = option.type === 'TEXT_BOX' && option.allowFileUpload;
         const inputClass = [
           'w-full border rounded-lg px-3 py-2.5 text-sm bg-white text-secondary',
           'focus:outline-none focus:ring-2 focus:ring-primary/20',
@@ -466,25 +555,56 @@ function CustomOptionsFields({
               <p className="text-xs text-muted mb-1.5">{option.instructionText}</p>
             )}
 
-            {option.type === 'TEXT_BOX' && (option.isMultiline ? (
-              <textarea
-                value={typeof value === 'string' ? value : ''}
-                onChange={(event) => onChange(option.id, event.target.value)}
-                placeholder={option.placeholder}
-                maxLength={option.maxLength || 250}
-                rows={4}
-                className={`${inputClass} resize-y`}
-              />
-            ) : (
-              <input
-                type="text"
-                value={typeof value === 'string' ? value : ''}
-                onChange={(event) => onChange(option.id, event.target.value)}
-                placeholder={option.placeholder}
-                maxLength={option.maxLength || 250}
-                className={inputClass}
-              />
-            ))}
+            {option.type === 'TEXT_BOX' && (
+              combinesTextAndFile ? (
+                <div className={`overflow-hidden rounded-lg border bg-white ${error ? 'border-red-500' : 'border-border focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20'}`}>
+                  {option.isMultiline ? (
+                    <textarea
+                      value={textValue}
+                      onChange={(event) => onChange(option.id, { text: event.target.value, file: uploadedFile })}
+                      placeholder={option.placeholder}
+                      maxLength={option.maxLength || 250}
+                      rows={3}
+                      className="block w-full resize-y border-0 bg-white px-3 py-2.5 text-sm text-secondary focus:outline-none focus:ring-0"
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={textValue}
+                      onChange={(event) => onChange(option.id, { text: event.target.value, file: uploadedFile })}
+                      placeholder={option.placeholder}
+                      maxLength={option.maxLength || 250}
+                      className="block w-full border-0 bg-white px-3 py-2.5 text-sm text-secondary focus:outline-none focus:ring-0"
+                    />
+                  )}
+                  <CompactFileUpload
+                    option={option}
+                    file={uploadedFile}
+                    uploading={uploadingOptionId === option.id}
+                    onFileChange={(file) => onFileChange(option, file)}
+                    onRemove={() => onChange(option.id, { text: textValue })}
+                  />
+                </div>
+              ) : option.isMultiline ? (
+                <textarea
+                  value={textValue}
+                  onChange={(event) => onChange(option.id, event.target.value)}
+                  placeholder={option.placeholder}
+                  maxLength={option.maxLength || 250}
+                  rows={4}
+                  className={`${inputClass} resize-y`}
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={textValue}
+                  onChange={(event) => onChange(option.id, event.target.value)}
+                  placeholder={option.placeholder}
+                  maxLength={option.maxLength || 250}
+                  className={inputClass}
+                />
+              )
+            )}
 
             {option.type === 'LIST_OF_OPTIONS' && (option.allowMultiSelect ? (
               <div className={`space-y-2 rounded-lg border px-3 py-2.5 ${error ? 'border-red-500' : 'border-border'}`}>
@@ -583,7 +703,7 @@ function CustomOptionsFields({
             {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
             {option.type === 'TEXT_BOX' && option.maxLength > 0 && (
               <p className="text-xs text-muted text-right mt-0.5">
-                {typeof value === 'string' ? value.length : 0}/{option.maxLength}
+                {textValue.length}/{option.maxLength}
               </p>
             )}
             {option.type === 'FILE_UPLOAD' && !isUploadedFile(value) && (
@@ -849,7 +969,25 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       } & Partial<UploadedCustomOptionFile>;
       if (!response.ok) throw new Error(body.message || tPanel('fileUploadFailed'));
       const uploaded = (body.data ?? body) as UploadedCustomOptionFile;
-      setCustomOptionValue(option.id, uploaded);
+      if (option.type === 'TEXT_BOX' && option.allowFileUpload) {
+        // Preserve the latest text even when the buyer keeps typing while the
+        // upload request is in flight.
+        setCustomOptionValues((previous) => ({
+          ...previous,
+          [option.id]: {
+            text: textAnswerOf(previous[option.id]),
+            file: uploaded,
+          },
+        }));
+        setCustomOptionErrors((previous) => {
+          if (!previous[option.id]) return previous;
+          const next = { ...previous };
+          delete next[option.id];
+          return next;
+        });
+      } else {
+        setCustomOptionValue(option.id, uploaded);
+      }
     } catch (error) {
       setCustomOptionErrors((previous) => ({
         ...previous,
@@ -888,7 +1026,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
     }
 
     const missingCustomOptions = customOptions.filter(
-      (option) => option.required && !hasCustomOptionAnswer(customOptionValues[option.id]),
+      (option) => option.required && !hasRequiredCustomOptionAnswer(option, customOptionValues[option.id]),
     );
     if (missingCustomOptions.length > 0) {
       const errors = Object.fromEntries(
@@ -905,9 +1043,19 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
     setIsAdding(true);
     try {
       const submittedCustomOptions = customOptions
-        .filter((option) => hasCustomOptionAnswer(customOptionValues[option.id]))
+        .filter((option) => hasAnyCustomOptionAnswer(customOptionValues[option.id]))
         .map((option) => {
           const value = customOptionValues[option.id];
+          if (option.type === 'TEXT_BOX' && option.allowFileUpload) {
+            const file = fileAnswerOf(value);
+            return {
+              id: option.id,
+              label: option.label,
+              type: option.type,
+              value: textAnswerOf(value).trim(),
+              ...(file ? { file } : {}),
+            };
+          }
           return isUploadedFile(value)
             ? { id: option.id, label: option.label, type: option.type, file: value }
             : {

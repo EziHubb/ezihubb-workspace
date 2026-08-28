@@ -515,10 +515,7 @@ export default function MarketingSalesPage() {
                           </div>
                         </td>
                         <td className="py-2.5 px-3">{p.value}%</td>
-                        {/* Etsy's real column set here is Offers granted/Purchases/Conversion
-                            rate/Revenue — a full view→offer→purchase funnel we don't track
-                            per-promotion yet. Revenue shows 0 rather than a fabricated number. */}
-                        <td className="py-2.5 px-3 text-right tabular-nums">{fmtAmount(0)}</td>
+                        <td className="py-2.5 px-3 text-right tabular-nums">{fmtAmount(p.revenue ?? 0)}</td>
                       </tr>
                     ))}
                   </tbody>

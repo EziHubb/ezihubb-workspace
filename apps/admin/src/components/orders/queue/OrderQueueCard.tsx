@@ -9,7 +9,7 @@ import {
 import { UpdateProgressMenu } from './UpdateProgressMenu';
 import type { ProgressStep, QueueOrder } from './types';
 import { CompleteOrderModal } from './CompleteOrderModal';
-import { OrderStatusBadge } from '../OrderStatusBadge';
+import { OrderProgressBadge } from './OrderProgressBadge';
 
 /**
  * One store order, as the seller works it.
@@ -20,24 +20,16 @@ import { OrderStatusBadge } from '../OrderStatusBadge';
  */
 
 /**
- * The left stripe per status.
+ * The left stripe follows the shop-defined workflow step.
  *
- * Deliberately the same colour family as OrderStatusBadge's chip, so the
+ * Deliberately the same colour family as OrderProgressBadge's chip, so the
  * stripe and the label never disagree about what a colour means. Anything
- * unmapped gets no stripe rather than a grey one — an unknown status should
- * look unknown, not resolved.
+ * unmapped gets no stripe rather than a grey one.
  */
-const STATUS_ACCENT: Record<string, string> = {
-  PENDING_PAYMENT:  'border-l-yellow-400',
-  CONFIRMED:        'border-l-blue-400',
-  IN_PRODUCTION:    'border-l-purple-400',
-  SHIPPED:          'border-l-cyan-400',
-  DELIVERED:        'border-l-teal-400',
-  COMPLETED:        'border-l-green-500',
-  CANCELLED:        'border-l-red-400',
-  REFUND_REQUESTED: 'border-l-orange-400',
-  REFUNDED:         'border-l-gray-400',
-  DISPUTED:         'border-l-red-500',
+const STEP_ACCENT: Record<string, string> = {
+  NEW:       'border-l-blue-400',
+  CUSTOM:    'border-l-purple-400',
+  COMPLETED: 'border-l-green-500',
 };
 
 interface Props {
@@ -122,11 +114,9 @@ export function OrderQueueCard({
 
   return (
     // The stripe is for peripheral vision and the badge below is for certainty.
-    // The queue rendered every order identically, so telling a cancelled order
-    // from one waiting to ship meant opening each in turn.
-    // last:rounded-b-card so the status stripe on the bottom card follows the
+    // last:rounded-b-card so the step stripe on the bottom card follows the
     // section's rounded corner. The section no longer clips it into shape.
-    <div className={`flex flex-col gap-4 border-b border-l-4 border-border px-5 py-5 last:rounded-b-card last:border-b-0 sm:flex-row ${STATUS_ACCENT[order.status] ?? 'border-l-transparent'}`}>
+    <div className={`flex flex-col gap-4 border-b border-l-4 border-border px-5 py-5 last:rounded-b-card last:border-b-0 sm:flex-row ${STEP_ACCENT[order.step?.kind ?? ''] ?? 'border-l-transparent'}`}>
       <input
         type="checkbox"
         checked={selected}
@@ -164,7 +154,7 @@ export function OrderQueueCard({
           {/* The label the stripe cannot give. A colour alone is a code the
               reader has to learn, and is invisible to anyone who cannot
               separate these hues. */}
-          <OrderStatusBadge status={order.status} size="sm" />
+          <OrderProgressBadge step={order.step} size="sm" />
         </div>
 
         {order.couponCode && (

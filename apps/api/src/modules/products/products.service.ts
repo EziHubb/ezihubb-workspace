@@ -488,7 +488,9 @@ export class ProductsService {
     const detail = await this.productDetailModel.findOne({ productId }).lean().exec();
     const option = detail?.customOptions?.find((item) => item.id === optionId);
 
-    if (!option || option.type !== 'FILE_UPLOAD') {
+    const supportsUpload = option?.type === 'FILE_UPLOAD'
+      || (option?.type === 'TEXT_BOX' && option.allowFileUpload === true);
+    if (!option || !supportsUpload) {
       throw new NotFoundException({
         code: 'ERR_NOT_FOUND',
         message: 'File upload option not found',
@@ -1810,7 +1812,7 @@ export class ProductsService {
 
   async createCustomOption(
     productId: string,
-    dto: { type: string; label: string; required?: boolean; instructionText?: string; placeholder?: string; maxLength?: number; isMultiline?: boolean; choices?: string[]; allowMultiSelect?: boolean; acceptedFileTypes?: string[]; maxFileSizeMB?: number },
+    dto: { type: string; label: string; required?: boolean; instructionText?: string; placeholder?: string; maxLength?: number; isMultiline?: boolean; allowFileUpload?: boolean; choices?: string[]; allowMultiSelect?: boolean; acceptedFileTypes?: string[]; maxFileSizeMB?: number },
   ) {
     const detail = await this.getOrCreateDetail(productId);
     const raw    = (detail as unknown as Record<string, unknown>);

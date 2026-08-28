@@ -32,12 +32,23 @@ export function CustomizationPreviewModal({
         if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return [];
         const option = entry as Record<string, unknown>;
         const label = typeof option.label === 'string' ? option.label : '';
+        if (!label) return [];
+        const fields: [string, unknown][] = [];
+        const value = option.value;
+        if (
+          (typeof value === 'string' && value.trim())
+          || typeof value === 'number'
+          || typeof value === 'boolean'
+          || (Array.isArray(value) && value.length > 0)
+        ) {
+          fields.push([label, value]);
+        }
         const file = option.file;
         if (file && typeof file === 'object' && !Array.isArray(file)) {
           const name = (file as Record<string, unknown>).name;
-          return label && typeof name === 'string' ? [[label, name] as [string, unknown]] : [];
+          if (typeof name === 'string') fields.push([`${label} file`, name]);
         }
-        return label ? [[label, option.value] as [string, unknown]] : [];
+        return fields;
       })
     : [];
   const legacyFields = Object.entries(customizationData).filter(

@@ -50,19 +50,18 @@ export default async function AdminLayout({
       <AdminSidebar />
 
       {/* Right column: mobile top bar + scrollable content */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <AdminMobileNav />
 
         {/* Renders nothing — it owns the tab title, and lives here so the
             count survives navigation between admin pages the way the
             sidebar's own socket listener does. */}
         <TabTitleBadge />
-        {/* flex flex-col, so a page that wants to fill the screen can say
-            so with flex-1 instead of a percentage. h-full does not work here:
-            it needs a specified height to resolve against and flex-1 only
-            provides a used one, which is how the inbox ended up as a short
-            card floating in a full-height layout. */}
-        <main className="flex flex-1 flex-col overflow-y-auto p-3 sm:p-4 lg:p-8 min-w-0">
+        {/* h-0 supplies a definite flex basis and min-h-0 lets this item
+            shrink below the inbox's min-content height. Regular pages still
+            scroll on main; full-height pages can pass the remaining space to
+            their own internal panes without growing the document. */}
+        <main className="flex h-0 min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-3 sm:p-4 lg:p-8">
           {children}
         </main>
       </div>

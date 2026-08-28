@@ -228,6 +228,9 @@ export interface ProductCustomOptionDto {
   placeholder: string;
   maxLength: number;
   isMultiline: boolean;
+  /** A TEXT_BOX can collect one reference file without requiring a separate
+   * FILE_UPLOAD option with the same label. */
+  allowFileUpload: boolean;
   choices: string[];
   allowMultiSelect: boolean;
   acceptedFileTypes: string[];

@@ -45,6 +45,7 @@ export interface CustomOption {
   placeholder?:       string;
   maxLength?:         number;
   isMultiline?:       boolean;
+  allowFileUpload?:   boolean;
   choices?:           string[];
   allowMultiSelect?:  boolean;
   acceptedFileTypes?: string[];
@@ -59,6 +60,7 @@ interface CustomOptionFormValues {
   placeholder:        string;
   maxLength:          number;
   isMultiline:        boolean;
+  allowFileUpload:    boolean;
   choices:            string[];
   allowMultiSelect:   boolean;
   acceptedFileTypes:  string[];
@@ -190,7 +192,9 @@ function SortableCustomOptionCard({
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-semibold text-sm text-secondary">{option.label || '(Untitled)'}</span>
           <span className="text-muted text-xs">·</span>
-          <span className="text-sm text-muted">{TYPE_LABELS[option.type]}</span>
+          <span className="text-sm text-muted">
+            {TYPE_LABELS[option.type]}{option.type === 'TEXT_BOX' && option.allowFileUpload ? ' + file upload' : ''}
+          </span>
           <span className="text-muted text-xs">·</span>
           <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${option.required ? 'bg-amber-50 text-amber-700' : 'bg-muted/10 text-muted'}`}>
             {option.required ? 'Required' : 'Optional'}
@@ -252,6 +256,7 @@ function CustomOptionSheet({
         placeholder:       option?.placeholder       ?? '',
         maxLength:         option?.maxLength         ?? 250,
         isMultiline:       option?.isMultiline       ?? false,
+        allowFileUpload:   option?.allowFileUpload   ?? false,
         choices:           option?.choices           ?? [],
         allowMultiSelect:  option?.allowMultiSelect  ?? false,
         acceptedFileTypes: option?.acceptedFileTypes ?? ['image/*'],
@@ -363,6 +368,19 @@ function CustomOptionSheet({
                   <p className="text-sm font-semibold text-secondary">Multi-line</p>
                   <Toggle checked={watch('isMultiline')} onChange={(v) => setValue('isMultiline', v)} />
                 </div>
+                <label className="flex cursor-pointer items-start gap-3 rounded-button border border-border bg-background px-3 py-3">
+                  <input
+                    type="checkbox"
+                    {...register('allowFileUpload')}
+                    className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-secondary">Allow file upload</span>
+                    <span className="mt-0.5 block text-xs text-muted">
+                      Show one compact attachment control below this text box.
+                    </span>
+                  </span>
+                </label>
               </>
             )}
 
@@ -387,7 +405,7 @@ function CustomOptionSheet({
             )}
 
             {/* ── FILE_UPLOAD fields ── */}
-            {type === 'FILE_UPLOAD' && (
+            {(type === 'FILE_UPLOAD' || (type === 'TEXT_BOX' && watch('allowFileUpload'))) && (
               <>
                 <div>
                   <FieldLabel>Accepted file types</FieldLabel>

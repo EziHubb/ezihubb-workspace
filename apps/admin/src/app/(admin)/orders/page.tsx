@@ -525,6 +525,7 @@ export default function OrdersPage() {
           key={panelId}
           storeOrderId={panelId}
           storeQuery={qs()}
+          steps={steps}
           completeStepId={completeStepId}
           focusMessaging={focusMessaging}
           onClose={() => { setPanelId(null); setFocusMessaging(false); }}

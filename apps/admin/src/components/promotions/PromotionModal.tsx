@@ -36,6 +36,8 @@ export interface Promotion extends Omit<PromotionFormData, 'code'> {
   country?:     string | null;
   termsAndConditions?: string | null;
   productIds?:  string[];
+  /** Paid item revenue attributed to this sale in the last 30 days. */
+  revenue?:      number;
 }
 
 const EMPTY_FORM: PromotionFormData = {

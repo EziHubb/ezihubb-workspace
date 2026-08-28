@@ -349,7 +349,11 @@ function useNavData() {
 
   const toggleStoreMode = () => {
     setStoreContext(inStoreMode ? null : ownStoreId);
-    window.location.reload();
+    // A full navigation is intentional: the dashboard and layout read the
+    // store-context cookie on the server. Replacing the current entry also
+    // prevents Back from reopening a route that may not belong to the newly
+    // selected account context.
+    window.location.replace('/dashboard');
   };
 
   return { name, email, initials, navSections, role, canSwitchToOwnStore, inStoreMode, toggleStoreMode };

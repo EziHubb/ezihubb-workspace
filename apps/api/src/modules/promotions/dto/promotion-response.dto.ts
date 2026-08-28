@@ -23,6 +23,8 @@ export class PromotionResponseDto {
   country?: string | null;
   termsAndConditions?: string | null;
   productIds?: string[];
+  /** Paid item revenue attributed to this auto-apply sale in the last 30 days. */
+  revenue?: number;
 }
 
 export class CouponValidationResultDto {

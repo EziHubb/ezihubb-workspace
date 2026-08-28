@@ -122,6 +122,7 @@ export class ProductCustomOptionResponseDto {
   @ApiProperty() placeholder: string;
   @ApiProperty() maxLength: number;
   @ApiProperty() isMultiline: boolean;
+  @ApiProperty() allowFileUpload: boolean;
   @ApiProperty({ type: [String] }) choices: string[];
   @ApiProperty() allowMultiSelect: boolean;
   @ApiProperty({ type: [String] }) acceptedFileTypes: string[];

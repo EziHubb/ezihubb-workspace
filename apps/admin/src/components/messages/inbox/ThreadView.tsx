@@ -317,7 +317,7 @@ export function ThreadView({
    * answer "show me what came before" by throwing the reader back to the
    * bottom.
    */
-  useEffect(() => {
+  useLayoutEffect(() => {
     const pane = paneRef.current;
     if (pane) pane.scrollTop = pane.scrollHeight;
   }, [conversation.id]);
