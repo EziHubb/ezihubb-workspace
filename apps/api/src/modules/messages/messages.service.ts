@@ -457,6 +457,27 @@ export class MessagesService {
     return { conversationId: created.id, created: true };
   }
 
+  /**
+   * Opens the one thread between a store and a registered buyer from the
+   * seller-side customer list. This is deliberately separate from the
+   * platform version above: a null-store conversation belongs to support and
+   * cannot be read from a shop inbox.
+   */
+  async findOrCreateStoreConversation(storeId: string, userId: string) {
+    const existing = await this.prisma.conversation.findFirst({
+      where:   { storeId, userId },
+      orderBy: { createdAt: 'asc' },
+      select:  { id: true },
+    });
+    if (existing) return { conversationId: existing.id, created: false };
+
+    const created = await this.prisma.conversation.create({
+      data:   { storeId, userId, status: ConversationStatus.OPEN },
+      select: { id: true },
+    });
+    return { conversationId: created.id, created: true };
+  }
+
   private async findOrCreateConversation(
     storeId:  string,
     buyer:    { userId?: string | null; guestEmail?: string | null; guestName?: string | null },

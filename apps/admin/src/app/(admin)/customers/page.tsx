@@ -16,6 +16,7 @@ import { api, adminApi } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { FilterSelect } from '../../../components/ui/FilterSelect';
 import { toast } from '../../../lib/store/toast.store';
+import { setStoreContext, useAdminMode } from '../../../lib/store-context';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -128,7 +129,7 @@ const PAGE_SIZE = 15;
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 /**
- * Opens the platform's own thread with a customer and goes to it.
+ * Opens the current shop's thread with a customer and goes to it.
  *
  * A component rather than a handler inside the column definitions: those
  * live in a useMemo with an empty dependency list, so a mutation created in
@@ -142,13 +143,31 @@ const PAGE_SIZE = 15;
  */
 function MessageCustomerButton({ userId }: { userId: string }) {
   const router = useRouter();
+  const {
+    ownStoreId,
+    canSwitchToOwnStore,
+    isPlatformContext,
+    isReady,
+  } = useAdminMode();
 
   const open = useMutation({
-    mutationFn: () =>
-      api.post<{ conversationId: string; created: boolean }>(
+    mutationFn: async () => {
+      // Customers is a platform page, while a customer conversation belongs
+      // to one shop. Set the same cookie the sidebar switcher uses BEFORE the
+      // request so both this API call and the /messages navigation are scoped
+      // to the seller's own store.
+      if (isPlatformContext) {
+        if (!canSwitchToOwnStore || !ownStoreId) {
+          throw new Error('Switch to a store before messaging a customer.');
+        }
+        setStoreContext(ownStoreId);
+      }
+
+      return api.post<{ conversationId: string; created: boolean }>(
         API_ROUTES.ADMIN.MESSAGE_WITH_USER,
         { userId },
-      ),
+      );
+    },
     // The inbox reads ?c= on mount and opens that thread, so the redirect
     // lands the seller straight in the conversation rather than on a list
     // they then have to search.
@@ -159,7 +178,7 @@ function MessageCustomerButton({ userId }: { userId: string }) {
   return (
     <button
       type="button"
-      disabled={open.isPending}
+      disabled={!isReady || open.isPending || (isPlatformContext && !canSwitchToOwnStore)}
       onClick={(e) => { e.stopPropagation(); open.mutate(); }}
       className="flex items-center gap-1.5 rounded px-2 py-1.5 text-xs font-medium text-secondary transition-colors hover:bg-secondary/5 disabled:opacity-50"
     >

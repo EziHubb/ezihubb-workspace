@@ -1,7 +1,6 @@
 import {
   Body,
   Delete,
-  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -117,30 +116,19 @@ export class AdminMessagesController {
   }
 
   @Post('conversations/with-user')
-  @ApiOperation({ summary: "Open (or reopen) the platform's own thread with a customer" })
+  @ApiOperation({ summary: "Open (or reopen) the current seat's thread with a customer" })
   async conversationWithUser(
     @Req() req: Request,
     @Body() dto: ConversationWithUserDto,
   ) {
-    /**
-     * Platform seats only, and the check is not a formality.
-     *
-     * A thread with no store is the PLATFORM talking to the customer. A shop
-     * owner opening one would be writing to a customer outside any shop
-     * context — past the store scoping that every other message route in this
-     * controller applies, and into an inbox their own seat cannot even read.
-     *
-     * A SUPER_ADMIN switched into their own store has a storeId here and is
-     * refused too, which is correct: in that seat they are acting as a shop,
-     * and a shop reaches a customer through its own thread.
-     */
     const context = await this.storeContext.resolve(req);
-    if (!context.isPlatformContext) {
-      throw new ForbiddenException({
-        code: 'ERR_PLATFORM_ONLY',
-        message: 'Only a platform seat can open a conversation on behalf of the platform.',
-      });
+    if (context.storeId) {
+      return this.messagesService.findOrCreateStoreConversation(context.storeId, dto.userId);
     }
+
+    // No active store means this is the platform support seat. The client
+    // switches into "My Store" before a customer-list action, but preserve
+    // the platform inbox's existing direct-open behaviour for its own tools.
     return this.messagesService.findOrCreatePlatformConversation(dto.userId);
   }
 
