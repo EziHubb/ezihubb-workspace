@@ -1,15 +1,20 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
-import type { CollectionDto, ProductListItemDto } from '@ezihubb/types';
-import type { PaginatedResponse } from '@ezihubb/types';
+import type { CollectionDto } from '@ezihubb/types';
 import { buildAlternates } from '../../../../../lib/seo';
-import { ProductListingLayout } from '../../../../../components/listing/ProductListingLayout';
+import { ListingExplorer } from '../../../../../components/search/ListingExplorer';
+import { SearchGridSkeleton } from '../../../../../components/search/SearchProductGrid';
+import {
+  buildApiParams,
+  filtersFromRecord,
+  type SearchResponse,
+} from '../../../../../components/search/listing-params';
 import { CollectionHero } from '../../../../../components/collections/CollectionHero';
 import { RelatedCollections } from '../../../../../components/collections/RelatedCollections';
-import { parseSearchParams } from '../../../../../components/listing/types';
 import { warnIfRejected } from '../../../../../lib/warn-if-rejected';
 
 export const dynamic = 'force-dynamic';
@@ -78,30 +83,28 @@ export default async function CollectionPage({
 }) {
   const { locale, slug } = await params;
   const sp               = await searchParams;
-  const filters          = parseSearchParams(sp);
 
-  const emptyPage: PaginatedResponse<ProductListItemDto> = {
-    success:    true,
-    data:       [],
-    pagination: { page: 1, limit: 24, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
-    meta:       { timestamp: '', requestId: '' },
-  };
+  // The collection is pinned, not chosen, so it is applied here and passed to
+  // the grid as a locked filter rather than written into the URL. Everything
+  // else comes from the URL exactly as it does on /search — the two pages have
+  // to agree on this map or the page the server renders is not the one the
+  // client then looks up in its cache.
+  const lockedFilters = { collection: slug };
+  const apiFilters    = { ...filtersFromRecord(sp), ...lockedFilters };
 
   const localeHeaders = { 'X-Locale': locale };
-  const [collectionRes, productsRes] = await Promise.allSettled([
+  const [collectionRes, resultsRes] = await Promise.allSettled([
     apiClient.get<CollectionDto>(API_ROUTES.CATALOG.COLLECTION(slug), {
       next: { revalidate: 300 },
       headers: localeHeaders,
     }),
-    apiClient.get<PaginatedResponse<ProductListItemDto>>(API_ROUTES.PRODUCTS.LIST, {
-      params: {
-        collectionSlug: slug,
-        page:           filters.page,
-        limit:          24,
-        sort:           filters.sort,
-        isActive:       true,
-      },
-      next: { revalidate: 60 },
+    // Same endpoint the grid uses. Fetched here as well so the products are in
+    // the HTML this indexed page serves — the grid is client-fetched, and
+    // handing it the first page as initialData is what keeps the products
+    // crawlable and skips the loading skeleton on first paint.
+    apiClient.get<SearchResponse>(API_ROUTES.SEARCH.QUERY, {
+      params:  buildApiParams(apiFilters),
+      next:    { revalidate: 60 },
       headers: localeHeaders,
     }),
   ]);
@@ -112,12 +115,10 @@ export default async function CollectionPage({
   // A failed product fetch renders the collection as if it were empty, which
   // looks identical to a genuinely empty collection. Log it so the difference
   // is visible in `docker compose logs client`.
-  warnIfRejected('collection:products', API_ROUTES.PRODUCTS.LIST, productsRes);
+  warnIfRejected('collection:products', API_ROUTES.SEARCH.QUERY, resultsRes);
 
-  const products   = productsRes.status === 'fulfilled' ? productsRes.value.data : [];
-  const pagination = productsRes.status === 'fulfilled'
-    ? productsRes.value.pagination
-    : emptyPage.pagination;
+  const initialResults = resultsRes.status === 'fulfilled' ? resultsRes.value : undefined;
+  const productCount   = initialResults?.pagination?.total ?? 0;
 
   // Related collections — non-critical, falls back to null.
   // Same silent-swallow class as the allSettled branches above, just via
@@ -168,7 +169,7 @@ export default async function CollectionPage({
     <>
       <CollectionHero
         collection={collection}
-        productCount={pagination.total}
+        productCount={productCount}
       />
 
       {urgencyDays !== null && urgencyDate && (
@@ -181,7 +182,7 @@ export default async function CollectionPage({
 
       <nav
         aria-label="Breadcrumb"
-        className="max-w-[1440px] mx-auto px-4 md:px-8 pt-4 pb-0"
+        className="max-w-[1746px] mx-auto px-6 lg:px-12 pt-4 pb-0"
       >
         <ol className="flex items-center gap-1.5 text-xs text-muted flex-wrap">
           <li>
@@ -202,17 +203,18 @@ export default async function CollectionPage({
         </ol>
       </nav>
 
-      <ProductListingLayout
-        locale={locale}
-        title={collection.name}
-        subtitle={collection.description}
-        products={products}
-        totalCount={pagination.total}
-        totalPages={pagination.totalPages}
-        currentFilters={filters}
-        categories={[]}
-        tags={[]}
-      />
+      {/* The same grid, filter column and top bar as /search. No title passed:
+          the hero above already carries the collection's name and description,
+          and repeating them over the grid was the one thing the old layout
+          added here. Suspense because the explorer reads useSearchParams. */}
+      <Suspense fallback={<SearchGridSkeleton />}>
+        <ListingExplorer
+          lockedFilters={lockedFilters}
+          showDiscovery={false}
+          fillViewport={false}
+          initialResults={initialResults}
+        />
+      </Suspense>
 
       {related.length > 0 && (
         <RelatedCollections
