@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import { BrandPanel, BrandStrip } from '../../../components/auth/BrandPanel';
+import { resolveAuthRedirect } from '../../../lib/auth-redirect';
 
 export default function AuthLayoutClient({
   children,
@@ -20,7 +21,7 @@ export default function AuthLayoutClient({
   // Redirect logged-in users away from auth pages
   useEffect(() => {
     if (status !== 'authenticated') return;
-    const redirect = searchParams.get('redirect') ?? `/${locale}/account`;
+    const redirect = resolveAuthRedirect(searchParams.get('redirect'), `/${locale}/account`);
     router.replace(redirect);
   }, [status, router, locale, searchParams]);
 

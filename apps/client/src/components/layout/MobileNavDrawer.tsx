@@ -20,6 +20,7 @@ interface MobileNavDrawerProps {
   onClose:  () => void;
   tabs:     MegaMenuTab[];
   locale:   string;
+  loginHref: string;
 }
 
 // ── Accordion Section ─────────────────────────────────────────────────────────
@@ -101,7 +102,7 @@ function AccordionSection({
 
 // ── Drawer ────────────────────────────────────────────────────────────────────
 
-export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDrawerProps) {
+export function MobileNavDrawer({ isOpen, onClose, tabs, locale, loginHref }: MobileNavDrawerProps) {
   const t          = useTranslations('nav');
   const tCommon    = useTranslations('common');
   const router     = useRouter();
@@ -281,7 +282,7 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale }: MobileNavDraw
             ) : (
               <div className="px-3 space-y-2">
                 <Link
-                  href={`/${locale}/login`}
+                  href={loginHref}
                   onClick={onClose}
                   className="block w-full text-center py-2.5 bg-primary hover:bg-primary-dark text-white font-bold text-sm rounded-button transition-colors uppercase tracking-wide"
                 >

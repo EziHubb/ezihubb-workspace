@@ -2,20 +2,29 @@ import type { NextAuthOptions } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { API_ROUTES } from '@ezihubb/constants';
 
-// ── NEXTAUTH_URL auto-detection ───────────────────────────────────────────────
-// Mirrors the same pattern used in apps/admin/src/lib/auth.options.ts.
+// ── NEXTAUTH_URL storefront isolation ────────────────────────────────────────
+// Storefront must not inherit the Admin URL from the shared environment.
 
-if (!process.env['NEXTAUTH_URL']) {
-  const detected = process.env['NEXT_PUBLIC_NEXTAUTH_URL'] ?? process.env['CLIENT_URL'];
+// Client and Admin run from the same docker-compose .env file. That file's
+// historical NEXTAUTH_URL belongs to Admin, so merely using it when present
+// makes the storefront advertise admin.ezihubb.com callback URLs and sends a
+// successful Google login into a /login <-> /account redirect loop.
+//
+// Always derive this process's URL from storefront-specific variables. Each
+// Next.js app runs in its own container, so overriding NEXTAUTH_URL here is
+// isolated to the client process and cannot affect Admin.
+const storefrontAuthUrl =
+  process.env['APP_URL'] ??
+  process.env['NEXT_PUBLIC_NEXTAUTH_URL'] ??
+  process.env['CLIENT_URL'];
 
-  if (detected) {
-    process.env['NEXTAUTH_URL'] = detected;
-  } else if (process.env['NODE_ENV'] === 'production') {
-    console.error(
-      '[Client auth] NEXTAUTH_URL is not set and could not be auto-detected. ' +
-        'Set NEXTAUTH_URL=https://<your-client-domain> in the server environment.',
-    );
-  }
+if (storefrontAuthUrl) {
+  process.env['NEXTAUTH_URL'] = storefrontAuthUrl;
+} else if (process.env['NODE_ENV'] === 'production') {
+  console.error(
+    '[Client auth] Storefront auth URL could not be detected. ' +
+      'Set APP_URL=https://<your-client-domain> in the server environment.',
+  );
 }
 
 // ── API base URL ──────────────────────────────────────────────────────────────

@@ -15,6 +15,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@ezihubb/api-client';
 import type { ReviewDto, ReviewSummaryDto } from '@ezihubb/types';
 import { fmtRating, safeNum } from '@ezihubb/utils';
+import { buildLoginHref } from '../../lib/auth-redirect';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -369,7 +370,12 @@ function WriteReviewForm({
     return (
       <div className="mt-4 py-4 border border-dashed border-border rounded-2xl text-center">
         <p className="text-sm text-muted">
-          <Link href={`/${locale}/login`} className="text-primary hover:underline font-medium">{t('signIn')}</Link>{' '}
+          <Link
+            href={buildLoginHref(locale, `/${locale}/products/${productSlug}`)}
+            className="text-primary hover:underline font-medium"
+          >
+            {t('signIn')}
+          </Link>{' '}
           {t('toWriteReview')}
         </p>
       </div>

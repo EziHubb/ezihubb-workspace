@@ -131,6 +131,9 @@ services:
     env_file: .env
     environment:
       NODE_ENV: production
+      # The shared .env also contains Admin's historical NEXTAUTH_URL. Override
+      # it per service so NextAuth never generates cross-domain callbacks.
+      NEXTAUTH_URL: ${APP_URL}
       # .env's PORT=3002 is the api service's own port — env_file applies it
       # to every service that includes it, so without this override the
       # standalone Next.js server here (docker/Dockerfile's `ENV PORT=3000`
@@ -168,6 +171,7 @@ services:
     env_file: .env
     environment:
       NODE_ENV: production
+      NEXTAUTH_URL: ${ADMIN_URL}
       # See the client service's identical PORT override above — .env's
       # PORT=3002 (the api service's port) would otherwise leak in here too.
       PORT: 3001

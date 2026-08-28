@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,6 +11,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { useToast, ToastProvider } from '@ezihubb/ui';
 import { useAuthStore } from '../../../../lib/store/auth.store';
 import { GoogleSignInButton } from '../../../../components/auth/GoogleSignInButton';
+import { buildLoginHref, resolveAuthRedirect } from '../../../../lib/auth-redirect';
 
 // ── Password strength ─────────────────────────────────────────────────────────
 
@@ -79,7 +80,12 @@ type FormValues = z.infer<typeof schema>;
 function RegisterForm() {
   const locale       = useLocale();
   const router       = useRouter();
+  const searchParams = useSearchParams();
   const toast        = useToast();
+  const redirectTo   = resolveAuthRedirect(
+    searchParams.get('redirect'),
+    `/${locale}/account`,
+  );
 
   const [showPw,      setShowPw]      = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -112,7 +118,7 @@ function RegisterForm() {
       });
 
       toast.success('Account created! Check your email to verify. 📧');
-      router.replace(`/${locale}/login?registered=1`);
+      router.replace(`${buildLoginHref(locale, redirectTo)}&registered=1`);
     } catch (err: unknown) {
       const apiErr = err as { code?: string };
       if (apiErr.code === 'ERR_EMAIL_ALREADY_EXISTS') {
@@ -145,7 +151,7 @@ function RegisterForm() {
 
       {/* Google Sign-In (Identity Services — One Tap + button) */}
       <GoogleSignInButton
-        redirectTo={`/${locale}/account`}
+        redirectTo={redirectTo}
         onError={setApiError}
       />
 
@@ -281,7 +287,7 @@ function RegisterForm() {
 
       <p className="text-center text-sm text-muted mt-6">
         Already have an account?{' '}
-        <Link href={`/${locale}/login`} className="text-primary font-medium hover:underline">
+        <Link href={buildLoginHref(locale, redirectTo)} className="text-primary font-medium hover:underline">
           Sign in →
         </Link>
       </p>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import {
   Search, Heart, ShoppingBag, Menu,
@@ -27,10 +27,11 @@ import { MegaMenu } from './MegaMenu';
 import { MobileNavDrawer } from './MobileNavDrawer';
 import { LocaleSwitcher } from './LocaleSwitcher';
 import type { MegaMenuTab } from '../../types/mega-menu';
+import { buildLoginHref } from '../../lib/auth-redirect';
 
 // ── User Menu (desktop) ───────────────────────────────────────────────────────
 
-function UserMenu({ locale }: { locale: string }) {
+function UserMenu({ locale, loginHref }: { locale: string; loginHref: string }) {
   const t                = useTranslations('nav');
   const [open, setOpen]  = useState(false);
   const menuRef          = useRef<HTMLDivElement>(null);
@@ -78,7 +79,7 @@ function UserMenu({ locale }: { locale: string }) {
   if (!profile) {
     return (
       <Link
-        href={`/${locale}/login`}
+        href={loginHref}
         className="hidden md:block bg-primary hover:bg-primary-dark text-white font-semibold text-sm px-5 py-2 rounded-button transition-colors uppercase tracking-wide"
       >
         {t('signIn')}
@@ -196,6 +197,7 @@ export function Navbar({ menuData }: NavbarProps = {}) {
   const t            = useTranslations('nav');
   const locale       = useLocale();
   const pathname     = usePathname();
+  const searchParams = useSearchParams();
   const [isScrolled, setIsScrolled]   = useState(false);
   const [mobileOpen, setMobileOpen]   = useState(false);
 
@@ -218,6 +220,9 @@ export function Navbar({ menuData }: NavbarProps = {}) {
   const openDrawer  = useCartStore((s) => s.openDrawer);
   const cartCount   = cart?.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
   const wishlistCount = wishlistItems?.length ?? 0;
+  const search         = searchParams.toString();
+  const currentUrl     = `${pathname}${search ? `?${search}` : ''}`;
+  const loginHref      = buildLoginHref(locale, currentUrl);
 
   // Scroll shadow
   useEffect(() => {
@@ -373,7 +378,7 @@ export function Navbar({ menuData }: NavbarProps = {}) {
               </Tooltip>
               )}
 
-              <UserMenu locale={locale} />
+              <UserMenu locale={locale} loginHref={loginHref} />
             </div>
           </div>
 
@@ -424,6 +429,7 @@ export function Navbar({ menuData }: NavbarProps = {}) {
           onClose={() => setMobileOpen(false)}
           tabs={tabs}
           locale={locale}
+          loginHref={loginHref}
         />
       </ViewportPortal>
     </>

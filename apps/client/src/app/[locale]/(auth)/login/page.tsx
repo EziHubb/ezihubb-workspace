@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { Eye, EyeOff } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import { GoogleSignInButton } from '../../../../components/auth/GoogleSignInButton';
+import { resolveAuthRedirect } from '../../../../lib/auth-redirect';
 
 // ── Zod schema ────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,10 @@ export default function LoginPage() {
   const [shake,        setShake]        = useState(false);
   const [globalError,  setGlobalError]  = useState('');
   const [isPending,    setIsPending]    = useState(false);
+  const redirectTo = resolveAuthRedirect(
+    searchParams.get('redirect'),
+    `/${locale}/account`,
+  );
 
   const {
     register,
@@ -70,8 +75,7 @@ export default function LoginPage() {
       return;
     }
 
-    const redirect = searchParams.get('redirect') ?? `/${locale}/account`;
-    router.replace(redirect);
+    router.replace(redirectTo);
   };
 
   const inp = (err?: string) =>
@@ -90,7 +94,7 @@ export default function LoginPage() {
 
       {/* Google Sign-In (Identity Services — One Tap + button) */}
       <GoogleSignInButton
-        redirectTo={searchParams.get('redirect') ?? `/${locale}/account`}
+        redirectTo={redirectTo}
         onError={setGlobalError}
       />
 
@@ -181,7 +185,7 @@ export default function LoginPage() {
       <p className="text-center text-sm text-muted mt-6">
         New to EziHubb?{' '}
         <Link
-          href={`/${locale}/register`}
+          href={`/${locale}/register?redirect=${encodeURIComponent(redirectTo)}`}
           className="text-primary font-medium hover:underline"
         >
           Create an account →
