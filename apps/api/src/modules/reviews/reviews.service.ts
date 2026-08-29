@@ -25,7 +25,6 @@ import {
   ReviewResponseDto,
   AdminReviewResponseDto,
   ReviewSummaryDto,
-  ReviewAuthorDto,
 } from './dto/review-response.dto';
 import { ReviewQueryDto, AdminReviewQueryDto } from './dto/review-query.dto';
 import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
@@ -39,7 +38,13 @@ const REVIEW_INCLUDE = {
 
 const ADMIN_REVIEW_INCLUDE = {
   user: {
-    select: { id: true, firstName: true, lastName: true, email: true, avatarUrl: true },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      avatarUrl: true,
+    },
   },
   product: {
     select: {
@@ -158,7 +163,7 @@ export class ReviewsService {
   ): Promise<ReviewResponseDto> {
     const product = await this.prisma.product.findFirst({
       where: { slug: productSlug },
-      select: { id: true },
+      select: { id: true, storeId: true },
     });
     if (!product)
       throw new NotFoundException({
@@ -174,7 +179,14 @@ export class ReviewsService {
         status: { in: [OrderStatus.DELIVERED, OrderStatus.COMPLETED] },
         items: { some: { productId: product.id } },
       },
-      select: { id: true },
+      select: {
+        id: true,
+        items: {
+          where: { productId: product.id },
+          select: { storeId: true },
+          take: 1,
+        },
+      },
     });
 
     if (!qualifyingOrder) {
@@ -212,14 +224,26 @@ export class ReviewsService {
         body: dto.body,
         status: ReviewStatus.PENDING,
         imageUrls: [],
+        // Attribute the review to the shop that fulfilled this exact order
+        // item. Product.storeId is only a legacy fallback: ownership may
+        // change after checkout, while OrderItem.storeId is the purchase-time
+        // snapshot that the seller moderation queue must follow.
+        storeId: qualifyingOrder.items[0]?.storeId ?? product.storeId,
       },
       include: REVIEW_INCLUDE,
     });
 
     // fire-and-forget
-    this.moderationService?.queueReviewModeration(review.id).catch((e) => this.logger.error('mod queue failed', e));
+    this.moderationService
+      ?.queueReviewModeration(review.id)
+      .catch((e) => this.logger.error('mod queue failed', e));
     if ((review.imageUrls as string[])?.length) {
-      this.moderationService?.queueReviewImageModeration(review.id, review.imageUrls as string[], review.storeId ?? null)
+      this.moderationService
+        ?.queueReviewImageModeration(
+          review.id,
+          review.imageUrls as string[],
+          review.storeId ?? null,
+        )
         .catch((e) => this.logger.error('mod img queue failed', e));
     }
     return this.mapToDto(review);
@@ -316,6 +340,14 @@ export class ReviewsService {
       include: REVIEW_INCLUDE,
     });
 
+    this.moderationService
+      ?.queueReviewImageModeration(
+        review.id,
+        uploadedUrls,
+        review.storeId ?? null,
+      )
+      .catch((e) => this.logger.error('mod img queue failed', e));
+
     return this.mapToDto(updated);
   }
 
@@ -327,7 +359,11 @@ export class ReviewsService {
       where: { slug: productSlug },
       select: { id: true },
     });
-    if (!product) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found' });
+    if (!product)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Product not found',
+      });
 
     const review = await this.prisma.review.findFirst({
       where: { productId: product.id, userId },
@@ -344,14 +380,16 @@ export class ReviewsService {
     });
   }
 
-  async getReviewableProducts(userId: string): Promise<{
-    orderId: string;
-    orderNumber: string;
-    productId: string;
-    productName: string;
-    productSlug: string;
-    productImageUrl: string | null;
-  }[]> {
+  async getReviewableProducts(userId: string): Promise<
+    {
+      orderId: string;
+      orderNumber: string;
+      productId: string;
+      productName: string;
+      productSlug: string;
+      productImageUrl: string | null;
+    }[]
+  > {
     const deliveredOrders = await this.prisma.order.findMany({
       where: {
         userId,
@@ -390,11 +428,11 @@ export class ReviewsService {
             !reviewedKeys.has(`${item.productId}-${order.id}`),
         )
         .map((item) => ({
-          orderId:         order.id,
-          orderNumber:     order.orderNumber,
-          productId:       item.productId!,
-          productName:     item.productName,
-          productSlug:     item.productSlug ?? '',
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          productId: item.productId!,
+          productName: item.productName,
+          productSlug: item.productSlug ?? '',
           productImageUrl: item.productImageUrl,
         })),
     );
@@ -404,14 +442,30 @@ export class ReviewsService {
 
   async getGlobalReviews(
     query: ReviewQueryDto,
-  ): Promise<PaginatedResult<ReviewResponseDto & { product: { name: string; slug: string; primaryImage: string | null } }>> {
-    const page  = query.page  ?? 1;
+  ): Promise<
+    PaginatedResult<
+      ReviewResponseDto & {
+        product: { name: string; slug: string; primaryImage: string | null };
+      }
+    >
+  > {
+    const page = query.page ?? 1;
     const limit = query.limit ?? 12;
     const where = { status: ReviewStatus.APPROVED };
 
     const include = {
       ...REVIEW_INCLUDE,
-      product: { select: { name: true, slug: true, images: { select: { url: true }, take: 1, orderBy: { sortOrder: 'asc' as const } } } },
+      product: {
+        select: {
+          name: true,
+          slug: true,
+          images: {
+            select: { url: true },
+            take: 1,
+            orderBy: { sortOrder: 'asc' as const },
+          },
+        },
+      },
     };
 
     const [rows, total] = await Promise.all([
@@ -419,8 +473,8 @@ export class ReviewsService {
         where,
         include,
         orderBy: { createdAt: 'desc' },
-        skip:    (page - 1) * limit,
-        take:    limit,
+        skip: (page - 1) * limit,
+        take: limit,
       }),
       this.prisma.review.count({ where }),
     ]);
@@ -428,8 +482,8 @@ export class ReviewsService {
     const items = rows.map((r) => ({
       ...this.mapToDto(r),
       product: {
-        name:         r.product.name,
-        slug:         r.product.slug,
+        name: r.product.name,
+        slug: r.product.slug,
         primaryImage: r.product.images[0]?.url ?? null,
       },
     }));
@@ -439,12 +493,15 @@ export class ReviewsService {
 
   async getGlobalSummary(): Promise<Omit<ReviewSummaryDto, 'productId'>> {
     const reviews = await this.prisma.review.findMany({
-      where:  { status: ReviewStatus.APPROVED },
+      where: { status: ReviewStatus.APPROVED },
       select: { rating: true },
     });
 
-    const totalReviews  = reviews.length;
-    const distribution  = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<1 | 2 | 3 | 4 | 5, number>;
+    const totalReviews = reviews.length;
+    const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<
+      1 | 2 | 3 | 4 | 5,
+      number
+    >;
     let sum = 0;
     for (const r of reviews) {
       sum += r.rating;
@@ -453,7 +510,8 @@ export class ReviewsService {
     }
 
     return {
-      averageRating: totalReviews > 0 ? Math.round((sum / totalReviews) * 10) / 10 : 0,
+      averageRating:
+        totalReviews > 0 ? Math.round((sum / totalReviews) * 10) / 10 : 0,
       totalReviews,
       distribution,
     };
@@ -461,19 +519,22 @@ export class ReviewsService {
 
   // ── Admin ────────────────────────────────────────────────────────────────────
 
-  async findAllAdmin(query: AdminReviewQueryDto, storeId?: string): Promise<PaginatedResult<AdminReviewResponseDto>> {
-    const page  = query.page  ?? 1;
+  async findAllAdmin(
+    query: AdminReviewQueryDto,
+    storeId?: string,
+  ): Promise<PaginatedResult<AdminReviewResponseDto>> {
+    const page = query.page ?? 1;
     const limit = query.limit ?? 24;
 
     const where: Record<string, unknown> = {};
-    if (storeId !== undefined)           where['storeId']   = storeId;
-    if (query.status    !== undefined) where['status']    = query.status;
-    if (query.rating    !== undefined) where['rating']    = query.rating;
+    if (storeId !== undefined) where['storeId'] = storeId;
+    if (query.status !== undefined) where['status'] = query.status;
+    if (query.rating !== undefined) where['rating'] = query.rating;
     if (query.productId !== undefined) where['productId'] = query.productId;
     if (query.q) {
       where['OR'] = [
         { title: { contains: query.q, mode: 'insensitive' } },
-        { body:  { contains: query.q, mode: 'insensitive' } },
+        { body: { contains: query.q, mode: 'insensitive' } },
       ];
     }
 
@@ -489,30 +550,47 @@ export class ReviewsService {
     ]);
 
     const data = reviews.map((r) => {
-      const u = r.user as { id: string; firstName: string | null; lastName: string | null; email: string; avatarUrl: string | null };
-      const p = (r as any).product as { id: string; name: string; slug: string; images: { url: string }[]; category: { name: string } | null } | null;
-      const s = (r as any).store as { id: string; name: string; slug: string } | null;
+      const u = r.user as {
+        id: string;
+        firstName: string | null;
+        lastName: string | null;
+        email: string;
+        avatarUrl: string | null;
+      };
+      const p = (r as any).product as {
+        id: string;
+        name: string;
+        slug: string;
+        images: { url: string }[];
+        category: { name: string } | null;
+      } | null;
+      const s = (r as any).store as {
+        id: string;
+        name: string;
+        slug: string;
+      } | null;
       return {
-        id:               r.id,
-        userId:           r.userId,
-        orderId:          r.orderId,
-        productId:        r.productId,
-        rating:           r.rating,
-        title:            r.title,
-        body:             r.body,
-        imageUrls:        r.imageUrls,
-        status:           r.status,
-        adminReply:       r.adminReply,
-        repliedAt:        r.repliedAt,
-        createdAt:        r.createdAt,
-        customerName:     `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email,
-        customerEmail:    u.email,
+        id: r.id,
+        userId: r.userId,
+        orderId: r.orderId,
+        productId: r.productId,
+        rating: r.rating,
+        title: r.title,
+        body: r.body,
+        imageUrls: r.imageUrls,
+        status: r.status,
+        adminReply: r.adminReply,
+        repliedAt: r.repliedAt,
+        createdAt: r.createdAt,
+        customerName:
+          `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email,
+        customerEmail: u.email,
         customerAvatarUrl: u.avatarUrl,
-        productName:      p?.name   ?? '',
-        productSlug:      p?.slug   ?? '',
-        productImageUrl:  p?.images[0]?.url ?? null,
-        categoryName:     p?.category?.name ?? null,
-        store:            s,
+        productName: p?.name ?? '',
+        productSlug: p?.slug ?? '',
+        productImageUrl: p?.images[0]?.url ?? null,
+        categoryName: p?.category?.name ?? null,
+        store: s,
       };
     });
 
@@ -523,14 +601,18 @@ export class ReviewsService {
     const statuses = ['PENDING', 'APPROVED', 'HIDDEN'];
     const base = storeId ? { storeId } : {};
     const counts = await Promise.all(
-      statuses.map((status) => this.prisma.review.count({ where: { ...base, status: status as ReviewStatus } })),
+      statuses.map((status) =>
+        this.prisma.review.count({
+          where: { ...base, status: status as ReviewStatus },
+        }),
+      ),
     );
     const total = counts.reduce((sum, n) => sum + n, 0);
     return {
-      PENDING:  counts[0],
+      PENDING: counts[0],
       APPROVED: counts[1],
-      HIDDEN:   counts[2],
-      ALL:      total,
+      HIDDEN: counts[2],
+      ALL: total,
     };
   }
 
@@ -540,7 +622,10 @@ export class ReviewsService {
     await this.redis.del(CacheKeys.reviewsSummary(review.productId));
   }
 
-  async approveReview(reviewId: string, storeId?: string): Promise<ReviewResponseDto> {
+  async approveReview(
+    reviewId: string,
+    storeId?: string,
+  ): Promise<ReviewResponseDto> {
     const review = await this.findReviewOrThrow(reviewId, storeId);
     const updated = await this.prisma.review.update({
       where: { id: reviewId },
@@ -559,14 +644,14 @@ export class ReviewsService {
 
   private async recalcStoreRating(storeId: string): Promise<void> {
     const agg = await this.prisma.review.aggregate({
-      where:   { storeId, status: ReviewStatus.APPROVED },
-      _avg:    { rating: true },
-      _count:  { rating: true },
+      where: { storeId, status: ReviewStatus.APPROVED },
+      _avg: { rating: true },
+      _count: { rating: true },
     });
     const avg = agg._avg.rating ?? 0;
     await this.prisma.store.update({
       where: { id: storeId },
-      data:  { rating: Math.round(avg * 100) / 100 },
+      data: { rating: Math.round(avg * 100) / 100 },
     });
   }
 
@@ -574,9 +659,9 @@ export class ReviewsService {
     storeId: string,
     params: { page?: number; limit?: number; status?: string },
   ): Promise<PaginatedResult<ReviewResponseDto>> {
-    const page  = params.page ?? 1;
+    const page = params.page ?? 1;
     const limit = params.limit ?? 20;
-    const skip  = (page - 1) * limit;
+    const skip = (page - 1) * limit;
     const where = {
       storeId,
       ...(params.status ? { status: params.status as ReviewStatus } : {}),
@@ -593,7 +678,12 @@ export class ReviewsService {
       this.prisma.review.count({ where }),
     ]);
 
-    return paginatedResponse(reviews.map(this.mapToDto.bind(this)), page, limit, total);
+    return paginatedResponse(
+      reviews.map(this.mapToDto.bind(this)),
+      page,
+      limit,
+      total,
+    );
   }
 
   async replyToReviewAsSeller(
@@ -604,17 +694,24 @@ export class ReviewsService {
     const review = await this.prisma.review.findFirst({
       where: { id: reviewId, storeId },
     });
-    if (!review) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Review not found' });
+    if (!review)
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Review not found',
+      });
 
     const updated = await this.prisma.review.update({
       where: { id: reviewId },
-      data:  { sellerReply: reply, sellerRepliedAt: new Date() },
+      data: { sellerReply: reply, sellerRepliedAt: new Date() },
       include: REVIEW_INCLUDE,
     });
     return this.mapToDto(updated);
   }
 
-  async hideReview(reviewId: string, storeId?: string): Promise<ReviewResponseDto> {
+  async hideReview(
+    reviewId: string,
+    storeId?: string,
+  ): Promise<ReviewResponseDto> {
     const review = await this.findReviewOrThrow(reviewId, storeId);
     const updated = await this.prisma.review.update({
       where: { id: reviewId },
@@ -723,11 +820,11 @@ export class ReviewsService {
     body: review.body,
     imageUrls: review.imageUrls,
     status: review.status,
-    adminReply:      review.adminReply,
-    repliedAt:       review.repliedAt,
-    sellerReply:     (review as any).sellerReply ?? null,
+    adminReply: review.adminReply,
+    repliedAt: review.repliedAt,
+    sellerReply: (review as any).sellerReply ?? null,
     sellerRepliedAt: (review as any).sellerRepliedAt ?? null,
-    createdAt:       review.createdAt,
+    createdAt: review.createdAt,
     author: {
       id: review.user.id,
       firstName: review.user.firstName,

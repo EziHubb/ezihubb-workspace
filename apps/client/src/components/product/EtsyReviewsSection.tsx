@@ -5,7 +5,15 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import {
-  Star, Sparkles, Award, Heart, Truck, Check, ThumbsUp, Camera, X,
+  Star,
+  Sparkles,
+  Award,
+  Heart,
+  Truck,
+  Check,
+  ThumbsUp,
+  Camera,
+  X,
 } from 'lucide-react';
 import { useReviews } from '@ezihubb/api-client';
 import { apiClient, apiFetch } from '@ezihubb/api-client';
@@ -16,20 +24,29 @@ import { queryKeys } from '@ezihubb/api-client';
 import type { ReviewDto, ReviewSummaryDto } from '@ezihubb/types';
 import { fmtRating, safeNum } from '@ezihubb/utils';
 import { buildLoginHref } from '../../lib/auth-redirect';
+import { ImageLightbox } from '../messages/ImageLightbox';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtDate(iso: string, locale: string): string {
   return new Date(iso).toLocaleDateString(locale, {
-    year: 'numeric', month: 'short', day: 'numeric',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
   });
 }
 
 // ── Stars ─────────────────────────────────────────────────────────────────────
 
-function Stars({ rating, size = 'sm' }: { rating: number; size?: 'xs' | 'sm' }) {
+function Stars({
+  rating,
+  size = 'sm',
+}: {
+  rating: number;
+  size?: 'xs' | 'sm';
+}) {
   const rounded = Math.round(rating);
-  const cls     = size === 'xs' ? 'w-3 h-3' : 'w-4 h-4';
+  const cls = size === 'xs' ? 'w-3 h-3' : 'w-4 h-4';
   return (
     <div className="flex gap-0.5">
       {[1, 2, 3, 4, 5].map((s) => (
@@ -78,11 +95,11 @@ type Translator = ReturnType<typeof useTranslations>;
 
 function useBadgeDefs(t: Translator) {
   return [
-    { Icon: Sparkles, label: t('badges.looksGreat'),   minRating: 4.5 },
-    { Icon: Award,    label: t('badges.quality'),      minRating: 0 },
-    { Icon: Heart,    label: t('badges.loveIt'),        minRating: 4.8 },
-    { Icon: Truck,    label: t('badges.fastShipping'), minRating: 0 },
-    { Icon: Check,    label: t('badges.asDescribed'),  minRating: 0 },
+    { Icon: Sparkles, label: t('badges.looksGreat'), minRating: 4.5 },
+    { Icon: Award, label: t('badges.quality'), minRating: 0 },
+    { Icon: Heart, label: t('badges.loveIt'), minRating: 4.8 },
+    { Icon: Truck, label: t('badges.fastShipping'), minRating: 0 },
+    { Icon: Check, label: t('badges.asDescribed'), minRating: 0 },
   ] as const;
 }
 
@@ -107,118 +124,157 @@ function SentimentBadges({ averageRating }: { averageRating: number }) {
 
 // ── ReviewCard ────────────────────────────────────────────────────────────────
 
-function ReviewCard({ review, onHelpful }: { review: ReviewDto; onHelpful?: (id: string) => void }) {
+function ReviewCard({
+  review,
+  onHelpful,
+}: {
+  review: ReviewDto;
+  onHelpful?: (id: string) => void;
+}) {
   const t = useTranslations('product.etsyReviews');
   const locale = useLocale();
-  const [isExpanded,  setIsExpanded]  = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [markedHelpful, setMarkedHelpful] = useState(false);
-  const body   = review.body ?? '';
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const body = review.body ?? '';
   const isLong = body.length > 250;
+  const images = review.imageUrls ?? [];
 
-  const initials = (
-    (review.user?.firstName?.[0] ?? '') +
-    (review.user?.lastName?.[0]  ?? '')
-  ).toUpperCase() || 'A';
-  const displayName = review.user
-    ? `${review.user.firstName} ${review.user.lastName}`.trim()
+  const initials =
+    (
+      (review.author?.firstName?.[0] ?? '') +
+      (review.author?.lastName?.[0] ?? '')
+    ).toUpperCase() || 'A';
+  const displayName = review.author
+    ? `${review.author.firstName ?? ''} ${review.author.lastName ?? ''}`.trim()
     : 'Anonymous';
 
   return (
-    <div className="pb-6 border-b border-border last:border-0">
-      {/* Stars */}
-      <Stars rating={review.rating} />
+    <>
+      <ImageLightbox
+        urls={images}
+        index={previewIndex}
+        onClose={() => setPreviewIndex(null)}
+        onIndex={setPreviewIndex}
+      />
+      <div className="pb-6 border-b border-border last:border-0">
+        {/* Stars */}
+        <Stars rating={review.rating} />
 
-      {/* Body */}
-      <p className="text-sm text-secondary leading-relaxed mt-2">
-        {isExpanded ? body : body.slice(0, 250)}
-        {isLong && !isExpanded && '…'}
-      </p>
-      {isLong && (
-        <button
-          type="button"
-          onClick={() => setIsExpanded((e) => !e)}
-          className="text-xs text-primary hover:underline mt-1"
-        >
-          {isExpanded ? t('showLess') : t('readMore')}
-        </button>
-      )}
-
-      {/* Review photos */}
-      {(review.images ?? []).length > 0 && (
-        <div className="flex gap-2 mt-3 flex-wrap">
-          {review.images!.map((url, i) => (
-            <div
-              key={i}
-              className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-background"
-            >
-              <Image
-                src={url}
-                alt={t('reviewPhoto', { n: i + 1 })}
-                fill
-                sizes="64px"
-                className="object-cover"
-              />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Reviewer info */}
-      <div className="flex items-center gap-2 mt-3">
-        <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center text-xs font-semibold text-primary shrink-0 overflow-hidden">
-          {review.user?.avatarUrl ? (
-            <Image
-              src={review.user.avatarUrl}
-              alt={displayName}
-              width={28}
-              height={28}
-              className="object-cover w-full h-full"
-            />
-          ) : initials}
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium text-secondary">{displayName}</span>
-          <time
-            dateTime={review.createdAt}
-            className="text-xs text-muted"
+        {/* Body */}
+        <p className="text-sm text-secondary leading-relaxed mt-2">
+          {isExpanded ? body : body.slice(0, 250)}
+          {isLong && !isExpanded && '…'}
+        </p>
+        {isLong && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded((e) => !e)}
+            className="text-xs text-primary hover:underline mt-1"
           >
-            {fmtDate(review.createdAt, locale)}
-          </time>
+            {isExpanded ? t('showLess') : t('readMore')}
+          </button>
+        )}
+
+        {/* Review photos */}
+        {images.length > 0 && (
+          <div className="flex gap-2 mt-3 flex-wrap">
+            {images.map((url, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setPreviewIndex(i)}
+                aria-label={t('reviewPhoto', { n: i + 1 })}
+                className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-background hover:opacity-80 transition-opacity"
+              >
+                <Image
+                  src={url}
+                  alt={t('reviewPhoto', { n: i + 1 })}
+                  fill
+                  sizes="64px"
+                  className="object-cover"
+                />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Reviewer info */}
+        <div className="flex items-center gap-2 mt-3">
+          <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center text-xs font-semibold text-primary shrink-0 overflow-hidden">
+            {review.author?.avatarUrl ? (
+              <Image
+                src={review.author.avatarUrl}
+                alt={displayName}
+                width={28}
+                height={28}
+                className="object-cover w-full h-full"
+              />
+            ) : (
+              initials
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-secondary">
+              {displayName}
+            </span>
+            <time dateTime={review.createdAt} className="text-xs text-muted">
+              {fmtDate(review.createdAt, locale)}
+            </time>
+          </div>
         </div>
+
+        {/* Admin reply */}
+        {review.adminReply && (
+          <div className="mt-3 pl-3 border-l-2 border-border">
+            <p className="text-xs font-semibold text-secondary">
+              {t('responseFrom')}
+            </p>
+            <p className="text-sm text-muted mt-1">{review.adminReply}</p>
+          </div>
+        )}
+
+        {/* Helpful */}
+        {onHelpful && (
+          <button
+            type="button"
+            disabled={markedHelpful}
+            onClick={() => {
+              setMarkedHelpful(true);
+              onHelpful(review.id);
+            }}
+            className={`mt-3 flex items-center gap-1.5 text-xs transition-colors ${markedHelpful ? 'text-primary cursor-default' : 'text-muted hover:text-secondary'}`}
+          >
+            <ThumbsUp className="w-3.5 h-3.5" />
+            {markedHelpful ? t('markedAsHelpful') : t('helpfulQuestion')}
+          </button>
+        )}
       </div>
-
-      {/* Admin reply */}
-      {review.adminReply && (
-        <div className="mt-3 pl-3 border-l-2 border-border">
-          <p className="text-xs font-semibold text-secondary">
-            {t('responseFrom')}
-          </p>
-          <p className="text-sm text-muted mt-1">{review.adminReply}</p>
-        </div>
-      )}
-
-      {/* Helpful */}
-      {onHelpful && (
-        <button
-          type="button"
-          disabled={markedHelpful}
-          onClick={() => { setMarkedHelpful(true); onHelpful(review.id); }}
-          className={`mt-3 flex items-center gap-1.5 text-xs transition-colors ${markedHelpful ? 'text-primary cursor-default' : 'text-muted hover:text-secondary'}`}
-        >
-          <ThumbsUp className="w-3.5 h-3.5" />
-          {markedHelpful ? t('markedAsHelpful') : t('helpfulQuestion')}
-        </button>
-      )}
-    </div>
+    </>
   );
 }
 
 // ── InteractiveStar ───────────────────────────────────────────────────────────
 
-function InteractiveStar({ filled, onHover, onClick }: { filled: boolean; onHover: () => void; onClick: () => void }) {
+function InteractiveStar({
+  filled,
+  onHover,
+  onClick,
+}: {
+  filled: boolean;
+  onHover: () => void;
+  onClick: () => void;
+}) {
   return (
-    <button type="button" onMouseEnter={onHover} onClick={onClick} className="p-0.5 focus:outline-none">
-      <Star className={`w-8 h-8 transition-colors ${filled ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 hover:text-yellow-300'}`} />
+    <button
+      type="button"
+      onMouseEnter={onHover}
+      onClick={onClick}
+      className="p-0.5 focus:outline-none"
+    >
+      <Star
+        className={`w-8 h-8 transition-colors ${filled ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 hover:text-yellow-300'}`}
+      />
     </button>
   );
 }
@@ -226,11 +282,11 @@ function InteractiveStar({ filled, onHover, onClick }: { filled: boolean; onHove
 // ── WriteReviewForm ───────────────────────────────────────────────────────────
 
 interface ReviewableProduct {
-  orderId:         string;
-  orderNumber:     string;
-  productId:       string;
-  productName:     string;
-  productSlug:     string;
+  orderId: string;
+  orderNumber: string;
+  productId: string;
+  productName: string;
+  productSlug: string;
   productImageUrl: string | null;
 }
 
@@ -239,31 +295,32 @@ function WriteReviewForm({
   onSuccess,
 }: {
   productSlug: string;
-  onSuccess:   () => void;
+  onSuccess: () => void;
 }) {
-  const t            = useTranslations('product.etsyReviews');
-  const locale       = useLocale();
-  const user         = useAuthStore((s) => s.user);
-  const accessToken  = useAuthStore((s) => s.accessToken);
-  const queryClient  = useQueryClient();
+  const t = useTranslations('product.etsyReviews');
+  const locale = useLocale();
+  const user = useAuthStore((s) => s.user);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const queryClient = useQueryClient();
 
-  const [isOpen,      setIsOpen]      = useState(false);
-  const [rating,      setRating]      = useState(0);
+  const [isOpen, setIsOpen] = useState(false);
+  const [rating, setRating] = useState(0);
   const [hoveredStar, setHoveredStar] = useState(0);
-  const [title,       setTitle]       = useState('');
-  const [body,        setBody]        = useState('');
-  const [orderId,     setOrderId]     = useState('');
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [orderId, setOrderId] = useState('');
   const [reviewables, setReviewables] = useState<ReviewableProduct[]>([]);
   // Preview URLs (blob:) for what the shopper sees before submitting, and the
   // actual Files kept alongside them. Both are needed: a blob: URL cannot be
   // uploaded, and a File cannot be rendered in an <img> without one.
-  const [imageUrls,   setImageUrls]   = useState<string[]>([]);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   // No ''uploading'' state here any more: selecting a file only stages it, which
   // is synchronous. The actual upload happens at submit and is covered by
   // isSubmitting, so a spinner on the picker would never be true.
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error,       setError]       = useState('');
+  const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const openForm = async () => {
@@ -278,7 +335,9 @@ function WriteReviewForm({
       );
       setReviewables(forThisProduct);
       if (forThisProduct.length === 1) setOrderId(forThisProduct[0]!.orderId);
-    } catch { /* non-critical */ }
+    } catch {
+      /* non-critical */
+    }
   };
 
   // Photos are attached AFTER the review exists, because the upload endpoint is
@@ -316,12 +375,17 @@ function WriteReviewForm({
     if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
     setImageUrls((p) => p.filter((_, j) => j !== i));
     setPendingFiles((p) => p.filter((_, j) => j !== i));
+    setPreviewIndex((current) => {
+      if (current === null) return null;
+      if (current === i) return null;
+      return current > i ? current - 1 : current;
+    });
   };
 
   const handleSubmit = async () => {
-    if (rating === 0)       return setError(t('pleaseSelectRating'));
-    if (body.length < 10)   return setError(t('reviewTooShort'));
-    if (!orderId)           return setError(t('pleaseSelectOrder'));
+    if (rating === 0) return setError(t('pleaseSelectRating'));
+    if (body.length < 10) return setError(t('reviewTooShort'));
+    if (!orderId) return setError(t('pleaseSelectOrder'));
     setError('');
     setIsSubmitting(true);
     try {
@@ -351,12 +415,23 @@ function WriteReviewForm({
           setError(t('photosFailedButReviewSaved'));
         }
       }
-      queryClient.invalidateQueries({ queryKey: queryKeys.reviews(productSlug, {}) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.reviewSummary(productSlug) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.reviews(productSlug, {}),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.reviewSummary(productSlug),
+      });
       setIsOpen(false);
-      setRating(0); setTitle(''); setBody(''); setOrderId('');
-      imageUrls.forEach((u) => { if (u.startsWith('blob:')) URL.revokeObjectURL(u); });
-      setImageUrls([]); setPendingFiles([]);
+      setRating(0);
+      setTitle('');
+      setBody('');
+      setOrderId('');
+      imageUrls.forEach((u) => {
+        if (u.startsWith('blob:')) URL.revokeObjectURL(u);
+      });
+      setImageUrls([]);
+      setPendingFiles([]);
+      setPreviewIndex(null);
       onSuccess();
     } catch (e: unknown) {
       const msg = (e as { message?: string })?.message ?? t('failedToSubmit');
@@ -399,9 +474,19 @@ function WriteReviewForm({
 
   return (
     <div className="mt-4 border border-border rounded-2xl p-5 bg-[#FAFAF8]">
+      <ImageLightbox
+        urls={imageUrls}
+        index={previewIndex}
+        onClose={() => setPreviewIndex(null)}
+        onIndex={setPreviewIndex}
+      />
       <div className="flex items-center justify-between mb-4">
         <h4 className="font-semibold text-secondary">{t('writeAReview')}</h4>
-        <button type="button" onClick={() => setIsOpen(false)} className="text-muted hover:text-secondary">
+        <button
+          type="button"
+          onClick={() => setIsOpen(false)}
+          className="text-muted hover:text-secondary"
+        >
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -409,7 +494,9 @@ function WriteReviewForm({
       {/* Order selector */}
       {reviewables.length > 1 && (
         <div className="mb-4">
-          <label className="text-xs font-medium block mb-1.5 text-secondary">{t('order')}</label>
+          <label className="text-xs font-medium block mb-1.5 text-secondary">
+            {t('order')}
+          </label>
           <select
             value={orderId}
             onChange={(e) => setOrderId(e.target.value)}
@@ -417,7 +504,9 @@ function WriteReviewForm({
           >
             <option value="">{t('selectOrder')}</option>
             {reviewables.map((r) => (
-              <option key={r.orderId} value={r.orderId}>{t('orderNumber', { number: r.orderNumber })}</option>
+              <option key={r.orderId} value={r.orderId}>
+                {t('orderNumber', { number: r.orderNumber })}
+              </option>
             ))}
           </select>
         </div>
@@ -425,9 +514,13 @@ function WriteReviewForm({
 
       {/* Star rating */}
       <div className="mb-4">
-        <label className="text-xs font-medium block mb-2 text-secondary">{t('rating')}</label>
-        <div className="flex items-center gap-1"
-          onMouseLeave={() => setHoveredStar(0)}>
+        <label className="text-xs font-medium block mb-2 text-secondary">
+          {t('rating')}
+        </label>
+        <div
+          className="flex items-center gap-1"
+          onMouseLeave={() => setHoveredStar(0)}
+        >
           {[1, 2, 3, 4, 5].map((s) => (
             <InteractiveStar
               key={s}
@@ -437,7 +530,9 @@ function WriteReviewForm({
             />
           ))}
           {(hoveredStar || rating) > 0 && (
-            <span className="ml-2 text-sm text-muted">{t(`ratingLabels.${hoveredStar || rating}` as 'ratingLabels.1')}</span>
+            <span className="ml-2 text-sm text-muted">
+              {t(`ratingLabels.${hoveredStar || rating}` as 'ratingLabels.1')}
+            </span>
           )}
         </div>
       </div>
@@ -445,7 +540,8 @@ function WriteReviewForm({
       {/* Title */}
       <div className="mb-3">
         <label className="text-xs font-medium block mb-1.5 text-secondary">
-          {t('title')} <span className="text-muted font-normal">{t('optional')}</span>
+          {t('title')}{' '}
+          <span className="text-muted font-normal">{t('optional')}</span>
         </label>
         <input
           value={title}
@@ -459,7 +555,8 @@ function WriteReviewForm({
       {/* Body */}
       <div className="mb-4">
         <label className="text-xs font-medium block mb-1.5 text-secondary">
-          {t('review')} <span className="text-muted font-normal">{t('minChars')}</span>
+          {t('review')}{' '}
+          <span className="text-muted font-normal">{t('minChars')}</span>
         </label>
         <textarea
           value={body}
@@ -469,29 +566,50 @@ function WriteReviewForm({
           placeholder={t('reviewPlaceholder')}
           className="w-full border border-border rounded-xl px-3 py-2 text-sm resize-none bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
-        <p className="text-xs text-muted text-right mt-0.5">{body.length}/2000</p>
+        <p className="text-xs text-muted text-right mt-0.5">
+          {body.length}/2000
+        </p>
       </div>
 
       {/* Photo upload */}
       <div className="mb-5">
         <label className="text-xs font-medium block mb-2 text-secondary">
-          {t('photos')} <span className="text-muted font-normal">{t('upTo5Optional')}</span>
+          {t('photos')}{' '}
+          <span className="text-muted font-normal">{t('upTo5Optional')}</span>
         </label>
         <div className="flex gap-2 flex-wrap">
           {imageUrls.map((url, i) => (
-            <div key={url} className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border border-border">
-              <Image src={url} alt="" fill sizes="64px" className="object-cover" />
+            <div
+              key={url}
+              className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border border-border"
+            >
+              <button
+                type="button"
+                onClick={() => setPreviewIndex(i)}
+                aria-label={t('reviewPhoto', { n: i + 1 })}
+                className="absolute inset-0"
+              >
+                <Image
+                  src={url}
+                  alt=""
+                  fill
+                  sizes="64px"
+                  className="object-cover hover:opacity-80 transition-opacity"
+                />
+              </button>
               <button
                 type="button"
                 onClick={() => removeImage(i)}
-                className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 rounded-full flex items-center justify-center text-white"
+                className="absolute z-10 top-0.5 right-0.5 w-4 h-4 bg-black/60 rounded-full flex items-center justify-center text-white"
               >
                 <X className="w-2.5 h-2.5" />
               </button>
             </div>
           ))}
           {imageUrls.length < 5 && (
-            <label className={`w-16 h-16 border-2 border-dashed border-border rounded-xl flex items-center justify-center cursor-pointer hover:border-primary hover:text-primary transition-colors`}>
+            <label
+              className={`w-16 h-16 border-2 border-dashed border-border rounded-xl flex items-center justify-center cursor-pointer hover:border-primary hover:text-primary transition-colors`}
+            >
               <Camera className="w-5 h-5 text-muted" />
               <input
                 ref={fileRef}
@@ -510,7 +628,11 @@ function WriteReviewForm({
       {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
 
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={() => setIsOpen(false)} className="px-4 py-2 text-sm text-muted hover:text-secondary">
+        <button
+          type="button"
+          onClick={() => setIsOpen(false)}
+          className="px-4 py-2 text-sm text-muted hover:text-secondary"
+        >
           {t('cancel')}
         </button>
         <button
@@ -530,15 +652,18 @@ function WriteReviewForm({
 
 type FilterId = 'suggested' | 'photo' | 'all';
 
-function applyClientFilter(reviews: ReviewDto[], filter: FilterId): ReviewDto[] {
-  if (filter === 'photo') return reviews.filter((r) => (r.images ?? []).length > 0);
+function applyClientFilter(
+  reviews: ReviewDto[],
+  filter: FilterId,
+): ReviewDto[] {
+  if (filter === 'photo') return reviews.filter((r) => r.imageUrls.length > 0);
   return reviews;
 }
 
 // ── EtsyReviewsSection ────────────────────────────────────────────────────────
 
 interface Props {
-  productSlug:   string;
+  productSlug: string;
   reviewSummary: ReviewSummaryDto | null;
 }
 
@@ -548,36 +673,46 @@ const REVIEW_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
   const t = useTranslations('product.etsyReviews');
-  const [activeFilter,  setActiveFilter]  = useState<FilterId>('suggested');
-  const [starFilter,    setStarFilter]    = useState<number | null>(null);
-  const [page,          setPage]          = useState(1);
+  const [activeFilter, setActiveFilter] = useState<FilterId>('suggested');
+  const [starFilter, setStarFilter] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
   const [reviewSuccess, setReviewSuccess] = useState(false);
+  const [photoPreviewIndex, setPhotoPreviewIndex] = useState<number | null>(
+    null,
+  );
 
   const { data, isLoading } = useReviews(productSlug, {
     page,
-    limit:  10,
+    limit: 10,
     rating: starFilter ?? undefined,
     status: 'APPROVED',
   });
 
-  const allReviews  = data?.data ?? [];
-  const reviews     = applyClientFilter(allReviews, activeFilter);
-  const photoCount  = allReviews.filter((r) => (r.images ?? []).length > 0).length;
-  const allPhotos   = reviews.flatMap((r) => r.images ?? []);
+  const allReviews = data?.data ?? [];
+  const reviews = applyClientFilter(allReviews, activeFilter);
+  const photoCount = allReviews.filter((r) => r.imageUrls.length > 0).length;
+  const allPhotos = reviews.flatMap((r) => r.imageUrls);
 
   // Show write form even when there are no reviews yet
   if (!reviewSummary || reviewSummary.totalReviews === 0) {
     return (
       <section id="reviews" className="mt-12 pt-8 border-t border-border">
-        <h2 className="text-xl font-semibold mb-4">{t('reviewsForThisItem')}</h2>
+        <h2 className="text-xl font-semibold mb-4">
+          {t('reviewsForThisItem')}
+        </h2>
         {reviewSuccess ? (
           <div className="py-6 text-center text-sm text-green-700 bg-green-50 rounded-2xl border border-green-100">
             {t('thankYouSubmitted')}
           </div>
         ) : (
           <>
-            <WriteReviewForm productSlug={productSlug} onSuccess={() => setReviewSuccess(true)} />
-            <p className="text-sm text-muted text-center mt-6">{t('noReviewsBeFirst')}</p>
+            <WriteReviewForm
+              productSlug={productSlug}
+              onSuccess={() => setReviewSuccess(true)}
+            />
+            <p className="text-sm text-muted text-center mt-6">
+              {t('noReviewsBeFirst')}
+            </p>
           </>
         )}
       </section>
@@ -588,8 +723,8 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
 
   const filterTabs: { id: FilterId; label: string }[] = [
     { id: 'suggested', label: t('suggested') },
-    { id: 'photo',     label: t('withPhotos', { count: photoCount }) },
-    { id: 'all',       label: t('all') },
+    { id: 'photo', label: t('withPhotos', { count: photoCount }) },
+    { id: 'all', label: t('all') },
   ];
 
   const handleFilterChange = (id: FilterId) => {
@@ -616,22 +751,34 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
 
   const handleHelpful = async (reviewId: string) => {
     try {
-      await apiClient.post(API_ROUTES.PRODUCTS.REVIEW_HELPFUL(productSlug, reviewId));
-    } catch { /* best-effort */ }
+      await apiClient.post(
+        API_ROUTES.PRODUCTS.REVIEW_HELPFUL(productSlug, reviewId),
+      );
+    } catch {
+      /* best-effort */
+    }
   };
 
   // Approximate per-category scores from overall average (API has no breakdown)
   const categoryRatings = [
-    { label: t('itemQuality'),     score: averageRating },
-    { label: t('shipping'),        score: Math.min(5, averageRating + 0.1) },
+    { label: t('itemQuality'), score: averageRating },
+    { label: t('shipping'), score: Math.min(5, averageRating + 0.1) },
     { label: t('customerService'), score: 4.9 },
   ];
 
   return (
     <section id="reviews" className="mt-12 pt-8 border-t border-border">
+      <ImageLightbox
+        urls={allPhotos}
+        index={photoPreviewIndex}
+        onClose={() => setPhotoPreviewIndex(null)}
+        onIndex={setPhotoPreviewIndex}
+      />
       <div className="flex items-baseline gap-3 mb-6">
         <h2 className="text-xl font-semibold">
-          {starFilter !== null ? t('starReviews', { star: starFilter }) : t('reviewsForThisItem')}
+          {starFilter !== null
+            ? t('starReviews', { star: starFilter })
+            : t('reviewsForThisItem')}
         </h2>
         <span className="text-sm text-muted">
           {t('total', { count: safeNum(totalReviews).toLocaleString() })}
@@ -643,7 +790,6 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
 
       {/* ── RATING SUMMARY ── */}
       <div className="flex flex-col lg:flex-row gap-8 mb-8">
-
         {/* Big number + stars */}
         <div className="flex items-center gap-4 shrink-0">
           <div className="text-center">
@@ -662,9 +808,9 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
         {/* Star distribution bars — clickable to filter */}
         <div className="flex-1 space-y-1.5">
           {([5, 4, 3, 2, 1] as const).map((star) => {
-            const count     = distribution[star] ?? 0;
-            const pct       = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
-            const isActive  = starFilter === star;
+            const count = distribution[star] ?? 0;
+            const pct = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
+            const isActive = starFilter === star;
             const isDisabled = count === 0;
             return (
               <button
@@ -674,11 +820,17 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
                 onClick={() => !isDisabled && handleStarFilter(star)}
                 className={[
                   'w-full flex items-center gap-2 text-sm rounded-lg px-2 py-1 -mx-2 transition-colors group',
-                  isDisabled  ? 'cursor-default opacity-40' : 'cursor-pointer',
-                  isActive    ? 'bg-yellow-50 ring-1 ring-yellow-300' : isDisabled ? '' : 'hover:bg-gray-50',
+                  isDisabled ? 'cursor-default opacity-40' : 'cursor-pointer',
+                  isActive
+                    ? 'bg-yellow-50 ring-1 ring-yellow-300'
+                    : isDisabled
+                      ? ''
+                      : 'hover:bg-gray-50',
                 ].join(' ')}
               >
-                <span className={`w-4 text-right tabular-nums shrink-0 text-xs font-medium ${isActive ? 'text-yellow-600' : 'text-muted'}`}>
+                <span
+                  className={`w-4 text-right tabular-nums shrink-0 text-xs font-medium ${isActive ? 'text-yellow-600' : 'text-muted'}`}
+                >
                   {star}★
                 </span>
                 <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -687,7 +839,9 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <span className={`text-xs w-8 text-right tabular-nums shrink-0 ${isActive ? 'text-yellow-700 font-semibold' : 'text-muted'}`}>
+                <span
+                  className={`text-xs w-8 text-right tabular-nums shrink-0 ${isActive ? 'text-yellow-700 font-semibold' : 'text-muted'}`}
+                >
                   {Math.round(pct)}%
                 </span>
               </button>
@@ -698,7 +852,10 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
         {/* Per-category scores */}
         <div className="space-y-2 text-sm min-w-[200px]">
           {categoryRatings.map((cat) => (
-            <div key={cat.label} className="flex items-center justify-between gap-4">
+            <div
+              key={cat.label}
+              className="flex items-center justify-between gap-4"
+            >
               <span className="text-muted">{cat.label}</span>
               <div className="flex items-center gap-1.5">
                 <Stars rating={cat.score} size="xs" />
@@ -730,21 +887,22 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
         )}
 
         {/* Tab pills (hidden when star filter is active, except All) */}
-        {starFilter === null && filterTabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => handleFilterChange(tab.id)}
-            className={[
-              'flex-shrink-0 px-4 py-1.5 rounded-full text-sm border transition-colors',
-              activeFilter === tab.id
-                ? 'bg-secondary text-white border-secondary'
-                : 'border-border text-secondary hover:border-secondary',
-            ].join(' ')}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {starFilter === null &&
+          filterTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => handleFilterChange(tab.id)}
+              className={[
+                'flex-shrink-0 px-4 py-1.5 rounded-full text-sm border transition-colors',
+                activeFilter === tab.id
+                  ? 'bg-secondary text-white border-secondary'
+                  : 'border-border text-secondary hover:border-secondary',
+              ].join(' ')}
+            >
+              {tab.label}
+            </button>
+          ))}
 
         {/* When star filter active, show "All reviews" shortcut */}
         {starFilter !== null && (
@@ -765,7 +923,10 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
         </div>
       ) : (
         <div className="mb-6">
-          <WriteReviewForm productSlug={productSlug} onSuccess={() => setReviewSuccess(true)} />
+          <WriteReviewForm
+            productSlug={productSlug}
+            onSuccess={() => setReviewSuccess(true)}
+          />
         </div>
       )}
 
@@ -794,7 +955,11 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
       ) : (
         <div className="space-y-6">
           {reviews.map((review) => (
-            <ReviewCard key={review.id} review={review} onHelpful={handleHelpful} />
+            <ReviewCard
+              key={review.id}
+              review={review}
+              onHelpful={handleHelpful}
+            />
           ))}
         </div>
       )}
@@ -802,11 +967,16 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
       {/* ── PHOTOS FROM REVIEWS ── */}
       {allPhotos.length > 0 && (
         <div className="mt-8">
-          <h3 className="text-sm font-medium text-secondary mb-3">{t('photosFromReviews')}</h3>
+          <h3 className="text-sm font-medium text-secondary mb-3">
+            {t('photosFromReviews')}
+          </h3>
           <div className="flex gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden">
             {allPhotos.slice(0, 10).map((url, i) => (
-              <div
+              <button
                 key={i}
+                type="button"
+                onClick={() => setPhotoPreviewIndex(i)}
+                aria-label={t('customerPhoto', { n: i + 1 })}
                 className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-background cursor-pointer hover:opacity-90 transition-opacity"
               >
                 <Image
@@ -816,7 +986,7 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
                   sizes="80px"
                   className="object-cover"
                 />
-              </div>
+              </button>
             ))}
           </div>
         </div>

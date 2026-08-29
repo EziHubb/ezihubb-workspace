@@ -6,7 +6,10 @@ interface FeaturedReviewsProps {
   locale: string;
 }
 
-export async function FeaturedReviews({ reviews, locale }: FeaturedReviewsProps) {
+export async function FeaturedReviews({
+  reviews,
+  locale,
+}: FeaturedReviewsProps) {
   if (reviews.length === 0) return null;
 
   const t = await getTranslations({ locale, namespace: 'home' });
@@ -18,16 +21,19 @@ export async function FeaturedReviews({ reviews, locale }: FeaturedReviewsProps)
           <h2 className="font-display text-3xl md:text-4xl font-bold text-secondary mb-3">
             {t('reviews.title')}
           </h2>
-          <p className="text-muted text-base md:text-lg">{t('reviews.subtitle')}</p>
+          <p className="text-muted text-base md:text-lg">
+            {t('reviews.subtitle')}
+          </p>
         </div>
 
         {/* 3-col desktop, vertical stack mobile */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {reviews.map((review) => {
-            const firstName = review.user?.firstName ?? '';
-            const lastName  = review.user?.lastName  ?? '';
-            const initials  = `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase() || '?';
-            const fullName  = `${firstName} ${lastName}`.trim() || 'Anonymous';
+            const firstName = review.author?.firstName ?? '';
+            const lastName = review.author?.lastName ?? '';
+            const initials =
+              `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase() || '?';
+            const fullName = `${firstName} ${lastName}`.trim() || 'Anonymous';
 
             return (
               <article
@@ -35,7 +41,10 @@ export async function FeaturedReviews({ reviews, locale }: FeaturedReviewsProps)
                 className="bg-surface rounded-card p-6 shadow-sm border border-border flex flex-col"
               >
                 {/* Stars — rendered manually to stay server-side */}
-                <div className="flex gap-0.5 mb-4" aria-label={`${review.rating} out of 5 stars`}>
+                <div
+                  className="flex gap-0.5 mb-4"
+                  aria-label={`${review.rating} out of 5 stars`}
+                >
                   {Array.from({ length: 5 }).map((_, i) => (
                     <svg
                       key={i}
@@ -50,7 +59,9 @@ export async function FeaturedReviews({ reviews, locale }: FeaturedReviewsProps)
                 </div>
 
                 {review.title && (
-                  <p className="font-semibold text-secondary mb-2">{review.title}</p>
+                  <p className="font-semibold text-secondary mb-2">
+                    {review.title}
+                  </p>
                 )}
 
                 <blockquote className="text-secondary text-sm leading-relaxed italic mb-5 line-clamp-5 flex-1">
@@ -65,7 +76,9 @@ export async function FeaturedReviews({ reviews, locale }: FeaturedReviewsProps)
                     {initials}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-semibold text-sm text-secondary truncate">{fullName}</p>
+                    <p className="font-semibold text-sm text-secondary truncate">
+                      {fullName}
+                    </p>
                     <time
                       dateTime={review.createdAt}
                       className="text-xs text-muted"
