@@ -4,15 +4,16 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
-import { Star, MessageSquare, User } from 'lucide-react';
+import { Star, MessageSquare } from 'lucide-react';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { Pagination, Skeleton } from '@ezihubb/ui';
 import { usePaginationLabels } from '../../../../../lib/hooks/usePaginationLabels';
+import { ImageLightbox } from '../../../../../components/messages/ImageLightbox';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface StoreReviewsSummary {
+export interface StoreReviewsSummary {
   averageRating: number;
   totalReviews:  number;
   distribution:  Record<string, number>;
@@ -101,6 +102,8 @@ function RatingBar({
 function ReviewCard({ review }: { review: ReviewItem }) {
   const t      = useTranslations('shops');
   const locale = useLocale();
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const images = review.imageUrls ?? [];
 
   const dateFmt = new Intl.DateTimeFormat(locale, {
     month: 'short',
@@ -115,7 +118,14 @@ function ReviewCard({ review }: { review: ReviewItem }) {
   const date    = dateFmt.format(new Date(review.createdAt));
 
   return (
-    <article className="border-b border-border pb-7 last:border-0 last:pb-0">
+    <>
+      <ImageLightbox
+        urls={images}
+        index={previewIndex}
+        onClose={() => setPreviewIndex(null)}
+        onIndex={setPreviewIndex}
+      />
+      <article className="border-b border-border pb-7 last:border-0 last:pb-0">
       {/* Author row */}
       <div className="flex items-start gap-3 mb-3">
         <div className="w-9 h-9 rounded-full bg-primary/10 border border-border flex items-center justify-center overflow-hidden shrink-0">
@@ -155,12 +165,15 @@ function ReviewCard({ review }: { review: ReviewItem }) {
       <p className="text-sm text-secondary/80 leading-relaxed">{review.body}</p>
 
       {/* Review photos */}
-      {review.imageUrls.length > 0 && (
+      {images.length > 0 && (
         <div className="flex gap-2 mt-3 flex-wrap">
-          {review.imageUrls.slice(0, 5).map((url, i) => (
-            <div
+          {images.map((url, i) => (
+            <button
               key={i}
-              className="w-16 h-16 rounded-md overflow-hidden border border-border bg-surface"
+              type="button"
+              onClick={() => setPreviewIndex(i)}
+              aria-label={t('reviews.reviewPhotoAlt', { n: i + 1 })}
+              className="w-16 h-16 rounded-md overflow-hidden border border-border bg-surface hover:opacity-80 transition-opacity"
             >
               <Image
                 src={url}
@@ -169,7 +182,7 @@ function ReviewCard({ review }: { review: ReviewItem }) {
                 height={64}
                 className="object-cover w-full h-full"
               />
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -181,7 +194,8 @@ function ReviewCard({ review }: { review: ReviewItem }) {
           <p className="text-sm text-secondary/80 leading-relaxed">{review.sellerReply}</p>
         </div>
       )}
-    </article>
+      </article>
+    </>
   );
 }
 

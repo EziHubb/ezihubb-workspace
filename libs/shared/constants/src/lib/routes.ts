@@ -117,7 +117,8 @@ export const API_ROUTES = {
   REVIEWS: {
     LIST:          '/reviews',
     SUMMARY:       '/reviews/summary',
-    UPLOAD_IMAGES: (reviewId: string) => `/reviews/${reviewId}/images`,
+    UPLOAD_IMAGES: (productSlug: string, reviewId: string) =>
+      `/products/${productSlug}/reviews/${reviewId}/images`,
     UPLOAD_IMAGE:  '/reviews/upload-image',
     MY_REVIEWS:    '/reviews/me',
     CAN_REVIEW:    '/reviews/can-review',

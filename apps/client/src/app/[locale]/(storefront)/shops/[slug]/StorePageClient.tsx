@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import { StoreProductsClient } from './StoreProductsClient';
-import { StoreReviewsClient } from './StoreReviewsClient';
+import { StoreReviewsClient, type StoreReviewsSummary } from './StoreReviewsClient';
 import { safeNum } from '@ezihubb/utils';
-import type { ShopColorTheme } from '@ezihubb/constants';
+import { API_ROUTES, type ShopColorTheme } from '@ezihubb/constants';
+import { apiClient } from '@ezihubb/api-client';
 
 type Tab = 'items' | 'reviews' | 'about';
 
@@ -74,9 +76,23 @@ export function StorePageClient({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
 
+  // Load the summary with the tab navigation rather than waiting until the
+  // Reviews panel mounts. StoreReviewsClient uses the same query key, so this
+  // result is shared and does not cause a second summary request after click.
+  const { data: reviewsSummary } = useQuery<StoreReviewsSummary>({
+    queryKey: ['store-reviews-summary', store.slug],
+    queryFn: () => apiClient.get(API_ROUTES.STORES.REVIEWS_SUMMARY(store.slug)),
+    staleTime: 120_000,
+  });
+
   const tabs: { id: Tab; label: string }[] = [
     { id: 'items',   label: t('storePage.tabItems', { count: store.totalProducts }) },
-    { id: 'reviews', label: t('storePage.tabReviews')                               },
+    {
+      id: 'reviews',
+      label: reviewsSummary
+        ? `${t('storePage.tabReviews')} (${reviewsSummary.totalReviews})`
+        : t('storePage.tabReviews'),
+    },
     { id: 'about',   label: t('storePage.tabAbout')                                 },
   ];
 

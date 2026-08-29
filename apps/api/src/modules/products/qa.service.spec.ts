@@ -6,6 +6,9 @@ import { QaService } from './qa.service';
 
 function makePrismaMock() {
   return {
+    product: {
+      findFirst: jest.fn(),
+    },
     productQuestion: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -27,6 +30,37 @@ function makeService(prisma: ReturnType<typeof makePrismaMock>) {
 }
 
 describe('QaService admin scoping', () => {
+  it('shows non-spam questions immediately while masking unpublished draft answers', async () => {
+    const prisma = makePrismaMock();
+    prisma.product.findFirst.mockResolvedValue({ id: 'product-1' });
+    prisma.productQuestion.findMany.mockResolvedValue([
+      {
+        id: 'question-1',
+        question: 'Can this be customized?',
+        askedByName: 'Buyer',
+        answer: 'Draft answer',
+        answeredAt: new Date('2026-08-29T00:00:00.000Z'),
+        isPublished: false,
+        upvotes: 0,
+        createdAt: new Date('2026-08-29T00:00:00.000Z'),
+      },
+    ]);
+    const service = makeService(prisma);
+
+    await expect(service.getPublishedQAs('product-slug')).resolves.toEqual([
+      expect.objectContaining({
+        id: 'question-1',
+        answer: null,
+        answeredAt: null,
+      }),
+    ]);
+    expect(prisma.productQuestion.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { productId: 'product-1', isSpam: false },
+      }),
+    );
+  });
+
   it('scopes the centralized question inbox to products owned by the active store', async () => {
     const prisma = makePrismaMock();
     prisma.productQuestion.findMany.mockResolvedValue([]);

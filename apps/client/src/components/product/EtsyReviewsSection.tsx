@@ -16,10 +16,10 @@ import {
   X,
 } from 'lucide-react';
 import { useReviews } from '@ezihubb/api-client';
-import { apiClient, apiFetch } from '@ezihubb/api-client';
+import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { useAuthStore } from '../../lib/store/auth.store';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@ezihubb/api-client';
 import type { ReviewDto, ReviewSummaryDto } from '@ezihubb/types';
 import { fmtRating, safeNum } from '@ezihubb/utils';
@@ -139,6 +139,7 @@ function ReviewCard({
   const body = review.body ?? '';
   const isLong = body.length > 250;
   const images = review.imageUrls ?? [];
+  const isPending = review.status === 'PENDING';
 
   const initials =
     (
@@ -157,9 +158,22 @@ function ReviewCard({
         onClose={() => setPreviewIndex(null)}
         onIndex={setPreviewIndex}
       />
-      <div className="pb-6 border-b border-border last:border-0">
-        {/* Stars */}
-        <Stars rating={review.rating} />
+      <div
+        className={
+          isPending
+            ? 'rounded-xl border border-dashed border-amber-300 bg-amber-50/60 p-4 opacity-70'
+            : 'pb-6 border-b border-border last:border-0'
+        }
+      >
+        {/* Stars + private moderation state */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Stars rating={review.rating} />
+          {isPending && (
+            <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+              {t('pendingModeration')}
+            </span>
+          )}
+        </div>
 
         {/* Body */}
         <p className="text-sm text-secondary leading-relaxed mt-2">
@@ -235,7 +249,7 @@ function ReviewCard({
         )}
 
         {/* Helpful */}
-        {onHelpful && (
+        {onHelpful && !isPending && (
           <button
             type="button"
             disabled={markedHelpful}
@@ -295,7 +309,7 @@ function WriteReviewForm({
   onSuccess,
 }: {
   productSlug: string;
-  onSuccess: () => void;
+  onSuccess: (warning?: string) => void;
 }) {
   const t = useTranslations('product.etsyReviews');
   const locale = useLocale();
@@ -395,32 +409,39 @@ function WriteReviewForm({
         { token: accessToken ?? undefined },
       );
 
-      // Attach staged photos to the review that now exists. Sent through
-      // apiFetch rather than apiClient: apiClient JSON.stringify's every body,
-      // so it cannot carry multipart at all.
-      //
-      // A failed photo upload does NOT fail the submit — the review itself is
-      // already saved, and throwing here would show an error for something that
-      // did succeed, and invite a resubmit that would duplicate it.
+      // Attach staged photos after the review exists. The route includes the
+      // product slug because ReviewsController is mounted at
+      // /products/:slug/reviews; using /reviews/:id/images silently hit a 404
+      // and left imageUrls empty even though the review itself was saved.
+      let uploadWarning: string | undefined;
       if (created?.id && pendingFiles.length) {
         const form = new FormData();
         // Field name must be "images": FilesInterceptor('images', 5).
         for (const file of pendingFiles) form.append('images', file);
         try {
-          await apiFetch(API_ROUTES.REVIEWS.UPLOAD_IMAGES(created.id), {
-            method: 'POST',
-            body: form as unknown as BodyInit,
-          });
+          await apiClient.post(
+            API_ROUTES.REVIEWS.UPLOAD_IMAGES(productSlug, created.id),
+            form,
+            { token: accessToken ?? undefined },
+          );
         } catch {
-          setError(t('photosFailedButReviewSaved'));
+          // The review is already persisted, so do not invite a duplicate
+          // submission. Close the form and surface the partial failure in the
+          // success notice outside the modal instead.
+          uploadWarning = t('photosFailedButReviewSaved');
         }
       }
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.reviews(productSlug, {}),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.reviewSummary(productSlug),
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.reviews(productSlug, {}),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.reviewSummary(productSlug),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['my-review', productSlug],
+        }),
+      ]);
       setIsOpen(false);
       setRating(0);
       setTitle('');
@@ -432,7 +453,7 @@ function WriteReviewForm({
       setImageUrls([]);
       setPendingFiles([]);
       setPreviewIndex(null);
-      onSuccess();
+      onSuccess(uploadWarning);
     } catch (e: unknown) {
       const msg = (e as { message?: string })?.message ?? t('failedToSubmit');
       setError(msg);
@@ -673,10 +694,13 @@ const REVIEW_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
   const t = useTranslations('product.etsyReviews');
+  const user = useAuthStore((state) => state.user);
+  const accessToken = useAuthStore((state) => state.accessToken);
   const [activeFilter, setActiveFilter] = useState<FilterId>('suggested');
   const [starFilter, setStarFilter] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [reviewSuccess, setReviewSuccess] = useState(false);
+  const [reviewWarning, setReviewWarning] = useState('');
   const [photoPreviewIndex, setPhotoPreviewIndex] = useState<number | null>(
     null,
   );
@@ -688,8 +712,20 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
     status: 'APPROVED',
   });
 
+  const { data: myReview, isLoading: myReviewLoading } = useQuery<ReviewDto | null>({
+    queryKey: ['my-review', productSlug, user?.id],
+    queryFn: () =>
+      apiClient.get<ReviewDto | null>(API_ROUTES.PRODUCTS.MY_REVIEW(productSlug), {
+        token: accessToken ?? undefined,
+        cache: 'no-store',
+      }),
+    enabled: Boolean(user),
+    staleTime: 0,
+  });
+
   const allReviews = data?.data ?? [];
   const reviews = applyClientFilter(allReviews, activeFilter);
+  const pendingReview = myReview?.status === 'PENDING' ? myReview : null;
   const photoCount = allReviews.filter((r) => r.imageUrls.length > 0).length;
   const allPhotos = reviews.flatMap((r) => r.imageUrls);
 
@@ -701,19 +737,28 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
           {t('reviewsForThisItem')}
         </h2>
         {reviewSuccess ? (
-          <div className="py-6 text-center text-sm text-green-700 bg-green-50 rounded-2xl border border-green-100">
-            {t('thankYouSubmitted')}
+          <div className={`py-6 text-center text-sm rounded-2xl border ${reviewWarning ? 'text-amber-800 bg-amber-50 border-amber-200' : 'text-green-700 bg-green-50 border-green-100'}`}>
+            <p>{t('thankYouSubmitted')}</p>
+            {reviewWarning && <p className="mt-1">{reviewWarning}</p>}
           </div>
-        ) : (
+        ) : !myReviewLoading && !myReview ? (
           <>
             <WriteReviewForm
               productSlug={productSlug}
-              onSuccess={() => setReviewSuccess(true)}
+              onSuccess={(warning) => {
+                setReviewWarning(warning ?? '');
+                setReviewSuccess(true);
+              }}
             />
             <p className="text-sm text-muted text-center mt-6">
               {t('noReviewsBeFirst')}
             </p>
           </>
+        ) : null}
+        {pendingReview && (
+          <div className="mt-6">
+            <ReviewCard review={pendingReview} />
+          </div>
         )}
       </section>
     );
@@ -918,15 +963,25 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
 
       {/* ── WRITE REVIEW FORM ── */}
       {reviewSuccess ? (
-        <div className="mb-6 py-4 text-center text-sm text-green-700 bg-green-50 rounded-2xl border border-green-100">
-          {t('thankYouSubmitted')}
+        <div className={`mb-6 py-4 text-center text-sm rounded-2xl border ${reviewWarning ? 'text-amber-800 bg-amber-50 border-amber-200' : 'text-green-700 bg-green-50 border-green-100'}`}>
+          <p>{t('thankYouSubmitted')}</p>
+          {reviewWarning && <p className="mt-1">{reviewWarning}</p>}
         </div>
-      ) : (
+      ) : !myReviewLoading && !myReview ? (
         <div className="mb-6">
           <WriteReviewForm
             productSlug={productSlug}
-            onSuccess={() => setReviewSuccess(true)}
+            onSuccess={(warning) => {
+              setReviewWarning(warning ?? '');
+              setReviewSuccess(true);
+            }}
           />
+        </div>
+      ) : null}
+
+      {pendingReview && (
+        <div className="mb-6">
+          <ReviewCard review={pendingReview} />
         </div>
       )}
 

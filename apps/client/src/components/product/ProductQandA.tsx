@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslations } from 'next-intl';
 import { MessageCircle, ThumbsUp, ChevronDown, ChevronUp, X } from 'lucide-react';
@@ -164,6 +164,33 @@ export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
   });
   const [submitted, setSubmitted] = useState(false);
 
+  const refreshQAs = useCallback(async () => {
+    try {
+      const latest = await apiClient.get<QAItem[]>(API_ROUTES.PRODUCTS.QA(productSlug), {
+        cache: 'no-store',
+      });
+      setQas(Array.isArray(latest) ? latest : []);
+    } catch {
+      // Keep the server-rendered data when a background refresh is unavailable.
+    }
+  }, [productSlug]);
+
+  useEffect(() => {
+    setQas(initialQAs);
+    void refreshQAs();
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void refreshQAs();
+    };
+
+    window.addEventListener('focus', refreshQAs);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      window.removeEventListener('focus', refreshQAs);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [initialQAs, refreshQAs]);
+
   const handleUpvote = useCallback((qaId: string) => {
     if (upvoted.has(qaId)) return;
     const next = new Set([...upvoted, qaId]);
@@ -177,8 +204,9 @@ export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
   const handleSubmitted = useCallback(() => {
     setIsAskOpen(false);
     setSubmitted(true);
+    void refreshQAs();
     setTimeout(() => setSubmitted(false), 5000);
-  }, []);
+  }, [refreshQAs]);
 
   const visible = showAll ? qas : qas.slice(0, VISIBLE_DEFAULT);
 

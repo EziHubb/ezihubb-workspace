@@ -38,7 +38,7 @@ export interface Question {
 interface QuestionRowProps {
   q:          Question;
   productId:  string;
-  onRefresh:  () => void;
+  onRefresh?: () => void | Promise<unknown>;
 }
 
 export function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
@@ -48,13 +48,21 @@ export function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
   const [publish,   setPublish]   = useState(q.isPublished);
   const [expanded,  setExpanded]  = useState(!q.answer);
   const [saving,    setSaving]    = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [deleting,  setDeleting]  = useState(false);
   const [error,     setError]     = useState('');
 
-  const notifyChanged = () => {
-    onRefresh();
-    qc.invalidateQueries({ queryKey: ['admin-questions'] });
-    qc.invalidateQueries({ queryKey: ['sidebar-questions-unanswered'] });
+  useEffect(() => {
+    setAnswer(q.answer ?? '');
+    setPublish(q.isPublished);
+  }, [q.answer, q.isPublished]);
+
+  const notifyChanged = async () => {
+    await Promise.all([
+      Promise.resolve(onRefresh?.()),
+      qc.invalidateQueries({ queryKey: ['admin-questions'] }),
+      qc.invalidateQueries({ queryKey: ['sidebar-questions-unanswered'] }),
+    ]);
   };
 
   const handleSave = async () => {
@@ -63,7 +71,7 @@ export function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
     setError('');
     try {
       await api.post(API_ROUTES.ADMIN.PRODUCT_QUESTION_ANSWER(productId, q.id), { answer: answer.trim(), publish });
-      notifyChanged();
+      await notifyChanged();
       setExpanded(false);
     } catch {
       setError('Failed to save. Please try again.');
@@ -73,10 +81,16 @@ export function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
   };
 
   const handleTogglePublish = async () => {
+    setPublishing(true);
+    setError('');
     try {
       await api.patch(API_ROUTES.ADMIN.PRODUCT_QUESTION(productId, q.id), { isPublished: !q.isPublished });
-      notifyChanged();
-    } catch { /* ignore */ }
+      await notifyChanged();
+    } catch {
+      setError('Failed to update publish status. Please try again.');
+    } finally {
+      setPublishing(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -84,16 +98,23 @@ export function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
     setDeleting(true);
     try {
       await api.delete(API_ROUTES.ADMIN.PRODUCT_QUESTION(productId, q.id));
-      notifyChanged();
-    } catch { setDeleting(false); }
+      await notifyChanged();
+    } catch {
+      setError('Failed to delete. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleSpam = async () => {
     if (!await confirm('Mark as spam? This will hide the question.', { confirmLabel: 'Mark as spam', destructive: true })) return;
+    setError('');
     try {
       await api.post(API_ROUTES.ADMIN.PRODUCT_QUESTION_SPAM(productId, q.id));
-      notifyChanged();
-    } catch { /* ignore */ }
+      await notifyChanged();
+    } catch {
+      setError('Failed to mark as spam. Please try again.');
+    }
   };
 
   const needsAnswer = !q.answer;
@@ -133,7 +154,7 @@ export function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
               </span>
             )}
             {q.isPublished && (
-              <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[11px] font-semibold">Published</span>
+              <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[11px] font-semibold">Answer published</span>
             )}
             {q.answer && !q.isPublished && (
               <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-[11px] font-semibold">Draft answer</span>
@@ -155,8 +176,9 @@ export function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
             <button
               type="button"
               onClick={handleTogglePublish}
-              title={q.isPublished ? 'Unpublish' : 'Publish'}
-              className="p-1.5 rounded-lg text-muted hover:text-secondary hover:bg-muted/10 transition-colors"
+              disabled={publishing}
+              title={q.isPublished ? 'Unpublish answer' : 'Publish answer'}
+              className="p-1.5 rounded-lg text-muted hover:text-secondary hover:bg-muted/10 transition-colors disabled:opacity-40"
             >
               <Check className={`w-4 h-4 ${q.isPublished ? 'text-green-600' : ''}`} />
             </button>
@@ -211,7 +233,7 @@ export function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
                 onChange={(e) => setPublish(e.target.checked)}
                 className="w-4 h-4 accent-primary rounded"
               />
-              Publish immediately
+              Publish answer immediately
             </label>
             <div className="flex items-center gap-2">
               {error && <p className="text-xs text-red-600">{error}</p>}

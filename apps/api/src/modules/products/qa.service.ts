@@ -70,19 +70,30 @@ export class QaService {
     });
     if (!product) throw new NotFoundException('Product not found');
 
-    return this.prisma.productQuestion.findMany({
-      where: { productId: product.id, isPublished: true, isSpam: false },
+    const questions = await this.prisma.productQuestion.findMany({
+      // Buyer questions are public immediately. isPublished controls whether
+      // the shop's answer is public; isSpam controls question visibility.
+      where: { productId: product.id, isSpam: false },
       select: {
         id:          true,
         question:    true,
         askedByName: true,
         answer:      true,
         answeredAt:  true,
+        isPublished: true,
         upvotes:     true,
         createdAt:   true,
       },
       orderBy: [{ upvotes: 'desc' }, { createdAt: 'asc' }],
     });
+
+    return questions.map(({ isPublished, ...question }) => ({
+      ...question,
+      // Never leak a draft answer. The question itself remains visible as
+      // unanswered until the shop explicitly publishes its reply.
+      answer: isPublished ? question.answer : null,
+      answeredAt: isPublished ? question.answeredAt : null,
+    }));
   }
 
   // ── Customer: upvote ─────────────────────────────────────────────────────────

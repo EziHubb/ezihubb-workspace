@@ -182,7 +182,7 @@ export default async function ProductDetailPage({
         headers: localeHeaders,
       }),
       apiClient.get<QAItem[]>(API_ROUTES.PRODUCTS.QA(slug), {
-        next: { revalidate: 60 },
+        cache: 'no-store',
       }),
       // Full tree (not just level 1) so the breadcrumb can walk a leaf category
       // back up to its ancestors — changes rarely, cached an hour.

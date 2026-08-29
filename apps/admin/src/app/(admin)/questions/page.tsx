@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, MessageCircle, Search } from 'lucide-react';
 import { API_ROUTES } from '@ezihubb/constants';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
@@ -32,7 +32,6 @@ const FILTERS: Array<{ value: Filter; label: string }> = [
 ];
 
 export default function QuestionsPage() {
-  const qc = useQueryClient();
   const [filter, setFilter] = useState<Filter>('unanswered');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -67,11 +66,6 @@ export default function QuestionsPage() {
       api.get<{ count: number }>(API_ROUTES.ADMIN.QUESTIONS_UNANSWERED),
     staleTime: 30_000,
   });
-
-  const refresh = () => {
-    qc.invalidateQueries({ queryKey: ['admin-questions'] });
-    qc.invalidateQueries({ queryKey: ['sidebar-questions-unanswered'] });
-  };
 
   const questions = listQuery.data?.data ?? [];
   const pagination = listQuery.data?.pagination;
@@ -188,7 +182,6 @@ export default function QuestionsPage() {
               key={question.id}
               q={question}
               productId={question.product?.id ?? question.productId}
-              onRefresh={refresh}
             />
           ))}
         </div>
