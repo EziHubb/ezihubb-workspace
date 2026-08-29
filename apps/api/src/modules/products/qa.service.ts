@@ -1,6 +1,8 @@
-import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { IsEmail, IsOptional, IsString, MaxLength } from 'class-validator';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { paginatedResponse } from '../../common/dto/paginated-response.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ModerationService } from '../moderation/moderation.service';
 
@@ -15,6 +17,13 @@ export class AskQuestionDto {
 export class AnswerQuestionDto {
   @IsString() @MaxLength(5000) answer: string;
   @IsOptional() publish?: boolean;
+}
+
+export interface AdminQuestionInboxQuery {
+  filter?: 'all' | 'unanswered' | 'answered';
+  q?: string;
+  page?: number;
+  limit?: number;
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -103,22 +112,96 @@ export class QaService {
     });
   }
 
+  // ── Admin: centralized question inbox ──────────────────────────────────────
+
+  async getAdminQuestionInbox(
+    query: AdminQuestionInboxQuery,
+    storeId?: string,
+  ) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 24;
+    const search = query.q?.trim();
+
+    const where: Prisma.ProductQuestionWhereInput = {
+      isSpam: false,
+      ...(storeId ? { product: { storeId } } : {}),
+      ...(query.filter === 'unanswered' ? { answer: null } : {}),
+      ...(query.filter === 'answered' ? { answer: { not: null } } : {}),
+      ...(search
+        ? {
+            OR: [
+              { question: { contains: search, mode: 'insensitive' } },
+              { askedByName: { contains: search, mode: 'insensitive' } },
+              { askedByEmail: { contains: search, mode: 'insensitive' } },
+              { product: { name: { contains: search, mode: 'insensitive' } } },
+            ],
+          }
+        : {}),
+    };
+
+    const [questions, total] = await Promise.all([
+      this.prisma.productQuestion.findMany({
+        where,
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              images: {
+                where: { isPrimary: true },
+                select: { url: true },
+                take: 1,
+              },
+              store: { select: { id: true, name: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.productQuestion.count({ where }),
+    ]);
+
+    return paginatedResponse(
+      questions.map(({ product, ...question }) => ({
+        ...question,
+        product: {
+          id: product.id,
+          name: product.name,
+          slug: product.slug,
+          imageUrl: product.images[0]?.url ?? null,
+          store: product.store,
+        },
+      })),
+      page,
+      limit,
+      total,
+    );
+  }
+
   // ── Admin: global unanswered count ──────────────────────────────────────────
 
-  async getUnansweredCount(): Promise<number> {
+  async getUnansweredCount(storeId?: string): Promise<number> {
     return this.prisma.productQuestion.count({
-      where: { answer: null, isSpam: false },
+      where: {
+        answer: null,
+        isSpam: false,
+        ...(storeId ? { product: { storeId } } : {}),
+      },
     });
   }
 
   // ── Admin: answer ────────────────────────────────────────────────────────────
 
-  async answerQuestion(questionId: string, dto: AnswerQuestionDto, shopBaseUrl: string) {
-    const existing = await this.prisma.productQuestion.findUnique({
-      where:  { id: questionId },
-      include: { product: { select: { slug: true } } },
-    });
-    if (!existing) throw new NotFoundException('Question not found');
+  async answerQuestion(
+    productId: string,
+    questionId: string,
+    dto: AnswerQuestionDto,
+    shopBaseUrl: string,
+  ) {
+    const existing = await this.findQuestionForProduct(productId, questionId);
 
     const productUrl = `${shopBaseUrl}/products/${existing.product.slug}`;
 
@@ -155,17 +238,23 @@ export class QaService {
 
   // ── Admin: patch (toggle publish / edit answer) ──────────────────────────────
 
-  async patchQuestion(questionId: string, data: { answer?: string; isPublished?: boolean }) {
-    const exists = await this.prisma.productQuestion.findUnique({ where: { id: questionId } });
-    if (!exists) throw new NotFoundException('Question not found');
+  async patchQuestion(
+    productId: string,
+    questionId: string,
+    data: { answer?: string; isPublished?: boolean },
+  ) {
+    await this.findQuestionForProduct(productId, questionId);
     return this.prisma.productQuestion.update({ where: { id: questionId }, data });
   }
 
   // ── Admin: moderation ────────────────────────────────────────────────────────
 
-  async moderateQuestion(questionId: string, action: 'spam' | 'delete'): Promise<void> {
-    const exists = await this.prisma.productQuestion.findUnique({ where: { id: questionId } });
-    if (!exists) throw new NotFoundException('Question not found');
+  async moderateQuestion(
+    productId: string,
+    questionId: string,
+    action: 'spam' | 'delete',
+  ): Promise<void> {
+    await this.findQuestionForProduct(productId, questionId);
 
     if (action === 'delete') {
       await this.prisma.productQuestion.delete({ where: { id: questionId } });
@@ -196,5 +285,19 @@ export class QaService {
         },
       })),
     };
+  }
+
+  private async findQuestionForProduct(
+    productId: string,
+    questionId: string,
+  ) {
+    const question = await this.prisma.productQuestion.findUnique({
+      where: { id: questionId },
+      include: { product: { select: { slug: true } } },
+    });
+    if (!question || question.productId !== productId) {
+      throw new NotFoundException('Question not found');
+    }
+    return question;
   }
 }

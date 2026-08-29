@@ -107,6 +107,7 @@ const NAV_SECTIONS: NavSection[] = [
       // SHARED_AGGREGATE-shaped promotions page.
       { label: 'Customers',  href: '/customers',  icon: Users         },
       { label: 'Reviews',    href: '/reviews',    icon: Star          },
+      { label: 'Questions',  href: '/questions',  icon: MessageSquare },
       { label: 'Campaigns',  href: '/campaigns',  icon: Megaphone     },
     ],
   },
@@ -209,6 +210,7 @@ function getShopNavSections(): NavSection[] {
         },
         { label: 'Customer service stats', href: '/customer-service-stats', icon: HeartHandshake },
         { label: 'Reviews',                href: '/reviews',                icon: Star           },
+        { label: 'Questions',              href: '/questions',              icon: MessageSquare },
         { label: 'Policy violations',      href: '/policy-violations',      icon: ShieldAlert    },
         {
           label: 'Marketing', href: '/marketing/sales', icon: Megaphone,
@@ -263,15 +265,24 @@ function useNavData() {
     refetchInterval: 120_000,
   });
 
+  const { data: unansweredQuestions } = useQuery<{ count: number }>({
+    queryKey: ['sidebar-questions-unanswered'],
+    queryFn:  () => api.get<{ count: number }>(API_ROUTES.ADMIN.QUESTIONS_UNANSWERED),
+    enabled:  isReady,
+    staleTime:       60_000,
+    refetchInterval: 120_000,
+  });
+
   const superAdminSections = useMemo<NavSection[]>(() =>
     NAV_SECTIONS.map((section) => ({
       ...section,
       items: section.items.map((item) => {
         if (item.href === '/affiliates') return { ...item, badge: pendingData?.count ?? 0 };
+        if (item.href === '/questions') return { ...item, badge: unansweredQuestions?.count ?? 0 };
         return item;
       }),
     })),
-  [pendingData]);
+  [pendingData, unansweredQuestions]);
 
   /**
    * The counts beside Orders and Messages in the shop-owner nav.
@@ -324,19 +335,19 @@ function useNavData() {
   // acting as a shop owner (see getShopNavSections' own note).
   const shopNavSections = useMemo(() => {
     const sections = getShopNavSections();
-    if (!badges) return sections;
     // Rebuilt rather than mutated: getShopNavSections returns fresh objects,
     // but writing into them would still make the badge depend on the order
     // React happened to render in.
     return sections.map((section) => ({
       ...section,
       items: section.items.map((item) => {
-        if (item.href === '/orders')   return { ...item, badge: badges.ordersToProcess };
-        if (item.href === '/messages') return { ...item, badge: badges.unreadMessages };
+        if (item.href === '/orders' && badges)   return { ...item, badge: badges.ordersToProcess };
+        if (item.href === '/messages' && badges) return { ...item, badge: badges.unreadMessages };
+        if (item.href === '/questions') return { ...item, badge: unansweredQuestions?.count ?? 0 };
         return item;
       }),
     }));
-  }, [badges]);
+  }, [badges, unansweredQuestions]);
   // While the session is still loading, `role` is '' (see useAdminMode) — which
   // is neither 'SUPER_ADMIN' nor 'ADMIN', so isPlatformContext computes false
   // and a SUPER_ADMIN would briefly render the shop-owner nav before snapping

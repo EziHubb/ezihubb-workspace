@@ -318,6 +318,7 @@ export const API_ROUTES = {
     PRODUCTS_IMPORT_TEMPLATE: '/admin/products/import/template',
     PRODUCTS_IMPORT_VALIDATE: '/admin/products/import/validate',
     PRODUCTS_IMPORT_EXECUTE:  '/admin/products/import/execute',
+    QUESTIONS:            '/admin/questions',
     QUESTIONS_UNANSWERED: '/admin/questions/unanswered-count',
 
     // ── Catalog ──────────────────────────────────────────────────────────────

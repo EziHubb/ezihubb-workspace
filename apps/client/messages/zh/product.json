@@ -156,7 +156,7 @@
     "submitting": "提交中…",
     "submitQuestion": "提交问题",
     "questionsAndAnswers": "问答",
-    "questionSubmitted": "问题已提交！我们会尽快回复。",
+    "questionSubmitted": "问题已发送给卖家。卖家回复并发布后，问题会显示在这里。",
     "noQuestions": "暂无提问，快来提第一个问题吧！",
     "askedBy": "提问者：{name} · {time}",
     "markHelpful": "标记为有用",

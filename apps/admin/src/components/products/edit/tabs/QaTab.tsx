@@ -1,6 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { useQueryClient } from '@tanstack/react-query';
 import { useDialog } from '../../../../contexts/DialogContext';
 import { MessageCircle, Check, Trash2, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '../../../../lib/api-client';
@@ -9,8 +12,9 @@ import { fmtDate, safeArr } from '../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface Question {
+export interface Question {
   id:           string;
+  productId:    string;
   question:     string;
   askedByName:  string;
   askedByEmail: string | null;
@@ -20,6 +24,13 @@ interface Question {
   isSpam:       boolean;
   upvotes:      number;
   createdAt:    string;
+  product?: {
+    id:       string;
+    name:     string;
+    slug:     string;
+    imageUrl: string | null;
+    store?:   { id: string; name: string } | null;
+  };
 }
 
 // ── Question row ──────────────────────────────────────────────────────────────
@@ -30,8 +41,9 @@ interface QuestionRowProps {
   onRefresh:  () => void;
 }
 
-function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
+export function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
   const { confirm } = useDialog();
+  const qc = useQueryClient();
   const [answer,    setAnswer]    = useState(q.answer ?? '');
   const [publish,   setPublish]   = useState(q.isPublished);
   const [expanded,  setExpanded]  = useState(!q.answer);
@@ -39,13 +51,19 @@ function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
   const [deleting,  setDeleting]  = useState(false);
   const [error,     setError]     = useState('');
 
+  const notifyChanged = () => {
+    onRefresh();
+    qc.invalidateQueries({ queryKey: ['admin-questions'] });
+    qc.invalidateQueries({ queryKey: ['sidebar-questions-unanswered'] });
+  };
+
   const handleSave = async () => {
     if (!answer.trim()) return;
     setSaving(true);
     setError('');
     try {
       await api.post(API_ROUTES.ADMIN.PRODUCT_QUESTION_ANSWER(productId, q.id), { answer: answer.trim(), publish });
-      onRefresh();
+      notifyChanged();
       setExpanded(false);
     } catch {
       setError('Failed to save. Please try again.');
@@ -57,7 +75,7 @@ function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
   const handleTogglePublish = async () => {
     try {
       await api.patch(API_ROUTES.ADMIN.PRODUCT_QUESTION(productId, q.id), { isPublished: !q.isPublished });
-      onRefresh();
+      notifyChanged();
     } catch { /* ignore */ }
   };
 
@@ -66,7 +84,7 @@ function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
     setDeleting(true);
     try {
       await api.delete(API_ROUTES.ADMIN.PRODUCT_QUESTION(productId, q.id));
-      onRefresh();
+      notifyChanged();
     } catch { setDeleting(false); }
   };
 
@@ -74,7 +92,7 @@ function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
     if (!await confirm('Mark as spam? This will hide the question.', { confirmLabel: 'Mark as spam', destructive: true })) return;
     try {
       await api.post(API_ROUTES.ADMIN.PRODUCT_QUESTION_SPAM(productId, q.id));
-      onRefresh();
+      notifyChanged();
     } catch { /* ignore */ }
   };
 
@@ -84,7 +102,29 @@ function QuestionRow({ q, productId, onRefresh }: QuestionRowProps) {
     <div className={`border rounded-xl overflow-hidden transition-colors ${needsAnswer ? 'border-amber-300 bg-amber-50' : 'border-border bg-surface'}`}>
       {/* Header */}
       <div className="flex items-start gap-3 px-4 py-3">
+        {q.product?.imageUrl && (
+          <Image
+            src={q.product.imageUrl}
+            alt={q.product.name}
+            width={48}
+            height={48}
+            className="w-12 h-12 rounded-lg object-cover border border-border shrink-0"
+          />
+        )}
         <div className="flex-1 min-w-0">
+          {q.product && (
+            <div className="flex items-center gap-2 mb-1 text-xs">
+              <Link
+                href={`/products/${q.product.id}/edit#customer-qa`}
+                className="font-semibold text-primary hover:underline truncate"
+              >
+                {q.product.name}
+              </Link>
+              {q.product.store?.name && (
+                <span className="text-muted shrink-0">· {q.product.store.name}</span>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-2 flex-wrap">
             {needsAnswer && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[11px] font-semibold">
@@ -200,16 +240,16 @@ export function QaTab({ productId }: QaTabProps) {
   const [filter,    setFilter]      = useState<'all' | 'unanswered'>('all');
   const [loading,   setLoading]     = useState(true);
 
-  const fetchQuestions = async () => {
+  const fetchQuestions = useCallback(async () => {
     setLoading(true);
     try {
       const data = await api.get<Question[]>(`${API_ROUTES.ADMIN.PRODUCT_QUESTIONS(productId)}?filter=${filter}`);
       setQuestions(safeArr(data));
     } catch { /* ignore */ }
     setLoading(false);
-  };
+  }, [filter, productId]);
 
-  useEffect(() => { fetchQuestions(); }, [productId, filter]);
+  useEffect(() => { fetchQuestions(); }, [fetchQuestions]);
 
   const unanswered = questions.filter((q) => !q.answer).length;
 

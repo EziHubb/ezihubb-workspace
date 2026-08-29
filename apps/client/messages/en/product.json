@@ -156,7 +156,7 @@
     "submitting": "Submitting…",
     "submitQuestion": "Submit question",
     "questionsAndAnswers": "Questions & Answers",
-    "questionSubmitted": "Question submitted! We'll answer it soon.",
+    "questionSubmitted": "Question sent to the seller. It will appear here after they answer and publish it.",
     "noQuestions": "No questions yet. Be the first to ask!",
     "askedBy": "Asked by {name} · {time}",
     "markHelpful": "Mark as helpful",

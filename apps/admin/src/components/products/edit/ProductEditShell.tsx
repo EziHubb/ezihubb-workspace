@@ -27,6 +27,7 @@ import { HowItsMadeTab }      from './tabs/HowItsMadeTab';
 import { SettingsTab }        from './tabs/SettingsTab';
 import { FulfillmentTab }     from './tabs/FulfillmentTab';
 import { DigitalFilesTab }    from './tabs/DigitalFilesTab';
+import { QaTab }              from './tabs/QaTab';
 
 // ── Tab config ────────────────────────────────────────────────────────────────
 
@@ -38,6 +39,7 @@ const ALL_TABS = [
   { id: 'how-its-made',     label: "How It's Made"      },
   { id: 'fulfillment',      label: 'Fulfillment'        },
   { id: 'digital-files',    label: 'Digital Files'      },
+  { id: 'customer-qa',      label: 'Customer Q&A'       },
   { id: 'settings',         label: 'Settings'           },
 ] as const;
 
@@ -48,7 +50,7 @@ type TabId = (typeof ALL_TABS)[number]['id'];
 // physical-only; digital-files is digital-only — filtered per productType below.
 function tabsFor(mode: 'create' | 'edit', productType: 'PHYSICAL' | 'DIGITAL'): typeof ALL_TABS[number][] {
   return ALL_TABS.filter((t) => {
-    if (mode === 'create' && (t.id === 'fulfillment' || t.id === 'digital-files')) return false;
+    if (mode === 'create' && (t.id === 'fulfillment' || t.id === 'digital-files' || t.id === 'customer-qa')) return false;
     if (productType === 'DIGITAL' && (t.id === 'how-its-made' || t.id === 'fulfillment')) return false;
     if (productType === 'PHYSICAL' && t.id === 'digital-files') return false;
     return true;
@@ -180,6 +182,18 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
     // Re-enable spy after smooth scroll finishes (~600 ms)
     setTimeout(() => { isScrollingRef.current = false; }, 650);
   }, [scrollContainer]);
+
+  // Central Questions links directly to this section. The editor scrolls an
+  // inner container, so native hash scrolling is not reliable enough on its
+  // own after the async product data and sticky header have mounted.
+  useEffect(() => {
+    if (mode !== 'edit' || !scrollContainer) return;
+    if (window.location.hash !== '#customer-qa') return;
+    const frame = window.requestAnimationFrame(() =>
+      scrollToSection('customer-qa'),
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [mode, scrollContainer, scrollToSection]);
 
   useEffect(() => {
     if (!scrollContainer) return;
@@ -584,6 +598,19 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
             <>
               <div ref={(el) => { sectionRefs.current['digital-files'] = el; }}>
                 <DigitalFilesTab productId={tabProduct?.id ?? product?.id} digitalFiles={tabProduct?.digitalFiles ?? []} />
+              </div>
+              <div className="h-px bg-border" />
+            </>
+          )}
+
+          {/* Customer Q&A — existing listings only */}
+          {mode === 'edit' && product?.id && (
+            <>
+              <div
+                id="customer-qa"
+                ref={(el) => { sectionRefs.current['customer-qa'] = el; }}
+              >
+                <QaTab productId={product.id} />
               </div>
               <div className="h-px bg-border" />
             </>
