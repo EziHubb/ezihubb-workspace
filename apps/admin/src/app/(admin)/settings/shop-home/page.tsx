@@ -8,7 +8,7 @@ import {
   Camera, Pencil, Plus, X, Check, ExternalLink, Trash2, ArrowUp, ArrowDown,
   Video, ImagePlus, Star, MessageSquareHeart, User, LayoutGrid, Lock, Search, MessageSquare,
 } from 'lucide-react';
-import { Modal, ModalHeader, ModalBody, ModalFooter } from '@ezihubb/ui';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Select } from '@ezihubb/ui';
 import { useAdminMode } from '../../../../lib/store-context';
 import { api, adminApi, ApiError } from '../../../../lib/api-client';
 import { API_ROUTES, SHOP_COLOR_THEMES } from '@ezihubb/constants';
@@ -604,17 +604,19 @@ export default function ShopHomeEditorPage() {
       <section className="py-6 border-b border-border">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold text-secondary">Items</h2>
-          <label className="flex items-center gap-1.5 text-sm text-secondary">
+          <div className="flex items-center gap-1.5 text-sm text-secondary">
             <span className="text-muted">Sort:</span>
-            <select
+            <Select
               value={itemsSort}
               onChange={(e) => setItemsSort(e.target.value as ItemsSort)}
-              className="bg-transparent text-sm font-medium text-secondary outline-none cursor-pointer"
-            >
-              <option value="recent">Most Recent</option>
-              <option value="name">Name (A–Z)</option>
-            </select>
-          </label>
+              className="w-40"
+              size="sm"
+              options={[
+                { value: 'recent', label: 'Most Recent' },
+                { value: 'name', label: 'Name (A–Z)' },
+              ]}
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
@@ -964,13 +966,13 @@ export default function ShopHomeEditorPage() {
 
         {addingSocialLink ? (
           <div className="flex items-center gap-2 mt-3">
-            <select
+            <Select
               value={addingSocialLink.platform}
               onChange={(e) => setAddingSocialLink({ ...addingSocialLink, platform: e.target.value })}
-              className="h-9 px-2.5 text-sm border border-border rounded-input focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              {SOCIAL_PLATFORMS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-            </select>
+              className="w-36 shrink-0"
+              size="sm"
+              options={SOCIAL_PLATFORMS}
+            />
             <input
               value={addingSocialLink.url}
               onChange={(e) => setAddingSocialLink({ ...addingSocialLink, url: e.target.value })}

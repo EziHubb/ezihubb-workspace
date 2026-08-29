@@ -11,11 +11,13 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { createHmac } from 'node:crypto';
 import { Request } from 'express';
-import { OrderStatus } from '@prisma/client';
+import { OrderProgressStepKind, OrderStatus } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TrackingService } from './tracking.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ensureFixedOrderProgressSteps } from '../orders/order-progress.defaults';
+import { syncOrderStatusFromShops } from '../orders/order-status-sync';
 
 @ApiTags('Webhooks')
 @SkipThrottle()
@@ -84,22 +86,64 @@ export class TrackingWebhookController {
 
     if (event.status === 'delivered' && order.status !== OrderStatus.DELIVERED) {
       const now = new Date();
-      await this.prisma.$transaction(async (tx) => {
-        await tx.order.update({
-          where: { id: order.id },
-          data: { status: OrderStatus.DELIVERED, deliveredAt: now },
-        });
-        await tx.orderStatusHistory.create({
-          data: {
+      const becameDelivered = await this.prisma.$transaction(async (tx) => {
+        const matchingRows = await tx.storeOrder.findMany({
+          where: {
             orderId: order.id,
-            status:  OrderStatus.DELIVERED,
-            note:    'Auto-updated from EasyPost tracking webhook',
+            ...(event.trackingCode ? { trackingNumber: event.trackingCode } : {}),
           },
+          select: { id: true, storeId: true },
         });
+        const targetRows = matchingRows.length
+          ? matchingRows
+          : await tx.storeOrder.findMany({
+              where:  { orderId: order.id, status: OrderStatus.SHIPPED },
+              select: { id: true, storeId: true },
+            });
+
+        for (const storeId of [...new Set(targetRows.map((row) => row.storeId))]) {
+          const steps = await ensureFixedOrderProgressSteps(tx, storeId);
+          const deliveredStep = steps.find((step) => step.kind === OrderProgressStepKind.DELIVERED);
+          await tx.storeOrder.updateMany({
+            where: { id: { in: targetRows.filter((row) => row.storeId === storeId).map((row) => row.id) } },
+            data: {
+              status:         OrderStatus.DELIVERED,
+              progressStepId: deliveredStep?.id,
+              deliveredAt:    now,
+            },
+          });
+        }
+
+        if (targetRows.length) {
+          await syncOrderStatusFromShops(tx, [order.id]);
+        } else {
+          // Legacy order without StoreOrder rows: retain the old behaviour.
+          await tx.order.update({
+            where: { id: order.id },
+            data:  { status: OrderStatus.DELIVERED },
+          });
+          await tx.orderStatusHistory.create({
+            data: {
+              orderId: order.id,
+              status:  OrderStatus.DELIVERED,
+              note:    'Auto-updated from EasyPost tracking webhook',
+            },
+          });
+        }
+
+        const finalOrder = await tx.order.findUnique({
+          where:  { id: order.id },
+          select: { status: true },
+        });
+        if (finalOrder?.status === OrderStatus.DELIVERED) {
+          await tx.order.update({ where: { id: order.id }, data: { deliveredAt: now } });
+          return true;
+        }
+        return false;
       });
 
       const email = order.guestEmail ?? order.user?.email;
-      if (email) {
+      if (becameDelivered && email) {
         await this.notificationsService.sendOrderDelivered({
           email,
           orderNumber: order.orderNumber,
@@ -109,7 +153,11 @@ export class TrackingWebhookController {
         });
       }
 
-      this.logger.log(`Order ${order.orderNumber} auto-updated to DELIVERED via EasyPost`);
+      this.logger.log(
+        becameDelivered
+          ? `Order ${order.orderNumber} auto-updated to DELIVERED via EasyPost`
+          : `Order ${order.orderNumber} has a delivered shop part; waiting for remaining shops`,
+      );
     } else {
       this.logger.debug(
         `EasyPost webhook: order=${order.orderNumber} status=${event.status} (no action taken)`,

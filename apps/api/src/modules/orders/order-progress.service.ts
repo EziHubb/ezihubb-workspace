@@ -3,20 +3,20 @@ import { OrderProgressStepKind, OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { syncOrderStatusFromShops } from './order-status-sync';
 import type { OrderQueueQueryDto, QueueSort, ShipByBucket } from './dto/order-queue.dto';
+import {
+  CUSTOM_STEP_SORT_ORDER,
+  ensureFixedOrderProgressSteps,
+  publicStatusForProgressKind,
+} from './order-progress.defaults';
 
 /**
  * A shop's own order workflow.
  *
- * The pipeline is what the seller sees and works in; `StoreOrder.status` is
- * what the platform knows. They meet in exactly one place — reaching the
- * COMPLETED step completes the order for the buyer too. Cancellation and
- * refunds are deliberately NOT steps: a seller who can rename a step could
- * otherwise rename the record of a refund.
+ * Five locked milestones mirror the buyer timeline. Seller-defined detail
+ * belongs inside the production phase and maps to public IN_PRODUCTION.
+ * Cancellation and refunds remain outside the pipeline because a seller must
+ * never be able to rename those records.
  */
-
-/** Room between the two locked ends, so custom steps insert without renumbering them. */
-const NEW_SORT_ORDER       = 0;
-const COMPLETED_SORT_ORDER = 1000;
 
 /**
  * Statuses that never belong in the seller's queue.
@@ -45,32 +45,13 @@ export class OrderProgressService {
   /**
    * A shop's steps, in pipeline order.
    *
-   * Creates the two locked ends on first read rather than requiring every
+   * Creates the five locked milestones on first read rather than requiring every
    * store-creation path to remember them. A shop that predates this feature,
    * or one created by a code path that forgot, still gets a usable pipeline
    * the first time someone opens Orders.
    */
   async listSteps(storeId: string) {
-    const steps = await this.prisma.orderProgressStep.findMany({
-      where:   { storeId },
-      orderBy: { sortOrder: 'asc' },
-    });
-
-    const hasNew       = steps.some((s) => s.kind === OrderProgressStepKind.NEW);
-    const hasCompleted = steps.some((s) => s.kind === OrderProgressStepKind.COMPLETED);
-    if (hasNew && hasCompleted) return steps;
-
-    await this.prisma.orderProgressStep.createMany({
-      data: [
-        ...(hasNew       ? [] : [{ storeId, name: 'New',       kind: OrderProgressStepKind.NEW,       sortOrder: NEW_SORT_ORDER }]),
-        ...(hasCompleted ? [] : [{ storeId, name: 'Completed', kind: OrderProgressStepKind.COMPLETED, sortOrder: COMPLETED_SORT_ORDER }]),
-      ],
-    });
-
-    return this.prisma.orderProgressStep.findMany({
-      where:   { storeId },
-      orderBy: { sortOrder: 'asc' },
-    });
+    return ensureFixedOrderProgressSteps(this.prisma, storeId);
   }
 
   /**
@@ -87,23 +68,33 @@ export class OrderProgressService {
    * Idempotent, and cheap: the WHERE matches nothing on every call after the
    * first for a given order.
    */
-  private async placeUnassigned(storeId: string, newStepId: string) {
-    await this.prisma.storeOrder.updateMany({
-      where: {
-        storeId,
-        progressStepId: null,
-        status: { notIn: [...OFF_QUEUE_STATUSES] },
-      },
-      data: { progressStepId: newStepId },
-    });
+  private async placeUnassigned(
+    storeId: string,
+    steps: { id: string; kind: OrderProgressStepKind }[],
+  ) {
+    const fixedStatuses: [OrderProgressStepKind, OrderStatus][] = [
+      [OrderProgressStepKind.CONFIRMED,     OrderStatus.CONFIRMED],
+      [OrderProgressStepKind.IN_PRODUCTION, OrderStatus.IN_PRODUCTION],
+      [OrderProgressStepKind.SHIPPED,       OrderStatus.SHIPPED],
+      [OrderProgressStepKind.DELIVERED,     OrderStatus.DELIVERED],
+      [OrderProgressStepKind.COMPLETED,     OrderStatus.COMPLETED],
+    ];
+
+    for (const [kind, status] of fixedStatuses) {
+      const step = steps.find((candidate) => candidate.kind === kind);
+      if (!step) continue;
+      await this.prisma.storeOrder.updateMany({
+        where: { storeId, progressStepId: null, status },
+        data:  { progressStepId: step.id },
+      });
+    }
   }
 
   /** Steps plus how many orders sit on each — the counts beside the tabs. */
   async listStepsWithCounts(storeId: string) {
     const steps = await this.listSteps(storeId);
 
-    const first = steps.find((s) => s.kind === OrderProgressStepKind.NEW);
-    if (first) await this.placeUnassigned(storeId, first.id);
+    await this.placeUnassigned(storeId, steps);
 
     // Same status filter the queue itself uses. Without it a refunded order
     // keeps the step it was last on and is still counted, so the badge says 5
@@ -147,13 +138,10 @@ export class OrderProgressService {
 
     const existing = await this.listSteps(storeId);
     const locked   = existing.filter((s) => s.kind !== OrderProgressStepKind.CUSTOM);
-    const newStep       = locked.find((s) => s.kind === OrderProgressStepKind.NEW);
-    const completedStep = locked.find((s) => s.kind === OrderProgressStepKind.COMPLETED);
-    if (!newStep || !completedStep) {
-      throw new BadRequestException('This shop is missing its required steps');
-    }
+    const inProductionStep = locked.find((s) => s.kind === OrderProgressStepKind.IN_PRODUCTION);
+    if (!inProductionStep) throw new BadRequestException('This shop is missing its required steps');
 
-    const lockedNames = new Set([newStep.name.toLowerCase(), completedStep.name.toLowerCase()]);
+    const lockedNames = new Set(locked.map((step) => step.name.toLowerCase()));
     if (lowered.some((n) => lockedNames.has(n))) {
       throw new BadRequestException('A step cannot reuse a required step name');
     }
@@ -177,15 +165,23 @@ export class OrderProgressService {
     const removed = customExisting.filter((s) => !keptIds.has(s.id));
 
     return this.prisma.$transaction(async (tx) => {
+      const removedIds = removed.map((step) => step.id);
+      const rehomed = removedIds.length
+        ? await tx.storeOrder.findMany({
+            where:  { storeId, progressStepId: { in: removedIds } },
+            select: { orderId: true },
+          })
+        : [];
+
       // Rehome orders before the step under them disappears. They go back to
-      // NEW rather than to the nearest surviving neighbour: after a save that
+      // IN_PRODUCTION rather than to the nearest surviving neighbour: after a save that
       // deleted and reordered several steps at once there is no honest
       // "nearest", and a seller who deleted the step an order was in has to
       // look at that order again anyway.
       for (const step of removed) {
         await tx.storeOrder.updateMany({
           where: { storeId, progressStepId: step.id },
-          data:  { progressStepId: newStep.id },
+          data:  { progressStepId: inProductionStep.id, status: OrderStatus.IN_PRODUCTION },
         });
       }
 
@@ -193,10 +189,10 @@ export class OrderProgressService {
         await tx.orderProgressStep.deleteMany({ where: { id: { in: removed.map((s) => s.id) } } });
       }
 
-      // Positions start after NEW and stay below COMPLETED, so the locked ends
-      // never need renumbering and keep their meaning as first and last.
+      // Custom detail always stays inside the production phase, after the
+      // locked IN_PRODUCTION milestone and before SHIPPED.
       for (let i = 0; i < input.length; i++) {
-        const sortOrder = NEW_SORT_ORDER + i + 1;
+        const sortOrder = CUSTOM_STEP_SORT_ORDER + i;
         const name      = names[i];
         const id        = input[i].id;
 
@@ -209,6 +205,10 @@ export class OrderProgressService {
         }
       }
 
+      if (rehomed.length) {
+        await syncOrderStatusFromShops(tx, rehomed.map((row) => row.orderId));
+      }
+
       return tx.orderProgressStep.findMany({ where: { storeId }, orderBy: { sortOrder: 'asc' } });
     });
   }
@@ -216,11 +216,9 @@ export class OrderProgressService {
   /**
    * Moves orders to a step.
    *
-   * Landing on COMPLETED also completes the order on the platform side — that
-   * is the one crossing point between a seller's private workflow and what the
-   * buyer is told. Moving back off COMPLETED does NOT un-complete anything:
-   * the buyer has already been told, and a status that can be walked backwards
-   * is not a record of what happened.
+   * Fixed milestones map to their matching public status. Every custom step
+   * maps to IN_PRODUCTION. SHIPPED is reserved for the dispatch form because
+   * tracking information and buyer notifications belong to that transition.
    */
   async moveOrders(storeId: string, storeOrderIds: string[], stepId: string) {
     const step = await this.prisma.orderProgressStep.findFirst({ where: { id: stepId, storeId } });
@@ -232,49 +230,25 @@ export class OrderProgressService {
     });
     if (!owned.length) throw new NotFoundException('No matching orders');
 
-    const ids       = owned.map((o) => o.id);
-    const completing = step.kind === OrderProgressStepKind.COMPLETED;
+    if (step.kind === OrderProgressStepKind.SHIPPED) {
+      throw new BadRequestException('Use Mark as dispatched to move an order to Shipped');
+    }
+
+    const ids          = owned.map((o) => o.id);
+    const publicStatus = publicStatusForProgressKind(step.kind);
 
     // Unchecked, not the checked variant: `progressStepId` is a relation's
     // foreign key, and only the unchecked input lets it be set as a plain
     // scalar rather than through a nested `connect`.
-    const data: Prisma.StoreOrderUncheckedUpdateManyInput = { progressStepId: step.id };
-    if (completing) data.status = OrderStatus.COMPLETED;
+    const data: Prisma.StoreOrderUncheckedUpdateManyInput = {
+      progressStepId: step.id,
+      status:         publicStatus,
+      ...(publicStatus === OrderStatus.DELIVERED ? { deliveredAt: new Date() } : {}),
+    };
 
     await this.prisma.$transaction(async (tx) => {
       await tx.storeOrder.updateMany({ where: { id: { in: ids } }, data });
 
-      if (!completing) {
-        /**
-         * Moving OUT of the completed step has to undo what moving in did,
-         * or the row keeps a Completed badge under whatever tab it landed
-         * on — the tab is filtered on `progressStepId` and the badge reads
-         * `status`, both on this same record.
-         *
-         * Which stage to fall back to is read from what was RECORDED, not
-         * guessed from the position: a shop that has a deliveredAt really
-         * did deliver, and blanket-writing CONFIRMED would erase that. An
-         * order can also be dropped straight into Completed from New, so
-         * assuming DELIVERED would invent a delivery that never happened.
-         *
-         * Three passes, most advanced first, and they are mutually
-         * exclusive: each one leaves its rows no longer COMPLETED, so the
-         * next cannot touch them again.
-         */
-        const demote = async (where: Prisma.StoreOrderWhereInput, to: OrderStatus) => {
-          await tx.storeOrder.updateMany({
-            where: { id: { in: ids }, status: OrderStatus.COMPLETED, ...where },
-            data:  { status: to },
-          });
-        };
-        await demote({ deliveredAt: { not: null } }, OrderStatus.DELIVERED);
-        await demote({ shippedAt:   { not: null } }, OrderStatus.SHIPPED);
-        await demote({},                             OrderStatus.CONFIRMED);
-      }
-
-      // Every move, not only a completing one. Pulling an order back out of
-      // Completed changes what the ORDER is, and the buyer should stop
-      // being told it is finished.
       await syncOrderStatusFromShops(tx, owned.map((o) => o.orderId));
     });
 
@@ -302,8 +276,7 @@ export class OrderProgressService {
     // first is a race: lose it, and a newly paid order is missing from the tab
     // it belongs to until something triggers a refetch.
     const steps = await this.listSteps(storeId);
-    const first = steps.find((s) => s.kind === OrderProgressStepKind.NEW);
-    if (first) await this.placeUnassigned(storeId, first.id);
+    await this.placeUnassigned(storeId, steps);
 
     const where: Prisma.StoreOrderWhereInput = {
       storeId,

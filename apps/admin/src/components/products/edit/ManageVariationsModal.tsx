@@ -19,6 +19,7 @@ import type {
 } from './types';
 import { pricedGroupIds } from './helpers';
 import { ModalPortal } from './ModalPortal';
+import { Select } from '@ezihubb/ui';
 
 // ─── Settings helpers ─────────────────────────────────────────────────────────
 // Settings are encoded in `variesBy: string[]` to avoid a new migration.
@@ -881,16 +882,15 @@ function VariationOptionsEditor({
             {/* Sized to its content, not to the modal. `inputCls` carries
                 w-full, which stretched a control whose longest value is
                 "Millimetres" across the full 640px card. */}
-            <select
+            <Select
               value={unit}
               onChange={(e) => onUnitChange(e.target.value)}
-              className="w-52 px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="">Select a unit</option>
-              {MEASUREMENT_UNITS.map((u) => (
-                <option key={u} value={u}>{u}</option>
-              ))}
-            </select>
+              className="w-52"
+              options={[
+                { value: '', label: 'Select a unit' },
+                ...MEASUREMENT_UNITS.map((value) => ({ value, label: value })),
+              ]}
+            />
           </div>
         </>
       )}

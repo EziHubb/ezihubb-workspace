@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { localDateInputValue } from '../../lib/promo-dates';
 import { Percent, Globe2, Tag, ArrowLeft } from 'lucide-react';
-import { Modal, ModalHeroHeader, Button } from '@ezihubb/ui';
+import { Modal, ModalHeroHeader, Button, Select } from '@ezihubb/ui';
 import { COUNTRIES, countryName, API_ROUTES } from '@ezihubb/constants';
 import { ListingPicker, type PickedProduct } from './ListingPicker';
 import { api } from '../../lib/api-client';
@@ -250,16 +250,17 @@ export function SetUpSaleModal({ sale, initialProducts = [], onClose, onSave }: 
 
             <Field label="Discount amount" required hint="No code required — applied automatically at checkout">
               <div className="flex gap-2">
-                <select
+                <Select
                   value={form.discountType}
                   onChange={(e) => set('discountType', e.target.value as SaleFormData['discountType'])}
-                  className={`${inputCls} flex-1`}
-                >
-                  <option value="FREE_SHIPPING">Free standard delivery</option>
-                  <option value="PERCENTAGE">Percentage off</option>
-                </select>
+                  className="flex-1"
+                  options={[
+                    { value: 'FREE_SHIPPING', label: 'Free standard delivery' },
+                    { value: 'PERCENTAGE', label: 'Percentage off' },
+                  ]}
+                />
                 {form.discountType === 'PERCENTAGE' && (
-                  <select
+                  <Select
                     value={discountPreset}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -268,11 +269,12 @@ export function SetUpSaleModal({ sale, initialProducts = [], onClose, onSave }: 
                       setDiscountPreset(n);
                       set('value', n);
                     }}
-                    className={`${inputCls} flex-1`}
-                  >
-                    {DISCOUNT_PRESETS.map((p) => <option key={p} value={p}>{p}% off</option>)}
-                    <option value="custom">Custom…</option>
-                  </select>
+                    className="flex-1"
+                    options={[
+                      ...DISCOUNT_PRESETS.map((p) => ({ value: String(p), label: `${p}% off` })),
+                      { value: 'custom', label: 'Custom…' },
+                    ]}
+                  />
                 )}
               </div>
               {form.discountType === 'PERCENTAGE' && discountPreset === 'custom' && (
@@ -292,17 +294,15 @@ export function SetUpSaleModal({ sale, initialProducts = [], onClose, onSave }: 
             </Field>
 
             <Field label="Where valid" hint="You can limit your sale to a specific country">
-              <div className="relative">
-                <Globe2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
-                <select
-                  value={form.country}
-                  onChange={(e) => set('country', e.target.value)}
-                  className={`${inputCls} pl-8 appearance-none`}
-                >
-                  <option value="">Everywhere</option>
-                  {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-                </select>
-              </div>
+              <Select
+                value={form.country}
+                onChange={(e) => set('country', e.target.value)}
+                startIcon={<Globe2 className="h-3.5 w-3.5" />}
+                options={[
+                  { value: '', label: 'Everywhere' },
+                  ...COUNTRIES.map((country) => ({ value: country.code, label: country.name })),
+                ]}
+              />
             </Field>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { localDateInputValue } from '../../lib/promo-dates';
 import { Globe2, ShoppingBag } from 'lucide-react';
-import { Modal, ModalHeroHeader, Button } from '@ezihubb/ui';
+import { Modal, ModalHeroHeader, Button, Select } from '@ezihubb/ui';
 import { COUNTRIES } from '@ezihubb/constants';
 
 export interface OrderMinimumFormData {
@@ -33,7 +33,7 @@ const DISCOUNT_PRESETS = [10, 15, 20, 25, 30, 35, 40, 45, 50];
 
 /** An existing promotion (created before this preset dropdown shipped, when
  *  the field was a free 1-90 number input) can carry a value outside the
- *  preset list — without this, `<select value={form.value}>` would silently
+ *  preset list — without this, `<Select value={form.value}>` would silently
  *  show no option selected instead of the real stored percentage, and an
  *  unnoticed submit would blow away that value the moment ANY option gets
  *  picked. */
@@ -172,13 +172,15 @@ export function OrderMinimumModal({ promotion, onClose, onSave }: OrderMinimumMo
           </Field>
 
           <Field label="Discount amount" required>
-            <select
+            <Select
               value={form.value}
               onChange={(e) => set('value', Number(e.target.value))}
-              className={`${inputCls} ${errors.value ? 'border-red-400' : ''}`}
-            >
-              {discountOptionsFor(form.value).map((p) => <option key={p} value={p}>{p}% off</option>)}
-            </select>
+              error={Boolean(errors.value)}
+              options={discountOptionsFor(form.value).map((p) => ({
+                value: String(p),
+                label: `${p}% off`,
+              }))}
+            />
             {errors.value && <p className="text-xs text-red-600 mt-1">{errors.value}</p>}
           </Field>
 
@@ -221,17 +223,15 @@ export function OrderMinimumModal({ promotion, onClose, onSave }: OrderMinimumMo
           </div>
 
           <Field label="Where valid" hint="You can limit this offer to a specific country">
-            <div className="relative">
-              <Globe2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
-              <select
-                value={form.country}
-                onChange={(e) => set('country', e.target.value)}
-                className={`${inputCls} pl-8 appearance-none`}
-              >
-                <option value="">Everywhere</option>
-                {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-              </select>
-            </div>
+            <Select
+              value={form.country}
+              onChange={(e) => set('country', e.target.value)}
+              startIcon={<Globe2 className="h-3.5 w-3.5" />}
+              options={[
+                { value: '', label: 'Everywhere' },
+                ...COUNTRIES.map((country) => ({ value: country.code, label: country.name })),
+              ]}
+            />
           </Field>
         </div>
       </div>

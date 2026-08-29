@@ -23,6 +23,22 @@ export function isFulfilmentStage(s: OrderStatus): s is FulfilmentStage {
   return (FULFILMENT_STAGES as readonly OrderStatus[]).includes(s);
 }
 
+/** Returns the least advanced shop milestone, or null for an incomplete view. */
+export function leastAdvancedFulfilmentStatus(
+  statuses: readonly OrderStatus[],
+): FulfilmentStage | null {
+  if (statuses.length === 0) return null;
+
+  let rank = FULFILMENT_STAGES.length - 1;
+  for (const status of statuses) {
+    const index = (FULFILMENT_STAGES as readonly OrderStatus[]).indexOf(status);
+    if (index < 0) return null;
+    if (index < rank) rank = index;
+  }
+
+  return FULFILMENT_STAGES[rank];
+}
+
 /** A shop whose part is settled rather than still being worked. */
 const SETTLED: OrderStatus[] = [OrderStatus.CANCELLED, OrderStatus.REFUNDED];
 
@@ -49,6 +65,7 @@ const SETTLED: OrderStatus[] = [OrderStatus.CANCELLED, OrderStatus.REFUNDED];
 export async function syncOrderStatusFromShops(
   tx: Prisma.TransactionClient,
   orderIds: string[],
+  history?: { note?: string | null; createdBy?: string },
 ): Promise<void> {
   for (const orderId of [...new Set(orderIds)]) {
     const order = await tx.order.findUnique({
@@ -63,19 +80,11 @@ export async function syncOrderStatusFromShops(
     });
     if (shops.length === 0) continue;
 
-    let rank = FULFILMENT_STAGES.length - 1;
-    let rankable = true;
-    for (const shop of shops) {
-      const i = (FULFILMENT_STAGES as readonly OrderStatus[]).indexOf(shop.status);
-      // A shop sitting on something this cannot rank — PENDING_PAYMENT on a
-      // row the payment worker has not reached yet, say. Deriving from a
-      // partial picture would announce a stage the order has not reached.
-      if (i < 0) { rankable = false; break; }
-      if (i < rank) rank = i;
-    }
-    if (!rankable) continue;
-
-    const derived = FULFILMENT_STAGES[rank];
+    // A shop sitting on something this cannot rank — PENDING_PAYMENT on a
+    // row the payment worker has not reached yet, say. Deriving from a
+    // partial picture would announce a stage the order has not reached.
+    const derived = leastAdvancedFulfilmentStatus(shops.map((shop) => shop.status));
+    if (!derived) continue;
     if (derived === order.status) continue;
 
     await tx.order.update({ where: { id: orderId }, data: { status: derived } });
@@ -83,9 +92,10 @@ export async function syncOrderStatusFromShops(
       data: {
         orderId,
         status: derived,
-        note: shops.length > 1
+        note: history?.note ?? (shops.length > 1
           ? 'Derived from every shop in this order'
-          : 'Follows the shop handling this order',
+          : 'Follows the shop handling this order'),
+        createdBy: history?.createdBy,
       },
     });
   }

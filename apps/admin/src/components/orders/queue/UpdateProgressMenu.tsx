@@ -7,9 +7,8 @@ import type { ProgressStep } from './types';
 /**
  * Jump one or more orders to a step.
  *
- * The last step is not in the list — it is the button underneath. It is the
- * only step that tells the buyer anything, so it should not sit in a column of
- * private bookkeeping labels where it can be clicked by accident.
+ * Completed stays a deliberate action beneath the list. Shipped is omitted
+ * because the dispatch form must collect tracking details for that milestone.
  */
 
 interface Props {
@@ -38,7 +37,7 @@ export function UpdateProgressMenu({ steps, currentStepId, onPick, onClose, alig
   }, [onClose]);
 
   const completed = steps.find((s) => s.kind === 'COMPLETED');
-  const rest      = steps.filter((s) => s.kind !== 'COMPLETED');
+  const rest      = steps.filter((s) => s.kind !== 'COMPLETED' && s.kind !== 'SHIPPED');
 
   return (
     <div

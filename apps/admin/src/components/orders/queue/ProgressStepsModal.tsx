@@ -3,14 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { GripVertical, Lock, Trash2, Plus } from 'lucide-react';
 import { ModalPortal } from '../../products/edit/ModalPortal';
-import type { ProgressStep } from './types';
+import type { ProgressStep, StepKind } from './types';
 
 /**
  * Editor for a shop's workflow steps.
  *
- * The two ends are shown but not editable — they are what makes the pipeline
- * a pipeline, and "Completed" is the only step the buyer ever hears about.
- * Everything between belongs to the seller.
+ * The five buyer-visible milestones are shown but not editable. Sellers own
+ * the detailed steps inside the production phase; every custom step is shown
+ * to buyers as "In Production".
  *
  * Rows are keyed by a stable local key rather than by array index. Index keys
  * hand a removed row's state to its neighbour, which here would mean deleting
@@ -37,8 +37,9 @@ let keySeq = 0;
 const nextKey = () => `draft-${++keySeq}`;
 
 export function ProgressStepsModal({ steps, onClose, onSave, saving }: Props) {
-  const first = steps.find((s) => s.kind === 'NEW');
-  const last  = steps.find((s) => s.kind === 'COMPLETED');
+  const fixedByKind = new Map(
+    steps.filter((step) => step.kind !== 'CUSTOM').map((step) => [step.kind, step]),
+  );
 
   const [draft, setDraft] = useState<DraftStep[]>(() =>
     steps.filter((s) => s.kind === 'CUSTOM').map((s) => ({ key: nextKey(), id: s.id, name: s.name })),
@@ -81,7 +82,7 @@ export function ProgressStepsModal({ steps, onClose, onSave, saving }: Props) {
     }
     // Checked here as well as on the server: a step named the same as a locked
     // end would produce two identical tabs.
-    const reserved = [first?.name, last?.name].filter(Boolean).map((n) => n!.toLowerCase());
+    const reserved = [...fixedByKind.values()].map((step) => step.name.toLowerCase());
     if (lowered.some((n) => reserved.includes(n))) {
       return setError('That name is already used by a required step.');
     }
@@ -97,6 +98,11 @@ export function ProgressStepsModal({ steps, onClose, onSave, saving }: Props) {
       <span className="text-xs">(required)</span>
     </div>
   );
+
+  const lockedMilestone = (kind: StepKind) => {
+    const step = fixedByKind.get(kind);
+    return step ? lockedRow(step.name) : null;
+  };
 
   return (
     <ModalPortal>
@@ -115,14 +121,19 @@ export function ProgressStepsModal({ steps, onClose, onSave, saving }: Props) {
               Customise progress steps
             </h2>
             <p className="mt-2 text-sm text-muted">
-              Add, remove or rename the steps your shop works through. Drag a step to move
-              it. Buyers are only notified when an order reaches the last step.
+              Add, remove or rename detailed production steps. Buyers see all of them as
+              In Production; the five required milestones stay aligned with order tracking.
             </p>
           </div>
 
           <div className="max-h-[55vh] overflow-y-auto px-6 py-4">
-            {first && lockedRow(first.name)}
+            {lockedMilestone('CONFIRMED')}
+            {lockedMilestone('IN_PRODUCTION')}
             <div className="border-t border-border" />
+
+            <p className="pt-4 text-xs font-semibold uppercase tracking-wide text-muted">
+              Custom production steps
+            </p>
 
             <ul className="py-2">
               {draft.map((step, i) => (
@@ -180,11 +191,13 @@ export function ProgressStepsModal({ steps, onClose, onSave, saving }: Props) {
               className="flex items-center gap-2 py-2 text-sm font-medium text-primary hover:underline"
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
-              Add a step
+              Add production step
             </button>
 
             <div className="border-t border-border" />
-            {last && lockedRow(last.name)}
+            {lockedMilestone('SHIPPED')}
+            {lockedMilestone('DELIVERED')}
+            {lockedMilestone('COMPLETED')}
 
             {error && <p className="pt-2 text-sm text-error">{error}</p>}
           </div>

@@ -630,7 +630,7 @@ export function AdminSidebar() {
   const { name, email, initials, navSections, role, canSwitchToOwnStore, inStoreMode, toggleStoreMode } = useNavData();
 
   return (
-    <aside className="hidden lg:flex flex-col w-[248px] shrink-0 h-screen bg-background border-r border-border">
+    <aside className="hidden h-full w-[248px] shrink-0 flex-col border-r border-border bg-background lg:flex">
       <div className="px-4 pt-5 pb-3">
         <LogoMark role={role} inStoreMode={inStoreMode} />
       </div>

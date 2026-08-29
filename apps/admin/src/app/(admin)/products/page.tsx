@@ -7,7 +7,7 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { Plus, Search, X, Eye, EyeOff, Package, Upload, LayoutGrid, List, ChevronLeft, ChevronRight, Tag, Download, Archive, ChevronDown, Type } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@ezihubb/ui';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Button, Select } from '@ezihubb/ui';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { DataTable } from '../../../components/data/DataTable';
 import { ProductCard, type AdminProduct } from '../../../components/products/ProductCard';
@@ -801,14 +801,15 @@ function ProductsPageInner() {
         <ModalBody>
           <p className="text-sm text-muted mb-4">Add or remove a tag from all selected listings.</p>
           <div className="flex items-center gap-2">
-            <select
+            <Select
               value={tagsMode}
               onChange={(e) => setTagsMode(e.target.value as 'add' | 'remove')}
-              className="h-11 px-3 border border-border rounded-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="add">Add</option>
-              <option value="remove">Remove</option>
-            </select>
+              className="w-28 shrink-0"
+              options={[
+                { value: 'add', label: 'Add' },
+                { value: 'remove', label: 'Remove' },
+              ]}
+            />
             <input
               value={tagsValue}
               onChange={(e) => setTagsValue(e.target.value)}
@@ -840,16 +841,17 @@ function ProductsPageInner() {
         </ModalHeader>
         <ModalBody>
           <div className="flex items-center gap-2 mb-3">
-            <select
+            <Select
               value={titleMode}
               onChange={(e) => setTitleMode(e.target.value as typeof titleMode)}
-              className="h-11 px-3 border border-border rounded-input text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="add-front">Add to front</option>
-              <option value="add-end">Add to end</option>
-              <option value="find-replace">Find and replace</option>
-              <option value="delete">Delete</option>
-            </select>
+              className="w-44 shrink-0"
+              options={[
+                { value: 'add-front', label: 'Add to front' },
+                { value: 'add-end', label: 'Add to end' },
+                { value: 'find-replace', label: 'Find and replace' },
+                { value: 'delete', label: 'Delete' },
+              ]}
+            />
             {titleMode === 'find-replace' ? (
               <input
                 value={titleFindText}

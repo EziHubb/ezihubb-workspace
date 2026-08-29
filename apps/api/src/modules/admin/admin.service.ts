@@ -402,7 +402,7 @@ export class AdminService {
           status: { notIn: [...OFF_QUEUE_STATUSES] },
           OR: [
             { progressStepId: null },
-            { progressStep: { kind: OrderProgressStepKind.NEW } },
+            { progressStep: { kind: OrderProgressStepKind.CONFIRMED } },
           ],
         },
       }),

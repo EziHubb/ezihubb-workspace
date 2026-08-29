@@ -287,7 +287,9 @@ export function OrderPanel({
                     <p className="mb-1 text-xs font-medium text-muted">Order progress</p>
                     <OrderProgressSelect
                       value={detail.step}
-                      steps={steps}
+                      steps={steps.filter(
+                        (step) => step.kind !== 'SHIPPED' && step.kind !== 'COMPLETED',
+                      )}
                       disabled={moveOrder.isPending}
                       onChange={(nextStepId) => moveOrder.mutate({ stepId: nextStepId })}
                     />

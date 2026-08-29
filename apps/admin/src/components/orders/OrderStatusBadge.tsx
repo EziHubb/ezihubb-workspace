@@ -24,12 +24,12 @@ export const ALL_STATUSES = Object.keys(STATUS_CONFIG);
 /**
  * What the status picker may OFFER, which is a shorter list.
  *
- * COMPLETED is owned by the shop's progress steps — the API refuses it on
- * the status route, so listing it here was a menu entry whose only possible
- * outcome was an error toast. The current value is still rendered even when
- * it is not offered, so an order that is already completed reads correctly.
+ * SHIPPED is owned by the dispatch flow because it requires tracking details,
+ * and COMPLETED is owned by the shop's progress steps. The current value is
+ * still rendered even when it is not offered, so existing orders on either
+ * status continue to read correctly.
  */
-const NOT_SETTABLE_HERE = ['COMPLETED'];
+const NOT_SETTABLE_HERE = ['SHIPPED', 'COMPLETED'];
 export const SETTABLE_STATUSES = ALL_STATUSES.filter((s) => !NOT_SETTABLE_HERE.includes(s));
 
 interface OrderStatusBadgeProps {

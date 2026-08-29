@@ -25,9 +25,8 @@ export class ProgressStepDto {
 
 export class SaveProgressStepsDto {
   /**
-   * The shop's custom steps, in pipeline order. The two locked ends are not
-   * listed — they cannot be renamed, moved or removed, so accepting them here
-   * would only invite a client to try.
+   * The shop's custom production steps, in pipeline order. The five locked
+   * milestones are omitted because they cannot be renamed, moved or removed.
    *
    * Capped because these render as tabs across the top of the Orders page; a
    * seller with 200 of them has a broken screen, not a workflow.

@@ -40,12 +40,22 @@ export default async function AdminLayout({
   const target = getAdminRouteRedirect(pathname, role, storeId, isPlatformContext);
   if (target) redirect(target);
 
+  // Messages owns its scrolling inside the folder list and thread panes. If
+  // the shared <main> remains scrollable as well, a tall conversation creates
+  // a second scrollbar and can move the entire admin shell (including the
+  // sidebar) out of the viewport.
+  const hasInternalPageScroll = pathname.startsWith('/messages');
+
   return (
     // The sidebar and every client page below read the mode from here rather
     // than recomputing it from the cookie. One answer, decided where the page
     // content was decided, so the two halves cannot contradict each other.
     <ServerStoreModeProvider inStoreMode={inStoreMode}>
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div
+      className={`flex min-h-0 overflow-hidden bg-background ${
+        hasInternalPageScroll ? 'fixed inset-0' : 'h-screen'
+      }`}
+    >
       {/* Desktop sidebar */}
       <AdminSidebar />
 
@@ -61,7 +71,11 @@ export default async function AdminLayout({
             shrink below the inbox's min-content height. Regular pages still
             scroll on main; full-height pages can pass the remaining space to
             their own internal panes without growing the document. */}
-        <main className="flex h-0 min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-3 sm:p-4 lg:p-8">
+        <main
+          className={`flex h-0 min-h-0 min-w-0 flex-1 flex-col p-3 sm:p-4 lg:p-8 ${
+            hasInternalPageScroll ? 'overflow-hidden' : 'overflow-y-auto'
+          }`}
+        >
           {children}
         </main>
       </div>

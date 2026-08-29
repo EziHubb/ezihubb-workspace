@@ -1,6 +1,12 @@
 /** Shapes returned by /admin/order-progress/*. */
 
-export type StepKind = 'NEW' | 'CUSTOM' | 'COMPLETED';
+export type StepKind =
+  | 'CONFIRMED'
+  | 'IN_PRODUCTION'
+  | 'CUSTOM'
+  | 'SHIPPED'
+  | 'DELIVERED'
+  | 'COMPLETED';
 
 export interface ProgressStep {
   id:         string;

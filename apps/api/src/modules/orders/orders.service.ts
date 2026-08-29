@@ -5,7 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { OrderStatus, Prisma, ProductType, Promotion } from '@prisma/client';
+import { OrderProgressStepKind, OrderStatus, Prisma, ProductType, Promotion } from '@prisma/client';
 import { randomBytes, randomInt } from 'crypto';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -32,6 +32,7 @@ import { SHARE_SAVE_REFUND_RATE } from '../marketing/marketing.constants';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { syncOrderStatusFromShops } from './order-status-sync';
+import { ensureFixedOrderProgressSteps } from './order-progress.defaults';
 import { AddTrackingDto } from './dto/add-tracking.dto';
 import { MarkShippedDto } from './dto/mark-shipped.dto';
 import {
@@ -1119,21 +1120,13 @@ export class OrdersService {
         message: 'Order not found',
       });
 
-    /**
-     * COMPLETED is owned by the progress-step machine, not by this route.
-     *
-     * This method writes Order.status and nothing else. Setting COMPLETED
-     * here left StoreOrder.status and progressStepId behind, and the
-     * seller's queue reads both — the tab is filtered on the step, the
-     * badge on the status — so one order would contradict itself on
-     * screen. Completing an order means moving it to the pipeline's
-     * COMPLETED step, which sets all three and promotes the parent order
-     * once every shop in the basket is done.
-     *
-     * CANCELLED and REFUNDED stay allowed on purpose: both are in
-     * OFF_QUEUE_STATUSES, so the order leaves the queue entirely and
-     * there is no badge left to disagree with a tab.
-     */
+    /** Shipping needs tracking data; completion belongs to the pipeline. */
+    if (dto.status === OrderStatus.SHIPPED) {
+      throw new BadRequestException({
+        code: 'ERR_SHIP_VIA_DISPATCH',
+        message: 'Use Mark as dispatched and provide tracking details.',
+      });
+    }
     if (dto.status === OrderStatus.COMPLETED) {
       throw new BadRequestException({
         code: 'ERR_COMPLETE_VIA_STEPS',
@@ -1141,19 +1134,23 @@ export class OrdersService {
       });
     }
 
+    const progressKind = dto.status === OrderStatus.CONFIRMED
+      ? OrderProgressStepKind.CONFIRMED
+      : dto.status === OrderStatus.IN_PRODUCTION
+        ? OrderProgressStepKind.IN_PRODUCTION
+        : dto.status === OrderStatus.DELIVERED
+          ? OrderProgressStepKind.DELIVERED
+          : null;
+
     const updated = await this.prisma.$transaction(async (tx) => {
-      const o = await tx.order.update({
+      await tx.order.update({
         where: { id },
         data: {
           status: dto.status,
-          ...(dto.status === OrderStatus.SHIPPED
-            ? { shippedAt: new Date() }
-            : {}),
           ...(dto.status === OrderStatus.DELIVERED
             ? { deliveredAt: new Date() }
             : {}),
         },
-        include: ORDER_INCLUDE,
       });
       await tx.orderStatusHistory.create({
         data: {
@@ -1163,7 +1160,28 @@ export class OrdersService {
           createdBy: adminId,
         },
       });
-      return o;
+      // Keep the parent, each shop row and the seller queue on the same fixed
+      // milestone when the legacy detail page changes a fulfilment status.
+      if (progressKind) {
+        const storeOrders = await tx.storeOrder.findMany({
+          where:  { orderId: id },
+          select: { storeId: true },
+        });
+        for (const storeId of [...new Set(storeOrders.map((row) => row.storeId))]) {
+          const steps = await ensureFixedOrderProgressSteps(tx, storeId);
+          const progressStep = steps.find((step) => step.kind === progressKind);
+          await tx.storeOrder.updateMany({
+            where: { orderId: id, storeId },
+            data: {
+              status:         dto.status,
+              progressStepId: progressStep?.id,
+              deliveredAt:    dto.status === OrderStatus.DELIVERED ? new Date() : undefined,
+            },
+          });
+        }
+      }
+
+      return tx.order.findUniqueOrThrow({ where: { id }, include: ORDER_INCLUDE });
     });
 
     if (dto.status === OrderStatus.DELIVERED) {
@@ -1247,10 +1265,9 @@ export class OrdersService {
 
     const now = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
-      const o = await tx.order.update({
+      await tx.order.update({
         where: { id },
         data: {
-          status:         OrderStatus.SHIPPED,
           carrier,
           trackingNumber: dto.trackingNumber,
           trackingUrl,
@@ -1260,15 +1277,6 @@ export class OrdersService {
           // collection was stamped Friday, and the buyer's tracking email
           // claimed a dispatch that had not happened yet.
           shippedAt:      dto.dispatchedAt ? new Date(dto.dispatchedAt) : now,
-        },
-        include: ORDER_INCLUDE,
-      });
-      await tx.orderStatusHistory.create({
-        data: {
-          orderId:   id,
-          status:    OrderStatus.SHIPPED,
-          note:      dto.note ?? null,
-          createdBy: adminId,
         },
       });
 
@@ -1285,24 +1293,34 @@ export class OrdersService {
        * applies to every shop in the order, which is the only thing "ship
        * this order" can mean from a platform seat.
        */
-      await tx.storeOrder.updateMany({
-        where: { orderId: id, ...(storeId ? { storeId } : {}) },
-        data: {
-          status:         OrderStatus.SHIPPED,
-          trackingNumber: dto.trackingNumber,
-          carrier,
-          shippedAt:      dto.dispatchedAt ? new Date(dto.dispatchedAt) : now,
-        },
+      const targetStoreOrders = await tx.storeOrder.findMany({
+        where:  { orderId: id, ...(storeId ? { storeId } : {}) },
+        select: { storeId: true },
       });
+      for (const targetStoreId of [...new Set(targetStoreOrders.map((row) => row.storeId))]) {
+        const steps = await ensureFixedOrderProgressSteps(tx, targetStoreId);
+        const shippedStep = steps.find((step) => step.kind === OrderProgressStepKind.SHIPPED);
+        await tx.storeOrder.updateMany({
+          where: { orderId: id, storeId: targetStoreId },
+          data: {
+            status:         OrderStatus.SHIPPED,
+            progressStepId: shippedStep?.id,
+            trackingNumber: dto.trackingNumber,
+            carrier,
+            shippedAt:      dto.dispatchedAt ? new Date(dto.dispatchedAt) : now,
+          },
+        });
+      }
 
       // And the order follows its shops. On a basket split between two
-      // vendors this pulls the order BACK to whatever the other one is still
-      // doing — it is not shipped until they both are. `o` was read before
-      // this, so a multi-shop response can be one refetch behind; the panel
-      // refetches on success.
-      await syncOrderStatusFromShops(tx, [id]);
+      // vendors this pulls the order back to whatever the other one is still
+      // doing. It is not shipped until every shop has dispatched.
+      await syncOrderStatusFromShops(tx, [id], {
+        note: dto.note,
+        createdBy: adminId,
+      });
 
-      return o;
+      return tx.order.findUniqueOrThrow({ where: { id }, include: ORDER_INCLUDE });
     });
 
     const email = order.guestEmail ?? order.user?.email;

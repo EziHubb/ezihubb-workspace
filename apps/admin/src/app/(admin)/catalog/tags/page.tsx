@@ -6,6 +6,7 @@ import { Plus, Tag, Pencil, Trash2, Check, X, Search } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { Select } from '@ezihubb/ui';
 
 interface TagItem {
   id:           string;
@@ -103,15 +104,17 @@ export default function TagsPage() {
             />
           </div>
 
-          <select
+          <Select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            className="px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="least">Least used first</option>
-            <option value="most">Most used first</option>
-            <option value="name">A–Z</option>
-          </select>
+            className="w-48 shrink-0"
+            size="sm"
+            options={[
+              { value: 'least', label: 'Least used first' },
+              { value: 'most', label: 'Most used first' },
+              { value: 'name', label: 'A–Z' },
+            ]}
+          />
 
           <button
             type="button"

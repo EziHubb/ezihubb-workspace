@@ -725,16 +725,9 @@ model StoreOrder {
 
 /// A step in one shop's own order workflow.
 ///
-/// `StoreOrder.status` says what the PLATFORM knows about an order — paid,
-/// cancelled, refunded, disputed. This says where the SELLER is up to, in
-/// their own words: a print shop's steps are not a jeweller's, and neither
-/// maps onto a fixed enum. Sellers add, rename, reorder and delete the middle
-/// steps freely.
-///
-/// The two ends are not theirs to change. NEW is where an order arrives and
-/// COMPLETED is the only step with meaning outside the shop — reaching it
-/// moves `StoreOrder.status` to COMPLETED and is what the buyer is told
-/// about. Everything between is private bookkeeping.
+/// Five locked milestones mirror the buyer's public timeline. Sellers add,
+/// rename, reorder and delete CUSTOM detail inside the production phase; each
+/// custom step maps to the public IN_PRODUCTION status.
 model OrderProgressStep {
   id      String                @id @default(cuid())
   storeId String
@@ -756,12 +749,14 @@ model OrderProgressStep {
 }
 
 enum OrderProgressStepKind {
-  /// Locked first step — where a paid order lands.
-  NEW
-  /// Seller-defined. The only kind that can be renamed, reordered or deleted.
-  CUSTOM
-  /// Locked last step — reaching it completes the order for the buyer too.
+  /// Locked public milestones, in fulfilment order.
+  CONFIRMED
+  IN_PRODUCTION
+  SHIPPED
+  DELIVERED
   COMPLETED
+  /// Seller-defined production detail. Always public as IN_PRODUCTION.
+  CUSTOM
 }
 
 model SellerPayout {

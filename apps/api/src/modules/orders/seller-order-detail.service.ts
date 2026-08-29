@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { OrderStatus, SellerLedgerEntryType, SenderType } from '@prisma/client';
+import { OrderProgressStepKind, OrderStatus, SellerLedgerEntryType, SenderType } from '@prisma/client';
 import { syncOrderStatusFromShops } from './order-status-sync';
+import { ensureFixedOrderProgressSteps } from './order-progress.defaults';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../common/services/storage.service';
 import { ShippingService } from '../shipping/shipping.service';
@@ -124,12 +125,20 @@ export class SellerOrderDetailService {
     }
 
     const row = await this.owned(storeId, storeOrderId);
+    const progressKind = status === OrderStatus.CONFIRMED
+      ? OrderProgressStepKind.CONFIRMED
+      : status === OrderStatus.DELIVERED
+        ? OrderProgressStepKind.DELIVERED
+        : OrderProgressStepKind.IN_PRODUCTION;
 
     await this.prisma.$transaction(async (tx) => {
+      const steps = await ensureFixedOrderProgressSteps(tx, storeId);
+      const progressStep = steps.find((step) => step.kind === progressKind);
       await tx.storeOrder.update({
         where: { id: row.id },
         data: {
           status,
+          progressStepId: progressStep?.id,
           // Stamped when the stage is first reached and never cleared on the
           // way back: these are a record of what happened, and moving a card
           // does not un-deliver a parcel. moveOrders reads them to decide

@@ -24,7 +24,7 @@ const EMPTY_DEFAULTS: ProductEditFormValues = {
   sustainability:       [],
   width:                null,
   height:               null,
-  // Defaults to 'CM' (not null) to match what the unit <select> in
+    // Defaults to 'CM' (not null) to match what the unit <Select> in
   // DimensionFields visually shows by default (`watch('dimensionUnit') ??
   // 'CM'`) — otherwise a seller who only fills in width/height without ever
   // touching the dropdown would save width:12.5, dimensionUnit:null, an

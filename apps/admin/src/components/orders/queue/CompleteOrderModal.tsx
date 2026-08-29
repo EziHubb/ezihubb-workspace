@@ -5,6 +5,7 @@ import { Loader2, X } from 'lucide-react';
 import { API_ROUTES } from '@ezihubb/constants';
 import { api } from '../../../lib/api-client';
 import { toast } from '../../../lib/store/toast.store';
+import { Select } from '@ezihubb/ui';
 
 /**
  * Completing an order, as a decision rather than a status flip.
@@ -173,14 +174,12 @@ export function CompleteOrderModal({ order, onClose, onDone }: {
               <label htmlFor="carrier" className="mb-1 block text-sm font-medium text-secondary">
                 Delivery company <span className="text-error">*</span>
               </label>
-              <select
+              <Select
                 id="carrier"
                 value={carrier}
                 onChange={(e) => setCarrier(e.target.value)}
-                className="w-full rounded-button border border-border bg-surface px-3 py-2 text-sm"
-              >
-                {CARRIERS.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
+                options={CARRIERS.map((value) => ({ value, label: value }))}
+              />
             </div>
 
             <div>

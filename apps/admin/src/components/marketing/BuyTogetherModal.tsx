@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, Search, Package } from 'lucide-react';
-import { Modal, Button } from '@ezihubb/ui';
+import { Modal, Button, Select } from '@ezihubb/ui';
 import { api } from '../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { toast } from '../../lib/store/toast.store';
@@ -25,7 +25,7 @@ const MAX_LISTINGS = 3;
 
 /** An existing bundle (created before this preset dropdown shipped, when the
  *  field was a free 1-75 number input) can carry a discount outside the
- *  preset list — without this, `<select value={discountPercent}>` would
+ *  preset list — without this, `<Select value={discountPercent}>` would
  *  silently show no option selected instead of the real stored percentage. */
 function discountOptionsFor(currentValue: number): number[] {
   if (DISCOUNT_PRESETS.includes(currentValue)) return DISCOUNT_PRESETS;
@@ -330,13 +330,15 @@ export function BuyTogetherModal({ bundle, onClose, onSave }: BuyTogetherModalPr
             <div className="mt-6">
               <p className="text-sm font-semibold text-secondary">Set a discount amount</p>
               <p className="text-xs text-muted mt-0.5">Discount with confidence! This will only apply to the listings you choose, when purchased together.</p>
-              <select
+              <Select
                 value={discountPercent}
                 onChange={(e) => setDiscountPercent(Number(e.target.value))}
-                className="mt-2 w-40 px-3 py-2 text-sm border border-border rounded-button bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                {discountOptionsFor(discountPercent).map((p) => <option key={p} value={p}>{p}%</option>)}
-              </select>
+                className="mt-2 w-40"
+                options={discountOptionsFor(discountPercent).map((p) => ({
+                  value: String(p),
+                  label: `${p}%`,
+                }))}
+              />
             </div>
 
             {picked.length >= 2 && (

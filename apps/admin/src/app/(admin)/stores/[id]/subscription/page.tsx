@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Sparkles, XCircle } from 'lucide-react';
-import { SubscriptionStatusBadge, type SubscriptionStatusBadgeVariant } from '@ezihubb/ui';
+import { Select, SubscriptionStatusBadge, type SubscriptionStatusBadgeVariant } from '@ezihubb/ui';
 import { api, ApiError } from '../../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { useDialog } from '../../../../../contexts/DialogContext';
@@ -173,16 +173,19 @@ export default function StoreSubscriptionPage({ params }: { params: Promise<{ id
         <h2 className="text-sm font-semibold text-secondary">Grant Plus</h2>
         <p className="text-xs text-muted">Only available when the store doesn't already have an active subscription.</p>
         <div className="flex items-center gap-2">
-          <select
+          <Select
             value={cycle}
             onChange={(e) => setCycle(e.target.value as 'MONTHLY' | 'ANNUAL')}
-            className="px-3 py-2 text-sm border border-border rounded-button bg-background"
-          >
-            <option value="MONTHLY">Monthly</option>
-            <option value="ANNUAL" disabled={!annualAvailable}>
-              Annual{!annualAvailable ? ' (price not configured)' : ''}
-            </option>
-          </select>
+            className="w-64"
+            options={[
+              { value: 'MONTHLY', label: 'Monthly' },
+              {
+                value: 'ANNUAL',
+                label: `Annual${!annualAvailable ? ' (price not configured)' : ''}`,
+                disabled: !annualAvailable,
+              },
+            ]}
+          />
           <button
             onClick={() => grantMut.mutate()}
             disabled={grantMut.isPending}

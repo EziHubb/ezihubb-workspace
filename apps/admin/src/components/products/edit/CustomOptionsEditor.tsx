@@ -436,7 +436,10 @@ function CustomOptionSheet({
                 <div>
                   <FieldLabel>Max file size</FieldLabel>
                   <Select
-                    {...register('maxFileSizeMB', { valueAsNumber: true })}
+                    value={String(watch('maxFileSizeMB'))}
+                    onChange={(e) => setValue('maxFileSizeMB', Number(e.target.value), {
+                      shouldDirty: true,
+                    })}
                     options={[5, 10, 20, 50].map((s) => ({ value: String(s), label: `${s} MB` }))}
                   />
                 </div>

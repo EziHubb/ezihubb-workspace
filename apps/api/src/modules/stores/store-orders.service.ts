@@ -11,13 +11,15 @@ import { JOBS, QUEUES, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
 import { paginatedResponse } from '../../common/dto/paginated-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { OrderStatus } from '@prisma/client';
+import { OrderProgressStepKind, OrderStatus } from '@prisma/client';
 import { TargetedOffersService } from '../marketing/targeted-offers.service';
+import { ensureFixedOrderProgressSteps } from '../orders/order-progress.defaults';
+import { syncOrderStatusFromShops } from '../orders/order-status-sync';
 
 export class UpdateStoreOrderDto {
   @IsEnum(OrderStatus)
   @IsOptional()
-  status?: 'IN_PRODUCTION' | 'SHIPPED' | 'DELIVERED';
+  status?: 'IN_PRODUCTION' | 'DELIVERED';
 
   @IsString()
   @IsOptional()
@@ -36,7 +38,7 @@ export class UpdateStoreOrderDto {
   sellerNotes?: string;
 }
 
-const SELLER_UPDATABLE_STATUSES = ['IN_PRODUCTION', 'SHIPPED', 'DELIVERED'];
+const SELLER_UPDATABLE_STATUSES = ['IN_PRODUCTION', 'DELIVERED'];
 
 @Injectable()
 export class StoreOrdersService {
@@ -124,17 +126,28 @@ export class StoreOrdersService {
       throw new BadRequestException('Invalid status transition');
     }
 
-    const updated = await this.prisma.storeOrder.update({
-      where: { id: storeOrderId },
-      data: {
-        status:        dto.status        ?? undefined,
-        trackingNumber: dto.trackingNumber ?? undefined,
-        trackingUrl:    dto.trackingUrl   ?? undefined,
-        carrier:        dto.carrier       ?? undefined,
-        sellerNotes:    dto.sellerNotes   ?? undefined,
-        shippedAt:    dto.status === 'SHIPPED' && !order.shippedAt ? new Date() : undefined,
-        deliveredAt:  dto.status === 'DELIVERED' && !order.deliveredAt ? new Date() : undefined,
-      },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const steps = await ensureFixedOrderProgressSteps(tx, storeId);
+      const progressKind = dto.status === 'DELIVERED'
+        ? OrderProgressStepKind.DELIVERED
+        : dto.status === 'IN_PRODUCTION'
+          ? OrderProgressStepKind.IN_PRODUCTION
+          : null;
+      const progressStep = steps.find((step) => step.kind === progressKind);
+      const result = await tx.storeOrder.update({
+        where: { id: storeOrderId },
+        data: {
+          status:           dto.status          ?? undefined,
+          progressStepId:   dto.status ? progressStep?.id : undefined,
+          trackingNumber:   dto.trackingNumber ?? undefined,
+          trackingUrl:      dto.trackingUrl    ?? undefined,
+          carrier:          dto.carrier        ?? undefined,
+          sellerNotes:      dto.sellerNotes    ?? undefined,
+          deliveredAt:      dto.status === 'DELIVERED' && !order.deliveredAt ? new Date() : undefined,
+        },
+      });
+      if (dto.status) await syncOrderStatusFromShops(tx, [order.orderId]);
+      return result;
     });
 
     return updated;
@@ -167,15 +180,22 @@ export class StoreOrdersService {
       throw new BadRequestException('Order already shipped');
     }
 
-    const updated = await this.prisma.storeOrder.update({
-      where: { id: storeOrderId },
-      data: {
-        status:        'SHIPPED',
-        trackingNumber: dto.trackingNumber,
-        trackingUrl:    dto.trackingUrl ?? null,
-        carrier:        dto.carrier     ?? null,
-        shippedAt:      new Date(),
-      },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const steps = await ensureFixedOrderProgressSteps(tx, storeId);
+      const shippedStep = steps.find((step) => step.kind === OrderProgressStepKind.SHIPPED);
+      const result = await tx.storeOrder.update({
+        where: { id: storeOrderId },
+        data: {
+          status:         'SHIPPED',
+          progressStepId: shippedStep?.id,
+          trackingNumber: dto.trackingNumber,
+          trackingUrl:    dto.trackingUrl ?? null,
+          carrier:        dto.carrier     ?? null,
+          shippedAt:      new Date(),
+        },
+      });
+      await syncOrderStatusFromShops(tx, [storeOrder.orderId]);
+      return result;
     });
 
     // Notify buyer

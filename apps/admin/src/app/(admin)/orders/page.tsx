@@ -13,6 +13,7 @@ import { QueueFilters } from '../../../components/orders/queue/QueueFilters';
 import { ProgressStepsModal } from '../../../components/orders/queue/ProgressStepsModal';
 import { UpdateProgressMenu } from '../../../components/orders/queue/UpdateProgressMenu';
 import { OrderPanel } from '../../../components/orders/panel/OrderPanel';
+import { FilterSelect } from '../../../components/ui/FilterSelect';
 import {
   EMPTY_FILTERS,
   type ProgressStep,
@@ -41,6 +42,20 @@ import {
  * gives the next person nothing to check against.
  */
 const MAX_PAGE_LIMIT = 48;
+
+type OrderSort = 'shipBy' | 'newest' | 'oldest' | 'total';
+
+const SORT_OPTIONS = [
+  { value: 'shipBy', label: 'Ship by date' },
+  { value: 'newest', label: 'Newest first' },
+  { value: 'oldest', label: 'Oldest first' },
+  { value: 'total',  label: 'Order total' },
+];
+
+const PAGE_SIZE_OPTIONS = [12, 24, MAX_PAGE_LIMIT].map((value) => ({
+  value: String(value),
+  label: `${value} orders per page`,
+}));
 
 const QK = {
   steps:        (storeId?: string) => ['order-progress-steps', storeId] as const,
@@ -114,7 +129,7 @@ export default function OrdersPage() {
   const [limit,    setLimit]    = useState(24);
   // Newest first, not ship-by. A queue is read from the top, and what a
   // seller opens the page to find is what just came in.
-  const [sort,     setSort]     = useState<'shipBy' | 'newest' | 'oldest' | 'total'>('newest');
+  const [sort,     setSort]     = useState<OrderSort>('newest');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editorOpen,   setEditorOpen]   = useState(false);
   const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
@@ -332,30 +347,24 @@ export default function OrdersPage() {
         {/* Sort and page size sit here rather than in the filter rail: they
             change how the same set of orders is presented, not which orders
             are in it. */}
-        <label className="ml-auto flex items-center gap-2 text-sm text-muted">
-          Sort by
-          <select
+        <div className="ml-auto flex items-center gap-2 text-sm text-muted">
+          <span>Sort by</span>
+          <FilterSelect
             value={sort}
-            onChange={(e) => changeView(() => setSort(e.target.value as typeof sort))}
-            className="rounded-full border border-border bg-surface px-3 py-1.5 text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="shipBy">Ship by date</option>
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
-            <option value="total">Order total</option>
-          </select>
-        </label>
+            options={SORT_OPTIONS}
+            align="right"
+            className="min-w-[165px]"
+            onChange={(value) => changeView(() => setSort(value as OrderSort))}
+          />
+        </div>
 
-        <select
-          value={limit}
-          aria-label="Orders per page"
-          onChange={(e) => changeView(() => setLimit(Number(e.target.value)))}
-          className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          {[12, 24, MAX_PAGE_LIMIT].map((n) => (
-            <option key={n} value={n}>{n} orders per page</option>
-          ))}
-        </select>
+        <FilterSelect
+          value={String(limit)}
+          options={PAGE_SIZE_OPTIONS}
+          align="right"
+          className="min-w-[210px]"
+          onChange={(value) => changeView(() => setLimit(Number(value)))}
+        />
       </div>
 
       <div className="mb-3 flex items-center gap-3">
@@ -410,7 +419,7 @@ export default function OrdersPage() {
       </div>
 
       {/* ── Pipeline tabs ────────────────────────────────────────────────── */}
-      <div className="mb-4 flex items-center gap-1 border-b border-border">
+      <div className="mb-4 flex items-center gap-1 overflow-x-auto border-b border-border">
         <TabButton label="All" count={undefined} active={stepId === ''} onClick={() => changeView(() => setStepId(''))} />
         {steps.map((s) => (
           <TabButton
@@ -425,7 +434,7 @@ export default function OrdersPage() {
           type="button"
           onClick={() => setEditorOpen(true)}
           aria-label="Customise progress steps"
-          className="ml-2 rounded-full p-1.5 text-muted hover:bg-background hover:text-secondary"
+          className="ml-2 shrink-0 rounded-full p-1.5 text-muted hover:bg-background hover:text-secondary"
         >
           <Pencil className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -571,7 +580,7 @@ function TabButton({
       type="button"
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
-      className={`flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm ${
+      className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm ${
         active
           ? 'border-secondary font-semibold text-secondary'
           : 'border-transparent text-muted hover:text-secondary'
