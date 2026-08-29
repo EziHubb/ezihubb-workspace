@@ -133,11 +133,9 @@ export class QaService {
     const limit = query.limit ?? 24;
     const search = query.q?.trim();
 
-    const where: Prisma.ProductQuestionWhereInput = {
+    const baseWhere: Prisma.ProductQuestionWhereInput = {
       isSpam: false,
       ...(storeId ? { product: { storeId } } : {}),
-      ...(query.filter === 'unanswered' ? { answer: null } : {}),
-      ...(query.filter === 'answered' ? { answer: { not: null } } : {}),
       ...(search
         ? {
             OR: [
@@ -150,7 +148,17 @@ export class QaService {
         : {}),
     };
 
-    const [questions, total] = await Promise.all([
+    const where: Prisma.ProductQuestionWhereInput = {
+      ...baseWhere,
+      ...(query.filter === 'unanswered' ? { answer: null } : {}),
+      ...(query.filter === 'answered' ? { answer: { not: null } } : {}),
+    };
+
+    // Return every tab count with the list response. Previously the UI knew
+    // only the active tab's pagination total plus a separate unanswered count,
+    // so at least one badge was always missing. The same baseWhere keeps all
+    // three counts scoped to the current store and search term.
+    const [questions, allCount, unansweredCount] = await Promise.all([
       this.prisma.productQuestion.findMany({
         where,
         include: {
@@ -172,24 +180,37 @@ export class QaService {
         skip: (page - 1) * limit,
         take: limit,
       }),
-      this.prisma.productQuestion.count({ where }),
+      this.prisma.productQuestion.count({ where: baseWhere }),
+      this.prisma.productQuestion.count({
+        where: { ...baseWhere, answer: null },
+      }),
     ]);
 
-    return paginatedResponse(
-      questions.map(({ product, ...question }) => ({
-        ...question,
-        product: {
-          id: product.id,
-          name: product.name,
-          slug: product.slug,
-          imageUrl: product.images[0]?.url ?? null,
-          store: product.store,
-        },
-      })),
-      page,
-      limit,
-      total,
-    );
+    const counts = {
+      all: allCount,
+      unanswered: unansweredCount,
+      answered: allCount - unansweredCount,
+    };
+    const total = counts[query.filter ?? 'all'];
+
+    return {
+      ...paginatedResponse(
+        questions.map(({ product, ...question }) => ({
+          ...question,
+          product: {
+            id: product.id,
+            name: product.name,
+            slug: product.slug,
+            imageUrl: product.images[0]?.url ?? null,
+            store: product.store,
+          },
+        })),
+        page,
+        limit,
+        total,
+      ),
+      counts,
+    };
   }
 
   // ── Admin: global unanswered count ──────────────────────────────────────────

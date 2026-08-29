@@ -40,6 +40,7 @@ function UserMenu({ locale, loginHref }: { locale: string; loginHref: string }) 
   const profile          = useAuthStore((s) => s.user);
   const authLogout       = useAuthStore((s) => s.logout);
   const token            = useAuthStore((s) => s.accessToken);
+  const isAuthReady      = useAuthStore((s) => s.isAuthReady);
 
 
   // Live store status — JWT may be stale (isSeller not updated until re-login)
@@ -76,7 +77,10 @@ function UserMenu({ locale, loginHref }: { locale: string; loginHref: string }) 
     router.push(`/${locale}`);
   };
 
-  if (!profile) {
+  // A profile can be restored from Zustand before next-auth has restored the
+  // live access token. Do not render that stale snapshot as an authenticated
+  // account: it is exactly the state in which protected API calls return 401.
+  if (!isAuthReady || !profile || !token) {
     return (
       <Link
         href={loginHref}

@@ -491,29 +491,12 @@ function MoreFiltersSection({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function SearchFilterSidebar({ filters, facets, categories, onFilterChange, onClearAll }: Props) {
+export function SearchFilterSidebar({ filters, facets, categories, onFilterChange }: Props) {
   const locale = useLocale();
   const t = useTranslations('search');
-  const hasActiveFilters = Object.keys(filters).some(
-    (k) => !['q', 'page', 'limit', 'sort'].includes(k),
-  );
 
   return (
-    <div className="text-sm">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <span className="font-semibold text-secondary">{t('filters')}</span>
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={onClearAll}
-            className="text-xs text-primary hover:underline"
-          >
-            {t('clearAll')}
-          </button>
-        )}
-      </div>
-
+    <div className="text-sm [&>div:first-child]:pt-0">
       {/* Group order is ours, not the reference's: the reference images have
           no overlap between screenshots so their vertical order could not be
           recovered from them. Ordered by how much each one narrows a result

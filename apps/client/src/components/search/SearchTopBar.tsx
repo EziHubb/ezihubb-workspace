@@ -1,8 +1,9 @@
 'use client';
 
 import { useLocale, useTranslations } from 'next-intl';
-import { SlidersHorizontal, ChevronDown, X } from 'lucide-react';
+import { SlidersHorizontal, X } from 'lucide-react';
 import { safeNum } from '@ezihubb/utils';
+import { Select } from '@ezihubb/ui';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -155,18 +156,14 @@ export function SearchTopBar({
           </div>
 
           {/* Right: sort select */}
-          <div className="relative shrink-0">
-            <select
-              value={sort}
-              onChange={(e) => onSortChange(e.target.value)}
-              className="appearance-none border border-border rounded-full pl-4 pr-8 py-1.5 text-sm text-secondary bg-background cursor-pointer hover:border-secondary focus:outline-none focus:border-primary transition-colors"
-            >
-              {SEARCH_SORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
-          </div>
+          <Select
+            aria-label="Sort results"
+            value={sort}
+            onChange={(e) => onSortChange(e.target.value)}
+            options={SEARCH_SORT_OPTIONS}
+            size="sm"
+            className="w-48 shrink-0"
+          />
         </div>
 
         {/* Row 2: active filter chips */}

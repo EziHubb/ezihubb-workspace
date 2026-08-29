@@ -27,11 +27,18 @@ export async function generateMetadata({
 
 export default async function ContactPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { locale } = await params;
+  const query = await searchParams;
   const t = await getTranslations({ locale, namespace: 'pages.contact' });
+  const rawProduct = Array.isArray(query['product']) ? query['product'][0] : query['product'];
+  const productId = rawProduct && /^[A-Za-z0-9_-]{1,100}$/.test(rawProduct)
+    ? rawProduct
+    : null;
 
   const CONTACT_CARDS: {
     Icon:    LucideIcon;
@@ -92,7 +99,10 @@ export default async function ContactPage({
       <div className="grid md:grid-cols-[1fr_340px] gap-12">
 
         {/* ── Contact form ──────────────────────────────────────────────── */}
-        <ContactForm />
+        <ContactForm
+          initialSubject={productId ? 'other' : undefined}
+          initialMessage={productId ? `[Product ID: ${productId}]\n\n` : undefined}
+        />
 
         {/* ── Sidebar ───────────────────────────────────────────────────── */}
         <div className="space-y-5">

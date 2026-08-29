@@ -15,6 +15,7 @@ type Filter = 'all' | 'unanswered' | 'answered';
 
 interface QuestionPage {
   data: Question[];
+  counts: Record<Filter, number>;
   pagination: {
     page: number;
     limit: number;
@@ -58,13 +59,7 @@ export default function QuestionsPage() {
           ...(debouncedSearch ? { q: debouncedSearch } : {}),
         },
       }),
-  });
-
-  const unansweredQuery = useQuery<{ count: number }>({
-    queryKey: ['sidebar-questions-unanswered'],
-    queryFn: () =>
-      api.get<{ count: number }>(API_ROUTES.ADMIN.QUESTIONS_UNANSWERED),
-    staleTime: 30_000,
+    placeholderData: (previousData) => previousData,
   });
 
   const questions = listQuery.data?.data ?? [];
@@ -84,12 +79,7 @@ export default function QuestionsPage() {
         <nav className="flex items-center gap-1 overflow-x-auto">
           {FILTERS.map((item) => {
             const active = filter === item.value;
-            const count =
-              item.value === 'unanswered'
-                ? unansweredQuery.data?.count
-                : active
-                  ? total
-                  : undefined;
+            const count = listQuery.data?.counts[item.value];
             return (
               <button
                 key={item.value}

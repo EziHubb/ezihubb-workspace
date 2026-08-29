@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslations } from 'next-intl';
 import { CheckCircle, Loader2, Send } from 'lucide-react';
 import { apiClient } from '../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { Select } from '@ezihubb/ui';
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
@@ -38,7 +39,13 @@ const inp = (hasError?: boolean) =>
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function ContactForm() {
+export function ContactForm({
+  initialSubject,
+  initialMessage,
+}: {
+  initialSubject?: FormValues['subject'];
+  initialMessage?: string;
+} = {}) {
   const t           = useTranslations('pages.contact.form');
   const tValidation  = useTranslations('pages.contact.form.validation');
 
@@ -56,12 +63,17 @@ export function ContactForm() {
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(buildSchema(tValidation)),
+    defaultValues: {
+      subject: initialSubject,
+      message: initialMessage,
+    },
   });
 
   const subject       = watch('subject');
@@ -145,12 +157,23 @@ export function ContactForm() {
         <label className="text-sm font-medium text-secondary block mb-1.5">
           {t('subjectLabel')} <span className="text-red-500">*</span>
         </label>
-        <select {...register('subject')} className={inp(!!errors.subject)}>
-          <option value="">{t('subjectPlaceholder')}</option>
-          {SUBJECTS.map((s) => (
-            <option key={s.value} value={s.value}>{s.label}</option>
-          ))}
-        </select>
+        <Controller
+          name="subject"
+          control={control}
+          render={({ field }) => (
+            <Select
+              ref={field.ref}
+              name={field.name}
+              value={field.value ?? ''}
+              onBlur={field.onBlur}
+              onChange={(event) => field.onChange(event.target.value)}
+              placeholder={t('subjectPlaceholder')}
+              options={SUBJECTS}
+              error={Boolean(errors.subject)}
+              required
+            />
+          )}
+        />
         {errors.subject && <p className="text-xs text-red-500 mt-0.5">{errors.subject.message}</p>}
       </div>
 

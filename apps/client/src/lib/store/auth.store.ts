@@ -27,7 +27,12 @@ if (typeof window !== 'undefined') {
     // actually flips to "unauthenticated" and account pages' auth guards
     // can redirect to /login instead of spinning forever.
     if (!token) {
-      useAuthStore.setState({ user: null, accessToken: null });
+      useAuthStore.setState({
+        user: null,
+        accessToken: null,
+        isLoading: false,
+        isAuthReady: true,
+      });
       void signOut({ redirect: false });
     }
   });
@@ -114,7 +119,7 @@ export const useAuthStore = create<AuthStore>()(
 
         const { accessToken, user } = res;
         syncToken(accessToken);
-        set({ user, accessToken });
+        set({ user, accessToken, isLoading: false, isAuthReady: true });
 
         // Merge guest cart into the authenticated cart (non-critical)
         try {
@@ -155,7 +160,7 @@ export const useAuthStore = create<AuthStore>()(
           },
         );
         syncToken(null);
-        set({ user: null, accessToken: null });
+        set({ user: null, accessToken: null, isLoading: false, isAuthReady: true });
         getCartStore()?.clearCart();
       },
 
@@ -198,11 +203,11 @@ export const useAuthStore = create<AuthStore>()(
         try {
           const res = await apiClient.post<{ accessToken: string }>(API_ROUTES.AUTH.REFRESH);
           syncToken(res.accessToken);
-          set({ accessToken: res.accessToken });
+          set({ accessToken: res.accessToken, isAuthReady: true });
           return true;
         } catch {
           syncToken(null);
-          set({ user: null, accessToken: null });
+          set({ user: null, accessToken: null, isLoading: false, isAuthReady: true });
           return false;
         }
       },
@@ -211,19 +216,22 @@ export const useAuthStore = create<AuthStore>()(
 
       setTokens: (accessToken, user) => {
         syncToken(accessToken);
-        set({ accessToken, user });
+        // next-auth is the durable session source. A persisted profile may be
+        // hydrated before SessionProvider has restored its JWT, so the UI must
+        // not consider auth ready until this live token arrives.
+        set({ accessToken, user, isLoading: false, isAuthReady: true });
       },
 
       // ── Legacy aliases ─────────────────────────────────────────────────────
 
       setUser: (user, accessToken) => {
         syncToken(accessToken);
-        set({ user, accessToken });
+        set({ user, accessToken, isLoading: false, isAuthReady: true });
       },
 
       clearAuth: () => {
         syncToken(null);
-        set({ user: null, accessToken: null });
+        set({ user: null, accessToken: null, isLoading: false, isAuthReady: true });
       },
 
       getToken: () => _accessToken,

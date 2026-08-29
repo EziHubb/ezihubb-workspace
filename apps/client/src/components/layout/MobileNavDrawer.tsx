@@ -108,6 +108,8 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale, loginHref }: Mo
   const router     = useRouter();
   const qc         = useQueryClient();
   const profile    = useAuthStore((s) => s.user);
+  const token      = useAuthStore((s) => s.accessToken);
+  const isAuthReady = useAuthStore((s) => s.isAuthReady);
   const authLogout = useAuthStore((s) => s.logout);
   const drawerRef  = useRef<HTMLDivElement>(null);
 
@@ -235,7 +237,7 @@ export function MobileNavDrawer({ isOpen, onClose, tabs, locale, loginHref }: Mo
               {t('account')}
             </p>
 
-            {profile ? (
+            {isAuthReady && profile && token ? (
               <>
                 <div className="flex items-center gap-3 px-3 py-2 mb-1">
                   <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">

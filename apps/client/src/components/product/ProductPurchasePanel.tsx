@@ -4,8 +4,9 @@ import { useState, useMemo, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import {
   Star, CheckCircle2, Clock, ShoppingCart,
-  Loader2, Plus, ChevronDown, Users, Paperclip, X,
+  Loader2, Plus, Users, Paperclip, X,
 } from 'lucide-react';
+import { Select } from '@ezihubb/ui';
 import { ShareButton } from './ShareButton';
 import {
   ItemDetailsAccordion,
@@ -394,29 +395,18 @@ function VariantDropdown({
       {hasError && !selected && (
         <p className="text-xs text-red-500 mb-1">{t('pleaseSelectOption')}</p>
       )}
-      <div className="relative">
-        <select
-          value={selected}
-          onChange={(e) => onChange(e.target.value)}
-          className={[
-            'w-full appearance-none border rounded-[8px] px-3 py-2.5 text-sm bg-white pr-8',
-            'cursor-pointer transition-colors focus:outline-none focus:ring-2',
-            selected
-              ? 'border-primary text-secondary focus:ring-primary/20'
-              : hasError
-                ? 'border-red-400 text-muted focus:ring-red-200 bg-red-50'
-                : 'border-border text-muted focus:ring-primary/20',
-          ].join(' ')}
-        >
-          <option value="">{t('selectOptionPlaceholder')}</option>
-          {values.map((v) => (
-            <option key={v} value={v}>
-              {priceLabels[v] ? `${toTitleCase(v)} (${priceLabels[v]})` : toTitleCase(v)}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-      </div>
+      <Select
+        value={selected}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={t('selectOptionPlaceholder')}
+        options={values.map((optionValue) => ({
+          value: optionValue,
+          label: priceLabels[optionValue]
+            ? `${toTitleCase(optionValue)} (${priceLabels[optionValue]})`
+            : toTitleCase(optionValue),
+        }))}
+        error={hasError && !selected}
+      />
     </div>
   );
 }
@@ -435,18 +425,14 @@ function QuantityDropdown({
   return (
     <div>
       <label className="text-sm font-medium block mb-1.5">{label}</label>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="w-full appearance-none border border-border rounded-[8px] px-3 py-2.5 text-sm bg-white pr-8 cursor-pointer text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-            <option key={n} value={n}>{n}</option>
-          ))}
-        </select>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-      </div>
+      <Select
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        options={Array.from({ length: 10 }, (_, index) => ({
+          value: String(index + 1),
+          label: String(index + 1),
+        }))}
+      />
     </div>
   );
 }
@@ -629,17 +615,13 @@ function CustomOptionsFields({
                 })}
               </div>
             ) : (
-              <div className="relative">
-                <select
-                  value={typeof value === 'string' ? value : ''}
-                  onChange={(event) => onChange(option.id, event.target.value)}
-                  className={`${inputClass} appearance-none pr-8`}
-                >
-                  <option value="">{option.placeholder || t('selectOptionPlaceholder')}</option>
-                  {option.choices.map((choice) => <option key={choice} value={choice}>{choice}</option>)}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-              </div>
+              <Select
+                value={typeof value === 'string' ? value : ''}
+                onChange={(event) => onChange(option.id, event.target.value)}
+                placeholder={option.placeholder || t('selectOptionPlaceholder')}
+                options={option.choices.map((choice) => ({ value: choice, label: choice }))}
+                error={Boolean(error)}
+              />
             ))}
 
             {option.type === 'FILE_UPLOAD' && (
@@ -774,16 +756,16 @@ function PersonalizationCollapsible({
                     className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 ) : field.type === 'select' ? (
-                  <select
+                  <Select
                     value={val}
                     onChange={(e) => set(field.id, e.target.value)}
-                    className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  >
-                    <option value="">{t('selectEllipsis')}</option>
-                    {field.options?.map((o) => (
-                      <option key={o} value={o}>{o}</option>
-                    ))}
-                  </select>
+                    placeholder={t('selectEllipsis')}
+                    options={(field.options ?? []).map((option) => ({
+                      value: option,
+                      label: option,
+                    }))}
+                    size="sm"
+                  />
                 ) : field.type === 'color' ? (
                   <input
                     type="color"

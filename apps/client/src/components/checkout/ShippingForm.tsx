@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useLocale, useTranslations } from 'next-intl';
 import { useAddresses, useProfile } from '@ezihubb/api-client';
 import type { ShippingAddressInput } from '@ezihubb/api-client';
+import { Select } from '@ezihubb/ui';
 
 // ── Zod schema (validation messages injected at call time via a factory,
 // since useTranslations can only be called inside a component/hook body) ──────
@@ -101,6 +102,7 @@ export function ShippingForm({
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     setValue,
@@ -161,18 +163,15 @@ export function ShippingForm({
       {/* Saved address picker (logged-in only) */}
       {isLoggedIn && addresses && addresses.length > 0 && (
         <Field label={t('savedAddress')}>
-          <select
+          <Select
             onChange={(e) => fillFromSaved(e.target.value)}
             defaultValue=""
-            className={inputCls()}
-          >
-            <option value="">{t('selectSavedAddress')}</option>
-            {addresses.map((addr) => (
-              <option key={addr.id} value={addr.id}>
-                {addr.firstName} {addr.lastName} · {addr.addressLine1}, {addr.city}
-              </option>
-            ))}
-          </select>
+            placeholder={t('selectSavedAddress')}
+            options={addresses.map((address) => ({
+              value: address.id,
+              label: `${address.firstName} ${address.lastName} · ${address.addressLine1}, ${address.city}`,
+            }))}
+          />
         </Field>
       )}
 
@@ -266,17 +265,25 @@ export function ShippingForm({
 
       {/* Country */}
       <Field label={t('country')} required error={errors.country?.message}>
-        <select
-          {...register('country')}
-          autoComplete="country"
-          className={inputCls(errors.country?.message)}
-        >
-          {COUNTRY_CODES.map((code) => (
-            <option key={code} value={code}>
-              {getCountryName(code)}
-            </option>
-          ))}
-        </select>
+        <Controller
+          name="country"
+          control={control}
+          render={({ field }) => (
+            <Select
+              ref={field.ref}
+              name={field.name}
+              value={field.value}
+              onBlur={field.onBlur}
+              onChange={(event) => field.onChange(event.target.value)}
+              options={COUNTRY_CODES.map((code) => ({
+                value: code,
+                label: getCountryName(code),
+              }))}
+              error={Boolean(errors.country)}
+              required
+            />
+          )}
+        />
       </Field>
 
       {/* Save address checkbox (logged-in only) */}

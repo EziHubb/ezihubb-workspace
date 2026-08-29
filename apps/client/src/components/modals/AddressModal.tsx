@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslations } from 'next-intl';
 import type { useTranslations as UseTranslations } from 'next-intl';
-import { Modal, ModalHeader, ModalBody, ModalFooter, Button } from '@ezihubb/ui';
+import { Modal, ModalHeader, ModalBody, ModalFooter, Button, Select } from '@ezihubb/ui';
 import { useMutateAddresses } from '@ezihubb/api-client';
 import type { AddressDto } from '@ezihubb/types';
 
@@ -118,6 +118,7 @@ export function AddressModal({
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -282,15 +283,25 @@ export function AddressModal({
 
           {/* Country */}
           <Field label={t('fields.country')} required error={errors.country?.message}>
-            <select
-              {...register('country')}
-              autoComplete="country"
-              className={inputCls(errors.country?.message)}
-            >
-              {COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>{c.name}</option>
-              ))}
-            </select>
+            <Controller
+              name="country"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  ref={field.ref}
+                  name={field.name}
+                  value={field.value}
+                  onBlur={field.onBlur}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  options={COUNTRIES.map((country) => ({
+                    value: country.code,
+                    label: country.name,
+                  }))}
+                  error={Boolean(errors.country)}
+                  required
+                />
+              )}
+            />
           </Field>
 
           {/* Default checkbox */}

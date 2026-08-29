@@ -28,7 +28,7 @@ export function ListedInfoFooter({
         {t('listingNumber', { id: product.id.slice(-8).toUpperCase() })}
         {' · '}
         <Link
-          href={locale ? `/${locale}/report?product=${product.id}` : '#'}
+          href={locale ? `/${locale}/pages/contact?subject=other&product=${encodeURIComponent(product.id)}` : '#'}
           className="hover:underline"
         >
           {t('reportItem')}

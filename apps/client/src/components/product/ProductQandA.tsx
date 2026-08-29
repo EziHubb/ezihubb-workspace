@@ -3,7 +3,14 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslations } from 'next-intl';
-import { MessageCircle, ThumbsUp, ChevronDown, ChevronUp, X } from 'lucide-react';
+import {
+  MessageCircle,
+  ThumbsUp,
+  ChevronDown,
+  ChevronUp,
+  LoaderCircle,
+  X,
+} from 'lucide-react';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 
@@ -149,6 +156,31 @@ interface ProductQandAProps {
 
 const VISIBLE_DEFAULT = 5;
 
+function QuestionListSkeleton() {
+  return (
+    <div className="space-y-5 animate-pulse" aria-hidden="true">
+      {Array.from({ length: 2 }).map((_, index) => (
+        <div key={index} className="rounded-xl bg-[#FAFAF8] p-5">
+          <div className="flex items-start gap-3">
+            <div className="h-7 w-7 shrink-0 rounded-full bg-border" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 w-2/3 rounded bg-border" />
+              <div className="h-3 w-32 rounded bg-border" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-start gap-3 pl-10">
+            <div className="h-7 w-7 shrink-0 rounded-full bg-border" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3.5 w-1/2 rounded bg-border" />
+              <div className="h-3 w-24 rounded bg-border" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
   const t = useTranslations('product.qanda');
   const [qas,       setQas]       = useState<QAItem[]>(initialQAs);
@@ -163,8 +195,10 @@ export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
     } catch { return new Set(); }
   });
   const [submitted, setSubmitted] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(initialQAs.length === 0);
 
   const refreshQAs = useCallback(async () => {
+    setIsRefreshing(true);
     try {
       const latest = await apiClient.get<QAItem[]>(API_ROUTES.PRODUCTS.QA(productSlug), {
         cache: 'no-store',
@@ -172,6 +206,8 @@ export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
       setQas(Array.isArray(latest) ? latest : []);
     } catch {
       // Keep the server-rendered data when a background refresh is unavailable.
+    } finally {
+      setIsRefreshing(false);
     }
   }, [productSlug]);
 
@@ -211,13 +247,19 @@ export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
   const visible = showAll ? qas : qas.slice(0, VISIBLE_DEFAULT);
 
   return (
-    <section className="mt-10 border-t border-border pt-8">
+    <section
+      aria-busy={isRefreshing}
+      className="mt-10 border-t border-border pt-8"
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-bold text-secondary">
           {t('questionsAndAnswers')}
           {qas.length > 0 && (
             <span className="text-sm font-normal text-muted ml-2">({qas.length})</span>
+          )}
+          {isRefreshing && qas.length > 0 && (
+            <LoaderCircle className="ml-2 inline h-4 w-4 animate-spin text-muted" />
           )}
         </h3>
         <button
@@ -236,7 +278,9 @@ export function ProductQandA({ productSlug, initialQAs }: ProductQandAProps) {
         </div>
       )}
 
-      {qas.length === 0 ? (
+      {isRefreshing && qas.length === 0 ? (
+        <QuestionListSkeleton />
+      ) : qas.length === 0 ? (
         <div className="text-center py-8 text-muted">
           <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-40" />
           <p className="text-sm">{t('noQuestions')}</p>

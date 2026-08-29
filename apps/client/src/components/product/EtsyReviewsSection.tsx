@@ -23,6 +23,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@ezihubb/api-client';
 import type { ReviewDto, ReviewSummaryDto } from '@ezihubb/types';
 import { fmtRating, safeNum } from '@ezihubb/utils';
+import { Select } from '@ezihubb/ui';
 import { buildLoginHref } from '../../lib/auth-redirect';
 import { ImageLightbox } from '../messages/ImageLightbox';
 
@@ -85,6 +86,26 @@ function ReviewListSkeleton() {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function ReviewSectionSkeleton() {
+  return (
+    <div className="animate-pulse" aria-hidden="true">
+      <div className="h-12 rounded-full border border-dashed border-border bg-[#F5F3F1]" />
+      <div className="mt-6 space-y-3">
+        <div className="flex gap-1">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="h-4 w-4 rounded bg-border" />
+          ))}
+        </div>
+        <div className="h-4 w-3/4 rounded bg-border" />
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-full bg-border" />
+          <div className="h-3 w-28 rounded bg-border" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -518,18 +539,16 @@ function WriteReviewForm({
           <label className="text-xs font-medium block mb-1.5 text-secondary">
             {t('order')}
           </label>
-          <select
+          <Select
             value={orderId}
             onChange={(e) => setOrderId(e.target.value)}
-            className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="">{t('selectOrder')}</option>
-            {reviewables.map((r) => (
-              <option key={r.orderId} value={r.orderId}>
-                {t('orderNumber', { number: r.orderNumber })}
-              </option>
-            ))}
-          </select>
+            placeholder={t('selectOrder')}
+            options={reviewables.map((reviewable) => ({
+              value: reviewable.orderId,
+              label: t('orderNumber', { number: reviewable.orderNumber }),
+            }))}
+            size="sm"
+          />
         </div>
       )}
 
@@ -696,6 +715,7 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
   const t = useTranslations('product.etsyReviews');
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
+  const isAuthReady = useAuthStore((state) => state.isAuthReady);
   const [activeFilter, setActiveFilter] = useState<FilterId>('suggested');
   const [starFilter, setStarFilter] = useState<number | null>(null);
   const [page, setPage] = useState(1);
@@ -719,29 +739,43 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
         token: accessToken ?? undefined,
         cache: 'no-store',
       }),
-    enabled: Boolean(user),
+    // `user` is persisted for fast profile paint, while the access token is
+    // intentionally memory-only. Waiting for the live token prevents this
+    // query from firing unauthenticated during session hydration and logging a
+    // misleading 401 even though the navbar already shows the saved profile.
+    enabled: isAuthReady && Boolean(user && accessToken),
     staleTime: 0,
   });
 
   const allReviews = data?.data ?? [];
   const reviews = applyClientFilter(allReviews, activeFilter);
   const pendingReview = myReview?.status === 'PENDING' ? myReview : null;
+  const isReviewSectionLoading =
+    isLoading ||
+    !isAuthReady ||
+    (Boolean(user && accessToken) && myReviewLoading);
   const photoCount = allReviews.filter((r) => r.imageUrls.length > 0).length;
   const allPhotos = reviews.flatMap((r) => r.imageUrls);
 
   // Show write form even when there are no reviews yet
   if (!reviewSummary || reviewSummary.totalReviews === 0) {
     return (
-      <section id="reviews" className="mt-12 pt-8 border-t border-border">
+      <section
+        id="reviews"
+        aria-busy={isReviewSectionLoading}
+        className="mt-12 pt-8 border-t border-border"
+      >
         <h2 className="text-xl font-semibold mb-4">
           {t('reviewsForThisItem')}
         </h2>
-        {reviewSuccess ? (
+        {isReviewSectionLoading ? (
+          <ReviewSectionSkeleton />
+        ) : reviewSuccess ? (
           <div className={`py-6 text-center text-sm rounded-2xl border ${reviewWarning ? 'text-amber-800 bg-amber-50 border-amber-200' : 'text-green-700 bg-green-50 border-green-100'}`}>
             <p>{t('thankYouSubmitted')}</p>
             {reviewWarning && <p className="mt-1">{reviewWarning}</p>}
           </div>
-        ) : !myReviewLoading && !myReview ? (
+        ) : !myReview ? (
           <>
             <WriteReviewForm
               productSlug={productSlug}
@@ -812,7 +846,11 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
   ];
 
   return (
-    <section id="reviews" className="mt-12 pt-8 border-t border-border">
+    <section
+      id="reviews"
+      aria-busy={isReviewSectionLoading}
+      className="mt-12 pt-8 border-t border-border"
+    >
       <ImageLightbox
         urls={allPhotos}
         index={photoPreviewIndex}

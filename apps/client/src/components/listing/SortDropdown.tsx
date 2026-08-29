@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
+import { Select } from '@ezihubb/ui';
 import { SORT_OPTIONS } from './types';
 
 interface SortDropdownProps {
@@ -17,23 +18,17 @@ export function SortDropdown({ value, onChange }: SortDropdownProps) {
 
   return (
     <>
-      {/* ── Desktop: native select ─────────────────────────────────────────── */}
+      {/* ── Desktop: shared select ─────────────────────────────────────────── */}
       <div className="hidden md:flex items-center gap-2">
         <span className="text-sm text-muted whitespace-nowrap">Sort by:</span>
-        <div className="relative">
-          <select
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="appearance-none pl-3 pr-8 py-2 text-sm border border-border rounded-button bg-surface text-secondary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-          >
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-        </div>
+        <Select
+          aria-label="Sort products"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          options={SORT_OPTIONS}
+          size="sm"
+          className="w-48"
+        />
       </div>
 
       {/* ── Mobile: trigger button ─────────────────────────────────────────── */}

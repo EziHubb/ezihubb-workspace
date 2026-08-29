@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Edit2, Trash2, Star, MapPin } from 'lucide-react';
 import { queryKeys } from '@ezihubb/api-client';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
-import { useToast } from '@ezihubb/ui';
+import { Select, useToast } from '@ezihubb/ui';
 import type { AddressDto } from '@ezihubb/types';
 import { useAuthQuery, useAuthMutation } from '../../../../../lib/hooks/useAuthQuery';
 
@@ -59,6 +59,7 @@ function AddressModal({
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm<FormValues>({
@@ -177,11 +178,25 @@ function AddressModal({
           {/* Country */}
           <div>
             <label className="text-xs font-medium text-muted mb-1 block">{t('addresses.fields.country')} <span className="text-error">*</span></label>
-            <select {...register('country')} className={inp(errors.country?.message)}>
-              {COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>{c.name}</option>
-              ))}
-            </select>
+            <Controller
+              name="country"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  ref={field.ref}
+                  name={field.name}
+                  value={field.value}
+                  onBlur={field.onBlur}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  options={COUNTRIES.map((country) => ({
+                    value: country.code,
+                    label: country.name,
+                  }))}
+                  error={Boolean(errors.country)}
+                  required
+                />
+              )}
+            />
           </div>
 
           {/* Default checkbox */}

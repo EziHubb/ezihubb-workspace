@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { Select } from '@ezihubb/ui';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { toast } from '../../lib/store/toast.store';
 
@@ -139,16 +140,17 @@ export function ThreadMenu({ conversationId, onHidden }: {
           <p className="mb-2 text-sm font-medium text-secondary">{t('reportConversation')}</p>
 
           <label className="sr-only" htmlFor="report-reason">{t('reportReason')}</label>
-          <select
+          <Select
             id="report-reason"
             value={reason}
             onChange={(e) => setReason(e.target.value as Reason)}
-            className="mb-2 w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-sm"
-          >
-            {REASONS.map((r) => (
-              <option key={r} value={r}>{t(`reportReasons.${r}`)}</option>
-            ))}
-          </select>
+            options={REASONS.map((value) => ({
+              value,
+              label: t(`reportReasons.${value}`),
+            }))}
+            size="sm"
+            className="mb-2"
+          />
 
           <textarea
             value={note}
