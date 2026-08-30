@@ -18,9 +18,10 @@ const MAX_RELATED = 4;
 interface RelatedProductsPickerProps {
   productId:   string;
   initialIds?: string[];
+  onChange?:   (ids: string[]) => void;
 }
 
-export function RelatedProductsPicker({ productId, initialIds = [] }: RelatedProductsPickerProps) {
+export function RelatedProductsPicker({ productId, initialIds = [], onChange }: RelatedProductsPickerProps) {
   const [selected,    setSelected]    = useState<RelatedProduct[]>([]);
   const [query,       setQuery]       = useState('');
   const [results,     setResults]     = useState<RelatedProduct[]>([]);
@@ -75,7 +76,7 @@ export function RelatedProductsPicker({ productId, initialIds = [] }: RelatedPro
   const save = async (ids: string[]) => {
     setSaving(true);
     try {
-      await api.patch(API_ROUTES.ADMIN.PRODUCT_RELATED(productId), { ids });
+      onChange?.(ids);
       setSavedAt(Date.now());
     } catch {
       // silent — main form handles error display

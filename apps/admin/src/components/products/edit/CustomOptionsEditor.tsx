@@ -2,8 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useDialog } from '../../../contexts/DialogContext';
-import { useForm } from 'react-hook-form';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useForm, useFormContext } from 'react-hook-form';
 import {
   DndContext,
   closestCenter,
@@ -26,10 +25,9 @@ import {
   AlignLeft, List, Paperclip, Check,
 } from 'lucide-react';
 import { Select } from '@ezihubb/ui';
-import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@ezihubb/constants';
 import { safeArr } from '../../../lib/fmt';
 import { Toggle } from './primitives';
+import type { ProductEditFormValues } from './types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -235,17 +233,14 @@ function SortableCustomOptionCard({
 // ─── CustomOptionSheet ────────────────────────────────────────────────────────
 
 function CustomOptionSheet({
-  productId, type, option, onSaved, onClose,
+  type, option, onSaved, onClose,
 }: {
-  productId: string;
   type:      CustomOptionType;
   option?:   CustomOption | null;
-  onSaved:   () => void;
+  onSaved:   (option: CustomOption) => void;
   onClose:   () => void;
 }) {
   const isEditing = !!option;
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } =
     useForm<CustomOptionFormValues>({
@@ -272,20 +267,14 @@ function CustomOptionSheet({
   }, [onClose]);
 
   const onSubmit = async (data: CustomOptionFormValues) => {
-    setSaving(true);
-    setSaveError(null);
-    try {
-      if (isEditing) {
-        await api.patch(API_ROUTES.ADMIN.PRODUCT_CUSTOM_OPTION(productId, option!.id), { type, ...data });
-      } else {
-        await api.post(API_ROUTES.ADMIN.PRODUCT_CUSTOM_OPTIONS(productId), { type, ...data });
-      }
-      onSaved();
-    } catch (e: unknown) {
-      setSaveError((e as Error).message);
-    } finally {
-      setSaving(false);
-    }
+    onSaved({
+      ...(option ?? {}),
+      id: option?.id ?? `local-${crypto.randomUUID()}`,
+      productId: option?.productId ?? '',
+      type,
+      ...data,
+      sortOrder: option?.sortOrder ?? 0,
+    });
   };
 
   const typeTitle = TYPE_LABELS[type];
@@ -446,21 +435,15 @@ function CustomOptionSheet({
               </>
             )}
 
-            {saveError && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-button px-3 py-2">
-                {saveError}
-              </p>
-            )}
           </div>
 
           {/* Footer */}
           <div className="flex items-center gap-3 px-5 py-4 border-t border-border shrink-0">
             <button
               type="submit"
-              disabled={saving}
               className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-bold rounded-button transition-colors disabled:opacity-50"
             >
-              {saving ? 'Saving…' : isEditing ? 'Save changes' : 'Add field'}
+              {isEditing ? 'Save changes' : 'Add field'}
             </button>
             <button type="button" onClick={onClose}
               className="px-4 py-2.5 text-sm font-medium text-muted border border-border rounded-button hover:border-primary/40 transition-colors">
@@ -475,12 +458,8 @@ function CustomOptionSheet({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-interface CustomOptionsEditorProps {
-  productId: string;
-}
-
-export function CustomOptionsEditor({ productId }: CustomOptionsEditorProps) {
-  const qc = useQueryClient();
+export function CustomOptionsEditor() {
+  const { watch, setValue } = useFormContext<ProductEditFormValues>();
   const { confirm } = useDialog();
   const [editingOption, setEditingOption] = useState<CustomOption | null>(null);
   const [addingType,    setAddingType]    = useState<CustomOptionType | null>(null);
@@ -502,20 +481,19 @@ export function CustomOptionsEditor({ productId }: CustomOptionsEditorProps) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  // Fetch options
-  const { data: options = [], isLoading } = useQuery<CustomOption[]>({
-    queryKey: ['custom-options', productId],
-    queryFn:  () => api.get<CustomOption[]>(`/admin/products/${productId}/custom-options`),
-    staleTime: 30_000,
-  });
-
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['custom-options', productId] });
+  const options = safeArr(watch('customOptions')) as CustomOption[];
+  const updateOptions = (next: CustomOption[]) => {
+    setValue(
+      'customOptions',
+      next.map((option, index) => ({ ...option, sortOrder: index })),
+      { shouldDirty: true },
+    );
+  };
 
   // Delete
   const handleDelete = async (optionId: string) => {
     if (!await confirm('Remove this custom field?', { confirmLabel: 'Remove', destructive: true })) return;
-    await api.delete(API_ROUTES.ADMIN.PRODUCT_CUSTOM_OPTION(productId, optionId));
-    invalidate();
+    updateOptions(options.filter((option) => option.id !== optionId));
   };
 
   // Reorder on drag-end
@@ -526,22 +504,13 @@ export function CustomOptionsEditor({ productId }: CustomOptionsEditorProps) {
     const newIdx = options.findIndex((o) => o.id === over.id);
     if (oldIdx === -1 || newIdx === -1) return;
     const reordered = arrayMove(options, oldIdx, newIdx);
-    // Optimistic update via immediate re-fetch + background save
-    api.put(API_ROUTES.ADMIN.PRODUCT_CUSTOM_OPTIONS_REORDER(productId), {
-      orderedIds: reordered.map((o) => o.id),
-    }).then(() => invalidate());
+    updateOptions(reordered);
   };
 
   return (
     <div>
       {/* Option cards */}
-      {isLoading ? (
-        <div className="space-y-2 mb-4">
-          {[1, 2].map((i) => (
-            <div key={i} className="h-16 bg-muted/10 rounded-xl animate-pulse" />
-          ))}
-        </div>
-      ) : options.length > 0 ? (
+      {options.length > 0 ? (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -612,13 +581,15 @@ export function CustomOptionsEditor({ productId }: CustomOptionsEditorProps) {
       {/* Add / Edit slide-over */}
       {(addingType || editingOption) && (
         <CustomOptionSheet
-          productId={productId}
           type={(addingType ?? editingOption!.type) as CustomOptionType}
           option={editingOption}
-          onSaved={() => {
+          onSaved={(savedOption) => {
+            const existingIndex = options.findIndex((option) => option.id === savedOption.id);
+            updateOptions(existingIndex >= 0
+              ? options.map((option) => option.id === savedOption.id ? savedOption : option)
+              : [...options, { ...savedOption, sortOrder: options.length }]);
             setAddingType(null);
             setEditingOption(null);
-            invalidate();
           }}
           onClose={() => {
             setAddingType(null);

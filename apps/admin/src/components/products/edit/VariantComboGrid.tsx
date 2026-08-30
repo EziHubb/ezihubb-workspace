@@ -26,7 +26,10 @@ function buildRows(
 ): ComboRow[] {
   const combos = computeCombos(groups);
   const variantByKey = new Map(
-    variants.filter((v) => v.isAvailable).map((v) => [comboKey(v.options), v]),
+    // Hidden combinations still belong in the price table. Filtering them
+    // out made an existing hidden variant look like a brand-new row and the
+    // fallback below silently switched its visibility back to true.
+    variants.map((v) => [comboKey(v.options), v]),
   );
 
   return combos.map((combo) => {

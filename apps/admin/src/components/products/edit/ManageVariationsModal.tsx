@@ -13,11 +13,12 @@ import { API_ROUTES } from '@ezihubb/constants';
 import { Toggle } from './primitives/Toggle';
 import { FilterSelect } from '../../ui/FilterSelect';
 import { VariantImagePickerModal } from './VariantImagePicker';
+import { VariantComboGrid } from './VariantComboGrid';
 import type {
   VariationGroup, VariationSettings, ProductVariantRow,
   VariantEditPatch, ApplyVariationsPayload, ProductImage,
 } from './types';
-import { pricedGroupIds } from './helpers';
+import { comboKey, pricedGroupIds } from './helpers';
 import { ModalPortal } from './ModalPortal';
 import { Select } from '@ezihubb/ui';
 
@@ -1043,10 +1044,12 @@ interface ManageVariationsModalProps {
   isOpen:    boolean;
   onClose:   () => void;
   onSaved:   () => void;
+  initialDraft?: ApplyVariationsPayload | null;
+  onDraftChange?: (draft: ApplyVariationsPayload) => void;
 }
 
 export function ManageVariationsModal({
-  productId, productImages, isOpen, onClose, onSaved,
+  productId, productImages, isOpen, onClose, onSaved, initialDraft, onDraftChange,
 }: ManageVariationsModalProps) {
   const qc = useQueryClient();
   const { confirm } = useDialog();
@@ -1071,7 +1074,7 @@ export function ManageVariationsModal({
   const { data: serverGroups = [], isSuccess: groupsLoaded } = useQuery<VariationGroup[]>({
     queryKey: ['variation-groups', productId],
     queryFn:  () => api.get<VariationGroup[]>(API_ROUTES.ADMIN.PRODUCT_VARIATIONS(productId)),
-    enabled:   isOpen,
+    enabled:   isOpen && !!productId,
     staleTime: 30_000,
   });
 
@@ -1083,7 +1086,7 @@ export function ManageVariationsModal({
   const { data: serverSettings, isSuccess: settingsLoaded } = useQuery<VariationSettings>({
     queryKey: ['variation-settings', productId],
     queryFn:  () => api.get<VariationSettings>(API_ROUTES.ADMIN.PRODUCT_VARIATION_SETTINGS(productId)),
-    enabled:   isOpen,
+    enabled:   isOpen && !!productId,
     staleTime: 30_000,
   });
 
@@ -1091,10 +1094,10 @@ export function ManageVariationsModal({
   // has been taken out of this modal, and only the settled/failed signal is
   // still wanted — a draft must not seed while any of its sources is in
   // flight or errored. Dropping the query would also drop that guarantee.
-  const { isSuccess: variantsLoaded } = useQuery<ProductVariantRow[]>({
+  const { data: serverVariants = [], isSuccess: variantsLoaded } = useQuery<ProductVariantRow[]>({
     queryKey: ['product-variant-list', productId],
     queryFn:  () => api.get<ProductVariantRow[]>(API_ROUTES.ADMIN.PRODUCT_VARIATION_VARIANTS(productId)),
-    enabled:   isOpen,
+    enabled:   isOpen && !!productId,
     staleTime: 30_000,
   });
 
@@ -1115,6 +1118,43 @@ export function ManageVariationsModal({
   useEffect(() => {
     if (!isOpen) { seededRef.current = false; return; }
     if (seededRef.current) return;
+    if (initialDraft) {
+      setDraftGroups(initialDraft.groups.map((group, groupIndex) => ({
+        id: group.id ?? `new-${groupIndex}`,
+        productId,
+        name: group.name,
+        displayType: group.displayType ?? 'dropdown',
+        sortOrder: group.sortOrder,
+        options: group.options.map((option, optionIndex) => ({
+          id: option.id ?? `new-${groupIndex}-${optionIndex}`,
+          groupId: group.id ?? `new-${groupIndex}`,
+          name: option.name,
+          value: option.value ?? option.name,
+          colorHex: option.colorHex,
+          imageUrl: option.imageUrl ?? undefined,
+          imageId: option.imageId ?? null,
+          isAvailable: option.isAvailable ?? true,
+          sortOrder: option.sortOrder ?? optionIndex,
+        })),
+      })));
+      setDraftVariesBy(initialDraft.variesBy);
+      setDraftPhotoGroupId(initialDraft.photoGroupId ?? null);
+      setVariantEdits(Object.fromEntries(
+        (initialDraft.variantEdits ?? []).map((edit) => [comboKey(edit.options), edit]),
+      ));
+      setApplyError(null);
+      seededRef.current = true;
+      return;
+    }
+    if (!productId) {
+      setDraftGroups([]);
+      setDraftVariesBy([]);
+      setDraftPhotoGroupId(null);
+      setVariantEdits({});
+      setApplyError(null);
+      seededRef.current = true;
+      return;
+    }
     if (!groupsLoaded || !settingsLoaded || !variantsLoaded) return;
     setDraftGroups(serverGroups);
     setDraftVariesBy(serverSettings?.variesBy ?? []);
@@ -1122,7 +1162,7 @@ export function ManageVariationsModal({
     setVariantEdits({});
     setApplyError(null);
     seededRef.current = true;
-  }, [isOpen, groupsLoaded, settingsLoaded, variantsLoaded, serverGroups, serverSettings]);
+  }, [isOpen, groupsLoaded, settingsLoaded, variantsLoaded, serverGroups, serverSettings, initialDraft, productId]);
 
   const deleteGroup = async (groupId: string) => {
     setDraftGroups((gs) => gs.filter((g) => g.id !== groupId));
@@ -1207,11 +1247,14 @@ export function ManageVariationsModal({
         // "leave it alone", so omitting it could never switch linking off.
         photoGroupId: draftPhotoGroupId,
       };
-      await api.post(API_ROUTES.ADMIN.PRODUCT_VARIATIONS_APPLY(productId), payload);
-
-      qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
-      qc.invalidateQueries({ queryKey: ['variation-settings', productId] });
-      qc.invalidateQueries({ queryKey: ['product-variant-list', productId] });
+      if (onDraftChange) {
+        onDraftChange(payload);
+      } else {
+        await api.post(API_ROUTES.ADMIN.PRODUCT_VARIATIONS_APPLY(productId), payload);
+        qc.invalidateQueries({ queryKey: ['variation-groups', productId] });
+        qc.invalidateQueries({ queryKey: ['variation-settings', productId] });
+        qc.invalidateQueries({ queryKey: ['product-variant-list', productId] });
+      }
 
       onSaved();
       onClose();
@@ -1243,7 +1286,7 @@ export function ManageVariationsModal({
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
         {/* Modal */}
         <div
-          className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-[640px] max-h-[85vh] flex flex-col"
+          className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-[960px] max-h-[85vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -1315,6 +1358,24 @@ export function ManageVariationsModal({
                     onChange={setDraftVariesBy}
                   />
                 </div>
+
+                {pricedGroupIds(draftVariesBy, draftGroups.map((group) => group.id)).length > 0 && (
+                  <div className="border-t border-border pt-5 space-y-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-secondary">Prices by variation</h4>
+                      <p className="text-xs text-muted mt-0.5">
+                        Set the price for every option combination. Changes are saved together when you apply the variation setup.
+                      </p>
+                    </div>
+                    <VariantComboGrid
+                      groups={draftGroups}
+                      variesBy={draftVariesBy}
+                      variants={serverVariants}
+                      edits={variantEdits}
+                      onEditsChange={setVariantEdits}
+                    />
+                  </div>
+                )}
 
               </>
             )}

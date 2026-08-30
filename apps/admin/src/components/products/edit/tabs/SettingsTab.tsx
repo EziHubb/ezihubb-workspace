@@ -153,6 +153,7 @@ export function SettingsTab({ productId, initialRelatedIds }: { productId?: stri
   const isFeatured    = watch('isFeatured')      ?? false;
   const isAdsEnabled  = watch('isAdsEnabled')    ?? false;
   const renewalType   = watch('renewalType')     ?? 'AUTOMATIC';
+  const relatedProductIds = watch('relatedProductIds') ?? initialRelatedIds ?? [];
   const expiresAt     = watch('expiresAt' as keyof ProductEditFormValues) as string | null | undefined;
 
   // The shared hook, so this dropdown and the Shop Home rail read ONE cache
@@ -260,7 +261,8 @@ export function SettingsTab({ productId, initialRelatedIds }: { productId?: stri
                 >
                   <RelatedProductsPicker
                     productId={productId}
-                    initialIds={initialRelatedIds}
+                    initialIds={relatedProductIds}
+                    onChange={(ids) => setValue('relatedProductIds', ids, { shouldDirty: true })}
                   />
                 </FormField>
               </>

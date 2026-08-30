@@ -99,19 +99,10 @@ function readVideoDuration(file: File): Promise<number> {
 }
 
 async function uploadVideoFile(
-  productId: string,
   file: File,
 ): Promise<{ url: string; videoUrls: string[] }> {
-  const formData = new FormData();
-  formData.append('video', file);
-  return api.post<{ url: string; videoUrls: string[] }>(
-    API_ROUTES.ADMIN.PRODUCT_VIDEOS(productId),
-    formData,
-  );
-}
-
-async function deleteVideoFile(productId: string, url: string): Promise<void> {
-  await api.delete(API_ROUTES.ADMIN.PRODUCT_VIDEOS(productId), { data: { url } });
+  const [uploaded] = await presignAndUpload([file]);
+  return { url: uploaded.url, videoUrls: [uploaded.url] };
 }
 
 // ── Upload helpers (presigned URL flow) ───────────────────────────────────────
@@ -344,11 +335,9 @@ function VideoTile({
 }
 
 function VideoSlot({
-  productId,
   videoUrls,
   onChange,
 }: {
-  productId: string;
   videoUrls: string[];
   onChange:  (urls: string[]) => void;
 }) {
@@ -389,8 +378,8 @@ function VideoSlot({
 
     setUploading(true);
     try {
-      const result = await uploadVideoFile(productId, file);
-      onChange(result.videoUrls);
+      const result = await uploadVideoFile(file);
+      onChange([...videoUrls, result.url]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
     } finally {
@@ -400,7 +389,6 @@ function VideoSlot({
 
   const handleRemove = async (url: string) => {
     onChange(videoUrls.filter((u) => u !== url));
-    await deleteVideoFile(productId, url).catch(() => undefined);
   };
 
   // Every video gets its own tile, then one "add" tile while there is room —
@@ -619,7 +607,7 @@ function DraggablePhotoGrid({
             {/* Video slots — one tile per uploaded video, plus an add tile
                 while there is room. Renders a fragment of siblings, so they
                 flow as grid cells next to the photos rather than nesting. */}
-            <VideoSlot productId={productId} videoUrls={videoUrls} onChange={onVideosChange} />
+            <VideoSlot videoUrls={videoUrls} onChange={onVideosChange} />
 
             {/* Slots 2..n: remaining photos */}
             {imageIds.slice(1).map((id) => {
@@ -783,11 +771,6 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
 
   const handleReorder = (ids: string[]) => {
     setValue('imageIds', ids, { shouldDirty: true });
-    // Persist the new order to the DB immediately (edit mode only — create mode has no real IDs yet)
-    if (product.id) {
-      // eslint-disable-next-line @typescript-eslint/no-empty-function -- best-effort persist; local reorder above already applied
-      api.patch(API_ROUTES.ADMIN.PRODUCT_IMAGES_REORDER(product.id), { orderedIds: ids }).catch(() => {});
-    }
   };
   const handleRemove  = (id: string)   => setValue('imageIds', imageIds.filter((i) => i !== id), { shouldDirty: true });
   const handleVideos  = (urls: string[])=> setValue('videoUrls', urls, { shouldDirty: true });
@@ -839,7 +822,7 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
 
       {/* Draggable photo grid */}
       <DraggablePhotoGrid
-        productId={product.id}
+        productId=""
         imageIds={imageIds}
         pendingUrls={pendingImageUrls}
         videoUrls={videoUrls}

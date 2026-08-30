@@ -1017,7 +1017,11 @@ model ProductTag {
 // ─── Product ─────────────────────────────────────────────────────────────────
 
 model Product {
-  id                    String                   @id @default(cuid())
+  // Generated explicitly by the API as a 10-character NanoID. Existing CUID
+  // values remain valid primary keys; removing the Prisma default makes every
+  // future create path opt in to the new format instead of silently falling
+  // back to CUID.
+  id                    String                   @id
   name                  String
   slug                  String
   sku                   String                   @unique

@@ -737,14 +737,10 @@ export function PricingShippingTab({ product, onSwitchTab, isDigital }: PricingS
         )}
       </div>
 
-      {/* GPSR modal — API-saving (edit mode only; create mode has no productId yet) */}
-      {product.id && (
-        <GPSRModal
-          productId={product.id}
-          isOpen={showGpsrModal}
-          onClose={() => setShowGpsrModal(false)}
-        />
-      )}
+      <GPSRModal
+        isOpen={showGpsrModal}
+        onClose={() => setShowGpsrModal(false)}
+      />
     </div>
   );
 }

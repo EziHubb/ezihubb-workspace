@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDialog } from '../../../contexts/DialogContext';
 import { useForm, FormProvider } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { ArrowLeft, ExternalLink, Copy, MoreHorizontal, Archive, Trash2, Check, AlertCircle } from 'lucide-react';
 import { fmtDate } from '../../../lib/fmt';
@@ -115,13 +116,14 @@ interface ProductEditShellProps {
 
 export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: ProductEditShellProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const mode   = product?.id ? 'edit' : 'create';
   const isCopy = !product?.id && !!copyFrom?.id;
 
   const form = useForm<ProductEditFormValues>({
-    defaultValues: isCopy
-      ? buildCopyDefaultValues(copyFrom!, copyFromDetail)
+    defaultValues: isCopy && copyFrom
+      ? buildCopyDefaultValues(copyFrom, copyFromDetail)
       : buildDefaultValues(product, detail),
   });
   const productType = form.watch('productType') ?? 'PHYSICAL';
@@ -217,39 +219,49 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
   }, [scrollContainer, TABS]);
 
-  // ── Draft lifecycle (create mode only) ───────────────────────────────────────
+  // ── Local edit lifecycle and explicit draft persistence ──────────────────────
 
-  const draftIdRef   = useRef<string | null>(null);
-  const publishedRef = useRef(false);
-  const [draftId,      setDraftId]      = useState<string | null>(null);
-  const [draftLoading, setDraftLoading] = useState(mode === 'create');
-  const [draftInitErr, setDraftInitErr] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (mode !== 'create') return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const body = await api.post<{ id: string }>(API_ROUTES.ADMIN.PRODUCTS_DRAFT);
-        const id   = body.id;
-        if (!cancelled) { draftIdRef.current = id; setDraftId(id); }
-      } catch {
-        if (!cancelled) setDraftInitErr('Could not initialize the form. Please refresh the page.');
-      } finally {
-        if (!cancelled) setDraftLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const pendingProductIdRef = useRef<string | null>(null);
+  const navigatingRef = useRef(false);
+  const attachedImageIdsRef = useRef(new Map<string, string>());
+  const deletedImageIdsRef = useRef(new Set<string>());
+  const attachedVideoUrlsRef = useRef(new Set<string>());
+  const deletedVideoUrlsRef = useRef(new Set<string>());
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [leaveTarget, setLeaveTarget] = useState('/products');
+  const hasUnsavedWork = isDirty || (mode === 'create' && isCopy);
 
   useEffect(() => {
-    if (mode !== 'create' || !draftId) return;
-    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    if (!hasUnsavedWork) return;
+    const handler = (event: BeforeUnloadEvent) => {
+      if (navigatingRef.current) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [mode, draftId]);
+  }, [hasUnsavedWork]);
 
-  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  useEffect(() => {
+    if (!hasUnsavedWork) return;
+    const interceptNavigation = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const anchor = (event.target as HTMLElement | null)?.closest<HTMLAnchorElement>('a[href]');
+      if (!anchor || anchor.target === '_blank' || anchor.hasAttribute('download')) return;
+      const destination = new URL(anchor.href, window.location.href);
+      if (destination.origin !== window.location.origin) return;
+      const target = `${destination.pathname}${destination.search}${destination.hash}`;
+      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      if (target === current) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setLeaveTarget(target);
+      setShowLeaveDialog(true);
+    };
+    document.addEventListener('click', interceptNavigation, true);
+    return () => document.removeEventListener('click', interceptNavigation, true);
+  }, [hasUnsavedWork]);
 
   /**
    * Clears the "Saved" flag once the seller starts editing again.
@@ -271,35 +283,67 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
     return () => sub.unsubscribe();
   }, [form]);
 
-  // ── Save — edit mode ─────────────────────────────────────────────────────────
+  const commitStagedChanges = async (productId: string, data: ProductEditFormValues) => {
+    await api.put(API_ROUTES.ADMIN.PRODUCT_DETAIL(productId), extractMongoFields(data));
 
-  const handleEdit = async (data: ProductEditFormValues) => {
-    // Published listings must always carry their own delivery info — the
-    // backend enforces this too (merged against whatever's already stored),
-    // but checking client-side first avoids a round-trip and scrolls the
-    // seller straight to the field that needs fixing.
-    if (product?.isActive && data.productType !== 'DIGITAL' && (!data.processingProfileId || !data.shippingProfileId)) {
-      scrollToSection('pricing-shipping');
-      throw new Error('Set a processing profile and a delivery option before saving this listing');
+    if (data.variationDraft) {
+      await api.post(API_ROUTES.ADMIN.PRODUCT_VARIATIONS_APPLY(productId), data.variationDraft);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['variation-groups', productId] }),
+        queryClient.invalidateQueries({ queryKey: ['variation-settings', productId] }),
+        queryClient.invalidateQueries({ queryKey: ['product-variant-list', productId] }),
+      ]);
     }
-    await Promise.all([
-      api.patch(API_ROUTES.ADMIN.PRODUCT(product!.id), extractPrismaFields(data)),
-      api.put(API_ROUTES.ADMIN.PRODUCT_DETAIL(product!.id), extractMongoFields(data)),
-    ]);
-    // Re-baseline rather than clearing a flag: what was just saved IS the new
-    // "no unsaved changes" state, so `isDirty` must be measured against it. A
-    // bare flag reset would have gone true again on the next keystroke even if
-    // the seller typed the saved value back.
-    form.reset(data);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    await api.patch(API_ROUTES.ADMIN.PRODUCT_RELATED(productId), {
+      ids: data.relatedProductIds ?? [],
+    });
+
+    const originalImageIds = new Set(
+      (product?.images ?? []).filter((image) => image.type === 'MOCKUP').map((image) => image.id),
+    );
+    const keptImageIds = data.imageIds ?? [];
+    const keptSet = new Set(keptImageIds);
+    for (const id of [...originalImageIds].filter((candidate) => !keptSet.has(candidate))) {
+      if (deletedImageIdsRef.current.has(id)) continue;
+      await api.delete(API_ROUTES.ADMIN.PRODUCT_IMAGE(productId, id));
+      deletedImageIdsRef.current.add(id);
+    }
+
+    const pendingImageUrls = data.pendingImageUrls ?? [];
+    const urlsToAttach = pendingImageUrls.filter((url) => !attachedImageIdsRef.current.has(url));
+    if (urlsToAttach.length) {
+      const attached = await api.post<{ id: string }[]>(
+        API_ROUTES.ADMIN.PRODUCT_IMAGES_FROM_URLS(productId),
+        { urls: urlsToAttach },
+      );
+      attached.forEach((image, index) => attachedImageIdsRef.current.set(urlsToAttach[index], image.id));
+    }
+    const attachedIds = pendingImageUrls
+      .map((url) => attachedImageIdsRef.current.get(url))
+      .filter((id): id is string => !!id);
+    const orderedImageIds = [...keptImageIds, ...attachedIds];
+    if (orderedImageIds.length) {
+      await api.patch(API_ROUTES.ADMIN.PRODUCT_IMAGES_REORDER(productId), {
+        orderedIds: orderedImageIds,
+      });
+    }
+
+    const originalVideos = product?.videoUrls ?? [];
+    const nextVideos = data.videoUrls ?? [];
+    for (const url of originalVideos.filter((candidate) => !nextVideos.includes(candidate))) {
+      if (deletedVideoUrlsRef.current.has(url)) continue;
+      await api.delete(API_ROUTES.ADMIN.PRODUCT_VIDEOS(productId), { data: { url } });
+      deletedVideoUrlsRef.current.add(url);
+    }
+    for (const url of nextVideos.filter((candidate) => !originalVideos.includes(candidate))) {
+      if (attachedVideoUrlsRef.current.has(url)) continue;
+      await api.post(API_ROUTES.ADMIN.PRODUCT_VIDEO_FROM_URL(productId), { url });
+      attachedVideoUrlsRef.current.add(url);
+    }
+    return { ...data, imageIds: orderedImageIds, pendingImageUrls: [], variationDraft: null };
   };
 
-  // ── Save — create mode ───────────────────────────────────────────────────────
-
-  const handleCreate = async (data: ProductEditFormValues) => {
-    if (!draftId) throw new Error('Draft not ready — please wait or refresh.');
-
+  const validatePublish = (data: ProductEditFormValues) => {
     if (!data.name?.trim()) {
       form.setError('name', { message: 'Title is required' });
       scrollToSection('item-details');
@@ -309,37 +353,104 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
       scrollToSection('item-details');
       throw new Error('Category is required');
     }
-    // A copy starts as an inactive draft (isActive: false below) — no need
-    // to have delivery info ready before the seller has even reviewed it.
-    if (!isCopy && data.productType !== 'DIGITAL' && (!data.processingProfileId || !data.shippingProfileId)) {
+    if (!(Number(data.basePrice) > 0)) {
+      scrollToSection('pricing-shipping');
+      throw new Error('Price must be greater than 0');
+    }
+    if (data.productType !== 'DIGITAL' && (!data.processingProfileId || !data.shippingProfileId)) {
       scrollToSection('pricing-shipping');
       throw new Error('Set a processing profile and a delivery option before publishing this listing');
     }
+  };
 
+  const draftSafeFields = (data: ProductEditFormValues, sku: string) => {
+    const fields = { ...extractPrismaFields(data), sku, isActive: false } as Record<string, unknown>;
+    if (!data.name?.trim()) delete fields.name;
+    else fields.name = data.name.trim();
+    if (!data.description?.trim()) delete fields.description;
+    if (!data.primaryCategoryId) delete fields.categoryId;
+    if (!(Number(data.basePrice) > 0)) delete fields.basePrice;
+    if (data.compareAtPrice != null && !(Number(data.compareAtPrice) > 0)) delete fields.compareAtPrice;
+    return fields;
+  };
+
+  const persistNewListing = async (
+    data: ProductEditFormValues,
+    publish: boolean,
+    navigateTarget?: string,
+  ) => {
+    if (publish) validatePublish(data);
     const sku = data.sku?.trim() || generateSku();
-
-    await api.patch(API_ROUTES.ADMIN.PRODUCT(draftId), {
-      ...extractPrismaFields(data),
-      name:        data.name.trim(),
-      sku,
-      description: data.description || '',
-      basePrice:   data.basePrice   || 0,
-      categoryId:  data.primaryCategoryId,
-      status:      isCopy ? 'INACTIVE' : 'ACTIVE',
-      isActive:    isCopy ? false : true,
-    });
-
-    // eslint-disable-next-line @typescript-eslint/no-empty-function -- best-effort; publish navigation below proceeds regardless
-    await api.put(API_ROUTES.ADMIN.PRODUCT_DETAIL(draftId), { ...extractMongoFields(data), productId: draftId }).catch(() => {});
-
-    const pendingUrls = data.pendingImageUrls ?? [];
-    if (pendingUrls.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-empty-function -- best-effort; publish navigation below proceeds regardless
-      await api.post(API_ROUTES.ADMIN.PRODUCT_IMAGES_FROM_URLS(draftId), { urls: pendingUrls }).catch(() => {});
+    const savedData = { ...data, sku };
+    let productId = pendingProductIdRef.current;
+    if (!productId) {
+      const draft = await api.post<{ id: string }>(API_ROUTES.ADMIN.PRODUCTS_DRAFT);
+      productId = draft.id;
+      pendingProductIdRef.current = productId;
     }
 
-    publishedRef.current = true;
-    router.push(`/products/${draftId}/edit`);
+    await api.patch(
+      API_ROUTES.ADMIN.PRODUCT(productId),
+      publish
+        ? { ...extractPrismaFields(savedData), name: savedData.name.trim(), sku, isActive: false }
+        : draftSafeFields(savedData, sku),
+    );
+    const committedData = await commitStagedChanges(productId, savedData);
+    if (publish) await api.patch(API_ROUTES.ADMIN.PRODUCT(productId), { isActive: true });
+
+    form.reset(committedData);
+    navigatingRef.current = true;
+    router.push(navigateTarget ?? `/products/${productId}/edit`);
+    return productId;
+  };
+
+  // ── Save — edit mode ─────────────────────────────────────────────────────────
+
+  const handleEdit = async (data: ProductEditFormValues) => {
+    if (!product?.id) throw new Error('Product is not available');
+    const productId = product.id;
+    const publishingDraft = product?.status === 'DRAFT';
+
+    if (publishingDraft) validatePublish(data);
+    // Published listings must always carry their own delivery info — the
+    // backend enforces this too (merged against whatever's already stored),
+    // but checking client-side first avoids a round-trip and scrolls the
+    // seller straight to the field that needs fixing.
+    if ((product?.isActive || publishingDraft) && data.productType !== 'DIGITAL' && (!data.processingProfileId || !data.shippingProfileId)) {
+      scrollToSection('pricing-shipping');
+      throw new Error('Set a processing profile and a delivery option before saving this listing');
+    }
+
+    // Draft rows start with a temporary DRAFT-* SKU. Once the seller reopens
+    // one, this shell is in edit mode, so the create-only replacement no
+    // longer runs. Publishing a saved draft must replace that placeholder.
+    const sku = publishingDraft && (!data.sku?.trim() || /^DRAFT-/i.test(data.sku))
+      ? generateSku()
+      : data.sku;
+    const savedData = { ...data, sku };
+
+    await api.patch(API_ROUTES.ADMIN.PRODUCT(productId), {
+      ...extractPrismaFields(savedData),
+      ...(publishingDraft ? { isActive: false } : {}),
+    });
+    const committedData = await commitStagedChanges(productId, savedData);
+    if (publishingDraft) {
+      await api.patch(API_ROUTES.ADMIN.PRODUCT(productId), { isActive: true });
+    }
+    // Re-baseline rather than clearing a flag: what was just saved IS the new
+    // "no unsaved changes" state, so `isDirty` must be measured against it. A
+    // bare flag reset would have gone true again on the next keystroke even if
+    // the seller typed the saved value back.
+    form.reset(committedData);
+    setSaved(true);
+    router.refresh();
+    setTimeout(() => setSaved(false), 3000);
+  };
+
+  // ── Save — create mode ───────────────────────────────────────────────────────
+
+  const handleCreate = async (data: ProductEditFormValues) => {
+    await persistNewListing(data, true);
   };
 
   // ── Unified save handler ──────────────────────────────────────────────────────
@@ -355,57 +466,45 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
   };
 
   const handleDiscard = () => {
-    if (mode === 'create' && draftId) {
-      setShowLeaveDialog(true);
-    } else {
-      // reset() already restores the baseline and clears isDirty with it.
-      form.reset(buildDefaultValues(product, detail));
-      setSaveError(null);
-    }
+    form.reset(buildDefaultValues(product, detail));
+    setSaveError(null);
   };
 
-  const handleDuplicate = async () => {
+  const handleDuplicate = () => {
     if (!product?.id) return;
-    const body = await api.post<{ id: string }>(`/admin/products/${product.id}/duplicate`);
-    if (body.id) router.push(`/products/${body.id}/edit`);
+    router.push(`/products/copy/${product.id}`);
   };
 
   const productName = form.watch('name') || product?.name || '';
 
-  const tabProduct = product ?? (draftId ? {
-    id: draftId, images: [], slug: '', name: '', sku: '', isActive: false,
+  const requestLeave = (target = '/products') => {
+    if (hasUnsavedWork) {
+      setLeaveTarget(target);
+      setShowLeaveDialog(true);
+      return;
+    }
+    navigatingRef.current = true;
+    router.push(target);
+  };
+
+  const tabProduct = product ?? {
+    id: '', images: [], slug: '', name: '', sku: '', isActive: false,
     status: 'DRAFT' as const, isFeatured: false, isPersonalizable: false,
     viewCount: 0, soldCount: 0, categoryId: '', description: '', basePrice: 0,
     createdAt: new Date().toISOString(),
-  } as unknown as AdminProductDto : null);
+  } as unknown as AdminProductDto;
 
   // ── Render ────────────────────────────────────────────────────────────────────
-
-  if (mode === 'create' && draftLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[300px]">
-        <div className="flex flex-col items-center gap-3 text-muted">
-          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm">Initializing…</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (mode === 'create' && draftInitErr) {
-    return (
-      <div className="flex items-center justify-center min-h-[300px]">
-        <p className="text-sm text-red-600">{draftInitErr}</p>
-      </div>
-    );
-  }
 
   return (
     <FormProvider {...form}>
       {/* Inside the form provider because useListingImages() resolves the
           `imageIds` field; seeded from the server snapshot, then topped up by
           whatever the Photo & Video tab attaches during the session. */}
-      <ListingImagesProvider initialImages={product?.images ?? []}>
+      <ListingImagesProvider
+        key={(product?.images ?? []).map((image) => image.id).join('|')}
+        initialImages={product?.images ?? []}
+      >
       {/* h-full alone leaves a gap at the bottom equal to 2× the parent's
           padding: the negative margin shifts this box up to bleed into
           <main>'s padding, but margin never changes an element's own height,
@@ -427,16 +526,10 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
 
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-xs text-muted px-6 pt-5 mb-3">
-            {mode === 'create' && draftId ? (
-              <button type="button" onClick={() => setShowLeaveDialog(true)}
-                className="flex items-center gap-1 hover:text-secondary transition-colors">
-                <ArrowLeft className="w-3.5 h-3.5" /> Listings
-              </button>
-            ) : (
-              <Link href="/products" className="flex items-center gap-1 hover:text-secondary transition-colors">
-                <ArrowLeft className="w-3.5 h-3.5" /> Listings
-              </Link>
-            )}
+              <button type="button" onClick={() => requestLeave('/products')}
+              className="flex items-center gap-1 hover:text-secondary transition-colors">
+              <ArrowLeft className="w-3.5 h-3.5" /> Listings
+            </button>
             <span>/</span>
             <span className="text-secondary truncate max-w-[280px]">
               {mode === 'edit' ? productName : isCopy ? `Copy of ${copyFrom!.name}` : 'New listing'}
@@ -639,7 +732,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
             {mode === 'create' && (
               <button
                 type="button"
-                onClick={() => (draftId ? setShowLeaveDialog(true) : router.push('/products'))}
+                onClick={() => requestLeave('/products')}
                 className="text-sm font-medium text-muted hover:text-secondary transition-colors"
               >
                 Cancel
@@ -682,7 +775,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
             <button
               type="button"
               onClick={form.handleSubmit(handleSave)}
-              disabled={form.formState.isSubmitting || (mode === 'edit' && !isDirty)}
+              disabled={form.formState.isSubmitting || (mode === 'edit' && !isDirty && product?.status !== 'DRAFT')}
               className={[
                 'flex items-center gap-2 px-5 py-2 text-sm font-bold rounded-button transition-colors disabled:opacity-50',
                 isDirty || mode === 'create'
@@ -691,17 +784,19 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
               ].join(' ')}
             >
               {form.formState.isSubmitting
-                ? (mode === 'create' ? 'Creating…' : 'Saving…')
-                : (mode === 'create' ? 'Create listing' : 'Publish changes')}
+                ? (mode === 'create' ? 'Creating…' : product?.status === 'DRAFT' ? 'Publishing…' : 'Saving…')
+                : (mode === 'create' ? 'Create listing' : product?.status === 'DRAFT' ? 'Publish listing' : 'Publish changes')}
             </button>
           </div>
         </div>
 
-        {/* Leave confirmation dialog (create mode) */}
+        {/* Leave confirmation dialog */}
         {showLeaveDialog && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-surface rounded-card border border-border shadow-2xl w-full max-w-sm p-6 space-y-4">
-              <h3 className="font-semibold text-secondary text-lg">Discard changes?</h3>
+              <h3 className="font-semibold text-secondary text-lg">
+                {mode === 'create' ? 'Save this draft?' : 'Discard changes?'}
+              </h3>
               <p className="text-sm text-muted">
                 You will lose your changes if you continue without saving.
               </p>
@@ -715,17 +810,35 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
                 </button>
                 <button
                   type="button"
-                  onClick={async () => {
-                    // eslint-disable-next-line @typescript-eslint/no-empty-function -- best-effort cleanup; navigation below proceeds regardless
-                    if (draftId) await api.delete(API_ROUTES.ADMIN.PRODUCT(draftId)).catch(() => {});
-                    publishedRef.current = true;
+                  onClick={() => {
+                    navigatingRef.current = true;
                     setShowLeaveDialog(false);
-                    router.push('/products');
+                    router.push(leaveTarget);
                   }}
                   className="px-5 py-2.5 bg-secondary hover:bg-secondary/90 text-white text-sm font-semibold rounded-button transition-colors"
                 >
                   Discard
                 </button>
+                {mode === 'create' && (
+                  <button
+                    type="button"
+                    disabled={savingDraft}
+                    onClick={async () => {
+                      setSavingDraft(true);
+                      setSaveError(null);
+                      try {
+                        await persistNewListing(form.getValues(), false, leaveTarget);
+                      } catch (error) {
+                        setSaveError((error as Error).message || 'Could not save draft');
+                        setSavingDraft(false);
+                        setShowLeaveDialog(false);
+                      }
+                    }}
+                    className="px-5 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-semibold rounded-button transition-colors disabled:opacity-50"
+                  >
+                    {savingDraft ? 'Saving…' : 'Save draft'}
+                  </button>
+                )}
               </div>
             </div>
           </div>

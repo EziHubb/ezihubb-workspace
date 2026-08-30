@@ -49,6 +49,8 @@ export interface ProductEditFormValues {
   height:          number | null;
   dimensionUnit:   DimensionUnit | null;
   customOptions:   unknown[];
+  /** Consolidated variation edit, committed only with the listing form. */
+  variationDraft:  ApplyVariationsPayload | null;
 
   // Pricing & Shipping tab
   basePrice:             number;
@@ -77,6 +79,7 @@ export interface ProductEditFormValues {
   isFeatured:    boolean;
   isAdsEnabled:  boolean;
   renewalType:   RenewalType;
+  relatedProductIds: string[];
 }
 
 // ── Variation types (shared with ManageVariationsModal, VariantImagePicker) ───

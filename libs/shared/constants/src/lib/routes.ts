@@ -281,6 +281,7 @@ export const API_ROUTES = {
     PRODUCT_IMAGES_REORDER: (id: string) => `/admin/products/${id}/images/reorder`,
     PRODUCT_IMAGES_FROM_URLS: (id: string) => `/admin/products/${id}/images/from-urls`,
     PRODUCT_VIDEOS:       (id: string) => `/admin/products/${id}/videos`,
+    PRODUCT_VIDEO_FROM_URL: (id: string) => `/admin/products/${id}/videos/from-upload-url`,
     PRODUCT_PRINT_FILES:          (id: string) => `/admin/products/${id}/print-files`,
     PRODUCT_PRINT_FILE_GENERATE:  (id: string) => `/admin/products/${id}/print-files/generate`,
     PRODUCT_PRINT_FILE_JOB:       (id: string, jobId: string) => `/admin/products/${id}/print-files/generate/${jobId}`,

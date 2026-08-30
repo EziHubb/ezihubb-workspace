@@ -653,6 +653,17 @@ export class AdminProductsController {
     return this.productsService.attachVideoFromUrl(id, dto);
   }
 
+  @Post(':id/videos/from-upload-url')
+  @ApiOperation({ summary: '[Admin] Attach a video staged in this application storage' })
+  @ApiResponse({ status: 201, type: ProductVideoDto })
+  @HttpCode(HttpStatus.CREATED)
+  attachUploadedVideo(
+    @Param('id', ParseCuidPipe) id: string,
+    @Body() dto: AttachVideoDto,
+  ): Promise<ProductVideoDto> {
+    return this.productsService.attachVideoFromUrl(id, dto, true);
+  }
+
   // DELETE /admin/products/:id/videos
   @Delete(':id/videos')
   @HttpCode(HttpStatus.NO_CONTENT)

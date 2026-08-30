@@ -235,6 +235,11 @@ export class CreateProductDetailDto {
   @IsObject()
   imageAltTexts?: Record<string, string>;
 
+  @ApiPropertyOptional({ type: 'array', items: { type: 'object' } })
+  @IsOptional()
+  @IsArray()
+  customOptions?: Record<string, unknown>[];
+
   @ApiPropertyOptional()
   @IsOptional()
   @ValidateNested()

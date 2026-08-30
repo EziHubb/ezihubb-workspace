@@ -1,13 +1,10 @@
 ﻿'use client';
 
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFormContext } from 'react-hook-form';
 import { X, Shield, Check, Loader2 } from 'lucide-react';
-import { api } from '../../../lib/api-client';
-import { API_ROUTES } from '@ezihubb/constants';
 import { FormField } from './primitives/FormField';
-import type { GpsrInfo } from './types';
-import { useDialog } from '../../../contexts/DialogContext';
+import type { GpsrInfo, ProductEditFormValues } from './types';
 
 interface GPSRFormValues {
   manufacturerName:    string;
@@ -18,7 +15,6 @@ interface GPSRFormValues {
 }
 
 interface Props {
-  productId: string;
   isOpen:    boolean;
   onClose:   () => void;
 }
@@ -27,12 +23,21 @@ const inputCls =
   'w-full px-3 py-2 text-sm border border-border rounded-lg bg-background ' +
   'focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted';
 
-export function GPSRModal({ productId, isOpen, onClose }: Props) {
+export function GPSRModal({ isOpen, onClose }: Props) {
   const [saving,  setSaving]  = useState(false);
   const [saved,   setSaved]   = useState(false);
-  const { alert } = useDialog();
+  const parentForm = useFormContext<ProductEditFormValues>();
+  const current = parentForm.watch('gpsrInfo');
 
-  const { register, handleSubmit, formState: { errors } } = useForm<GPSRFormValues>();
+  const { register, handleSubmit, formState: { errors } } = useForm<GPSRFormValues>({
+    values: {
+      manufacturerName: current?.manufacturerName ?? '',
+      manufacturerAddress: current?.manufacturerAddress ?? '',
+      manufacturerEmail: current?.manufacturerEmail ?? '',
+      countryOfOrigin: current?.countryOfOrigin ?? '',
+      safetyWarningsText: current?.safetyWarnings?.join('\n') ?? '',
+    },
+  });
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -54,15 +59,10 @@ export function GPSRModal({ productId, isOpen, onClose }: Props) {
         .filter(Boolean),
     };
     setSaving(true);
-    try {
-      await api.patch(API_ROUTES.ADMIN.PRODUCT_DETAIL(productId), { gpsrInfo });
-      setSaved(true);
-      setTimeout(() => { setSaved(false); onClose(); }, 800);
-    } catch (err) {
-      await alert((err as Error).message || 'Could not save GPSR info.', { variant: 'error' });
-    } finally {
-      setSaving(false);
-    }
+    parentForm.setValue('gpsrInfo', gpsrInfo, { shouldDirty: true });
+    setSaved(true);
+    setSaving(false);
+    setTimeout(() => { setSaved(false); onClose(); }, 300);
   };
 
   return (

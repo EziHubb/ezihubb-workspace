@@ -31,6 +31,7 @@ const EMPTY_DEFAULTS: ProductEditFormValues = {
   // ambiguous unit-less measurement despite the UI appearing to say "cm".
   dimensionUnit:        'CM',
   customOptions:        [],
+  variationDraft:       null,
   basePrice:            0,
   compareAtPrice:       null,
   sku:                  '',
@@ -55,6 +56,7 @@ const EMPTY_DEFAULTS: ProductEditFormValues = {
   isFeatured:           false,
   isAdsEnabled:         false,
   renewalType:          'AUTOMATIC',
+  relatedProductIds:    [],
 };
 
 // ── Build React Hook Form default values ──────────────────────────────────────
@@ -154,6 +156,7 @@ export function buildDefaultValues(
     height:          product.height        ?? null,
     dimensionUnit:   product.dimensionUnit ?? 'CM',
     customOptions:   safeArr(detail?.customOptions) as unknown[],
+    variationDraft:  null,
 
     // Pricing & Shipping
     basePrice:             Number(product.basePrice),
@@ -182,6 +185,7 @@ export function buildDefaultValues(
     isFeatured:    product.isFeatured    ?? false,
     isAdsEnabled:  product.isAdsEnabled  ?? false,
     renewalType:   product.renewalType   ?? 'AUTOMATIC',
+    relatedProductIds: safeArr(product.featuredRelatedIds),
   };
 }
 
@@ -190,7 +194,7 @@ export function buildDefaultValues(
 /** Fields that go to PATCH /admin/products/:id (PostgreSQL) */
 export function extractPrismaFields(data: ProductEditFormValues) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { description, customOptions, gpsrInfo, imageAltTexts, imageIds, pendingImageUrls, primaryCategoryId, ...prismaData } = data;
+  const { description, customOptions, variationDraft, relatedProductIds, gpsrInfo, imageAltTexts, imageIds, pendingImageUrls, videoUrls, primaryCategoryId, ...prismaData } = data;
   return { ...prismaData, categoryId: primaryCategoryId };
 }
 
@@ -200,6 +204,7 @@ export function extractMongoFields(data: ProductEditFormValues) {
     richDescription: data.description,
     gpsrInfo:        data.gpsrInfo,
     imageAltTexts:   data.imageAltTexts,
+    customOptions:   data.customOptions,
   };
 }
 
@@ -215,9 +220,12 @@ export function generateSku(): string {
 //
 // Copies all form-editable data from a source product.
 // Intentionally resets:
-//   - imageIds → [] (ProductImage rows belong to the source — can't be reused)
+//   - imageIds → [] (ProductImage ids belong to the source product)
 //   - sku → '' (auto-generated on save to avoid unique constraint collision)
 //   - name → "Copy of {source.name}"
+// Shopper-facing image URLs are staged as pending uploads. Publishing the copy
+// creates NEW ProductImage rows for the draft, so the copied listing opens with
+// the same gallery without ever reusing the source product's database ids.
 // Starts as inactive so the admin can review before publishing.
 
 export function buildCopyDefaultValues(
@@ -227,8 +235,12 @@ export function buildCopyDefaultValues(
   const base = buildDefaultValues(source, sourceDetail);
   return {
     ...base,
-    name:     `Copy of ${source.name}`,
-    sku:      '',   // generateSku() will run on save
-    imageIds: [],   // images belong to the source product record; admin re-uploads
+    name:             `Copy of ${source.name}`,
+    sku:              '',   // generateSku() will run on save
+    imageIds:         [],   // ids belong to the source product record
+    pendingImageUrls: source.images
+      .filter((image) => image.type === 'MOCKUP')
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((image) => image.url),
   };
 }

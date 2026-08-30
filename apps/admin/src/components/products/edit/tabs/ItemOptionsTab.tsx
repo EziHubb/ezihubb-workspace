@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   X, Plus, Settings, Lock,
 } from 'lucide-react';
@@ -11,11 +11,11 @@ import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import type {
   ProductEditFormValues, AdminProductDto, ProductImage,
-  VariationOption, VariationGroup, VariationSettings, DimensionUnit,
+  VariationOption, VariationGroup, VariationSettings, ProductVariantRow, DimensionUnit,
+  ApplyVariationsPayload, VariantEditPatch,
 } from '../types';
-import { pricedGroupIds } from '../helpers';
+import { comboKey, computeCombos, pricedGroupIds } from '../helpers';
 import { Toggle } from '../primitives/Toggle';
-import { VariantImagePicker } from '../VariantImagePicker';
 import { ManageVariationsModal } from '../ManageVariationsModal';
 import { CustomOptionsEditor } from '../CustomOptionsEditor';
 import { AttributeSearchSelect } from '../AttributeSearchSelect';
@@ -229,14 +229,12 @@ function VariationOptionRow({
   option,
   showPhoto,
   productImages,
-  productId,
   variationName,
   onToggle,
 }: {
   option:        VariationOption;
   showPhoto:     boolean;
   productImages: ProductImage[];
-  productId:     string;
   variationName: string;
   onToggle:      (available: boolean) => void;
 }) {
@@ -245,11 +243,12 @@ function VariationOptionRow({
       {/* Photo thumbnail — opens VariantImagePicker modal */}
       {showPhoto && (
         <td className="py-2.5 pr-3 w-12">
-          <VariantImagePicker
-            option={option}
-            productId={productId}
-            productImages={productImages}
-            variationName={variationName}
+          <div
+            className="w-9 h-9 rounded-md border border-border bg-muted/10 bg-cover bg-center"
+            style={{ backgroundImage: option.imageId
+              ? `url(${productImages.find((image) => image.id === option.imageId)?.url ?? ''})`
+              : undefined }}
+            title={`${variationName}: ${option.name || option.value}`}
           />
         </td>
       )}
@@ -301,9 +300,10 @@ function useVariationReadiness() {
   const images = shopperVisibleImages(useListingImages());
   const { watch } = useFormContext<ProductEditFormValues>();
   const categoryId = watch('primaryCategoryId');
+  const pendingImages = watch('pendingImageUrls') ?? [];
 
   const missing: string[] = [];
-  if (images.length === 0) missing.push('at least one photo');
+  if (images.length === 0 && pendingImages.length === 0) missing.push('at least one photo');
   if (!categoryId)         missing.push('a category');
 
   return { images, ready: missing.length === 0, missing };
@@ -322,25 +322,77 @@ function useVariationGroups(productId: string) {
   });
 }
 
+function groupsFromDraft(draft: ApplyVariationsPayload | null | undefined, productId: string): VariationGroup[] {
+  return (draft?.groups ?? []).map((group, groupIndex) => ({
+    id: group.id ?? `new-${groupIndex}`,
+    productId,
+    name: group.name,
+    displayType: group.displayType ?? 'dropdown',
+    sortOrder: group.sortOrder,
+    options: group.options.map((option, optionIndex) => ({
+      id: option.id ?? `new-${groupIndex}-${optionIndex}`,
+      groupId: group.id ?? `new-${groupIndex}`,
+      name: option.name,
+      value: option.value ?? option.name,
+      colorHex: option.colorHex,
+      imageUrl: option.imageUrl ?? undefined,
+      imageId: option.imageId ?? null,
+      isAvailable: option.isAvailable ?? true,
+      sortOrder: option.sortOrder ?? optionIndex,
+    })),
+  }));
+}
+
+function payloadFromState(
+  groups: VariationGroup[],
+  settings: VariationSettings,
+  variantEdits: VariantEditPatch[],
+): ApplyVariationsPayload {
+  return {
+    groups: groups.map((group) => ({
+      id: group.id,
+      name: group.name,
+      displayType: group.displayType,
+      sortOrder: group.sortOrder,
+      options: group.options.map((option) => ({
+        id: option.id,
+        name: option.name,
+        value: option.value,
+        colorHex: option.colorHex,
+        imageUrl: option.imageUrl,
+        imageId: option.imageId,
+        isAvailable: option.isAvailable,
+        sortOrder: option.sortOrder,
+      })),
+    })),
+    variesBy: settings.variesBy,
+    photoGroupId: settings.photoGroupId ?? null,
+    variantEdits,
+  };
+}
+
 function VariationsSummaryTable({
   product,
   ready,
   onManage,
+  draft,
+  onDraftChange,
 }: {
   product:  AdminProductDto;
   /** False while the listing still lacks photos or a category. */
   ready:    boolean;
   onManage: () => void;
+  draft: ApplyVariationsPayload | null;
+  onDraftChange: (draft: ApplyVariationsPayload) => void;
 }) {
-  const qc = useQueryClient();
-
   // Resolved from the form, not from `product.images` — the latter is a server
   // snapshot that never sees photos uploaded during this session.
   const listingImages = shopperVisibleImages(useListingImages());
 
-  const { data: groups = [], isLoading } = useVariationGroups(product.id);
+  const { data: serverGroups = [], isLoading } = useVariationGroups(product.id);
+  const groups = draft ? groupsFromDraft(draft, product.id) : serverGroups;
 
-  const { data: settings, isLoading: settingsLoading } = useQuery<VariationSettings>({
+  const { data: serverSettings, isLoading: settingsLoading } = useQuery<VariationSettings>({
     queryKey: ['variation-settings', product.id],
     queryFn:  async () => {
       try {
@@ -352,16 +404,37 @@ function VariationsSummaryTable({
     enabled:  !!product.id,
     staleTime: 30_000,
   });
+  const settings: VariationSettings = draft
+    ? { enableVariations: draft.groups.length > 0, variesBy: draft.variesBy, photoGroupId: draft.photoGroupId }
+    : (serverSettings ?? { enableVariations: false, variesBy: [] });
 
-  const updateOption = async (groupId: string, optionId: string, patch: Partial<VariationOption>) => {
-    await api.patch(API_ROUTES.ADMIN.PRODUCT_VARIATION_OPTION(product.id, groupId, optionId), patch);
-    qc.invalidateQueries({ queryKey: ['variation-groups', product.id] });
+  const { data: variants = [], isLoading: variantsLoading } = useQuery<ProductVariantRow[]>({
+    queryKey: ['product-variant-list', product.id],
+    queryFn:  () => api.get<ProductVariantRow[]>(API_ROUTES.ADMIN.PRODUCT_VARIATION_VARIANTS(product.id)),
+    enabled:  !!product.id,
+    staleTime: 30_000,
+  });
+
+  const stageVariant = (patch: VariantEditPatch) => {
+    const edits = [...(draft?.variantEdits ?? [])];
+    const key = comboKey(patch.options);
+    const index = edits.findIndex((edit) => comboKey(edit.options) === key);
+    if (index >= 0) edits[index] = { ...edits[index], ...patch };
+    else edits.push(patch);
+    onDraftChange(payloadFromState(groups, settings, edits));
+  };
+
+  const updateOption = (groupId: string, optionId: string, patch: Partial<VariationOption>) => {
+    const nextGroups = groups.map((group) => group.id === groupId
+      ? { ...group, options: group.options.map((option) => option.id === optionId ? { ...option, ...patch } : option) }
+      : group);
+    onDraftChange(payloadFromState(nextGroups, settings, draft?.variantEdits ?? []));
   };
 
   // Waits on the settings too, not just the groups: whether there is a photo
   // column at all comes from settings, so rendering on groups alone drew the
   // table without it and then shifted every row sideways a moment later.
-  if (isLoading || settingsLoading) {
+  if (!draft && !!product.id && (isLoading || settingsLoading || variantsLoading)) {
     return <div className="h-24 bg-muted/5 rounded-lg animate-pulse" />;
   }
 
@@ -389,15 +462,86 @@ function VariationsSummaryTable({
   }
 
   const priceVaries = pricedGroupIds(settings?.variesBy ?? [], groups.map((g) => g.id)).length > 0;
+  const validComboKeys = new Set(computeCombos(groups).map((combo) => combo.key));
+  const editMap = new Map((draft?.variantEdits ?? []).map((edit) => [comboKey(edit.options), edit]));
+  const serverVariantMap = new Map(variants.map((variant) => [comboKey(variant.options), variant]));
+  const currentVariants = draft
+    ? computeCombos(groups).map((combo, index) => {
+        const server = serverVariantMap.get(combo.key);
+        const edit = editMap.get(combo.key);
+        return {
+          id: server?.id ?? combo.key,
+          productId: product.id,
+          name: combo.name,
+          options: combo.options,
+          price: edit?.price ?? server?.price ?? null,
+          quantity: edit?.quantity ?? server?.quantity ?? null,
+          sku: edit?.sku ?? server?.sku ?? null,
+          isAvailable: edit?.isAvailable ?? server?.isAvailable ?? true,
+          isDefault: server?.isDefault ?? index === 0,
+          sortOrder: server?.sortOrder ?? index,
+        } satisfies ProductVariantRow;
+      })
+    : variants.filter((variant) => validComboKeys.has(comboKey(variant.options)));
 
   return (
     <div className="space-y-7">
-      {priceVaries && (
-        <p className="text-xs text-muted -mt-1">
-          Prices vary per option combination — set them in <span className="font-medium text-secondary">Manage variations</span>.
-        </p>
-      )}
-      {groups.map((group) => {
+      {priceVaries ? (
+        <div>
+          <div className="flex items-baseline gap-2 mb-3">
+            <span className="text-sm font-semibold text-secondary">Variation prices</span>
+            <span className="text-xs text-muted">{currentVariants.length} combination{currentVariants.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/5">
+                  {groups.map((group) => (
+                    <th key={group.id} className="text-left px-4 py-3 text-xs font-semibold text-muted uppercase tracking-wide">
+                      {group.name}
+                    </th>
+                  ))}
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Price</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-muted uppercase tracking-wide">Visible</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {currentVariants.map((variant) => (
+                  <tr key={variant.id} className={variant.isAvailable ? '' : 'opacity-50'}>
+                    {groups.map((group) => (
+                      <td key={group.id} className="px-4 py-3 text-secondary font-medium">
+                        {variant.options[group.name] ?? '—'}
+                      </td>
+                    ))}
+                    <td className="px-4 py-3">
+                      <input
+                        type="number"
+                        aria-label={`Price for ${variant.name}`}
+                        min={0}
+                        step="0.01"
+                        defaultValue={variant.price == null ? '' : Number(variant.price)}
+                        placeholder="0.00"
+                        onBlur={(event) => stageVariant({
+                          options: variant.options,
+                          price: event.target.value === '' ? null : Number(event.target.value),
+                        })}
+                        className="w-32 px-3 py-2 border border-border rounded-button bg-background tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Toggle
+                        checked={variant.isAvailable}
+                        onChange={(isAvailable) => stageVariant({ options: variant.options, isAvailable })}
+                        ariaLabel={`Toggle visibility of ${variant.name}`}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : groups.map((group) => {
         // Only the group the seller actually linked photos to. This used to be
         // "any group, as long as the listing has photos at all", which put a
         // photo column on every variation whether or not photos meant anything
@@ -429,7 +573,6 @@ function VariationsSummaryTable({
                       variationName={group.name}
                       showPhoto={showPhoto}
                       productImages={listingImages}
-                      productId={product.id}
                       onToggle={(available) => updateOption(group.id, opt.id, { isAvailable: available })}
                     />
                   ))}
@@ -449,7 +592,9 @@ function VariationsSummaryTable({
 interface ItemOptionsTabProps { product: AdminProductDto }
 
 export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
+  const { watch, setValue } = useFormContext<ProductEditFormValues>();
   const [variationsModalOpen, setVariationsModalOpen] = useState(false);
+  const variationDraft = watch('variationDraft');
 
   // "Manage variations" and "Add variations" open the same modal, so showing
   // both at once gave the same action two names and two places to click. The
@@ -461,7 +606,9 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
   // empty state — the table renders a skeleton for that moment and the header
   // stays bare rather than flashing a button that is about to be replaced.
   const { data: variationGroups = [], isSuccess: variationsLoaded } = useVariationGroups(product.id);
-  const hasVariations = variationsLoaded && variationGroups.length > 0;
+  const hasVariations = variationDraft
+    ? variationDraft.groups.length > 0
+    : variationsLoaded && variationGroups.length > 0;
 
   const { ready, missing, images: listingImages } = useVariationReadiness();
 
@@ -511,6 +658,8 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
             product={product}
             ready={ready}
             onManage={() => setVariationsModalOpen(true)}
+            draft={variationDraft}
+            onDraftChange={(draft) => setValue('variationDraft', draft, { shouldDirty: true })}
           />
         </TabSection>
 
@@ -519,7 +668,7 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
           title="Custom options"
           description="Create up to 5 input fields to collect details from buyers like text, images, or names. These won't affect your available inventory."
         >
-          <CustomOptionsEditor productId={product.id} />
+          <CustomOptionsEditor />
         </TabSection>
 
         {/* ── Attributes ───────────────────────────────────────────────── */}
@@ -613,8 +762,11 @@ export function ItemOptionsTab({ product }: ItemOptionsTabProps) {
         productId={product.id}
         isOpen={variationsModalOpen}
         onClose={() => setVariationsModalOpen(false)}
+        initialDraft={variationDraft}
+        onDraftChange={(draft) => setValue('variationDraft', draft, { shouldDirty: true })}
         onSaved={() => {
-          // VariationsSummaryTable will refetch via queryKey invalidation inside the modal
+          // The consolidated payload is part of the listing form and is
+          // committed only by ProductEditShell's Publish/Save draft action.
         }}
       />
     </div>

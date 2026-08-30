@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ProductStatus } from '@prisma/client';
 import { parse } from 'csv-parse/sync';
 import { PrismaService } from '../../prisma/prisma.service';
+import { generateProductId } from '../../common/utils/product-id';
 
 // ── Template columns ──────────────────────────────────────────────────────────
 
@@ -370,6 +371,7 @@ export class CsvImportService {
 
     await this.prisma.product.create({
       data: {
+        id:               generateProductId(),
         name:             row.name,
         slug,
         sku,

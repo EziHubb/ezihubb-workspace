@@ -59,6 +59,7 @@ import { join, extname } from 'path';
 import { randomUUID } from 'crypto';
 import { PLATFORM_FEE_DEFAULTS } from '../stores/fees.util';
 import { ShippingService } from '../shipping/shipping.service';
+import { generateProductId } from '../../common/utils/product-id';
 
 const execFileAsync = promisify(execFile);
 
@@ -642,6 +643,7 @@ export class ProductsService {
 
     const product = await this.prisma.product.create({
       data: {
+        id:          generateProductId(),
         name:        '',
         slug,
         sku,
@@ -885,6 +887,7 @@ export class ProductsService {
 
     const product = await this.prisma.product.create({
       data: {
+        id: generateProductId(),
         name: dto.name,
         slug,
         sku: dto.sku,
@@ -994,7 +997,27 @@ export class ProductsService {
   }
 
   async update(id: string, dto: UpdateProductDto): Promise<ProductResponseDto> {
-    await this.requireProduct(id);
+    const existing = await this.prisma.product.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        sku: true,
+        status: true,
+        isActive: true,
+        productType: true,
+        processingProfileId: true,
+        shippingProfileId: true,
+        storeId: true,
+      },
+    });
+    if (!existing) {
+      throw new NotFoundException({
+        code: 'ERR_NOT_FOUND',
+        message: 'Product not found',
+      });
+    }
 
     assertCompareAtPrice(dto.compareAtPrice, dto.basePrice);
 
@@ -1023,19 +1046,15 @@ export class ProductsService {
     // ShippingService.resolveSellerShippingCost()), so this is what keeps
     // that guarantee true for every active listing.
     {
-      const existingForDelivery = await this.prisma.product.findUnique({
-        where:  { id },
-        select: { isActive: true, productType: true, processingProfileId: true, shippingProfileId: true },
-      });
-      const willBeActive = dto.isActive ?? existingForDelivery?.isActive ?? false;
-      const productType  = dto.productType ?? existingForDelivery?.productType;
+      const willBeActive = dto.isActive ?? existing.isActive;
+      const productType  = dto.productType ?? existing.productType;
       if (willBeActive && productType !== ProductType.DIGITAL) {
         const processingProfileId = dto.processingProfileId !== undefined
           ? dto.processingProfileId
-          : existingForDelivery?.processingProfileId;
+          : existing.processingProfileId;
         const shippingProfileId = dto.shippingProfileId !== undefined
           ? dto.shippingProfileId
-          : existingForDelivery?.shippingProfileId;
+          : existing.shippingProfileId;
         if (!processingProfileId || !shippingProfileId) {
           throw new BadRequestException({
             code:    'ERR_DELIVERY_INFO_REQUIRED',
@@ -1051,7 +1070,7 @@ export class ProductsService {
     const fields: (keyof UpdateProductDto)[] = [
       'name', 'description', 'shortDescription',
       'basePrice', 'compareAtPrice',
-      'isPersonalizable', 'isActive', 'isFeatured', 'productType',
+      'isPersonalizable', 'isFeatured', 'productType',
       'processingDays',
       // ── New scalar fields from product-edit schema ──
       'domesticGlobalPricing', 'quantity', 'trackInventory', 'lowStockThreshold', 'isAdsEnabled', 'hsCode',
@@ -1062,6 +1081,49 @@ export class ProductsService {
     ];
     for (const f of fields) {
       if (dto[f] !== undefined) (data as Record<string, unknown>)[f] = dto[f];
+    }
+
+    // A draft is born with a DRAFT-* placeholder SKU and a slug derived from
+    // it. Reopening the draft uses this generic update endpoint, so publishing
+    // must promote both identifiers here instead of relying on create-mode UI
+    // code that will no longer run. This also protects API callers that do not
+    // use the admin form.
+    const publishingDraft = dto.isActive === true && existing.status === ProductStatus.DRAFT;
+    let nextSku = dto.sku?.trim() || existing.sku;
+    if (publishingDraft && /^DRAFT-/i.test(nextSku)) {
+      nextSku = `MLH-${randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()}`;
+    }
+
+    if (dto.sku !== undefined || nextSku !== existing.sku) {
+      const skuConflict = await this.prisma.product.findFirst({
+        where: { sku: nextSku, NOT: { id } },
+        select: { id: true },
+      });
+      if (skuConflict) {
+        throw new ConflictException({
+          code: 'ERR_SKU_TAKEN',
+          message: 'SKU is already in use',
+        });
+      }
+      data.sku = nextSku;
+    }
+
+    if (publishingDraft && dto.slug === undefined) {
+      data.slug = await this.resolveUniqueProductSlug(
+        `${dto.name ?? existing.name}-${nextSku}`,
+        id,
+        existing.storeId,
+      );
+    }
+
+    // Publishing always goes through publishProducts(): it synchronizes
+    // status/isActive and bills the listing atomically. An explicit unpublish
+    // keeps a never-published draft as DRAFT; live listings become INACTIVE.
+    if (dto.isActive === false) {
+      data.isActive = false;
+      data.status = existing.status === ProductStatus.DRAFT
+        ? ProductStatus.DRAFT
+        : ProductStatus.INACTIVE;
     }
 
     // ── Array / string[] fields ────────────────────────────────────────────
@@ -1121,11 +1183,23 @@ export class ProductsService {
       };
     }
 
-    const product = await this.prisma.product.update({
+    let product = await this.prisma.product.update({
       where: { id },
       data,
       include: this.fullProductInclude(),
     });
+
+    if (dto.isActive === true) {
+      await this.publishProducts([id]);
+      const publishedProduct = await this.prisma.product.findUnique({
+        where: { id },
+        include: this.fullProductInclude(),
+      });
+      if (!publishedProduct) {
+        throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Product not found after publishing' });
+      }
+      product = publishedProduct;
+    }
 
     await this.redis.invalidatePattern('products:list:*');
     await this.redis.del(CacheKeys.product(product.slug));
@@ -1913,7 +1987,10 @@ export class ProductsService {
 
     // Best-effort storage cleanup — never blocks the response on a slow/failed delete.
     for (const img of images) {
-      this.storage.deleteFile(this.storage.extractKey(img.url)).catch(() => undefined);
+      const remainingReferences = await this.prisma.productImage.count({ where: { url: img.url } });
+      if (remainingReferences === 0 && this.storage.isOwnStorageUrl(img.url)) {
+        this.storage.deleteFile(this.storage.extractKey(img.url)).catch(() => undefined);
+      }
     }
 
     return JSON.parse(JSON.stringify(product, (_key, value) =>
@@ -1924,7 +2001,7 @@ export class ProductsService {
   async duplicate(id: string): Promise<ProductResponseDto> {
     const source = await this.prisma.product.findUnique({
       where: { id },
-      include: { variants: true, tags: true },
+      include: { variants: true, tags: true, images: true },
     });
     if (!source)
       throw new NotFoundException({
@@ -1938,6 +2015,7 @@ export class ProductsService {
 
     const product = await this.prisma.product.create({
       data: {
+        id: generateProductId(),
         name: newName,
         slug,
         sku: newSku,
@@ -1968,6 +2046,20 @@ export class ProductsService {
             sku: v.sku ? `${v.sku}-COPY` : undefined,
             isDefault: v.isDefault,
             sortOrder: v.sortOrder,
+          })),
+        },
+        // ProductImage ids are product-owned, but the underlying immutable
+        // asset can be referenced by more than one listing. New rows preserve
+        // ordering/type metadata so both the Copy page and the editor's quick
+        // Duplicate action open with a complete gallery.
+        images: {
+          create: source.images.map((image) => ({
+            url:       image.url,
+            altText:   image.altText,
+            isPrimary: image.isPrimary,
+            sortOrder: image.sortOrder,
+            type:      image.type,
+            printSide: image.printSide,
           })),
         },
         tags: { create: source.tags.map((t) => ({ tagId: t.tagId })) },
@@ -2209,9 +2301,12 @@ export class ProductsService {
     }
 
     await this.prisma.productImage.delete({ where: { id: image.id } });
-    await this.storage
-      .deleteFile(this.storage.extractKey(image.url))
-      .catch((e: Error) => this.logger.warn(`S3 delete failed for print file "${image.url}": ${e.message}`));
+    const remainingReferences = await this.prisma.productImage.count({ where: { url: image.url } });
+    if (remainingReferences === 0 && this.storage.isOwnStorageUrl(image.url)) {
+      await this.storage
+        .deleteFile(this.storage.extractKey(image.url))
+        .catch((e: Error) => this.logger.warn(`S3 delete failed for print file "${image.url}": ${e.message}`));
+    }
   }
 
   async deleteImage(productId: string, imageId: string): Promise<void> {
@@ -2243,11 +2338,16 @@ export class ProductsService {
       }
     });
 
-    await this.storage
-      .deleteFile(key)
-      .catch((e: Error) =>
-        this.logger.warn(`S3 delete failed for key "${key}": ${e.message}`),
-      );
+    // Copies intentionally share the immutable object while owning separate
+    // ProductImage rows. Delete storage only when the last row stops using it.
+    const remainingReferences = await this.prisma.productImage.count({ where: { url: image.url } });
+    if (remainingReferences === 0 && this.storage.isOwnStorageUrl(image.url)) {
+      await this.storage
+        .deleteFile(key)
+        .catch((e: Error) =>
+          this.logger.warn(`S3 delete failed for key "${key}": ${e.message}`),
+        );
+    }
   }
 
   async reorderImages(productId: string, orderedIds: string[]): Promise<void> {
@@ -2518,6 +2618,7 @@ export class ProductsService {
       duration?: string;
       uploaded_at?: string;
     },
+    allowOwnStorage = false,
   ): Promise<ProductVideoDto> {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
@@ -2532,6 +2633,7 @@ export class ProductsService {
     // rendered on the card and the gallery just as the video is, so allowing
     // one from an unvetted host through a side door would defeat the point.
     for (const candidate of [dto.url, ...(dto.thumbnail_urls ?? [])]) {
+      if (allowOwnStorage && isOwn(candidate)) continue;
       const check = checkExternalMediaUrl(candidate, isOwn);
       if (!check.ok) {
         throw new BadRequestException({
@@ -2811,6 +2913,7 @@ export class ProductsService {
           ...(dto.variants          !== undefined && { variants:         dto.variants }),
           ...(dto.customization     !== undefined && { customization:    dto.customization }),
           ...(dto.imageAltTexts     !== undefined && { imageAltTexts:    dto.imageAltTexts }),
+          ...(dto.customOptions     !== undefined && { customOptions:    dto.customOptions }),
           ...(dto.gpsrInfo          !== undefined && { gpsrInfo:         dto.gpsrInfo }),
         },
         $setOnInsert: { productId },
@@ -3050,6 +3153,7 @@ export class ProductsService {
 
     const product = await this.prisma.product.create({
       data: {
+        id:          generateProductId(),
         name:        '',
         slug,
         sku,
