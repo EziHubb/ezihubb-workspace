@@ -152,7 +152,7 @@ export async function Footer() {
         </div>
 
         {/* ── Bottom bar ────────────────────────────────────────────────── */}
-        <div className="mt-10 pt-6 border-t border-[#3D3D4E] flex flex-col sm:flex-row items-center justify-between gap-3 text-[#6B7280] text-xs">
+        <div className="mt-10 pt-6 border-t border-[#3D3D4E] flex flex-col sm:flex-row items-center justify-between gap-3 text-[#B7BDC7] text-xs">
           <p>{t('copyright', { year })}</p>
           <div className="flex gap-4">
             <Link href={`/${locale}${CLIENT_ROUTES.PAGE_PRIVACY_POLICY}`} className="hover:text-white transition-colors">

@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslations } from 'next-intl';
 import {
@@ -53,8 +53,40 @@ interface FormValues { name: string; email: string; question: string }
 
 function AskQuestionModal({ productSlug, onClose, onSubmitted }: AskModalProps) {
   const t = useTranslations('product.qanda');
+  const tCommon = useTranslations('common');
   const { register, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<FormValues>();
   const [submitError, setSubmitError] = useState('');
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const focusable = () => Array.from(dialog.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ));
+    focusable()[0]?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const items = focusable();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   const onSubmit = async (data: FormValues) => {
     setSubmitError('');
@@ -76,54 +108,66 @@ function AskQuestionModal({ productSlug, onClose, onSubmitted }: AskModalProps) 
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="w-full max-w-sm bg-background rounded-2xl shadow-2xl p-6 space-y-4">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="ask-question-title" className="w-full max-w-sm bg-background rounded-2xl shadow-2xl p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-secondary">{t('askAQuestion')}</h3>
-          <button type="button" onClick={onClose} className="p-1 text-muted hover:text-secondary rounded-lg transition-colors">
-            <X className="w-4 h-4" />
+          <h3 id="ask-question-title" className="text-base font-bold text-secondary">{t('askAQuestion')}</h3>
+          <button type="button" onClick={onClose} aria-label={tCommon('close')} className="p-1 text-muted hover:text-secondary rounded-lg transition-colors">
+            <X aria-hidden="true" className="w-4 h-4" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-secondary block mb-1">{t('yourName')}</label>
+            <label htmlFor="qa-name" className="text-xs font-medium text-secondary block mb-1">{t('yourName')}</label>
             <input
+              id="qa-name"
+              type="text"
               {...register('name', { required: t('nameRequired') })}
+              required
+              aria-invalid={Boolean(errors.name)}
+              aria-describedby={errors.name ? 'qa-name-error' : undefined}
               placeholder={t('namePlaceholder')}
               className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
-            {errors.name && <p className="text-xs text-error mt-0.5">{errors.name.message}</p>}
+            {errors.name && <p id="qa-name-error" role="alert" className="text-xs text-error mt-0.5">{errors.name.message}</p>}
           </div>
 
           <div>
-            <label className="text-xs font-medium text-secondary block mb-1">
+            <label htmlFor="qa-email" className="text-xs font-medium text-secondary block mb-1">
               {t('email')} <span className="text-muted font-normal">{t('emailOptional')}</span>
             </label>
             <input
+              id="qa-email"
               {...register('email', { pattern: { value: /^\S+@\S+\.\S+$/, message: t('invalidEmail') } })}
               type="email"
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={errors.email ? 'qa-email-error' : undefined}
               placeholder={t('emailPlaceholder')}
               className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
-            {errors.email && <p className="text-xs text-error mt-0.5">{errors.email.message}</p>}
+            {errors.email && <p id="qa-email-error" role="alert" className="text-xs text-error mt-0.5">{errors.email.message}</p>}
           </div>
 
           <div>
-            <label className="text-xs font-medium text-secondary block mb-1">{t('yourQuestion')}</label>
+            <label htmlFor="qa-question" className="text-xs font-medium text-secondary block mb-1">{t('yourQuestion')}</label>
             <textarea
+              id="qa-question"
               {...register('question', {
                 required:  t('questionRequired'),
                 maxLength: { value: 500, message: t('maxCharsError') },
               })}
               rows={3}
+              required
+              aria-invalid={Boolean(errors.question)}
+              aria-describedby={errors.question ? 'qa-question-error qa-question-help' : 'qa-question-help'}
               placeholder={t('questionPlaceholder')}
               className="w-full border border-border rounded-xl px-3 py-2 text-sm resize-none bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
-            {errors.question && <p className="text-xs text-error mt-0.5">{errors.question.message}</p>}
-            <p className="text-xs text-muted text-right mt-0.5">{t('maxChars')}</p>
+            {errors.question && <p id="qa-question-error" role="alert" className="text-xs text-error mt-0.5">{errors.question.message}</p>}
+            <p id="qa-question-help" className="text-xs text-muted text-right mt-0.5">{t('maxChars')}</p>
           </div>
 
-          {submitError && <p className="text-xs text-error">{submitError}</p>}
+          {submitError && <p role="alert" className="text-xs text-error">{submitError}</p>}
 
           <div className="flex justify-end gap-2 pt-1">
             <button

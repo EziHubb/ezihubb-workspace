@@ -65,6 +65,6 @@ export default withAuth(
 // featured layout" preview broke in production.
 export const config = {
   matcher: [
-    '/((?!login|api/auth|_next/static|_next/image|favicon.ico|public|images|logo\\.png|site\\.webmanifest|favicon-16x16\\.png|favicon-32x32\\.png|apple-touch-icon\\.png|android-chrome-192x192\\.png|android-chrome-512x512\\.png).*)',
+    '/((?!login|api/auth|_next/static|_next/image|favicon.ico|robots\\.txt|public|images|logo\\.png|site\\.webmanifest|favicon-16x16\\.png|favicon-32x32\\.png|apple-touch-icon\\.png|android-chrome-192x192\\.png|android-chrome-512x512\\.png).*)',
   ],
 };

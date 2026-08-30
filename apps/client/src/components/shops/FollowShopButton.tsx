@@ -115,7 +115,7 @@ export function FollowShopButton({ slug, initialFollowerCount, theme }: FollowSh
       <Heart className="w-3.5 h-3.5" style={isFollowing ? { fill: theme ? theme.textSafeHex : 'var(--color-primary)' } : undefined} />
       {isFollowing ? t('storePage.following') : t('storePage.follow')}
       {followerCount > 0 && (
-        <span className="text-muted font-normal">· {followerCount.toLocaleString()}</span>
+        <span className="text-muted font-normal">· {followerCount.toLocaleString(locale)}</span>
       )}
     </button>
   );

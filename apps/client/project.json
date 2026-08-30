@@ -32,7 +32,7 @@
           "buildTarget": "client:build:development",
           "dev": true,
           "port": 3000,
-          "hostname": "localhost"
+          "hostname": "127.0.0.1"
         },
         "production": {
           "buildTarget": "client:build:production",
@@ -42,7 +42,16 @@
       }
     },
     "lint": {
-      "executor": "@nx/eslint:lint"
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "maxWarnings": 232
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p apps/client/tsconfig.json"
+      }
     }
   }
 }

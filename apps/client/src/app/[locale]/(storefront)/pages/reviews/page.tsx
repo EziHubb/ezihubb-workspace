@@ -154,7 +154,7 @@ export default async function ReviewsPage({
             </div>
             <div className="text-left border-l border-border pl-4">
               <p className="font-semibold text-secondary">
-                {t('reviewsCount', { count: safeNum(summary.totalReviews).toLocaleString() })}
+                {t('reviewsCount', { count: safeNum(summary.totalReviews).toLocaleString(locale) })}
               </p>
               {summary.totalReviews > 0 && (
                 <p className="text-sm text-muted">

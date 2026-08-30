@@ -64,7 +64,7 @@ function MiniProductCard({
         <div className="flex items-center gap-1 mt-0.5">
           <MiniStars rating={product.averageRating ?? 0} />
           <span className="text-xs text-muted">
-            ({safeNum(product.reviewCount).toLocaleString()})
+            ({safeNum(product.reviewCount).toLocaleString(locale)})
           </span>
         </div>
       )}

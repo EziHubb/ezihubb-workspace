@@ -181,10 +181,9 @@ export const authOptions: NextAuthOptions = {
   // maxAge matches the NestJS refresh-token lifetime (7 days).
   session: { strategy: 'jwt', maxAge: 7 * 24 * 60 * 60 },
 
-  secret:
-    process.env['NEXTAUTH_SECRET'] ??
-    process.env['NEXT_PUBLIC_NEXTAUTH_SECRET'] ??
-    'client-dev-secret-change-in-production',
+  // NextAuth fails closed when this server-only secret is absent in
+  // production. Never use a NEXT_PUBLIC_* value or predictable fallback.
+  secret: process.env['NEXTAUTH_SECRET'],
 
   debug: process.env['NODE_ENV'] === 'development',
 };

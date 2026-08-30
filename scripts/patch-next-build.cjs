@@ -28,8 +28,7 @@ const root = path.join(__dirname, '..');
 function patch(relPath, needle, replacement, label) {
   const file = path.join(root, 'node_modules', 'next', 'dist', relPath);
   if (!fs.existsSync(file)) {
-    console.log(`patch-next-build: ${relPath} not found, skipping`);
-    return;
+    throw new Error(`patch-next-build: required file ${relPath} was not found`);
   }
   let content = fs.readFileSync(file, 'utf8');
   if (content.includes(replacement)) {
@@ -37,8 +36,10 @@ function patch(relPath, needle, replacement, label) {
     return;
   }
   if (!content.includes(needle)) {
-    console.warn(`patch-next-build: ${label} — expected string not found; Next.js version may have changed. Verify manually.`);
-    return;
+    throw new Error(
+      `patch-next-build: ${label} could not be applied; ` +
+        'the dependency version changed and this required patch must be reviewed.',
+    );
   }
   fs.writeFileSync(file, content.replace(needle, replacement), 'utf8');
   console.log(`patch-next-build: applied ${label}`);
@@ -49,7 +50,7 @@ patch(
   'build/utils.js',
   '    // Skip page data collection for synthetic _global-error routes\n    if (page === _constants1.UNDERSCORE_GLOBAL_ERROR_ROUTE) {\n        return {\n            isStatic: true,',
   '    // Skip page data collection for synthetic _global-error routes\n    // isStatic:false: belt-and-suspenders guard against static-gen prerender crash.\n    if (page === _constants1.UNDERSCORE_GLOBAL_ERROR_ROUTE) {\n        return {\n            isStatic: false,',
-  'utils.js isStatic:false'
+  'utils.js isStatic:false',
 );
 
 // Patch 2: build/index.js — skip /_global-error when populating staticPaths
@@ -57,24 +58,34 @@ patch(
   'build/index.js',
   '                                                if (!isDynamic) {\n                                                    staticPaths.set(originalAppPath, [',
   '                                                // Skip /_global-error: prerender crashes in Next.js 16 (useContext null in static-gen worker).\n                                                if (!isDynamic && page !== _entryconstants.UNDERSCORE_GLOBAL_ERROR_ROUTE) {\n                                                    staticPaths.set(originalAppPath, [',
-  'index.js skip /_global-error staticPaths'
+  'index.js skip /_global-error staticPaths',
 );
 
 // Patch 3: @nx/next build executor — force NODE_ENV=production
 // Nx may set a non-standard NODE_ENV before spawning next build; ||= doesn't override it.
 {
-  const nxBuildImpl = path.join(root, 'node_modules/@nx/next/src/executors/build/build.impl.js');
+  const nxBuildImpl = path.join(
+    root,
+    'node_modules/@nx/next/src/executors/build/build.impl.js',
+  );
   if (fs.existsSync(nxBuildImpl)) {
     let c = fs.readFileSync(nxBuildImpl, 'utf8');
-    const needle      = "process.env.NODE_ENV ||= 'production';";
+    const needle = "process.env.NODE_ENV ||= 'production';";
     const replacement = "process.env.NODE_ENV = 'production';";
     if (c.includes(replacement)) {
-      console.log('patch-next-build: @nx/next build.impl.js NODE_ENV=production already applied');
+      console.log(
+        'patch-next-build: @nx/next build.impl.js NODE_ENV=production already applied',
+      );
     } else if (!c.includes(needle)) {
-      console.warn('patch-next-build: @nx/next build.impl.js — expected string not found; version may have changed.');
+      throw new Error(
+        'patch-next-build: @nx/next build.impl.js could not be patched; ' +
+          'review the installed @nx/next version before continuing.',
+      );
     } else {
       fs.writeFileSync(nxBuildImpl, c.replace(needle, replacement), 'utf8');
-      console.log('patch-next-build: applied @nx/next build.impl.js NODE_ENV=production');
+      console.log(
+        'patch-next-build: applied @nx/next build.impl.js NODE_ENV=production',
+      );
     }
   }
 }

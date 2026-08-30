@@ -41,7 +41,37 @@ export default [
               sourceTag: 'scope:api',
               onlyDependOnLibsWithTags: ['type:types', 'type:constants'],
             },
-            // shared libs can only import from other shared libs
+            // Keep foundation libraries below transports and presentation.
+            {
+              sourceTag: 'type:types',
+              notDependOnLibsWithTags: ['scope:shared'],
+            },
+            {
+              sourceTag: 'type:constants',
+              notDependOnLibsWithTags: ['scope:shared'],
+            },
+            {
+              sourceTag: 'type:util',
+              onlyDependOnLibsWithTags: ['type:types', 'type:constants'],
+            },
+            {
+              sourceTag: 'type:api-client',
+              onlyDependOnLibsWithTags: [
+                'type:types',
+                'type:constants',
+                'type:util',
+              ],
+            },
+            {
+              sourceTag: 'type:ui',
+              onlyDependOnLibsWithTags: [
+                'type:types',
+                'type:constants',
+                'type:util',
+              ],
+            },
+            // Catch future shared-library types that do not yet have a
+            // dedicated rule above.
             {
               sourceTag: 'scope:shared',
               onlyDependOnLibsWithTags: ['scope:shared'],

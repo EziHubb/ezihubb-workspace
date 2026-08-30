@@ -713,6 +713,7 @@ const REVIEW_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
   const t = useTranslations('product.etsyReviews');
+  const locale = useLocale();
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
   const isAuthReady = useAuthStore((state) => state.isAuthReady);
@@ -864,7 +865,7 @@ export function EtsyReviewsSection({ productSlug, reviewSummary }: Props) {
             : t('reviewsForThisItem')}
         </h2>
         <span className="text-sm text-muted">
-          {t('total', { count: safeNum(totalReviews).toLocaleString() })}
+          {t('total', { count: safeNum(totalReviews).toLocaleString(locale) })}
         </span>
       </div>
 

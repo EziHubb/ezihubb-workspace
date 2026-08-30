@@ -45,7 +45,7 @@ export default async function CollectionsPage({
   );
 
   return (
-    <main className="max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
+    <section className="max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
       {/* Page header */}
       <header className="mb-8 md:mb-10">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-secondary">
@@ -107,6 +107,6 @@ export default async function CollectionsPage({
           })}
         </div>
       )}
-    </main>
+    </section>
   );
 }

@@ -2,6 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
+import {
+  clearNonEssentialCookies,
+  OPEN_CONSENT_SETTINGS_EVENT,
+  readConsent,
+  writeConsent,
+} from './consent';
 
 export function CookieConsentBanner() {
   const t = useTranslations('common');
@@ -9,13 +15,14 @@ export function CookieConsentBanner() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    const consent = localStorage.getItem('cookie_consent');
-    if (!consent) setShow(true);
+    setShow(readConsent() === null);
+    const openSettings = () => setShow(true);
+    window.addEventListener(OPEN_CONSENT_SETTINGS_EVENT, openSettings);
+    return () => window.removeEventListener(OPEN_CONSENT_SETTINGS_EVENT, openSettings);
   }, []);
 
   const accept = () => {
-    localStorage.setItem('cookie_consent', 'accepted');
-    localStorage.setItem('cookie_consent_date', new Date().toISOString());
+    writeConsent('accepted');
     setShow(false);
     window.gtag?.('consent', 'update', {
       analytics_storage: 'granted',
@@ -24,22 +31,38 @@ export function CookieConsentBanner() {
   };
 
   const reject = () => {
-    localStorage.setItem('cookie_consent', 'rejected');
+    const isWithdrawingConsent = readConsent() === 'accepted';
+    writeConsent('rejected');
+    clearNonEssentialCookies();
     setShow(false);
     window.gtag?.('consent', 'update', {
       analytics_storage: 'denied',
       ad_storage:        'denied',
     });
+
+    // Third-party scripts cannot be reliably unloaded once executed. Reloading after
+    // withdrawal guarantees the next document starts without analytics scripts.
+    if (isWithdrawingConsent) window.location.reload();
   };
 
-  if (!show) return null;
+  if (!show) {
+    return (
+      <button
+        type="button"
+        onClick={() => setShow(true)}
+        className="fixed bottom-20 left-3 z-40 rounded-full border border-border bg-white/95 px-3 py-1.5 text-xs text-muted shadow-sm hover:text-secondary md:bottom-3"
+      >
+        {t('cookieConsent.settings')}
+      </button>
+    );
+  }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-border shadow-lg px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div role="dialog" aria-live="polite" aria-label={t('cookieConsent.settings')} className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-border shadow-lg px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <p className="text-sm text-secondary max-w-2xl">
         {t.rich('cookieConsent.message', {
           link: (chunks) => (
-            <a href={`/${locale}/pages/privacy-policy`} className="text-primary hover:underline">
+            <a href={`/${locale}/pages/privacy-policy`} className="font-medium text-primary underline underline-offset-2">
               {chunks}
             </a>
           ),

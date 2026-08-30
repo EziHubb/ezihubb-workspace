@@ -15,6 +15,11 @@ packages:
 # test currently asserts real canvas pixel output.
 overrides:
   canvas: npm:empty-npm-package@1.0.0
+  '@nestjs/platform-express>multer': 2.3.0
+  '@nestjs/swagger>js-yaml': 4.3.1
+  '@prisma/config>deepmerge-ts': 8.0.2
+  '@xhmikosr/downloader>@xhmikosr/decompress': 11.1.4
+  '@swc/cli>piscina': 4.9.3
 
 allowBuilds:
   '@firebase/util': true
@@ -24,7 +29,7 @@ allowBuilds:
   '@scarf/scarf': true
   '@swc/core': true
   bcrypt: true
-  canvas: set this to true or false
+  canvas: false
   esbuild: true
   less: true
   msgpackr-extract: true

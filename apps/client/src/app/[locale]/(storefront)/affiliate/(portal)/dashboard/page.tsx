@@ -122,8 +122,8 @@ export default function AffiliateDashboardPage() {
       {/* ── KPI row ──────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: t('kpiClicks'),          value: safeNum(data.totalClicks).toLocaleString()      },
-          { label: t('kpiConversions'),      value: safeNum(data.totalConversions).toLocaleString() },
+          { label: t('kpiClicks'),          value: safeNum(data.totalClicks).toLocaleString(locale)      },
+          { label: t('kpiConversions'),      value: safeNum(data.totalConversions).toLocaleString(locale) },
           { label: t('kpiEarned'),           value: fmtAmount(data.totalEarned)                     },
           { label: t('kpiConversionRate'),   value: `${(safeNum(data.conversionRate) * 100).toFixed(1)}%` },
         ].map(({ label, value }) => (

@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { safeNum } from '@ezihubb/utils';
 import { Select } from '@ezihubb/ui';
+import { SearchInput } from './SearchInput';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -106,6 +107,14 @@ export function SearchTopBar({
   return (
     <div className="sticky top-[var(--header-offset)] z-20 bg-background/95 backdrop-blur-sm border-b border-border">
       <div className="w-full max-w-[1746px] mx-auto px-6 lg:px-12 py-3">
+
+        <div className="mb-3 lg:hidden">
+          <SearchInput
+            defaultValue={query}
+            variant="page"
+            className="w-full"
+          />
+        </div>
 
         {/* Row 1: filter toggle (mobile) + result count + sort */}
         <div className="flex items-center justify-between gap-3 flex-wrap">

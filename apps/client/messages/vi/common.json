@@ -62,7 +62,8 @@
   "cookieConsent": {
     "message": "Chúng tôi sử dụng cookie để cải thiện trải nghiệm của bạn và phân tích lưu lượng truy cập trang web. Bằng việc tiếp tục, bạn đồng ý với <link>Chính sách bảo mật</link> của chúng tôi.",
     "reject": "Từ chối",
-    "acceptAll": "Chấp nhận tất cả"
+    "acceptAll": "Chấp nhận tất cả",
+    "settings": "Cài đặt cookie"
   },
   "pushPrompt": {
     "title": "Bật thông báo?",

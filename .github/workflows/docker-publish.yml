@@ -17,13 +17,14 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
 
 jobs:
   # ── Detect which apps actually changed ───────────────────────────────────
   changes:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     outputs:
       api: ${{ steps.filter.outputs.api }}
       client: ${{ steps.filter.outputs.client }}
@@ -32,7 +33,7 @@ jobs:
       image_base: ${{ steps.image-base.outputs.value }}
       version: ${{ steps.version.outputs.value }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           # Full history + tags — scripts/compute-version.sh needs to walk
           # back to the last vX.Y.Z tag, which a shallow (depth=1) clone
@@ -43,35 +44,11 @@ jobs:
       # be used directly in the `tags:` inputs below.
       - id: image-base
         run: echo "value=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/ezihubb" >> "$GITHUB_OUTPUT"
-      # Semantic version from Conventional Commits (scripts/compute-version.sh)
-      # — deterministic from commit history, so this always matches what
-      # scripts/deploy.sh's local-build fallback would independently compute
-      # for the same commit. Tagging here is just for traceability in `git
-      # log --decorate`/GitHub's tag list; only tag on an actual push to
-      # main, never a workflow_dispatch re-run on some other branch.
+      # Semantic version from Conventional Commits. The release tag is only
+      # created later, after every selected image has built successfully.
       - id: version
         run: echo "value=$(bash scripts/compute-version.sh)" >> "$GITHUB_OUTPUT"
-      - if: github.ref == 'refs/heads/main'
-        run: |
-          TAG="v${{ steps.version.outputs.value }}"
-          # `fetch-depth: 0` above already fetched every existing tag, so a
-          # plain `git tag "$TAG"` errors out ("tag already exists") whenever
-          # this version was already tagged — e.g. manually pre-tagged for a
-          # specific commit, or a concurrent run for another commit landed
-          # first. GitHub Actions runs each `run:` step with `bash -e`, so
-          # that failure aborted the whole step (never even reaching the
-          # `git push` line below) and failed this job, skipping every
-          # downstream build-* job that needs it — check for an existing tag
-          # first instead of letting `git tag` fail.
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists locally — skipping (nothing to do)."
-          else
-            git tag "$TAG"
-            git push origin "$TAG" || echo "Tag $TAG already exists on origin (concurrent run) — skipping."
-          fi
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@15192bc058cc28a13dbf6cde61f19e18988b7af6 # v3
         id: filter
         with:
           filters: |
@@ -87,6 +64,8 @@ jobs:
             api:
               - *shared
               - 'apps/api/**'
+              - 'prisma/schema.prisma'
+              - 'prisma.config.ts'
               - 'docker/Dockerfile'
             client:
               - *shared
@@ -97,7 +76,9 @@ jobs:
               - 'apps/admin/**'
               - 'docker/Dockerfile'
             migrate:
+              - *shared
               - 'prisma/**'
+              - 'prisma.config.ts'
               - 'docker/Dockerfile'
 
   # ── Pre-populate cache for the base+source stages shared by every app job
@@ -105,16 +86,40 @@ jobs:
   # that expensive shared work is cached once instead of independently per
   # build-api/client/admin/migrate job (each used its own cache scope
   # before, making them invisible to each other despite identical layers).
+  quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.15.0'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Set Nx SHAs
+        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4
+      - name: Validate affected projects
+        run: pnpm nx affected -t lint typecheck --base=$NX_BASE --head=$NX_HEAD --parallel=3
+      - name: Test affected projects
+        run: pnpm nx affected -t test --base=$NX_BASE --head=$NX_HEAD --parallel=3
+      - name: Audit runtime dependencies
+        run: |
+          pnpm audit --prod --audit-level=high
+          pnpm audit --audit-level=critical
+
   build-base-cache:
-    needs: changes
+    needs: [changes, quality-gate]
     if: needs.changes.outputs.api == 'true' || needs.changes.outputs.client == 'true' || needs.changes.outputs.admin == 'true' || needs.changes.outputs.migrate == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: docker/Dockerfile
@@ -132,14 +137,14 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: docker/Dockerfile
@@ -173,14 +178,14 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: docker/Dockerfile
@@ -203,14 +208,14 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: docker/Dockerfile
@@ -252,14 +257,14 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: docker/Dockerfile
@@ -282,7 +287,38 @@ jobs:
             NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
             NEXT_PUBLIC_BUILD_VERSION=${{ needs.changes.outputs.version }}
 
-  # ── Keep only the 3 most recent versions of each image (private-repo storage is limited) ─
+  # Tag only after all selected image builds have succeeded.
+  release-tag:
+    needs: [changes, build-api, build-client, build-admin, build-migrate]
+    if: >-
+      always() && github.ref == 'refs/heads/main' &&
+      needs.changes.result == 'success' &&
+      (needs.build-api.result == 'success' || needs.build-api.result == 'skipped') &&
+      (needs.build-client.result == 'success' || needs.build-client.result == 'skipped') &&
+      (needs.build-admin.result == 'success' || needs.build-admin.result == 'skipped') &&
+      (needs.build-migrate.result == 'success' || needs.build-migrate.result == 'skipped') &&
+      (needs.build-api.result == 'success' || needs.build-client.result == 'success' ||
+       needs.build-admin.result == 'success' || needs.build-migrate.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Tag validated release
+        run: |
+          TAG="v${{ needs.changes.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists; leaving it unchanged."
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
+
+  # Keep only the 3 most recent versions of each image.
   cleanup:
     needs: [build-api, build-client, build-admin, build-migrate]
     if: always() && !cancelled()
@@ -293,7 +329,7 @@ jobs:
       matrix:
         package: [ezihubb-api, ezihubb-client, ezihubb-admin, ezihubb-migrate]
     steps:
-      - uses: actions/delete-package-versions@v5
+      - uses: actions/delete-package-versions@25ad4af5be03aef10e0b3376b248688b7a44c40b # v5
         continue-on-error: true
         with:
           package-name: ${{ matrix.package }}

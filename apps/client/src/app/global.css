@@ -17,12 +17,14 @@
      before, so any page without a StickyHeader behaves exactly as it did. */
   --header-offset: 64px;
   /* Theme CSS vars — overridden server-side via <style> tag from DB settings */
-  --c-primary: 232 93 63;
-  --c-primary-dark: #C44A2E;
+  /* Accessible brand variants: both white-on-primary and primary-on-light
+     meet WCAG AA for normal-sized text. */
+  --c-primary: 184 64 40;
+  --c-primary-dark: #96351F;
   --c-primary-light: #FFF0EC;
   /* Legacy color vars (kept for non-Tailwind usages) */
-  --color-primary: #E85D3F;
-  --color-primary-dark: #C44A2E;
+  --color-primary: #B84028;
+  --color-primary-dark: #96351F;
   --color-secondary: #2D2D2D;
   --color-background: #FAFAF8;
   --color-surface: #FFFFFF;
@@ -85,6 +87,21 @@
     :root select {
       font-size: max(16px, 1rem);
     }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

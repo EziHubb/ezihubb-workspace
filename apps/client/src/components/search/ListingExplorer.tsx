@@ -247,6 +247,7 @@ export function ListingExplorer({
             expanded — survives a toggle instead of being thrown away. */}
         <div
           aria-hidden={!filtersOpen}
+          inert={!filtersOpen}
           className={[
             'hidden lg:block flex-shrink-0 overflow-hidden transition-[width] duration-300 ease-out',
             filtersOpen ? 'w-[236px]' : 'w-0',
@@ -270,7 +271,7 @@ export function ListingExplorer({
         </div>
 
         {/* PRODUCT GRID */}
-        <main className="flex-1 min-w-0 pt-4 pb-16">
+        <div className="flex-1 min-w-0 pt-4 pb-16">
           {isLoading ? (
             <SearchGridSkeleton />
           ) : isError ? (
@@ -294,7 +295,7 @@ export function ListingExplorer({
               />
             </>
           )}
-        </main>
+        </div>
       </div>
 
       {/* BOTTOM SECTIONS */}

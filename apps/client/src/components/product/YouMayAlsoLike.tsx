@@ -93,7 +93,7 @@ function RelatedProductCard({
           <div className="flex items-center gap-0.5 mt-0.5">
             <MiniStars rating={product.averageRating ?? 0} size="xs" />
             <span className="text-[10px] text-muted ml-0.5">
-              ({safeNum(product.reviewCount).toLocaleString()})
+              ({safeNum(product.reviewCount).toLocaleString(locale)})
             </span>
           </div>
         )}
@@ -101,7 +101,7 @@ function RelatedProductCard({
         {/* Sales count */}
         {product.soldCount > 0 && (
           <p className="text-[10px] text-muted">
-            {t('sales', { count: safeNum(product.soldCount).toLocaleString() })}
+            {t('sales', { count: safeNum(product.soldCount).toLocaleString(locale) })}
           </p>
         )}
       </Link>

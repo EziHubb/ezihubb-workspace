@@ -482,10 +482,12 @@ function EmailTemplateEditor({
             <p className="px-4 py-2 text-xs font-semibold text-muted uppercase tracking-wide bg-background border-b border-border">
               Preview
             </p>
-            <div
-              className="flex-1 overflow-y-auto p-4 text-sm leading-relaxed"
-              // eslint-disable-next-line react/no-danger -- admin-authored email template preview
-              dangerouslySetInnerHTML={{ __html: previewHtml }}
+            <iframe
+              title="Email template preview"
+              srcDoc={previewHtml}
+              sandbox=""
+              referrerPolicy="no-referrer"
+              className="min-h-[420px] flex-1 w-full border-0 bg-white"
             />
           </div>
         </div>

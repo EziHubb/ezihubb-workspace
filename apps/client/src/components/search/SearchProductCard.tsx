@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Heart, Star } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import type { ProductListItemDto } from '@ezihubb/types';
@@ -179,10 +180,12 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
           410x512 @1920 — the same ratio at both widths. Was aspect-square. */}
       <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-[#F5F1EB] mb-2.5">
         <Link href={productHref}>
-          <img
+          <Image
             src={activeImage}
             alt={product.name}
-            loading={priority ? 'eager' : 'lazy'}
+            fill
+            priority={priority}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className="w-full h-full object-cover transition-all duration-500"
           />
         </Link>

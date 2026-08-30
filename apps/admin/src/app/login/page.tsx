@@ -43,7 +43,8 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <main id="admin-main-content" tabIndex={-1} className="min-h-screen flex outline-none">
+      <a href="#admin-login-form" className="sr-only z-[10000] rounded-md bg-white px-4 py-2 text-secondary shadow focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to sign in form</a>
       {/* ── Left: Brand panel ──────────────────────────────────────────────── */}
       <div
         className="hidden lg:flex flex-col justify-between w-[420px] shrink-0 px-10 py-12"
@@ -98,7 +99,7 @@ export default function AdminLoginPage() {
             Enter your admin credentials to continue.
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form id="admin-login-form" onSubmit={handleSubmit} className="space-y-5">
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-secondary mb-1.5">
@@ -161,6 +162,6 @@ export default function AdminLoginPage() {
           </p>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

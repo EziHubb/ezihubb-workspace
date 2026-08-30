@@ -62,7 +62,8 @@
   "cookieConsent": {
     "message": "我们使用 Cookie 来改善您的体验并分析网站流量。继续使用即表示您同意我们的<link>隐私政策</link>。",
     "reject": "拒绝",
-    "acceptAll": "接受全部"
+    "acceptAll": "接受全部",
+    "settings": "Cookie 设置"
   },
   "pushPrompt": {
     "title": "开启通知？",

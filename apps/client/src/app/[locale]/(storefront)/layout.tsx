@@ -1,13 +1,12 @@
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { Suspense } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { StickyHeader } from '../../../components/layout/StickyHeader';
 import { Footer } from '../../../components/layout/Footer';
 import { MobileBottomNav } from '../../../components/layout/MobileBottomNav';
 import { CampaignBannerBar } from '../../../components/campaign/CampaignBannerBar';
 import type { MegaMenuTab } from '../../../types/mega-menu';
-
-export const dynamic = 'force-dynamic';
 
 export default async function StorefrontLayout({
   children,
@@ -19,7 +18,7 @@ export default async function StorefrontLayout({
       .get<MegaMenuTab[]>('/catalog/mega-menu', { next: { revalidate: 600 } })
       .catch(() => [] as MegaMenuTab[]),
     apiClient
-      .get<any>(API_ROUTES.CAMPAIGNS.ACTIVE)
+      .get<any>(API_ROUTES.CAMPAIGNS.ACTIVE, { next: { revalidate: 300 } })
       .catch(() => null),
   ]);
 
@@ -31,9 +30,11 @@ export default async function StorefrontLayout({
           the ~112px back instead of carrying navigation nobody is using. */}
       <StickyHeader>
         <CampaignBannerBar campaign={activeCampaign} />
-        <Navbar menuData={menuData} />
+        <Suspense fallback={<div aria-hidden="true" className="h-16 border-b border-border bg-surface md:h-[112px]" />}>
+          <Navbar menuData={menuData} />
+        </Suspense>
       </StickyHeader>
-      <main className="min-h-screen">
+      <main id="main-content" tabIndex={-1} className="min-h-screen outline-none">
         {children}
       </main>
       {/* Extra bottom padding on mobile so content clears the fixed MobileBottomNav */}

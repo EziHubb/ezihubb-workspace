@@ -132,7 +132,7 @@ export function SellerCard({ product, storeSummary = null }: SellerCardProps) {
               </span>
             )}
             {storeSummary && storeSummary.totalOrders > 0 && (
-              <span>{t('sales', { count: safeNum(storeSummary.totalOrders).toLocaleString() })}</span>
+              <span>{t('sales', { count: safeNum(storeSummary.totalOrders).toLocaleString(locale) })}</span>
             )}
             {storeSummary && (
               <span>{t('onPlatform', { years: yearsSince(storeSummary.createdAt) })}</span>

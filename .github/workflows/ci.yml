@@ -23,104 +23,104 @@ jobs:
     name: Lint & Type-check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '22'
+          node-version: '24.15.0'
           cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Set Nx SHAs
-        uses: nrwl/nx-set-shas@v4
+        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4
 
       - name: Lint (affected)
         run: pnpm nx affected -t lint --base=$NX_BASE --head=$NX_HEAD --parallel=3
 
       - name: Type-check (affected)
-        run: pnpm nx affected -t type-check --base=$NX_BASE --head=$NX_HEAD --parallel=3
+        run: pnpm nx affected -t typecheck --base=$NX_BASE --head=$NX_HEAD --parallel=3
+
+      - name: Unit tests (affected)
+        run: pnpm nx affected -t test --configuration=ci --base=$NX_BASE --head=$NX_HEAD --parallel=3
 
   # ── Build ────────────────────────────────────────────────────────────────────
   build:
     name: Build (affected)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '22'
+          node-version: '24.15.0'
           cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Set Nx SHAs
-        uses: nrwl/nx-set-shas@v4
+        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4
 
       - name: Build (affected)
         run: pnpm nx affected -t build --base=$NX_BASE --head=$NX_HEAD --parallel=2
 
       - name: Check bundle size
-        # continue-on-error: in this CI environment, the step's shell process
-        # has been observed to die immediately after `pnpm nx build client`
-        # prints Nx's own "100% Successful Tasks / 0% Failed" report — with
-        # zero error text anywhere in between (confirmed via the raw job log
-        # from the GitHub API) and `|| true` on that line does NOT prevent
-        # it, which rules out a normal `set -e`-on-nonzero-exit-status abort.
-        # Most likely an Nx Cloud background/daemon process (GH Actions logs
-        # "Terminate orphan process (node)" right after) interacting badly
-        # with the runner's process-tree handling — not an actual build or
-        # bundle-size failure; doesn't reproduce outside GitHub Actions.
-        # This is a soft/advisory check, not a build-correctness gate, so it
-        # runs and reports but no longer blocks the job while this is open.
-        continue-on-error: true
         run: |
-          BUILD_OUTPUT=$(pnpm nx build client 2>&1) || true
-          echo "$BUILD_OUTPUT" | tail -30
-          SHARED_SIZE=$(echo "$BUILD_OUTPUT" | grep "First Load JS shared by all" | grep -oE '[0-9]+(\.[0-9]+)? kB' | head -1 | grep -oE '[0-9]+(\.[0-9]+)?')
-          if [ -z "$SHARED_SIZE" ]; then
-            echo "Warning: could not parse shared bundle size — skipping budget check"
-            exit 0
+          if [ -f dist/apps/client/.next/build-manifest.json ]; then
+            node scripts/check-next-bundle-size.mjs dist/apps/client/.next 225 100
+          else
+            echo "Client was not affected; no client bundle to check."
           fi
-          echo "First Load JS shared bundle: ${SHARED_SIZE} kB"
-          python3 -c "
-          kb = float('$SHARED_SIZE')
-          limit = 150
-          if kb > limit:
-              print(f'ERROR: Shared bundle {kb} kB exceeds {limit} kB limit')
-              exit(1)
-          else:
-              print(f'OK: Shared bundle {kb} kB is within {limit} kB limit')
-          "
 
   # ── Security Audit ───────────────────────────────────────────────────────────
+  e2e:
+    name: Client E2E (affected)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.15.0'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Set Nx SHAs
+        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: E2E tests (affected)
+        run: pnpm nx affected -t e2e --base=$NX_BASE --head=$NX_HEAD
+
   security:
     name: Security Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '22'
+          node-version: '24.15.0'
           cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Audit dependencies
-        run: pnpm audit --audit-level=high
-        continue-on-error: true
+        run: |
+          pnpm audit --prod --audit-level=high
+          pnpm audit --audit-level=critical

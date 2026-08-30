@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
@@ -90,7 +90,7 @@ function CopyOrderNumber({ orderNumber }: { orderNumber: string }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessContent() {
   const t             = useTranslations('checkout.success');
   const locale        = useLocale();
   const searchParams  = useSearchParams();
@@ -403,5 +403,13 @@ export default function CheckoutSuccessPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={<div aria-busy="true" className="mx-auto min-h-[420px] max-w-2xl px-4 py-16" />}>
+      <CheckoutSuccessContent />
+    </Suspense>
   );
 }

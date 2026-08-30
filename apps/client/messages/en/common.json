@@ -62,7 +62,8 @@
   "cookieConsent": {
     "message": "We use cookies to improve your experience and analyze site traffic. By continuing, you agree to our <link>Privacy Policy</link>.",
     "reject": "Reject",
-    "acceptAll": "Accept all"
+    "acceptAll": "Accept all",
+    "settings": "Cookie settings"
   },
   "pushPrompt": {
     "title": "Turn on notifications?",

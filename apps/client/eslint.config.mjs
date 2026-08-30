@@ -1,10 +1,19 @@
+import playwright from 'eslint-plugin-playwright';
 import nextEslintPluginNext from '@next/eslint-plugin-next';
 import reactHooks from 'eslint-plugin-react-hooks';
 import react from 'eslint-plugin-react';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 import nx from '@nx/eslint-plugin';
 import baseConfig from '../../eslint.config.mjs';
+const a11yRules = Object.fromEntries(
+  Object.entries(jsxA11y.flatConfigs.recommended.rules).map(([rule, value]) => [
+    rule,
+    Array.isArray(value) ? ['warn', ...value.slice(1)] : 'warn',
+  ]),
+);
 
 export default [
+  playwright.configs['flat/recommended'],
   { plugins: { '@next/next': nextEslintPluginNext } },
   ...nx.configs['flat/react-typescript'],
   // `flat/react-typescript` doesn't register eslint-plugin-react-hooks —
@@ -22,8 +31,18 @@ export default [
     plugins: { react },
     rules: { 'react/no-danger': 'error' },
   },
+  {
+    files: ['**/*.tsx', '**/*.jsx'],
+    plugins: { 'jsx-a11y': jsxA11y },
+    rules: a11yRules,
+  },
   ...baseConfig,
   {
     ignores: ['.next/**/*'],
+  },
+  {
+    files: ['**/*.ts', '**/*.js'],
+    // Override or add rules here
+    rules: {},
   },
 ];

@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
 import {
   Star, CheckCircle2, Clock, ShoppingCart,
@@ -235,7 +236,7 @@ function BuyTogetherCard({
       <div className="flex items-center gap-2">
         {bundleOffer.products.map((p) => (
           p.images[0]
-            ? <img key={p.id} src={p.images[0]} alt={p.name} className="w-12 h-12 rounded-lg object-cover border border-border" />
+            ? <Image key={p.id} src={p.images[0]} alt={p.name} width={48} height={48} sizes="48px" className="w-12 h-12 rounded-lg object-cover border border-border" />
             : <div key={p.id} className="w-12 h-12 rounded-lg bg-background border border-border" />
         ))}
       </div>
@@ -389,13 +390,15 @@ function VariantDropdown({
 
   return (
     <div id={id}>
-      <label className="text-sm font-medium block mb-1.5">
+      <label htmlFor={`${id}-select`} className="text-sm font-medium block mb-1.5">
         {toTitleCase(label)} <span className="text-red-500">*</span>
       </label>
       {hasError && !selected && (
         <p className="text-xs text-red-500 mb-1">{t('pleaseSelectOption')}</p>
       )}
       <Select
+        id={`${id}-select`}
+        required
         value={selected}
         onChange={(e) => onChange(e.target.value)}
         placeholder={t('selectOptionPlaceholder')}
@@ -424,8 +427,9 @@ function QuantityDropdown({
 }) {
   return (
     <div>
-      <label className="text-sm font-medium block mb-1.5">{label}</label>
+      <label htmlFor="product-quantity" className="text-sm font-medium block mb-1.5">{label}</label>
       <Select
+        id="product-quantity"
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         options={Array.from({ length: 10 }, (_, index) => ({
@@ -532,13 +536,13 @@ function CustomOptionsFields({
         ].join(' ');
 
         return (
-          <div id={`custom-option-${option.id}`} key={option.id}>
-            <label className="text-sm font-medium text-secondary block mb-1.5">
+          <fieldset id={`custom-option-${option.id}`} key={option.id} aria-describedby={[option.instructionText ? `custom-option-${option.id}-instruction` : '', error ? `custom-option-${option.id}-error` : ''].filter(Boolean).join(' ') || undefined}>
+            <legend className="text-sm font-medium text-secondary block mb-1.5">
               {option.label}
               {option.required && <span className="text-red-500 ml-0.5">*</span>}
-            </label>
+            </legend>
             {option.instructionText && (
-              <p className="text-xs text-muted mb-1.5">{option.instructionText}</p>
+              <p id={`custom-option-${option.id}-instruction`} className="text-xs text-muted mb-1.5">{option.instructionText}</p>
             )}
 
             {option.type === 'TEXT_BOX' && (
@@ -546,6 +550,9 @@ function CustomOptionsFields({
                 <div className={`overflow-hidden rounded-lg border bg-white ${error ? 'border-red-500' : 'border-border focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20'}`}>
                   {option.isMultiline ? (
                     <textarea
+                      aria-label={option.label}
+                      aria-invalid={Boolean(error)}
+                      required={option.required}
                       value={textValue}
                       onChange={(event) => onChange(option.id, { text: event.target.value, file: uploadedFile })}
                       placeholder={option.placeholder}
@@ -556,6 +563,9 @@ function CustomOptionsFields({
                   ) : (
                     <input
                       type="text"
+                      aria-label={option.label}
+                      aria-invalid={Boolean(error)}
+                      required={option.required}
                       value={textValue}
                       onChange={(event) => onChange(option.id, { text: event.target.value, file: uploadedFile })}
                       placeholder={option.placeholder}
@@ -573,6 +583,9 @@ function CustomOptionsFields({
                 </div>
               ) : option.isMultiline ? (
                 <textarea
+                  aria-label={option.label}
+                  aria-invalid={Boolean(error)}
+                  required={option.required}
                   value={textValue}
                   onChange={(event) => onChange(option.id, event.target.value)}
                   placeholder={option.placeholder}
@@ -583,6 +596,9 @@ function CustomOptionsFields({
               ) : (
                 <input
                   type="text"
+                  aria-label={option.label}
+                  aria-invalid={Boolean(error)}
+                  required={option.required}
                   value={textValue}
                   onChange={(event) => onChange(option.id, event.target.value)}
                   placeholder={option.placeholder}
@@ -616,6 +632,8 @@ function CustomOptionsFields({
               </div>
             ) : (
               <Select
+                aria-label={option.label}
+                required={option.required}
                 value={typeof value === 'string' ? value : ''}
                 onChange={(event) => onChange(option.id, event.target.value)}
                 placeholder={option.placeholder || t('selectOptionPlaceholder')}
@@ -648,6 +666,7 @@ function CustomOptionsFields({
                   </span>
                   <input
                     type="file"
+                    aria-label={option.label}
                     className="sr-only"
                     disabled={uploadingOptionId !== null}
                     accept={(option.acceptedFileTypes?.length ? option.acceptedFileTypes : ['image/*']).join(',')}
@@ -665,6 +684,7 @@ function CustomOptionsFields({
               <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input
                   type="checkbox"
+                  aria-label={option.label}
                   checked={value === true}
                   onChange={(event) => onChange(option.id, event.target.checked)}
                   className="accent-primary"
@@ -676,13 +696,14 @@ function CustomOptionsFields({
             {option.type === 'COLOR_SWATCH' && (
               <input
                 type="color"
+                aria-label={option.label}
                 value={typeof value === 'string' && value ? value : '#000000'}
                 onChange={(event) => onChange(option.id, event.target.value)}
                 className="h-11 w-20 rounded-lg border border-border cursor-pointer"
               />
             )}
 
-            {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+            {error && <p id={`custom-option-${option.id}-error`} role="alert" className="text-xs text-red-600 mt-1">{error}</p>}
             {option.type === 'TEXT_BOX' && option.maxLength > 0 && (
               <p className="text-xs text-muted text-right mt-0.5">
                 {textValue.length}/{option.maxLength}
@@ -693,7 +714,7 @@ function CustomOptionsFields({
                 {t('maxFileSize', { size: option.maxFileSizeMB || 10 })}
               </p>
             )}
-          </div>
+          </fieldset>
         );
       })}
     </div>
@@ -735,13 +756,14 @@ function PersonalizationCollapsible({
             const val = responses[field.id] ?? '';
             return (
               <div key={field.id}>
-                <label className="text-xs font-medium text-secondary block mb-1">
+                <label htmlFor={`personalization-${field.id}`} className="text-xs font-medium text-secondary block mb-1">
                   {field.label}
                   {field.required && <span className="text-red-500 ml-0.5">*</span>}
                 </label>
 
                 {field.type === 'textarea' ? (
                   <textarea
+                    id={`personalization-${field.id}`}
                     value={val}
                     onChange={(e) => set(field.id, e.target.value)}
                     rows={3}
@@ -750,6 +772,8 @@ function PersonalizationCollapsible({
                   />
                 ) : field.type === 'text' ? (
                   <input
+                    id={`personalization-${field.id}`}
+                    type="text"
                     value={val}
                     onChange={(e) => set(field.id, e.target.value)}
                     maxLength={field.maxLength}
@@ -757,6 +781,7 @@ function PersonalizationCollapsible({
                   />
                 ) : field.type === 'select' ? (
                   <Select
+                    id={`personalization-${field.id}`}
                     value={val}
                     onChange={(e) => set(field.id, e.target.value)}
                     placeholder={t('selectEllipsis')}
@@ -768,6 +793,7 @@ function PersonalizationCollapsible({
                   />
                 ) : field.type === 'color' ? (
                   <input
+                    id={`personalization-${field.id}`}
                     type="color"
                     value={val || '#000000'}
                     onChange={(e) => set(field.id, e.target.value)}
@@ -775,7 +801,7 @@ function PersonalizationCollapsible({
                   />
                 ) : (
                   // image upload
-                  <input type="file" accept="image/*" className="text-sm" />
+                  <input id={`personalization-${field.id}`} type="file" accept="image/*" className="text-sm" />
                 )}
 
                 {field.maxLength && (field.type === 'text' || field.type === 'textarea') && (

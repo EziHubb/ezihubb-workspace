@@ -21,7 +21,7 @@
 # browser navigating away, a health-check that doesn't read the full body)
 # can trigger it — reproduced in production on client/admin under 22 and
 # gone after this bump.
-FROM node:24-alpine AS base
+FROM node:24.15.0-alpine AS base
 # python3/make/g++/pkgconf: kept as a general node-gyp fallback for any
 # native dep (e.g. bcrypt) that doesn't ship a musl/Alpine prebuilt binary
 # for the current Node version — most (bcrypt included, via `prebuildify
@@ -79,24 +79,23 @@ RUN ./node_modules/.bin/prisma generate --schema=prisma/schema.prisma
 FROM source AS builder-api
 RUN --mount=type=cache,id=nx-cache,target=/app/.nx/cache \
     pnpm nx build api --configuration=production
-# Strips devDependencies (jest, typescript, nx, eslint, @playwright/test,
-# testing-library, etc. — ~half the workspace's package count) from this
-# stage's node_modules before the production stage copies it wholesale.
-# Safe for api specifically: dist/main.js only ever needs @prisma/client
-# (a real dependency, already generated above) programmatically, never the
-# `prisma` CLI binary itself — unlike the `migrate` stage below, which
-# genuinely invokes `prisma` the CLI at runtime and must NOT be pruned.
-# --config.confirmModulesPurge=false — pnpm's accidental-data-loss guard
-# refuses to remove node_modules without a TTY to confirm against, which a
-# Docker RUN step never has (surfaced as ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY).
-# --ignore-scripts — pruning otherwise re-fires the root `prepare` lifecycle
-# script (package.json), which shells out to `pnpm exec prisma generate`;
-# by the time prune gets to it the `prisma` devDependency it needs is
-# already stripped, so it fails. Unnecessary anyway — `source`'s own
-# `prisma generate` call above already ran once, shared by this stage via
-# `FROM source`, and pruning only removes packages, not that generated
-# @prisma/client output.
-RUN pnpm prune --prod --config.confirmModulesPurge=false --ignore-scripts
+
+# Install from Nx's generated app-specific manifest and lockfile. Pruning
+# the root workspace still retains unrelated storefront/admin dependencies.
+FROM node:24.15.0-alpine AS api-runtime-deps
+RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
+    apk add libc6-compat python3 make g++ pkgconf
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@11.5.2 --activate
+COPY --from=builder-api /app/dist/apps/api/package.json ./package.json
+COPY --from=builder-api /app/dist/apps/api/pnpm-lock.yaml ./pnpm-lock.yaml
+# The generated lock retains root overrides, so pnpm needs the matching
+# workspace config even though this stage contains a single package.
+COPY --from=builder-api /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+RUN --mount=type=cache,id=pnpm-api-runtime-store,target=/root/.local/share/pnpm/store \
+    pnpm install --prod --frozen-lockfile
+COPY --from=builder-api /app/prisma ./prisma
+RUN ./node_modules/.bin/prisma generate --schema=prisma/schema.prisma
 
 FROM source AS builder-client
 # NEXT_PUBLIC_* vars are inlined into the client bundle at BUILD time — must
@@ -174,7 +173,7 @@ RUN --mount=type=cache,id=nx-cache,target=/app/.nx/cache \
 # ============================================
 # Production stages — copy only the built output, not source
 # ============================================
-FROM node:24-alpine AS api
+FROM node:24.15.0-alpine AS api
 WORKDIR /app
 ENV NODE_ENV=production
 # ffprobe (bundled with the ffmpeg package) reads a video's real duration
@@ -183,10 +182,10 @@ ENV NODE_ENV=production
 RUN --mount=type=cache,target=/var/cache/apk,sharing=locked \
     apk add ffmpeg
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nestjs
-COPY --from=builder-api --chown=nestjs:nodejs /app/node_modules ./node_modules
+COPY --from=api-runtime-deps --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder-api --chown=nestjs:nodejs /app/dist/apps/api ./dist
-COPY --from=builder-api --chown=nestjs:nodejs /app/prisma ./prisma
-COPY --from=builder-api --chown=nestjs:nodejs /app/package.json ./package.json
+COPY --from=api-runtime-deps --chown=nestjs:nodejs /app/prisma ./prisma
+COPY --from=api-runtime-deps --chown=nestjs:nodejs /app/package.json ./package.json
 USER nestjs
 EXPOSE 3002
 # 127.0.0.1, not localhost — this image's /etc/hosts resolves "localhost"
@@ -198,7 +197,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3002/api/v1/health || exit 1
 CMD ["node", "dist/main.js"]
 
-FROM node:24-alpine AS client
+FROM node:24.15.0-alpine AS client
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -210,8 +209,8 @@ ENV HOSTNAME=0.0.0.0
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 # `output: 'standalone'` (apps/client/next.config.js) traces only the
 # node_modules this app actually uses instead of shipping the full
-# workspace-combined tree — this is what actually eliminates the client/
-# admin size difference the api image already got from `pnpm prune --prod`.
+# workspace-combined tree. The API stage achieves the same isolation through
+# Nx's generated app-specific package manifest and lockfile above.
 # Paths below verified empirically against a real Linux build (Windows
 # can't produce this output at all — file tracing needs symlinks) rather
 # than assumed from a generic Next.js tutorial, because Nx's custom
@@ -234,7 +233,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/api/health || exit 1
 CMD ["node", "apps/client/server.js"]
 
-FROM node:24-alpine AS admin
+FROM node:24.15.0-alpine AS admin
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -265,19 +264,19 @@ FROM source AS builder-migrate
 # carries `source`'s full pre-prune node_modules underneath: Docker images
 # are the union of every layer, and a later layer deleting files only adds
 # whiteout markers — it doesn't shrink the earlier layer's stored blobs.
-# Fixed the same way api/client/admin already avoid this: prune in its own
-# builder stage, then the separate `migrate` stage below COPYs only the
+# Fixed with a dedicated prune stage, then the separate `migrate` stage below
+# COPYs only the
 # already-pruned result — never inheriting `source`'s heavy layer at all.
 #
 # `prisma` (the CLI, needed at runtime for `migrate deploy` below) moved
 # from devDependencies to dependencies in package.json — it genuinely is a
 # runtime dependency of this service, same fix as the earlier `tslib`
 # misclassification — so the standard `pnpm prune --prod` used elsewhere
-# works here too. See builder-api above for why the two extra flags are
-# needed.
+# works here too. The two extra flags make the non-interactive prune safe and
+# avoid re-running the root prepare lifecycle after the Prisma CLI is removed.
 RUN pnpm prune --prod --config.confirmModulesPurge=false --ignore-scripts
 
-FROM node:24-alpine AS migrate
+FROM node:24.15.0-alpine AS migrate
 WORKDIR /app
 ENV NODE_ENV=production
 # prisma.config.ts (root) + prisma/ (schema + migrations) are both read at

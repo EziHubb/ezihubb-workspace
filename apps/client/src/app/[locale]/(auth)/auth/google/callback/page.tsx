@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import type { UserDto } from '@ezihubb/types';
 import { GOOGLE_OAUTH_MESSAGE_TYPE, postGoogleOAuthResultToOpener } from '../../../../../../lib/auth/google-oauth-popup';
+
+// The callback is request-specific by definition and reads the OAuth query string.
+export const dynamic = 'force-dynamic';
 
 /**
  * Google OAuth callback handler.
@@ -22,7 +25,7 @@ import { GOOGLE_OAUTH_MESSAGE_TYPE, postGoogleOAuthResultToOpener } from '../../
  * there's no opener — e.g. the popup was blocked and the caller fell back
  * to a full-page redirect, or someone opened this URL directly.
  */
-export default function GoogleCallbackPage() {
+function GoogleCallbackContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
 
@@ -73,5 +76,22 @@ export default function GoogleCallbackPage() {
       <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       <span className="text-sm">Signing you in…</span>
     </div>
+  );
+}
+
+function CallbackLoading() {
+  return (
+    <div role="status" className="flex items-center justify-center h-screen gap-3 text-muted">
+      <div aria-hidden="true" className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <span className="text-sm">Signing you in…</span>
+    </div>
+  );
+}
+
+export default function GoogleCallbackPage() {
+  return (
+    <Suspense fallback={<CallbackLoading />}>
+      <GoogleCallbackContent />
+    </Suspense>
   );
 }

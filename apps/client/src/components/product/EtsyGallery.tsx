@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { ChevronLeft, ChevronRight, Heart, Flag, X, Play, Volume2, VolumeX, Video as VideoIcon } from 'lucide-react';
@@ -176,10 +177,11 @@ function MediaThumbnail({ item, className }: { item: MediaItem; className: strin
             not decode) falls back to the old behaviour rather than showing an
             empty black box — preload="metadata" is enough to paint a frame. */}
         {item.poster ? (
-          <img
+          <Image
             src={item.poster}
             alt=""
-            loading="lazy"
+            fill
+            sizes="80px"
             className="absolute inset-0 w-full h-full object-cover"
           />
         ) : (
@@ -192,10 +194,11 @@ function MediaThumbnail({ item, className }: { item: MediaItem; className: strin
     );
   }
   return (
-    <img
+    <Image
       src={item.url}
       alt={item.altText ?? ''}
-      loading="lazy"
+      fill
+      sizes="80px"
       className={`absolute inset-0 w-full h-full object-cover ${className}`}
     />
   );
@@ -365,10 +368,12 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
             {activeItem.type === 'video' ? (
               <VideoSlide url={activeItem.url} poster={activeItem.poster} active className="absolute inset-0 w-full h-full" />
             ) : (
-              <img
+              <Image
                 src={activeItem.url}
                 alt={activeItem.altText ?? product.name}
-                loading="eager"
+                fill
+                priority={activeIndex === 0}
+                sizes="(max-width: 1024px) 100vw, min(60vw, calc(100vh - 180px))"
                 className="absolute inset-0 w-full h-full object-cover"
               />
             )}
@@ -474,10 +479,11 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
               onTouchEnd={handleTouchEnd}
             >
               <div className="relative w-full max-h-[80vh] aspect-square">
-                <img
+                <Image
                   src={activeItem.url}
                   alt={activeItem.altText ?? product.name}
-                  loading="eager"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 960px"
                   className="absolute inset-0 w-full h-full object-contain"
                 />
               </div>

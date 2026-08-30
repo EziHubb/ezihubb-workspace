@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLocale } from 'next-intl';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
@@ -10,6 +11,8 @@ import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import type { ProductListItemDto } from '@ezihubb/types';
 import { fmtAmount } from '@ezihubb/utils';
+
+const PLACEHOLDER = 'https://placehold.co/96x96/F5F1EB/999.png?text=No+Image';
 
 export function RecentlyViewedPanel() {
   const t = useTranslations('search');
@@ -57,9 +60,12 @@ export function RecentlyViewedPanel() {
                 href={`/${locale}/products/${product.slug}`}
                 className="flex gap-2 hover:bg-[#F9FAFB] rounded-lg p-1 transition-colors"
               >
-                <img
-                  src={product.primaryImage ?? product.images?.[0]?.url ?? ''}
+                <Image
+                  src={product.primaryImage ?? product.images?.[0]?.url ?? PLACEHOLDER}
                   alt={product.name}
+                  width={48}
+                  height={48}
+                  sizes="48px"
                   className="w-12 h-12 rounded-lg object-cover flex-shrink-0 bg-[#F5F1EB]"
                 />
                 <div className="min-w-0">

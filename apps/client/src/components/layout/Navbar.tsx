@@ -6,8 +6,17 @@ import Image from 'next/image';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import {
-  Search, Heart, ShoppingBag, Menu,
-  ChevronDown, Package, Settings, LogOut, Store, MessageSquare, Tag,
+  Search,
+  Heart,
+  ShoppingBag,
+  Menu,
+  ChevronDown,
+  Package,
+  Settings,
+  LogOut,
+  Store,
+  MessageSquare,
+  Tag,
 } from 'lucide-react';
 import { Tooltip } from '@ezihubb/ui';
 import { NotificationBell } from './NotificationBell';
@@ -31,29 +40,38 @@ import { buildLoginHref } from '../../lib/auth-redirect';
 
 // ── User Menu (desktop) ───────────────────────────────────────────────────────
 
-function UserMenu({ locale, loginHref }: { locale: string; loginHref: string }) {
-  const t                = useTranslations('nav');
-  const [open, setOpen]  = useState(false);
-  const menuRef          = useRef<HTMLDivElement>(null);
-  const router           = useRouter();
-  const qc               = useQueryClient();
-  const profile          = useAuthStore((s) => s.user);
-  const authLogout       = useAuthStore((s) => s.logout);
-  const token            = useAuthStore((s) => s.accessToken);
-  const isAuthReady      = useAuthStore((s) => s.isAuthReady);
-
+function UserMenu({
+  locale,
+  loginHref,
+}: {
+  locale: string;
+  loginHref: string;
+}) {
+  const t = useTranslations('nav');
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const qc = useQueryClient();
+  const profile = useAuthStore((s) => s.user);
+  const authLogout = useAuthStore((s) => s.logout);
+  const token = useAuthStore((s) => s.accessToken);
+  const isAuthReady = useAuthStore((s) => s.isAuthReady);
 
   // Live store status — JWT may be stale (isSeller not updated until re-login)
   const { data: storeApp } = useQuery<{ status: string }>({
     queryKey: ['my-store-application'],
-    queryFn:  () => apiClient.get<{ status: string }>(API_ROUTES.SELLER.STORE_APPLICATION, { token: token ?? undefined }),
-    enabled:  !!token,
+    queryFn: () =>
+      apiClient.get<{ status: string }>(API_ROUTES.SELLER.STORE_APPLICATION, {
+        token: token ?? undefined,
+      }),
+    enabled: !!token,
     staleTime: 30_000,
   });
 
   useEffect(() => {
     const fn = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
+      if (menuRef.current && !menuRef.current.contains(e.target as Node))
+        setOpen(false);
     };
     document.addEventListener('mousedown', fn);
     return () => document.removeEventListener('mousedown', fn);
@@ -91,10 +109,14 @@ function UserMenu({ locale, loginHref }: { locale: string; loginHref: string }) 
     );
   }
 
-  const initials = `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`.toUpperCase() || '?';
-  const adminUrl  = process.env['NEXT_PUBLIC_ADMIN_URL'] ?? 'http://localhost:3001';
-  const isSeller  = (profile as unknown as Record<string, unknown>)['isSeller'] === true
-    || storeApp?.status === 'ACTIVE';
+  const initials =
+    `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`.toUpperCase() ||
+    '?';
+  const adminUrl =
+    process.env['NEXT_PUBLIC_ADMIN_URL'] ?? 'http://localhost:3001';
+  const isSeller =
+    (profile as unknown as Record<string, unknown>)['isSeller'] === true ||
+    storeApp?.status === 'ACTIVE';
 
   return (
     <div className="relative hidden md:block" ref={menuRef}>
@@ -105,29 +127,31 @@ function UserMenu({ locale, loginHref }: { locale: string; loginHref: string }) 
           the avatar image alt is decorative, and vanishes entirely when the
           user has no photo and only initials render. */}
       <Tooltip label={t('tipAccount')} disabled={open}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-haspopup="true"
-        aria-label={t('tipAccount')}
-        className="flex items-center gap-2"
-      >
-        <div className="w-8 h-8 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center">
-          {profile.avatarUrl ? (
-            <Image
-              src={profile.avatarUrl}
-              alt={`${profile.firstName} ${profile.lastName}`}
-              width={32}
-              height={32}
-              className="object-cover w-full h-full"
-            />
-          ) : (
-            <span className="text-primary font-bold text-xs">{initials}</span>
-          )}
-        </div>
-        <ChevronDown className={`w-3.5 h-3.5 text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-haspopup="true"
+          aria-label={t('tipAccount')}
+          className="flex items-center gap-2"
+        >
+          <div className="w-8 h-8 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center">
+            {profile.avatarUrl ? (
+              <Image
+                src={profile.avatarUrl}
+                alt={`${profile.firstName} ${profile.lastName}`}
+                width={32}
+                height={32}
+                className="object-cover w-full h-full"
+              />
+            ) : (
+              <span className="text-primary font-bold text-xs">{initials}</span>
+            )}
+          </div>
+          <ChevronDown
+            className={`w-3.5 h-3.5 text-muted transition-transform ${open ? 'rotate-180' : ''}`}
+          />
+        </button>
       </Tooltip>
 
       {open && (
@@ -147,18 +171,47 @@ function UserMenu({ locale, loginHref }: { locale: string; loginHref: string }) 
             <p className="text-xs text-muted truncate">{t('viewProfile')}</p>
           </Link>
           {[
-            { icon: Package,       label: t('myOrders'), href: `/${locale}/account/orders`,   newTab: false },
+            {
+              icon: Package,
+              label: t('myOrders'),
+              href: `/${locale}/account/orders`,
+              newTab: false,
+            },
             // Both of these already have real pages; the menu simply never
             // linked to them. Every entry here must point at a route that
             // exists — a menu item leading to a blank page is worse than a
             // missing one.
-            { icon: MessageSquare, label: t('messages'), href: `/${locale}/account/messages`, newTab: false },
-            { icon: Tag,           label: t('offers'),   href: `/${locale}/account/offers`,   newTab: false },
-            { icon: Settings,      label: t('profile'),  href: `/${locale}/account/profile`,  newTab: false },
+            {
+              icon: MessageSquare,
+              label: t('messages'),
+              href: `/${locale}/account/messages`,
+              newTab: false,
+            },
+            {
+              icon: Tag,
+              label: t('offers'),
+              href: `/${locale}/account/offers`,
+              newTab: false,
+            },
+            {
+              icon: Settings,
+              label: t('profile'),
+              href: `/${locale}/account/profile`,
+              newTab: false,
+            },
             // "Open a Shop" is intentionally not offered here — the storefront
             // must not present as a multi-seller marketplace (Pinterest merchant
             // policy). Existing sellers still get a link to their own Seller Hub.
-            ...(isSeller ? [{ icon: Store, label: t('sellerHub'), href: adminUrl, newTab: true }] : []),
+            ...(isSeller
+              ? [
+                  {
+                    icon: Store,
+                    label: t('sellerHub'),
+                    href: adminUrl,
+                    newTab: true,
+                  },
+                ]
+              : []),
             // Deliberately absent: a balance/credit entry, and a gift-registry
             // entry. Buyers have no wallet in this system — SellerLedgerEntry
             // is shop-scoped — and there is no registry feature at all.
@@ -167,7 +220,9 @@ function UserMenu({ locale, loginHref }: { locale: string; loginHref: string }) 
               key={label}
               href={href}
               onClick={() => setOpen(false)}
-              {...(newTab ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+              {...(newTab
+                ? { target: '_blank', rel: 'noopener noreferrer' }
+                : {})}
               className="flex items-center gap-3 px-4 py-2.5 text-sm text-secondary hover:bg-muted/5 hover:text-primary transition-colors"
             >
               <Icon className="w-4 h-4 text-muted" />
@@ -198,35 +253,41 @@ export interface NavbarProps {
 }
 
 export function Navbar({ menuData }: NavbarProps = {}) {
-  const t            = useTranslations('nav');
-  const locale       = useLocale();
-  const pathname     = usePathname();
+  const t = useTranslations('nav');
+  const locale = useLocale();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [isScrolled, setIsScrolled]   = useState(false);
-  const [mobileOpen, setMobileOpen]   = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const user        = useAuthStore((s) => s.user);
+  const user = useAuthStore((s) => s.user);
   const isAuthReady = useAuthStore((s) => s.isAuthReady);
-  const token_      = useAuthStore((s) => s.accessToken);
+  const token_ = useAuthStore((s) => s.accessToken);
   // Shared cache key with UserMenu — served from cache after first fetch
   const { data: storeApp_ } = useQuery<{ status: string }>({
     queryKey: ['my-store-application'],
-    queryFn:  () => apiClient.get<{ status: string }>(API_ROUTES.SELLER.STORE_APPLICATION, { token: token_ ?? undefined }),
-    enabled:  !!token_ && isAuthReady,
+    queryFn: () =>
+      apiClient.get<{ status: string }>(API_ROUTES.SELLER.STORE_APPLICATION, {
+        token: token_ ?? undefined,
+      }),
+    enabled: !!token_ && isAuthReady,
     staleTime: 30_000,
   });
 
-  const adminUrl_   = process.env['NEXT_PUBLIC_ADMIN_URL'] ?? 'http://localhost:3001';
-  const isSeller    = (user as unknown as Record<string, unknown> | null)?.['isSeller'] === true
-    || storeApp_?.status === 'ACTIVE';
+  const adminUrl_ =
+    process.env['NEXT_PUBLIC_ADMIN_URL'] ?? 'http://localhost:3001';
+  const isSeller =
+    (user as unknown as Record<string, unknown> | null)?.['isSeller'] ===
+      true || storeApp_?.status === 'ACTIVE';
   const { data: wishlistItems } = useWishlist(isAuthReady && !!user);
-  const cart        = useCartStore((s) => s.cart);
-  const openDrawer  = useCartStore((s) => s.openDrawer);
-  const cartCount   = cart?.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
+  const cart = useCartStore((s) => s.cart);
+  const openDrawer = useCartStore((s) => s.openDrawer);
+  const cartCount =
+    cart?.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
   const wishlistCount = wishlistItems?.length ?? 0;
-  const search         = searchParams.toString();
-  const currentUrl     = `${pathname}${search ? `?${search}` : ''}`;
-  const loginHref      = buildLoginHref(locale, currentUrl);
+  const search = searchParams.toString();
+  const currentUrl = `${pathname}${search ? `?${search}` : ''}`;
+  const loginHref = buildLoginHref(locale, currentUrl);
 
   // Scroll shadow
   useEffect(() => {
@@ -236,7 +297,9 @@ export function Navbar({ menuData }: NavbarProps = {}) {
   }, []);
 
   // Close mobile drawer on route change
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   const tabs = menuData ?? [];
 
@@ -252,7 +315,6 @@ export function Navbar({ menuData }: NavbarProps = {}) {
         <div className="max-w-[1440px] mx-auto px-4 md:px-6 lg:px-8">
           {/* ── Row 1: Logo + Search + Icons ───────────────────────────────── */}
           <div className="flex items-center h-16 md:h-[72px] gap-3 md:gap-4">
-
             {/* Left: hamburger (mobile) + logo */}
             <div className="flex items-center gap-3 shrink-0">
               <button
@@ -272,6 +334,7 @@ export function Navbar({ menuData }: NavbarProps = {}) {
                   width={182}
                   height={52}
                   priority
+                  loading="eager"
                   className="h-10 md:h-11 w-auto object-contain"
                 />
               </Link>
@@ -280,7 +343,11 @@ export function Navbar({ menuData }: NavbarProps = {}) {
             {/* Center: large search bar (desktop only) */}
             <div className="hidden lg:flex flex-1 justify-center px-6">
               <div className="w-full max-w-2xl">
-                <SearchInput variant="header" placeholder={t('search')} className="w-full" />
+                <SearchInput
+                  variant="header"
+                  placeholder={t('search')}
+                  className="w-full"
+                />
               </div>
             </div>
 
@@ -369,17 +436,17 @@ export function Navbar({ menuData }: NavbarProps = {}) {
                   Hub), never as a public "open a shop" invite — see the
                   matching note in UserMenu above. */}
               {isSeller && (
-              <Tooltip label={t('tipSellerHub')}>
-                <Link
-                  href={adminUrl_}
-                  aria-label={t('sellerHub')}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hidden md:flex relative p-2 hover:bg-muted/10 rounded-full transition-colors"
-                >
-                  <Store className="w-5 h-5 text-secondary" />
-                </Link>
-              </Tooltip>
+                <Tooltip label={t('tipSellerHub')}>
+                  <Link
+                    href={adminUrl_}
+                    aria-label={t('sellerHub')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hidden md:flex relative p-2 hover:bg-muted/10 rounded-full transition-colors"
+                  >
+                    <Store className="w-5 h-5 text-secondary" />
+                  </Link>
+                </Tooltip>
               )}
 
               <UserMenu locale={locale} loginHref={loginHref} />
@@ -395,17 +462,19 @@ export function Navbar({ menuData }: NavbarProps = {}) {
             ) : (
               <div className="flex items-center gap-6 h-10">
                 {[
-                  { href: `/${locale}/search`,       label: t('shopAll')     },
-                  { href: `/${locale}/collections`,  label: t('collections') },
-                  { href: `/${locale}/occasions`,    label: t('occasions')   },
-                  { href: `/${locale}/gift-cards`,   label: t('giftCards')   },
+                  { href: `/${locale}/search`, label: t('shopAll') },
+                  { href: `/${locale}/collections`, label: t('collections') },
+                  { href: `/${locale}/occasions`, label: t('occasions') },
+                  { href: `/${locale}/gift-cards`, label: t('giftCards') },
                 ].map(({ href, label }) => (
                   <Link
                     key={href}
                     href={href}
                     className={[
                       'text-sm font-medium transition-colors whitespace-nowrap',
-                      pathname === href ? 'text-primary' : 'text-secondary hover:text-primary',
+                      pathname === href
+                        ? 'text-primary'
+                        : 'text-secondary hover:text-primary',
                     ].join(' ')}
                   >
                     {label}

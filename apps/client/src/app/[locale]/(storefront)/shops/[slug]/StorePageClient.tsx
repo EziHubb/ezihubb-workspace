@@ -28,7 +28,7 @@ interface StoreDto {
 
 // ── About section ─────────────────────────────────────────────────────────────
 
-function AboutSection({ store }: { store: StoreDto }) {
+function AboutSection({ store, locale }: { store: StoreDto; locale: string }) {
   const t = useTranslations('shops');
 
   return (
@@ -43,11 +43,11 @@ function AboutSection({ store }: { store: StoreDto }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-surface border border-border rounded-card p-5">
           <h3 className="font-semibold text-secondary text-sm mb-1">{t('storePage.about.totalSales')}</h3>
-          <p className="text-2xl font-bold text-secondary">{safeNum(store.totalOrders).toLocaleString()}</p>
+          <p className="text-2xl font-bold text-secondary">{safeNum(store.totalOrders).toLocaleString(locale)}</p>
         </div>
         <div className="bg-surface border border-border rounded-card p-5">
           <h3 className="font-semibold text-secondary text-sm mb-1">{t('storePage.about.activeListings')}</h3>
-          <p className="text-2xl font-bold text-secondary">{safeNum(store.totalProducts).toLocaleString()}</p>
+          <p className="text-2xl font-bold text-secondary">{safeNum(store.totalProducts).toLocaleString(locale)}</p>
         </div>
       </div>
 
@@ -175,7 +175,7 @@ export function StorePageClient({
         )}
 
         {activeTab === 'about' && (
-          <AboutSection store={store} />
+          <AboutSection store={store} locale={locale} />
         )}
       </div>
     </div>

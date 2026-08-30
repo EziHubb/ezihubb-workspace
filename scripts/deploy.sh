@@ -110,7 +110,7 @@ check_resources() {
 
 # How many past builds to keep per image (as timestamped tags), so old
 # layers aren't kept forever on the instance's small disk.
-KEEP_BUILDS=2
+KEEP_BUILDS=3
 
 # Snapshot the freshly-built/pulled image under a timestamped tag, then drop
 # older timestamped tags for the same image beyond $KEEP_BUILDS. Runs for all
@@ -299,12 +299,10 @@ else
         # above) — `:latest` might not reflect that change yet, so those
         # must go through a real local build below if their exact-SHA pull
         # also failed.
+        # An exact-SHA image is the release contract. Reusing :latest here can
+        # pair a newly migrated schema with an older generated Prisma client.
+        # If the SHA image is unavailable, Phase 2 performs a real local build.
         FALLBACK_TARGETS=""
-        for TARGET in $BUILD_TARGETS; do
-            if [ "${PULLED_OK[$TARGET]}" != true ] && ! echo " $OWN_FILES_CHANGED " | grep -q " $TARGET "; then
-                FALLBACK_TARGETS="$FALLBACK_TARGETS $TARGET"
-            fi
-        done
         if [ -n "$FALLBACK_TARGETS" ]; then
             echo ""
             echo -e "${YELLOW}Trying :latest from GHCR for:$FALLBACK_TARGETS (own files unchanged since CI last built them — reusing instead of rebuilding)...${NC}"
@@ -423,6 +421,29 @@ sleep 10
 echo ""
 echo -e "${YELLOW}Service status:${NC}"
 $SSH "cd '$DEPLOY_PATH' && $DC ps"
+
+wait_for_service() {
+    local service="$1"
+    local url="$2"
+    local attempt
+
+    for attempt in $(seq 1 30); do
+        if $SSH "cd '$DEPLOY_PATH' && $DC exec -T '$service' wget -qO- '$url' >/dev/null"; then
+            echo -e "${GREEN}OK: $service health check passed${NC}"
+            return 0
+        fi
+        sleep 2
+    done
+
+    echo -e "${RED}ERROR: $service failed its post-deploy health check${NC}"
+    return 1
+}
+
+echo ""
+echo -e "${YELLOW}Running post-deploy health checks...${NC}"
+wait_for_service api http://127.0.0.1:3002/api/v1/health
+wait_for_service client http://127.0.0.1:3000/api/health
+wait_for_service admin http://127.0.0.1:3001/api/health
 
 echo ""
 echo -e "${GREEN}=============================="

@@ -5,6 +5,12 @@
   "projectType": "library",
   "tags": ["scope:shared", "type:types"],
   "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "maxWarnings": 0
+      }
+    },
     "build": {
       "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
@@ -13,6 +19,12 @@
         "main": "libs/shared/types/src/index.ts",
         "tsConfig": "libs/shared/types/tsconfig.lib.json",
         "assets": ["libs/shared/types/*.md"]
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p libs/shared/types/tsconfig.lib.json"
       }
     }
   }

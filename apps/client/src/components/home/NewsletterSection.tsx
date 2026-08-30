@@ -80,7 +80,7 @@ export function NewsletterSection({
               </p>
             )}
 
-            <p className="text-gray-500 text-xs mt-4">{disclaimer}</p>
+            <p className="text-gray-300 text-xs mt-4">{disclaimer}</p>
           </>
         )}
       </div>

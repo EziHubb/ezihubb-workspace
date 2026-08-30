@@ -67,7 +67,8 @@ export default async function AdminLayout({
             shrink below the inbox's min-content height. Regular pages still
             scroll on main; full-height pages can pass the remaining space to
             their own internal panes without growing the document. */}
-        <main className="flex h-0 min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-3 sm:p-4 lg:p-8">
+        <a href="#admin-main-content" className="sr-only z-[10000] rounded-md bg-white px-4 py-2 text-secondary shadow focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to main content</a>
+        <main id="admin-main-content" tabIndex={-1} className="flex h-0 min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-3 outline-none sm:p-4 lg:p-8">
           {children}
         </main>
       </div>

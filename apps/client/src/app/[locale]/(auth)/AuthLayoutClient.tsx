@@ -49,7 +49,7 @@ export default function AuthLayoutClient({
         </div>
 
         {/* Right: form area */}
-        <main className="flex-1 flex flex-col items-center justify-center px-5 py-8 md:px-10">
+        <main id="main-content" tabIndex={-1} className="flex-1 flex flex-col items-center justify-center px-5 py-8 outline-none md:px-10">
           <div className="w-full max-w-[420px]">
             {children}
           </div>

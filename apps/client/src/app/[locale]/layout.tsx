@@ -1,8 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Suspense } from 'react';
 import { Inter, Playfair_Display } from 'next/font/google';
-import Script from 'next/script';
-import { GoogleAnalytics, GoogleTagManager } from '@next/third-parties/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
@@ -17,8 +14,7 @@ import { WebVitals } from '../../components/providers/WebVitals';
 import { CookieConsentBanner } from '../../components/analytics/CookieConsentBanner';
 import { PushPermissionPrompt } from '../../components/notifications/PushPermissionPrompt';
 import { AppBadge } from '../../components/notifications/AppBadge';
-import { MetaPixel } from '../../components/analytics/MetaPixel';
-import { PinterestTag } from '../../components/analytics/PinterestTag';
+import { ConsentAwareAnalytics } from '../../components/analytics/ConsentAwareAnalytics';
 import { OrganizationStructuredData } from '../../components/seo/OrganizationStructuredData';
 import { WebsiteStructuredData } from '../../components/seo/WebsiteStructuredData';
 import { AffiliateTracker } from '../../components/providers/AffiliateTracker';
@@ -38,8 +34,6 @@ const playfair = Playfair_Display({
   variable: '--font-playfair',
   display: 'swap',
 });
-
-export const dynamic = 'force-dynamic';
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -64,7 +58,11 @@ export async function generateMetadata({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: 'site' });
-  const isVi = locale === 'vi';
+  const openGraphLocales: Record<string, string> = {
+    en: 'en_US',
+    vi: 'vi_VN',
+    zh: 'zh_CN',
+  };
   return {
     // NOTE: page-level `generateMetadata` (home, products, collections, etc.)
     // overrides `alternates` below with its own `buildAlternates(path, locale)`
@@ -85,7 +83,7 @@ export async function generateMetadata({
     publisher: 'EziHubb',
     openGraph: {
       siteName: t('name'),
-      locale:   isVi ? 'vi_VN' : 'en_US',
+      locale:   openGraphLocales[locale] ?? 'en_US',
       type:     'website',
       images:   [{ url: '/og-default.jpg', width: 1200, height: 630,
                    alt: 'EziHubb — Personalized Gifts' }],
@@ -142,15 +140,33 @@ async function fetchSiteThemeStyle(): Promise<string> {
   try {
     const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3002';
     const res = await fetch(`${apiBase}/api/v1/settings/theme`, {
-      cache: 'no-store',
+      next: { revalidate: 300 },
     });
     if (!res.ok) return '';
     const json = (await res.json()) as {
       success: boolean;
       data: { primaryRgb?: string; primaryDark?: string; primaryLight?: string };
     };
-    const { primaryRgb = '232 93 63', primaryDark = '#C44A2E', primaryLight = '#FFF0EC' } = json.data ?? {};
-    return `:root{--c-primary:${primaryRgb};--c-primary-dark:${primaryDark};--c-primary-light:${primaryLight};}`;
+    const { primaryRgb = '184 64 40', primaryDark = '#96351F', primaryLight = '#FFF0EC' } = json.data ?? {};
+    const channels = primaryRgb
+      .trim()
+      .split(/\s+/)
+      .map(Number);
+    const relativeLuminance = ([red, green, blue]: number[]) => {
+      const linear = [red, green, blue].map((value) => {
+        const channel = value / 255;
+        return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+    };
+    const whiteContrast = channels.length === 3 && channels.every((value) => Number.isFinite(value))
+      ? 1.05 / (relativeLuminance(channels) + 0.05)
+      : 0;
+    // Keep store theming when it is readable. Otherwise fall back to the
+    // closest accessible EziHubb coral rather than shipping unreadable CTAs.
+    const accessiblePrimary = whiteContrast >= 5.5 ? primaryRgb : '184 64 40';
+    const accessibleDark = whiteContrast >= 5.5 ? primaryDark : '#96351F';
+    return `:root{--c-primary:${accessiblePrimary};--c-primary-dark:${accessibleDark};--c-primary-light:${primaryLight};}`;
   } catch {
     return '';
   }
@@ -178,33 +194,27 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   const messages = await getMessages({ locale });
+  const skipLabel = locale === 'vi'
+    ? 'Bỏ qua đến nội dung chính'
+    : locale === 'zh'
+      ? '跳到主要内容'
+      : 'Skip to main content';
 
-  const gtmId      = process.env.NEXT_PUBLIC_GTM_ID;
-  const gaId       = process.env.NEXT_PUBLIC_GA_ID;
-  const hjId       = process.env.NEXT_PUBLIC_HOTJAR_ID;
-  const isProd     = process.env.NODE_ENV === 'production';
   const themeStyle = await fetchSiteThemeStyle();
 
   return (
     <html lang={locale} className={`${inter.variable} ${playfair.variable}`}>
-      {/* GTM script — injected into <head> as early as possible */}
-      {isProd && gtmId && <GoogleTagManager gtmId={gtmId} />}
       <body className="font-sans bg-background text-secondary antialiased">
+        <a
+          href="#main-content"
+          className="sr-only z-[10000] rounded-md bg-white px-4 py-2 text-secondary shadow focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
+        >
+          {skipLabel}
+        </a>
         {/* Site theme CSS vars — placed inside body so it comes after <link> stylesheets in cascade */}
         {themeStyle && (
           // eslint-disable-next-line react/no-danger -- server-generated CSS vars, not user input
           <style dangerouslySetInnerHTML={{ __html: themeStyle }} />
-        )}
-        {/* GTM noscript fallback */}
-        {isProd && gtmId && (
-          <noscript>
-            <iframe
-              src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
-              height="0"
-              width="0"
-              style={{ display: 'none', visibility: 'hidden' }}
-            />
-          </noscript>
         )}
         <OrganizationStructuredData />
         <WebsiteStructuredData />
@@ -234,35 +244,11 @@ export default async function LocaleLayout({
             {/* Writes the unread count onto the installed app icon. Renders
                 nothing; the worker owns the same badge while the app is closed. */}
             <AppBadge />
-            <Suspense fallback={null}><MetaPixel /></Suspense>
-            <Suspense fallback={null}><PinterestTag /></Suspense>
+            <ConsentAwareAnalytics />
           </CurrencyProvider>
         </ReactQueryProvider>
         </NextAuthProvider>
         </NextIntlClientProvider>
-        {/* Direct GA4 tag — keep while GTM is being validated; remove once GTM is confirmed */}
-        {isProd && gaId && <GoogleAnalytics gaId={gaId} />}
-        {/* Hotjar — afterInteractive so it never blocks LCP */}
-        {(() => {
-          const hjSiteId = parseInt(hjId ?? '', 10);
-          return isProd && !isNaN(hjSiteId) && hjSiteId > 0 ? (
-            <Script
-              id="hotjar"
-              strategy="afterInteractive"
-              // eslint-disable-next-line react/no-danger -- static inline analytics snippet, not user input
-              dangerouslySetInnerHTML={{
-                __html: `(function(h,o,t,j,a,r){
-                  h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};
-                  h._hjSettings={hjid:${hjSiteId},hjsv:6};
-                  a=o.getElementsByTagName('head')[0];
-                  r=o.createElement('script');r.async=1;
-                  r.src=t+h._hjSettings.hjid+j+h._hjSettings.hjsv;
-                  a.appendChild(r);
-                })(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');`,
-              }}
-            />
-          ) : null;
-        })()}
       </body>
     </html>
   );

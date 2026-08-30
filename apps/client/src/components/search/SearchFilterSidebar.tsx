@@ -105,6 +105,7 @@ function CategoryTreeFilter({
   onSelect:     (slug: string | null) => void;
 }) {
   const t = useTranslations('search');
+  const locale = useLocale();
   const path = selectedSlug ? findPath(categories, selectedSlug) : null;
 
   // Children of whatever is selected — the next level down to drill into.
@@ -160,7 +161,7 @@ function CategoryTreeFilter({
           >
             <span className="truncate">{cat.name}</span>
             {count > 0 && (
-              <span className="text-xs text-muted tabular-nums shrink-0">{count.toLocaleString()}</span>
+              <span className="text-xs text-muted tabular-nums shrink-0">{count.toLocaleString(locale)}</span>
             )}
           </button>
         );
@@ -261,6 +262,7 @@ function FilterCheckbox({
   onChange: (v: boolean) => void;
   count?: number;
 }) {
+  const locale = useLocale();
   return (
     <label className="flex items-center justify-between py-1.5 cursor-pointer group">
       <div className="flex items-center gap-2">
@@ -279,7 +281,7 @@ function FilterCheckbox({
         </span>
       </div>
       {count != null && (
-        <span className="text-xs text-muted tabular-nums ml-2">{count.toLocaleString()}</span>
+        <span className="text-xs text-muted tabular-nums ml-2">{count.toLocaleString(locale)}</span>
       )}
     </label>
   );

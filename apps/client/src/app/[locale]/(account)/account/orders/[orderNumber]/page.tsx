@@ -323,7 +323,7 @@ export default function OrderDetailPage() {
             type="button"
             onClick={async () => {
               const { url } = await api.get<{ url: string }>(`/orders/${order.id}/invoice`);
-              window.open(url, '_blank');
+              window.open(url, '_blank', 'noopener,noreferrer');
             }}
             className="flex items-center gap-2 border border-border rounded-full px-4 py-2 text-sm hover:border-primary hover:text-primary transition-colors"
           >

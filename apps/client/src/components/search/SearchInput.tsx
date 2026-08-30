@@ -194,6 +194,7 @@ export function SearchInput({
           type="search"
           role="combobox"
           aria-autocomplete="list"
+          aria-label={tCommon('search')}
           aria-controls={listId}
           aria-expanded={showDropdown}
           aria-activedescendant={

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
@@ -257,9 +257,11 @@ export default function TrackOrderPage() {
   }
 
   return (
-    <SearchForm
-      locale={locale}
-      onSuccess={(order, email) => setResult({ order, email })}
-    />
+    <Suspense fallback={<div aria-busy="true" className="mx-auto min-h-[320px] max-w-xl px-4 py-12" />}>
+      <SearchForm
+        locale={locale}
+        onSuccess={(order, email) => setResult({ order, email })}
+      />
+    </Suspense>
   );
 }

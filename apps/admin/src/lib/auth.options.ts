@@ -205,13 +205,9 @@ export const authOptions: NextAuthOptions = {
   pages: { signIn: '/login', error: '/login' },
   session: { strategy: 'jwt', maxAge: 24 * 60 * 60 },
 
-  // Use an explicit secret — never rely on the default in production.
-  // Prefer NEXTAUTH_SECRET (server-only); fall back to NEXT_PUBLIC_NEXTAUTH_SECRET
-  // for deployments that only have the NEXT_PUBLIC_ variant set.
-  secret:
-    process.env['NEXTAUTH_SECRET'] ??
-    process.env['NEXT_PUBLIC_NEXTAUTH_SECRET'] ??
-    'admin-dev-secret-change-in-production',
+  // NextAuth fails closed when this server-only secret is absent in
+  // production. Never use a NEXT_PUBLIC_* value or predictable fallback.
+  secret: process.env['NEXTAUTH_SECRET'],
 
   // Debug mode in development only
   debug: process.env['NODE_ENV'] === 'development',

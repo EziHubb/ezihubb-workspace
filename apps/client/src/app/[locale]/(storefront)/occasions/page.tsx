@@ -48,7 +48,7 @@ export default async function OccasionsPage({
   );
 
   return (
-    <main>
+    <section>
       {/* ── Page Hero ──────────────────────────────────────────────────────── */}
       <section className="bg-gradient-to-br from-primary/10 via-background to-primary/5 py-14 md:py-20 text-center px-4">
         <p className="text-primary text-xs font-bold tracking-[0.2em] uppercase mb-4">
@@ -111,6 +111,6 @@ export default async function OccasionsPage({
           </Link>
         </div>
       </section>
-    </main>
+    </section>
   );
 }

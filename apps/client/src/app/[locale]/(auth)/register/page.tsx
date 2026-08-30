@@ -261,11 +261,21 @@ function RegisterForm() {
             />
             <span className="text-xs text-secondary">
               I agree to the{' '}
-              <Link href={`/${locale}/pages/terms`} className="text-primary underline underline-offset-2" target="_blank">
+              <Link
+                href={`/${locale}/pages/terms`}
+                className="text-primary underline underline-offset-2"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 Terms of Service
               </Link>{' '}
               and{' '}
-              <Link href={`/${locale}/pages/privacy-policy`} className="text-primary underline underline-offset-2" target="_blank">
+              <Link
+                href={`/${locale}/pages/privacy-policy`}
+                className="text-primary underline underline-offset-2"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 Privacy Policy
               </Link>
             </span>

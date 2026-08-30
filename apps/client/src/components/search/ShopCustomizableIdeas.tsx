@@ -1,12 +1,15 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLocale } from 'next-intl';
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import type { PaginatedResponse, ProductListItemDto } from '@ezihubb/types';
+
+const PLACEHOLDER = 'https://placehold.co/256x256/F5F1EB/999.png?text=No+Image';
 
 interface ShopCustomizableIdeasProps {
   query?: string;
@@ -46,10 +49,12 @@ export function ShopCustomizableIdeas({ query }: ShopCustomizableIdeasProps) {
             href={`/${locale}/products/${product.slug}`}
             className="flex-shrink-0 w-32 group"
           >
-            <div className="aspect-square rounded-xl overflow-hidden bg-[#F5F1EB] mb-2">
-              <img
-                src={product.primaryImage ?? product.images?.[0]?.url ?? ''}
+            <div className="relative aspect-square rounded-xl overflow-hidden bg-[#F5F1EB] mb-2">
+              <Image
+                src={product.primaryImage ?? product.images?.[0]?.url ?? PLACEHOLDER}
                 alt={product.name}
+                fill
+                sizes="128px"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
             </div>
