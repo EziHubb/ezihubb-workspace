@@ -31,6 +31,7 @@ import { ThumbnailCropModal } from '../ThumbnailCropModal';
 import { useListingImagesMap } from '../ListingImagesContext';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { fromPendingImageRef, toPendingImageRef } from '../helpers';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -501,11 +502,12 @@ function AddPhotosSlot({
 interface DraggablePhotoGridProps {
   productId:          string;
   imageIds:           string[];
+  imageOrder:         string[];
   pendingUrls:        string[];
   videoUrls:          string[];
   imageMap:           Record<string, ProductImage>;
   imageAltTexts:      Record<string, string>;
-  onReorder:          (ids: string[]) => void;
+  onReorder:          (refs: string[]) => void;
   onRemove:           (id: string) => void;
   onEditAlt:          (id: string, current: string) => void;
   onImagesAdded:      (images: { id: string; url: string }[]) => void;
@@ -517,6 +519,7 @@ interface DraggablePhotoGridProps {
 function DraggablePhotoGrid({
   productId,
   imageIds,
+  imageOrder,
   pendingUrls,
   videoUrls,
   imageMap,
@@ -540,10 +543,10 @@ function DraggablePhotoGrid({
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      const oldIdx = imageIds.indexOf(active.id as string);
-      const newIdx = imageIds.indexOf(over.id as string);
+      const oldIdx = imageOrder.indexOf(active.id as string);
+      const newIdx = imageOrder.indexOf(over.id as string);
       if (oldIdx !== -1 && newIdx !== -1) {
-        onReorder(arrayMove(imageIds, oldIdx, newIdx));
+        onReorder(arrayMove(imageOrder, oldIdx, newIdx));
       }
     }
   };
@@ -583,7 +586,7 @@ function DraggablePhotoGrid({
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext items={imageIds} strategy={rectSortingStrategy}>
+        <SortableContext items={imageOrder} strategy={rectSortingStrategy}>
           {/* 5-column grid */}
           {/* Sized so a full listing — 20 photos, 2 videos — is one screenful
               rather than something to scroll through while hunting for the one
@@ -592,17 +595,23 @@ function DraggablePhotoGrid({
               enough to tell two mockups of the same shirt apart. The ramp down
               keeps tiles from collapsing to thumbnails on narrow windows. */}
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2.5">
-            {/* Slot 0: Featured image */}
-            {imageIds.length > 0 && imageMap[imageIds[0]] && (
-              <SortableImageSlot
-                id={imageIds[0]}
-                imageUrl={imageMap[imageIds[0]]?.url ?? ''}
-                altText={imageAltTexts[imageIds[0]] ?? imageMap[imageIds[0]]?.altText ?? ''}
-                isFeatured
-                onRemove={() => onRemove(imageIds[0])}
-                onEditAlt={(cur) => onEditAlt(imageIds[0], cur)}
-              />
-            )}
+            {/* Slot 0: Featured image, whether persisted or still in this draft. */}
+            {imageOrder.length > 0 && (() => {
+              const ref = imageOrder[0];
+              const pendingUrl = fromPendingImageRef(ref);
+              const imageUrl = pendingUrl ?? imageMap[ref]?.url;
+              if (!imageUrl) return null;
+              return (
+                <SortableImageSlot
+                  id={ref}
+                  imageUrl={imageUrl}
+                  altText={imageAltTexts[ref] ?? imageMap[ref]?.altText ?? ''}
+                  isFeatured
+                  onRemove={() => pendingUrl ? onPendingUrlRemoved(pendingUrl) : onRemove(ref)}
+                  onEditAlt={(cur) => onEditAlt(ref, cur)}
+                />
+              );
+            })()}
 
             {/* Video slots — one tile per uploaded video, plus an add tile
                 while there is room. Renders a fragment of siblings, so they
@@ -610,40 +619,23 @@ function DraggablePhotoGrid({
             <VideoSlot videoUrls={videoUrls} onChange={onVideosChange} />
 
             {/* Slots 2..n: remaining photos */}
-            {imageIds.slice(1).map((id) => {
-              const img = imageMap[id];
-              if (!img) return null;
+            {imageOrder.slice(1).map((ref) => {
+              const pendingUrl = fromPendingImageRef(ref);
+              const img = imageMap[ref];
+              const imageUrl = pendingUrl ?? img?.url;
+              if (!imageUrl) return null;
               return (
                 <SortableImageSlot
-                  key={id}
-                  id={id}
-                  imageUrl={img.url}
-                  altText={imageAltTexts[id] ?? img.altText ?? ''}
+                  key={ref}
+                  id={ref}
+                  imageUrl={imageUrl}
+                  altText={imageAltTexts[ref] ?? img?.altText ?? ''}
                   isFeatured={false}
-                  onRemove={() => onRemove(id)}
-                  onEditAlt={(cur) => onEditAlt(id, cur)}
+                  onRemove={() => pendingUrl ? onPendingUrlRemoved(pendingUrl) : onRemove(ref)}
+                  onEditAlt={(cur) => onEditAlt(ref, cur)}
                 />
               );
             })}
-
-            {/* Pending images (presign-uploaded, not yet in DB) */}
-            {pendingUrls.map((url) => (
-              <div key={`pending:${url}`}
-                className="group relative rounded-xl overflow-hidden border-2 border-dashed border-primary/40 bg-background aspect-square">
-                <Image src={url} alt="Pending upload" fill className="object-cover" sizes="160px" />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                <button
-                  type="button"
-                  onClick={() => onPendingUrlRemoved(url)}
-                  className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-                <span className="absolute bottom-2 left-2 text-[9px] bg-amber-500 text-white px-1.5 py-0.5 rounded font-semibold">
-                  Saving…
-                </span>
-              </div>
-            ))}
 
             {/* Last slot: Add photos */}
             <AddPhotosSlot
@@ -754,10 +746,14 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
   const { watch, setValue } = useFormContext<ProductEditFormValues>();
 
   const imageIds        = watch('imageIds')          ?? [];
+  const explicitImageOrder = watch('imageOrder')     ?? [];
   const videoUrls       = watch('videoUrls')         ?? [];
   const thumbnailCrop   = watch('thumbnailCropData') as Crop | null;
   const imageAltTexts   = watch('imageAltTexts')     ?? {};
   const pendingImageUrls = watch('pendingImageUrls') ?? [];
+  const imageOrder = explicitImageOrder.length
+    ? explicitImageOrder
+    : [...imageIds, ...pendingImageUrls.map(toPendingImageRef)];
 
   const [altEditTarget,  setAltEditTarget]  = useState<{ id: string; current: string } | null>(null);
   const [showCropModal,  setShowCropModal]  = useState(false);
@@ -767,12 +763,20 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
   // picker in Item Options reads the same map.
   const { byId: imageMap, registerImages } = useListingImagesMap();
 
-  const primaryImage = imageIds[0] ? imageMap[imageIds[0]] : null;
+  const primaryRef = imageOrder[0];
+  const primaryImageUrl = primaryRef
+    ? fromPendingImageRef(primaryRef) ?? imageMap[primaryRef]?.url
+    : undefined;
 
-  const handleReorder = (ids: string[]) => {
-    setValue('imageIds', ids, { shouldDirty: true });
+  const handleReorder = (refs: string[]) => {
+    setValue('imageOrder', refs, { shouldDirty: true });
+    setValue('imageIds', refs.filter((ref) => !fromPendingImageRef(ref)), { shouldDirty: true });
+    setValue('pendingImageUrls', refs.map(fromPendingImageRef).filter((url): url is string => !!url), { shouldDirty: true });
   };
-  const handleRemove  = (id: string)   => setValue('imageIds', imageIds.filter((i) => i !== id), { shouldDirty: true });
+  const handleRemove = (id: string) => {
+    setValue('imageIds', imageIds.filter((i) => i !== id), { shouldDirty: true });
+    setValue('imageOrder', imageOrder.filter((ref) => ref !== id), { shouldDirty: true });
+  };
   const handleVideos  = (urls: string[])=> setValue('videoUrls', urls, { shouldDirty: true });
   const handleAltSave = (id: string, text: string) => setValue('imageAltTexts', { ...imageAltTexts, [id]: text }, { shouldDirty: true });
   const handleCropApply = (crop: Crop) => setValue('thumbnailCropData', crop as unknown as Record<string, number>, { shouldDirty: true });
@@ -792,14 +796,17 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
       } satisfies ProductImage)),
     );
     setValue('imageIds', [...imageIds, ...images.map((img) => img.id)], { shouldDirty: true });
+    setValue('imageOrder', [...imageOrder, ...images.map((img) => img.id)], { shouldDirty: true });
   };
 
   const handlePendingUrlsAdded = (urls: string[]) => {
     setValue('pendingImageUrls', [...pendingImageUrls, ...urls], { shouldDirty: true });
+    setValue('imageOrder', [...imageOrder, ...urls.map(toPendingImageRef)], { shouldDirty: true });
   };
 
   const handlePendingUrlRemoved = (url: string) => {
     setValue('pendingImageUrls', pendingImageUrls.filter((u) => u !== url), { shouldDirty: true });
+    setValue('imageOrder', imageOrder.filter((ref) => ref !== toPendingImageRef(url)), { shouldDirty: true });
   };
 
   return (
@@ -824,6 +831,7 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
       <DraggablePhotoGrid
         productId=""
         imageIds={imageIds}
+        imageOrder={imageOrder}
         pendingUrls={pendingImageUrls}
         videoUrls={videoUrls}
         imageMap={imageMap}
@@ -858,7 +866,7 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
           <button
             type="button"
             onClick={() => setShowCropModal(true)}
-            disabled={!primaryImage}
+            disabled={!primaryImageUrl}
             className="flex items-center gap-1.5 text-sm font-medium text-secondary border border-border rounded-button px-3 py-2 hover:border-primary/40 hover:text-primary disabled:opacity-40 transition-colors shrink-0"
           >
             <CropIcon className="w-3.5 h-3.5" />
@@ -867,7 +875,7 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
         </div>
 
         <ThumbnailPreview
-          primaryImageUrl={primaryImage?.url}
+          primaryImageUrl={primaryImageUrl}
           cropData={thumbnailCrop}
         />
       </div>
@@ -883,8 +891,8 @@ export function PhotoVideoTab({ product }: PhotoVideoTabProps) {
       )}
 
       <ThumbnailCropModal
-        isOpen={showCropModal && !!primaryImage}
-        primaryImageUrl={primaryImage?.url ?? ''}
+        isOpen={showCropModal && !!primaryImageUrl}
+        primaryImageUrl={primaryImageUrl ?? ''}
         currentCrop={thumbnailCrop}
         onSave={handleCropApply}
         onClose={() => setShowCropModal(false)}

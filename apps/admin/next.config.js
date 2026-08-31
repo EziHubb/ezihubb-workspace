@@ -6,9 +6,9 @@ const { composePlugins, withNx } = require('@nx/next');
 const isDevelopment = process.env.NODE_ENV === 'development';
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ''} https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com`,
-  "style-src 'self' 'unsafe-inline'",
-  "font-src 'self' data:",
+  `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ''} https://static.cloudflareinsights.com https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
   "connect-src 'self' https: wss:",

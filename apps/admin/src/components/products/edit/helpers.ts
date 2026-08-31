@@ -1,10 +1,19 @@
-import type { AdminProductDto, AdminProductDetailDto, ProductEditFormValues, VariationGroup } from './types';
+import type {
+  AdminProductDto,
+  AdminProductDetailDto,
+  ApplyVariationsPayload,
+  ProductEditFormValues,
+  ProductVariantRow,
+  VariationGroup,
+  VariationSettings,
+} from './types';
 import { safeArr, safeStr } from '../../../lib/fmt';
 
 // ── Empty defaults (create mode) ─────────────────────────────────────────────
 
 const EMPTY_DEFAULTS: ProductEditFormValues = {
   imageIds:             [],
+  imageOrder:           [],
   videoUrls:            [],
   thumbnailCropData:    null,
   imageAltTexts:        {},
@@ -131,6 +140,7 @@ export function buildDefaultValues(
     // Print files travel with the product but are never part of the shopper
     // gallery — only MOCKUP rows belong in imageIds.
     imageIds:          safeArr(product.images).filter((i) => i.type !== 'PRINT_FILE').sort((a, b) => a.sortOrder - b.sortOrder).map((i) => i.id),
+    imageOrder:        safeArr(product.images).filter((i) => i.type !== 'PRINT_FILE').sort((a, b) => a.sortOrder - b.sortOrder).map((i) => i.id),
     videoUrls:         safeArr(product.videoUrls),
     thumbnailCropData: product.thumbnailCropData ?? null,
     imageAltTexts:     detail?.imageAltTexts     ?? {},
@@ -194,7 +204,7 @@ export function buildDefaultValues(
 /** Fields that go to PATCH /admin/products/:id (PostgreSQL) */
 export function extractPrismaFields(data: ProductEditFormValues) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { description, customOptions, variationDraft, relatedProductIds, gpsrInfo, imageAltTexts, imageIds, pendingImageUrls, videoUrls, primaryCategoryId, ...prismaData } = data;
+  const { description, customOptions, variationDraft, relatedProductIds, gpsrInfo, imageAltTexts, imageIds, imageOrder, pendingImageUrls, videoUrls, primaryCategoryId, ...prismaData } = data;
   return { ...prismaData, categoryId: primaryCategoryId };
 }
 
@@ -231,16 +241,92 @@ export function generateSku(): string {
 export function buildCopyDefaultValues(
   source:       AdminProductDto,
   sourceDetail: AdminProductDetailDto | null | undefined,
+  variationDraft?: ApplyVariationsPayload | null,
 ): ProductEditFormValues {
   const base = buildDefaultValues(source, sourceDetail);
+  const copyImages = source.images
+    .filter((image) => image.type === 'MOCKUP')
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const pendingImageUrls = copyImages.map((image) => image.url);
   return {
     ...base,
     name:             `Copy of ${source.name}`,
     sku:              '',   // generateSku() will run on save
     imageIds:         [],   // ids belong to the source product record
-    pendingImageUrls: source.images
-      .filter((image) => image.type === 'MOCKUP')
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((image) => image.url),
+    imageOrder:       pendingImageUrls.map(toPendingImageRef),
+    pendingImageUrls,
+    imageAltTexts: Object.fromEntries(copyImages.flatMap((image) => {
+      const altText = sourceDetail?.imageAltTexts?.[image.id] ?? image.altText;
+      return altText ? [[toPendingImageRef(image.url), altText]] : [];
+    })),
+    variationDraft: variationDraft ?? null,
+  };
+}
+
+export const PENDING_IMAGE_REF_PREFIX = 'pending:';
+
+export function toPendingImageRef(url: string): string {
+  return `${PENDING_IMAGE_REF_PREFIX}${url}`;
+}
+
+export function fromPendingImageRef(ref: string): string | null {
+  return ref.startsWith(PENDING_IMAGE_REF_PREFIX)
+    ? ref.slice(PENDING_IMAGE_REF_PREFIX.length)
+    : null;
+}
+
+/** Clone variation data without reusing globally unique source row ids. */
+export function buildCopyVariationDraft(
+  groups: VariationGroup[],
+  settings: VariationSettings | null | undefined,
+  variants: ProductVariantRow[],
+  sourceImages: AdminProductDto['images'],
+): ApplyVariationsPayload | null {
+  if (!groups.length) return null;
+
+  const groupIdMap = new Map(groups.map((group, index) => [group.id, `new-copy-${index}`]));
+  const imageUrlById = new Map(sourceImages.map((image) => [image.id, image.url]));
+  const mappedGroups = groups.map((group, groupIndex) => {
+    const groupId = groupIdMap.get(group.id) ?? `new-copy-${groupIndex}`;
+    return {
+      id: groupId,
+      name: group.name,
+      displayType: group.displayType,
+      sortOrder: group.sortOrder,
+      options: group.options.map((option, optionIndex) => {
+        const linkedUrl = option.imageId ? imageUrlById.get(option.imageId) : option.imageUrl;
+        return {
+          id: `new-copy-${groupIndex}-${optionIndex}`,
+          name: option.name,
+          value: option.value,
+          colorHex: option.colorHex,
+          imageUrl: linkedUrl ?? null,
+          imageId: linkedUrl ? toPendingImageRef(linkedUrl) : null,
+          isAvailable: option.isAvailable,
+          sortOrder: option.sortOrder,
+        };
+      }),
+    };
+  });
+
+  const variesBy = (settings?.variesBy ?? []).map((flag) => {
+    if (!flag.startsWith('price:')) return flag;
+    const mapped = groupIdMap.get(flag.slice('price:'.length));
+    return mapped ? `price:${mapped}` : flag;
+  });
+
+  return {
+    groups: mappedGroups,
+    variesBy,
+    photoGroupId: settings?.photoGroupId
+      ? groupIdMap.get(settings.photoGroupId) ?? null
+      : null,
+    variantEdits: variants.map((variant) => ({
+      options: variant.options,
+      price: variant.price === null ? null : Number(variant.price),
+      quantity: variant.quantity,
+      sku: null,
+      isAvailable: variant.isAvailable,
+    })),
   };
 }

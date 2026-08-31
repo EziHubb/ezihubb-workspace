@@ -11,13 +11,13 @@ const path = require('path');
 const isDevelopment = process.env.NODE_ENV === 'development';
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ''} https://www.googletagmanager.com https://www.google-analytics.com https://static.hotjar.com https://script.hotjar.com https://connect.facebook.net https://s.pinimg.com https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com`,
+  `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ''} https://accounts.google.com https://www.googletagmanager.com https://www.google-analytics.com https://static.hotjar.com https://script.hotjar.com https://connect.facebook.net https://s.pinimg.com https://ct.pinterest.com https://static.cloudflareinsights.com https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
   "connect-src 'self' https: wss:",
-  "frame-src 'self' https://www.googletagmanager.com https://vars.hotjar.com https://js.stripe.com https://hooks.stripe.com https://www.paypal.com",
+  "frame-src 'self' https://accounts.google.com https://www.googletagmanager.com https://vars.hotjar.com https://ct.pinterest.com https://js.stripe.com https://hooks.stripe.com https://www.paypal.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

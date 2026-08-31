@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import type { ProductEditFormValues, ProductImage } from './types';
+import { fromPendingImageRef, toPendingImageRef } from './helpers';
 
 /**
  * Every photo this listing currently has, including ones uploaded a moment ago.
@@ -86,11 +87,29 @@ export function useListingImages(): ProductImage[] {
   const { byId } = useListingImagesMap();
   const { watch } = useFormContext<ProductEditFormValues>();
   const ids = watch('imageIds') ?? [];
+  const pendingUrls = watch('pendingImageUrls') ?? [];
+  const explicitOrder = watch('imageOrder') ?? [];
+  const order = explicitOrder.length
+    ? explicitOrder
+    : [...ids, ...pendingUrls.map(toPendingImageRef)];
 
   return useMemo(
-    () => ids.map((id) => byId[id]).filter((img): img is ProductImage => Boolean(img)),
-    // `ids` is a fresh array each render; its contents are what matter.
+    () => order.map((ref, index) => {
+      const pendingUrl = fromPendingImageRef(ref);
+      if (pendingUrl) {
+        return {
+          id: ref,
+          url: pendingUrl,
+          isPrimary: index === 0,
+          sortOrder: index,
+          type: 'MOCKUP' as const,
+          printSide: null,
+        } satisfies ProductImage;
+      }
+      return byId[ref];
+    }).filter((img): img is ProductImage => Boolean(img)),
+    // Form arrays are fresh on every render; their contents are what matter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ids.join('|'), byId],
+    [order.join('|'), byId],
   );
 }

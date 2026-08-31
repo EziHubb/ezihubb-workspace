@@ -15,9 +15,10 @@ import {
   buildCopyDefaultValues,
   extractPrismaFields,
   extractMongoFields,
+  fromPendingImageRef,
   generateSku,
 } from './helpers';
-import type { AdminProductDto, AdminProductDetailDto, ProductEditFormValues } from './types';
+import type { AdminProductDto, AdminProductDetailDto, ApplyVariationsPayload, ProductEditFormValues } from './types';
 
 import { PhotoVideoTab }      from './tabs/PhotoVideoTab';
 import { ItemDetailsTab }     from './tabs/ItemDetailsTab';
@@ -112,9 +113,10 @@ interface ProductEditShellProps {
   detail?:  AdminProductDetailDto | null;
   copyFrom?:       AdminProductDto | null;
   copyFromDetail?: AdminProductDetailDto | null;
+  copyVariationDraft?: ApplyVariationsPayload | null;
 }
 
-export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: ProductEditShellProps) {
+export function ProductEditShell({ product, detail, copyFrom, copyFromDetail, copyVariationDraft }: ProductEditShellProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -123,7 +125,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
 
   const form = useForm<ProductEditFormValues>({
     defaultValues: isCopy && copyFrom
-      ? buildCopyDefaultValues(copyFrom, copyFromDetail)
+      ? buildCopyDefaultValues(copyFrom, copyFromDetail, copyVariationDraft)
       : buildDefaultValues(product, detail),
   });
   const productType = form.watch('productType') ?? 'PHYSICAL';
@@ -284,16 +286,6 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
   }, [form]);
 
   const commitStagedChanges = async (productId: string, data: ProductEditFormValues) => {
-    await api.put(API_ROUTES.ADMIN.PRODUCT_DETAIL(productId), extractMongoFields(data));
-
-    if (data.variationDraft) {
-      await api.post(API_ROUTES.ADMIN.PRODUCT_VARIATIONS_APPLY(productId), data.variationDraft);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['variation-groups', productId] }),
-        queryClient.invalidateQueries({ queryKey: ['variation-settings', productId] }),
-        queryClient.invalidateQueries({ queryKey: ['product-variant-list', productId] }),
-      ]);
-    }
     await api.patch(API_ROUTES.ADMIN.PRODUCT_RELATED(productId), {
       ids: data.relatedProductIds ?? [],
     });
@@ -318,15 +310,53 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
       );
       attached.forEach((image, index) => attachedImageIdsRef.current.set(urlsToAttach[index], image.id));
     }
-    const attachedIds = pendingImageUrls
-      .map((url) => attachedImageIdsRef.current.get(url))
+    const imageOrder = data.imageOrder?.length
+      ? data.imageOrder
+      : [...keptImageIds, ...pendingImageUrls.map((url) => `pending:${url}`)];
+    const imageIdForRef = (ref: string) => {
+      const pendingUrl = fromPendingImageRef(ref);
+      return pendingUrl ? attachedImageIdsRef.current.get(pendingUrl) : ref;
+    };
+    const orderedImageIds = imageOrder
+      .map(imageIdForRef)
       .filter((id): id is string => !!id);
-    const orderedImageIds = [...keptImageIds, ...attachedIds];
     if (orderedImageIds.length) {
       await api.patch(API_ROUTES.ADMIN.PRODUCT_IMAGES_REORDER(productId), {
         orderedIds: orderedImageIds,
       });
     }
+
+    const imageAltTexts = Object.fromEntries(
+      Object.entries(data.imageAltTexts ?? {}).map(([ref, text]) => [imageIdForRef(ref) ?? ref, text]),
+    );
+    const committedData = {
+      ...data,
+      imageIds: orderedImageIds,
+      imageOrder: orderedImageIds,
+      imageAltTexts,
+      pendingImageUrls: [],
+      variationDraft: null,
+    };
+
+    if (data.variationDraft) {
+      const variationDraft: ApplyVariationsPayload = {
+        ...data.variationDraft,
+        groups: data.variationDraft.groups.map((group) => ({
+          ...group,
+          options: group.options.map((option) => ({
+            ...option,
+            imageId: option.imageId ? imageIdForRef(option.imageId) ?? null : null,
+          })),
+        })),
+      };
+      await api.post(API_ROUTES.ADMIN.PRODUCT_VARIATIONS_APPLY(productId), variationDraft);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['variation-groups', productId] }),
+        queryClient.invalidateQueries({ queryKey: ['variation-settings', productId] }),
+        queryClient.invalidateQueries({ queryKey: ['product-variant-list', productId] }),
+      ]);
+    }
+    await api.put(API_ROUTES.ADMIN.PRODUCT_DETAIL(productId), extractMongoFields(committedData));
 
     const originalVideos = product?.videoUrls ?? [];
     const nextVideos = data.videoUrls ?? [];
@@ -340,7 +370,7 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
       await api.post(API_ROUTES.ADMIN.PRODUCT_VIDEO_FROM_URL(productId), { url });
       attachedVideoUrlsRef.current.add(url);
     }
-    return { ...data, imageIds: orderedImageIds, pendingImageUrls: [], variationDraft: null };
+    return committedData;
   };
 
   const validatePublish = (data: ProductEditFormValues) => {
@@ -357,9 +387,13 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
       scrollToSection('pricing-shipping');
       throw new Error('Price must be greater than 0');
     }
-    if (data.productType !== 'DIGITAL' && (!data.processingProfileId || !data.shippingProfileId)) {
+    if (data.productType !== 'DIGITAL' && !data.processingProfileId) {
       scrollToSection('pricing-shipping');
-      throw new Error('Set a processing profile and a delivery option before publishing this listing');
+      throw new Error('Set a processing profile before publishing this listing');
+    }
+    if (data.productType !== 'DIGITAL' && !data.shippingProfileId) {
+      scrollToSection('pricing-shipping');
+      throw new Error('Select a delivery option before publishing this listing');
     }
   };
 
@@ -416,9 +450,13 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
     // backend enforces this too (merged against whatever's already stored),
     // but checking client-side first avoids a round-trip and scrolls the
     // seller straight to the field that needs fixing.
-    if ((product?.isActive || publishingDraft) && data.productType !== 'DIGITAL' && (!data.processingProfileId || !data.shippingProfileId)) {
+    if ((product?.isActive || publishingDraft) && data.productType !== 'DIGITAL' && !data.processingProfileId) {
       scrollToSection('pricing-shipping');
-      throw new Error('Set a processing profile and a delivery option before saving this listing');
+      throw new Error('Set a processing profile before saving this listing');
+    }
+    if ((product?.isActive || publishingDraft) && data.productType !== 'DIGITAL' && !data.shippingProfileId) {
+      scrollToSection('pricing-shipping');
+      throw new Error('Select a delivery option before saving this listing');
     }
 
     // Draft rows start with a temporary DRAFT-* SKU. Once the seller reopens
@@ -466,7 +504,9 @@ export function ProductEditShell({ product, detail, copyFrom, copyFromDetail }: 
   };
 
   const handleDiscard = () => {
-    form.reset(buildDefaultValues(product, detail));
+    form.reset(isCopy && copyFrom
+      ? buildCopyDefaultValues(copyFrom, copyFromDetail, copyVariationDraft)
+      : buildDefaultValues(product, detail));
     setSaveError(null);
   };
 

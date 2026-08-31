@@ -1831,11 +1831,17 @@ export class ProductsService {
       const photoGroupId = requestedPhotoGroup
         ? groupIdMap.get(requestedPhotoGroup) ?? null
         : null;
+      const variesBy = dto.variesBy.map((flag) => {
+        if (!flag.startsWith('price:')) return flag;
+        const requestedGroupId = flag.slice('price:'.length);
+        const persistedGroupId = groupIdMap.get(requestedGroupId);
+        return persistedGroupId ? `price:${persistedGroupId}` : flag;
+      });
 
       await tx.variationSettings.upsert({
         where:  { productId },
-        create: { productId, enableVariations: dto.groups.length > 0, variesBy: dto.variesBy, photoGroupId },
-        update: { enableVariations: dto.groups.length > 0, variesBy: dto.variesBy, photoGroupId },
+        create: { productId, enableVariations: dto.groups.length > 0, variesBy, photoGroupId },
+        update: { enableVariations: dto.groups.length > 0, variesBy, photoGroupId },
       });
 
       const keyToId = await this.syncVariantsFromGroups(tx, productId, Number(product.basePrice));

@@ -11,6 +11,7 @@ import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import type { ProductListItemDto } from '@ezihubb/types';
 import { fmtAmount } from '@ezihubb/utils';
+import { useAuthStore } from '../../lib/store/auth.store';
 
 const PLACEHOLDER = 'https://placehold.co/96x96/F5F1EB/999.png?text=No+Image';
 
@@ -18,6 +19,8 @@ export function RecentlyViewedPanel() {
   const t = useTranslations('search');
   const locale = useLocale();
   const [isOpen, setIsOpen] = useState(false);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const isAuthReady = useAuthStore((state) => state.isAuthReady);
 
   const { data: viewed = [] } = useQuery<ProductListItemDto[]>({
     queryKey: ['recently-viewed'],
@@ -34,6 +37,7 @@ export function RecentlyViewedPanel() {
     },
     staleTime: 60_000,
     retry: false,
+    enabled: isAuthReady && Boolean(accessToken),
   });
 
   if (viewed.length === 0) return null;

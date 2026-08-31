@@ -24,6 +24,8 @@ export interface GpsrInfo {
 export interface ProductEditFormValues {
   // Photo & Video tab
   imageIds:          string[];
+  /** Ordered references for both persisted image ids and staged image URLs. */
+  imageOrder:        string[];
   videoUrls:         string[];
   thumbnailCropData: Record<string, number> | null;
   imageAltTexts:     Record<string, string>;

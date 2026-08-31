@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -317,9 +317,19 @@ function ShippingProfileCard({
     staleTime: 10 * 60_000,
   });
 
+  const fallbackProfile = profiles.find((p) => p.isDefault) ?? profiles[0];
   const selected = profiles.find((p) => p.id === profileId)
-    ?? profiles.find((p) => p.isDefault)
-    ?? profiles[0];
+    ?? (!profileId ? fallbackProfile : undefined);
+
+  // The card historically displayed the store default (or first available)
+  // profile when the listing itself had no shippingProfileId. That made the
+  // UI look configured while React Hook Form still contained null, so publish
+  // correctly failed its delivery guard. If a fallback is shown, apply that
+  // exact profile to the local listing draft as well; it is persisted only
+  // when the seller submits the listing form.
+  useEffect(() => {
+    if (!profileId && fallbackProfile?.id) onChange(fallbackProfile.id);
+  }, [fallbackProfile?.id, onChange, profileId]);
 
   const handleProfileSaved = (saved: ShippingProfile) => {
     qc.invalidateQueries({ queryKey: ['shipping-profiles'] });
