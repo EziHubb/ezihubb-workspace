@@ -192,7 +192,8 @@ export class SellerOrderDetailService {
     const subtotal = Number(row.subtotal);
     const discount = Number(row.discountAmount);
     const postage  = Number(row.shippingCost);
-    const total    = round2(subtotal - discount + postage);
+    const shippingSubsidy = Number(row.shippingSubsidy);
+    const total    = round2(subtotal - discount + postage - shippingSubsidy);
 
     return {
       id:          row.id,
@@ -264,6 +265,7 @@ export class SellerOrderDetailService {
         couponCode: row.order.couponCode,
         subtotal:   round2(subtotal - discount),
         postage,
+        shippingSubsidy,
         total,
         paidVia:    row.order.payment?.method ?? null,
         paidAt:     row.order.payment?.status === 'PAID' ? row.order.payment.paidAt : null,
@@ -457,6 +459,7 @@ export class SellerOrderDetailService {
     const subtotal = Number(row.subtotal);
     const discount = Number(row.discountAmount);
     const postage  = Number(row.shippingCost);
+    const shippingSubsidy = Number(row.shippingSubsidy);
 
     const fees = entries
       .filter((e) => e.type !== SellerLedgerEntryType.SALE)
@@ -473,9 +476,10 @@ export class SellerOrderDetailService {
 
     return {
       buyerPaid: {
-        total:      round2(subtotal - discount + postage),
+        total:      round2(subtotal - discount + postage - shippingSubsidy),
         itemsPrice: subtotal,
         postage,
+        shippingSubsidy,
         discount,
         couponCode: order?.couponCode ?? null,
         subtotal:   round2(subtotal - discount),

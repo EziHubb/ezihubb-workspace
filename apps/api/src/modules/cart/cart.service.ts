@@ -18,6 +18,16 @@ import {
   CartItemDto,
   ShippingEstimateDto,
 } from './dto/cart-response.dto';
+import {
+  applyBestPromo,
+  getEffectivePrice,
+  getSalesForListings,
+} from '../products/pricing.util';
+import {
+  qualifiesForPlatformFreeShipping,
+  resolveFreeShippingThreshold,
+  resolveShippingSettlement,
+} from '../shipping/free-shipping-policy';
 
 const MAX_ITEMS = 50;
 const GUEST_CART_TTL_MS = 30 * 24 * 60 * 60 * 1_000;
@@ -77,7 +87,7 @@ export class CartService {
           include: CART_INCLUDE,
         });
       }
-      return { cart: this.mapToDto(cart) };
+      return { cart: await this.mapToDto(cart) };
     }
 
     if (sessionId) {
@@ -85,7 +95,7 @@ export class CartService {
         where: { sessionId },
         include: CART_INCLUDE,
       });
-      if (cart) return { cart: this.mapToDto(cart) };
+      if (cart) return { cart: await this.mapToDto(cart) };
     }
 
     // New guest cart
@@ -96,7 +106,7 @@ export class CartService {
       include: CART_INCLUDE,
     });
 
-    return { cart: this.mapToDto(cart), newSessionId };
+    return { cart: await this.mapToDto(cart), newSessionId };
   }
 
   async addItem(cartId: string, dto: AddCartItemDto): Promise<CartResponseDto> {
@@ -128,9 +138,24 @@ export class CartService {
     // variant.price is nullable — a combination the seller hasn't priced yet
     // (or one that never varies from the base price) falls back to basePrice
     // rather than adding to the cart at $0.
-    const unitPrice = variant?.price != null
+    const rawUnitPrice = variant?.price != null
       ? Number(variant.price)
       : Number(product.basePrice);
+    // Snapshot the price the buyer was actually shown, including any active
+    // auto-apply sale. Cart reads and checkout both resolve the same promotion
+    // rules again, so a sale starting/ending while an item sits in the cart is
+    // represented as a real price change instead of silently charging the raw
+    // variant price.
+    const unitPrice = product.storeId
+      ? (
+          await getEffectivePrice(
+            this.prisma,
+            product.id,
+            product.storeId,
+            rawUnitPrice,
+          )
+        ).price
+      : rawUnitPrice;
     const customKey = dto.customizationData
       ? JSON.stringify(dto.customizationData)
       : null;
@@ -380,7 +405,7 @@ export class CartService {
       });
     }
 
-    const subtotal = this.calcSubtotal(cart.items);
+    const subtotal = await this.calcSubtotal(cart.items);
 
     if (
       promo.minOrderAmount !== null &&
@@ -438,15 +463,38 @@ export class CartService {
     cartId: string,
     dto: EstimateShippingDto,
   ): Promise<ShippingEstimateDto> {
-    const cart = await this.prisma.cart.findUnique({
-      where: { id: cartId },
-      include: CART_INCLUDE,
-    });
-    const unresolvable: ShippingEstimateDto = { resolvable: false, perStore: [], totalCost: 0, minDays: null, maxDays: null };
+    const [cart, freeShippingThreshold] = await Promise.all([
+      this.prisma.cart.findUnique({
+        where: { id: cartId },
+        include: CART_INCLUDE,
+      }),
+      this.getFreeShippingThreshold(),
+    ]);
+    const unresolvable: ShippingEstimateDto = {
+      resolvable: false,
+      perStore: [],
+      totalCost: 0,
+      freeShippingThreshold,
+      freeShippingApplied: false,
+      platformFreeShippingApplied: false,
+      shippingSubsidy: 0,
+      minDays: null,
+      maxDays: null,
+    };
     if (!cart || cart.items.length === 0) return unresolvable;
 
     const physicalItems = cart.items.filter((i) => i.product.productType !== 'DIGITAL');
-    if (physicalItems.length === 0) return { resolvable: true, perStore: [], totalCost: 0, minDays: null, maxDays: null };
+    if (physicalItems.length === 0) return {
+      resolvable: true,
+      perStore: [],
+      totalCost: 0,
+      freeShippingThreshold,
+      freeShippingApplied: false,
+      platformFreeShippingApplied: false,
+      shippingSubsidy: 0,
+      minDays: null,
+      maxDays: null,
+    };
 
     const result = await this.shippingService.resolveSellerShippingCost(
       physicalItems.map((i) => ({
@@ -458,25 +506,104 @@ export class CartService {
     );
     if (!result) return unresolvable;
 
+    const [subtotal, freeShippingPromotion] = await Promise.all([
+      this.calcSubtotal(cart.items, dto.country),
+      cart.couponCode
+        ? this.prisma.promotion.findFirst({
+            where: {
+              code: cart.couponCode,
+              type: DiscountType.FREE_SHIPPING,
+              isActive: true,
+              OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }],
+              AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }],
+            },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+    ]);
+    const platformFreeShippingApplied = qualifiesForPlatformFreeShipping(
+      subtotal,
+      freeShippingThreshold,
+    );
+    const couponFreeShippingApplied = Boolean(freeShippingPromotion);
+    const freeShippingApplied = couponFreeShippingApplied || platformFreeShippingApplied;
+
     const perStore = [...result.perStore.entries()].map(([storeId, cost]) => {
       const days = result.deliveryDays.get(storeId)!;
-      return { storeId, cost, methodName: result.methodNames.get(storeId) ?? 'Standard Shipping', minDays: days.minDays, maxDays: days.maxDays };
+      const settlement = resolveShippingSettlement(cost, {
+        platformSponsored: platformFreeShippingApplied,
+        couponWaived: couponFreeShippingApplied,
+      });
+      return {
+        storeId,
+        cost: settlement.buyerCharge,
+        shippingSubsidy: settlement.platformSubsidy,
+        methodName: result.methodNames.get(storeId) ?? 'Standard Shipping',
+        minDays: days.minDays,
+        maxDays: days.maxDays,
+      };
     });
     const totalCost = perStore.reduce((sum, s) => sum + s.cost, 0);
+    const shippingSubsidy = perStore.reduce((sum, s) => sum + s.shippingSubsidy, 0);
     const minDays = perStore.length ? Math.min(...perStore.map((s) => s.minDays)) : null;
     const maxDays = perStore.length ? Math.max(...perStore.map((s) => s.maxDays)) : null;
 
-    return { resolvable: true, perStore, totalCost, minDays, maxDays };
+    return {
+      resolvable: true,
+      perStore,
+      totalCost,
+      freeShippingThreshold,
+      freeShippingApplied,
+      platformFreeShippingApplied,
+      shippingSubsidy,
+      minDays,
+      maxDays,
+    };
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-  private calcSubtotal(items: CartWithItems['items']): number {
-    return items.reduce((sum, item) => {
-      const variantPrice = item.variant?.price != null ? Number(item.variant.price) : null;
-      const price = variantPrice ?? Number(item.product.basePrice);
-      return sum + price * item.quantity;
-    }, 0);
+  private async resolveCurrentPrices(
+    items: CartWithItems['items'],
+    shippingCountry?: string | null,
+  ): Promise<Map<string, number>> {
+    const promos = await getSalesForListings(
+      this.prisma,
+      items.map((item) => ({
+        id: item.productId,
+        storeId: item.product.storeId,
+      })),
+      shippingCountry,
+    );
+
+    return new Map(
+      items.map((item) => {
+        const variantPrice = item.variant?.price != null
+          ? Number(item.variant.price)
+          : null;
+        const unitPrice = Number(item.unitPrice);
+        const livePrice = variantPrice ?? Number(item.product.basePrice);
+        // Preserve support for legacy variant-only products whose base price
+        // is legitimately zero, then apply the best live promotion to the
+        // concrete price the buyer selected.
+        const rawCurrentPrice = livePrice > 0 ? livePrice : unitPrice;
+        return [
+          item.id,
+          applyBestPromo(rawCurrentPrice, promos.get(item.productId)),
+        ];
+      }),
+    );
+  }
+
+  private async calcSubtotal(
+    items: CartWithItems['items'],
+    shippingCountry?: string | null,
+  ): Promise<number> {
+    const prices = await this.resolveCurrentPrices(items, shippingCountry);
+    return items.reduce(
+      (sum, item) => sum + (prices.get(item.id) ?? Number(item.unitPrice)) * item.quantity,
+      0,
+    );
   }
 
   private calcDiscount(
@@ -490,14 +617,14 @@ export class CartService {
     return 0; // FREE_SHIPPING applied at checkout
   }
 
-  private mapToDto(cart: CartWithItems): CartResponseDto {
+  private async mapToDto(cart: CartWithItems): Promise<CartResponseDto> {
+    const [currentPrices, freeShippingThreshold] = await Promise.all([
+      this.resolveCurrentPrices(cart.items),
+      this.getFreeShippingThreshold(),
+    ]);
     const items: CartItemDto[] = cart.items.map((item) => {
-      const variantPrice = item.variant?.price != null ? Number(item.variant.price) : null;
       const unitPrice = Number(item.unitPrice);
-      const livePrice = variantPrice ?? Number(item.product.basePrice);
-      // Fall back to the snapshotted unitPrice when even that live lookup is
-      // legitimately 0 (variant-only product whose basePrice is $0).
-      const currentPrice = livePrice > 0 ? livePrice : unitPrice;
+      const currentPrice = currentPrices.get(item.id) ?? unitPrice;
       return {
         id: item.id,
         productId: item.productId,
@@ -523,6 +650,7 @@ export class CartService {
     const subtotal = items.reduce((s, i) => s + i.currentPrice * i.quantity, 0);
     const discount = cart.discountAmount ? Number(cart.discountAmount) : 0;
     const total = Math.max(0, subtotal - discount);
+    const freeShippingEligible = qualifiesForPlatformFreeShipping(subtotal, freeShippingThreshold);
 
     return {
       id: cart.id,
@@ -537,7 +665,17 @@ export class CartService {
         shipping: 0,
         total: Math.round(total * 100) / 100,
         itemCount: items.reduce((s, i) => s + i.quantity, 0),
+        freeShippingThreshold,
+        freeShippingEligible,
       },
     };
+  }
+
+  private async getFreeShippingThreshold(): Promise<number> {
+    const settings = await this.prisma.platformSettings.findUnique({
+      where: { id: 'singleton' },
+      select: { freeShippingThreshold: true },
+    });
+    return resolveFreeShippingThreshold(settings?.freeShippingThreshold);
   }
 }

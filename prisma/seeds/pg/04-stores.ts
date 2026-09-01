@@ -20,6 +20,7 @@ export async function seedStores(prisma: PrismaClient, adminUserId: string): Pro
       minPayoutAmount:           100.00,
       payoutSchedule:            'monthly',
       maintenanceMode:           false,
+      freeShippingThreshold:     100.00,
     },
   });
   console.log('    ✓ PlatformSettings');

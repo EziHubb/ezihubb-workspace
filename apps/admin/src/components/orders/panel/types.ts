@@ -92,6 +92,7 @@ export interface OrderPanelDetail {
     couponCode: string | null;
     subtotal:   number;
     postage:    number;
+    shippingSubsidy: number;
     total:      number;
     paidVia:    string | null;
     paidAt:     string | null;
@@ -103,6 +104,7 @@ export interface OrderPanelEarnings {
     total:      number;
     itemsPrice: number;
     postage:    number;
+    shippingSubsidy: number;
     discount:   number;
     couponCode: string | null;
     subtotal:   number;

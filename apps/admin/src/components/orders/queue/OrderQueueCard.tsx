@@ -231,10 +231,17 @@ export function OrderQueueCard({
         )}
 
         {!readOnly && (
-          <p className="mt-3 text-muted">
-            {order.shippingMethod ?? 'Standard'}{' '}
-            <span className="text-secondary">({money(order.shippingCost)})</span>
-          </p>
+          <div className="mt-3 text-muted">
+            <p>
+              {order.shippingMethod ?? 'Standard'}{' '}
+              <span className="text-secondary">({money(order.shippingCost)})</span>
+            </p>
+            {order.shippingSubsidy > 0 && (
+              <p className="mt-0.5 text-xs font-medium text-success">
+                EziHubb covers {money(order.shippingSubsidy)} shipping
+              </p>
+            )}
+          </div>
         )}
 
         {!readOnly && (

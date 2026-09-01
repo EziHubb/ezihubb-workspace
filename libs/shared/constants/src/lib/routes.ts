@@ -493,6 +493,8 @@ export const API_ROUTES = {
     FINANCE_STATS:            '/admin/finance/stats',
     FINANCE_STORES:           '/admin/finance/stores',
     FINANCE_CHART:            '/admin/finance/chart',
+    FINANCE_SHIPPING_SUPPORT_SUMMARY: '/admin/finance/shipping-support/summary',
+    FINANCE_SHIPPING_SUPPORT_ORDERS:  '/admin/finance/shipping-support/orders',
 
     // ── Finances (Etsy-parity shop-owner module — admin-app mirror of SELLER.FINANCES_*) ──
     FINANCES_OVERVIEW:             '/admin/finances/overview',

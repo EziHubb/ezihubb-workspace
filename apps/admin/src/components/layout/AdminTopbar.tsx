@@ -19,6 +19,8 @@ const TITLE_MAP: Record<string, string> = {
   '/promotions':          'Promotions',
   '/reviews':             'Reviews',
   '/payments':            'Payments',
+  '/finance/shipping-support': 'Shipping Support',
+  '/finance':             'Finance',
   '/messages':            'Messages',
   '/settings':            'Settings',
   '/settings/delivery':   'Delivery settings',

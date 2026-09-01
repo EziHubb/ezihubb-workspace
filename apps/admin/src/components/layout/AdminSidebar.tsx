@@ -90,7 +90,13 @@ const NAV_SECTIONS: NavSection[] = [
           { label: 'Platform Settings', href: '/stores/settings', icon: Settings },
         ],
       },
-      { label: 'Finance',  href: '/finance',  icon: BarChart2  },
+      {
+        label: 'Finance', href: '/finance', icon: BarChart2,
+        children: [
+          { label: 'Overview',         href: '/finance',                  icon: BarChart2 },
+          { label: 'Shipping Support', href: '/finance/shipping-support', icon: Truck     },
+        ],
+      },
       { label: 'Payouts',  href: '/payouts',  icon: Wallet     },
       { label: 'Payments', href: '/payments', icon: CreditCard },
     ],

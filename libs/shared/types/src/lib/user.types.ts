@@ -22,6 +22,8 @@ export interface AddressDto {
   id: string;
   fullName: string;
   phone: string;
+  line1: string;
+  line2?: string;
   addressLine1: string;
   addressLine2?: string;
   city: string;

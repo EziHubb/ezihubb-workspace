@@ -174,7 +174,7 @@
         },
         "shipping": {
           "q1": { "q": "Vận chuyển mất bao lâu?", "a": "Vận chuyển tiêu chuẩn mất 5–10 ngày làm việc sau khi sản xuất. Vận chuyển nhanh (2–3 ngày) cũng có sẵn. Vận chuyển quốc tế mất 14–21 ngày làm việc." },
-          "q2": { "q": "Bạn có miễn phí vận chuyển không?", "a": "Có! Đơn hàng trên $50 được miễn phí vận chuyển. Đơn hàng quốc tế trên $100 được giảm giá vận chuyển. Miễn phí vận chuyển được áp dụng tự động khi thanh toán." },
+          "q2": { "q": "Bạn có miễn phí vận chuyển không?", "a": "Có. Miễn phí vận chuyển tiêu chuẩn được tự động áp dụng khi đơn hàng đạt ngưỡng hiện tại của hệ thống." },
           "q3": { "q": "Tôi có thể theo dõi đơn hàng của mình không?", "a": "Chắc chắn rồi. Ngay khi đơn hàng được gửi đi, bạn sẽ nhận được email kèm mã theo dõi. Bạn cũng có thể theo dõi đơn hàng bất cứ lúc nào tại ezihubb.com/orders/track." },
           "q4": { "q": "Bạn có vận chuyển quốc tế không?", "a": "Chúng tôi giao hàng đến hơn 30 quốc gia trên toàn thế giới. Chi phí và thời gian vận chuyển tùy theo điểm đến. Nhập địa chỉ khi thanh toán để nhận báo giá chính xác. Lưu ý: đơn hàng quốc tế có thể phát sinh thuế hải quan." },
           "q5": { "q": "Đơn hàng của tôi báo \"đã giao\" nhưng tôi chưa nhận được — tôi nên làm gì?", "a": "Trước tiên, hãy hỏi hàng xóm và kiểm tra các vị trí an toàn quanh nhà bạn. Nếu vẫn không tìm thấy, hãy liên hệ với chúng tôi trong vòng 7 ngày kể từ ngày giao hàng dự kiến. Chúng tôi sẽ phối hợp với đơn vị vận chuyển để xác định vị trí hoặc gửi hàng thay thế." }
@@ -216,7 +216,7 @@
       },
       "delivery": {
         "title": "Giao Hàng Nhanh Chóng & An Toàn",
-        "desc": "Đơn hàng của bạn được đóng gói cẩn thận và giao đến tận cửa. Chúng tôi cung cấp vận chuyển tiêu chuẩn miễn phí cho đơn trên $50, và có lựa chọn vận chuyển nhanh nếu bạn cần gấp. Theo dõi thời gian thực giúp bạn luôn cập nhật.",
+        "desc": "Đơn hàng của bạn được đóng gói cẩn thận và giao đến tận cửa. Miễn phí vận chuyển tiêu chuẩn áp dụng cho đơn đủ điều kiện; chi phí và thời gian giao dự kiến được tính khi thanh toán.",
         "tip": "Hãy đặt hàng trước ít nhất 7 ngày trước dịp tặng quà để nhận hàng đúng thời gian một cách thoải mái."
       }
     },
@@ -338,11 +338,11 @@
       "title": "Mức Phí Vận Chuyển Tiêu Chuẩn",
       "headers": { "method": "Phương thức", "time": "Thời gian giao hàng", "cost": "Chi phí" },
       "rows": {
-        "standard": { "method": "Vận chuyển tiêu chuẩn", "time": "5–10 ngày làm việc", "cost": "$5.99 (Miễn phí cho đơn trên $50)" },
+        "standard": { "method": "Vận chuyển tiêu chuẩn", "time": "Tùy theo người bán", "cost": "Tính khi thanh toán (miễn phí cho đơn đủ điều kiện)" },
         "express": { "method": "Vận chuyển nhanh", "time": "2–3 ngày làm việc", "cost": "$14.99" },
         "overnight": { "method": "Vận chuyển hỏa tốc", "time": "1 ngày làm việc", "cost": "$29.99" }
       },
-      "footnote": "* Miễn phí vận chuyển cho đơn hàng trên $50 được áp dụng tự động khi thanh toán. Không áp dụng cùng lúc với mua thẻ quà tặng."
+      "footnote": "* Miễn phí vận chuyển cho đơn đủ điều kiện được tự động áp dụng khi thanh toán."
     },
     "international": {
       "title": "Vận Chuyển Quốc Tế",
@@ -357,7 +357,7 @@
       },
       "note1": "⚠️ Đơn hàng quốc tế có thể phải chịu thuế hải quan và thuế nhập khẩu.",
       "note2": "Các khoản phí này thuộc trách nhiệm của người nhận và không được bao gồm trong giá sản phẩm.",
-      "note3": "Miễn phí vận chuyển quốc tế cho đơn hàng trên $100."
+      "note3": "Đơn hàng quốc tế đủ điều kiện sẽ tự động được miễn phí vận chuyển tiêu chuẩn."
     },
     "tracking": {
       "title": "Theo Dõi Đơn Hàng",

@@ -175,10 +175,14 @@ export function OrderSummary({ cart }: OrderSummaryProps) {
           <ShieldCheck className="w-3.5 h-3.5 text-success" />
           {tTrust('secure')}
         </span>
-        <span className="flex items-center gap-1">
-          <Truck className="w-3.5 h-3.5 text-primary" />
-          {tTrust('freeShipping')}
-        </span>
+        {(totals.freeShippingThreshold ?? 100) > 0 && (
+          <span className="flex items-center gap-1">
+            <Truck className="w-3.5 h-3.5 text-primary" />
+            {tTrust('freeShipping', {
+              amount: fmtAmount(totals.freeShippingThreshold ?? 100),
+            })}
+          </span>
+        )}
         <span className="flex items-center gap-1">
           <RotateCcw className="w-3.5 h-3.5 text-secondary" />
           {tTrust('returns')}

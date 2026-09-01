@@ -15,6 +15,13 @@ export class AddressResponseDto {
   @ApiProperty() isDefault: boolean;
   @ApiProperty() createdAt: Date;
 
+  // Backward-compatible aliases used by existing address forms. The API's
+  // canonical write shape remains fullName/line1/line2.
+  @ApiProperty() firstName: string;
+  @ApiProperty() lastName: string;
+  @ApiProperty() addressLine1: string;
+  @ApiPropertyOptional() addressLine2: string | null;
+
   static fromPrisma(address: Address): AddressResponseDto {
     const dto = new AddressResponseDto();
     dto.id = address.id;
@@ -29,6 +36,12 @@ export class AddressResponseDto {
     dto.phone = address.phone;
     dto.isDefault = address.isDefault;
     dto.createdAt = address.createdAt;
+    const normalizedName = address.fullName.trim().replace(/\s+/g, ' ');
+    const splitAt = normalizedName.lastIndexOf(' ');
+    dto.firstName = splitAt > 0 ? normalizedName.slice(0, splitAt) : normalizedName;
+    dto.lastName = splitAt > 0 ? normalizedName.slice(splitAt + 1) : '';
+    dto.addressLine1 = address.addressLine1;
+    dto.addressLine2 = address.addressLine2 ?? null;
     return dto;
   }
 }

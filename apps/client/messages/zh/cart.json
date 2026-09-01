@@ -58,7 +58,7 @@
 
   "trust": {
     "secure": "安全支付",
-    "freeShipping": "满$50免运费",
+    "freeShipping": "满{amount}免运费",
     "returns": "30天退换"
   },
 

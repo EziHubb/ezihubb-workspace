@@ -174,7 +174,7 @@
         },
         "shipping": {
           "q1": { "q": "How long does shipping take?", "a": "Standard shipping takes 5–10 business days after production. Express shipping (2–3 days) is available. International shipping takes 14–21 business days." },
-          "q2": { "q": "Do you offer free shipping?", "a": "Yes! Orders over $50 ship free. International orders over $100 qualify for discounted shipping. Free shipping is automatically applied at checkout." },
+          "q2": { "q": "Do you offer free shipping?", "a": "Yes. Free standard shipping is automatically applied at checkout when an order reaches the current marketplace threshold." },
           "q3": { "q": "Can I track my order?", "a": "Absolutely. Once your order ships, you'll receive an email with a tracking number. You can also track your order anytime at ezihubb.com/orders/track." },
           "q4": { "q": "Do you ship internationally?", "a": "We ship to 30+ countries worldwide. Shipping costs and delivery times vary by destination. Enter your address at checkout for an exact quote. Note: customs duties may apply for international orders." },
           "q5": { "q": "My order says \"delivered\" but I haven't received it — what should I do?", "a": "First, check with neighbors and any safe spots around your property. If still missing, contact us within 7 days of the marked delivery date. We'll work with the carrier to locate it or send a replacement." }
@@ -216,7 +216,7 @@
       },
       "delivery": {
         "title": "Fast, Safe Delivery",
-        "desc": "Your order is carefully packaged and shipped to your door. We offer free standard shipping on orders over $50, and express options if you need it fast. Real-time tracking keeps you updated.",
+        "desc": "Your order is carefully packaged and shipped to your door. Free standard shipping is available on qualifying orders, and delivery estimates are calculated at checkout. Real-time tracking keeps you updated.",
         "tip": "Order at least 7 days before a gift occasion to receive it comfortably in time."
       }
     },
@@ -338,11 +338,11 @@
       "title": "Standard Shipping Rates",
       "headers": { "method": "Method", "time": "Delivery Time", "cost": "Cost" },
       "rows": {
-        "standard": { "method": "Standard Shipping", "time": "5–10 business days", "cost": "$5.99 (Free over $50)" },
+        "standard": { "method": "Standard Shipping", "time": "Varies by seller", "cost": "Calculated at checkout (free on qualifying orders)" },
         "express": { "method": "Express Shipping", "time": "2–3 business days", "cost": "$14.99" },
         "overnight": { "method": "Overnight Shipping", "time": "1 business day", "cost": "$29.99" }
       },
-      "footnote": "* Free shipping on orders over $50 is automatically applied at checkout. Not combinable with gift card purchases."
+      "footnote": "* Free shipping on qualifying orders is automatically applied at checkout."
     },
     "international": {
       "title": "International Shipping",
@@ -357,7 +357,7 @@
       },
       "note1": "⚠️ International orders may be subject to customs duties and import taxes.",
       "note2": "These fees are the responsibility of the recipient and are not included in our prices.",
-      "note3": "Free international shipping on orders over $100."
+      "note3": "Qualifying international orders receive free standard shipping automatically."
     },
     "tracking": {
       "title": "Order Tracking",

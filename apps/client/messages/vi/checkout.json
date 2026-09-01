@@ -70,6 +70,7 @@
     "zip": "Mã bưu điện",
     "country": "Quốc gia",
     "saveAddress": "Lưu địa chỉ này cho lần đặt hàng sau",
+    "saveAddressError": "Không thể lưu địa chỉ này. Vui lòng thử lại trước khi tiếp tục.",
     "continueToDelivery": "Tiếp tục đến Vận chuyển →",
     "validation": {
       "validEmail": "Vui lòng nhập email hợp lệ",
@@ -89,6 +90,7 @@
     "estimateTitle": "Giao hàng",
     "businessDays": "{min}–{max} ngày làm việc · Đến nơi {date}",
     "free": "MIỄN PHÍ",
+    "platformSupport": "EziHubb hỗ trợ {amount} phí vận chuyển cho đơn hàng này",
     "back": "← Quay lại",
     "backAria": "Quay lại",
     "continueToPayment": "Tiếp tục xem lại →",

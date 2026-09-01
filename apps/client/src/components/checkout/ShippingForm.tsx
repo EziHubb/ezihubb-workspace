@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useLocale, useTranslations } from 'next-intl';
-import { useAddresses, useProfile } from '@ezihubb/api-client';
+import { useAddresses, useMutateAddresses, useProfile } from '@ezihubb/api-client';
 import type { ShippingAddressInput } from '@ezihubb/api-client';
 import { Select } from '@ezihubb/ui';
 
@@ -99,6 +99,8 @@ export function ShippingForm({
   const getCountryName = useCountryNames(locale);
   const { data: addresses } = useAddresses(isLoggedIn);
   const { data: profile }   = useProfile(isLoggedIn);
+  const { addAddress }      = useMutateAddresses();
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const {
     register,
@@ -143,7 +145,7 @@ export function ShippingForm({
     setValue('country',      addr.country);
   };
 
-  const onSubmit = (data: FormValues) => {
+  const onSubmit = async (data: FormValues) => {
     const addr: ShippingAddressInput = {
       firstName:    data.firstName,
       lastName:     data.lastName,
@@ -155,6 +157,40 @@ export function ShippingForm({
       postalCode:   data.postalCode,
       country:      data.country,
     };
+
+    setSaveError(null);
+    if (isLoggedIn && data.saveAddress) {
+      const fullName = `${data.firstName} ${data.lastName}`.trim();
+      const normalized = (value?: string | null) => value?.trim().toLocaleLowerCase() ?? '';
+      const alreadySaved = addresses?.some((saved) =>
+        normalized(saved.fullName) === normalized(fullName) &&
+        normalized(saved.line1) === normalized(data.addressLine1) &&
+        normalized(saved.line2) === normalized(data.addressLine2) &&
+        normalized(saved.city) === normalized(data.city) &&
+        normalized(saved.state) === normalized(data.state) &&
+        normalized(saved.postalCode) === normalized(data.postalCode) &&
+        normalized(saved.country) === normalized(data.country),
+      );
+
+      if (!alreadySaved) {
+        try {
+          await addAddress.mutateAsync({
+            fullName,
+            phone:      data.phone,
+            line1:      data.addressLine1,
+            line2:      data.addressLine2 || undefined,
+            city:       data.city,
+            state:      data.state || undefined,
+            postalCode: data.postalCode,
+            country:    data.country,
+          });
+        } catch {
+          setSaveError(t('saveAddressError'));
+          return;
+        }
+      }
+    }
+
     onComplete(addr, data.email ?? '');
   };
 
@@ -288,14 +324,17 @@ export function ShippingForm({
 
       {/* Save address checkbox (logged-in only) */}
       {isLoggedIn && (
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            {...register('saveAddress')}
-            type="checkbox"
-            className="w-4 h-4 accent-primary"
-          />
-          <span className="text-sm text-secondary">{t('saveAddress')}</span>
-        </label>
+        <div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              {...register('saveAddress')}
+              type="checkbox"
+              className="w-4 h-4 accent-primary"
+            />
+            <span className="text-sm text-secondary">{t('saveAddress')}</span>
+          </label>
+          {saveError && <p className="mt-1 text-xs text-error" role="alert">{saveError}</p>}
+        </div>
       )}
 
       {/* Submit — desktop inline + mobile sticky bottom bar */}

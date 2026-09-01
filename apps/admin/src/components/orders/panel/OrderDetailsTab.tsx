@@ -255,6 +255,13 @@ export function OrderDetailsTab({
         )}
         <ReceiptRow label="Subtotal" value={money(detail.receipt.subtotal)} divider strong />
         <ReceiptRow label="Postage price" value={money(detail.receipt.postage)} />
+        {detail.receipt.shippingSubsidy > 0 && (
+          <ReceiptRow
+            label="Platform shipping support"
+            value={`-${money(detail.receipt.shippingSubsidy)}`}
+            negative
+          />
+        )}
         <ReceiptRow label="Order total" value={money(detail.receipt.total)} divider strong />
         {detail.receipt.paidAt && (
           <p className="mt-3 text-right text-xs text-muted">

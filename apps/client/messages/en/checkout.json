@@ -70,6 +70,7 @@
     "zip": "ZIP / Postal Code",
     "country": "Country",
     "saveAddress": "Save this address for future orders",
+    "saveAddressError": "We couldn't save this address. Please try again before continuing.",
     "continueToDelivery": "Continue to Delivery →",
     "validation": {
       "validEmail": "Valid email required",
@@ -89,6 +90,7 @@
     "estimateTitle": "Delivery",
     "businessDays": "{min}–{max} business days · Arrives {date}",
     "free": "FREE",
+    "platformSupport": "EziHubb covers {amount} of your shipping cost",
     "back": "← Back",
     "backAria": "Back",
     "continueToPayment": "Continue to review →",

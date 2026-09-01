@@ -382,8 +382,12 @@ export class OrderProgressService {
         step:        row.progressStep,
         shipByDate:  row.shipByDate,
         orderedAt:   row.order.createdAt,
-        total:       Number(row.subtotal) + Number(row.shippingCost) - Number(row.discountAmount),
+        total:       Number(row.subtotal)
+          + Number(row.shippingCost)
+          - Number(row.shippingSubsidy)
+          - Number(row.discountAmount),
         shippingCost: Number(row.shippingCost),
+        shippingSubsidy: Number(row.shippingSubsidy),
         shippingMethod: row.order.shippingMethod,
         couponCode:  row.order.couponCode,
         isGift:      row.order.isGift,

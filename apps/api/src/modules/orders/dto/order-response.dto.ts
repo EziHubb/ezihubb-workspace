@@ -75,6 +75,7 @@ export class OrderResponseDto {
   @ApiPropertyOptional() shippingCountry: string | null;
   @ApiPropertyOptional() shippingMethod: string | null;
   @ApiProperty() shippingCost: number;
+  @ApiProperty() shippingSubsidy: number;
 
   @ApiProperty() subtotal: number;
   @ApiProperty() discountAmount: number;

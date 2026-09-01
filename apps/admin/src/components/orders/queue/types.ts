@@ -41,6 +41,7 @@ export interface QueueOrder {
   orderedAt:   string;
   total:       number;
   shippingCost:   number;
+  shippingSubsidy: number;
   shippingMethod: string | null;
   couponCode:  string | null;
   isGift:      boolean;

@@ -70,6 +70,7 @@
     "zip": "邮政编码",
     "country": "国家/地区",
     "saveAddress": "保存此地址以便下次使用",
+    "saveAddressError": "无法保存此地址。请重试后再继续。",
     "continueToDelivery": "继续配送 →",
     "validation": {
       "validEmail": "请输入有效邮箱",
@@ -89,6 +90,7 @@
     "estimateTitle": "配送",
     "businessDays": "{min}–{max} 个工作日 · 预计到达 {date}",
     "free": "免费",
+    "platformSupport": "EziHubb 为此订单补贴 {amount} 运费",
     "back": "← 返回",
     "backAria": "返回",
     "continueToPayment": "继续查看 →",

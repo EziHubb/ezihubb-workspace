@@ -1,6 +1,7 @@
 export interface ShippingEstimateStoreDto {
   storeId:    string;
   cost:       number;
+  shippingSubsidy?: number;
   methodName: string;
   minDays:    number;
   maxDays:    number;
@@ -13,6 +14,10 @@ export interface ShippingEstimateDto {
   resolvable: boolean;
   perStore:   ShippingEstimateStoreDto[];
   totalCost:  number;
+  freeShippingThreshold?: number;
+  freeShippingApplied?: boolean;
+  platformFreeShippingApplied?: boolean;
+  shippingSubsidy?: number;
   minDays:    number | null;
   maxDays:    number | null;
 }

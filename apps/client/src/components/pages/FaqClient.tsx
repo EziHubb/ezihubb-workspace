@@ -76,7 +76,7 @@ const FAQ_DATA: FaqItem[] = [
   {
     id: 's1', category: 'Shipping',
     question: 'How much does shipping cost?',
-    answer: 'Standard shipping is free on all orders over $50. For orders under $50, standard shipping is $5.99. Express shipping (2–3 days) is $12.99. International rates vary by destination.',
+    answer: 'Free standard shipping is applied automatically when an order reaches the current marketplace threshold. Otherwise, shipping cost and delivery time are calculated from the destination and each seller’s delivery profile at checkout.',
   },
   {
     id: 's2', category: 'Shipping',

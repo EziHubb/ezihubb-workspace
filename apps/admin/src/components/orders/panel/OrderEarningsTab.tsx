@@ -66,6 +66,13 @@ export function OrderEarningsTab({ data, loading, error }: Props) {
       >
         <Row label="Item(s) price" value={money(data.buyerPaid.itemsPrice)} />
         <Row label="Postage price" value={money(data.buyerPaid.postage)} />
+        {data.buyerPaid.shippingSubsidy > 0 && (
+          <Row
+            label="Platform shipping support"
+            value={`-${money(data.buyerPaid.shippingSubsidy)}`}
+            negative
+          />
+        )}
         {data.buyerPaid.discount > 0 && (
           <Row
             label={data.buyerPaid.couponCode ? `Shop discount (${data.buyerPaid.couponCode})` : 'Shop discount'}

@@ -25,6 +25,7 @@ export class CartItemDto {
 export class ShippingEstimateStoreDto {
   @ApiProperty() storeId: string;
   @ApiProperty() cost: number;
+  @ApiProperty() shippingSubsidy: number;
   @ApiProperty() methodName: string;
   @ApiProperty() minDays: number;
   @ApiProperty() maxDays: number;
@@ -35,6 +36,10 @@ export class ShippingEstimateDto {
   @ApiProperty() resolvable: boolean;
   @ApiProperty({ type: [ShippingEstimateStoreDto] }) perStore: ShippingEstimateStoreDto[];
   @ApiProperty() totalCost: number;
+  @ApiProperty() freeShippingThreshold: number;
+  @ApiProperty() freeShippingApplied: boolean;
+  @ApiProperty() platformFreeShippingApplied: boolean;
+  @ApiProperty() shippingSubsidy: number;
   @ApiPropertyOptional() minDays: number | null;
   @ApiPropertyOptional() maxDays: number | null;
 }
@@ -45,6 +50,8 @@ export class CartTotalsDto {
   @ApiProperty() shipping: number;
   @ApiProperty() total: number;
   @ApiProperty() itemCount: number;
+  @ApiProperty() freeShippingThreshold: number;
+  @ApiProperty() freeShippingEligible: boolean;
 }
 
 export class CartResponseDto {

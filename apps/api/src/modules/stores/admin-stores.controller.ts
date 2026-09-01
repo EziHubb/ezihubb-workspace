@@ -13,6 +13,10 @@ import { Role, FEATURED_LAYOUTS, type FeaturedLayout } from '@ezihubb/constants'
 import { StoresService } from './stores.service';
 import { AuditLogService } from '../../common/services/audit-log.service';
 import { StoreContextService } from '../../common/services/store-context.service';
+import {
+  ShippingSupportOrdersQueryDto,
+  ShippingSupportSummaryQueryDto,
+} from './dto/shipping-support-query.dto';
 
 const SOCIAL_LINK_PLATFORMS = ['facebook', 'instagram', 'pinterest', 'twitter', 'youtube', 'tiktok', 'website'] as const;
 
@@ -381,5 +385,18 @@ export class AdminFinanceController {
       limit: limit ? +limit : 20,
       storeId: context.isPlatformContext ? undefined : context.storeId ?? undefined,
     });
+  }
+
+  /** Platform-funded shipping is marketplace finance data, never seller data. */
+  @Roles(Role.SUPER_ADMIN)
+  @Get('shipping-support/summary')
+  getShippingSupportSummary(@Query() query: ShippingSupportSummaryQueryDto) {
+    return this.storesService.getShippingSupportSummary(query.days);
+  }
+
+  @Roles(Role.SUPER_ADMIN)
+  @Get('shipping-support/orders')
+  getShippingSupportOrders(@Query() query: ShippingSupportOrdersQueryDto) {
+    return this.storesService.getShippingSupportOrders(query);
   }
 }

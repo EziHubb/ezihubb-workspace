@@ -24,6 +24,7 @@ interface PlatformSettings {
   payoutSchedule:             string;
   allowPublicRegistration:    boolean;
   maintenanceMode:            boolean;
+  freeShippingThreshold:      number;
   plusMonthlyPrice:           number;
   plusAnnualPrice:            number | null;
 }
@@ -89,6 +90,7 @@ const DEFAULTS: Omit<PlatformSettings, 'id'> = {
   payoutSchedule:            'WEEKLY',
   allowPublicRegistration:   true,
   maintenanceMode:           false,
+  freeShippingThreshold:     100,
   plusMonthlyPrice:          5.00,
   plusAnnualPrice:           null,
 };
@@ -120,6 +122,7 @@ export default function PlatformSettingsPage() {
         payoutSchedule:            data.payoutSchedule ?? 'WEEKLY',
         allowPublicRegistration:   data.allowPublicRegistration,
         maintenanceMode:           data.maintenanceMode,
+        freeShippingThreshold:     data.freeShippingThreshold ?? 100,
         plusMonthlyPrice:          data.plusMonthlyPrice,
         plusAnnualPrice:           data.plusAnnualPrice,
       });
@@ -167,6 +170,37 @@ export default function PlatformSettingsPage() {
       />
 
       <div className="space-y-4 max-w-2xl">
+
+        {/* Buyer shipping */}
+        <SectionCard
+          title="Buyer Shipping"
+          onSave={() => save('shipping')}
+          saving={saving === 'shipping'}
+        >
+          <div>
+            <label
+              htmlFor="free-shipping-threshold"
+              className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5"
+            >
+              Free Standard Shipping Threshold (USD)
+            </label>
+            <div className="relative w-48">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+              <input
+                id="free-shipping-threshold"
+                type="number"
+                min={0}
+                step={0.01}
+                value={s.freeShippingThreshold}
+                onChange={(e) => setS({ freeShippingThreshold: Number(e.target.value) })}
+                className={`${inputCls} pl-7`}
+              />
+            </div>
+            <p className="text-xs text-muted/70 mt-1">
+              EziHubb funds standard shipping for orders at or above this merchandise total after automatic sale prices. Buyers pay $0 and the delivery quote is recorded as a platform expense, not seller revenue. Coupons do not remove eligibility. Set to $0 to disable the policy.
+            </p>
+          </div>
+        </SectionCard>
 
         {/* Seller Fees */}
         <SectionCard

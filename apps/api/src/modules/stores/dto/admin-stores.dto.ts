@@ -107,6 +107,12 @@ export class UpdatePlatformSettingsDto {
   @IsOptional()
   maintenanceMode?: boolean;
 
+  /** Platform-wide order threshold for free standard shipping. Zero disables it. */
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  freeShippingThreshold?: number;
+
   // ── Ezihubb Plus pricing (list price — mirrors PlatformSettings.plusMonthlyPrice
   // / plusAnnualPrice; see StoreSubscription.priceAtPurchase for the per-store
   // snapshot taken at grant time, which this does NOT retroactively change) ───

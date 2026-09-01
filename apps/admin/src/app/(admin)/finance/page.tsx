@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart2, DollarSign, Wallet, Store, Clock, TrendingUp } from 'lucide-react';
+import { BarChart2, ChevronRight, DollarSign, Wallet, Store, Clock, TrendingUp, Truck } from 'lucide-react';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { StatCard } from '../../../components/data/StatCard';
 import { api } from '../../../lib/api-client';
@@ -108,6 +109,22 @@ export default function AdminFinancePage() {
         subtitle="Platform revenue and payout overview"
         queryKey={QK_STATS}
       />
+
+      <Link
+        href="/finance/shipping-support"
+        className="mb-6 flex items-center gap-4 rounded-card border border-primary/20 bg-primary/5 p-4 transition-colors hover:border-primary/40 hover:bg-primary/8"
+      >
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Truck className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold text-secondary">Platform shipping support</span>
+          <span className="mt-0.5 block text-sm text-muted">
+            Review committed and realized shipping subsidies by order and store.
+          </span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+      </Link>
 
       {/* ── KPI cards ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">

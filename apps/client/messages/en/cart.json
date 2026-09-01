@@ -58,7 +58,7 @@
 
   "trust": {
     "secure": "Secure",
-    "freeShipping": "Free over $50",
+    "freeShipping": "Free over {amount}",
     "returns": "30-day returns"
   },
 

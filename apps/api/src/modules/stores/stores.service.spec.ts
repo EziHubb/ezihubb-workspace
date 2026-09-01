@@ -2,6 +2,10 @@ import { StoresService } from './stores.service';
 import { ForbiddenException } from '@nestjs/common';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { EntitlementsService } from '../subscriptions/entitlements.service';
+import {
+  ShippingSupportSort,
+  ShippingSupportStatus,
+} from './dto/shipping-support-query.dto';
 
 function makePrismaMock() {
   return {
@@ -15,6 +19,11 @@ function makePrismaMock() {
     platformSettings: {
       upsert: jest.fn(),
     },
+    storeOrder: {
+      findMany: jest.fn(),
+      count: jest.fn(),
+    },
+    $queryRaw: jest.fn(),
   };
 }
 
@@ -156,6 +165,24 @@ describe('StoresService.getStoreBySlug — Plus gate on colorTheme only, feature
 });
 
 describe('StoresService.updatePlatformSettings — plusMonthlyPrice / plusAnnualPrice reach Prisma untouched', () => {
+  it('forwards and normalizes the platform free-shipping threshold', async () => {
+    const prisma = makePrismaMock();
+    prisma.platformSettings.upsert.mockResolvedValue({
+      id: 'singleton',
+      freeShippingThreshold: '125.50',
+    });
+    const service = makeService(prisma, jest.fn());
+
+    const result = await service.updatePlatformSettings({ freeShippingThreshold: 125.5 });
+
+    expect(prisma.platformSettings.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ freeShippingThreshold: 125.5 }),
+      }),
+    );
+    expect(result.freeShippingThreshold).toBe(125.5);
+  });
+
   it('forwards a new plusMonthlyPrice into the upsert update payload', async () => {
     const prisma = makePrismaMock();
     prisma.platformSettings.upsert.mockResolvedValue({ id: 'singleton', plusMonthlyPrice: 8 });
@@ -197,5 +224,85 @@ describe('StoresService.updatePlatformSettings — plusMonthlyPrice / plusAnnual
         update: expect.objectContaining({ offsiteAdsFeeRate: 0.2 }),
       }),
     );
+  });
+});
+
+describe('StoresService shipping support finance report', () => {
+  it('separates committed, realized, and pending platform shipping support', async () => {
+    const prisma = makePrismaMock();
+    prisma.$queryRaw
+      .mockResolvedValueOnce([{
+        committedSubsidy: 25,
+        realizedSubsidy: 10,
+        supportedOrders: 2,
+        supportedShipments: 3,
+        merchandiseSubtotal: 250,
+      }])
+      .mockResolvedValueOnce([{
+        date: '2026-09-01', committed: 25, realized: 10, orders: 2,
+      }])
+      .mockResolvedValueOnce([{
+        storeId: 'store_1', storeName: 'Shop One', subsidy: 25, orders: 2,
+      }]);
+    const service = makeService(prisma, jest.fn());
+
+    const result = await service.getShippingSupportSummary(30);
+
+    expect(result).toEqual(expect.objectContaining({
+      committedSubsidy: 25,
+      realizedSubsidy: 10,
+      pendingSubsidy: 15,
+      supportedOrders: 2,
+      supportedShipments: 3,
+      averageSubsidyPerOrder: 12.5,
+      subsidyToMerchandisePercent: 10,
+    }));
+  });
+
+  it('returns an auditable parcel row and keeps pending status distinct', async () => {
+    const prisma = makePrismaMock();
+    prisma.storeOrder.findMany.mockResolvedValue([{
+      id: 'so_1',
+      orderId: 'order_1',
+      status: 'CONFIRMED',
+      subtotal: '120.00',
+      discountAmount: '20.00',
+      shippingCost: '8.00',
+      shippingSubsidy: '8.00',
+      createdAt: new Date('2026-09-01T08:00:00Z'),
+      store: { id: 'store_1', name: 'Shop One', slug: 'shop-one' },
+      order: {
+        orderNumber: 'EZH-123456',
+        shippingName: 'Jane Buyer',
+        guestEmail: 'jane@example.com',
+        user: null,
+      },
+    }]);
+    prisma.storeOrder.count.mockResolvedValue(1);
+    const service = makeService(prisma, jest.fn());
+
+    const result = await service.getShippingSupportOrders({
+      days: 30,
+      page: 1,
+      limit: 20,
+      status: ShippingSupportStatus.PENDING,
+      sort: ShippingSupportSort.NEWEST,
+    });
+
+    expect(result.data[0]).toEqual(expect.objectContaining({
+      orderNumber: 'EZH-123456',
+      merchandiseSubtotal: 100,
+      quotedShippingCost: 8,
+      platformSubsidy: 8,
+      buyerShippingPaid: 0,
+      buyerStoreTotal: 100,
+      fundingStatus: 'PENDING',
+    }));
+    expect(prisma.storeOrder.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        shippingSubsidy: { gt: 0 },
+        status: expect.objectContaining({ notIn: expect.arrayContaining(['CANCELLED', 'REFUNDED']) }),
+      }),
+    }));
   });
 });

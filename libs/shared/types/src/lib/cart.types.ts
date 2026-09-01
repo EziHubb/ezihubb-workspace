@@ -39,6 +39,9 @@ export interface CartTotals {
   shipping: number;
   total: number;
   itemCount: number;
+  /** Platform-wide threshold in USD; zero means the policy is disabled. */
+  freeShippingThreshold?: number;
+  freeShippingEligible?: boolean;
 }
 
 export interface CartDto {

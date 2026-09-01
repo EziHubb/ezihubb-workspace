@@ -26,7 +26,7 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'site' });
   const title = 'Personalized Gifts Made with Love';
-  const description = 'Create meaningful personalized gifts with photos, names & messages. Made to order, shipped worldwide. Free shipping on $50+.';
+  const description = 'Create meaningful personalized gifts with photos, names & messages. Made to order, shipped worldwide, with free shipping on qualifying orders.';
   return {
     title,
     description,

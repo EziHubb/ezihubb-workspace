@@ -5,7 +5,7 @@ import { Star } from 'lucide-react';
 const HIGHLIGHTS = [
   'Custom-designed by us, not resold',
   'Printed to order, shipped worldwide',
-  'Free shipping over $50',
+  'Free shipping on qualifying orders',
 ];
 
 export function BrandPanel() {

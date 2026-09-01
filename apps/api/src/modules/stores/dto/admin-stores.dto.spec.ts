@@ -1,6 +1,10 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { UpdatePlatformSettingsDto } from './admin-stores.dto';
+import {
+  ShippingSupportOrdersQueryDto,
+  ShippingSupportSummaryQueryDto,
+} from './shipping-support-query.dto';
 
 async function validateSettings(payload: Record<string, unknown>) {
   const dto = plainToInstance(UpdatePlatformSettingsDto, payload);
@@ -70,5 +74,42 @@ describe('UpdatePlatformSettingsDto — offsiteAdsFeeRate', () => {
   it('rejects a non-numeric rate', async () => {
     const errors = await validateSettings({ offsiteAdsFeeRate: 'fifteen-percent' });
     expect(errors.length).toBeGreaterThan(0);
+  });
+});
+
+describe('UpdatePlatformSettingsDto — freeShippingThreshold', () => {
+  it('accepts a non-negative threshold and zero as the disable value', async () => {
+    await expect(validateSettings({ freeShippingThreshold: 100 })).resolves.toHaveLength(0);
+    await expect(validateSettings({ freeShippingThreshold: 0 })).resolves.toHaveLength(0);
+  });
+
+  it('rejects negative and non-numeric thresholds', async () => {
+    await expect(validateSettings({ freeShippingThreshold: -0.01 })).resolves.not.toHaveLength(0);
+    await expect(validateSettings({ freeShippingThreshold: '100' })).resolves.not.toHaveLength(0);
+  });
+});
+
+describe('Shipping support report query DTOs', () => {
+  it('transforms and accepts supported reporting periods', async () => {
+    const dto = plainToInstance(ShippingSupportSummaryQueryDto, { days: '90' });
+    await expect(validate(dto)).resolves.toHaveLength(0);
+    expect(dto.days).toBe(90);
+  });
+
+  it('rejects arbitrary periods to keep finance queries bounded', async () => {
+    const dto = plainToInstance(ShippingSupportSummaryQueryDto, { days: '9999' });
+    await expect(validate(dto)).resolves.not.toHaveLength(0);
+  });
+
+  it('bounds detail pagination and validates report filters', async () => {
+    const valid = plainToInstance(ShippingSupportOrdersQueryDto, {
+      days: '30', page: '2', limit: '100', status: 'realized', sort: 'subsidy',
+    });
+    await expect(validate(valid)).resolves.toHaveLength(0);
+
+    const invalid = plainToInstance(ShippingSupportOrdersQueryDto, {
+      days: '30', page: '0', limit: '101', status: 'unknown',
+    });
+    await expect(validate(invalid)).resolves.not.toHaveLength(0);
   });
 });

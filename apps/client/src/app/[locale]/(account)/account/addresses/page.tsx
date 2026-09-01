@@ -315,11 +315,10 @@ function AddressCard({
 
 interface AddressPayload {
   label?:      string;
-  firstName:   string;
-  lastName:    string;
+  fullName:    string;
   phone?:      string;
-  addressLine1: string;
-  addressLine2?: string;
+  line1:       string;
+  line2?:      string;
   city:        string;
   state?:      string;
   postalCode:  string;
@@ -378,11 +377,10 @@ export default function AddressesPage() {
   const handleSave = (data: FormValues) => {
     const payload: AddressPayload = {
       label:        data.label,
-      firstName:    data.firstName,
-      lastName:     data.lastName,
+      fullName:     `${data.firstName} ${data.lastName}`.trim(),
       phone:        data.phone,
-      addressLine1: data.line1,
-      addressLine2: data.line2,
+      line1:        data.line1,
+      line2:        data.line2,
       city:         data.city,
       state:        data.state,
       postalCode:   data.postalCode,

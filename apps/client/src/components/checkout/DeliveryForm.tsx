@@ -143,6 +143,11 @@ export function DeliveryForm({
               {t('businessDays', { min: estimate.minDays, max: estimate.maxDays, date: estDelivery })}
             </p>
           )}
+          {estimate.platformFreeShippingApplied && (estimate.shippingSubsidy ?? 0) > 0 && (
+            <p className="mt-1 text-xs font-medium text-success">
+              {t('platformSupport', { amount: fmtAmount(estimate.shippingSubsidy ?? 0) })}
+            </p>
+          )}
         </div>
         <div className="shrink-0">
           {estimate.totalCost === 0 ? (

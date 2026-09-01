@@ -42,7 +42,8 @@ export const ADMIN_ROUTES = {
   MODERATION:       '/moderation',
   MODERATION_QUEUE: '/moderation/queue',
 
-  FINANCE: '/finance',
+  FINANCE:                  '/finance',
+  FINANCE_SHIPPING_SUPPORT: '/finance/shipping-support',
 
   STORES:             '/stores',
   STORE:              (id: string) => `/stores/${id}`,

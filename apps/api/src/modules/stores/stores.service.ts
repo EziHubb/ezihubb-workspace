@@ -7,7 +7,7 @@ import {
   BadRequestException,
   Optional,
 } from '@nestjs/common';
-import { Prisma, PlatformSettings } from '@prisma/client';
+import { OrderStatus, Prisma, PlatformSettings } from '@prisma/client';
 import { ModerationService } from '../moderation/moderation.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -29,9 +29,23 @@ import {
   UpdatePlatformSettingsDto,
 } from './dto/admin-stores.dto';
 import { paginatedResponse } from '../../common/dto/paginated-response.dto';
+import {
+  ShippingSupportOrdersQueryDto,
+  ShippingSupportSort,
+  ShippingSupportStatus,
+} from './dto/shipping-support-query.dto';
 
 const SHOP_URL   = process.env['CLIENT_URL'] ?? 'https://ezihubb.com';
 const ADMIN_URL  = process.env['ADMIN_URL']  ?? 'http://localhost:3001';
+const REALIZED_SHIPPING_STATUSES: OrderStatus[] = [
+  OrderStatus.SHIPPED,
+  OrderStatus.DELIVERED,
+  OrderStatus.COMPLETED,
+];
+const EXCLUDED_SHIPPING_STATUSES: OrderStatus[] = [
+  OrderStatus.CANCELLED,
+  OrderStatus.REFUNDED,
+];
 
 @Injectable()
 export class StoresService {
@@ -603,6 +617,7 @@ export class StoresService {
       vatOnFeesRate:             Number(row.vatOnFeesRate),
       offsiteAdsFeeRate:         Number(row.offsiteAdsFeeRate),
       minPayoutAmount:           Number(row.minPayoutAmount),
+      freeShippingThreshold:     Number(row.freeShippingThreshold),
       plusMonthlyPrice:          Number(row.plusMonthlyPrice),
       plusAnnualPrice:           row.plusAnnualPrice === null ? null : Number(row.plusAnnualPrice),
     };
@@ -780,6 +795,211 @@ export class StoresService {
       this.prisma.store.count({ where }),
     ]);
     return { data: stores, total, page, totalPages: Math.ceil(total / limit) };
+  }
+
+  /**
+   * Marketplace shipping support is recorded per StoreOrder because one buyer
+   * order can contain parcels from multiple shops. `committedSubsidy` is the
+   * support promised on every live order; `realizedSubsidy` is the subset whose
+   * parcel has reached SHIPPED or later. Cancelled/refunded orders are excluded
+   * so they never inflate platform expense reporting.
+   */
+  async getShippingSupportSummary(days = 30) {
+    const since = this.shippingSupportSince(days);
+
+    type AggregateRow = {
+      committedSubsidy: number;
+      realizedSubsidy: number;
+      supportedOrders: number;
+      supportedShipments: number;
+      merchandiseSubtotal: number;
+    };
+    type SeriesRow = { date: string; committed: number; realized: number; orders: number };
+    type StoreRow = { storeId: string; storeName: string; subsidy: number; orders: number };
+
+    const [aggregateRows, seriesRows, topStores] = await Promise.all([
+      this.prisma.$queryRaw<AggregateRow[]>`
+        SELECT
+          COALESCE(SUM(so."shippingSubsidy"), 0)::float AS "committedSubsidy",
+          COALESCE(SUM(so."shippingSubsidy") FILTER (
+            WHERE so.status IN ('SHIPPED', 'DELIVERED', 'COMPLETED')
+          ), 0)::float AS "realizedSubsidy",
+          COUNT(DISTINCT so."orderId")::int AS "supportedOrders",
+          COUNT(*)::int AS "supportedShipments",
+          COALESCE(SUM(GREATEST(so.subtotal - so."discountAmount", 0)), 0)::float AS "merchandiseSubtotal"
+        FROM "StoreOrder" so
+        WHERE so."createdAt" >= ${since}
+          AND so."shippingSubsidy" > 0
+          AND so.status NOT IN ('CANCELLED', 'REFUNDED')
+      `,
+      this.prisma.$queryRaw<SeriesRow[]>`
+        SELECT
+          TO_CHAR(DATE_TRUNC('day', so."createdAt"), 'YYYY-MM-DD') AS date,
+          COALESCE(SUM(so."shippingSubsidy"), 0)::float AS committed,
+          COALESCE(SUM(so."shippingSubsidy") FILTER (
+            WHERE so.status IN ('SHIPPED', 'DELIVERED', 'COMPLETED')
+          ), 0)::float AS realized,
+          COUNT(DISTINCT so."orderId")::int AS orders
+        FROM "StoreOrder" so
+        WHERE so."createdAt" >= ${since}
+          AND so."shippingSubsidy" > 0
+          AND so.status NOT IN ('CANCELLED', 'REFUNDED')
+        GROUP BY DATE_TRUNC('day', so."createdAt")
+        ORDER BY DATE_TRUNC('day', so."createdAt") ASC
+      `,
+      this.prisma.$queryRaw<StoreRow[]>`
+        SELECT
+          s.id AS "storeId",
+          s.name AS "storeName",
+          COALESCE(SUM(so."shippingSubsidy"), 0)::float AS subsidy,
+          COUNT(DISTINCT so."orderId")::int AS orders
+        FROM "StoreOrder" so
+        JOIN "Store" s ON s.id = so."storeId"
+        WHERE so."createdAt" >= ${since}
+          AND so."shippingSubsidy" > 0
+          AND so.status NOT IN ('CANCELLED', 'REFUNDED')
+        GROUP BY s.id, s.name
+        ORDER BY subsidy DESC
+        LIMIT 5
+      `,
+    ]);
+
+    const aggregate = aggregateRows[0] ?? {
+      committedSubsidy: 0,
+      realizedSubsidy: 0,
+      supportedOrders: 0,
+      supportedShipments: 0,
+      merchandiseSubtotal: 0,
+    };
+    const committedSubsidy = Number(aggregate.committedSubsidy);
+    const realizedSubsidy = Number(aggregate.realizedSubsidy);
+    const supportedOrders = Number(aggregate.supportedOrders);
+    const merchandiseSubtotal = Number(aggregate.merchandiseSubtotal);
+
+    return {
+      periodDays: days,
+      committedSubsidy,
+      realizedSubsidy,
+      pendingSubsidy: Math.max(0, committedSubsidy - realizedSubsidy),
+      supportedOrders,
+      supportedShipments: Number(aggregate.supportedShipments),
+      averageSubsidyPerOrder: supportedOrders > 0 ? committedSubsidy / supportedOrders : 0,
+      subsidyToMerchandisePercent: merchandiseSubtotal > 0
+        ? (committedSubsidy / merchandiseSubtotal) * 100
+        : 0,
+      series: seriesRows.map((row) => ({
+        date: row.date,
+        committed: Number(row.committed),
+        realized: Number(row.realized),
+        orders: Number(row.orders),
+      })),
+      topStores: topStores.map((row) => ({
+        ...row,
+        subsidy: Number(row.subsidy),
+        orders: Number(row.orders),
+      })),
+    };
+  }
+
+  async getShippingSupportOrders(query: ShippingSupportOrdersQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const search = query.search?.trim();
+    const since = this.shippingSupportSince(query.days ?? 30);
+
+    const status = query.status === ShippingSupportStatus.REALIZED
+      ? { in: REALIZED_SHIPPING_STATUSES }
+      : query.status === ShippingSupportStatus.PENDING
+        ? { notIn: [...EXCLUDED_SHIPPING_STATUSES, ...REALIZED_SHIPPING_STATUSES] }
+        : { notIn: EXCLUDED_SHIPPING_STATUSES };
+
+    const where: Prisma.StoreOrderWhereInput = {
+      shippingSubsidy: { gt: 0 },
+      createdAt: { gte: since },
+      status,
+      ...(query.storeId ? { storeId: query.storeId } : {}),
+      ...(search
+        ? {
+            OR: [
+              { order: { orderNumber: { contains: search, mode: 'insensitive' } } },
+              { order: { shippingName: { contains: search, mode: 'insensitive' } } },
+              { order: { guestEmail: { contains: search, mode: 'insensitive' } } },
+              { store: { name: { contains: search, mode: 'insensitive' } } },
+            ],
+          }
+        : {}),
+    };
+
+    const primaryOrder: Prisma.StoreOrderOrderByWithRelationInput =
+      query.sort === ShippingSupportSort.SUBSIDY
+        ? { shippingSubsidy: 'desc' }
+        : query.sort === ShippingSupportSort.ORDER_VALUE
+          ? { subtotal: 'desc' }
+          : { createdAt: 'desc' };
+
+    const [rows, total] = await Promise.all([
+      this.prisma.storeOrder.findMany({
+        where,
+        select: {
+          id: true,
+          orderId: true,
+          status: true,
+          subtotal: true,
+          discountAmount: true,
+          shippingCost: true,
+          shippingSubsidy: true,
+          createdAt: true,
+          store: { select: { id: true, name: true, slug: true } },
+          order: {
+            select: {
+              orderNumber: true,
+              shippingName: true,
+              guestEmail: true,
+              user: { select: { firstName: true, lastName: true, email: true } },
+            },
+          },
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: [primaryOrder, { createdAt: 'desc' }],
+      }),
+      this.prisma.storeOrder.count({ where }),
+    ]);
+
+    return paginatedResponse(rows.map((row) => {
+      const quotedShippingCost = Number(row.shippingCost);
+      const platformSubsidy = Number(row.shippingSubsidy);
+      const merchandiseSubtotal = Math.max(0, Number(row.subtotal) - Number(row.discountAmount));
+      const accountName = [row.order.user?.firstName, row.order.user?.lastName]
+        .filter(Boolean)
+        .join(' ');
+
+      return {
+        storeOrderId: row.id,
+        orderId: row.orderId,
+        orderNumber: row.order.orderNumber,
+        storeId: row.store.id,
+        storeName: row.store.name,
+        storeSlug: row.store.slug,
+        buyerName: row.order.shippingName || accountName || 'Guest',
+        buyerEmail: row.order.guestEmail || row.order.user?.email || null,
+        orderStatus: row.status,
+        fundingStatus: REALIZED_SHIPPING_STATUSES.includes(row.status) ? 'REALIZED' : 'PENDING',
+        orderedAt: row.createdAt,
+        merchandiseSubtotal,
+        quotedShippingCost,
+        platformSubsidy,
+        buyerShippingPaid: Math.max(0, quotedShippingCost - platformSubsidy),
+        buyerStoreTotal: merchandiseSubtotal + Math.max(0, quotedShippingCost - platformSubsidy),
+      };
+    }), page, limit, total);
+  }
+
+  private shippingSupportSince(days: number): Date {
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    since.setDate(since.getDate() - Math.max(0, days - 1));
+    return since;
   }
 
   async adminPayoutStats(storeId?: string) {

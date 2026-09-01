@@ -161,8 +161,7 @@ export function AddressModal({
   const onSubmit = (data: FormValues) => {
     const payload = {
       label:      data.label ?? '',
-      firstName:  data.firstName,
-      lastName:   data.lastName,
+      fullName:   `${data.firstName} ${data.lastName}`.trim(),
       phone:      data.phone,
       line1:      data.line1,
       line2:      data.line2,

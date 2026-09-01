@@ -12,6 +12,11 @@ import { Queue } from 'bullmq';
 import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ShippingService } from '../shipping/shipping.service';
+import {
+  qualifiesForPlatformFreeShipping,
+  resolveFreeShippingThreshold,
+  resolveShippingSettlement,
+} from '../shipping/free-shipping-policy';
 import { TrackingService } from '../shipping/tracking.service';
 import { PaymentsService } from '../payments/payments.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -376,7 +381,7 @@ export class OrdersService {
 
     // Validate coupon and calculate discount
     let discount = 0;
-    let freeShipping = false;
+    let couponFreeShipping = false;
     let couponCode: string | undefined = cart.couponCode ?? undefined;
     if (dto.couponCode) couponCode = dto.couponCode;
 
@@ -467,10 +472,27 @@ export class OrdersService {
         discount = Math.round(promoBaseSubtotal * Number(promo.value)) / 100;
       else if (promo.type === 'FIXED_AMOUNT')
         discount = Math.min(promoBaseSubtotal, Number(promo.value));
-      else if (promo.type === 'FREE_SHIPPING') freeShipping = true;
+      else if (promo.type === 'FREE_SHIPPING') couponFreeShipping = true;
     }
 
     const subtotalAfterDiscount = Math.max(0, subtotal - discount - totalBundleDiscount);
+
+    // Platform-wide free shipping is evaluated from the same server-owned,
+    // sale-aware merchandise subtotal that is persisted on the order. Coupon
+    // and bundle discounts do not revoke eligibility. Zero is
+    // an explicit admin switch to disable this policy. A coupon can still
+    // waive shipping independently.
+    const shippingSettings = await this.prisma.platformSettings.findUnique({
+      where: { id: 'singleton' },
+      select: { freeShippingThreshold: true },
+    });
+    const freeShippingThreshold = resolveFreeShippingThreshold(
+      shippingSettings?.freeShippingThreshold,
+    );
+    const platformFreeShipping = qualifiesForPlatformFreeShipping(
+      subtotal,
+      freeShippingThreshold,
+    );
 
     // ── Affiliate attribution ────────────────────────────────────────────────
     let affiliateId: string | null = null;
@@ -487,25 +509,36 @@ export class OrdersService {
       }
     }
 
-    // Calculate shipping (waived if FREE_SHIPPING coupon applied).
+    // Resolve the original shipping quote before deciding who funds it. The
+    // buyer-facing Order keeps only what the buyer pays, while StoreOrder
+    // below keeps the quoted delivery cost and the platform subsidy as
+    // separate values. Platform-funded shipping is an operating expense, not
+    // seller revenue, so only ShippingSettlement.sellerCredit enters fees and
+    // the seller ledger.
     // If every item in the cart is fulfilled by a connected provider (e.g.
     // Printify), providerShippingCost holds a real per-store quote — otherwise
     // the seller-configured Delivery profile cost is used (guaranteed
     // resolvable at this point, or checkout would have hard-errored above). A
     // digital-only order never has shipping at all.
-    let shippingCost: number;
+    let quotedShippingCost: number;
     let shippingMethodName: string | null;
     if (isDigitalOnly) {
-      shippingCost = 0;
+      quotedShippingCost = 0;
       shippingMethodName = null;
     } else if (providerShippingCost) {
-      shippingCost = freeShipping ? 0 : [...providerShippingCost.values()].reduce((s, c) => s + c, 0);
+      quotedShippingCost = [...providerShippingCost.values()].reduce((s, c) => s + c, 0);
       shippingMethodName = 'Standard Shipping';
     } else {
-      shippingCost = freeShipping ? 0 : [...sellerShipping!.perStore.values()].reduce((s, c) => s + c, 0);
+      quotedShippingCost = [...sellerShipping!.perStore.values()].reduce((s, c) => s + c, 0);
       const distinctNames = new Set(sellerShipping!.methodNames.values());
       shippingMethodName = distinctNames.size === 1 ? [...distinctNames][0] : 'Standard Shipping';
     }
+    const orderShipping = resolveShippingSettlement(quotedShippingCost, {
+      platformSponsored: platformFreeShipping,
+      couponWaived: couponFreeShipping,
+    });
+    const shippingCost = orderShipping.buyerCharge;
+    const shippingSubsidy = orderShipping.platformSubsidy;
 
     // Gift wrapping is a physical concept — a digital order has nothing to wrap.
     const giftWrappingCost = !isDigitalOnly && dto.giftWrapping ? GIFT_WRAPPING_PRICE : 0;
@@ -554,6 +587,7 @@ export class OrdersService {
           shippingCountry: addr ? addr.country : null,
           shippingMethod: shippingMethodName,
           shippingCost,
+          shippingSubsidy,
           subtotal:       Math.round(subtotal * 100) / 100,
           discountAmount: Math.round((discount + totalBundleDiscount) * 100) / 100,
           total,
@@ -626,9 +660,21 @@ export class OrdersService {
         for (const [storeId, items] of storeGroups) {
           const storeSubtotal = items.reduce((sum, item) => sum + unitPriceFor(item) * item.quantity, 0);
           const roundedSubtotal = Math.round(storeSubtotal * 100) / 100;
-          const storeShippingCost = freeShipping
-            ? 0
-            : (providerShippingCost?.get(storeId) ?? sellerShipping?.perStore.get(storeId) ?? 0);
+          const quotedStoreShippingCost = providerShippingCost?.get(storeId)
+            ?? sellerShipping?.perStore.get(storeId)
+            ?? 0;
+          const storeShipping = resolveShippingSettlement(quotedStoreShippingCost, {
+            platformSponsored: platformFreeShipping,
+            couponWaived: couponFreeShipping,
+          });
+          // Preserve the quote on StoreOrder so receipts and platform cost
+          // reporting can show what delivery costs. The subsidy cancels it
+          // from the buyer total; only sellerShippingCredit becomes seller
+          // revenue and participates in seller fees.
+          const storeShippingCost = platformFreeShipping
+            ? quotedStoreShippingCost
+            : storeShipping.sellerCredit;
+          const sellerShippingCredit = storeShipping.sellerCredit;
 
           // Every discount on Etsy is seller-funded — a store-scoped coupon's
           // discount reduces THAT store's own subtotal (and therefore fees +
@@ -641,7 +687,7 @@ export class OrdersService {
           const storeDiscount = Math.min(couponDiscount + storeBundleDiscount, roundedSubtotal);
           const discountedSubtotal = Math.round((roundedSubtotal - storeDiscount) * 100) / 100;
 
-          const fees = calculateOrderFees(discountedSubtotal, storeShippingCost, storeCountryMap.get(storeId), feeSettings);
+          const fees = calculateOrderFees(discountedSubtotal, sellerShippingCredit, storeCountryMap.get(storeId), feeSettings);
 
           // The dispatch promise, from the slowest item in this store's part
           // of the order — the parcel cannot leave before the last thing in it
@@ -677,6 +723,7 @@ export class OrdersService {
                 ? fees.sellerEarnings
                 : 0,
               shippingCost:   storeShippingCost,
+              shippingSubsidy: storeShipping.platformSubsidy,
               visitorId:      linkVisitorId ?? null,
             },
           });
@@ -684,7 +731,7 @@ export class OrdersService {
           const ledgerEntries: Prisma.SellerLedgerEntryCreateManyInput[] = [
             {
               storeId, storeOrderId: storeOrder.id, type: 'SALE',
-              amount: discountedSubtotal + storeShippingCost,
+              amount: discountedSubtotal + sellerShippingCredit,
               description: `Sale — order ${newOrder.orderNumber}`,
             },
             {
@@ -1679,6 +1726,7 @@ export class OrdersService {
       shippingCountry: order.shippingCountry,
       shippingMethod: order.shippingMethod,
       shippingCost: Number(order.shippingCost),
+      shippingSubsidy: Number(order.shippingSubsidy),
       subtotal: Number(order.subtotal),
       discountAmount: Number(order.discountAmount),
       total: Number(order.total),

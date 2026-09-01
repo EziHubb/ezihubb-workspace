@@ -71,6 +71,7 @@ export interface OrderDto {
   shippingCountry: string;
   shippingMethod: string;
   shippingCost: number;
+  shippingSubsidy?: number;
   subtotal: number;
   discountAmount?: number;
   total: number;

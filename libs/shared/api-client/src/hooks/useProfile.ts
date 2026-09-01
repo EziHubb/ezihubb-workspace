@@ -91,8 +91,7 @@ export function useAddresses(enabled = false) {
 
 export interface AddressInput {
   label?:       string;
-  firstName:    string;
-  lastName:     string;
+  fullName:     string;
   line1:        string;
   line2?:       string;
   city:         string;

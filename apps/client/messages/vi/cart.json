@@ -58,7 +58,7 @@
 
   "trust": {
     "secure": "Bảo mật",
-    "freeShipping": "Miễn phí trên $50",
+    "freeShipping": "Miễn phí từ {amount}",
     "returns": "Đổi trả 30 ngày"
   },
 
