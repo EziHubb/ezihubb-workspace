@@ -20,6 +20,7 @@ import { WebsiteStructuredData } from '../../components/seo/WebsiteStructuredDat
 import { AffiliateTracker } from '../../components/providers/AffiliateTracker';
 import { ApiLocaleSync } from '../../components/providers/ApiLocaleSync';
 import { ServiceWorkerRegistrar } from '../../components/providers/ServiceWorkerRegistrar';
+import { LocaleTransitionRestorer } from '../../components/providers/LocaleTransitionRestorer';
 import { CurrencyProvider } from '../../lib/currency/currency-context';
 import '../global.css';
 
@@ -223,6 +224,7 @@ export default async function LocaleLayout({
         <ReactQueryProvider>
           <CurrencyProvider>
             <ApiLocaleSync />
+            <LocaleTransitionRestorer />
             {children}
             <AffiliateTracker />
             {/* Module-level toast store — call toast.success/error anywhere, including outside React */}

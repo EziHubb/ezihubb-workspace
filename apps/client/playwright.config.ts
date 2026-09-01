@@ -30,6 +30,13 @@ export default defineConfig({
      opening a page. A direct command avoids racing Nx's continuous target. */
   webServer: {
     command: 'pnpm exec next dev --hostname 127.0.0.1 --port 3000',
+    // The application CSP intentionally permits HTTPS API connections only.
+    // Use a non-routable HTTPS origin in browser tests; individual tests mock
+    // the endpoints they exercise, while unmocked requests fail harmlessly.
+    env: {
+      ...process.env,
+      NEXT_PUBLIC_API_URL: 'https://api.ezihubb.test',
+    },
     url: 'http://127.0.0.1:3000',
     reuseExistingServer: true,
     // A cold Next/Nx cache can spend more than Playwright's 60s default on

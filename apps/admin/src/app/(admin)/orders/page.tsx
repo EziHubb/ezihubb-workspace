@@ -45,6 +45,7 @@ import {
 const MAX_PAGE_LIMIT = 48;
 
 type OrderSort = 'shipBy' | 'newest' | 'oldest' | 'total';
+type QueueView = 'active' | 'cancelled';
 
 const SORT_OPTIONS = [
   { value: 'shipBy', label: 'Ship by date' },
@@ -104,7 +105,11 @@ const dateInputToIso = (value: string) => new Date(`${value}T12:00:00`).toISOStr
 
 /** Groups consecutive orders under one ship-by heading, the way the list reads
  *  when scrolled. Server-side sorting guarantees they arrive adjacent. */
-function groupByShipBy(orders: QueueOrder[]): { label: string; orders: QueueOrder[] }[] {
+function groupByShipBy(orders: QueueOrder[], view: QueueView): { label: string; orders: QueueOrder[] }[] {
+  if (view === 'cancelled') {
+    return orders.length ? [{ label: 'Cancelled orders', orders }] : [];
+  }
+
   const groups: { label: string; orders: QueueOrder[] }[] = [];
   for (const order of orders) {
     const label = order.shipByDate
@@ -131,6 +136,7 @@ export default function OrdersPage() {
   // Newest first, not ship-by. A queue is read from the top, and what a
   // seller opens the page to find is what just came in.
   const [sort,     setSort]     = useState<OrderSort>('newest');
+  const [view,     setView]     = useState<QueueView>('active');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editorOpen,   setEditorOpen]   = useState(false);
   const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
@@ -169,13 +175,15 @@ export default function OrdersPage() {
     ),
   });
 
-  const queueParams = { stepId, page, limit, sort, search, ...filters };
+  const queueParams = { view, stepId, page, limit, sort, search, ...filters };
   const queueQuery = useQuery({
     queryKey: QK.queue(scope, queueParams),
     enabled:  canLoad,
     queryFn:  () => api.get<QueueResponse>(
       `${API_ROUTES.ADMIN.ORDER_PROGRESS_QUEUE}${qs({
-        stepId, page, limit, sort, search,
+        view,
+        stepId: view === 'active' ? stepId : undefined,
+        page, limit, sort, search,
         shipBy:      filters.shipBy === 'all' ? undefined : filters.shipBy,
         destination: filters.destination,
         hasNote:          filters.hasNote,
@@ -252,7 +260,7 @@ export default function OrdersPage() {
 
   const steps   = useMemo(() => stepsQuery.data ?? [], [stepsQuery.data]);
   const orders  = queueQuery.data?.data ?? [];
-  const groups  = useMemo(() => groupByShipBy(orders), [orders]);
+  const groups  = useMemo(() => groupByShipBy(orders, view), [orders, view]);
   const totalPages = queueQuery.data?.pagination.totalPages ?? 1;
 
   /** The end of the pipeline. Undefined until the steps have loaded, which is
@@ -386,7 +394,7 @@ export default function OrdersPage() {
             type="checkbox"
             checked={allOnPageSelected}
             onChange={toggleAllOnPage}
-            disabled={orders.length === 0}
+            disabled={orders.length === 0 || view === 'cancelled'}
             aria-label="Select every order on this page"
             className="h-4 w-4 rounded border-border"
           />
@@ -395,7 +403,7 @@ export default function OrdersPage() {
 
         <button
           type="button"
-          disabled={selected.size === 0 || !completeStepId || moveOrders.isPending}
+          disabled={view === 'cancelled' || selected.size === 0 || !completeStepId || moveOrders.isPending}
           onClick={() => completeStepId && moveOrders.mutate({ ids: [...selected], toStepId: completeStepId })}
           className="flex items-center gap-2 rounded-full border border-border px-4 py-1.5 text-sm text-secondary disabled:opacity-50"
         >
@@ -409,7 +417,7 @@ export default function OrdersPage() {
         <div className="relative">
           <button
             type="button"
-            disabled={selected.size === 0}
+            disabled={view === 'cancelled' || selected.size === 0}
             onClick={() => setBulkMenuOpen((v) => !v)}
             aria-haspopup="menu"
             className="flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-sm text-secondary disabled:opacity-50"
@@ -433,16 +441,27 @@ export default function OrdersPage() {
 
       {/* ── Pipeline tabs ────────────────────────────────────────────────── */}
       <div className="mb-4 flex items-center gap-1 overflow-x-auto border-b border-border">
-        <TabButton label="All" count={undefined} active={stepId === ''} onClick={() => changeView(() => setStepId(''))} />
+        <TabButton
+          label="All"
+          count={undefined}
+          active={view === 'active' && stepId === ''}
+          onClick={() => changeView(() => { setView('active'); setStepId(''); })}
+        />
         {steps.map((s) => (
           <TabButton
             key={s.id}
             label={s.name}
             count={s.orderCount}
-            active={stepId === s.id}
-            onClick={() => changeView(() => setStepId(s.id))}
+            active={view === 'active' && stepId === s.id}
+            onClick={() => changeView(() => { setView('active'); setStepId(s.id); })}
           />
         ))}
+        <TabButton
+          label="Cancelled"
+          count={queueQuery.data?.cancelledCount ?? 0}
+          active={view === 'cancelled'}
+          onClick={() => changeView(() => { setView('cancelled'); setStepId(''); })}
+        />
         <button
           type="button"
           onClick={() => setEditorOpen(true)}
@@ -478,13 +497,15 @@ export default function OrdersPage() {
                 <header className="flex items-center gap-3 rounded-t-card bg-background px-5 py-3">
                   <h2 className="text-sm font-semibold text-secondary">{group.label}</h2>
                   <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-muted">{group.orders.length}</span>
-                  <button
-                    type="button"
-                    onClick={() => selectGroup(group.orders)}
-                    className="text-sm text-muted underline underline-offset-2 hover:text-secondary"
-                  >
-                    Select all
-                  </button>
+                  {view === 'active' && (
+                    <button
+                      type="button"
+                      onClick={() => selectGroup(group.orders)}
+                      className="text-sm text-muted underline underline-offset-2 hover:text-secondary"
+                    >
+                      Select all
+                    </button>
+                  )}
                 </header>
 
                 {group.orders.map((order) => (
@@ -503,6 +524,7 @@ export default function OrdersPage() {
                     onCancel={() => cancelOrder(order)}
                     onRefund={() => dialog.alert('Refunds are issued from the order page.')}
                     onPrint={() => printPackingSlip(order.orderId, order.orderNumber, dialog.alert)}
+                    readOnly={view === 'cancelled'}
                   />
                 ))}
               </section>
@@ -549,6 +571,7 @@ export default function OrdersPage() {
           storeQuery={qs()}
           steps={steps}
           completeStepId={completeStepId}
+          readOnly={view === 'cancelled'}
           focusMessaging={focusMessaging}
           onClose={() => { setPanelId(null); setFocusMessaging(false); }}
           onChanged={refetchAll}

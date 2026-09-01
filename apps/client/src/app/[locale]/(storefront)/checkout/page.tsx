@@ -22,6 +22,7 @@ import { hotjarEvent }              from '../../../../lib/analytics/hotjar';
 import { useCurrency }              from '../../../../lib/currency/currency-context';
 import { fmtAmount, safeNum, safeArr } from '@ezihubb/utils';
 import { useAuthStore }             from '../../../../lib/store/auth.store';
+import { useLocaleTransitionState } from '../../../../lib/locale-transition';
 
 // Keep payment-provider SDKs out of the active checkout bundle while the
 // server has online payments disabled. This chunk is only loaded if a future
@@ -236,6 +237,22 @@ export default function CheckoutPage() {
   const [giftOptions, setGiftOptions] = useState<GiftOptions>({
     isGift: false, giftMessage: '', giftReceipt: false, giftWrapping: false, giftFrom: '',
   });
+
+  // Most storefront UI is restored generically from its DOM. A checkout
+  // wizard also has calculated state that is not mounted in the current step,
+  // so register that non-DOM portion with the shared locale transition layer.
+  useLocaleTransitionState(
+    'checkout',
+    { step, completedSteps, shippingAddress, guestEmail, shippingEstimate, giftOptions },
+    (draft) => {
+      setStep(draft.step);
+      setCompletedSteps(draft.completedSteps);
+      setShippingAddress(draft.shippingAddress);
+      setGuestEmail(draft.guestEmail);
+      setShippingEstimate(draft.shippingEstimate);
+      setGiftOptions(draft.giftOptions);
+    },
+  );
 
   // ── Affiliate discount (resolved from cookie on mount) ─────────────────────
   const [affiliateInfo, setAffiliateInfo] = useState<{

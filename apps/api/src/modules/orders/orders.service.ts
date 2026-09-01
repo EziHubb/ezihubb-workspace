@@ -1535,7 +1535,14 @@ export class OrdersService {
     const order = await this.prisma.order.findUnique({ where: { id }, include: ORDER_INCLUDE });
     if (!order) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Order not found' });
     if (order.status === OrderStatus.CANCELLED) {
-      throw new BadRequestException({ code: 'ERR_ORDER_ALREADY_CANCELLED', message: 'Order is already cancelled' });
+      // Idempotent by design. Older releases updated only Order, leaving the
+      // seller's StoreOrder in the fulfilment queue. A repeated cancel should
+      // repair that drift rather than reject the admin who discovered it.
+      await this.prisma.storeOrder.updateMany({
+        where: { orderId: id, status: { not: OrderStatus.CANCELLED } },
+        data:  { status: OrderStatus.CANCELLED },
+      });
+      return this.mapToDto(order);
     }
     const updated = await this.prisma.$transaction(async (tx) => {
       // OrderProgressService builds the admin queue from StoreOrder.status.

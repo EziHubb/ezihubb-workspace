@@ -34,6 +34,8 @@ export interface QueueOrder {
   orderId:     string;
   orderNumber: string;
   status:      string;
+  cancelledAt: string | null;
+  cancelReason: string | null;
   step:        { id: string; name: string; kind: StepKind } | null;
   shipByDate:  string | null;
   orderedAt:   string;
@@ -59,6 +61,7 @@ export interface QueueOrder {
 export interface QueueResponse {
   data: QueueOrder[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
+  cancelledCount: number;
 }
 
 export type ShipByBucket = 'all' | 'overdue' | 'today' | 'tomorrow' | 'week' | 'none';

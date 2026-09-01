@@ -32,6 +32,8 @@ interface Props {
   storeQuery:   string;
   steps:        ProgressStep[];
   completeStepId: string | undefined;
+  /** Cancellation archive: details and messaging stay available, fulfilment actions do not. */
+  readOnly?:      boolean;
   onClose:      () => void;
   onChanged:    () => void;
   onEditShipBy: (storeOrderId: string) => void;
@@ -59,7 +61,7 @@ const fmtDate = (iso: string | null) =>
 export function OrderPanel({
   storeOrderId, storeQuery, steps, completeStepId,
   onClose, onChanged, onEditShipBy, onToggleGift, onCancel, onRefund, onPrint,
-  focusMessaging,
+  focusMessaging, readOnly = false,
 }: Props) {
   const qc = useQueryClient();
   const dialog = useDialog();
@@ -290,7 +292,7 @@ export function OrderPanel({
                       steps={steps.filter(
                         (step) => step.kind !== 'SHIPPED' && step.kind !== 'COMPLETED',
                       )}
-                      disabled={moveOrder.isPending}
+                      disabled={readOnly || moveOrder.isPending}
                       onChange={(nextStepId) => moveOrder.mutate({ stepId: nextStepId })}
                     />
                     {/* Read-only: the buyer's view is the LEAST advanced shop
@@ -304,11 +306,11 @@ export function OrderPanel({
                     onClick={() => completeOrder.mutate()}
                     // No completed step means the shop's pipeline has not
                     // loaded yet — the request would have nowhere to move to.
-                    disabled={!completeStepId || isCompleted || completeOrder.isPending}
+                    disabled={readOnly || !completeStepId || isCompleted || completeOrder.isPending}
                     className="flex items-center gap-2 rounded-full bg-background px-6 py-2.5 text-sm font-medium text-secondary ring-1 ring-inset ring-border hover:bg-surface disabled:opacity-50"
                   >
                     {completeOrder.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                    {isCompleted ? 'Completed' : 'Complete order'}
+                    {readOnly ? 'Cancelled' : isCompleted ? 'Completed' : 'Complete order'}
                   </button>
 
                   <div className="relative">
@@ -333,28 +335,32 @@ export function OrderPanel({
                             label="Print"
                             onClick={() => { setMenuOpen(false); onPrint(detail.orderId, detail.orderNumber); }}
                           />
-                          <MenuItem
-                            icon={CalendarClock}
-                            label="Update dispatch by date"
-                            onClick={() => { setMenuOpen(false); onEditShipBy(detail.id); }}
-                          />
-                          <MenuItem
-                            icon={Gift}
-                            label={detail.isGift ? 'Remove gift mark' : 'Mark as a gift'}
-                            onClick={() => { setMenuOpen(false); onToggleGift(detail.id, !detail.isGift); }}
-                          />
-                          <div className="my-1 border-t border-border" />
-                          <MenuItem
-                            icon={XCircle}
-                            label="Cancel order"
-                            danger
-                            onClick={() => { setMenuOpen(false); onCancel(detail.orderId, detail.orderNumber); }}
-                          />
-                          <MenuItem
-                            icon={Undo2}
-                            label="Refund"
-                            onClick={() => { setMenuOpen(false); onRefund(); }}
-                          />
+                          {!readOnly && (
+                            <>
+                              <MenuItem
+                                icon={CalendarClock}
+                                label="Update dispatch by date"
+                                onClick={() => { setMenuOpen(false); onEditShipBy(detail.id); }}
+                              />
+                              <MenuItem
+                                icon={Gift}
+                                label={detail.isGift ? 'Remove gift mark' : 'Mark as a gift'}
+                                onClick={() => { setMenuOpen(false); onToggleGift(detail.id, !detail.isGift); }}
+                              />
+                              <div className="my-1 border-t border-border" />
+                              <MenuItem
+                                icon={XCircle}
+                                label="Cancel order"
+                                danger
+                                onClick={() => { setMenuOpen(false); onCancel(detail.orderId, detail.orderNumber); }}
+                              />
+                              <MenuItem
+                                icon={Undo2}
+                                label="Refund"
+                                onClick={() => { setMenuOpen(false); onRefund(); }}
+                              />
+                            </>
+                          )}
                         </div>
                       </>
                     )}

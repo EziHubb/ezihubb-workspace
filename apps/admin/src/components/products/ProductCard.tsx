@@ -251,9 +251,9 @@ export const ProductCard = memo(function ProductCard({
 
       {/* Content */}
       <div className="p-3 space-y-1.5">
-        <p className="text-sm font-semibold text-secondary line-clamp-2 leading-tight min-h-[2.5rem]">
+        <h3 className="h-9 overflow-hidden break-words text-sm font-semibold leading-[1.125rem] text-secondary [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
           {product.name}
-        </p>
+        </h3>
 
         <div className="flex items-center justify-between">
           {/* Matches the storefront exactly: a discounted price is

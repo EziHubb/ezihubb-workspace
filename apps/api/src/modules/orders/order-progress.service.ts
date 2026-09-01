@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { OrderProgressStepKind, OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { syncOrderStatusFromShops } from './order-status-sync';
-import type { OrderQueueQueryDto, QueueSort, ShipByBucket } from './dto/order-queue.dto';
+import type { OrderQueueQueryDto, QueueSort, QueueView, ShipByBucket } from './dto/order-queue.dto';
 import {
   CUSTOM_STEP_SORT_ORDER,
   ensureFixedOrderProgressSteps,
@@ -31,6 +31,27 @@ export const OFF_QUEUE_STATUSES = [
   OrderStatus.CANCELLED,
   OrderStatus.REFUNDED,
 ] as const;
+
+/**
+ * Keeps the seller queue consistent even when an older Order and StoreOrder
+ * disagree. The parent Order is the source of truth for cancellation; the
+ * child status is still checked because it is the seller's fulfilment row.
+ */
+export function queueLifecycleWhere(view: QueueView = 'active'): Prisma.StoreOrderWhereInput {
+  if (view === 'cancelled') {
+    return {
+      OR: [
+        { status: OrderStatus.CANCELLED },
+        { order: { status: OrderStatus.CANCELLED } },
+      ],
+    };
+  }
+
+  return {
+    status: { notIn: [...OFF_QUEUE_STATUSES] },
+    order:  { status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] } },
+  };
+}
 
 export interface ProgressStepInput {
   /** Absent for a step being created. */
@@ -101,7 +122,11 @@ export class OrderProgressService {
     // while the tab shows 4 — and the seller trusts the badge.
     const counts = await this.prisma.storeOrder.groupBy({
       by:    ['progressStepId'],
-      where: { storeId, progressStepId: { not: null }, status: { notIn: [...OFF_QUEUE_STATUSES] } },
+      where: {
+        storeId,
+        progressStepId: { not: null },
+        ...queueLifecycleWhere('active'),
+      },
       _count: { _all: true },
     });
 
@@ -278,11 +303,12 @@ export class OrderProgressService {
     const steps = await this.listSteps(storeId);
     await this.placeUnassigned(storeId, steps);
 
+    const cancelledView = query.view === 'cancelled';
+    const andWhere: Prisma.StoreOrderWhereInput[] = [queueLifecycleWhere(query.view)];
     const where: Prisma.StoreOrderWhereInput = {
       storeId,
-      // The queue is work to do, not an archive.
-      status: { notIn: [...OFF_QUEUE_STATUSES] },
-      ...(query.stepId ? { progressStepId: query.stepId } : {}),
+      AND: andWhere,
+      ...(!cancelledView && query.stepId ? { progressStepId: query.stepId } : {}),
       ...(query.upgradeRequested !== undefined ? { deliveryUpgradeRequested: query.upgradeRequested } : {}),
       ...this.shipByWhere(query.shipBy),
     };
@@ -299,7 +325,7 @@ export class OrderProgressService {
         { shippingName: { contains: query.search, mode: 'insensitive' } },
       ];
     }
-    if (Object.keys(orderWhere).length) where.order = orderWhere;
+    if (Object.keys(orderWhere).length) andWhere.push({ order: orderWhere });
 
     // Personalisation lives on the item, not the order: an order is
     // "personalized" when any line in it carries customisation data.
@@ -309,7 +335,7 @@ export class OrderProgressService {
         : { every: { customizationData: { equals: Prisma.DbNull } } };
     }
 
-    const [rows, total] = await this.prisma.$transaction([
+    const [rows, total, cancelledCount] = await this.prisma.$transaction([
       this.prisma.storeOrder.findMany({
         where,
         orderBy: this.queueOrderBy(query.sort),
@@ -320,6 +346,7 @@ export class OrderProgressService {
           order: {
             select: {
               id: true, orderNumber: true, createdAt: true, couponCode: true,
+              status: true, cancelledAt: true, cancelReason: true,
               isGift: true, note: true,
               shippingName: true, shippingAddress: true, shippingCity: true,
               shippingState: true, shippingZip: true, shippingCountry: true,
@@ -337,6 +364,9 @@ export class OrderProgressService {
         },
       }),
       this.prisma.storeOrder.count({ where }),
+      this.prisma.storeOrder.count({
+        where: { storeId, ...queueLifecycleWhere('cancelled') },
+      }),
     ]);
 
     return {
@@ -344,7 +374,11 @@ export class OrderProgressService {
         id:          row.id,
         orderId:     row.orderId,
         orderNumber: row.order.orderNumber,
-        status:      row.status,
+        status:      row.order.status === OrderStatus.CANCELLED
+          ? OrderStatus.CANCELLED
+          : row.status,
+        cancelledAt: row.order.cancelledAt,
+        cancelReason: row.order.cancelReason,
         step:        row.progressStep,
         shipByDate:  row.shipByDate,
         orderedAt:   row.order.createdAt,
@@ -378,13 +412,14 @@ export class OrderProgressService {
         })),
       })),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      cancelledCount,
     };
   }
 
   /** Distinct destination countries in this shop's queue, for the filter list. */
   async listDestinations(storeId: string) {
     const rows = await this.prisma.storeOrder.findMany({
-      where:  { storeId, status: { notIn: [...OFF_QUEUE_STATUSES] } },
+      where:  { storeId, ...queueLifecycleWhere('active') },
       select: { order: { select: { shippingCountry: true } } },
       distinct: ['orderId'],
     });

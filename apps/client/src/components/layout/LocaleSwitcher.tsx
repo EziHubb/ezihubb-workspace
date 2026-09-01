@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { startTransition, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { ChevronDown, Check } from 'lucide-react';
+import { getPathname, usePathname, useRouter } from '../../i18n/navigation';
+import { localeCookie } from '../../i18n/routing';
+import { captureLocaleTransitionState } from '../../lib/locale-transition';
 
 const LOCALES = [
   { code: 'en', flag: '🇺🇸', label: 'English' },
@@ -29,16 +31,31 @@ export function LocaleSwitcher({ variant = 'dropdown' }: LocaleSwitcherProps) {
 
   const switchLocale = (next: LocaleCode) => {
     if (next === locale) { setIsOpen(false); return; }
-    // Pathname includes locale prefix: /en/products/slug → strip it
-    const withoutLocale = pathname.replace(new RegExp(`^/${locale}`), '') || '/';
-    router.push(`/${next}${withoutLocale}`);
     setIsOpen(false);
+    const localizedPath = getPathname({ href: pathname, locale: next });
+    const nextUrl = `${localizedPath}${window.location.search}${window.location.hash}`;
+
+    // Keep next-intl's middleware in sync for subsequent unprefixed requests.
+    let cookie = `${localeCookie.name}=${encodeURIComponent(next)}; Path=${localeCookie.path}; Max-Age=${localeCookie.maxAge}; SameSite=Lax`;
+    if (window.location.protocol === 'https:') cookie += '; Secure';
+    document.cookie = cookie;
+    captureLocaleTransitionState();
+
+    // A normal navigation replaces the root [locale] segment and therefore
+    // remounts every stateful screen below it. The native History API is
+    // integrated with Next's App Router; refresh then merges the translated
+    // RSC payload in place, preserving React state, form values, scroll,
+    // query parameters and the URL fragment for the entire storefront.
+    startTransition(() => {
+      window.history.replaceState(null, '', nextUrl);
+      router.refresh();
+    });
   };
 
   // ── Inline variant (mobile drawer) ───────────────────────────────────────────
   if (variant === 'inline') {
     return (
-      <div className="flex items-center gap-1" role="group" aria-label={t('selectLanguage')}>
+      <div data-locale-switcher className="flex items-center gap-1" role="group" aria-label={t('selectLanguage')}>
         {LOCALES.map((l) => {
           const active = l.code === locale;
           return (
@@ -65,7 +82,7 @@ export function LocaleSwitcher({ variant = 'dropdown' }: LocaleSwitcherProps) {
 
   // ── Dropdown variant (desktop navbar) ────────────────────────────────────────
   return (
-    <div className="relative">
+    <div data-locale-switcher className="relative">
       <button
         type="button"
         onClick={() => setIsOpen((o) => !o)}

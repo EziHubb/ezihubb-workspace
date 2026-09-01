@@ -50,6 +50,7 @@ interface Props {
   onCancel:       () => void;
   onRefund:       () => void;
   onPrint:        () => void;
+  readOnly?:      boolean;
 }
 
 const fmtDate = (iso: string | null) =>
@@ -89,6 +90,7 @@ export function OrderQueueCard({
   order, steps, selected, onSelect, onOpen, onOpenMessages,
   onMoveToStep,
   onCompleted, onEditShipBy, onToggleGift, onCancel, onRefund, onPrint,
+  readOnly = false,
 }: Props) {
   const [showShipTo, setShowShipTo] = useState(true);
   const [menuOpen,   setMenuOpen]   = useState(false);
@@ -121,6 +123,7 @@ export function OrderQueueCard({
         type="checkbox"
         checked={selected}
         onChange={(e) => onSelect(e.target.checked)}
+        disabled={readOnly}
         aria-label={`Select order ${order.orderNumber}`}
         className="mt-1 h-4 w-4 shrink-0 rounded border-border"
       />
@@ -154,7 +157,13 @@ export function OrderQueueCard({
           {/* The label the stripe cannot give. A colour alone is a code the
               reader has to learn, and is invisible to anyone who cannot
               separate these hues. */}
-          <OrderProgressBadge step={order.step} size="sm" />
+          {order.status === 'CANCELLED' ? (
+            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">
+              Cancelled
+            </span>
+          ) : (
+            <OrderProgressBadge step={order.step} size="sm" />
+          )}
         </div>
 
         {order.couponCode && (
@@ -210,29 +219,39 @@ export function OrderQueueCard({
       {/* Under the details on a narrow card rather than beside them: 256px
           held as shrink-0 left the item list almost nothing to occupy. */}
       <div className="w-full shrink-0 text-sm sm:w-64">
-        <p className={`font-semibold ${overdue ? 'text-error' : 'text-secondary'}`}>
-          Ship by {fmtDate(order.shipByDate) ?? 'no estimate'}
+        <p className={`font-semibold ${readOnly || overdue ? 'text-error' : 'text-secondary'}`}>
+          {readOnly
+            ? `Cancelled ${fmtDate(order.cancelledAt) ?? ''}`.trim()
+            : `Ship by ${fmtDate(order.shipByDate) ?? 'no estimate'}`}
         </p>
         <p className="text-muted">Ordered {fmtDate(order.orderedAt)}</p>
 
-        <p className="mt-3 text-muted">
-          {order.shippingMethod ?? 'Standard'}{' '}
-          <span className="text-secondary">({money(order.shippingCost)})</span>
-        </p>
+        {readOnly && order.cancelReason && (
+          <p className="mt-2 text-xs text-muted">Reason: {order.cancelReason}</p>
+        )}
 
-        <button
-          type="button"
-          onClick={() => setShowShipTo((v) => !v)}
-          aria-expanded={showShipTo}
-          className="mt-3 flex w-full items-center justify-between font-semibold text-secondary"
-        >
-          Ship to
-          {showShipTo
-            ? <ChevronUp className="h-4 w-4" aria-hidden="true" />
-            : <ChevronDown className="h-4 w-4" aria-hidden="true" />}
-        </button>
+        {!readOnly && (
+          <p className="mt-3 text-muted">
+            {order.shippingMethod ?? 'Standard'}{' '}
+            <span className="text-secondary">({money(order.shippingCost)})</span>
+          </p>
+        )}
 
-        {showShipTo && (
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => setShowShipTo((v) => !v)}
+            aria-expanded={showShipTo}
+            className="mt-3 flex w-full items-center justify-between font-semibold text-secondary"
+          >
+            Ship to
+            {showShipTo
+              ? <ChevronUp className="h-4 w-4" aria-hidden="true" />
+              : <ChevronDown className="h-4 w-4" aria-hidden="true" />}
+          </button>
+        )}
+
+        {!readOnly && showShipTo && (
           <address className="mt-2 not-italic text-secondary">
             {order.shipTo.name && <div className="font-medium">{order.shipTo.name}</div>}
             {order.shipTo.address && <div>{order.shipTo.address}</div>}
@@ -249,32 +268,34 @@ export function OrderQueueCard({
           </address>
         )}
 
-        {order.upgradeRequested && (
+        {!readOnly && order.upgradeRequested && (
           <p className="mt-2 text-xs font-medium text-warning">Delivery upgrade requested</p>
         )}
       </div>
 
       {/* ── Actions ─────────────────────────────────────────────────────── */}
       <div className="relative flex w-10 shrink-0 flex-col items-center gap-3">
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => { setCompleteOpen(true); setMenuOpen(false); setProgressOpen(false); }}
-            title="Mark as dispatched"
-            aria-label="Mark as dispatched"
-            className="rounded-full p-1.5 text-secondary hover:bg-background"
-          >
-            <CircleCheckBig className="h-5 w-5" aria-hidden="true" />
-          </button>
-          {progressOpen && (
-            <UpdateProgressMenu
-              steps={steps}
-              currentStepId={order.step?.id}
-              onPick={(id) => { setProgressOpen(false); onMoveToStep(id); }}
-              onClose={() => setProgressOpen(false)}
-            />
-          )}
-        </div>
+        {!readOnly && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => { setCompleteOpen(true); setMenuOpen(false); setProgressOpen(false); }}
+              title="Mark as dispatched"
+              aria-label="Mark as dispatched"
+              className="rounded-full p-1.5 text-secondary hover:bg-background"
+            >
+              <CircleCheckBig className="h-5 w-5" aria-hidden="true" />
+            </button>
+            {progressOpen && (
+              <UpdateProgressMenu
+                steps={steps}
+                currentStepId={order.step?.id}
+                onPick={(id) => { setProgressOpen(false); onMoveToStep(id); }}
+                onClose={() => setProgressOpen(false)}
+              />
+            )}
+          </div>
+        )}
 
         {/* Dispatching is where the tracking number comes from, so this asks
             for it instead of silently advancing the status the way the check
@@ -338,11 +359,15 @@ export function OrderQueueCard({
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
               <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-56 rounded-card border border-border bg-surface py-2 shadow-lg">
                 <MenuItem icon={Printer}       label="Print"               onClick={() => { setMenuOpen(false); onPrint(); }} />
-                <MenuItem icon={CalendarClock} label="Update ship by date" onClick={() => { setMenuOpen(false); onEditShipBy(); }} />
-                <MenuItem icon={Gift}          label={order.isGift ? 'Remove gift mark' : 'Mark as a gift'} onClick={() => { setMenuOpen(false); onToggleGift(); }} />
-                <div className="my-1 border-t border-border" />
-                <MenuItem icon={XCircle} label="Cancel order" danger onClick={() => { setMenuOpen(false); onCancel(); }} />
-                <MenuItem icon={Undo2}   label="Refund"              onClick={() => { setMenuOpen(false); onRefund(); }} />
+                {!readOnly && (
+                  <>
+                    <MenuItem icon={CalendarClock} label="Update ship by date" onClick={() => { setMenuOpen(false); onEditShipBy(); }} />
+                    <MenuItem icon={Gift}          label={order.isGift ? 'Remove gift mark' : 'Mark as a gift'} onClick={() => { setMenuOpen(false); onToggleGift(); }} />
+                    <div className="my-1 border-t border-border" />
+                    <MenuItem icon={XCircle} label="Cancel order" danger onClick={() => { setMenuOpen(false); onCancel(); }} />
+                    <MenuItem icon={Undo2}   label="Refund"              onClick={() => { setMenuOpen(false); onRefund(); }} />
+                  </>
+                )}
               </div>
             </>
           )}

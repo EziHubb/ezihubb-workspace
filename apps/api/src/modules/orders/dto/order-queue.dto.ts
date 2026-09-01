@@ -12,6 +12,9 @@ export type ShipByBucket = (typeof SHIP_BY_BUCKETS)[number];
 export const QUEUE_SORTS = ['shipBy', 'newest', 'oldest', 'total'] as const;
 export type QueueSort = (typeof QUEUE_SORTS)[number];
 
+export const QUEUE_VIEWS = ['active', 'cancelled'] as const;
+export type QueueView = (typeof QUEUE_VIEWS)[number];
+
 /** `?flag=true` arrives as a string; anything else means "not filtering on it". */
 const toOptionalBool = ({ value }: { value: unknown }) =>
   value === 'true' ? true : value === 'false' ? false : undefined;
@@ -28,6 +31,12 @@ export class OrderQueueQueryDto extends PaginationDto {
   @IsOptional()
   @IsString()
   stepId?: string;
+
+  /** Active fulfilment pipeline or the read-only cancellation archive. */
+  @ApiPropertyOptional({ enum: QUEUE_VIEWS })
+  @IsOptional()
+  @IsIn(QUEUE_VIEWS as unknown as string[])
+  view?: QueueView;
 
   @ApiPropertyOptional({ enum: SHIP_BY_BUCKETS })
   @IsOptional()
