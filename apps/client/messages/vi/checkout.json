@@ -1,6 +1,6 @@
 {
   "title": "Thanh toán",
-  "currencyNote": "Giá hiển thị là quy đổi tham khảo. Thẻ của bạn sẽ bị tính phí bằng {currency}.",
+  "currencyNote": "Giá quy đổi chỉ mang tính tham khảo. Shop sẽ xác nhận số tiền cuối cùng bằng {currency} trước khi thực hiện bất kỳ thanh toán nào.",
 
   "steps": {
     "cart": "Giỏ hàng",
@@ -9,6 +9,7 @@
     "payment": "Thanh toán",
     "contact": "Liên hệ",
     "review": "Xem lại",
+    "orderRequest": "Yêu cầu đặt hàng",
     "aria": "Các bước thanh toán"
   },
 
@@ -17,6 +18,7 @@
     "deliveryMethod": "Dự kiến giao hàng",
     "payment": "Thanh toán",
     "contactInformation": "Thông tin liên hệ",
+    "reviewRequest": "Xem lại và gửi yêu cầu đặt hàng",
     "preparingOrder": "Đang chuẩn bị đơn hàng của bạn…"
   },
 
@@ -89,7 +91,7 @@
     "free": "MIỄN PHÍ",
     "back": "← Quay lại",
     "backAria": "Quay lại",
-    "continueToPayment": "Tiếp tục đến Thanh toán →",
+    "continueToPayment": "Tiếp tục xem lại →",
     "creatingOrder": "Đang tạo đơn hàng…",
     "creating": "Đang tạo…"
   },
@@ -136,17 +138,32 @@
   },
 
   "digitalContact": {
-    "digitalOnlyNote": "Đơn hàng này chỉ gồm sản phẩm số — không cần giao hàng. Chúng tôi sẽ gửi liên kết tải xuống và hóa đơn qua email này.",
+    "digitalOnlyNote": "Đơn hàng này chỉ gồm sản phẩm số — không cần giao hàng. Shop sẽ dùng email này để xác nhận tình trạng và các bước tiếp theo.",
     "emailAddress": "Địa chỉ email",
     "emailPlaceholder": "you@example.com",
     "invalidEmail": "Vui lòng nhập địa chỉ email hợp lệ",
-    "continueToPayment": "Tiếp tục thanh toán",
+    "continueToPayment": "Xem lại yêu cầu đặt hàng",
     "preparingOrder": "Đang chuẩn bị đơn hàng của bạn…"
+  },
+
+  "orderRequest": {
+    "title": "EziHubb đang mở rộng các phương thức thanh toán trực tuyến",
+    "description": "EziHubb đang trong giai đoạn ra mắt sớm và hoàn tất xác minh với các đối tác thanh toán. Bạn có thể gửi yêu cầu đặt hàng ngay; shop sẽ chủ động xác nhận tình trạng sản phẩm, số tiền cuối cùng và các bước tiếp theo trước khi có bất kỳ thanh toán nào.",
+    "messagesContact": "Khách đã đăng nhập có thể được liên hệ qua EziHubb Messages.",
+    "emailContact": "Chúng tôi cũng có thể sử dụng email được cung cấp trong đơn.",
+    "noCharge": "Bạn sẽ không bị thu tiền trên website hôm nay.",
+    "security": "Để bảo mật, EziHubb không bao giờ yêu cầu mật khẩu, mã xác minh hoặc đầy đủ thông tin thẻ qua tin nhắn hay email. Chỉ tin cậy tin nhắn trong tài khoản EziHubb hoặc email từ địa chỉ @ezihubb.com chính thức.",
+    "back": "← Quay lại",
+    "submit": "Gửi yêu cầu đặt hàng",
+    "submitting": "Đang gửi yêu cầu..."
   },
 
   "success": {
     "paymentProcessing": "Đang xử lý thanh toán…",
     "orderConfirmed": "Đặt hàng thành công! 🎉",
+    "requestReceived": "Đã nhận yêu cầu đặt hàng",
+    "requestNextSteps": "Chưa có thanh toán trực tuyến nào được thực hiện. Shop sẽ liên hệ qua EziHubb Messages hoặc email trong đơn để xác nhận tình trạng, số tiền cuối cùng và các bước tiếp theo.",
+    "requestSecurity": "Để bảo mật, không chia sẻ mật khẩu, mã xác minh hoặc đầy đủ thông tin thẻ. Chỉ tin cậy tin nhắn trong tài khoản EziHubb hoặc email chính thức từ @ezihubb.com.",
     "confirmingPayment": "Chúng tôi đang xác nhận thanh toán của bạn. Việc này thường mất vài giây.",
     "yourOrderNumber": "Mã đơn hàng của bạn",
     "clickToCopy": "(Nhấn để sao chép)",
@@ -161,6 +178,7 @@
     "discount": "Giảm giá",
     "giftCard": "Thẻ quà tặng",
     "totalPaid": "Tổng đã thanh toán",
+    "estimatedTotal": "Tổng giá trị đơn dự kiến",
     "shippingTo": "Giao đến",
     "estimatedDelivery": "Dự kiến giao hàng",
     "deliveryEstimate": "5–10 ngày làm việc sau khi sản xuất",

@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   Check, Package, MapPin, User,
-  ExternalLink, Save, Mail, DollarSign, FileText, Printer,
+  ExternalLink, Save, Mail, DollarSign, FileText, Printer, Info,
 } from 'lucide-react';
 import { Select } from '@ezihubb/ui';
 import { StatusSelect } from '../../../../components/orders/OrderStatusBadge';
@@ -71,6 +71,7 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
   const refresh = () => qc.invalidateQueries({ queryKey: ['admin-order', initialOrder.id] });
 
   const currentIdx = TIMELINE_STEPS.indexOf(order.status as typeof TIMELINE_STEPS[number]);
+  const paymentCollected = order.payment?.status === 'PAID';
   const address =
     typeof order.shippingAddress === 'string'
       ? (() => { try { return JSON.parse(order.shippingAddress); } catch { return {}; } })()
@@ -103,6 +104,18 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
 
       {/* Left column */}
       <div className="space-y-5">
+
+        {!paymentCollected && (
+          <div className="flex items-start gap-3 rounded-card border border-amber-200 bg-amber-50 p-4 text-amber-900">
+            <Info className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-semibold">Order request — online payment not collected</p>
+              <p className="mt-1 text-xs leading-relaxed">
+                Contact the customer by email or Messages to confirm availability, the final amount, and next steps before processing.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Items */}
         <Section title={`Items (${order.items.length})`}>
@@ -258,13 +271,22 @@ export function OrderDetailContent({ order: initialOrder }: { order: OrderDetail
 
         {/* Actions */}
         <div className="flex gap-3">
-          <button type="button" onClick={async () => { if (await confirm('Issue refund?', { title: 'Issue Refund', confirmLabel: 'Issue Refund', destructive: true })) void api.post(API_ROUTES.ADMIN.ORDER_REFUND(order.id), { reason: 'Admin' }).then(refresh); }}
-            className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 px-3 py-2 rounded-button">
+          <button type="button" disabled={!paymentCollected} title={!paymentCollected ? 'No online payment was collected for this order request.' : undefined} onClick={async () => { if (await confirm('Issue refund?', { title: 'Issue Refund', confirmLabel: 'Issue Refund', destructive: true })) void api.post(API_ROUTES.ADMIN.ORDER_REFUND(order.id), { reason: 'Admin' }).then(refresh); }}
+            className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 px-3 py-2 rounded-button disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent">
             <DollarSign className="w-3.5 h-3.5" />Issue Refund
           </button>
-          <button type="button" className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-secondary border border-border hover:border-primary/40 px-3 py-2 rounded-button">
-            <Mail className="w-3.5 h-3.5" />Email Customer
-          </button>
+          {order.customer?.email ? (
+            <a
+              href={`mailto:${encodeURIComponent(order.customer.email)}?subject=${encodeURIComponent(`Your EziHubb order request ${order.orderNumber}`)}`}
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-secondary border border-border hover:border-primary/40 px-3 py-2 rounded-button"
+            >
+              <Mail className="w-3.5 h-3.5" />Email Customer
+            </a>
+          ) : (
+            <button type="button" disabled className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium text-muted border border-border px-3 py-2 rounded-button opacity-60">
+              <Mail className="w-3.5 h-3.5" />No customer email
+            </button>
+          )}
         </div>
       </div>
 

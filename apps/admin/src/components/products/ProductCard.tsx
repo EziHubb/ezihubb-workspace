@@ -20,6 +20,8 @@ export interface AdminProduct {
   slug:            string;
   basePrice:       number;
   compareAtPrice:  number | null;
+  minPrice:        number | null;
+  maxPrice:        number | null;
   /** The auto-apply sale in force, or null. Distinct from compareAtPrice,
    *  which is the seller's own "was" price and unrelated to any sale.
    *
@@ -143,6 +145,10 @@ export const ProductCard = memo(function ProductCard({
   const router          = useRouter();
   const checkboxVisible = anySelected || selected;
   const statusLabel     = product.status.charAt(0) + product.status.slice(1).toLowerCase();
+  const lowestPrice     = product.minPrice ?? product.basePrice;
+  const hasPriceRange   = product.minPrice != null
+    && product.maxPrice != null
+    && product.minPrice !== product.maxPrice;
 
   // Optimistic featured state with debounce
   const [optimisticFeatured, setOptimisticFeatured] = useState(product.isFeatured);
@@ -256,7 +262,8 @@ export const ProductCard = memo(function ProductCard({
               seller comparing the two views should not see two prices. */}
           <span className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
             <span className={`tabular-nums ${product.sale ? 'text-lg font-extrabold text-badge-sale' : 'text-base font-bold text-secondary'}`}>
-              {fmtAmount(product.sale ? product.sale.price : product.basePrice)}
+              {hasPriceRange && <span className="mr-1 text-xs font-normal text-muted">From</span>}
+              {fmtAmount(product.sale ? product.sale.price : lowestPrice)}
             </span>
             {/* No percentage here: it is the sticker on the image. */}
             {product.sale && (

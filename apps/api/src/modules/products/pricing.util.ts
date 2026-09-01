@@ -178,26 +178,25 @@ export interface ListingSale {
 /**
  * The sale as it should be shown for one listing.
  *
- * Anchored to basePrice deliberately. A listing with variants shows a "from"
- * price built from the cheapest variant, but the sale is defined against the
- * listing's own price, and quoting a discount against a number the promotion
- * was not written for is how the percentage stops matching the figures beside
- * it. Checkout still discounts the actual line — the variant a buyer picked —
- * so the money charged is right whichever variant they choose.
+ * The caller supplies the price actually shown on the card. For a listing with
+ * variants that is its lowest available variant price; otherwise it is the
+ * listing base price. Applying the promotion to that same number keeps the
+ * "From" price, struck price and percentage internally consistent. Checkout
+ * still recomputes the promotion against the concrete variant the buyer chose.
  *
  * Returns null rather than a zero discount when nothing applies, so a caller
  * cannot accidentally render "0% off".
  */
 export function listingSale(
-  basePrice: number,
+  displayPrice: number,
   promos: { type: string; value: number }[] | undefined,
 ): ListingSale | null {
-  const price = applyBestPromo(basePrice, promos);
-  if (!(price < basePrice) || basePrice <= 0) return null;
+  const price = applyBestPromo(displayPrice, promos);
+  if (!(price < displayPrice) || displayPrice <= 0) return null;
   return {
     price,
-    originalPrice: basePrice,
-    discountPercent: Math.round((1 - price / basePrice) * 100),
+    originalPrice: displayPrice,
+    discountPercent: Math.round((1 - price / displayPrice) * 100),
   };
 }
 
@@ -211,7 +210,12 @@ export function listingSale(
  * show a discount. Spreading here means there is nothing to forget.
  */
 export async function withListingSales<
-  T extends { id: string; storeId: string | null; basePrice: number },
+  T extends {
+    id: string;
+    storeId: string | null;
+    basePrice: number;
+    minPrice?: number | null;
+  },
 >(
   prisma: PrismaService,
   items: T[],
@@ -221,6 +225,6 @@ export async function withListingSales<
   const promos = await getSalesForListings(prisma, items, shippingCountry);
   return items.map((item) => ({
     ...item,
-    sale: listingSale(item.basePrice, promos.get(item.id)),
+    sale: listingSale(item.minPrice ?? item.basePrice, promos.get(item.id)),
   }));
 }

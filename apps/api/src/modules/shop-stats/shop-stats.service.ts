@@ -50,10 +50,14 @@ export class ShopStatsService {
       status:    { notIn: ['CANCELLED', 'REFUNDED'] },
     };
     if (storeId) orderWhere.storeOrders = { some: { storeId } };
+    const paidOrderWhere: Prisma.OrderWhereInput = {
+      ...orderWhere,
+      payment: { is: { status: 'PAID' } },
+    };
 
     const [totalOrders, orderSum, visits, series] = await Promise.all([
       this.prisma.order.count({ where: orderWhere }),
-      this.prisma.order.aggregate({ where: orderWhere, _sum: { total: true } }),
+      this.prisma.order.aggregate({ where: paidOrderWhere, _sum: { total: true } }),
       this.sumRangeMetric(days, 'visits', storeId),
       storeId
         ? this.getStoreOrderTimeSeries(storeId, start, days)
@@ -89,7 +93,7 @@ export class ShopStatsService {
   private async getStoreOrderTimeSeries(storeId: string, start: Date, days: number) {
     const orders = await this.prisma.order.findMany({
       where: { storeOrders: { some: { storeId } }, createdAt: { gte: start }, status: { notIn: ['CANCELLED', 'REFUNDED'] } },
-      select: { createdAt: true, total: true },
+      select: { createdAt: true, total: true, payment: { select: { status: true } } },
     });
 
     const map = new Map<string, { visits: number; orders: number; revenue: number }>();
@@ -101,7 +105,7 @@ export class ShopStatsService {
       if (map.has(d)) {
         const row = map.get(d)!;
         row.orders  += 1;
-        row.revenue += Number(o.total);
+        if (o.payment?.status === 'PAID') row.revenue += Number(o.total);
       }
     }
 
@@ -387,7 +391,10 @@ export class ShopStatsService {
     const productIds = products.map((p) => p.id);
     const revenueAgg = await this.prisma.orderItem.groupBy({
       by: ['productId'],
-      where: { productId: { in: productIds } },
+      where: {
+        productId: { in: productIds },
+        order: { payment: { is: { status: 'PAID' } } },
+      },
       _sum: { unitPrice: true },
       _count: { _all: true },
     });
@@ -449,7 +456,11 @@ export class ShopStatsService {
       this.prisma.orderItem.findMany({
         where: {
           productId,
-          order: { createdAt: { gte: start }, status: { notIn: ['CANCELLED', 'REFUNDED'] } },
+          order: {
+            createdAt: { gte: start },
+            status: { notIn: ['CANCELLED', 'REFUNDED'] },
+            payment: { is: { status: 'PAID' } },
+          },
         },
         select: { quantity: true, unitPrice: true, order: { select: { createdAt: true } } },
       }),

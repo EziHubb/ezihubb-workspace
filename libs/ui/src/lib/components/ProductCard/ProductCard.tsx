@@ -132,10 +132,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   // Built once so the two product links below cannot drift apart.
   const productHref = `${basePath}/products/${slug}`;
   const [hovered, setHovered] = useState(false);
-  // A running sale takes precedence, and its own figures are used rather than
-  // recomputed: the discount is defined against the listing's basePrice, so
-  // the struck number and the percentage have to describe that same price or
-  // they contradict each other.
+  // The API anchors a running sale to the same price supplied here: the lowest
+  // available variant for a range, otherwise basePrice. Its own figures keep
+  // fixed-amount promotions and server-side rounding authoritative.
   const shownPrice  = sale ? sale.price : basePrice;
   const struckPrice = sale ? sale.originalPrice : (compareAtPrice ?? null);
   const discount = sale
@@ -246,10 +245,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               what a shopper is scanning for; it was the same size as
               everything around it. */}
           <span className={[sale ? 'text-lg font-extrabold text-badge-sale' : 'text-base font-bold text-secondary'].join(' ')}>
-            {/* No "from" alongside a sale: the sale price is the listing's own,
-                not the cheapest variant's, so calling it a floor would be a
-                claim the number does not support. */}
-            {isPriceRange && !sale && <span className="font-normal text-muted">{L.fromPrice} </span>}
+            {/* A ranged sale is also a floor: the API discounted its cheapest
+                available variant, and checkout recomputes the chosen one. */}
+            {isPriceRange && <span className="font-normal text-muted">{L.fromPrice} </span>}
             {formatPrice(shownPrice, currency, locale)}
           </span>
           {struckPrice && struckPrice > shownPrice && (sale || !isPriceRange) && (

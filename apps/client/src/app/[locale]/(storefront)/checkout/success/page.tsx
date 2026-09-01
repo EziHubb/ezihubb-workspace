@@ -11,7 +11,6 @@ import { apiClient, queryKeys } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { useCartStore } from '../../../../../lib/store/cart.store';
 import type { OrderDto } from '@ezihubb/types';
-import { analytics } from '../../../../../lib/analytics';
 import { fmtAmount, safeArr } from '@ezihubb/utils';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
 
@@ -96,6 +95,7 @@ function CheckoutSuccessContent() {
   const searchParams  = useSearchParams();
   const orderNumber  = searchParams.get('order') ?? '';
   const guestEmail   = searchParams.get('email') ?? '';
+  const isOrderRequest = searchParams.get('mode') === 'request';
   const closeDrawer  = useCartStore((s) => s.closeDrawer);
   const clearCart    = useCartStore((s) => s.clearCart);
 
@@ -122,8 +122,8 @@ function CheckoutSuccessContent() {
   // Close cart drawer and clear cart data immediately on landing
   useEffect(() => {
     closeDrawer();
-    useCartStore.getState().clearCart();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    clearCart();
+  }, [clearCart, closeDrawer]);
 
   /**
    * Poll order until status is no longer PENDING_PAYMENT.
@@ -136,8 +136,9 @@ function CheckoutSuccessContent() {
       guestEmail ? { params: { email: guestEmail } } : undefined,
     ),
     enabled:  Boolean(orderNumber),
-    // Poll every 2 s while still PENDING_PAYMENT (Stripe webhook may take a moment)
+    // Only the online-payment flow needs to wait for a provider webhook.
     refetchInterval: (query) => {
+      if (isOrderRequest) return false;
       const status = query.state.data?.status;
       if (status === 'PENDING_PAYMENT' || !status) return 2_000;
       return false; // stop polling once confirmed
@@ -145,28 +146,6 @@ function CheckoutSuccessContent() {
     gcTime:    2 * 60_000,
     staleTime: 0,
   });
-
-  // Fire purchase event once order leaves PENDING_PAYMENT (fires exactly once)
-  const purchaseFiredRef = useRef(false);
-  useEffect(() => {
-    if (!order || order.status === 'PENDING_PAYMENT') return;
-    if (purchaseFiredRef.current) return;
-    purchaseFiredRef.current = true;
-    analytics.purchase({
-      orderNumber: order.orderNumber,
-      total:       order.total,
-      subtotal:    order.subtotal,
-      shipping:    order.shippingCost,
-      coupon:      order.couponCode,
-      items: order.items.map((item) => ({
-        id:       item.productId,
-        name:     item.productName,
-        category: '',
-        price:    Number(item.unitPrice),
-        quantity: item.quantity,
-      })),
-    });
-  }, [order?.status, order?.orderNumber]);
 
   // ── Fallback when no order number ──────────────────────────────────────────
 
@@ -216,7 +195,7 @@ function CheckoutSuccessContent() {
   }
 
   const addr    = order?.shippingAddress;
-  const isPending = order?.status === 'PENDING_PAYMENT' || !order;
+  const isPending = !isOrderRequest && (order?.status === 'PENDING_PAYMENT' || !order);
 
   // ── Success UI ─────────────────────────────────────────────────────────────
 
@@ -229,14 +208,28 @@ function CheckoutSuccessContent() {
       {/* Heading */}
       <div className="mt-6 text-center space-y-2">
         <h1 className="font-display text-2xl md:text-3xl font-bold text-secondary">
-          {isPending ? t('paymentProcessing') : t('orderConfirmed')}
+          {isOrderRequest
+            ? t('requestReceived')
+            : isPending
+              ? t('paymentProcessing')
+              : t('orderConfirmed')}
         </h1>
-        {isPending && (
+        {isOrderRequest ? (
+          <p className="mx-auto max-w-xl text-sm leading-relaxed text-muted">
+            {t('requestNextSteps')}
+          </p>
+        ) : isPending ? (
           <p className="text-sm text-muted">
             {t('confirmingPayment')}
           </p>
-        )}
+        ) : null}
       </div>
+
+      {isOrderRequest && (
+        <div role="note" className="mt-6 rounded-card border border-primary/20 bg-primary/5 px-5 py-4 text-sm leading-relaxed text-secondary">
+          <p className="font-medium">{t('requestSecurity')}</p>
+        </div>
+      )}
 
       {/* Order number */}
       <div className="mt-6 flex flex-col items-center gap-2">
@@ -319,7 +312,7 @@ function CheckoutSuccessContent() {
               </div>
             )}
             <div className="flex justify-between font-bold text-secondary border-t border-border pt-2">
-              <span>{t('totalPaid')}</span>
+              <span>{isOrderRequest ? t('estimatedTotal') : t('totalPaid')}</span>
               <span>{fmtAmount(order.total)}</span>
             </div>
           </div>

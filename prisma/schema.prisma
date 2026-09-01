@@ -230,7 +230,7 @@ enum CategoryScope {
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 model User {
-  id              String    @id @default(cuid())
+  id              String    @id @default(dbgenerated("nanoid(12)"))
   email           String    @unique
   passwordHash    String?
   firstName       String?
@@ -298,7 +298,7 @@ model User {
 }
 
 model FcmToken {
-  id        String   @id @default(cuid())
+  id        String   @id @default(dbgenerated("nanoid(12)"))
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   token     String   @unique
@@ -310,7 +310,7 @@ model FcmToken {
 }
 
 model RefreshToken {
-  id        String    @id @default(cuid())
+  id        String    @id @default(dbgenerated("nanoid(12)"))
   tokenHash String    @unique
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -322,7 +322,7 @@ model RefreshToken {
 }
 
 model EmailVerification {
-  id        String    @id @default(cuid())
+  id        String    @id @default(dbgenerated("nanoid(12)"))
   token     String    @unique
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -334,7 +334,7 @@ model EmailVerification {
 }
 
 model PasswordReset {
-  id        String    @id @default(cuid())
+  id        String    @id @default(dbgenerated("nanoid(12)"))
   token     String    @unique
   email     String
   userId    String
@@ -350,7 +350,7 @@ model PasswordReset {
 // ─── User Profile ────────────────────────────────────────────────────────────
 
 model Address {
-  id           String   @id @default(cuid())
+  id           String   @id @default(dbgenerated("nanoid(12)"))
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   fullName     String
@@ -368,7 +368,7 @@ model Address {
 }
 
 model WishlistItem {
-  id        String   @id @default(cuid())
+  id        String   @id @default(dbgenerated("nanoid(12)"))
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId String
@@ -382,7 +382,7 @@ model WishlistItem {
 // ─── Multi-vendor: Store & Plans ─────────────────────────────────────────────
 
 model Store {
-  id              String               @id @default(cuid())
+  id              String               @id @default(dbgenerated("nanoid(12)"))
   slug            String               @unique
   name            String
   description     String?              @db.Text
@@ -525,7 +525,7 @@ model Store {
 // ── Shop Home FAQ entries ─────────────────────────────────────────────────────
 
 model StoreFaq {
-  id        String   @id @default(cuid())
+  id        String   @id @default(dbgenerated("nanoid(12)"))
   storeId   String
   store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   question  String
@@ -562,7 +562,7 @@ enum StoreSubscriptionCycle {
 }
 
 model StoreSubscription {
-  id                 String                  @id @default(cuid())
+  id                 String                  @id @default(dbgenerated("nanoid(12)"))
   storeId            String                  @unique
   store              Store                   @relation(fields: [storeId], references: [id], onDelete: Cascade)
   status             StoreSubscriptionStatus @default(ACTIVE)
@@ -599,7 +599,7 @@ model StoreSubscription {
 // and so a store can hold >1 billing card, matching Etsy's own data shape.
 
 model StoreBankAccount {
-  id                     String          @id @default(cuid())
+  id                     String          @id @default(dbgenerated("nanoid(12)"))
   storeId                String          @unique
   store                  Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
   accountHolderName      String
@@ -613,7 +613,7 @@ model StoreBankAccount {
 }
 
 model StoreBillingCard {
-  id                    String   @id @default(cuid())
+  id                    String   @id @default(dbgenerated("nanoid(12)"))
   storeId               String
   store                 Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   stripePaymentMethodId String   @unique
@@ -631,7 +631,7 @@ model StoreBillingCard {
 }
 
 model StoreTaxInfo {
-  id                  String     @id @default(cuid())
+  id                  String     @id @default(dbgenerated("nanoid(12)"))
   storeId             String     @unique
   store               Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
   sellerType          SellerType @default(INDIVIDUAL)
@@ -650,7 +650,7 @@ model StoreTaxInfo {
 }
 
 model StoreFollow {
-  id        String   @id @default(cuid())
+  id        String   @id @default(dbgenerated("nanoid(12)"))
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   storeId   String
@@ -663,7 +663,7 @@ model StoreFollow {
 }
 
 model StoreOrder {
-  id                       String      @id @default(cuid())
+  id                       String      @id @default(dbgenerated("nanoid(12)"))
   orderId                  String
   order                    Order       @relation(fields: [orderId], references: [id])
   storeId                  String
@@ -729,7 +729,7 @@ model StoreOrder {
 /// rename, reorder and delete CUSTOM detail inside the production phase; each
 /// custom step maps to the public IN_PRODUCTION status.
 model OrderProgressStep {
-  id      String                @id @default(cuid())
+  id      String                @id @default(dbgenerated("nanoid(12)"))
   storeId String
   store   Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
   name    String                @db.VarChar(60)
@@ -760,7 +760,7 @@ enum OrderProgressStepKind {
 }
 
 model SellerPayout {
-  id            String              @id @default(cuid())
+  id            String              @id @default(dbgenerated("nanoid(12)"))
   storeId       String
   store         Store               @relation(fields: [storeId], references: [id])
   period        String
@@ -784,7 +784,7 @@ model SellerPayout {
 }
 
 model SellerLedgerEntry {
-  id           String                @id @default(cuid())
+  id           String                @id @default(dbgenerated("nanoid(12)"))
   storeId      String
   store        Store                 @relation(fields: [storeId], references: [id])
   storeOrderId String?
@@ -817,7 +817,7 @@ model SellerLedgerEntry {
 // discriminated by `kind` lets that resolution be a single query rather than
 // two independent, possibly-conflicting checks.
 model StoreLinkClick {
-  id          String        @id @default(cuid())
+  id          String        @id @default(dbgenerated("nanoid(12)"))
   storeId     String
   store       Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
   kind        LinkClickKind
@@ -845,7 +845,7 @@ model StoreLinkClick {
 // One row per store per trigger — firing creates a personalized single-use
 // Promotion (Promotion.targetUserId set, maxUsesPerUser: 1, short expiresAt).
 model TargetedOfferCampaign {
-  id               String               @id @default(cuid())
+  id               String               @id @default(dbgenerated("nanoid(12)"))
   storeId          String
   store            Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
   trigger          TargetedOfferTrigger
@@ -869,7 +869,7 @@ model TargetedOfferCampaign {
 // the "Social account settings" toggle UI has somewhere real to persist state,
 // and SocialPost is the seller's own post-history record, not a real publish). ──
 model StoreSocialConnection {
-  id          String                 @id @default(cuid())
+  id          String                 @id @default(dbgenerated("nanoid(12)"))
   storeId     String
   store       Store                  @relation(fields: [storeId], references: [id], onDelete: Cascade)
   platform    SocialPlatform
@@ -880,7 +880,7 @@ model StoreSocialConnection {
 }
 
 model SocialPost {
-  id        String           @id @default(cuid())
+  id        String           @id @default(dbgenerated("nanoid(12)"))
   storeId   String
   store     Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
   content   String           @db.Text
@@ -923,7 +923,7 @@ model PlatformSettings {
 // ─── Catalog ─────────────────────────────────────────────────────────────────
 
 model Category {
-  id          String        @id @default(cuid())
+  id          String        @id @default(dbgenerated("nanoid(12)"))
   name        String
   slug        String        @unique
   description String?
@@ -966,7 +966,7 @@ model ProductCategory {
 }
 
 model Collection {
-  id          String    @id @default(cuid())
+  id          String    @id @default(dbgenerated("nanoid(12)"))
   name        String
   slug        String    @unique
   description String?
@@ -997,7 +997,7 @@ model CollectionProduct {
 }
 
 model Tag {
-  id   String @id @default(cuid())
+  id   String @id @default(dbgenerated("nanoid(12)"))
   name String @unique
   slug String @unique
 
@@ -1017,11 +1017,11 @@ model ProductTag {
 // ─── Product ─────────────────────────────────────────────────────────────────
 
 model Product {
-  // Generated explicitly by the API as a 10-character NanoID. Existing CUID
-  // values remain valid primary keys; removing the Prisma default makes every
-  // future create path opt in to the new format instead of silently falling
-  // back to CUID.
-  id                    String                   @id
+  // New rows use a 12-character alphanumeric NanoID. The API also generates
+  // Product IDs explicitly because product creation spans PostgreSQL and
+  // MongoDB; this database default protects any other insertion path.
+  // Existing CUID and 10-character NanoID rows remain valid.
+  id                    String                   @id @default(dbgenerated("nanoid(12)"))
   name                  String
   slug                  String
   sku                   String                   @unique
@@ -1096,7 +1096,7 @@ model Product {
   /// unanswered rather than being defaulted into a claim the seller never made.
   whenMade             WhenMade?
   toolsUsed            String[] // "handheld" | "computerized" | "3d-printing" | "none"
-  productionPartnerIds String[] // cuid references to ProductionPartner records
+  productionPartnerIds String[] // ID references to ProductionPartner records
   hsCode               String? // Harmonised System tariff code for customs
   featuredRelatedIds   String[] // up to 4 manually pinned related product IDs
 
@@ -1150,7 +1150,7 @@ model Product {
 }
 
 model ProductVariant {
-  id                String   @id @default(cuid())
+  id                String   @id @default(dbgenerated("nanoid(12)"))
   productId         String
   product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   name              String
@@ -1224,7 +1224,7 @@ enum WhenMade {
 }
 
 model ProductImage {
-  id        String           @id @default(cuid())
+  id        String           @id @default(dbgenerated("nanoid(12)"))
   productId String
   product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
   url       String
@@ -1255,7 +1255,7 @@ model ProductImage {
 /// no known duration, and inventing a 0 there would be a lie that renders as
 /// a real value. Null means "never measured" and the API surfaces it as null.
 model ProductVideo {
-  id              String   @id @default(cuid())
+  id              String   @id @default(dbgenerated("nanoid(12)"))
   productId       String
   product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   url             String
@@ -1276,7 +1276,7 @@ model ProductVideo {
 // object is fetched server-side only, by the download endpoint, and stamped
 // per-buyer before streaming — see order-downloads.controller.ts.
 model DigitalFile {
-  id         String          @id @default(cuid())
+  id         String          @id @default(dbgenerated("nanoid(12)"))
   productId  String
   product    Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   variantId  String? // null = applies to all variants
@@ -1298,7 +1298,7 @@ model DigitalFile {
 // VariationSettings = product-level toggle + metadata
 
 model VariationGroup {
-  id          String  @id @default(cuid())
+  id          String  @id @default(dbgenerated("nanoid(12)"))
   productId   String
   product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   name        String // "Color", "Size", "Material"
@@ -1311,7 +1311,7 @@ model VariationGroup {
 }
 
 model VariationOption {
-  id          String         @id @default(cuid())
+  id          String         @id @default(dbgenerated("nanoid(12)"))
   groupId     String
   group       VariationGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   name        String // "Red", "Small"
@@ -1329,7 +1329,7 @@ model VariationOption {
 }
 
 model VariationSettings {
-  id               String   @id @default(cuid())
+  id               String   @id @default(dbgenerated("nanoid(12)"))
   productId        String   @unique
   product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   enableVariations Boolean  @default(false)
@@ -1358,7 +1358,7 @@ model VariationSettings {
 // Admin-defined production windows that can be assigned to products.
 
 model ProcessingProfile {
-  id        String                @id @default(cuid())
+  id        String                @id @default(dbgenerated("nanoid(12)"))
   name      String // "Made to order", "Ready to ship"
   type      ProcessingProfileType @default(MADE_TO_ORDER)
   minDays   Int                   @default(3)
@@ -1383,7 +1383,7 @@ model ProcessingProfile {
 // at checkout (see ShippingService.resolveSellerShippingCost()).
 
 model ShippingProfile {
-  id               String   @id @default(cuid())
+  id               String   @id @default(dbgenerated("nanoid(12)"))
   name             String // "Standard Shipping", "Embroidered Hat"
   activeListings   Int      @default(0) // denormalised count
   isDefault        Boolean  @default(false)
@@ -1401,7 +1401,7 @@ model ShippingProfile {
 }
 
 model ShippingProfileMethod {
-  id              String             @id @default(cuid())
+  id              String             @id @default(dbgenerated("nanoid(12)"))
   profileId       String
   profile         ShippingProfile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
   destinationType String // "domestic" | "everywhere_else" | ISO country code
@@ -1425,7 +1425,7 @@ model ShippingProfileMethod {
 // Organise listings into labelled sections visible on the shop front.
 
 model ShopSection {
-  id        String   @id @default(cuid())
+  id        String   @id @default(dbgenerated("nanoid(12)"))
   name      String
   sortOrder Int      @default(0)
   storeId   String?
@@ -1441,7 +1441,7 @@ model ShopSection {
 // Third-party manufacturers or fulfilment partners disclosed on listings.
 
 model ProductionPartner {
-  id          String   @id @default(cuid())
+  id          String   @id @default(dbgenerated("nanoid(12)"))
   name        String
   description String?
   location    String? // "Country" or "City, Country"
@@ -1451,7 +1451,7 @@ model ProductionPartner {
 // ─── Personalization ─────────────────────────────────────────────────────────
 
 model CustomizationDraft {
-  id             String          @id @default(cuid())
+  id             String          @id @default(dbgenerated("nanoid(12)"))
   userId         String?
   user           User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
   sessionId      String?
@@ -1473,7 +1473,7 @@ model CustomizationDraft {
 // ─── Cart ─────────────────────────────────────────────────────────────────────
 
 model Cart {
-  id             String    @id @default(cuid())
+  id             String    @id @default(dbgenerated("nanoid(12)"))
   userId         String?   @unique
   user           User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
   sessionId      String?   @unique
@@ -1488,7 +1488,7 @@ model Cart {
 }
 
 model CartItem {
-  id                String          @id @default(cuid())
+  id                String          @id @default(dbgenerated("nanoid(12)"))
   cartId            String
   cart              Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
   productId         String
@@ -1515,7 +1515,7 @@ model CartItem {
 // ─── Order ───────────────────────────────────────────────────────────────────
 
 model Order {
-  id              String      @id @default(cuid())
+  id              String      @id @default(dbgenerated("nanoid(12)"))
   orderNumber     String      @unique
   userId          String?
   user            User?       @relation("UserOrders", fields: [userId], references: [id], onDelete: SetNull)
@@ -1587,7 +1587,7 @@ model Order {
 }
 
 model OrderItem {
-  id                String          @id @default(cuid())
+  id                String          @id @default(dbgenerated("nanoid(12)"))
   orderId           String
   order             Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId         String?
@@ -1626,7 +1626,7 @@ model OrderItem {
 // One row per digital-file download attempt — the audit trail backing
 // per-buyer traceability (see DigitalFile / order-downloads.controller.ts).
 model DigitalDownloadLog {
-  id           String    @id @default(cuid())
+  id           String    @id @default(dbgenerated("nanoid(12)"))
   orderItemId  String
   orderItem    OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
   fileId       String
@@ -1638,7 +1638,7 @@ model DigitalDownloadLog {
 }
 
 model OrderStatusHistory {
-  id        String      @id @default(cuid())
+  id        String      @id @default(dbgenerated("nanoid(12)"))
   orderId   String
   order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
   status    OrderStatus
@@ -1652,7 +1652,7 @@ model OrderStatusHistory {
 // ─── Payment ─────────────────────────────────────────────────────────────────
 
 model Payment {
-  id                    String        @id @default(cuid())
+  id                    String        @id @default(dbgenerated("nanoid(12)"))
   orderId               String        @unique
   order                 Order         @relation(fields: [orderId], references: [id])
   method                PaymentMethod
@@ -1674,7 +1674,7 @@ model Payment {
 }
 
 model GiftCard {
-  id           String    @id @default(cuid())
+  id           String    @id @default(dbgenerated("nanoid(12)"))
   code         String    @unique
   initialValue Decimal   @db.Decimal(10, 2)
   balance      Decimal   @db.Decimal(10, 2)
@@ -1693,7 +1693,7 @@ model GiftCard {
 }
 
 model GiftCardUsage {
-  id         String   @id @default(cuid())
+  id         String   @id @default(dbgenerated("nanoid(12)"))
   giftCardId String
   giftCard   GiftCard @relation(fields: [giftCardId], references: [id])
   orderId    String
@@ -1708,7 +1708,7 @@ model GiftCardUsage {
 // ─── Promotion ───────────────────────────────────────────────────────────────
 
 model Promotion {
-  id             String       @id @default(cuid())
+  id             String       @id @default(dbgenerated("nanoid(12)"))
   /**
    * Null only for an autoApply sale (no buyer-entered code) — every coupon-code promotion keeps a required, unique code.
    */
@@ -1756,7 +1756,7 @@ model Promotion {
 }
 
 model PromotionProduct {
-  id          String    @id @default(cuid())
+  id          String    @id @default(dbgenerated("nanoid(12)"))
   promotionId String
   promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
   productId   String
@@ -1767,7 +1767,7 @@ model PromotionProduct {
 }
 
 model PromotionUsage {
-  id          String    @id @default(cuid())
+  id          String    @id @default(dbgenerated("nanoid(12)"))
   promotionId String
   promotion   Promotion @relation(fields: [promotionId], references: [id])
   userId      String?
@@ -1783,7 +1783,7 @@ model PromotionUsage {
 // ─── Bundle offer ("Buy them together") ───────────────────────────────────────
 
 model BundleOffer {
-  id              String   @id @default(cuid())
+  id              String   @id @default(dbgenerated("nanoid(12)"))
   storeId         String
   store           Store    @relation(fields: [storeId], references: [id])
   discountPercent Decimal  @db.Decimal(5, 2)
@@ -1797,7 +1797,7 @@ model BundleOffer {
 }
 
 model BundleOfferProduct {
-  id            String      @id @default(cuid())
+  id            String      @id @default(dbgenerated("nanoid(12)"))
   bundleOfferId String
   bundleOffer   BundleOffer @relation(fields: [bundleOfferId], references: [id], onDelete: Cascade)
   productId     String
@@ -1810,7 +1810,7 @@ model BundleOfferProduct {
 // ── Marketing: Let buyers make offers (Etsy parity) ───────────────────────────
 
 model StoreOfferListing {
-  id        String  @id @default(cuid())
+  id        String  @id @default(dbgenerated("nanoid(12)"))
   storeId   String
   store     Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
   productId String
@@ -1821,7 +1821,7 @@ model StoreOfferListing {
 }
 
 model BuyerOffer {
-  id           String           @id @default(cuid())
+  id           String           @id @default(dbgenerated("nanoid(12)"))
   productId    String
   product      Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
   buyerId      String
@@ -1846,7 +1846,7 @@ model BuyerOffer {
 // ─── Review ──────────────────────────────────────────────────────────────────
 
 model Review {
-  id              String       @id @default(cuid())
+  id              String       @id @default(dbgenerated("nanoid(12)"))
   userId          String
   user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId       String
@@ -1877,7 +1877,7 @@ model Review {
 // ─── Product Q&A ─────────────────────────────────────────────────────────────
 
 model ProductQuestion {
-  id        String  @id @default(cuid())
+  id        String  @id @default(dbgenerated("nanoid(12)"))
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
@@ -1903,7 +1903,7 @@ model ProductQuestion {
 // ─── Notification ─────────────────────────────────────────────────────────────
 
 model Notification {
-  id        String    @id @default(cuid())
+  id        String    @id @default(dbgenerated("nanoid(12)"))
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      String
@@ -1922,7 +1922,7 @@ model Notification {
 // Searchable attribute values per type.  Admin-seeded + extensible at runtime.
 
 model AttributeValue {
-  id    String @id @default(cuid())
+  id    String @id @default(dbgenerated("nanoid(12)"))
   type  String // "color" | "material" | "occasion" | "holiday" | "recipient" | "style" | "sustainability"
   value String
 
@@ -1948,7 +1948,7 @@ enum SenderType {
 }
 
 model Conversation {
-  id String @id @default(cuid())
+  id String @id @default(dbgenerated("nanoid(12)"))
 
   // A conversation belongs to either a specific order, or is general inquiry
   orderId String?
@@ -2036,7 +2036,7 @@ model Conversation {
 /// having an order attached, and a seller must not be able to rename or
 /// delete it out from under the folder that depends on it.
 model ConversationLabel {
-  id      String @id @default(cuid())
+  id      String @id @default(dbgenerated("nanoid(12)"))
   storeId String
   store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
   name    String @db.VarChar(40)
@@ -2073,7 +2073,7 @@ model ConversationLabelLink {
 /// would mean updating it in several places or trusting the newest one.
 /// Never shown to the buyer.
 model BuyerNote {
-  id      String @id @default(cuid())
+  id      String @id @default(dbgenerated("nanoid(12)"))
   storeId String
   store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
@@ -2114,7 +2114,7 @@ model StoreAutoReply {
 /// sends itself: a snippet is only ever inserted deliberately, and is edited
 /// in the composer before it goes anywhere.
 model MessageSnippet {
-  id      String @id @default(cuid())
+  id      String @id @default(dbgenerated("nanoid(12)"))
   storeId String
   store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
@@ -2131,7 +2131,7 @@ model MessageSnippet {
 }
 
 model Message {
-  id             String       @id @default(cuid())
+  id             String       @id @default(dbgenerated("nanoid(12)"))
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
@@ -2194,7 +2194,7 @@ model Message {
 // ─── Audit Log ───────────────────────────────────────────────────────────────
 
 model AuditLog {
-  id         String   @id @default(cuid())
+  id         String   @id @default(dbgenerated("nanoid(12)"))
   userId     String
   action     String
   entityType String
@@ -2224,7 +2224,7 @@ model AffiliateSettings {
 }
 
 model AffiliateAccount {
-  id String @id @default(cuid())
+  id String @id @default(dbgenerated("nanoid(12)"))
 
   // Identity — affiliate may or may not be a registered customer
   email            String  @unique
@@ -2269,7 +2269,7 @@ model AffiliateAccount {
 }
 
 model AffiliateClick {
-  id          String           @id @default(cuid())
+  id          String           @id @default(dbgenerated("nanoid(12)"))
   affiliateId String
   affiliate   AffiliateAccount @relation(fields: [affiliateId], references: [id])
 
@@ -2290,7 +2290,7 @@ model AffiliateClick {
 }
 
 model AffiliateCommission {
-  id          String           @id @default(cuid())
+  id          String           @id @default(dbgenerated("nanoid(12)"))
   affiliateId String
   affiliate   AffiliateAccount @relation(fields: [affiliateId], references: [id])
 
@@ -2315,7 +2315,7 @@ model AffiliateCommission {
 }
 
 model AffiliatePayout {
-  id          String           @id @default(cuid())
+  id          String           @id @default(dbgenerated("nanoid(12)"))
   affiliateId String
   affiliate   AffiliateAccount @relation(fields: [affiliateId], references: [id])
 
@@ -2341,14 +2341,14 @@ model AffiliatePayout {
 // ─── Admin Settings ───────────────────────────────────────────────────────────
 
 model AppSettings {
-  id        String   @id @default(cuid())
+  id        String   @id @default(dbgenerated("nanoid(12)"))
   key       String   @unique
   value     Json
   updatedAt DateTime @updatedAt
 }
 
 model EmailTemplateOverride {
-  id        String   @id @default(cuid())
+  id        String   @id @default(dbgenerated("nanoid(12)"))
   slug      String   @unique
   body      String   @db.Text
   createdAt DateTime @default(now())
@@ -2361,7 +2361,7 @@ model EmailTemplateOverride {
 // entity itself; translations live here.
 
 model Translation {
-  id               String   @id @default(cuid())
+  id               String   @id @default(dbgenerated("nanoid(12)"))
   entityType       String // "Product" | "Category" | "Collection" | "Tag" | "ShopSection"
   entityId         String
   locale           String // "vi" | "fr" | "zh" — never "en"
@@ -2388,7 +2388,7 @@ enum ModerationStatus {
 }
 
 model ModerationLog {
-  id String @id @default(cuid())
+  id String @id @default(dbgenerated("nanoid(12)"))
 
   entityType  String
   entityId    String
@@ -2455,7 +2455,7 @@ model ModerationSettings {
 }
 
 model ModerationRule {
-  id          String   @id @default(cuid())
+  id          String   @id @default(dbgenerated("nanoid(12)"))
   name        String
   description String?
   ruleType    String
@@ -2470,7 +2470,7 @@ model ModerationRule {
 }
 
 model StrikeRecord {
-  id        String   @id @default(cuid())
+  id        String   @id @default(dbgenerated("nanoid(12)"))
   storeId   String
   store     Store    @relation(fields: [storeId], references: [id])
   severity  String
@@ -2497,7 +2497,7 @@ enum TrackingStage {
 }
 
 model OrderTracking {
-  id                    String        @id @default(cuid())
+  id                    String        @id @default(dbgenerated("nanoid(12)"))
   orderId               String        @unique
   order                 Order         @relation(fields: [orderId], references: [id])
   currentStage          TrackingStage @default(ORDER_CONFIRMED)
@@ -2514,7 +2514,7 @@ model OrderTracking {
 }
 
 model TrackingEvent {
-  id          String        @id @default(cuid())
+  id          String        @id @default(dbgenerated("nanoid(12)"))
   trackingId  String
   tracking    OrderTracking @relation(fields: [trackingId], references: [id])
   stage       TrackingStage
@@ -2564,7 +2564,7 @@ enum FulfillmentStatus {
 }
 
 model StoreFulfillmentConnection {
-  id                     String                      @id @default(cuid())
+  id                     String                      @id @default(dbgenerated("nanoid(12)"))
   storeId                String
   store                  Store                       @relation(fields: [storeId], references: [id])
   provider               FulfillmentProviderType
@@ -2595,7 +2595,7 @@ model StoreFulfillmentConnection {
 }
 
 model ProductFulfillmentMapping {
-  id                String                     @id @default(cuid())
+  id                String                     @id @default(dbgenerated("nanoid(12)"))
   connectionId      String
   connection        StoreFulfillmentConnection @relation(fields: [connectionId], references: [id])
   productId         String
@@ -2612,7 +2612,7 @@ model ProductFulfillmentMapping {
 }
 
 model StoreOrderFulfillment {
-  id              String                     @id @default(cuid())
+  id              String                     @id @default(dbgenerated("nanoid(12)"))
   storeOrderId    String
   storeOrder      StoreOrder                 @relation(fields: [storeOrderId], references: [id])
   connectionId    String
@@ -2635,7 +2635,7 @@ model StoreOrderFulfillment {
 // shown once at creation and never stored/retrievable again.
 
 model ApiKey {
-  id         String    @id @default(cuid())
+  id         String    @id @default(dbgenerated("nanoid(12)"))
   storeId    String
   store      Store     @relation(fields: [storeId], references: [id])
   name       String
@@ -2658,7 +2658,7 @@ enum CampaignSeason {
 }
 
 model Campaign {
-  id           String          @id @default(cuid())
+  id           String          @id @default(dbgenerated("nanoid(12)"))
   name         String
   season       CampaignSeason?
   isActive     Boolean         @default(false)
@@ -2686,7 +2686,7 @@ model Campaign {
 // research tool, since Redis alone only keeps a rolling 7-day window.
 // Retention: rows older than 90 days are pruned by the same nightly job.
 model SearchTermDailyStat {
-  id           String   @id @default(cuid())
+  id           String   @id @default(dbgenerated("nanoid(12)"))
   term         String
   date         String // YYYY-MM-DD
   searches     Int      @default(0)
@@ -2710,7 +2710,7 @@ model SearchTermDailyStat {
  * revisit its trend later — mirrors Etsy Shop Manager's "Saved searches".
  */
 model SavedSearchTerm {
-  id        String   @id @default(cuid())
+  id        String   @id @default(dbgenerated("nanoid(12)"))
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   term      String
@@ -2727,7 +2727,7 @@ model SavedSearchTerm {
  * feedback instead of just collecting unused signal.
  */
 model RelatedTermFeedback {
-  id              String   @id @default(cuid())
+  id              String   @id @default(dbgenerated("nanoid(12)"))
   sourceTerm      String
   relatedTerm     String
   helpfulCount    Int      @default(0)
@@ -2762,7 +2762,7 @@ enum ConversationReportReason {
 /// makes "a buyer complained" indistinguishable from "the classifier scored
 /// this zero".
 model ConversationReport {
-  id String @id @default(cuid())
+  id String @id @default(dbgenerated("nanoid(12)"))
 
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)

@@ -28,7 +28,12 @@ import { ProductQandA } from '../../../../../components/product/ProductQandA';
 import type { QAItem } from '../../../../../components/product/ProductQandA';
 import { warnIfRejected } from '../../../../../lib/warn-if-rejected';
 
-export const revalidate = 30;
+// Product availability is correctness-sensitive: an archived or permanently
+// deleted listing must stop rendering immediately. Related/review/category
+// requests below retain their own caches, but the product existence check is
+// always fresh so the page body and metadata cannot disagree after deletion.
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 // ── Store summary (public GET /stores/{slug}) ──────────────────────────────────
 // Minimal subset of what that endpoint returns — just what SellerCard and
@@ -126,7 +131,7 @@ export async function generateMetadata({
   const { locale, slug } = await params;
 
   const product = await apiClient
-    .get<ProductDetailDto>(API_ROUTES.PRODUCTS.DETAIL(slug), { next: { revalidate: 30 } })
+    .get<ProductDetailDto>(API_ROUTES.PRODUCTS.DETAIL(slug), { cache: 'no-store' })
     .catch(() => null);
 
   if (!product) return { title: 'Product Not Found', robots: { index: false, follow: false } };
@@ -171,7 +176,7 @@ export default async function ProductDetailPage({
   const [productRes, reviewSummaryRes, relatedRes, qaRes, categoryTreeRes] =
     await Promise.allSettled([
       apiClient.get<ProductDetailDto>(API_ROUTES.PRODUCTS.DETAIL(slug), {
-        next: { revalidate: 30 },
+        cache: 'no-store',
         headers: localeHeaders,
       }),
       apiClient.get<ReviewSummaryDto>(API_ROUTES.PRODUCTS.REVIEW_SUMMARY(slug), {

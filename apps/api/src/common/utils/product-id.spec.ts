@@ -7,7 +7,7 @@ import {
 } from './product-id';
 
 describe('product NanoID', () => {
-  it('generates compact 10-character alphanumeric IDs', () => {
+  it('generates compact 12-character alphanumeric IDs', () => {
     const ids = Array.from({ length: 1_000 }, () => generateProductId());
 
     expect(ids.every((id) => id.length === PRODUCT_ID_LENGTH)).toBe(true);
@@ -16,6 +16,11 @@ describe('product NanoID', () => {
   });
 
   it('is accepted by the shared route ID parser', () => {
+    const pipe = new ParseCuidPipe();
+    expect(pipe.transform('V8k2LmQ9Xa7B')).toBe('V8k2LmQ9Xa7B');
+  });
+
+  it('keeps legacy 10-character Product NanoID links valid', () => {
     const pipe = new ParseCuidPipe();
     expect(pipe.transform('V8k2LmQ9Xa')).toBe('V8k2LmQ9Xa');
   });

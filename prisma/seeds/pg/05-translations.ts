@@ -18,7 +18,7 @@ import { PrismaClient } from '@prisma/client';
  * skips fields that already have a translation, so a later auto-translate run
  * will not overwrite them.
  *
- * Slugs, not ids, are the key: ids are cuids generated at seed time and differ
+ * Slugs, not ids, are the key: ids are generated at seed time and differ
  * between databases, while a slug is stable and reviewable. A slug listed here
  * that no longer exists is skipped; a category that exists with no entry here
  * is reported, so drift shows up in the log instead of silently shipping an

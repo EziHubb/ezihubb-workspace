@@ -49,6 +49,11 @@ function RelatedProductCard({
   const tSearch    = useTranslations('search');
   const addItem    = useCartStore((s) => s.addItem);
   const openDrawer = useCartStore((s) => s.openDrawer);
+  const hasPriceRange = product.minPrice != null
+    && product.maxPrice != null
+    && product.minPrice !== product.maxPrice;
+  const shownPrice = product.sale?.price ?? product.minPrice ?? product.basePrice;
+  const struckPrice = product.sale?.originalPrice ?? null;
 
   const handleQuickAdd = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -84,9 +89,15 @@ function RelatedProductCard({
         )}
 
         {/* Price */}
-        <p className="text-sm font-bold text-secondary mt-0.5">
-          {fmtAmount(product.basePrice)}
-        </p>
+        <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1">
+          <p className={`text-sm font-bold ${product.sale ? 'text-badge-sale' : 'text-secondary'}`}>
+            {hasPriceRange && <span className="font-normal text-muted">{tSearch('fromPrice')} </span>}
+            {fmtAmount(shownPrice)}
+          </p>
+          {struckPrice != null && struckPrice > shownPrice && (
+            <span className="text-[10px] text-muted line-through">{fmtAmount(struckPrice)}</span>
+          )}
+        </div>
 
         {/* Stars + count */}
         {product.reviewCount > 0 && (

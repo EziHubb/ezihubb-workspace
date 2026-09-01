@@ -1,6 +1,7 @@
 import type {
   AdminProductDto,
   AdminProductDetailDto,
+  AdminProductCustomOption,
   ApplyVariationsPayload,
   ProductEditFormValues,
   ProductVariantRow,
@@ -8,6 +9,58 @@ import type {
   VariationSettings,
 } from './types';
 import { safeArr, safeStr } from '../../../lib/fmt';
+
+const CUSTOM_OPTION_TYPES = new Set([
+  'TEXT_BOX',
+  'LIST_OF_OPTIONS',
+  'FILE_UPLOAD',
+  'CHECKBOX',
+  'COLOR_SWATCH',
+]);
+
+/**
+ * Convert Mongo/API data into a complete, independent form snapshot.
+ *
+ * Older builds persisted `[{}]` because the API did not have a nested DTO for
+ * this field. Those entries contain no recoverable label/type, so excluding
+ * them prevents an uneditable "(Untitled)" row from blocking the next save.
+ * Cloning the string arrays also ensures a copied listing never mutates the
+ * source option through a shared reference.
+ */
+export function normalizeCustomOptions(value: unknown): AdminProductCustomOption[] {
+  const candidates: unknown[] = Array.isArray(value) ? value : [];
+  return candidates
+    .filter((candidate): candidate is Record<string, unknown> => {
+      if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return false;
+      const record = candidate as Record<string, unknown>;
+      return typeof record['id'] === 'string'
+        && record['id'].trim().length > 0
+        && typeof record['label'] === 'string'
+        && record['label'].trim().length > 0
+        && typeof record['type'] === 'string'
+        && CUSTOM_OPTION_TYPES.has(record['type']);
+    })
+    .sort((a, b) => Number(a['sortOrder'] ?? 0) - Number(b['sortOrder'] ?? 0))
+    .map((option, index) => ({
+      id: option['id'] as string,
+      ...(typeof option['productId'] === 'string' ? { productId: option['productId'] } : {}),
+      type: option['type'] as AdminProductCustomOption['type'],
+      label: (option['label'] as string).trim(),
+      required: option['required'] === true,
+      instructionText: typeof option['instructionText'] === 'string' ? option['instructionText'] : '',
+      placeholder: typeof option['placeholder'] === 'string' ? option['placeholder'] : '',
+      maxLength: Number.isInteger(option['maxLength']) ? Number(option['maxLength']) : 250,
+      isMultiline: option['isMultiline'] === true,
+      allowFileUpload: option['allowFileUpload'] === true,
+      choices: (Array.isArray(option['choices']) ? option['choices'] : [])
+        .filter((choice): choice is string => typeof choice === 'string'),
+      allowMultiSelect: option['allowMultiSelect'] === true,
+      acceptedFileTypes: (Array.isArray(option['acceptedFileTypes']) ? option['acceptedFileTypes'] : [])
+        .filter((fileType): fileType is string => typeof fileType === 'string'),
+      maxFileSizeMB: Number.isInteger(option['maxFileSizeMB']) ? Number(option['maxFileSizeMB']) : 10,
+      sortOrder: index,
+    }));
+}
 
 // ── Empty defaults (create mode) ─────────────────────────────────────────────
 
@@ -165,7 +218,7 @@ export function buildDefaultValues(
     width:           product.width         ?? null,
     height:          product.height        ?? null,
     dimensionUnit:   product.dimensionUnit ?? 'CM',
-    customOptions:   safeArr(detail?.customOptions) as unknown[],
+    customOptions:   normalizeCustomOptions(detail?.customOptions ?? product.customOptions),
     variationDraft:  null,
 
     // Pricing & Shipping

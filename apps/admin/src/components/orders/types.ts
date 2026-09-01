@@ -46,6 +46,11 @@ export interface OrderDetail {
     phone?:     string | null;
   } | null;
   items: OrderItem[];
+  payment?: {
+    status: string;
+    method: string;
+    paidAt?: string | null;
+  } | null;
   statusHistory?: { status: string; createdAt: string; note?: string }[];
   isGift?:           boolean;
   giftMessage?:      string;

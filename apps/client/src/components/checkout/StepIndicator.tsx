@@ -4,14 +4,13 @@ import { Check, ShoppingCart } from 'lucide-react';
 interface StepIndicatorProps {
   currentStep:    1 | 2 | 3;
   completedSteps: number[];
-  /** Override the default Shipping/Delivery/Payment labels — used for the
-   *  digital-only flow, which bundles "shipping+delivery" into one contact step. */
+  /** Override the default Shipping/Delivery/Order request labels. */
   labels?: [string, string, string];
 }
 
 export function StepIndicator({ currentStep, completedSteps, labels }: StepIndicatorProps) {
   const t = useTranslations('checkout.steps');
-  const defaultLabels: [string, string, string] = [t('shipping'), t('delivery'), t('payment')];
+  const defaultLabels: [string, string, string] = [t('shipping'), t('delivery'), t('orderRequest')];
   const stepLabels = labels ?? defaultLabels;
   const STEPS = [
     { id: 1, label: stepLabels[0] },

@@ -39,6 +39,12 @@ function MiniProductCard({
   locale:  string;
 }) {
   const tPanel = useTranslations('product.purchasePanel');
+  const tSearch = useTranslations('search');
+  const hasPriceRange = product.minPrice != null
+    && product.maxPrice != null
+    && product.minPrice !== product.maxPrice;
+  const shownPrice = product.sale?.price ?? product.minPrice ?? product.basePrice;
+  const struckPrice = product.sale?.originalPrice ?? null;
   return (
     <Link
       href={`/${locale}/products/${product.slug}`}
@@ -57,9 +63,15 @@ function MiniProductCard({
       {product.productType === 'DIGITAL' && (
         <p className="text-xs text-muted mt-0.5">{tPanel('digitalDownload')}</p>
       )}
-      <p className="text-sm font-semibold text-secondary mt-0.5">
-        {fmtAmount(product.basePrice)}
-      </p>
+      <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5">
+        <p className={`text-sm font-semibold ${product.sale ? 'text-badge-sale' : 'text-secondary'}`}>
+          {hasPriceRange && <span className="font-normal text-muted">{tSearch('fromPrice')} </span>}
+          {fmtAmount(shownPrice)}
+        </p>
+        {struckPrice != null && struckPrice > shownPrice && (
+          <span className="text-xs text-muted line-through">{fmtAmount(struckPrice)}</span>
+        )}
+      </div>
       {product.reviewCount > 0 && (
         <div className="flex items-center gap-1 mt-0.5">
           <MiniStars rating={product.averageRating ?? 0} />

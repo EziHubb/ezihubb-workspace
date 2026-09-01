@@ -9,6 +9,7 @@
     "payment": "支付",
     "contact": "联系方式",
     "review": "确认",
+    "orderRequest": "订单请求",
     "aria": "结账步骤"
   },
 
@@ -17,6 +18,7 @@
     "deliveryMethod": "预计配送",
     "payment": "支付",
     "contactInformation": "联系方式",
+    "reviewRequest": "查看并提交订单请求",
     "preparingOrder": "正在准备您的订单…"
   },
 
@@ -89,7 +91,7 @@
     "free": "免费",
     "back": "← 返回",
     "backAria": "返回",
-    "continueToPayment": "继续支付 →",
+    "continueToPayment": "继续查看 →",
     "creatingOrder": "正在创建订单…",
     "creating": "创建中…"
   },
@@ -140,13 +142,28 @@
     "emailAddress": "电子邮箱",
     "emailPlaceholder": "you@example.com",
     "invalidEmail": "请输入有效的电子邮箱地址",
-    "continueToPayment": "继续支付",
+    "continueToPayment": "查看订单请求",
     "preparingOrder": "正在准备您的订单…"
+  },
+
+  "orderRequest": {
+    "title": "EziHubb 正在扩展在线支付方式",
+    "description": "EziHubb 目前处于提前使用阶段，正在完成支付服务商验证。您可现在提交订单请求，商家会在安排任何支付前确认库存、最终金额和下一步。",
+    "messagesContact": "已登录用户可能会通过 EziHubb Messages 收到联系。",
+    "emailContact": "我们也可能使用订单中提供的电子邮箱。",
+    "noCharge": "今天本网站不会向您收费。",
+    "security": "为了您的安全，EziHubb 绝不会通过消息或邮件索要密码、验证码或完整银行卡信息。请仅信任 EziHubb 账户内的消息或来自官方 @ezihubb.com 地址的邮件。",
+    "back": "← 返回",
+    "submit": "提交订单请求",
+    "submitting": "正在提交..."
   },
 
   "success": {
     "paymentProcessing": "正在处理支付…",
     "orderConfirmed": "订单已确认！🎉",
+    "requestReceived": "已收到订单请求",
+    "requestNextSteps": "尚未收取在线付款。商家将通过 EziHubb Messages 或订单中的电子邮箱联系您，确认库存、最终金额和下一步。",
+    "requestSecurity": "为了您的安全，请勿分享密码、验证码或完整银行卡信息。请仅信任 EziHubb 账户内的消息或来自官方 @ezihubb.com 地址的邮件。",
     "confirmingPayment": "我们正在确认您的付款，通常只需几秒钟。",
     "yourOrderNumber": "您的订单号",
     "clickToCopy": "（点击复制）",
@@ -161,6 +178,7 @@
     "discount": "优惠",
     "giftCard": "礼品卡",
     "totalPaid": "实付总额",
+    "estimatedTotal": "预估订单总额",
     "shippingTo": "收货地址",
     "estimatedDelivery": "预计送达",
     "deliveryEstimate": "生产完成后 5–10 个工作日",

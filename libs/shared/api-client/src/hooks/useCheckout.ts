@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../client';
 import { API_ROUTES } from '@ezihubb/constants';
-import type { OrderDto, CheckoutIntentDto } from '@ezihubb/types';
+import type { CheckoutIntentDto } from '@ezihubb/types';
 import { queryKeys } from '../queryKeys';
 
 // ── Input / response types ────────────────────────────────────────────────────
@@ -28,10 +28,12 @@ export interface SubmitCheckoutInput {
 }
 
 export interface SubmitCheckoutResponse {
-  orderId:     string;
-  orderNumber: string;
-  total:       number;
-  status:      string;
+  orderId:         string;
+  orderNumber:     string;
+  clientSecret:    string | null;
+  paymentRequired: boolean;
+  total:           number;
+  status:          string;
 }
 
 export interface ValidateGiftCardResponse {

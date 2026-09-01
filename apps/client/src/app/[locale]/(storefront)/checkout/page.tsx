@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Mail, MessageCircle, ShieldCheck } from 'lucide-react';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { useCartStore } from '../../../../lib/store/cart.store';
@@ -13,16 +14,22 @@ import { StepIndicator }           from '../../../../components/checkout/StepInd
 import { ShippingForm }             from '../../../../components/checkout/ShippingForm';
 import { DeliveryForm }             from '../../../../components/checkout/DeliveryForm';
 import { DigitalContactForm }       from '../../../../components/checkout/DigitalContactForm';
-import { PaymentForm }              from '../../../../components/checkout/PaymentForm';
 import { GiftOptionsSection }       from '../../../../components/checkout/GiftOptionsSection';
 import type { GiftOptions }         from '../../../../components/checkout/GiftOptionsSection';
 import { AffiliateDiscountBanner }  from '../../../../components/checkout/AffiliateDiscountBanner';
-import { ExpressPayStrip }          from '../../../../components/checkout/ExpressPayStrip';
 import { analytics }                from '../../../../lib/analytics';
 import { hotjarEvent }              from '../../../../lib/analytics/hotjar';
 import { useCurrency }              from '../../../../lib/currency/currency-context';
 import { fmtAmount, safeNum, safeArr } from '@ezihubb/utils';
 import { useAuthStore }             from '../../../../lib/store/auth.store';
+
+// Keep payment-provider SDKs out of the active checkout bundle while the
+// server has online payments disabled. This chunk is only loaded if a future
+// server response explicitly requires payment again.
+const PaymentForm = dynamic(
+  () => import('../../../../components/checkout/PaymentForm').then((mod) => mod.PaymentForm),
+  { ssr: false },
+);
 
 function getCookie(name: string): string | undefined {
   if (typeof document === 'undefined') return undefined;
@@ -30,6 +37,15 @@ function getCookie(name: string): string | undefined {
     .split('; ')
     .find((row) => row.startsWith(`${name}=`))
     ?.split('=')[1];
+}
+
+interface CheckoutOrderResponse {
+  orderId:         string;
+  orderNumber:     string;
+  clientSecret:    string | null;
+  paymentRequired: boolean;
+  status:          string;
+  total:           number;
 }
 
 // ── Sidebar: order summary ────────────────────────────────────────────────────
@@ -65,8 +81,7 @@ function OrderSummarySidebar({
               <div className="relative w-14 h-14 shrink-0">
                 <div className="w-full h-full rounded-sm overflow-hidden bg-muted/20 border border-border">
                   {thumb && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                  <img
                       src={thumb}
                       alt={item.productName || 'Product'}
                       className="w-full h-full object-cover"
@@ -248,7 +263,7 @@ export default function CheckoutPage() {
       })
       // eslint-disable-next-line @typescript-eslint/no-empty-function
       .catch(() => {}); // non-critical
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Recompute dollar amount whenever subtotal or coupon discount changes
   useEffect(() => {
@@ -259,7 +274,7 @@ export default function CheckoutPage() {
     );
   }, [cart?.totals?.subtotal, cart?.discountAmount, affiliateInfo?.code]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Order creation state (set when proceeding to Stripe) ──────────────────
+  // Order creation state. The server decides whether payment is required.
   const [clientSecret,    setClientSecret]    = useState('');
   const [orderId,         setOrderId]         = useState('');
   const [orderNumber,     setOrderNumber]     = useState('');
@@ -283,51 +298,20 @@ export default function CheckoutPage() {
     safeArr(cart.items).length > 0 &&
     safeArr(cart.items).every((i) => (i.productType ?? 'PHYSICAL') === 'DIGITAL');
 
-  /** Creates the order directly, skipping the shipping-address/delivery-method
-   *  steps entirely — used for a digital-only cart. Guests still supply an
-   *  email (needed to look the order up later); logged-in users need nothing
-   *  at all, so this fires automatically for them (see effect below). */
-  const handleCreateDigitalOrder = useCallback(async (email?: string) => {
-    if (!cart) return;
+  /** Digital orders only need a contact email before the final review step. */
+  const prepareDigitalOrder = useCallback((email?: string) => {
     setCompletedSteps((prev) => [...new Set([...prev, 1, 2])]);
-    setIsCreatingOrder(true);
     setOrderError('');
-    try {
-      const res = await apiClient.post<{
-        orderId:      string;
-        orderNumber:  string;
-        clientSecret: string;
-        total:        number;
-      }>(API_ROUTES.ORDERS.CREATE, {
-        couponCode:    cart.couponCode ?? undefined,
-        guestEmail:    !isLoggedIn ? email : undefined,
-        affiliateCode: affiliateInfo?.code,
-      });
-      if (email) setGuestEmail(email);
-      setOrderId(res.orderId);
-      setOrderNumber(res.orderNumber);
-      setClientSecret(res.clientSecret);
-      setOrderTotal(safeNum(res.total));
-      hotjarEvent('checkout_step_payment');
-      setStep(3);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err) {
-      setOrderError(err instanceof Error ? err.message : t('errors.createOrderFailed'));
-    } finally {
-      setIsCreatingOrder(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cart, isLoggedIn, affiliateInfo?.code]);
+    if (email) setGuestEmail(email);
+    setStep(3);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
-  // Logged-in + digital-only needs no user input at all — fire immediately.
-  // If the order was already created (e.g. shopper hit "back" from payment),
-  // there's nothing to edit here — just return to payment instead of getting
-  // stuck on a spinner with no way forward.
+  // Logged-in digital buyers already have a verified contact email.
   useEffect(() => {
     if (!isDigitalOnly || !isLoggedIn || step !== 1) return;
-    if (clientSecret) { setStep(3); return; }
-    if (!isCreatingOrder) void handleCreateDigitalOrder();
-  }, [isDigitalOnly, isLoggedIn, step, clientSecret, isCreatingOrder, handleCreateDigitalOrder]);
+    prepareDigitalOrder();
+  }, [isDigitalOnly, isLoggedIn, step, prepareDigitalOrder]);
 
   if (isLoading || !cart || safeArr(cart.items).length === 0) {
     return (
@@ -356,12 +340,8 @@ export default function CheckoutPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  /** Called from DeliveryForm once the automatic delivery estimate resolves
-   *  and the shopper clicks Continue. Creates the order + payment intent
-   *  before showing Stripe Elements — the server independently re-resolves
-   *  the same seller Delivery-profile cost, this estimate is only used to
-   *  drive the UI in the meantime. */
-  const handleProceedToPayment = async (estimate: ShippingEstimateDto) => {
+  /** Preserve the delivery estimate, then let the buyer review the request. */
+  const handleProceedToReview = (estimate: ShippingEstimateDto) => {
     if (!shippingAddress || !cart) return;
     setShippingEstimate(estimate);
     setCompletedSteps((prev) => [...new Set([...prev, 2])]);
@@ -369,17 +349,18 @@ export default function CheckoutPage() {
       total:          cart.totals?.total ?? 0,
       shippingMethod: estimate.perStore[0]?.methodName ?? 'Standard Shipping',
     });
+    setOrderError('');
+    setStep(3);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSubmitOrder = async () => {
+    if (!cart || (!isDigitalOnly && (!shippingAddress || !shippingEstimate))) return;
     setIsCreatingOrder(true);
     setOrderError('');
-
     try {
-      const res = await apiClient.post<{
-        orderId:      string;
-        orderNumber:  string;
-        clientSecret: string;
-        total:        number;
-      }>(API_ROUTES.ORDERS.CREATE, {
-        shippingAddress: {
+      const res = await apiClient.post<CheckoutOrderResponse>(API_ROUTES.ORDERS.CREATE, {
+        ...(shippingAddress ? { shippingAddress: {
           fullName:     `${shippingAddress.firstName} ${shippingAddress.lastName}`.trim(),
           phone:         shippingAddress.phone,
           addressLine1:  shippingAddress.addressLine1,
@@ -388,7 +369,7 @@ export default function CheckoutPage() {
           state:         shippingAddress.state,
           postalCode:    shippingAddress.postalCode,
           country:       shippingAddress.country,
-        },
+        } } : {}),
         couponCode:       cart.couponCode ?? undefined,
         guestEmail:       !isLoggedIn ? guestEmail : undefined,
         isGift:           giftOptions.isGift,
@@ -402,11 +383,18 @@ export default function CheckoutPage() {
 
       setOrderId(res.orderId);
       setOrderNumber(res.orderNumber);
-      setClientSecret(res.clientSecret);
       setOrderTotal(safeNum(res.total));
-      hotjarEvent('checkout_step_payment');
-      setStep(3);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (res.paymentRequired && res.clientSecret) {
+        setClientSecret(res.clientSecret);
+        hotjarEvent('checkout_step_payment');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      hotjarEvent('order_request_submitted');
+      clearCart();
+      const guestParam = !isLoggedIn && guestEmail ? `&email=${encodeURIComponent(guestEmail)}` : '';
+      router.push(`/${locale}/checkout/success?order=${res.orderNumber}${guestParam}&mode=request`);
     } catch (err) {
       setOrderError(err instanceof Error ? err.message : t('errors.createOrderFailed'));
     } finally {
@@ -452,7 +440,9 @@ export default function CheckoutPage() {
             <StepIndicator
               currentStep={step}
               completedSteps={completedSteps}
-              labels={isDigitalOnly ? [t('steps.contact'), t('steps.review'), t('steps.payment')] : undefined}
+              labels={isDigitalOnly
+                ? [t('steps.contact'), t('steps.review'), t('steps.orderRequest')]
+                : [t('steps.shipping'), t('steps.delivery'), t('steps.orderRequest')]}
             />
 
             {/* Price changed banner (shown before step 3) */}
@@ -493,15 +483,12 @@ export default function CheckoutPage() {
                         initialEmail={guestEmail}
                         isSubmitting={isCreatingOrder}
                         error={orderError}
-                        onSubmit={(email) => handleCreateDigitalOrder(email)}
+                        onSubmit={prepareDigitalOrder}
                       />
                     </>
                   )
                 ) : (
                   <>
-                    {/* Express pay shortcut */}
-                    <ExpressPayStrip total={safeNum(cart.totals?.subtotal)} />
-
                     <h2 id="step1-heading" className="text-base font-semibold text-secondary mb-5">
                       {t('stepHeadings.shippingInformation')}
                     </h2>
@@ -536,28 +523,83 @@ export default function CheckoutPage() {
 
                 <DeliveryForm
                   countryCode={shippingAddress.country}
-                  onComplete={handleProceedToPayment}
+                  onComplete={handleProceedToReview}
                   onBack={() => setStep(1)}
                   isCreatingOrder={isCreatingOrder}
                 />
               </section>
             )}
 
-            {/* Step 3: Payment — data-hj-suppress prevents Hotjar from recording card fields */}
-            {step === 3 && clientSecret && (isDigitalOnly || (shippingAddress && shippingEstimate)) && (
+            {/* Step 3: review and submit. Payment fields only return when the
+                server-side feature flag is deliberately re-enabled. */}
+            {step === 3 && (isDigitalOnly || (shippingAddress && shippingEstimate)) && (
               <section aria-labelledby="step3-heading" data-hj-suppress>
                 <h2 id="step3-heading" className="text-base font-semibold text-secondary mb-5">
-                  {t('stepHeadings.payment')}
+                  {clientSecret ? t('stepHeadings.payment') : t('stepHeadings.reviewRequest')}
                 </h2>
-                <PaymentForm
-                  clientSecret={clientSecret}
-                  orderId={orderId}
-                  orderNumber={orderNumber}
-                  totalAmount={orderTotal}
-                  locale={locale}
-                  onSuccess={handlePaymentSuccess}
-                  onBack={() => setStep(isDigitalOnly ? 1 : 2)}
-                />
+                {clientSecret ? (
+                  <PaymentForm
+                    clientSecret={clientSecret}
+                    orderId={orderId}
+                    orderNumber={orderNumber}
+                    totalAmount={orderTotal}
+                    locale={locale}
+                    onSuccess={handlePaymentSuccess}
+                    onBack={() => setStep(isDigitalOnly ? 1 : 2)}
+                  />
+                ) : (
+                  <div className="space-y-5">
+                    <div role="note" className="rounded-card border border-primary/25 bg-primary/5 p-5">
+                      <div className="flex items-start gap-3">
+                        <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                        <div>
+                          <h3 className="font-semibold text-secondary">{t('orderRequest.title')}</h3>
+                          <p className="mt-1.5 text-sm leading-relaxed text-muted">{t('orderRequest.description')}</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 grid gap-3 border-t border-primary/15 pt-4 sm:grid-cols-2">
+                        <div className="flex items-start gap-2 text-sm text-secondary">
+                          <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                          <span>{t('orderRequest.messagesContact')}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-sm text-secondary">
+                          <Mail className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                          <span>{t('orderRequest.emailContact')}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-card border border-border bg-surface p-4 text-sm text-muted">
+                      <p className="font-medium text-secondary">{t('orderRequest.noCharge')}</p>
+                      <p className="mt-1 leading-relaxed">{t('orderRequest.security')}</p>
+                    </div>
+
+                    {orderError && (
+                      <p className="rounded-sm border border-error/20 bg-error/5 p-3 text-sm text-error" role="alert">
+                        {orderError}
+                      </p>
+                    )}
+
+                    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setStep(isDigitalOnly ? 1 : 2)}
+                        disabled={isCreatingOrder}
+                        className="rounded-button border border-border px-5 py-3 text-sm font-medium text-secondary hover:border-primary disabled:opacity-50"
+                      >
+                        {t('orderRequest.back')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSubmitOrder}
+                        disabled={isCreatingOrder}
+                        className="rounded-button bg-primary px-6 py-3 text-sm font-bold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isCreatingOrder ? t('orderRequest.submitting') : t('orderRequest.submit')}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </section>
             )}
           </div>

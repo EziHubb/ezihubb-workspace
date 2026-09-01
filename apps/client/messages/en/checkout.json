@@ -1,6 +1,6 @@
 {
   "title": "Checkout",
-  "currencyNote": "Prices shown are approximate conversions for reference. Your card will be charged in {currency}.",
+  "currencyNote": "Converted prices are estimates. The shop will confirm the final amount in {currency} before any payment is arranged.",
 
   "steps": {
     "cart": "Cart",
@@ -9,6 +9,7 @@
     "payment": "Payment",
     "contact": "Contact",
     "review": "Review",
+    "orderRequest": "Order request",
     "aria": "Checkout steps"
   },
 
@@ -17,6 +18,7 @@
     "deliveryMethod": "Delivery Estimate",
     "payment": "Payment",
     "contactInformation": "Contact information",
+    "reviewRequest": "Review and submit your order request",
     "preparingOrder": "Preparing your order…"
   },
 
@@ -89,7 +91,7 @@
     "free": "FREE",
     "back": "← Back",
     "backAria": "Back",
-    "continueToPayment": "Continue to Payment →",
+    "continueToPayment": "Continue to review →",
     "creatingOrder": "Creating order…",
     "creating": "Creating…"
   },
@@ -136,17 +138,32 @@
   },
 
   "digitalContact": {
-    "digitalOnlyNote": "This order is digital only — no shipping needed. We'll email your download link and receipt here.",
+    "digitalOnlyNote": "This order is digital only — no shipping is needed. The shop will use this email to confirm availability and next steps.",
     "emailAddress": "Email address",
     "emailPlaceholder": "you@example.com",
     "invalidEmail": "Enter a valid email address",
-    "continueToPayment": "Continue to payment",
+    "continueToPayment": "Review order request",
     "preparingOrder": "Preparing your order…"
+  },
+
+  "orderRequest": {
+    "title": "Online payment options are being expanded",
+    "description": "EziHubb is in an early-access launch while we complete verification for additional payment providers. Submit your order request now and the shop will personally confirm availability, the final amount, and the next steps before any payment is arranged.",
+    "messagesContact": "Signed-in customers may be contacted through EziHubb Messages.",
+    "emailContact": "We may also use the email address provided with this order.",
+    "noCharge": "You will not be charged on this website today.",
+    "security": "For your security, EziHubb will never ask for your password, verification code, or full card details by message or email. Trust only messages inside your EziHubb account or email from an official @ezihubb.com address.",
+    "back": "← Back",
+    "submit": "Submit order request",
+    "submitting": "Submitting request..."
   },
 
   "success": {
     "paymentProcessing": "Payment processing…",
     "orderConfirmed": "Order Confirmed! 🎉",
+    "requestReceived": "Order request received",
+    "requestNextSteps": "No online payment has been collected. The shop will contact you through EziHubb Messages or the email on your order to confirm availability, the final amount, and next steps.",
+    "requestSecurity": "For your security, never share your password, verification code, or full card details. Trust only messages inside your EziHubb account or email from an official @ezihubb.com address.",
     "confirmingPayment": "We're confirming your payment. This usually takes a few seconds.",
     "yourOrderNumber": "Your order number",
     "clickToCopy": "(Click to copy)",
@@ -161,6 +178,7 @@
     "discount": "Discount",
     "giftCard": "Gift card",
     "totalPaid": "Total paid",
+    "estimatedTotal": "Estimated order total",
     "shippingTo": "Shipping to",
     "estimatedDelivery": "Estimated delivery",
     "deliveryEstimate": "5–10 business days after production",

@@ -127,6 +127,8 @@ export class CancelOrderDto {
 export class CheckoutResponseDto {
   @ApiProperty() orderId:      string;
   @ApiProperty() orderNumber:  string;
-  @ApiProperty() clientSecret: string;
+  @ApiPropertyOptional({ nullable: true }) clientSecret: string | null;
+  @ApiProperty() paymentRequired: boolean;
+  @ApiProperty() status: string;
   @ApiProperty() total:        number;
 }

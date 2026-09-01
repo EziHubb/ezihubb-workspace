@@ -6,6 +6,7 @@ import { ChevronDown, CircleCheckBig, Pencil, Search, Loader2 } from 'lucide-rea
 import { API_ROUTES } from '@ezihubb/constants';
 import { api, adminApi } from '../../../lib/api-client';
 import { useAdminMode } from '../../../lib/store-context';
+import { toast } from '../../../lib/store/toast.store';
 import { useDialog } from '../../../contexts/DialogContext';
 import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { OrderQueueCard } from '../../../components/orders/queue/OrderQueueCard';
@@ -304,9 +305,21 @@ export default function OrdersPage() {
     if (!ok) return;
     try {
       await api.post(API_ROUTES.ADMIN.ORDER_CANCEL(order.orderId), {});
-      refetchAll();
+      setSelected((current) => {
+        const next = new Set(current);
+        next.delete(order.id);
+        return next;
+      });
+      if (panelId === order.id) setPanelId(null);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['order-queue'] }),
+        qc.invalidateQueries({ queryKey: ['order-progress-steps'] }),
+        qc.invalidateQueries({ queryKey: ['order-destinations'] }),
+        qc.invalidateQueries({ queryKey: ['order-panel'] }),
+      ]);
+      toast.success(`Order #${order.orderNumber} cancelled`);
     } catch (e) {
-      dialog.alert((e as Error).message);
+      toast.error((e as Error).message);
     }
   };
 

@@ -434,7 +434,16 @@ export class StoresService {
       where: { storeId, isActive: true, deletedAt: null },
     });
 
-    return { ...store, totalProducts, followerCount: store._count.followers };
+    return {
+      ...store,
+      // Prisma Decimal values are serialized as JSON strings. Normalize them
+      // at the API boundary so admin consumers receive the numeric shape they
+      // declare and can safely format ratings and revenue.
+      rating: Number(store.rating),
+      totalRevenue: Number(store.totalRevenue),
+      totalProducts,
+      followerCount: store._count.followers,
+    };
   }
 
   // ─── Admin: Approve ───────────────────────────────────────────────────────

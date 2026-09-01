@@ -27,29 +27,15 @@ import {
 import { Select } from '@ezihubb/ui';
 import { safeArr } from '../../../lib/fmt';
 import { Toggle } from './primitives';
-import type { ProductEditFormValues } from './types';
+import type { AdminProductCustomOption, ProductEditFormValues } from './types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type CustomOptionType = 'TEXT_BOX' | 'LIST_OF_OPTIONS' | 'FILE_UPLOAD';
 
-export interface CustomOption {
-  id:                 string;
-  productId:          string;
-  type:               CustomOptionType;
-  label:              string;
-  required:           boolean;
-  instructionText?:   string;
-  placeholder?:       string;
-  maxLength?:         number;
-  isMultiline?:       boolean;
-  allowFileUpload?:   boolean;
-  choices?:           string[];
-  allowMultiSelect?:  boolean;
-  acceptedFileTypes?: string[];
-  maxFileSizeMB?:     number;
-  sortOrder:          number;
-}
+export type CustomOption = Omit<AdminProductCustomOption, 'type'> & {
+  type: CustomOptionType;
+};
 
 interface CustomOptionFormValues {
   label:              string;

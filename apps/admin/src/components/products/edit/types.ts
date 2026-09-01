@@ -1,5 +1,7 @@
 // ── Enum mirrors (keep in sync with Prisma schema enums) ─────────────────────
 
+import type { ProductCustomOptionDto } from '@ezihubb/types';
+
 export type WhoMadeIt     = 'I_DID' | 'SHOP_MEMBER' | 'ANOTHER_COMPANY';
 export type HowItWasMade  = 'MADE_TO_ORDER' | 'HANDMADE' | 'ASSEMBLED' | 'ALTERED' | 'CURATED_SET' | 'NATURAL_MATERIAL';
 /** Third provenance field. Optional on the model — an unanswered question stays unanswered. */
@@ -18,6 +20,12 @@ export interface GpsrInfo {
   safetyWarnings?:      string[];
   countryOfOrigin?:     string;
 }
+
+/** Admin keeps a productId while an option is staged locally; Mongo derives
+ * the owning product from its parent document and does not persist this key. */
+export type AdminProductCustomOption = ProductCustomOptionDto & {
+  productId?: string;
+};
 
 // ── Shared form shape (all 7 tabs) ────────────────────────────────────────────
 
@@ -50,7 +58,7 @@ export interface ProductEditFormValues {
   width:           number | null;
   height:          number | null;
   dimensionUnit:   DimensionUnit | null;
-  customOptions:   unknown[];
+  customOptions:   AdminProductCustomOption[];
   /** Consolidated variation edit, committed only with the listing form. */
   variationDraft:  ApplyVariationsPayload | null;
 
@@ -266,6 +274,7 @@ export interface AdminProductDto {
   shopSectionId?:       string | null;
   renewalType?:         RenewalType;
   featuredRelatedIds?:  string[];
+  customOptions?:       AdminProductCustomOption[];
 }
 
 export interface AdminProductDetailDto {
@@ -276,7 +285,7 @@ export interface AdminProductDetailDto {
   attributes?:      unknown[];
   imageAltTexts?:   Record<string, string>;
   gpsrInfo?:        GpsrInfo | null;
-  customOptions?:   unknown[];
+  customOptions?:   AdminProductCustomOption[];
   metaTitle?:       string;
   metaDescription?: string;
   printSpecs?:      unknown;

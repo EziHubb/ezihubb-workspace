@@ -304,11 +304,14 @@ function ProductsPageInner() {
       // row.original, not getValue(): the sale sits beside basePrice on the
       // row and the accessor only hands over the one number.
       cell:        ({ row }) => {
-        const { basePrice, sale } = row.original;
+        const { basePrice, minPrice, maxPrice, sale } = row.original;
+        const lowestPrice = minPrice ?? basePrice;
+        const hasPriceRange = minPrice != null && maxPrice != null && minPrice !== maxPrice;
         return (
           <span className="flex flex-wrap items-baseline gap-x-1.5">
             <span className={`text-sm font-semibold tabular-nums ${sale ? 'text-badge-sale' : 'text-secondary'}`}>
-              {fmtAmount(sale ? sale.price : basePrice)}
+              {hasPriceRange && <span className="mr-1 text-xs font-normal text-muted">From</span>}
+              {fmtAmount(sale ? sale.price : lowestPrice)}
             </span>
             {sale && (
               <span className="text-xs text-muted line-through tabular-nums">

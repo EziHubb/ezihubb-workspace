@@ -7,6 +7,7 @@
  */
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -20,6 +21,7 @@ import { fmtAmount } from '@ezihubb/utils';
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const PRESET_AMOUNTS = [25, 50, 75, 100, 150, 200] as const;
+const GIFT_CARD_PURCHASES_AVAILABLE = false;
 
 // ── GiftCardVisual ────────────────────────────────────────────────────────────
 
@@ -391,6 +393,51 @@ export default function GiftCardsPage() {
   const [isPurchasing,   setIsPurchasing]   = useState(false);
   const [purchaseError,  setPurchaseError]  = useState('');
   const [successModal,   setSuccessModal]   = useState<{ giftCardCode: string; recipientEmail: string } | null>(null);
+
+  if (!GIFT_CARD_PURCHASES_AVAILABLE) {
+    const copy = locale === 'vi'
+      ? {
+          title: 'Gift Card đang tạm ngưng phát hành mới',
+          description: 'EziHubb đang hoàn tất việc mở rộng và xác minh các phương thức thanh toán trực tuyến. Trong thời gian này, chúng tôi tạm ngưng bán Gift Card mới để mọi giao dịch luôn rõ ràng và được bảo vệ đầy đủ.',
+          existing: 'Bạn đã có Gift Card? Bạn vẫn có thể kiểm tra số dư bên dưới. Việc sử dụng Gift Card tại checkout sẽ được mở lại cùng hệ thống thanh toán mới.',
+          browse: 'Khám phá sản phẩm',
+        }
+      : locale === 'zh'
+        ? {
+            title: '新礼品卡暂时停止发售',
+            description: 'EziHubb 正在完成在线支付方式的扩展与验证。在此期间，我们暂停销售新礼品卡，以确保每笔交易都清晰并获得完整保护。',
+            existing: '已有礼品卡？您仍可在下方查询余额。礼品卡结账功能将与新版支付系统一同恢复。',
+            browse: '浏览商品',
+          }
+        : {
+            title: 'New gift card sales are temporarily paused',
+            description: 'EziHubb is completing the expansion and verification of its online payment options. We have paused new gift card sales in the meantime so every transaction remains clear and fully protected.',
+            existing: 'Already have a gift card? You can still check its balance below. Gift card redemption at checkout will return with the updated payment system.',
+            browse: 'Browse products',
+          };
+
+    return (
+      <main className="mx-auto max-w-3xl px-4 py-12 md:px-8 md:py-20">
+        <section className="rounded-card border border-border bg-surface p-6 text-center md:p-10">
+          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <Gift className="h-6 w-6 text-primary" aria-hidden="true" />
+          </div>
+          <h1 className="font-display text-2xl font-bold text-secondary md:text-3xl">{copy.title}</h1>
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-muted md:text-base">{copy.description}</p>
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-muted">{copy.existing}</p>
+          <Link
+            href={`/${locale}/products`}
+            className="mt-6 inline-flex rounded-button bg-primary px-5 py-3 text-sm font-bold text-white hover:bg-primary-dark"
+          >
+            {copy.browse}
+          </Link>
+        </section>
+        <div className="mt-6">
+          <BalanceChecker />
+        </div>
+      </main>
+    );
+  }
 
   const handleSelectPreset = (amount: number | null) => setSelectedAmount(amount);
 

@@ -148,10 +148,9 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
   // at it, a shop could run a sale and have the grid go on quoting full price
   // while checkout quietly charged less.
   //
-  // The sale's own figures are used rather than recomputing against
-  // displayPrice: the discount is defined against basePrice, so the struck
-  // price and the percentage both have to describe that same number or they
-  // contradict each other.
+  // The API computes the sale against displayPrice (the lowest variant when a
+  // range exists), so its own figures preserve fixed-amount discounts and the
+  // exact server-side rounding used by checkout.
   const sale = product.sale ?? null;
   const shownPrice   = sale ? sale.price : displayPrice;
   const struckPrice  = sale ? sale.originalPrice : (product.compareAtPrice ?? null);
@@ -377,10 +376,9 @@ export function SearchProductCard({ product, priority = false, searchTerm }: Pro
           {/* The largest thing on the card. The title is text-sm; a price
               that matched it gave a shopper nothing to land on. */}
           <span className={[sale ? 'text-lg font-extrabold text-badge-sale' : 'text-base font-bold text-secondary'].join(' ')}>
-            {/* "From" only without a sale. The sale price is the listing's own,
-                not the cheapest variant's, so calling it a floor would be a
-                claim the number does not support. */}
-            {hasPriceRange && !sale && <span className="font-normal text-muted">{t('fromPrice')} </span>}
+            {/* A ranged sale is still a floor: it is based on the cheapest
+                available variant, not a flat price for every option. */}
+            {hasPriceRange && <span className="font-normal text-muted">{t('fromPrice')} </span>}
             {fmtAmount(shownPrice)}
           </span>
           {struckPrice && discount > 0 && (

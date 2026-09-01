@@ -1,6 +1,5 @@
 export const CONSENT_STORAGE_KEY = 'cookie_consent';
 export const CONSENT_CHANGED_EVENT = 'ezihubb:consent-changed';
-export const OPEN_CONSENT_SETTINGS_EVENT = 'ezihubb:open-consent-settings';
 
 export type ConsentStatus = 'accepted' | 'rejected';
 

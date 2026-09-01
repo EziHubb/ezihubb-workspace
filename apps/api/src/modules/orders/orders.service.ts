@@ -101,6 +101,13 @@ const ORDER_NUMBER_ATTEMPTS = 5;
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
+  /**
+   * Online checkout is opt-in while payment-provider verification is pending.
+   * Keeping the switch server-side prevents an older/stale client bundle from
+   * creating a PaymentIntent accidentally. Set ONLINE_PAYMENTS_ENABLED=true to
+   * restore the existing Stripe/PayPal flow.
+   */
+  private readonly onlinePaymentsEnabled = process.env['ONLINE_PAYMENTS_ENABLED'] === 'true';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -513,6 +520,10 @@ export class OrdersService {
         (subtotalAfterDiscount + shippingCost + giftWrappingCost - affiliateDiscountAmount) * 100,
       ) / 100,
     );
+    const initialStatus = this.onlinePaymentsEnabled
+      ? OrderStatus.PENDING_PAYMENT
+      : OrderStatus.CONFIRMED;
+    const confirmedAt = this.onlinePaymentsEnabled ? undefined : new Date();
 
     // Share & Save rewards go to the SHARER, a different person than whoever
     // is checking out right now — collected here and emailed after the
@@ -529,7 +540,8 @@ export class OrdersService {
           orderNumber,
           userId: userId ?? null,
           guestEmail: dto.guestEmail ?? null,
-          status: OrderStatus.PENDING_PAYMENT,
+          status: initialStatus,
+          confirmedAt,
           isDigital: isDigitalOnly,
           shippingName: addr ? addr.fullName : null,
           shippingPhone: addr ? addr.phone : null,
@@ -652,12 +664,18 @@ export class OrdersService {
             data: {
               orderId:        newOrder.id,
               storeId,
-              status:         OrderStatus.PENDING_PAYMENT,
+              status:         initialStatus,
               shipByDate,
               subtotal:       roundedSubtotal,
               discountAmount: storeDiscount,
-              platformFee:    fees.totalFees,
-              sellerEarnings: fees.sellerEarnings,
+              platformFee:    this.onlinePaymentsEnabled ? fees.totalFees : 0,
+              // An order request is not revenue. The buyer-facing/store-order
+              // receipt still carries the expected total through subtotal,
+              // discount and shipping, but no seller balance is recorded
+              // until a real payment exists.
+              sellerEarnings: this.onlinePaymentsEnabled
+                ? fees.sellerEarnings
+                : 0,
               shippingCost:   storeShippingCost,
               visitorId:      linkVisitorId ?? null,
             },
@@ -704,7 +722,7 @@ export class OrdersService {
           const validSharerId = attribution?.kind === 'SHARE_SAVE' && attribution.sharerId && attribution.sharerId !== userId
             ? attribution.sharerId
             : null;
-          if (validSharerId && storeShareSaveMap.get(storeId)) {
+          if (this.onlinePaymentsEnabled && validSharerId && storeShareSaveMap.get(storeId)) {
             // Seller-funded, same as every other discount in this codebase —
             // the sharer gets 4% back, which comes out of THIS store's
             // earnings, not extra revenue for them. A positive entry here
@@ -737,7 +755,7 @@ export class OrdersService {
                 });
               }
             }
-          } else if (attribution?.kind === 'OFFSITE_AD' && !storeOptOutMap.get(storeId)) {
+          } else if (this.onlinePaymentsEnabled && attribution?.kind === 'OFFSITE_AD' && !storeOptOutMap.get(storeId)) {
             ledgerEntries.push({
               storeId, storeOrderId: storeOrder.id, type: 'OFFSITE_ADS_FEE',
               amount: -Math.round(discountedSubtotal * offsiteAdsFeeRate * 100) / 100,
@@ -745,8 +763,10 @@ export class OrdersService {
             });
           }
 
-          await tx.sellerLedgerEntry.createMany({ data: ledgerEntries });
-          if (attribution) {
+          if (this.onlinePaymentsEnabled) {
+            await tx.sellerLedgerEntry.createMany({ data: ledgerEntries });
+          }
+          if (this.onlinePaymentsEnabled && attribution) {
             await this.linkAttributionService.markConverted(attribution.id, newOrder.id, tx);
           }
 
@@ -762,11 +782,18 @@ export class OrdersService {
 
       // Initial status history entry
       await tx.orderStatusHistory.create({
-        data: { orderId: newOrder.id, status: OrderStatus.PENDING_PAYMENT },
+        data: {
+          orderId: newOrder.id,
+          status: initialStatus,
+          note: this.onlinePaymentsEnabled
+            ? undefined
+            : 'Order request received. Online payment was not collected; the shop will contact the buyer to confirm next steps.',
+          createdBy: 'system',
+        },
       });
 
       // Atomic coupon increment — race-safe via conditional UPDATE
-      if (couponCode) {
+      if (this.onlinePaymentsEnabled && couponCode) {
         const affected = await tx.$executeRaw`
           UPDATE "Promotion"
           SET "currentUses" = "currentUses" + 1
@@ -787,9 +814,20 @@ export class OrdersService {
       // was silently invisible to admin stats (getStats()/getPageStats()
       // both derive entirely from PromotionUsage) despite the discount and
       // the atomic currentUses increment above both still applying.
-      if (couponCode) {
+      if (this.onlinePaymentsEnabled && couponCode) {
         await tx.promotionUsage.create({
           data: { promotionId: promo!.id, userId: userId ?? null, orderId: newOrder.id },
+        });
+      }
+
+      // A manual order request is complete as soon as it is recorded. Clear
+      // both signed-in and guest carts atomically so refreshing the success
+      // page cannot recreate or retain the same basket.
+      if (!this.onlinePaymentsEnabled) {
+        await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+        await tx.cart.update({
+          where: { id: cart.id },
+          data: { couponCode: null, discountAmount: null },
         });
       }
 
@@ -797,7 +835,7 @@ export class OrdersService {
     });
 
     // Mark affiliate click as converted now that we have the orderId
-    if (affiliateId && visitorId) {
+    if (this.onlinePaymentsEnabled && affiliateId && visitorId) {
       this.affiliateTrackingService
         .markClickConverted(visitorId, affiliateId, order.id)
         // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -831,6 +869,17 @@ export class OrdersService {
         .catch((err: Error) => this.logger.warn(`Failed to queue Share & Save reward email: ${err.message}`));
     }
 
+    if (!this.onlinePaymentsEnabled) {
+      return {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        clientSecret: null,
+        paymentRequired: false,
+        status: OrderStatus.CONFIRMED,
+        total,
+      };
+    }
+
     // OUTSIDE transaction: create Stripe PaymentIntent
     const paymentResponse =
       await this.paymentsService.createPaymentIntentForOrder(
@@ -842,6 +891,8 @@ export class OrdersService {
       orderId:      order.id,
       orderNumber:  order.orderNumber,
       clientSecret: paymentResponse.clientSecret,
+      paymentRequired: true,
+      status: OrderStatus.PENDING_PAYMENT,
       total,
     };
   }
@@ -962,7 +1013,10 @@ export class OrdersService {
       });
     }
 
-    if (order.status === OrderStatus.CONFIRMED) {
+    // An unpaid manual order request may be withdrawn until the shop starts
+    // processing it. The two-hour cancellation window only protects a real,
+    // collected payment from being cancelled indefinitely.
+    if (order.status === OrderStatus.CONFIRMED && order.payment) {
       const cancelDeadline = new Date(
         (order.confirmedAt?.getTime() ?? 0) + CANCEL_WINDOW_MS,
       );
@@ -981,6 +1035,13 @@ export class OrdersService {
 
     const now = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
+      // The seller queue is backed by StoreOrder, not Order. Keeping only the
+      // parent in sync leaves the cancelled order visible and actionable in
+      // admin even though the buyer already sees it as cancelled.
+      await tx.storeOrder.updateMany({
+        where: { orderId: order.id },
+        data:  { status: OrderStatus.CANCELLED },
+      });
       const o = await tx.order.update({
         where: { id: order.id },
         data: {
@@ -1477,6 +1538,13 @@ export class OrdersService {
       throw new BadRequestException({ code: 'ERR_ORDER_ALREADY_CANCELLED', message: 'Order is already cancelled' });
     }
     const updated = await this.prisma.$transaction(async (tx) => {
+      // OrderProgressService builds the admin queue from StoreOrder.status.
+      // Update the child rows in the same transaction so a cancelled order is
+      // removed from every shop queue as soon as this request succeeds.
+      await tx.storeOrder.updateMany({
+        where: { orderId: id },
+        data:  { status: OrderStatus.CANCELLED },
+      });
       const o = await tx.order.update({
         where: { id },
         data: { status: OrderStatus.CANCELLED, cancelReason: reason ?? null, cancelledAt: new Date() },

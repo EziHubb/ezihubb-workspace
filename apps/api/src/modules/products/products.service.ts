@@ -302,7 +302,11 @@ export class ProductsService {
     userId?: string,
   ): Promise<ProductResponseDto> {
     const product = await this.prisma.product.findFirst({
-      where: { slug, isActive: true },
+      // A public PDP must satisfy both flags. Historical/admin flows have
+      // produced rows where isActive and status drifted apart; checking only
+      // isActive allowed an archived/deleted listing to remain addressable by
+      // its old URL even though it had disappeared from admin/store lists.
+      where: { slug, isActive: true, status: ProductStatus.ACTIVE },
       include: {
         category: { select: { id: true, name: true, slug: true } },
         store: { select: { id: true, name: true, slug: true } },

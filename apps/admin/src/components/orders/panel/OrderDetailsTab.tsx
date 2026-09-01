@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Download, Gift, NotebookPen, Plus } from 'lucide-react';
+import { Download, Gift, Info, NotebookPen, Plus } from 'lucide-react';
 import { Avatar } from '../../messages/inbox/Avatar';
 import { OrderMessaging } from './OrderMessaging';
 import { useAdminMode } from '../../../lib/store-context';
@@ -234,6 +234,17 @@ export function OrderDetailsTab({
       {/* ── Receipt ───────────────────────────────────────────────────────── */}
       <h3 className="pt-2 font-semibold text-secondary">Receipt #{detail.orderNumber}</h3>
       <section className="rounded-card border border-border bg-surface px-4 py-4">
+        {!detail.receipt.paidAt && (
+          <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+            <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <div>
+              <p className="font-semibold">Order request — online payment not collected</p>
+              <p className="mt-0.5 text-xs leading-relaxed">
+                Contact the buyer through Messages or email to confirm availability, the final amount, and next steps before processing this order.
+              </p>
+            </div>
+          </div>
+        )}
         <ReceiptRow label="Item total" value={money(detail.receipt.itemTotal)} />
         {detail.receipt.discount > 0 && (
           <ReceiptRow

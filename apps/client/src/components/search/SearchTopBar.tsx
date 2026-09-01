@@ -117,10 +117,10 @@ export function SearchTopBar({
         </div>
 
         {/* Row 1: filter toggle (mobile) + result count + sort */}
-        <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center justify-between gap-3">
 
           {/* Left: filter buttons + result count */}
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             {/* Desktop: collapse/expand the filter column. Separate control
                 from the mobile one below — mobile opens a sheet, desktop
                 reclaims grid width, and they are never both visible. */}
@@ -153,7 +153,7 @@ export function SearchTopBar({
               )}
             </button>
 
-            <p className="text-sm text-muted">
+            <p className="truncate text-sm text-muted">
               {isLoading ? (
                 <span className="text-muted">{t('searching')}</span>
               ) : query ? (
@@ -165,14 +165,15 @@ export function SearchTopBar({
           </div>
 
           {/* Right: sort select */}
-          <Select
-            aria-label="Sort results"
-            value={sort}
-            onChange={(e) => onSortChange(e.target.value)}
-            options={SEARCH_SORT_OPTIONS}
-            size="sm"
-            className="w-48 shrink-0"
-          />
+          <div className="ml-auto w-36 shrink-0 sm:w-48">
+            <Select
+              aria-label="Sort results"
+              value={sort}
+              onChange={(e) => onSortChange(e.target.value)}
+              options={SEARCH_SORT_OPTIONS}
+              size="sm"
+            />
+          </div>
         </div>
 
         {/* Row 2: active filter chips */}

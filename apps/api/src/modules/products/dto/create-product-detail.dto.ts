@@ -10,6 +10,11 @@ import {
   ValidateNested,
   IsNotEmpty,
   IsEmail,
+  IsIn,
+  IsInt,
+  Max,
+  MaxLength,
+  Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -165,6 +170,100 @@ export class GpsrInfoDto {
   countryOfOrigin?: string;
 }
 
+/**
+ * One buyer-facing field configured in the listing editor.
+ *
+ * This must be a real nested DTO rather than `Record<string, unknown>`. The
+ * API's global ValidationPipe transforms and whitelists request bodies; an
+ * untyped array therefore turned every submitted custom option into `{}`
+ * before Mongoose saw it. The empty subdocument was then persisted, which is
+ * why reopening or copying a listing showed an "(Untitled)" option.
+ */
+export class ProductCustomOptionDto {
+  @ApiProperty({ example: 'local-550e8400-e29b-41d4-a716-446655440000' })
+  @IsString()
+  @IsNotEmpty()
+  id: string;
+
+  /** Present in the editor's local model; the URL/product document remains authoritative. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  productId?: string;
+
+  @ApiProperty({ enum: ['TEXT_BOX', 'LIST_OF_OPTIONS', 'FILE_UPLOAD', 'CHECKBOX', 'COLOR_SWATCH'] })
+  @IsIn(['TEXT_BOX', 'LIST_OF_OPTIONS', 'FILE_UPLOAD', 'CHECKBOX', 'COLOR_SWATCH'])
+  type: string;
+
+  @ApiProperty({ example: 'Personalisation' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  label: string;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  required?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  instructionText?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  placeholder?: string;
+
+  @ApiPropertyOptional({ default: 250, minimum: 1, maximum: 2000 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(2000)
+  maxLength?: number;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  isMultiline?: boolean;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  allowFileUpload?: boolean;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  choices?: string[];
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  allowMultiSelect?: boolean;
+
+  @ApiPropertyOptional({ type: [String], default: ['image/*'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  acceptedFileTypes?: string[];
+
+  @ApiPropertyOptional({ default: 10, minimum: 1, maximum: 50 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  maxFileSizeMB?: number;
+
+  @ApiPropertyOptional({ default: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
+}
+
 // ── Root DTO ──────────────────────────────────────────────────────────────────
 
 export class CreateProductDetailDto {
@@ -235,10 +334,12 @@ export class CreateProductDetailDto {
   @IsObject()
   imageAltTexts?: Record<string, string>;
 
-  @ApiPropertyOptional({ type: 'array', items: { type: 'object' } })
+  @ApiPropertyOptional({ type: [ProductCustomOptionDto] })
   @IsOptional()
   @IsArray()
-  customOptions?: Record<string, unknown>[];
+  @ValidateNested({ each: true })
+  @Type(() => ProductCustomOptionDto)
+  customOptions?: ProductCustomOptionDto[];
 
   @ApiPropertyOptional()
   @IsOptional()

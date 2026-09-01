@@ -130,27 +130,27 @@ const FAQ_DATA: FaqItem[] = [
   {
     id: 'pay1', category: 'Payment',
     question: 'What payment methods do you accept?',
-    answer: 'We accept all major credit and debit cards (Visa, Mastercard, Amex, Discover), Apple Pay, Google Pay, and our store gift cards. PayPal is also supported at checkout.',
+    answer: 'Online card and PayPal payments are temporarily unavailable while EziHubb completes payment-provider verification. You can submit an order request without being charged; the shop will contact you to confirm availability, the final amount, and next steps.',
   },
   {
     id: 'pay2', category: 'Payment',
     question: 'Is my payment information secure?',
-    answer: 'Yes. We use Stripe for all payment processing — raw card data never touches our servers. All transactions are encrypted with TLS 1.3 and we are PCI DSS compliant.',
+    answer: 'EziHubb does not collect card details during the current order-request flow. Never share your password, verification code, or full card details by message or email. Trust only messages inside your EziHubb account or email from an official @ezihubb.com address.',
   },
   {
     id: 'pay3', category: 'Payment',
     question: 'Can I use a gift card to pay?',
-    answer: 'Yes! Enter your gift card code during checkout. Gift cards can be combined with other payment methods if the balance doesn\'t cover the full order.',
+    answer: 'Gift-card redemption at checkout is temporarily paused together with online payments. The shop will confirm the available options when it contacts you about your order request.',
   },
   {
     id: 'pay4', category: 'Payment',
     question: 'When am I charged?',
-    answer: 'Your card is charged at the time of order placement. If your order is cancelled within 2 hours, you\'ll receive a full refund typically within 3–5 business days.',
+    answer: 'You are not charged when submitting an order request. The shop will first confirm availability, the final amount, and the next steps with you.',
   },
   {
     id: 'pay5', category: 'Payment',
     question: 'Do you offer buy now, pay later?',
-    answer: 'Afterpay and Klarna are currently in beta for US customers. If eligible, you\'ll see the option at checkout. Split your purchase into 4 interest-free payments.',
+    answer: 'Buy now, pay later is not currently available. We will publish supported payment options clearly when the expanded checkout launches.',
   },
 ];
 

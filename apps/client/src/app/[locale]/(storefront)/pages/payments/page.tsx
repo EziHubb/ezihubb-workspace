@@ -16,13 +16,14 @@ export async function generateMetadata({
   return {
     title: 'EziHubb Payments',
     description:
-      'Simple, flexible, secure payments for EziHubb sellers — preferred payment methods for buyers, fast deposits, and EziHubb Purchase Protection.',
+      'Current EziHubb order-request and payment availability information.',
     robots: { index: true, follow: true },
     alternates: buildAlternates('/pages/payments', locale),
   };
 }
 
 const PAYMENT_METHODS = ['Visa', 'Mastercard', 'Amex', 'Discover', 'Apple Pay', 'Google Pay', 'PayPal'];
+const ONLINE_PAYMENTS_AVAILABLE = false;
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -33,6 +34,57 @@ export default async function PaymentsPage({
 }) {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'pages.payments' });
+
+  if (!ONLINE_PAYMENTS_AVAILABLE) {
+    const copy = locale === 'vi'
+      ? {
+          eyebrow: 'CẬP NHẬT THANH TOÁN',
+          title: 'EziHubb đang mở rộng thanh toán trực tuyến',
+          description: 'EziHubb đang trong giai đoạn ra mắt sớm và hoàn tất xác minh với các đối tác thanh toán. Hiện tại bạn có thể gửi yêu cầu đặt hàng mà không bị thu tiền trên website; shop sẽ chủ động xác nhận tình trạng sản phẩm, số tiền cuối cùng và các bước tiếp theo qua EziHubb Messages hoặc email.',
+          security: 'EziHubb không bao giờ yêu cầu mật khẩu, mã xác minh hoặc đầy đủ thông tin thẻ qua tin nhắn hay email. Chỉ tin cậy tin nhắn trong tài khoản EziHubb hoặc email từ địa chỉ @ezihubb.com chính thức.',
+          browse: 'Khám phá sản phẩm',
+          help: 'Liên hệ hỗ trợ',
+        }
+      : locale === 'zh'
+        ? {
+            eyebrow: '支付更新',
+            title: 'EziHubb 正在扩展在线支付方式',
+            description: 'EziHubb 目前处于提前使用阶段，正在完成支付服务商验证。您现在可以提交订单请求，网站不会向您收费；商家会通过 EziHubb Messages 或电子邮件确认库存、最终金额和下一步。',
+            security: 'EziHubb 绝不会通过消息或邮件索要密码、验证码或完整银行卡信息。请仅信任 EziHubb 账户内的消息或来自官方 @ezihubb.com 地址的邮件。',
+            browse: '浏览商品',
+            help: '联系支持',
+          }
+        : {
+            eyebrow: 'PAYMENT UPDATE',
+            title: 'EziHubb is expanding online payment options',
+            description: 'EziHubb is in an early-access launch while we complete payment-provider verification. You can currently submit an order request without being charged on the website; the shop will confirm availability, the final amount, and next steps through EziHubb Messages or email.',
+            security: 'EziHubb will never ask for your password, verification code, or full card details by message or email. Trust only messages inside your EziHubb account or email from an official @ezihubb.com address.',
+            browse: 'Browse products',
+            help: 'Contact support',
+          };
+
+    return (
+      <div className="mx-auto max-w-[760px] px-4 py-16 md:py-24">
+        <div className="rounded-3xl border border-primary/20 bg-primary/5 p-7 md:p-10">
+          <p className="text-sm font-semibold uppercase tracking-wide text-primary">{copy.eyebrow}</p>
+          <h1 className="mt-3 font-display text-3xl font-bold text-secondary md:text-4xl">{copy.title}</h1>
+          <p className="mt-4 text-base leading-relaxed text-muted">{copy.description}</p>
+          <div className="mt-6 flex items-start gap-3 rounded-2xl border border-border bg-surface p-4">
+            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+            <p className="text-sm leading-relaxed text-secondary">{copy.security}</p>
+          </div>
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <Link href={`/${locale}/search`} className="rounded-full bg-primary px-6 py-3 text-center text-sm font-semibold text-white hover:bg-primary-dark">
+              {copy.browse}
+            </Link>
+            <Link href={`/${locale}/pages/contact`} className="rounded-full border border-border bg-surface px-6 py-3 text-center text-sm font-semibold text-secondary hover:border-primary">
+              {copy.help}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const BENEFITS: { Icon: LucideIcon; title: string; desc: string }[] = [
     { Icon: CreditCard,  title: t('benefits.items.methods.title'),  desc: t('benefits.items.methods.desc')  },

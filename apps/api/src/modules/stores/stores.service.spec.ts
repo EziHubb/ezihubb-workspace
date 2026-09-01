@@ -9,11 +9,38 @@ function makePrismaMock() {
       findUnique: jest.fn(),
       update: jest.fn(),
     },
+    product: {
+      count: jest.fn(),
+    },
     platformSettings: {
       upsert: jest.fn(),
     },
   };
 }
+
+describe('StoresService.adminGetStore — Decimal response normalization', () => {
+  it('returns numeric rating and revenue values for admin clients', async () => {
+    const prisma = makePrismaMock();
+    prisma.store.findUnique.mockResolvedValue({
+      id: 'store_1',
+      ownerId: 'owner_1',
+      rating: '4.75',
+      totalRevenue: '123.45',
+      _count: { followers: 2 },
+    });
+    prisma.product.count.mockResolvedValue(3);
+    const service = makeService(prisma, jest.fn());
+
+    const result = await service.adminGetStore('store_1');
+
+    expect(result).toEqual(expect.objectContaining({
+      rating: 4.75,
+      totalRevenue: 123.45,
+      totalProducts: 3,
+      followerCount: 2,
+    }));
+  });
+});
 
 function makeService(prisma: ReturnType<typeof makePrismaMock>, canUseFeature: jest.Mock) {
   return new StoresService(

@@ -16,7 +16,7 @@ import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { StatCard } from '../../../../components/data/StatCard';
 import { api, adminApi } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
-import { fmtAmount, fmtDate, fmtFixed, safeArr } from '../../../../lib/fmt';
+import { fmtAmount, fmtDate, fmtFixed, fmtRating, safeArr } from '../../../../lib/fmt';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -28,7 +28,7 @@ interface StoreDetail {
   logoUrl:      string | null;
   bannerUrl:    string | null;
   status:       string;
-  rating:       number;
+  rating:       number | string;
   totalOrders:  number;
   totalRevenue: number;
   totalProducts:number;
@@ -661,7 +661,7 @@ export default function AdminStoreDetailPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard label="Total Orders"   value={String(store.totalOrders)}  icon={ShoppingBag} color="blue" />
         <StatCard label="Total Revenue"  value={fmtAmount(store.totalRevenue)} icon={DollarSign} color="coral" />
-        <StatCard label="Store Rating"   value={store.rating > 0 ? store.rating.toFixed(1) : '—'} icon={Star} color="amber" />
+        <StatCard label="Store Rating"   value={Number(store.rating) > 0 ? fmtRating(store.rating) : '—'} icon={Star} color="amber" />
         <StatCard label="Active Products" value={String(store.totalProducts)} icon={Package} color="blue" />
       </div>
 

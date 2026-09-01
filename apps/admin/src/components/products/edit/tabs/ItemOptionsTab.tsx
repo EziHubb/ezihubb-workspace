@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import {
-  X, Plus, Settings, Lock,
+  X, Plus, Settings, Lock, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { Select } from '@ezihubb/ui';
 import { api } from '../../../../lib/api-client';
@@ -225,6 +225,8 @@ function DimensionFields() {
 
 // ─── Variations summary table ─────────────────────────────────────────────────
 
+const COLLAPSED_COMBINATION_COUNT = 5;
+
 function VariationOptionRow({
   option,
   showPhoto,
@@ -385,6 +387,8 @@ function VariationsSummaryTable({
   draft: ApplyVariationsPayload | null;
   onDraftChange: (draft: ApplyVariationsPayload) => void;
 }) {
+  const [showAllCombinations, setShowAllCombinations] = useState(false);
+
   // Resolved from the form, not from `product.images` — the latter is a server
   // snapshot that never sees photos uploaded during this session.
   const listingImages = shopperVisibleImages(useListingImages());
@@ -483,6 +487,10 @@ function VariationsSummaryTable({
         } satisfies ProductVariantRow;
       })
     : variants.filter((variant) => validComboKeys.has(comboKey(variant.options)));
+  const hasMoreCombinations = currentVariants.length > COLLAPSED_COMBINATION_COUNT;
+  const visibleVariants = showAllCombinations
+    ? currentVariants
+    : currentVariants.slice(0, COLLAPSED_COMBINATION_COUNT);
 
   return (
     <div className="space-y-7">
@@ -492,8 +500,9 @@ function VariationsSummaryTable({
             <span className="text-sm font-semibold text-secondary">Variation prices</span>
             <span className="text-xs text-muted">{currentVariants.length} combination{currentVariants.length !== 1 ? 's' : ''}</span>
           </div>
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full min-w-[560px] text-sm">
+          <div className="relative overflow-hidden rounded-xl border border-border">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/5">
                   {groups.map((group) => (
@@ -506,7 +515,7 @@ function VariationsSummaryTable({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {currentVariants.map((variant) => (
+                {visibleVariants.map((variant) => (
                   <tr key={variant.id} className={variant.isAvailable ? '' : 'opacity-50'}>
                     {groups.map((group) => (
                       <td key={group.id} className="px-4 py-3 text-secondary font-medium">
@@ -538,7 +547,36 @@ function VariationsSummaryTable({
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
+
+            {hasMoreCombinations && !showAllCombinations && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-20 items-end justify-center bg-gradient-to-t from-surface via-surface/90 to-transparent pb-3">
+                <button
+                  type="button"
+                  aria-expanded="false"
+                  onClick={() => setShowAllCombinations(true)}
+                  className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-secondary shadow-sm transition-colors hover:border-primary/40 hover:text-primary"
+                >
+                  Show all {currentVariants.length} variations
+                  <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            )}
+
+            {hasMoreCombinations && showAllCombinations && (
+              <div className="flex justify-center border-t border-border bg-muted/5 px-4 py-3">
+                <button
+                  type="button"
+                  aria-expanded="true"
+                  onClick={() => setShowAllCombinations(false)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-secondary transition-colors hover:border-primary/40 hover:text-primary"
+                >
+                  Show less
+                  <ChevronUp className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       ) : groups.map((group) => {

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import {
   clearNonEssentialCookies,
-  OPEN_CONSENT_SETTINGS_EVENT,
   readConsent,
   writeConsent,
 } from './consent';
@@ -16,9 +15,6 @@ export function CookieConsentBanner() {
 
   useEffect(() => {
     setShow(readConsent() === null);
-    const openSettings = () => setShow(true);
-    window.addEventListener(OPEN_CONSENT_SETTINGS_EVENT, openSettings);
-    return () => window.removeEventListener(OPEN_CONSENT_SETTINGS_EVENT, openSettings);
   }, []);
 
   const accept = () => {
@@ -45,17 +41,7 @@ export function CookieConsentBanner() {
     if (isWithdrawingConsent) window.location.reload();
   };
 
-  if (!show) {
-    return (
-      <button
-        type="button"
-        onClick={() => setShow(true)}
-        className="fixed bottom-20 left-3 z-40 rounded-full border border-border bg-white/95 px-3 py-1.5 text-xs text-muted shadow-sm hover:text-secondary md:bottom-3"
-      >
-        {t('cookieConsent.settings')}
-      </button>
-    );
-  }
+  if (!show) return null;
 
   return (
     <div role="dialog" aria-live="polite" aria-label={t('cookieConsent.settings')} className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-border shadow-lg px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

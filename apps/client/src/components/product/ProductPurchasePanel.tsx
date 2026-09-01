@@ -19,7 +19,6 @@ import {
 } from './ProductAccordions';
 import { useCartStore } from '../../lib/store/cart.store';
 import { MobileStickyCartBar } from './MobileStickyCartBar';
-import { toast } from '../../lib/store/toast.store';
 import { useCurrency } from '../../lib/currency/currency-context';
 import { analytics } from '../../lib/analytics';
 import type { ProductDetailDto, ProductVariantDto, ReviewSummaryDto } from '@ezihubb/types';
@@ -192,17 +191,16 @@ function PriceBlock({
 function BuyTogetherCard({
   bundleOffer,
   currentProductId,
-  onAdded,
 }: {
   bundleOffer: NonNullable<ProductDetailDto['bundleOffer']>;
   currentProductId: string;
-  onAdded: () => void;
 }) {
   const t = useTranslations('product.purchasePanel');
   const { format } = useCurrency();
   const addItem = useCartStore((s) => s.addItem);
   const openDrawer = useCartStore((s) => s.openDrawer);
   const [isAdding, setIsAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   const partners = bundleOffer.products.filter((p) => p.id !== currentProductId);
   if (partners.length === 0) return null;
@@ -212,15 +210,15 @@ function BuyTogetherCard({
 
   const handleAddBundle = async () => {
     setIsAdding(true);
+    setAddError(null);
     try {
       await Promise.all([
         addItem({ productId: currentProductId, variantId: null, quantity: 1, customizationData: null }),
         ...partners.map((p) => addItem({ productId: p.id, variantId: null, quantity: 1, customizationData: null })),
       ]);
       openDrawer();
-      onAdded();
     } catch {
-      toast.error(t('couldNotAddToCart'));
+      setAddError(t('couldNotAddToCart'));
     } finally {
       setIsAdding(false);
     }
@@ -254,6 +252,11 @@ function BuyTogetherCard({
       >
         {isAdding ? t('actions.adding') : t('addBundleToCart')}
       </button>
+      {addError && (
+        <p role="alert" className="text-xs text-red-600">
+          {addError}
+        </p>
+      )}
     </div>
   );
 }
@@ -853,6 +856,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
   const [customOptionValues,    setCustomOptionValues]    = useState<Record<string, CustomOptionAnswer>>({});
   const [customOptionErrors,    setCustomOptionErrors]    = useState<Record<string, string>>({});
   const [uploadingOptionId,     setUploadingOptionId]     = useState<string | null>(null);
+  const [addToCartError,        setAddToCartError]        = useState<string | null>(null);
 
   const addItem    = useCartStore((s) => s.addItem);
   const openDrawer = useCartStore((s) => s.openDrawer);
@@ -938,6 +942,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
   const customOptions = product.customOptions ?? [];
 
   const setCustomOptionValue = (optionId: string, value: CustomOptionAnswer) => {
+    setAddToCartError(null);
     setCustomOptionValues((previous) => ({ ...previous, [optionId]: value }));
     setCustomOptionErrors((previous) => {
       if (!previous[optionId]) return previous;
@@ -1009,11 +1014,12 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
   // ── Add to cart ───────────────────────────────────────────────────────────
 
   const handleAddToCart = async () => {
+    setAddToCartError(null);
     if (!canAddToCart) {
       setHasAttemptedSubmit(true);
       if (allOptionsSelected && selectedVariant === null) {
         // All options chosen but no DB variant matches — data mismatch
-        toast.error(tPanel('combinationNotAvailable'));
+        setAddToCartError(tPanel('combinationNotAvailable'));
       } else {
         // Some options still need to be selected
         const firstMissing = product.variantOptions?.find(
@@ -1024,12 +1030,11 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
             behavior: 'smooth', block: 'center',
           });
         }
-        toast.error(tPanel('selectRequiredOptions'));
       }
       return;
     }
     if (uploadingOptionId) {
-      toast.error(tPanel('waitForUpload'));
+      setAddToCartError(tPanel('waitForUpload'));
       return;
     }
 
@@ -1044,7 +1049,6 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       document.getElementById(`custom-option-${missingCustomOptions[0].id}`)?.scrollIntoView({
         behavior: 'smooth', block: 'center',
       });
-      toast.error(tPanel('completeCustomOptions'));
       return;
     }
     if (isAdding) return;
@@ -1086,12 +1090,9 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
       // proves it rather than asserting it. The toast also rendered on top of
       // the drawer's own heading, so the two pieces of feedback fought for the
       // same corner of the screen.
-      //
-      // Kept on the paths that do NOT open the drawer (BuyTogetherCard and both
-      // wishlist flows) — there the toast is the only sign anything happened.
       openDrawer();
     } catch {
-      toast.error(tPanel('couldNotAddToCart'));
+      setAddToCartError(tPanel('couldNotAddToCart'));
     } finally {
       setIsAdding(false);
     }
@@ -1160,6 +1161,7 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
               values={opt.values}
               selected={selectedOptions[opt.name] ?? ''}
               onChange={(v) => {
+                setAddToCartError(null);
                 setSelectedOptions((prev) => ({ ...prev, [opt.name]: v }));
                 // Only the one variation the seller linked photos to moves the
                 // gallery, and only for options that actually have one — an
@@ -1223,13 +1225,17 @@ export function ProductPurchasePanel({ product, reviewSummary }: Props) {
           </>
         )}
       </button>
+      {addToCartError && (
+        <p role="alert" className="text-sm text-red-600">
+          {addToCartError}
+        </p>
+      )}
 
       {/* ── BUY THEM TOGETHER ── */}
       {product.bundleOffer && (
         <BuyTogetherCard
           bundleOffer={product.bundleOffer}
           currentProductId={product.id}
-          onAdded={() => toast.success(t('actions.addedToCart'))}
         />
       )}
 

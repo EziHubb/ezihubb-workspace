@@ -120,7 +120,7 @@ export function ProductCard({
       </button>
 
       {/* prefetch={false} — product grids can contain 24+ cards; prefetching all wastes bandwidth */}
-      <Link href={productHref} prefetch={false}>
+      <Link href={productHref} prefetch={false} className="block">
         <div className="aspect-square mb-4 overflow-hidden rounded-lg bg-background relative">
           <Image
             src={image}
@@ -130,7 +130,9 @@ export function ProductCard({
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
           />
         </div>
-        <h4 className="font-semibold text-lg mb-2 line-clamp-2 text-secondary">{name}</h4>
+        <h4 className="mb-2 h-12 overflow-hidden text-lg font-semibold leading-6 text-secondary line-clamp-2 [overflow-wrap:anywhere]">
+          {name}
+        </h4>
       </Link>
 
       <div className="flex items-center gap-2 mb-2">
