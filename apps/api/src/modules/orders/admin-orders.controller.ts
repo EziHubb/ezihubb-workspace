@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Body,
+  Delete,
   Get,
   Param,
   Patch,
@@ -18,14 +19,17 @@ import { LabelService } from '../shipping/label.service';
 import { AuditLogService } from '../../common/services/audit-log.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AddTrackingDto } from './dto/add-tracking.dto';
+import { RemoveOrderDto } from './dto/remove-order.dto';
 import { MarkShippedDto } from './dto/mark-shipped.dto';
 import { AdminOrderQueryDto } from './dto/order-list-item.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { StoreContextService } from '../../common/services/store-context.service';
 import { OrderOwnershipGuard } from '../../common/guards/order-ownership.guard';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Role } from '@ezihubb/constants';
 
 // See the matching comment in admin-products.controller.ts — must stay
 // above @AdminController so JwtAuthGuard/RolesGuard run before this guard.
@@ -198,6 +202,29 @@ export class AdminOrdersController {
       entityType: 'Order',
       entityId:   id,
       after:      { reason } as Record<string, unknown>,
+      ip:         req.ip,
+      userAgent:  req.headers['user-agent'],
+    });
+    return result;
+  }
+
+  @Delete(':id')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Remove a cancelled order, retaining financial history (SUPER_ADMIN only)' })
+  async permanentlyDeleteOrder(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @Query() query: RemoveOrderDto,
+  ) {
+    const result = await this.ordersService.permanentlyDeleteCancelledOrder(id, user.sub, query.reason);
+    this.auditLog.log({
+      userId:     user.sub,
+      action:     result.archived ? 'UPDATE' : 'DELETE',
+      entityType: 'Order',
+      entityId:   id,
+      before:     { orderNumber: result.orderNumber, status: 'CANCELLED' },
+      after:      { archived: result.archived, deleted: result.deleted, financialHistoryRetained: result.archived, reason: query.reason ?? null },
       ip:         req.ip,
       userAgent:  req.headers['user-agent'],
     });

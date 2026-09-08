@@ -7,6 +7,7 @@ export enum ShippingSupportStatus {
   ALL = 'all',
   PENDING = 'pending',
   REALIZED = 'realized',
+  CANCELLED = 'cancelled',
 }
 
 export enum ShippingSupportSort {

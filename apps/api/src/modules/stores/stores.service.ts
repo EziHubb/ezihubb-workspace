@@ -931,7 +931,9 @@ export class StoresService {
     const search = query.search?.trim();
     const since = this.shippingSupportSince(query.days ?? 30);
 
-    const status = query.status === ShippingSupportStatus.REALIZED
+    const status = query.status === ShippingSupportStatus.CANCELLED
+      ? { in: [...EXCLUDED_SHIPPING_STATUSES] }
+      : query.status === ShippingSupportStatus.REALIZED
       ? { in: REALIZED_SHIPPING_STATUSES }
       : query.status === ShippingSupportStatus.PENDING
         ? { notIn: [...EXCLUDED_SHIPPING_STATUSES, ...REALIZED_SHIPPING_STATUSES] }
@@ -1008,7 +1010,8 @@ export class StoresService {
         buyerName: row.order.shippingName || accountName || 'Guest',
         buyerEmail: row.order.guestEmail || row.order.user?.email || null,
         orderStatus: row.status,
-        fundingStatus: REALIZED_SHIPPING_STATUSES.includes(row.status) ? 'REALIZED' : 'PENDING',
+        fundingStatus: EXCLUDED_SHIPPING_STATUSES.includes(row.status) ? 'CANCELLED'
+          : REALIZED_SHIPPING_STATUSES.includes(row.status) ? 'REALIZED' : 'PENDING',
         orderedAt: row.createdAt,
         merchandiseSubtotal,
         quotedShippingCost,

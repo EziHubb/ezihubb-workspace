@@ -117,7 +117,7 @@ export class FinancesService {
     const { start, end } = this.monthRange(month, year);
     const entries = await this.prisma.sellerLedgerEntry.findMany({
       where:  { storeId, createdAt: { gte: start, lt: end } },
-      select: { type: true, amount: true },
+      select: { type: true, amount: true, reversalOfId: true },
     });
 
     const sum = (types: SellerLedgerEntryType[]) =>
@@ -127,13 +127,18 @@ export class FinancesService {
 
     const salesTotal = sum(['SALE']);
     const feesTotal   = sum(FEE_TYPES);
-    const netProfit   = Math.round((salesTotal + feesTotal) * 100) / 100;
+    const netProfit = Math.round(entries.reduce((total, entry) => total + Number(entry.amount), 0) * 100) / 100;
+    const cancellations = Math.round(entries
+      .filter((entry) => entry.type === 'SALE' && entry.reversalOfId)
+      .reduce((total, entry) => total + Number(entry.amount), 0) * 100) / 100;
 
     return {
       netProfit,
       sales: {
         total: salesTotal,
-        totalSalesCount: entries.filter((e) => e.type === 'SALE').length,
+        totalSalesCount: entries.filter((e) => e.type === 'SALE' && !e.reversalOfId).length,
+        grossTotal: Math.round((salesTotal - cancellations) * 100) / 100,
+        cancellations,
         refunds: 0,
         salesTaxRemitted: 0,
         vatRemitted: 0,
@@ -147,8 +152,7 @@ export class FinancesService {
         depositFees:     sum(['DEPOSIT_FEE']),
         vatOnFees:       sum(['VAT']),
       },
-      // No ads product exists yet — always zero, UI-shell only for Etsy parity.
-      marketing: { total: 0, etsyAds: 0, offsiteAds: 0 },
+      marketing: { total: sum(['OFFSITE_ADS_FEE', 'SHARE_SAVE_REFUND']), etsyAds: 0, offsiteAds: sum(['OFFSITE_ADS_FEE']) },
     };
   }
 

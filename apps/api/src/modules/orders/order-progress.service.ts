@@ -40,6 +40,7 @@ export const OFF_QUEUE_STATUSES = [
 export function queueLifecycleWhere(view: QueueView = 'active'): Prisma.StoreOrderWhereInput {
   if (view === 'cancelled') {
     return {
+      order: { adminArchivedAt: null },
       OR: [
         { status: OrderStatus.CANCELLED },
         { order: { status: OrderStatus.CANCELLED } },
@@ -49,7 +50,7 @@ export function queueLifecycleWhere(view: QueueView = 'active'): Prisma.StoreOrd
 
   return {
     status: { notIn: [...OFF_QUEUE_STATUSES] },
-    order:  { status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] } },
+    order:  { adminArchivedAt: null, status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] } },
   };
 }
 

@@ -47,6 +47,9 @@
     "productImages": "Ảnh sản phẩm",
     "image": "Ảnh {n}",
     "playVideo": "Phát video",
+    "video": "Video sản phẩm",
+    "openFullscreen": "Mở chế độ xem toàn màn hình",
+    "fullscreenPreview": "Xem ảnh và video sản phẩm toàn màn hình",
     "previous": "Trước",
     "next": "Tiếp",
     "close": "Đóng"

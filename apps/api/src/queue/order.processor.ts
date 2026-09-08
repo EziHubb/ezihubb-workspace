@@ -311,7 +311,11 @@ export class OrderProcessor extends WorkerHost {
     const { orderId } = job.data;
 
     const storeOrders = await this.prisma.storeOrder.findMany({
-      where:   { orderId },
+      where: {
+        orderId,
+        status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] },
+        order: { adminArchivedAt: null, status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] } },
+      },
       include: { store: { include: { owner: { select: { email: true, firstName: true } } } } },
     });
 
@@ -322,7 +326,11 @@ export class OrderProcessor extends WorkerHost {
       // confirmed this one, and the credit below must not run again.
       const credited = await this.prisma.$transaction(async (tx) => {
         const res = await tx.storeOrder.updateMany({
-          where: { id: so.id, status: { not: OrderStatus.CONFIRMED } },
+          where: {
+            id: so.id,
+            status: OrderStatus.PENDING_PAYMENT,
+            order: { status: OrderStatus.CONFIRMED, adminArchivedAt: null },
+          },
           data:  { status: OrderStatus.CONFIRMED },
         });
         if (res.count === 0) return false;

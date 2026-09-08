@@ -264,6 +264,7 @@ export const API_ROUTES = {
     ORDERS_EXPORT:        '/admin/orders/export',
     ORDER_NOTE:           (id: string) => `/admin/orders/${id}/note`,
     ORDER_CANCEL:         (id: string) => `/admin/orders/${id}/cancel`,
+    ORDER_DELETE:         (id: string) => `/admin/orders/${id}`,
 
     // ── Shop Stats ───────────────────────────────────────────────────────────
     STATS_OVERVIEW:          '/admin/stats/overview',

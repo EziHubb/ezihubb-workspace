@@ -3,6 +3,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
 
+// AdminOrdersController imports PdfService, which in turn eagerly imports its
+// TSX templates and the ESM-only PDF renderer. This audit only needs controller
+// decorator metadata, so replace that unrelated service boundary before the
+// controller is dynamically imported by Jest's CommonJS runtime.
+jest.mock('../../modules/pdf/pdf.service', () => ({ PdfService: class PdfService {} }));
+
 // tsconfig.spec.json's `types` array doesn't pick up reflect-metadata's
 // global Reflect.getMetadata augmentation the way the main app build does
 // (same class of issue as the Express.Multer.File fix earlier this
@@ -114,7 +120,6 @@ describe('Roles decorator metadata integrity (all controllers, source vs. runtim
     `${path.relative(SRC_ROOT, d.file)}::${d.className}${d.methodName ? `.${d.methodName}` : ' (class)'}`,
     d,
   ] as const))('%s — declared @Roles(...) matches real Reflect.getMetadata', async (_label, decl) => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires -- dynamic per-row import is the point of this test
     const mod = require(decl.file.replace(/\.ts$/, ''));
     const Class = mod[decl.className];
     expect(Class).toBeDefined();

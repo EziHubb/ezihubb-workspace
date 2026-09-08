@@ -37,6 +37,7 @@ import { SHARE_SAVE_REFUND_RATE } from '../marketing/marketing.constants';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { syncOrderStatusFromShops } from './order-status-sync';
+import { reverseCancelledOrderLedger } from './order-ledger-reversal';
 import { ensureFixedOrderProgressSteps } from './order-progress.defaults';
 import { AddTrackingDto } from './dto/add-tracking.dto';
 import { MarkShippedDto } from './dto/mark-shipped.dto';
@@ -1082,6 +1083,7 @@ export class OrdersService {
 
     const now = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
+      await reverseCancelledOrderLedger(tx, order.id);
       // The seller queue is backed by StoreOrder, not Order. Keeping only the
       // parent in sync leaves the cancelled order visible and actionable in
       // admin even though the buyer already sees it as cancelled.
@@ -1121,7 +1123,7 @@ export class OrdersService {
     const skip = (page - 1) * limit;
     const { status, search, startDate, endDate, storeId } = query;
 
-    const where: Prisma.OrderWhereInput = {};
+    const where: Prisma.OrderWhereInput = { adminArchivedAt: null };
     if (status) where.status = status;
     if (storeId) where.storeOrders = { some: { storeId } };
     if (search) {
@@ -1221,12 +1223,19 @@ export class OrdersService {
     dto: UpdateOrderStatusDto,
     adminId: string,
   ): Promise<OrderResponseDto> {
+    if (dto.status === OrderStatus.CANCELLED) {
+      return this.adminCancelOrder(id, dto.note ?? 'Cancelled by admin', adminId);
+    }
     const order = await this.prisma.order.findUnique({ where: { id } });
     if (!order)
       throw new NotFoundException({
         code: 'ERR_NOT_FOUND',
         message: 'Order not found',
       });
+
+    if (order.status === OrderStatus.CANCELLED || order.adminArchivedAt) {
+      throw new BadRequestException({ code: 'ERR_ORDER_CLOSED', message: 'Cancelled orders cannot be reopened after their seller proceeds have been reversed.' });
+    }
 
     /** Shipping needs tracking data; completion belongs to the pipeline. */
     if (dto.status === OrderStatus.SHIPPED) {
@@ -1585,14 +1594,18 @@ export class OrdersService {
       // Idempotent by design. Older releases updated only Order, leaving the
       // seller's StoreOrder in the fulfilment queue. A repeated cancel should
       // repair that drift rather than reject the admin who discovered it.
-      await this.prisma.storeOrder.updateMany({
-        where: { orderId: id, status: { not: OrderStatus.CANCELLED } },
-        data:  { status: OrderStatus.CANCELLED },
+      await this.prisma.$transaction(async (tx) => {
+        await reverseCancelledOrderLedger(tx, id);
+        await tx.storeOrder.updateMany({
+          where: { orderId: id, status: { not: OrderStatus.CANCELLED } },
+          data:  { status: OrderStatus.CANCELLED },
+        });
       });
       return this.mapToDto(order);
     }
     const updated = await this.prisma.$transaction(async (tx) => {
       // OrderProgressService builds the admin queue from StoreOrder.status.
+      await reverseCancelledOrderLedger(tx, id);
       // Update the child rows in the same transaction so a cancelled order is
       // removed from every shop queue as soon as this request succeeds.
       await tx.storeOrder.updateMany({
@@ -1610,6 +1623,134 @@ export class OrdersService {
       return o;
     });
     return this.mapToDto(updated);
+  }
+
+  /**
+   * Remove a cancelled order from operations. Financial records are retained;
+   * only orders with no financial footprint are physically deleted.
+   *
+   * This intentionally is not a generic `order.delete()`: several historical
+   * tables predate database cascade rules and would either block the delete or
+   * leave an orphaned order id behind. Everything is handled in one transaction
+   * so a partial cleanup can never disappear from the admin list as a success.
+   */
+  async permanentlyDeleteCancelledOrder(
+    id: string,
+    adminId: string,
+    reason?: string,
+  ): Promise<{ deleted: boolean; archived: boolean; orderId: string; orderNumber: string }> {
+    return this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id },
+        select: {
+          id:          true,
+          orderNumber: true,
+          status:      true,
+          adminArchivedAt: true,
+          shippingSubsidy: true,
+          labelPurchasedAt: true,
+          labelCost: true,
+          _count: { select: { giftCardUsages: true } },
+          payment:     { select: { status: true } },
+          commission:  { select: { status: true } },
+          tracking:    { select: { id: true } },
+          storeOrders: {
+            select: {
+              id:       true,
+              payoutId: true,
+              shippingSubsidy: true,
+              ledgerEntries: {
+                select: { id: true },
+                take:   1,
+              },
+            },
+          },
+        },
+      });
+
+      if (!order) {
+        throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Order not found' });
+      }
+      if (order.status !== OrderStatus.CANCELLED) {
+        throw new BadRequestException({
+          code:    'ERR_ORDER_NOT_CANCELLED',
+          message: 'Only cancelled orders can be permanently deleted',
+        });
+      }
+
+      // Even pending/failed payments are part of historical payment metrics.
+      // Never remove them, gift-card usage, payouts, commissions or shipping costs.
+      const hasFinancialHistory = Boolean(
+        order.payment || order.commission || order._count.giftCardUsages ||
+        order.labelPurchasedAt || Number(order.labelCost ?? 0) > 0 ||
+        Number(order.shippingSubsidy) > 0 ||
+        order.storeOrders.some((row) => row.payoutId || row.ledgerEntries.length || Number(row.shippingSubsidy) > 0),
+      );
+      if (hasFinancialHistory || order.adminArchivedAt) {
+        await reverseCancelledOrderLedger(tx, id);
+        await tx.order.update({
+          where: { id },
+          data: order.adminArchivedAt ? {} : {
+            adminArchivedAt: new Date(),
+            adminArchivedBy: adminId,
+            adminArchiveReason: reason?.trim() || 'Cancelled order removed from Orders',
+          },
+        });
+        return { deleted: false, archived: true, orderId: order.id, orderNumber: order.orderNumber };
+      }
+
+      const storeOrderIds = order.storeOrders.map((storeOrder) => storeOrder.id);
+      const promotionUsages = await tx.promotionUsage.findMany({
+        where:  { orderId: id },
+        select: { promotionId: true },
+      });
+
+      const promotionUseCounts = new Map<string, number>();
+      for (const usage of promotionUsages) {
+        promotionUseCounts.set(usage.promotionId, (promotionUseCounts.get(usage.promotionId) ?? 0) + 1);
+      }
+      for (const [promotionId, count] of promotionUseCounts) {
+        await tx.promotion.updateMany({
+          where: { id: promotionId, currentUses: { gte: count } },
+          data:  { currentUses: { decrement: count } },
+        });
+      }
+
+      await tx.storeLinkClick.updateMany({
+        where: { orderId: id },
+        data:  { orderId: null, convertedAt: null },
+      });
+      await tx.affiliateClick.updateMany({
+        where: { orderId: id },
+        data:  { orderId: null, convertedAt: null },
+      });
+      await tx.review.deleteMany({ where: { orderId: id } });
+      await tx.conversation.updateMany({ where: { orderId: id }, data: { orderId: null } });
+
+      if (order.tracking) {
+        await tx.trackingEvent.deleteMany({ where: { trackingId: order.tracking.id } });
+        await tx.orderTracking.delete({ where: { id: order.tracking.id } });
+      }
+
+      await tx.affiliateCommission.deleteMany({ where: { orderId: id } });
+      await tx.giftCardUsage.deleteMany({ where: { orderId: id } });
+      await tx.promotionUsage.deleteMany({ where: { orderId: id } });
+      await tx.payment.deleteMany({ where: { orderId: id } });
+
+      // OrderItem has a second, nullable StoreOrder relation. Delete it before
+      // StoreOrder to avoid the older restrictive foreign key on that relation;
+      // its digital download logs cascade from OrderItem.
+      await tx.orderItem.deleteMany({ where: { orderId: id } });
+      if (storeOrderIds.length > 0) {
+        await tx.storeOrderFulfillment.deleteMany({ where: { storeOrderId: { in: storeOrderIds } } });
+        await tx.sellerLedgerEntry.deleteMany({ where: { storeOrderId: { in: storeOrderIds } } });
+        await tx.storeOrder.deleteMany({ where: { id: { in: storeOrderIds } } });
+      }
+      await tx.orderStatusHistory.deleteMany({ where: { orderId: id } });
+      await tx.order.delete({ where: { id } });
+
+      return { deleted: true, archived: false, orderId: order.id, orderNumber: order.orderNumber };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
   // `getEarnings(orderId)` was removed, along with GET /admin/orders/:id/earnings.

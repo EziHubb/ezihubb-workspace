@@ -123,7 +123,7 @@ function groupByShipBy(orders: QueueOrder[], view: QueueView): { label: string; 
 }
 
 export default function OrdersPage() {
-  const { isPlatformContext, isReady } = useAdminMode();
+  const { isPlatformContext, isReady, isSuperAdmin } = useAdminMode();
   const dialog = useDialog();
   const qc = useQueryClient();
 
@@ -326,6 +326,49 @@ export default function OrdersPage() {
         qc.invalidateQueries({ queryKey: ['order-panel'] }),
       ]);
       toast.success(`Order #${order.orderNumber} cancelled`);
+      await qc.invalidateQueries({ predicate: (query) => /financ|payment|dashboard|shipping-support/.test(String(query.queryKey[0])) });
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const deleteOrderPermanently = async (
+    orderId: string,
+    orderNumber: string,
+    storeOrderId?: string,
+  ) => {
+    const reason = await dialog.prompt(
+      `Remove order #${orderNumber} from Orders? Orders with financial records will be archived: payments, refunds, shipping costs and statements will remain available in Finance. Orders without financial records will be permanently deleted and cannot be recovered. This action does not issue a payment refund.`,
+      {
+        title:        'Remove cancelled order',
+        confirmLabel: 'Remove order',
+        destructive:  true,
+        placeholder: 'Reason for removal (up to 500 characters)',
+        defaultValue: 'Cancelled order cleanup',
+      },
+    );
+    if (reason === null) return;
+
+    try {
+      const result = await api.delete<{ deleted: boolean; archived: boolean }>(API_ROUTES.ADMIN.ORDER_DELETE(orderId), { params: { reason } });
+      setSelected((current) => {
+        if (!storeOrderId) return current;
+        const next = new Set(current);
+        next.delete(storeOrderId);
+        return next;
+      });
+      setPanelId(null);
+      setFocusMessaging(false);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['order-queue'] }),
+        qc.invalidateQueries({ queryKey: ['order-progress-steps'] }),
+        qc.invalidateQueries({ queryKey: ['order-destinations'] }),
+        qc.invalidateQueries({ queryKey: ['order-panel'] }),
+      ]);
+      await qc.invalidateQueries({ predicate: (query) => /financ|payment|dashboard|shipping-support/.test(String(query.queryKey[0])) });
+      toast.success(result.archived
+        ? `Order #${orderNumber} archived. Financial history retained.`
+        : `Order #${orderNumber} permanently deleted`);
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -524,6 +567,9 @@ export default function OrdersPage() {
                     onCancel={() => cancelOrder(order)}
                     onRefund={() => dialog.alert('Refunds are issued from the order page.')}
                     onPrint={() => printPackingSlip(order.orderId, order.orderNumber, dialog.alert)}
+                    onDeletePermanently={isSuperAdmin
+                      ? () => deleteOrderPermanently(order.orderId, order.orderNumber, order.id)
+                      : undefined}
                     readOnly={view === 'cancelled'}
                   />
                 ))}
@@ -593,6 +639,10 @@ export default function OrdersPage() {
           }}
           onRefund={() => dialog.alert('Refunds are issued from the order page.')}
           onPrint={(orderId, orderNumber) => printPackingSlip(orderId, orderNumber, dialog.alert)}
+          canDeletePermanently={isSuperAdmin}
+          onDeletePermanently={(orderId, orderNumber) => {
+            void deleteOrderPermanently(orderId, orderNumber, panelId);
+          }}
         />
       )}
 

@@ -823,6 +823,8 @@ model SellerLedgerEntry {
   // itemized "Payment account" statement.
   amount       Decimal               @db.Decimal(10, 2)
   description  String
+  // An opposite-signed entry preserves the original charge and its statement.
+  reversalOfId String? @unique
   // Which product this entry relates to, for LISTING_FEE and its VAT line.
   // Nullable because most entry types (SALE, TRANSACTION_FEE, payouts) are
   // order-scoped, not product-scoped — those keep using storeOrderId.
@@ -1551,6 +1553,10 @@ model Order {
   user            User?       @relation("UserOrders", fields: [userId], references: [id], onDelete: SetNull)
   guestEmail      String?
   status          OrderStatus @default(PENDING_PAYMENT)
+  // Hidden from operational admin lists; finance and buyer history stay intact.
+  adminArchivedAt DateTime?
+  adminArchivedBy String?
+  adminArchiveReason String? @db.VarChar(500)
   isDigital       Boolean     @default(false)
   shippingName    String?
   shippingPhone   String?

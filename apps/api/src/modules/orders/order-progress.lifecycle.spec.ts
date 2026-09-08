@@ -6,6 +6,7 @@ describe('queueLifecycleWhere', () => {
     expect(queueLifecycleWhere('active')).toEqual({
       status: { notIn: [...OFF_QUEUE_STATUSES] },
       order: {
+        adminArchivedAt: null,
         status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] },
       },
     });
@@ -13,6 +14,7 @@ describe('queueLifecycleWhere', () => {
 
   it('finds cancelled orders through either side of the relation', () => {
     expect(queueLifecycleWhere('cancelled')).toEqual({
+      order: { adminArchivedAt: null },
       OR: [
         { status: OrderStatus.CANCELLED },
         { order: { status: OrderStatus.CANCELLED } },

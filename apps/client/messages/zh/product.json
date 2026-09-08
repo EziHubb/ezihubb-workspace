@@ -47,6 +47,9 @@
     "productImages": "商品图片",
     "image": "图片 {n}",
     "playVideo": "播放视频",
+    "video": "商品视频",
+    "openFullscreen": "打开全屏预览",
+    "fullscreenPreview": "全屏预览商品图片和视频",
     "previous": "上一个",
     "next": "下一个",
     "close": "关闭"

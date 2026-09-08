@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import {
   CalendarClock, ChevronDown, ChevronUp, CircleCheckBig, Copy, Gift,
-  MessageSquare, MoreVertical, Printer, Tag, XCircle, Undo2,
+  MessageSquare, MoreVertical, Printer, Tag, Trash2, XCircle, Undo2,
 } from 'lucide-react';
 import { UpdateProgressMenu } from './UpdateProgressMenu';
 import type { ProgressStep, QueueOrder } from './types';
@@ -50,6 +50,7 @@ interface Props {
   onCancel:       () => void;
   onRefund:       () => void;
   onPrint:        () => void;
+  onDeletePermanently?: () => void;
   readOnly?:      boolean;
 }
 
@@ -90,6 +91,7 @@ export function OrderQueueCard({
   order, steps, selected, onSelect, onOpen, onOpenMessages,
   onMoveToStep,
   onCompleted, onEditShipBy, onToggleGift, onCancel, onRefund, onPrint,
+  onDeletePermanently,
   readOnly = false,
 }: Props) {
   const [showShipTo, setShowShipTo] = useState(true);
@@ -366,6 +368,17 @@ export function OrderQueueCard({
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
               <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-56 rounded-card border border-border bg-surface py-2 shadow-lg">
                 <MenuItem icon={Printer}       label="Print"               onClick={() => { setMenuOpen(false); onPrint(); }} />
+                {readOnly && onDeletePermanently && (
+                  <>
+                    <div className="my-1 border-t border-border" />
+                    <MenuItem
+                      icon={Trash2}
+                      label="Remove order"
+                      danger
+                      onClick={() => { setMenuOpen(false); onDeletePermanently(); }}
+                    />
+                  </>
+                )}
                 {!readOnly && (
                   <>
                     <MenuItem icon={CalendarClock} label="Update ship by date" onClick={() => { setMenuOpen(false); onEditShipBy(); }} />

@@ -95,8 +95,9 @@ export function ActivitySummaryCard({
           icon={Wallet} iconBg="bg-category-sales-bg" iconColor="text-category-sales-fg"
           title="Sales" total={summary.sales.total} expanded={expanded}
           rows={[
-            { label: `Total sales (${summary.sales.totalSalesCount})`, value: null },
-            { label: 'Refunds (0)', value: null },
+            { label: `Total sales (${summary.sales.totalSalesCount})`, value: summary.sales.grossTotal ?? summary.sales.total },
+            { label: 'Cancelled sales', value: summary.sales.cancellations ?? 0, tooltip: 'Seller proceeds reversed when an order is cancelled. Payment refunds are tracked separately in Payments.' },
+            { label: 'Refunds', value: summary.sales.refunds || null },
             { label: 'Sales tax paid by buyer (Remitted)', value: null, tooltip: 'Collected from the buyer and passed directly to tax authorities — not deducted from your earnings.' },
             { label: 'VAT paid by buyer (Remitted)', value: null, tooltip: 'Collected from the buyer and passed directly to tax authorities — not deducted from your earnings.' },
           ]}

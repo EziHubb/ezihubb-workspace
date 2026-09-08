@@ -11,7 +11,7 @@ import { JOBS, QUEUES, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
 import { paginatedResponse } from '../../common/dto/paginated-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { OrderProgressStepKind, OrderStatus } from '@prisma/client';
+import { OrderProgressStepKind, OrderStatus, Prisma } from '@prisma/client';
 import { TargetedOffersService } from '../marketing/targeted-offers.service';
 import { ensureFixedOrderProgressSteps } from '../orders/order-progress.defaults';
 import { syncOrderStatusFromShops } from '../orders/order-status-sync';
@@ -55,7 +55,7 @@ export class StoreOrdersService {
     const limit = pagination.limit ?? 20;
     const skip  = (page - 1) * limit;
 
-    const where: any = { storeId };
+    const where: any = { storeId, order: { adminArchivedAt: null } };
     if (pagination.status) where.status = pagination.status;
 
     const [orders, total] = await Promise.all([
@@ -305,26 +305,22 @@ export class StoreOrdersService {
       this.prisma.sellerPayout.count({ where: { storeId } }),
     ]);
 
-    // Available balance: confirmed sellerEarnings with no payoutId
-    const available = await this.prisma.storeOrder.aggregate({
-      where: {
-        storeId,
-        status:   { in: ['CONFIRMED', 'IN_PRODUCTION', 'SHIPPED', 'DELIVERED', 'COMPLETED'] as OrderStatus[] },
-        payoutId: null,
-      },
-      _sum: { sellerEarnings: true },
+    // Includes cancellation reversals, including deductions after a prior payout.
+    const available = await this.prisma.sellerLedgerEntry.aggregate({
+      where: { storeId, payoutId: null },
+      _sum: { amount: true },
     });
 
     return {
       ...paginatedResponse(payouts, page, limit, total),
-      availableBalance: Number(available._sum?.sellerEarnings ?? 0),
+      availableBalance: Number(available._sum?.amount ?? 0),
     };
   }
 
   async getOrderCounts(storeId: string) {
     const groups = await this.prisma.storeOrder.groupBy({
       by: ['status'],
-      where: { storeId },
+      where: { storeId, order: { adminArchivedAt: null } },
       _count: { id: true },
     });
     const counts: Record<string, number> = {};
@@ -341,25 +337,31 @@ export class StoreOrdersService {
    * per-order display total only.
    */
   async requestPayout(storeId: string, body: { notes?: string }) {
-    const unpaidEntries = await this.prisma.sellerLedgerEntry.findMany({
-      where: { storeId, payoutId: null },
-      select: { id: true, amount: true, storeOrderId: true },
-    });
-    if (unpaidEntries.length === 0) throw new Error('Nothing to pay out');
-
-    const amount      = unpaidEntries.reduce((sum, e) => sum + Number(e.amount), 0);
-    const platformFee = unpaidEntries.reduce((sum, e) => sum + Math.min(0, Number(e.amount)), 0) * -1;
-    if (amount <= 0) throw new Error('Nothing to pay out');
-
-    const storeOrderIds = [...new Set(unpaidEntries.map((e) => e.storeOrderId).filter((id): id is string => !!id))];
-
     return this.prisma.$transaction(async (tx) => {
+      const unpaidEntries = await tx.sellerLedgerEntry.findMany({
+        where: { storeId, payoutId: null },
+        select: { id: true, amount: true, storeOrderId: true, type: true },
+      });
+      if (unpaidEntries.length === 0) throw new Error('Nothing to pay out');
+
+      const amount = unpaidEntries.reduce((sum, e) => sum + Number(e.amount), 0);
+      // A negative SALE reversal is a cancelled sale, not a platform fee.
+      const platformFee = -unpaidEntries
+        .filter((entry) => entry.type !== 'SALE' && entry.type !== 'ADJUSTMENT')
+        .reduce((sum, entry) => sum + Number(entry.amount), 0);
+      if (amount <= 0) throw new Error('Nothing to pay out');
+
+      const storeOrderIds = [...new Set(unpaidEntries.map((e) => e.storeOrderId).filter((id): id is string => !!id))];
+
+      const orderCount = await tx.storeOrder.count({
+        where: { id: { in: storeOrderIds }, status: { notIn: ['CANCELLED', 'REFUNDED'] } },
+      });
       const payout = await tx.sellerPayout.create({
         data: {
           storeId,
           amount:      Math.round(amount * 100) / 100,
           platformFee: Math.round(platformFee * 100) / 100,
-          orderCount:  storeOrderIds.length,
+          orderCount,
           status:      'PENDING',
           period:      new Date().toISOString().slice(0, 7),
           adminNotes:  body.notes,
@@ -372,12 +374,12 @@ export class StoreOrdersService {
       });
       if (storeOrderIds.length > 0) {
         await tx.storeOrder.updateMany({
-          where: { id: { in: storeOrderIds } },
+          where: { id: { in: storeOrderIds }, payoutId: null },
           data:  { payoutId: payout.id },
         });
       }
 
       return payout;
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 }

@@ -62,7 +62,7 @@ interface ShippingSupportRow {
   buyerName: string;
   buyerEmail: string | null;
   orderStatus: string;
-  fundingStatus: 'PENDING' | 'REALIZED';
+  fundingStatus: 'PENDING' | 'REALIZED' | 'CANCELLED';
   orderedAt: string;
   merchandiseSubtotal: number;
   quotedShippingCost: number;
@@ -94,6 +94,7 @@ const STATUS_OPTIONS = [
   { value: 'all', label: 'All active support' },
   { value: 'pending', label: 'Pending support' },
   { value: 'realized', label: 'Realized support' },
+  { value: 'cancelled', label: 'Cancelled / refunded history' },
 ];
 
 const SORT_OPTIONS = [
@@ -454,7 +455,7 @@ export default function ShippingSupportPage() {
                           ? 'bg-green-50 text-green-700'
                           : 'bg-amber-50 text-amber-700'
                       }`}>
-                        {row.fundingStatus === 'REALIZED' ? 'Realized' : 'Pending'}
+                        {row.fundingStatus === 'CANCELLED' ? 'Cancelled / refunded' : row.fundingStatus === 'REALIZED' ? 'Realized' : 'Pending'}
                       </span>
                       <p className="mt-1 text-[11px] text-muted">{row.orderStatus.replaceAll('_', ' ')}</p>
                     </td>

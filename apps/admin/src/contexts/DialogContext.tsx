@@ -15,12 +15,12 @@ import { X, AlertTriangle, Info, CheckCircle, Loader2 } from 'lucide-react';
 
 export interface AlertOptions   { title?: string; variant?: 'info' | 'error' }
 export interface ConfirmOptions { title?: string; confirmLabel?: string; destructive?: boolean }
-export interface PromptOptions  { title?: string; placeholder?: string; defaultValue?: string }
+export interface PromptOptions  { title?: string; placeholder?: string; defaultValue?: string; confirmLabel?: string; destructive?: boolean }
 
 type DialogState =
   | { type: 'alert';   title: string; message: string; variant: 'info' | 'error';                resolve: () => void }
   | { type: 'confirm'; title: string; message: string; confirmLabel: string; destructive: boolean; resolve: (ok: boolean) => void }
-  | { type: 'prompt';  title: string; message: string; placeholder: string; defaultValue: string; resolve: (val: string | null) => void }
+  | { type: 'prompt';  title: string; message: string; placeholder: string; defaultValue: string; confirmLabel: string; destructive: boolean; resolve: (val: string | null) => void }
   | { type: 'preview'; title: string; url: string;                                               resolve: () => void }
   | null;
 
@@ -87,6 +87,8 @@ export function DialogProvider({ children }: { children: ReactNode }) {
         title:        opts.title        ?? 'Input required',
         placeholder:  opts.placeholder  ?? '',
         defaultValue: opts.defaultValue ?? '',
+        confirmLabel: opts.confirmLabel ?? 'Submit',
+        destructive: opts.destructive ?? false,
         message,
         resolve: (val) => { setState(null); resolve(val); },
       });
@@ -269,8 +271,8 @@ function AppDialog({ state }: { state: NonNullable<DialogState> }) {
 
                 {state.type === 'prompt' && (
                   <button ref={confirmRef} type="button" onClick={() => state.resolve(input.trim() || null)}
-                    className="h-9 px-5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-dark active:scale-[0.98] transition-all shadow-sm">
-                    Submit
+                    className={`h-9 px-5 rounded-lg text-white text-sm font-semibold active:scale-[0.98] transition-all shadow-sm ${state.destructive ? 'bg-error hover:bg-red-600' : 'bg-primary hover:bg-primary-dark'}`}>
+                    {state.confirmLabel}
                   </button>
                 )}
               </div>
@@ -283,7 +285,7 @@ function AppDialog({ state }: { state: NonNullable<DialogState> }) {
 }
 
 function DialogIconBadge({ state }: { state: NonNullable<DialogState> }) {
-  const isDestructive = state.type === 'confirm' && state.destructive;
+  const isDestructive = (state.type === 'confirm' || state.type === 'prompt') && state.destructive;
   const isErrorAlert  = state.type === 'alert' && state.variant === 'error';
 
   const bg =

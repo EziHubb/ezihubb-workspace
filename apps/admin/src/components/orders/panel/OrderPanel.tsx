@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  CalendarClock, Gift, Loader2, MoreHorizontal, Printer, Undo2, X, XCircle,
+  CalendarClock, Gift, Loader2, MoreHorizontal, Printer, Trash2, Undo2, X, XCircle,
 } from 'lucide-react';
 import { API_ROUTES, newClientMessageId } from '@ezihubb/constants';
 import { api } from '../../../lib/api-client';
@@ -41,6 +41,8 @@ interface Props {
   onCancel:     (orderId: string, orderNumber: string) => void;
   onRefund:     () => void;
   onPrint:      (orderId: string, orderNumber: string) => void;
+  onDeletePermanently?: (orderId: string, orderNumber: string) => void;
+  canDeletePermanently?: boolean;
   /**
    * Set when the panel was opened by the message icon rather than by the card
    * itself: the composer opens and scrolls into view instead of leaving the
@@ -61,6 +63,7 @@ const fmtDate = (iso: string | null) =>
 export function OrderPanel({
   storeOrderId, storeQuery, steps, completeStepId,
   onClose, onChanged, onEditShipBy, onToggleGift, onCancel, onRefund, onPrint,
+  onDeletePermanently, canDeletePermanently = false,
   focusMessaging, readOnly = false,
 }: Props) {
   const qc = useQueryClient();
@@ -335,6 +338,20 @@ export function OrderPanel({
                             label="Print"
                             onClick={() => { setMenuOpen(false); onPrint(detail.orderId, detail.orderNumber); }}
                           />
+                          {readOnly && canDeletePermanently && onDeletePermanently && (
+                            <>
+                              <div className="my-1 border-t border-border" />
+                              <MenuItem
+                                icon={Trash2}
+                                label="Remove order"
+                                danger
+                                onClick={() => {
+                                  setMenuOpen(false);
+                                  onDeletePermanently(detail.orderId, detail.orderNumber);
+                                }}
+                              />
+                            </>
+                          )}
                           {!readOnly && (
                             <>
                               <MenuItem

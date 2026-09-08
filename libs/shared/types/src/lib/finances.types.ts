@@ -43,6 +43,8 @@ export interface FinancesActivitySummaryDto {
   sales: {
     total: number;
     totalSalesCount: number;
+    grossTotal?: number;
+    cancellations?: number;
     refunds: number;
     salesTaxRemitted: number;
     vatRemitted: number;

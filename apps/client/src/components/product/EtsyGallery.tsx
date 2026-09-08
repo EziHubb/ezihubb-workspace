@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { ChevronLeft, ChevronRight, Heart, Flag, X, Play, Volume2, VolumeX, Video as VideoIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, Flag, X, Play, Maximize2, Video as VideoIcon } from 'lucide-react';
 import { useWishlist, useWishlistToggle } from '@ezihubb/api-client';
 import { useAuthStore } from '../../lib/store/auth.store';
 import { safeArr } from '@ezihubb/utils';
@@ -82,17 +82,20 @@ function VideoSlide({
   poster,
   active,
   className,
+  objectFit = 'cover',
+  onOpenPreview,
 }: {
   url:       string;
   /** Extracted frame, painted while the clip buffers. Undefined = none stored. */
   poster?:   string;
   active:    boolean;
   className: string;
+  objectFit?: 'cover' | 'contain';
+  onOpenPreview?: () => void;
 }) {
   const t = useTranslations('product.gallery');
   const videoRef = useRef<HTMLVideoElement>(null);
   const reducedMotion = usePrefersReducedMotion();
-  const [muted, setMuted] = useState(true);
   const [playingManually, setPlayingManually] = useState(false);
 
   const shouldPlay = active && (!reducedMotion || playingManually);
@@ -115,12 +118,14 @@ function VideoSlide({
         ref={videoRef}
         src={url}
         poster={poster}
-        className="absolute inset-0 w-full h-full object-cover"
-        muted={muted}
+        className={`absolute inset-0 h-full w-full ${objectFit === 'contain' ? 'object-contain' : 'object-cover'}`}
+        muted
         loop
+        controls
         playsInline
         preload="metadata"
         onClick={(e) => e.stopPropagation()}
+        aria-label={t('video')}
       />
 
       {reducedMotion && !playingManually && (
@@ -136,14 +141,14 @@ function VideoSlide({
         </button>
       )}
 
-      {shouldPlay && (
+      {onOpenPreview && (
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
-          aria-label={muted ? 'Unmute video' : 'Mute video'}
-          className="absolute bottom-3 right-3 z-10 w-8 h-8 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+          onClick={(e) => { e.stopPropagation(); onOpenPreview(); }}
+          aria-label={t('openFullscreen')}
+          className="absolute left-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/65 text-white shadow-md backdrop-blur-sm transition-colors hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
         >
-          {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          <Maximize2 className="h-5 w-5" />
         </button>
       )}
     </div>
@@ -366,7 +371,13 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
             </button>
 
             {activeItem.type === 'video' ? (
-              <VideoSlide url={activeItem.url} poster={activeItem.poster} active className="absolute inset-0 w-full h-full" />
+              <VideoSlide
+                url={activeItem.url}
+                poster={activeItem.poster}
+                active={!lightboxOpen}
+                className="absolute inset-0 h-full w-full"
+                onOpenPreview={() => setLightboxOpen(true)}
+              />
             ) : (
               <Image
                 src={activeItem.url}
@@ -404,7 +415,7 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
 
             {/* Mobile dot indicators */}
             {media.length > 1 && (
-              <div className="lg:hidden absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+              <div className={`lg:hidden absolute left-1/2 -translate-x-1/2 flex gap-1.5 z-10 ${activeItem.type === 'video' ? 'bottom-14' : 'bottom-3'}`}>
                 {media.map((_, i) => (
                   <button
                     key={i}
@@ -451,11 +462,14 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
         </div>
       </div>
 
-      {/* ── LIGHTBOX (photos only — a video's own controls already give the full-attention view) ── */}
-      {lightboxOpen && activeItem.type === 'image' && (
+      {/* Full-screen preview for both photos and videos. */}
+      {lightboxOpen && activeItem && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-stretch"
           onClick={() => setLightboxOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('fullscreenPreview')}
         >
           {/* Close button */}
           <button
@@ -472,20 +486,30 @@ export function EtsyGallery({ product }: EtsyGalleryProps) {
             className="flex w-full max-w-[1200px] mx-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Main image panel */}
+            {/* Main media panel */}
             <div
               className="flex-1 flex items-center justify-center p-8 relative"
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
-              <div className="relative w-full max-h-[80vh] aspect-square">
-                <Image
-                  src={activeItem.url}
-                  alt={activeItem.altText ?? product.name}
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 960px"
-                  className="absolute inset-0 w-full h-full object-contain"
-                />
+              <div className="relative h-[80vh] max-h-[900px] w-full">
+                {activeItem.type === 'video' ? (
+                  <VideoSlide
+                    url={activeItem.url}
+                    poster={activeItem.poster}
+                    active
+                    className="absolute inset-0 h-full w-full"
+                    objectFit="contain"
+                  />
+                ) : (
+                  <Image
+                    src={activeItem.url}
+                    alt={activeItem.altText ?? product.name}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 960px"
+                    className="absolute inset-0 h-full w-full object-contain"
+                  />
+                )}
               </div>
 
               {/* Arrows */}

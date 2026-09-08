@@ -47,6 +47,9 @@
     "productImages": "Product images",
     "image": "Image {n}",
     "playVideo": "Play video",
+    "video": "Product video",
+    "openFullscreen": "Open full-screen preview",
+    "fullscreenPreview": "Full-screen product media preview",
     "previous": "Previous",
     "next": "Next",
     "close": "Close"
