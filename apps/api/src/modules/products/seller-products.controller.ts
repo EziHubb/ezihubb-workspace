@@ -20,6 +20,7 @@ import { ShippingService } from '../shipping/shipping.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { StoreOwnerGuard } from '../stores/guards/store-owner.guard';
 import { Store } from '@prisma/client';
+import { ProductStoreWriteGuard } from './guards/product-store-write.guard';
 
 // ── DTOs ─────────────────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ class SellerUpdateProductDto {
 // ── Controller ────────────────────────────────────────────────────────────────
 
 @Controller('seller/products')
-@UseGuards(JwtAuthGuard, StoreOwnerGuard)
+@UseGuards(JwtAuthGuard, StoreOwnerGuard, ProductStoreWriteGuard)
 @ApiBearerAuth()
 @ApiTags('Seller - Products')
 export class SellerProductsController {

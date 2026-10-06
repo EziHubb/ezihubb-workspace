@@ -28,6 +28,7 @@ import { ShippingModule } from '../shipping/shipping.module';
 import { ModerationModule } from '../moderation/moderation.module';
 import { MarketingModule } from '../marketing/marketing.module';
 import { BundleOffersModule } from '../promotions/bundle-offers.module';
+import { ProductStoreWriteGuard } from './guards/product-store-write.guard';
 
 const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
 
@@ -60,6 +61,7 @@ const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
     AdminQaController,
   ],
   providers: [
+    ProductStoreWriteGuard,
     ProductsService,
     CsvImportService,
     QaService,

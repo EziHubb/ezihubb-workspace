@@ -92,6 +92,9 @@ export function getShopOwnerRedirect(pathname: string, storeId: string | null): 
  */
 export function getPlatformContextRedirect(pathname: string, isPlatformContext: boolean): string | null {
   if (!isPlatformContext) return null;
+  if (['/products/new', '/products/copy', '/products/import'].some((p) => pathname === p || pathname.startsWith(p + '/'))) {
+    return '/products';
+  }
   if (SELF_SERVICE_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
     return '/dashboard';
   }

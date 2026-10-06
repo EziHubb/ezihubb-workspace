@@ -88,7 +88,23 @@ function getAuthHeader(): Record<string, string> {
   return {};
 }
 
-async function refreshTokens(): Promise<string | null> {
+let refreshInFlight: Promise<string | null> | null = null;
+
+function refreshTokens(): Promise<string | null> {
+  // Never share refresh state across users in a server process. In a browser,
+  // both API wrappers share one rotation when parallel requests receive 401.
+  if (typeof window === 'undefined') return Promise.resolve(null);
+  if (!refreshInFlight) refreshInFlight = performRefresh().finally(() => { refreshInFlight = null; });
+  return refreshInFlight;
+}
+
+function canRefresh(path: string): boolean {
+  const normalized = path.replace(/^\/api\/v1/, '').split('?')[0];
+  return !['/auth/login', '/auth/register', '/auth/google/token', '/auth/totp/verify', '/auth/refresh',
+    '/messages/guest-access/request', '/messages/guest-access/verify'].includes(normalized);
+}
+
+async function performRefresh(): Promise<string | null> {
   try {
     const res = await fetch(buildUrl('/auth/refresh'), {
       method:      'POST',
@@ -144,7 +160,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   let res = await doFetch(true);
 
   // Auto-refresh on 401
-  if (res.status === 401) {
+  if (res.status === 401 && canRefresh(path)) {
     const newToken = await refreshTokens();
     if (newToken) {
       res = await doFetch(true);
@@ -285,7 +301,7 @@ async function apiRequest<T>(path: string, options: ApiClientOptions = {}): Prom
   // which clears the auth store and signs the user out (see auth.store.ts) —
   // so a dead session stops looking "logged in" instead of only surfacing on
   // the next unrelated request.
-  if (res.status === 401) {
+  if (res.status === 401 && canRefresh(path)) {
     const newToken = await refreshTokens();
     if (newToken) {
       res = await doFetch(newToken);

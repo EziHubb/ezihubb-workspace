@@ -2,11 +2,14 @@ import {
   Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, Res, UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
+import type { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { StoreOwnerGuard } from '../stores/guards/store-owner.guard';
 import { FinancesService } from './finances.service';
+import { EconomicFinancesService } from './economic-finances.service';
+import { EconomicBalanceQueryDto, EconomicHistoryQueryDto, EconomicPayoutRequestDto } from './dto/economic-finances.dto';
 import {
   UpdateBankAccountDto,
   ConfirmBillingCardDto,
@@ -15,6 +18,8 @@ import {
   UpdateTaxInfoDto,
   ActivitiesQueryDto,
 } from './dto/finances.dto';
+
+type SellerEconomicRequest = { store: { id: string }; user: JwtPayload };
 
 /**
  * Etsy-parity seller Finances module (Payment account / Monthly statements /
@@ -29,7 +34,27 @@ import {
 @UseGuards(JwtAuthGuard, StoreOwnerGuard)
 @Controller('seller/finances')
 export class FinancesController {
-  constructor(private readonly financesService: FinancesService) {}
+  constructor(private readonly financesService: FinancesService, private readonly economic: EconomicFinancesService) {}
+
+  @Get('economic/overview')
+  economicOverview(@Req() req: SellerEconomicRequest, @Query() query: EconomicBalanceQueryDto) {
+    return this.economic.overview({ kind: 'SELLER', beneficiaryId: req.store.id, currency: query.currency, provenance: query.provenance });
+  }
+
+  @Get('economic/statement')
+  economicStatement(@Req() req: SellerEconomicRequest, @Query() query: EconomicHistoryQueryDto) {
+    return this.economic.statement({ kind: 'SELLER', beneficiaryId: req.store.id, currency: query.currency, provenance: query.provenance }, query);
+  }
+
+  @Get('economic/payouts')
+  economicPayouts(@Req() req: SellerEconomicRequest, @Query() query: EconomicHistoryQueryDto) {
+    return this.economic.payouts({ kind: 'SELLER', beneficiaryId: req.store.id, currency: query.currency, provenance: query.provenance }, query);
+  }
+
+  @Post('economic/payouts')
+  requestEconomicPayout(@Req() req: SellerEconomicRequest, @Body() dto: EconomicPayoutRequestDto) {
+    return this.economic.request({ kind: 'SELLER', beneficiaryId: req.store.id, currency: dto.currency, provenance: dto.provenance }, req.user.sub, dto);
+  }
 
   @Get('overview')
   getOverview(@Req() req: any) {

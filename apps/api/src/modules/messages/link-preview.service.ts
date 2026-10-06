@@ -64,7 +64,7 @@ export class LinkPreviewService {
   async previewFor(
     conversationId: string,
     rawUrl: string,
-    viewer: { storeId?: string; userId?: string | null; forShop: boolean },
+    viewer: { storeId?: string; userId?: string | null; forShop: boolean; verifiedGuestEmail?: string },
   ): Promise<LinkPreview | null> {
     await this.messages.assertThreadAccess(conversationId, viewer);
 

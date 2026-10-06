@@ -16,6 +16,8 @@ import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtDate, capitalize, fmtNum } from '../../../lib/fmt';
 import { useDialog } from '../../../contexts/DialogContext';
 import { FilterSelect } from '../../../components/ui/FilterSelect';
+import { useAdminMode } from '../../../lib/store-context';
+import { ProductReadOnlyNotice } from '../../../components/products/ProductReadOnlyView';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -57,6 +59,8 @@ function ProductsPageInner() {
   const searchParams = useSearchParams();
   const qc           = useQueryClient();
   const { confirm, alert } = useDialog();
+  const { isReady, isPlatformContext } = useAdminMode();
+  const canManage = isReady && !isPlatformContext;
 
   const VALID_SORTS = new Set(SORT_OPTIONS.map((o) => o.value));
   // Default to Active (not All) when the URL has no explicit ?status — "All
@@ -375,8 +379,9 @@ function ProductsPageInner() {
             href={`/products/${row.original.id}/edit`}
             className="text-xs font-medium text-muted hover:text-primary px-2 py-1.5 rounded hover:bg-primary/5 transition-colors"
           >
-            Edit
+            {canManage ? 'Edit' : 'View'}
           </Link>
+          {canManage && <>
           <Link
             href={`/products/copy/${row.original.id}`}
             className="text-xs font-medium text-muted hover:text-primary px-2 py-1.5 rounded hover:bg-primary/5 transition-colors"
@@ -391,10 +396,11 @@ function ProductsPageInner() {
           >
             {row.original.isActive ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
           </button>
+          </>}
         </div>
       ),
     },
-  ], [handleToggleActive]);
+  ], [handleToggleActive, canManage]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -402,6 +408,7 @@ function ProductsPageInner() {
     <div className="flex gap-6 min-h-0">
       {/* ── Main column ─────────────────────────────────────────────────────── */}
       <div className="flex-1 min-w-0">
+        {isPlatformContext && <ProductReadOnlyNotice />}
         {/* Topbar */}
         <div className="flex flex-wrap items-center gap-3 mb-4">
           {/* Search */}
@@ -421,6 +428,7 @@ function ProductsPageInner() {
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
+            {canManage && <>
             <Link
               href="/products/import"
               className="flex items-center gap-1.5 px-3.5 py-2 border border-border hover:border-primary text-secondary hover:text-primary text-sm font-semibold rounded-pill transition-colors"
@@ -435,6 +443,7 @@ function ProductsPageInner() {
               <Plus className="w-4 h-4" />
               Add a listing
             </Link>
+            </>}
 
             {/* View toggle */}
             <div className="flex items-center border border-border rounded-pill overflow-hidden">
@@ -475,7 +484,7 @@ function ProductsPageInner() {
         {/* Bulk action bar — always visible, pill-styled, disabled until something is
             selected, matching real Etsy's persistent Renew/Deactivate/Delete/Editing
             options toolbar rather than only appearing on selection. */}
-        <div className="relative flex flex-wrap items-center gap-2 mb-4">
+        {canManage && <div className="relative flex flex-wrap items-center gap-2 mb-4">
           {selectedIds.length > 0 && (
             <span className="text-sm font-semibold text-secondary mr-1">{selectedIds.length}</span>
           )}
@@ -570,13 +579,13 @@ function ProductsPageInner() {
               <X className="w-3.5 h-3.5" />
             </button>
           )}
-        </div>
+        </div>}
 
         {/* Content */}
         {view === 'grid' ? (
           <>
             {/* Grid header */}
-            {products.length > 0 && (
+            {canManage && products.length > 0 && (
               <div className="flex items-center gap-3 mb-3">
                 <label className="flex items-center gap-2 text-xs text-muted cursor-pointer select-none">
                   <input
@@ -607,15 +616,15 @@ function ProductsPageInner() {
                 <Package className="w-12 h-12 text-muted/30 mb-4" />
                 <p className="text-base font-semibold text-secondary mb-1">No products found</p>
                 <p className="text-sm text-muted mb-6">
-                  {urlStatus && urlStatus !== 'ALL' ? `No ${urlStatus.toLowerCase()} listings yet.` : 'Create your first product to get started.'}
+                  {urlStatus && urlStatus !== 'ALL' ? `No ${urlStatus.toLowerCase()} listings yet.` : 'Try another search or filter.'}
                 </p>
-                <Link
+                {canManage && <Link
                   href="/products/new"
                   className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-button hover:bg-primary/90 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
                   Add Product
-                </Link>
+                </Link>}
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
@@ -623,13 +632,14 @@ function ProductsPageInner() {
                   <ProductCard
                     key={p.id}
                     product={p}
+                    readOnly={!canManage}
                     selected={selectedIds.includes(p.id)}
                     anySelected={selectedIds.length > 0}
                     onToggleSelect={handleToggleSelect}
                     onToggleActive={handleToggleActive}
                     onArchive={handleArchive}
-                    onToggleFeatured={handleToggleFeatured}
-                    onDelete={handleDelete}
+                    onToggleFeatured={canManage ? handleToggleFeatured : undefined}
+                    onDelete={canManage ? handleDelete : undefined}
                     clientBaseUrl={process.env.NEXT_PUBLIC_CLIENT_URL ?? 'http://localhost:3000'}
                   />
                 ))}
@@ -641,12 +651,12 @@ function ProductsPageInner() {
             data={products}
             columns={columns}
             isLoading={isLoading}
-            selectable
+            selectable={canManage}
             pagination={{ page, limit: PAGE_SIZE, total, onPageChange: setPage }}
             onSelectionChange={(rows) => setSelectedIds(rows.map((r) => r.id))}
             getRowId={productRowId}
             emptyTitle="No products found"
-            emptyDesc="Create your first product to get started."
+            emptyDesc="Try another search or filter."
           />
         )}
 
@@ -750,18 +760,18 @@ function ProductsPageInner() {
           </div>
 
           {/* Add listing */}
-          <Link
+          {canManage && <Link
             href="/products/new"
             className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
           >
             <Plus className="w-4 h-4" />
             Add a listing
-          </Link>
+          </Link>}
         </div>
       </aside>
 
       {/* ── Sale dialog ──────────────────────────────────────────────────────── */}
-      <Modal isOpen={showSaleDialog} onClose={() => setShowSaleDialog(false)} size="sm">
+      <Modal isOpen={canManage && showSaleDialog} onClose={() => setShowSaleDialog(false)} size="sm">
         <ModalHeader onClose={() => setShowSaleDialog(false)}>Set sale price</ModalHeader>
         <ModalBody>
           <p className="text-sm text-muted mb-4">
@@ -797,7 +807,7 @@ function ProductsPageInner() {
       </Modal>
 
       {/* ── Editing tags dialog ──────────────────────────────────────────────── */}
-      <Modal isOpen={showTagsDialog} onClose={() => setShowTagsDialog(false)} size="sm">
+      <Modal isOpen={canManage && showTagsDialog} onClose={() => setShowTagsDialog(false)} size="sm">
         <ModalHeader onClose={() => setShowTagsDialog(false)}>
           Editing tags for {selectedIds.length} listing{selectedIds.length !== 1 ? 's' : ''}
         </ModalHeader>
@@ -838,7 +848,7 @@ function ProductsPageInner() {
       </Modal>
 
       {/* ── Editing title dialog ─────────────────────────────────────────────── */}
-      <Modal isOpen={showTitleDialog} onClose={() => setShowTitleDialog(false)} size="sm">
+      <Modal isOpen={canManage && showTitleDialog} onClose={() => setShowTitleDialog(false)} size="sm">
         <ModalHeader onClose={() => setShowTitleDialog(false)}>
           Editing title for {selectedIds.length} listing{selectedIds.length !== 1 ? 's' : ''}
         </ModalHeader>

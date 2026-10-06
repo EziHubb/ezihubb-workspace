@@ -150,6 +150,10 @@ export const API_ROUTES = {
 
   MESSAGES: {
     CONVERSATIONS:         '/messages/conversations',
+    GUEST_ACCESS:          '/messages/guest-access',
+    GUEST_ACCESS_REQUEST:  '/messages/guest-access/request',
+    GUEST_ACCESS_VERIFY:   '/messages/guest-access/verify',
+    GUEST_CONVERSATIONS:   '/messages/guest-conversations',
     CONVERSATION:          (id: string) => `/messages/conversations/${id}`,
     CONVERSATION_MESSAGES: (id: string) => `/messages/conversations/${id}/messages`,
     CONVERSATION_ATTACHMENTS:   (id: string) => `/messages/conversations/${id}/attachments`,

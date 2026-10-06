@@ -44,6 +44,7 @@ import { AdminController } from '../../common/decorators/admin-controller.decora
 import { AuditLogService } from '../../common/services/audit-log.service';
 import { StoreContextService } from '../../common/services/store-context.service';
 import { ProductOwnershipGuard } from '../../common/guards/product-ownership.guard';
+import { ProductReadOperation, ProductStoreWriteGuard } from './guards/product-store-write.guard';
 import { PaginatedResult } from '../../common/dto/paginated-response.dto';
 import {
   IsArray, IsString, ArrayMaxSize, IsOptional, IsBoolean,
@@ -201,7 +202,7 @@ class BulkExportDto {
 // declared ABOVE @AdminController — otherwise it runs before JwtAuthGuard
 // populates req.user, and every request (even a SUPER_ADMIN's) 403s with
 // "Not authenticated" before RolesGuard/JwtAuthGuard ever get to run.
-@UseGuards(ProductOwnershipGuard)
+@UseGuards(ProductStoreWriteGuard, ProductOwnershipGuard)
 @AdminController('products')
 export class AdminProductsController {
   constructor(
@@ -296,9 +297,7 @@ export class AdminProductsController {
     // the shared admin UI) was silently created with storeId=null — orphaned
     // from the creating shop owner's store, and immediately inaccessible to
     // them once ProductOwnershipGuard started enforcing ownership.
-    return context.storeId
-      ? this.productsService.createDraftForStore(context.storeId)
-      : this.productsService.createDraft();
+    return this.productsService.createDraftForStore(this.storeContext.requireStoreId(context));
   }
 
   // POST /admin/products
@@ -308,7 +307,7 @@ export class AdminProductsController {
   @ApiResponse({ status: 201, type: ProductResponseDto })
   async create(@Req() req: Request, @Body() dto: CreateProductDto): Promise<ProductResponseDto> {
     const context = await this.storeContext.resolve(req);
-    const product = await this.productsService.create(dto, context.storeId ?? undefined);
+    const product = await this.productsService.create(dto, this.storeContext.requireStoreId(context));
     const userId = (req.user as { sub: string }).sub;
     this.auditLog.log({
       userId,
@@ -955,6 +954,7 @@ export class AdminProductsController {
 
   // POST /admin/products/export
   @Post('export')
+  @ProductReadOperation()
   @ApiOperation({ summary: '[Admin] Export products to CSV (scoped to own store for shop owners)' })
   async exportCsv(@Req() req: Request, @Body() dto: BulkExportDto, @Res() res: Response): Promise<void> {
     const context = await this.storeContext.resolve(req);

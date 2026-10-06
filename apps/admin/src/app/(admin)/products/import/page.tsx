@@ -3,6 +3,9 @@
 import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { getSession } from 'next-auth/react';
+import { getStoreContext, useAdminMode } from '../../../../lib/store-context';
+import { STORE_CONTEXT_HEADER } from '../../../../lib/store-context-shared';
+import { ProductReadOnlyNotice } from '../../../../components/products/ProductReadOnlyView';
 import { ArrowLeft, Upload, FileText, Download, CheckCircle, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { API_BASE } from '../../../../lib/api-client';
@@ -46,6 +49,7 @@ type Stage = 'idle' | 'validating' | 'validated' | 'importing' | 'done';
 async function uploadCsv(endpoint: string, file: File): Promise<Response> {
   const session = await getSession();
   const token   = (session?.user as Record<string, unknown> | undefined)?.['accessToken'] as string | undefined;
+  const storeContext = getStoreContext();
 
   const form = new FormData();
   form.append('file', file);
@@ -53,7 +57,10 @@ async function uploadCsv(endpoint: string, file: File): Promise<Response> {
   return fetch(`${API_BASE}/admin/products/import/${endpoint}`, {
     method:  'POST',
     body:    form,
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(storeContext ? { [STORE_CONTEXT_HEADER]: storeContext } : {}),
+    },
   });
 }
 
@@ -94,6 +101,13 @@ function StatusBadge({ status }: { status: string }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ProductImportPage() {
+  const { isReady, isPlatformContext } = useAdminMode();
+  if (!isReady) return <p role="status">Loading…</p>;
+  if (isPlatformContext) return <ProductReadOnlyNotice />;
+  return <WritableProductImportPage />;
+}
+
+function WritableProductImportPage() {
   const [stage,    setStage]    = useState<Stage>('idle');
   const [file,     setFile]     = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);

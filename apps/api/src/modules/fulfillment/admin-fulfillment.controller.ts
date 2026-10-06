@@ -1,4 +1,4 @@
-import { Body, Delete, Get, Param, Post, Put, Query, Req, BadRequestException } from '@nestjs/common';
+import { Body, Delete, Get, Param, Post, Put, Query, Req, BadRequestException, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { ApiOperation, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
@@ -7,6 +7,7 @@ import { AdminController } from '../../common/decorators/admin-controller.decora
 import { PrismaService } from '../../prisma/prisma.service';
 import { StoreContextService } from '../../common/services/store-context.service';
 import { FulfillmentConnectionsService } from './fulfillment-connections.service';
+import { ProductStoreWriteGuard } from '../products/guards/product-store-write.guard';
 
 const STORE_ID_DESC = 'Required only when managing platform-wide (SUPER_ADMIN, no store switched into) — which store to act on. Ignored for a scoped caller, who always acts on their own store.';
 
@@ -172,6 +173,7 @@ export class AdminFulfillmentController {
   }
 
   @Put('mappings')
+  @UseGuards(ProductStoreWriteGuard)
   @ApiOperation({ summary: 'Map an internal product/variant to a provider shop product/variant' })
   async saveMapping(@Req() req: Request, @Body() dto: SaveMappingDto) {
     const resolvedStoreId = await this.resolveStoreId(req, dto.storeId);
@@ -214,6 +216,7 @@ export class AdminFulfillmentController {
   }
 
   @Delete('mappings/:id')
+  @UseGuards(ProductStoreWriteGuard)
   @ApiOperation({ summary: 'Remove a product/variant → provider mapping' })
   async deleteMapping(@Req() req: Request, @Param('id') id: string, @Query('storeId') storeId?: string) {
     const resolvedStoreId = await this.resolveStoreId(req, storeId);

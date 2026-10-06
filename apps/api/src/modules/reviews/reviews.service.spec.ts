@@ -3,6 +3,19 @@ import type { StorageService } from '../../common/services/storage.service';
 import type { RedisService } from '../../common/services/redis.service';
 import type { ModerationService } from '../moderation/moderation.service';
 import { ReviewsService } from './reviews.service';
+import { ReviewStatus } from '@prisma/client';
+import { ReviewQueryDto } from './dto/review-query.dto';
+
+describe('Public review visibility', () => {
+  it.each(Object.values(ReviewStatus))('never exposes hidden reviews for status=%s', async (status) => {
+    const prisma = { product: { findFirst: jest.fn().mockResolvedValue({ id: 'p' }) },
+      review: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) } };
+    const service = new ReviewsService(prisma as unknown as PrismaService, {} as StorageService, {} as RedisService, {} as never);
+    await service.getProductReviews('slug', Object.assign(new ReviewQueryDto(), { status }));
+    expect(prisma.review.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { productId: 'p', status: ReviewStatus.APPROVED } }));
+    expect(prisma.review.count).toHaveBeenCalledWith({ where: { productId: 'p', status: ReviewStatus.APPROVED } });
+  });
+});
 
 function makePrismaMock() {
   return {

@@ -1,5 +1,6 @@
 ﻿import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
@@ -35,6 +36,8 @@ import {
   GiftCardResponseDto,
 } from './dto/payment-response.dto';
 import { CommissionService } from '../affiliates/commission.service';
+import { EconomicPaymentsService } from './economic-payments.service';
+import { EconomicWebhookRetryException } from './economic-webhook-retry.exception';
 
 const WEBHOOK_IDEMPOTENCY_TTL = 24 * 60 * 60; // 24 hours in seconds
 const REFUND_WINDOW_DAYS = 60;
@@ -51,6 +54,7 @@ export class PaymentsService {
     private readonly commissionService: CommissionService,
     @InjectQueue(QUEUES.EMAIL) private readonly emailQueue: Queue,
     private readonly eventBus: EventBusService,
+    private readonly economicPayments: EconomicPaymentsService,
   ) {
     const secretKey = config.get<string>('STRIPE_SECRET_KEY') ?? '';
     this.stripe = new Stripe(secretKey, {
@@ -70,6 +74,9 @@ export class PaymentsService {
     orderId: string,
     giftCardCode?: string,
   ): Promise<PaymentIntentResponseDto> {
+    if (await this.economicPayments.hasContext(orderId)) {
+      return this.economicPayments.createStripe(orderId, giftCardCode);
+    }
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
     });
@@ -175,6 +182,8 @@ export class PaymentsService {
   // ─── Stripe Webhook ────────────────────────────────────────────────────────
 
   async handleStripeWebhook(event: any): Promise<void> {
+    // Database evidence, not a Redis TTL, deduplicates versioned economic effects.
+    if (await this.economicPayments.stripeWebhook(event.type, event.data.object)) return;
     // Idempotency: process each event exactly once
     const idempotencyKey = `stripe:webhook:${event.id}`;
     const client = this.redis.getClient();
@@ -360,6 +369,10 @@ export class PaymentsService {
         code: 'ERR_NOT_FOUND',
         message: 'Payment not found',
       });
+
+    if (await this.economicPayments.hasContext(payment.orderId)) {
+      throw new ConflictException('Versioned refunds require original-allocation reconciliation; legacy refund is disabled');
+    }
 
     // 60-day refund window
     const refundCutoff = new Date(
@@ -592,6 +605,9 @@ export class PaymentsService {
     remainingOrderTotal: number;
     fullyPaid: boolean;
   }> {
+    if (await this.economicPayments.hasContext(orderId)) {
+      throw new BadRequestException('Gift-card/split-tender is not supported for versioned payments');
+    }
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
     });
@@ -832,6 +848,12 @@ export class PaymentsService {
     resource: Record<string, unknown>,
     eventId: string,
   ): Promise<void> {
+    try {
+      if (await this.economicPayments.paypalWebhook(eventType, resource)) return;
+    } catch {
+      // Keep raw provider credentials/payloads out of the HTTP error and allow retry.
+      throw new EconomicWebhookRetryException();
+    }
     // Idempotency — skip if already processed
     if (eventId) {
       const existing = await this.prisma.payment.findFirst({

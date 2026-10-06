@@ -115,7 +115,8 @@ function subscribe(cb: () => void): () => void {
 }
 
 function getSnapshot():    readonly ToastItem[] { return _toasts; }
-function getServerSnapshot(): readonly ToastItem[] { return []; }
+const serverSnapshot: readonly ToastItem[] = [];
+function getServerSnapshot(): readonly ToastItem[] { return serverSnapshot; }
 
 /** React hook — subscribes to the module-level store. */
 export function useToasts(): readonly ToastItem[] {

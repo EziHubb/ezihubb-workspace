@@ -4,6 +4,7 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { LegacyPayoutRetiredGuard } from '../../common/guards/legacy-payout-retired.guard';
 import { StoreOwnerGuard } from './guards/store-owner.guard';
 import { StoreOrdersService, UpdateStoreOrderDto } from './store-orders.service';
 import { ReviewsService } from '../reviews/reviews.service';
@@ -90,6 +91,7 @@ export class SellerPayoutsController {
   }
 
   @Post('request')
+  @UseGuards(LegacyPayoutRetiredGuard)
   requestPayout(@Req() req: any, @Body() body: { notes?: string }) {
     return this.storeOrdersService.requestPayout(req.store.id, body);
   }

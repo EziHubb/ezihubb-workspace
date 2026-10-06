@@ -9,6 +9,320 @@ datasource db {
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
+// Dormant prospective settlement foundation. Absence of EconomicOrderContext
+// means legacy/unknown, never an inferred capture or an automatically test order.
+enum EconomicProvenance {
+  LIVE
+  TEST
+}
+
+enum EconomicProvider {
+  STRIPE
+  PAYPAL
+}
+
+enum EconomicOperationKind {
+  PAYMENT_CREATE
+  CAPTURE
+  REFUND
+}
+
+enum EconomicOperationState {
+  PREPARED
+  DISPATCHED
+  NEEDS_RECONCILIATION
+  SUCCEEDED
+  FAILED
+}
+
+enum EconomicOutboxState {
+  PENDING
+  CLAIMED
+  PUBLISHED
+  DEAD
+}
+
+enum EconomicStockTarget {
+  PRODUCT
+  VARIANT
+  UNLIMITED
+}
+
+enum EconomicReservationState {
+  HELD
+  CONSUMED
+  RELEASED
+  EXPIRED
+}
+
+model EconomicOrderContext {
+  id             String                 @id @default(dbgenerated("nanoid(12)"))
+  orderId        String                 @unique
+  order          Order                  @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  provenance     EconomicProvenance
+  policyVersion  String                 @db.VarChar(40)
+  currency       String                 @db.VarChar(3)
+  minorExponent  Int
+  quoteHash      String                 @db.VarChar(64)
+  // Monetary amounts in this immutable snapshot are minor-unit decimal strings.
+  // No credentials, customer contact/address or arbitrary provider responses.
+  quote          Json
+  createdAt      DateTime               @default(now())
+  operations     EconomicOperation[]
+  events         EconomicOutbox[]
+  reservations   EconomicInventoryReservation[]
+  capture        EconomicCapture?
+
+  @@unique([id, provenance, currency])
+}
+
+model EconomicOperation {
+  id                String                 @id @default(dbgenerated("nanoid(12)"))
+  contextId         String
+  provenance        EconomicProvenance
+  currency          String                 @db.VarChar(3)
+  context           EconomicOrderContext   @relation(fields: [contextId, provenance, currency], references: [id, provenance, currency], onDelete: Restrict)
+  provider          EconomicProvider
+  // Non-secret account identity: namespaces provider idempotency/reference keys.
+  providerAccount   String                 @db.VarChar(100)
+  kind              EconomicOperationKind
+  idempotencyKey    String                 @db.VarChar(100)
+  requestHash       String                 @db.VarChar(64)
+  amountMinor       BigInt
+  state             EconomicOperationState @default(PREPARED)
+  providerReference String?                @db.VarChar(150)
+  dispatchToken     String?                @db.VarChar(64)
+  dispatchedAt      DateTime?
+  reconcileAfter   DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  capture           EconomicCapture?
+
+  @@unique([provider, providerAccount, provenance, kind, idempotencyKey], map: "EconomicOperation_request_identity_key")
+  @@unique([provider, providerAccount, provenance, kind, providerReference], map: "EconomicOperation_provider_evidence_key")
+  @@index([state, reconcileAfter])
+  @@index([contextId])
+}
+
+model EconomicOutbox {
+  id           String                @id @default(dbgenerated("nanoid(12)"))
+  contextId    String
+  context      EconomicOrderContext  @relation(fields: [contextId], references: [id], onDelete: Restrict)
+  eventKey     String                @unique @db.VarChar(150)
+  eventType    String                @db.VarChar(80)
+  // Reference-only payload, not a serialized order/provider response.
+  payload      Json
+  state        EconomicOutboxState   @default(PENDING)
+  attempts     Int                   @default(0)
+  availableAt  DateTime              @default(now())
+  leaseToken   String?               @db.VarChar(64)
+  leaseUntil   DateTime?
+  publishedAt  DateTime?
+  createdAt    DateTime              @default(now())
+  receipts     EconomicConsumerReceipt[]
+
+  @@index([state, availableAt, leaseUntil])
+  @@index([contextId])
+}
+
+model EconomicConsumerReceipt {
+  id         String          @id @default(dbgenerated("nanoid(12)"))
+  eventId    String
+  event      EconomicOutbox  @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  consumer   String          @db.VarChar(80)
+  createdAt  DateTime        @default(now())
+
+  @@unique([eventId, consumer])
+}
+
+model EconomicInventoryReservation {
+  id             String                   @id @default(dbgenerated("nanoid(12)"))
+  contextId      String
+  context        EconomicOrderContext     @relation(fields: [contextId], references: [id], onDelete: Restrict)
+  // Snapshot identifiers, intentionally not mutable catalog relations. A missing
+  // pool during release/reacquisition is a reconciliation error, not lost stock.
+  productId      String
+  variantId      String?
+  poolKey        String                   @db.VarChar(150)
+  target         EconomicStockTarget
+  quantity       Int
+  lines          Json
+  state          EconomicReservationState @default(HELD)
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  releasedAt     DateTime?
+  createdAt      DateTime                 @default(now())
+
+  @@unique([contextId, poolKey])
+  @@index([state, expiresAt])
+  @@index([productId])
+}
+
+model EconomicCapture {
+  id                String                @id @default(dbgenerated("nanoid(12)"))
+  contextId         String                @unique
+  context           EconomicOrderContext  @relation(fields: [contextId], references: [id], onDelete: Restrict)
+  operationId       String                @unique
+  operation         EconomicOperation     @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  provider          EconomicProvider
+  providerAccount   String                @db.VarChar(100)
+  provenance        EconomicProvenance
+  providerReference String                @db.VarChar(150)
+  currency          String                @db.VarChar(3)
+  amountMinor       BigInt
+  quoteHash         String                @db.VarChar(64)
+  evidenceHash      String                @db.VarChar(64)
+  verifiedAt        DateTime
+  createdAt         DateTime              @default(now())
+  allocations       EconomicCaptureAllocation[]
+  journalEntries    EconomicJournalEntry[]
+  balanceLots       EconomicBalanceLot[]
+
+  @@unique([provider, providerAccount, provenance, providerReference], map: "EconomicCapture_provider_identity_key")
+}
+
+model EconomicCaptureAllocation {
+  id                   String          @id @default(dbgenerated("nanoid(12)"))
+  captureId            String
+  capture              EconomicCapture @relation(fields: [captureId], references: [id], onDelete: Restrict)
+  partKey              String          @db.VarChar(180)
+  kind                 String          @db.VarChar(20)
+  // Immutable identities validated against OrderItem/StoreOrder before booking.
+  storeId              String
+  storeOrderId         String
+  lineId               String?
+  quantity             Int
+  currency             String          @db.VarChar(3)
+  customerMinor        BigInt
+  platformFundingMinor BigInt
+  sellerGrossMinor     BigInt
+  sellerFeeMinor       BigInt
+  sellerNetMinor       BigInt
+  fees                 Json
+  createdAt            DateTime        @default(now())
+
+  @@unique([captureId, partKey])
+  @@index([storeId, currency])
+  @@index([storeOrderId])
+}
+
+enum EconomicJournalAccount {
+  CUSTOMER_FUNDS
+  PLATFORM_PROMOTION
+  SELLER_PAYABLE
+  PLATFORM_FEES
+  TAX_PAYABLE
+  PLATFORM_AFFILIATE_COST
+  AFFILIATE_PENDING
+}
+
+model EconomicJournalEntry {
+  id            String                 @id @default(dbgenerated("nanoid(12)"))
+  captureId     String
+  capture       EconomicCapture        @relation(fields: [captureId], references: [id], onDelete: Restrict)
+  entryKey      String                 @db.VarChar(220)
+  account       EconomicJournalAccount
+  beneficiaryId String?
+  currency      String                 @db.VarChar(3)
+  // Debit positive, credit negative. Capture journal must sum to zero.
+  amountMinor   BigInt
+  createdAt     DateTime               @default(now())
+
+  @@unique([captureId, entryKey])
+  @@index([account, beneficiaryId, currency])
+}
+
+enum EconomicBeneficiaryKind {
+  SELLER
+  AFFILIATE
+}
+
+enum EconomicPayoutState {
+  REQUESTED
+  VERIFYING
+  PAID
+  REJECTED
+}
+
+// Balance authority is prospective captured lots, never legacy ledger sums.
+model EconomicBalanceAccount {
+  id            String @id @default(dbgenerated("nanoid(12)"))
+  kind          EconomicBeneficiaryKind
+  beneficiaryId String
+  currency      String @db.VarChar(3)
+  provenance    EconomicProvenance
+  minorExponent Int
+  holdReason    String? @db.VarChar(500)
+  debtMinor     BigInt @default(0)
+  createdAt     DateTime @default(now())
+  lots          EconomicBalanceLot[]
+  payouts       EconomicPayout[]
+
+  @@unique([kind, beneficiaryId, currency, provenance], map: "EconomicBalanceAccount_scope_key")
+}
+
+model EconomicBalanceLot {
+  id             String @id @default(dbgenerated("nanoid(12)"))
+  accountId      String
+  account        EconomicBalanceAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  captureId      String
+  capture        EconomicCapture @relation(fields: [captureId], references: [id], onDelete: Restrict)
+  // Original quote part for sellers, affiliate-pending for affiliates.
+  sourceKey      String @db.VarChar(180)
+  amountMinor    BigInt
+  reservedMinor  BigInt @default(0)
+  paidMinor      BigInt @default(0)
+  eligibleAt     DateTime?
+  holdReason     String? @db.VarChar(500)
+  createdAt      DateTime @default(now())
+  payoutParts    EconomicPayoutAllocation[]
+
+  @@unique([captureId, sourceKey], map: "EconomicBalanceLot_source_key")
+  @@index([accountId, eligibleAt])
+}
+
+model EconomicPayout {
+  id                   String @id @default(dbgenerated("nanoid(12)"))
+  accountId            String
+  account              EconomicBalanceAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  idempotencyKey       String @db.VarChar(100)
+  amountMinor          BigInt
+  state                EconomicPayoutState @default(REQUESTED)
+  requestedBy          String
+  // Internal destination snapshot, not publicly selected provider account/mode.
+  destination          String @db.VarChar(150)
+  createdAt            DateTime @default(now())
+  processedAt          DateTime?
+  processedBy          String?
+  rejectionReason      String? @db.VarChar(500)
+  verificationStartedAt DateTime?
+  verificationStartedBy String?
+  transferProvider     EconomicProvider?
+  transferAccount      String? @db.VarChar(100)
+  transferProvenance   EconomicProvenance?
+  transferReference    String? @db.VarChar(150)
+  transferEvidenceHash String? @db.VarChar(64)
+  allocations          EconomicPayoutAllocation[]
+
+  @@unique([accountId, idempotencyKey], map: "EconomicPayout_request_key")
+  @@unique([transferProvider, transferAccount, transferProvenance, transferReference], map: "EconomicPayout_transfer_key")
+  @@index([state, createdAt])
+}
+
+model EconomicPayoutAllocation {
+  id          String @id @default(dbgenerated("nanoid(12)"))
+  payoutId    String
+  payout      EconomicPayout @relation(fields: [payoutId], references: [id], onDelete: Restrict)
+  lotId       String
+  lot         EconomicBalanceLot @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  amountMinor BigInt
+  createdAt   DateTime @default(now())
+
+  @@unique([payoutId, lotId])
+  @@index([lotId])
+}
+
 enum Role {
   CUSTOMER
   ADMIN
@@ -353,6 +667,22 @@ model EmailVerification {
   createdAt DateTime  @default(now())
 
   @@index([userId])
+}
+
+/// Short-lived mailbox proof and guest-only messaging session; stores hashes, never raw credentials.
+model GuestMessageAccess {
+  id               String    @id @default(dbgenerated("nanoid(12)"))
+  email            String
+  verificationHash String?
+  tokenHash        String?   @unique
+  attempts         Int       @default(0)
+  verifiedAt       DateTime?
+  revokedAt        DateTime?
+  expiresAt        DateTime
+  createdAt        DateTime  @default(now())
+
+  @@index([email, expiresAt])
+  @@index([expiresAt])
 }
 
 model PasswordReset {
@@ -1601,6 +1931,7 @@ model Order {
   storeOrders     StoreOrder[]
   statusHistory   OrderStatusHistory[]
   payment         Payment?
+  economicContext EconomicOrderContext?
   promotionUsages PromotionUsage[]
   giftCardUsages  GiftCardUsage[]
   conversations   Conversation[]

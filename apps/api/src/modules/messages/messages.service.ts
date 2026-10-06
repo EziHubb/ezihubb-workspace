@@ -200,19 +200,19 @@ export class MessagesService {
    * rate limit makes guessing one impractical, so it was never an open door;
    * it was an unlocked one.
    *
-   * A guest thread stays readable without a session, because that is how a
-   * guest reaches their own: they have no account to sign in to. What changes
-   * is that being signed in as SOMEONE ELSE is no longer a way in. Once a
-   * guest registers, linkGuestConversations gives their threads a userId and
-   * this first branch is what protects them from then on.
+   * Guests must present a verified mailbox capability resolved by the API,
+   * not an email supplied in a body/query. It never authorizes an account-
+   * owned thread, even if that row still contains the same guestEmail.
    */
   private assertBuyerAccess(
-    conversation: { userId: string | null },
+    conversation: { userId: string | null; guestEmail?: string | null },
     callerId: string | null,
+    verifiedGuestEmail?: string,
   ): void {
     const denied = conversation.userId
       ? conversation.userId !== callerId
-      : callerId !== null;
+      : callerId !== null || !verifiedGuestEmail || !conversation.guestEmail ||
+        conversation.guestEmail.toLowerCase() !== verifiedGuestEmail;
     if (denied) {
       throw new ForbiddenException({ code: 'ERR_FORBIDDEN', message: 'Access denied' });
     }
@@ -228,11 +228,11 @@ export class MessagesService {
    */
   async assertThreadAccess(
     conversationId: string,
-    viewer: { storeId?: string; userId?: string | null; forShop: boolean },
+    viewer: { storeId?: string; userId?: string | null; forShop: boolean; verifiedGuestEmail?: string },
   ): Promise<{ id: string; storeId: string | null; userId: string | null }> {
     const conversation = await this.prisma.conversation.findUnique({
       where:  { id: conversationId },
-      select: { id: true, storeId: true, userId: true },
+      select: { id: true, storeId: true, userId: true, guestEmail: true },
     });
     if (!conversation) {
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
@@ -244,7 +244,7 @@ export class MessagesService {
         throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
       }
     } else {
-      this.assertBuyerAccess(conversation, viewer.userId ?? null);
+      this.assertBuyerAccess(conversation, viewer.userId ?? null, viewer.verifiedGuestEmail);
     }
     return conversation;
   }
@@ -260,7 +260,7 @@ export class MessagesService {
   async uploadAttachments(
     conversationId: string,
     files: Express.Multer.File[],
-    viewer: { storeId?: string; userId?: string | null; forShop: boolean },
+    viewer: { storeId?: string; userId?: string | null; forShop: boolean; verifiedGuestEmail?: string },
   ): Promise<{ name: string; url: string }[]> {
     await this.assertThreadAccess(conversationId, viewer);
 
@@ -516,8 +516,20 @@ export class MessagesService {
     });
   }
 
-  async createConversation(userId: string | null, dto: CreateConversationDto) {
+  async createConversation(userId: string | null, dto: CreateConversationDto, verifiedGuestEmail?: string) {
     const { orderId, subject, guestEmail, guestName, body, ..._ } = dto;
+    if (!userId && (!verifiedGuestEmail || guestEmail?.trim().toLowerCase() !== verifiedGuestEmail)) {
+      throw new ForbiddenException({ code: 'ERR_GUEST_VERIFICATION_REQUIRED', message: 'Verify your email before messaging this shop.' });
+    }
+    // Do not attach another buyer's order (and leak its number) merely because
+    // a caller knows its ID. Guest proof does not grant access to owned orders.
+    if (orderId) {
+      const ownedOrder = await this.prisma.order.findFirst({
+        where: { id: orderId, ...(userId ? { userId } : { userId: null, guestEmail: verifiedGuestEmail }) },
+        select: { id: true },
+      });
+      if (!ownedOrder) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Order not found' });
+    }
 
     /**
      * Which shop, from the order if there is one and from the caller if not.
@@ -535,10 +547,13 @@ export class MessagesService {
     let storeId: string | undefined;
     if (orderId) {
       const storeOrders = await this.prisma.storeOrder.findMany({
-        where:  { orderId },
+        where:  { orderId, ...(dto.storeId ? { storeId: dto.storeId } : {}) },
         select: { storeId: true },
         take:   2,
       });
+      if (dto.storeId && !storeOrders.length) {
+        throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Shop order not found' });
+      }
       if (storeOrders.length === 1) storeId = storeOrders[0].storeId;
     }
     if (!storeId && dto.storeId) {
@@ -646,6 +661,7 @@ export class MessagesService {
     senderId: string | null,
     dto: SendMessageDto,
     storeId?: string,
+    verifiedGuestEmail?: string,
   ) {
     /**
      * Say something, or attach something. One of the two.
@@ -694,7 +710,7 @@ export class MessagesService {
      * mouth, in a place the shop reads as coming from them. SHOP and SYSTEM
      * are scoped by `storeId` above and by the admin guards before that.
      */
-    if (isCustomer) this.assertBuyerAccess(conversation, senderId);
+    if (isCustomer) this.assertBuyerAccess(conversation, senderId, verifiedGuestEmail);
 
     // A retry that carries the key of an attempt which actually landed returns
     // that message untouched — no second row, no second unread, no second
@@ -808,6 +824,7 @@ export class MessagesService {
         senderType:     isCustomer ? 'CUSTOMER' : 'SHOP',
         senderName:     conversation.user?.firstName ?? conversation.guestEmail ?? 'Guest',
         recipientEmail: recipientEmail ?? '',
+        isGuest:       !conversation.userId,
         messagePreview: dto.body.slice(0, 200) + (dto.body.length > 200 ? '...' : ''),
         orderNumber:    conversation.order?.orderNumber ?? undefined,
         orderId:        conversation.orderId ?? undefined,
@@ -878,15 +895,15 @@ export class MessagesService {
    * people expect from a messenger: it clears the list until there is
    * something new to say, rather than muting the shop for good.
    */
-  async hideForBuyer(conversationId: string, userId: string | null) {
+  async hideForBuyer(conversationId: string, userId: string | null, verifiedGuestEmail?: string) {
     const conversation = await this.prisma.conversation.findUnique({
       where:  { id: conversationId },
-      select: { id: true, userId: true },
+      select: { id: true, userId: true, guestEmail: true },
     });
     if (!conversation) {
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
     }
-    this.assertBuyerAccess(conversation, userId);
+    this.assertBuyerAccess(conversation, userId, verifiedGuestEmail);
 
     await this.prisma.conversation.update({
       where: { id: conversationId },
@@ -911,15 +928,16 @@ export class MessagesService {
     userId: string | null,
     reason: ConversationReportReason,
     note?: string,
+    verifiedGuestEmail?: string,
   ) {
     const conversation = await this.prisma.conversation.findUnique({
       where:  { id: conversationId },
-      select: { id: true, userId: true },
+      select: { id: true, userId: true, guestEmail: true },
     });
     if (!conversation) {
       throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
     }
-    this.assertBuyerAccess(conversation, userId);
+    this.assertBuyerAccess(conversation, userId, verifiedGuestEmail);
 
     const open = await this.prisma.conversationReport.findFirst({
       where:  { conversationId, reportedById: userId, resolvedAt: null },
@@ -958,14 +976,23 @@ export class MessagesService {
     });
   }
 
-  async getConversation(conversationId: string, userId: string | null) {
+  async getGuestConversations(verifiedGuestEmail?: string) {
+    if (!verifiedGuestEmail) throw new ForbiddenException({ code: 'ERR_GUEST_VERIFICATION_REQUIRED', message: 'Verify your email to open your messages.' });
+    return this.prisma.conversation.findMany({
+      where: { userId: null, guestEmail: verifiedGuestEmail, hiddenByCustomerAt: null },
+      orderBy: { lastMessageAt: 'desc' },
+      include: { store: { select: { id: true, name: true, slug: true, logoUrl: true, ownerId: true } } },
+    });
+  }
+
+  async getConversation(conversationId: string, userId: string | null, verifiedGuestEmail?: string) {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: CONVERSATION_INCLUDE,
     });
     if (!conversation) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Conversation not found' });
 
-    this.assertBuyerAccess(conversation, userId);
+    this.assertBuyerAccess(conversation, userId, verifiedGuestEmail);
 
     return { ...conversation, ...messageWindow(conversation.messages, MESSAGE_WINDOW) };
   }
@@ -1165,7 +1192,7 @@ export class MessagesService {
   async getMessagePage(
     conversationId: string,
     cursor: { before?: string; limit?: number },
-    viewer: { storeId?: string; userId?: string | null; forShop: boolean },
+    viewer: { storeId?: string; userId?: string | null; forShop: boolean; verifiedGuestEmail?: string },
   ) {
     await this.assertThreadAccess(conversationId, viewer);
 

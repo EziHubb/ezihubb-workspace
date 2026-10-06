@@ -22,6 +22,9 @@ import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { LegacyPayoutRetiredGuard } from '../../common/guards/legacy-payout-retired.guard';
+import { EconomicFinancesService } from '../finances/economic-finances.service';
+import { EconomicBalanceQueryDto, EconomicHistoryQueryDto, EconomicPayoutRequestDto } from '../finances/dto/economic-finances.dto';
 
 @ApiTags('Affiliates')
 // Class-level guard: the five me/* routes below read @CurrentUser() and had
@@ -34,7 +37,28 @@ export class AffiliatesController {
   constructor(
     private readonly trackingService: AffiliateTrackingService,
     private readonly portalService:   PortalService,
+    private readonly economic: EconomicFinancesService,
   ) {}
+
+  @Get('me/economic/overview')
+  async economicOverview(@CurrentUser() user: JwtPayload, @Query() query: EconomicBalanceQueryDto) {
+    return this.economic.overview({ kind: 'AFFILIATE', beneficiaryId: await this.economic.affiliateId(user.sub), currency: query.currency, provenance: query.provenance });
+  }
+
+  @Get('me/economic/statement')
+  async economicStatement(@CurrentUser() user: JwtPayload, @Query() query: EconomicHistoryQueryDto) {
+    return this.economic.statement({ kind: 'AFFILIATE', beneficiaryId: await this.economic.affiliateId(user.sub), currency: query.currency, provenance: query.provenance }, query);
+  }
+
+  @Get('me/economic/payouts')
+  async economicPayouts(@CurrentUser() user: JwtPayload, @Query() query: EconomicHistoryQueryDto) {
+    return this.economic.payouts({ kind: 'AFFILIATE', beneficiaryId: await this.economic.affiliateId(user.sub), currency: query.currency, provenance: query.provenance }, query);
+  }
+
+  @Post('me/economic/payouts')
+  async requestEconomicPayout(@CurrentUser() user: JwtPayload, @Body() dto: EconomicPayoutRequestDto) {
+    return this.economic.request({ kind: 'AFFILIATE', beneficiaryId: await this.economic.affiliateId(user.sub), currency: dto.currency, provenance: dto.provenance }, user.sub, dto);
+  }
 
   // ── Public ───────────────────────────────────────────────────────────────────
 
@@ -140,6 +164,7 @@ export class AffiliatesController {
 
   // POST /api/v1/affiliates/me/payouts
   @Post('me/payouts')
+  @UseGuards(LegacyPayoutRetiredGuard)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Submit a payout request' })
   async requestPayout(

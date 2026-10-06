@@ -1,290 +1,121 @@
 'use client';
 
-import { useState } from 'react';
-import { useLocale, useTranslations } from 'next-intl';
-import { useQueryClient } from '@tanstack/react-query';
-import { useAuthStore } from '../../../../../../lib/store/auth.store';
+import { useEffect, useRef, useState } from 'react';
+import { useLocale } from 'next-intl';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@ezihubb/api-client';
-import { useAuthQuery } from '../../../../../../lib/hooks/useAuthQuery';
-import { API_ROUTES } from '@ezihubb/constants';
-import { fmtAmount, safeArr, safeStr } from '@ezihubb/utils';
+import { formatCapturedUsd as money, minorToUsdInput, usdInputToMinor } from '@ezihubb/utils';
+import { useAuthStore } from '../../../../../../lib/store/auth.store';
 
-interface DashboardData {
-  balance:     number;
-  totalEarned: number;
-}
-
-interface PayoutRow {
-  id:            string;
-  amount:        number;
-  status:        string;
-  paymentMethod: string;
-  paymentDetail: string;
-  createdAt:     string;
-  processedAt:   string | null;
-}
-
-const PAYOUT_STATUS_COLORS: Record<string, string> = {
-  REQUESTED:  'bg-amber-100 text-amber-700',
-  PROCESSING: 'bg-blue-100 text-blue-700',
-  PAID:       'bg-green-100 text-green-700',
-  REJECTED:   'bg-red-100 text-red-700',
-};
-
-const PAYOUT_STATUS_LABEL_KEY: Record<string, string> = {
-  REQUESTED:  'requested',
-  PROCESSING: 'processing',
-  PAID:       'paid',
-  REJECTED:   'rejected',
-};
-
-const MIN_PAYOUT = 50;
+type Balance = { availableMinor: string; pendingMinor: string; heldMinor: string; reservedMinor: string; paidMinor: string; debtMinor: string; minimumPayoutMinor: string; payoutRequestsEnabled: boolean };
+type Payout = { id: string; state: string; amountMinor: string; createdAt: string; allocations: { lotId: string; captureId: string; sourceKey: string; amountMinor: string }[] };
+type Pending = { idempotencyKey: string; amountMinor: string };
+const control = 'min-h-11 border border-border rounded-button bg-surface text-secondary px-4 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50';
 
 export default function AffiliatePayoutsPage() {
-  const locale       = useLocale();
-  const t            = useTranslations('affiliate.payouts');
-  const tStatus      = useTranslations('affiliate.status');
-  const token        = useAuthStore((s) => s.accessToken);
-  const queryClient  = useQueryClient();
-
-  const fmt     = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric' });
-  const fmtDate = (d: string) => fmt.format(new Date(d));
-
-  const METHODS = [
-    { value: 'paypal',        label: t('methodPaypal'), placeholder: t('paypalPlaceholder') },
-    { value: 'bank_transfer', label: t('methodBank'),   placeholder: t('bankPlaceholder')    },
-  ] as const;
-
-  const { data: dashboard, isLoading: dashLoading } = useAuthQuery<DashboardData>(
-    ['affiliate-dashboard'],
-    API_ROUTES.AFFILIATES.ME_DASHBOARD,
-  );
-
-  const { data: payouts, isLoading: payoutsLoading } = useAuthQuery<PayoutRow[]>(
-    ['affiliate-payouts'],
-    API_ROUTES.AFFILIATES.ME_PAYOUTS,
-  );
-
-  const [method,        setMethod]        = useState<string>(METHODS[0].value);
-  const [detail,        setDetail]        = useState('');
-  const [requestAmount, setRequestAmount] = useState('');
-  const [isSubmitting,  setIsSubmitting]  = useState(false);
-  const [formError,     setFormError]     = useState('');
-  const [formSuccess,   setFormSuccess]   = useState(false);
-
-  const balance    = dashboard?.balance    ?? 0;
-  const totalEarned = dashboard?.totalEarned ?? 0;
-  const pendingLocked = Math.max(0, totalEarned - balance);
-
-  // Auto-fill amount when balance changes
-  const effectiveAmount = requestAmount || balance.toFixed(2);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError('');
-    const amount = parseFloat(effectiveAmount);
-    if (isNaN(amount) || amount <= 0) {
-      setFormError(t('errorInvalidAmount'));
-      return;
-    }
-    if (!detail.trim()) {
-      setFormError(t('errorMissingDetail'));
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      await apiClient.post(
-        API_ROUTES.AFFILIATES.ME_PAYOUTS,
-        { paymentMethod: method, paymentDetail: detail, amount },
-        { token: token ?? undefined },
-      );
-      setFormSuccess(true);
-      setDetail('');
-      setRequestAmount('');
-      // Invalidate dashboard + payouts so balance updates
-      void queryClient.invalidateQueries({ queryKey: ['affiliate-dashboard'] });
-      void queryClient.invalidateQueries({ queryKey: ['affiliate-payouts'] });
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : t('errorGeneric'));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const isLoading = dashLoading || payoutsLoading;
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[40vh]">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-8">
-      <h1 className="font-display text-2xl font-bold text-secondary">{t('title')}</h1>
-
-      {/* ── Balance summary ──────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: t('confirmedBalance'), value: fmtAmount(balance),       note: t('confirmedNote') },
-          { label: t('pendingLocked'),    value: fmtAmount(pendingLocked), note: t('pendingNote', { days: 14 }) },
-          { label: t('allTimeEarned'),    value: fmtAmount(totalEarned),   note: t('allTimeNote') },
-        ].map(({ label, value, note }) => (
-          <div key={label} className="bg-surface border border-border rounded-card p-4 text-center">
-            <p className="text-xs text-muted mb-1">{label}</p>
-            <p className="font-display text-2xl font-bold text-secondary tabular-nums">{value}</p>
-            <p className="text-xs text-muted mt-0.5">{note}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Request payout form ──────────────────────────────────────────────── */}
-      {balance >= MIN_PAYOUT ? (
-        <div className="bg-surface border border-border rounded-card p-5">
-          <h2 className="font-semibold text-secondary mb-4 text-sm">{t('requestTitle')}</h2>
-
-          {formSuccess && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-sm text-sm text-green-700">
-              {t('requestSuccess')}
-            </div>
-          )}
-
-          {formError && (
-            <div role="alert" className="mb-4 p-3 bg-error/5 border border-error/20 rounded-sm text-sm text-error">
-              {formError}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Method */}
-            <div>
-              <label className="block text-sm font-medium text-secondary mb-1.5">
-                {t('methodLabel')}
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {METHODS.map((m) => (
-                  <button
-                    key={m.value}
-                    type="button"
-                    onClick={() => { setMethod(m.value); setDetail(''); }}
-                    className={[
-                      'px-4 py-2 rounded-button text-sm font-medium border transition-colors',
-                      method === m.value
-                        ? 'bg-primary text-white border-primary'
-                        : 'border-border text-secondary hover:border-primary',
-                    ].join(' ')}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Detail */}
-            <div>
-              <label className="block text-sm font-medium text-secondary mb-1.5">
-                {t('detailLabel')}
-              </label>
-              <input
-                type="text"
-                value={detail}
-                onChange={(e) => setDetail(e.target.value)}
-                placeholder={METHODS.find((m) => m.value === method)?.placeholder ?? ''}
-                required
-                className="w-full border border-border rounded-button px-4 py-2.5 text-sm text-secondary bg-background placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-colors"
-              />
-            </div>
-
-            {/* Amount */}
-            <div>
-              <label className="block text-sm font-medium text-secondary mb-1.5">
-                {t('amountLabel', { amount: fmtAmount(balance) })}
-              </label>
-              <div className="flex items-center gap-2">
-                <span className="text-muted text-sm font-medium">$</span>
-                <input
-                  type="number"
-                  value={requestAmount}
-                  onChange={(e) => setRequestAmount(e.target.value)}
-                  placeholder={balance.toFixed(2)}
-                  min={MIN_PAYOUT}
-                  max={balance}
-                  step="0.01"
-                  className="flex-1 min-w-0 border border-border rounded-button px-4 py-2.5 text-sm text-secondary bg-background placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-colors"
-                />
-                <button
-                  type="button"
-                  onClick={() => setRequestAmount(balance.toFixed(2))}
-                  className="text-xs text-primary hover:underline whitespace-nowrap"
-                >
-                  {t('fullBalance')}
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-primary hover:bg-primary/90 disabled:opacity-60 text-white font-bold text-sm px-6 py-3 rounded-button transition-colors uppercase tracking-wide"
-            >
-              {isSubmitting ? t('submitting') : t('submit')}
-            </button>
-          </form>
-        </div>
-      ) : (
-        <div className="bg-surface border border-border rounded-card p-6 text-center">
-          <p className="text-secondary font-medium mb-1">
-            {t('minNotice', { amount: fmtAmount(MIN_PAYOUT - balance) })}
-          </p>
-          <p className="text-sm text-muted">
-            {t('minBody', { amount: fmtAmount(MIN_PAYOUT) })}
-          </p>
-        </div>
-      )}
-
-      {/* ── Payout history ───────────────────────────────────────────────────── */}
-      <div className="bg-surface border border-border rounded-card">
-        <div className="px-5 py-4 border-b border-border">
-          <h2 className="font-semibold text-secondary text-sm">{t('historyTitle')}</h2>
-        </div>
-
-        {!payouts || safeArr(payouts).length === 0 ? (
-          <p className="px-5 py-10 text-sm text-muted text-center">{t('noPayouts')}</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">{t('colDate')}</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide">{t('colMethod')}</th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wide">{t('colAmount')}</th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wide">{t('colStatus')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {safeArr(payouts).map((p) => (
-                  <tr key={p.id} className="border-b border-border last:border-0 hover:bg-background transition-colors">
-                    <td className="px-5 py-3 text-muted whitespace-nowrap">{fmtDate(p.createdAt)}</td>
-                    <td className="px-5 py-3 text-secondary capitalize whitespace-nowrap">
-                      {safeStr(p.paymentMethod).replace(/_/g, ' ')}
-                    </td>
-                    <td className="px-5 py-3 text-right font-semibold text-secondary tabular-nums">
-                      {fmtAmount(p.amount)}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${PAYOUT_STATUS_COLORS[p.status] ?? 'bg-muted/10 text-muted'}`}>
-                        {PAYOUT_STATUS_LABEL_KEY[p.status] ? tStatus(PAYOUT_STATUS_LABEL_KEY[p.status]) : safeStr(p.status).charAt(0) + safeStr(p.status).slice(1).toLowerCase()}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+  const userId = useAuthStore(s => s.user?.id), token = useAuthStore(s => s.accessToken);
+  const [mode, setMode] = useState<'LIVE' | 'TEST'>('LIVE');
+  const vi = useLocale() === 'vi';
+  return <div className="space-y-6 text-secondary">
+    <div className="flex flex-wrap justify-between gap-4">
+      <h1 className="font-display text-2xl font-bold">{vi ? 'Số dư và yêu cầu chi trả' : 'Verified balances & payouts'}</h1>
+      <label htmlFor="affiliate-money-mode" className="flex gap-3 items-center">{vi ? 'Môi trường' : 'Environment'}
+        <select id="affiliate-money-mode" className={control} value={mode} onChange={e => setMode(e.target.value as 'LIVE' | 'TEST')}><option value="LIVE">LIVE</option><option value="TEST">TEST / sandbox</option></select>
+      </label>
     </div>
-  );
+    {userId && token ? <CapturedAccount key={`${userId}:${mode}`} userId={userId} token={token} mode={mode} vi={vi} /> : <p role="status">{vi ? 'Đang tải tài khoản…' : 'Loading account…'}</p>}
+  </div>;
+}
+
+function CapturedAccount({ userId, token, mode, vi }: { userId: string; token: string; mode: 'LIVE' | 'TEST'; vi: boolean }) {
+  const qc = useQueryClient(), [page, setPage] = useState(1);
+  const [amount, setAmount] = useState(''), [pending, setPending] = useState<Pending | null>(null);
+  const [ready, setReady] = useState(false), [review, setReview] = useState(false), [feedback, setFeedback] = useState('');
+  const [storageError, setStorageError] = useState(false);
+  const dialog = useRef<HTMLDialogElement>(null), sending = useRef(false);
+  const key = ['affiliate-captured', userId, mode], storageKey = `affiliate-payout:${userId}:${mode}`;
+  const prefix = '/affiliates/me/economic', params = { currency: 'USD', provenance: mode };
+  const balance = useQuery({ queryKey: [...key, 'overview'], queryFn: () => apiClient.get<Balance>(`${prefix}/overview`, { token, params }), retry: false });
+  const history = useQuery({ queryKey: [...key, 'payouts', page], queryFn: () => apiClient.get<{ data: Payout[]; total: number }>(`${prefix}/payouts`, { token, params: { ...params, page, limit: 20 } }), retry: false });
+  const legacy = useQuery({ queryKey: ['affiliate-legacy-payouts', userId], queryFn: () => apiClient.get<{ id: string; amount: string | number; status: string }[]>('/affiliates/me/payouts', { token }), retry: false });
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(storageKey);
+      if (raw) {
+        const saved: Pending = JSON.parse(raw);
+        if (typeof saved.idempotencyKey !== 'string' || !/^[1-9]\d{0,18}$/.test(saved.amountMinor)) throw new Error('Invalid saved request');
+        setPending(saved); setAmount(minorToUsdInput(saved.amountMinor));
+      }
+      setReady(true);
+    } catch { setStorageError(true); }
+  }, [storageKey]);
+  useEffect(() => {
+    if (!review) return;
+    const trigger = document.activeElement as HTMLElement | null;
+    const modal = dialog.current;
+    modal?.showModal();
+    return () => { modal?.close(); if (trigger?.isConnected) trigger.focus(); };
+  }, [review]);
+  const mutation = useMutation({ mutationFn: async () => {
+    const amountMinor = usdInputToMinor(amount);
+    if (!amountMinor) throw new Error('Invalid amount');
+    const request = pending ?? { amountMinor, idempotencyKey: crypto.randomUUID() };
+    sessionStorage.setItem(storageKey, JSON.stringify(request)); setPending(request);
+    await apiClient.post(`${prefix}/payouts`, { ...request, ...params }, { token });
+    sessionStorage.removeItem(storageKey); setPending(null); setAmount('');
+  }, onSuccess: () => { setReview(false); setFeedback(vi ? 'Đã ghi nhận yêu cầu. Tiền được giữ cho yêu cầu này, chưa có chuyển tiền.' : 'Request recorded. Funds are reserved; no transfer has been sent.'); },
+  onSettled: () => { sending.current = false; return qc.invalidateQueries({ queryKey: key }); } });
+  const data = balance.data, minor = usdInputToMinor(amount);
+  const allowed = ready && !balance.isError && !balance.isFetching && data?.payoutRequestsEnabled && minor !== null
+    && BigInt(minor) >= BigInt(data.minimumPayoutMinor) && BigInt(minor) <= BigInt(data.availableMinor);
+  const failure = vi ? 'Chưa xác nhận được kết quả. Hãy thử lại cùng yêu cầu; không tạo yêu cầu chuyển tiền khác.' : 'The result could not be confirmed. Retry the same request; do not create another transfer.';
+  return <div className="space-y-6">
+    <div className="border border-border rounded-card bg-surface p-5 space-y-2">
+      <p className="font-semibold">{mode} · USD {mode === 'TEST' ? '(sandbox)' : ''}</p>
+      <p>{vi ? 'Chỉ tính tiền đã thu được xác minh. Hoa hồng chờ điều kiện giao hàng và thời gian giữ theo chính sách đã lưu của từng đơn.' : 'Only verified captured funds are included. Commissions become eligible after delivery and the lock period saved with each order.'}</p>
+      <p>{vi ? 'Dữ liệu cũ chưa đối soát không được cộng vào số dư khả dụng.' : 'Unreconciled legacy records are excluded from available funds.'}</p>
+    </div>
+    {balance.isError ? <div role="alert">{vi ? 'Không tải được số dư. Không giả định số dư bằng 0.' : 'Balance unavailable. No zero balance has been assumed.'}<button className={`${control} ml-3`} onClick={() => void balance.refetch()}>{vi ? 'Thử lại' : 'Retry'}</button></div>
+      : !data ? <p role="status">{vi ? 'Đang tải số dư…' : 'Loading verified balance…'}</p> : <>
+        <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{[
+          [vi ? 'Khả dụng' : 'Available', data.availableMinor], [vi ? 'Chờ đủ điều kiện' : 'Pending eligibility', data.pendingMinor],
+          [vi ? 'Đang giữ' : 'Held', data.heldMinor], [vi ? 'Đã dành cho chi trả' : 'Reserved', data.reservedMinor],
+          [vi ? 'Đã chi trả' : 'Paid out', data.paidMinor], [vi ? 'Khoản nợ' : 'Debt', data.debtMinor],
+        ].map(([label, value]) => <div key={label} className="p-5 border border-border rounded-card min-w-0"><dt>{label}</dt><dd className="text-2xl font-bold mt-2 tabular-nums break-words">{money(value)}</dd></div>)}</dl>
+        <form className="border border-border rounded-card p-5 space-y-3" onSubmit={e => { e.preventDefault(); if (pending || allowed) { mutation.reset(); setReview(true); } }}>
+          <h2 className="font-semibold">{vi ? 'Yêu cầu chi trả' : 'Request payout'}</h2>
+          <p>{vi ? 'Tối thiểu' : 'Minimum'} {money(data.minimumPayoutMinor)}. {vi ? 'Tài khoản nhận tiền được xác minh riêng, không thay đổi tại đây.' : 'Recipient details are verified separately and cannot be changed here.'}</p>
+          {!data.payoutRequestsEnabled && <p>{vi ? 'Yêu cầu chi trả chưa được bật hoặc chưa có tài khoản nhận đã xác minh.' : 'Requests are disabled or a verified recipient is not configured.'}</p>}
+          {pending && <p role="status">{vi ? 'Có yêu cầu đang chờ xác nhận. Thử lại sẽ giữ nguyên số tiền và mã yêu cầu.' : 'An earlier request is unconfirmed. Retrying keeps its original amount and key.'}</p>}
+          <label className="flex flex-col gap-2" htmlFor="affiliate-payout-amount">{vi ? 'Số tiền (USD)' : 'Amount (USD)'}<input id="affiliate-payout-amount" className={control} value={amount} inputMode="decimal" readOnly={!!pending} onChange={e => setAmount(e.target.value)} required /></label>
+          <button className={control} disabled={!ready || mutation.isPending || (!pending && !allowed)}>{pending ? (vi ? 'Thử lại cùng yêu cầu' : 'Retry same request') : (vi ? 'Kiểm tra yêu cầu' : 'Review request')}</button>
+        </form>
+      </>}
+    {storageError && <p role="alert">{vi ? 'Không khôi phục được yêu cầu trong trình duyệt. Liên hệ hỗ trợ trước khi tạo yêu cầu mới.' : 'Cannot recover browser request state. Contact support before creating another request.'}</p>}
+    {feedback && <p role="status">{feedback}</p>}
+    <section className="space-y-4"><h2 className="text-lg font-semibold">{vi ? 'Lịch sử chi trả đã xác minh' : 'Captured payout history'}</h2>
+      {history.isError ? <p role="alert">{vi ? 'Không tải được lịch sử.' : 'History unavailable.'}<button className={`${control} ml-3`} onClick={() => void history.refetch()}>{vi ? 'Thử lại' : 'Retry'}</button></p>
+        : !history.data ? <p role="status">{vi ? 'Đang tải…' : 'Loading…'}</p> : <>
+          {!history.data.data.length && <p>{vi ? 'Chưa có yêu cầu ở môi trường này.' : 'No requests in this mode.'}</p>}
+          {history.data.data.map(row => <article key={row.id} className="border border-border rounded-card p-5 space-y-2 break-words">
+            <h3 className="font-semibold">{row.id} · {money(row.amountMinor)} · {row.state}</h3>
+            <p>{new Date(row.createdAt).toLocaleString(vi ? 'vi-VN' : 'en-US')}</p>
+            <details><summary className="py-2 cursor-pointer">{vi ? 'Phân bổ chi tiết' : 'Exact allocations'}</summary>{row.allocations.map(part => <p key={part.lotId}>{part.captureId} / {part.sourceKey} · {money(part.amountMinor)}</p>)}</details>
+          </article>)}
+          <div className="flex gap-3 items-center"><button className={control} disabled={page === 1} onClick={() => setPage(page - 1)}>{vi ? 'Trước' : 'Previous'}</button><span>{page}</span><button className={control} disabled={page * 20 >= history.data.total} onClick={() => setPage(page + 1)}>{vi ? 'Sau' : 'Next'}</button></div>
+        </>}
+    </section>
+    <details className="border border-border rounded-card p-5"><summary className="py-2 cursor-pointer">{vi ? 'Lịch sử cũ — chỉ đối soát' : 'Legacy history — reconciliation only'}</summary>
+      <p>{vi ? 'Giữ nguyên dữ liệu lịch sử, không xác nhận đã thu hoặc đã chuyển tiền. Không thể thao tác chi trả từ các bản ghi này.' : 'Historical labels are retained, not proof of capture or transfer. These records cannot fund new payouts.'}</p>
+      {legacy.isError ? <p role="alert">{vi ? 'Không tải được lịch sử cũ.' : 'Legacy history unavailable.'}</p> : !legacy.data ? <p role="status">{vi ? 'Đang tải…' : 'Loading…'}</p> : legacy.data.map(row => <p className="mt-3 break-words" key={row.id}>{row.id} · {String(row.amount)} USD · {row.status}</p>)}
+    </details>
+    {review && <dialog ref={dialog} style={{ margin: 'auto', width: 'calc(100% - 2rem)', maxHeight: 'calc(100dvh - 2rem)' }} className="max-w-lg overflow-y-auto border border-border rounded-card bg-surface text-secondary p-6 backdrop:bg-black/50" aria-labelledby="affiliate-payout-confirm-title" onCancel={e => { if (mutation.isPending) e.preventDefault(); else setReview(false); }}>
+      <form className="space-y-4" onSubmit={e => { e.preventDefault(); if (!sending.current) { sending.current = true; mutation.mutate(); } }}>
+        <h2 id="affiliate-payout-confirm-title" className="font-bold text-xl">{vi ? 'Xác nhận yêu cầu chi trả' : 'Confirm payout request'}</h2>
+        <p>{mode} · {money(pending?.amountMinor ?? minor ?? '0')}</p><p>{vi ? 'Thao tác này giữ tiền cho yêu cầu, không thực hiện chuyển tiền.' : 'This reserves funds for your request; it does not send a transfer.'}</p>
+        {mutation.isError && <p role="alert">{failure}</p>}
+        <div className="flex flex-wrap justify-end gap-3"><button type="button" className={control} disabled={mutation.isPending} onClick={() => setReview(false)}>{vi ? 'Hủy' : 'Cancel'}</button><button className={control} disabled={mutation.isPending}>{mutation.isPending ? (vi ? 'Đang kiểm tra…' : 'Checking…') : (vi ? 'Xác nhận' : 'Confirm')}</button></div>
+      </form>
+    </dialog>}
+  </div>;
 }

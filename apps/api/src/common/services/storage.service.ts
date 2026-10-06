@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadBucketCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -33,6 +34,15 @@ export class StorageService {
 
     this.bucket = config.get<string>('storage.bucket') ?? 'ezihubb-assets';
     this.cdnUrl = config.get<string>('storage.cdnUrl');
+  }
+
+  /** Read-only reachability/authorization probe, not proof of write access. */
+  async checkReadiness(signal: AbortSignal): Promise<'ok' | 'not_configured'> {
+    if (!this.config.get<string>('storage.accessKeyId') || !this.config.get<string>('storage.secretAccessKey')) {
+      return 'not_configured';
+    }
+    await this.s3.send(new HeadBucketCommand({ Bucket: this.bucket }), { abortSignal: signal });
+    return 'ok';
   }
 
   /**

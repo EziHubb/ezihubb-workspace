@@ -3,9 +3,12 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   Post,
   Query,
+  Req,
+  Res,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -14,6 +17,11 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SenderType } from '@prisma/client';
+import { Request, Response } from 'express';
+import { Throttle } from '@nestjs/throttler';
+import { OriginCheckGuard } from '../../common/guards/origin-check.guard';
+import { GuestMessageAccessService } from './guest-message-access.service';
+import { RequestGuestMessageAccessDto, VerifyGuestMessageAccessDto } from './dto/guest-message-access.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
@@ -28,11 +36,43 @@ import { LinkPreviewService } from './link-preview.service';
 
 @ApiTags('Messages')
 @Controller('messages')
+@UseGuards(OriginCheckGuard)
 export class MessagesController {
   constructor(
     private readonly messagesService: MessagesService,
     private readonly linkPreviews:    LinkPreviewService,
+    private readonly guestAccess: GuestMessageAccessService,
   ) {}
+
+  @Post('guest-access/request')
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
+  async requestGuestAccess(@Body() dto: RequestGuestMessageAccessDto) {
+    return this.guestAccess.requestProof(dto.email);
+  }
+
+  @Post('guest-access/verify')
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  async verifyGuestAccess(@Body() dto: VerifyGuestMessageAccessDto, @Res({ passthrough: true }) res: Response) {
+    return this.guestAccess.verifyProof(dto.challengeId, dto.code, res);
+  }
+
+  @Get('guest-access')
+  async getGuestAccess(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    res.setHeader('Cache-Control', 'no-store');
+    return { email: await this.guestAccess.resolveEmail(req) ?? null };
+  }
+
+  @Delete('guest-access')
+  async revokeGuestAccess(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    await this.guestAccess.revoke(req, res);
+    return { success: true };
+  }
+
+  @Get('guest-conversations')
+  async getGuestConversations(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    res.setHeader('Cache-Control', 'no-store');
+    return this.messagesService.getGuestConversations(await this.guestAccess.resolveEmail(req));
+  }
 
   @Post('conversations')
   @UseGuards(OptionalAuthGuard)
@@ -40,11 +80,13 @@ export class MessagesController {
   async createConversation(
     @Body() dto: CreateConversationDto,
     @CurrentUser() user: JwtPayload | undefined,
+    @Req() req: Request,
   ) {
-    return this.messagesService.createConversation(user?.sub ?? null, dto);
+    return this.messagesService.createConversation(user?.sub ?? null, dto, user ? undefined : await this.guestAccess.resolveEmail(req));
   }
 
   @Get('conversations')
+  @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'List my conversations' })
   async getMyConversations(@CurrentUser() user: JwtPayload) {
@@ -52,13 +94,15 @@ export class MessagesController {
   }
 
   @Get('conversations/:id')
+  @Header('Cache-Control', 'no-store')
   @UseGuards(OptionalAuthGuard)
   @ApiOperation({ summary: 'Get a conversation with messages' })
   async getConversation(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload | undefined,
+    @Req() req: Request,
   ) {
-    return this.messagesService.getConversation(id, user?.sub ?? null);
+    return this.messagesService.getConversation(id, user?.sub ?? null, user ? undefined : await this.guestAccess.resolveEmail(req));
   }
 
   /**
@@ -70,16 +114,19 @@ export class MessagesController {
    * all of it on open is not an option.
    */
   @Get('conversations/:id/messages')
+  @Header('Cache-Control', 'no-store')
   @UseGuards(OptionalAuthGuard)
   @ApiOperation({ summary: 'Page backwards through a conversation' })
   async getMessagePage(
     @Param('id') id: string,
     @Query() query: MessagePageQueryDto,
     @CurrentUser() user: JwtPayload | undefined,
+    @Req() req: Request,
   ) {
     return this.messagesService.getMessagePage(id, query, {
       userId:  user?.sub ?? null,
       forShop: false,
+      verifiedGuestEmail: user ? undefined : await this.guestAccess.resolveEmail(req),
     });
   }
 
@@ -100,26 +147,31 @@ export class MessagesController {
     @Param('id') id: string,
     @UploadedFiles() files: Express.Multer.File[],
     @CurrentUser() user: JwtPayload | undefined,
+    @Req() req: Request,
   ) {
     return this.messagesService.uploadAttachments(id, files, {
       userId:  user?.sub ?? null,
       forShop: false,
+      verifiedGuestEmail: user ? undefined : await this.guestAccess.resolveEmail(req),
     });
   }
 
   /** Unfurls a link that was sent in this thread. See LinkPreviewService for
    *  why the conversation id is part of the request and not decoration. */
   @Get('conversations/:id/link-preview')
+  @Header('Cache-Control', 'no-store')
   @UseGuards(OptionalAuthGuard)
   @ApiOperation({ summary: 'Preview card for a link sent in this conversation' })
   async linkPreview(
     @Param('id') id: string,
     @Query() query: LinkPreviewQueryDto,
     @CurrentUser() user: JwtPayload | undefined,
+    @Req() req: Request,
   ) {
     return this.linkPreviews.previewFor(id, query.url, {
       userId:  user?.sub ?? null,
       forShop: false,
+      verifiedGuestEmail: user ? undefined : await this.guestAccess.resolveEmail(req),
     });
   }
 
@@ -130,8 +182,10 @@ export class MessagesController {
     @Param('id') id: string,
     @Body() dto: SendMessageDto,
     @CurrentUser() user: JwtPayload | undefined,
+    @Req() req: Request,
   ) {
-    return this.messagesService.sendMessage(id, SenderType.CUSTOMER, user?.sub ?? null, dto);
+    return this.messagesService.sendMessage(id, SenderType.CUSTOMER, user?.sub ?? null, dto, undefined,
+      user ? undefined : await this.guestAccess.resolveEmail(req));
   }
 
   /**
@@ -147,8 +201,9 @@ export class MessagesController {
   async hideConversation(
     @Param('id') id: string,
     @CurrentUser() user: JwtPayload | undefined,
+    @Req() req: Request,
   ) {
-    return this.messagesService.hideForBuyer(id, user?.sub ?? null);
+    return this.messagesService.hideForBuyer(id, user?.sub ?? null, user ? undefined : await this.guestAccess.resolveEmail(req));
   }
 
   @Post('conversations/:id/report')
@@ -158,15 +213,18 @@ export class MessagesController {
     @Param('id') id: string,
     @Body() dto: ReportConversationDto,
     @CurrentUser() user: JwtPayload | undefined,
+    @Req() req: Request,
   ) {
-    return this.messagesService.reportConversation(id, user?.sub ?? null, dto.reason, dto.note);
+    return this.messagesService.reportConversation(id, user?.sub ?? null, dto.reason, dto.note,
+      user ? undefined : await this.guestAccess.resolveEmail(req));
   }
 
   @Post('conversations/:id/read')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(OptionalAuthGuard)
   @ApiOperation({ summary: 'Mark conversation as read (customer)' })
-  async markRead(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-    await this.messagesService.getConversation(id, user.sub);
+  async markRead(@Param('id') id: string, @CurrentUser() user: JwtPayload | undefined, @Req() req: Request) {
+    await this.messagesService.assertThreadAccess(id, { userId: user?.sub ?? null, forShop: false,
+      verifiedGuestEmail: user ? undefined : await this.guestAccess.resolveEmail(req) });
     return this.messagesService.markCustomerRead(id);
   }
 }

@@ -5,6 +5,12 @@
   "projectType": "application",
   "tags": ["scope:admin", "type:app"],
   "targets": {
+    "e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm exec playwright test --config=apps/admin/playwright.config.ts"
+      }
+    },
     "build": {
       "executor": "@nx/next:build",
       "outputs": ["{options.outputPath}"],

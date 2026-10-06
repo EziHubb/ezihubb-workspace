@@ -390,18 +390,21 @@ export class ShopStatsService {
     // Aggregate revenue per product from orders
     const productIds = products.map((p) => p.id);
     const revenueAgg = await this.prisma.orderItem.groupBy({
-      by: ['productId'],
+      by: ['productId', 'unitPrice'],
       where: {
         productId: { in: productIds },
         order: { payment: { is: { status: 'PAID' } } },
       },
-      _sum: { unitPrice: true },
+      _sum: { quantity: true },
       _count: { _all: true },
     });
-    const revenueMap = new Map(revenueAgg.map((r) => [r.productId, {
-      revenue: Number(r._sum.unitPrice ?? 0),
-      orders:  r._count._all,
-    }]));
+    const revenueMap = new Map<string | null, { revenue: number; orders: number }>();
+    for (const row of revenueAgg) {
+      const total = revenueMap.get(row.productId) ?? { revenue: 0, orders: 0 };
+      total.revenue += Number(row.unitPrice) * (row._sum.quantity ?? 0);
+      total.orders += row._count._all;
+      revenueMap.set(row.productId, total);
+    }
 
     const data = products.map((p) => ({
       productId:  p.id,

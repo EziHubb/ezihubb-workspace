@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { AdminPageHeader } from '../../../../components/layout/AdminPageHeader';
 import { api } from '../../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
+import { useAdminMode } from '../../../../lib/store-context';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -70,6 +71,7 @@ type FilterKey = 'all' | 'issues';
 const PAGE_SIZE = 25;
 
 export default function ProductsSeoPage() {
+  const { isReady, isPlatformContext } = useAdminMode();
   const [filter,  setFilter]  = useState<FilterKey>('all');
   const [search,  setSearch]  = useState('');
   const [page,    setPage]    = useState(1);
@@ -273,7 +275,7 @@ export default function ProductsSeoPage() {
                           href={`/products/${p.id}/edit`}
                           className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
                         >
-                          Edit SEO
+                          {isReady && !isPlatformContext ? 'Edit SEO' : 'View details'}
                           <ArrowUpRight className="w-3 h-3" />
                         </Link>
                       </td>

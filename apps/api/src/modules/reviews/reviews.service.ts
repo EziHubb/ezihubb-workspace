@@ -90,7 +90,7 @@ export class ReviewsService {
     const limit = query.limit ?? 24;
     const where = {
       productId: product.id,
-      status: query.status ?? ReviewStatus.APPROVED,
+      status: ReviewStatus.APPROVED,
       ...(query.rating !== undefined && { rating: query.rating }),
     };
 

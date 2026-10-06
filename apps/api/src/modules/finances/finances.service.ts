@@ -18,9 +18,7 @@ import {
   ActivitiesQueryDto,
 } from './dto/finances.dto';
 
-/** Etsy shows "No funds ready for deposit … above $X" for a small minimum —
- *  this system has no real hold/reserve mechanic, so it's purely a display
- *  threshold on the current ledger balance. */
+/** Historical display threshold only; never authorizes captured-fund payouts. */
 const DEPOSIT_MIN_AMOUNT = 2;
 
 const FEE_TYPES: SellerLedgerEntryType[] = [
@@ -90,8 +88,8 @@ export class FinancesService {
     ]);
 
     const current = Number(balanceAgg._sum.amount ?? 0);
-    // No hold/reserve mechanic exists yet — every ledger entry is immediately
-    // reflected in "current", so "pending" is always 0 for now.
+    // Legacy ledger projection only. Captured balances and their holds/reserves
+    // are read through EconomicFinancesService, never inferred from this total.
     const pending = 0;
     const defaultCard = store.billingCards.find((c) => c.isDefault) ?? store.billingCards[0] ?? null;
     const amountDueThisMonth = Math.max(0, -monthSummary.netProfit);
@@ -100,8 +98,11 @@ export class FinancesService {
       current,
       pending,
       total: current + pending,
+      financialClassification: 'LEGACY_UNKNOWN',
+      includedInAvailable: false,
+      requiresReconciliation: true,
       depositMinAmount: DEPOSIT_MIN_AMOUNT,
-      hasFundsReadyForDeposit: current >= DEPOSIT_MIN_AMOUNT,
+      hasFundsReadyForDeposit: false,
       bankAccount: store.bankAccount,
       currency: store.currency,
       autoBillingEnabled: store.autoBillingEnabled,

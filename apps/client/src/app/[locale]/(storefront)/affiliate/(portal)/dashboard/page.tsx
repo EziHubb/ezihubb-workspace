@@ -88,7 +88,7 @@ export default function AffiliateDashboardPage() {
     );
   }
 
-  const minPayout = 50;
+  const vi = locale === 'vi';
 
   return (
     <div className="space-y-8">
@@ -96,26 +96,19 @@ export default function AffiliateDashboardPage() {
 
       {/* ── Balance card ─────────────────────────────────────────────────────── */}
       <div className="bg-surface border border-border rounded-card p-6">
-        <p className="text-sm text-muted mb-1">{t('availableBalance')}</p>
+        <p className="text-sm text-muted mb-1">{vi ? 'Số dư lịch sử — chưa đối soát' : 'Legacy balance — unreconciled'}</p>
         <p className="font-display text-4xl font-bold text-secondary">
           {fmtAmount(data.balance)}
         </p>
         <p className="text-xs text-muted mt-1">
           {t('allTimeEarned', { amount: fmtAmount(data.totalEarned) })}
         </p>
+        <p className="mt-3 text-sm">{vi ? 'Số liệu và hoa hồng lịch sử bên dưới không phải tiền khả dụng để rút. Xem tài khoản đã xác minh để kiểm tra số dư và điều kiện chi trả hiện tại.' : 'The historical earnings and commissions below are not withdrawable funds. Open the verified account for current balances and payout eligibility.'}</p>
         <Link
           href={`/${locale}/affiliate/payouts`}
-          className={[
-            'mt-4 inline-flex items-center gap-2 text-sm font-bold px-5 py-2.5 rounded-button transition-colors uppercase tracking-wide',
-            safeNum(data.balance) >= minPayout
-              ? 'bg-primary hover:bg-primary/90 text-white'
-              : 'bg-muted/10 text-muted cursor-not-allowed pointer-events-none',
-          ].join(' ')}
-          aria-disabled={safeNum(data.balance) < minPayout}
+          className="mt-4 inline-flex items-center gap-2 text-sm font-bold px-5 py-3 rounded-button bg-primary text-white"
         >
-          {safeNum(data.balance) >= minPayout
-            ? t('requestPayout')
-            : t('untilMinimum', { amount: fmtAmount(minPayout - safeNum(data.balance)) })}
+          {vi ? 'Xem số dư đã xác minh' : 'View verified balances'}
         </Link>
       </div>
 

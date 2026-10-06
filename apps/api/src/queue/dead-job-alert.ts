@@ -51,7 +51,7 @@ const CRITICAL_JOBS = new Set<string>([
  */
 export async function reportDeadJob(
   job: Job,
-  error: Error,
+  _error: Error,
   ctx: { logger: Logger; emailQueue?: Queue; isCritical?: boolean },
 ): Promise<void> {
   if (!isFinalAttempt(job)) return;
@@ -60,7 +60,7 @@ export async function reportDeadJob(
   const detail =
     `${DEAD_JOB_MARKER} job=${job.name} id=${job.id} ` +
     `queue=${job.queueName} attempts=${job.attemptsMade} ` +
-    `data=${JSON.stringify(job.data)} — ${error.message}`;
+    'error=JOB_FAILED';
 
   ctx.logger.error(detail);
 
@@ -79,8 +79,8 @@ export async function reportDeadJob(
           jobId:     String(job.id ?? ''),
           queueName: job.queueName,
           attempts:  job.attemptsMade,
-          payload:   JSON.stringify(job.data),
-          error:     error.message,
+          payload:   '[REDACTED: inspect authorized job storage using jobId]',
+          error:     'JOB_FAILED',
           year:      new Date().getFullYear(),
         },
       },
@@ -92,7 +92,7 @@ export async function reportDeadJob(
     )
     // Never let alerting failure mask the original failure — that error is the
     // one worth keeping, and throwing here would replace it.
-    .catch((e: Error) =>
-      ctx.logger.error(`Failed to queue dead-job alert for ${job.name}: ${e.message}`),
+    .catch(() =>
+      ctx.logger.error(`Failed to queue dead-job alert for ${job.name}`),
     );
 }

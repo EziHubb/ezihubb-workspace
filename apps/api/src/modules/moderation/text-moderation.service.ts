@@ -1,6 +1,7 @@
 ﻿import { Injectable, Logger } from '@nestjs/common';
 import { AnthropicService, DEFAULT_ANTHROPIC_MODEL } from '../../common/services/anthropic.service';
 import type { ModerationResult } from './dto/moderation-result.dto';
+import { assertModerationResult } from './validate-moderation-result';
 
 // Recorded on the moderation row so a later review knows which model judged
 // it. Reads the shared default rather than naming a model this service no
@@ -54,27 +55,16 @@ export class TextModerationService {
         timeoutMs: 15_000,
       });
 
+      assertModerationResult(parsed);
       return {
         ...parsed,
         latencyMs:    Date.now() - start,
         modelVersion: MODEL,
         costUsd:      usage.costUsd,
       };
-    } catch (err) {
-      this.logger.error('Text moderation failed', err);
-      // Fail open — return CLEAN on error
-      return {
-        verdict:       'CLEAN',
-        categories:    [],
-        confidence:    0,
-        reasoning:     null,
-        sellerMessage: null,
-        latencyMs:     Date.now() - start,
-        modelVersion:  MODEL,
-        // The call failed, so nothing was consumed — charging the tracker's
-        // fallback here would bill the budget for a call that produced nothing.
-        costUsd:       0,
-      };
+    } catch {
+      this.logger.error('Text moderation unavailable; content remains pending');
+      throw new Error('Text moderation unavailable');
     }
   }
 }

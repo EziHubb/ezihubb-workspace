@@ -37,8 +37,10 @@ function setup() {
     refreshToken: {
       findFirst: jest.fn(), updateMany: jest.fn().mockResolvedValue({ count: 2 }), update: jest.fn(),
     },
-    $transaction: jest.fn((operations: Promise<unknown>[]) => Promise.all(operations)),
+    $transaction: jest.fn(),
   };
+  prisma.$transaction.mockImplementation((operations: Promise<unknown>[] | ((tx: typeof prisma) => Promise<unknown>)) =>
+    typeof operations === 'function' ? operations(prisma) : Promise.all(operations));
   const service = Object.create(AuthService.prototype) as AuthService;
   Object.assign(service, { prisma });
   return { prisma, service };
@@ -92,7 +94,7 @@ describe('Account session history and revocation', () => {
 
   it('rejects refresh for a revoked session even when a refresh token is still present', async () => {
     const { prisma, service } = setup();
-    prisma.refreshToken.findFirst.mockResolvedValue({ session: { revokedAt: new Date(), expiresAt: new Date(Date.now() + 60000) } });
+    prisma.refreshToken.findFirst.mockResolvedValue({ user: { deletedAt: null }, session: { revokedAt: new Date(), expiresAt: new Date(Date.now() + 60000) } });
     await expect(service.refreshTokens('owner', 'token', {} as Parameters<AuthService['refreshTokens']>[2]))
       .rejects.toBeInstanceOf(UnauthorizedException);
     expect(prisma.refreshToken.update).not.toHaveBeenCalled();
@@ -102,7 +104,7 @@ describe('Account session history and revocation', () => {
 describe('Access token session enforcement', () => {
   const payload = { sub: 'owner', email: 'owner@example.test', role: 'ADMIN', iat: 100, sid: 'session' };
   function strategy(user: unknown) {
-    const prisma = { user: { findUnique: jest.fn().mockResolvedValue(user) } };
+    const prisma = { user: { findUnique: jest.fn().mockResolvedValue({ role: 'ADMIN', ...(user as object) }) } };
     const config = { get: () => 'test-only-secret' } as unknown as ConfigService;
     return new JwtStrategy(config, prisma as unknown as PrismaService);
   }

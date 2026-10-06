@@ -6,6 +6,10 @@ import { Throttle } from '@nestjs/throttler';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
 import { StoreContextService } from '../../common/services/store-context.service';
 import { FinancesService } from './finances.service';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtPayload } from '../auth/strategies/jwt.strategy';
+import { EconomicFinancesService } from './economic-finances.service';
+import { EconomicBalanceQueryDto, EconomicHistoryQueryDto, EconomicPayoutRequestDto } from './dto/economic-finances.dto';
 import {
   UpdateBankAccountDto,
   ConfirmBillingCardDto,
@@ -33,11 +37,32 @@ export class AdminFinancesController {
   constructor(
     private readonly financesService: FinancesService,
     private readonly storeContext:    StoreContextService,
+    private readonly economic: EconomicFinancesService,
   ) {}
 
   private async resolveStoreId(req: Request): Promise<string> {
     const context = await this.storeContext.resolve(req);
     return this.storeContext.requireStoreId(context);
+  }
+
+  @Get('economic/overview')
+  async economicOverview(@Req() req: Request, @Query() query: EconomicBalanceQueryDto) {
+    return this.economic.overview({ kind: 'SELLER', beneficiaryId: await this.resolveStoreId(req), currency: query.currency, provenance: query.provenance });
+  }
+
+  @Get('economic/statement')
+  async economicStatement(@Req() req: Request, @Query() query: EconomicHistoryQueryDto) {
+    return this.economic.statement({ kind: 'SELLER', beneficiaryId: await this.resolveStoreId(req), currency: query.currency, provenance: query.provenance }, query);
+  }
+
+  @Get('economic/payouts')
+  async economicPayouts(@Req() req: Request, @Query() query: EconomicHistoryQueryDto) {
+    return this.economic.payouts({ kind: 'SELLER', beneficiaryId: await this.resolveStoreId(req), currency: query.currency, provenance: query.provenance }, query);
+  }
+
+  @Post('economic/payouts')
+  async requestEconomicPayout(@Req() req: Request, @CurrentUser() user: JwtPayload, @Body() dto: EconomicPayoutRequestDto) {
+    return this.economic.request({ kind: 'SELLER', beneficiaryId: await this.resolveStoreId(req), currency: dto.currency, provenance: dto.provenance }, user.sub, dto);
   }
 
   @Get('overview')

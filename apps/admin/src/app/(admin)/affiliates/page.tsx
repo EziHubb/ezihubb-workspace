@@ -313,7 +313,7 @@ export default function AffiliatesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-background">
-                {['Name / Email', 'Referral Code', 'Commission', 'Balance', 'Status', 'Applied', 'Actions'].map((h) => (
+                {['Name / Email', 'Referral Code', 'Commission', 'Legacy balance (unreconciled)', 'Status', 'Applied', 'Actions'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-muted uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>

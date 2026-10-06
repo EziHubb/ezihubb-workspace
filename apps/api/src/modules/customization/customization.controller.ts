@@ -174,8 +174,12 @@ export class CustomizationController {
 
   @Get('draft/:draftId')
   @ApiOperation({ summary: 'Get a customization draft by ID' })
-  async getDraftById(@Param('draftId') draftId: string): Promise<CustomizationDraft> {
-    return this.customizationService.getDraftById(draftId);
+  async getDraftById(
+    @Param('draftId') draftId: string,
+    @CurrentUser() user: JwtPayload | undefined,
+    @Req() req: Request,
+  ): Promise<CustomizationDraft> {
+    return this.customizationService.getDraftById(draftId, user?.sub ?? null, req.cookies?.['cart_session'] ?? null);
   }
 
   // Alias: GET /customization/last/:productId (client store uses this path)

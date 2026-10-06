@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
-import type { UserDto } from '@ezihubb/types';
+import { TotpChallengeForm, type SignInResponse } from './TotpChallengeForm';
 import { API_ROUTES } from '@ezihubb/constants';
 import { api } from '../../lib/api-client';
 
@@ -59,6 +59,8 @@ export function GoogleSignInButton({ redirectTo, onError }: GoogleSignInButtonPr
   // round trip, and without this the One Tap card just closes with no other
   // feedback, which reads as "did that even work?" on a slow connection.
   const [isLoading, setIsLoading] = useState(false);
+  const [partialToken, setPartialToken] = useState<string | null>(null);
+  const credentialPending = useRef(false);
 
   // GSI's callback is bound once inside initialize() below, which only runs
   // again if `clientId` changes — without refs, it would keep calling the
@@ -75,12 +77,21 @@ export function GoogleSignInButton({ redirectTo, onError }: GoogleSignInButtonPr
     let pollTimer: ReturnType<typeof setInterval> | undefined;
 
     const handleCredential = async (response: GoogleCredentialResponse) => {
+      if (cancelled || credentialPending.current) return;
+      credentialPending.current = true;
       setIsLoading(true);
       try {
-        const result = await api.post<{ accessToken: string; user: UserDto }>(
+        const result = await api.post<SignInResponse>(
           API_ROUTES.AUTH.GOOGLE_TOKEN,
           { credential: response.credential },
         );
+        if (cancelled) return;
+        if ('requiresTOTP' in result) {
+          setPartialToken(result.partialToken);
+          setIsLoading(false);
+          window.google?.accounts.id.cancel();
+          return;
+        }
         // Wrap the already-verified token in a next-auth session (rather than
         // writing straight to the Zustand store) — useSession()-based guards
         // like AccountLayoutClient check next-auth's status, not Zustand, so
@@ -92,6 +103,7 @@ export function GoogleSignInButton({ redirectTo, onError }: GoogleSignInButtonPr
           user:        JSON.stringify(result.user),
         });
         if (!signInResult?.ok) {
+          credentialPending.current = false;
           setIsLoading(false);
           onErrorRef.current?.('Google sign-in failed. Please try again.');
           return;
@@ -102,6 +114,7 @@ export function GoogleSignInButton({ redirectTo, onError }: GoogleSignInButtonPr
         // button right before navigation completes.
         router.replace(redirectToRef.current);
       } catch {
+        credentialPending.current = false;
         setIsLoading(false);
         onErrorRef.current?.('Google sign-in failed. Please try again.');
       }
@@ -151,7 +164,7 @@ export function GoogleSignInButton({ redirectTo, onError }: GoogleSignInButtonPr
   return (
     <>
       <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
-      <div className="relative">
+      <div className={partialToken ? 'hidden' : 'relative'}>
         <div ref={buttonRef} className="w-full flex justify-center [&>div]:!w-full" />
         {isLoading && (
           <div
@@ -162,6 +175,13 @@ export function GoogleSignInButton({ redirectTo, onError }: GoogleSignInButtonPr
           </div>
         )}
       </div>
+      {partialToken && <TotpChallengeForm partialToken={partialToken}
+        onCancel={() => { setPartialToken(null); credentialPending.current = false; }}
+        onComplete={async (result) => {
+          const session = await signIn('google-token', { redirect: false, accessToken: result.accessToken });
+          if (!session?.ok) throw new Error('Session could not be established');
+          router.replace(redirectToRef.current);
+        }} />}
     </>
   );
 }

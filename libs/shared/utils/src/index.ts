@@ -4,3 +4,4 @@ export * from './lib/string';
 export * from './lib/array';
 export * from './lib/null-safety';
 export * from './lib/attachments';
+export * from './lib/economic-money';

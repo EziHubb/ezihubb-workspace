@@ -252,9 +252,9 @@ export class ModerationService {
     const calls = parseInt(await this.redis.get(DAILY_CALLS_KEY()) ?? '0', 10);
     if (calls >= settings.maxDailyApiCalls) {
       this.logger.warn('Daily API call limit reached, deferring moderation');
-      return;
+      throw new Error('Moderation daily call limit reached');
     }
-    if (await this.isOverDailyCostBudget(settings.maxCostPerDayUsd)) return;
+    if (await this.isOverDailyCostBudget(settings.maxCostPerDayUsd)) throw new Error('Moderation daily cost limit reached');
 
     // Quick keyword pre-check
     const rules = await this.getActiveRules();
@@ -284,8 +284,8 @@ export class ModerationService {
     if (cachedVerdict === 'CLEAN') return;
 
     const calls = parseInt(await this.redis.get(DAILY_CALLS_KEY()) ?? '0', 10);
-    if (calls >= settings.maxDailyApiCalls) return;
-    if (await this.isOverDailyCostBudget(settings.maxCostPerDayUsd)) return;
+    if (calls >= settings.maxDailyApiCalls) throw new Error('Moderation daily call limit reached');
+    if (await this.isOverDailyCostBudget(settings.maxCostPerDayUsd)) throw new Error('Moderation daily cost limit reached');
 
     const result = await this.imageService.checkImage(dto.imageUrl);
     await this.trackApiUsage(result);

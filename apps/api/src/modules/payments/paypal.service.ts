@@ -9,6 +9,7 @@ import axios from 'axios';
 import { OrderStatus, PaymentMethod, PaymentStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
+import { EconomicPaymentsService } from './economic-payments.service';
 
 const PAYPAL_TOKEN_CACHE_KEY = 'paypal:access_token';
 
@@ -24,6 +25,7 @@ export class PaypalService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly config: ConfigService,
+    private readonly economicPayments: EconomicPaymentsService,
   ) {
     const mode = config.get<string>('PAYPAL_MODE') ?? 'sandbox';
     this.baseUrl =
@@ -70,6 +72,7 @@ export class PaypalService {
     returnUrl?: string,
     cancelUrl?: string,
   ): Promise<{ paypalOrderId: string; approvalUrl: string }> {
+    if (await this.economicPayments.hasContext(orderId)) return this.economicPayments.createPaypal(orderId);
     if (!this.isConfigured()) {
       throw new BadRequestException({
         code:    'ERR_PAYPAL_NOT_CONFIGURED',
@@ -166,6 +169,10 @@ export class PaypalService {
       });
     }
 
+    if (await this.economicPayments.hasContext(payment.orderId)) {
+      await this.economicPayments.capturePaypal(paypalOrderId);
+      return;
+    }
     if (payment.status === PaymentStatus.PAID) return; // Already captured — idempotent
 
     const token = await this.getAccessToken();

@@ -441,7 +441,7 @@ wait_for_service() {
 
 echo ""
 echo -e "${YELLOW}Running post-deploy health checks...${NC}"
-wait_for_service api http://127.0.0.1:3002/api/v1/health
+wait_for_service api http://127.0.0.1:3002/api/v1/health/ready
 wait_for_service client http://127.0.0.1:3000/api/health
 wait_for_service admin http://127.0.0.1:3001/api/health
 

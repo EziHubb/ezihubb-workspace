@@ -160,7 +160,8 @@ export class CsvImportService {
 
   // ── Execute ──────────────────────────────────────────────────────────────────
 
-  async executeCsvImport(buffer: Buffer): Promise<CsvImportResult> {
+  async executeCsvImport(buffer: Buffer, storeId: string): Promise<CsvImportResult> {
+    if (!storeId) throw new Error('A store is required for product imports');
     const { rows, parseErrors } = this.parseCsvBuffer(buffer);
 
     if (parseErrors.length > 0) {
@@ -178,7 +179,7 @@ export class CsvImportService {
       }
 
       try {
-        const wasUpdated = await this.upsertRow(row);
+        const wasUpdated = await this.upsertRow(row, storeId);
         if (wasUpdated) result.updated++;
         else result.imported++;
       } catch (err: unknown) {
@@ -318,7 +319,7 @@ export class CsvImportService {
 
   // ── Upsert ───────────────────────────────────────────────────────────────────
 
-  private async upsertRow(row: ParsedRow): Promise<boolean> {
+  private async upsertRow(row: ParsedRow, storeId: string): Promise<boolean> {
     // 1 — resolve category
     const category = await this.prisma.category.findUnique({ where: { slug: row.categorySlug } });
     if (!category) throw new Error(`Category not found: "${row.categorySlug}"`);
@@ -343,7 +344,7 @@ export class CsvImportService {
     const slug = row.slug || this.slugify(row.name);
 
     // 5 — check if product exists by slug
-    const existing = await this.prisma.product.findFirst({ where: { slug } });
+    const existing = await this.prisma.product.findFirst({ where: { slug, storeId, deletedAt: null } });
 
     if (existing) {
       // UPDATE — minimal scalar-only update; skip relations for safety
@@ -372,6 +373,7 @@ export class CsvImportService {
     await this.prisma.product.create({
       data: {
         id:               generateProductId(),
+        storeId,
         name:             row.name,
         slug,
         sku,
@@ -399,7 +401,7 @@ export class CsvImportService {
 
     // Optionally create a variation group
     if (row.variationGroupName && row.variationOptions.length > 0) {
-      const product = await this.prisma.product.findFirst({ where: { slug } });
+      const product = await this.prisma.product.findFirst({ where: { slug, storeId, deletedAt: null } });
       if (product) {
         await this.prisma.variationGroup.create({
           data: {

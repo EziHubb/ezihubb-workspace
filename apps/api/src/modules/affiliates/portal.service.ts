@@ -128,6 +128,9 @@ export class PortalService {
 
     return {
       balance:          Number(affiliate?.balance    ?? 0),
+      financialClassification: 'LEGACY_UNKNOWN',
+      includedInAvailable: false,
+      requiresReconciliation: true,
       totalEarned:      Number(affiliate?.totalEarned ?? 0),
       referralCode:     affiliate?.referralCode ?? '',
       totalClicks,
@@ -209,6 +212,11 @@ export class PortalService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      const reserved = await tx.affiliateAccount.updateMany({
+        where: { id: affiliateId, status: AffiliateStatus.ACTIVE, balance: { gte: Math.max(dto.amount, minPayout) } },
+        data: { balance: { decrement: dto.amount } },
+      });
+      if (reserved.count !== 1) throw new BadRequestException('Requested amount exceeds available balance or account is not active.');
       const payout = await tx.affiliatePayout.create({
         data: {
           affiliateId,
@@ -218,10 +226,6 @@ export class PortalService {
           status:        'REQUESTED',
         },
         select: { id: true, amount: true, status: true },
-      });
-      await tx.affiliateAccount.update({
-        where: { id: affiliateId },
-        data:  { balance: { decrement: dto.amount } },
       });
       return payout;
     });

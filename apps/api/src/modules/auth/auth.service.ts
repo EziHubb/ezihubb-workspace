@@ -14,6 +14,7 @@ import { Response } from 'express';
 import { randomBytes, createHash } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { OAuth2Client } from 'google-auth-library';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../common/services/redis.service';
 import { JOBS, QUEUES, SendEmailJobData, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
@@ -30,7 +31,6 @@ const LOGIN_LOCK_KEY = (email: string) => `auth:login:${email}`;
 const LOGIN_MAX_ATTEMPTS = 5;
 const LOGIN_LOCK_TTL_SECONDS = 900; // 15 minutes
 const TOTP_PARTIAL_TOKEN_EXPIRY = '5m';
-const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN'] as const;
 
 @Injectable()
 export class AuthService {
@@ -65,18 +65,8 @@ export class AuthService {
       },
     });
 
-    // Link any guest orders placed with this email before account creation
-    this.linkGuestOrders(user.id, dto.email);
-
-    /**
-     * Conversations too — and awaited, unlike the orders beside it.
-     *
-     * The thread endpoints now refuse a signed-in caller on a thread with no
-     * userId, and register() hands back a session immediately. Left to the
-     * background, the buyer could land on their inbox inside the gap and be
-     * told their own history is forbidden.
-     */
-    await this.messages.linkGuestConversations(user.id, dto.email);
+    // A newly chosen password does not prove ownership of the mailbox.
+    // Link guest history only after email verification.
 
     // Queue verification email (fire-and-forget)
     await this.enqueueVerificationEmail(user.id, user.email, user.firstName ?? '').catch((err) =>
@@ -108,7 +98,7 @@ export class AuthService {
   async login(dto: LoginDto, res: Response): Promise<AuthResponseDto | TotpRequiredResponseDto> {
     // Check account lock
     const lockKey = LOGIN_LOCK_KEY(dto.email);
-    const attempts = await this.redis.get<number>(lockKey);
+    const attempts = await this.redis.getSecurityCounter(lockKey);
     if (attempts !== null && attempts >= LOGIN_MAX_ATTEMPTS) {
       throw new UnauthorizedException({
         code: 'ERR_ACCOUNT_LOCKED',
@@ -118,7 +108,7 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
 
-    if (!user || !user.passwordHash) {
+    if (!user || user.deletedAt || !user.passwordHash) {
       await this.recordFailedLogin(lockKey);
       throw new UnauthorizedException({ code: 'ERR_CREDENTIALS_INVALID', message: 'Invalid email or password' });
     }
@@ -130,29 +120,15 @@ export class AuthService {
     }
 
     // Clear failed attempts on success
-    await this.redis.del(lockKey);
+    await this.redis.clearSecurityCounter(lockKey);
 
-    // Claim any guest orders placed with this email.
-    //
-    // register() already did this, but only there — so it worked for someone
-    // who checked out as a guest and THEN signed up, and never for someone who
-    // already had an account. Their paid orders sat with userId: null and "My
-    // Orders" showed nothing, which is exactly what happened in production.
-    //
-    // Safe at this point, and safer than at registration: the password has
-    // just been verified, so the account is proven, whereas register() links
-    // on a bare claim to the address. Fire-and-forget on purpose — a failure
-    // here must never block a valid sign-in, and the next login retries it.
-    this.linkGuestOrders(user.id, user.email);
-    // The backfill for anyone who registered before conversations were linked
-    // at all. Fire-and-forget for the same reason as the line above it.
-    void this.messages.linkGuestConversations(user.id, user.email);
-
-    // Admin/SUPER_ADMIN with TOTP enabled → issue partial token
-    if ((ADMIN_ROLES as readonly string[]).includes(user.role) && user.totpEnabled) {
-      const partialToken = this.signPartialToken(user.id, user.email, user.role);
+    // An enabled factor applies to every role and every sign-in method.
+    if (user.totpEnabled) {
+      const partialToken = this.signPartialToken(user.id, user.email, user.role, dto.rememberMe);
       return { requiresTOTP: true, partialToken };
     }
+
+    if (user.isEmailVerified) await this.linkVerifiedGuestHistory(user.id, user.email);
 
     const tokens = await this.generateTokens(user.id, user.email, user.role, dto.rememberMe, user.storeId, undefined, res.req?.headers['user-agent']);
     this.setRefreshTokenCookie(res, tokens.refreshToken, dto.rememberMe);
@@ -177,7 +153,7 @@ export class AuthService {
   // ─── TOTP verify ───────────────────────────────────────────────────────────
 
   async verifyTotp(partialToken: string, code: string, res: Response): Promise<AuthResponseDto> {
-    let payload: { sub: string; email: string; role: string; purpose: string };
+    let payload: { sub: string; email: string; role: string; purpose: string; iat?: number; exp?: number; rememberMe?: boolean };
     try {
       const secret = this.config.get<string>('jwt.accessSecret');
       payload = this.jwtService.verify(partialToken, { secret }) as typeof payload;
@@ -185,13 +161,22 @@ export class AuthService {
       throw new UnauthorizedException({ code: 'ERR_TOTP_TOKEN_INVALID', message: 'Invalid or expired TOTP session' });
     }
 
-    if (payload.purpose !== 'totp-pending') {
+    if (payload.purpose !== 'totp-pending' || typeof payload.sub !== 'string' || !payload.exp || !payload.iat) {
       throw new UnauthorizedException({ code: 'ERR_TOTP_TOKEN_INVALID', message: 'Invalid TOTP session token' });
     }
 
     const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
-    if (!user || !user.totpEnabled) {
+    if (!user || user.deletedAt || !user.totpEnabled || user.role !== payload.role ||
+      (user.sessionsRevokedAt && payload.iat * 1000 <= user.sessionsRevokedAt.getTime())) {
       throw new UnauthorizedException({ code: 'ERR_TOTP_NOT_ENABLED' });
+    }
+
+    const attemptKey = `auth:totp:attempts:${user.id}`;
+    // Count attempts before checking codes so concurrent guesses cannot bypass
+    // the account-level budget by racing separate read/increment commands.
+    const attempts = await this.redis.incrementSecurityCounter(attemptKey, LOGIN_LOCK_TTL_SECONDS);
+    if (attempts > LOGIN_MAX_ATTEMPTS) {
+      throw new UnauthorizedException({ code: 'ERR_ACCOUNT_LOCKED', message: 'Too many authentication attempts. Try again in 15 minutes.' });
     }
 
     // Try TOTP code first, then backup codes
@@ -204,8 +189,11 @@ export class AuthService {
     if (!valid && user.backupCodes.length > 0) {
       const remaining = await this.totpService.consumeBackupCode(user.backupCodes, code);
       if (remaining !== null) {
-        await this.prisma.user.update({ where: { id: user.id }, data: { backupCodes: remaining } });
-        valid = true;
+        const consumed = await this.prisma.user.updateMany({
+          where: { id: user.id, backupCodes: { equals: user.backupCodes } },
+          data: { backupCodes: remaining },
+        });
+        valid = consumed.count === 1;
       }
     }
 
@@ -213,8 +201,17 @@ export class AuthService {
       throw new UnauthorizedException({ code: 'ERR_TOTP_CODE_INVALID', message: 'Invalid authentication code' });
     }
 
-    const tokens = await this.generateTokens(user.id, user.email, user.role, false, user.storeId, undefined, res.req?.headers['user-agent']);
-    this.setRefreshTokenCookie(res, tokens.refreshToken);
+    const challengeKey = `auth:totp:used:${createHash('sha256').update(partialToken).digest('hex')}`;
+    const ttl = Math.max(1, payload.exp - Math.floor(Date.now() / 1000));
+    if (!(await this.redis.claimSecurityToken(challengeKey, ttl))) {
+      throw new UnauthorizedException({ code: 'ERR_TOTP_TOKEN_INVALID', message: 'This sign-in was already completed. Please sign in again.' });
+    }
+    await this.redis.clearSecurityCounter(attemptKey);
+
+    if (user.isEmailVerified) await this.linkVerifiedGuestHistory(user.id, user.email);
+
+    const tokens = await this.generateTokens(user.id, user.email, user.role, payload.rememberMe === true, user.storeId, undefined, res.req?.headers['user-agent']);
+    this.setRefreshTokenCookie(res, tokens.refreshToken, payload.rememberMe === true);
 
     return {
       accessToken: tokens.accessToken,
@@ -237,6 +234,7 @@ export class AuthService {
 
   async setupTotp(userId: string): Promise<TotpSetupResponseDto> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    if (user.totpEnabled) throw new ConflictException('Disable the existing factor before setting up a new one');
     const secret = this.totpService.newSecret();
     const uri = this.totpService.otpAuthUri(secret, user.email);
     const qrCodeDataUrl = await this.totpService.qrCodeDataUrl(uri);
@@ -254,10 +252,11 @@ export class AuthService {
     const hashedCodes = await this.totpService.hashBackupCodes(plainCodes);
     const encryptedSecret = this.totpService.encryptSecret(secret);
 
-    await this.prisma.user.update({
-      where: { id: userId },
+    const enabled = await this.prisma.user.updateMany({
+      where: { id: userId, totpEnabled: false, deletedAt: null },
       data: { totpSecret: encryptedSecret, totpEnabled: true, totpVerifiedAt: new Date(), backupCodes: hashedCodes },
     });
+    if (enabled.count !== 1) throw new ConflictException('Two-factor authentication is already enabled or account unavailable');
 
     return { backupCodes: plainCodes };
   }
@@ -351,22 +350,29 @@ export class AuthService {
   async refreshTokens(userId: string, oldRefreshToken: string, res: Response): Promise<{ accessToken: string }> {
     const oldHash = createHash('sha256').update(oldRefreshToken).digest('hex');
 
-    const stored = await this.prisma.refreshToken.findFirst({
-      where: { userId, tokenHash: oldHash, revokedAt: null, expiresAt: { gt: new Date() } },
-      include: { user: { select: { email: true, role: true, storeId: true } }, session: true },
+    const tokens = await this.prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const stored = await tx.refreshToken.findFirst({
+        where: { userId, tokenHash: oldHash, revokedAt: null, expiresAt: { gt: now } },
+        include: { user: { select: { email: true, role: true, storeId: true, deletedAt: true } }, session: true },
+      });
+      if (!stored || stored.user.deletedAt ||
+        (stored.sessionId && !stored.session) ||
+        (stored.session && (stored.session.revokedAt || stored.session.expiresAt <= now))) {
+        throw new UnauthorizedException({ code: 'ERR_REFRESH_TOKEN_INVALID' });
+      }
+
+      // Only one concurrent request may consume this token. Creating its
+      // successor in this transaction means a signing/DB failure rolls it back.
+      const consumed = await tx.refreshToken.updateMany({
+        where: { id: stored.id, revokedAt: null, expiresAt: { gt: now } },
+        data: { revokedAt: now },
+      });
+      if (consumed.count !== 1) throw new UnauthorizedException({ code: 'ERR_REFRESH_TOKEN_INVALID' });
+      return this.generateTokens(userId, stored.user.email, stored.user.role, false,
+        stored.user.storeId, stored.sessionId ?? undefined, undefined, tx,
+        stored.session?.expiresAt ?? stored.expiresAt);
     });
-
-    if (!stored || (stored.session && (stored.session.revokedAt || stored.session.expiresAt <= new Date()))) {
-      throw new UnauthorizedException({ code: 'ERR_REFRESH_TOKEN_INVALID' });
-    }
-
-    // Rotation: revoke old, issue new
-    await this.prisma.refreshToken.update({
-      where: { id: stored.id },
-      data: { revokedAt: new Date() },
-    });
-
-    const tokens = await this.generateTokens(userId, stored.user.email, stored.user.role, false, stored.user.storeId, stored.sessionId ?? undefined);
     this.setRefreshTokenCookie(res, tokens.refreshToken);
 
     return { accessToken: tokens.accessToken };
@@ -375,6 +381,11 @@ export class AuthService {
   // ─── Email verification ────────────────────────────────────────────────────
 
   async verifyEmail(token: string): Promise<void> {
+    // @Body('token') is not a validated DTO. Undefined would otherwise omit
+    // the Prisma token predicate and select an unrelated verification record.
+    if (typeof token !== 'string' || !token.trim()) {
+      throw new BadRequestException({ code: 'ERR_VERIFICATION_TOKEN_INVALID', message: 'Invalid or expired verification token' });
+    }
     const record = await this.prisma.emailVerification.findFirst({
       where: { token, usedAt: null, expiresAt: { gt: new Date() } },
     });
@@ -383,7 +394,7 @@ export class AuthService {
       throw new BadRequestException({ code: 'ERR_VERIFICATION_TOKEN_INVALID', message: 'Invalid or expired verification token' });
     }
 
-    await this.prisma.$transaction([
+    const [, verifiedUser] = await this.prisma.$transaction([
       this.prisma.emailVerification.update({
         where: { id: record.id },
         data: { usedAt: new Date() },
@@ -393,6 +404,7 @@ export class AuthService {
         data: { isEmailVerified: true },
       }),
     ]);
+    await this.linkVerifiedGuestHistory(verifiedUser.id, verifiedUser.email);
   }
 
   async resendVerification(userId: string): Promise<void> {
@@ -487,7 +499,7 @@ export class AuthService {
   // ─── Google OAuth ──────────────────────────────────────────────────────────
 
   /** Legacy OAuth 2.0 authorization-code flow — GET /auth/google → Google consent page → GET /auth/google/callback. */
-  async googleLogin(profile: GoogleProfile, res: Response): Promise<AuthResponseDto> {
+  async googleLogin(profile: GoogleProfile, res: Response): Promise<AuthResponseDto | TotpRequiredResponseDto> {
     const user = await this.findOrCreateGoogleUser(profile);
     return this.buildGoogleAuthResponse(user, res);
   }
@@ -499,7 +511,7 @@ export class AuthService {
    * own client ID) is what stands in for the authorization-code exchange the
    * legacy flow above does via Passport.
    */
-  async googleTokenLogin(idToken: string, res: Response): Promise<AuthResponseDto> {
+  async googleTokenLogin(idToken: string, res: Response): Promise<AuthResponseDto | TotpRequiredResponseDto> {
     const profile = await this.verifyGoogleIdToken(idToken);
     const user = await this.findOrCreateGoogleUser(profile);
     return this.buildGoogleAuthResponse(user, res);
@@ -547,6 +559,10 @@ export class AuthService {
 
     let user = await this.prisma.user.findUnique({ where: { email: profile.email } });
 
+    if (user?.deletedAt || (user?.providerId && user.providerId !== profile.googleId)) {
+      throw new UnauthorizedException({ code: 'ERR_GOOGLE_ACCOUNT_INVALID', message: 'Unable to sign in with this Google account.' });
+    }
+
     if (!user) {
       user = await this.prisma.user.create({
         data: {
@@ -567,44 +583,17 @@ export class AuthService {
       });
     }
 
-    /**
-     * Claim anything left behind by a guest checkout on this address.
-     *
-     * register() and login() have always done this; the Google paths never
-     * did, and the effect was visible to sellers rather than to us. An order
-     * placed as a guest keeps `userId: null`, so getOrderThread() looks that
-     * buyer up by `guestEmail` and finds no thread — while the very same
-     * person's account thread sits beside it, full of messages. One customer,
-     * two buyers, and the seller cannot tell they are the same.
-     *
-     * Here rather than in googleLogin()/googleTokenLogin(): both funnel
-     * through this method, so one call covers both and a third entry point
-     * added later cannot forget it.
-     *
-     * The email is safe to key on. This method refuses a profile Google has
-     * not marked verified, which is the same bar login() clears with a
-     * password — and a stronger one than register(), which links on a bare
-     * claim to the address.
-     */
-    this.linkGuestOrders(user.id, user.email);
-    /**
-     * Awaited, matching register() rather than login(). This path is a signup
-     * AND a sign-in, so it has to satisfy the stricter of the two: a brand-new
-     * Google user is handed a session the moment this returns, and a thread
-     * still carrying `userId: null` is refused to a signed-in caller. Left to
-     * the background, they could open their inbox inside that gap and be told
-     * their own history is forbidden. For a returning user it costs one query
-     * that matches nothing.
-     */
-    await this.messages.linkGuestConversations(user.id, user.email);
-
     return user;
   }
 
   private async buildGoogleAuthResponse(
     user: Awaited<ReturnType<AuthService['findOrCreateGoogleUser']>>,
     res: Response,
-  ): Promise<AuthResponseDto> {
+  ): Promise<AuthResponseDto | TotpRequiredResponseDto> {
+    if (user.totpEnabled) {
+      return { requiresTOTP: true, partialToken: this.signPartialToken(user.id, user.email, user.role) };
+    }
+    if (user.isEmailVerified) await this.linkVerifiedGuestHistory(user.id, user.email);
     const tokens = await this.generateTokens(user.id, user.email, user.role, false, user.storeId, undefined, res.req?.headers['user-agent']);
     this.setRefreshTokenCookie(res, tokens.refreshToken);
 
@@ -635,6 +624,8 @@ export class AuthService {
     storeId?: string | null,
     existingSessionId?: string,
     userAgent?: string,
+    db: Prisma.TransactionClient = this.prisma,
+    expiryLimit?: Date,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const secret = this.config.get<string>('jwt.accessSecret');
     if (!secret) {
@@ -642,8 +633,9 @@ export class AuthService {
     }
 
     const refreshDays = rememberMe ? 90 : 30;
-    const expiresAt = new Date(Date.now() + refreshDays * 24 * 60 * 60 * 1_000);
-    const sessionId = existingSessionId ?? (await this.prisma.authSession.create({
+    const expiresAt = new Date(Math.min(Date.now() + refreshDays * 24 * 60 * 60 * 1_000,
+      expiryLimit?.getTime() ?? Number.POSITIVE_INFINITY));
+    const sessionId = existingSessionId ?? (await db.authSession.create({
       data: { userId, expiresAt, userAgent: userAgent?.slice(0, 512) },
     })).id;
 
@@ -659,7 +651,7 @@ export class AuthService {
     const rawRefreshToken = randomBytes(40).toString('hex');
     const tokenHash = createHash('sha256').update(rawRefreshToken).digest('hex');
 
-    await this.prisma.refreshToken.create({
+    await db.refreshToken.create({
       data: { userId, tokenHash, expiresAt, sessionId },
     });
 
@@ -684,53 +676,40 @@ export class AuthService {
 
   // ─── Private helpers ───────────────────────────────────────────────────────
 
-  /**
-   * Attaches guest orders placed with this email to the account.
-   *
-   * One implementation, called from both register() and login(), because the
-   * rule ("an order placed with your address belongs to you") has to hold
-   * however the session started — it lived only in register() before, so
-   * anyone who already had an account never got their guest orders.
-   *
-   * Only ever claims rows still unowned (`userId: null`), so it cannot move an
-   * order away from another account. Deliberately not awaited: linking is a
-   * convenience, and a database hiccup must not turn a valid sign-in into a
-   * failure.
-   */
+  /** Called only after mailbox proof; failures retry on the next verified login. */
+  private async linkVerifiedGuestHistory(userId: string, email: string): Promise<void> {
+    this.linkGuestOrders(userId, email);
+    await this.messages.linkGuestConversations(userId, email).catch(() =>
+      this.logger.error(`Guest conversation linking failed for user=${userId}`),
+    );
+  }
+
+  /** Only claims still-unowned records, never reassigns historical ownership. */
   private linkGuestOrders(userId: string, email: string): void {
     this.prisma.order.updateMany({
       where: { guestEmail: email.toLowerCase(), userId: null },
       data:  { userId },
     })
       .then(({ count }) => {
-        if (count > 0) this.logger.log(`Linked ${count} guest order(s) to ${email}`);
+        if (count > 0) this.logger.log(`Linked ${count} guest order(s) to user=${userId}`);
       })
-      .catch((err: Error) =>
-        this.logger.error(`Failed to link guest orders for ${email}: ${err.message}`),
+      .catch(() =>
+        this.logger.error(`Failed to link guest orders for user=${userId}`),
       );
   }
 
-  private signPartialToken(userId: string, email: string, role: string): string {
+  private signPartialToken(userId: string, email: string, role: string, rememberMe = false): string {
     const secret = this.config.get<string>('jwt.accessSecret');
     if (!secret) throw new Error('JWT_ACCESS_SECRET not set');
     return this.jwtService.sign(
-      { sub: userId, email, role, purpose: 'totp-pending' },
+      { sub: userId, email, role, purpose: 'totp-pending', jti: randomBytes(16).toString('hex'), rememberMe },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { secret, expiresIn: TOTP_PARTIAL_TOKEN_EXPIRY as any },
     );
   }
 
   private async recordFailedLogin(lockKey: string): Promise<void> {
-    const current = await this.redis.increment(lockKey);
-    if (current === 1) {
-      // Set TTL only on first increment; failure here must not cause permanent lockout
-      try {
-        await this.redis.getClient().expire(lockKey, LOGIN_LOCK_TTL_SECONDS);
-      } catch (err: unknown) {
-        this.logger.error(`Failed to set TTL on login lock key ${lockKey}: ${(err as Error).message}`);
-        // Best-effort: key will be cleaned up on next successful login
-      }
-    }
+    await this.redis.incrementSecurityCounter(lockKey, LOGIN_LOCK_TTL_SECONDS);
   }
 
   private async enqueueVerificationEmail(userId: string, email: string, firstName: string): Promise<void> {

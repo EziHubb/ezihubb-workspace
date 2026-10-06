@@ -680,9 +680,9 @@ export class ProductsService {
    * listing already billed under the old create-time behaviour, are skipped by
    * the productId guard below.
    *
-   * Takes ids only, no storeId — a platform-context SUPER_ADMIN can bulk
-   * publish across several shops at once, so each product's own storeId
-   * decides which ledger the fee lands in.
+   * Callers authorize the product ids against their owned store first.
+   * Billing derives the store from each product, never from a caller-supplied
+   * store id. Platform mode cannot publish through the listing API.
    */
   async publishProducts(ids: string[]): Promise<{ published: number; charged: number }> {
     if (!ids.length) return { published: 0, charged: 0 };
@@ -1388,8 +1388,10 @@ export class ProductsService {
     const viewsTotal      = product?.viewCount ?? 0;
     const ordersCount     = curAgg._count._all;
     const prevOrdersCount = prevAgg._count._all;
-    const revenue         = Number(curAgg._sum.unitPrice ?? 0);
-    const prevRevenueAmt  = Number(prevAgg._sum.unitPrice ?? 0);
+    // Daily queries already sum unitPrice * quantity with the same period and
+    // status predicates. Totals must use that same basis, not sum unit prices.
+    const revenue         = dailyChart.reduce((sum, row) => sum + Number(row.revenue), 0);
+    const prevRevenueAmt  = prevDailyChart.reduce((sum, row) => sum + Number(row.revenue), 0);
 
     // Estimated views for the selected period (proportional to total)
     const ageMs  = product ? now.getTime() - product.createdAt.getTime() : 1;

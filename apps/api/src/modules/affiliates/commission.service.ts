@@ -124,19 +124,22 @@ export class CommissionService {
       select: { minPayoutAmount: true },
     });
 
-    await this.prisma.$transaction([
-      this.prisma.affiliateCommission.update({
-        where: { id: commission.id },
+    const confirmed = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.affiliateCommission.updateMany({
+        where: { id: commission.id, status: CommissionStatus.PENDING },
         data:  { status: CommissionStatus.CONFIRMED, confirmedAt: new Date() },
-      }),
-      this.prisma.affiliateAccount.update({
+      });
+      if (claimed.count !== 1) return false;
+      await tx.affiliateAccount.update({
         where: { id: commission.affiliateId },
         data:  {
           balance:     { increment: commission.amount },
           totalEarned: { increment: commission.amount },
         },
-      }),
-    ]);
+      });
+      return true;
+    });
+    if (!confirmed) return;
 
     this.logger.log(
       `Commission confirmed: order=${orderId} affiliate=${commission.affiliateId} amount=${commission.amount}`,
@@ -183,6 +186,7 @@ export class CommissionService {
       where: { orderId },
     });
     if (!commission) return;
+    if (commission.status === CommissionStatus.CANCELLED) return;
     if (commission.status === CommissionStatus.PAID) {
       this.logger.warn(
         `Cannot cancel PAID commission for order=${orderId} — manual review required`,
@@ -192,27 +196,28 @@ export class CommissionService {
 
     const wasConfirmed = commission.status === CommissionStatus.CONFIRMED;
 
-    await this.prisma.$transaction([
-      this.prisma.affiliateCommission.update({
-        where: { id: commission.id },
+    await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.affiliateCommission.updateMany({
+        where: { id: commission.id, status: commission.status },
         data:  {
           status:      CommissionStatus.CANCELLED,
           cancelledAt: new Date(),
           cancelReason: reason,
         },
-      }),
-      ...(wasConfirmed
-        ? [
-            this.prisma.affiliateAccount.update({
-              where: { id: commission.affiliateId },
-              data:  {
-                balance:     { decrement: commission.amount },
-                totalEarned: { decrement: commission.amount },
-              },
-            }),
-          ]
-        : []),
-    ]);
+      });
+      // A competing confirmation may have credited the balance. Retry from
+      // fresh state instead of silently cancelling without its reversal.
+      if (claimed.count !== 1) throw new Error('Commission state changed; retry cancellation');
+      if (wasConfirmed) {
+        await tx.affiliateAccount.update({
+          where: { id: commission.affiliateId },
+          data: {
+            balance: { decrement: commission.amount },
+            totalEarned: { decrement: commission.amount },
+          },
+        });
+      }
+    });
 
     const job = await this.queue.getJob(`confirm-${orderId}`);
     if (job) await job.remove();

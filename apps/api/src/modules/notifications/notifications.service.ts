@@ -182,6 +182,7 @@ export class NotificationsService {
     messagePreview: string;
     orderNumber?:   string;
     orderId?:       string;
+    isGuest?:       boolean;
   }): Promise<void> {
     const adminEmail  = process.env['ADMIN_EMAIL'] ?? 'admin@ezihubb.com';
     const adminUrl    = process.env['ADMIN_URL']   ?? 'http://localhost:3001';
@@ -212,7 +213,7 @@ export class NotificationsService {
         isForAdmin:     false,
         orderNumber:    params.orderNumber,
         messagePreview: params.messagePreview,
-        replyUrl:       `${frontendUrl}/account/messages`,
+        replyUrl:       `${frontendUrl}${params.isGuest ? '/messages/guest' : '/account/messages'}`,
         year,
       },
     });

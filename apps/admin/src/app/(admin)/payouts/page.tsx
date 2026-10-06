@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Clock, DollarSign, CheckCircle2, AlertTriangle, RefreshCw, XCircle } from 'lucide-react';
@@ -10,7 +10,7 @@ import { AdminPageHeader } from '../../../components/layout/AdminPageHeader';
 import { api } from '../../../lib/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { fmtAmount, fmtDate, capitalize } from '../../../lib/fmt';
-import { useDialog } from '../../../contexts/DialogContext';
+import { PlatformCapturedFinances } from '../../../components/finances/PlatformCapturedFinances';
 import { FilterSelect, type FilterOption } from '../../../components/ui/FilterSelect';
 import { useAdminMode } from '../../../lib/store-context';
 
@@ -64,8 +64,6 @@ const STATUS_FILTER_OPTIONS: FilterOption[] = [
 // ── Inner page (needs useSearchParams) ───────────────────────────────────────
 
 function AdminPayoutsPageInner() {
-  const qc = useQueryClient();
-  const { prompt } = useDialog();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -94,12 +92,6 @@ function AdminPayoutsPageInner() {
       if (status) p.set('status', status);
       return api.get<PayoutsResponse>(`${API_ROUTES.ADMIN.SELLER_PAYOUTS}?${p}`);
     },
-  });
-
-  const payMutation = useMutation({
-    mutationFn: ({ id, method }: { id: string; method: string }) =>
-      api.post(API_ROUTES.ADMIN.SELLER_PAYOUT_PAY(id), { paymentMethod: method }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-seller-payouts'] }),
   });
 
   const payouts    = data?.data ?? [];
@@ -167,19 +159,7 @@ function AdminPayoutsPageInner() {
           );
         }
         if (row.original.status === 'PENDING' || row.original.status === 'PROCESSING') {
-          return (
-            <button
-              type="button"
-              disabled={payMutation.isPending}
-              onClick={async () => {
-                const method = await prompt('Payment method', { placeholder: 'e.g. Bank Transfer, PayPal', title: 'Process Payout' });
-                if (method) payMutation.mutate({ id: row.original.id, method });
-              }}
-              className="text-xs font-medium text-white bg-green-600 px-3 py-1 rounded-button hover:bg-green-700 transition-colors disabled:opacity-50"
-            >
-              Mark Paid
-            </button>
-          );
+          return <span className="text-sm text-secondary">Legacy — reconciliation required</span>;
         }
         return null;
       },
@@ -243,7 +223,8 @@ function AdminPayoutsPageInner() {
  * "My Store") — Finances has no multi-store concept, so it can't take over
  * the platform-wide "review every seller's payout requests" table a
  * platform-context SUPER_ADMIN still needs. That admin oversight tool stays
- * here, unchanged, for platform context only.
+ * here for platform context only. Captured accounts are authoritative;
+ * the legacy table is retained separately for reconciliation.
  */
 export default function AdminPayoutsPage() {
   const router = useRouter();
@@ -268,13 +249,16 @@ export default function AdminPayoutsPage() {
   return (
     <>
       <AdminPageHeader
-        title="Seller Payouts"
-        subtitle="Manage and process seller payout disbursements"
-        queryKey={['admin-seller-payouts']}
+        title="Verified balances & payouts"
+        subtitle="Inspect seller and affiliate funds, allocations and settlement evidence"
+        queryKey={['captured-finances']}
       />
-      <Suspense fallback={<div className="animate-pulse h-96 bg-muted/5 rounded-xl" />}>
-        <AdminPayoutsPageInner />
-      </Suspense>
+      <PlatformCapturedFinances />
+      <details className="mt-8 border border-border rounded-card p-5">
+        <summary className="cursor-pointer py-2 font-semibold text-secondary">Legacy seller payout records — reconciliation only</summary>
+        <p className="my-4 text-secondary">Historical status labels are retained, not reverified provider settlements. These records cannot be marked paid from this view and are not included in the captured balances above.</p>
+        <Suspense fallback={<p role="status">Loading legacy records…</p>}><AdminPayoutsPageInner /></Suspense>
+      </details>
     </>
   );
 }

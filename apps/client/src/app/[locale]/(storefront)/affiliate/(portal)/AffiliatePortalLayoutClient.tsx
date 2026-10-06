@@ -9,7 +9,6 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { useAuthStore } from '../../../../../lib/store/auth.store';
-import { fmtAmount } from '@ezihubb/utils';
 
 interface AffiliateProfile {
   id:          string;
@@ -31,6 +30,8 @@ export default function AffiliatePortalLayoutClient({
   const router   = useRouter();
   const pathname = usePathname();
   const token    = useAuthStore((s) => s.accessToken);
+  const authReady = useAuthStore((s) => s.isAuthReady);
+  const userId = useAuthStore((s) => s.user?.id);
 
   const NAV = [
     { href: '/affiliate/dashboard', icon: LayoutDashboard, label: t('navDashboard') },
@@ -39,7 +40,7 @@ export default function AffiliatePortalLayoutClient({
   ] as const;
 
   const { data: affiliate, isLoading, isError } = useQuery<AffiliateProfile | null>({
-    queryKey: ['affiliate-me'],
+    queryKey: ['affiliate-me', userId],
     queryFn:  () =>
       apiClient.get<AffiliateProfile>(API_ROUTES.AFFILIATES.ME, { token: token ?? undefined }),
     enabled:   !!token,
@@ -49,7 +50,7 @@ export default function AffiliatePortalLayoutClient({
 
   // ── Redirect logic ─────────────────────────────────────────────────────────
   useEffect(() => {
-    if (isLoading) return;
+    if (!authReady || isLoading) return;
 
     // No auth token → middleware should have caught this, but guard here too
     if (!token) {
@@ -67,7 +68,7 @@ export default function AffiliatePortalLayoutClient({
     if (affiliate && (affiliate.status === 'SUSPENDED' || affiliate.status === 'REJECTED')) {
       router.replace(`/${locale}/affiliate`);
     }
-  }, [affiliate, isLoading, isError, token, router, locale, pathname]);
+  }, [affiliate, isLoading, isError, token, authReady, router, locale, pathname]);
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (isLoading || !affiliate) {
@@ -118,9 +119,9 @@ export default function AffiliatePortalLayoutClient({
                 {affiliate.firstName} {affiliate.lastName}
               </p>
               <p className="text-xs text-muted truncate">{affiliate.referralCode}</p>
-              <p className="text-xs font-medium text-green-600 mt-0.5">
-                {fmtAmount(affiliate.balance)} {t('available')}
-              </p>
+              <Link href={`/${locale}/affiliate/payouts`} className="text-xs underline block py-2">
+                {locale === 'vi' ? 'Xem số dư đã xác minh' : 'View verified balances'}
+              </Link>
             </div>
 
             <nav className="space-y-0.5 mt-1">

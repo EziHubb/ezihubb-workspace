@@ -311,6 +311,15 @@ export class SearchService {
   ): Promise<PaginatedResult<ProductListItemDto>> {
     const offset = (page - 1) * limit;
 
+    // Raw FTS below can only express these simple predicates. Never silently
+    // drop category branches, collection/variant/store relation filters, etc.
+    const rawKeys = new Set(['isActive', 'deletedAt', 'categoryId', 'basePrice', 'compareAtPrice', 'soldCount', 'storeId']);
+    if (Object.keys(baseWhere).some((key) => !rawKeys.has(key)) ||
+        (baseWhere.categoryId && typeof baseWhere.categoryId !== 'string') ||
+        (baseWhere.storeId && typeof baseWhere.storeId !== 'string')) {
+      return this.filteredTextSearch(q, baseWhere, page, limit, sort);
+    }
+
     const whereParts: Prisma.Sql[] = [
       Prisma.sql`p."isActive" = true`,
       Prisma.sql`p."deletedAt" IS NULL`,
@@ -386,29 +395,11 @@ export class SearchService {
       total = parseInt(countRows[0]?.total ?? '0', 10);
     } catch {
       this.logger.warn('Hybrid search failed, falling back to pure ILIKE');
-      const ilikeFallback: Prisma.ProductWhereInput = {
-        ...baseWhere,
-        OR: [
-          { name: { contains: q, mode: 'insensitive' } },
-          { description: { contains: q, mode: 'insensitive' } },
-        ],
-      };
-      const [products, count] = await this.prisma.$transaction([
-        this.prisma.product.findMany({
-          where: ilikeFallback,
-          orderBy: this.buildOrderBy(sort),
-          skip: offset,
-          take: limit,
-          include: this.listInclude(),
-        }),
-        this.prisma.product.count({ where: ilikeFallback }),
-      ]);
-      const data = await this.toListItems(products);
-      return paginatedResponse<ProductListItemDto>(data, page, limit, count);
+      return this.filteredTextSearch(q, baseWhere, page, limit, sort);
     }
 
     const products = await this.prisma.product.findMany({
-      where: { id: { in: productIds } },
+      where: { AND: [baseWhere, { id: { in: productIds }, isActive: true, deletedAt: null }] },
       include: this.listInclude(),
     });
 
@@ -419,6 +410,20 @@ export class SearchService {
     const data = await this.toListItems(ordered);
 
     return paginatedResponse<ProductListItemDto>(data, page, limit, total);
+  }
+
+  private async filteredTextSearch(q: string, baseWhere: Prisma.ProductWhereInput, page: number, limit: number, sort?: SearchSortBy) {
+    const where: Prisma.ProductWhereInput = {
+      AND: [baseWhere, { isActive: true, deletedAt: null }, { OR: [
+        { name: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+      ] }],
+    };
+    const [products, count] = await this.prisma.$transaction([
+      this.prisma.product.findMany({ where, orderBy: this.buildOrderBy(sort), skip: (page - 1) * limit, take: limit, include: this.listInclude() }),
+      this.prisma.product.count({ where }),
+    ]);
+    return paginatedResponse<ProductListItemDto>(await this.toListItems(products), page, limit, count);
   }
 
   // ─── Private: facets ───────────────────────────────────────────────────────
@@ -541,7 +546,7 @@ export class SearchService {
     query: SearchQueryDto,
     storeId?: string,
   ): Promise<Prisma.ProductWhereInput> {
-    const where: Prisma.ProductWhereInput = { isActive: true };
+    const where: Prisma.ProductWhereInput = { isActive: true, deletedAt: null };
     const andConditions: Prisma.ProductWhereInput[] = [];
 
     if (storeId) where.storeId = storeId;

@@ -239,7 +239,7 @@ export class CustomizationService {
     // Upsert: one draft per user/session + product + template
     const existing = await this.prisma.customizationDraft.findFirst({
       where: {
-        ...(userId ? { userId } : { sessionId }),
+        ...(userId ? { userId } : { sessionId, userId: null }),
         productId: dto.productId,
         templateId: dto.templateId,
       },
@@ -282,7 +282,7 @@ export class CustomizationService {
 
     return this.prisma.customizationDraft.findFirst({
       where: {
-        ...(userId ? { userId } : { sessionId }),
+        ...(userId ? { userId } : { sessionId, userId: null }),
         productId,
         expiresAt: { gt: new Date() },
       },
@@ -290,9 +290,14 @@ export class CustomizationService {
     });
   }
 
-  async getDraftById(draftId: string): Promise<CustomizationDraft> {
-    const draft = await this.prisma.customizationDraft.findUnique({
-      where: { id: draftId },
+  async getDraftById(draftId: string, userId: string | null, sessionId: string | null): Promise<CustomizationDraft> {
+    if (!userId && !sessionId) throw new NotFoundException({ code: 'ERR_NOT_FOUND', message: 'Draft not found' });
+    const draft = await this.prisma.customizationDraft.findFirst({
+      where: {
+        id: draftId,
+        ...(userId ? { userId } : { sessionId, userId: null }),
+        expiresAt: { gt: new Date() },
+      },
     });
     if (!draft) {
       throw new NotFoundException({

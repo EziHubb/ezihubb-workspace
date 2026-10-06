@@ -12,6 +12,7 @@ export interface JwtPayload {
   sid?: string;
   iat?: number;
   exp?: number;
+  purpose?: string;
 }
 
 @Injectable()

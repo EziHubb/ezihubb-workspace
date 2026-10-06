@@ -1,6 +1,6 @@
 import {
   Get, Post, Patch, Delete, Body, Param, Query, Req,
-  UseInterceptors, UploadedFile, BadRequestException,
+  UseInterceptors, UploadedFile, BadRequestException, UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -8,6 +8,7 @@ import { memoryStorage } from 'multer';
 import { IsOptional, IsString, IsUrl, MaxLength, IsArray, ArrayMaxSize, ValidateNested, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 import { AdminController } from '../../common/decorators/admin-controller.decorator';
+import { LegacyPayoutRetiredGuard } from '../../common/guards/legacy-payout-retired.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role, FEATURED_LAYOUTS, type FeaturedLayout } from '@ezihubb/constants';
 import { STORE_BANNER_MAX_BYTES, StoresService } from './stores.service';
@@ -341,6 +342,7 @@ export class AdminSellerPayoutsController {
   }
 
   @Post(':id/pay')
+  @UseGuards(LegacyPayoutRetiredGuard)
   async markPaid(@Param('id') id: string, @Req() req: any, @Body() dto: MarkPayoutPaidDto) {
     const context = await this.storeContext.resolve(req);
     return this.storesService.adminMarkPayoutPaid(

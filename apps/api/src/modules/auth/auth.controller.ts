@@ -111,7 +111,7 @@ export class AuthController {
   @Post('totp/verify')
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Complete admin login with TOTP code' })
+  @ApiOperation({ summary: 'Complete sign-in with TOTP or a backup code' })
   @ApiResponse({ status: 200, type: AuthResponseDto })
   async totpVerify(
     @Req() req: Request,
@@ -328,11 +328,13 @@ export class AuthController {
   ): Promise<void> {
     const result = await this.authService.googleLogin(profile, res);
     const frontendUrl = this.config.get<string>('app.frontendUrl') ?? 'http://localhost:3000';
-    const params = new URLSearchParams({
-      token: result.accessToken,
-      user:  JSON.stringify(result.user),
-    });
-    res.redirect(`${frontendUrl}/auth/google/callback?${params.toString()}`);
+    const params = new URLSearchParams('requiresTOTP' in result
+      ? { partialToken: result.partialToken }
+      : { token: result.accessToken, user: JSON.stringify(result.user) });
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    // Fragments are not sent to the storefront HTTP server or in Referer.
+    res.redirect(`${frontendUrl}/auth/google/callback#${params.toString()}`);
   }
 
   // POST /auth/google/token
@@ -341,10 +343,14 @@ export class AuthController {
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @ApiOperation({ summary: 'Sign in with a Google ID token (Google Identity Services One Tap / button)' })
   @ApiResponse({ status: 200, type: AuthResponseDto })
+  @ApiResponse({ status: 202, type: TotpRequiredResponseDto })
   async googleTokenLogin(
     @Body() dto: GoogleTokenDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<AuthResponseDto> {
-    return this.authService.googleTokenLogin(dto.credential, res);
+    @Res() res: Response,
+  ): Promise<void> {
+    const result = await this.authService.googleTokenLogin(dto.credential, res);
+    res.setHeader('Cache-Control', 'no-store');
+    res.status('requiresTOTP' in result ? HttpStatus.ACCEPTED : HttpStatus.OK)
+      .json({ success: true, data: result, meta: null });
   }
 }

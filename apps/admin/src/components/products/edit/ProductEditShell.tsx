@@ -30,6 +30,8 @@ import { SettingsTab }        from './tabs/SettingsTab';
 import { FulfillmentTab }     from './tabs/FulfillmentTab';
 import { DigitalFilesTab }    from './tabs/DigitalFilesTab';
 import { QaTab }              from './tabs/QaTab';
+import { useAdminMode } from '../../../lib/store-context';
+import { ProductReadOnlyView, ProductReadOnlyNotice } from '../ProductReadOnlyView';
 
 // ── Tab config ────────────────────────────────────────────────────────────────
 
@@ -116,7 +118,17 @@ interface ProductEditShellProps {
   copyVariationDraft?: ApplyVariationsPayload | null;
 }
 
-export function ProductEditShell({ product, detail, copyFrom, copyFromDetail, copyVariationDraft }: ProductEditShellProps) {
+export function ProductEditShell(props: ProductEditShellProps) {
+  const { isReady, isPlatformContext } = useAdminMode();
+  // Never mount editor effects (draft creation, uploads, autosave) until scope is known.
+  if (!isReady) return <p role="status" className="text-muted">Loading listing…</p>;
+  if (isPlatformContext) return props.product
+    ? <ProductReadOnlyView product={props.product} detail={props.detail} />
+    : <ProductReadOnlyNotice />;
+  return <WritableProductEditShell {...props} />;
+}
+
+function WritableProductEditShell({ product, detail, copyFrom, copyFromDetail, copyVariationDraft }: ProductEditShellProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
 

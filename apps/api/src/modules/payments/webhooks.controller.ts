@@ -15,6 +15,7 @@ import { Request } from 'express';
 import { PaymentsService } from './payments.service';
 import { PaypalService } from './paypal.service';
 import { StripeWebhookGuard } from '../../common/guards/stripe-webhook.guard';
+import { EconomicWebhookRetryException } from './economic-webhook-retry.exception';
 
 @ApiTags('Webhooks')
 @SkipThrottle()
@@ -69,9 +70,10 @@ export class WebhooksController {
     try {
       await this.paymentsService.handlePaypalWebhookEvent(eventType, resource, eventId ?? '');
     } catch (err: unknown) {
+      if (err instanceof EconomicWebhookRetryException) throw err;
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`PayPal webhook handler error for ${eventType}: ${message}`);
-      // Always return 200 to prevent PayPal from retrying processing errors
+      // Legacy behavior only; versioned financial failures above must be retried.
     }
 
     return { received: true };

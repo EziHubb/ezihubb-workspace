@@ -194,7 +194,7 @@ EXPOSE 3002
 # against a perfectly healthy server on every single check, permanently
 # stuck at Docker-reported "unhealthy" regardless of the app's real state.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:3002/api/v1/health || exit 1
+  CMD wget -qO- http://127.0.0.1:3002/api/v1/health/ready || exit 1
 CMD ["node", "dist/main.js"]
 
 FROM node:24.15.0-alpine AS client

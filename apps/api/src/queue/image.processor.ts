@@ -62,8 +62,7 @@ export class ImageProcessor extends WorkerHost {
     const originalUrl = this.storage.getPublicUrl(uploadKey);
 
     if (!apiKey) {
-      this.logger.warn('BG_REMOVAL_API_KEY not configured — returning original image');
-      return originalUrl;
+      throw new Error('Background removal provider is not configured');
     }
 
     try {
@@ -99,20 +98,10 @@ export class ImageProcessor extends WorkerHost {
       this.logger.log(`BG-removed image stored: ${pngKey}`);
       return resultUrl;
 
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { status?: number }; message?: string };
-      const status   = axiosErr.response?.status;
-
-      if (status === 402) {
-        this.logger.warn('Remove.bg quota exceeded — returning original image');
-      } else if (status === 400) {
-        this.logger.warn(`Remove.bg rejected image (400) — returning original`);
-      } else {
-        this.logger.error(`BG removal failed (${status ?? 'no response'}): ${axiosErr.message}`);
-      }
-
-      // Graceful fallback — caller gets original image URL, job still completes
-      return originalUrl;
+    } catch {
+      // Existing job-status endpoint already supports failed. Never claim a
+      // transformed output when the provider or storage write did not succeed.
+      throw new Error('Background removal failed');
     }
   }
 

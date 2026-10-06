@@ -10,12 +10,14 @@ import { PortalService } from './portal.service';
 import { AdminAffiliatesService } from './admin-affiliates.service';
 import { DevBullModule } from '../../queue/dev-bull.module';
 import { QUEUES } from '../../queue/queue.constants';
+import { FinancesModule } from '../finances/finances.module';
 
 const disableQueue = process.env['DISABLE_QUEUE'] === 'true';
 
 @Module({
   imports: [
     ConfigModule,
+    FinancesModule,
     ...(disableQueue
       ? [DevBullModule.forQueues([QUEUES.AFFILIATE_COMMISSION, QUEUES.EMAIL])]
       : [

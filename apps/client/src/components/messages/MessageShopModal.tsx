@@ -9,6 +9,7 @@ import { apiClient } from '@ezihubb/api-client';
 import { API_ROUTES } from '@ezihubb/constants';
 import { useAuthStore } from '../../lib/store/auth.store';
 import type { ConversationDto } from '@ezihubb/types';
+import { GuestMessageVerification } from './GuestMessageVerification';
 
 interface Props {
   isOpen:   boolean;
@@ -55,21 +56,32 @@ export function MessageShopModal({ isOpen, onClose, context }: Props) {
     });
 
   const [sent, setSent] = useState(false);
+  const [verifiedEmail, setVerifiedEmail] = useState<string | null>(null);
+  const [sendError, setSendError] = useState('');
+  const guestEmail = watch('guestEmail').trim().toLowerCase();
 
   const onSubmit = async (data: FormValues) => {
-    await apiClient.post<ConversationDto>(API_ROUTES.MESSAGES.CONVERSATIONS, {
+    if (!user && verifiedEmail !== guestEmail) return;
+    setSendError('');
+    try {
+      await apiClient.post<ConversationDto>(API_ROUTES.MESSAGES.CONVERSATIONS, {
       orderId:    context?.orderId,
       storeId:    context?.storeId,
       subject:    data.subject || undefined,
       body:       data.message,
-      guestEmail: user ? undefined : data.guestEmail || undefined,
+      guestEmail: user ? undefined : guestEmail,
       guestName:  user ? undefined : data.guestName  || undefined,
     }, { token: token ?? undefined });
-    setSent(true);
+      setSent(true);
+    } catch (err) {
+      if ((err as { code?: string }).code === 'ERR_GUEST_VERIFICATION_REQUIRED') setVerifiedEmail(null);
+      setSendError('Unable to send your message. Please check your email verification and try again.');
+    }
   };
 
   const handleClose = () => {
     setSent(false);
+    setVerifiedEmail(null); setSendError('');
     reset({ guestEmail: '', guestName: '', subject: defaultSubject, message: '' });
     onClose();
   };
@@ -99,7 +111,7 @@ export function MessageShopModal({ isOpen, onClose, context }: Props) {
                   for our reply.
                 </>
               ) : (
-                'Check your email for our reply.'
+                <Link href={`/${locale}/messages/guest`} className="text-primary hover:underline" onClick={handleClose}>Open your guest message inbox</Link>
               )}
             </p>
             <Button variant="secondary" size="sm" onClick={handleClose}>Close</Button>
@@ -153,6 +165,11 @@ export function MessageShopModal({ isOpen, onClose, context }: Props) {
               </div>
             )}
 
+            {!user && (verifiedEmail === guestEmail
+              ? <p role="status" className="text-sm text-secondary">Email verified: {verifiedEmail}</p>
+              : <GuestMessageVerification email={guestEmail} onVerified={setVerifiedEmail} />)}
+            {sendError && <p role="alert" className="text-sm text-error">{sendError}</p>}
+
             {/* Subject */}
             <div>
               <label className="text-xs font-medium block mb-1">Subject</label>
@@ -189,7 +206,7 @@ export function MessageShopModal({ isOpen, onClose, context }: Props) {
               <Button type="button" variant="ghost" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" loading={isSubmitting}>
+              <Button type="submit" variant="primary" loading={isSubmitting} disabled={!user && verifiedEmail !== guestEmail}>
                 Send message
               </Button>
             </div>

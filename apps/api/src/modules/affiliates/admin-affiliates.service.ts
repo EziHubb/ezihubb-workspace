@@ -301,25 +301,26 @@ export class AdminAffiliatesService {
       },
     });
     if (!payout) throw new NotFoundException('Payout not found.');
-    if (payout.status === PayoutStatus.PAID) {
+    if (payout.status !== PayoutStatus.REQUESTED && payout.status !== PayoutStatus.PROCESSING) {
       throw new BadRequestException('Payout has already been marked as paid.');
     }
 
-    await this.prisma.$transaction([
-      this.prisma.affiliatePayout.update({
-        where: { id },
+    await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.affiliatePayout.updateMany({
+        where: { id, status: payout.status },
         data:  {
           status:        PayoutStatus.PAID,
           processedAt:   new Date(),
           processedById: adminId,
           adminNotes:    dto.adminNotes ?? null,
         },
-      }),
-      this.prisma.affiliateCommission.updateMany({
+      });
+      if (claimed.count !== 1) throw new BadRequestException('Payout state changed.');
+      await tx.affiliateCommission.updateMany({
         where: { affiliateId: payout.affiliateId, status: CommissionStatus.CONFIRMED },
         data:  { status: CommissionStatus.PAID },
-      }),
-    ]);
+      });
+    });
 
     // Fire-and-forget: payout processed email
     const shopUrl          = this.config.get<string>('FRONTEND_URL', 'https://ezihubb.com');
@@ -358,20 +359,20 @@ export class AdminAffiliatesService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.affiliatePayout.update({
-        where: { id },
+      const updated = await tx.affiliatePayout.updateMany({
+        where: { id, status: payout.status },
         data:  {
           status:        PayoutStatus.REJECTED,
           processedById: adminId,
           adminNotes:    dto.reason,
         },
-        select: { id: true, status: true },
       });
+      if (updated.count !== 1) throw new BadRequestException('Payout state changed.');
       await tx.affiliateAccount.update({
         where: { id: payout.affiliateId },
         data:  { balance: { increment: payout.amount } },
       });
-      return updated;
+      return { id, status: PayoutStatus.REJECTED };
     });
   }
 

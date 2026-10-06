@@ -63,7 +63,8 @@ export default function MonthlyStatementPage() {
         <span>/</span>
         <span className="text-secondary font-medium">Monthly statement</span>
       </div>
-      <h1 className="text-xl font-bold text-secondary mb-6">Monthly statement</h1>
+      <h1 className="text-xl font-bold text-secondary mb-3">Legacy monthly statement</h1>
+      <p className="mb-6 p-4 border border-border rounded-card text-secondary text-sm">Historical / unverified ledger records. These totals are retained for reconciliation and are not your verified captured balance or funds available for payout. View Payment account for verified allocations.</p>
 
       <div className="flex items-center gap-2 mb-5">
         <Menu

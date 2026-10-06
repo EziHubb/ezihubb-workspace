@@ -104,11 +104,9 @@ export const authOptions: NextAuthOptions = {
 
     // Google Identity Services (One Tap / button) and the legacy Google OAuth
     // redirect both verify the Google credential and issue our own
-    // accessToken server-side (POST /auth/google/token, or the /auth/google
-    // /callback redirect) *before* this ever runs — this provider's only job
-    // is wrapping that already-trusted pair into a next-auth session so
-    // SessionSyncer and useSession()-based guards (AccountLayoutClient etc.)
-    // see the user as signed in. It does not talk to the API at all.
+    // accessToken server-side. The browser is still an untrusted caller:
+    // validate its token with the API and derive identity from /users/me,
+    // never from the browser-supplied user JSON. Also used after password MFA.
     Credentials({
       id:   'google-token',
       name: 'Google',
@@ -118,10 +116,17 @@ export const authOptions: NextAuthOptions = {
       },
 
       async authorize(credentials) {
-        if (!credentials?.accessToken || !credentials?.user) return null;
+        if (!credentials?.accessToken) return null;
 
         try {
-          const user = JSON.parse(credentials.user) as Record<string, unknown>;
+          const response = await fetch(`${API_BASE}${API_ROUTES.USERS.ME}`, {
+            headers: { Authorization: `Bearer ${credentials.accessToken}` },
+            cache: 'no-store',
+            signal: AbortSignal.timeout(10_000),
+          });
+          if (!response.ok) return null;
+          const body = await response.json();
+          const user = (body.data ?? body) as Record<string, unknown>;
           if (!user?.['id']) return null;
 
           return {

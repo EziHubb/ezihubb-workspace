@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
-import { createHmac } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Request } from 'express';
 import { OrderProgressStepKind, OrderStatus } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
@@ -34,7 +34,7 @@ export class TrackingWebhookController {
   ) {
     this.webhookSecret = config.get<string>('EASYPOST_WEBHOOK_SECRET', '');
     if (!this.webhookSecret) {
-      this.logger.warn('EASYPOST_WEBHOOK_SECRET not set — webhook signature verification disabled');
+      this.logger.warn('EASYPOST_WEBHOOK_SECRET not set — tracking webhooks will be rejected');
     }
   }
 
@@ -43,18 +43,25 @@ export class TrackingWebhookController {
   @ApiOperation({ summary: 'EasyPost carrier tracking webhook — auto-updates order status' })
   async handleWebhook(@Req() req: Request & { rawBody?: Buffer }) {
     const body = req.body as unknown;
-    const signature = req.headers['x-hmac-signature'] as string | undefined;
+    const header = req.headers['x-hmac-signature'];
+    // EasyPost v1 sends the algorithm prefix. Accept the previously supported
+    // bare digest as well; both must verify against the exact raw body.
+    const signature = typeof header === 'string' ? header.replace(/^hmac-sha256-hex=/, '') : undefined;
 
-    if (this.webhookSecret) {
+    if (!this.webhookSecret || !req.rawBody) {
+      throw new UnauthorizedException('Webhook verification unavailable');
+    }
+    {
       if (!signature) {
         throw new UnauthorizedException('Missing X-Hmac-Signature header');
       }
       // Use raw body for HMAC verification when available (most accurate)
-      const payload = req.rawBody ?? Buffer.from(JSON.stringify(body));
+      const payload = req.rawBody;
       const expected = createHmac('sha256', this.webhookSecret)
         .update(payload)
         .digest('hex');
-      if (signature !== expected) {
+      if (!/^[a-fA-F0-9]{64}$/.test(signature) ||
+          !timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expected, 'hex'))) {
         throw new UnauthorizedException('Invalid EasyPost webhook signature');
       }
     }

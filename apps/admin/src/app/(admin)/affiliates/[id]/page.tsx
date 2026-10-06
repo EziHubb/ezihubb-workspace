@@ -631,7 +631,7 @@ export default function AffiliateDetailPage({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               {[
-                { label: 'Balance', value: `${fmtAmount(affiliate.balance)}` },
+                { label: 'Legacy balance (unreconciled)', value: `${fmtAmount(affiliate.balance)}` },
                 {
                   label: 'Total Earned',
                   value: `${fmtAmount(affiliate.totalEarned)}`,

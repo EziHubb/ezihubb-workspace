@@ -11,6 +11,9 @@ import { Eye, EyeOff } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import { GoogleSignInButton } from '../../../../components/auth/GoogleSignInButton';
 import { resolveAuthRedirect } from '../../../../lib/auth-redirect';
+import { api } from '../../../../lib/api-client';
+import { API_ROUTES } from '@ezihubb/constants';
+import { TotpChallengeForm, type SignInResponse, type CompletedSignIn } from '../../../../components/auth/TotpChallengeForm';
 
 // ── Zod schema ────────────────────────────────────────────────────────────────
 
@@ -33,6 +36,7 @@ export default function LoginPage() {
   const [shake,        setShake]        = useState(false);
   const [globalError,  setGlobalError]  = useState('');
   const [isPending,    setIsPending]    = useState(false);
+  const [partialToken, setPartialToken] = useState<string | null>(null);
   const redirectTo = resolveAuthRedirect(
     searchParams.get('redirect'),
     `/${locale}/account`,
@@ -45,19 +49,25 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
+  const completeSignIn = async (result: CompletedSignIn) => {
+    const session = await signIn('google-token', { redirect: false, accessToken: result.accessToken });
+    if (!session?.ok) throw new Error('ERR_SESSION_FAILED');
+    router.replace(redirectTo);
+  };
+
   const onSubmit = async (data: FormValues) => {
     setIsPending(true);
     setGlobalError('');
 
-    const result = await signIn('credentials', {
-      redirect:   false,
-      email:      data.email,
-      password:   data.password,
-      rememberMe: String(data.rememberMe ?? false),
-    });
-
-    if (!result?.ok) {
-      const code = result?.error ?? 'UNKNOWN';
+    try {
+      const result = await api.post<SignInResponse>(API_ROUTES.AUTH.LOGIN, data);
+      if ('requiresTOTP' in result) {
+        setPartialToken(result.partialToken);
+        return;
+      }
+      await completeSignIn(result);
+    } catch (error) {
+      const code = (error as { code?: string }).code ?? 'UNKNOWN';
 
       if (code === 'ERR_CREDENTIALS_INVALID') {
         setError('email', { message: 'Invalid email or password.' });
@@ -71,11 +81,7 @@ export default function LoginPage() {
         setGlobalError('Something went wrong. Please try again.');
       }
 
-      setIsPending(false);
-      return;
-    }
-
-    router.replace(redirectTo);
+    } finally { setIsPending(false); }
   };
 
   const inp = (err?: string) =>
@@ -84,6 +90,9 @@ export default function LoginPage() {
       'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors',
       err ? 'border-error' : 'border-border',
     ].join(' ');
+
+  if (partialToken) return <TotpChallengeForm partialToken={partialToken}
+    onCancel={() => setPartialToken(null)} onComplete={completeSignIn} />;
 
   return (
     <div className={shake ? '[animation:shake_0.5s_ease-in-out]' : ''}>

@@ -1,0 +1,41 @@
+# System invariants
+
+Baseline 2026-10-02; status here describes pre-implementation. Final measured status is in final-re-audit.md. No runtime production verification performed.
+
+| ID | Invariant | Components / baseline status | Enforcement / test strategy |
+|---|---|---|---|
+| I01 | Pending MFA credentials never authorize HTTP or socket resources | auth/realtime: violated | Shared token purpose gate; real signed challenge + HTTP strategy/socket validation negative tests |
+| I02 | Current DB identity/role dominates historical JWT privileges | auth/admin: violated | Role mismatch rejects credential, deleted/session revoked rejects; demotion tests |
+| I03 | Guest data is attached only after mailbox ownership proof | auth/messages/orders: violated | No registration/unverified-login attachment; verified callback/Google tests; old links require review |
+| I04 | ID knowledge alone grants no private access | customization/messages: violated | Owner or existing anonymous cart session and nonexpired record; guest messages need capability decision |
+| I05 | Anonymous reviews expose approved content only | reviews: violated | Force APPROVED irrespective query; all-enum-status tests |
+| I06 | An enabled factor cannot be replaced by proving only the new factor | auth: violated | Atomic enable only when disabled; setup concurrency and backup-code single consumption tests |
+| I07 | Available seller funds trace to captured money and approved fee/adjustment policy | checkout/ledger/finances/payout: violated online | Owner-approved ledger timing, capture provenance and balances; unpaid/manual/paid tests and reconciliation |
+| I08 | Commit of economic state guarantees eventual recoverable event delivery | payments/queue: violated | Transactional outbox + idempotent consumers; crash before/after commit/publish tests |
+| I09 | Retry produces the same money and stock result as one successful processing | affiliates/inventory/payments: violated | Conditional transitions; durable per-order consumption; real PG concurrency/replay tests |
+| I10 | Provider refund, Payment, shop allocation, ledger and payout debt reconcile | refunds: violated | Durable refund intent, idempotency key and allocation approval; partial qty>1/multi-store/post-settlement tests |
+| I11 | Stock cannot become negative or skip quantities/variants | inventory: violated | Agreed product/variant authority, atomic reserve and consume; last-unit races and duplicate events |
+| I12 | Only verified provider messages may mutate provider-owned states | tracking: violated when unconfigured | Missing config/raw body/signature fails closed before lookup; replay and transition tests |
+| I13 | Parent and shop statuses derive from a documented state machine | orders/fulfillment: partial | Manual/digital/mixed-shop transition tests; durable external intent; no blind create retry |
+| I14 | Financial history survives deletion and test provenance is explicit | archive/ledger: partial | Existing reversals retained; no destructive cleanup/backfill; owner-approved test marking |
+| I15 | Tenant revenue counts its lines × quantity, not other shops or estimated observations | stats: violated | Scoped line/store totals, unavailable metadata not fake zeros; multi-store/qty and metric-contract tests |
+| I16 | Provider failure/unknown moderation is never CLEAN or completed processing | moderation/image: violated | Sanitized retryable failure, runtime result validation; timeout/quota/oversize/malformed tests |
+| I17 | Search results, totals and facets honor the same filter and visibility predicates | search: violated | Full ORM constraints when FTS cannot express filters; count/page parity tests |
+| I18 | Health means checked dependencies; cache failure cannot disable security invisibly | health/Redis: violated/partial | Bounded probes, reconnect, separate security guarantees; outage and recovery drill |
+| I19 | Failure diagnostics identify work without exposing payloads/tokens/PII | queue/logging: violated | Allowlisted metadata, fixed error category; secret canary test, independent alert channel |
+| I20 | Refundable/reserved money is never credited twice by concurrent transitions | affiliates: violated | Expected-state conditional update in same transaction as balance mutation; retry/rollback/concurrency tests |
+| I21 | Tenant writes require selected owned store, not merely platform role | products: pre-existing work, needs regression | Preserve ProductStoreWriteGuard + store-scope tests; no unrelated rewrites |
+| I22 | Commercial and pilot claims never exceed measured evidence | docs/UI: partial | Final issue statuses distinguish unit verification from DB/provider/runtime; no live-revenue assertion |
+| I23 | Every enabled MFA factor is required on password and Google paths before full credentials or guest-history linking | auth/client: E1 implementation | Google redirect/GSI and customer/admin password challenge tests; sandbox verification pending |
+| I24 | One refresh credential yields at most one committed successor; failed successor creation does not consume the original | auth: E1 implementation | Conditional revoke and successor in same transaction; CAS/rollback harness, real PG drill required |
+| I25 | Browser-provided identity cannot determine a server-signed frontend session | client NextAuth: E1 implementation | Protected uncached profile lookup, forged role/ID and unavailable API tests |
+| I26 | Guest mailbox proof grants messaging access only to anonymous threads for that mailbox, never account-owned data | messages/client: E2 implementation | Hashed one-use proof, bounded attempts and TTL, expiring/revocable cookie; read/write/upload/page/preview/hide/report/read-receipt share trusted identity |
+| I27 | A message may carry only the caller's own order, and a selected shop must belong to that order | messages: E2 implementation | Reject foreign order IDs and unrelated shop/order combinations before thread creation |
+| I28 | Reusing an operation identity cannot change its context, amount, currency, provenance or request fingerprint | M2 dormant primitives; production adapters pending | Compound uniqueness, explicit PREPARED construction, mismatch rejection and immutable SQL identity; modeled replay and isolated PostgreSQL trigger tests pass, multi-session server proof pending |
+| I29 | Ambiguous provider results are reconciled under the original identity, not automatically dispatched again | M2 dormant primitives | PREPARED-only CAS dispatch; timeout/expired dispatch moves to NEEDS_RECONCILIATION; no reset transition; provider lookup integration pending |
+| I30 | Test events cannot be consumed as live economic events, and absent context is not evidence of payment | M2 schema/consumer contract only | Explicit provenance without legacy backfill; context/currency composite FK and consumer provenance check; versioned producers/readers still pending |
+| I31 | Refund rounding conserves original allocations including the last minor unit | M1 quantity-refund helpers | BigInt cumulative-floor differences plus deterministic largest-remainder allocation; exact multi-shop/quantity fixtures; arbitrary-amount refund caps pending M4 |
+| I32 | Reservation retries and setting changes cannot double-debit or release a different inventory pool | M2 dormant inventory primitives | Unique context/pool, grouped quantities, immutable pool/line/expiry snapshots, conditional SERIALIZABLE debit/release; real last-unit races and late-capture reacquisition pending |
+| I33 | Quote fingerprints survive JSONB key ordering but never accept altered derived allocations | M3a dormant quote producer | Canonical sorted-key JSON, rebuild-and-compare, exact minor units, unique line/shop identities and no PII passthrough |
+| I34 | A balanced capture journal must also use the correct accounts and beneficiaries | M3a dormant journal/SQL guards | Deferred canonical-entry comparison rejects VAT-to-revenue, wrong affiliate, foreign seller and offsetting bogus entries; multi-shop SQL fixtures pass |
+| I35 | Provider verification must bind the current payment, not only a pre-I/O snapshot | M3a dormant evidence/booking helpers | Provider account/mode/ID/metadata/amount checks; recheck payment ID/method/currency/amount and quote context inside SERIALIZABLE booking; modeled race tests |

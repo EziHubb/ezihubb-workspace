@@ -68,7 +68,7 @@ echo "════════════════════════�
 # ── Step 1: Infrastructure ────────────────────────────────────────────────────
 echo ""
 echo -e "${YELLOW}[1/6] Health Check${NC}"
-check_contains "GET /api/v1/health → status ok" '"status":"ok"' GET "$API/api/v1/health"
+check_contains "GET /api/v1/health/ready → status ok" '"status":"ok"' GET "$API/api/v1/health/ready"
 
 # ── Step 2: Auth endpoints ────────────────────────────────────────────────────
 echo ""

@@ -1,10 +1,12 @@
 'use client';
 
-import { Suspense, useEffect } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import type { UserDto } from '@ezihubb/types';
 import { GOOGLE_OAUTH_MESSAGE_TYPE, postGoogleOAuthResultToOpener } from '../../../../../../lib/auth/google-oauth-popup';
+import { TotpChallengeForm, type CompletedSignIn } from '../../../../../../components/auth/TotpChallengeForm';
+import { resolveAuthRedirect } from '../../../../../../lib/auth-redirect';
 
 // The callback is request-specific by definition and reads the OAuth query string.
 export const dynamic = 'force-dynamic';
@@ -13,7 +15,7 @@ export const dynamic = 'force-dynamic';
  * Google OAuth callback handler.
  *
  * The API server redirects here after a Google OAuth attempt, passing:
- *   ?token=<accessToken>&user=<JSON UserDto>&redirect=<optional path>
+ *   #token=<accessToken>&user=<JSON UserDto>, or #partialToken=<MFA challenge>
  * or ?error=<code> on failure.
  *
  * Runs inside the OAuth popup window in the normal flow: hands the result
@@ -28,17 +30,40 @@ export const dynamic = 'force-dynamic';
 function GoogleCallbackContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
+  const started = useRef(false);
+  const redirectTo = useRef('/');
+  const [partialToken, setPartialToken] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  const completeSignIn = useCallback(async ({ accessToken, user }: CompletedSignIn) => {
+    if (postGoogleOAuthResultToOpener({ type: GOOGLE_OAUTH_MESSAGE_TYPE, token: accessToken, user })) return;
+    const result = await signIn('google-token', { redirect: false, accessToken });
+    if (!result?.ok) throw new Error('oauth_failed');
+    router.replace(redirectTo.current);
+  }, [router]);
 
   useEffect(() => {
-    const token     = searchParams.get('token');
-    const userParam = searchParams.get('user');
-    const redirect  = searchParams.get('redirect') ?? '/';
+    if (started.current) return;
+    started.current = true;
+    const fragment = new URLSearchParams(window.location.hash.slice(1));
+    // Read old query callbacks during rollout, but immediately remove secrets
+    // from browser history. New API callbacks use fragments only.
+    const token     = fragment.get('token') ?? searchParams.get('token');
+    const userParam = fragment.get('user') ?? searchParams.get('user');
+    const challenge = fragment.get('partialToken');
+    redirectTo.current = resolveAuthRedirect(searchParams.get('redirect'), '/');
     const error     = searchParams.get('error');
+    window.history.replaceState(window.history.state, '', window.location.pathname);
 
     const fail = (code: string) => {
       const posted = postGoogleOAuthResultToOpener({ type: GOOGLE_OAUTH_MESSAGE_TYPE, error: code });
-      if (!posted) router.replace('/login?error=oauth_failed');
+      if (!posted) setFailed(true);
     };
+
+    if (challenge && !error) {
+      setPartialToken(challenge);
+      return;
+    }
 
     if (error || !token || !userParam) {
       fail(error ?? 'oauth_failed');
@@ -53,23 +78,15 @@ function GoogleCallbackContent() {
       return;
     }
 
-    const posted = postGoogleOAuthResultToOpener({ type: GOOGLE_OAUTH_MESSAGE_TYPE, token, user });
-    if (posted) return;
+    void completeSignIn({ accessToken: token, user }).catch(() => fail('oauth_failed'));
+  }, [searchParams, completeSignIn]);
 
-    void (async () => {
-      const result = await signIn('google-token', {
-        redirect:    false,
-        accessToken: token,
-        user:        JSON.stringify(user),
-      });
-      if (!result?.ok) {
-        fail('oauth_failed');
-        return;
-      }
-      router.replace(redirect);
-    })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  if (partialToken) return <TotpChallengeForm partialToken={partialToken}
+    onCancel={() => router.replace('/login')} onComplete={completeSignIn} />;
+  if (failed) return <div role="alert" className="space-y-4 text-secondary">
+    <p>Unable to finish signing in. Please start again.</p>
+    <button type="button" className="min-h-11 rounded-button bg-primary px-4 py-2 text-white" onClick={() => router.replace('/login')}>Back to sign-in</button>
+  </div>;
 
   return (
     <div className="flex items-center justify-center h-screen gap-3 text-muted">

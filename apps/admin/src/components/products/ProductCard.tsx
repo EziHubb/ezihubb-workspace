@@ -42,6 +42,7 @@ export interface AdminProduct {
 }
 
 interface ProductCardProps {
+  readOnly?:         boolean;
   product:           AdminProduct;
   selected:          boolean;
   anySelected:       boolean;
@@ -63,6 +64,7 @@ const STATUS_STYLES: Record<string, string> = {
 // ── Gear menu ─────────────────────────────────────────────────────────────────
 
 function GearMenu({
+  readOnly,
   product,
   onToggleActive,
   onArchive,
@@ -70,6 +72,7 @@ function GearMenu({
   onDelete,
   clientBaseUrl,
 }: {
+  readOnly:         boolean;
   product:          AdminProduct;
   onToggleActive:   (p: AdminProduct) => void;
   onArchive:        (p: AdminProduct) => void;
@@ -93,6 +96,9 @@ function GearMenu({
   const items: MenuItemDef[] = [
     { label: 'View on site', icon: <ExternalLink className="w-3.5 h-3.5" />, onClick: () => window.open(`${clientBaseUrl ?? ''}/products/${product.slug}`, '_blank', 'noopener,noreferrer') },
     { label: 'View stats',   icon: <BarChart2 className="w-3.5 h-3.5" />,    onClick: () => router.push(ADMIN_ROUTES.STATS_LISTING(product.id)) },
+    ...(readOnly ? [
+      { label: 'View details', icon: <Eye className="w-3.5 h-3.5" />, onClick: () => router.push(`/products/${product.id}/edit`) },
+    ] : [
     { label: 'Edit',         icon: <Pencil className="w-3.5 h-3.5" />,       onClick: () => router.push(`/products/${product.id}/edit`) },
     { label: 'Copy',         icon: <Copy className="w-3.5 h-3.5" />,         onClick: () => router.push(`/products/copy/${product.id}`) },
     {
@@ -110,6 +116,7 @@ function GearMenu({
     ...(onDelete && product.status === 'ARCHIVED'
       ? [{ label: 'Delete', icon: <Trash2 className="w-3.5 h-3.5" />, destructive: true, onClick: () => onDelete(product) }]
       : []),
+    ]),
   ];
 
   return (
@@ -132,6 +139,7 @@ function GearMenu({
 // ── Product card ──────────────────────────────────────────────────────────────
 
 export const ProductCard = memo(function ProductCard({
+  readOnly = false,
   product,
   selected,
   anySelected,
@@ -192,7 +200,7 @@ export const ProductCard = memo(function ProductCard({
         )}
 
         {/* Checkbox overlay */}
-        <div className={`absolute top-2 left-2 transition-opacity ${checkboxVisible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+        {!readOnly && <div className={`absolute top-2 left-2 transition-opacity ${checkboxVisible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
           <label
             className="flex items-center justify-center w-5 h-5 rounded bg-white shadow cursor-pointer"
             onClick={(e) => e.stopPropagation()}
@@ -211,7 +219,7 @@ export const ProductCard = memo(function ProductCard({
               )}
             </span>
           </label>
-        </div>
+        </div>}
 
         {/* Status badge */}
         {/* The same sticker the storefront shows, in the one corner this
@@ -230,7 +238,7 @@ export const ProductCard = memo(function ProductCard({
         </div>
 
         {/* Clickable star (feature toggle) — optimistic + debounced */}
-        {onToggleFeatured && (
+        {!readOnly && onToggleFeatured && (
           <button
             type="button"
             onClick={handleStarClick}
@@ -295,6 +303,7 @@ export const ProductCard = memo(function ProductCard({
             )}
           </div>
           <GearMenu
+            readOnly={readOnly}
             product={product}
             onToggleActive={onToggleActive}
             onArchive={onArchive}

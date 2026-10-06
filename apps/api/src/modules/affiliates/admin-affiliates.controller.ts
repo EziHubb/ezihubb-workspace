@@ -21,6 +21,7 @@ import {
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { LegacyPayoutRetiredGuard } from '../../common/guards/legacy-payout-retired.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@ezihubb/constants';
@@ -75,7 +76,8 @@ export class AdminAffiliatesController {
 
   // POST /admin/affiliates/payouts/:id/pay
   @Post('payouts/:id/pay')
-  @ApiOperation({ summary: 'Mark a payout as paid' })
+  @UseGuards(LegacyPayoutRetiredGuard)
+  @ApiOperation({ summary: 'Retired: legacy payout settlement requires reconciliation', deprecated: true })
   markPayoutPaid(
     @Param('id') id: string,
     @Body() dto: AdminPayoutActionDto,
@@ -86,7 +88,8 @@ export class AdminAffiliatesController {
 
   // POST /admin/affiliates/payouts/:id/reject
   @Post('payouts/:id/reject')
-  @ApiOperation({ summary: 'Reject a payout request (restores affiliate balance)' })
+  @UseGuards(LegacyPayoutRetiredGuard)
+  @ApiOperation({ summary: 'Retired: legacy payout changes require reconciliation', deprecated: true })
   rejectPayout(
     @Param('id') id: string,
     @Body() dto: RejectPayoutDto,

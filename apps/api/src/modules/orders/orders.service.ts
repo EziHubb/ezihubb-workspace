@@ -6,10 +6,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { OrderProgressStepKind, OrderStatus, Prisma, ProductType, Promotion } from '@prisma/client';
-import { randomBytes, randomInt } from 'crypto';
+import { randomInt } from 'crypto';
+import { freezeCheckoutEconomics, requireEconomicCheckout } from '../finances/economic-checkout';
+import { parseMinorUnits } from '../finances/economic-policy';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { QUEUES, JOBS, DEFAULT_JOB_OPTIONS } from '../../queue/queue.constants';
+import { QUEUES } from '../../queue/queue.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ShippingService } from '../shipping/shipping.service';
 import {
@@ -28,12 +30,10 @@ import { FulfillmentConnectionStatus } from '@prisma/client';
 import { FulfillmentRegistryService } from '../fulfillment/fulfillment-registry.service';
 import { FulfillmentConnectionsService } from '../fulfillment/fulfillment-connections.service';
 import { FulfillmentAddress, FulfillmentLineItem } from '../fulfillment/interfaces/fulfillment-provider.interface';
-import { calculateOrderFees, OrderFeeSettings, PLATFORM_FEE_DEFAULTS } from '../stores/fees.util';
 import { getEffectivePrices, applyBestPromo } from '../products/pricing.util';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { BundleOffersService } from '../promotions/bundle-offers.service';
 import { LinkAttributionService } from '../marketing/link-attribution.service';
-import { SHARE_SAVE_REFUND_RATE } from '../marketing/marketing.constants';
 import { CheckoutDto, CheckoutResponseDto } from './dto/checkout.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { syncOrderStatusFromShops } from './order-status-sync';
@@ -211,6 +211,7 @@ export class OrdersService {
     sessionId?: string,
     cookies?: Record<string, string>,
   ): Promise<CheckoutResponseDto> {
+    if (this.onlinePaymentsEnabled) requireEconomicCheckout(dto.giftCardCode);
     if (!userId && !dto.guestEmail) {
       throw new BadRequestException({
         code: 'ERR_VALIDATION',
@@ -499,7 +500,6 @@ export class OrdersService {
     let affiliateId: string | null = null;
     let affiliateDiscountAmount    = 0;
     const referralCode = cookies?.['ezihubb_affiliate'];
-    const visitorId    = cookies?.['ezihubb_visitor'];
 
     if (referralCode) {
       const resolved = await this.affiliateTrackingService.resolveAffiliate(referralCode);
@@ -558,12 +558,6 @@ export class OrdersService {
       ? OrderStatus.PENDING_PAYMENT
       : OrderStatus.CONFIRMED;
     const confirmedAt = this.onlinePaymentsEnabled ? undefined : new Date();
-
-    // Share & Save rewards go to the SHARER, a different person than whoever
-    // is checking out right now — collected here and emailed after the
-    // transaction commits (the Promotion code itself is still created inside
-    // the transaction, atomically with everything else).
-    const sharerRewards: { sharerId: string; storeId: string; storeName: string; storeSlug: string; amount: number; code: string; expiresAt: Date }[] = [];
 
     // $transaction: create order + items + status history + atomic coupon increment
     const order = await this.prisma.$transaction(async (tx) => {
@@ -638,24 +632,10 @@ export class OrdersService {
       }
 
       if (storeGroups.size > 0) {
-        const platformSettings = await tx.platformSettings.findUnique({ where: { id: 'singleton' } });
-        const feeSettings: OrderFeeSettings = {
-          transactionFeeRate:        Number(platformSettings?.transactionFeeRate        ?? PLATFORM_FEE_DEFAULTS.transactionFeeRate),
-          paymentProcessingFeeRate:  Number(platformSettings?.paymentProcessingFeeRate  ?? PLATFORM_FEE_DEFAULTS.paymentProcessingFeeRate),
-          paymentProcessingFixedFee: Number(platformSettings?.paymentProcessingFixedFee ?? PLATFORM_FEE_DEFAULTS.paymentProcessingFixedFee),
-          regulatoryFeeRate:         Number(platformSettings?.regulatoryFeeRate         ?? PLATFORM_FEE_DEFAULTS.regulatoryFeeRate),
-          regulatoryFeeCountries:    platformSettings?.regulatoryFeeCountries           ?? PLATFORM_FEE_DEFAULTS.regulatoryFeeCountries,
-          vatOnFeesRate:             Number(platformSettings?.vatOnFeesRate             ?? PLATFORM_FEE_DEFAULTS.vatOnFeesRate),
-        };
-        const offsiteAdsFeeRate = Number(platformSettings?.offsiteAdsFeeRate ?? PLATFORM_FEE_DEFAULTS.offsiteAdsFeeRate);
-
         const storeRecords = await tx.store.findMany({
           where:  { id: { in: [...storeGroups.keys()] } },
           select: { id: true, name: true, slug: true, country: true, offsiteAdsOptedOut: true, shareSaveEnabled: true },
         });
-        const storeCountryMap = new Map(storeRecords.map(s => [s.id, s.country]));
-        const storeOptOutMap = new Map(storeRecords.map(s => [s.id, s.offsiteAdsOptedOut]));
-        const storeInfoMap = new Map(storeRecords.map(s => [s.id, { name: s.name, slug: s.slug }]));
         const storeShareSaveMap = new Map(storeRecords.map(s => [s.id, s.shareSaveEnabled]));
 
         for (const [storeId, items] of storeGroups) {
@@ -675,7 +655,6 @@ export class OrdersService {
           const storeShippingCost = platformFreeShipping
             ? quotedStoreShippingCost
             : storeShipping.sellerCredit;
-          const sellerShippingCredit = storeShipping.sellerCredit;
 
           // Every discount on Etsy is seller-funded — a store-scoped coupon's
           // discount reduces THAT store's own subtotal (and therefore fees +
@@ -686,9 +665,8 @@ export class OrdersService {
           const couponDiscount = promo?.storeId === storeId ? Math.min(discount, roundedSubtotal) : 0;
           const storeBundleDiscount = bundleDiscountByStore.get(storeId) ?? 0;
           const storeDiscount = Math.min(couponDiscount + storeBundleDiscount, roundedSubtotal);
-          const discountedSubtotal = Math.round((roundedSubtotal - storeDiscount) * 100) / 100;
 
-          const fees = calculateOrderFees(discountedSubtotal, sellerShippingCredit, storeCountryMap.get(storeId), feeSettings);
+
 
           // The dispatch promise, from the slowest item in this store's part
           // of the order — the parcel cannot leave before the last thing in it
@@ -715,107 +693,24 @@ export class OrdersService {
               shipByDate,
               subtotal:       roundedSubtotal,
               discountAmount: storeDiscount,
-              platformFee:    this.onlinePaymentsEnabled ? fees.totalFees : 0,
+              platformFee:    0,
               // An order request is not revenue. The buyer-facing/store-order
               // receipt still carries the expected total through subtotal,
               // discount and shipping, but no seller balance is recorded
               // until a real payment exists.
-              sellerEarnings: this.onlinePaymentsEnabled
-                ? fees.sellerEarnings
-                : 0,
+              sellerEarnings: 0,
               shippingCost:   storeShippingCost,
               shippingSubsidy: storeShipping.platformSubsidy,
               visitorId:      linkVisitorId ?? null,
             },
           });
 
-          const ledgerEntries: Prisma.SellerLedgerEntryCreateManyInput[] = [
-            {
-              storeId, storeOrderId: storeOrder.id, type: 'SALE',
-              amount: discountedSubtotal + sellerShippingCredit,
-              description: `Sale — order ${newOrder.orderNumber}`,
-            },
-            {
-              storeId, storeOrderId: storeOrder.id, type: 'TRANSACTION_FEE',
-              amount: -fees.transactionFee,
-              description: `Transaction fee — order ${newOrder.orderNumber}`,
-            },
-            {
-              storeId, storeOrderId: storeOrder.id, type: 'PAYMENT_PROCESSING_FEE',
-              amount: -fees.paymentProcessingFee,
-              description: `Payment processing fee — order ${newOrder.orderNumber}`,
-            },
-          ];
-          if (fees.regulatoryFee > 0) {
-            ledgerEntries.push({
-              storeId, storeOrderId: storeOrder.id, type: 'REGULATORY_FEE',
-              amount: -fees.regulatoryFee,
-              description: `Regulatory operating fee — order ${newOrder.orderNumber}`,
-            });
-          }
-          if (fees.vatOnFees > 0) {
-            ledgerEntries.push({
-              storeId, storeOrderId: storeOrder.id, type: 'VAT',
-              amount: -fees.vatOnFees,
-              description: `VAT on seller fees — order ${newOrder.orderNumber}`,
-            });
-          }
-
+          // No uncollected sale/fee credits or referrer-only advertising charges.
+          // Share-and-save needs a captured voucher liability, not a prepayment reward.
           const attribution = attributionByStore.get(storeId);
-          // A valid Share & Save reward requires a REAL sharer identity, and
-          // that sharer must not be the person checking out right now — a
-          // generic/missing sharerId (e.g. someone hand-appending `?ss=1`
-          // with no real link) earns nothing, which is what stops anyone
-          // self-serving a discount instead of genuinely referring someone.
-          const validSharerId = attribution?.kind === 'SHARE_SAVE' && attribution.sharerId && attribution.sharerId !== userId
-            ? attribution.sharerId
-            : null;
-          if (this.onlinePaymentsEnabled && validSharerId && storeShareSaveMap.get(storeId)) {
-            // Seller-funded, same as every other discount in this codebase —
-            // the sharer gets 4% back, which comes out of THIS store's
-            // earnings, not extra revenue for them. A positive entry here
-            // would incorrectly overpay the seller.
-            const rewardAmount = Math.round(discountedSubtotal * SHARE_SAVE_REFUND_RATE * 100) / 100;
-            ledgerEntries.push({
-              storeId, storeOrderId: storeOrder.id, type: 'SHARE_SAVE_REFUND',
-              amount: -rewardAmount,
-              description: `Share & Save credit — order ${newOrder.orderNumber}`,
-            });
-
-            if (rewardAmount > 0) {
-              const code = `SHARE-${randomBytes(4).toString('hex').toUpperCase()}`;
-              const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
-              await tx.promotion.create({
-                data: {
-                  code, type: 'FIXED_AMOUNT', value: rewardAmount,
-                  maxUses: 1, maxUsesPerUser: 1,
-                  storeId, scope: 'SHOP_WIDE',
-                  targetUserId: validSharerId,
-                  expiresAt,
-                  description: `share-save:${storeOrder.id}`,
-                },
-              });
-              const storeInfo = storeInfoMap.get(storeId);
-              if (storeInfo) {
-                sharerRewards.push({
-                  sharerId: validSharerId, storeId, storeName: storeInfo.name, storeSlug: storeInfo.slug,
-                  amount: rewardAmount, code, expiresAt,
-                });
-              }
-            }
-          } else if (this.onlinePaymentsEnabled && attribution?.kind === 'OFFSITE_AD' && !storeOptOutMap.get(storeId)) {
-            ledgerEntries.push({
-              storeId, storeOrderId: storeOrder.id, type: 'OFFSITE_ADS_FEE',
-              amount: -Math.round(discountedSubtotal * offsiteAdsFeeRate * 100) / 100,
-              description: `Offsite Ads fee — order ${newOrder.orderNumber}`,
-            });
-          }
-
-          if (this.onlinePaymentsEnabled) {
-            await tx.sellerLedgerEntry.createMany({ data: ledgerEntries });
-          }
-          if (this.onlinePaymentsEnabled && attribution) {
-            await this.linkAttributionService.markConverted(attribution.id, newOrder.id, tx);
+          if (this.onlinePaymentsEnabled && attribution?.kind === 'SHARE_SAVE'
+            && attribution.sharerId && attribution.sharerId !== userId && storeShareSaveMap.get(storeId)) {
+            throw new BadRequestException('Share & Save online rewards are unavailable until captured voucher accounting is enabled');
           }
 
           await tx.orderItem.updateMany({
@@ -879,44 +774,13 @@ export class OrdersService {
         });
       }
 
+      if (this.onlinePaymentsEnabled) {
+        await freezeCheckoutEconomics(tx, newOrder.id, parseMinorUnits(giftWrappingCost.toFixed(2), 2));
+      }
       return newOrder;
     });
 
-    // Mark affiliate click as converted now that we have the orderId
-    if (this.onlinePaymentsEnabled && affiliateId && visitorId) {
-      this.affiliateTrackingService
-        .markClickConverted(visitorId, affiliateId, order.id)
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        .catch(() => {}); // non-critical; never blocks checkout
-    }
-
-    // Email each Share & Save sharer their reward code — the codes themselves
-    // were already created atomically inside the transaction above; sending
-    // the email is a non-critical side effect, done after commit.
-    for (const reward of sharerRewards) {
-      this.prisma.user.findUnique({ where: { id: reward.sharerId }, select: { email: true, firstName: true } })
-        .then((sharer) => {
-          if (!sharer) return;
-          return this.emailQueue.add(JOBS.SEND_EMAIL, {
-            to: sharer.email,
-            template: 'targeted-offer',
-            subject: `You earned $${reward.amount.toFixed(2)} for sharing ${reward.storeName}!`,
-            data: {
-              storeName: reward.storeName,
-              firstName: sharer.firstName ?? 'there',
-              headline: 'Your share paid off!',
-              message: `Someone bought from ${reward.storeName} through your Share & Save link — here's your instant credit.`,
-              code: reward.code,
-              discountLabel: `$${reward.amount.toFixed(2)}`,
-              expiresAt: reward.expiresAt.toLocaleDateString(),
-              shopUrl: `${process.env['CLIENT_URL'] ?? 'https://ezihubb.com'}/shops/${reward.storeSlug}`,
-              year: new Date().getFullYear(),
-            },
-          }, DEFAULT_JOB_OPTIONS);
-        })
-        .catch((err: Error) => this.logger.warn(`Failed to queue Share & Save reward email: ${err.message}`));
-    }
-
+    // Paid conversion/rewards belong to the verified-capture consumer, not checkout.
     if (!this.onlinePaymentsEnabled) {
       return {
         orderId: order.id,

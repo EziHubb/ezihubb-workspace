@@ -1,6 +1,7 @@
 ﻿import { Injectable, Logger } from '@nestjs/common';
 import { AnthropicService, DEFAULT_ANTHROPIC_MODEL } from '../../common/services/anthropic.service';
 import type { ModerationResult } from './dto/moderation-result.dto';
+import { assertModerationResult } from './validate-moderation-result';
 
 // Recorded on the moderation row so a later review knows which model judged
 // it. Reads the shared default rather than naming one this service no longer
@@ -46,8 +47,7 @@ export class ImageModerationService {
 
       const buffer = await imgRes.arrayBuffer();
       if (buffer.byteLength > MAX_IMAGE_BYTES) {
-        this.logger.warn(`Image too large (${buffer.byteLength} bytes), skipping: ${imageUrl}`);
-        return this.cleanResult(Date.now() - start);
+        throw new Error('Image exceeds moderation size limit');
       }
 
       const contentType  = imgRes.headers.get('content-type') ?? 'image/jpeg';
@@ -63,17 +63,12 @@ export class ImageModerationService {
         timeoutMs: 20_000,
       });
 
+      assertModerationResult(parsed);
       return { ...parsed, latencyMs: Date.now() - start, modelVersion: MODEL, costUsd: usage.costUsd };
-    } catch (err) {
-      this.logger.error('Image moderation failed', err);
-      return this.cleanResult(Date.now() - start);
+    } catch {
+      this.logger.error('Image moderation unavailable; content remains pending');
+      throw new Error('Image moderation unavailable');
     }
   }
 
-  private cleanResult(latencyMs: number): ModerationResult {
-    // costUsd 0, not absent: this path returns without calling the API at all
-    // (image too large, fetch failed), and the tracker's fallback would
-    // otherwise bill the daily budget for a call that never happened.
-    return { verdict: 'CLEAN', categories: [], confidence: 0, reasoning: null, sellerMessage: null, latencyMs, modelVersion: MODEL, costUsd: 0 };
-  }
 }

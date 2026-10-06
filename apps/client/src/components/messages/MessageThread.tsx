@@ -434,7 +434,7 @@ export function MessageThread({
   const stickToBottom = useRef(false);
   const queryClient = useQueryClient();
 
-  const { data: conv, isLoading } = useQuery<ConversationWithMessagesDto>({
+  const { data: conv, isLoading, isError, refetch } = useQuery<ConversationWithMessagesDto>({
     queryKey: ['conversation', conversationId],
     queryFn: () =>
       apiClient.get<ConversationWithMessagesDto>(API_ROUTES.MESSAGES.CONVERSATION(conversationId), {
@@ -630,7 +630,7 @@ export function MessageThread({
    * marked read either.
    */
   useEffect(() => {
-    if (!conversationId || !token) return;
+    if (!conversationId) return;
     // Gated on there being something unread, not on the message count: the
     // count also moves when the buyer sends, which would post a mark-read on
     // every keystroke-ending Enter for messages that were already read.
@@ -641,7 +641,7 @@ export function MessageThread({
     if (!conv?.unreadByCustomer) return;
 
     apiClient
-      .post(API_ROUTES.MESSAGES.CONVERSATION_READ(conversationId), {}, { token })
+      .post(API_ROUTES.MESSAGES.CONVERSATION_READ(conversationId), {}, { token: token ?? undefined })
       .then(() => {
         queryClient.invalidateQueries({ queryKey: ['conversations'] });
         queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
@@ -761,6 +761,13 @@ export function MessageThread({
       setIsSending(false);
     }
   };
+
+  if (isError) return <div className="space-y-4 p-4">
+    <p role="alert">{locale === 'vi' ? 'Không thể mở hội thoại. Nếu phiên đã hết hạn, hãy quay lại hộp thư để xác minh lại.' : 'Unable to open this conversation. If your session has expired, return to your inbox to verify again.'}</p>
+    <button type="button" onClick={() => void refetch()} className="min-h-11 rounded-button border border-border px-4 py-2">
+      {locale === 'vi' ? 'Thử lại' : 'Try again'}
+    </button>
+  </div>;
 
   return (
     <>
